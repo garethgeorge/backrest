@@ -1,0 +1,19 @@
+version: v1
+plugins:
+  - plugin: go
+    out: ../gen/go
+    opt:
+      - paths=source_relative
+  - plugin: go-grpc
+    out: ../gen/go
+    opt:
+      - paths=source_relative
+  - plugin: grpc-gateway
+    out: ../gen/go
+    opt:
+      - paths=source_relative
+      - generate_unbound_methods=true
+  - plugin: grpc-gateway-ts
+    out: ../gen/ts
+    opt:
+      - paths=source_relative

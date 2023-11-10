@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package v1;
+
+option go_package = "github.com/garethgeorge/resticui/go/proto/v1";
+
+import "v1/config.proto";
+import "v1/events.proto";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
+
+service ResticUI {
+  rpc GetConfig (google.protobuf.Empty) returns (Config) {
+    option (google.api.http) = {
+      get: "/v1/config"
+    };
+  }
+  rpc SetConfig (Config) returns (Config) {
+    option (google.api.http) = {
+      post: "/v1/config"
+      body: "*"
+    };
+  }
+
+  rpc GetEvents (google.protobuf.Empty) returns (stream Event) {
+    option (google.api.http) = {
+      get: "/v1/events"
+    };
+  }
+}
