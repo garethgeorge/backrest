@@ -24,9 +24,9 @@ var _ ConfigStore = &YamlFileStore{}
 
 func (f *YamlFileStore) Get() (*v1.Config, error) {
 	f.mu.Lock()
-	defer f.mu.Unlock()
 
 	if f.config != nil {
+		f.mu.Unlock()
 		return f.config, nil
 	}
 
@@ -41,15 +41,21 @@ func (f *YamlFileStore) Get() (*v1.Config, error) {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
+	defer f.mu.Unlock()
+
 	data, err = yamlToJson(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse YAML config: %w", err)
 	}
 
 	var config v1.Config
-	err = protojson.Unmarshal(data, &config)
-	if err != nil {
+	
+	if err = protojson.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	if err := validateConfig(&config); err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
 	f.config = &config
@@ -59,6 +65,10 @@ func (f *YamlFileStore) Get() (*v1.Config, error) {
 func (f *YamlFileStore) Update(config *v1.Config) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+
+	if err := validateConfig(config); err != nil {
+		return fmt.Errorf("invalid config: %w", err)
+	}
 
 	data, err := protojson.Marshal(config)
 	if err != nil {
@@ -79,10 +89,10 @@ func (f *YamlFileStore) Update(config *v1.Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
+
 	f.config = config
 	return nil
 }
-
 
 func jsonToYaml(data []byte) ([]byte, error) {
 	var config interface{}

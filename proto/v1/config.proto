@@ -15,7 +15,7 @@ message Repo {
   string id = 1 [json_name="id"];
   string uri = 2 [json_name="uri"];
   string password = 3 [json_name="password"];
-  repeated EnvVar env = 4 [json_name="env"];
+  repeated string env = 4 [json_name="env"];
 }
 
 message Plan {
@@ -23,9 +23,4 @@ message Plan {
   string repo = 2 [json_name="repo"];
   string repo_path = 3 [json_name="repo_path"]; // subpath of the repo to backup to
   repeated string paths = 4 [json_name="paths"];
-}
-
-message EnvVar {
-  string name = 1 [json_name="name"];
-  string value = 2 [json_name="value"];
 }

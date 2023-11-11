@@ -27,22 +27,21 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.FS(static.FS)))
 
+	server := &http.Server{
+		Addr:    ":9090",
+		Handler: mux,
+	}
+
 	// Serve the API
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer cancel()
 		err := api.ServeAPI(ctx, mux)
 		if err != nil {
 			zap.S().Fatal("Error serving API", zap.Error(err))
 		}
 		cancel() // cancel the context when the API server exits (e.g. on fatal error)
 	}()
-
-	server := &http.Server{
-		Addr:    ":9090",
-		Handler: mux,
-	}
 
 	// Serve the HTTP gateway
 	wg.Add(1)
@@ -66,7 +65,7 @@ func main() {
 func init() {
 	zap.ReplaceGlobals(zap.Must(zap.NewProduction()))
 	if os.Getenv("DEBUG") != "" {
-		zap.ReplaceGlobals(zap.Must(zap.NewDevelopment()))
+		zap.ReplaceGlobals(zap.Must(zap.NewDevelopmentConfig().Build()))
 	}
 }
 

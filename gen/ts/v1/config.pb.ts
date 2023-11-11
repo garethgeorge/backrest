@@ -14,7 +14,7 @@ export type Repo = {
   id?: string
   uri?: string
   password?: string
-  env?: EnvVar[]
+  env?: string[]
 }
 
 export type Plan = {
@@ -22,9 +22,4 @@ export type Plan = {
   repo?: string
   repoPath?: string
   paths?: string[]
-}
-
-export type EnvVar = {
-  name?: string
-  value?: string
 }
