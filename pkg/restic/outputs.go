@@ -30,9 +30,10 @@ type Snapshot struct {
 	Username string `json:"username"`
 	Id string `json:"id"`
 	ShortId string `json:"short_id"`
+	Tags []string `json:"tags"`
 }
 
-type BackupEvent struct {
+type BackupProgressEntry struct {
 	// Common fields
 	MessageType string `json:"message_type"` // "summary" or "status"
 
@@ -62,14 +63,14 @@ type BackupEvent struct {
 	Error string `json:"error"`
 }
 
-// readBackupEvents returns the summary event or an error if the command failed.
-func readBackupEvents(cmd *exec.Cmd, output io.Reader, callback func(event *BackupEvent)) (*BackupEvent, error) {
+// readBackupProgressEntrys returns the summary event or an error if the command failed.
+func readBackupProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
 	// first event is handled specially to detect non-JSON output and fast-path out.
 	if scanner.Scan() {
-		var event BackupEvent
+		var event BackupProgressEntry
 
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
 			var bytes = slices.Clone(scanner.Bytes())
@@ -82,10 +83,10 @@ func readBackupEvents(cmd *exec.Cmd, output io.Reader, callback func(event *Back
 	}
 
 	// remaining events are parsed as JSON
-	var summary *BackupEvent
+	var summary *BackupProgressEntry
 
 	for scanner.Scan() {
-		var event *BackupEvent
+		var event *BackupProgressEntry
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
 			return nil, fmt.Errorf("failed to parse JSON: %w", err)
 		}

@@ -19,22 +19,24 @@ type Repo struct {
 	mu sync.Mutex
 	cmd string
 	repo *v1.Repo
-	flags []string
-	env []string
 	initialized bool
+
+	extraArgs []string
+	extraEnv []string
 }
 
-func NewRepo(repo *v1.Repo, opts ...RepoOption) *Repo {
-	var opt RepoOpts
+func NewRepo(repo *v1.Repo, opts ...GenericOption) *Repo {
+	opt := &GenericOpts{}
 	for _, o := range opts {
-		o(&opt)
+		o(opt)
 	}
 
 	return &Repo{
 		cmd: "restic", // TODO: configurable binary path
 		repo: repo,
-		flags: opt.flags,
-		env: opt.env,
+		initialized: false,
+		extraArgs: opt.extraArgs,
+		extraEnv: opt.extraEnv,
 	}
 }
 
@@ -43,8 +45,8 @@ func (r *Repo) buildEnv() []string {
 		"RESTIC_REPOSITORY=" + r.repo.GetUri(),
 		"RESTIC_PASSWORD=" + r.repo.GetPassword(),
 	}
+	env = append(env, r.extraEnv...)
 	env = append(env, r.repo.GetEnv()...)
-	env = append(env, r.env...)
 	return env
 }
 
@@ -55,7 +57,7 @@ func (r *Repo) init(ctx context.Context) error {
 	}
 
 	var args = []string{"init", "--json"}
-	args = append(args, r.flags...)
+	args = append(args, r.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
 	cmd.Env = append(cmd.Env, r.buildEnv()...)
@@ -75,7 +77,7 @@ func (r *Repo) Init(ctx context.Context) error {
 	return r.init(ctx)
 }
 
-func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupEvent), opts ...BackupOption) (*BackupEvent, error) {
+func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgressEntry), opts ...BackupOption) (*BackupProgressEntry, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -95,12 +97,9 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupEvent), 
 	}
 
 	args := []string{"backup", "--json", "--exclude-caches"}
-	args = append(args, r.flags...)
+	args = append(args, r.extraArgs...)
 	args = append(args, opt.paths...)
-
-	for _, e := range opt.excludes {
-		args = append(args, "--exclude", e)
-	}
+	args = append(args, opt.extraArgs...)
 
 	reader, writer := io.Pipe()
 
@@ -114,7 +113,7 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupEvent), 
 	}
 	
 	var wg sync.WaitGroup
-	var summary *BackupEvent
+	var summary *BackupProgressEntry
 	var cmdErr error 
 	var readErr error
 	
@@ -122,7 +121,7 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupEvent), 
 	go func() {
 		defer wg.Done()
 		var err error
-		summary, err = readBackupEvents(cmd, reader, progressCallback)
+		summary, err = readBackupProgressEntries(cmd, reader, progressCallback)
 		if err != nil {
 			readErr = fmt.Errorf("processing command output: %w", err)
 		}
@@ -146,7 +145,7 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupEvent), 
 	return summary, err
 }
 
-func (r *Repo) Snapshots(ctx context.Context) ([]*Snapshot, error) {
+func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapshot, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -154,11 +153,15 @@ func (r *Repo) Snapshots(ctx context.Context) ([]*Snapshot, error) {
 		return nil, fmt.Errorf("failed to initialize repo: %w", err)
 	}
 
+	opt := resolveOpts(opts)
+
 	args := []string{"snapshots", "--json"}
-	args = append(args, r.flags...)
+	args = append(args, r.extraArgs...)
+	args = append(args, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
 	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -173,7 +176,7 @@ func (r *Repo) Snapshots(ctx context.Context) ([]*Snapshot, error) {
 	return snapshots, nil
 }
 
-func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string) (*Snapshot, []*LsEntry, error) {
+func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, opts ...GenericOption) (*Snapshot, []*LsEntry, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -186,11 +189,15 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string) 
 		return nil, nil, fmt.Errorf("failed to initialize repo: %w", err)
 	}
 
+	opt := resolveOpts(opts)
+
 	args := []string{"ls", "--json", snapshot, path}
-	args = append(args, r.flags...)
+	args = append(args, r.extraArgs...)
+	args = append(args, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
 	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -206,35 +213,9 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string) 
 	return snapshots, entries, nil
 }
 
-type RepoOpts struct {
-	env []string // global env overrides
-	flags []string // global flags
-}
-
-type RepoOption func(opts *RepoOpts)
-
-// WithHostEnv copies values from the host environment into the restic environment.
-func WithRepoHostEnv() RepoOption {
-	return func(opts *RepoOpts) {
-		opts.env = append(opts.env, "HOME=" + os.Getenv("HOME"), "XDG_CACHE_HOME=" + os.Getenv("XDG_CACHE_HOME"))
-	}
-}
-
-func WithRepoEnv(env ...string) RepoOption {
-	return func(opts *RepoOpts) {
-		opts.env = append(opts.env, env...)
-	}
-}
-
-func WithRepoFlags(flags ...string) RepoOption {
-	return func(opts *RepoOpts) {
-		opts.flags = append(opts.flags, flags...)
-	}
-}
-
 type BackupOpts struct {
 	paths []string
-	excludes []string
+	extraArgs []string
 }
 
 type BackupOption func(opts *BackupOpts)
@@ -247,6 +228,64 @@ func WithBackupPaths(paths ...string) BackupOption {
 
 func WithBackupExcludes(excludes ...string) BackupOption {
 	return func(opts *BackupOpts) {
-		opts.excludes = append(opts.excludes, excludes...)
+		for _, exclude := range excludes {
+			opts.extraArgs = append(opts.extraArgs, "--exclude", exclude)
+		}
 	}
+}
+
+func WithBackupTags(tags ...string) BackupOption {
+	return func(opts *BackupOpts) {
+		for _, tag := range tags {
+			opts.extraArgs = append(opts.extraArgs, "--tag", tag)
+		}
+	}
+}
+
+type GenericOpts struct {
+	extraArgs []string
+	extraEnv []string
+}
+
+func resolveOpts(opts []GenericOption) *GenericOpts {
+	opt := &GenericOpts{}
+	for _, o := range opts {
+		o(opt)
+	}
+	return opt
+}
+
+type GenericOption func(opts *GenericOpts)
+
+func WithFlags(flags ...string) GenericOption {
+	return func(opts *GenericOpts) {
+		opts.extraArgs = append(opts.extraArgs, flags...)
+	}
+}
+
+func WithTags(tags ...string) GenericOption {
+	return func(opts *GenericOpts) {
+		for _, tag := range tags {
+			opts.extraArgs = append(opts.extraArgs, "--tag", tag)
+		}
+	}
+}
+
+func WithEnv(env ...string) GenericOption {
+	return func(opts *GenericOpts) {
+		opts.extraEnv = append(opts.extraEnv, env...)
+	}
+}
+
+var EnvToPropagate = []string{"PATH", "HOME", "XDG_CACHE_HOME"}
+func WithPropagatedEnvVars(extras ...string) GenericOption {
+	var extension []string
+
+	for _, env := range EnvToPropagate {
+		if val, ok := os.LookupEnv(env); ok {
+			extension = append(extension, env + "=" + val)
+		}
+	}
+
+	return WithEnv(extension...)
 }

@@ -2,7 +2,7 @@ package restic
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"testing"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
@@ -17,7 +17,7 @@ func TestResticInit(t *testing.T) {
 		Id: "test",
 		Uri: repo,
 		Password: "test",
-	}, WithRepoFlags("--no-cache"))
+	}, WithFlags("--no-cache"))
 
 	r.init(context.Background())
 }
@@ -31,7 +31,7 @@ func TestResticBackup(t *testing.T) {
 		Id: "test",
 		Uri: repo,
 		Password: "test",
-	}, WithRepoFlags("--no-cache"))
+	}, WithFlags("--no-cache"))
 	
 	testData := test.CreateTestData(t)
 	testData2 := test.CreateTestData(t)
@@ -71,7 +71,7 @@ func TestResticBackup(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			summary, err := r.Backup(context.Background(), func(event *BackupEvent) {
+			summary, err := r.Backup(context.Background(), func(event *BackupProgressEntry) {
 				t.Logf("backup event: %v", event)
 			}, tc.opts...)
 			if (err != nil) != tc.wantErr {
@@ -102,29 +102,46 @@ func TestSnapshot(t *testing.T) {
 		Id: "test",
 		Uri: repo,
 		Password: "test",
-	}, WithRepoFlags("--no-cache"))
+	}, WithFlags("--no-cache"))
 
 	testData := test.CreateTestData(t)
 
 	for i := 0; i < 10; i++ {
-		_, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
+		_, err := r.Backup(context.Background(), nil, WithBackupPaths(testData), WithBackupTags(fmt.Sprintf("tag%d", i)))
 		if err != nil {
 			t.Fatalf("failed to backup and create new snapshot: %v", err)
 		}
 	}
 
-	snapshots, err := r.Snapshots(context.Background())
-	if err != nil {
-		t.Fatalf("failed to list snapshots: %v", err)
+	var tests = []struct {
+		name string
+		opts []GenericOption
+		count int
+	}{
+		{
+			name: "no options",
+			opts: []GenericOption{},
+			count: 10,
+		},
+		{
+			name: "with tag",
+			opts: []GenericOption{WithTags("tag1")},
+			count: 1,
+		},
 	}
 
-	if len(snapshots) != 10 {
-		t.Errorf("wanted 10 snapshots, got: %d", len(snapshots))
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			snapshots, err := r.Snapshots(context.Background(), tc.opts...)
+			if err != nil {
+				t.Fatalf("failed to list snapshots: %v", err)
+			}
+
+			if len(snapshots) != tc.count {
+				t.Errorf("wanted %d snapshots, got: %d", tc.count, len(snapshots))
+			}
+		})
 	}
-
-	data, _ := json.Marshal(snapshots)
-
-	t.Logf("snapshots: %v", string(data))
 }
 
 func TestLs(t *testing.T) {
@@ -135,7 +152,7 @@ func TestLs(t *testing.T) {
 		Id: "test",
 		Uri: repo,
 		Password: "test",
-	}, WithRepoFlags("--no-cache"))
+	}, WithFlags("--no-cache"))
 
 	testData := test.CreateTestData(t)
 

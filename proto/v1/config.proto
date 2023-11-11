@@ -11,6 +11,11 @@ message Config {
   repeated Plan plans = 4 [json_name="plans"];
 }
 
+message User {
+  string name = 1;
+  string password = 2; // plaintext password
+}
+
 message Repo {
   string id = 1 [json_name="id"];
   string uri = 2 [json_name="uri"];
@@ -21,6 +26,5 @@ message Repo {
 message Plan {
   string id = 1 [json_name="id"];
   string repo = 2 [json_name="repo"];
-  string repo_path = 3 [json_name="repo_path"]; // subpath of the repo to backup to
   repeated string paths = 4 [json_name="paths"];
 }
