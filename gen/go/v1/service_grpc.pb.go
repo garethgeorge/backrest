@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	ResticUI_GetConfig_FullMethodName = "/v1.ResticUI/GetConfig"
 	ResticUI_SetConfig_FullMethodName = "/v1.ResticUI/SetConfig"
+	ResticUI_AddRepo_FullMethodName   = "/v1.ResticUI/AddRepo"
 	ResticUI_GetEvents_FullMethodName = "/v1.ResticUI/GetEvents"
 )
 
@@ -31,6 +32,7 @@ const (
 type ResticUIClient interface {
 	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error)
 	SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error)
+	AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error)
 	GetEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (ResticUI_GetEventsClient, error)
 }
 
@@ -54,6 +56,15 @@ func (c *resticUIClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts 
 func (c *resticUIClient) SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error) {
 	out := new(Config)
 	err := c.cc.Invoke(ctx, ResticUI_SetConfig_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resticUIClient) AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error) {
+	out := new(Config)
+	err := c.cc.Invoke(ctx, ResticUI_AddRepo_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +109,7 @@ func (x *resticUIGetEventsClient) Recv() (*Event, error) {
 type ResticUIServer interface {
 	GetConfig(context.Context, *emptypb.Empty) (*Config, error)
 	SetConfig(context.Context, *Config) (*Config, error)
+	AddRepo(context.Context, *Repo) (*Config, error)
 	GetEvents(*emptypb.Empty, ResticUI_GetEventsServer) error
 	mustEmbedUnimplementedResticUIServer()
 }
@@ -111,6 +123,9 @@ func (UnimplementedResticUIServer) GetConfig(context.Context, *emptypb.Empty) (*
 }
 func (UnimplementedResticUIServer) SetConfig(context.Context, *Config) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetConfig not implemented")
+}
+func (UnimplementedResticUIServer) AddRepo(context.Context, *Repo) (*Config, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddRepo not implemented")
 }
 func (UnimplementedResticUIServer) GetEvents(*emptypb.Empty, ResticUI_GetEventsServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetEvents not implemented")
@@ -164,6 +179,24 @@ func _ResticUI_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResticUI_AddRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Repo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResticUIServer).AddRepo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResticUI_AddRepo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResticUIServer).AddRepo(ctx, req.(*Repo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ResticUI_GetEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(emptypb.Empty)
 	if err := stream.RecvMsg(m); err != nil {
@@ -199,6 +232,10 @@ var ResticUI_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetConfig",
 			Handler:    _ResticUI_SetConfig_Handler,
+		},
+		{
+			MethodName: "AddRepo",
+			Handler:    _ResticUI_AddRepo_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

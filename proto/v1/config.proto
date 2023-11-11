@@ -17,14 +17,16 @@ message User {
 }
 
 message Repo {
-  string id = 1 [json_name="id"];
-  string uri = 2 [json_name="uri"];
-  string password = 3 [json_name="password"];
-  repeated string env = 4 [json_name="env"];
+  string id = 1 [json_name="id"]; // unique but human readable ID for this repo.
+  string uri = 2 [json_name="uri"]; // restic repo URI
+  string password = 3 [json_name="password"]; // plaintext password
+  repeated string env = 4 [json_name="env"]; // extra environment variables to set for restic.
+  repeated string flags = 5 [json_name="flags"]; // extra flags set on the restic command.
 }
 
 message Plan {
-  string id = 1 [json_name="id"];
-  string repo = 2 [json_name="repo"];
-  repeated string paths = 4 [json_name="paths"];
+  string id = 1 [json_name="id"]; // unique but human readable ID for this plan.
+  string repo = 2 [json_name="repo"]; // ID of the repo to use.
+  repeated string paths = 4 [json_name="paths"]; // paths to include in the backup.
+  repeated string excludes = 5 [json_name="excludes"]; // glob patterns to exclude.
 }

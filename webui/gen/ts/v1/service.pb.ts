@@ -15,6 +15,9 @@ export class ResticUI {
   static SetConfig(req: V1Config.Config, initReq?: fm.InitReq): Promise<V1Config.Config> {
     return fm.fetchReq<V1Config.Config, V1Config.Config>(`/v1/config`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
   }
+  static AddRepo(req: V1Config.Repo, initReq?: fm.InitReq): Promise<V1Config.Config> {
+    return fm.fetchReq<V1Config.Repo, V1Config.Config>(`/v1/config/repo`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
+  }
   static GetEvents(req: GoogleProtobufEmpty.Empty, entityNotifier?: fm.NotifyStreamEntityArrival<V1Events.Event>, initReq?: fm.InitReq): Promise<void> {
     return fm.fetchStreamingRequest<GoogleProtobufEmpty.Empty, V1Events.Event>(`/v1/events?${fm.renderURLSearchParams(req, [])}`, entityNotifier, {...initReq, method: "GET"})
   }
