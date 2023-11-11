@@ -9,6 +9,7 @@ import (
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 	"github.com/garethgeorge/resticui/internal/config"
+	"github.com/garethgeorge/resticui/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -49,7 +50,7 @@ func (s *Server) GetConfig(ctx context.Context, empty *emptypb.Empty) (*v1.Confi
 	return config.Default.Get()
 }
 
-// SetConfig implements PUT /v1/config
+// SetConfig implements POST /v1/config
 func (s *Server) SetConfig(ctx context.Context, c *v1.Config) (*v1.Config, error) {
 	err := config.Default.Update(c)
 	if err != nil {
@@ -57,6 +58,29 @@ func (s *Server) SetConfig(ctx context.Context, c *v1.Config) (*v1.Config, error
 	}
 	return config.Default.Get()
 }
+
+// AddRepo implements POST /v1/config/repo, it includes validation that the repo can be initialized.
+func (s *Server) AddRepo(ctx context.Context, repo *v1.Repo) (*v1.Config, error) {
+	c, err := config.Default.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %w", err)
+	}
+
+	r := restic.NewRepo(repo)
+	 // use background context such that the init op can try to complete even if the connection is closed.
+	if err := r.Init(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to init repo: %w", err)
+	}
+	
+	c.Repos = append(c.Repos, repo)
+
+	if err := config.Default.Update(c); err != nil {
+		return nil, fmt.Errorf("failed to update config: %w", err)
+	}
+
+	return c, nil
+}
+
 
 // GetEvents implements GET /v1/events
 func (s *Server) GetEvents(_ *emptypb.Empty, stream v1.ResticUI_GetEventsServer) error {
@@ -78,6 +102,8 @@ func (s *Server) GetEvents(_ *emptypb.Empty, stream v1.ResticUI_GetEventsServer)
 		}
 	}
 }
+
+
 
 // PublishEvent publishes an event to all GetEvents streams. It is effectively a multicast.
 func (s *Server) PublishEvent(event *v1.Event) {
