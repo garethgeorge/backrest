@@ -3,14 +3,24 @@ package restic
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os/exec"
 	"slices"
-
-	"go.uber.org/zap"
 )
+
+type LsEntry struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+	Path string `json:"path"`
+	Uid int `json:"uid"`
+	Gid int `json:"gid"`
+	Size int `json:"size"`
+	Mode int `json:"mode"`
+	Mtime string `json:"mtime"`
+	Atime string `json:"atime"`
+	Ctime string `json:"ctime"`
+}
 
 type Snapshot struct {
 	Time string `json:"time"`
@@ -67,16 +77,7 @@ func readBackupEvents(cmd *exec.Cmd, output io.Reader, callback func(event *Back
 				bytes = append(bytes, scanner.Bytes()...)
 			}
 
-			jsonErr := fmt.Errorf("command output was not JSON: %w", err)
-
-			if err := cmd.Wait(); err != nil {
-				return nil, NewCmdError(cmd, bytes, errors.Join(
-					fmt.Errorf("command failed: %w", err),
-					fmt.Errorf("command output was not JSON: %w", err),
-				))
-			}
-
-			return nil, NewCmdError(cmd, bytes, jsonErr)
+			return nil, NewCmdError(cmd, bytes, fmt.Errorf("command output was not JSON: %w", err))
 		}
 	}
 
@@ -89,7 +90,9 @@ func readBackupEvents(cmd *exec.Cmd, output io.Reader, callback func(event *Back
 			return nil, fmt.Errorf("failed to parse JSON: %w", err)
 		}
 
-		callback(event)
+		if callback != nil {
+			callback(event)
+		}
 
 		if event.MessageType == "summary" {
 			summary = event
@@ -100,7 +103,29 @@ func readBackupEvents(cmd *exec.Cmd, output io.Reader, callback func(event *Back
 		return summary, fmt.Errorf("scanner encountered error: %w", err)
 	}
 
-	zap.L().Debug("finished reading events", zap.String("command", cmd.String()))
-
 	return summary, nil
+}
+
+func readLs(output io.Reader) (*Snapshot, []*LsEntry, error) {
+	scanner := bufio.NewScanner(output)
+	scanner.Split(bufio.ScanLines)
+
+	if !scanner.Scan() {
+		return nil, nil, fmt.Errorf("failed to read first line, expected snapshot info")
+	}
+
+	var snapshot *Snapshot
+	if err := json.Unmarshal(scanner.Bytes(), &snapshot); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	var entries []*LsEntry
+	for scanner.Scan() {
+		var entry *LsEntry
+		if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
+			return nil, nil, fmt.Errorf("failed to parse JSON: %w", err)
+		}
+		entries = append(entries, entry)
+	}
+	return snapshot, entries, nil
 }

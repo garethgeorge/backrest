@@ -1,17 +1,22 @@
 package restic
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"sync"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"golang.org/x/sync/errgroup"
+	"github.com/hashicorp/go-multierror"
 )
 
 type Repo struct {
+	mu sync.Mutex
 	cmd string
 	repo *v1.Repo
 	flags []string
@@ -63,7 +68,17 @@ func (r *Repo) init(ctx context.Context) error {
 	return nil
 }
 
+func (r *Repo) Init(ctx context.Context) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.initialized = false
+	return r.init(ctx)
+}
+
 func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupEvent), opts ...BackupOption) (*BackupEvent, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if err := r.init(ctx); err != nil {
 		return nil, fmt.Errorf("failed to initialize repo: %w", err)
 	}
@@ -71,6 +86,12 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupEvent), 
 	opt := &BackupOpts{}
 	for _, o := range opts {
 		o(opt)
+	}
+
+	for _, p := range opt.paths {
+		if _, err := os.Stat(p); err != nil {
+			return nil, fmt.Errorf("path %s does not exist: %w", p, err)
+		}
 	}
 
 	args := []string{"backup", "--json", "--exclude-caches"}
@@ -92,31 +113,97 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupEvent), 
 		return nil, NewCmdError(cmd, nil, err)
 	}
 	
+	var wg sync.WaitGroup
 	var summary *BackupEvent
-	var errgroup errgroup.Group
+	var cmdErr error 
+	var readErr error
 	
-	errgroup.Go(func() error {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		var err error
 		summary, err = readBackupEvents(cmd, reader, progressCallback)
 		if err != nil {
-			return fmt.Errorf("processing command output: %w", err)
+			readErr = fmt.Errorf("processing command output: %w", err)
 		}
-		return nil
-	})
+	}()
 
-	errgroup.Go(func() error {
+	wg.Add(1)
+	go func() {
 		defer writer.Close()
+		defer wg.Done()
 		if err := cmd.Wait(); err != nil {
-			return NewCmdError(cmd, nil, err)
+			cmdErr = NewCmdError(cmd, nil, err)
 		}
-		return nil
-	})
+	}()
 
-	if err := errgroup.Wait(); err != nil {
-		return nil, err
+	wg.Wait()
+	
+	var err error
+	if cmdErr != nil || readErr != nil {
+		err = multierror.Append(nil, cmdErr, readErr)
+	}
+	return summary, err
+}
+
+func (r *Repo) Snapshots(ctx context.Context) ([]*Snapshot, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if err := r.init(ctx); err != nil {
+		return nil, fmt.Errorf("failed to initialize repo: %w", err)
 	}
 
-	return summary, nil
+	args := []string{"snapshots", "--json"}
+	args = append(args, r.flags...)
+
+	cmd := exec.CommandContext(ctx, r.cmd, args...)
+	cmd.Env = append(cmd.Env, r.buildEnv()...)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, NewCmdError(cmd, output, err)
+	}
+
+	var snapshots []*Snapshot
+	if err := json.Unmarshal(output, &snapshots); err != nil {
+		return nil, NewCmdError(cmd, output, fmt.Errorf("command output is not valid JSON: %w", err))
+	}
+
+	return snapshots, nil
+}
+
+func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string) (*Snapshot, []*LsEntry, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if path == "" {
+		// an empty path can trigger very expensive operations (e.g. iterates all files in the snapshot)
+		return nil, nil, errors.New("path must not be empty")
+	}
+
+	if err := r.init(ctx); err != nil {
+		return nil, nil, fmt.Errorf("failed to initialize repo: %w", err)
+	}
+
+	args := []string{"ls", "--json", snapshot, path}
+	args = append(args, r.flags...)
+
+	cmd := exec.CommandContext(ctx, r.cmd, args...)
+	cmd.Env = append(cmd.Env, r.buildEnv()...)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, nil, NewCmdError(cmd, output, err)
+	}
+
+
+	snapshots, entries, err := readLs(bytes.NewBuffer(output))
+	if err != nil {
+		return nil, nil, NewCmdError(cmd, output, err)
+	}
+
+	return snapshots, entries, nil
 }
 
 type RepoOpts struct {

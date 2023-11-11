@@ -12,7 +12,7 @@ type CmdError struct {
 }
 
 func (e *CmdError) Error() string {
-	m := fmt.Sprintf("command %s failed: %s", e.Command, e.Err.Error())
+	m := fmt.Sprintf("command %q failed: %s", e.Command, e.Err.Error())
 	if e.Output != "" {
 		m += "\nDetails: \n" + e.Output
 	}
@@ -21,6 +21,11 @@ func (e *CmdError) Error() string {
 
 func (e *CmdError) Unwrap() error {
 	return e.Err
+}
+
+func (e *CmdError) Is(target error) bool {
+	_, ok := target.(*CmdError)
+	return ok
 }
 
 // NewCmdError creates a new error indicating that running a command failed.
