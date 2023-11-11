@@ -20,7 +20,7 @@ func serveGRPC(ctx context.Context, socket string) error {
 		return fmt.Errorf("failed to listen: %w", err)
 	}
 	grpcServer := grpc.NewServer()
-	v1.RegisterResticUIServer(grpcServer, &server{})
+	v1.RegisterResticUIServer(grpcServer, NewServer())
 	go func() {
 		<-ctx.Done()
 		grpcServer.GracefulStop()

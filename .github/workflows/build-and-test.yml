@@ -23,7 +23,7 @@ jobs:
         go-version: '1.20'
 
     - name: Restic
-      run: apt install restic
+      run: sudo apt install -y restic
 
     - name: Build
       run: go build -v ./...

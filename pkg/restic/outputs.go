@@ -23,14 +23,14 @@ type LsEntry struct {
 }
 
 type Snapshot struct {
+	Id string `json:"id"`
 	Time string `json:"time"`
 	Tree string `json:"tree"`
 	Paths []string `json:"paths"`
 	Hostname string `json:"hostname"`
 	Username string `json:"username"`
-	Id string `json:"id"`
-	ShortId string `json:"short_id"`
 	Tags []string `json:"tags"`
+	Parent string `json:"parent"`
 }
 
 type BackupProgressEntry struct {
@@ -58,9 +58,6 @@ type BackupProgressEntry struct {
 	FilesDone int `json:"files_done"`
 	TotalBytes int `json:"total_bytes"`
 	BytesDone int `json:"bytes_done"`
-
-	// Error fields
-	Error string `json:"error"`
 }
 
 // readBackupProgressEntrys returns the summary event or an error if the command failed.

@@ -10,6 +10,11 @@ export type Config = {
   plans?: Plan[]
 }
 
+export type User = {
+  name?: string
+  password?: string
+}
+
 export type Repo = {
   id?: string
   uri?: string
@@ -20,6 +25,5 @@ export type Repo = {
 export type Plan = {
   id?: string
   repo?: string
-  repoPath?: string
   paths?: string[]
 }
