@@ -23,6 +23,13 @@ service ResticUI {
     };
   }
 
+  rpc AddRepo (Repo) returns (Config) {
+    option (google.api.http) = {
+      post: "/v1/config/repo"
+      body: "*"
+    };
+  }
+
   rpc GetEvents (google.protobuf.Empty) returns (stream Event) {
     option (google.api.http) = {
       get: "/v1/events"

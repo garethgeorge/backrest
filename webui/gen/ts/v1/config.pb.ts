@@ -20,10 +20,12 @@ export type Repo = {
   uri?: string
   password?: string
   env?: string[]
+  flags?: string[]
 }
 
 export type Plan = {
   id?: string
   repo?: string
   paths?: string[]
+  excludes?: string[]
 }
