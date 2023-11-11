@@ -1,45 +1,38 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
-  LaptopOutlined,
-  NotificationOutlined,
-  UserOutlined,
+  ScheduleOutlined,
+  DatabaseOutlined,
+  PlusOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Breadcrumb, Layout, Menu, theme } from "antd";
+import { Breadcrumb, Layout, Menu, Spin, message, theme } from "antd";
+import { configState, fetchConfig } from "../state/config";
+import { useRecoilState } from "recoil";
+import { Config } from "../../gen/ts/v1/config.pb";
+import { AlertContextProvider, useAlertApi } from "../components/Alerts";
 
 const { Header, Content, Sider } = Layout;
-
-const items1: MenuProps["items"] = ["1", "2", "3"].map((key) => ({
-  key,
-  label: `nav ${key}`,
-}));
-
-const items2: MenuProps["items"] = [
-  UserOutlined,
-  LaptopOutlined,
-  NotificationOutlined,
-].map((icon, index) => {
-  const key = String(index + 1);
-
-  return {
-    key: `sub${key}`,
-    icon: React.createElement(icon),
-    label: `subnav ${key}`,
-
-    children: new Array(4).fill(null).map((_, j) => {
-      const subKey = index * 4 + j + 1;
-      return {
-        key: subKey,
-        label: `option${subKey}`,
-      };
-    }),
-  };
-});
 
 export const App: React.FC = () => {
   const {
     token: { colorBgContainer, colorTextLightSolid },
   } = theme.useToken();
+
+  const [config, setConfig] = useRecoilState(configState);
+  const alertApi = useAlertApi()!;
+
+  useEffect(() => {
+    fetchConfig()
+      .then((config) => {
+        setConfig(config);
+      })
+      .catch((err) => {
+        alertApi.error(err.message, 60);
+      });
+  }, []);
+
+  const items = getSidenavItems(config);
 
   return (
     <Layout>
@@ -51,16 +44,14 @@ export const App: React.FC = () => {
           <Menu
             mode="inline"
             defaultSelectedKeys={["1"]}
-            defaultOpenKeys={["sub1"]}
+            defaultOpenKeys={["plans", "repos"]}
             style={{ height: "100%", borderRight: 0 }}
-            items={items2}
+            items={items}
           />
         </Sider>
         <Layout style={{ padding: "0 24px 24px" }}>
           <Breadcrumb style={{ margin: "16px 0" }}>
             <Breadcrumb.Item>Home</Breadcrumb.Item>
-            <Breadcrumb.Item>List</Breadcrumb.Item>
-            <Breadcrumb.Item>App</Breadcrumb.Item>
           </Breadcrumb>
           <Content
             style={{
@@ -76,4 +67,56 @@ export const App: React.FC = () => {
       </Layout>
     </Layout>
   );
+};
+
+const getSidenavItems = (config: Config | null): MenuProps["items"] => {
+  if (!config) return [];
+
+  const configPlans = config.plans || [];
+  const configRepos = config.repos || [];
+
+  const plans: MenuProps["items"] = [
+    {
+      key: "add-plan",
+      icon: <PlusOutlined />,
+      label: "Add Plan",
+    },
+    ...configPlans.map((plan) => {
+      return {
+        key: "p-" + plan.id,
+        icon: <CheckCircleOutlined style={{ color: "green" }} />,
+        label: plan.id,
+      };
+    }),
+  ];
+
+  const repos: MenuProps["items"] = [
+    {
+      key: "add-repo",
+      icon: <PlusOutlined />,
+      label: "Add Repo",
+    },
+    ...configRepos.map((repo) => {
+      return {
+        key: "r-" + repo.id,
+        icon: <CheckCircleOutlined style={{ color: "green" }} />,
+        label: repo.id,
+      };
+    }),
+  ];
+
+  return [
+    {
+      key: "plans",
+      icon: React.createElement(ScheduleOutlined),
+      label: "Plans",
+      children: plans,
+    },
+    {
+      key: "repos",
+      icon: React.createElement(DatabaseOutlined),
+      label: "Repositories",
+      children: repos,
+    },
+  ];
 };
