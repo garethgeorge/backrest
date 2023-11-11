@@ -14,6 +14,6 @@ plugins:
       - paths=source_relative
       - generate_unbound_methods=true
   - plugin: grpc-gateway-ts
-    out: ../gen/ts
+    out: ../webui/gen/ts
     opt:
       - paths=source_relative

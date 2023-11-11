@@ -12,7 +12,6 @@ message Event {
     LogEvent log = 3 [json_name="log"];
     BackupStatusEvent backup_status_change = 4 [json_name="backup_status"];
   }
-
 }
 
 message LogEvent {

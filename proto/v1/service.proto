@@ -15,6 +15,7 @@ service ResticUI {
       get: "/v1/config"
     };
   }
+
   rpc SetConfig (Config) returns (Config) {
     option (google.api.http) = {
       post: "/v1/config"
