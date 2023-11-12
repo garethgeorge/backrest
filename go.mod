@@ -5,6 +5,7 @@ go 1.21.3
 require (
 	github.com/gitploy-io/cronexpr v0.2.2
 	github.com/google/renameio v1.0.1
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1
 	github.com/hashicorp/go-multierror v1.1.1
 	go.uber.org/zap v1.26.0

@@ -23,6 +23,10 @@ export type ResticSnapshot = {
   tags?: string[]
 }
 
+export type ResticSnapshotList = {
+  snapshots?: ResticSnapshot[]
+}
+
 
 type BaseBackupProgressEntry = {
 }

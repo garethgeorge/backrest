@@ -1,18 +1,23 @@
 package config
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path"
+	"sync"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 )
 
+var ErrConfigNotFound = fmt.Errorf("config not found")
 var configDirFlag = flag.String("config_dir", "", "The directory to store the config file")
 
-var Default ConfigStore = &YamlFileStore{
-	Path: path.Join(configDir(*configDirFlag), "config.yaml"),
+var Default ConfigStore = &CachingValidatingStore{
+	ConfigStore: &YamlFileStore{
+		Path: path.Join(configDir(*configDirFlag), "config.yaml"),
+	},
 }
 
 type ConfigStore interface {
@@ -42,4 +47,51 @@ func configDir(override string) string {
 	}
 
 	return fmt.Sprintf("%v/.config/resticui", home)
+}
+
+type CachingValidatingStore struct {
+	ConfigStore
+	mu sync.Mutex
+	config *v1.Config
+}
+
+func (c *CachingValidatingStore) Get() (*v1.Config, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.config != nil {
+		return c.config, nil
+	}
+
+	config, err := c.ConfigStore.Get()
+	if err != nil {
+		if errors.Is(err, ErrConfigNotFound) {
+			c.config = NewDefaultConfig()
+			return c.config, nil
+		}
+		return c.config, err
+	}
+
+	if err := ValidateConfig(config); err != nil {
+		return nil, err
+	}
+
+	c.config = config
+	return config, nil
+}
+
+func (c *CachingValidatingStore) Update(config *v1.Config) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if err := ValidateConfig(config); err != nil {
+		return err
+	}
+
+	if err := c.ConfigStore.Update(config); err != nil {
+		return err
+	}
+
+	c.config = config
+	return nil
 }

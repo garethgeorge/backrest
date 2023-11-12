@@ -4,14 +4,10 @@
 * This file is a generated Typescript file for GRPC Gateway, DO NOT MODIFY
 */
 export type Config = {
-  version?: number
+  modno?: number
+  hostOverride?: string
   repos?: Repo[]
   plans?: Plan[]
-}
-
-export type User = {
-  name?: string
-  password?: string
 }
 
 export type Repo = {

@@ -10,7 +10,9 @@ import (
 	"syscall"
 
 	"github.com/garethgeorge/resticui/internal/api"
-	"github.com/garethgeorge/resticui/static"
+	"github.com/garethgeorge/resticui/internal/config"
+	"github.com/garethgeorge/resticui/internal/orchestrator"
+	static "github.com/garethgeorge/resticui/webui"
 	"go.uber.org/zap"
 
 	_ "embed"
@@ -20,6 +22,10 @@ func main() {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	go onterm(cancel)
+	
+	if _, err := config.Default.Get(); err != nil {
+		zap.S().Fatalf("Error loading config: %v", err)
+	}
 	
 	var wg sync.WaitGroup
 
@@ -32,11 +38,13 @@ func main() {
 		Handler: mux,
 	}
 
+	orchestrator := orchestrator.NewOrchestrator(config.Default)
+
 	// Serve the API
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := api.ServeAPI(ctx, mux)
+		err := api.ServeAPI(ctx, orchestrator, mux)
 		if err != nil {
 			zap.S().Fatal("Error serving API", zap.Error(err))
 		}

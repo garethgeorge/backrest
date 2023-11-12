@@ -5,14 +5,15 @@ package v1;
 option go_package = "github.com/garethgeorge/resticui/go/proto/v1";
 
 message Config {
-  int32 version = 1;
-  repeated Repo repos = 3 [json_name="repos"];
-  repeated Plan plans = 4 [json_name="plans"];
-}
+   // modification number, used for read-modify-write consistency in the UI. Incremented on every write.
+  int32 modno = 1 [json_name="modno"];
 
-message User {
-  string name = 1;
-  string password = 2; // plaintext password
+  // override the hostname tagged on backups. If provided it will be used in addition to tags to group backups.
+  string host_override = 2 [json_name="host_override"];
+
+  repeated Repo repos = 3 [json_name="repos"];
+
+  repeated Plan plans = 4 [json_name="plans"];
 }
 
 message Repo {

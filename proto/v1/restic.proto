@@ -5,43 +5,47 @@ package v1;
 option go_package = "github.com/garethgeorge/resticui/go/proto/v1";
 
 message ResticSnapshot {
-  string id = 1 [json_name = "id"];
-  int64 unix_time_ms = 2 [json_name = "time"];
-  string hostname = 3 [json_name = "hostname"];
-  string username = 4 [json_name = "username"];
-  string tree = 5 [json_name = "tree"]; // tree hash
-  string parent = 6 [json_name = "parent"]; // parent snapshot's id
-  repeated string paths = 7 [json_name = "paths"];
-  repeated string tags = 8 [json_name = "tags"];
+  string id = 1;
+  int64 unix_time_ms = 2;
+  string hostname = 3;
+  string username = 4;
+  string tree = 5; // tree hash
+  string parent = 6; // parent snapshot's id
+  repeated string paths = 7;
+  repeated string tags = 8;
+}
+
+message ResticSnapshotList {
+  repeated ResticSnapshot snapshots = 1;
 }
 
 message BackupProgressEntry {
   oneof entry {
-    BackupProgressStatusEntry status = 1 [json_name = "status"];
-    BackupProgressSummary summary = 2 [json_name = "summary"];
+    BackupProgressStatusEntry status = 1;
+    BackupProgressSummary summary = 2;
   }
 }
 
 message BackupProgressStatusEntry {
-  double percent_done = 1 [json_name = "percent"]; // 0.0 - 1.0
-  int64 total_files = 2 [json_name = "total_files"];
-  int64 total_bytes = 3 [json_name = "total_bytes"];
-  int64 files_done = 4 [json_name = "files_done"];
-  int64 bytes_done = 5 [json_name = "bytes_done"];
+  double percent_done = 1; // 0.0 - 1.0
+  int64 total_files = 2;
+  int64 total_bytes = 3;
+  int64 files_done = 4;
+  int64 bytes_done = 5;
 }
 
 message BackupProgressSummary {
-  int64 files_new = 1 [json_name = "files_new"];
-  int64 files_changed = 2 [json_name = "files_changed"];
-  int64 files_unmodified = 3 [json_name = "files_unmodified"];
-  int64 dirs_new = 4 [json_name = "dirs_new"];
-  int64 dirs_changed = 5 [json_name = "dirs_changed"];
-  int64 dirs_unmodified = 6 [json_name = "dirs_unmodified"];
-  int64 data_blobs = 7 [json_name = "data_blobs"];
-  int64 tree_blobs = 8 [json_name = "tree_blobs"];
-  int64 data_added = 9 [json_name = "data_added"];
-  int64 total_files_processed = 10 [json_name = "total_files_processed"];
-  int64 total_bytes_processed = 11 [json_name = "total_bytes_processed"];
-  int64 total_duration = 12 [json_name = "total_duration"];
-  string snapshot_id = 13 [json_name = "snapshot_id"];
+  int64 files_new = 1;
+  int64 files_changed = 2;
+  int64 files_unmodified = 3;
+  int64 dirs_new = 4;
+  int64 dirs_changed = 5;
+  int64 dirs_unmodified = 6;
+  int64 data_blobs = 7;
+  int64 tree_blobs = 8;
+  int64 data_added = 9;
+  int64 total_files_processed = 10;
+  int64 total_bytes_processed = 11;
+  int64 total_duration = 12;
+  string snapshot_id = 13;
 }

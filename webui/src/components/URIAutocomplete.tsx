@@ -5,7 +5,9 @@ import { StringList } from "../../gen/ts/types/value.pb";
 
 let timeout: NodeJS.Timeout | undefined = undefined;
 
-export const URIAutocomplete = (props: React.PropsWithChildren) => {
+export const URIAutocomplete = (
+  props: React.PropsWithChildren<{ disabled: boolean }>
+) => {
   const [value, setValue] = useState("");
   const [options, setOptions] = useState<{ value: string }[]>([]);
   const [showOptions, setShowOptions] = useState<{ value: string }[]>([]);

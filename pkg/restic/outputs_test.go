@@ -27,6 +27,7 @@ func TestReadBackupProgressEntries(t *testing.T) {
 	}
 }
 
+
 func TestReadLs(t *testing.T) {
 	testInput := `{"time":"2023-11-10T19:14:17.053824063-08:00","tree":"3e2918b261948e69602ee9504b8f475bcc7cdc4dcec0b3f34ecdb014287d07b2","paths":["/resticui"],"hostname":"pop-os","username":"dontpanic","uid":1000,"gid":1000,"id":"db155169d788e6e432e320aedbdff5a54cc439653093bb56944a67682528aa52","short_id":"db155169","struct_type":"snapshot"}
 	{"name":".git","type":"dir","path":"/.git","uid":1000,"gid":1000,"mode":2147484157,"mtime":"2023-11-10T18:32:38.156599473-08:00","atime":"2023-11-10T18:32:38.156599473-08:00","ctime":"2023-11-10T18:32:38.156599473-08:00","struct_type":"node"}
@@ -44,5 +45,42 @@ func TestReadLs(t *testing.T) {
 	}
 	if len(entries) != 3 {
 		t.Errorf("wanted 3 entries, got: %d", len(entries))
+	}
+}
+
+func TestSnapshotToProto(t *testing.T) {
+	snapshot := &Snapshot{
+		Id: "db155169d788e6e432e320aedbdff5a54cc439653093bb56944a67682528aa52",
+		Time: "2023-11-10T19:14:17.053824063-08:00",
+		Tree: "3e2918b261948e69602ee9504b8f475bcc7cdc4dcec0b3f34ecdb014287d07b2",
+		Paths: []string{"/resticui"},
+		Hostname: "pop-os",
+		Username: "dontpanic",
+		Tags: []string{},
+		Parent: "",
+	}
+
+	proto := snapshot.ToProto()
+
+	if proto.Id != snapshot.Id {
+		t.Errorf("wanted id %q, got: %q", snapshot.Id, proto.Id)
+	}
+	if proto.Tree != snapshot.Tree {
+		t.Errorf("wanted tree %q, got: %q", snapshot.Tree, proto.Tree)
+	}
+	if proto.Hostname != snapshot.Hostname {
+		t.Errorf("wanted hostname %q, got: %q", snapshot.Hostname, proto.Hostname)
+	}
+	if proto.Username != snapshot.Username {
+		t.Errorf("wanted username %q, got: %q", snapshot.Username, proto.Username)
+	}
+	if len(proto.Tags) != len(snapshot.Tags) {
+		t.Errorf("wanted %d tags, got: %d", len(snapshot.Tags), len(proto.Tags))
+	}
+	if proto.Parent != snapshot.Parent {
+		t.Errorf("wanted parent %q, got: %q", snapshot.Parent, proto.Parent)
+	}
+	if proto.UnixTimeMs != 1699672457053 {
+		t.Errorf("wanted unix time %d, got: %d", 1699672457053, proto.UnixTimeMs)
 	}
 }

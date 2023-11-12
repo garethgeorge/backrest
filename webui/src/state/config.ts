@@ -17,7 +17,7 @@ export const addRepo = async (repo: Repo): Promise<Config> => {
   });
 };
 
-export const setConfig = async (config: Config): Promise<Config> => {
+export const updateConfig = async (config: Config): Promise<Config> => {
   return await ResticUI.SetConfig(config, {
     pathPrefix: "/api/",
   });

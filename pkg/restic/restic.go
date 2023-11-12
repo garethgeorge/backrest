@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
@@ -25,6 +26,7 @@ type Repo struct {
 	extraEnv []string
 }
 
+// NewRepo instantiates a new repository. TODO: should not accept a v1.Repo 
 func NewRepo(repo *v1.Repo, opts ...GenericOption) *Repo {
 	opt := &GenericOpts{}
 	for _, o := range opts {
@@ -63,7 +65,9 @@ func (r *Repo) init(ctx context.Context) error {
 	cmd.Env = append(cmd.Env, r.buildEnv()...)
 
 	if output, err := cmd.CombinedOutput(); err != nil {
-		return NewCmdError(cmd, output, err)
+		if !strings.Contains(string(output), "config file already exists") {
+			return NewCmdError(cmd, output, err)
+		}
 	}
 
 	r.initialized = true
@@ -239,6 +243,12 @@ func WithBackupTags(tags ...string) BackupOption {
 		for _, tag := range tags {
 			opts.extraArgs = append(opts.extraArgs, "--tag", tag)
 		}
+	}
+}
+
+func WithBackupParent(parent string) BackupOption {
+	return func(opts *BackupOpts) {
+		opts.extraArgs = append(opts.extraArgs, "--parent", parent)
 	}
 }
 

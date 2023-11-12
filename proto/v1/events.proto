@@ -6,22 +6,22 @@ option go_package = "github.com/garethgeorge/resticui/go/proto/v1";
 
 message Event {
   // timestamp is the number of milliseconds since the Unix epoch.
-  int64 timestamp = 1 [json_name="timestamp"];
+  int64 timestamp = 1;
 
   oneof event {
-    LogEvent log = 3 [json_name="log"];
-    BackupStatusEvent backup_status_change = 4 [json_name="backup_status"];
+    LogEvent log = 3;
+    BackupStatusEvent backup_status_change = 4;
   }
 }
 
 message LogEvent {
-  string message = 1 [json_name="message"];
+  string message = 1;
 }
 
 message BackupStatusEvent {
-  string plan = 1 [json_name="plan"];
-  Status status = 2 [json_name="status"];
-  uint32 percent = 3 [json_name="percent"];
+  string plan = 1;
+  Status status = 2;
+  uint32 percent = 3;
 }
 
 enum Status {
