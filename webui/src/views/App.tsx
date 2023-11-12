@@ -45,7 +45,7 @@ export const App: React.FC = () => {
   const items = getSidenavItems(config);
 
   return (
-    <Layout>
+    <Layout style={{ height: "100vh" }}>
       <Header style={{ display: "flex", alignItems: "center" }}>
         <h1 style={{ color: colorTextLightSolid }}>ResticUI</h1>
       </Header>

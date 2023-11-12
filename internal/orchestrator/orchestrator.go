@@ -15,8 +15,6 @@ var ErrRepoNotFound = errors.New("repo not found")
 var ErrRepoInitializationFailed = errors.New("repo initialization failed")
 var ErrPlanNotFound = errors.New("plan not found")
 
-
-
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
 	configProvider config.ConfigStore
@@ -112,10 +110,7 @@ func (rp *resticRepoPool) GetRepo(repoId string) (repo *RepoOrchestrator, err er
 	}
 
 	// Otherwise create a new repo.
-	repo = &RepoOrchestrator{
-		repoConfig: repoProto,
-		repo: restic.NewRepo(repoProto, opts...),
-	}
+	repo = newRepoOrchestrator(repoProto, restic.NewRepo(repoProto, opts...))
 	rp.repos[repoId] = repo
 	return repo, nil
 }

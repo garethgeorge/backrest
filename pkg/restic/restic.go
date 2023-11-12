@@ -26,7 +26,7 @@ type Repo struct {
 	extraEnv []string
 }
 
-// NewRepo instantiates a new repository. TODO: should not accept a v1.Repo 
+// NewRepo instantiates a new repository. TODO: should not accept a v1.Repo, should instead be configured by parameters.
 func NewRepo(repo *v1.Repo, opts ...GenericOption) *Repo {
 	opt := &GenericOpts{}
 	for _, o := range opts {
