@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "start": "parcel serve src/index.html",
-    "build": "parcel build src/index.html",
+    "start": "BUILD_TIME=$(date +\"%Y-%m-%d %H:%M:%S\") parcel serve src/index.html",
+    "build": "BUILD_TIME=$(date +\"%Y-%m-%d %H:%M:%S\") parcel build src/index.html",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

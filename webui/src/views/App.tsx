@@ -47,7 +47,12 @@ export const App: React.FC = () => {
   return (
     <Layout style={{ height: "100vh" }}>
       <Header style={{ display: "flex", alignItems: "center" }}>
-        <h1 style={{ color: colorTextLightSolid }}>ResticUI</h1>
+        <h1 style={{ color: colorTextLightSolid }}>
+          ResticUI{" "}
+          <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.3em" }}>
+            {process.env.BUILD_TIME ? "v" + process.env.BUILD_TIME : ""}
+          </small>
+        </h1>
       </Header>
       <Layout>
         <Sider width={200} style={{ background: colorBgContainer }}>
