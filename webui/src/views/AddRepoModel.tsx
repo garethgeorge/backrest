@@ -14,20 +14,26 @@ import { URIAutocomplete } from "../components/URIAutocomplete";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { useAlertApi } from "../components/Alerts";
 import { ResticUI } from "../../gen/ts/v1/service.pb";
+import {
+  addRepo,
+  configState,
+  fetchConfig,
+  updateConfig,
+} from "../state/config";
+import { useRecoilState, useSetRecoilState } from "recoil";
 
 export const AddRepoModel = ({
   template,
 }: {
   template: Partial<Repo> | null;
 }) => {
+  const setConfig = useSetRecoilState(configState);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
   const [form] = Form.useForm<Repo>();
 
-  template = template || {};
-
-  const handleOk = () => {
+  const handleOk = async () => {
     const errors = form
       .getFieldsError()
       .map((e) => e.errors)
@@ -40,22 +46,43 @@ export const AddRepoModel = ({
 
     const repo = form.getFieldsValue() as Repo;
 
-    if (template === null) {
-      // We are in the create repo flow, create the new repo via the service
-      ResticUI.AddRepo(repo, {
-        pathPrefix: "/api",
-      })
-        .then((res) => {
-          showModal(null);
-          alertsApi.success("Added repo " + repo.uri);
-        })
-        .catch((e) => {
-          alertsApi.error("Error adding repo: " + e.message, 15);
-        })
-        .finally(() => {
-          setConfirmLoading(false);
-        });
+    if (template !== null) {
+      // We are in the edit repo flow, update the repo in the config
+      try {
+        let config = await fetchConfig();
+        const idx = config.repos!.findIndex((r) => r.id === template!.id);
+        if (idx === -1) {
+          alertsApi.error("Can't update repo, not found");
+          return;
+        }
+        config.repos![idx] = { ...repo };
+        setConfig(await updateConfig(config));
+        showModal(null);
+        alertsApi.success("Updated repo " + repo.uri);
+
+        // Update the snapshots for the repo
+        await ResticUI.ListSnapshots(
+          {
+            repoId: repo.id,
+          },
+          { pathPrefix: "/api" }
+        );
+      } catch (e: any) {
+        alertsApi.error("Error updating repo: " + e.message, 15);
+      } finally {
+        setConfirmLoading(false);
+      }
     } else {
+      // We are in the create repo flow, create the new repo via the service
+      try {
+        setConfig(await addRepo(repo));
+        showModal(null);
+        alertsApi.success("Added repo " + repo.uri);
+      } catch (e: any) {
+        alertsApi.error("Error adding repo: " + e.message, 15);
+      } finally {
+        setConfirmLoading(false);
+      }
     }
   };
 
@@ -67,7 +94,7 @@ export const AddRepoModel = ({
     <>
       <Modal
         open={true}
-        title={template ? "Add Restic Repository" : "Edit Restic Repository"}
+        title={template ? "Edit Restic Repository" : "Add Restic Repository"}
         onOk={handleOk}
         confirmLoading={confirmLoading}
         onCancel={handleCancel}
@@ -78,7 +105,7 @@ export const AddRepoModel = ({
             hasFeedback
             name="id"
             label="Repo Name"
-            initialValue={template.id}
+            initialValue={template && template.id}
             validateTrigger={["onChange", "onBlur"]}
             rules={[
               {
@@ -91,7 +118,7 @@ export const AddRepoModel = ({
               },
             ]}
           >
-            <Input />
+            <Input disabled={!!template} />
           </Form.Item>
 
           {/* Repo.uri */}
@@ -118,8 +145,8 @@ export const AddRepoModel = ({
             <Form.Item<Repo>
               hasFeedback
               name="uri"
-              label="Repo URI"
-              initialValue={template.id}
+              label="Repository URI (e.g. ./local-path or s3://bucket-name/path)"
+              initialValue={template && template.uri}
               validateTrigger={["onChange", "onBlur"]}
               rules={[
                 {
@@ -128,7 +155,7 @@ export const AddRepoModel = ({
                 },
               ]}
             >
-              <Input />
+              <URIAutocomplete disabled={!!template} />
             </Form.Item>
           </Tooltip>
 
@@ -137,7 +164,7 @@ export const AddRepoModel = ({
             hasFeedback
             name="password"
             label="Password"
-            initialValue={template.password}
+            initialValue={template && template.password}
             validateTrigger={["onChange", "onBlur"]}
             rules={[
               {
@@ -150,7 +177,7 @@ export const AddRepoModel = ({
               },
             ]}
           >
-            <Input />
+            <Input disabled={!!template} />
           </Form.Item>
 
           {/* Repo.env */}
@@ -164,7 +191,7 @@ export const AddRepoModel = ({
                 },
               },
             ]}
-            initialValue={[]}
+            initialValue={(template && template.env) || undefined}
           >
             {(fields, { add, remove }, { errors }) => (
               <>

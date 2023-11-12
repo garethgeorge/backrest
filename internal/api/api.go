@@ -9,18 +9,68 @@ import (
 	"path/filepath"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
+	"github.com/garethgeorge/resticui/internal/orchestrator"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func serveGRPC(ctx context.Context, socket string) error {
+func loggingFunc(l *zap.Logger) logging.Logger {
+	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
+		f := make([]zap.Field, 0, len(fields)/2)
+
+		for i := 0; i < len(fields); i += 2 {
+			key := fields[i]
+			value := fields[i+1]
+
+			switch v := value.(type) {
+			case string:
+				f = append(f, zap.String(key.(string), v))
+			case int:
+				f = append(f, zap.Int(key.(string), v))
+			case bool:
+				f = append(f, zap.Bool(key.(string), v))
+			default:
+				f = append(f, zap.Any(key.(string), v))
+			}
+		}
+
+		logger := l.WithOptions(zap.AddCallerSkip(1)).With(f...)
+
+		switch lvl {
+		case logging.LevelDebug:
+			logger.Debug(msg)
+		case logging.LevelInfo:
+			logger.Info(msg)
+		case logging.LevelWarn:
+			logger.Warn(msg)
+		case logging.LevelError:
+			logger.Error(msg)
+		default:
+			panic(fmt.Sprintf("unknown level %v", lvl))
+		}
+	})
+}
+
+
+func serveGRPC(ctx context.Context, orchestrator *orchestrator.Orchestrator, socket string) error {
 	lis, err := net.Listen("unix", socket)
 	if err != nil {
 		return fmt.Errorf("failed to listen: %w", err)
 	}
-	grpcServer := grpc.NewServer()
-	v1.RegisterResticUIServer(grpcServer, NewServer())
+
+	logger := zap.L()
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			logging.UnaryServerInterceptor(loggingFunc(logger)),
+		),
+		grpc.ChainStreamInterceptor(
+			logging.StreamServerInterceptor(loggingFunc(logger)),
+		),
+	)
+	v1.RegisterResticUIServer(grpcServer, NewServer(orchestrator))
 	go func() {
 		<-ctx.Done()
 		grpcServer.GracefulStop()
@@ -32,7 +82,7 @@ func serveGRPC(ctx context.Context, socket string) error {
 	return nil
 }
 
-func serveHTTPHandlers(ctx context.Context, mux *runtime.ServeMux) error {
+func serveHTTPHandlers(ctx context.Context, orchestrator *orchestrator.Orchestrator, mux *runtime.ServeMux) error {
 	tmpDir, err := os.MkdirTemp("", "resticui")
 	if err != nil {
 		return fmt.Errorf("failed to create temp dir for unix domain socket: %w", err)
@@ -49,7 +99,7 @@ func serveHTTPHandlers(ctx context.Context, mux *runtime.ServeMux) error {
 		return fmt.Errorf("failed to register gateway: %w", err)
 	}
 
-	if err := serveGRPC(ctx, socket); err != nil {
+	if err := serveGRPC(ctx, orchestrator, socket); err != nil {
 		return err
 	}
 
@@ -57,8 +107,8 @@ func serveHTTPHandlers(ctx context.Context, mux *runtime.ServeMux) error {
 }
 
 // Handler returns an http.Handler serving the API, cancel the context to cleanly shut down the server.
-func ServeAPI(ctx context.Context, mux *http.ServeMux) error {
+func ServeAPI(ctx context.Context, orchestrator *orchestrator.Orchestrator, mux *http.ServeMux) error {
 	apiMux := runtime.NewServeMux()
 	mux.Handle("/api/", http.StripPrefix("/api", apiMux))
-	return serveHTTPHandlers(ctx, apiMux)
+	return serveHTTPHandlers(ctx, orchestrator, apiMux)
 }

@@ -7,6 +7,9 @@ import (
 	"io"
 	"os/exec"
 	"slices"
+	"time"
+
+	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 )
 
 type LsEntry struct {
@@ -31,6 +34,23 @@ type Snapshot struct {
 	Username string `json:"username"`
 	Tags []string `json:"tags"`
 	Parent string `json:"parent"`
+}
+
+func (s *Snapshot) ToProto() *v1.ResticSnapshot {
+	t, err := time.Parse(time.RFC3339Nano, s.Time)
+	if err != nil {
+		t = time.Unix(0, 0)
+	}
+	return &v1.ResticSnapshot{
+		Id: s.Id,
+		UnixTimeMs: t.UnixMilli(),
+		Tree: s.Tree,
+		Paths: s.Paths,
+		Hostname: s.Hostname,
+		Username: s.Username,
+		Tags: s.Tags,
+		Parent: s.Parent,
+	}
 }
 
 type BackupProgressEntry struct {

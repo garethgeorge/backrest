@@ -25,6 +25,7 @@ const (
 	ResticUI_SetConfig_FullMethodName        = "/v1.ResticUI/SetConfig"
 	ResticUI_AddRepo_FullMethodName          = "/v1.ResticUI/AddRepo"
 	ResticUI_GetEvents_FullMethodName        = "/v1.ResticUI/GetEvents"
+	ResticUI_ListSnapshots_FullMethodName    = "/v1.ResticUI/ListSnapshots"
 	ResticUI_PathAutocomplete_FullMethodName = "/v1.ResticUI/PathAutocomplete"
 )
 
@@ -36,6 +37,7 @@ type ResticUIClient interface {
 	SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error)
 	AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error)
 	GetEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (ResticUI_GetEventsClient, error)
+	ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error)
 	PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error)
 }
 
@@ -106,6 +108,15 @@ func (x *resticUIGetEventsClient) Recv() (*Event, error) {
 	return m, nil
 }
 
+func (c *resticUIClient) ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error) {
+	out := new(ResticSnapshotList)
+	err := c.cc.Invoke(ctx, ResticUI_ListSnapshots_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *resticUIClient) PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error) {
 	out := new(types.StringList)
 	err := c.cc.Invoke(ctx, ResticUI_PathAutocomplete_FullMethodName, in, out, opts...)
@@ -123,6 +134,7 @@ type ResticUIServer interface {
 	SetConfig(context.Context, *Config) (*Config, error)
 	AddRepo(context.Context, *Repo) (*Config, error)
 	GetEvents(*emptypb.Empty, ResticUI_GetEventsServer) error
+	ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error)
 	PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error)
 	mustEmbedUnimplementedResticUIServer()
 }
@@ -142,6 +154,9 @@ func (UnimplementedResticUIServer) AddRepo(context.Context, *Repo) (*Config, err
 }
 func (UnimplementedResticUIServer) GetEvents(*emptypb.Empty, ResticUI_GetEventsServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetEvents not implemented")
+}
+func (UnimplementedResticUIServer) ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshots not implemented")
 }
 func (UnimplementedResticUIServer) PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PathAutocomplete not implemented")
@@ -234,6 +249,24 @@ func (x *resticUIGetEventsServer) Send(m *Event) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _ResticUI_ListSnapshots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSnapshotsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResticUIServer).ListSnapshots(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResticUI_ListSnapshots_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResticUIServer).ListSnapshots(ctx, req.(*ListSnapshotsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ResticUI_PathAutocomplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
@@ -270,6 +303,10 @@ var ResticUI_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddRepo",
 			Handler:    _ResticUI_AddRepo_Handler,
+		},
+		{
+			MethodName: "ListSnapshots",
+			Handler:    _ResticUI_ListSnapshots_Handler,
 		},
 		{
 			MethodName: "PathAutocomplete",

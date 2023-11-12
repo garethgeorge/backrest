@@ -2,8 +2,7 @@ package static
 
 import (
 	"embed"
-	_ "embed"
 )
 
-//go:embed *
+//go:embed dist/*.js dist/*.css dist/*.html
 var FS embed.FS

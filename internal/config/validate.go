@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-func validateConfig(c *v1.Config) error {
+func ValidateConfig(c *v1.Config) error {
 	var err error
 	repos := make(map[string]*v1.Repo)
 	if c.Repos != nil {
@@ -19,15 +19,17 @@ func validateConfig(c *v1.Config) error {
 			if e := validateRepo(repo); e != nil {
 				err = multierror.Append(e, fmt.Errorf("repo %s: %w", repo.GetId(), err))
 			}
+			if _, ok := repos[repo.GetId()]; ok {
+				err = multierror.Append(err, fmt.Errorf("repo %s: duplicate id", repo.GetId()))
+			}
 			repos[repo.GetId()] = repo
 		}
 	}
 
 	if c.Plans != nil {
 		for _, plan := range c.Plans {
-			err := validatePlan(plan, repos);
-			if err != nil {
-				err = multierror.Append(err, fmt.Errorf("plan %s: %w", plan.GetId(), err))
+			if e := validatePlan(plan, repos); e != nil {
+				err = multierror.Append(err, fmt.Errorf("plan %s: %w", plan.GetId(), e))
 			}
 		}
 	} 
@@ -73,7 +75,7 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 	}
 
 	
-	if _, e := cronexpr.Parse(plan.GetCron()); err != nil {
+	if _, e := cronexpr.Parse(plan.GetCron()); e != nil {
 		err = multierror.Append(err, fmt.Errorf("invalid cron %q: %w", plan.GetCron(), e))
 	}
 

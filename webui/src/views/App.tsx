@@ -11,7 +11,7 @@ import { configState, fetchConfig } from "../state/config";
 import { useRecoilState } from "recoil";
 import { Config } from "../../gen/ts/v1/config.pb";
 import { AlertContextProvider, useAlertApi } from "../components/Alerts";
-import { useShowModal, useShowSpinner } from "../components/ModalManager";
+import { useShowModal } from "../components/ModalManager";
 import { AddPlanModal } from "./AddPlanModel";
 import { AddRepoModel } from "./AddRepoModel";
 
@@ -41,6 +41,7 @@ export const App: React.FC = () => {
       });
   }, []);
 
+  console.log("rerender config ", config);
   const items = getSidenavItems(config);
 
   return (

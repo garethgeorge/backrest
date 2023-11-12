@@ -9,6 +9,12 @@ import * as GoogleProtobufEmpty from "../google/protobuf/empty.pb"
 import * as TypesValue from "../types/value.pb"
 import * as V1Config from "./config.pb"
 import * as V1Events from "./events.pb"
+import * as V1Restic from "./restic.pb"
+export type ListSnapshotsRequest = {
+  repoId?: string
+  planId?: string
+}
+
 export class ResticUI {
   static GetConfig(req: GoogleProtobufEmpty.Empty, initReq?: fm.InitReq): Promise<V1Config.Config> {
     return fm.fetchReq<GoogleProtobufEmpty.Empty, V1Config.Config>(`/v1/config?${fm.renderURLSearchParams(req, [])}`, {...initReq, method: "GET"})
@@ -21,6 +27,9 @@ export class ResticUI {
   }
   static GetEvents(req: GoogleProtobufEmpty.Empty, entityNotifier?: fm.NotifyStreamEntityArrival<V1Events.Event>, initReq?: fm.InitReq): Promise<void> {
     return fm.fetchStreamingRequest<GoogleProtobufEmpty.Empty, V1Events.Event>(`/v1/events?${fm.renderURLSearchParams(req, [])}`, entityNotifier, {...initReq, method: "GET"})
+  }
+  static ListSnapshots(req: ListSnapshotsRequest, initReq?: fm.InitReq): Promise<V1Restic.ResticSnapshotList> {
+    return fm.fetchReq<ListSnapshotsRequest, V1Restic.ResticSnapshotList>(`/v1/snapshots`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
   }
   static PathAutocomplete(req: TypesValue.StringValue, initReq?: fm.InitReq): Promise<TypesValue.StringList> {
     return fm.fetchReq<TypesValue.StringValue, TypesValue.StringList>(`/v1/autocomplete/path`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
