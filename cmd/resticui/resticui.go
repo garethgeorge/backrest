@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"sync"
 	"syscall"
 
@@ -13,7 +15,9 @@ import (
 	"github.com/garethgeorge/resticui/internal/config"
 	"github.com/garethgeorge/resticui/internal/orchestrator"
 	static "github.com/garethgeorge/resticui/webui"
+	"github.com/mattn/go-colorable"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	_ "embed"
 )
@@ -31,7 +35,7 @@ func main() {
 
 	// Configure the HTTP mux
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.FS(static.FS)))
+	mux.Handle("/", http.FileServer(http.FS(&SubdirFilesystem{FS: static.FS, subdir: "dist"})))
 
 	server := &http.Server{
 		Addr:    ":9090",
@@ -73,7 +77,14 @@ func main() {
 func init() {
 	zap.ReplaceGlobals(zap.Must(zap.NewProduction()))
 	if os.Getenv("DEBUG") != "" {
-		zap.ReplaceGlobals(zap.Must(zap.NewDevelopmentConfig().Build()))
+		c := zap.NewDevelopmentEncoderConfig()
+		c.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		l := zap.New(zapcore.NewCore(
+				zapcore.NewConsoleEncoder(c),
+				zapcore.AddSync(colorable.NewColorableStdout()),
+				zapcore.DebugLevel,
+		))
+		zap.ReplaceGlobals(l)
 	}
 }
 
@@ -82,4 +93,24 @@ func onterm(callback func()) {
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGTERM)
 	<-sigchan
 	callback()
+}
+
+type SubdirFilesystem struct {
+	fs.FS
+	subdir string
+}
+
+var _ fs.FS = &SubdirFilesystem{}
+var _ fs.ReadDirFS = &SubdirFilesystem{}
+
+func (s *SubdirFilesystem) Open(name string) (fs.File, error) {
+	return s.FS.Open(path.Join(s.subdir, name))
+}
+
+func (s *SubdirFilesystem) 	ReadDir(name string) ([]fs.DirEntry, error) {
+	readDirFS := s.FS.(fs.ReadDirFS)
+	if readDirFS == nil {
+		return nil, &fs.PathError{Op: "readdir", Path: name, Err: errors.New("not implemented")}
+	}
+	return readDirFS.ReadDir(path.Join(s.subdir, name))
 }
