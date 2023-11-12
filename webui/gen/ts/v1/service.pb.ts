@@ -6,6 +6,7 @@
 
 import * as fm from "../fetch.pb"
 import * as GoogleProtobufEmpty from "../google/protobuf/empty.pb"
+import * as TypesValue from "../types/value.pb"
 import * as V1Config from "./config.pb"
 import * as V1Events from "./events.pb"
 export class ResticUI {
@@ -20,5 +21,8 @@ export class ResticUI {
   }
   static GetEvents(req: GoogleProtobufEmpty.Empty, entityNotifier?: fm.NotifyStreamEntityArrival<V1Events.Event>, initReq?: fm.InitReq): Promise<void> {
     return fm.fetchStreamingRequest<GoogleProtobufEmpty.Empty, V1Events.Event>(`/v1/events?${fm.renderURLSearchParams(req, [])}`, entityNotifier, {...initReq, method: "GET"})
+  }
+  static PathAutocomplete(req: TypesValue.StringValue, initReq?: fm.InitReq): Promise<TypesValue.StringList> {
+    return fm.fetchReq<TypesValue.StringValue, TypesValue.StringList>(`/v1/autocomplete/path`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
   }
 }

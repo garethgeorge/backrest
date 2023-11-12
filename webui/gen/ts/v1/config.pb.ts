@@ -5,7 +5,6 @@
 */
 export type Config = {
   version?: number
-  logDir?: string
   repos?: Repo[]
   plans?: Plan[]
 }
@@ -28,4 +27,17 @@ export type Plan = {
   repo?: string
   paths?: string[]
   excludes?: string[]
+  cron?: string
+  retention?: RetentionPolicy
+}
+
+export type RetentionPolicy = {
+  maxUnusedLimit?: string
+  keepLastN?: number
+  keepHourly?: number
+  keepDaily?: number
+  keepWeekly?: number
+  keepMonthly?: number
+  keepYearly?: number
+  keepWithinDuration?: string
 }

@@ -6,6 +6,7 @@ option go_package = "github.com/garethgeorge/resticui/go/proto/v1";
 
 import "v1/config.proto";
 import "v1/events.proto";
+import "types/value.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
 
@@ -33,6 +34,13 @@ service ResticUI {
   rpc GetEvents (google.protobuf.Empty) returns (stream Event) {
     option (google.api.http) = {
       get: "/v1/events"
+    };
+  }
+
+  rpc PathAutocomplete (types.StringValue) returns (types.StringList) {
+    option (google.api.http) = {
+      post: "/v1/autocomplete/path"
+      body: "*"
     };
   }
 }
