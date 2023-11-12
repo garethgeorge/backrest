@@ -27,10 +27,52 @@ export const AddPlanModal = ({
   template: Partial<Plan> | null;
 }) => {
   const [config, setConfig] = useRecoilState(configState);
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
   const [form] = Form.useForm<Plan>();
+
+  const handleDestroy = async () => {
+    if (!deleteConfirmed) {
+      setDeleteConfirmed(true);
+      setTimeout(() => {
+        setDeleteConfirmed(false);
+      }, 2000);
+      return;
+    }
+
+    setConfirmLoading(true);
+
+    try {
+      let config = await fetchConfig();
+      config.plans = config.plans || [];
+
+      if (!template) {
+        throw new Error("template not found");
+      }
+
+      // Remove the plan from the config
+      const idx = config.plans.findIndex((r) => r.id === template.id);
+      if (idx === -1) {
+        throw new Error("failed to update config, plan to delete not found");
+      }
+
+      config.plans.splice(idx, 1);
+
+      // Update config and notify success.
+      setConfig(await updateConfig(config));
+      showModal(null);
+
+      alertsApi.success(
+        "Plan deleted from config, but not from restic repo. Snapshots will remain in storage until manually deleted."
+      );
+    } catch (e: any) {
+      alertsApi.error("Operation failed: " + e.message, 15);
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
 
   const handleOk = async () => {
     setConfirmLoading(true);
@@ -73,9 +115,29 @@ export const AddPlanModal = ({
       <Modal
         open={true}
         title="Add Plan"
-        onOk={handleOk}
-        confirmLoading={confirmLoading}
-        onCancel={handleCancel}
+        footer={[
+          <Button loading={confirmLoading} key="back" onClick={handleCancel}>
+            Cancel
+          </Button>,
+          template != null ? (
+            <Button
+              type="primary"
+              danger
+              loading={confirmLoading}
+              onClick={handleDestroy}
+            >
+              {deleteConfirmed ? "Confirm delete?" : "Delete"}
+            </Button>
+          ) : null,
+          <Button
+            key="submit"
+            type="primary"
+            loading={confirmLoading}
+            onClick={handleOk}
+          >
+            Submit
+          </Button>,
+        ]}
       >
         <Form layout={"vertical"} autoComplete="off" form={form}>
           {/* Plan.id */}

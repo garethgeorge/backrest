@@ -30,10 +30,62 @@ export const AddRepoModel = ({
   template: Partial<Repo> | null;
 }) => {
   const [config, setConfig] = useRecoilState(configState);
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
   const [form] = Form.useForm<Repo>();
+
+  const handleDestroy = async () => {
+    if (!deleteConfirmed) {
+      setDeleteConfirmed(true);
+      setTimeout(() => {
+        setDeleteConfirmed(false);
+      }, 2000);
+      return;
+    }
+
+    setConfirmLoading(true);
+
+    try {
+      let config = await fetchConfig();
+      config.repos = config.repos || [];
+
+      if (!template) {
+        throw new Error("template not found");
+      }
+
+      // Check if still in use by a plan
+      for (const plan of config.plans || []) {
+        if (plan.repo === template.id) {
+          throw new Error("Can't delete repo, still in use by plan " + plan.id);
+        }
+      }
+
+      // Remove the plan from the config
+      const idx = config.repos.findIndex((r) => r.id === template.id);
+      if (idx === -1) {
+        throw new Error("failed to update config, plan to delete not found");
+      }
+
+      config.repos.splice(idx, 1);
+
+      // Update config and notify success.
+      setConfig(await updateConfig(config));
+      showModal(null);
+      alertsApi.success(
+        "Deleted repo " +
+          template.id +
+          " from config but files remain. To release storage delete the files manually. URI: " +
+          template.uri
+      );
+    } catch (e: any) {
+      alertsApi.error("Operation failed: " + e.message, 15);
+    } finally {
+      setDeleteConfirmed(false);
+      setConfirmLoading(false);
+    }
+  };
 
   const handleOk = async () => {
     setConfirmLoading(true);
@@ -83,9 +135,29 @@ export const AddRepoModel = ({
       <Modal
         open={true}
         title={template ? "Edit Restic Repository" : "Add Restic Repository"}
-        onOk={handleOk}
-        confirmLoading={confirmLoading}
-        onCancel={handleCancel}
+        footer={[
+          <Button loading={confirmLoading} key="back" onClick={handleCancel}>
+            Cancel
+          </Button>,
+          template != null ? (
+            <Button
+              type="primary"
+              danger
+              loading={confirmLoading}
+              onClick={handleDestroy}
+            >
+              {deleteConfirmed ? "Confirm delete?" : "Delete"}
+            </Button>
+          ) : null,
+          <Button
+            key="submit"
+            type="primary"
+            loading={confirmLoading}
+            onClick={handleOk}
+          >
+            Submit
+          </Button>,
+        ]}
       >
         <Form layout={"vertical"} autoComplete="off" form={form}>
           {/* Repo.id */}
