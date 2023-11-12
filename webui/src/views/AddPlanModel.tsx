@@ -1,32 +1,72 @@
-import { Form, Modal, Input, Typography } from "antd";
+import {
+  Form,
+  Modal,
+  Input,
+  Typography,
+  Select,
+  Button,
+  Divider,
+  Tooltip,
+} from "antd";
 import React, { useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import { Plan } from "../../gen/ts/v1/config.pb";
-
-const nameRegex = /^[a-zA-Z0-9\-_ ]+$/;
+import { useRecoilState } from "recoil";
+import { configState, fetchConfig, updateConfig } from "../state/config";
+import { nameRegex } from "../lib/patterns";
+import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import { URIAutocomplete } from "../components/URIAutocomplete";
+import { useAlertApi } from "../components/Alerts";
+import { ResticUI } from "../../gen/ts/v1/service.pb";
+import { Cron } from "react-js-cron";
+import { validateForm } from "../lib/formutil";
 
 export const AddPlanModal = ({
   template,
 }: {
   template: Partial<Plan> | null;
 }) => {
+  const [config, setConfig] = useRecoilState(configState);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
-  const [form] = Form.useForm();
+  const alertsApi = useAlertApi()!;
+  const [form] = Form.useForm<Plan>();
 
-  template = template || {};
-
-  const handleOk = () => {
+  const handleOk = async () => {
     setConfirmLoading(true);
-    setTimeout(() => {
+
+    try {
+      let plan = await validateForm<Plan>(form);
+
+      let config = await fetchConfig();
+      config.plans = config.plans || [];
+
+      // Merge the new plan (or update) into the config
+      if (template) {
+        const idx = config.plans.findIndex((r) => r.id === template.id);
+        if (idx === -1) {
+          throw new Error("failed to update plan, not found");
+        }
+        config.plans[idx] = plan;
+      } else {
+        config.plans.push(plan);
+      }
+
+      // Update config and notify success.
+      setConfig(await updateConfig(config));
       showModal(null);
+    } catch (e: any) {
+      alertsApi.error("Operation failed: " + e.message, 15);
+    } finally {
       setConfirmLoading(false);
-    }, 2000);
+    }
   };
 
   const handleCancel = () => {
     showModal(null);
   };
+
+  const repos = config?.repos || [];
 
   return (
     <>
@@ -43,7 +83,7 @@ export const AddPlanModal = ({
             hasFeedback
             name="id"
             label="Plan Name"
-            initialValue={template.id}
+            initialValue={template && template.id}
             validateTrigger={["onChange", "onBlur"]}
             rules={[
               {
@@ -54,37 +94,167 @@ export const AddPlanModal = ({
                 pattern: nameRegex,
                 message: "Invalid symbol",
               },
+              {
+                validator: async (_, value) => {
+                  if (template) return;
+                  if (config?.plans?.find((r) => r.id === value)) {
+                    throw new Error("Plan with name already exists");
+                  }
+                },
+                message: "Plan with name already exists",
+              },
             ]}
           >
-            <Input />
+            <Input placeholder={"plan" + ((config?.plans?.length || 0) + 1)} />
           </Form.Item>
 
           {/* Plan.repo */}
           <Form.Item<Plan>
-            hasFeedback
             name="repo"
-            label="Repo Name"
-            initialValue={template.repo}
+            label="Repository"
             validateTrigger={["onChange", "onBlur"]}
+            initialValue={template && template.repo}
             rules={[
               {
                 required: true,
-                message: "Please input repo name",
-              },
-              {
-                pattern: nameRegex,
-                message: "Invalid symbol",
+                message: "Please select repository",
               },
             ]}
           >
-            <Input />
+            <Select
+              // defaultValue={repos.length > 0 ? repos[0].id : undefined}
+              options={repos.map((repo) => ({
+                value: repo.id,
+              }))}
+            />
           </Form.Item>
 
           {/* Plan.paths */}
-
+          <Form.List
+            name="paths"
+            rules={[]}
+            initialValue={template ? template.paths : []}
+          >
+            {(fields, { add, remove }, { errors }) => (
+              <>
+                {fields.map((field, index) => (
+                  <Form.Item
+                    label={index === 0 ? "Paths" : ""}
+                    required={false}
+                    key={field.key}
+                  >
+                    <Form.Item
+                      {...field}
+                      validateTrigger={["onChange", "onBlur"]}
+                      initialValue={""}
+                      rules={[
+                        {
+                          required: true,
+                        },
+                      ]}
+                      noStyle
+                    >
+                      <URIAutocomplete
+                        style={{ width: "60%" }}
+                        onBlur={() => form.validateFields()}
+                      />
+                    </Form.Item>
+                    <MinusCircleOutlined
+                      className="dynamic-delete-button"
+                      onClick={() => remove(field.name)}
+                      style={{ paddingLeft: "5px" }}
+                    />
+                  </Form.Item>
+                ))}
+                <Form.Item label={fields.length === 0 ? "Paths" : ""}>
+                  <Button
+                    type="dashed"
+                    onClick={() => add()}
+                    style={{ width: "60%" }}
+                    icon={<PlusOutlined />}
+                  >
+                    Add Path
+                  </Button>
+                  <Form.ErrorList errors={errors} />
+                </Form.Item>
+              </>
+            )}
+          </Form.List>
           {/* Plan.excludes */}
+          <Form.List
+            name="excludes"
+            rules={[]}
+            initialValue={template ? template.excludes : []}
+          >
+            {(fields, { add, remove }, { errors }) => (
+              <>
+                {fields.map((field, index) => (
+                  <Form.Item
+                    label={index === 0 ? "Excludes" : ""}
+                    required={false}
+                    key={field.key}
+                  >
+                    <Form.Item
+                      {...field}
+                      validateTrigger={["onChange", "onBlur"]}
+                      initialValue={""}
+                      rules={[
+                        {
+                          required: true,
+                        },
+                      ]}
+                      noStyle
+                    >
+                      <URIAutocomplete
+                        style={{ width: "60%" }}
+                        onBlur={() => form.validateFields()}
+                      />
+                    </Form.Item>
+                    <MinusCircleOutlined
+                      className="dynamic-delete-button"
+                      onClick={() => remove(field.name)}
+                      style={{ paddingLeft: "5px" }}
+                    />
+                  </Form.Item>
+                ))}
+                <Form.Item label={fields.length === 0 ? "Excludes" : ""}>
+                  <Button
+                    type="dashed"
+                    onClick={() => add()}
+                    style={{ width: "60%" }}
+                    icon={<PlusOutlined />}
+                  >
+                    Add Exclusion Glob
+                  </Button>
+                  <Form.ErrorList errors={errors} />
+                </Form.Item>
+              </>
+            )}
+          </Form.List>
 
           {/* Plan.cron */}
+          <Tooltip title="Cron expression to schedule the plan in 24 hour time">
+            <Form.Item<Plan>
+              name="cron"
+              label="Schedule"
+              initialValue={template ? template.cron : "0 0 * * *"}
+              validateTrigger={["onChange", "onBlur"]}
+              rules={[
+                {
+                  required: true,
+                  message: "Please input schedule",
+                },
+              ]}
+            >
+              <Cron
+                value={form.getFieldValue("cron")}
+                setValue={(val: string) => {
+                  form.setFieldValue("cron", val);
+                }}
+                clearButton={false}
+              />
+            </Form.Item>
+          </Tooltip>
 
           {/* Plan.retention */}
 

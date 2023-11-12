@@ -20,35 +20,29 @@ import {
   fetchConfig,
   updateConfig,
 } from "../state/config";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState } from "recoil";
+import { nameRegex } from "../lib/patterns";
+import { validateForm } from "../lib/formutil";
 
 export const AddRepoModel = ({
   template,
 }: {
   template: Partial<Repo> | null;
 }) => {
-  const setConfig = useSetRecoilState(configState);
+  const [config, setConfig] = useRecoilState(configState);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
   const [form] = Form.useForm<Repo>();
 
   const handleOk = async () => {
-    const errors = form
-      .getFieldsError()
-      .map((e) => e.errors)
-      .flat();
-    if (errors.length > 0) {
-      alertsApi.warning("Please fix form errors " + errors.join(", "));
-      return;
-    }
     setConfirmLoading(true);
 
-    const repo = form.getFieldsValue() as Repo;
+    try {
+      let repo = await validateForm<Repo>(form);
 
-    if (template !== null) {
-      // We are in the edit repo flow, update the repo in the config
-      try {
+      if (template !== null) {
+        // We are in the edit repo flow, update the repo in the config
         let config = await fetchConfig();
         const idx = config.repos!.findIndex((r) => r.id === template!.id);
         if (idx === -1) {
@@ -67,22 +61,16 @@ export const AddRepoModel = ({
           },
           { pathPrefix: "/api" }
         );
-      } catch (e: any) {
-        alertsApi.error("Error updating repo: " + e.message, 15);
-      } finally {
-        setConfirmLoading(false);
-      }
-    } else {
-      // We are in the create repo flow, create the new repo via the service
-      try {
+      } else {
+        // We are in the create repo flow, create the new repo via the service
         setConfig(await addRepo(repo));
         showModal(null);
         alertsApi.success("Added repo " + repo.uri);
-      } catch (e: any) {
-        alertsApi.error("Error adding repo: " + e.message, 15);
-      } finally {
-        setConfirmLoading(false);
       }
+    } catch (e: any) {
+      alertsApi.error("Operation failed: " + e.message, 15);
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -105,7 +93,7 @@ export const AddRepoModel = ({
             hasFeedback
             name="id"
             label="Repo Name"
-            initialValue={template && template.id}
+            initialValue={template ? template.id : ""}
             validateTrigger={["onChange", "onBlur"]}
             rules={[
               {
@@ -116,9 +104,21 @@ export const AddRepoModel = ({
                 pattern: nameRegex,
                 message: "Invalid symbol",
               },
+              {
+                validator: async (_, value) => {
+                  if (template) return;
+                  if (config?.repos?.find((r) => r.id === value)) {
+                    throw new Error();
+                  }
+                },
+                message: "Repo with name already exists",
+              },
             ]}
           >
-            <Input disabled={!!template} />
+            <Input
+              disabled={!!template}
+              placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
+            />
           </Form.Item>
 
           {/* Repo.uri */}
@@ -146,7 +146,7 @@ export const AddRepoModel = ({
               hasFeedback
               name="uri"
               label="Repository URI (e.g. ./local-path or s3://bucket-name/path)"
-              initialValue={template && template.uri}
+              initialValue={template ? template.uri : ""}
               validateTrigger={["onChange", "onBlur"]}
               rules={[
                 {
@@ -163,17 +163,28 @@ export const AddRepoModel = ({
           <Form.Item<Repo>
             hasFeedback
             name="password"
-            label="Password"
+            label={
+              <>
+                Password{" "}
+                <Button
+                  type="text"
+                  onClick={() => {
+                    if (template) return;
+                    form.setFieldsValue({
+                      password: cryptoRandomPassword(),
+                    });
+                  }}
+                >
+                  [Create Crypto Random]
+                </Button>
+              </>
+            }
             initialValue={template && template.password}
             validateTrigger={["onChange", "onBlur"]}
             rules={[
               {
                 required: true,
                 message: "Please input repo name",
-              },
-              {
-                pattern: nameRegex,
-                message: "Invalid symbol",
               },
             ]}
           >
@@ -191,7 +202,7 @@ export const AddRepoModel = ({
                 },
               },
             ]}
-            initialValue={(template && template.env) || undefined}
+            initialValue={template ? template.env : []}
           >
             {(fields, { add, remove }, { errors }) => (
               <>
@@ -216,7 +227,11 @@ export const AddRepoModel = ({
                       ]}
                       noStyle
                     >
-                      <Input placeholder="KEY=VALUE" style={{ width: "60%" }} />
+                      <Input
+                        placeholder="KEY=VALUE"
+                        onBlur={() => form.validateFields()}
+                        style={{ width: "60%" }}
+                      />
                     </Form.Item>
                     <MinusCircleOutlined
                       className="dynamic-delete-button"
@@ -285,7 +300,7 @@ export const AddRepoModel = ({
                     style={{ width: "60%" }}
                     icon={<PlusOutlined />}
                   >
-                    Set Environment Variable
+                    Set Flag
                   </Button>
                   <Form.ErrorList errors={errors} />
                 </Form.Item>
@@ -305,8 +320,6 @@ export const AddRepoModel = ({
     </>
   );
 };
-
-const nameRegex = /^[a-zA-Z0-9\-_ ]+$/;
 
 const expectedEnvVars: { [scheme: string]: string[] } = {
   s3: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"],
@@ -328,11 +341,17 @@ const envVarSetValidator = (uri: string | undefined, envVars: string[]) => {
     return Promise.resolve();
   }
 
+  const envVarNames = envVars.map((e) => e && e.split("=")[0]);
+
   let missing: string[] = [];
   for (let e of expected) {
-    if (!envVars.includes(e)) {
+    if (!envVarNames.includes(e)) {
       missing.push(e);
     }
+  }
+
+  if (missing.length === 0) {
+    return Promise.resolve();
   }
 
   return Promise.reject(
@@ -340,4 +359,10 @@ const envVarSetValidator = (uri: string | undefined, envVars: string[]) => {
       "Missing env vars " + missing.join(", ") + " for scheme " + scheme
     )
   );
+};
+
+const cryptoRandomPassword = (): string => {
+  let vals = crypto.getRandomValues(new Uint8Array(64));
+  // 48 chars is at least log2(64) * 48 = 288 bits of entropy.
+  return btoa(String.fromCharCode(...vals)).slice(0, 48);
 };
