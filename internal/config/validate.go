@@ -19,15 +19,20 @@ func ValidateConfig(c *v1.Config) error {
 			if e := validateRepo(repo); e != nil {
 				err = multierror.Append(e, fmt.Errorf("repo %s: %w", repo.GetId(), err))
 			}
-			if _, ok := repos[repo.GetId()]; ok {
+			if _, ok := repos[repo.Id]; ok {
 				err = multierror.Append(err, fmt.Errorf("repo %s: duplicate id", repo.GetId()))
 			}
-			repos[repo.GetId()] = repo
+			repos[repo.Id] = repo
 		}
 	}
 
 	if c.Plans != nil {
+		plans := make(map[string]*v1.Plan)
 		for _, plan := range c.Plans {
+			if _, ok := plans[plan.Id]; ok {
+				err = multierror.Append(err, fmt.Errorf("plan %s: duplicate id", plan.GetId()))
+			}
+			plans[plan.Id] = plan
 			if e := validatePlan(plan, repos); e != nil {
 				err = multierror.Append(err, fmt.Errorf("plan %s: %w", plan.GetId(), e))
 			}
@@ -39,19 +44,19 @@ func ValidateConfig(c *v1.Config) error {
 
 func validateRepo(repo *v1.Repo) error {
 	var err error
-	if repo.GetId() == "" {
+	if repo.Id == "" {
 		err = multierror.Append(err, errors.New("id is required"))
 	}
 
-	if repo.GetUri() == "" {
+	if repo.Uri == "" {
 		err = multierror.Append(err, errors.New("uri is required"))
 	}
 
-	if repo.GetPassword() == "" {
+	if repo.Password == "" {
 		err = multierror.Append(err, errors.New("password is required"))
 	}
 
-	for _, env := range repo.GetEnv() {
+	for _, env := range repo.Env {
 		if !strings.Contains(env, "=") {
 			err = multierror.Append(err, fmt.Errorf("invalid env var %s, must take format KEY=VALUE", env))
 		}
@@ -75,12 +80,12 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 	}
 
 	
-	if _, e := cronexpr.Parse(plan.GetCron()); e != nil {
-		err = multierror.Append(err, fmt.Errorf("invalid cron %q: %w", plan.GetCron(), e))
+	if _, e := cronexpr.Parse(plan.Cron); e != nil {
+		err = multierror.Append(err, fmt.Errorf("invalid cron %q: %w", plan.Cron, e))
 	}
 
 	if plan.GetRetention() != nil {
-		if e := validateRetention(plan.GetRetention()); e != nil {
+		if e := validateRetention(plan.Retention); e != nil {
 			err = multierror.Append(err, fmt.Errorf("invalid retention policy: %w", e))
 		}
 	}
@@ -90,20 +95,19 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 
 func validateRetention(policy *v1.RetentionPolicy) error {
 	var err error
-	if policy.GetKeepWithinDuration() != "" {
-		match, e := regexp.Match(`(\d+h)?(\d+m)?(\d+s)?`, []byte(policy.GetKeepWithinDuration()))
+	if policy.KeepWithinDuration != "" {
+		match, e := regexp.Match(`(\d+h)?(\d+m)?(\d+s)?`, []byte(policy.KeepWithinDuration))
 		if e != nil {
 			panic(e) // regex error
 		}
 		if !match {
-			err = multierror.Append(err, fmt.Errorf("invalid keep_within_duration %q", policy.GetKeepWithinDuration()))
+			err = multierror.Append(err, fmt.Errorf("invalid keep_within_duration %q", policy.KeepWithinDuration))
 		}
-
-		if policy.GetKeepLastN() != 0 || policy.GetKeepHourly() != 0 || policy.GetKeepDaily() != 0 || policy.GetKeepWeekly() != 0 || policy.GetKeepMonthly() != 0 || policy.GetKeepYearly() != 0 {
+		if policy.KeepLastN != 0 || policy.KeepHourly != 0 || policy.KeepDaily != 0 || policy.KeepWeekly != 0 || policy.KeepMonthly != 0 || policy.KeepYearly != 0 {
 			err = multierror.Append(err, fmt.Errorf("keep_within_duration cannot be used with other retention settings"))
 		}
 	} else {
-		if policy.GetKeepLastN() == 0 && policy.GetKeepHourly() == 0 && policy.GetKeepDaily() == 0 && policy.GetKeepWeekly() == 0 && policy.GetKeepMonthly() == 0 && policy.GetKeepYearly() == 0 {
+		if policy.KeepLastN == 0 && policy.KeepHourly == 0 && policy.KeepDaily == 0 && policy.KeepWeekly == 0 && policy.KeepMonthly == 0 && policy.KeepYearly == 0 {
 			err = multierror.Append(err, fmt.Errorf("at least one retention policy must be set"))
 		}
 	}

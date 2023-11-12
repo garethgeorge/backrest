@@ -9,10 +9,9 @@ message Config {
   int32 modno = 1 [json_name="modno"];
 
   // override the hostname tagged on backups. If provided it will be used in addition to tags to group backups.
-  string host_override = 2 [json_name="host_override"];
+  string host = 2 [json_name="host"];
 
   repeated Repo repos = 3 [json_name="repos"];
-
   repeated Plan plans = 4 [json_name="plans"];
 }
 
