@@ -3,17 +3,15 @@ package config
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
+	"github.com/gitploy-io/cronexpr"
 	"github.com/hashicorp/go-multierror"
 )
 
 func validateConfig(c *v1.Config) error {
-	if c.LogDir == "" {
-		return errors.New("log_dir is required")
-	}
-
 	var err error
 	repos := make(map[string]*v1.Repo)
 	if c.Repos != nil {
@@ -27,16 +25,9 @@ func validateConfig(c *v1.Config) error {
 
 	if c.Plans != nil {
 		for _, plan := range c.Plans {
-			if plan.Paths == nil || len(plan.Paths) == 0 {
-				err = multierror.Append(err, fmt.Errorf("plan %s: path is required", plan.GetId()))
-			}
-
-			if plan.Repo == "" {
-				err = multierror.Append(err,fmt.Errorf("plan %s: repo is required", plan.GetId()))
-			}
-
-			if _, ok := repos[plan.Repo]; !ok {
-				err = multierror.Append(err, fmt.Errorf("plan %s: repo %s not found", plan.GetId(), plan.Repo))
+			err := validatePlan(plan, repos);
+			if err != nil {
+				err = multierror.Append(err, fmt.Errorf("plan %s: %w", plan.GetId(), err))
 			}
 		}
 	} 
@@ -64,5 +55,55 @@ func validateRepo(repo *v1.Repo) error {
 		}
 	}
 
+	return err
+}
+
+func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
+	var err error
+	if plan.Paths == nil || len(plan.Paths) == 0 {
+		err = multierror.Append(err, fmt.Errorf("path is required"))
+	}
+
+	if plan.Repo == "" {
+		err = multierror.Append(err,fmt.Errorf("repo is required"))
+	}
+
+	if _, ok := repos[plan.Repo]; !ok {
+		err = multierror.Append(err, fmt.Errorf("repo %q not found", plan.Repo))
+	}
+
+	
+	if _, e := cronexpr.Parse(plan.GetCron()); err != nil {
+		err = multierror.Append(err, fmt.Errorf("invalid cron %q: %w", plan.GetCron(), e))
+	}
+
+	if plan.GetRetention() != nil {
+		if e := validateRetention(plan.GetRetention()); e != nil {
+			err = multierror.Append(err, fmt.Errorf("invalid retention policy: %w", e))
+		}
+	}
+
+	return err
+}
+
+func validateRetention(policy *v1.RetentionPolicy) error {
+	var err error
+	if policy.GetKeepWithinDuration() != "" {
+		match, e := regexp.Match(`(\d+h)?(\d+m)?(\d+s)?`, []byte(policy.GetKeepWithinDuration()))
+		if e != nil {
+			panic(e) // regex error
+		}
+		if !match {
+			err = multierror.Append(err, fmt.Errorf("invalid keep_within_duration %q", policy.GetKeepWithinDuration()))
+		}
+
+		if policy.GetKeepLastN() != 0 || policy.GetKeepHourly() != 0 || policy.GetKeepDaily() != 0 || policy.GetKeepWeekly() != 0 || policy.GetKeepMonthly() != 0 || policy.GetKeepYearly() != 0 {
+			err = multierror.Append(err, fmt.Errorf("keep_within_duration cannot be used with other retention settings"))
+		}
+	} else {
+		if policy.GetKeepLastN() == 0 && policy.GetKeepHourly() == 0 && policy.GetKeepDaily() == 0 && policy.GetKeepWeekly() == 0 && policy.GetKeepMonthly() == 0 && policy.GetKeepYearly() == 0 {
+			err = multierror.Append(err, fmt.Errorf("at least one retention policy must be set"))
+		}
+	}
 	return err
 }

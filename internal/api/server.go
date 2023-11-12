@@ -2,11 +2,14 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/garethgeorge/resticui/gen/go/types"
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 	"github.com/garethgeorge/resticui/internal/config"
 	"github.com/garethgeorge/resticui/pkg/restic"
@@ -103,6 +106,21 @@ func (s *Server) GetEvents(_ *emptypb.Empty, stream v1.ResticUI_GetEventsServer)
 	}
 }
 
+func (s *Server) PathAutocomplete(ctx context.Context, path *types.StringValue) (*types.StringList, error) {
+	ents, err := os.ReadDir(path.Value)
+	if errors.Is(err, os.ErrNotExist) {
+		return &types.StringList{}, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	var paths []string
+	for _, ent := range ents {
+		paths = append(paths, ent.Name())
+	}
+
+	return &types.StringList{Values: paths}, nil
+}
 
 
 // PublishEvent publishes an event to all GetEvents streams. It is effectively a multicast.

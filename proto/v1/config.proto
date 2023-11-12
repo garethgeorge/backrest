@@ -6,7 +6,6 @@ option go_package = "github.com/garethgeorge/resticui/go/proto/v1";
 
 message Config {
   int32 version = 1;
-  string log_dir = 2 [json_name="log_dir"];
   repeated Repo repos = 3 [json_name="repos"];
   repeated Plan plans = 4 [json_name="plans"];
 }
@@ -29,4 +28,19 @@ message Plan {
   string repo = 2 [json_name="repo"]; // ID of the repo to use.
   repeated string paths = 4 [json_name="paths"]; // paths to include in the backup.
   repeated string excludes = 5 [json_name="excludes"]; // glob patterns to exclude.
+  string cron = 6 [json_name="cron"];
+  RetentionPolicy retention = 7 [json_name="retention"];
+}
+
+message RetentionPolicy {
+  // max_unused_limit is used to decide when forget should be run.
+  string max_unused_limit = 1; // e.g. a percentage i.e. 25% or a number of megabytes.
+
+  int32 keep_last_n = 2; // keep the last n snapshots.
+  int32 keep_hourly = 3; // keep the last n hourly snapshots.
+  int32 keep_daily = 4; // keep the last n daily snapshots.
+  int32 keep_weekly = 5; // keep the last n weekly snapshots.
+  int32 keep_monthly = 6; // keep the last n monthly snapshots.
+  int32 keep_yearly = 7; // keep the last n yearly snapshots.
+  string keep_within_duration = 8; // keep snapshots within a duration e.g. 1y2m3d4h5m6s
 }

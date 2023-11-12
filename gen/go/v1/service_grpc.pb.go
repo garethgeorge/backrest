@@ -8,6 +8,7 @@ package v1
 
 import (
 	context "context"
+	types "github.com/garethgeorge/resticui/gen/go/types"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -20,10 +21,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ResticUI_GetConfig_FullMethodName = "/v1.ResticUI/GetConfig"
-	ResticUI_SetConfig_FullMethodName = "/v1.ResticUI/SetConfig"
-	ResticUI_AddRepo_FullMethodName   = "/v1.ResticUI/AddRepo"
-	ResticUI_GetEvents_FullMethodName = "/v1.ResticUI/GetEvents"
+	ResticUI_GetConfig_FullMethodName        = "/v1.ResticUI/GetConfig"
+	ResticUI_SetConfig_FullMethodName        = "/v1.ResticUI/SetConfig"
+	ResticUI_AddRepo_FullMethodName          = "/v1.ResticUI/AddRepo"
+	ResticUI_GetEvents_FullMethodName        = "/v1.ResticUI/GetEvents"
+	ResticUI_PathAutocomplete_FullMethodName = "/v1.ResticUI/PathAutocomplete"
 )
 
 // ResticUIClient is the client API for ResticUI service.
@@ -34,6 +36,7 @@ type ResticUIClient interface {
 	SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error)
 	AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error)
 	GetEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (ResticUI_GetEventsClient, error)
+	PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error)
 }
 
 type resticUIClient struct {
@@ -103,6 +106,15 @@ func (x *resticUIGetEventsClient) Recv() (*Event, error) {
 	return m, nil
 }
 
+func (c *resticUIClient) PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error) {
+	out := new(types.StringList)
+	err := c.cc.Invoke(ctx, ResticUI_PathAutocomplete_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResticUIServer is the server API for ResticUI service.
 // All implementations must embed UnimplementedResticUIServer
 // for forward compatibility
@@ -111,6 +123,7 @@ type ResticUIServer interface {
 	SetConfig(context.Context, *Config) (*Config, error)
 	AddRepo(context.Context, *Repo) (*Config, error)
 	GetEvents(*emptypb.Empty, ResticUI_GetEventsServer) error
+	PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error)
 	mustEmbedUnimplementedResticUIServer()
 }
 
@@ -129,6 +142,9 @@ func (UnimplementedResticUIServer) AddRepo(context.Context, *Repo) (*Config, err
 }
 func (UnimplementedResticUIServer) GetEvents(*emptypb.Empty, ResticUI_GetEventsServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetEvents not implemented")
+}
+func (UnimplementedResticUIServer) PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PathAutocomplete not implemented")
 }
 func (UnimplementedResticUIServer) mustEmbedUnimplementedResticUIServer() {}
 
@@ -218,6 +234,24 @@ func (x *resticUIGetEventsServer) Send(m *Event) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _ResticUI_PathAutocomplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(types.StringValue)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResticUIServer).PathAutocomplete(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResticUI_PathAutocomplete_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResticUIServer).PathAutocomplete(ctx, req.(*types.StringValue))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ResticUI_ServiceDesc is the grpc.ServiceDesc for ResticUI service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -236,6 +270,10 @@ var ResticUI_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddRepo",
 			Handler:    _ResticUI_AddRepo_Handler,
+		},
+		{
+			MethodName: "PathAutocomplete",
+			Handler:    _ResticUI_PathAutocomplete_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

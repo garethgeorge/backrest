@@ -1,5 +1,5 @@
 import { atom, useSetRecoilState } from "recoil";
-import { Config } from "../../gen/ts/v1/config.pb";
+import { Config, Repo } from "../../gen/ts/v1/config.pb";
 import { ResticUI } from "../../gen/ts/v1/service.pb";
 
 export const configState = atom({
@@ -8,10 +8,17 @@ export const configState = atom({
 });
 
 export const fetchConfig = async (): Promise<Config> => {
-  return await ResticUI.GetConfig(
-    {},
-    {
-      pathPrefix: "/api/",
-    }
-  );
+  return await ResticUI.GetConfig({}, { pathPrefix: "/api/" });
+};
+
+export const addRepo = async (repo: Repo): Promise<Config> => {
+  return await ResticUI.AddRepo(repo, {
+    pathPrefix: "/api/",
+  });
+};
+
+export const setConfig = async (config: Config): Promise<Config> => {
+  return await ResticUI.SetConfig(config, {
+    pathPrefix: "/api/",
+  });
 };

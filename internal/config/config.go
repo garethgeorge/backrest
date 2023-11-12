@@ -22,7 +22,6 @@ type ConfigStore interface {
 
 func NewDefaultConfig() *v1.Config {
 	return &v1.Config{
-		LogDir: "/var/log/resticui",
 		Repos: []*v1.Repo{},
 		Plans: []*v1.Plan{},
 	}
