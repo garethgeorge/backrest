@@ -13,12 +13,12 @@ export const fetchConfig = async (): Promise<Config> => {
 
 export const addRepo = async (repo: Repo): Promise<Config> => {
   return await ResticUI.AddRepo(repo, {
-    pathPrefix: "/api/",
+    pathPrefix: "/api",
   });
 };
 
 export const updateConfig = async (config: Config): Promise<Config> => {
   return await ResticUI.SetConfig(config, {
-    pathPrefix: "/api/",
+    pathPrefix: "/api",
   });
 };
