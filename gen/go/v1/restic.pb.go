@@ -20,6 +20,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// ResticSnapshot represents a restic snapshot.
 type ResticSnapshot struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -123,6 +124,7 @@ func (x *ResticSnapshot) GetTags() []string {
 	return nil
 }
 
+// ResticSnapshotList represents a list of restic snapshots.
 type ResticSnapshotList struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -170,6 +172,7 @@ func (x *ResticSnapshotList) GetSnapshots() []*ResticSnapshot {
 	return nil
 }
 
+// BackupProgressEntriy represents a single entry in the backup progress stream.
 type BackupProgressEntry struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -251,6 +254,7 @@ func (*BackupProgressEntry_Status) isBackupProgressEntry_Entry() {}
 
 func (*BackupProgressEntry_Summary) isBackupProgressEntry_Entry() {}
 
+// BackupProgressStatusEntry represents a single status entry in the backup progress stream.
 type BackupProgressStatusEntry struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -330,6 +334,7 @@ func (x *BackupProgressStatusEntry) GetBytesDone() int64 {
 	return 0
 }
 
+// BackupProgressSummary represents a the summary event emitted at the end of a backup stream.
 type BackupProgressSummary struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

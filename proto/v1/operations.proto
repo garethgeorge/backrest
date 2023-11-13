@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package v1;
+
+option go_package = "github.com/garethgeorge/resticui/go/proto/v1";
+
+import "v1/restic.proto";
+
+message Operation {
+  OperationStatus status = 1;
+  int64 unix_time_start_ms = 2;
+  int64 unix_time_end_ms = 3;
+
+  oneof op {
+    OperationBackup backup = 100;
+  }
+}
+
+enum OperationStatus {
+  STATUS_UNKNOWN = 0;
+  STATUS_PENDING = 1;
+  STATUS_INPROGRESS = 2;
+  STATUS_SUCCESS = 3;
+}
+
+message OperationBackup {
+  string repo_id = 1;
+  string plan_id = 2;
+  BackupProgressEntry last_status = 1;
+}

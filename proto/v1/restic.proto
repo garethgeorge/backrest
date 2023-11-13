@@ -4,6 +4,7 @@ package v1;
 
 option go_package = "github.com/garethgeorge/resticui/go/proto/v1";
 
+// ResticSnapshot represents a restic snapshot.
 message ResticSnapshot {
   string id = 1;
   int64 unix_time_ms = 2;
@@ -15,10 +16,12 @@ message ResticSnapshot {
   repeated string tags = 8;
 }
 
+// ResticSnapshotList represents a list of restic snapshots.
 message ResticSnapshotList {
   repeated ResticSnapshot snapshots = 1;
 }
 
+// BackupProgressEntriy represents a single entry in the backup progress stream.
 message BackupProgressEntry {
   oneof entry {
     BackupProgressStatusEntry status = 1;
@@ -26,6 +29,7 @@ message BackupProgressEntry {
   }
 }
 
+// BackupProgressStatusEntry represents a single status entry in the backup progress stream.
 message BackupProgressStatusEntry {
   double percent_done = 1; // 0.0 - 1.0
   int64 total_files = 2;
@@ -34,6 +38,7 @@ message BackupProgressStatusEntry {
   int64 bytes_done = 5;
 }
 
+// BackupProgressSummary represents a the summary event emitted at the end of a backup stream.
 message BackupProgressSummary {
   int64 files_new = 1;
   int64 files_changed = 2;
