@@ -5,7 +5,7 @@
 */
 export type Config = {
   modno?: number
-  hostOverride?: string
+  host?: string
   repos?: Repo[]
   plans?: Plan[]
 }
