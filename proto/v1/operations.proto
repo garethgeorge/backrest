@@ -7,13 +7,30 @@ option go_package = "github.com/garethgeorge/resticui/go/proto/v1";
 import "v1/restic.proto";
 
 message Operation {
-  OperationStatus status = 1;
-  int64 unix_time_start_ms = 2;
-  int64 unix_time_end_ms = 3;
+  int64 id = 1;
+  string repo_id = 2; // repo id if associated with a repo (always true)
+  string plan_id = 3; // plan id if associated with a plan (always true)
+  OperationStatus status = 4;
+  int64 unix_time_start_ms = 5;
+  int64 unix_time_end_ms = 6;
+  string display_message = 7; // human readable context message (if any)
 
   oneof op {
     OperationBackup backup = 100;
   }
+}
+
+// OperationEvent is used in the wireformat to stream operation changes to clients
+message OperationEvent {
+  OperationEventType type = 1;
+  Operation operation = 2;
+}
+
+// OperationEventType indicates whether the operation was created or updated
+enum OperationEventType {
+  EVENT_UNKNOWN = 0;
+  EVENT_CREATED = 1;
+  EVENT_UPDATED = 2;
 }
 
 enum OperationStatus {
@@ -21,10 +38,10 @@ enum OperationStatus {
   STATUS_PENDING = 1;
   STATUS_INPROGRESS = 2;
   STATUS_SUCCESS = 3;
+  STATUS_ERROR = 4;
 }
 
 message OperationBackup {
-  string repo_id = 1;
-  string plan_id = 2;
-  BackupProgressEntry last_status = 1;
+  BackupProgressEntry last_status = 3;
 }
+

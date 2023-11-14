@@ -11,6 +11,7 @@ import (
 	"github.com/garethgeorge/resticui/gen/go/types"
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 	"github.com/garethgeorge/resticui/internal/config"
+	"github.com/garethgeorge/resticui/internal/oplog"
 	"github.com/garethgeorge/resticui/internal/orchestrator"
 	"github.com/garethgeorge/resticui/pkg/restic"
 	"go.uber.org/zap"
@@ -21,6 +22,7 @@ import (
 type Server struct {
 	*v1.UnimplementedResticUIServer
 	orchestrator *orchestrator.Orchestrator
+	oplog *oplog.OpLog
 
 	reqId atomic.Uint64
 	eventChannelsMu sync.Mutex
@@ -29,25 +31,11 @@ type Server struct {
 
 var _ v1.ResticUIServer = &Server{}
 
-func NewServer(orchestrator *orchestrator.Orchestrator) *Server {
+func NewServer(orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog) *Server {
 	s := &Server{
 		eventChannels: make(map[uint64]chan *v1.Event),
 		orchestrator: orchestrator,
 	}
-
-	// go func() {
-	// 	// TODO: disable this when proper event sources are implemented.
-	// 	for {
-	// 		time.Sleep(3 * time.Second)
-	// 		s.PublishEvent(&v1.Event{
-	// 			Event: &v1.Event_Log{
-	// 				Log: &v1.LogEvent{
-	// 					Message: fmt.Sprintf("event push test, it is %v", time.Now().Format(time.RFC3339)),
-	// 				},
-	// 			},
-	// 		})
-	// 	}
-	// }()
 
 	return s
 }
@@ -140,23 +128,38 @@ func (s *Server) ListSnapshots(ctx context.Context, query *v1.ListSnapshotsReque
 }
 
 // GetEvents implements GET /v1/events
-func (s *Server) GetEvents(_ *emptypb.Empty, stream v1.ResticUI_GetEventsServer) error {
-	reqId := s.reqId.Add(1)
-
-	// Register a channel to receive events for this invocation
-	s.eventChannelsMu.Lock()
-	eventChan := make(chan *v1.Event, 3)
-	s.eventChannels[reqId] = eventChan
-	s.eventChannelsMu.Unlock()
-	defer delete(s.eventChannels, reqId)
-
-	for {
-		select {
-		case <-stream.Context().Done():
-			return nil
-		case event := <-eventChan:
-			stream.Send(event)
+func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.ResticUI_GetOperationEventsServer) error {
+	errorChan := make(chan error)
+	defer close(errorChan)
+	callback := func(eventType oplog.EventType, op *v1.Operation) {
+		var eventTypeMapped v1.OperationEventType
+		switch eventType {
+		case oplog.EventTypeOpCreated:
+			eventTypeMapped = v1.OperationEventType_EVENT_CREATED
+		case oplog.EventTypeOpUpdated:
+			eventTypeMapped = v1.OperationEventType_EVENT_UPDATED
+		default:
+			zap.S().Error("Unknown event type", zap.Int("eventType", int(eventType)))
+			eventTypeMapped = v1.OperationEventType_EVENT_UNKNOWN
 		}
+
+		event := &v1.OperationEvent{
+			Type: eventTypeMapped,
+			Operation: op,
+		}
+
+		if err := stream.Send(event); err != nil {
+			errorChan <- fmt.Errorf("failed to send event: %w", err)
+		}
+	}
+	s.oplog.Subscribe(&callback)
+	defer s.oplog.Unsubscribe(&callback)
+
+	select {
+	case <-stream.Context().Done():
+		return nil
+	case err := <-errorChan:
+		return err
 	}
 }
 
