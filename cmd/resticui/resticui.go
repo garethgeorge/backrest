@@ -13,6 +13,7 @@ import (
 
 	"github.com/garethgeorge/resticui/internal/api"
 	"github.com/garethgeorge/resticui/internal/config"
+	"github.com/garethgeorge/resticui/internal/oplog"
 	"github.com/garethgeorge/resticui/internal/orchestrator"
 	static "github.com/garethgeorge/resticui/webui"
 	"github.com/mattn/go-colorable"
@@ -27,6 +28,7 @@ func main() {
 	ctx, cancel := context.WithCancel(ctx)
 	go onterm(cancel)
 	
+	
 	if _, err := config.Default.Get(); err != nil {
 		zap.S().Fatalf("Error loading config: %v", err)
 	}
@@ -37,18 +39,24 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.FS(&SubdirFilesystem{FS: static.FS, subdir: "dist"})))
 
-	server := &http.Server{
-		Addr:    ":9090",
-		Handler: mux,
-	}
 
-	orchestrator := orchestrator.NewOrchestrator(config.Default)
+	// Create and serve API server
+	oplog, err := oplog.NewOpLog(path.Join(dataPath(), "oplog.boltdb"))
+	if err != nil {
+		zap.S().Fatalf("Error creating oplog: %v", err)
+	}
+	defer oplog.Close()
+
+	apiServer := api.NewServer(
+		orchestrator.NewOrchestrator(config.Default), // TODO: eliminate default config
+		oplog,
+	)
 
 	// Serve the API
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := api.ServeAPI(ctx, orchestrator, mux)
+		err := api.ServeAPI(ctx, apiServer, mux)
 		if err != nil {
 			zap.S().Fatal("Error serving API", zap.Error(err))
 		}
@@ -56,6 +64,11 @@ func main() {
 	}()
 
 	// Serve the HTTP gateway
+	server := &http.Server{
+		Addr:    ":9090",
+		Handler: mux,
+	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -113,4 +126,12 @@ func (s *SubdirFilesystem) 	ReadDir(name string) ([]fs.DirEntry, error) {
 		return nil, &fs.PathError{Op: "readdir", Path: name, Err: errors.New("not implemented")}
 	}
 	return readDirFS.ReadDir(path.Join(s.subdir, name))
+}
+
+func dataPath() string {
+	datahome := os.Getenv("XDG_DATA_HOME")
+	if datahome == "" {
+		datahome = path.Join(os.Getenv("HOME") + "/.local/share")
+	}
+	return path.Join(datahome, "resticui")
 }

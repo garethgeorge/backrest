@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/internal/orchestrator"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"go.uber.org/zap"
@@ -55,7 +54,7 @@ func loggingFunc(l *zap.Logger) logging.Logger {
 }
 
 
-func serveGRPC(ctx context.Context, orchestrator *orchestrator.Orchestrator, socket string) error {
+func serveGRPC(ctx context.Context, socket string, server *Server) error {
 	lis, err := net.Listen("unix", socket)
 	if err != nil {
 		return fmt.Errorf("failed to listen: %w", err)
@@ -70,7 +69,7 @@ func serveGRPC(ctx context.Context, orchestrator *orchestrator.Orchestrator, soc
 			logging.StreamServerInterceptor(loggingFunc(logger)),
 		),
 	)
-	v1.RegisterResticUIServer(grpcServer, NewServer(orchestrator))
+	v1.RegisterResticUIServer(grpcServer, server)
 	go func() {
 		<-ctx.Done()
 		grpcServer.GracefulStop()
@@ -82,7 +81,7 @@ func serveGRPC(ctx context.Context, orchestrator *orchestrator.Orchestrator, soc
 	return nil
 }
 
-func serveHTTPHandlers(ctx context.Context, orchestrator *orchestrator.Orchestrator, mux *runtime.ServeMux) error {
+func serveHTTPHandlers(ctx context.Context, server *Server, mux *runtime.ServeMux) error {
 	tmpDir, err := os.MkdirTemp("", "resticui")
 	if err != nil {
 		return fmt.Errorf("failed to create temp dir for unix domain socket: %w", err)
@@ -99,7 +98,7 @@ func serveHTTPHandlers(ctx context.Context, orchestrator *orchestrator.Orchestra
 		return fmt.Errorf("failed to register gateway: %w", err)
 	}
 
-	if err := serveGRPC(ctx, orchestrator, socket); err != nil {
+	if err := serveGRPC(ctx, socket, server); err != nil {
 		return err
 	}
 
@@ -107,8 +106,8 @@ func serveHTTPHandlers(ctx context.Context, orchestrator *orchestrator.Orchestra
 }
 
 // Handler returns an http.Handler serving the API, cancel the context to cleanly shut down the server.
-func ServeAPI(ctx context.Context, orchestrator *orchestrator.Orchestrator, mux *http.ServeMux) error {
+func ServeAPI(ctx context.Context, server *Server, mux *http.ServeMux) error {
 	apiMux := runtime.NewServeMux()
 	mux.Handle("/api/", http.StripPrefix("/api", apiMux))
-	return serveHTTPHandlers(ctx, orchestrator, apiMux)
+	return serveHTTPHandlers(ctx, server, apiMux)
 }

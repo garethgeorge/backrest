@@ -15,25 +15,39 @@ type OneOf<T> =
         : never)
     : never);
 
+export enum OperationEventType {
+  EVENT_UNKNOWN = "EVENT_UNKNOWN",
+  EVENT_CREATED = "EVENT_CREATED",
+  EVENT_UPDATED = "EVENT_UPDATED",
+}
+
 export enum OperationStatus {
   STATUS_UNKNOWN = "STATUS_UNKNOWN",
   STATUS_PENDING = "STATUS_PENDING",
   STATUS_INPROGRESS = "STATUS_INPROGRESS",
   STATUS_SUCCESS = "STATUS_SUCCESS",
+  STATUS_ERROR = "STATUS_ERROR",
 }
 
 
 type BaseOperation = {
+  id?: string
+  repoId?: string
+  planId?: string
   status?: OperationStatus
   unixTimeStartMs?: string
   unixTimeEndMs?: string
+  displayMessage?: string
 }
 
 export type Operation = BaseOperation
   & OneOf<{ backup: OperationBackup }>
 
+export type OperationEvent = {
+  type?: OperationEventType
+  operation?: Operation
+}
+
 export type OperationBackup = {
-  repoId?: string
-  planId?: string
   lastStatus?: V1Restic.BackupProgressEntry
 }

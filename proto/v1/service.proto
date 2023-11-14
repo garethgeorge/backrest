@@ -5,8 +5,8 @@ package v1;
 option go_package = "github.com/garethgeorge/resticui/go/proto/v1";
 
 import "v1/config.proto";
-import "v1/events.proto";
 import "v1/restic.proto";
+import "v1/operations.proto";
 import "types/value.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
@@ -32,9 +32,9 @@ service ResticUI {
     };
   }
 
-  rpc GetEvents (google.protobuf.Empty) returns (stream Event) {
+  rpc GetOperationEvents (google.protobuf.Empty) returns (stream OperationEvent) {
     option (google.api.http) = {
-      get: "/v1/events"
+      get: "/v1/events/operations"
     };
   }
 
