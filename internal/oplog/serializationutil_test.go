@@ -11,3 +11,13 @@ func TestItoa(t *testing.T) {
 		}
 	}
 }
+
+func TestStob(t *testing.T) {
+	strs := []string{"", "a", "ab", "abc", "abcd", "abcde", "abcdef"}
+	for _, str := range strs {
+		b := stob(str)
+		if val, _ := btos(b); val != str {
+			t.Errorf("stob/btos failed for %s", str)
+		}
+	}
+}

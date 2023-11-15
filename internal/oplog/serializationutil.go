@@ -18,3 +18,12 @@ func stob(v string) []byte {
 	b = append(b, []byte(v)...)
 	return b
 }
+
+func btos(b []byte) (string, int64) {
+	length := btoi(b[:8])
+	return string(b[8:8+length]), 8+length
+}
+
+func normalizeSnapshotId(id string) string {
+	return id[:8]
+}

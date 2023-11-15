@@ -114,6 +114,7 @@ export const AddPlanModal = ({
     <>
       <Modal
         open={true}
+        onCancel={handleCancel}
         title="Add Plan"
         footer={[
           <Button loading={confirmLoading} key="back" onClick={handleCancel}>

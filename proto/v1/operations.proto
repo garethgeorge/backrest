@@ -6,6 +6,10 @@ option go_package = "github.com/garethgeorge/resticui/go/proto/v1";
 
 import "v1/restic.proto";
 
+message OperationList {
+  repeated Operation operations = 1;
+}
+
 message Operation {
   int64 id = 1;
   string repo_id = 2; // repo id if associated with a repo (always true)

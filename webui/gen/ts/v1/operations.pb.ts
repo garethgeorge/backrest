@@ -29,6 +29,10 @@ export enum OperationStatus {
   STATUS_ERROR = "STATUS_ERROR",
 }
 
+export type OperationList = {
+  operations?: Operation[]
+}
+
 
 type BaseOperation = {
   id?: string

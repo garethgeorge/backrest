@@ -14,72 +14,108 @@ import (
 )
 
 
-type task interface {
+type Task interface {
 	Name() string // huamn readable name for this task.
 	Next(now time.Time) *time.Time // when this task would like to be run.
 	Run(ctx context.Context) error // run the task.
 }
 
-type backupTask struct {
+// BackupTask is a scheduled backup operation.
+type ScheduledBackupTask struct {
 	orchestrator *Orchestrator // owning orchestrator
 	plan *v1.Plan
 	schedule *cronexpr.Schedule 
 }
 
-var _ task = &backupTask{}
+var _ Task = &ScheduledBackupTask{}
 
-func newBackupTask(orchestrator *Orchestrator, plan *v1.Plan) (*backupTask, error) {
+func NewScheduledBackupTask(orchestrator *Orchestrator, plan *v1.Plan) (*ScheduledBackupTask, error) {
 	sched, err := cronexpr.Parse(plan.Cron)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse schedule %q: %w", plan.Cron, err)
 	}
 
-	return &backupTask{
+	return &ScheduledBackupTask{
 		orchestrator: orchestrator,
 		plan: plan,
 		schedule: sched,
 	}, nil
 }
 
-func (t *backupTask) Name() string {
-	return fmt.Sprintf("execute backup plan %v", t.plan.Id)
+func (t *ScheduledBackupTask) Name() string {
+	return fmt.Sprintf("backup for plan %q", t.plan.Id)
 }
 
-func (t *backupTask) Next(now time.Time) *time.Time {
+func (t *ScheduledBackupTask) Next(now time.Time) *time.Time {
 	next := t.schedule.Next(now)
 	return &next
 }
 
-func (t *backupTask) Run(ctx context.Context) error {
+func (t *ScheduledBackupTask) Run(ctx context.Context) error {
+	return backupHelper(ctx, t.orchestrator, t.plan)
+}
+
+// OnetimeBackupTask is a single backup operation.
+type OnetimeBackupTask struct {
+	orchestrator *Orchestrator
+	plan *v1.Plan
+	time *time.Time
+}
+
+func NewOneofBackupTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *OnetimeBackupTask {
+	return &OnetimeBackupTask{
+		orchestrator: orchestrator,
+		plan: plan,
+		time: &at,
+	}
+}
+
+func (t *OnetimeBackupTask) Name() string {
+	return fmt.Sprintf("onetime backup for plan %q", t.plan.Id)
+}
+
+func (t *OnetimeBackupTask) Next(now time.Time) *time.Time {
+	ret := t.time 
+	t.time = nil
+	return ret 
+}
+
+func (t *OnetimeBackupTask) Run(ctx context.Context) error {
+	return backupHelper(ctx, t.orchestrator, t.plan)
+}
+
+// backupHelper does a backup.
+func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan) error {
 	backupOp := &v1.Operation_OperationBackup{
 		OperationBackup: &v1.OperationBackup{},
 	}
 
 	op := &v1.Operation{
-		PlanId: t.plan.Id,
-		RepoId: t.plan.Repo,
+		PlanId: plan.Id,
+		RepoId: plan.Repo,
 		UnixTimeStartMs: time.Now().Unix(),
 		Status: v1.OperationStatus_STATUS_INPROGRESS,
 		Op: backupOp,
 	}
 
-	return WithOperation(t.orchestrator.oplog, op, func() error {
-		zap.L().Info("Starting backup", zap.String("plan", t.plan.Id))
-		repo, err := t.orchestrator.GetRepo(t.plan.Repo)
+	return WithOperation(orchestrator.oplog, op, func() error {
+		zap.L().Info("Starting backup", zap.String("plan", plan.Id))
+		repo, err := orchestrator.GetRepo(plan.Repo)
 		if err != nil {
-			return fmt.Errorf("failed to get repo %q: %w", t.plan.Repo, err)
+			return fmt.Errorf("failed to get repo %q: %w", plan.Repo, err)
 		}
 
-		if _, err := repo.Backup(ctx, t.plan, func(entry *restic.BackupProgressEntry) {
+		if _, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
 			backupOp.OperationBackup.LastStatus = entry.ToProto()
-			if err := t.orchestrator.oplog.Update(op); err != nil {
+			if err := orchestrator.oplog.Update(op); err != nil {
 				zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
 			}
-			zap.L().Info("Backup progress", zap.Float64("progress", entry.PercentDone))
+			zap.L().Debug("Backup progress", zap.Float64("progress", entry.PercentDone))
 		}); err != nil {
-			return fmt.Errorf("failed to backup repo %q: %w", t.plan.Repo, err)
+			return fmt.Errorf("failed to backup repo %q: %w", plan.Repo, err)
 		}
 
+		zap.L().Info("Backup complete", zap.String("plan", plan.Id))
 		return nil
 	})
 }
