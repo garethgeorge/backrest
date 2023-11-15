@@ -1,13 +1,17 @@
 package orchestrator
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 	"github.com/garethgeorge/resticui/internal/config"
+	"github.com/garethgeorge/resticui/internal/oplog"
 	"github.com/garethgeorge/resticui/pkg/restic"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -17,18 +21,52 @@ var ErrPlanNotFound = errors.New("plan not found")
 
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
-	configProvider config.ConfigStore
+	mu sync.Mutex
+	config *v1.Config
+	oplog *oplog.OpLog
 	repoPool *resticRepoPool
+
+	// configUpdates chan makes config changes available to Run()
+	configUpdates chan *v1.Config
 }
 
-func NewOrchestrator(configProvider config.ConfigStore) *Orchestrator {
-	return &Orchestrator{
-		configProvider: configProvider,
-		repoPool: newResticRepoPool(configProvider),
+func NewOrchestrator(configProvider config.ConfigStore, oplog *oplog.OpLog) (*Orchestrator, error) {
+	cfg, err := configProvider.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
+
+	return &Orchestrator{
+		config: cfg,
+		oplog: oplog,
+		repoPool: newResticRepoPool(&config.MemoryStore{Config: cfg}),
+	}, nil
+}
+
+func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.config = cfg
+
+	zap.L().Debug("Applying config to orchestrator", zap.Any("config", cfg))
+	
+	// Update the config provided to the repo pool.
+	if err := o.repoPool.configProvider.Update(cfg); err != nil {
+		return fmt.Errorf("failed to update repo pool config: %w", err)
+	}
+
+	if o.configUpdates != nil {
+		// orchestrator loop is running, notify it of the config change.
+		o.configUpdates <- cfg
+	}
+
+	return nil
 }
 
 func (o *Orchestrator) GetRepo(repoId string) (repo *RepoOrchestrator, err error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
 	r, err := o.repoPool.GetRepo(repoId)
 	if  err != nil {
 		return nil, fmt.Errorf("failed to get repo %q: %w", repoId, err)
@@ -37,16 +75,14 @@ func (o *Orchestrator) GetRepo(repoId string) (repo *RepoOrchestrator, err error
 }
 
 func (o *Orchestrator) GetPlan(planId string) (*v1.Plan, error) {
-	cfg, err := o.configProvider.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get config: %w", err)
-	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
 
-	if cfg.Plans == nil {
+	if o.config.Plans == nil {
 		return nil, ErrPlanNotFound
 	}
 
-	for _, p := range cfg.Plans {
+	for _, p := range o.config.Plans {
 		if p.Id == planId {
 			return p, nil
 		}
@@ -54,6 +90,93 @@ func (o *Orchestrator) GetPlan(planId string) (*v1.Plan, error) {
 
 	return nil, ErrPlanNotFound
 }
+
+// Run is the main orchestration loop. Cancel the context to stop the loop.
+func (o *Orchestrator) Run(mainCtx context.Context) error {
+	zap.L().Info("Starting orchestrator loop")
+
+	o.mu.Lock()
+	o.configUpdates = make(chan *v1.Config)
+	o.mu.Unlock()
+
+	for {
+		lock := sync.Mutex{}
+		ctx, cancel := context.WithCancel(mainCtx)
+		
+		var wg sync.WaitGroup
+
+		var execTask func(t task, runAt time.Time)
+		execTask = func(t task, runAt time.Time) {
+			curTime := time.Now()
+			timer := time.NewTimer(runAt.Sub(curTime))
+			zap.L().Debug("Scheduling task", zap.String("task", t.Name()), zap.String("runAt", runAt.Format(time.RFC3339)))
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				select {
+				case <-ctx.Done():
+					timer.Stop()
+					zap.L().Debug("Not running task, orchestrator context is cancelled.", zap.String("task", t.Name()))
+					return
+				case <-timer.C:
+					lock.Lock()
+					defer lock.Unlock()
+					zap.L().Debug("Running task", zap.String("task", t.Name()))
+					
+					// Task execution runs with mainCtx meaning config changes do not interrupt it, but cancelling the orchestration loop will.
+					if err := t.Run(mainCtx); err != nil {
+						zap.L().Error("Task failed", zap.String("task", t.Name()), zap.Error(err))
+					} else {
+						zap.L().Debug("Task finished", zap.String("task", t.Name()))
+					}
+
+					if ctx.Err() != nil {
+						zap.L().Debug("Not attempting to reschedule task, orchestrator context is cancelled.", zap.String("task", t.Name()))
+						return 
+					}
+
+					next := t.Next(time.Now())
+					if next != nil {
+						execTask(t, *next)
+					} else {
+						zap.L().Debug("Task has no next run, not rescheduling.", zap.String("task", t.Name()))
+					}
+				}
+			}()
+		}
+
+		// Schedule all backup tasks.
+		for _, plan := range o.config.Plans {
+			t, err := newBackupTask(o, plan)
+			if err != nil {
+				zap.L().Error("Failed to create backup task for plan", zap.String("plan", plan.Id), zap.Error(err))
+			}
+
+			next := t.Next(time.Now())
+			if next != nil {
+				execTask(t, *next)
+			} else {
+				zap.L().Debug("Task has no next run, not scheduling.", zap.String("task", t.Name()))
+			}
+		}
+
+		// wait for either an error or the context to be cancelled, then wait for all tasks.
+		select {
+		case <-ctx.Done():
+			cancel()
+			wg.Wait()
+			return nil
+		case <-o.configUpdates:
+			zap.L().Info("Orchestrator received config change, waiting for in-progress operations")
+			cancel()
+			wg.Wait()
+			zap.L().Info("Restarting orchestrator loop")
+			continue 
+		}
+	}
+}
+
 
 // resticRepoPool caches restic repos.
 type resticRepoPool struct {
@@ -102,6 +225,7 @@ func (rp *resticRepoPool) GetRepo(repoId string) (repo *RepoOrchestrator, err er
 	delete(rp.repos, repoId);
 
 	var opts []restic.GenericOption
+	opts = append(opts, restic.WithPropagatedEnvVars(restic.EnvToPropagate...))
 	if len(repoProto.GetEnv()) > 0 {
 		opts = append(opts, restic.WithEnv(repoProto.GetEnv()...))
 	}

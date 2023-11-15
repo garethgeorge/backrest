@@ -340,19 +340,19 @@ type BackupProgressSummary struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	FilesNew            int64  `protobuf:"varint,1,opt,name=files_new,json=filesNew,proto3" json:"files_new,omitempty"`
-	FilesChanged        int64  `protobuf:"varint,2,opt,name=files_changed,json=filesChanged,proto3" json:"files_changed,omitempty"`
-	FilesUnmodified     int64  `protobuf:"varint,3,opt,name=files_unmodified,json=filesUnmodified,proto3" json:"files_unmodified,omitempty"`
-	DirsNew             int64  `protobuf:"varint,4,opt,name=dirs_new,json=dirsNew,proto3" json:"dirs_new,omitempty"`
-	DirsChanged         int64  `protobuf:"varint,5,opt,name=dirs_changed,json=dirsChanged,proto3" json:"dirs_changed,omitempty"`
-	DirsUnmodified      int64  `protobuf:"varint,6,opt,name=dirs_unmodified,json=dirsUnmodified,proto3" json:"dirs_unmodified,omitempty"`
-	DataBlobs           int64  `protobuf:"varint,7,opt,name=data_blobs,json=dataBlobs,proto3" json:"data_blobs,omitempty"`
-	TreeBlobs           int64  `protobuf:"varint,8,opt,name=tree_blobs,json=treeBlobs,proto3" json:"tree_blobs,omitempty"`
-	DataAdded           int64  `protobuf:"varint,9,opt,name=data_added,json=dataAdded,proto3" json:"data_added,omitempty"`
-	TotalFilesProcessed int64  `protobuf:"varint,10,opt,name=total_files_processed,json=totalFilesProcessed,proto3" json:"total_files_processed,omitempty"`
-	TotalBytesProcessed int64  `protobuf:"varint,11,opt,name=total_bytes_processed,json=totalBytesProcessed,proto3" json:"total_bytes_processed,omitempty"`
-	TotalDuration       int64  `protobuf:"varint,12,opt,name=total_duration,json=totalDuration,proto3" json:"total_duration,omitempty"`
-	SnapshotId          string `protobuf:"bytes,13,opt,name=snapshot_id,json=snapshotId,proto3" json:"snapshot_id,omitempty"`
+	FilesNew            int64   `protobuf:"varint,1,opt,name=files_new,json=filesNew,proto3" json:"files_new,omitempty"`
+	FilesChanged        int64   `protobuf:"varint,2,opt,name=files_changed,json=filesChanged,proto3" json:"files_changed,omitempty"`
+	FilesUnmodified     int64   `protobuf:"varint,3,opt,name=files_unmodified,json=filesUnmodified,proto3" json:"files_unmodified,omitempty"`
+	DirsNew             int64   `protobuf:"varint,4,opt,name=dirs_new,json=dirsNew,proto3" json:"dirs_new,omitempty"`
+	DirsChanged         int64   `protobuf:"varint,5,opt,name=dirs_changed,json=dirsChanged,proto3" json:"dirs_changed,omitempty"`
+	DirsUnmodified      int64   `protobuf:"varint,6,opt,name=dirs_unmodified,json=dirsUnmodified,proto3" json:"dirs_unmodified,omitempty"`
+	DataBlobs           int64   `protobuf:"varint,7,opt,name=data_blobs,json=dataBlobs,proto3" json:"data_blobs,omitempty"`
+	TreeBlobs           int64   `protobuf:"varint,8,opt,name=tree_blobs,json=treeBlobs,proto3" json:"tree_blobs,omitempty"`
+	DataAdded           int64   `protobuf:"varint,9,opt,name=data_added,json=dataAdded,proto3" json:"data_added,omitempty"`
+	TotalFilesProcessed int64   `protobuf:"varint,10,opt,name=total_files_processed,json=totalFilesProcessed,proto3" json:"total_files_processed,omitempty"`
+	TotalBytesProcessed int64   `protobuf:"varint,11,opt,name=total_bytes_processed,json=totalBytesProcessed,proto3" json:"total_bytes_processed,omitempty"`
+	TotalDuration       float64 `protobuf:"fixed64,12,opt,name=total_duration,json=totalDuration,proto3" json:"total_duration,omitempty"`
+	SnapshotId          string  `protobuf:"bytes,13,opt,name=snapshot_id,json=snapshotId,proto3" json:"snapshot_id,omitempty"`
 }
 
 func (x *BackupProgressSummary) Reset() {
@@ -464,7 +464,7 @@ func (x *BackupProgressSummary) GetTotalBytesProcessed() int64 {
 	return 0
 }
 
-func (x *BackupProgressSummary) GetTotalDuration() int64 {
+func (x *BackupProgressSummary) GetTotalDuration() float64 {
 	if x != nil {
 		return x.TotalDuration
 	}
@@ -549,7 +549,7 @@ var file_v1_restic_proto_rawDesc = []byte{
 	0x5f, 0x70, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x65, 0x64, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x03,
 	0x52, 0x13, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x42, 0x79, 0x74, 0x65, 0x73, 0x50, 0x72, 0x6f, 0x63,
 	0x65, 0x73, 0x73, 0x65, 0x64, 0x12, 0x25, 0x0a, 0x0e, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x64,
-	0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x74,
+	0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x01, 0x52, 0x0d, 0x74,
 	0x6f, 0x74, 0x61, 0x6c, 0x44, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x1f, 0x0a, 0x0b,
 	0x73, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x0d, 0x20, 0x01, 0x28,
 	0x09, 0x52, 0x0a, 0x73, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x49, 0x64, 0x42, 0x2e, 0x5a,

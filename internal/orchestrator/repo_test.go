@@ -61,12 +61,12 @@ func TestSnapshotParenting(t *testing.T) {
 	}
 
 	plans := []*v1.Plan{
-		&v1.Plan{
+		{
 			Id: "test",
 			Repo: "test",
 			Paths: []string{testData},
 		},
-		&v1.Plan{
+		{
 			Id: "test2",
 			Repo: "test",
 			Paths: []string{testData},

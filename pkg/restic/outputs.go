@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os/exec"
 	"slices"
 	"time"
@@ -78,6 +79,46 @@ type BackupProgressEntry struct {
 	FilesDone int `json:"files_done"`
 	TotalBytes int `json:"total_bytes"`
 	BytesDone int `json:"bytes_done"`
+}
+
+func (b *BackupProgressEntry) ToProto() *v1.BackupProgressEntry {
+	switch b.MessageType {
+	case "summary":
+		return &v1.BackupProgressEntry{
+			Entry: &v1.BackupProgressEntry_Summary{
+				Summary: &v1.BackupProgressSummary{
+					FilesNew: int64(b.FilesNew),
+					FilesChanged: int64(b.FilesChanged),
+					FilesUnmodified: int64(b.FilesUnmodified),
+					DirsNew: int64(b.DirsNew),
+					DirsChanged: int64(b.DirsChanged),
+					DirsUnmodified: int64(b.DirsUnmodified),
+					DataBlobs: int64(b.DataBlobs),
+					TreeBlobs: int64(b.TreeBlobs),
+					DataAdded: int64(b.DataAdded),
+					TotalFilesProcessed: int64(b.TotalFilesProcessed),
+					TotalBytesProcessed: int64(b.TotalBytesProcessed),
+					TotalDuration: float64(b.TotalDuration),
+					SnapshotId: b.SnapshotId,
+				},
+			},
+		}
+	case "status":
+		return &v1.BackupProgressEntry{
+			Entry: &v1.BackupProgressEntry_Status{
+				Status: &v1.BackupProgressStatusEntry{
+					PercentDone: b.PercentDone,
+					TotalFiles: int64(b.TotalFiles),
+					FilesDone: int64(b.FilesDone),
+					TotalBytes: int64(b.TotalBytes),
+					BytesDone: int64(b.BytesDone),
+				},
+			},
+		}
+	default:
+		log.Fatalf("unknown message type: %s", b.MessageType)
+		return nil 
+	}
 }
 
 // readBackupProgressEntrys returns the summary event or an error if the command failed.

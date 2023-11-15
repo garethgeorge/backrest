@@ -16,7 +16,7 @@ message Operation {
   string display_message = 7; // human readable context message (if any)
 
   oneof op {
-    OperationBackup backup = 100;
+    OperationBackup operation_backup = 100;
   }
 }
 
@@ -44,4 +44,3 @@ enum OperationStatus {
 message OperationBackup {
   BackupProgressEntry last_status = 3;
 }
-
