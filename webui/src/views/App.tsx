@@ -14,6 +14,9 @@ import { AlertContextProvider, useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { AddPlanModal } from "./AddPlanModel";
 import { AddRepoModel } from "./AddRepoModel";
+import { MainContentArea, useSetContent } from "../components/MainContentArea";
+import { GettingStartedGuide } from "../components/GettingStartedGuide";
+import { PlanView } from "./PlanView";
 
 const { Header, Content, Sider } = Layout;
 
@@ -22,12 +25,15 @@ export const App: React.FC = () => {
     token: { colorBgContainer, colorTextLightSolid },
   } = theme.useToken();
 
+  const setContent = useSetContent();
   const [config, setConfig] = useRecoilState(configState);
   const alertApi = useAlertApi()!;
   const showModal = useShowModal();
 
   useEffect(() => {
     showModal(<Spin spinning={true} fullscreen />);
+
+    setContent(<GettingStartedGuide />, [{ title: "Getting Started" }]);
 
     fetchConfig()
       .then((config) => {
@@ -64,22 +70,7 @@ export const App: React.FC = () => {
             items={items}
           />
         </Sider>
-        <Layout style={{ padding: "0 24px 24px" }}>
-          <Breadcrumb
-            style={{ margin: "16px 0" }}
-            items={[{ title: "Home" }]}
-          ></Breadcrumb>
-          <Content
-            style={{
-              padding: 24,
-              margin: 0,
-              minHeight: 280,
-              background: colorBgContainer,
-            }}
-          >
-            Content
-          </Content>
-        </Layout>
+        <MainContentArea />
       </Layout>
     </Layout>
   );
@@ -87,6 +78,7 @@ export const App: React.FC = () => {
 
 const getSidenavItems = (config: Config | null): MenuProps["items"] => {
   const showModal = useShowModal();
+  const setContent = useSetContent();
 
   if (!config) return [];
 
@@ -108,7 +100,10 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         icon: <CheckCircleOutlined style={{ color: "green" }} />,
         label: plan.id,
         onClick: () => {
-          showModal(<AddPlanModal template={plan} />);
+          setContent(<PlanView plan={plan} />, [
+            { title: "Plans" },
+            { title: plan.id || "" },
+          ]);
         },
       };
     }),

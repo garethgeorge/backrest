@@ -134,6 +134,7 @@ export const AddRepoModel = ({
     <>
       <Modal
         open={true}
+        onCancel={handleCancel}
         title={template ? "Edit Restic Repository" : "Add Restic Repository"}
         footer={[
           <Button loading={confirmLoading} key="back" onClick={handleCancel}>

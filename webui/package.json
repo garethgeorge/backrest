@@ -23,5 +23,9 @@
     "react-js-cron": "^5.0.1",
     "recoil": "^0.7.7",
     "typescript": "^5.2.2"
+  },
+  "devDependencies": {
+    "events": "^3.3.0",
+    "stream-browserify": "^3.0.0"
   }
 }

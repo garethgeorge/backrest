@@ -38,6 +38,13 @@ service ResticUI {
     };
   }
 
+  rpc GetOperations (GetOperationsRequest) returns (OperationList) {
+    option (google.api.http) = {
+      post: "/v1/operations"
+      body: "*"
+    };
+  }
+
   rpc ListSnapshots(ListSnapshotsRequest) returns (ResticSnapshotList) {
     option (google.api.http) = {
       post: "/v1/snapshots"
@@ -45,6 +52,15 @@ service ResticUI {
     };
   }
 
+  // Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
+  rpc Backup(types.StringValue) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/cmd/backup"
+      body: "*"
+    };
+  }
+
+  // PathAutocomplete provides path autocompletion options for a given filesystem path.
   rpc PathAutocomplete (types.StringValue) returns (types.StringList) {
     option (google.api.http) = {
       post: "/v1/autocomplete/path"
@@ -56,4 +72,10 @@ service ResticUI {
 message ListSnapshotsRequest {
   string repo_id = 1;
   string plan_id = 2;
+}
+
+message GetOperationsRequest {
+  string repo_id = 1;
+  string plan_id = 2;
+  int64 last_n = 3; // limit to the last n operations
 }

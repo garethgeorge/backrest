@@ -25,7 +25,9 @@ const (
 	ResticUI_SetConfig_FullMethodName          = "/v1.ResticUI/SetConfig"
 	ResticUI_AddRepo_FullMethodName            = "/v1.ResticUI/AddRepo"
 	ResticUI_GetOperationEvents_FullMethodName = "/v1.ResticUI/GetOperationEvents"
+	ResticUI_GetOperations_FullMethodName      = "/v1.ResticUI/GetOperations"
 	ResticUI_ListSnapshots_FullMethodName      = "/v1.ResticUI/ListSnapshots"
+	ResticUI_Backup_FullMethodName             = "/v1.ResticUI/Backup"
 	ResticUI_PathAutocomplete_FullMethodName   = "/v1.ResticUI/PathAutocomplete"
 )
 
@@ -37,7 +39,11 @@ type ResticUIClient interface {
 	SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error)
 	AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error)
 	GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (ResticUI_GetOperationEventsClient, error)
+	GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error)
 	ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error)
+	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
+	Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error)
 }
 
@@ -108,9 +114,27 @@ func (x *resticUIGetOperationEventsClient) Recv() (*OperationEvent, error) {
 	return m, nil
 }
 
+func (c *resticUIClient) GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error) {
+	out := new(OperationList)
+	err := c.cc.Invoke(ctx, ResticUI_GetOperations_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *resticUIClient) ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error) {
 	out := new(ResticSnapshotList)
 	err := c.cc.Invoke(ctx, ResticUI_ListSnapshots_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resticUIClient) Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ResticUI_Backup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +158,11 @@ type ResticUIServer interface {
 	SetConfig(context.Context, *Config) (*Config, error)
 	AddRepo(context.Context, *Repo) (*Config, error)
 	GetOperationEvents(*emptypb.Empty, ResticUI_GetOperationEventsServer) error
+	GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error)
 	ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error)
+	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
+	Backup(context.Context, *types.StringValue) (*emptypb.Empty, error)
+	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error)
 	mustEmbedUnimplementedResticUIServer()
 }
@@ -155,8 +183,14 @@ func (UnimplementedResticUIServer) AddRepo(context.Context, *Repo) (*Config, err
 func (UnimplementedResticUIServer) GetOperationEvents(*emptypb.Empty, ResticUI_GetOperationEventsServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetOperationEvents not implemented")
 }
+func (UnimplementedResticUIServer) GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetOperations not implemented")
+}
 func (UnimplementedResticUIServer) ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshots not implemented")
+}
+func (UnimplementedResticUIServer) Backup(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Backup not implemented")
 }
 func (UnimplementedResticUIServer) PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PathAutocomplete not implemented")
@@ -249,6 +283,24 @@ func (x *resticUIGetOperationEventsServer) Send(m *OperationEvent) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _ResticUI_GetOperations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOperationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResticUIServer).GetOperations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResticUI_GetOperations_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResticUIServer).GetOperations(ctx, req.(*GetOperationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ResticUI_ListSnapshots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListSnapshotsRequest)
 	if err := dec(in); err != nil {
@@ -263,6 +315,24 @@ func _ResticUI_ListSnapshots_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResticUIServer).ListSnapshots(ctx, req.(*ListSnapshotsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ResticUI_Backup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(types.StringValue)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResticUIServer).Backup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResticUI_Backup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResticUIServer).Backup(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -305,8 +375,16 @@ var ResticUI_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ResticUI_AddRepo_Handler,
 		},
 		{
+			MethodName: "GetOperations",
+			Handler:    _ResticUI_GetOperations_Handler,
+		},
+		{
 			MethodName: "ListSnapshots",
 			Handler:    _ResticUI_ListSnapshots_Handler,
+		},
+		{
+			MethodName: "Backup",
+			Handler:    _ResticUI_Backup_Handler,
 		},
 		{
 			MethodName: "PathAutocomplete",

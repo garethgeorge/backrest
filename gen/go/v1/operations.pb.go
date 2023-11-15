@@ -125,6 +125,53 @@ func (OperationStatus) EnumDescriptor() ([]byte, []int) {
 	return file_v1_operations_proto_rawDescGZIP(), []int{1}
 }
 
+type OperationList struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Operations []*Operation `protobuf:"bytes,1,rep,name=operations,proto3" json:"operations,omitempty"`
+}
+
+func (x *OperationList) Reset() {
+	*x = OperationList{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_v1_operations_proto_msgTypes[0]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OperationList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OperationList) ProtoMessage() {}
+
+func (x *OperationList) ProtoReflect() protoreflect.Message {
+	mi := &file_v1_operations_proto_msgTypes[0]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OperationList.ProtoReflect.Descriptor instead.
+func (*OperationList) Descriptor() ([]byte, []int) {
+	return file_v1_operations_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *OperationList) GetOperations() []*Operation {
+	if x != nil {
+		return x.Operations
+	}
+	return nil
+}
+
 type Operation struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -146,7 +193,7 @@ type Operation struct {
 func (x *Operation) Reset() {
 	*x = Operation{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_v1_operations_proto_msgTypes[0]
+		mi := &file_v1_operations_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -159,7 +206,7 @@ func (x *Operation) String() string {
 func (*Operation) ProtoMessage() {}
 
 func (x *Operation) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_operations_proto_msgTypes[0]
+	mi := &file_v1_operations_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -172,7 +219,7 @@ func (x *Operation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Operation.ProtoReflect.Descriptor instead.
 func (*Operation) Descriptor() ([]byte, []int) {
-	return file_v1_operations_proto_rawDescGZIP(), []int{0}
+	return file_v1_operations_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Operation) GetId() int64 {
@@ -261,7 +308,7 @@ type OperationEvent struct {
 func (x *OperationEvent) Reset() {
 	*x = OperationEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_v1_operations_proto_msgTypes[1]
+		mi := &file_v1_operations_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -274,7 +321,7 @@ func (x *OperationEvent) String() string {
 func (*OperationEvent) ProtoMessage() {}
 
 func (x *OperationEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_operations_proto_msgTypes[1]
+	mi := &file_v1_operations_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -287,7 +334,7 @@ func (x *OperationEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperationEvent.ProtoReflect.Descriptor instead.
 func (*OperationEvent) Descriptor() ([]byte, []int) {
-	return file_v1_operations_proto_rawDescGZIP(), []int{1}
+	return file_v1_operations_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *OperationEvent) GetType() OperationEventType {
@@ -315,7 +362,7 @@ type OperationBackup struct {
 func (x *OperationBackup) Reset() {
 	*x = OperationBackup{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_v1_operations_proto_msgTypes[2]
+		mi := &file_v1_operations_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -328,7 +375,7 @@ func (x *OperationBackup) String() string {
 func (*OperationBackup) ProtoMessage() {}
 
 func (x *OperationBackup) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_operations_proto_msgTypes[2]
+	mi := &file_v1_operations_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -341,7 +388,7 @@ func (x *OperationBackup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperationBackup.ProtoReflect.Descriptor instead.
 func (*OperationBackup) Descriptor() ([]byte, []int) {
-	return file_v1_operations_proto_rawDescGZIP(), []int{2}
+	return file_v1_operations_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *OperationBackup) GetLastStatus() *BackupProgressEntry {
@@ -356,7 +403,11 @@ var File_v1_operations_proto protoreflect.FileDescriptor
 var file_v1_operations_proto_rawDesc = []byte{
 	0x0a, 0x13, 0x76, 0x31, 0x2f, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e,
 	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x02, 0x76, 0x31, 0x1a, 0x0f, 0x76, 0x31, 0x2f, 0x72, 0x65,
-	0x73, 0x74, 0x69, 0x63, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xc1, 0x02, 0x0a, 0x09, 0x4f,
+	0x73, 0x74, 0x69, 0x63, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x3e, 0x0a, 0x0d, 0x4f, 0x70,
+	0x65, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4c, 0x69, 0x73, 0x74, 0x12, 0x2d, 0x0a, 0x0a, 0x6f,
+	0x70, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32,
+	0x0d, 0x2e, 0x76, 0x31, 0x2e, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0a,
+	0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0xc1, 0x02, 0x0a, 0x09, 0x4f,
 	0x70, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01,
 	0x20, 0x01, 0x28, 0x03, 0x52, 0x02, 0x69, 0x64, 0x12, 0x17, 0x0a, 0x07, 0x72, 0x65, 0x70, 0x6f,
 	0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x65, 0x70, 0x6f, 0x49,
@@ -420,26 +471,28 @@ func file_v1_operations_proto_rawDescGZIP() []byte {
 }
 
 var file_v1_operations_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_v1_operations_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_v1_operations_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_v1_operations_proto_goTypes = []interface{}{
 	(OperationEventType)(0),     // 0: v1.OperationEventType
 	(OperationStatus)(0),        // 1: v1.OperationStatus
-	(*Operation)(nil),           // 2: v1.Operation
-	(*OperationEvent)(nil),      // 3: v1.OperationEvent
-	(*OperationBackup)(nil),     // 4: v1.OperationBackup
-	(*BackupProgressEntry)(nil), // 5: v1.BackupProgressEntry
+	(*OperationList)(nil),       // 2: v1.OperationList
+	(*Operation)(nil),           // 3: v1.Operation
+	(*OperationEvent)(nil),      // 4: v1.OperationEvent
+	(*OperationBackup)(nil),     // 5: v1.OperationBackup
+	(*BackupProgressEntry)(nil), // 6: v1.BackupProgressEntry
 }
 var file_v1_operations_proto_depIdxs = []int32{
-	1, // 0: v1.Operation.status:type_name -> v1.OperationStatus
-	4, // 1: v1.Operation.operation_backup:type_name -> v1.OperationBackup
-	0, // 2: v1.OperationEvent.type:type_name -> v1.OperationEventType
-	2, // 3: v1.OperationEvent.operation:type_name -> v1.Operation
-	5, // 4: v1.OperationBackup.last_status:type_name -> v1.BackupProgressEntry
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	3, // 0: v1.OperationList.operations:type_name -> v1.Operation
+	1, // 1: v1.Operation.status:type_name -> v1.OperationStatus
+	5, // 2: v1.Operation.operation_backup:type_name -> v1.OperationBackup
+	0, // 3: v1.OperationEvent.type:type_name -> v1.OperationEventType
+	3, // 4: v1.OperationEvent.operation:type_name -> v1.Operation
+	6, // 5: v1.OperationBackup.last_status:type_name -> v1.BackupProgressEntry
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_v1_operations_proto_init() }
@@ -450,7 +503,7 @@ func file_v1_operations_proto_init() {
 	file_v1_restic_proto_init()
 	if !protoimpl.UnsafeEnabled {
 		file_v1_operations_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Operation); i {
+			switch v := v.(*OperationList); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -462,7 +515,7 @@ func file_v1_operations_proto_init() {
 			}
 		}
 		file_v1_operations_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*OperationEvent); i {
+			switch v := v.(*Operation); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -474,6 +527,18 @@ func file_v1_operations_proto_init() {
 			}
 		}
 		file_v1_operations_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OperationEvent); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_v1_operations_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*OperationBackup); i {
 			case 0:
 				return &v.state
@@ -486,7 +551,7 @@ func file_v1_operations_proto_init() {
 			}
 		}
 	}
-	file_v1_operations_proto_msgTypes[0].OneofWrappers = []interface{}{
+	file_v1_operations_proto_msgTypes[1].OneofWrappers = []interface{}{
 		(*Operation_OperationBackup)(nil),
 	}
 	type x struct{}
@@ -495,7 +560,7 @@ func file_v1_operations_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_v1_operations_proto_rawDesc,
 			NumEnums:      2,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

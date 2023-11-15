@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/garethgeorge/resticui/gen/go/types"
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
@@ -28,6 +29,7 @@ var _ v1.ResticUIServer = &Server{}
 func NewServer(orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog) *Server {
 	s := &Server{
 		orchestrator: orchestrator,
+		oplog: oplog,
 	}
 
 	return s
@@ -54,6 +56,12 @@ func (s *Server) SetConfig(ctx context.Context, c *v1.Config) (*v1.Config, error
 	if err := config.Default.Update(c); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
+
+	newConfig, err := config.Default.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get newly set config: %w", err)
+	}
+	s.orchestrator.ApplyConfig(newConfig)
 	return config.Default.Get()
 }
 
@@ -122,7 +130,7 @@ func (s *Server) ListSnapshots(ctx context.Context, query *v1.ListSnapshotsReque
 	}, nil
 }
 
-// GetEvents implements GET /v1/events
+// GetOperationEvents implements GET /v1/events/operations
 func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.ResticUI_GetOperationEventsServer) error {
 	errorChan := make(chan error)
 	defer close(errorChan)
@@ -156,6 +164,40 @@ func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.ResticUI_GetOper
 	case err := <-errorChan:
 		return err
 	}
+}
+
+func (s *Server) GetOperations(ctx context.Context, req *v1.GetOperationsRequest) (*v1.OperationList, error) {
+	filter := oplog.FilterKeepAll()
+
+	if req.LastN != 0 {
+		filter = oplog.FilterLastN(req.LastN)
+	}
+
+	var err error 
+	var ops []*v1.Operation
+	if req.RepoId != "" && req.PlanId != "" {
+		return nil, errors.New("cannot specify both repoId and planId")
+	} else if req.PlanId != "" {
+		ops, err = s.oplog.GetByPlan(req.PlanId, filter)
+	} else if req.RepoId != "" {
+		ops, err = s.oplog.GetByRepo(req.RepoId, filter)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get operations: %w", err)
+	}
+
+	return &v1.OperationList{
+		Operations: ops,
+	}, nil
+}
+
+func (s* Server) Backup(ctx context.Context, req *types.StringValue) (*emptypb.Empty, error) {
+	plan, err := s.orchestrator.GetPlan(req.Value)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get plan %q: %w", req.Value, err)
+	}
+	s.orchestrator.EnqueueTask(orchestrator.NewOneofBackupTask(s.orchestrator, plan, time.Now()))
+	return &emptypb.Empty{}, nil
 }
 
 func (s *Server) PathAutocomplete(ctx context.Context, path *types.StringValue) (*types.StringList, error) {

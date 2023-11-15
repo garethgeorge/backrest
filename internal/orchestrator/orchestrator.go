@@ -26,8 +26,9 @@ type Orchestrator struct {
 	oplog *oplog.OpLog
 	repoPool *resticRepoPool
 
-	// configUpdates chan makes config changes available to Run()
-	configUpdates chan *v1.Config
+	
+	configUpdates chan *v1.Config // configUpdates chan makes config changes available to Run()
+	externTasks chan Task // externTasks is a channel that externally added tasks can be added to, they will be consumed by Run()
 }
 
 func NewOrchestrator(configProvider config.ConfigStore, oplog *oplog.OpLog) (*Orchestrator, error) {
@@ -40,6 +41,7 @@ func NewOrchestrator(configProvider config.ConfigStore, oplog *oplog.OpLog) (*Or
 		config: cfg,
 		oplog: oplog,
 		repoPool: newResticRepoPool(&config.MemoryStore{Config: cfg}),
+		externTasks: make(chan Task, 2),
 	}, nil
 }
 
@@ -99,84 +101,99 @@ func (o *Orchestrator) Run(mainCtx context.Context) error {
 	o.configUpdates = make(chan *v1.Config)
 	o.mu.Unlock()
 
-	for {
-		lock := sync.Mutex{}
-		ctx, cancel := context.WithCancel(mainCtx)
-		
-		var wg sync.WaitGroup
+	for mainCtx.Err() == nil {
+		o.mu.Lock()
+		config := o.config
+		o.mu.Unlock()
+		o.runVersion(mainCtx, config)
+		zap.L().Info("Restarting orchestrator loop")
+	}
+	zap.L().Info("Exited orchestrator loop, context cancelled.")
 
-		var execTask func(t task, runAt time.Time)
-		execTask = func(t task, runAt time.Time) {
-			curTime := time.Now()
-			timer := time.NewTimer(runAt.Sub(curTime))
-			zap.L().Debug("Scheduling task", zap.String("task", t.Name()), zap.String("runAt", runAt.Format(time.RFC3339)))
+	return nil
+}
 
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				select {
-				case <-ctx.Done():
-					timer.Stop()
-					zap.L().Debug("Not running task, orchestrator context is cancelled.", zap.String("task", t.Name()))
-					return
-				case <-timer.C:
-					lock.Lock()
-					defer lock.Unlock()
-					zap.L().Debug("Running task", zap.String("task", t.Name()))
-					
-					// Task execution runs with mainCtx meaning config changes do not interrupt it, but cancelling the orchestration loop will.
-					if err := t.Run(mainCtx); err != nil {
-						zap.L().Error("Task failed", zap.String("task", t.Name()), zap.Error(err))
-					} else {
-						zap.L().Debug("Task finished", zap.String("task", t.Name()))
-					}
+// runImmutable is a helper function for Run() that runs the orchestration loop with a single version of the config.
+func (o *Orchestrator) runVersion(mainCtx context.Context, config *v1.Config) {
+	lock := sync.Mutex{}
+	ctx, cancel := context.WithCancel(mainCtx)
+	
+	var wg sync.WaitGroup
 
-					if ctx.Err() != nil {
-						zap.L().Debug("Not attempting to reschedule task, orchestrator context is cancelled.", zap.String("task", t.Name()))
-						return 
-					}
+	var execTask func(t Task)
+	execTask = func(t Task) {
+		curTime := time.Now()
 
-					next := t.Next(time.Now())
-					if next != nil {
-						execTask(t, *next)
-					} else {
-						zap.L().Debug("Task has no next run, not rescheduling.", zap.String("task", t.Name()))
-					}
+		runAt := t.Next(curTime)
+		if runAt == nil {
+			zap.L().Debug("Task has no next run, not scheduling.", zap.String("task", t.Name()))
+			return
+		}
+
+		timer := time.NewTimer(runAt.Sub(curTime))
+		zap.L().Debug("Scheduling task", zap.String("task", t.Name()), zap.String("runAt", runAt.Format(time.RFC3339)))
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				zap.L().Debug("Cancelling scheduled (but not running) task, orchestrator context is cancelled.", zap.String("task", t.Name()))
+				return
+			case <-timer.C:
+				lock.Lock()
+				defer lock.Unlock()
+				zap.L().Debug("Running task", zap.String("task", t.Name()))
+				
+				// Task execution runs with mainCtx meaning config changes do not interrupt it, but cancelling the orchestration loop will.
+				if err := t.Run(mainCtx); err != nil {
+					zap.L().Error("Task failed", zap.String("task", t.Name()), zap.Error(err))
+				} else {
+					zap.L().Debug("Task finished", zap.String("task", t.Name()))
 				}
-			}()
+
+				if ctx.Err() != nil {
+					zap.L().Debug("Not attempting to reschedule task, orchestrator context is cancelled.", zap.String("task", t.Name()))
+					return 
+				}
+
+				execTask(t)
+			}
+		}()
+	}
+
+	// Schedule all backup tasks.
+	for _, plan := range config.Plans {
+		t, err := NewScheduledBackupTask(o, plan)
+		if err != nil {
+			zap.L().Error("Failed to create backup task for plan", zap.String("plan", plan.Id), zap.Error(err))
 		}
 
-		// Schedule all backup tasks.
-		for _, plan := range o.config.Plans {
-			t, err := newBackupTask(o, plan)
-			if err != nil {
-				zap.L().Error("Failed to create backup task for plan", zap.String("plan", plan.Id), zap.Error(err))
-			}
+		execTask(t)
+	}
 
-			next := t.Next(time.Now())
-			if next != nil {
-				execTask(t, *next)
-			} else {
-				zap.L().Debug("Task has no next run, not scheduling.", zap.String("task", t.Name()))
-			}
-		}
-
-		// wait for either an error or the context to be cancelled, then wait for all tasks.
+	// wait for either an error or the context to be cancelled, then wait for all tasks.
+	for {
 		select {
+		case t := <-o.externTasks:
+			execTask(t)
 		case <-ctx.Done():
 			cancel()
 			wg.Wait()
-			return nil
+			return 
 		case <-o.configUpdates:
 			zap.L().Info("Orchestrator received config change, waiting for in-progress operations")
 			cancel()
 			wg.Wait()
-			zap.L().Info("Restarting orchestrator loop")
-			continue 
+			return
 		}
 	}
 }
 
+func (o *Orchestrator) EnqueueTask(t Task) {
+	o.externTasks <- t
+}
 
 // resticRepoPool caches restic repos.
 type resticRepoPool struct {
