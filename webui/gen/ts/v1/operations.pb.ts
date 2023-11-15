@@ -41,7 +41,7 @@ type BaseOperation = {
 }
 
 export type Operation = BaseOperation
-  & OneOf<{ backup: OperationBackup }>
+  & OneOf<{ operationBackup: OperationBackup }>
 
 export type OperationEvent = {
   type?: OperationEventType

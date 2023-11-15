@@ -30,6 +30,7 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
 	github.com/google/orderedcode v0.0.1 // indirect
+	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.17.2 // indirect

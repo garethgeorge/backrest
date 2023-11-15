@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sync"
-	"sync/atomic"
 
 	"github.com/garethgeorge/resticui/gen/go/types"
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
@@ -23,17 +21,12 @@ type Server struct {
 	*v1.UnimplementedResticUIServer
 	orchestrator *orchestrator.Orchestrator
 	oplog *oplog.OpLog
-
-	reqId atomic.Uint64
-	eventChannelsMu sync.Mutex
-	eventChannels map[uint64]chan *v1.Event
 }
 
 var _ v1.ResticUIServer = &Server{}
 
 func NewServer(orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog) *Server {
 	s := &Server{
-		eventChannels: make(map[uint64]chan *v1.Event),
 		orchestrator: orchestrator,
 	}
 
@@ -84,10 +77,12 @@ func (s *Server) AddRepo(ctx context.Context, repo *v1.Repo) (*v1.Config, error)
 		return nil, fmt.Errorf("failed to init repo: %w", err)
 	}
 
-	zap.S().Debug("Updating config")
+	zap.L().Debug("Updating config")
 	if err := config.Default.Update(c); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
+
+	s.orchestrator.ApplyConfig(c)
 
 	return c, nil
 }
@@ -139,7 +134,7 @@ func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.ResticUI_GetOper
 		case oplog.EventTypeOpUpdated:
 			eventTypeMapped = v1.OperationEventType_EVENT_UPDATED
 		default:
-			zap.S().Error("Unknown event type", zap.Int("eventType", int(eventType)))
+			zap.L().Error("Unknown event type", zap.Int("eventType", int(eventType)))
 			eventTypeMapped = v1.OperationEventType_EVENT_UNKNOWN
 		}
 
@@ -179,13 +174,3 @@ func (s *Server) PathAutocomplete(ctx context.Context, path *types.StringValue) 
 	return &types.StringList{Values: paths}, nil
 }
 
-
-// PublishEvent publishes an event to all GetEvents streams. It is effectively a multicast.
-func (s *Server) PublishEvent(event *v1.Event) {
-	zap.S().Debug("Publishing event", zap.Any("event", event))
-	s.eventChannelsMu.Lock()
-	defer s.eventChannelsMu.Unlock()
-	for _, ch := range s.eventChannels {
-		ch <- event
-	}
-}

@@ -47,8 +47,22 @@ func main() {
 	}
 	defer oplog.Close()
 
+	orchestrator, err := orchestrator.NewOrchestrator(config.Default, oplog)
+	if err != nil {
+		zap.S().Fatalf("Error creating orchestrator: %v", err)
+	}
+
+	// Start orchestration loop.
+	go func() {
+		err := orchestrator.Run(ctx)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			zap.S().Fatal("Orchestrator loop exited with error: ", zap.Error(err))
+			cancel() // cancel the context when the orchestrator exits (e.g. on fatal error)
+		}
+	}()
+
 	apiServer := api.NewServer(
-		orchestrator.NewOrchestrator(config.Default), // TODO: eliminate default config
+		orchestrator, // TODO: eliminate default config
 		oplog,
 	)
 
@@ -78,9 +92,9 @@ func main() {
 			server.Shutdown(context.Background())
 		}()
 		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			zap.S().Error("Error starting server", zap.Error(err))
+			zap.L().Error("Error starting server", zap.Error(err))
 		}
-		zap.S().Info("HTTP gateway shutdown")
+		zap.L().Info("HTTP gateway shutdown")
 		cancel() // cancel the context when the HTTP server exits (e.g. on fatal error)
 	}()
 
@@ -92,6 +106,7 @@ func init() {
 	if os.Getenv("DEBUG") != "" {
 		c := zap.NewDevelopmentEncoderConfig()
 		c.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		c.EncodeTime = zapcore.ISO8601TimeEncoder
 		l := zap.New(zapcore.NewCore(
 				zapcore.NewConsoleEncoder(c),
 				zapcore.AddSync(colorable.NewColorableStdout()),

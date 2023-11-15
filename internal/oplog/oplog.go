@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
+	"path"
 	"sync"
 	"time"
 
@@ -26,11 +28,12 @@ var (
 	OpLogBucket  = []byte("oplog.log") // oplog stores the operations themselves
 	RepoIndexBucket = []byte("oplog.repo_idx") // repo_index tracks IDs of operations affecting a given repo
 	PlanIndexBucket = []byte("oplog.plan_idx") // plan_index tracks IDs of operations affecting a given plan
+	SnapshotIdBucket = []byte("oplog.snapshot_id") // index by snapshot ID.
 )
 
 
 // OpLog represents a log of operations performed.
-// TODO: implement trim support for old operations.
+// Operations are indexed by repo and plan.
 type OpLog struct {
 	db *bolt.DB
 
@@ -38,8 +41,12 @@ type OpLog struct {
 	subscribers []*func(EventType, *v1.Operation)
 }
 
-func NewOpLog(databaseDir string) (*OpLog, error) {
-	db, err := bolt.Open(databaseDir, 0600, &bolt.Options{Timeout: 1 * time.Second})
+func NewOpLog(databasePath string) (*OpLog, error) {
+	if err := os.MkdirAll(path.Dir(databasePath), 0700); err != nil {
+		return nil, fmt.Errorf("error creating database directory: %s", err)
+	}
+
+	db, err := bolt.Open(databasePath, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
 		return nil, fmt.Errorf("error opening database: %s", err)
 	}
@@ -257,9 +264,7 @@ func (o *OpLog) readOpsFromIndexBucket(tx *bolt.Tx, bucket []byte, indexId strin
 
 	var ops []int64
 	c := b.Cursor()
-	var prefix []byte
-	prefix = append(prefix, itob(int64(len(indexId)))...)
-	prefix = append(prefix, []byte(indexId)...)
+	prefix := stob(indexId)
 	for k, _ := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, _ = c.Next() {
 		ops = append(ops, btoi(k[len(prefix):]))
 	}

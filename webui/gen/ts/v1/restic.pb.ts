@@ -54,6 +54,6 @@ export type BackupProgressSummary = {
   dataAdded?: string
   totalFilesProcessed?: string
   totalBytesProcessed?: string
-  totalDuration?: string
+  totalDuration?: number
   snapshotId?: string
 }
