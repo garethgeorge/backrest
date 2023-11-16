@@ -25,15 +25,13 @@ export const App: React.FC = () => {
     token: { colorBgContainer, colorTextLightSolid },
   } = theme.useToken();
 
-  const setContent = useSetContent();
   const [config, setConfig] = useRecoilState(configState);
   const alertApi = useAlertApi()!;
   const showModal = useShowModal();
+  const setContent = useSetContent();
 
   useEffect(() => {
     showModal(<Spin spinning={true} fullscreen />);
-
-    setContent(<GettingStartedGuide />, [{ title: "Getting Started" }]);
 
     fetchConfig()
       .then((config) => {
@@ -47,14 +45,18 @@ export const App: React.FC = () => {
       });
   }, []);
 
-  console.log("rerender config ", config);
   const items = getSidenavItems(config);
 
   return (
-    <Layout style={{ height: "100vh" }}>
+    <Layout style={{ height: "auto" }}>
       <Header style={{ display: "flex", alignItems: "center" }}>
-        <h1 style={{ color: colorTextLightSolid }}>
-          ResticUI{" "}
+        <h1>
+          <a
+            style={{ color: colorTextLightSolid }}
+            onClick={() => setContent(null, [])}
+          >
+            ResticUI{" "}
+          </a>
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.3em" }}>
             {process.env.BUILD_TIME ? "v" + process.env.BUILD_TIME : ""}
           </small>

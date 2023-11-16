@@ -1,9 +1,8 @@
 import { Breadcrumb, Layout, Spin, theme } from "antd";
-import { BreadcrumbItemType } from "antd/es/breadcrumb/Breadcrumb";
 import { Content } from "antd/es/layout/layout";
-import React, { useContext } from "react";
-import { createContext } from "react";
+import React from "react";
 import { atom, useRecoilValue, useSetRecoilState } from "recoil";
+import { GettingStartedGuide } from "./GettingStartedGuide";
 
 interface Breadcrumb {
   title: string;
@@ -35,8 +34,13 @@ export const MainContentArea = () => {
     token: { colorBgContainer },
   } = theme.useToken();
 
-  const content = useRecoilValue(contentPanel);
-  const crumbs = useRecoilValue(breadcrumbs);
+  let content = useRecoilValue(contentPanel);
+  let crumbs = useRecoilValue(breadcrumbs);
+
+  if (!content) {
+    content = <GettingStartedGuide />;
+    crumbs = [{ title: "Getting started" }];
+  }
 
   return (
     <Layout style={{ padding: "0 24px 24px" }}>
