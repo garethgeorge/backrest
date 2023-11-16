@@ -95,26 +95,28 @@ func (o *Orchestrator) GetPlan(planId string) (*v1.Plan, error) {
 
 // Run is the main orchestration loop. Cancel the context to stop the loop.
 func (o *Orchestrator) Run(mainCtx context.Context) error {
-	zap.L().Info("Starting orchestrator loop")
+	zap.L().Info("starting orchestrator loop")
 
 	o.mu.Lock()
 	o.configUpdates = make(chan *v1.Config)
 	o.mu.Unlock()
 
-	for mainCtx.Err() == nil {
+	for {
 		o.mu.Lock()
 		config := o.config
 		o.mu.Unlock()
-		o.runVersion(mainCtx, config)
-		zap.L().Info("Restarting orchestrator loop")
+		if o.runVersion(mainCtx, config) {
+			zap.L().Info("restarting orchestrator loop")
+		} else {
+			zap.L().Info("exiting orchestrator loop, context cancelled.")
+			break
+		}
 	}
-	zap.L().Info("Exited orchestrator loop, context cancelled.")
-
 	return nil
 }
 
 // runImmutable is a helper function for Run() that runs the orchestration loop with a single version of the config.
-func (o *Orchestrator) runVersion(mainCtx context.Context, config *v1.Config) {
+func (o *Orchestrator) runVersion(mainCtx context.Context, config *v1.Config) bool {
 	lock := sync.Mutex{}
 	ctx, cancel := context.WithCancel(mainCtx)
 	
@@ -126,12 +128,12 @@ func (o *Orchestrator) runVersion(mainCtx context.Context, config *v1.Config) {
 
 		runAt := t.Next(curTime)
 		if runAt == nil {
-			zap.L().Debug("Task has no next run, not scheduling.", zap.String("task", t.Name()))
+			zap.L().Debug("task has no next run, not scheduling.", zap.String("task", t.Name()))
 			return
 		}
 
 		timer := time.NewTimer(runAt.Sub(curTime))
-		zap.L().Debug("Scheduling task", zap.String("task", t.Name()), zap.String("runAt", runAt.Format(time.RFC3339)))
+		zap.L().Info("scheduling task", zap.String("task", t.Name()), zap.String("runAt", runAt.Format(time.RFC3339)))
 
 		wg.Add(1)
 		go func() {
@@ -139,22 +141,22 @@ func (o *Orchestrator) runVersion(mainCtx context.Context, config *v1.Config) {
 			select {
 			case <-ctx.Done():
 				timer.Stop()
-				zap.L().Debug("Cancelling scheduled (but not running) task, orchestrator context is cancelled.", zap.String("task", t.Name()))
+				zap.L().Debug("cancelled scheduled (but not running) task, orchestrator context is cancelled.", zap.String("task", t.Name()))
 				return
 			case <-timer.C:
 				lock.Lock()
 				defer lock.Unlock()
-				zap.L().Debug("Running task", zap.String("task", t.Name()))
+				zap.L().Info("running task", zap.String("task", t.Name()))
 				
 				// Task execution runs with mainCtx meaning config changes do not interrupt it, but cancelling the orchestration loop will.
 				if err := t.Run(mainCtx); err != nil {
-					zap.L().Error("Task failed", zap.String("task", t.Name()), zap.Error(err))
+					zap.L().Error("task failed", zap.String("task", t.Name()), zap.Error(err))
 				} else {
-					zap.L().Debug("Task finished", zap.String("task", t.Name()))
+					zap.L().Debug("task finished", zap.String("task", t.Name()))
 				}
 
 				if ctx.Err() != nil {
-					zap.L().Debug("Not attempting to reschedule task, orchestrator context is cancelled.", zap.String("task", t.Name()))
+					zap.L().Debug("not attempting to reschedule task, orchestrator context is cancelled.", zap.String("task", t.Name()))
 					return 
 				}
 
@@ -167,7 +169,7 @@ func (o *Orchestrator) runVersion(mainCtx context.Context, config *v1.Config) {
 	for _, plan := range config.Plans {
 		t, err := NewScheduledBackupTask(o, plan)
 		if err != nil {
-			zap.L().Error("Failed to create backup task for plan", zap.String("plan", plan.Id), zap.Error(err))
+			zap.L().Error("failed to create backup task for plan", zap.String("plan", plan.Id), zap.Error(err))
 		}
 
 		execTask(t)
@@ -178,15 +180,16 @@ func (o *Orchestrator) runVersion(mainCtx context.Context, config *v1.Config) {
 		select {
 		case t := <-o.externTasks:
 			execTask(t)
-		case <-ctx.Done():
+		case <-mainCtx.Done():
+			zap.L().Info("orchestrator context cancelled, shutting down orchestrator")
 			cancel()
 			wg.Wait()
-			return 
+			return false
 		case <-o.configUpdates:
-			zap.L().Info("Orchestrator received config change, waiting for in-progress operations")
+			zap.L().Info("orchestrator received config change, waiting for in-progress operations then restarting")
 			cancel()
 			wg.Wait()
-			return
+			return true
 		}
 	}
 }
