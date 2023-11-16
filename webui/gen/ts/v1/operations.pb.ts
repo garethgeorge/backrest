@@ -45,7 +45,7 @@ type BaseOperation = {
 }
 
 export type Operation = BaseOperation
-  & OneOf<{ operationBackup: OperationBackup }>
+  & OneOf<{ operationBackup: OperationBackup; operationIndexSnapshot: OperationIndexSnapshot }>
 
 export type OperationEvent = {
   type?: OperationEventType
@@ -54,4 +54,8 @@ export type OperationEvent = {
 
 export type OperationBackup = {
   lastStatus?: V1Restic.BackupProgressEntry
+}
+
+export type OperationIndexSnapshot = {
+  snapshot?: V1Restic.ResticSnapshot
 }
