@@ -9,7 +9,7 @@ import (
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 	"github.com/garethgeorge/resticui/internal/config"
-	"github.com/garethgeorge/resticui/internal/oplog"
+	"github.com/garethgeorge/resticui/internal/database/oplog"
 	"github.com/garethgeorge/resticui/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"

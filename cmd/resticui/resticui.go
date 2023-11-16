@@ -13,7 +13,7 @@ import (
 
 	"github.com/garethgeorge/resticui/internal/api"
 	"github.com/garethgeorge/resticui/internal/config"
-	"github.com/garethgeorge/resticui/internal/oplog"
+	"github.com/garethgeorge/resticui/internal/database/oplog"
 	"github.com/garethgeorge/resticui/internal/orchestrator"
 	static "github.com/garethgeorge/resticui/webui"
 	"github.com/mattn/go-colorable"

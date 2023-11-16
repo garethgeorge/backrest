@@ -10,6 +10,8 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
+	"github.com/garethgeorge/resticui/internal/database/indexutil"
+	"github.com/garethgeorge/resticui/internal/database/serializationutil"
 	bolt "go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
@@ -28,9 +30,7 @@ var (
 	OpLogBucket  = []byte("oplog.log") // oplog stores the operations themselves
 	RepoIndexBucket = []byte("oplog.repo_idx") // repo_index tracks IDs of operations affecting a given repo
 	PlanIndexBucket = []byte("oplog.plan_idx") // plan_index tracks IDs of operations affecting a given plan
-	SnapshotIdBucket = []byte("oplog.snapshot_id") // index by snapshot ID.
 )
-
 
 // OpLog represents a log of operations performed.
 // Operations are indexed by repo and plan.
@@ -90,30 +90,26 @@ func (o *OpLog) Add(op *v1.Operation) error {
 			return fmt.Errorf("error marshalling operation: %w", err)
 		}
 
-		if err := b.Put(itob(op.Id), bytes); err != nil {
+
+		if err := b.Put(serializationutil.Itob(op.Id), bytes); err != nil {
 			return fmt.Errorf("error putting operation into bucket: %w", err)
 		}
 
 		if op.RepoId != "" {
-			if err := o.addOpToIndexBucket(tx, RepoIndexBucket, op.RepoId, op.Id); err != nil {
+			if err := indexutil.IndexByteValue(tx.Bucket(RepoIndexBucket), []byte(op.RepoId), op.Id); err != nil {
 				return fmt.Errorf("error adding operation to repo index: %w", err)
 			}
 		}
-
 		if op.PlanId != "" {
-			if err := o.addOpToIndexBucket(tx, PlanIndexBucket, op.PlanId, op.Id); err != nil {
-				return fmt.Errorf("error adding operation to plan index: %w", err)
+			if err := indexutil.IndexByteValue(tx.Bucket(PlanIndexBucket), []byte(op.PlanId), op.Id); err != nil {
+				return fmt.Errorf("error adding operation to repo index: %w", err)
 			}
 		}
 
 		return nil
 	})
-	if err != nil {
-		o.subscribersMu.RLock()
-		defer o.subscribersMu.RUnlock()
-		for _, sub := range o.subscribers {
-			(*sub)(EventTypeOpCreated, op)
-		}
+	if err == nil {
+		o.notifyHelper(EventTypeOpCreated, op)
 	}
 	return err
 }
@@ -126,7 +122,7 @@ func (o *OpLog) Update(op *v1.Operation) error {
 	err := o.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(OpLogBucket)
 
-		if b.Get(itob(op.Id)) == nil {
+		if b.Get(serializationutil.Itob(op.Id)) == nil {
 			return fmt.Errorf("operation with ID %d does not exist", op.Id)
 		}
 
@@ -135,25 +131,28 @@ func (o *OpLog) Update(op *v1.Operation) error {
 			return fmt.Errorf("error marshalling operation: %w", err)
 		}
 
-
-		if err := b.Put(itob(op.Id), bytes); err != nil {
+		if err := b.Put(serializationutil.Itob(op.Id), bytes); err != nil {
 			return fmt.Errorf("error putting operation into bucket: %w", err)
 		}
 
 		return nil
 	})
-	if err != nil {
-		o.subscribersMu.RLock()
-		defer o.subscribersMu.RUnlock()
-		for _, sub := range o.subscribers {
-			(*sub)(EventTypeOpUpdated, op)
-		}
+	if err == nil {
+		o.notifyHelper(EventTypeOpUpdated, op)
 	}
 	return err
 }
 
+func (o *OpLog) notifyHelper(eventType EventType, op *v1.Operation) {
+	o.subscribersMu.RLock()
+	defer o.subscribersMu.RUnlock()
+	for _, sub := range o.subscribers {
+		(*sub)(eventType, op)
+	}
+}
+
 func (o *OpLog) getHelper(b *bolt.Bucket, id int64) (*v1.Operation, error) {
-	bytes := b.Get(itob(id))
+	bytes := b.Get(serializationutil.Itob(id))
 	if bytes == nil {
 		return nil, fmt.Errorf("operation with ID %d does not exist", id)
 	}
@@ -181,10 +180,7 @@ func (o *OpLog) Get(id int64) (*v1.Operation, error) {
 func (o *OpLog) GetByRepo(repoId string, filter Filter) ([]*v1.Operation, error) {
 	var ops []*v1.Operation
 	if err := o.db.View(func(tx *bolt.Tx) error {
-		ids, err := o.readOpsFromIndexBucket(tx, RepoIndexBucket, repoId)
-		if err != nil {
-			return err
-		}
+		ids := indexutil.IndexSearchByteValue(tx.Bucket(RepoIndexBucket), []byte(repoId)).ToSlice()
 
 		b := tx.Bucket(OpLogBucket)
 		for _, id := range ids {
@@ -205,10 +201,7 @@ func (o *OpLog) GetByRepo(repoId string, filter Filter) ([]*v1.Operation, error)
 func (o *OpLog) GetByPlan(planId string, filter Filter) ([]*v1.Operation, error) {
 	var ops []*v1.Operation
 	if err := o.db.View(func(tx *bolt.Tx) error {
-		ids, err := o.readOpsFromIndexBucket(tx, PlanIndexBucket, planId)
-		if err != nil {
-			return err
-		}
+		ids := indexutil.IndexSearchByteValue(tx.Bucket(PlanIndexBucket), []byte(planId)).ToSlice()
 
 		b := tx.Bucket(OpLogBucket)
 		for _, id := range ids {
@@ -249,9 +242,8 @@ func (o *OpLog) addOpToIndexBucket(tx *bolt.Tx, bucket []byte, indexId string, o
 	b := tx.Bucket(bucket)
 
 	var key []byte 
-	key = append(key, itob(int64(len(indexId)))...)
-	key = append(key, []byte(indexId)...)
-	key = append(key, itob(opId)...)
+	key = append(key, serializationutil.Stob(indexId)...)
+	key = append(key, serializationutil.Itob(opId)...)
 	if err := b.Put(key, []byte{}); err != nil {
 		return fmt.Errorf("error adding operation to repo index: %w", err)
 	}
@@ -264,9 +256,9 @@ func (o *OpLog) readOpsFromIndexBucket(tx *bolt.Tx, bucket []byte, indexId strin
 
 	var ops []int64
 	c := b.Cursor()
-	prefix := stob(indexId)
+	prefix := serializationutil.Stob(indexId)
 	for k, _ := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, _ = c.Next() {
-		ops = append(ops, btoi(k[len(prefix):]))
+		ops = append(ops, serializationutil.Btoi(k[len(prefix):]))
 	}
 
 	return ops, nil

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/internal/oplog"
+	"github.com/garethgeorge/resticui/internal/database/oplog"
 	"github.com/garethgeorge/resticui/pkg/restic"
 	"github.com/gitploy-io/cronexpr"
 	"github.com/hashicorp/go-multierror"
