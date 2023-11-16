@@ -6,16 +6,15 @@ import {
   CheckCircleOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Breadcrumb, Layout, Menu, Spin, message, theme } from "antd";
+import { Layout, Menu, Spin, theme } from "antd";
 import { configState, fetchConfig } from "../state/config";
 import { useRecoilState } from "recoil";
 import { Config } from "../../gen/ts/v1/config.pb";
-import { AlertContextProvider, useAlertApi } from "../components/Alerts";
+import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { AddPlanModal } from "./AddPlanModel";
 import { AddRepoModel } from "./AddRepoModel";
-import { MainContentArea, useSetContent } from "../components/MainContentArea";
-import { GettingStartedGuide } from "../components/GettingStartedGuide";
+import { MainContentArea, useSetContent } from "./MainContentArea";
 import { PlanView } from "./PlanView";
 
 const { Header, Content, Sider } = Layout;
@@ -36,12 +35,13 @@ export const App: React.FC = () => {
     fetchConfig()
       .then((config) => {
         setConfig(config);
+        showModal(null);
       })
       .catch((err) => {
         alertApi.error(err.message, 0);
-      })
-      .finally(() => {
-        showModal(null);
+        alertApi.error(
+          "Failed to fetch initial config, typically this means the UI could not connect to the backend"
+        );
       });
   }, []);
 

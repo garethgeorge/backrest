@@ -8,12 +8,13 @@ import { useRecoilValue } from "recoil";
 import { configState } from "../state/config";
 import { useAlertApi } from "../components/Alerts";
 import { ResticUI } from "../../gen/ts/v1/service.pb";
+import { Operation } from "../../gen/ts/v1/operations.pb";
 import {
-  Operation,
-  OperationEvent,
-  OperationEventType,
-} from "../../gen/ts/v1/operations.pb";
-import { operationEmitter } from "../state/oplog";
+  buildOperationListListener,
+  subscribeToOperations,
+  unsubscribeFromOperations,
+} from "../state/oplog";
+import { OperationList } from "../components/OperationList";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const showModal = useShowModal();
@@ -21,41 +22,16 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const [operations, setOperations] = useState<Operation[]>([]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const ops = await ResticUI.GetOperations(
-          { planId: plan.id },
-          { pathPrefix: "/api" }
-        );
-        if (!ops.operations) throw new Error("No operations returned");
-        setOperations(ops.operations);
-      } catch (e: any) {
-        alertsApi.error("Failed to fetch operations: " + e.message);
+    const listener = buildOperationListListener(
+      { planId: plan.id, lastN: "100" },
+      (event, operations) => {
+        setOperations([...operations]);
       }
-    })();
-
-    const listener = (opEvent: OperationEvent) => {
-      setOperations((operations) => {
-        if (opEvent.type === OperationEventType.EVENT_CREATED) {
-          operations.push(opEvent.operation!);
-        } else if (opEvent.type === OperationEventType.EVENT_UPDATED) {
-          // We iterate from the back since the most recent operations are at the end and
-          // only recent ops receive updates.
-          for (let i = operations.length - 1; i >= 0; i--) {
-            if (operations[i].id === opEvent.operation?.id) {
-              operations[i] = opEvent.operation!;
-              break;
-            }
-          }
-        }
-        return operations;
-      });
-    };
-
-    operationEmitter.on("operation", listener);
+    );
+    subscribeToOperations(listener);
 
     return () => {
-      operationEmitter.removeListener("operation", listener);
+      unsubscribeFromOperations(listener);
     };
   }, [plan.id]);
 
@@ -102,22 +78,8 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           Prune Now
         </Button>
       </Flex>
-      <OperationsPanel operations={operations} />
-    </>
-  );
-};
-
-const OperationsPanel = ({ operations }: { operations: Operation[] }) => {
-  return (
-    <>
       <h2>Operations List</h2>
-      {operations.map((op) => {
-        return (
-          <div key={op.id}>
-            <h3>{op.id}</h3>
-          </div>
-        );
-      })}
+      <OperationList operations={operations} />
     </>
   );
 };

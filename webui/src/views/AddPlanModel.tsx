@@ -65,7 +65,7 @@ export const AddPlanModal = ({
       showModal(null);
 
       alertsApi.success(
-        "Plan deleted from config, but not from restic repo. Snapshots will remain in storage until manually deleted."
+        "Plan deleted from config, but not from restic repo. Snapshots will remain in storage and operations will be tracked until manually deleted. Reusing a deleted plan ID is not recommended if backups have already been performed."
       );
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);
@@ -115,13 +115,14 @@ export const AddPlanModal = ({
       <Modal
         open={true}
         onCancel={handleCancel}
-        title="Add Plan"
+        title={template ? "Update Plan" : "Add Plan"}
         footer={[
           <Button loading={confirmLoading} key="back" onClick={handleCancel}>
             Cancel
           </Button>,
           template != null ? (
             <Button
+              key="delete"
               type="primary"
               danger
               loading={confirmLoading}
@@ -168,7 +169,10 @@ export const AddPlanModal = ({
               },
             ]}
           >
-            <Input placeholder={"plan" + ((config?.plans?.length || 0) + 1)} />
+            <Input
+              placeholder={"plan" + ((config?.plans?.length || 0) + 1)}
+              disabled={!!template}
+            />
           </Form.Item>
 
           {/* Plan.repo */}
@@ -189,6 +193,7 @@ export const AddPlanModal = ({
               options={repos.map((repo) => ({
                 value: repo.id,
               }))}
+              disabled={!!template}
             />
           </Form.Item>
 

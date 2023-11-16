@@ -31,7 +31,7 @@ export const GettingStartedGuide = () => {
       <Divider orientation="left">Tips</Divider>
       <ul>
         <li>
-          Backup your ResticUI configuration - your ResticUI config holds all of
+          Backup your ResticUI configuration: your ResticUI config holds all of
           your repos, plans, and the passwords to decrypt them. When you have
           ResticUI configured to your liking make sure to store a copy of your
           config (or minimally a copy of your passwords) in a safe location e.g.

@@ -12,6 +12,7 @@ import (
 	"github.com/garethgeorge/resticui/internal/database/indexutil"
 	"github.com/garethgeorge/resticui/internal/database/serializationutil"
 	bolt "go.etcd.io/bbolt"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -57,8 +58,40 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 			SystemBucket, OpLogBucket, RepoIndexBucket, PlanIndexBucket, IndexedSnapshotsSetBucket,
 		} {
 			if _, err := tx.CreateBucketIfNotExists(bucket); err != nil {
-				return fmt.Errorf("error creating bucket %s: %s", string(bucket), err)
+				return fmt.Errorf("creating bucket %s: %s", string(bucket), err)
 			}
+
+			// Validate the operation log on startup.
+			sysBucket := tx.Bucket(SystemBucket)
+			opLogBucket := tx.Bucket(OpLogBucket)
+			c := opLogBucket.Cursor()
+			if lastValidated := sysBucket.Get([]byte("last_validated")); lastValidated != nil {
+				c.Seek(lastValidated)
+			}
+			for k, v := c.First(); k != nil; k, v = c.Next() {
+				op := &v1.Operation{}
+				if err := proto.Unmarshal(v, op); err != nil {
+					zap.L().Error("error unmarshalling operation, there may be corruption in the oplog", zap.Error(err))
+					continue 
+				}
+				if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
+					op.Status = v1.OperationStatus_STATUS_ERROR
+					op.DisplayMessage = "Operation timeout."
+					bytes, err := proto.Marshal(op)
+					if err != nil {
+						return fmt.Errorf("marshalling operation: %w", err)
+					}
+					if err := opLogBucket.Put(k, bytes); err != nil {
+						return fmt.Errorf("putting operation into bucket: %w", err)
+					}
+				}
+			}
+			if lastValidated, _ := c.Last(); lastValidated != nil {
+				if err := sysBucket.Put([]byte("last_validated"), lastValidated); err != nil {
+					return fmt.Errorf("checkpointing last_validated key: %w", err)
+				}
+			}
+
 		}
 		return nil
 	}); err != nil {
@@ -88,12 +121,11 @@ func (o *OpLog) Add(op *v1.Operation) error {
 	if err == nil {
 		o.notifyHelper(EventTypeOpCreated, op)
 	}
-
 	return err
 }
 
-func (o *OpLog) BulkAdd(ops []*v1.Operation) {
-	o.db.Update(func(tx *bolt.Tx) error {
+func (o *OpLog) BulkAdd(ops []*v1.Operation) error {
+	err := o.db.Update(func(tx *bolt.Tx) error {
 		for _, op := range ops {
 			if err := o.addOperationHelper(tx, op); err != nil {
 				return err
@@ -101,6 +133,12 @@ func (o *OpLog) BulkAdd(ops []*v1.Operation) {
 		}
 		return nil
 	})
+	if err == nil {
+		for _, op := range ops {
+			o.notifyHelper(EventTypeOpCreated, op)
+		}
+	}
+	return err
 }
 
 func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
@@ -239,6 +277,7 @@ func (o *OpLog) GetByRepo(repoId string, filter Filter) ([]*v1.Operation, error)
 	var ops []*v1.Operation
 	if err := o.db.View(func(tx *bolt.Tx) error {
 		ids := indexutil.IndexSearchByteValue(tx.Bucket(RepoIndexBucket), []byte(repoId)).ToSlice()
+		ids = filter(ids)
 
 		b := tx.Bucket(OpLogBucket)
 		for _, id := range ids {
@@ -260,6 +299,7 @@ func (o *OpLog) GetByPlan(planId string, filter Filter) ([]*v1.Operation, error)
 	var ops []*v1.Operation
 	if err := o.db.View(func(tx *bolt.Tx) error {
 		ids := indexutil.IndexSearchByteValue(tx.Bucket(PlanIndexBucket), []byte(planId)).ToSlice()
+		ids = filter(ids)
 
 		b := tx.Bucket(OpLogBucket)
 		for _, id := range ids {

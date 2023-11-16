@@ -15,8 +15,8 @@ var ErrConfigNotFound = fmt.Errorf("config not found")
 var configDirFlag = flag.String("config_dir", "", "The directory to store the config file")
 
 var Default ConfigStore = &CachingValidatingStore{
-	ConfigStore: &YamlFileStore{
-		Path: path.Join(configDir(*configDirFlag), "config.yaml"),
+	ConfigStore: &JsonFileStore{
+		Path: path.Join(configDir(*configDirFlag), "config.json"),
 	},
 }
 

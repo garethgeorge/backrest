@@ -71,6 +71,12 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 		err = multierror.Append(err, fmt.Errorf("path is required"))
 	}
 
+	for idx, p := range plan.Paths {
+		if p == "" {
+			err = multierror.Append(err, fmt.Errorf("path[%d] cannot be empty", idx))
+		}
+	}
+
 	if plan.Repo == "" {
 		err = multierror.Append(err,fmt.Errorf("repo is required"))
 	}
