@@ -55,8 +55,6 @@ func (r *RepoOrchestrator) updateSnapshotsIfNeeded(ctx context.Context, force bo
 		return nil
 	}
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
 
 	startTime := time.Now()
 
@@ -97,10 +95,13 @@ func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) 
 }
 
 func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCallback func(event *restic.BackupProgressEntry)) (*restic.BackupProgressEntry, error) {
+	zap.L().Debug("repo orchestrator starting backup", zap.String("repo", r.repoConfig.Id))
 	snapshots, err := r.SnapshotsForPlan(ctx, plan)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get snapshots for plan: %w", err)
 	}
+
+	zap.L().Debug("got snapshots for plan", zap.String("repo", r.repoConfig.Id), zap.Int("count", len(snapshots)), zap.String("plan", plan.Id), zap.String("tag", tagForPlan(plan)))
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
