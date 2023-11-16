@@ -93,7 +93,7 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 	op := &v1.Operation{
 		PlanId: plan.Id,
 		RepoId: plan.Repo,
-		UnixTimeStartMs: time.Now().Unix(),
+		UnixTimeStartMs: curTimeMillis(),
 		Status: v1.OperationStatus_STATUS_INPROGRESS,
 		Op: backupOp,
 	}
@@ -105,14 +105,26 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 			return fmt.Errorf("failed to get repo %q: %w", plan.Repo, err)
 		}
 
-		if _, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
+		lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
+		summary, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
+			if time.Since(lastSent) < 200 * time.Millisecond {
+				return
+			}
+			lastSent = time.Now()
+
 			backupOp.OperationBackup.LastStatus = entry.ToProto()
 			if err := orchestrator.oplog.Update(op); err != nil {
 				zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
 			}
 			zap.L().Debug("Backup progress", zap.Float64("progress", entry.PercentDone))
-		}); err != nil {
+		})
+		if err != nil {
 			return fmt.Errorf("failed to backup repo %q: %w", plan.Repo, err)
+		}
+
+		backupOp.OperationBackup.LastStatus = summary.ToProto()
+		if err := orchestrator.oplog.Update(op); err != nil {
+			return fmt.Errorf("update oplog with summary for backup: %v", err)
 		}
 
 		zap.L().Info("Backup complete", zap.String("plan", plan.Id))
@@ -134,7 +146,7 @@ func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error 
 		op.Status = v1.OperationStatus_STATUS_ERROR 
 		op.DisplayMessage = err.Error()
 	}
-	op.UnixTimeEndMs = time.Now().Unix()
+	op.UnixTimeEndMs = curTimeMillis()
 	if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
 		op.Status = v1.OperationStatus_STATUS_SUCCESS
 	}
@@ -142,4 +154,9 @@ func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error 
 		return multierror.Append(err, fmt.Errorf("failed to update operation in oplog: %w", e))
 	}
 	return err
+}
+
+func curTimeMillis() int64 {
+	t := time.Now()
+	return t.Unix() * 1000 + int64(t.Nanosecond() / 1000000)
 }

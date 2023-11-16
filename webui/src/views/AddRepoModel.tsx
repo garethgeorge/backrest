@@ -142,6 +142,7 @@ export const AddRepoModel = ({
           </Button>,
           template != null ? (
             <Button
+              key="delete"
               type="primary"
               danger
               loading={confirmLoading}
