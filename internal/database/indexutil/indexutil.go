@@ -7,18 +7,16 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
+// IndexByteValue indexes a value and recordId tuple creating multimap from value to lists of associated recordIds.
 func IndexByteValue(b *bolt.Bucket, value []byte, recordId int64) error {
 	key := serializationutil.BytesToKey(value)
 	key = append(key, serializationutil.Itob(recordId)...)
 	return b.Put(key, []byte{})
 }
 
+// IndexSearchByteValue searches the index given a value and returns an iterator over the associated recordIds.
 func IndexSearchByteValue(b *bolt.Bucket, value []byte) *IndexSearchIterator {
 	return newSearchIterator(b, serializationutil.BytesToKey(value))
-}
-
-func IndexSearchIntValue(b *bolt.Bucket, value int64) *IndexSearchIterator {
-	return newSearchIterator(b, serializationutil.Itob(value))
 }
 
 type IndexSearchIterator struct {

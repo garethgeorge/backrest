@@ -197,6 +197,45 @@ func TestBigIO(t *testing.T) {
 	}
 }
 
+func TestIndexSnapshot(t *testing.T) {
+	t.Parallel()
+	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
+	if err != nil {
+		t.Fatalf("error creating oplog: %s", err)
+	}
+
+	op := &v1.Operation{
+		PlanId: "plan1",
+		RepoId: "repo1",
+		Op: &v1.Operation_OperationIndexSnapshot{
+			OperationIndexSnapshot: &v1.OperationIndexSnapshot{
+				Snapshot: &v1.ResticSnapshot{
+					Id: "abcdefghijklmnop",
+				},
+			},
+		},
+	}
+	if err := log.Add(op); err != nil {
+		t.Fatalf("error adding operation: %s", err)
+	}
+
+	id, err := log.HasIndexedSnapshot("abcdefgh")
+	if err != nil {
+		t.Fatalf("error checking for snapshot: %s", err)
+	}
+	if id != op.Id {
+		t.Fatalf("want id %d, got %d", op.Id, id)
+	}
+	
+	id, err = log.HasIndexedSnapshot("notfound")
+	if err != nil {
+		t.Fatalf("error checking for snapshot: %s", err)
+	}
+	if id != -1 {
+		t.Fatalf("want id -1, got %d", id)
+	}
+}
+
 func collectMessages(ops []*v1.Operation) []string {
 	var messages []string
 	for _, op := range ops {
