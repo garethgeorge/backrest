@@ -1,30 +1,27 @@
 import React from "react";
 import { Operation, OperationStatus } from "../../gen/ts/v1/operations.pb";
 import { Col, Collapse, Empty, List, Progress, Row, Typography } from "antd";
-import { AlertOutlined, DatabaseOutlined } from "@ant-design/icons";
-import { BackupProgressEntry } from "../../gen/ts/v1/restic.pb";
+import {
+  AlertOutlined,
+  DatabaseOutlined,
+  ExclamationCircleOutlined,
+  ExclamationOutlined,
+  PaperClipOutlined,
+  SaveOutlined,
+} from "@ant-design/icons";
+import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
+import { EOperation } from "../state/oplog";
 
 export const OperationList = ({
   operations,
-}: React.PropsWithoutRef<{ operations: Operation[] }>) => {
-  interface OpWrapper {
-    startTimeMs: number;
-    operation: Operation;
-  }
-  const ops = operations.map((operation) => {
-    return {
-      time: parseInt(operation.unixTimeStartMs!),
-      operation,
-    };
-  });
+}: React.PropsWithoutRef<{ operations: EOperation[] }>) => {
+  operations.sort((a, b) => b.parsedTime - a.parsedTime);
 
-  ops.sort((a, b) => b.time - a.time);
-
-  const elems = ops.map(({ operation }) => (
+  const elems = operations.map((operation) => (
     <OperationRow operation={operation} />
   ));
 
-  if (ops.length === 0) {
+  if (operations.length === 0) {
     return (
       <Empty
         description="No operations yet."
@@ -37,9 +34,9 @@ export const OperationList = ({
     <List
       itemLayout="horizontal"
       size="small"
-      dataSource={ops}
+      dataSource={operations}
       renderItem={(item, index) => (
-        <OperationRow key={item.operation.id!} operation={item.operation} />
+        <OperationRow key={item.parsedId} operation={item} />
       )}
     />
   );
@@ -47,9 +44,7 @@ export const OperationList = ({
 
 export const OperationRow = ({
   operation,
-}: React.PropsWithoutRef<{ operation: Operation }>) => {
-  let contents: React.ReactNode;
-
+}: React.PropsWithoutRef<{ operation: EOperation }>) => {
   let color = "grey";
   if (operation.status === OperationStatus.STATUS_SUCCESS) {
     color = "green";
@@ -59,7 +54,17 @@ export const OperationRow = ({
     color = "blue";
   }
 
-  if (operation.operationBackup) {
+  if (operation.displayMessage) {
+    return (
+      <List.Item>
+        <List.Item.Meta
+          title={<>Message</>}
+          avatar={<ExclamationCircleOutlined style={{ color }} />}
+          description={operation.displayMessage}
+        />
+      </List.Item>
+    );
+  } else if (operation.operationBackup) {
     const backupOp = operation.operationBackup;
     let desc = `Backup at ${formatTime(operation.unixTimeStartMs!)}`;
     if (operation.status !== OperationStatus.STATUS_INPROGRESS) {
@@ -72,7 +77,12 @@ export const OperationRow = ({
       <List.Item>
         <List.Item.Meta
           title={desc}
-          avatar={<DatabaseOutlined style={{ color }} />}
+          avatar={
+            <SaveOutlined
+              style={{ color }}
+              spin={operation.status === OperationStatus.STATUS_INPROGRESS}
+            />
+          }
           description={
             <>
               <Collapse
@@ -105,31 +115,56 @@ export const OperationRow = ({
           title={
             <>Snapshot at {formatTime(snapshotOp.snapshot!.unixTimeMs!)}</>
           }
-          avatar={<DatabaseOutlined style={{ color }} />}
-          description={<>A snapshot. More info needed</>}
-        />
-      </List.Item>
-    );
-  } else if (operation.displayMessage) {
-    return (
-      <List.Item>
-        <List.Item.Meta
-          title={<>Message</>}
-          avatar={<AlertOutlined style={{ color }} />}
-          description={operation.displayMessage}
+          avatar={<PaperClipOutlined style={{ color }} />}
+          description={<SnapshotInfo snapshot={snapshotOp.snapshot!} />}
         />
       </List.Item>
     );
   }
 };
 
-const formatTime = (time: number | string) => {
-  if (typeof time === "string") {
-    time = parseInt(time);
-  }
-  const d = new Date();
-  d.setTime(time);
-  return d.toLocaleString();
+const SnapshotInfo = ({ snapshot }: { snapshot: ResticSnapshot }) => {
+  return (
+    <Collapse
+      size="small"
+      items={[
+        {
+          key: 1,
+          label: "Details",
+          children: (
+            <>
+              <Typography.Text>
+                <Typography.Text strong>Snapshot ID: </Typography.Text>
+                {snapshot.id?.substring(0, 8)}
+              </Typography.Text>
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Typography.Text strong>Host</Typography.Text>
+                  <br />
+                  {snapshot.hostname}
+                </Col>
+                <Col span={8}>
+                  <Typography.Text strong>Username</Typography.Text>
+                  <br />
+                  {snapshot.hostname}
+                </Col>
+                <Col span={8}>
+                  <Typography.Text strong>Tags</Typography.Text>
+                  <br />
+                  {snapshot.tags?.join(", ")}
+                </Col>
+              </Row>
+            </>
+          ),
+        },
+        {
+          key: 2,
+          label: "Browse",
+          children: null,
+        },
+      ]}
+    />
+  );
 };
 
 const BackupOperationStatus = ({
@@ -230,4 +265,13 @@ const formatBytes = (bytes?: number | string) => {
     unit++;
   }
   return `${Math.round(bytes * 100) / 100} ${units[unit]}`;
+};
+
+const formatTime = (time: number | string) => {
+  if (typeof time === "string") {
+    time = parseInt(time);
+  }
+  const d = new Date();
+  d.setTime(time);
+  return d.toLocaleString();
 };

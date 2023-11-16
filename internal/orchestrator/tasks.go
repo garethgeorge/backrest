@@ -160,12 +160,14 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan 
 	opTime := curTimeMillis()
 	var indexOps []*v1.Operation
 	for _, snapshot := range snapshots {
+		zap.L().Debug("checking if snapshot has been indexed", zap.String("snapshot", snapshot.Id))
 		opid, err := orchestrator.oplog.HasIndexedSnapshot(snapshot.Id)
 		if err != nil {
 			return fmt.Errorf("HasIndexSnapshot for snapshot %q: %w", snapshot.Id, err)
 		}
 
-		if opid < 0 {
+		if opid >= 0 {
+			alreadyIndexed += 1
 			continue
 		}
 		

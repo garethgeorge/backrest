@@ -39,7 +39,11 @@ func (i *IndexSearchIterator) Next() (int64, bool) {
 	if i.k == nil || !bytes.HasPrefix(i.k, i.prefix) {
 		return 0, false
 	}
-	id := serializationutil.Btoi(i.k[len(i.prefix):])
+	id, err := serializationutil.Btoi(i.k[len(i.prefix):])
+	if err != nil {
+		// this sholud never happen, if it does it indicates database corruption.
+		return 0, false
+	}
 	i.k, _ = i.c.Next()
 	return id, true
 }

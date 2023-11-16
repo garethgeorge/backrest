@@ -9,6 +9,11 @@ import { GetOperationsRequest, ResticUI } from "../../gen/ts/v1/service.pb";
 import { EventEmitter } from "events";
 import { useAlertApi } from "../components/Alerts";
 
+export type EOperation = Operation & {
+  parsedId: number;
+  parsedTime: number;
+};
+
 const subscribers: ((event: OperationEvent) => void)[] = [];
 
 // Start fetching and emitting operations.
@@ -71,24 +76,28 @@ export const unsubscribeFromOperations = (
 
 export const buildOperationListListener = (
   req: GetOperationsRequest,
-  callback: (event: OperationEvent | null, list: Operation[]) => void
+  callback: (
+    event: OperationEventType | null,
+    operation: EOperation | null,
+    list: EOperation[]
+  ) => void
 ) => {
-  let operations: Operation[] = [];
+  let operations: EOperation[] = [];
 
   (async () => {
-    const opsFromServer = await getOperations(req);
+    let opsFromServer = (await getOperations(req)).map(toEop);
     operations = opsFromServer.filter(
-      (o) => !operations.find((op) => op.id === o.id)
+      (o) => !operations.find((op) => op.parsedId === o.parsedId)
     );
     operations.sort((a, b) => {
-      return parseInt(a.id!) - parseInt(b.id!);
+      return a.parsedId - b.parsedId;
     });
 
-    callback(null, operations);
+    callback(null, null, operations);
   })();
 
   return (event: OperationEvent) => {
-    const op = event.operation!;
+    const op = toEop(event.operation!);
     const type = event.type!;
     if (!!req.planId && op.planId !== req.planId) {
       return;
@@ -110,35 +119,17 @@ export const buildOperationListListener = (
       operations.push(op);
     }
 
-    callback(event, operations);
+    callback(event.type || null, op, operations);
   };
 };
 
-// OperationsStateTracker tracks the state of operations starting with an initial query
-export class OperationListSubscriber {
-  private listener: ((event: OperationEvent) => void) | null = null;
-  private operations: Operation[] = [];
-  private eventEmitter = new EventEmitter();
-  constructor(private req: GetOperationsRequest) {
-    this.listener = (event: OperationEvent) => {
-      this.eventEmitter.emit("changed");
-    };
-    subscribeToOperations(this.listener);
-    getOperations(req).then((ops) => {
-      this.operations = ops;
-      this.eventEmitter.emit("changed");
-    });
-  }
+const toEop = (op: Operation): EOperation => {
+  const time =
+    op.operationIndexSnapshot?.snapshot?.unixTimeMs || op.unixTimeStartMs;
 
-  getOperations() {
-    return this.operations;
-  }
-
-  onChange(callback: () => void) {
-    this.eventEmitter.on("changed", callback);
-  }
-
-  destroy() {
-    unsubscribeFromOperations(this.listener!);
-  }
-}
+  return {
+    ...op,
+    parsedId: parseInt(op.id!),
+    parsedTime: parseInt(time!),
+  };
+};

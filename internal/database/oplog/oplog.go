@@ -16,20 +16,19 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-
 type EventType int
 
 const (
-	EventTypeUnknown = EventType(iota)
+	EventTypeUnknown   = EventType(iota)
 	EventTypeOpCreated = EventType(iota)
 	EventTypeOpUpdated = EventType(iota)
 )
 
 var (
-	SystemBucket = []byte("oplog.system") // system stores metadata
-	OpLogBucket  = []byte("oplog.log") // oplog stores the operations themselves
-	RepoIndexBucket = []byte("oplog.repo_idx") // repo_index tracks IDs of operations affecting a given repo
-	PlanIndexBucket = []byte("oplog.plan_idx") // plan_index tracks IDs of operations affecting a given plan
+	SystemBucket              = []byte("oplog.system")            // system stores metadata
+	OpLogBucket               = []byte("oplog.log")               // oplog stores the operations themselves
+	RepoIndexBucket           = []byte("oplog.repo_idx")          // repo_index tracks IDs of operations affecting a given repo
+	PlanIndexBucket           = []byte("oplog.plan_idx")          // plan_index tracks IDs of operations affecting a given plan
 	IndexedSnapshotsSetBucket = []byte("oplog.indexed_snapshots") // indexed_snapshots is a set of snapshot IDs that have been indexed
 )
 
@@ -39,7 +38,7 @@ type OpLog struct {
 	db *bolt.DB
 
 	subscribersMu sync.RWMutex
-	subscribers []*func(EventType, *v1.Operation)
+	subscribers   []*func(EventType, *v1.Operation)
 }
 
 func NewOpLog(databasePath string) (*OpLog, error) {
@@ -52,47 +51,47 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 		return nil, fmt.Errorf("error opening database: %s", err)
 	}
 
-	// Create the buckets if they don't exist
 	if err := db.Update(func(tx *bolt.Tx) error {
+		// Create the buckets if they don't exist
 		for _, bucket := range [][]byte{
 			SystemBucket, OpLogBucket, RepoIndexBucket, PlanIndexBucket, IndexedSnapshotsSetBucket,
 		} {
 			if _, err := tx.CreateBucketIfNotExists(bucket); err != nil {
 				return fmt.Errorf("creating bucket %s: %s", string(bucket), err)
 			}
-
-			// Validate the operation log on startup.
-			sysBucket := tx.Bucket(SystemBucket)
-			opLogBucket := tx.Bucket(OpLogBucket)
-			c := opLogBucket.Cursor()
-			if lastValidated := sysBucket.Get([]byte("last_validated")); lastValidated != nil {
-				c.Seek(lastValidated)
-			}
-			for k, v := c.First(); k != nil; k, v = c.Next() {
-				op := &v1.Operation{}
-				if err := proto.Unmarshal(v, op); err != nil {
-					zap.L().Error("error unmarshalling operation, there may be corruption in the oplog", zap.Error(err))
-					continue 
-				}
-				if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
-					op.Status = v1.OperationStatus_STATUS_ERROR
-					op.DisplayMessage = "Operation timeout."
-					bytes, err := proto.Marshal(op)
-					if err != nil {
-						return fmt.Errorf("marshalling operation: %w", err)
-					}
-					if err := opLogBucket.Put(k, bytes); err != nil {
-						return fmt.Errorf("putting operation into bucket: %w", err)
-					}
-				}
-			}
-			if lastValidated, _ := c.Last(); lastValidated != nil {
-				if err := sysBucket.Put([]byte("last_validated"), lastValidated); err != nil {
-					return fmt.Errorf("checkpointing last_validated key: %w", err)
-				}
-			}
-
 		}
+
+		// Validate the operation log on startup.
+		sysBucket := tx.Bucket(SystemBucket)
+		opLogBucket := tx.Bucket(OpLogBucket)
+		c := opLogBucket.Cursor()
+		if lastValidated := sysBucket.Get([]byte("last_validated")); lastValidated != nil {
+			c.Seek(lastValidated)
+		}
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			op := &v1.Operation{}
+			if err := proto.Unmarshal(v, op); err != nil {
+				zap.L().Error("error unmarshalling operation, there may be corruption in the oplog", zap.Error(err))
+				continue
+			}
+			if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
+				op.Status = v1.OperationStatus_STATUS_ERROR
+				op.DisplayMessage = "Operation timeout."
+				bytes, err := proto.Marshal(op)
+				if err != nil {
+					return fmt.Errorf("marshalling operation: %w", err)
+				}
+				if err := opLogBucket.Put(k, bytes); err != nil {
+					return fmt.Errorf("putting operation into bucket: %w", err)
+				}
+			}
+		}
+		if lastValidated, _ := c.Last(); lastValidated != nil {
+			if err := sysBucket.Put([]byte("last_validated"), lastValidated); err != nil {
+				return fmt.Errorf("checkpointing last_validated key: %w", err)
+			}
+		}
+
 		return nil
 	}); err != nil {
 		return nil, err
@@ -156,7 +155,6 @@ func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 		return fmt.Errorf("error marshalling operation: %w", err)
 	}
 
-
 	if err := b.Put(serializationutil.Itob(op.Id), bytes); err != nil {
 		return fmt.Errorf("error putting operation into bucket: %w", err)
 	}
@@ -196,12 +194,17 @@ func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 func (o *OpLog) HasIndexedSnapshot(snapshotId string) (int64, error) {
 	var id int64
 	if err := o.db.View(func(tx *bolt.Tx) error {
+		snapshotId := serializationutil.NormalizeSnapshotId(snapshotId)
 		key := serializationutil.BytesToKey([]byte(snapshotId))
 		idBytes := tx.Bucket(IndexedSnapshotsSetBucket).Get(key)
 		if idBytes == nil {
 			id = -1
 		} else {
-			id = serializationutil.Btoi(idBytes)
+			var err error
+			id, err = serializationutil.Btoi(idBytes)
+			if err != nil {
+				return fmt.Errorf("database corrupt, couldn't convert ID bytes to int: %w", err)
+			}
 		}
 		return nil
 	}); err != nil {
@@ -266,7 +269,7 @@ func (o *OpLog) Get(id int64) (*v1.Operation, error) {
 	if err := o.db.View(func(tx *bolt.Tx) error {
 		var err error
 		op, err = o.getHelper(tx.Bucket(OpLogBucket), id)
-		return err 
+		return err
 	}); err != nil {
 		return nil, err
 	}
@@ -319,7 +322,7 @@ func (o *OpLog) GetByPlan(planId string, filter Filter) ([]*v1.Operation, error)
 
 func (o *OpLog) Subscribe(callback *func(EventType, *v1.Operation)) {
 	o.subscribersMu.Lock()
-	defer o.subscribersMu.Unlock()	
+	defer o.subscribersMu.Unlock()
 	o.subscribers = append(o.subscribers, callback)
 }
 
@@ -329,13 +332,13 @@ func (o *OpLog) Unsubscribe(callback *func(EventType, *v1.Operation)) {
 	subs := o.subscribers
 	for i, c := range subs {
 		if c == callback {
-			subs[i] = subs[len(subs) - 1]
-			o.subscribers = subs[:len(o.subscribers) - 1]
+			subs[i] = subs[len(subs)-1]
+			o.subscribers = subs[:len(o.subscribers)-1]
 		}
 	}
 }
 
-type Filter func([]int64)[]int64
+type Filter func([]int64) []int64
 
 func FilterKeepAll() Filter {
 	return func(ids []int64) []int64 {

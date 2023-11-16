@@ -8,8 +8,8 @@ import { useRecoilValue } from "recoil";
 import { configState } from "../state/config";
 import { useAlertApi } from "../components/Alerts";
 import { ResticUI } from "../../gen/ts/v1/service.pb";
-import { Operation } from "../../gen/ts/v1/operations.pb";
 import {
+  EOperation,
   buildOperationListListener,
   subscribeToOperations,
   unsubscribeFromOperations,
@@ -19,12 +19,12 @@ import { OperationList } from "../components/OperationList";
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
-  const [operations, setOperations] = useState<Operation[]>([]);
+  const [operations, setOperations] = useState<EOperation[]>([]);
 
   useEffect(() => {
     const listener = buildOperationListListener(
-      { planId: plan.id, lastN: "100" },
-      (event, operations) => {
+      { planId: plan.id, lastN: "1000" },
+      (event, changedOp, operations) => {
         setOperations([...operations]);
       }
     );
@@ -78,7 +78,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           Prune Now
         </Button>
       </Flex>
-      <h2>Operations List</h2>
+      <h2>Backup Action History ({operations.length} loaded)</h2>
       <OperationList operations={operations} />
     </>
   );

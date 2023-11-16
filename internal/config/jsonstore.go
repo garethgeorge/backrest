@@ -52,7 +52,11 @@ func (f *JsonFileStore) Update(config *v1.Config) error {
 		return fmt.Errorf("invalid config: %w", err)
 	}
 
-	data, err := protojson.Marshal(config)
+	data, err := protojson.MarshalOptions{
+		Indent: "  ",
+		Multiline: true,
+		EmitUnpopulated: true,
+	}.Marshal(config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}

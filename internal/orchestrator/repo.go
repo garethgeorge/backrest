@@ -66,11 +66,11 @@ func (r *RepoOrchestrator) updateSnapshotsIfNeeded(ctx context.Context, force bo
 	}
 
 	sort.SliceStable(snapshots, func(i, j int) bool {
-		return snapshots[i].Time < snapshots[j].Time
+		return snapshots[i].UnixTimeMs() < snapshots[j].UnixTimeMs()
 	})
 	r.snapshots = snapshots
 
-	zap.L().Debug("Updated snapshots", zap.String("repo", r.repoConfig.Id), zap.Duration("duration", time.Since(startTime)))
+	zap.L().Debug("updated snapshots", zap.String("repo", r.repoConfig.Id), zap.Duration("duration", time.Since(startTime)))
 
 	return nil
 }
