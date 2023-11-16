@@ -135,7 +135,6 @@ func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.ResticUI_GetOper
 	errorChan := make(chan error)
 	defer close(errorChan)
 	callback := func(eventType oplog.EventType, op *v1.Operation) {
-		zap.S().Debug("Sending an event")
 		var eventTypeMapped v1.OperationEventType
 		switch eventType {
 		case oplog.EventTypeOpCreated:

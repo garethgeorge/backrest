@@ -41,9 +41,11 @@ func main() {
 
 
 	// Create and serve API server
-	oplog, err := oplog.NewOpLog(path.Join(dataPath(), "oplog.boltdb"))
+	oplogFile := path.Join(dataPath(), "oplog.boltdb")
+	oplog, err := oplog.NewOpLog(oplogFile)
 	if err != nil {
-		zap.S().Fatalf("Error creating oplog: %v", err)
+		zap.S().Warnf("Operation log may be corrupted, if errors recur delete the file %q and restart. Your backups stored in your repos are safe.", oplogFile)
+		zap.S().Fatalf("Error creating oplog : %v", err)
 	}
 	defer oplog.Close()
 

@@ -35,16 +35,14 @@ type Snapshot struct {
 	Username string `json:"username"`
 	Tags []string `json:"tags"`
 	Parent string `json:"parent"`
+	unixTimeMs int64 `json:"-"`
 }
 
 func (s *Snapshot) ToProto() *v1.ResticSnapshot {
-	t, err := time.Parse(time.RFC3339Nano, s.Time)
-	if err != nil {
-		t = time.Unix(0, 0)
-	}
+	
 	return &v1.ResticSnapshot{
 		Id: s.Id,
-		UnixTimeMs: t.UnixMilli(),
+		UnixTimeMs: s.UnixTimeMs(),
 		Tree: s.Tree,
 		Paths: s.Paths,
 		Hostname: s.Hostname,
@@ -52,6 +50,18 @@ func (s *Snapshot) ToProto() *v1.ResticSnapshot {
 		Tags: s.Tags,
 		Parent: s.Parent,
 	}
+}
+
+func (s *Snapshot) UnixTimeMs() int64 {
+	if s.unixTimeMs != 0 {
+		return s.unixTimeMs
+	}
+	t, err := time.Parse(time.RFC3339Nano, s.Time)
+	if err != nil {
+		t = time.Unix(0, 0)
+	}
+	s.unixTimeMs = t.UnixMilli()
+	return s.unixTimeMs
 }
 
 type BackupProgressEntry struct {
