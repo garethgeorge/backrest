@@ -21,6 +21,7 @@ message Operation {
 
   oneof op {
     OperationBackup operation_backup = 100;
+    OperationIndexSnapshot operation_index_snapshot = 101;
   }
 }
 
@@ -47,4 +48,9 @@ enum OperationStatus {
 
 message OperationBackup {
   BackupProgressEntry last_status = 3;
+}
+
+// OperationIndexSnapshot tracks that a snapshot was detected by resticui. 
+message OperationIndexSnapshot {
+  ResticSnapshot snapshot = 2;
 }
