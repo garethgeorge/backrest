@@ -32,16 +32,50 @@ func TestAddOperation(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "basic operation",
+			name: "no operation",
 			op: &v1.Operation{
 				Id: 0,
 			},
+			wantErr: true,
+		},
+		{
+			name: "basic backup operation",
+			op: &v1.Operation{
+				Id: 0,
+				Op: &v1.Operation_OperationBackup{},
+			},
 			wantErr: false,
+		},
+		{
+			name: "basic snapshot operation",
+			op: &v1.Operation{
+				Id: 0,
+				Op: &v1.Operation_OperationIndexSnapshot{
+					OperationIndexSnapshot: &v1.OperationIndexSnapshot{
+						Snapshot: &v1.ResticSnapshot{
+							Id: "test",
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "basic snapshot operation with no snapshot",
+			op: &v1.Operation{
+				Id: 0,
+				Op: &v1.Operation_OperationIndexSnapshot{
+					OperationIndexSnapshot: &v1.OperationIndexSnapshot{
+					},
+				},
+			},
+			wantErr: true,
 		},
 		{
 			name: "operation with ID",
 			op: &v1.Operation{
 				Id: 1,
+				Op: &v1.Operation_OperationBackup{},
 			},
 			wantErr: true,
 		},
@@ -50,6 +84,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				Id: 0,
 				RepoId: "testrepo",
+				Op: &v1.Operation_OperationBackup{},
 			},
 		},
 		{
@@ -57,6 +92,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				Id: 0,
 				PlanId: "testplan",
+				Op: &v1.Operation_OperationBackup{},
 			},
 		},
 	}
@@ -88,16 +124,19 @@ func TestListOperation(t *testing.T) {
 			PlanId: "plan1",
 			RepoId: "repo1",
 			DisplayMessage: "op1",
+			Op: &v1.Operation_OperationBackup{},
 		},
 		{
 			PlanId: "plan1",
 			RepoId: "repo2",
 			DisplayMessage: "op2",
+			Op: &v1.Operation_OperationBackup{},
 		},
 		{
 			PlanId: "plan2",
 			RepoId: "repo2",
 			DisplayMessage: "op3",
+			Op: &v1.Operation_OperationBackup{},
 		},
 	}
 
@@ -175,6 +214,7 @@ func TestBigIO(t *testing.T) {
 		if err := log.Add(&v1.Operation{
 			PlanId: "plan1",
 			RepoId: "repo1",
+			Op: &v1.Operation_OperationBackup{},
 		}); err != nil {
 			t.Fatalf("error adding operation: %s", err)
 		}

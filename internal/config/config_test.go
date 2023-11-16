@@ -35,7 +35,7 @@ func TestConfig(t *testing.T) {
 		{
 			name: "default config",
 			config: NewDefaultConfig(),
-			store:  &CachingValidatingStore{ConfigStore: &YamlFileStore{Path: dir + "/default-config.yaml"}},
+			store:  &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/default-config.json"}},
 		},
 		{
 			name: "simple valid config",
@@ -43,14 +43,14 @@ func TestConfig(t *testing.T) {
 				Repos: []*v1.Repo{testRepo},
 				Plans: []*v1.Plan{testPlan},
 			},
-			store: &CachingValidatingStore{ConfigStore: &YamlFileStore{Path: dir + "/valid-config.yaml"}},
+			store: &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/valid-config.json"}},
 		},
 		{
 			name: "plan references non-existent repo",
 			config: &v1.Config{
 				Plans: []*v1.Plan{testPlan},
 			},
-			store:  &CachingValidatingStore{ConfigStore: &YamlFileStore{Path: dir + "/invalid-config.yaml"}},
+			store:  &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/invalid-config.json"}},
 			wantErr: true,
 			wantErrContains: "repo \"test-repo\" not found",
 		},
@@ -62,7 +62,7 @@ func TestConfig(t *testing.T) {
 					testRepo,
 				},
 			},
-			store:  &CachingValidatingStore{ConfigStore: &YamlFileStore{Path: dir + "/invalid-config2.yaml"}},
+			store:  &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/invalid-config2.json"}},
 			wantErr: true,
 			wantErrContains: "repo test-repo: duplicate id",
 		},
@@ -81,7 +81,7 @@ func TestConfig(t *testing.T) {
 					},
 				},
 			},
-			store:  &CachingValidatingStore{ConfigStore: &YamlFileStore{Path: dir + "/invalid-config3.yaml"}},
+			store:  &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/invalid-config3.json"}},
 			wantErr: true,
 			wantErrContains: "invalid cron \"bad cron\"",
 		},
