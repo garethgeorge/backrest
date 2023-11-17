@@ -27,7 +27,7 @@ jobs:
       with:
         node-version: '20'
     
-    - name: Restic
+    - name: Install Restic
       run: sudo apt install -y restic
     
     - name: Build WebUI
