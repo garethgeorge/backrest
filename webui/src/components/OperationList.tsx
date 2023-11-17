@@ -124,7 +124,7 @@ export const OperationRow = ({
         <List.Item.Meta
           title={
             <>
-              {opType} Error at {formatTime(operation.unixTimeStartMs!)}
+              {formatTime(operation.unixTimeStartMs!)} - {opType} Error
             </>
           }
           avatar={<ExclamationCircleOutlined style={{ color }} />}
@@ -134,7 +134,7 @@ export const OperationRow = ({
     );
   } else if (operation.operationBackup) {
     const backupOp = operation.operationBackup;
-    let desc = `Backup at ${formatTime(operation.unixTimeStartMs!)}`;
+    let desc = `${formatTime(operation.unixTimeStartMs!)} - Backup`;
     if (operation.status !== OperationStatus.STATUS_INPROGRESS) {
       desc += ` completed in ${formatDuration(
         parseInt(operation.unixTimeEndMs!) -
@@ -184,7 +184,7 @@ export const OperationRow = ({
       <List.Item>
         <List.Item.Meta
           title={
-            <>Snapshot at {formatTime(snapshotOp.snapshot!.unixTimeMs!)}</>
+            <>{formatTime(snapshotOp.snapshot!.unixTimeMs!)} - Snapshot </>
           }
           avatar={<PaperClipOutlined style={{ color }} />}
           description={
@@ -351,16 +351,15 @@ const formatBytes = (bytes?: number | string) => {
   return `${Math.round(bytes * 100) / 100} ${units[unit]}`;
 };
 
+const timezoneOffsetMs = new Date().getTimezoneOffset() * 60 * 1000;
 const formatTime = (time: number | string) => {
   if (typeof time === "string") {
     time = parseInt(time);
   }
   const d = new Date();
-  d.setTime(time);
-  return d.toLocaleString(undefined, {
-    dateStyle: "short",
-    timeStyle: "long",
-  });
+  d.setTime(time - timezoneOffsetMs);
+  const isoStr = d.toISOString();
+  return `${isoStr.substring(0, 10)} ${d.getUTCHours()}h${d.getUTCMinutes()}m`;
 };
 
 const formatDuration = (ms: number) => {
