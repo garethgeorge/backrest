@@ -19,12 +19,6 @@ type RepoOrchestrator struct {
 
 	repoConfig *v1.Repo
 	repo *restic.Repo
-
-	// TODO: decide if snapshot caching is a good idea. We gain performance but 
-	// increase background memory use by a small amount at all times (probably on the order of 1MB).
-	snapshotsMu sync.Mutex // enable very fast snapshot access IF no update is required.
-	snapshotsResetTimer *time.Timer
-	snapshots []*restic.Snapshot
 }
 
 func newRepoOrchestrator(repoConfig *v1.Repo, repo *restic.Repo) *RepoOrchestrator {
@@ -34,64 +28,26 @@ func newRepoOrchestrator(repoConfig *v1.Repo, repo *restic.Repo) *RepoOrchestrat
 	}
 }
 
-func (r *RepoOrchestrator) updateSnapshotsIfNeeded(ctx context.Context, force bool) error {
-	if r.snapshots != nil {
-		return nil
-	}
-
-	if r.snapshotsResetTimer != nil {
-		if !r.snapshotsResetTimer.Stop() {
-			<-r.snapshotsResetTimer.C
-		}
-	}
-
-	r.snapshotsResetTimer = time.AfterFunc(10 * time.Minute, func() {
-		r.snapshotsMu.Lock()
-		defer r.snapshotsMu.Unlock()
-		r.snapshots = nil
-	})
-
-	if r.snapshots != nil {
-		return nil
-	}
-
-
-	startTime := time.Now()
-
+func (r *RepoOrchestrator) Snapshots(ctx context.Context) ([]*restic.Snapshot, error) {
 	snapshots, err := r.repo.Snapshots(ctx, restic.WithPropagatedEnvVars(restic.EnvToPropagate...), restic.WithFlags("--latest", "1000"))
 	if err != nil {
-		return fmt.Errorf("failed to update snapshots: %w", err)
+		return nil, fmt.Errorf("restic.Snapshots: %w", err)
 	}
 
 	sort.SliceStable(snapshots, func(i, j int) bool {
 		return snapshots[i].UnixTimeMs() < snapshots[j].UnixTimeMs()
 	})
-	r.snapshots = snapshots
 
-	zap.L().Debug("updated snapshots", zap.String("repo", r.repoConfig.Id), zap.Duration("duration", time.Since(startTime)))
-
-	return nil
-}
-
-func (r *RepoOrchestrator) Snapshots(ctx context.Context) ([]*restic.Snapshot, error) {
-	r.snapshotsMu.Lock()
-	defer r.snapshotsMu.Unlock()
-	if err := r.updateSnapshotsIfNeeded(ctx, false); err != nil {
-		return nil, err
-	}
-
-	return r.snapshots, nil
+	return snapshots, nil
 }
 
 func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) ([]*restic.Snapshot, error) {
-	r.snapshotsMu.Lock()
-	defer r.snapshotsMu.Unlock()
-	
-	if err := r.updateSnapshotsIfNeeded(ctx, false); err != nil {
+	snapshots, err := r.Snapshots(ctx)
+	if err != nil {
 		return nil, err 
 	}
 	
-	return filterSnapshotsForPlan(r.snapshots, plan), nil
+	return filterSnapshotsForPlan(snapshots, plan), nil
 }
 
 func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCallback func(event *restic.BackupProgressEntry)) (*restic.BackupProgressEntry, error) {
@@ -123,14 +79,7 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 		return nil, fmt.Errorf("failed to backup: %w", err)
 	}
 
-	// Reset snapshots since a new backup has been added.
-	r.snapshotsMu.Lock()
-	r.snapshots = nil
-	r.snapshotsMu.Unlock()
-
 	zap.L().Debug("Backup completed", zap.String("repo", r.repoConfig.Id), zap.Duration("duration", time.Since(startTime)))
-
-
 	return summary, nil
 }
 

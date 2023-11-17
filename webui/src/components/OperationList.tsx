@@ -17,10 +17,6 @@ export const OperationList = ({
 }: React.PropsWithoutRef<{ operations: EOperation[] }>) => {
   operations.sort((a, b) => b.parsedTime - a.parsedTime);
 
-  const elems = operations.map((operation) => (
-    <OperationRow operation={operation} />
-  ));
-
   if (operations.length === 0) {
     return (
       <Empty
@@ -38,6 +34,11 @@ export const OperationList = ({
       renderItem={(item, index) => (
         <OperationRow key={item.parsedId} operation={item} />
       )}
+      pagination={
+        operations.length > 50
+          ? { position: "both", align: "center", defaultPageSize: 50 }
+          : {}
+      }
     />
   );
 };
@@ -68,7 +69,10 @@ export const OperationRow = ({
     const backupOp = operation.operationBackup;
     let desc = `Backup at ${formatTime(operation.unixTimeStartMs!)}`;
     if (operation.status !== OperationStatus.STATUS_INPROGRESS) {
-      desc += ` and finished at ${formatTime(operation.unixTimeEndMs!)}`;
+      desc += ` completed in ${formatDuration(
+        parseInt(operation.unixTimeEndMs!) -
+          parseInt(operation.unixTimeStartMs!)
+      )}`;
     } else {
       desc += " and is still running.";
     }
@@ -273,5 +277,17 @@ const formatTime = (time: number | string) => {
   }
   const d = new Date();
   d.setTime(time);
-  return d.toLocaleString();
+  return d.toISOString();
+};
+
+const formatDuration = (ms: number) => {
+  const seconds = Math.floor(ms / 100) / 10;
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  if (hours === 0 && minutes === 0) {
+    return `${seconds % 60}s`;
+  } else if (hours === 0) {
+    return `${minutes}m${seconds % 60}s`;
+  }
+  return `${hours}h${minutes % 60}m${seconds % 60}s`;
 };
