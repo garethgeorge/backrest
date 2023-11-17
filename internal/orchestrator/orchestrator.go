@@ -117,7 +117,7 @@ func (o *Orchestrator) Run(mainCtx context.Context) error {
 
 // runImmutable is a helper function for Run() that runs the orchestration loop with a single version of the config.
 func (o *Orchestrator) runVersion(mainCtx context.Context, config *v1.Config) bool {
-	lock := sync.Mutex{}
+	var lock sync.Mutex
 	ctx, cancel := context.WithCancel(mainCtx)
 	
 	var wg sync.WaitGroup
@@ -140,7 +140,9 @@ func (o *Orchestrator) runVersion(mainCtx context.Context, config *v1.Config) bo
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
-				timer.Stop()
+				if !timer.Stop() {
+					<-timer.C
+				}
 				zap.L().Debug("cancelled scheduled (but not running) task, orchestrator context is cancelled.", zap.String("task", t.Name()))
 				return
 			case <-timer.C:
