@@ -51,6 +51,13 @@ service ResticUI {
       body: "*"
     };
   }
+  
+  rpc ListSnapshotFiles(ListSnapshotFilesRequest) returns (ListSnapshotFilesResponse) {
+    option (google.api.http) = {
+      post: "/v1/snapshots/files"
+      body: "*"
+    };
+  }
 
   // Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
   rpc Backup(types.StringValue) returns (google.protobuf.Empty) {
@@ -78,4 +85,28 @@ message GetOperationsRequest {
   string repo_id = 1;
   string plan_id = 2;
   int64 last_n = 3; // limit to the last n operations
+}
+
+message ListSnapshotFilesRequest {
+  string repo_id = 1;
+  string snapshot_id = 2;
+  string path = 3;
+}
+
+message ListSnapshotFilesResponse {
+  string path = 1;
+  repeated LsEntry entries = 2;
+}
+
+message LsEntry {
+  string name = 1;
+  string type = 2;
+  string path = 3;
+  int64 uid = 4;
+  int64 gid = 5;
+  int64 size = 6;
+  int64 mode = 7;
+  string mtime = 8;
+  string atime = 9;
+  string ctime = 10;
 }

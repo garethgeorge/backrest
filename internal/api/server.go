@@ -130,6 +130,23 @@ func (s *Server) ListSnapshots(ctx context.Context, query *v1.ListSnapshotsReque
 	}, nil
 }
 
+func (s *Server) ListSnapshotFiles(ctx context.Context, query *v1.ListSnapshotFilesRequest) (*v1.ListSnapshotFilesResponse, error) {
+	repo, err := s.orchestrator.GetRepo(query.RepoId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repo: %w", err)
+	}
+
+	entries, err := repo.ListSnapshotFiles(ctx, query.SnapshotId, query.Path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list snapshot files: %w", err)
+	}
+
+	return &v1.ListSnapshotFilesResponse{
+		Path: query.Path,
+		Entries: entries,
+	}, nil
+}
+
 // GetOperationEvents implements GET /v1/events/operations
 func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.ResticUI_GetOperationEventsServer) error {
 	errorChan := make(chan error)

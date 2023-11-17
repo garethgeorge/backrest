@@ -29,7 +29,7 @@ func newRepoOrchestrator(repoConfig *v1.Repo, repo *restic.Repo) *RepoOrchestrat
 }
 
 func (r *RepoOrchestrator) Snapshots(ctx context.Context) ([]*restic.Snapshot, error) {
-	snapshots, err := r.repo.Snapshots(ctx, restic.WithPropagatedEnvVars(restic.EnvToPropagate...), restic.WithFlags("--latest", "1000"))
+	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--latest", "1000"))
 	if err != nil {
 		return nil, fmt.Errorf("restic.Snapshots: %w", err)
 	}
@@ -81,6 +81,23 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 
 	zap.L().Debug("Backup completed", zap.String("repo", r.repoConfig.Id), zap.Duration("duration", time.Since(startTime)))
 	return summary, nil
+}
+
+func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId string, path string) ([]*v1.LsEntry, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	_, entries, err := r.repo.ListDirectory(ctx, snapshotId, path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list snapshot files: %w", err)
+	}
+
+	lsEnts := make([]*v1.LsEntry, 0, len(entries))
+	for _, entry := range entries {
+		lsEnts = append(lsEnts, entry.ToProto())
+	}
+
+	return lsEnts, nil
 }
 
 func filterSnapshotsForPlan(snapshots []*restic.Snapshot, plan *v1.Plan) []*restic.Snapshot {
