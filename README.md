@@ -25,6 +25,28 @@ Feature Support
 * [ ] Restore files from a snapshot (use restic UI to identify a snapshot to restore, use restic cli to restore it today)
 * [ ] Prune snapshots after backup operations (recommend periodically running `restic prune` on the CLI until this feature is supported)
 
+# Getting Started 
+
+## Running 
+
+Installation options
+
+ * Download a release from the [releases page](https://github.com/garethgeorge/resticui/releases), extract and run the binary (you may need to mark it executable e.g. `chmod +x resticui`).
+ * Build from source ([see below](#building)).
+
+ResticUI is accessible from a web browser. By default it binds to `0.0.0.0:9898` and can be accessed at `http://localhost:9898`. 
+
+# Configuration
+
+**Environment Variables**
+
+ * RESTICUI_PORT - the port to bind to. Defaults to 9898.
+
+**Configuration File**
+
+ResticUI uses a JSON config. The default config location is `$HOME/.config/resticui/config.json` or if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/resticui/config.json`. 
+
+
 ## Screenshots
 
 Configuring a backup plan:
@@ -36,10 +58,16 @@ Running backup operation:
 Browsing snapshots:
 ![Browse Backup](./screenshots/screenshot-browse.png)
 
-# Dependencies
+# Developer Setup
 
-## Dev 
+## Dev Depedencies
 
+**Basic Dependencies**
+
+ * Node.JS for UI development
+ * Go 1.21 or greater for server development
+
+**To Edit Protobuffers**
 ```sh
 apt install -y protobuf-compiler
 go install \
@@ -53,6 +81,6 @@ go install github.com/bufbuild/buf/cmd/buf@v1.27.2
 ## Building
 
 ```sh
-(cd webui && npm run build)
+(cd webui && npm i && npm run build)
 (cd cmd/resticui && go build .)
 ```

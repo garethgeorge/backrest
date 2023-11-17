@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -24,10 +25,14 @@ import (
 )
 
 func main() {
+	port := os.Getenv("RESTICUI_PORT")
+	if port == "" {
+		port = "9898"
+	}
+
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	go onterm(cancel)
-	
 	
 	if _, err := config.Default.Get(); err != nil {
 		zap.S().Fatalf("Error loading config: %v", err)
@@ -81,7 +86,7 @@ func main() {
 
 	// Serve the HTTP gateway
 	server := &http.Server{
-		Addr:    ":9090",
+		Addr:    fmt.Sprintf(":%s", port),
 		Handler: mux,
 	}
 
