@@ -1,16 +1,23 @@
 import React from "react";
 import { Operation, OperationStatus } from "../../gen/ts/v1/operations.pb";
-import { Col, Collapse, Empty, List, Progress, Row, Typography } from "antd";
 import {
-  AlertOutlined,
-  DatabaseOutlined,
+  Card,
+  Col,
+  Collapse,
+  Empty,
+  List,
+  Progress,
+  Row,
+  Typography,
+} from "antd";
+import {
   ExclamationCircleOutlined,
-  ExclamationOutlined,
   PaperClipOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
 import { EOperation } from "../state/oplog";
+import { SnapshotBrowser } from "./SnapshotBrowser";
 
 export const OperationList = ({
   operations,
@@ -26,14 +33,60 @@ export const OperationList = ({
     );
   }
 
+  const groupBy = (ops: EOperation[], keyFunc: (op: EOperation) => string) => {
+    const groups: { [key: string]: EOperation[] } = {};
+
+    ops.forEach((op) => {
+      const key = keyFunc(op);
+      if (!(key in groups)) {
+        groups[key] = [];
+      }
+      groups[key].push(op);
+    });
+
+    return Object.values(groups);
+  };
+
+  // snapshotKey is a heuristic that tries to find a snapshot ID to group the operation by,
+  // if one can not be found the operation ID is the key.
+  const snapshotKey = (op: EOperation) => {
+    if (
+      op.operationBackup &&
+      op.operationBackup.lastStatus &&
+      op.operationBackup.lastStatus.summary
+    ) {
+      return normalizeSnapshotId(
+        op.operationBackup.lastStatus.summary.snapshotId!
+      );
+    } else if (op.operationIndexSnapshot) {
+      return normalizeSnapshotId(op.operationIndexSnapshot.snapshot!.id!);
+    }
+    return op.id!;
+  };
+
+  const groupedItems = groupBy(operations, snapshotKey);
+  groupedItems.sort((a, b) => {
+    return b[0].parsedTime - a[0].parsedTime;
+  });
+
   return (
     <List
       itemLayout="horizontal"
       size="small"
-      dataSource={operations}
-      renderItem={(item, index) => (
-        <OperationRow key={item.parsedId} operation={item} />
-      )}
+      dataSource={groupedItems}
+      renderItem={(group, index) => {
+        if (group.length === 1) {
+          return <OperationRow key={group[0].parsedId} operation={group[0]} />;
+        }
+
+        return (
+          <Card size="small" style={{ margin: "5px" }}>
+            {group.map((op) => (
+              <OperationRow key={op.parsedId} operation={op} />
+            ))}
+          </Card>
+        );
+      }}
       pagination={
         operations.length > 50
           ? { position: "both", align: "center", defaultPageSize: 50 }
@@ -55,11 +108,25 @@ export const OperationRow = ({
     color = "blue";
   }
 
-  if (operation.displayMessage) {
+  if (
+    operation.displayMessage &&
+    operation.status === OperationStatus.STATUS_ERROR
+  ) {
+    let opType = "Message";
+    if (operation.operationBackup) {
+      opType = "Backup";
+    } else if (operation.operationIndexSnapshot) {
+      opType = "Snapshot";
+    }
+
     return (
       <List.Item>
         <List.Item.Meta
-          title={<>Message</>}
+          title={
+            <>
+              {opType} Error at {formatTime(operation.unixTimeStartMs!)}
+            </>
+          }
           avatar={<ExclamationCircleOutlined style={{ color }} />}
           description={operation.displayMessage}
         />
@@ -120,14 +187,25 @@ export const OperationRow = ({
             <>Snapshot at {formatTime(snapshotOp.snapshot!.unixTimeMs!)}</>
           }
           avatar={<PaperClipOutlined style={{ color }} />}
-          description={<SnapshotInfo snapshot={snapshotOp.snapshot!} />}
+          description={
+            <SnapshotInfo
+              snapshot={snapshotOp.snapshot!}
+              repoId={operation.repoId!}
+            />
+          }
         />
       </List.Item>
     );
   }
 };
 
-const SnapshotInfo = ({ snapshot }: { snapshot: ResticSnapshot }) => {
+const SnapshotInfo = ({
+  snapshot,
+  repoId,
+}: {
+  snapshot: ResticSnapshot;
+  repoId: string;
+}) => {
   return (
     <Collapse
       size="small"
@@ -139,7 +217,7 @@ const SnapshotInfo = ({ snapshot }: { snapshot: ResticSnapshot }) => {
             <>
               <Typography.Text>
                 <Typography.Text strong>Snapshot ID: </Typography.Text>
-                {snapshot.id?.substring(0, 8)}
+                {normalizeSnapshotId(snapshot.id!)}
               </Typography.Text>
               <Row gutter={16}>
                 <Col span={8}>
@@ -164,7 +242,9 @@ const SnapshotInfo = ({ snapshot }: { snapshot: ResticSnapshot }) => {
         {
           key: 2,
           label: "Browse",
-          children: null,
+          children: (
+            <SnapshotBrowser snapshotId={snapshot.id!} repoId={repoId} />
+          ),
         },
       ]}
     />
@@ -277,7 +357,10 @@ const formatTime = (time: number | string) => {
   }
   const d = new Date();
   d.setTime(time);
-  return d.toISOString();
+  return d.toLocaleString(undefined, {
+    dateStyle: "short",
+    timeStyle: "long",
+  });
 };
 
 const formatDuration = (ms: number) => {
@@ -290,4 +373,8 @@ const formatDuration = (ms: number) => {
     return `${minutes}m${seconds % 60}s`;
   }
   return `${hours}h${minutes % 60}m${seconds % 60}s`;
+};
+
+const normalizeSnapshotId = (id: string) => {
+  return id.substring(0, 8);
 };

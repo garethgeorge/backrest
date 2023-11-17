@@ -30,7 +30,7 @@ type ScheduledBackupTask struct {
 var _ Task = &ScheduledBackupTask{}
 
 func NewScheduledBackupTask(orchestrator *Orchestrator, plan *v1.Plan) (*ScheduledBackupTask, error) {
-	sched, err := cronexpr.Parse(plan.Cron)
+	sched, err := cronexpr.ParseInLocation(plan.Cron, time.Now().Location().String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse schedule %q: %w", plan.Cron, err)
 	}
@@ -160,7 +160,6 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan 
 	opTime := curTimeMillis()
 	var indexOps []*v1.Operation
 	for _, snapshot := range snapshots {
-		zap.L().Debug("checking if snapshot has been indexed", zap.String("snapshot", snapshot.Id))
 		opid, err := orchestrator.oplog.HasIndexedSnapshot(snapshot.Id)
 		if err != nil {
 			return fmt.Errorf("HasIndexSnapshot for snapshot %q: %w", snapshot.Id, err)

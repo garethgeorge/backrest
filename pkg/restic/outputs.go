@@ -26,6 +26,21 @@ type LsEntry struct {
 	Ctime string `json:"ctime"`
 }
 
+func (e *LsEntry) ToProto() *v1.LsEntry {
+	return &v1.LsEntry{
+		Name: e.Name,
+		Type: e.Type,
+		Path: e.Path,
+		Uid: int64(e.Uid),
+		Gid: int64(e.Gid),
+		Size: int64(e.Size),
+		Mode: int64(e.Mode),
+		Mtime: e.Mtime,
+		Atime: e.Atime,
+		Ctime: e.Ctime,
+	}
+}
+
 type Snapshot struct {
 	Id string `json:"id"`
 	Time string `json:"time"`

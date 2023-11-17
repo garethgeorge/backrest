@@ -208,7 +208,6 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 		return nil, nil, NewCmdError(cmd, output, err)
 	}
 
-
 	snapshots, entries, err := readLs(bytes.NewBuffer(output))
 	if err != nil {
 		return nil, nil, NewCmdError(cmd, output, err)

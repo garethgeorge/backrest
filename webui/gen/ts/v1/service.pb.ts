@@ -21,6 +21,30 @@ export type GetOperationsRequest = {
   lastN?: string
 }
 
+export type ListSnapshotFilesRequest = {
+  repoId?: string
+  snapshotId?: string
+  path?: string
+}
+
+export type ListSnapshotFilesResponse = {
+  path?: string
+  entries?: LsEntry[]
+}
+
+export type LsEntry = {
+  name?: string
+  type?: string
+  path?: string
+  uid?: string
+  gid?: string
+  size?: string
+  mode?: string
+  mtime?: string
+  atime?: string
+  ctime?: string
+}
+
 export class ResticUI {
   static GetConfig(req: GoogleProtobufEmpty.Empty, initReq?: fm.InitReq): Promise<V1Config.Config> {
     return fm.fetchReq<GoogleProtobufEmpty.Empty, V1Config.Config>(`/v1/config?${fm.renderURLSearchParams(req, [])}`, {...initReq, method: "GET"})
@@ -39,6 +63,9 @@ export class ResticUI {
   }
   static ListSnapshots(req: ListSnapshotsRequest, initReq?: fm.InitReq): Promise<V1Restic.ResticSnapshotList> {
     return fm.fetchReq<ListSnapshotsRequest, V1Restic.ResticSnapshotList>(`/v1/snapshots`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
+  }
+  static ListSnapshotFiles(req: ListSnapshotFilesRequest, initReq?: fm.InitReq): Promise<ListSnapshotFilesResponse> {
+    return fm.fetchReq<ListSnapshotFilesRequest, ListSnapshotFilesResponse>(`/v1/snapshots/files`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
   }
   static Backup(req: TypesValue.StringValue, initReq?: fm.InitReq): Promise<GoogleProtobufEmpty.Empty> {
     return fm.fetchReq<TypesValue.StringValue, GoogleProtobufEmpty.Empty>(`/v1/cmd/backup`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
