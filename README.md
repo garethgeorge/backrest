@@ -1,5 +1,7 @@
 # ResticUI
 
+[![Build and Test](https://github.com/garethgeorge/resticui/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/garethgeorge/resticui/actions/workflows/build-and-test.yml)
+
 ResticUI is a WebUI wrapper for [restic](https://restic.net/). It is intended to be used as a self-hosted application for managing backups of your data.
 
 The goals of the project are:
