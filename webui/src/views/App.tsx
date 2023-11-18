@@ -1,21 +1,38 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ScheduleOutlined,
   DatabaseOutlined,
   PlusOutlined,
   CheckCircleOutlined,
+  PaperClipOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Layout, Menu, Spin, theme } from "antd";
+import { Button, Layout, List, Menu, Modal, Spin, theme } from "antd";
 import { configState, fetchConfig } from "../state/config";
 import { useRecoilState } from "recoil";
-import { Config } from "../../gen/ts/v1/config.pb";
+import { Config, Plan } from "../../gen/ts/v1/config.pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { AddPlanModal } from "./AddPlanModel";
 import { AddRepoModel } from "./AddRepoModel";
 import { MainContentArea, useSetContent } from "./MainContentArea";
 import { PlanView } from "./PlanView";
+import {
+  EOperation,
+  buildOperationListListener,
+  getOperations,
+  subscribeToOperations,
+  toEop,
+  unsubscribeFromOperations,
+} from "../state/oplog";
+import { formatTime } from "../lib/formatting";
+import { SnapshotBrowser } from "../components/SnapshotBrowser";
+import { OperationRow } from "../components/OperationList";
+import {
+  Operation,
+  OperationEvent,
+  OperationEventType,
+} from "../../gen/ts/v1/operations.pb";
 
 const { Header, Content, Sider } = Layout;
 
@@ -63,7 +80,7 @@ export const App: React.FC = () => {
         </h1>
       </Header>
       <Layout>
-        <Sider width={200} style={{ background: colorBgContainer }}>
+        <Sider width={300} style={{ background: colorBgContainer }}>
           <Menu
             mode="inline"
             defaultSelectedKeys={["1"]}
@@ -81,11 +98,65 @@ export const App: React.FC = () => {
 const getSidenavItems = (config: Config | null): MenuProps["items"] => {
   const showModal = useShowModal();
   const setContent = useSetContent();
+  const [snapshotsByPlan, setSnapshotsByPlan] = useState<{
+    [planId: string]: EOperation[];
+  }>({});
+
+  const addSnapshots = (planId: string, ops: EOperation[]) => {
+    const snapsByPlanCpy = { ...snapshotsByPlan };
+    let snapsForPlanCpy = [...(snapsByPlanCpy[planId] || [])];
+    for (const op of ops) {
+      snapsForPlanCpy.push(toEop(op));
+    }
+    snapsForPlanCpy.sort((a, b) => {
+      return a.parsedTime > b.parsedTime ? -1 : 1;
+    });
+    if (snapsForPlanCpy.length > 5) {
+      snapsForPlanCpy = snapsForPlanCpy.slice(0, 5);
+    }
+    snapsByPlanCpy[planId] = snapsForPlanCpy;
+    setSnapshotsByPlan(snapsByPlanCpy);
+  };
+
+  // Track newly created snapshots in the set.
+  useEffect(() => {
+    const listener = (event: OperationEvent) => {
+      if (event.type !== OperationEventType.EVENT_CREATED) return;
+      const op = event.operation!;
+      if (!op.planId) return;
+      if (!op.operationIndexSnapshot) return;
+      addSnapshots(op.planId!, [toEop(op)]);
+    };
+
+    subscribeToOperations(listener);
+
+    return () => {
+      unsubscribeFromOperations(listener);
+    };
+  }, [snapshotsByPlan]);
 
   if (!config) return [];
 
   const configPlans = config.plans || [];
   const configRepos = config.repos || [];
+
+  const onSelectPlan = (plan: Plan) => {
+    setContent(<PlanView plan={plan} />, [
+      { title: "Plans" },
+      { title: plan.id || "" },
+    ]);
+
+    if (!snapshotsByPlan[plan.id!]) {
+      (async () => {
+        const ops = await getOperations({ planId: plan.id!, lastN: "20" });
+        // avoid races by checking again after the request
+        if (!snapshotsByPlan[plan.id!]) {
+          const snapshots = ops.filter((op) => !!op.operationIndexSnapshot);
+          addSnapshots(plan.id!, snapshots);
+        }
+      })();
+    }
+  };
 
   const plans: MenuProps["items"] = [
     {
@@ -97,16 +168,47 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
       },
     },
     ...configPlans.map((plan) => {
+      const children: MenuProps["items"] = (
+        snapshotsByPlan[plan.id!] || []
+      ).map((snapshot) => {
+        return {
+          key: "s-" + snapshot.id,
+          icon: <PaperClipOutlined />,
+          label: (
+            <small>{"Operation " + formatTime(snapshot.parsedTime)}</small>
+          ),
+          onClick: () => {
+            showModal(
+              <Modal
+                title="View Snapshot"
+                open={true}
+                onCancel={() => showModal(null)}
+                footer={[
+                  <Button
+                    key="done"
+                    onClick={() => showModal(null)}
+                    type="primary"
+                  >
+                    Done
+                  </Button>,
+                ]}
+              >
+                <List>
+                  <OperationRow operation={snapshot} />
+                </List>
+              </Modal>
+            );
+          },
+        };
+      });
+
       return {
         key: "p-" + plan.id,
         icon: <CheckCircleOutlined style={{ color: "green" }} />,
         label: plan.id,
-        onClick: () => {
-          setContent(<PlanView plan={plan} />, [
-            { title: "Plans" },
-            { title: plan.id || "" },
-          ]);
-        },
+        children: children,
+        onTitleClick: onSelectPlan.bind(null, plan), // if children
+        onClick: onSelectPlan.bind(null, plan), // if no children
       };
     }),
   ];

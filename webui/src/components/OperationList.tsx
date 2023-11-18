@@ -18,6 +18,12 @@ import {
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
 import { EOperation } from "../state/oplog";
 import { SnapshotBrowser } from "./SnapshotBrowser";
+import {
+  formatBytes,
+  formatDuration,
+  formatTime,
+  normalizeSnapshotId,
+} from "../lib/formatting";
 
 export const OperationList = ({
   operations,
@@ -47,24 +53,10 @@ export const OperationList = ({
     return Object.values(groups);
   };
 
-  // snapshotKey is a heuristic that tries to find a snapshot ID to group the operation by,
-  // if one can not be found the operation ID is the key.
-  const snapshotKey = (op: EOperation) => {
-    if (
-      op.operationBackup &&
-      op.operationBackup.lastStatus &&
-      op.operationBackup.lastStatus.summary
-    ) {
-      return normalizeSnapshotId(
-        op.operationBackup.lastStatus.summary.snapshotId!
-      );
-    } else if (op.operationIndexSnapshot) {
-      return normalizeSnapshotId(op.operationIndexSnapshot.snapshot!.id!);
-    }
-    return op.id!;
-  };
-
-  const groupedItems = groupBy(operations, snapshotKey);
+  // groups items by snapshotID if one can be identified, otherwise by operation ID.
+  const groupedItems = groupBy(operations, (op: EOperation) => {
+    return getSnapshotId(op) || op.id!;
+  });
   groupedItems.sort((a, b) => {
     return b[0].parsedTime - a[0].parsedTime;
   });
@@ -334,46 +326,14 @@ const BackupOperationStatus = ({
   }
 };
 
-const formatBytes = (bytes?: number | string) => {
-  if (!bytes) {
-    return 0;
+const getSnapshotId = (op: EOperation): string | null => {
+  if (op.operationBackup) {
+    const ob = op.operationBackup;
+    if (ob.lastStatus && ob.lastStatus.summary) {
+      return normalizeSnapshotId(ob.lastStatus.summary.snapshotId!);
+    }
+  } else if (op.operationIndexSnapshot) {
+    return normalizeSnapshotId(op.operationIndexSnapshot.snapshot!.id!);
   }
-  if (typeof bytes === "string") {
-    bytes = parseInt(bytes);
-  }
-
-  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
-  let unit = 0;
-  while (bytes > 1024) {
-    bytes /= 1024;
-    unit++;
-  }
-  return `${Math.round(bytes * 100) / 100} ${units[unit]}`;
-};
-
-const timezoneOffsetMs = new Date().getTimezoneOffset() * 60 * 1000;
-const formatTime = (time: number | string) => {
-  if (typeof time === "string") {
-    time = parseInt(time);
-  }
-  const d = new Date();
-  d.setTime(time - timezoneOffsetMs);
-  const isoStr = d.toISOString();
-  return `${isoStr.substring(0, 10)} ${d.getUTCHours()}h${d.getUTCMinutes()}m`;
-};
-
-const formatDuration = (ms: number) => {
-  const seconds = Math.floor(ms / 100) / 10;
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  if (hours === 0 && minutes === 0) {
-    return `${seconds % 60}s`;
-  } else if (hours === 0) {
-    return `${minutes}m${seconds % 60}s`;
-  }
-  return `${hours}h${minutes % 60}m${seconds % 60}s`;
-};
-
-const normalizeSnapshotId = (id: string) => {
-  return id.substring(0, 8);
+  return null;
 };

@@ -21,7 +21,7 @@ import (
 type Server struct {
 	*v1.UnimplementedResticUIServer
 	orchestrator *orchestrator.Orchestrator
-	oplog *oplog.OpLog
+	oplog        *oplog.OpLog
 }
 
 var _ v1.ResticUIServer = &Server{}
@@ -29,7 +29,7 @@ var _ v1.ResticUIServer = &Server{}
 func NewServer(orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog) *Server {
 	s := &Server{
 		orchestrator: orchestrator,
-		oplog: oplog,
+		oplog:        oplog,
 	}
 
 	return s
@@ -52,7 +52,7 @@ func (s *Server) SetConfig(ctx context.Context, c *v1.Config) (*v1.Config, error
 		return nil, errors.New("config modno mismatch, reload and try again")
 	}
 	c.Modno += 1
-	
+
 	if err := config.Default.Update(c); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
@@ -80,7 +80,7 @@ func (s *Server) AddRepo(ctx context.Context, repo *v1.Repo) (*v1.Config, error)
 	}
 
 	r := restic.NewRepo(repo)
-	 // use background context such that the init op can try to complete even if the connection is closed.
+	// use background context such that the init op can try to complete even if the connection is closed.
 	if err := r.Init(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed to init repo: %w", err)
 	}
@@ -142,7 +142,7 @@ func (s *Server) ListSnapshotFiles(ctx context.Context, query *v1.ListSnapshotFi
 	}
 
 	return &v1.ListSnapshotFilesResponse{
-		Path: query.Path,
+		Path:    query.Path,
 		Entries: entries,
 	}, nil
 }
@@ -164,7 +164,7 @@ func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.ResticUI_GetOper
 		}
 
 		event := &v1.OperationEvent{
-			Type: eventTypeMapped,
+			Type:      eventTypeMapped,
 			Operation: op,
 		}
 
@@ -191,7 +191,7 @@ func (s *Server) GetOperations(ctx context.Context, req *v1.GetOperationsRequest
 		filter = oplog.FilterLastN(req.LastN)
 	}
 
-	var err error 
+	var err error
 	var ops []*v1.Operation
 	if req.RepoId != "" && req.PlanId != "" {
 		return nil, errors.New("cannot specify both repoId and planId")
@@ -199,6 +199,8 @@ func (s *Server) GetOperations(ctx context.Context, req *v1.GetOperationsRequest
 		ops, err = s.oplog.GetByPlan(req.PlanId, filter)
 	} else if req.RepoId != "" {
 		ops, err = s.oplog.GetByRepo(req.RepoId, filter)
+	} else {
+		ops, err = s.oplog.GetAll(filter)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get operations: %w", err)
@@ -209,7 +211,7 @@ func (s *Server) GetOperations(ctx context.Context, req *v1.GetOperationsRequest
 	}, nil
 }
 
-func (s* Server) Backup(ctx context.Context, req *types.StringValue) (*emptypb.Empty, error) {
+func (s *Server) Backup(ctx context.Context, req *types.StringValue) (*emptypb.Empty, error) {
 	plan, err := s.orchestrator.GetPlan(req.Value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get plan %q: %w", req.Value, err)
@@ -233,4 +235,3 @@ func (s *Server) PathAutocomplete(ctx context.Context, path *types.StringValue) 
 
 	return &types.StringList{Values: paths}, nil
 }
-

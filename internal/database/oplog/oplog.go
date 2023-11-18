@@ -320,6 +320,24 @@ func (o *OpLog) GetByPlan(planId string, filter Filter) ([]*v1.Operation, error)
 	return ops, nil
 }
 
+func (o *OpLog) GetAll(filter Filter) ([]*v1.Operation, error) {
+	var ops []*v1.Operation
+	if err := o.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(OpLogBucket).Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			op := &v1.Operation{}
+			if err := proto.Unmarshal(v, op); err != nil {
+				return fmt.Errorf("error unmarshalling operation: %w", err)
+			}
+			ops = append(ops, op)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return ops, nil
+}
+
 func (o *OpLog) Subscribe(callback *func(EventType, *v1.Operation)) {
 	o.subscribersMu.Lock()
 	defer o.subscribersMu.Unlock()
