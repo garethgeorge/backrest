@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"context"
 	"fmt"
-	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -18,36 +17,32 @@ type RepoOrchestrator struct {
 	mu sync.Mutex
 
 	repoConfig *v1.Repo
-	repo *restic.Repo
+	repo       *restic.Repo
 }
 
 func newRepoOrchestrator(repoConfig *v1.Repo, repo *restic.Repo) *RepoOrchestrator {
 	return &RepoOrchestrator{
 		repoConfig: repoConfig,
-		repo: repo,
+		repo:       repo,
 	}
 }
 
 func (r *RepoOrchestrator) Snapshots(ctx context.Context) ([]*restic.Snapshot, error) {
-	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--latest", "1000"))
+	snapshots, err := r.repo.Snapshots(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("restic.Snapshots: %w", err)
+		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
 	}
-
-	sort.SliceStable(snapshots, func(i, j int) bool {
-		return snapshots[i].UnixTimeMs() < snapshots[j].UnixTimeMs()
-	})
-
+	sortSnapshotsByTime(snapshots)
 	return snapshots, nil
 }
 
 func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) ([]*restic.Snapshot, error) {
-	snapshots, err := r.Snapshots(ctx)
+	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--tag", tagForPlan(plan)))
 	if err != nil {
-		return nil, err 
+		return nil, fmt.Errorf("get snapshots for plan %q: %w", plan.Id, err)
 	}
-	
-	return filterSnapshotsForPlan(snapshots, plan), nil
+	sortSnapshotsByTime(snapshots)
+	return snapshots, nil
 }
 
 func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCallback func(event *restic.BackupProgressEntry)) (*restic.BackupProgressEntry, error) {
@@ -71,7 +66,7 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 
 	if len(snapshots) > 0 {
 		// TODO: design a test strategy to verify that the backup parent is used correctly.
-		opts = append(opts, restic.WithBackupParent(snapshots[len(snapshots) - 1].Id))
+		opts = append(opts, restic.WithBackupParent(snapshots[len(snapshots)-1].Id))
 	}
 
 	summary, err := r.repo.Backup(ctx, progressCallback, opts...)
@@ -100,22 +95,12 @@ func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId str
 	return lsEnts, nil
 }
 
-func filterSnapshotsForPlan(snapshots []*restic.Snapshot, plan *v1.Plan) []*restic.Snapshot {
-	wantTag := tagForPlan(plan)
-	var filtered []*restic.Snapshot
-	for _, snapshot := range snapshots {
-		if snapshot.Tags == nil {
-			continue
-		}
-
-		if slices.Contains(snapshot.Tags, wantTag) {
-			filtered = append(filtered, snapshot)
-		}
-	}
-
-	return filtered
-}
-
 func tagForPlan(plan *v1.Plan) string {
 	return fmt.Sprintf("plan:%s", plan.Id)
+}
+
+func sortSnapshotsByTime(snapshots []*restic.Snapshot) {
+	sort.SliceStable(snapshots, func(i, j int) bool {
+		return snapshots[i].UnixTimeMs() < snapshots[j].UnixTimeMs()
+	})
 }
