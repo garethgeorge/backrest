@@ -44,7 +44,7 @@ export const getOperations = async ({
   planId,
   repoId,
   lastN,
-}: GetOperationsRequest): Promise<Operation[]> => {
+}: GetOperationsRequest): Promise<EOperation[]> => {
   const opList = await ResticUI.GetOperations(
     {
       planId,
@@ -55,7 +55,7 @@ export const getOperations = async ({
       pathPrefix: "/api",
     }
   );
-  return opList.operations || [];
+  return (opList.operations || []).map(toEop);
 };
 
 export const subscribeToOperations = (
@@ -85,7 +85,7 @@ export const buildOperationListListener = (
   let operations: EOperation[] = [];
 
   (async () => {
-    let opsFromServer = (await getOperations(req)).map(toEop);
+    let opsFromServer = await getOperations(req);
     operations = opsFromServer.filter(
       (o) => !operations.find((op) => op.parsedId === o.parsedId)
     );
@@ -123,7 +123,7 @@ export const buildOperationListListener = (
   };
 };
 
-const toEop = (op: Operation): EOperation => {
+export const toEop = (op: Operation): EOperation => {
   const time =
     op.operationIndexSnapshot?.snapshot?.unixTimeMs || op.unixTimeStartMs;
 
