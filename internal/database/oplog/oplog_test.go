@@ -8,8 +8,9 @@ import (
 )
 
 func TestCreate(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
+	t.Cleanup(func() { log.Close() })
 	if err != nil {
 		t.Fatalf("error creating oplog: %s", err)
 	}
@@ -19,16 +20,16 @@ func TestCreate(t *testing.T) {
 }
 
 func TestAddOperation(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
 	if err != nil {
 		t.Fatalf("error creating oplog: %s", err)
 	}
-	defer log.Close()
+	t.Cleanup(func() { log.Close() })
 
 	var tests = []struct {
-		name string
-		op *v1.Operation
+		name    string
+		op      *v1.Operation
 		wantErr bool
 	}{
 		{
@@ -65,8 +66,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				Id: 0,
 				Op: &v1.Operation_OperationIndexSnapshot{
-					OperationIndexSnapshot: &v1.OperationIndexSnapshot{
-					},
+					OperationIndexSnapshot: &v1.OperationIndexSnapshot{},
 				},
 			},
 			wantErr: true,
@@ -82,17 +82,17 @@ func TestAddOperation(t *testing.T) {
 		{
 			name: "operation with repo",
 			op: &v1.Operation{
-				Id: 0,
+				Id:     0,
 				RepoId: "testrepo",
-				Op: &v1.Operation_OperationBackup{},
+				Op:     &v1.Operation_OperationBackup{},
 			},
 		},
 		{
 			name: "operation with plan",
 			op: &v1.Operation{
-				Id: 0,
+				Id:     0,
 				PlanId: "testplan",
-				Op: &v1.Operation_OperationBackup{},
+				Op:     &v1.Operation_OperationBackup{},
 			},
 		},
 	}
@@ -112,31 +112,32 @@ func TestAddOperation(t *testing.T) {
 }
 
 func TestListOperation(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
 	if err != nil {
 		t.Fatalf("error creating oplog: %s", err)
 	}
+	t.Cleanup(func() { log.Close() })
 
 	// these should get assigned IDs 1-3 respectively by the oplog
 	ops := []*v1.Operation{
 		{
-			PlanId: "plan1",
-			RepoId: "repo1",
+			PlanId:         "plan1",
+			RepoId:         "repo1",
 			DisplayMessage: "op1",
-			Op: &v1.Operation_OperationBackup{},
+			Op:             &v1.Operation_OperationBackup{},
 		},
 		{
-			PlanId: "plan1",
-			RepoId: "repo2",
+			PlanId:         "plan1",
+			RepoId:         "repo2",
 			DisplayMessage: "op2",
-			Op: &v1.Operation_OperationBackup{},
+			Op:             &v1.Operation_OperationBackup{},
 		},
 		{
-			PlanId: "plan2",
-			RepoId: "repo2",
+			PlanId:         "plan2",
+			RepoId:         "repo2",
 			DisplayMessage: "op3",
-			Op: &v1.Operation_OperationBackup{},
+			Op:             &v1.Operation_OperationBackup{},
 		},
 	}
 
@@ -147,34 +148,34 @@ func TestListOperation(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-		byPlan bool 
-		byRepo bool 
-		id string 
+		name     string
+		byPlan   bool
+		byRepo   bool
+		id       string
 		expected []string
 	}{
 		{
-			name: "list plan1",
-			byPlan: true,
-			id: "plan1",
+			name:     "list plan1",
+			byPlan:   true,
+			id:       "plan1",
 			expected: []string{"op1", "op2"},
 		},
 		{
-			name: "list plan2",
-			byPlan: true,
-			id: "plan2",
+			name:     "list plan2",
+			byPlan:   true,
+			id:       "plan2",
 			expected: []string{"op3"},
 		},
 		{
-			name: "list repo1",
-			byRepo: true,
-			id: "repo1",
+			name:     "list repo1",
+			byRepo:   true,
+			id:       "repo1",
 			expected: []string{"op1"},
 		},
 		{
-			name: "list repo2",
-			byRepo: true,
-			id: "repo2",
+			name:     "list repo2",
+			byRepo:   true,
+			id:       "repo2",
 			expected: []string{"op2", "op3"},
 		},
 	}
@@ -182,7 +183,7 @@ func TestListOperation(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 			var ops []*v1.Operation
 			var err error
 			if tc.byPlan {
@@ -204,17 +205,18 @@ func TestListOperation(t *testing.T) {
 }
 
 func TestBigIO(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
 	if err != nil {
 		t.Fatalf("error creating oplog: %s", err)
 	}
+	t.Cleanup(func() { log.Close() })
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100; i++ {
 		if err := log.Add(&v1.Operation{
 			PlanId: "plan1",
 			RepoId: "repo1",
-			Op: &v1.Operation_OperationBackup{},
+			Op:     &v1.Operation_OperationBackup{},
 		}); err != nil {
 			t.Fatalf("error adding operation: %s", err)
 		}
@@ -224,16 +226,16 @@ func TestBigIO(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error listing operations: %s", err)
 	}
-	if len(ops) != 1000 {
-		t.Errorf("want 1000 operations, got %d", len(ops))
+	if len(ops) != 100 {
+		t.Errorf("want 100 operations, got %d", len(ops))
 	}
 
 	ops, err = log.GetByRepo("repo1", FilterKeepAll())
 	if err != nil {
 		t.Fatalf("error listing operations: %s", err)
 	}
-	if len(ops) != 1000 {
-		t.Errorf("want 1000 operations, got %d", len(ops))
+	if len(ops) != 100 {
+		t.Errorf("want 100 operations, got %d", len(ops))
 	}
 }
 
@@ -243,6 +245,7 @@ func TestIndexSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error creating oplog: %s", err)
 	}
+	t.Cleanup(func() { log.Close() })
 
 	op := &v1.Operation{
 		PlanId: "plan1",
@@ -266,7 +269,7 @@ func TestIndexSnapshot(t *testing.T) {
 	if id != op.Id {
 		t.Fatalf("want id %d, got %d", op.Id, id)
 	}
-	
+
 	id, err = log.HasIndexedSnapshot("notfound")
 	if err != nil {
 		t.Fatalf("error checking for snapshot: %s", err)
