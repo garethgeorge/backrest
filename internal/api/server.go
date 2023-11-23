@@ -10,7 +10,8 @@ import (
 	"github.com/garethgeorge/resticui/gen/go/types"
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 	"github.com/garethgeorge/resticui/internal/config"
-	"github.com/garethgeorge/resticui/internal/database/oplog"
+	"github.com/garethgeorge/resticui/internal/oplog"
+	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
 	"github.com/garethgeorge/resticui/internal/orchestrator"
 	"github.com/garethgeorge/resticui/pkg/restic"
 	"go.uber.org/zap"
@@ -185,10 +186,10 @@ func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.ResticUI_GetOper
 }
 
 func (s *Server) GetOperations(ctx context.Context, req *v1.GetOperationsRequest) (*v1.OperationList, error) {
-	filter := oplog.FilterKeepAll()
+	collector := indexutil.CollectAll()
 
 	if req.LastN != 0 {
-		filter = oplog.FilterLastN(req.LastN)
+		collector = indexutil.CollectLastN(int(req.LastN))
 	}
 
 	var err error
@@ -196,11 +197,11 @@ func (s *Server) GetOperations(ctx context.Context, req *v1.GetOperationsRequest
 	if req.RepoId != "" && req.PlanId != "" {
 		return nil, errors.New("cannot specify both repoId and planId")
 	} else if req.PlanId != "" {
-		ops, err = s.oplog.GetByPlan(req.PlanId, filter)
+		ops, err = s.oplog.GetByPlan(req.PlanId, collector)
 	} else if req.RepoId != "" {
-		ops, err = s.oplog.GetByRepo(req.RepoId, filter)
+		ops, err = s.oplog.GetByRepo(req.RepoId, collector)
 	} else {
-		ops, err = s.oplog.GetAll(filter)
+		ops, err = s.oplog.GetAll()
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get operations: %w", err)

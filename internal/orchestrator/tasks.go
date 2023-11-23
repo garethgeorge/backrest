@@ -6,16 +6,16 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/internal/database/oplog"
+	"github.com/garethgeorge/resticui/internal/oplog"
+	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
 	"github.com/garethgeorge/resticui/pkg/restic"
 	"github.com/gitploy-io/cronexpr"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 )
 
-
 type Task interface {
-	Name() string // huamn readable name for this task.
+	Name() string                  // huamn readable name for this task.
 	Next(now time.Time) *time.Time // when this task would like to be run.
 	Run(ctx context.Context) error // run the task.
 }
@@ -23,8 +23,8 @@ type Task interface {
 // BackupTask is a scheduled backup operation.
 type ScheduledBackupTask struct {
 	orchestrator *Orchestrator // owning orchestrator
-	plan *v1.Plan
-	schedule *cronexpr.Schedule 
+	plan         *v1.Plan
+	schedule     *cronexpr.Schedule
 }
 
 var _ Task = &ScheduledBackupTask{}
@@ -37,8 +37,8 @@ func NewScheduledBackupTask(orchestrator *Orchestrator, plan *v1.Plan) (*Schedul
 
 	return &ScheduledBackupTask{
 		orchestrator: orchestrator,
-		plan: plan,
-		schedule: sched,
+		plan:         plan,
+		schedule:     sched,
 	}, nil
 }
 
@@ -58,15 +58,15 @@ func (t *ScheduledBackupTask) Run(ctx context.Context) error {
 // OnetimeBackupTask is a single backup operation.
 type OnetimeBackupTask struct {
 	orchestrator *Orchestrator
-	plan *v1.Plan
-	time *time.Time
+	plan         *v1.Plan
+	time         *time.Time
 }
 
 func NewOneofBackupTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *OnetimeBackupTask {
 	return &OnetimeBackupTask{
 		orchestrator: orchestrator,
-		plan: plan,
-		time: &at,
+		plan:         plan,
+		time:         &at,
 	}
 }
 
@@ -75,9 +75,9 @@ func (t *OnetimeBackupTask) Name() string {
 }
 
 func (t *OnetimeBackupTask) Next(now time.Time) *time.Time {
-	ret := t.time 
+	ret := t.time
 	t.time = nil
-	return ret 
+	return ret
 }
 
 func (t *OnetimeBackupTask) Run(ctx context.Context) error {
@@ -91,16 +91,16 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 	}
 
 	op := &v1.Operation{
-		PlanId: plan.Id,
-		RepoId: plan.Repo,
+		PlanId:          plan.Id,
+		RepoId:          plan.Repo,
 		UnixTimeStartMs: curTimeMillis(),
-		Status: v1.OperationStatus_STATUS_INPROGRESS,
-		Op: backupOp,
+		Status:          v1.OperationStatus_STATUS_INPROGRESS,
+		Op:              backupOp,
 	}
 
 	startTime := time.Now()
 
-	err := WithOperation(orchestrator.oplog, op, func() error {
+	err := WithOperation(orchestrator.OpLog, op, func() error {
 		zap.L().Info("Starting backup", zap.String("plan", plan.Id))
 		repo, err := orchestrator.GetRepo(plan.Repo)
 		if err != nil {
@@ -109,13 +109,13 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 
 		lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
 		summary, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
-			if time.Since(lastSent) < 200 * time.Millisecond {
+			if time.Since(lastSent) < 200*time.Millisecond {
 				return
 			}
 			lastSent = time.Now()
 
 			backupOp.OperationBackup.LastStatus = entry.ToProto()
-			if err := orchestrator.oplog.Update(op); err != nil {
+			if err := orchestrator.OpLog.Update(op); err != nil {
 				zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
 			}
 			zap.L().Debug("backup progress", zap.Float64("progress", entry.PercentDone))
@@ -124,10 +124,8 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 			return fmt.Errorf("repo.Backup for repo %q: %w", plan.Repo, err)
 		}
 
+		op.SnapshotId = summary.SnapshotId
 		backupOp.OperationBackup.LastStatus = summary.ToProto()
-		if err := orchestrator.oplog.Update(op); err != nil {
-			return fmt.Errorf("update oplog with summary for backup: %v", err)
-		}
 
 		zap.L().Info("backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)))
 		return nil
@@ -136,7 +134,7 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 		return fmt.Errorf("backup operation: %w", err)
 	}
 
-	// this could alternatively be a separate operation, but it probably makes sense to index snapshots immediately after a backup.
+	// this could alternatively be scheduled as a separate task, but it probably makes sense to index snapshots immediately after a backup.
 	if err := indexSnapshotsHelper(ctx, orchestrator, plan); err != nil {
 		return fmt.Errorf("reindexing snapshots after backup operation: %w", err)
 	}
@@ -157,45 +155,54 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan 
 
 	startTime := time.Now()
 	alreadyIndexed := 0
-	opTime := curTimeMillis()
 	var indexOps []*v1.Operation
 	for _, snapshot := range snapshots {
-		opid, err := orchestrator.oplog.HasIndexedSnapshot(snapshot.Id)
+		ops, err := orchestrator.OpLog.GetBySnapshotId(snapshot.Id, indexutil.CollectAll())
 		if err != nil {
 			return fmt.Errorf("HasIndexSnapshot for snapshot %q: %w", snapshot.Id, err)
 		}
 
-		if opid >= 0 {
+		if containsSnapshotOperation(ops) {
 			alreadyIndexed += 1
 			continue
 		}
-		
+
+		snapshotProto := snapshot.ToProto()
 		indexOps = append(indexOps, &v1.Operation{
-			RepoId: plan.Repo,
-			PlanId: plan.Id,
-			UnixTimeStartMs: opTime,
-			UnixTimeEndMs: opTime,
-			Status: v1.OperationStatus_STATUS_SUCCESS,
+			RepoId:          plan.Repo,
+			PlanId:          plan.Id,
+			UnixTimeStartMs: snapshotProto.UnixTimeMs,
+			UnixTimeEndMs:   snapshotProto.UnixTimeMs,
+			Status:          v1.OperationStatus_STATUS_SUCCESS,
 			Op: &v1.Operation_OperationIndexSnapshot{
 				OperationIndexSnapshot: &v1.OperationIndexSnapshot{
-					Snapshot: snapshot.ToProto(),
+					Snapshot: snapshotProto,
 				},
 			},
 		})
 	}
 
-	if err := orchestrator.oplog.BulkAdd(indexOps); err != nil {
+	if err := orchestrator.OpLog.BulkAdd(indexOps); err != nil {
 		return fmt.Errorf("BulkAdd snapshot operations: %w", err)
 	}
 
-	zap.L().Debug("Indexed snapshots", 
-		zap.String("plan", plan.Id), 
-		zap.Duration("duration", time.Since(startTime)), 
-		zap.Int("alreadyIndexed", alreadyIndexed), 
-		zap.Int("newlyAdded", len(snapshots) - alreadyIndexed),
+	zap.L().Debug("Indexed snapshots",
+		zap.String("plan", plan.Id),
+		zap.Duration("duration", time.Since(startTime)),
+		zap.Int("alreadyIndexed", alreadyIndexed),
+		zap.Int("newlyAdded", len(snapshots)-alreadyIndexed),
 	)
 
 	return err
+}
+
+func containsSnapshotOperation(ops []*v1.Operation) bool {
+	for _, op := range ops {
+		if _, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
+			return true
+		}
+	}
+	return false
 }
 
 // WithOperation is a utility that creates an operation to track the function's execution.
@@ -209,7 +216,7 @@ func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error 
 	}
 	err := do()
 	if err != nil {
-		op.Status = v1.OperationStatus_STATUS_ERROR 
+		op.Status = v1.OperationStatus_STATUS_ERROR
 		op.DisplayMessage = err.Error()
 	}
 	op.UnixTimeEndMs = curTimeMillis()
@@ -224,5 +231,5 @@ func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error 
 
 func curTimeMillis() int64 {
 	t := time.Now()
-	return t.Unix() * 1000 + int64(t.Nanosecond() / 1000000)
+	return t.Unix()*1000 + int64(t.Nanosecond()/1000000)
 }
