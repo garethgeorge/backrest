@@ -120,7 +120,7 @@ export const OperationRow = ({
             </>
           }
           avatar={<ExclamationCircleOutlined style={{ color }} />}
-          description={operation.displayMessage}
+          description={<pre>{operation.displayMessage}</pre>}
         />
       </List.Item>
     );
