@@ -7,56 +7,6 @@ import (
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 )
 
-type MyStruct struct {
-	ID    string `storm:"id"`
-	Field string `storm:"index"`
-}
-
-func TestDatabase(t *testing.T) {
-	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
-	if err != nil {
-		t.Fatalf("error creating oplog: %s", err)
-	}
-
-	t.Run("can store struct", func(t *testing.T) {
-		log.sdb.From("struct").Save(&MyStruct{ID: "1", Field: "test"})
-
-		var s MyStruct
-		if err := log.sdb.From("struct").One("Field", "test", &s); err != nil {
-			t.Fatalf("error getting struct: %s", err)
-		}
-		t.Logf("Got struct: %+v", s)
-		if s.ID != "1" {
-			t.Errorf("want ID 1, got %s", s.ID)
-		}
-		if s.Field != "test" {
-			t.Errorf("want field test, got %s", s.Field)
-		}
-	})
-
-	t.Run("can store proto", func(t *testing.T) {
-		log.sdb.From("proto").Save(&v1.Operation{Id: 1, PlanId: "foo", RepoId: "bar"})
-
-		var op v1.Operation
-		if err := log.sdb.From("proto").One("PlanId", "foo", &op); err != nil {
-			t.Fatalf("error getting operation: %s", err)
-		}
-		t.Logf("Got operation: %+v", op)
-		if op.Id != 1 {
-			t.Errorf("want ID 1, got %d", op.Id)
-		}
-
-		var ops []v1.Operation
-		if err := log.sdb.From("proto").Find("RepoId", "bar", &ops); err != nil {
-			t.Fatalf("error getting operations: %s", err)
-		}
-		t.Logf("Got operations: %+v", ops)
-		if len(ops) != 1 {
-			t.Errorf("want 1 operation, got %d", len(ops))
-		}
-	})
-}
-
 func TestCreate(t *testing.T) {
 	// t.Parallel()
 	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
@@ -83,9 +33,17 @@ func TestAddOperation(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name: "no operation",
+			op: &v1.Operation{
+				Id: 0,
+			},
+			wantErr: true,
+		},
+		{
 			name: "basic backup operation",
 			op: &v1.Operation{
 				Id: 0,
+				Op: &v1.Operation_OperationBackup{},
 			},
 			wantErr: false,
 		},
@@ -104,9 +62,20 @@ func TestAddOperation(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "basic snapshot operation with no snapshot",
+			op: &v1.Operation{
+				Id: 0,
+				Op: &v1.Operation_OperationIndexSnapshot{
+					OperationIndexSnapshot: &v1.OperationIndexSnapshot{},
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "operation with ID",
 			op: &v1.Operation{
 				Id: 1,
+				Op: &v1.Operation_OperationBackup{},
 			},
 			wantErr: true,
 		},
@@ -115,6 +84,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				Id:     0,
 				RepoId: "testrepo",
+				Op:     &v1.Operation_OperationBackup{},
 			},
 		},
 		{
@@ -122,6 +92,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				Id:     0,
 				PlanId: "testplan",
+				Op:     &v1.Operation_OperationBackup{},
 			},
 		},
 	}
@@ -135,20 +106,13 @@ func TestAddOperation(t *testing.T) {
 				if tc.op.Id == 0 {
 					t.Errorf("Add() did not set op ID")
 				}
-
-				got, err := log.Get(tc.op.Id)
-				if err != nil {
-					t.Errorf("Get() error = %v", err)
-				}
-				if got.Id != tc.op.Id {
-					t.Errorf("Get() got = %+v, want %+v", got, tc.op)
-				}
 			}
 		})
 	}
 }
 
 func TestListOperation(t *testing.T) {
+	// t.Parallel()
 	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
 	if err != nil {
 		t.Fatalf("error creating oplog: %s", err)
@@ -161,16 +125,19 @@ func TestListOperation(t *testing.T) {
 			PlanId:         "plan1",
 			RepoId:         "repo1",
 			DisplayMessage: "op1",
+			Op:             &v1.Operation_OperationBackup{},
 		},
 		{
 			PlanId:         "plan1",
 			RepoId:         "repo2",
 			DisplayMessage: "op2",
+			Op:             &v1.Operation_OperationBackup{},
 		},
 		{
 			PlanId:         "plan2",
 			RepoId:         "repo2",
 			DisplayMessage: "op3",
+			Op:             &v1.Operation_OperationBackup{},
 		},
 	}
 
@@ -216,7 +183,7 @@ func TestListOperation(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 			var ops []*v1.Operation
 			var err error
 			if tc.byPlan {
@@ -238,7 +205,7 @@ func TestListOperation(t *testing.T) {
 }
 
 func TestBigIO(t *testing.T) {
-	t.Skip()
+	// t.Parallel()
 	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
 	if err != nil {
 		t.Fatalf("error creating oplog: %s", err)
@@ -281,9 +248,8 @@ func TestIndexSnapshot(t *testing.T) {
 	t.Cleanup(func() { log.Close() })
 
 	op := &v1.Operation{
-		PlanId:     "plan1",
-		RepoId:     "repo1",
-		SnapshotId: NormalizeSnapshotId("abcdefghijklmnop"),
+		PlanId: "plan1",
+		RepoId: "repo1",
 		Op: &v1.Operation_OperationIndexSnapshot{
 			OperationIndexSnapshot: &v1.OperationIndexSnapshot{
 				Snapshot: &v1.ResticSnapshot{
@@ -296,30 +262,27 @@ func TestIndexSnapshot(t *testing.T) {
 		t.Fatalf("error adding operation: %s", err)
 	}
 
-	ops, err := log.GetBySnapshotId("abcdefgh")
+	id, err := log.HasIndexedSnapshot("abcdefgh")
 	if err != nil {
 		t.Fatalf("error checking for snapshot: %s", err)
 	}
-	if len(ops) != 1 {
-		t.Fatalf("want 1 operation, got %d", len(ops))
-	}
-	if ops[0].Id != op.Id {
-		t.Fatalf("want id %d, got %d", op.Id, ops[0].Id)
+	if id != op.Id {
+		t.Fatalf("want id %d, got %d", op.Id, id)
 	}
 
-	ops, err = log.GetBySnapshotId("notfound")
+	id, err = log.HasIndexedSnapshot("notfound")
 	if err != nil {
 		t.Fatalf("error checking for snapshot: %s", err)
 	}
-	if len(ops) != 0 {
-		t.Fatalf("want 0 operations, got %d", len(ops))
+	if id != -1 {
+		t.Fatalf("want id -1, got %d", id)
 	}
 }
 
 func collectMessages(ops []*v1.Operation) []string {
 	var messages []string
-	for idx, _ := range ops {
-		messages = append(messages, ops[idx].DisplayMessage)
+	for _, op := range ops {
+		messages = append(messages, op.DisplayMessage)
 	}
 	return messages
 }
