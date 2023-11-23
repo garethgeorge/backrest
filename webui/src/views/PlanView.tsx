@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plan } from "../../gen/ts/v1/config.pb";
-import { Button, Flex } from "antd";
+import { Button, Flex, Tabs } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
 import { AddPlanModal } from "./AddPlanModel";
 import { useShowModal } from "../components/ModalManager";
@@ -15,6 +15,7 @@ import {
   unsubscribeFromOperations,
 } from "../state/oplog";
 import { OperationList } from "../components/OperationList";
+import { OperationTree } from "../components/OperationTree";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const showModal = useShowModal();
@@ -23,7 +24,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
   useEffect(() => {
     const listener = buildOperationListListener(
-      { planId: plan.id, lastN: "1000" },
+      { planId: plan.id, lastN: "10000" },
       (event, changedOp, operations) => {
         setOperations([...operations]);
       }
@@ -78,8 +79,30 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           Prune Now
         </Button>
       </Flex>
-      <h2>Backup Action History ({operations.length} loaded)</h2>
-      <OperationList operations={operations} />
+      <Tabs
+        defaultActiveKey="1"
+        items={[
+          {
+            key: "1",
+            label: "Condensed View",
+            children: (
+              <>
+                <OperationTree operations={[...operations]} />
+              </>
+            ),
+          },
+          {
+            key: "2",
+            label: "Operation List",
+            children: (
+              <>
+                <h2>Backup Action History ({operations.length} loaded)</h2>
+                <OperationList operations={[...operations]} />
+              </>
+            ),
+          },
+        ]}
+      />
     </>
   );
 };
