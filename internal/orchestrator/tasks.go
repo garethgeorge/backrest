@@ -47,6 +47,21 @@ func (t *ScheduledBackupTask) Name() string {
 }
 
 func (t *ScheduledBackupTask) Next(now time.Time) *time.Time {
+	if ops, err := t.orchestrator.OpLog.GetByPlan(t.plan.Id, indexutil.CollectLastN(10)); err == nil {
+		var lastBackupOp *v1.Operation
+		for _, op := range ops {
+			if _, ok := op.Op.(*v1.Operation_OperationBackup); ok {
+				lastBackupOp = op
+			}
+		}
+
+		if lastBackupOp != nil {
+			now = time.Unix(0, lastBackupOp.UnixTimeEndMs*int64(time.Millisecond))
+		}
+	} else {
+		zap.S().Errorf("error getting last operation for plan %q when computing backup schedule: %v", t.plan.Id, err)
+	}
+
 	next := t.schedule.Next(now)
 	return &next
 }
@@ -174,6 +189,7 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan 
 			UnixTimeStartMs: snapshotProto.UnixTimeMs,
 			UnixTimeEndMs:   snapshotProto.UnixTimeMs,
 			Status:          v1.OperationStatus_STATUS_SUCCESS,
+			SnapshotId:      snapshotProto.Id,
 			Op: &v1.Operation_OperationIndexSnapshot{
 				OperationIndexSnapshot: &v1.OperationIndexSnapshot{
 					Snapshot: snapshotProto,
@@ -194,15 +210,6 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan 
 	)
 
 	return err
-}
-
-func containsSnapshotOperation(ops []*v1.Operation) bool {
-	for _, op := range ops {
-		if _, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
-			return true
-		}
-	}
-	return false
 }
 
 // WithOperation is a utility that creates an operation to track the function's execution.
@@ -232,4 +239,13 @@ func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error 
 func curTimeMillis() int64 {
 	t := time.Now()
 	return t.Unix()*1000 + int64(t.Nanosecond()/1000000)
+}
+
+func containsSnapshotOperation(ops []*v1.Operation) bool {
+	for _, op := range ops {
+		if _, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
+			return true
+		}
+	}
+	return false
 }

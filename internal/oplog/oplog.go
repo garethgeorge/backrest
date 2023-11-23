@@ -57,7 +57,10 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 		return nil, fmt.Errorf("error opening database: %s", err)
 	}
 
-	o := &OpLog{db: db}
+	o := &OpLog{
+		db: db,
+	}
+	o.nextId.Store(1)
 
 	if err := db.Update(func(tx *bolt.Tx) error {
 		// Create the buckets if they don't exist
@@ -194,15 +197,15 @@ func (o *OpLog) getOperationHelper(b *bolt.Bucket, id int64) (*v1.Operation, err
 
 func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 	b := tx.Bucket(OpLogBucket)
-
 	if op.Id == 0 {
-		// Create a unique ID sorted based on the start time in milliseconds and
-		// a counter to ensure uniqueness in the case of multiple operations
-		// starting at the same time.
-		op.Id = op.UnixTimeStartMs<<20 | (o.nextId.Add(1) & (1<<20 - 1))
-		if op.Id < 0 {
-			return fmt.Errorf("overflow in operation ID generation")
+		seq, err := b.NextSequence()
+		if err != nil {
+			return fmt.Errorf("error getting next sequence: %w", err)
 		}
+		if op.UnixTimeStartMs == 0 {
+			return fmt.Errorf("operation must have a start time")
+		}
+		op.Id = op.UnixTimeStartMs<<20 | int64(seq&(1<<20-1))
 	}
 
 	op.SnapshotId = NormalizeSnapshotId(op.SnapshotId)

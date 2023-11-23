@@ -100,17 +100,17 @@ export const OperationRow = ({
     color = "blue";
   }
 
+  let opType = "Message";
+  if (operation.operationBackup) {
+    opType = "Backup";
+  } else if (operation.operationIndexSnapshot) {
+    opType = "Snapshot";
+  }
+
   if (
     operation.displayMessage &&
     operation.status === OperationStatus.STATUS_ERROR
   ) {
-    let opType = "Message";
-    if (operation.operationBackup) {
-      opType = "Backup";
-    } else if (operation.operationIndexSnapshot) {
-      opType = "Snapshot";
-    }
-
     return (
       <List.Item>
         <List.Item.Meta
