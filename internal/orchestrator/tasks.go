@@ -56,7 +56,7 @@ func (t *ScheduledBackupTask) Next(now time.Time) *time.Time {
 		}
 
 		if lastBackupOp != nil {
-			now = time.Unix(0, lastBackupOp.UnixTimeEndMs*int64(time.Millisecond))
+			now = time.Unix(0, lastBackupOp.UnixTimeStartMs*int64(time.Millisecond))
 		}
 	} else {
 		zap.S().Errorf("error getting last operation for plan %q when computing backup schedule: %v", t.plan.Id, err)

@@ -112,7 +112,7 @@ export const buildOperationListListener = (
       } else {
         operations.push(op);
         operations.sort((a, b) => {
-          return parseInt(a.id!) - parseInt(b.id!);
+          return a.parsedId - b.parsedId;
         });
       }
     } else if (type === OperationEventType.EVENT_CREATED) {
