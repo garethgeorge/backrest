@@ -38,6 +38,7 @@ type BaseOperation = {
   id?: string
   repoId?: string
   planId?: string
+  snapshotId?: string
   status?: OperationStatus
   unixTimeStartMs?: string
   unixTimeEndMs?: string

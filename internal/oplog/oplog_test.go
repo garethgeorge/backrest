@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
+	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
 )
 
 func TestCreate(t *testing.T) {
@@ -33,16 +34,13 @@ func TestAddOperation(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "no operation",
-			op: &v1.Operation{
-				Id: 0,
-			},
-			wantErr: true,
+			name:    "basic operation",
+			op:      &v1.Operation{},
+			wantErr: false,
 		},
 		{
 			name: "basic backup operation",
 			op: &v1.Operation{
-				Id: 0,
 				Op: &v1.Operation_OperationBackup{},
 			},
 			wantErr: false,
@@ -60,16 +58,6 @@ func TestAddOperation(t *testing.T) {
 				},
 			},
 			wantErr: false,
-		},
-		{
-			name: "basic snapshot operation with no snapshot",
-			op: &v1.Operation{
-				Id: 0,
-				Op: &v1.Operation_OperationIndexSnapshot{
-					OperationIndexSnapshot: &v1.OperationIndexSnapshot{},
-				},
-			},
-			wantErr: true,
 		},
 		{
 			name: "operation with ID",
@@ -187,9 +175,9 @@ func TestListOperation(t *testing.T) {
 			var ops []*v1.Operation
 			var err error
 			if tc.byPlan {
-				ops, err = log.GetByPlan(tc.id, FilterKeepAll())
+				ops, err = log.GetByPlan(tc.id, indexutil.CollectAll())
 			} else if tc.byRepo {
-				ops, err = log.GetByRepo(tc.id, FilterKeepAll())
+				ops, err = log.GetByRepo(tc.id, indexutil.CollectAll())
 			} else {
 				t.Fatalf("must specify byPlan or byRepo")
 			}
@@ -205,14 +193,17 @@ func TestListOperation(t *testing.T) {
 }
 
 func TestBigIO(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	count := 10
+
 	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
 	if err != nil {
 		t.Fatalf("error creating oplog: %s", err)
 	}
 	t.Cleanup(func() { log.Close() })
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < count; i++ {
 		if err := log.Add(&v1.Operation{
 			PlanId: "plan1",
 			RepoId: "repo1",
@@ -222,20 +213,20 @@ func TestBigIO(t *testing.T) {
 		}
 	}
 
-	ops, err := log.GetByPlan("plan1", FilterKeepAll())
+	ops, err := log.GetByPlan("plan1", indexutil.CollectAll())
 	if err != nil {
 		t.Fatalf("error listing operations: %s", err)
 	}
-	if len(ops) != 100 {
-		t.Errorf("want 100 operations, got %d", len(ops))
+	if len(ops) != count {
+		t.Errorf("want %v operations, got %d", count, len(ops))
 	}
 
-	ops, err = log.GetByRepo("repo1", FilterKeepAll())
+	ops, err = log.GetByRepo("repo1", indexutil.CollectAll())
 	if err != nil {
 		t.Fatalf("error listing operations: %s", err)
 	}
-	if len(ops) != 100 {
-		t.Errorf("want 100 operations, got %d", len(ops))
+	if len(ops) != count {
+		t.Errorf("want %v operations, got %d", count, len(ops))
 	}
 }
 
@@ -248,34 +239,108 @@ func TestIndexSnapshot(t *testing.T) {
 	t.Cleanup(func() { log.Close() })
 
 	op := &v1.Operation{
-		PlanId: "plan1",
-		RepoId: "repo1",
-		Op: &v1.Operation_OperationIndexSnapshot{
-			OperationIndexSnapshot: &v1.OperationIndexSnapshot{
-				Snapshot: &v1.ResticSnapshot{
-					Id: "abcdefghijklmnop",
-				},
-			},
-		},
+		PlanId:     "plan1",
+		RepoId:     "repo1",
+		SnapshotId: "abcdefgh",
+		Op:         &v1.Operation_OperationIndexSnapshot{},
 	}
 	if err := log.Add(op); err != nil {
 		t.Fatalf("error adding operation: %s", err)
 	}
 
-	id, err := log.HasIndexedSnapshot("abcdefgh")
+	ops, err := log.GetBySnapshotId("abcdefgh", indexutil.CollectAll())
 	if err != nil {
 		t.Fatalf("error checking for snapshot: %s", err)
 	}
-	if id != op.Id {
-		t.Fatalf("want id %d, got %d", op.Id, id)
+	if len(ops) != 1 {
+		t.Fatalf("want 1 operation, got %d", len(ops))
+	}
+	if ops[0].Id != op.Id {
+		t.Errorf("want operation ID %d, got %d", op.Id, ops[0].Id)
+	}
+}
+
+func TestUpdateOperation(t *testing.T) {
+	t.Parallel()
+	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
+	if err != nil {
+		t.Fatalf("error creating oplog: %s", err)
+	}
+	t.Cleanup(func() { log.Close() })
+
+	// Insert initial operation
+	op := &v1.Operation{
+		PlanId:     "oldplan",
+		RepoId:     "oldrepo",
+		SnapshotId: "12345678",
+	}
+	if err := log.Add(op); err != nil {
+		t.Fatalf("error adding operation: %s", err)
+	}
+	opId := op.Id
+
+	// Validate initial values are indexed
+	if ops, err := log.GetByPlan("oldplan", indexutil.CollectAll()); err != nil {
+		t.Fatalf("error checking for plan: %s", err)
+	} else if len(ops) != 1 {
+		t.Fatalf("want 1 operation, got %d", len(ops))
+	}
+	if ops, err := log.GetByRepo("oldrepo", indexutil.CollectAll()); err != nil {
+		t.Fatalf("error checking for repo: %s", err)
+	} else if len(ops) != 1 {
+		t.Fatalf("want 1 operation, got %d", len(ops))
+	}
+	if ops, err := log.GetBySnapshotId("12345678", indexutil.CollectAll()); err != nil {
+		t.Fatalf("error checking for snapshot: %s", err)
+	} else if len(ops) != 1 {
+		t.Fatalf("want 1 operation, got %d", len(ops))
 	}
 
-	id, err = log.HasIndexedSnapshot("notfound")
-	if err != nil {
-		t.Fatalf("error checking for snapshot: %s", err)
+	// Update indexed values
+	op.SnapshotId = "abcdefgh"
+	op.PlanId = "myplan"
+	op.RepoId = "myrepo"
+	if err := log.Update(op); err != nil {
+		t.Fatalf("error updating operation: %s", err)
 	}
-	if id != -1 {
-		t.Fatalf("want id -1, got %d", id)
+
+	// Validate updated values are indexed
+	if opId != op.Id {
+		t.Errorf("want operation ID %d, got %d", opId, op.Id)
+	}
+	if ops, err := log.GetBySnapshotId("abcdefgh", indexutil.CollectAll()); err != nil {
+		t.Fatalf("error checking for snapshot: %s", err)
+	} else if len(ops) != 1 {
+		t.Fatalf("want 1 operation, got %d", len(ops))
+	}
+
+	if ops, err := log.GetByPlan("myplan", indexutil.CollectAll()); err != nil {
+		t.Fatalf("error checking for plan: %s", err)
+	} else if len(ops) != 1 {
+		t.Fatalf("want 1 operation, got %d", len(ops))
+	}
+
+	if ops, err := log.GetByRepo("myrepo", indexutil.CollectAll()); err != nil {
+		t.Fatalf("error checking for repo: %s", err)
+	} else if len(ops) != 1 {
+		t.Fatalf("want 1 operation, got %d", len(ops))
+	}
+
+	// Validate prior values are gone
+	if ops, err := log.GetByPlan("oldplan", indexutil.CollectAll()); err != nil {
+		t.Fatalf("error checking for plan: %s", err)
+	} else if len(ops) != 0 {
+		t.Fatalf("want 0 operations, got %d", len(ops))
+	}
+	if ops, err := log.GetByRepo("oldrepo", indexutil.CollectAll()); err != nil {
+		t.Fatalf("error checking for repo: %s", err)
+	} else if len(ops) != 0 {
+		t.Fatalf("want 0 operations, got %d", len(ops))
+	}
+	if ops, err := log.GetBySnapshotId("12345678", indexutil.CollectAll()); err != nil {
+		t.Fatalf("error checking for snapshot: %s", err)
+	} else if len(ops) != 0 {
+		t.Fatalf("want 0 operations, got %d", len(ops))
 	}
 }
 

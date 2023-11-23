@@ -35,7 +35,7 @@ func Btos(b []byte) (string, int64, error) {
 	if int64(len(b)) < 8+length {
 		return "", 0, ErrInvalidLength
 	}
-	return string(b[8:8+length]), 8+length, nil
+	return string(b[8 : 8+length]), 8 + length, nil
 }
 
 func BytesToKey(b []byte) []byte {
@@ -43,11 +43,4 @@ func BytesToKey(b []byte) []byte {
 	key = append(key, Itob(int64(len(b)))...)
 	key = append(key, b...)
 	return key
-}
-
-func NormalizeSnapshotId(id string) string {
-	if len(id) < 8 {
-		return id
-	}
-	return id[:8]
 }
