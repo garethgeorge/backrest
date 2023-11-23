@@ -12,13 +12,18 @@ message OperationList {
 
 message Operation {
   int64 id = 1;
-  string repo_id = 2; // repo id if associated with a repo (always true)
-  string plan_id = 3; // plan id if associated with a plan (always true)
-  string snapshot_id = 8; // snapshot id if associated with a snapshot.
+  // repo id if associated with a repo (always true)
+  string repo_id = 2; 
+  // plan id if associated with a plan (always true)
+  string plan_id = 3; 
+  // snapshot id if associated with a snapshot.
+  string snapshot_id = 8; 
   OperationStatus status = 4;
-  int64 unix_time_start_ms = 5;
+  // unix time in milliseconds of the operation's creation (ID is derived from this)
+  int64 unix_time_start_ms = 5; 
   int64 unix_time_end_ms = 6;
-  string display_message = 7; // human readable context message (if any)
+  // human readable context message, typically an error message.
+  string display_message = 7; 
 
   oneof op {
     OperationBackup operation_backup = 100;
