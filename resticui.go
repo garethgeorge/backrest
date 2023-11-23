@@ -14,7 +14,7 @@ import (
 
 	"github.com/garethgeorge/resticui/internal/api"
 	"github.com/garethgeorge/resticui/internal/config"
-	"github.com/garethgeorge/resticui/internal/oplog"
+	"github.com/garethgeorge/resticui/internal/database/oplog"
 	"github.com/garethgeorge/resticui/internal/orchestrator"
 	static "github.com/garethgeorge/resticui/webui"
 	"github.com/mattn/go-colorable"
@@ -33,16 +33,17 @@ func main() {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	go onterm(cancel)
-
+	
 	if _, err := config.Default.Get(); err != nil {
 		zap.S().Fatalf("Error loading config: %v", err)
 	}
-
+	
 	var wg sync.WaitGroup
 
 	// Configure the HTTP mux
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.FS(&SubdirFilesystem{FS: static.FS, subdir: "dist"})))
+
 
 	// Create and serve API server
 	oplogFile := path.Join(dataPath(), "oplog.boltdb")
@@ -114,9 +115,9 @@ func init() {
 		c.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		c.EncodeTime = zapcore.ISO8601TimeEncoder
 		l := zap.New(zapcore.NewCore(
-			zapcore.NewConsoleEncoder(c),
-			zapcore.AddSync(colorable.NewColorableStdout()),
-			zapcore.DebugLevel,
+				zapcore.NewConsoleEncoder(c),
+				zapcore.AddSync(colorable.NewColorableStdout()),
+				zapcore.DebugLevel,
 		))
 		zap.ReplaceGlobals(l)
 	}
@@ -141,7 +142,7 @@ func (s *SubdirFilesystem) Open(name string) (fs.File, error) {
 	return s.FS.Open(path.Join(s.subdir, name))
 }
 
-func (s *SubdirFilesystem) ReadDir(name string) ([]fs.DirEntry, error) {
+func (s *SubdirFilesystem) 	ReadDir(name string) ([]fs.DirEntry, error) {
 	readDirFS := s.FS.(fs.ReadDirFS)
 	if readDirFS == nil {
 		return nil, &fs.PathError{Op: "readdir", Path: name, Err: errors.New("not implemented")}

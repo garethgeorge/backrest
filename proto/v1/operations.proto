@@ -11,20 +11,11 @@ message OperationList {
 }
 
 message Operation {
-  // @gotags: `storm:"id,increment"`
   int64 id = 1;
-  // repo id if associated with a repo (always true)
-  // @gotags: `storm:"index"`
-  string repo_id = 2; 
-  // plan id if associated with a plan (always true)
-  // @gotags: `storm:"index"`
-  string plan_id = 3;
-  // normalized snapshot id (first 8 chars) if associated with a snapshot
-  // @gotags: `storm:"index"`
-  string snapshot_id = 8;
+  string repo_id = 2; // repo id if associated with a repo (always true)
+  string plan_id = 3; // plan id if associated with a plan (always true)
   OperationStatus status = 4;
   int64 unix_time_start_ms = 5;
-  // operation ended time in unix ms
   int64 unix_time_end_ms = 6;
   string display_message = 7; // human readable context message (if any)
 

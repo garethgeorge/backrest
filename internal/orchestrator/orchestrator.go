@@ -9,7 +9,7 @@ import (
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 	"github.com/garethgeorge/resticui/internal/config"
-	"github.com/garethgeorge/resticui/internal/oplog"
+	"github.com/garethgeorge/resticui/internal/database/oplog"
 	"github.com/garethgeorge/resticui/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -21,13 +21,14 @@ var ErrPlanNotFound = errors.New("plan not found")
 
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
-	mu       sync.Mutex
-	config   *v1.Config
-	oplog    *oplog.OpLog
+	mu sync.Mutex
+	config *v1.Config
+	oplog *oplog.OpLog
 	repoPool *resticRepoPool
 
+	
 	configUpdates chan *v1.Config // configUpdates chan makes config changes available to Run()
-	externTasks   chan Task       // externTasks is a channel that externally added tasks can be added to, they will be consumed by Run()
+	externTasks chan Task // externTasks is a channel that externally added tasks can be added to, they will be consumed by Run()
 }
 
 func NewOrchestrator(configProvider config.ConfigStore, oplog *oplog.OpLog) (*Orchestrator, error) {
@@ -37,9 +38,9 @@ func NewOrchestrator(configProvider config.ConfigStore, oplog *oplog.OpLog) (*Or
 	}
 
 	return &Orchestrator{
-		config:      cfg,
-		oplog:       oplog,
-		repoPool:    newResticRepoPool(&config.MemoryStore{Config: cfg}),
+		config: cfg,
+		oplog: oplog,
+		repoPool: newResticRepoPool(&config.MemoryStore{Config: cfg}),
 		externTasks: make(chan Task, 2),
 	}, nil
 }
@@ -50,7 +51,7 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 	o.config = cfg
 
 	zap.L().Debug("Applying config to orchestrator", zap.Any("config", cfg))
-
+	
 	// Update the config provided to the repo pool.
 	if err := o.repoPool.configProvider.Update(cfg); err != nil {
 		return fmt.Errorf("failed to update repo pool config: %w", err)
@@ -69,7 +70,7 @@ func (o *Orchestrator) GetRepo(repoId string) (repo *RepoOrchestrator, err error
 	defer o.mu.Unlock()
 
 	r, err := o.repoPool.GetRepo(repoId)
-	if err != nil {
+	if  err != nil {
 		return nil, fmt.Errorf("failed to get repo %q: %w", repoId, err)
 	}
 	return r, nil
@@ -118,7 +119,7 @@ func (o *Orchestrator) Run(mainCtx context.Context) error {
 func (o *Orchestrator) runVersion(mainCtx context.Context, config *v1.Config) bool {
 	var lock sync.Mutex
 	ctx, cancel := context.WithCancel(mainCtx)
-
+	
 	var wg sync.WaitGroup
 
 	var execTask func(t Task)
@@ -148,7 +149,7 @@ func (o *Orchestrator) runVersion(mainCtx context.Context, config *v1.Config) bo
 				lock.Lock()
 				defer lock.Unlock()
 				zap.L().Info("running task", zap.String("task", t.Name()))
-
+				
 				// Task execution runs with mainCtx meaning config changes do not interrupt it, but cancelling the orchestration loop will.
 				if err := t.Run(mainCtx); err != nil {
 					zap.L().Error("task failed", zap.String("task", t.Name()), zap.Error(err))
@@ -158,7 +159,7 @@ func (o *Orchestrator) runVersion(mainCtx context.Context, config *v1.Config) bo
 
 				if ctx.Err() != nil {
 					zap.L().Debug("not attempting to reschedule task, orchestrator context is cancelled.", zap.String("task", t.Name()))
-					return
+					return 
 				}
 
 				execTask(t)
@@ -201,14 +202,15 @@ func (o *Orchestrator) EnqueueTask(t Task) {
 
 // resticRepoPool caches restic repos.
 type resticRepoPool struct {
-	mu             sync.Mutex
-	repos          map[string]*RepoOrchestrator
+	mu sync.Mutex
+	repos map[string]*RepoOrchestrator
 	configProvider config.ConfigStore
 }
 
+
 func newResticRepoPool(configProvider config.ConfigStore) *resticRepoPool {
 	return &resticRepoPool{
-		repos:          make(map[string]*RepoOrchestrator),
+		repos: make(map[string]*RepoOrchestrator),
 		configProvider: configProvider,
 	}
 }
@@ -242,7 +244,7 @@ func (rp *resticRepoPool) GetRepo(repoId string) (repo *RepoOrchestrator, err er
 	if ok && proto.Equal(repo.repoConfig, repoProto) {
 		return repo, nil
 	}
-	delete(rp.repos, repoId)
+	delete(rp.repos, repoId);
 
 	var opts []restic.GenericOption
 	opts = append(opts, restic.WithPropagatedEnvVars(restic.EnvToPropagate...))
