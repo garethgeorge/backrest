@@ -68,13 +68,13 @@ export const OperationList = ({
       dataSource={groupedItems}
       renderItem={(group, index) => {
         if (group.length === 1) {
-          return <OperationRow key={group[0].parsedId} operation={group[0]} />;
+          return <OperationRow key={group[0].id!} operation={group[0]} />;
         }
 
         return (
           <Card size="small" style={{ margin: "5px" }}>
             {group.map((op) => (
-              <OperationRow key={op.parsedId} operation={op} />
+              <OperationRow key={op.id!} operation={op} />
             ))}
           </Card>
         );
