@@ -13,34 +13,6 @@ import (
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 )
 
-type LsEntry struct {
-	Name  string `json:"name"`
-	Type  string `json:"type"`
-	Path  string `json:"path"`
-	Uid   int    `json:"uid"`
-	Gid   int    `json:"gid"`
-	Size  int    `json:"size"`
-	Mode  int    `json:"mode"`
-	Mtime string `json:"mtime"`
-	Atime string `json:"atime"`
-	Ctime string `json:"ctime"`
-}
-
-func (e *LsEntry) ToProto() *v1.LsEntry {
-	return &v1.LsEntry{
-		Name:  e.Name,
-		Type:  e.Type,
-		Path:  e.Path,
-		Uid:   int64(e.Uid),
-		Gid:   int64(e.Gid),
-		Size:  int64(e.Size),
-		Mode:  int64(e.Mode),
-		Mtime: e.Mtime,
-		Atime: e.Atime,
-		Ctime: e.Ctime,
-	}
-}
-
 type Snapshot struct {
 	Id         string   `json:"id"`
 	Time       string   `json:"time"`
@@ -189,6 +161,34 @@ func readBackupProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(ev
 	return summary, nil
 }
 
+type LsEntry struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Path  string `json:"path"`
+	Uid   int    `json:"uid"`
+	Gid   int    `json:"gid"`
+	Size  int    `json:"size"`
+	Mode  int    `json:"mode"`
+	Mtime string `json:"mtime"`
+	Atime string `json:"atime"`
+	Ctime string `json:"ctime"`
+}
+
+func (e *LsEntry) ToProto() *v1.LsEntry {
+	return &v1.LsEntry{
+		Name:  e.Name,
+		Type:  e.Type,
+		Path:  e.Path,
+		Uid:   int64(e.Uid),
+		Gid:   int64(e.Gid),
+		Size:  int64(e.Size),
+		Mode:  int64(e.Mode),
+		Mtime: e.Mtime,
+		Atime: e.Atime,
+		Ctime: e.Ctime,
+	}
+}
+
 func readLs(output io.Reader) (*Snapshot, []*LsEntry, error) {
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
@@ -211,4 +211,9 @@ func readLs(output io.Reader) (*Snapshot, []*LsEntry, error) {
 		entries = append(entries, entry)
 	}
 	return snapshot, entries, nil
+}
+
+type ForgetResult struct {
+	Keep   []Snapshot `json:"keep"`
+	Remove []Snapshot `json:"remove"`
 }

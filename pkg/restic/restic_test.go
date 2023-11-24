@@ -1,8 +1,12 @@
 package restic
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"reflect"
+	"slices"
+	"strings"
 	"testing"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
@@ -14,12 +18,14 @@ func TestResticInit(t *testing.T) {
 	repo := t.TempDir()
 
 	r := NewRepo(&v1.Repo{
-		Id: "test",
-		Uri: repo,
+		Id:       "test",
+		Uri:      repo,
 		Password: "test",
 	}, WithFlags("--no-cache"))
 
-	r.init(context.Background())
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
 }
 
 func TestResticBackup(t *testing.T) {
@@ -28,43 +34,46 @@ func TestResticBackup(t *testing.T) {
 
 	// create a new repo with cache disabled for testing
 	r := NewRepo(&v1.Repo{
-		Id: "test",
-		Uri: repo,
+		Id:       "test",
+		Uri:      repo,
 		Password: "test",
 	}, WithFlags("--no-cache"))
-	
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
 	testData := test.CreateTestData(t)
 	testData2 := test.CreateTestData(t)
 
 	var tests = []struct {
-		name string 
-		opts []BackupOption
-		files int // expected files at the end of the backup
+		name    string
+		opts    []BackupOption
+		files   int // expected files at the end of the backup
 		wantErr bool
 	}{
 		{
-			name: "no options",
-			opts: []BackupOption{WithBackupPaths(testData)},
+			name:  "no options",
+			opts:  []BackupOption{WithBackupPaths(testData)},
 			files: 100,
 		},
 		{
-			name: "with two paths",
-			opts:[]BackupOption{WithBackupPaths(testData), WithBackupPaths(testData2)},
+			name:  "with two paths",
+			opts:  []BackupOption{WithBackupPaths(testData), WithBackupPaths(testData2)},
 			files: 200,
 		},
 		{
-			name: "with exclude",
-			opts: []BackupOption{WithBackupPaths(testData), WithBackupExcludes("file1*")},
+			name:  "with exclude",
+			opts:  []BackupOption{WithBackupPaths(testData), WithBackupExcludes("file1*")},
 			files: 90,
 		},
 		{
-			name: "with exclude pattern",
-			opts: []BackupOption{WithBackupPaths(testData), WithBackupExcludes("file*")},
+			name:  "with exclude pattern",
+			opts:  []BackupOption{WithBackupPaths(testData), WithBackupExcludes("file*")},
 			files: 0,
 		},
 		{
-			name: "with nothing to backup",
-			opts: []BackupOption{},
+			name:    "with nothing to backup",
+			opts:    []BackupOption{},
 			wantErr: true,
 		},
 	}
@@ -99,10 +108,13 @@ func TestSnapshot(t *testing.T) {
 	repo := t.TempDir()
 
 	r := NewRepo(&v1.Repo{
-		Id: "test",
-		Uri: repo,
+		Id:       "test",
+		Uri:      repo,
 		Password: "test",
 	}, WithFlags("--no-cache"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
 
 	testData := test.CreateTestData(t)
 
@@ -114,18 +126,18 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	var tests = []struct {
-		name string
-		opts []GenericOption
+		name  string
+		opts  []GenericOption
 		count int
 	}{
 		{
-			name: "no options",
-			opts: []GenericOption{},
+			name:  "no options",
+			opts:  []GenericOption{},
 			count: 10,
 		},
 		{
-			name: "with tag",
-			opts: []GenericOption{WithTags("tag1")},
+			name:  "with tag",
+			opts:  []GenericOption{WithTags("tag1")},
 			count: 1,
 		},
 	}
@@ -156,10 +168,13 @@ func TestLs(t *testing.T) {
 
 	repo := t.TempDir()
 	r := NewRepo(&v1.Repo{
-		Id: "test",
-		Uri: repo,
+		Id:       "test",
+		Uri:      repo,
 		Password: "test",
 	}, WithFlags("--no-cache"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
 
 	testData := test.CreateTestData(t)
 
@@ -176,5 +191,69 @@ func TestLs(t *testing.T) {
 
 	if len(entries) != 101 {
 		t.Errorf("wanted 101 entries, got: %d", len(entries))
+	}
+}
+
+func TestResticForget(t *testing.T) {
+	t.Parallel()
+
+	repo := t.TempDir()
+	r := NewRepo(&v1.Repo{
+		Id:       "test",
+		Uri:      repo,
+		Password: "test",
+	}, WithFlags("--no-cache"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	testData := test.CreateTestData(t)
+
+	ids := make([]string, 0)
+	for i := 0; i < 10; i++ {
+		output, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
+		if err != nil {
+			t.Fatalf("failed to backup and create new snapshot: %v", err)
+		}
+
+		ids = append(ids, output.SnapshotId)
+	}
+
+	// prune all snapshots
+	output := bytes.NewBuffer(nil)
+	res, err := r.Forget(context.Background(), RetentionPolicy{KeepLastN: 3}, output)
+	if err != nil {
+		t.Fatalf("failed to prune snapshots: %v", err)
+	}
+
+	if len(res.Keep) != 3 {
+		t.Errorf("wanted 3 snapshots to be kept, got: %d", len(res.Keep))
+	}
+
+	if len(res.Remove) != 7 {
+		t.Errorf("wanted 7 snapshots to be removed, got: %d", len(res.Remove))
+	}
+
+	removedIds := make([]string, 0)
+	for _, snapshot := range res.Remove {
+		removedIds = append(removedIds, snapshot.Id)
+	}
+	slices.Reverse(removedIds)
+	keptIds := make([]string, 0)
+	for _, snapshot := range res.Keep {
+		keptIds = append(keptIds, snapshot.Id)
+	}
+	slices.Reverse(keptIds)
+
+	if !reflect.DeepEqual(removedIds, ids[:7]) {
+		t.Errorf("wanted removed ids to be %v, got: %v", ids[:7], removedIds)
+	}
+
+	if !reflect.DeepEqual(keptIds, ids[7:]) {
+		t.Errorf("wanted kept ids to be %v, got: %v", ids[7:], keptIds)
+	}
+
+	if !strings.Contains(output.String(), "total prune") {
+		t.Errorf("wanted prune output, got: %s", output.String())
 	}
 }
