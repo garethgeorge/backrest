@@ -96,7 +96,7 @@ func (s *Server) AddRepo(ctx context.Context, repo *v1.Repo) (*v1.Config, error)
 	return c, nil
 }
 
-// ListSnapshots implements GET /v1/snapshots/{repo.id}/{plan.id?}
+// ListSnapshots implements POST /v1/snapshots
 func (s *Server) ListSnapshots(ctx context.Context, query *v1.ListSnapshotsRequest) (*v1.ResticSnapshotList, error) {
 	repo, err := s.orchestrator.GetRepo(query.RepoId)
 	if err != nil {
@@ -200,6 +200,8 @@ func (s *Server) GetOperations(ctx context.Context, req *v1.GetOperationsRequest
 		ops, err = s.oplog.GetByPlan(req.PlanId, collector)
 	} else if req.RepoId != "" {
 		ops, err = s.oplog.GetByRepo(req.RepoId, collector)
+	} else if req.SnapshotId != "" {
+		ops, err = s.oplog.GetBySnapshotId(req.SnapshotId, collector)
 	} else {
 		ops, err = s.oplog.GetAll()
 	}

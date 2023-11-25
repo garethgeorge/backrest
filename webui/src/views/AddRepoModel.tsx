@@ -106,7 +106,8 @@ export const AddRepoModel = ({
         showModal(null);
         alertsApi.success("Updated repo " + repo.uri);
 
-        // Update the snapshots for the repo
+        // Update the snapshots for the repo to confirm the config works.
+        // TODO: this operation is only used here, find a different RPC for this purpose.
         await ResticUI.ListSnapshots(
           {
             repoId: repo.id,

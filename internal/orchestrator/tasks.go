@@ -109,7 +109,7 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 
 		lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
 		summary, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
-			if time.Since(lastSent) < 200*time.Millisecond {
+			if time.Since(lastSent) < 250*time.Millisecond {
 				return
 			}
 			lastSent = time.Now()

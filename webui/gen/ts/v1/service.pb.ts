@@ -18,6 +18,7 @@ export type ListSnapshotsRequest = {
 export type GetOperationsRequest = {
   repoId?: string
   planId?: string
+  snapshotId?: string
   lastN?: string
 }
 
