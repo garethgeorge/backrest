@@ -17,13 +17,13 @@ import (
 )
 
 type Repo struct {
-	mu sync.Mutex
-	cmd string
-	repo *v1.Repo
+	mu          sync.Mutex
+	cmd         string
+	repo        *v1.Repo
 	initialized bool
 
 	extraArgs []string
-	extraEnv []string
+	extraEnv  []string
 }
 
 // NewRepo instantiates a new repository. TODO: should not accept a v1.Repo, should instead be configured by parameters.
@@ -34,11 +34,11 @@ func NewRepo(repo *v1.Repo, opts ...GenericOption) *Repo {
 	}
 
 	return &Repo{
-		cmd: "restic", // TODO: configurable binary path
-		repo: repo,
+		cmd:         "restic", // TODO: configurable binary path
+		repo:        repo,
 		initialized: false,
-		extraArgs: opt.extraArgs,
-		extraEnv: opt.extraEnv,
+		extraArgs:   opt.extraArgs,
+		extraEnv:    opt.extraEnv,
 	}
 }
 
@@ -85,10 +85,6 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if err := r.init(ctx); err != nil {
-		return nil, fmt.Errorf("failed to initialize repo: %w", err)
-	}
-	
 	opt := &BackupOpts{}
 	for _, o := range opts {
 		o(opt)
@@ -115,12 +111,12 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 	if err := cmd.Start(); err != nil {
 		return nil, NewCmdError(cmd, nil, err)
 	}
-	
+
 	var wg sync.WaitGroup
 	var summary *BackupProgressEntry
-	var cmdErr error 
+	var cmdErr error
 	var readErr error
-	
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -141,7 +137,7 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 	}()
 
 	wg.Wait()
-	
+
 	var err error
 	if cmdErr != nil || readErr != nil {
 		err = multierror.Append(nil, cmdErr, readErr)
@@ -152,10 +148,6 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapshot, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-
-	if err := r.init(ctx); err != nil {
-		return nil, fmt.Errorf("failed to initialize repo: %w", err)
-	}
 
 	opt := resolveOpts(opts)
 
@@ -178,6 +170,60 @@ func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapsho
 	}
 
 	return snapshots, nil
+}
+
+func (r *Repo) Forget(ctx context.Context, policy RetentionPolicy, pruneOutput io.Writer, opts ...GenericOption) (*ForgetResult, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// first run the forget command
+	opt := resolveOpts(opts)
+
+	args := []string{"forget", "--json"}
+	args = append(args, r.extraArgs...)
+	args = append(args, opt.extraArgs...)
+	args = append(args, policy.toForgetFlags()...)
+
+	cmd := exec.CommandContext(ctx, r.cmd, args...)
+	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, opt.extraEnv...)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, NewCmdError(cmd, output, err)
+	}
+
+	var result []ForgetResult
+	if err := json.Unmarshal(output, &result); err != nil {
+		return nil, NewCmdError(cmd, output, fmt.Errorf("command output is not valid JSON: %w", err))
+	}
+	if len(result) != 1 {
+		return nil, fmt.Errorf("expected 1 output from forget, got %v", len(result))
+	}
+
+	// then run the prune command
+	args = []string{"prune", "--json"}
+	args = append(args, r.extraArgs...)
+	args = append(args, opt.extraArgs...)
+	args = append(args, policy.toPruneFlags()...)
+
+	cmd = exec.CommandContext(ctx, r.cmd, args...)
+	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, opt.extraEnv...)
+
+	buf := bytes.NewBuffer(nil)
+	var writer io.Writer = buf
+	if pruneOutput != nil {
+		writer = io.MultiWriter(pruneOutput, buf)
+	}
+	cmd.Stdout = writer
+	cmd.Stderr = writer
+
+	if err := cmd.Run(); err != nil {
+		return nil, NewCmdError(cmd, buf.Bytes(), err)
+	}
+
+	return &result[0], nil
 }
 
 func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, opts ...GenericOption) (*Snapshot, []*LsEntry, error) {
@@ -216,8 +262,53 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 	return snapshots, entries, nil
 }
 
+type RetentionPolicy struct {
+	MaxUnused          string // e.g. a percentage i.e. 25% or a number of megabytes.
+	KeepLastN          int    // keep the last n snapshots.
+	KeepHourly         int    // keep the last n hourly snapshots.
+	KeepDaily          int    // keep the last n daily snapshots.
+	KeepWeekly         int    // keep the last n weekly snapshots.
+	KeepMonthly        int    // keep the last n monthly snapshots.
+	KeepYearly         int    // keep the last n yearly snapshots.
+	KeepWithinDuration string // keep snapshots within a duration e.g. 1y2m3d4h5m6s
+}
+
+func (r *RetentionPolicy) toForgetFlags() []string {
+	flags := []string{}
+	if r.KeepLastN != 0 {
+		flags = append(flags, "--keep-last", fmt.Sprintf("%d", r.KeepLastN))
+	}
+	if r.KeepHourly != 0 {
+		flags = append(flags, "--keep-hourly", fmt.Sprintf("%d", r.KeepHourly))
+	}
+	if r.KeepDaily != 0 {
+		flags = append(flags, "--keep-daily", fmt.Sprintf("%d", r.KeepDaily))
+	}
+	if r.KeepWeekly != 0 {
+		flags = append(flags, "--keep-weekly", fmt.Sprintf("%d", r.KeepWeekly))
+	}
+	if r.KeepMonthly != 0 {
+		flags = append(flags, "--keep-monthly", fmt.Sprintf("%d", r.KeepMonthly))
+	}
+	if r.KeepYearly != 0 {
+		flags = append(flags, "--keep-yearly", fmt.Sprintf("%d", r.KeepYearly))
+	}
+	if r.KeepWithinDuration != "" {
+		flags = append(flags, "--keep-within", r.KeepWithinDuration)
+	}
+	return flags
+}
+
+func (r *RetentionPolicy) toPruneFlags() []string {
+	flags := []string{}
+	if r.MaxUnused != "" {
+		flags = append(flags, "--max-unused", r.MaxUnused)
+	}
+	return flags
+}
+
 type BackupOpts struct {
-	paths []string
+	paths     []string
 	extraArgs []string
 }
 
@@ -253,7 +344,7 @@ func WithBackupParent(parent string) BackupOption {
 
 type GenericOpts struct {
 	extraArgs []string
-	extraEnv []string
+	extraEnv  []string
 }
 
 func resolveOpts(opts []GenericOption) *GenericOpts {
@@ -287,12 +378,13 @@ func WithEnv(env ...string) GenericOption {
 }
 
 var EnvToPropagate = []string{"PATH", "HOME", "XDG_CACHE_HOME"}
+
 func WithPropagatedEnvVars(extras ...string) GenericOption {
 	var extension []string
 
 	for _, env := range EnvToPropagate {
 		if val, ok := os.LookupEnv(env); ok {
-			extension = append(extension, env + "=" + val)
+			extension = append(extension, env+"="+val)
 		}
 	}
 
