@@ -1,4 +1,3 @@
-import { atom } from "recoil";
 import {
   Operation,
   OperationEvent,
@@ -6,10 +5,9 @@ import {
   OperationStatus,
 } from "../../gen/ts/v1/operations.pb";
 import { GetOperationsRequest, ResticUI } from "../../gen/ts/v1/service.pb";
-import { EventEmitter } from "events";
-import { useAlertApi } from "../components/Alerts";
 import { API_PREFIX } from "../constants";
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
+import _ from "lodash";
 
 export type EOperation = Operation & {
   parsedTime: number;
@@ -42,21 +40,12 @@ const subscribers: ((event: OperationEvent) => void)[] = [];
   }
 })();
 
-export const getOperations = async ({
-  planId,
-  repoId,
-  lastN,
-}: GetOperationsRequest): Promise<EOperation[]> => {
-  const opList = await ResticUI.GetOperations(
-    {
-      planId,
-      repoId,
-      lastN,
-    },
-    {
-      pathPrefix: API_PREFIX,
-    }
-  );
+export const getOperations = async (
+  req: GetOperationsRequest
+): Promise<EOperation[]> => {
+  const opList = await ResticUI.GetOperations(req, {
+    pathPrefix: API_PREFIX,
+  });
   return (opList.operations || []).map(toEop);
 };
 
@@ -137,13 +126,16 @@ export const toEop = (op: Operation): EOperation => {
   };
 };
 
-// TODO: aggregate backup info from oplog.
-interface BackupInfo {
+export interface BackupInfo {
+  id: string; // id of the first operation that generated this backup.
+  displayTime: Date;
   startTimeMs: number;
   endTimeMs: number;
-  repoId: string;
-  planId: string;
-  snapshotId: string;
+  status: OperationStatus;
+  operations: Operation[];
+  repoId?: string;
+  planId?: string;
+  snapshotId?: string;
   backupLastStatus?: BackupProgressEntry;
   snapshotInfo?: ResticSnapshot;
 }
@@ -151,14 +143,24 @@ interface BackupInfo {
 // BackupInfoCollector maps multiple operations to single aggregate 'BackupInfo' objects.
 // A backup info object aggregates the backup status (if available), snapshot info (if available), and possibly the forget status (if available).
 export class BackupInfoCollector {
-  private listeners: ((event: OperationEventType, info: BackupInfo) => void)[] =
-    [];
+  private listeners: ((
+    event: OperationEventType,
+    info: BackupInfo[]
+  ) => void)[] = [];
   private backupByOpId: { [key: string]: BackupInfo } = {};
   private backupBySnapshotId: { [key: string]: BackupInfo } = {};
 
   private mergeBackups(existing: BackupInfo, newInfo: BackupInfo) {
     existing.startTimeMs = Math.min(existing.startTimeMs, newInfo.startTimeMs);
     existing.endTimeMs = Math.max(existing.endTimeMs, newInfo.endTimeMs);
+    existing.displayTime = new Date(existing.startTimeMs);
+    if (newInfo.startTimeMs >= existing.startTimeMs) {
+      existing.status = newInfo.status; // use the latest status
+    }
+    existing.operations = _.uniqBy(
+      [...existing.operations, ...newInfo.operations],
+      (o) => o.id!
+    );
     if (newInfo.backupLastStatus) {
       existing.backupLastStatus = newInfo.backupLastStatus;
     }
@@ -171,16 +173,17 @@ export class BackupInfoCollector {
   private operationToBackup(op: Operation): BackupInfo {
     const startTimeMs = parseInt(op.unixTimeStartMs!);
     const endTimeMs = parseInt(op.unixTimeEndMs!);
-    const repoId = op.repoId!;
-    const planId = op.planId!;
-    const snapshotId = op.snapshotId!;
 
     const b: BackupInfo = {
+      id: op.id!,
       startTimeMs,
       endTimeMs,
-      repoId,
-      planId,
-      snapshotId,
+      status: op.status!,
+      displayTime: new Date(startTimeMs),
+      repoId: op.repoId,
+      planId: op.planId,
+      snapshotId: op.snapshotId,
+      operations: [op],
     };
 
     if (op.operationBackup) {
@@ -191,15 +194,12 @@ export class BackupInfoCollector {
       const oi = op.operationIndexSnapshot;
       b.snapshotInfo = oi.snapshot;
     }
-
     return b;
   }
 
   private addHelper(op: Operation) {
     if (op.snapshotId) {
-      if (this.backupByOpId[op.id!]) {
-        delete this.backupByOpId[op.id!];
-      }
+      delete this.backupByOpId[op.id!];
 
       let newInfo = this.operationToBackup(op);
       const existing = this.backupBySnapshotId[op.snapshotId!];
@@ -217,9 +217,22 @@ export class BackupInfoCollector {
     }
   }
 
-  public addOperation(event: OperationEventType, op: Operation) {
+  public addOperation(event: OperationEventType, op: Operation): BackupInfo {
     const backupInfo = this.addHelper(op);
-    this.listeners.forEach((l) => l(event, backupInfo));
+    this.listeners.forEach((l) => l(event, [backupInfo]));
+    return backupInfo;
+  }
+
+  public bulkAddOperations(ops: Operation[]): BackupInfo[] {
+    const backupInfos = ops.map((op) => this.addHelper(op));
+    this.listeners.forEach((l) =>
+      l(OperationEventType.EVENT_UNKNOWN, backupInfos)
+    );
+    return backupInfos;
+  }
+
+  public addOperationNoNotify(op: Operation) {
+    this.addHelper(op);
   }
 
   public getAll(): BackupInfo[] {

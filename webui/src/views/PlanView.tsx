@@ -85,7 +85,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         items={[
           {
             key: "1",
-            label: "Condensed View",
+            label: "Tree View",
             children: (
               <>
                 <OperationTree operations={operations} />

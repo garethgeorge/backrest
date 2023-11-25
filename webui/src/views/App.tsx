@@ -25,7 +25,7 @@ import {
   toEop,
   unsubscribeFromOperations,
 } from "../state/oplog";
-import { formatTime } from "../lib/formatting";
+import { formatTime, normalizeSnapshotId } from "../lib/formatting";
 import { SnapshotBrowser } from "../components/SnapshotBrowser";
 import { OperationRow } from "../components/OperationList";
 import {
@@ -58,7 +58,8 @@ export const App: React.FC = () => {
       .catch((err) => {
         alertApi.error(err.message, 0);
         alertApi.error(
-          "Failed to fetch initial config, typically this means the UI could not connect to the backend"
+          "Failed to fetch initial config, typically this means the UI could not connect to the backend",
+          0
         );
       });
   }, []);
@@ -173,6 +174,7 @@ const OperationNotificationGenerator = () => {
   const config = useRecoilValue(configState);
 
   useEffect(() => {
+    // TODO: factor notification generator into a separate file.
     const listener = (event: OperationEvent) => {
       if (event.type != OperationEventType.EVENT_CREATED) return;
       const planId = event.operation!.planId!;
@@ -195,8 +197,9 @@ const OperationNotificationGenerator = () => {
       } else if (event.operation?.operationIndexSnapshot) {
         const indexOp = event.operation.operationIndexSnapshot;
         alertApi.info({
-          content: `Indexed snapshot ${indexOp.snapshot!
-            .id!} for plan ${planId}.`,
+          content: `Indexed snapshot ${normalizeSnapshotId(
+            indexOp.snapshot!.id!
+          )} for plan ${planId}.`,
           onClick: onClick,
         });
       }

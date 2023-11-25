@@ -52,6 +52,7 @@ enum OperationStatus {
   STATUS_INPROGRESS = 2;
   STATUS_SUCCESS = 3;
   STATUS_ERROR = 4;
+  STATUS_CANCELLED = 5;
 }
 
 message OperationBackup {

@@ -27,6 +27,7 @@
     "typescript": "^5.2.2"
   },
   "devDependencies": {
+    "@parcel/transformer-sass": "^2.10.3",
     "events": "^3.3.0",
     "stream-browserify": "^3.0.0"
   }
