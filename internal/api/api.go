@@ -53,7 +53,6 @@ func loggingFunc(l *zap.Logger) logging.Logger {
 	})
 }
 
-
 func serveGRPC(ctx context.Context, socket string, server *Server) error {
 	lis, err := net.Listen("unix", socket)
 	if err != nil {

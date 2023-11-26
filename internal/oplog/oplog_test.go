@@ -8,6 +8,11 @@ import (
 	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
 )
 
+const (
+	snapshotId  = "1234567890123456789012345678901234567890123456789012345678901234"
+	snapshotId2 = "abcdefgh01234567890123456789012345678901234567890123456789012345"
+)
+
 func TestCreate(t *testing.T) {
 	// t.Parallel()
 	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
@@ -21,7 +26,6 @@ func TestCreate(t *testing.T) {
 }
 
 func TestAddOperation(t *testing.T) {
-	// t.Parallel()
 	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
 	if err != nil {
 		t.Fatalf("error creating oplog: %s", err)
@@ -38,12 +42,14 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				UnixTimeStartMs: 1234,
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "basic backup operation",
 			op: &v1.Operation{
 				UnixTimeStartMs: 1234,
+				RepoId:          "testrepo",
+				PlanId:          "testplan",
 				Op:              &v1.Operation_OperationBackup{},
 			},
 			wantErr: false,
@@ -52,6 +58,8 @@ func TestAddOperation(t *testing.T) {
 			name: "basic snapshot operation",
 			op: &v1.Operation{
 				UnixTimeStartMs: 1234,
+				RepoId:          "testrepo",
+				PlanId:          "testplan",
 				Op: &v1.Operation_OperationIndexSnapshot{
 					OperationIndexSnapshot: &v1.OperationIndexSnapshot{
 						Snapshot: &v1.ResticSnapshot{
@@ -66,31 +74,36 @@ func TestAddOperation(t *testing.T) {
 			name: "operation with ID",
 			op: &v1.Operation{
 				Id:              1,
+				RepoId:          "testrepo",
+				PlanId:          "testplan",
 				UnixTimeStartMs: 1234,
 				Op:              &v1.Operation_OperationBackup{},
 			},
 			wantErr: true,
 		},
 		{
-			name: "operation with repo",
+			name: "operation with repo only",
 			op: &v1.Operation{
 				UnixTimeStartMs: 1234,
 				RepoId:          "testrepo",
 				Op:              &v1.Operation_OperationBackup{},
 			},
+			wantErr: true,
 		},
 		{
-			name: "operation with plan",
+			name: "operation with plan only",
 			op: &v1.Operation{
 				UnixTimeStartMs: 1234,
 				PlanId:          "testplan",
 				Op:              &v1.Operation_OperationBackup{},
 			},
+			wantErr: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if err := log.Add(tc.op); (err != nil) != tc.wantErr {
 				t.Errorf("Add() error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -250,14 +263,14 @@ func TestIndexSnapshot(t *testing.T) {
 		UnixTimeStartMs: 1234,
 		PlanId:          "plan1",
 		RepoId:          "repo1",
-		SnapshotId:      "abcdefgh",
+		SnapshotId:      snapshotId,
 		Op:              &v1.Operation_OperationIndexSnapshot{},
 	}
 	if err := log.Add(op); err != nil {
 		t.Fatalf("error adding operation: %s", err)
 	}
 
-	ops, err := log.GetBySnapshotId("abcdefgh", indexutil.CollectAll())
+	ops, err := log.GetBySnapshotId(snapshotId, indexutil.CollectAll())
 	if err != nil {
 		t.Fatalf("error checking for snapshot: %s", err)
 	}
@@ -282,7 +295,7 @@ func TestUpdateOperation(t *testing.T) {
 		UnixTimeStartMs: 1234,
 		PlanId:          "oldplan",
 		RepoId:          "oldrepo",
-		SnapshotId:      "12345678",
+		SnapshotId:      snapshotId,
 	}
 	if err := log.Add(op); err != nil {
 		t.Fatalf("error adding operation: %s", err)
@@ -300,14 +313,14 @@ func TestUpdateOperation(t *testing.T) {
 	} else if len(ops) != 1 {
 		t.Fatalf("want 1 operation, got %d", len(ops))
 	}
-	if ops, err := log.GetBySnapshotId("12345678", indexutil.CollectAll()); err != nil {
+	if ops, err := log.GetBySnapshotId(snapshotId, indexutil.CollectAll()); err != nil {
 		t.Fatalf("error checking for snapshot: %s", err)
 	} else if len(ops) != 1 {
 		t.Fatalf("want 1 operation, got %d", len(ops))
 	}
 
 	// Update indexed values
-	op.SnapshotId = "abcdefgh"
+	op.SnapshotId = snapshotId2
 	op.PlanId = "myplan"
 	op.RepoId = "myrepo"
 	if err := log.Update(op); err != nil {
@@ -318,7 +331,7 @@ func TestUpdateOperation(t *testing.T) {
 	if opId != op.Id {
 		t.Errorf("want operation ID %d, got %d", opId, op.Id)
 	}
-	if ops, err := log.GetBySnapshotId("abcdefgh", indexutil.CollectAll()); err != nil {
+	if ops, err := log.GetBySnapshotId(snapshotId2, indexutil.CollectAll()); err != nil {
 		t.Fatalf("error checking for snapshot: %s", err)
 	} else if len(ops) != 1 {
 		t.Fatalf("want 1 operation, got %d", len(ops))
@@ -347,7 +360,7 @@ func TestUpdateOperation(t *testing.T) {
 	} else if len(ops) != 0 {
 		t.Fatalf("want 0 operations, got %d", len(ops))
 	}
-	if ops, err := log.GetBySnapshotId("12345678", indexutil.CollectAll()); err != nil {
+	if ops, err := log.GetBySnapshotId(snapshotId, indexutil.CollectAll()); err != nil {
 		t.Fatalf("error checking for snapshot: %s", err)
 	} else if len(ops) != 0 {
 		t.Fatalf("want 0 operations, got %d", len(ops))

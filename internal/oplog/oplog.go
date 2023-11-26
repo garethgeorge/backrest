@@ -12,6 +12,8 @@ import (
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
 	"github.com/garethgeorge/resticui/internal/oplog/serializationutil"
+	"github.com/garethgeorge/resticui/internal/protoutil"
+	"github.com/garethgeorge/resticui/pkg/restic"
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -35,6 +37,7 @@ var (
 	RepoIndexBucket     = []byte("oplog.repo_idx")     // repo_index tracks IDs of operations affecting a given repo
 	PlanIndexBucket     = []byte("oplog.plan_idx")     // plan_index tracks IDs of operations affecting a given plan
 	SnapshotIndexBucket = []byte("oplog.snapshot_idx") // snapshot_index tracks IDs of operations affecting a given snapshot
+	indexBuckets        = [][]byte{RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket}
 )
 
 // OpLog represents a log of operations performed.
@@ -63,6 +66,11 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 	o.nextId.Store(1)
 
 	if err := db.Update(func(tx *bolt.Tx) error {
+		sysBucket, err := tx.CreateBucketIfNotExists(SystemBucket)
+		if err != nil {
+			return fmt.Errorf("creating system bucket: %s", err)
+		}
+
 		// Create the buckets if they don't exist
 		for _, bucket := range [][]byte{
 			SystemBucket, OpLogBucket, RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket,
@@ -71,8 +79,6 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 				return fmt.Errorf("creating bucket %s: %s", string(bucket), err)
 			}
 		}
-
-		sysBucket := tx.Bucket(SystemBucket)
 
 		// Validate the operation log on startup.
 		opLogBucket := tx.Bucket(OpLogBucket)
@@ -216,7 +222,9 @@ func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 		}
 	}
 
-	op.SnapshotId = NormalizeSnapshotId(op.SnapshotId)
+	if err := protoutil.ValidateOperation(op); err != nil {
+		return fmt.Errorf("validating operation: %w", err)
+	}
 
 	bytes, err := proto.Marshal(op)
 	if err != nil {
@@ -315,7 +323,9 @@ func (o *OpLog) GetByPlan(planId string, collector indexutil.Collector) ([]*v1.O
 }
 
 func (o *OpLog) GetBySnapshotId(snapshotId string, collector indexutil.Collector) ([]*v1.Operation, error) {
-	snapshotId = NormalizeSnapshotId(snapshotId)
+	if err := restic.ValidateSnapshotId(snapshotId); err != nil {
+		return nil, err
+	}
 	var err error
 	var ops []*v1.Operation
 	o.db.View(func(tx *bolt.Tx) error {
@@ -373,11 +383,4 @@ func (o *OpLog) Unsubscribe(callback *func(EventType, *v1.Operation)) {
 			o.subscribers = subs[:len(o.subscribers)-1]
 		}
 	}
-}
-
-func NormalizeSnapshotId(id string) string {
-	if len(id) < 8 {
-		return id
-	}
-	return id[:8]
 }

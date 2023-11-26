@@ -5,36 +5,35 @@ name: Build and Test
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
-    
-    - name: Setup NodeJS
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-    
-    - name: Install Restic
-      run: sudo apt install -y restic
-    
-    - name: Build WebUI
-      run: cd webui && npm install && npm run build
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
 
-    - name: Build
-      run: go build -v ./...
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-    - name: Test
-      run: go test ./...
+      - name: Install Restic
+        run: sudo apt install -y restic && restic self-update --output ./restic
+
+      - name: Build WebUI
+        run: cd webui && npm install && npm run build
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: PATH=$(pwd):$PATH go test ./...

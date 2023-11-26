@@ -155,8 +155,8 @@ func TestSnapshot(t *testing.T) {
 
 			// Ensure that snapshot timestamps are set, this is critical for correct ordering in the orchestrator.
 			for _, snapshot := range snapshots {
-				if p := snapshot.ToProto(); p.UnixTimeMs == 0 {
-					t.Errorf("wanted snapshot time to be non-zero, got: %v", p.UnixTimeMs)
+				if snapshot.UnixTimeMs() == 0 {
+					t.Errorf("wanted snapshot time to be non-zero, got: %v", snapshot.UnixTimeMs())
 				}
 			}
 		})
