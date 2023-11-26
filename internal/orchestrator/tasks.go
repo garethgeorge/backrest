@@ -8,6 +8,7 @@ import (
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 	"github.com/garethgeorge/resticui/internal/oplog"
 	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
+	"github.com/garethgeorge/resticui/internal/protoutil"
 	"github.com/garethgeorge/resticui/pkg/restic"
 	"github.com/gitploy-io/cronexpr"
 	"github.com/hashicorp/go-multierror"
@@ -114,7 +115,7 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 			}
 			lastSent = time.Now()
 
-			backupOp.OperationBackup.LastStatus = entry.ToProto()
+			backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(entry)
 			if err := orchestrator.OpLog.Update(op); err != nil {
 				zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
 			}
@@ -125,7 +126,10 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 		}
 
 		op.SnapshotId = summary.SnapshotId
-		backupOp.OperationBackup.LastStatus = summary.ToProto()
+		backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(summary)
+		if backupOp.OperationBackup.LastStatus == nil {
+			return fmt.Errorf("expected a final backup progress entry, got nil")
+		}
 
 		zap.L().Info("backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)))
 		return nil
@@ -167,7 +171,7 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan 
 			continue
 		}
 
-		snapshotProto := snapshot.ToProto()
+		snapshotProto := protoutil.SnapshotToProto(snapshot)
 		indexOps = append(indexOps, &v1.Operation{
 			RepoId:          plan.Repo,
 			PlanId:          plan.Id,

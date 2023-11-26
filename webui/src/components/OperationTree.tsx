@@ -8,7 +8,7 @@ import {
   toEop,
   unsubscribeFromOperations,
 } from "../state/oplog";
-import { Col, Empty, Row, Tree } from "antd";
+import { Col, Divider, Empty, Row, Tree } from "antd";
 import _ from "lodash";
 import { DataNode } from "antd/es/tree";
 import {
@@ -112,11 +112,13 @@ export const OperationTree = ({
           showIcon
           defaultExpandedKeys={[backups[0].id!]}
           onSelect={(keys, info) => {
-            setSelectedBackupId(
-              info.selectedNodes.length > 0
-                ? info.selectedNodes[0].backup!.id!
-                : null
-            );
+            if (info.selectedNodes.length === 0) return;
+            const backup = info.selectedNodes[0].backup;
+            if (!backup) {
+              setSelectedBackupId(null);
+              return;
+            }
+            setSelectedBackupId(backup.id!);
           }}
           titleRender={(node: OpTreeNode): React.ReactNode => {
             if (node.title) {

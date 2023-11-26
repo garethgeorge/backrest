@@ -3,9 +3,9 @@ package restic
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
 	"slices"
 	"time"
@@ -25,19 +25,6 @@ type Snapshot struct {
 	unixTimeMs int64    `json:"-"`
 }
 
-func (s *Snapshot) ToProto() *v1.ResticSnapshot {
-	return &v1.ResticSnapshot{
-		Id:         s.Id,
-		UnixTimeMs: s.UnixTimeMs(),
-		Tree:       s.Tree,
-		Paths:      s.Paths,
-		Hostname:   s.Hostname,
-		Username:   s.Username,
-		Tags:       s.Tags,
-		Parent:     s.Parent,
-	}
-}
-
 func (s *Snapshot) UnixTimeMs() int64 {
 	if s.unixTimeMs != 0 {
 		return s.unixTimeMs
@@ -48,6 +35,16 @@ func (s *Snapshot) UnixTimeMs() int64 {
 	}
 	s.unixTimeMs = t.UnixMilli()
 	return s.unixTimeMs
+}
+
+func (s *Snapshot) Validate() error {
+	if err := ValidateSnapshotId(s.Id); err != nil {
+		return fmt.Errorf("snapshot.id invalid: %v", err)
+	}
+	if s.Time == "" || s.UnixTimeMs() == 0 {
+		return fmt.Errorf("snapshot.time invalid: %v", s.Time)
+	}
+	return nil
 }
 
 type BackupProgressEntry struct {
@@ -77,44 +74,17 @@ type BackupProgressEntry struct {
 	BytesDone   int     `json:"bytes_done"`
 }
 
-func (b *BackupProgressEntry) ToProto() *v1.BackupProgressEntry {
-	switch b.MessageType {
-	case "summary":
-		return &v1.BackupProgressEntry{
-			Entry: &v1.BackupProgressEntry_Summary{
-				Summary: &v1.BackupProgressSummary{
-					FilesNew:            int64(b.FilesNew),
-					FilesChanged:        int64(b.FilesChanged),
-					FilesUnmodified:     int64(b.FilesUnmodified),
-					DirsNew:             int64(b.DirsNew),
-					DirsChanged:         int64(b.DirsChanged),
-					DirsUnmodified:      int64(b.DirsUnmodified),
-					DataBlobs:           int64(b.DataBlobs),
-					TreeBlobs:           int64(b.TreeBlobs),
-					DataAdded:           int64(b.DataAdded),
-					TotalFilesProcessed: int64(b.TotalFilesProcessed),
-					TotalBytesProcessed: int64(b.TotalBytesProcessed),
-					TotalDuration:       float64(b.TotalDuration),
-					SnapshotId:          b.SnapshotId,
-				},
-			},
+func (b *BackupProgressEntry) Validate() error {
+	if b.MessageType == "summary" {
+		if b.SnapshotId == "" {
+			return errors.New("summary message must have snapshot_id")
 		}
-	case "status":
-		return &v1.BackupProgressEntry{
-			Entry: &v1.BackupProgressEntry_Status{
-				Status: &v1.BackupProgressStatusEntry{
-					PercentDone: b.PercentDone,
-					TotalFiles:  int64(b.TotalFiles),
-					FilesDone:   int64(b.FilesDone),
-					TotalBytes:  int64(b.TotalBytes),
-					BytesDone:   int64(b.BytesDone),
-				},
-			},
+		if err := ValidateSnapshotId(b.SnapshotId); err != nil {
+			return err
 		}
-	default:
-		log.Fatalf("unknown message type: %s", b.MessageType)
-		return nil
 	}
+
+	return nil
 }
 
 // readBackupProgressEntrys returns the summary event or an error if the command failed.
@@ -134,6 +104,9 @@ func readBackupProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(ev
 
 			return nil, NewCmdError(cmd, bytes, fmt.Errorf("command output was not JSON: %w", err))
 		}
+		if err := event.Validate(); err != nil {
+			return nil, err
+		}
 	}
 
 	// remaining events are parsed as JSON
@@ -143,6 +116,9 @@ func readBackupProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(ev
 		var event *BackupProgressEntry
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
 			return nil, fmt.Errorf("failed to parse JSON: %w", err)
+		}
+		if err := event.Validate(); err != nil {
+			return nil, err
 		}
 
 		if callback != nil {
@@ -216,4 +192,25 @@ func readLs(output io.Reader) (*Snapshot, []*LsEntry, error) {
 type ForgetResult struct {
 	Keep   []Snapshot `json:"keep"`
 	Remove []Snapshot `json:"remove"`
+}
+
+func (r *ForgetResult) Validate() error {
+	for _, s := range r.Keep {
+		if err := ValidateSnapshotId(s.Id); err != nil {
+			return err
+		}
+	}
+	for _, s := range r.Remove {
+		if err := ValidateSnapshotId(s.Id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ValidateSnapshotId(id string) error {
+	if len(id) != 64 {
+		return fmt.Errorf("restic may be out of date (check with `restic self-upgrade`): snapshot ID must be 64 chars, got %v chars", len(id))
+	}
+	return nil
 }

@@ -108,7 +108,7 @@ func TestSnapshotParenting(t *testing.T) {
 			prev := snapshots[i-1]
 			curr := snapshots[i]
 
-			if prev.ToProto().UnixTimeMs >= curr.ToProto().UnixTimeMs {
+			if prev.UnixTimeMs() >= curr.UnixTimeMs() {
 				t.Errorf("snapshots are out of order")
 			}
 

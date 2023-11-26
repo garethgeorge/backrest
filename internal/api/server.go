@@ -13,6 +13,7 @@ import (
 	"github.com/garethgeorge/resticui/internal/oplog"
 	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
 	"github.com/garethgeorge/resticui/internal/orchestrator"
+	"github.com/garethgeorge/resticui/internal/protoutil"
 	"github.com/garethgeorge/resticui/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -110,7 +111,6 @@ func (s *Server) ListSnapshots(ctx context.Context, query *v1.ListSnapshotsReque
 		if err != nil {
 			return nil, fmt.Errorf("failed to get plan %q: %w", query.PlanId, err)
 		}
-
 		snapshots, err = repo.SnapshotsForPlan(ctx, plan)
 	} else {
 		snapshots, err = repo.Snapshots(ctx)
@@ -123,7 +123,7 @@ func (s *Server) ListSnapshots(ctx context.Context, query *v1.ListSnapshotsReque
 	// Transform the snapshots and return them.
 	var rs []*v1.ResticSnapshot
 	for _, snapshot := range snapshots {
-		rs = append(rs, snapshot.ToProto())
+		rs = append(rs, protoutil.SnapshotToProto(snapshot))
 	}
 
 	return &v1.ResticSnapshotList{

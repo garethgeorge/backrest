@@ -167,7 +167,11 @@ func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapsho
 	if err := json.Unmarshal(output, &snapshots); err != nil {
 		return nil, NewCmdError(cmd, output, fmt.Errorf("command output is not valid JSON: %w", err))
 	}
-
+	for _, snapshot := range snapshots {
+		if err := snapshot.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid snapshot: %w", err)
+		}
+	}
 	return snapshots, nil
 }
 
@@ -198,6 +202,9 @@ func (r *Repo) Forget(ctx context.Context, policy RetentionPolicy, pruneOutput i
 	}
 	if len(result) != 1 {
 		return nil, fmt.Errorf("expected 1 output from forget, got %v", len(result))
+	}
+	if err := result[0].Validate(); err != nil {
+		return nil, NewCmdError(cmd, output, fmt.Errorf("invalid forget result: %w", err))
 	}
 
 	// then run the prune command

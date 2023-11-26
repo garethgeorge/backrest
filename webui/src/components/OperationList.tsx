@@ -162,15 +162,12 @@ export const OperationRow = ({
             <>
               <Collapse
                 size="small"
-                defaultActiveKey={
-                  operation.status === OperationStatus.STATUS_INPROGRESS
-                    ? [1]
-                    : undefined
-                }
+                destroyInactivePanel
+                defaultActiveKey={[1]}
                 items={[
                   {
                     key: 1,
-                    label: "Details",
+                    label: "Backup Details",
                     children: (
                       <BackupOperationStatus status={backupOp.lastStatus} />
                     ),
@@ -213,10 +210,11 @@ const SnapshotInfo = ({
   return (
     <Collapse
       size="small"
+      defaultActiveKey={[1]}
       items={[
         {
           key: 1,
-          label: "Details",
+          label: "Snapshot Details",
           children: (
             <>
               <Typography.Text>
@@ -245,7 +243,7 @@ const SnapshotInfo = ({
         },
         {
           key: 2,
-          label: "Browse",
+          label: "Browse and Restore Files in Backup",
           children: (
             <SnapshotBrowser snapshotId={snapshot.id!} repoId={repoId} />
           ),
@@ -294,7 +292,7 @@ const BackupOperationStatus = ({
       <>
         <Typography.Text>
           <Typography.Text strong>Snapshot ID: </Typography.Text>
-          {sum.snapshotId}
+          {normalizeSnapshotId(sum.snapshotId!)}
         </Typography.Text>
         <Row gutter={16}>
           <Col span={8}>
