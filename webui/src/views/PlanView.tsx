@@ -21,21 +21,6 @@ import { MAX_OPERATION_HISTORY } from "../constants";
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
-  const [operations, setOperations] = useState<EOperation[]>([]);
-
-  useEffect(() => {
-    const listener = buildOperationListListener(
-      { planId: plan.id, lastN: "" + MAX_OPERATION_HISTORY },
-      (event, changedOp, operations) => {
-        setOperations([...operations]);
-      }
-    );
-    subscribeToOperations(listener);
-
-    return () => {
-      unsubscribeFromOperations(listener);
-    };
-  }, [plan.id]);
 
   // Gracefully handle deletions by checking if the plan is still in the config.
   const config = useRecoilValue(configState);
@@ -88,7 +73,9 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             label: "Tree View",
             children: (
               <>
-                <OperationTree operations={operations} />
+                <OperationTree
+                  req={{ planId: plan.id!, lastN: "" + MAX_OPERATION_HISTORY }}
+                />
               </>
             ),
           },
@@ -97,8 +84,10 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             label: "Operation List",
             children: (
               <>
-                <h2>Backup Action History ({operations.length} loaded)</h2>
-                <OperationList operations={operations} />
+                <h2>Backup Action History</h2>
+                <OperationList
+                  req={{ planId: plan.id!, lastN: "" + MAX_OPERATION_HISTORY }}
+                />
               </>
             ),
           },

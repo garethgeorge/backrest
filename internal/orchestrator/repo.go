@@ -20,6 +20,7 @@ type RepoOrchestrator struct {
 	repo       *restic.Repo
 }
 
+// newRepoOrchestrator accepts a config and a repo that is configured with the properties of that config object.
 func newRepoOrchestrator(repoConfig *v1.Repo, repo *restic.Repo) *RepoOrchestrator {
 	return &RepoOrchestrator{
 		repoConfig: repoConfig,

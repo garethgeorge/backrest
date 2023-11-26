@@ -96,6 +96,12 @@ export const buildOperationListListener = (
     if (!!req.repoId && op.repoId !== req.repoId) {
       return;
     }
+    if (req.snapshotId && op.snapshotId !== req.snapshotId) {
+      return;
+    }
+    if (req.ids && !req.ids.includes(op.id!)) {
+      return;
+    }
     if (type === OperationEventType.EVENT_UPDATED) {
       const index = operations.findIndex((o) => o.id === op.id);
       if (index > -1) {
@@ -243,13 +249,13 @@ export class BackupInfoCollector {
   }
 
   public subscribe(
-    listener: (event: OperationEventType, info: BackupInfo) => void
+    listener: (event: OperationEventType, info: BackupInfo[]) => void
   ) {
     this.listeners.push(listener);
   }
 
   public unsubscribe(
-    listener: (event: OperationEventType, info: BackupInfo) => void
+    listener: (event: OperationEventType, info: BackupInfo[]) => void
   ) {
     const index = this.listeners.indexOf(listener);
     if (index > -1) {

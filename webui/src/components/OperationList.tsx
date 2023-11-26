@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Operation, OperationStatus } from "../../gen/ts/v1/operations.pb";
 import {
   Card,
@@ -8,6 +8,7 @@ import {
   List,
   Progress,
   Row,
+  Spin,
   Typography,
 } from "antd";
 import {
@@ -16,7 +17,12 @@ import {
   SaveOutlined,
 } from "@ant-design/icons";
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
-import { EOperation } from "../state/oplog";
+import {
+  EOperation,
+  buildOperationListListener,
+  subscribeToOperations,
+  unsubscribeFromOperations,
+} from "../state/oplog";
 import { SnapshotBrowser } from "./SnapshotBrowser";
 import {
   formatBytes,
@@ -24,11 +30,24 @@ import {
   formatTime,
   normalizeSnapshotId,
 } from "../lib/formatting";
+import _ from "lodash";
+import { GetOperationsRequest } from "../../gen/ts/v1/service.pb";
 
 export const OperationList = ({
-  operations,
-}: React.PropsWithoutRef<{ operations: EOperation[] }>) => {
-  operations = [...operations].reverse();
+  req,
+}: React.PropsWithoutRef<{ req: GetOperationsRequest }>) => {
+  const [operations, setOperations] = useState<EOperation[]>([]);
+
+  useEffect(() => {
+    const lis = buildOperationListListener(req, (event, operation, opList) => {
+      setOperations(opList);
+    });
+    subscribeToOperations(lis);
+
+    return () => {
+      unsubscribeFromOperations(lis);
+    };
+  }, [JSON.stringify(req)]);
 
   if (operations.length === 0) {
     return (
@@ -39,26 +58,19 @@ export const OperationList = ({
     );
   }
 
-  const groupBy = (ops: EOperation[], keyFunc: (op: EOperation) => string) => {
-    const groups: { [key: string]: EOperation[] } = {};
-
-    ops.forEach((op) => {
-      const key = keyFunc(op);
-      if (!(key in groups)) {
-        groups[key] = [];
-      }
-      groups[key].push(op);
-    });
-
-    return Object.values(groups);
-  };
-
   // groups items by snapshotID if one can be identified, otherwise by operation ID.
-  const groupedItems = groupBy(operations, (op: EOperation) => {
-    return getSnapshotId(op) || op.id!;
-  });
+  const groupedItems = _.values(
+    _.groupBy(operations, (op: EOperation) => {
+      return getSnapshotId(op) || op.id!;
+    })
+  );
   groupedItems.sort((a, b) => {
     return b[0].parsedTime - a[0].parsedTime;
+  });
+  groupedItems.forEach((group) => {
+    group.sort((a, b) => {
+      return b.parsedTime - a.parsedTime;
+    });
   });
 
   return (
@@ -82,7 +94,7 @@ export const OperationList = ({
       pagination={
         operations.length > 50
           ? { position: "both", align: "center", defaultPageSize: 50 }
-          : {}
+          : undefined
       }
     />
   );
