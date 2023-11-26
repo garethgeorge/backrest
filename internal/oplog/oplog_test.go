@@ -34,21 +34,24 @@ func TestAddOperation(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "basic operation",
-			op:      &v1.Operation{},
+			name: "basic operation",
+			op: &v1.Operation{
+				UnixTimeStartMs: 1234,
+			},
 			wantErr: false,
 		},
 		{
 			name: "basic backup operation",
 			op: &v1.Operation{
-				Op: &v1.Operation_OperationBackup{},
+				UnixTimeStartMs: 1234,
+				Op:              &v1.Operation_OperationBackup{},
 			},
 			wantErr: false,
 		},
 		{
 			name: "basic snapshot operation",
 			op: &v1.Operation{
-				Id: 0,
+				UnixTimeStartMs: 1234,
 				Op: &v1.Operation_OperationIndexSnapshot{
 					OperationIndexSnapshot: &v1.OperationIndexSnapshot{
 						Snapshot: &v1.ResticSnapshot{
@@ -62,25 +65,26 @@ func TestAddOperation(t *testing.T) {
 		{
 			name: "operation with ID",
 			op: &v1.Operation{
-				Id: 1,
-				Op: &v1.Operation_OperationBackup{},
+				Id:              1,
+				UnixTimeStartMs: 1234,
+				Op:              &v1.Operation_OperationBackup{},
 			},
 			wantErr: true,
 		},
 		{
 			name: "operation with repo",
 			op: &v1.Operation{
-				Id:     0,
-				RepoId: "testrepo",
-				Op:     &v1.Operation_OperationBackup{},
+				UnixTimeStartMs: 1234,
+				RepoId:          "testrepo",
+				Op:              &v1.Operation_OperationBackup{},
 			},
 		},
 		{
 			name: "operation with plan",
 			op: &v1.Operation{
-				Id:     0,
-				PlanId: "testplan",
-				Op:     &v1.Operation_OperationBackup{},
+				UnixTimeStartMs: 1234,
+				PlanId:          "testplan",
+				Op:              &v1.Operation_OperationBackup{},
 			},
 		},
 	}
@@ -110,22 +114,25 @@ func TestListOperation(t *testing.T) {
 	// these should get assigned IDs 1-3 respectively by the oplog
 	ops := []*v1.Operation{
 		{
-			PlanId:         "plan1",
-			RepoId:         "repo1",
-			DisplayMessage: "op1",
-			Op:             &v1.Operation_OperationBackup{},
+			UnixTimeStartMs: 1234,
+			PlanId:          "plan1",
+			RepoId:          "repo1",
+			DisplayMessage:  "op1",
+			Op:              &v1.Operation_OperationBackup{},
 		},
 		{
-			PlanId:         "plan1",
-			RepoId:         "repo2",
-			DisplayMessage: "op2",
-			Op:             &v1.Operation_OperationBackup{},
+			UnixTimeStartMs: 1234,
+			PlanId:          "plan1",
+			RepoId:          "repo2",
+			DisplayMessage:  "op2",
+			Op:              &v1.Operation_OperationBackup{},
 		},
 		{
-			PlanId:         "plan2",
-			RepoId:         "repo2",
-			DisplayMessage: "op3",
-			Op:             &v1.Operation_OperationBackup{},
+			UnixTimeStartMs: 1234,
+			PlanId:          "plan2",
+			RepoId:          "repo2",
+			DisplayMessage:  "op3",
+			Op:              &v1.Operation_OperationBackup{},
 		},
 	}
 
@@ -205,9 +212,10 @@ func TestBigIO(t *testing.T) {
 
 	for i := 0; i < count; i++ {
 		if err := log.Add(&v1.Operation{
-			PlanId: "plan1",
-			RepoId: "repo1",
-			Op:     &v1.Operation_OperationBackup{},
+			UnixTimeStartMs: 1234,
+			PlanId:          "plan1",
+			RepoId:          "repo1",
+			Op:              &v1.Operation_OperationBackup{},
 		}); err != nil {
 			t.Fatalf("error adding operation: %s", err)
 		}
@@ -239,10 +247,11 @@ func TestIndexSnapshot(t *testing.T) {
 	t.Cleanup(func() { log.Close() })
 
 	op := &v1.Operation{
-		PlanId:     "plan1",
-		RepoId:     "repo1",
-		SnapshotId: "abcdefgh",
-		Op:         &v1.Operation_OperationIndexSnapshot{},
+		UnixTimeStartMs: 1234,
+		PlanId:          "plan1",
+		RepoId:          "repo1",
+		SnapshotId:      "abcdefgh",
+		Op:              &v1.Operation_OperationIndexSnapshot{},
 	}
 	if err := log.Add(op); err != nil {
 		t.Fatalf("error adding operation: %s", err)
@@ -270,9 +279,10 @@ func TestUpdateOperation(t *testing.T) {
 
 	// Insert initial operation
 	op := &v1.Operation{
-		PlanId:     "oldplan",
-		RepoId:     "oldrepo",
-		SnapshotId: "12345678",
+		UnixTimeStartMs: 1234,
+		PlanId:          "oldplan",
+		RepoId:          "oldrepo",
+		SnapshotId:      "12345678",
 	}
 	if err := log.Add(op); err != nil {
 		t.Fatalf("error adding operation: %s", err)
