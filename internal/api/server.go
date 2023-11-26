@@ -202,6 +202,15 @@ func (s *Server) GetOperations(ctx context.Context, req *v1.GetOperationsRequest
 		ops, err = s.oplog.GetByRepo(req.RepoId, collector)
 	} else if req.SnapshotId != "" {
 		ops, err = s.oplog.GetBySnapshotId(req.SnapshotId, collector)
+	} else if len(req.Ids) > 0 {
+		ops = make([]*v1.Operation, 0, len(req.Ids))
+		for i, id := range req.Ids {
+			op, err := s.oplog.Get(id)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get operation %d: %w", i, err)
+			}
+			ops = append(ops, op)
+		}
 	} else {
 		ops, err = s.oplog.GetAll()
 	}
