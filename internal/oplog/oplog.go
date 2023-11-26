@@ -195,17 +195,25 @@ func (o *OpLog) getOperationHelper(b *bolt.Bucket, id int64) (*v1.Operation, err
 	return &op, nil
 }
 
+func (o *OpLog) nextOperationId(b *bolt.Bucket, unixTimeMs int64) (int64, error) {
+	seq, err := b.NextSequence()
+	if err != nil {
+		return 0, fmt.Errorf("next sequence: %w", err)
+	}
+	return int64(unixTimeMs<<20) | int64(seq&((1<<20)-1)), nil
+}
+
 func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 	b := tx.Bucket(OpLogBucket)
 	if op.Id == 0 {
-		seq, err := b.NextSequence()
-		if err != nil {
-			return fmt.Errorf("error getting next sequence: %w", err)
-		}
 		if op.UnixTimeStartMs == 0 {
 			return fmt.Errorf("operation must have a start time")
 		}
-		op.Id = op.UnixTimeStartMs<<20 | int64(seq&(1<<20-1))
+		var err error
+		op.Id, err = o.nextOperationId(b, op.UnixTimeStartMs)
+		if err != nil {
+			return fmt.Errorf("create next operation ID: %w", err)
+		}
 	}
 
 	op.SnapshotId = NormalizeSnapshotId(op.SnapshotId)

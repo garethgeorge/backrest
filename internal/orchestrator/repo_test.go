@@ -18,15 +18,15 @@ func TestBackup(t *testing.T) {
 
 	// create a new repo with cache disabled for testing
 	r := &v1.Repo{
-		Id: "test",
-		Uri: repo,
+		Id:       "test",
+		Uri:      repo,
 		Password: "test",
-		Flags: []string{"--no-cache"}, 
+		Flags:    []string{"--no-cache"},
 	}
-	
+
 	plan := &v1.Plan{
-		Id: "test",
-		Repo: "test",
+		Id:    "test",
+		Repo:  "test",
 		Paths: []string{testData},
 	}
 
@@ -48,34 +48,34 @@ func TestBackup(t *testing.T) {
 
 func TestSnapshotParenting(t *testing.T) {
 	t.Parallel()
-	
+
 	repo := t.TempDir()
 	testData := test.CreateTestData(t)
 
 	// create a new repo with cache disabled for testing
 	r := &v1.Repo{
-		Id: "test",
-		Uri: repo,
+		Id:       "test",
+		Uri:      repo,
 		Password: "test",
-		Flags: []string{"--no-cache"}, 
+		Flags:    []string{"--no-cache"},
 	}
 
 	plans := []*v1.Plan{
 		{
-			Id: "test",
-			Repo: "test",
+			Id:    "test",
+			Repo:  "test",
 			Paths: []string{testData},
 		},
 		{
-			Id: "test2",
-			Repo: "test",
+			Id:    "test2",
+			Repo:  "test",
 			Paths: []string{testData},
 		},
 	}
 
 	orchestrator := newRepoOrchestrator(r, restic.NewRepo(r, restic.WithFlags("--no-cache")))
 
-	for i := 0; i < 4; i ++{
+	for i := 0; i < 4; i++ {
 		for _, plan := range plans {
 			summary, err := orchestrator.Backup(context.Background(), plan, nil)
 			if err != nil {
@@ -92,7 +92,7 @@ func TestSnapshotParenting(t *testing.T) {
 			}
 		}
 	}
-	
+
 	for _, plan := range plans {
 		snapshots, err := orchestrator.SnapshotsForPlan(context.Background(), plan)
 		if err != nil {
@@ -105,7 +105,7 @@ func TestSnapshotParenting(t *testing.T) {
 		}
 
 		for i := 1; i < len(snapshots); i++ {
-			prev := snapshots[i - 1]
+			prev := snapshots[i-1]
 			curr := snapshots[i]
 
 			if prev.ToProto().UnixTimeMs >= curr.ToProto().UnixTimeMs {

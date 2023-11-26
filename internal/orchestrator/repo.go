@@ -20,6 +20,7 @@ type RepoOrchestrator struct {
 	repo       *restic.Repo
 }
 
+// newRepoOrchestrator accepts a config and a repo that is configured with the properties of that config object.
 func newRepoOrchestrator(repoConfig *v1.Repo, repo *restic.Repo) *RepoOrchestrator {
 	return &RepoOrchestrator{
 		repoConfig: repoConfig,
@@ -47,6 +48,11 @@ func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) 
 
 func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCallback func(event *restic.BackupProgressEntry)) (*restic.BackupProgressEntry, error) {
 	zap.L().Debug("repo orchestrator starting backup", zap.String("repo", r.repoConfig.Id))
+
+	if err := r.repo.Init(ctx); err != nil {
+		return nil, fmt.Errorf("failed to init repo: %w", err)
+	}
+
 	snapshots, err := r.SnapshotsForPlan(ctx, plan)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get snapshots for plan: %w", err)

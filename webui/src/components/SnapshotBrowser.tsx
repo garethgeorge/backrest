@@ -20,6 +20,9 @@ const replaceKeyInTree = (
   if (curNode.key === setKey) {
     return setValue;
   }
+  if (setKey.indexOf(curNode.key as string) === -1) {
+    return null;
+  }
   if (!curNode.children) {
     return null;
   }
@@ -83,8 +86,6 @@ export const SnapshotBrowser = ({
       return;
     }
 
-    console.log("Loading data for key: " + key);
-
     const resp = await ResticUI.ListSnapshotFiles(
       {
         path: (key + "/") as string,
@@ -103,32 +104,19 @@ export const SnapshotBrowser = ({
     }
 
     if (!toUpdate) {
-      console.log("No node to update found!");
       return;
     }
 
     const toUpdateCopy = { ...toUpdate };
     toUpdateCopy.children = respToNodes(resp);
 
-    console.log(
-      "Replacing key: " +
-        key +
-        " with: " +
-        JSON.stringify(toUpdateCopy, null, 2)
-    );
-    console.log("In tree: " + JSON.stringify(treeData, null, 2));
-
     const newTree = treeData.map((node) => {
-      console.log("trying replace in tree...");
       const didUpdate = replaceKeyInTree(node, key as string, toUpdateCopy);
       if (didUpdate) {
-        console.log("Replaced in tree successfully!");
         return didUpdate;
       }
       return node;
     });
-
-    console.log("New tree: ", JSON.stringify(newTree, null, 2));
 
     setTreeData(newTree);
   };
