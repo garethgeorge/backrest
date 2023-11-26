@@ -8,10 +8,13 @@ import {
 import { GetOperationsRequest, ResticUI } from "../../gen/ts/v1/service.pb";
 import { EventEmitter } from "events";
 import { useAlertApi } from "../components/Alerts";
+import { API_PREFIX } from "../constants";
+import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
 
 export type EOperation = Operation & {
   parsedId: number;
   parsedTime: number;
+  parsedDate: Date;
 };
 
 const subscribers: ((event: OperationEvent) => void)[] = [];
@@ -28,7 +31,7 @@ const subscribers: ((event: OperationEvent) => void)[] = [];
           subscribers.forEach((subscriber) => subscriber(event));
         },
         {
-          pathPrefix: "/api",
+          pathPrefix: API_PREFIX,
         }
       );
     } catch (e: any) {
@@ -52,7 +55,7 @@ export const getOperations = async ({
       lastN,
     },
     {
-      pathPrefix: "/api",
+      pathPrefix: API_PREFIX,
     }
   );
   return (opList.operations || []).map(toEop);
@@ -124,12 +127,23 @@ export const buildOperationListListener = (
 };
 
 export const toEop = (op: Operation): EOperation => {
-  const time =
-    op.operationIndexSnapshot?.snapshot?.unixTimeMs || op.unixTimeStartMs;
+  const time = parseInt(op.unixTimeStartMs!);
+  const date = new Date();
+  date.setTime(time);
 
   return {
     ...op,
     parsedId: parseInt(op.id!),
-    parsedTime: parseInt(time!),
+    parsedTime: time,
+    parsedDate: date,
   };
 };
+
+// TODO: aggregate backup info from oplog.
+interface BackupInfo {
+  opids: string[];
+  repoId: string;
+  planId: string;
+  backupLastStatus?: BackupProgressEntry;
+  snapshotInfo?: ResticSnapshot;
+}

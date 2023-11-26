@@ -177,14 +177,21 @@ type Operation struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id              int64           `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	RepoId          string          `protobuf:"bytes,2,opt,name=repo_id,json=repoId,proto3" json:"repo_id,omitempty"`             // repo id if associated with a repo (always true)
-	PlanId          string          `protobuf:"bytes,3,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`             // plan id if associated with a plan (always true)
-	SnapshotId      string          `protobuf:"bytes,8,opt,name=snapshot_id,json=snapshotId,proto3" json:"snapshot_id,omitempty"` // snapshot id if associated with a snapshot.
-	Status          OperationStatus `protobuf:"varint,4,opt,name=status,proto3,enum=v1.OperationStatus" json:"status,omitempty"`
-	UnixTimeStartMs int64           `protobuf:"varint,5,opt,name=unix_time_start_ms,json=unixTimeStartMs,proto3" json:"unix_time_start_ms,omitempty"`
-	UnixTimeEndMs   int64           `protobuf:"varint,6,opt,name=unix_time_end_ms,json=unixTimeEndMs,proto3" json:"unix_time_end_ms,omitempty"`
-	DisplayMessage  string          `protobuf:"bytes,7,opt,name=display_message,json=displayMessage,proto3" json:"display_message,omitempty"` // human readable context message (if any)
+	// required, primary ID of the operation.
+	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// required, repo id if associated with a repo
+	RepoId string `protobuf:"bytes,2,opt,name=repo_id,json=repoId,proto3" json:"repo_id,omitempty"`
+	// required, plan id if associated with a plan
+	PlanId string `protobuf:"bytes,3,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	// optional snapshot id if associated with a snapshot.
+	SnapshotId string          `protobuf:"bytes,8,opt,name=snapshot_id,json=snapshotId,proto3" json:"snapshot_id,omitempty"`
+	Status     OperationStatus `protobuf:"varint,4,opt,name=status,proto3,enum=v1.OperationStatus" json:"status,omitempty"`
+	// required, unix time in milliseconds of the operation's creation (ID is derived from this)
+	UnixTimeStartMs int64 `protobuf:"varint,5,opt,name=unix_time_start_ms,json=unixTimeStartMs,proto3" json:"unix_time_start_ms,omitempty"`
+	// optional, unix time in milliseconds of the operation's completion
+	UnixTimeEndMs int64 `protobuf:"varint,6,opt,name=unix_time_end_ms,json=unixTimeEndMs,proto3" json:"unix_time_end_ms,omitempty"`
+	// optional, human readable context message, typically an error message.
+	DisplayMessage string `protobuf:"bytes,7,opt,name=display_message,json=displayMessage,proto3" json:"display_message,omitempty"`
 	// Types that are assignable to Op:
 	//
 	//	*Operation_OperationBackup
