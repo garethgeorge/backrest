@@ -77,7 +77,6 @@ func (r *Repo) init(ctx context.Context) error {
 func (r *Repo) Init(ctx context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.initialized = false
 	return r.init(ctx)
 }
 

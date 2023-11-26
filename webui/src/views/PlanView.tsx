@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plan } from "../../gen/ts/v1/config.pb";
-import { Button, Flex } from "antd";
+import { Button, Flex, Tabs } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
 import { AddPlanModal } from "./AddPlanModel";
 import { useShowModal } from "../components/ModalManager";
@@ -15,25 +15,12 @@ import {
   unsubscribeFromOperations,
 } from "../state/oplog";
 import { OperationList } from "../components/OperationList";
+import { OperationTree } from "../components/OperationTree";
+import { MAX_OPERATION_HISTORY } from "../constants";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
-  const [operations, setOperations] = useState<EOperation[]>([]);
-
-  useEffect(() => {
-    const listener = buildOperationListListener(
-      { planId: plan.id, lastN: "1000" },
-      (event, changedOp, operations) => {
-        setOperations([...operations]);
-      }
-    );
-    subscribeToOperations(listener);
-
-    return () => {
-      unsubscribeFromOperations(listener);
-    };
-  }, [plan.id]);
 
   // Gracefully handle deletions by checking if the plan is still in the config.
   const config = useRecoilValue(configState);
@@ -78,8 +65,34 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           Prune Now
         </Button>
       </Flex>
-      <h2>Backup Action History ({operations.length} loaded)</h2>
-      <OperationList operations={operations} />
+      <Tabs
+        defaultActiveKey="1"
+        items={[
+          {
+            key: "1",
+            label: "Tree View",
+            children: (
+              <>
+                <OperationTree
+                  req={{ planId: plan.id!, lastN: "" + MAX_OPERATION_HISTORY }}
+                />
+              </>
+            ),
+          },
+          {
+            key: "2",
+            label: "Operation List",
+            children: (
+              <>
+                <h2>Backup Action History</h2>
+                <OperationList
+                  req={{ planId: plan.id!, lastN: "" + MAX_OPERATION_HISTORY }}
+                />
+              </>
+            ),
+          },
+        ]}
+      />
     </>
   );
 };

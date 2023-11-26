@@ -84,6 +84,8 @@ message ListSnapshotsRequest {
 message GetOperationsRequest {
   string repo_id = 1;
   string plan_id = 2;
+  string snapshot_id = 4;
+  repeated int64 ids = 5;
   int64 last_n = 3; // limit to the last n operations
 }
 

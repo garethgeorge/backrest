@@ -47,21 +47,6 @@ func (t *ScheduledBackupTask) Name() string {
 }
 
 func (t *ScheduledBackupTask) Next(now time.Time) *time.Time {
-	if ops, err := t.orchestrator.OpLog.GetByPlan(t.plan.Id, indexutil.CollectLastN(10)); err == nil {
-		var lastBackupOp *v1.Operation
-		for _, op := range ops {
-			if _, ok := op.Op.(*v1.Operation_OperationBackup); ok {
-				lastBackupOp = op
-			}
-		}
-
-		if lastBackupOp != nil {
-			now = time.Unix(0, lastBackupOp.UnixTimeEndMs*int64(time.Millisecond))
-		}
-	} else {
-		zap.S().Errorf("error getting last operation for plan %q when computing backup schedule: %v", t.plan.Id, err)
-	}
-
 	next := t.schedule.Next(now)
 	return &next
 }
@@ -116,7 +101,7 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 	startTime := time.Now()
 
 	err := WithOperation(orchestrator.OpLog, op, func() error {
-		zap.L().Info("Starting backup", zap.String("plan", plan.Id))
+		zap.L().Info("Starting backup", zap.String("plan", plan.Id), zap.Int64("opId", op.Id))
 		repo, err := orchestrator.GetRepo(plan.Repo)
 		if err != nil {
 			return fmt.Errorf("couldn't get repo %q: %w", plan.Repo, err)
@@ -124,7 +109,7 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 
 		lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
 		summary, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
-			if time.Since(lastSent) < 200*time.Millisecond {
+			if time.Since(lastSent) < 250*time.Millisecond {
 				return
 			}
 			lastSent = time.Now()
@@ -230,7 +215,7 @@ func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error 
 	if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
 		op.Status = v1.OperationStatus_STATUS_SUCCESS
 	}
-	if e := oplog.Update(op); err != nil {
+	if e := oplog.Update(op); e != nil {
 		return multierror.Append(err, fmt.Errorf("failed to update operation in oplog: %w", e))
 	}
 	return err

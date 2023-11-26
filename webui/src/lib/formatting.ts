@@ -16,14 +16,35 @@ export const formatBytes = (bytes?: number | string) => {
 };
 
 const timezoneOffsetMs = new Date().getTimezoneOffset() * 60 * 1000;
-export const formatTime = (time: number | string) => {
+// formatTime formats a time as YYYY-MM-DD at HH:MM AM/PM
+export const formatTime = (time: number | string | Date) => {
   if (typeof time === "string") {
     time = parseInt(time);
+  } else if (time instanceof Date) {
+    time = time.getTime();
   }
   const d = new Date();
   d.setTime(time - timezoneOffsetMs);
   const isoStr = d.toISOString();
-  return `${isoStr.substring(0, 10)} ${d.getUTCHours()}h${d.getUTCMinutes()}m`;
+  const hours = d.getUTCHours() % 12 == 0 ? 12 : d.getUTCHours() % 12;
+  const minutes =
+    d.getUTCMinutes() < 10 ? "0" + d.getUTCMinutes() : d.getUTCMinutes();
+  return `${isoStr.substring(0, 10)} at ${hours}:${minutes} ${
+    d.getUTCHours() > 12 ? "PM" : "AM"
+  }`;
+};
+
+// formatDate formats a time as YYYY-MM-DD
+export const formatDate = (time: number | string | Date) => {
+  if (typeof time === "string") {
+    time = parseInt(time);
+  } else if (time instanceof Date) {
+    time = time.getTime();
+  }
+  let d = new Date();
+  d.setTime(time - timezoneOffsetMs);
+  const isoStr = d.toISOString();
+  return isoStr.substring(0, 10);
 };
 
 export const formatDuration = (ms: number) => {

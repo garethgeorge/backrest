@@ -27,6 +27,7 @@ export enum OperationStatus {
   STATUS_INPROGRESS = "STATUS_INPROGRESS",
   STATUS_SUCCESS = "STATUS_SUCCESS",
   STATUS_ERROR = "STATUS_ERROR",
+  STATUS_CANCELLED = "STATUS_CANCELLED",
 }
 
 export type OperationList = {
