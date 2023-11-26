@@ -28,7 +28,7 @@ import {
 export const OperationList = ({
   operations,
 }: React.PropsWithoutRef<{ operations: EOperation[] }>) => {
-  operations.sort((a, b) => b.parsedTime - a.parsedTime);
+  operations = [...operations].reverse();
 
   if (operations.length === 0) {
     return (

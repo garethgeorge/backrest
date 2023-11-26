@@ -16,6 +16,7 @@ import {
 } from "../state/oplog";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
+import { MAX_OPERATION_HISTORY } from "../constants";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const showModal = useShowModal();
@@ -24,7 +25,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
   useEffect(() => {
     const listener = buildOperationListListener(
-      { planId: plan.id, lastN: "10000" },
+      { planId: plan.id, lastN: "" + MAX_OPERATION_HISTORY },
       (event, changedOp, operations) => {
         setOperations([...operations]);
       }
@@ -87,7 +88,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             label: "Condensed View",
             children: (
               <>
-                <OperationTree operations={[...operations]} />
+                <OperationTree operations={operations} />
               </>
             ),
           },
@@ -97,7 +98,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             children: (
               <>
                 <h2>Backup Action History ({operations.length} loaded)</h2>
-                <OperationList operations={[...operations]} />
+                <OperationList operations={operations} />
               </>
             ),
           },
