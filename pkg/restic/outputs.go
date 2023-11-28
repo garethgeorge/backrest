@@ -92,6 +92,8 @@ func readBackupProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(ev
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
+	var summary *BackupProgressEntry
+
 	// first event is handled specially to detect non-JSON output and fast-path out.
 	if scanner.Scan() {
 		var event BackupProgressEntry
@@ -107,13 +109,17 @@ func readBackupProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(ev
 		if err := event.Validate(); err != nil {
 			return nil, err
 		}
+		if callback != nil {
+			callback(&event)
+		}
+		if event.MessageType == "summary" {
+			summary = &event
+		}
 	}
 
 	// remaining events are parsed as JSON
-	var summary *BackupProgressEntry
-
 	for scanner.Scan() {
-		var event *BackupProgressEntry
+		var event BackupProgressEntry
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
 			return nil, fmt.Errorf("failed to parse JSON: %w", err)
 		}
@@ -122,16 +128,19 @@ func readBackupProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(ev
 		}
 
 		if callback != nil {
-			callback(event)
+			callback(&event)
 		}
-
 		if event.MessageType == "summary" {
-			summary = event
+			summary = &event
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		return summary, fmt.Errorf("scanner encountered error: %w", err)
+	}
+
+	if summary == nil {
+		return nil, fmt.Errorf("no summary event found")
 	}
 
 	return summary, nil

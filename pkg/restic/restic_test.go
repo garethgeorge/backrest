@@ -102,6 +102,35 @@ func TestResticBackup(t *testing.T) {
 	}
 }
 
+func TestResticBackupLots(t *testing.T) {
+	t.Parallel()
+	t.Skip("this test takes a long time to run")
+	
+	repo := t.TempDir()
+
+	// create a new repo with cache disabled for testing
+	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
+		Id:       "test",
+		Uri:      repo,
+		Password: "test",
+	}, WithFlags("--no-cache"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	testData := helpers.CreateTestData(t)
+
+	// backup 25 times
+	for i := 0; i < 25; i++ {
+		_, err := r.Backup(context.Background(), func(e *BackupProgressEntry) {
+			t.Logf("backup event: %+v", e)
+		}, WithBackupPaths(testData))
+		if err != nil {
+			t.Fatalf("failed to backup and create new snapshot: %v", err)
+		}
+	}
+}
+
 func TestSnapshot(t *testing.T) {
 	t.Parallel()
 
@@ -215,7 +244,6 @@ func TestResticForget(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to backup and create new snapshot: %v", err)
 		}
-
 		ids = append(ids, output.SnapshotId)
 	}
 
