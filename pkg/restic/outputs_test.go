@@ -9,7 +9,7 @@ import (
 func TestReadBackupProgressEntries(t *testing.T) {
 	t.Parallel()
 	testInput := `{"message_type":"status","percent_done":0,"total_files":1,"total_bytes":15}
-	{"message_type":"summary","files_new":0,"files_changed":0,"files_unmodified":166,"dirs_new":0,"dirs_changed":0,"dirs_unmodified":128,"data_blobs":0,"tree_blobs":0,"data_added":0,"total_files_processed":166,"total_bytes_processed":16754463,"total_duration":0.235433378,"id":"d4558b360cc1b7966e416e010382ab8feb49d14da7832266832d69a43af10147"}`
+	{"message_type":"summary","files_new":0,"files_changed":0,"files_unmodified":166,"dirs_new":0,"dirs_changed":0,"dirs_unmodified":128,"data_blobs":0,"tree_blobs":0,"data_added":0,"total_files_processed":166,"total_bytes_processed":16754463,"total_duration":0.235433378,"snapshot_id":"d4558b360cc1b7966e416e010382ab8feb49d14da7832266832d69a43af10147"}`
 
 	b := bytes.NewBuffer([]byte(testInput))
 

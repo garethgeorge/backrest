@@ -30,15 +30,11 @@ type Orchestrator struct {
 	externTasks   chan Task       // externTasks is a channel that externally added tasks can be added to, they will be consumed by Run()
 }
 
-func NewOrchestrator(configProvider config.ConfigStore, oplog *oplog.OpLog) (*Orchestrator, error) {
-	cfg, err := configProvider.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get config: %w", err)
-	}
-
+func NewOrchestrator(cfg *v1.Config, oplog *oplog.OpLog) (*Orchestrator, error) {
 	return &Orchestrator{
-		config:      cfg,
-		OpLog:       oplog,
+		config: cfg,
+		OpLog:  oplog,
+		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
 		repoPool:    newResticRepoPool(&config.MemoryStore{Config: cfg}),
 		externTasks: make(chan Task, 2),
 	}, nil
