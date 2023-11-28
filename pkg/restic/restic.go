@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/hashicorp/go-multierror"
 )
 
 type Repo struct {
@@ -99,13 +98,16 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 	args = append(args, r.extraArgs...)
 	args = append(args, opt.paths...)
 	args = append(args, opt.extraArgs...)
-
+	
+	output := bytes.NewBuffer(nil)
 	reader, writer := io.Pipe()
+
+	capture := io.MultiWriter(output, writer)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
 	cmd.Env = append(cmd.Env, r.buildEnv()...)
-	cmd.Stderr = writer
-	cmd.Stdout = writer
+	cmd.Stderr = capture
+	cmd.Stdout = capture
 
 	if err := cmd.Start(); err != nil {
 		return nil, NewCmdError(cmd, nil, err)
@@ -128,20 +130,20 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 
 	wg.Add(1)
 	go func() {
+		defer capture.Write([]byte("\n"))
 		defer writer.Close()
 		defer wg.Done()
 		if err := cmd.Wait(); err != nil {
-			cmdErr = NewCmdError(cmd, nil, err)
+			cmdErr = err
 		}
 	}()
 
 	wg.Wait()
 
-	var err error
 	if cmdErr != nil || readErr != nil {
-		err = multierror.Append(nil, cmdErr, readErr)
+		return nil, NewCmdError(cmd, output.Bytes(), errors.Join(cmdErr, readErr))
 	}
-	return summary, err
+	return summary, nil
 }
 
 func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapshot, error) {
