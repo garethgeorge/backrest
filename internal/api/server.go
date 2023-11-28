@@ -22,13 +22,14 @@ import (
 
 type Server struct {
 	*v1.UnimplementedResticUIServer
+	config       config.ConfigStore
 	orchestrator *orchestrator.Orchestrator
 	oplog        *oplog.OpLog
 }
 
 var _ v1.ResticUIServer = &Server{}
 
-func NewServer(orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog) *Server {
+func NewServer(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog) *Server {
 	s := &Server{
 		orchestrator: orchestrator,
 		oplog:        oplog,
@@ -39,12 +40,12 @@ func NewServer(orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog) *Ser
 
 // GetConfig implements GET /v1/config
 func (s *Server) GetConfig(ctx context.Context, empty *emptypb.Empty) (*v1.Config, error) {
-	return config.Default.Get()
+	return s.config.Get()
 }
 
 // SetConfig implements POST /v1/config
 func (s *Server) SetConfig(ctx context.Context, c *v1.Config) (*v1.Config, error) {
-	existing, err := config.Default.Get()
+	existing, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to check current config: %w", err)
 	}
@@ -55,21 +56,21 @@ func (s *Server) SetConfig(ctx context.Context, c *v1.Config) (*v1.Config, error
 	}
 	c.Modno += 1
 
-	if err := config.Default.Update(c); err != nil {
+	if err := s.config.Update(c); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
 
-	newConfig, err := config.Default.Get()
+	newConfig, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get newly set config: %w", err)
 	}
 	s.orchestrator.ApplyConfig(newConfig)
-	return config.Default.Get()
+	return newConfig, nil
 }
 
 // AddRepo implements POST /v1/config/repo, it includes validation that the repo can be initialized.
 func (s *Server) AddRepo(ctx context.Context, repo *v1.Repo) (*v1.Config, error) {
-	c, err := config.Default.Get()
+	c, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
@@ -88,7 +89,7 @@ func (s *Server) AddRepo(ctx context.Context, repo *v1.Repo) (*v1.Config, error)
 	}
 
 	zap.L().Debug("Updating config")
-	if err := config.Default.Update(c); err != nil {
+	if err := s.config.Update(c); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
 

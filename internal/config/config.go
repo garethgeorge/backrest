@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"path"
@@ -12,13 +11,6 @@ import (
 )
 
 var ErrConfigNotFound = fmt.Errorf("config not found")
-var configDirFlag = flag.String("config_dir", "", "The directory to store the config file")
-
-var Default ConfigStore = &CachingValidatingStore{
-	ConfigStore: &JsonFileStore{
-		Path: path.Join(configDir(*configDirFlag), "config.json"),
-	},
-}
 
 type ConfigStore interface {
 	Get() (*v1.Config, error)
@@ -51,7 +43,7 @@ func configDir(override string) string {
 
 type CachingValidatingStore struct {
 	ConfigStore
-	mu sync.Mutex
+	mu     sync.Mutex
 	config *v1.Config
 }
 

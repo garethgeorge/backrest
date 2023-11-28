@@ -62,10 +62,11 @@ Browsing snapshots:
 
 ## Dev Depedencies
 
-**Basic Dependencies**
+**Build Dependencies**
 
  * Node.JS for UI development
  * Go 1.21 or greater for server development
+ * go.rice `go install github.com/GeertJohan/go.rice@latest` and `go install github.com/GeertJohan/go.rice/rice@latest`
 
 **To Edit Protobuffers**
 ```sh

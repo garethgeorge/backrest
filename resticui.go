@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/garethgeorge/resticui/internal/api"
 	"github.com/garethgeorge/resticui/internal/config"
+	"github.com/garethgeorge/resticui/internal/envopts"
 	"github.com/garethgeorge/resticui/internal/oplog"
 	"github.com/garethgeorge/resticui/internal/orchestrator"
 	static "github.com/garethgeorge/resticui/webui"
@@ -25,16 +25,14 @@ import (
 )
 
 func main() {
-	port := os.Getenv("RESTICUI_PORT")
-	if port == "" {
-		port = "9898"
-	}
-
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	go onterm(cancel)
 
-	if _, err := config.Default.Get(); err != nil {
+	configStore := createConfigProvider()
+
+	cfg, err := configStore.Get()
+	if err != nil {
 		zap.S().Fatalf("Error loading config: %v", err)
 	}
 
@@ -53,7 +51,7 @@ func main() {
 	}
 	defer oplog.Close()
 
-	orchestrator, err := orchestrator.NewOrchestrator(config.Default, oplog)
+	orchestrator, err := orchestrator.NewOrchestrator(cfg, oplog)
 	if err != nil {
 		zap.S().Fatalf("Error creating orchestrator: %v", err)
 	}
@@ -68,6 +66,7 @@ func main() {
 	}()
 
 	apiServer := api.NewServer(
+		configStore,
 		orchestrator, // TODO: eliminate default config
 		oplog,
 	)
@@ -85,7 +84,7 @@ func main() {
 
 	// Serve the HTTP gateway
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%s", port),
+		Addr:    envopts.BindAddress(),
 		Handler: mux,
 	}
 
@@ -119,6 +118,12 @@ func init() {
 			zapcore.DebugLevel,
 		))
 		zap.ReplaceGlobals(l)
+	}
+}
+
+func createConfigProvider() config.ConfigStore {
+	return &config.CachingValidatingStore{
+		ConfigStore: &config.JsonFileStore{Path: envopts.ConfigFilePath()},
 	}
 }
 
