@@ -40,12 +40,10 @@ ResticUI is accessible from a web browser. By default it binds to `0.0.0.0:9898`
 
 **Environment Variables**
 
- * RESTICUI_PORT - the port to bind to. Defaults to 9898.
-
-**Configuration File**
-
-ResticUI uses a JSON config. The default config location is `$HOME/.config/resticui/config.json` or if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/resticui/config.json`. 
-
+ * `RESTICUI_PORT` - the port to bind to. Defaults to 9898.
+ * `RESTICUI_CONFIG_PATH` - the path to the config file. Defaults to `$HOME/.config/resticui/config.json` or if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/resticui/config.json`.
+ * `RESTICUI_DATA_DIR` - the path to the data directory. Defaults to `$HOME/.local/share/resticui` or if `$XDG_DATA_HOME` is set, `$XDG_DATA_HOME/resticui`.
+ * `RESTICUI_RESTIC_BIN_PATH` - the path to the restic binary. Defaults managed version of restic which will be downloaded and installed in the data directory.
 
 ## Screenshots
 

@@ -22,7 +22,7 @@ var (
 var (
 	RequiredResticVersion = "0.16.2"
 
-	findResticMu sync.Mutex
+	findResticMu  sync.Mutex
 	didTryInstall bool
 )
 
@@ -55,24 +55,44 @@ func downloadFile(url string, path string) error {
 	if err != nil {
 		return fmt.Errorf("copy response body to file %v: %w", path, err)
 	}
-	
+
 	return nil
 }
 
 func downloadExecutable(url string, path string) error {
-	if err := downloadFile(url, path + ".tmp"); err != nil {
+	if err := downloadFile(url, path+".tmp"); err != nil {
 		return err
 	}
 
-	if err := os.Chmod(path + ".tmp", 0755); err != nil {
+	if err := os.Chmod(path+".tmp", 0755); err != nil {
 		return fmt.Errorf("chmod executable %v: %w", path, err)
 	}
 
-	if err := os.Rename(path + ".tmp", path); err != nil {
+	if err := os.Rename(path+".tmp", path); err != nil {
 		return fmt.Errorf("rename %v.tmp to %v: %w", path, path, err)
 	}
 
 	return nil
+}
+
+func installResticIfNotExists(resticInstallPath string) error {
+	// withFlock is used to ensure tests pass; when running on CI multiple tests may try to install restic at the same time.
+	return withFlock(path.Join(config.DataDir(), "install.lock"), func() error {
+		if _, err := os.Stat(resticInstallPath); err == nil {
+			// file is now installed, probably by another process. We can return.
+			return nil
+		}
+
+		if err := os.MkdirAll(path.Dir(resticInstallPath), 0755); err != nil {
+			return fmt.Errorf("create restic install directory %v: %w", path.Dir(resticInstallPath), err)
+		}
+
+		if err := downloadExecutable(resticDownloadURL(RequiredResticVersion), resticInstallPath); err != nil {
+			return fmt.Errorf("download restic version %v: %w", RequiredResticVersion, err)
+		}
+
+		return nil
+	})
 }
 
 // FindOrInstallResticBinary first tries to find the restic binary if provided as an environment variable. Otherwise it downloads restic if not already installed.
@@ -104,12 +124,8 @@ func FindOrInstallResticBinary() (string, error) {
 		}
 		didTryInstall = true
 
-		if err := os.MkdirAll(path.Dir(resticInstallPath), 0755); err != nil {
-			return "", fmt.Errorf("create restic install directory %v: %w", path.Dir(resticInstallPath), err)
-		}
-
-		if err := downloadExecutable(resticDownloadURL(RequiredResticVersion), resticInstallPath); err != nil {
-			return "", fmt.Errorf("download restic version %v: %w", RequiredResticVersion, err)
+		if err := installResticIfNotExists(resticInstallPath); err != nil {
+			return "", fmt.Errorf("install restic: %w", err)
 		}
 	}
 

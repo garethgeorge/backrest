@@ -30,12 +30,12 @@ type Orchestrator struct {
 	externTasks   chan Task       // externTasks is a channel that externally added tasks can be added to, they will be consumed by Run()
 }
 
-func NewOrchestrator(cfg *v1.Config, oplog *oplog.OpLog) (*Orchestrator, error) {
+func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog) (*Orchestrator, error) {
 	return &Orchestrator{
 		config: cfg,
 		OpLog:  oplog,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
-		repoPool:    newResticRepoPool(&config.MemoryStore{Config: cfg}),
+		repoPool:    newResticRepoPool(resticBin, &config.MemoryStore{Config: cfg}),
 		externTasks: make(chan Task, 2),
 	}, nil
 }
@@ -198,12 +198,14 @@ func (o *Orchestrator) EnqueueTask(t Task) {
 // resticRepoPool caches restic repos.
 type resticRepoPool struct {
 	mu             sync.Mutex
+	resticPath     string
 	repos          map[string]*RepoOrchestrator
 	configProvider config.ConfigStore
 }
 
-func newResticRepoPool(configProvider config.ConfigStore) *resticRepoPool {
+func newResticRepoPool(resticPath string, configProvider config.ConfigStore) *resticRepoPool {
 	return &resticRepoPool{
+		resticPath:     resticPath,
 		repos:          make(map[string]*RepoOrchestrator),
 		configProvider: configProvider,
 	}
@@ -250,7 +252,7 @@ func (rp *resticRepoPool) GetRepo(repoId string) (repo *RepoOrchestrator, err er
 	}
 
 	// Otherwise create a new repo.
-	repo = newRepoOrchestrator(repoProto, restic.NewRepo(repoProto, opts...))
+	repo = newRepoOrchestrator(repoProto, restic.NewRepo(rp.resticPath, repoProto, opts...))
 	rp.repos[repoId] = repo
 	return repo, nil
 }

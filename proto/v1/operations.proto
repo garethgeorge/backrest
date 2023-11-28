@@ -63,3 +63,10 @@ message OperationBackup {
 message OperationIndexSnapshot {
   ResticSnapshot snapshot = 2;
 }
+
+// OperationForget tracks a forget operation and may additionally track prune output if a prune was run.
+message OperationForget {
+  repeated ResticSnapshot forget = 1;
+  bool pruned = 2;
+  string prune_output = 3;
+}

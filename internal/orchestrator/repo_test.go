@@ -7,6 +7,7 @@ import (
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 	"github.com/garethgeorge/resticui/pkg/restic"
+	"github.com/garethgeorge/resticui/test/helpers"
 	test "github.com/garethgeorge/resticui/test/helpers"
 )
 
@@ -30,7 +31,7 @@ func TestBackup(t *testing.T) {
 		Paths: []string{testData},
 	}
 
-	orchestrator := newRepoOrchestrator(r, restic.NewRepo(r, restic.WithFlags("--no-cache")))
+	orchestrator := newRepoOrchestrator(r, restic.NewRepo(helpers.ResticBinary(t), r, restic.WithFlags("--no-cache")))
 
 	summary, err := orchestrator.Backup(context.Background(), plan, nil)
 	if err != nil {
@@ -73,7 +74,7 @@ func TestSnapshotParenting(t *testing.T) {
 		},
 	}
 
-	orchestrator := newRepoOrchestrator(r, restic.NewRepo(r, restic.WithFlags("--no-cache")))
+	orchestrator := newRepoOrchestrator(r, restic.NewRepo(helpers.ResticBinary(t), r, restic.WithFlags("--no-cache")))
 
 	for i := 0; i < 4; i++ {
 		for _, plan := range plans {

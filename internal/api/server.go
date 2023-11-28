@@ -14,6 +14,7 @@ import (
 	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
 	"github.com/garethgeorge/resticui/internal/orchestrator"
 	"github.com/garethgeorge/resticui/internal/protoutil"
+	"github.com/garethgeorge/resticui/internal/resticinstaller"
 	"github.com/garethgeorge/resticui/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -83,7 +84,12 @@ func (s *Server) AddRepo(ctx context.Context, repo *v1.Repo) (*v1.Config, error)
 		return nil, fmt.Errorf("validation error: %w", err)
 	}
 
-	r := restic.NewRepo(repo)
+	bin, err := resticinstaller.FindOrInstallResticBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
+	}
+
+	r := restic.NewRepo(bin, repo)
 	// use background context such that the init op can try to complete even if the connection is closed.
 	if err := r.Init(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed to init repo: %w", err)

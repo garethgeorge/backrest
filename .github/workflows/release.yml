@@ -6,39 +6,38 @@ on:
       - "v*"
   workflow_dispatch:
 
-
 jobs:
   tagged-release:
     name: "Tagged Release"
     runs-on: "ubuntu-latest"
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
-    
-    - name: Setup NodeJS
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
 
-    - name: Build WebUI
-      run: cd webui && npm install && npm run build
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-    - name: Build Binary
-      run: go build .
-    
-    - name: Rename Files
-      run: |
-        mv resticui resticui-linux-amd64
+      - name: Build WebUI
+        run: cd webui && npm install && npm run build
 
-    - uses: "marvinpinto/action-automatic-releases@latest"
-      with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        prerelease: false
-        files: |
-          LICENSE
-          resticui-linux-amd64
+      - name: Build Binary
+        run: go build .
+
+      - name: Rename Files
+        run: |
+          mv resticui resticui-linux-amd64
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          files: |
+            LICENSE
+            resticui-linux-amd64

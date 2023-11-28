@@ -16,6 +16,7 @@ import (
 	"github.com/garethgeorge/resticui/internal/config"
 	"github.com/garethgeorge/resticui/internal/oplog"
 	"github.com/garethgeorge/resticui/internal/orchestrator"
+	"github.com/garethgeorge/resticui/internal/resticinstaller"
 	"github.com/mattn/go-colorable"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -55,7 +56,12 @@ func main() {
 	}
 	defer oplog.Close()
 
-	orchestrator, err := orchestrator.NewOrchestrator(cfg, oplog)
+	resticPath, err := resticinstaller.FindOrInstallResticBinary()
+	if err != nil {
+		zap.S().Fatalf("Error finding or installing restic: %v", err)
+	}
+
+	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, oplog)
 	if err != nil {
 		zap.S().Fatalf("Error creating orchestrator: %v", err)
 	}

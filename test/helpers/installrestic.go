@@ -13,4 +13,3 @@ func ResticBinary(t *testing.T) string {
 	}
 	return binPath
 }
-
