@@ -27,14 +27,14 @@ type Repo struct {
 }
 
 // NewRepo instantiates a new repository. TODO: should not accept a v1.Repo, should instead be configured by parameters.
-func NewRepo(repo *v1.Repo, opts ...GenericOption) *Repo {
+func NewRepo(resticBin string, repo *v1.Repo, opts ...GenericOption) *Repo {
 	opt := &GenericOpts{}
 	for _, o := range opts {
 		o(opt)
 	}
 
 	return &Repo{
-		cmd:         "restic", // TODO: configurable binary path
+		cmd:         resticBin, // TODO: configurable binary path
 		repo:        repo,
 		initialized: false,
 		extraArgs:   opt.extraArgs,

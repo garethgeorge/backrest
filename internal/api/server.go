@@ -31,6 +31,7 @@ var _ v1.ResticUIServer = &Server{}
 
 func NewServer(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog) *Server {
 	s := &Server{
+		config:       config,
 		orchestrator: orchestrator,
 		oplog:        oplog,
 	}

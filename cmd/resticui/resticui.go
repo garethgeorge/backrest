@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"io/fs"
+	"flag"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,18 +11,17 @@ import (
 	"sync"
 	"syscall"
 
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/garethgeorge/resticui/internal/api"
 	"github.com/garethgeorge/resticui/internal/config"
-	"github.com/garethgeorge/resticui/internal/envopts"
 	"github.com/garethgeorge/resticui/internal/oplog"
 	"github.com/garethgeorge/resticui/internal/orchestrator"
-	static "github.com/garethgeorge/resticui/webui"
 	"github.com/mattn/go-colorable"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-
-	_ "embed"
 )
+
+var flagAutoInstallRestic = flag.Bool("auto-install-restic", true, "Automatically install restic if $RESTICUI_")
 
 func main() {
 	ctx := context.Background()
@@ -40,10 +39,15 @@ func main() {
 
 	// Configure the HTTP mux
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.FS(&SubdirFilesystem{FS: static.FS, subdir: "dist"})))
+
+	if box, err := rice.FindBox("webui/dist"); err == nil {
+		mux.Handle("/", http.FileServer(box.HTTPBox()))
+	} else {
+		zap.S().Warnf("Error loading static assets, not serving UI: %v", err)
+	}
 
 	// Create and serve API server
-	oplogFile := path.Join(dataPath(), "oplog.boltdb")
+	oplogFile := path.Join(config.DataDir(), "oplog.boltdb")
 	oplog, err := oplog.NewOpLog(oplogFile)
 	if err != nil {
 		zap.S().Warnf("Operation log may be corrupted, if errors recur delete the file %q and restart. Your backups stored in your repos are safe.", oplogFile)
@@ -84,7 +88,7 @@ func main() {
 
 	// Serve the HTTP gateway
 	server := &http.Server{
-		Addr:    envopts.BindAddress(),
+		Addr:    config.BindAddress(),
 		Handler: mux,
 	}
 
@@ -123,7 +127,7 @@ func init() {
 
 func createConfigProvider() config.ConfigStore {
 	return &config.CachingValidatingStore{
-		ConfigStore: &config.JsonFileStore{Path: envopts.ConfigFilePath()},
+		ConfigStore: &config.JsonFileStore{Path: config.ConfigFilePath()},
 	}
 }
 
@@ -134,30 +138,9 @@ func onterm(callback func()) {
 	callback()
 }
 
-type SubdirFilesystem struct {
-	fs.FS
-	subdir string
-}
+func findResticBin() {
+	resticBin := config.ResticBinPath()
+	if resticBin != "" {
 
-var _ fs.FS = &SubdirFilesystem{}
-var _ fs.ReadDirFS = &SubdirFilesystem{}
-
-func (s *SubdirFilesystem) Open(name string) (fs.File, error) {
-	return s.FS.Open(path.Join(s.subdir, name))
-}
-
-func (s *SubdirFilesystem) ReadDir(name string) ([]fs.DirEntry, error) {
-	readDirFS := s.FS.(fs.ReadDirFS)
-	if readDirFS == nil {
-		return nil, &fs.PathError{Op: "readdir", Path: name, Err: errors.New("not implemented")}
 	}
-	return readDirFS.ReadDir(path.Join(s.subdir, name))
-}
-
-func dataPath() string {
-	datahome := os.Getenv("XDG_DATA_HOME")
-	if datahome == "" {
-		datahome = path.Join(os.Getenv("HOME") + "/.local/share")
-	}
-	return path.Join(datahome, "resticui")
 }

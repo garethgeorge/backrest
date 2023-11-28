@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	test "github.com/garethgeorge/resticui/internal/test/helpers"
 	"github.com/garethgeorge/resticui/pkg/restic"
+	test "github.com/garethgeorge/resticui/test/helpers"
 )
 
 func TestBackup(t *testing.T) {

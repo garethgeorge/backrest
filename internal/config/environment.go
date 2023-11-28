@@ -1,4 +1,4 @@
-package envopts
+package config
 
 import (
 	"fmt"
@@ -7,8 +7,15 @@ import (
 	"strings"
 )
 
+var (
+	EnvVarConfigPath  = "RESTICUI_CONFIG_PATH"
+	EnvVarDataDir     = "RESTICUI_DATA_DIR"
+	EnvVarBindAddress = "RESTICUI_PORT"
+	EnvVarBinPath     = "RESTICUI_RESTIC_BIN_PATH"
+)
+
 func ConfigFilePath() string {
-	if val := os.Getenv("RESTICUI_CONFIG_PATH"); val != "" {
+	if val := os.Getenv(EnvVarConfigPath); val != "" {
 		return val
 	}
 	if val := os.Getenv("XDG_CONFIG_HOME"); val != "" {
@@ -18,7 +25,7 @@ func ConfigFilePath() string {
 }
 
 func DataDir() string {
-	if val := os.Getenv("RESTICUI_DATA_DIR"); val != "" {
+	if val := os.Getenv(EnvVarDataDir); val != "" {
 		return val
 	}
 	if val := os.Getenv("XDG_DATA_HOME"); val != "" {
@@ -28,13 +35,20 @@ func DataDir() string {
 }
 
 func BindAddress() string {
-	if val := os.Getenv("RESTICUI_PORT"); val != "" {
+	if val := os.Getenv(EnvVarBindAddress); val != "" {
 		if !strings.Contains(val, ":") {
 			return ":" + val
 		}
 		return val
 	}
 	return ":9898"
+}
+
+func ResticBinPath() string {
+	if val := os.Getenv("RESTICUI_RESTIC_BIN_PATH"); val != "" {
+		return val
+	}
+	return ""
 }
 
 func getHomeDir() string {
