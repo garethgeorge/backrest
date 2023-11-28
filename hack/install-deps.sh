@@ -1,5 +1,6 @@
 #! /bin/sh
+set -x
 
 go install github.com/GeertJohan/go.rice/rice@latest
 go install github.com/GeertJohan/go.rice@latest
-pip install lastversion
+python -m pip install lastversion

@@ -10,14 +10,14 @@ import (
 	"testing"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	test "github.com/garethgeorge/resticui/internal/test/helpers"
+	"github.com/garethgeorge/resticui/test/helpers"
 )
 
 func TestResticInit(t *testing.T) {
 	t.Parallel()
 	repo := t.TempDir()
 
-	r := NewRepo(&v1.Repo{
+	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
 		Id:       "test",
 		Uri:      repo,
 		Password: "test",
@@ -33,7 +33,7 @@ func TestResticBackup(t *testing.T) {
 	repo := t.TempDir()
 
 	// create a new repo with cache disabled for testing
-	r := NewRepo(&v1.Repo{
+	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
 		Id:       "test",
 		Uri:      repo,
 		Password: "test",
@@ -42,8 +42,8 @@ func TestResticBackup(t *testing.T) {
 		t.Fatalf("failed to init repo: %v", err)
 	}
 
-	testData := test.CreateTestData(t)
-	testData2 := test.CreateTestData(t)
+	testData := helpers.CreateTestData(t)
+	testData2 := helpers.CreateTestData(t)
 
 	var tests = []struct {
 		name    string
@@ -107,7 +107,7 @@ func TestSnapshot(t *testing.T) {
 
 	repo := t.TempDir()
 
-	r := NewRepo(&v1.Repo{
+	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
 		Id:       "test",
 		Uri:      repo,
 		Password: "test",
@@ -116,7 +116,7 @@ func TestSnapshot(t *testing.T) {
 		t.Fatalf("failed to init repo: %v", err)
 	}
 
-	testData := test.CreateTestData(t)
+	testData := helpers.CreateTestData(t)
 
 	for i := 0; i < 10; i++ {
 		_, err := r.Backup(context.Background(), nil, WithBackupPaths(testData), WithBackupTags(fmt.Sprintf("tag%d", i)))
@@ -167,7 +167,7 @@ func TestLs(t *testing.T) {
 	t.Parallel()
 
 	repo := t.TempDir()
-	r := NewRepo(&v1.Repo{
+	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
 		Id:       "test",
 		Uri:      repo,
 		Password: "test",
@@ -176,7 +176,7 @@ func TestLs(t *testing.T) {
 		t.Fatalf("failed to init repo: %v", err)
 	}
 
-	testData := test.CreateTestData(t)
+	testData := helpers.CreateTestData(t)
 
 	snapshot, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
 	if err != nil {
@@ -198,7 +198,7 @@ func TestResticForget(t *testing.T) {
 	t.Parallel()
 
 	repo := t.TempDir()
-	r := NewRepo(&v1.Repo{
+	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
 		Id:       "test",
 		Uri:      repo,
 		Password: "test",
@@ -207,7 +207,7 @@ func TestResticForget(t *testing.T) {
 		t.Fatalf("failed to init repo: %v", err)
 	}
 
-	testData := test.CreateTestData(t)
+	testData := helpers.CreateTestData(t)
 
 	ids := make([]string, 0)
 	for i := 0; i < 10; i++ {
