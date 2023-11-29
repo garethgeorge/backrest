@@ -30,6 +30,8 @@ message Operation {
   oneof op {
     OperationBackup operation_backup = 100;
     OperationIndexSnapshot operation_index_snapshot = 101;
+    OperationForget operation_forget = 102;
+    OperationPrune operation_prune = 103;
   }
 }
 
@@ -65,9 +67,12 @@ message OperationIndexSnapshot {
   ResticSnapshot snapshot = 2;
 }
 
-// OperationForget tracks a forget operation and may additionally track prune output if a prune was run.
+// OperationForget tracks a forget operation.
 message OperationForget {
   repeated ResticSnapshot forget = 1;
-  bool pruned = 2;
-  string prune_output = 3;
+}
+
+// OperationPrune tracks a prune operation.
+message OperationPrune {
+  string output = 1;
 }

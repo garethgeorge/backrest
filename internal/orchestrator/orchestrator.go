@@ -57,7 +57,7 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 	defer o.mu.Unlock()
 	o.config = cfg
 
-	zap.L().Info("Applying config to orchestrator", zap.Any("config", cfg))
+	zap.L().Info("Applying config to orchestrator")
 
 	// Update the config provided to the repo pool.
 	if err := o.repoPool.configProvider.Update(cfg); err != nil {
@@ -133,7 +133,7 @@ func (o *Orchestrator) Run(mainCtx context.Context) {
 		if err := t.task.Run(mainCtx); err != nil {
 			zap.L().Error("task failed", zap.String("task", t.task.Name()), zap.Error(err))
 		} else {
-			zap.L().Debug("task finished", zap.String("task", t.task.Name()))
+			zap.L().Info("task finished", zap.String("task", t.task.Name()))
 		}
 
 		curTime := time.Now()

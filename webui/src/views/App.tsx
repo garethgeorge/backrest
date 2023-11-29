@@ -68,7 +68,6 @@ export const App: React.FC = () => {
 
   return (
     <Layout style={{ height: "auto" }}>
-      <OperationNotificationGenerator />
       <Header style={{ display: "flex", alignItems: "center" }}>
         <h1>
           <a
@@ -166,50 +165,4 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
       children: repos,
     },
   ];
-};
-
-const OperationNotificationGenerator = () => {
-  const alertApi = useAlertApi()!;
-  const setContent = useSetContent();
-  const config = useRecoilValue(configState);
-
-  useEffect(() => {
-    // TODO: factor notification generator into a separate file.
-    const listener = (event: OperationEvent) => {
-      if (event.type != OperationEventType.EVENT_CREATED) return;
-      const planId = event.operation!.planId!;
-      const repoId = event.operation!.repoId!;
-
-      const onClick = () => {
-        const plan = config.plans!.find((p) => p.id == planId);
-        if (!plan) return;
-        setContent(<PlanView plan={plan} />, [
-          { title: "Plans" },
-          { title: planId || "" },
-        ]);
-      };
-
-      if (event.operation?.operationBackup) {
-        alertApi.info({
-          content: `Backup started for plan ${planId}.`,
-          onClick: onClick,
-        });
-      } else if (event.operation?.operationIndexSnapshot) {
-        const indexOp = event.operation.operationIndexSnapshot;
-        alertApi.info({
-          content: `Indexed snapshot ${normalizeSnapshotId(
-            indexOp.snapshot!.id!
-          )} for plan ${planId}.`,
-          onClick: onClick,
-        });
-      }
-    };
-    subscribeToOperations(listener);
-
-    return () => {
-      unsubscribeFromOperations(listener);
-    };
-  }, [config]);
-
-  return <></>;
 };

@@ -24,11 +24,11 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Build WebUI
-        run: cd webui && npm install && npm run build
+      - name: Install Deps
+        run: ./hack/install-deps.sh
 
-      - name: Build Binary
-        run: go build .
+      - name: Build
+        run: ./hack/build.sh
 
       - name: Rename Files
         run: |

@@ -1,8 +1,7 @@
 #! /bin/sh
 set -x
 
-(cd proto && ./update.sh)
-(cd webui && npm run build)
+(cd webui && npm i && npm run build)
 rm -f resticui
-go build ./cmd/resticui
+go build .
 rice append --exec resticui

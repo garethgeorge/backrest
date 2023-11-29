@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 	"github.com/garethgeorge/resticui/internal/config"
 )
 
@@ -26,6 +27,10 @@ func (t *testTask) Run(ctx context.Context) error {
 	return t.onRun()
 }
 
+func (t *testTask) Cancel(withStatus v1.OperationStatus) error {
+	return nil
+}
+
 func TestTaskScheduling(t *testing.T) {
 	t.Parallel()
 
@@ -33,7 +38,10 @@ func TestTaskScheduling(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	orch := NewOrchestrator("", config.NewDefaultConfig(), nil)
+	orch, err := NewOrchestrator("", config.NewDefaultConfig(), nil)
+	if err != nil {
+		t.Fatalf("failed to create orchestrator: %v", err)
+	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -69,7 +77,10 @@ func TestTaskRescheduling(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	orch := NewOrchestrator("", config.NewDefaultConfig(), nil)
+	orch, err := NewOrchestrator("", config.NewDefaultConfig(), nil)
+	if err != nil {
+		t.Fatalf("failed to create orchestrator: %v", err)
+	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -115,7 +126,10 @@ func TestGracefulShutdown(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	orch := NewOrchestrator("", config.NewDefaultConfig(), nil)
+	orch, err := NewOrchestrator("", config.NewDefaultConfig(), nil)
+	if err != nil {
+		t.Fatalf("failed to create orchestrator: %v", err)
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
@@ -132,7 +146,10 @@ func TestSchedulerWait(t *testing.T) {
 
 	// Arrange
 	curTime := time.Now()
-	orch := NewOrchestrator("", config.NewDefaultConfig(), nil)
+	orch, err := NewOrchestrator("", config.NewDefaultConfig(), nil)
+	if err != nil {
+		t.Fatalf("failed to create orchestrator: %v", err)
+	}
 	orch.now = func() time.Time {
 		return curTime
 	}
