@@ -44,4 +44,6 @@ message RetentionPolicy {
   int32 keep_monthly = 6; // keep the last n monthly snapshots.
   int32 keep_yearly = 7; // keep the last n yearly snapshots.
   string keep_within_duration = 8; // keep snapshots within a duration e.g. 1y2m3d4h5m6s
+
+  bool prune = 9; // prune snapshots after forget.
 }

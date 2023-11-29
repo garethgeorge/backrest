@@ -176,7 +176,7 @@ func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapsho
 	return snapshots, nil
 }
 
-func (r *Repo) Forget(ctx context.Context, policy RetentionPolicy, pruneOutput io.Writer, opts ...GenericOption) (*ForgetResult, error) {
+func (r *Repo) Forget(ctx context.Context, policy *RetentionPolicy, opts ...GenericOption) (*ForgetResult, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -218,8 +218,25 @@ func (r *Repo) Forget(ctx context.Context, policy RetentionPolicy, pruneOutput i
 	cmd.Env = append(cmd.Env, r.buildEnv()...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
+	return &result[0], nil
+}
+
+func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...GenericOption) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	opt := resolveOpts(opts)
+
+	args := []string{"prune"}
+	args = append(args, r.extraArgs...)
+	args = append(args, opt.extraArgs...)
+
+	cmd := exec.CommandContext(ctx, r.cmd, args...)
+	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, opt.extraEnv...)
+
 	buf := bytes.NewBuffer(nil)
-	var writer io.Writer = buf
+	var writer io.Writer = newLimitWriter(buf, 1000)
 	if pruneOutput != nil {
 		writer = io.MultiWriter(pruneOutput, buf)
 	}
@@ -227,10 +244,10 @@ func (r *Repo) Forget(ctx context.Context, policy RetentionPolicy, pruneOutput i
 	cmd.Stderr = writer
 
 	if err := cmd.Run(); err != nil {
-		return nil, NewCmdError(cmd, buf.Bytes(), err)
+		return NewCmdError(cmd, buf.Bytes(), err)
 	}
 
-	return &result[0], nil
+	return nil
 }
 
 func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, opts ...GenericOption) (*Snapshot, []*LsEntry, error) {

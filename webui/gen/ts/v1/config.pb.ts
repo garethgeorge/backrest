@@ -36,4 +36,5 @@ export type RetentionPolicy = {
   keepMonthly?: number
   keepYearly?: number
   keepWithinDuration?: string
+  prune?: boolean
 }

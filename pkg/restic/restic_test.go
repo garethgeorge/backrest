@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 	"testing"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
@@ -105,7 +104,7 @@ func TestResticBackup(t *testing.T) {
 func TestResticBackupLots(t *testing.T) {
 	t.Parallel()
 	t.Skip("this test takes a long time to run")
-	
+
 	repo := t.TempDir()
 
 	// create a new repo with cache disabled for testing
@@ -248,8 +247,7 @@ func TestResticForget(t *testing.T) {
 	}
 
 	// prune all snapshots
-	output := bytes.NewBuffer(nil)
-	res, err := r.Forget(context.Background(), RetentionPolicy{KeepLastN: 3}, output)
+	res, err := r.Forget(context.Background(), &RetentionPolicy{KeepLastN: 3})
 	if err != nil {
 		t.Fatalf("failed to prune snapshots: %v", err)
 	}
@@ -280,8 +278,45 @@ func TestResticForget(t *testing.T) {
 	if !reflect.DeepEqual(keptIds, ids[7:]) {
 		t.Errorf("wanted kept ids to be %v, got: %v", ids[7:], keptIds)
 	}
+}
 
-	if !strings.Contains(output.String(), "total prune") {
-		t.Errorf("wanted prune output, got: %s", output.String())
+func TestResticPrune(t *testing.T) {
+	t.Parallel()
+
+	repo := t.TempDir()
+	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
+		Id:       "test",
+		Uri:      repo,
+		Password: "test",
+	}, WithFlags("--no-cache"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	testData := helpers.CreateTestData(t)
+
+	for i := 0; i < 3; i++ {
+		_, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
+		if err != nil {
+			t.Fatalf("failed to backup: %v", err)
+		}
+	}
+
+	// forget recent snapshots
+	_, err := r.Forget(context.Background(), &RetentionPolicy{KeepLastN: 1})
+	if err != nil {
+		t.Fatalf("failed to forget snapshots: %v", err)
+	}
+
+	// prune all snapshots
+	output := bytes.NewBuffer(nil)
+	if err := r.Prune(context.Background(), output); err != nil {
+		t.Fatalf("failed to prune snapshots: %v", err)
+	}
+
+	wantStr := "collecting packs for deletion and repacking"
+
+	if !bytes.Contains(output.Bytes(), []byte(wantStr)) {
+		t.Errorf("wanted output to contain 'keep 1 snapshots', got: %s", output.String())
 	}
 }

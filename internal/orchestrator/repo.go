@@ -8,6 +8,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
+	"github.com/garethgeorge/resticui/internal/protoutil"
 	"github.com/garethgeorge/resticui/pkg/restic"
 	"go.uber.org/zap"
 )
@@ -99,6 +100,32 @@ func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId str
 	}
 
 	return lsEnts, nil
+}
+
+func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.ResticSnapshot, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	policy := plan.Retention
+	if policy == nil {
+		return nil, fmt.Errorf("plan %q has no retention policy", plan.Id)
+	}
+
+	l := zap.L().With(zap.String("repo", r.repoConfig.Id), zap.String("plan", plan.Id))
+
+	l.Debug("Forget snapshots", zap.Any("policy", policy))
+	result, err := r.repo.Forget(ctx, protoutil.RetentionPolicyFromProto(plan.Retention))
+	if err != nil {
+		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
+	}
+	l.Debug("Forget result", zap.Any("result", result))
+
+	var forgotten []*v1.ResticSnapshot
+	for _, snapshot := range result.Remove {
+		forgotten = append(forgotten, protoutil.SnapshotToProto(&snapshot))
+	}
+
+	return forgotten, nil
 }
 
 func tagForPlan(plan *v1.Plan) string {

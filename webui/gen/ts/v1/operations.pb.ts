@@ -48,7 +48,7 @@ type BaseOperation = {
 }
 
 export type Operation = BaseOperation
-  & OneOf<{ operationBackup: OperationBackup; operationIndexSnapshot: OperationIndexSnapshot }>
+  & OneOf<{ operationBackup: OperationBackup; operationIndexSnapshot: OperationIndexSnapshot; operationForget: OperationForget; operationPrune: OperationPrune }>
 
 export type OperationEvent = {
   type?: OperationEventType
@@ -65,6 +65,8 @@ export type OperationIndexSnapshot = {
 
 export type OperationForget = {
   forget?: V1Restic.ResticSnapshot[]
-  pruned?: boolean
-  pruneOutput?: string
+}
+
+export type OperationPrune = {
+  output?: string
 }
