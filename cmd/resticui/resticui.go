@@ -61,19 +61,10 @@ func main() {
 		zap.S().Fatalf("Error finding or installing restic: %v", err)
 	}
 
-	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, oplog)
-	if err != nil {
-		zap.S().Fatalf("Error creating orchestrator: %v", err)
-	}
+	orchestrator := orchestrator.NewOrchestrator(resticPath, cfg, oplog)
 
-	// Start orchestration loop.
-	go func() {
-		err := orchestrator.Run(ctx)
-		if err != nil && !errors.Is(err, context.Canceled) {
-			zap.S().Fatal("Orchestrator loop exited with error: ", zap.Error(err))
-			cancel() // cancel the context when the orchestrator exits (e.g. on fatal error)
-		}
-	}()
+	// Start orchestration loop. Only exits when ctx is cancelled.
+	go orchestrator.Run(ctx)
 
 	apiServer := api.NewServer(
 		configStore,
