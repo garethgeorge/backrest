@@ -236,7 +236,7 @@ func (s *Server) Backup(ctx context.Context, req *types.StringValue) (*emptypb.E
 	if err != nil {
 		return nil, fmt.Errorf("failed to get plan %q: %w", req.Value, err)
 	}
-	s.orchestrator.EnqueueTask(orchestrator.NewOneofBackupTask(s.orchestrator, plan, time.Now()))
+	s.orchestrator.ScheduleTask(orchestrator.NewOneofBackupTask(s.orchestrator, plan, time.Now()))
 	return &emptypb.Empty{}, nil
 }
 
