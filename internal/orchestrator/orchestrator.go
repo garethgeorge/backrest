@@ -31,11 +31,10 @@ type Orchestrator struct {
 	now func() time.Time
 }
 
-func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog) *Orchestrator {
+func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog) (*Orchestrator, error) {
 	var o *Orchestrator
 	o = &Orchestrator{
-		config: cfg,
-		OpLog:  oplog,
+		OpLog: oplog,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
 		repoPool: newResticRepoPool(resticBin, &config.MemoryStore{Config: cfg}),
 		taskQueue: taskQueue{
@@ -47,7 +46,10 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog) *Orch
 			},
 		},
 	}
-	return o
+	if err := o.ApplyConfig(cfg); err != nil {
+		return nil, fmt.Errorf("apply initial config: %w", err)
+	}
+	return o, nil
 }
 
 func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
@@ -55,14 +57,22 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 	defer o.mu.Unlock()
 	o.config = cfg
 
-	zap.L().Debug("Applying config to orchestrator", zap.Any("config", cfg))
+	zap.L().Info("Applying config to orchestrator", zap.Any("config", cfg))
 
 	// Update the config provided to the repo pool.
 	if err := o.repoPool.configProvider.Update(cfg); err != nil {
 		return fmt.Errorf("failed to update repo pool config: %w", err)
 	}
 
-	o.taskQueue.Reset() // reset queued tasks, this may loose any ephemeral operations scheduled by RPC. Tasks in progress are not cancelled.
+	// reset queued tasks, this may loose any ephemeral operations scheduled by RPC. Tasks in progress are not cancelled.
+	removedTasks := o.taskQueue.Reset()
+	for _, t := range removedTasks {
+		if err := t.task.Cancel(v1.OperationStatus_STATUS_SYSTEM_CANCELLED); err != nil {
+			zap.L().Error("failed to cancel queued task", zap.String("task", t.task.Name()), zap.Error(err))
+		} else {
+			zap.L().Debug("queued task cancelled due to config change", zap.String("task", t.task.Name()))
+		}
+	}
 
 	// Requeue tasks that are affected by the config change.
 	for _, plan := range cfg.Plans {

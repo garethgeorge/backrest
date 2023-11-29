@@ -47,12 +47,13 @@ enum OperationEventType {
 }
 
 enum OperationStatus {
-  STATUS_UNKNOWN = 0;
-  STATUS_PENDING = 1;
-  STATUS_INPROGRESS = 2;
-  STATUS_SUCCESS = 3;
-  STATUS_ERROR = 4;
-  STATUS_CANCELLED = 5;
+  STATUS_UNKNOWN = 0; // used to indicate that the status is unknown.
+  STATUS_PENDING = 1; // used to indicate that the operation is pending.
+  STATUS_INPROGRESS = 2; // used to indicate that the operation is in progress.
+  STATUS_SUCCESS = 3; // used to indicate that the operation completed successfully.
+  STATUS_ERROR = 4; // used to indicate that the operation failed.
+  STATUS_SYSTEM_CANCELLED = 5; // indicates operation cancelled by the system.
+  STATUS_USER_CANCELLED = 6; // indicates operation cancelled by the user.
 }
 
 message OperationBackup {

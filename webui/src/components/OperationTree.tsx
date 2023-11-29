@@ -4,6 +4,7 @@ import {
   BackupInfoCollector,
   EOperation,
   getOperations,
+  shouldHideStatus,
   subscribeToOperations,
   toEop,
   unsubscribeFromOperations,
@@ -56,7 +57,10 @@ export const OperationTree = ({
     subscribeToOperations(lis);
 
     backupCollector.subscribe(() => {
-      const backups = backupCollector.getAll();
+      let backups = backupCollector.getAll();
+      backups = backups.filter((b) => {
+        return !shouldHideStatus(b.status);
+      });
       backups.sort((a, b) => {
         return b.startTimeMs - a.startTimeMs;
       });
@@ -73,7 +77,7 @@ export const OperationTree = ({
     return () => {
       unsubscribeFromOperations(lis);
     };
-  }, [req]);
+  }, [JSON.stringify(req)]);
 
   if (backups.length === 0) {
     return (
@@ -128,12 +132,20 @@ export const OperationTree = ({
               const b = node.backup;
               const details: string[] = [];
 
+              if (b.status === OperationStatus.STATUS_PENDING) {
+                details.push("pending");
+              } else if (b.status === OperationStatus.STATUS_SYSTEM_CANCELLED) {
+                details.push("system cancel");
+              } else if (b.status === OperationStatus.STATUS_USER_CANCELLED) {
+                details.push("cancelled");
+              }
+
               if (b.backupLastStatus) {
                 if (b.backupLastStatus.summary) {
                   const s = b.backupLastStatus.summary;
                   details.push(
                     `${formatBytes(s.totalBytesProcessed)} in ${formatDuration(
-                      s.totalDuration!
+                      s.totalDuration! * 1000.0 // convert to ms
                     )}`
                   );
                 } else if (b.backupLastStatus.status) {
@@ -245,7 +257,7 @@ const buildTreeLeaf = (operations: BackupInfo[]): OpTreeNode[] => {
       case OperationStatus.STATUS_INPROGRESS:
         iconColor = "blue";
         break;
-      case OperationStatus.STATUS_CANCELLED:
+      case OperationStatus.STATUS_USER_CANCELLED:
         iconColor = "orange";
         break;
     }

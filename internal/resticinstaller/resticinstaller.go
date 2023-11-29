@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/garethgeorge/resticui/internal/config"
+	"go.uber.org/zap"
 )
 
 var (
@@ -124,9 +125,11 @@ func FindOrInstallResticBinary() (string, error) {
 		}
 		didTryInstall = true
 
+		zap.S().Infof("Installing restic %v...", RequiredResticVersion)
 		if err := installResticIfNotExists(resticInstallPath); err != nil {
 			return "", fmt.Errorf("install restic: %w", err)
 		}
+		zap.S().Infof("Installed restic %v", RequiredResticVersion)
 	}
 
 	return resticInstallPath, nil

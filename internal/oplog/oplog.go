@@ -92,9 +92,13 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 				zap.L().Error("error unmarshalling operation, there may be corruption in the oplog", zap.Error(err))
 				continue
 			}
-			if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
-				op.Status = v1.OperationStatus_STATUS_ERROR
-				op.DisplayMessage = "Operation timeout."
+
+			if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
+				// remove pending operations.
+				o.deleteOperationHelper(tx, op.Id)
+				continue
+			} else if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
+				o.deleteOperationHelper(tx, op.Id)
 			}
 
 			if err := o.addOperationHelper(tx, op); err != nil {
