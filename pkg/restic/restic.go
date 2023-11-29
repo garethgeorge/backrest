@@ -98,11 +98,10 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 	args = append(args, r.extraArgs...)
 	args = append(args, opt.paths...)
 	args = append(args, opt.extraArgs...)
-	
+
 	output := bytes.NewBuffer(nil)
 	reader, writer := io.Pipe()
-
-	capture := io.MultiWriter(output, writer)
+	capture := io.MultiWriter(newLimitWriter(output, 1000), writer)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
 	cmd.Env = append(cmd.Env, r.buildEnv()...)

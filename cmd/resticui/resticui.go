@@ -61,7 +61,10 @@ func main() {
 		zap.S().Fatalf("Error finding or installing restic: %v", err)
 	}
 
-	orchestrator := orchestrator.NewOrchestrator(resticPath, cfg, oplog)
+	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, oplog)
+	if err != nil {
+		zap.S().Fatalf("Error creating orchestrator: %v", err)
+	}
 
 	// Start orchestration loop. Only exits when ctx is cancelled.
 	go orchestrator.Run(ctx)

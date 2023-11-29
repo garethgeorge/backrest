@@ -16,90 +16,115 @@ import (
 )
 
 type Task interface {
-	Name() string                  // huamn readable name for this task.
-	Next(now time.Time) *time.Time // when this task would like to be run.
-	Run(ctx context.Context) error // run the task.
+	Name() string                               // huamn readable name for this task.
+	Next(now time.Time) *time.Time              // when this task would like to be run.
+	Run(ctx context.Context) error              // run the task.
+	Cancel(withStatus v1.OperationStatus) error // cancel the task's execution with the given status (either STATUS_USER_CANCELLED or STATUS_SYSTEM_CANCELLED).
 }
 
 // BackupTask is a scheduled backup operation.
-type ScheduledBackupTask struct {
+type BackupTask struct {
+	name         string
 	orchestrator *Orchestrator // owning orchestrator
 	plan         *v1.Plan
-	schedule     *cronexpr.Schedule
+	op           *v1.Operation
+	scheduler    func(curTime time.Time) *time.Time
+	cancel       context.CancelFunc // nil unless operation is running.
 }
 
-var _ Task = &ScheduledBackupTask{}
+var _ Task = &BackupTask{}
 
-func NewScheduledBackupTask(orchestrator *Orchestrator, plan *v1.Plan) (*ScheduledBackupTask, error) {
+func NewScheduledBackupTask(orchestrator *Orchestrator, plan *v1.Plan) (*BackupTask, error) {
 	sched, err := cronexpr.ParseInLocation(plan.Cron, time.Now().Location().String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse schedule %q: %w", plan.Cron, err)
 	}
 
-	return &ScheduledBackupTask{
+	return &BackupTask{
+		name:         fmt.Sprintf("backup for plan %q", plan.Id),
 		orchestrator: orchestrator,
 		plan:         plan,
-		schedule:     sched,
+		scheduler: func(curTime time.Time) *time.Time {
+			next := sched.Next(curTime)
+			return &next
+		},
 	}, nil
 }
 
-func (t *ScheduledBackupTask) Name() string {
-	return fmt.Sprintf("backup for plan %q", t.plan.Id)
-}
-
-func (t *ScheduledBackupTask) Next(now time.Time) *time.Time {
-	next := t.schedule.Next(now)
-	return &next
-}
-
-func (t *ScheduledBackupTask) Run(ctx context.Context) error {
-	return backupHelper(ctx, t.orchestrator, t.plan)
-}
-
-// OnetimeBackupTask is a single backup operation.
-type OnetimeBackupTask struct {
-	orchestrator *Orchestrator
-	plan         *v1.Plan
-	time         *time.Time
-}
-
-func NewOneofBackupTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *OnetimeBackupTask {
-	return &OnetimeBackupTask{
+func NewOneofBackupTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *BackupTask {
+	didOnce := false
+	return &BackupTask{
+		name:         fmt.Sprintf("onetime backup for plan %q", plan.Id),
 		orchestrator: orchestrator,
 		plan:         plan,
-		time:         &at,
+		scheduler: func(curTime time.Time) *time.Time {
+			if didOnce {
+				return nil
+			}
+			didOnce = true
+			return &at
+		},
 	}
 }
 
-func (t *OnetimeBackupTask) Name() string {
-	return fmt.Sprintf("onetime backup for plan %q", t.plan.Id)
+func (t *BackupTask) Name() string {
+	return t.name
 }
 
-func (t *OnetimeBackupTask) Next(now time.Time) *time.Time {
-	ret := t.time
-	t.time = nil
-	return ret
+func (t *BackupTask) Next(now time.Time) *time.Time {
+	next := t.scheduler(now)
+	if next == nil {
+		return nil
+	}
+
+	t.op = &v1.Operation{
+		PlanId:          t.plan.Id,
+		RepoId:          t.plan.Repo,
+		UnixTimeStartMs: timeToUnixMillis(*next),
+		Status:          v1.OperationStatus_STATUS_PENDING,
+		Op:              &v1.Operation_OperationBackup{},
+	}
+
+	if err := t.orchestrator.OpLog.Add(t.op); err != nil {
+		zap.S().Errorf("task %v failed to add operation to oplog: %v", t.Name(), err)
+		return nil
+	}
+
+	return next
 }
 
-func (t *OnetimeBackupTask) Run(ctx context.Context) error {
-	return backupHelper(ctx, t.orchestrator, t.plan)
+func (t *BackupTask) Run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	t.cancel = cancel
+	err := backupHelper(ctx, t.orchestrator, t.plan, t.op)
+	t.op = nil
+	t.cancel = nil
+	return err
+}
+
+func (t *BackupTask) Cancel(status v1.OperationStatus) error {
+	if t.op == nil {
+		return nil
+	}
+
+	if t.cancel != nil && status == v1.OperationStatus_STATUS_USER_CANCELLED {
+		t.cancel() // try to interrupt the running operation.
+	}
+
+	t.op.Status = status
+	t.op.UnixTimeEndMs = curTimeMillis()
+	return t.orchestrator.OpLog.Update(t.op)
 }
 
 // backupHelper does a backup.
-func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan) error {
+func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan, op *v1.Operation) error {
 	backupOp := &v1.Operation_OperationBackup{
 		OperationBackup: &v1.OperationBackup{},
 	}
 
-	op := &v1.Operation{
-		PlanId:          plan.Id,
-		RepoId:          plan.Repo,
-		UnixTimeStartMs: curTimeMillis(),
-		Status:          v1.OperationStatus_STATUS_INPROGRESS,
-		Op:              backupOp,
-	}
-
 	startTime := time.Now()
+	op.Op = backupOp
+	op.UnixTimeStartMs = curTimeMillis()
 
 	err := WithOperation(orchestrator.OpLog, op, func() error {
 		zap.L().Info("Starting backup", zap.String("plan", plan.Id), zap.Int64("opId", op.Id))
@@ -119,7 +144,6 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 			if err := orchestrator.OpLog.Update(op); err != nil {
 				zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
 			}
-			zap.L().Debug("backup progress", zap.Float64("progress", entry.PercentDone))
 		})
 		if err != nil {
 			return fmt.Errorf("repo.Backup for repo %q: %w", plan.Repo, err)
@@ -131,7 +155,7 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 			return fmt.Errorf("expected a final backup progress entry, got nil")
 		}
 
-		zap.L().Info("backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)))
+		zap.L().Info("Backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)), zap.Any("summary", summary))
 		return nil
 	})
 	if err != nil {
@@ -204,10 +228,17 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan 
 // WithOperation is a utility that creates an operation to track the function's execution.
 // timestamps are automatically added and the status is automatically updated if an error occurs.
 func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error {
-	if err := oplog.Add(op); err != nil {
-		return fmt.Errorf("failed to add operation to oplog: %w", err)
+	if op.Id != 0 {
+		if err := oplog.Update(op); err != nil {
+			return fmt.Errorf("failed to add operation to oplog: %w", err)
+		}
+	} else {
+		if err := oplog.Add(op); err != nil {
+			return fmt.Errorf("failed to add operation to oplog: %w", err)
+		}
 	}
-	if op.Status == v1.OperationStatus_STATUS_UNKNOWN {
+
+	if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
 		op.Status = v1.OperationStatus_STATUS_INPROGRESS
 	}
 	err := do()
@@ -225,9 +256,12 @@ func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error 
 	return err
 }
 
-func curTimeMillis() int64 {
-	t := time.Now()
+func timeToUnixMillis(t time.Time) int64 {
 	return t.Unix()*1000 + int64(t.Nanosecond()/1000000)
+}
+
+func curTimeMillis() int64 {
+	return timeToUnixMillis(time.Now())
 }
 
 func containsSnapshotOperation(ops []*v1.Operation) bool {

@@ -76,14 +76,12 @@ export const buildOperationListListener = (
   let operations: EOperation[] = [];
 
   (async () => {
-    let opsFromServer = await getOperations(req);
-    operations = opsFromServer.filter(
-      (o) => !operations.find((op) => op.id === o.id)
-    );
+    const opsFromServer = await getOperations(req);
+    operations.push(...opsFromServer);
+    operations = _.uniqBy(opsFromServer, (o) => o.id!);
     operations.sort((a, b) => {
       return a.parsedTime! - b.parsedTime!;
     });
-
     callback(null, null, operations);
   })();
 
@@ -115,7 +113,6 @@ export const buildOperationListListener = (
     } else if (type === OperationEventType.EVENT_CREATED) {
       operations.push(op);
     }
-
     callback(event.type || null, op, operations);
   };
 };
@@ -264,3 +261,7 @@ export class BackupInfoCollector {
     }
   }
 }
+
+export const shouldHideStatus = (status: OperationStatus) => {
+  return status === OperationStatus.STATUS_SYSTEM_CANCELLED;
+};

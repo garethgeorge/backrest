@@ -139,12 +139,12 @@ export const OperationRow = ({
   } else if (operation.operationBackup) {
     const backupOp = operation.operationBackup;
     let desc = `${formatTime(operation.unixTimeStartMs!)} - Backup`;
-    if (operation.status !== OperationStatus.STATUS_INPROGRESS) {
+    if (operation.status == OperationStatus.STATUS_SUCCESS) {
       desc += ` completed in ${formatDuration(
         parseInt(operation.unixTimeEndMs!) -
           parseInt(operation.unixTimeStartMs!)
       )}`;
-    } else {
+    } else if (operation.status === OperationStatus.STATUS_INPROGRESS) {
       desc += " and is still running.";
     }
 

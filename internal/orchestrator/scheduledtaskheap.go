@@ -37,14 +37,16 @@ func (t *taskQueue) Push(task scheduledTask) {
 	}
 }
 
-func (t *taskQueue) Reset() {
+func (t *taskQueue) Reset() []*scheduledTask {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
+	oldTasks := t.heap.tasks
 	t.heap.tasks = nil
 	if t.notify != nil {
 		t.notify <- struct{}{}
 	}
+	return oldTasks
 }
 
 func (t *taskQueue) Dequeue(ctx context.Context) *scheduledTask {
@@ -71,10 +73,9 @@ func (t *taskQueue) Dequeue(ctx context.Context) *scheduledTask {
 		}
 		t.mu.Unlock()
 		timer := time.NewTimer(first.runAt.Sub(t.curTime()))
-
-		t.mu.Lock()
 		select {
 		case <-timer.C:
+			t.mu.Lock()
 			if t.heap.Len() == 0 {
 				break
 			}
@@ -83,11 +84,11 @@ func (t *taskQueue) Dequeue(ctx context.Context) *scheduledTask {
 				// task is not yet ready to run
 				break
 			}
-
 			heap.Pop(&t.heap) // remove the task from the heap
 			t.mu.Unlock()
 			return first
 		case <-t.notify: // new task was added, loop again to ensure we have the earliest task.
+			t.mu.Lock()
 			if !timer.Stop() {
 				<-timer.C
 			}
@@ -95,7 +96,6 @@ func (t *taskQueue) Dequeue(ctx context.Context) *scheduledTask {
 			if !timer.Stop() {
 				<-timer.C
 			}
-			t.mu.Unlock()
 			return nil
 		}
 	}
