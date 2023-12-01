@@ -19,6 +19,12 @@ var ErrRepoNotFound = errors.New("repo not found")
 var ErrRepoInitializationFailed = errors.New("repo initialization failed")
 var ErrPlanNotFound = errors.New("plan not found")
 
+const (
+	TaskPriorityDefault     = iota
+	TaskPriorityInteractive // higher priority than default scheduled operations e.g. the user clicked to run an operation.
+	TaskPrioritySystem      // higher priority than interactive operations e.g. a system operation like a forget or index (typically scheduled by another task that wants work done immediately after it's completion).
+)
+
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
 	mu        sync.Mutex
@@ -39,10 +45,7 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog) (*Orc
 		repoPool: newResticRepoPool(resticBin, &config.MemoryStore{Config: cfg}),
 		taskQueue: taskQueue{
 			Now: func() time.Time {
-				if o.now != nil {
-					return o.now()
-				}
-				return time.Now()
+				return o.curTime()
 			},
 		},
 	}
@@ -50,6 +53,13 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog) (*Orc
 		return nil, fmt.Errorf("apply initial config: %w", err)
 	}
 	return o, nil
+}
+
+func (o *Orchestrator) curTime() time.Time {
+	if o.now != nil {
+		return o.now()
+	}
+	return time.Now()
 }
 
 func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
@@ -64,7 +74,7 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 		return fmt.Errorf("failed to update repo pool config: %w", err)
 	}
 
-	// reset queued tasks, this may loose any ephemeral operations scheduled by RPC. Tasks in progress are not cancelled.
+	// reset queued tasks, this may loose any ephemeral operations scheduled by RPC. Tasks in progress aren't returned by Reset() so they will not be cancelled.
 	removedTasks := o.taskQueue.Reset()
 	for _, t := range removedTasks {
 		if err := t.task.Cancel(v1.OperationStatus_STATUS_SYSTEM_CANCELLED); err != nil {
@@ -80,7 +90,7 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 		if err != nil {
 			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
 		}
-		o.ScheduleTask(t)
+		o.ScheduleTask(t, 0)
 	}
 
 	return nil
@@ -136,12 +146,7 @@ func (o *Orchestrator) Run(mainCtx context.Context) {
 			zap.L().Info("task finished", zap.String("task", t.task.Name()))
 		}
 
-		curTime := time.Now()
-		if o.now != nil {
-			curTime = o.now()
-		}
-
-		if nextTime := t.task.Next(curTime); nextTime != nil {
+		if nextTime := t.task.Next(o.curTime()); nextTime != nil {
 			o.taskQueue.Push(scheduledTask{
 				task:  t.task,
 				runAt: *nextTime,
@@ -150,12 +155,8 @@ func (o *Orchestrator) Run(mainCtx context.Context) {
 	}
 }
 
-func (o *Orchestrator) ScheduleTask(t Task) {
-	curTime := time.Now()
-	if o.now != nil {
-		curTime = o.now()
-	}
-	nextRun := t.Next(curTime)
+func (o *Orchestrator) ScheduleTask(t Task, priority int) {
+	nextRun := t.Next(o.curTime())
 	if nextRun == nil {
 		return
 	}

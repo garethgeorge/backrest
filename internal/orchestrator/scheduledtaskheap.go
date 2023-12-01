@@ -18,10 +18,10 @@ type taskQueue struct {
 }
 
 func (t *taskQueue) curTime() time.Time {
-	if t.Now == nil {
-		return time.Now()
+	if t.Now != nil {
+		return t.Now()
 	}
-	return t.Now()
+	return time.Now()
 }
 
 func (t *taskQueue) Push(task scheduledTask) {
