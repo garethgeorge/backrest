@@ -125,7 +125,7 @@ func FindOrInstallResticBinary() (string, error) {
 		}
 		didTryInstall = true
 
-		zap.S().Infof("Installing restic %v...", RequiredResticVersion)
+		zap.S().Infof("Installing restic %v to %v...", RequiredResticVersion, resticInstallPath)
 		if err := installResticIfNotExists(resticInstallPath); err != nil {
 			return "", fmt.Errorf("install restic: %w", err)
 		}

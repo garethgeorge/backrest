@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,10 +24,25 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+var (
+	installOnly = flag.Bool("install-only", false, "Install restic and exit")
+)
+
 func main() {
+	flag.Parse()
+
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	go onterm(cancel)
+
+	resticPath, err := resticinstaller.FindOrInstallResticBinary()
+	if err != nil {
+		zap.S().Fatalf("Error finding or installing restic: %v", err)
+	}
+
+	if *installOnly {
+		return
+	}
 
 	configStore := createConfigProvider()
 
@@ -57,11 +73,6 @@ func main() {
 		zap.S().Fatalf("Error creating oplog : %v", err)
 	}
 	defer oplog.Close()
-
-	resticPath, err := resticinstaller.FindOrInstallResticBinary()
-	if err != nil {
-		zap.S().Fatalf("Error finding or installing restic: %v", err)
-	}
 
 	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, oplog)
 	if err != nil {

@@ -1,10 +1,9 @@
-name: Tagged Release
+name: Tagged Release Docker
 
 on:
   push:
     tags:
       - "v*"
-  workflow_dispatch:
 
 jobs:
   tagged-release:
