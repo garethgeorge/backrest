@@ -22,8 +22,12 @@ func IndexRemoveByteValue(b *bolt.Bucket, value []byte, recordId int64) error {
 }
 
 // IndexSearchByteValue searches the index given a value and returns an iterator over the associated recordIds.
-func IndexSearchByteValue(b *bolt.Bucket, value []byte) *IndexSearchIterator {
+func IndexSearchByteValue(b *bolt.Bucket, value []byte) IndexIterator {
 	return newSearchIterator(b, serializationutil.BytesToKey(value))
+}
+
+type IndexIterator interface {
+	Next() (int64, bool)
 }
 
 type IndexSearchIterator struct {
@@ -32,7 +36,7 @@ type IndexSearchIterator struct {
 	prefix []byte
 }
 
-func newSearchIterator(b *bolt.Bucket, prefix []byte) *IndexSearchIterator {
+func newSearchIterator(b *bolt.Bucket, prefix []byte) IndexIterator {
 	c := b.Cursor()
 	k, _ := c.Seek(prefix)
 	return &IndexSearchIterator{
@@ -55,24 +59,73 @@ func (i *IndexSearchIterator) Next() (int64, bool) {
 	return id, true
 }
 
-func (i *IndexSearchIterator) ToSlice() []int64 {
-	var ids []int64
-	for id, ok := i.Next(); ok; id, ok = i.Next() {
-		ids = append(ids, id)
-	}
-	return ids
+type JoinIterator struct {
+	iters []IndexIterator
 }
 
-type Collector func(*IndexSearchIterator) []int64
+func NewJoinIterator(iters ...IndexIterator) *JoinIterator {
+	return &JoinIterator{
+		iters: iters,
+	}
+}
+
+func (j *JoinIterator) Next() (int64, bool) {
+	if len(j.iters) == 0 {
+		return 0, false
+	}
+
+	nexts := make([]int64, len(j.iters))
+	for idx, iter := range j.iters {
+		id, ok := iter.Next()
+		if !ok {
+			return 0, false
+		}
+		nexts[idx] = id
+	}
+
+	for {
+		var ok bool
+		maxIdx := 0
+		allSame := true
+		for idx, id := range nexts {
+			if id > nexts[maxIdx] {
+				maxIdx = idx
+			}
+			if id != nexts[0] {
+				allSame = false
+			}
+		}
+
+		if allSame {
+			return nexts[0], true
+		}
+
+		for idx, id := range nexts {
+			if id == nexts[maxIdx] {
+				continue
+			}
+			nexts[idx], ok = j.iters[idx].Next()
+			if !ok {
+				return 0, false
+			}
+		}
+	}
+}
+
+type Collector func(IndexIterator) []int64
 
 func CollectAll() Collector {
-	return func(iter *IndexSearchIterator) []int64 {
-		return iter.ToSlice()
+	return func(iter IndexIterator) []int64 {
+		ids := make([]int64, 0, 100)
+		for id, ok := iter.Next(); ok; id, ok = iter.Next() {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 }
 
 func CollectFirstN(firstN int) Collector {
-	return func(iter *IndexSearchIterator) []int64 {
+	return func(iter IndexIterator) []int64 {
 		ids := make([]int64, 0, firstN)
 		for id, ok := iter.Next(); ok && len(ids) < firstN; id, ok = iter.Next() {
 			ids = append(ids, id)
@@ -85,7 +138,7 @@ func CollectFirstN(firstN int) Collector {
 }
 
 func CollectLastN(lastN int) Collector {
-	return func(iter *IndexSearchIterator) []int64 {
+	return func(iter IndexIterator) []int64 {
 		ids := make([]int64, lastN)
 		count := 0
 		for id, ok := iter.Next(); ok; id, ok = iter.Next() {
