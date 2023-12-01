@@ -148,12 +148,11 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 		return fmt.Errorf("backup operation: %w", err)
 	}
 
-	// this could alternatively be scheduled as a separate task, but it probably makes sense to index snapshots immediately after a backup.
-	orchestrator.ScheduleTask(NewOneofIndexSnapshotsTask(orchestrator, plan, time.Now()), TaskPrioritySystem)
-
 	if plan.Retention != nil {
-		orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, op.SnapshotId, time.Now()), TaskPrioritySystem)
+		orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, op.SnapshotId, time.Now()), taskPriorityForget)
 	}
+
+	orchestrator.ScheduleTask(NewOneofIndexSnapshotsTask(orchestrator, plan, time.Now()), taskPriorityIndexSnapshots)
 
 	return nil
 }
