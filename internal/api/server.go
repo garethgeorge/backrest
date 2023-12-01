@@ -194,22 +194,26 @@ func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.ResticUI_GetOper
 }
 
 func (s *Server) GetOperations(ctx context.Context, req *v1.GetOperationsRequest) (*v1.OperationList, error) {
-	collector := indexutil.CollectAll()
+	idCollector := indexutil.CollectAll()
 
 	if req.LastN != 0 {
-		collector = indexutil.CollectLastN(int(req.LastN))
+		idCollector = indexutil.CollectLastN(int(req.LastN))
 	}
 
 	var err error
 	var ops []*v1.Operation
+	opCollector := func(op *v1.Operation) error {
+		ops = append(ops, op)
+		return nil
+	}
 	if req.RepoId != "" && req.PlanId != "" {
 		return nil, errors.New("cannot specify both repoId and planId")
 	} else if req.PlanId != "" {
-		ops, err = s.oplog.GetByPlan(req.PlanId, collector)
+		err = s.oplog.ForEachByPlan(req.PlanId, idCollector, opCollector)
 	} else if req.RepoId != "" {
-		ops, err = s.oplog.GetByRepo(req.RepoId, collector)
+		err = s.oplog.ForEachByRepo(req.RepoId, idCollector, opCollector)
 	} else if req.SnapshotId != "" {
-		ops, err = s.oplog.GetBySnapshotId(req.SnapshotId, collector)
+		err = s.oplog.ForEachBySnapshotId(req.SnapshotId, idCollector, opCollector)
 	} else if len(req.Ids) > 0 {
 		ops = make([]*v1.Operation, 0, len(req.Ids))
 		for i, id := range req.Ids {
@@ -220,7 +224,7 @@ func (s *Server) GetOperations(ctx context.Context, req *v1.GetOperationsRequest
 			ops = append(ops, op)
 		}
 	} else {
-		ops, err = s.oplog.GetAll()
+		err = s.oplog.ForAll(opCollector)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get operations: %w", err)

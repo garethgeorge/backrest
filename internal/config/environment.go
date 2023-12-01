@@ -41,7 +41,7 @@ func BindAddress() string {
 		}
 		return val
 	}
-	return ":9898"
+	return "127.0.0.1:9898"
 }
 
 func ResticBinPath() string {

@@ -5,19 +5,22 @@ import {
   Typography,
   Select,
   Button,
-  Divider,
   Tooltip,
+  Radio,
+  InputNumber,
+  Row,
+  Card,
+  Col,
 } from "antd";
 import React, { useState } from "react";
 import { useShowModal } from "../components/ModalManager";
-import { Plan } from "../../gen/ts/v1/config.pb";
+import { Plan, RetentionPolicy } from "../../gen/ts/v1/config.pb";
 import { useRecoilState } from "recoil";
 import { configState, fetchConfig, updateConfig } from "../state/config";
 import { nameRegex } from "../lib/patterns";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { useAlertApi } from "../components/Alerts";
-import { ResticUI } from "../../gen/ts/v1/service.pb";
 import { Cron } from "react-js-cron";
 import { validateForm } from "../lib/formutil";
 
@@ -65,7 +68,8 @@ export const AddPlanModal = ({
       showModal(null);
 
       alertsApi.success(
-        "Plan deleted from config, but not from restic repo. Snapshots will remain in storage and operations will be tracked until manually deleted. Reusing a deleted plan ID is not recommended if backups have already been performed."
+        "Plan deleted from config, but not from restic repo. Snapshots will remain in storage and operations will be tracked until manually deleted. Reusing a deleted plan ID is not recommended if backups have already been performed.",
+        30
       );
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);
@@ -116,6 +120,7 @@ export const AddPlanModal = ({
         open={true}
         onCancel={handleCancel}
         title={template ? "Update Plan" : "Add Plan"}
+        width="40vw"
         footer={[
           <Button loading={confirmLoading} key="back" onClick={handleCancel}>
             Cancel
@@ -141,7 +146,12 @@ export const AddPlanModal = ({
           </Button>,
         ]}
       >
-        <Form layout={"vertical"} autoComplete="off" form={form}>
+        <Form
+          autoComplete="off"
+          form={form}
+          labelCol={{ span: 6 }}
+          wrapperCol={{ span: 16 }}
+        >
           {/* Plan.id */}
           <Form.Item<Plan>
             hasFeedback
@@ -207,9 +217,10 @@ export const AddPlanModal = ({
               <>
                 {fields.map((field, index) => (
                   <Form.Item
-                    label={index === 0 ? "Paths" : ""}
+                    label={index === 0 ? "Paths" : " "}
                     required={false}
                     key={field.key}
+                    colon={index === 0}
                   >
                     <Form.Item
                       {...field}
@@ -223,7 +234,7 @@ export const AddPlanModal = ({
                       noStyle
                     >
                       <URIAutocomplete
-                        style={{ width: "60%" }}
+                        style={{ width: "100%" }}
                         onBlur={() => form.validateFields()}
                       />
                     </Form.Item>
@@ -234,7 +245,10 @@ export const AddPlanModal = ({
                     />
                   </Form.Item>
                 ))}
-                <Form.Item label={fields.length === 0 ? "Paths" : ""}>
+                <Form.Item
+                  label={fields.length === 0 ? "Paths" : " "}
+                  colon={fields.length === 0}
+                >
                   <Button
                     type="dashed"
                     onClick={() => add()}
@@ -325,6 +339,7 @@ export const AddPlanModal = ({
           </Tooltip>
 
           {/* Plan.retention */}
+          <RetentionPolicyView />
 
           <Form.Item shouldUpdate label="Preview">
             {() => (
@@ -335,6 +350,138 @@ export const AddPlanModal = ({
           </Form.Item>
         </Form>
       </Modal>
+    </>
+  );
+};
+
+const RetentionPolicyView = (policy: RetentionPolicy) => {
+  enum PolicyType {
+    TimeBased,
+    CountBased,
+  }
+
+  const [policyType, setPolicyType] = useState<PolicyType>(
+    policy.keepLastN ? PolicyType.CountBased : PolicyType.TimeBased
+  );
+
+  let elem = null;
+  switch (policyType) {
+    case PolicyType.TimeBased:
+      elem = (
+        <Form.Item
+          required={true}
+          label={
+            <Tooltip title="The specified numbers of daily, weekly, monthly, etc backups will be retained. Retention policy is applied to drop older snapshots after each backup run.">
+              Retain by Time
+            </Tooltip>
+          }
+        >
+          <Card>
+            <Row>
+              <Col span={11}>
+                <Form.Item
+                  name={["retention", "keepYearly"]}
+                  initialValue={policy.keepYearly || 0}
+                  validateTrigger={["onChange", "onBlur"]}
+                  required={false}
+                >
+                  <InputNumber
+                    addonBefore={<div style={{ width: "5em" }}>Yearly</div>}
+                    type="number"
+                  />
+                </Form.Item>
+                <Form.Item
+                  name={["retention", "keepMonthly"]}
+                  initialValue={policy.keepMonthly || 3}
+                  validateTrigger={["onChange", "onBlur"]}
+                  required={false}
+                >
+                  <InputNumber
+                    addonBefore={<div style={{ width: "5em" }}>Monthly</div>}
+                    type="number"
+                  />
+                </Form.Item>
+                <Form.Item
+                  name={["retention", "keepWeekly"]}
+                  initialValue={policy.keepWeekly || 4}
+                  validateTrigger={["onChange", "onBlur"]}
+                  required={false}
+                >
+                  <InputNumber
+                    addonBefore={<div style={{ width: "5em" }}>Weekly</div>}
+                    type="number"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={11} offset={1}>
+                <Form.Item
+                  name={["retention", "keepDaily"]}
+                  initialValue={policy.keepDaily || 7}
+                  validateTrigger={["onChange", "onBlur"]}
+                  required={false}
+                >
+                  <InputNumber
+                    addonBefore={<div style={{ width: "5em" }}>Daily</div>}
+                    type="number"
+                  />
+                </Form.Item>
+                <Form.Item
+                  name={["retention", "keepHourly"]}
+                  initialValue={policy.keepHourly || 24}
+                  validateTrigger={["onChange", "onBlur"]}
+                  required={false}
+                >
+                  <InputNumber
+                    addonBefore={<div style={{ width: "5em" }}>Hourly</div>}
+                    type="number"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+        </Form.Item>
+      );
+      break;
+    case PolicyType.CountBased:
+      elem = (
+        <Form.Item
+          name={["retention", "keepLastN"]}
+          label={
+            <Tooltip title="The last N snapshots will be kept by restic. Retention policy is applied to drop older snapshots after each backup run.">
+              Retain Last N
+            </Tooltip>
+          }
+          initialValue={policy.keepLastN || 30}
+          validateTrigger={["onChange", "onBlur"]}
+          rules={[
+            {
+              required: true,
+              message: "Please input keep last N",
+            },
+          ]}
+        >
+          <InputNumber type="number" />
+        </Form.Item>
+      );
+      break;
+  }
+
+  return (
+    <>
+      <Form.Item label="Retention Policy">
+        <Radio.Group
+          value={policyType}
+          onChange={(e) => {
+            setPolicyType(e.target.value);
+          }}
+        >
+          <Radio.Button value={PolicyType.TimeBased}>
+            Keep Duration
+          </Radio.Button>
+          <Radio.Button value={PolicyType.CountBased}>Keep Last N</Radio.Button>
+        </Radio.Group>
+      </Form.Item>
+      {elem}
     </>
   );
 };

@@ -42,7 +42,7 @@ func loggingFunc(l *zap.Logger) logging.Logger {
 		case logging.LevelDebug:
 			logger.Debug(msg)
 		case logging.LevelInfo:
-			logger.Info(msg)
+			logger.Debug(msg)
 		case logging.LevelWarn:
 			logger.Warn(msg)
 		case logging.LevelError:

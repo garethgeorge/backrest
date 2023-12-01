@@ -22,6 +22,7 @@ message Repo {
   string password = 3 [json_name="password"]; // plaintext password
   repeated string env = 4 [json_name="env"]; // extra environment variables to set for restic.
   repeated string flags = 5 [json_name="flags"]; // extra flags set on the restic command.
+  PrunePolicy prune_policy = 6 [json_name="prunePolicy"]; // policy for when to run prune.
 }
 
 message Plan {
@@ -35,15 +36,22 @@ message Plan {
 
 message RetentionPolicy {
   // max_unused_limit is used to decide when forget should be run.
-  string max_unused_limit = 1; // e.g. a percentage i.e. 25% or a number of megabytes.
+  string max_unused_limit = 1 [json_name="maxUnusedLimit"]; // e.g. a percentage i.e. 25% or a number of megabytes.
 
-  int32 keep_last_n = 2; // keep the last n snapshots.
-  int32 keep_hourly = 3; // keep the last n hourly snapshots.
-  int32 keep_daily = 4; // keep the last n daily snapshots.
-  int32 keep_weekly = 5; // keep the last n weekly snapshots.
-  int32 keep_monthly = 6; // keep the last n monthly snapshots.
-  int32 keep_yearly = 7; // keep the last n yearly snapshots.
-  string keep_within_duration = 8; // keep snapshots within a duration e.g. 1y2m3d4h5m6s
+  int32 keep_last_n = 2 [json_name="keepLastN"]; // keep the last n snapshots.
+  int32 keep_hourly = 3 [json_name="keepHourly"]; // keep the last n hourly snapshots.
+  int32 keep_daily = 4 [json_name="keepDaily"]; // keep the last n daily snapshots.
+  int32 keep_weekly = 5 [json_name="keepWeekly"]; // keep the last n weekly snapshots.
+  int32 keep_monthly = 6 [json_name="keepMonthly"]; // keep the last n monthly snapshots.
+  int32 keep_yearly = 7 [json_name="keepYearly"]; // keep the last n yearly snapshots.
+  string keep_within_duration = 8 [json_name="keepWithinDuration"]; // keep snapshots within a duration e.g. 1y2m3d4h5m6s
+}
 
-  bool prune = 9; // prune snapshots after forget.
+message PrunePolicy {
+  int32 max_frequency_days = 1; // max frequency of prune runs in days. If 0, prune will be run on every backup.
+
+  oneof policy {
+    int32 max_unused_percent = 100; // max percentage of repo size that can be unused before prune is run.
+    int32 max_unused_bytes = 101; // max number of bytes that can be unused before prune is run.
+  }
 }

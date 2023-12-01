@@ -15,6 +15,8 @@ import (
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 )
 
+var errAlreadyInitialized = errors.New("repo already initialized")
+
 type Repo struct {
 	mu          sync.Mutex
 	cmd         string
@@ -64,9 +66,10 @@ func (r *Repo) init(ctx context.Context) error {
 	cmd.Env = append(cmd.Env, r.buildEnv()...)
 
 	if output, err := cmd.CombinedOutput(); err != nil {
-		if !strings.Contains(string(output), "config file already exists") {
-			return NewCmdError(cmd, output, err)
+		if strings.Contains(string(output), "config file already exists") || strings.Contains(string(output), "already initialized") {
+			return errAlreadyInitialized
 		}
+		return NewCmdError(cmd, output, err)
 	}
 
 	r.initialized = true
@@ -76,7 +79,10 @@ func (r *Repo) init(ctx context.Context) error {
 func (r *Repo) Init(ctx context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.init(ctx)
+	if err := r.init(ctx); err != nil && !errors.Is(err, errAlreadyInitialized) {
+		return fmt.Errorf("init failed: %w", err)
+	}
+	return nil
 }
 
 func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgressEntry), opts ...BackupOption) (*BackupProgressEntry, error) {
@@ -259,10 +265,6 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 		return nil, nil, errors.New("path must not be empty")
 	}
 
-	if err := r.init(ctx); err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize repo: %w", err)
-	}
-
 	opt := resolveOpts(opts)
 
 	args := []string{"ls", "--json", snapshot, path}
@@ -401,7 +403,7 @@ func WithEnv(env ...string) GenericOption {
 	}
 }
 
-var EnvToPropagate = []string{"PATH", "HOME", "XDG_CACHE_HOME"}
+var EnvToPropagate = []string{"PATH", "HOME", "XDG_CACHE_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"}
 
 func WithPropagatedEnvVars(extras ...string) GenericOption {
 	var extension []string

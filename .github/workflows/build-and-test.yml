@@ -27,10 +27,10 @@ jobs:
           node-version: "20"
 
       - name: Install Deps
-        run: ./hack/install-deps.sh
+        run: ./scripts/install-deps.sh
 
       - name: Build
-        run: ./hack/build.sh
+        run: ./scripts/build.sh
 
       - name: Test
         run: PATH=$(pwd):$PATH go test ./...

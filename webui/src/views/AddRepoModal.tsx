@@ -24,7 +24,7 @@ import { useRecoilState } from "recoil";
 import { nameRegex } from "../lib/patterns";
 import { validateForm } from "../lib/formutil";
 
-export const AddRepoModel = ({
+export const AddRepoModal = ({
   template,
 }: {
   template: Partial<Repo> | null;
@@ -438,6 +438,6 @@ const envVarSetValidator = (uri: string | undefined, envVars: string[]) => {
 
 const cryptoRandomPassword = (): string => {
   let vals = crypto.getRandomValues(new Uint8Array(64));
-  // 48 chars is at least log2(64) * 48 = 288 bits of entropy.
+  // 48 chars is at least log2(64) * 48 = ~288 bits of entropy.
   return btoa(String.fromCharCode(...vals)).slice(0, 48);
 };

@@ -64,7 +64,9 @@ message OperationBackup {
 
 // OperationIndexSnapshot tracks that a snapshot was detected by resticui. 
 message OperationIndexSnapshot {
-  ResticSnapshot snapshot = 2;
+  ResticSnapshot snapshot = 2; // the snapshot that was indexed.
+  bool forgot = 3; // tracks whether this snapshot is forgotten yet.
+  int64 forgot_by_op = 4; // ID of a forget operation that removed this snapshot.
 }
 
 // OperationForget tracks a forget operation.

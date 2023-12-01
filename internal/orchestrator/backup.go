@@ -7,7 +7,6 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
 	"github.com/garethgeorge/resticui/internal/protoutil"
 	"github.com/garethgeorge/resticui/pkg/restic"
 	"github.com/gitploy-io/cronexpr"
@@ -161,72 +160,8 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 	}
 
 	if plan.Retention != nil {
-		orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, time.Now()))
+		orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, op.SnapshotId, time.Now()))
 	}
 
 	return nil
-}
-
-func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan) error {
-	repo, err := orchestrator.GetRepo(plan.Repo)
-	if err != nil {
-		return fmt.Errorf("couldn't get repo %q: %w", plan.Repo, err)
-	}
-
-	snapshots, err := repo.SnapshotsForPlan(ctx, plan)
-	if err != nil {
-		return fmt.Errorf("get snapshots for plan %q: %w", plan.Id, err)
-	}
-
-	startTime := time.Now()
-	alreadyIndexed := 0
-	var indexOps []*v1.Operation
-	for _, snapshot := range snapshots {
-		ops, err := orchestrator.OpLog.GetBySnapshotId(snapshot.Id, indexutil.CollectAll())
-		if err != nil {
-			return fmt.Errorf("HasIndexSnapshot for snapshot %q: %w", snapshot.Id, err)
-		}
-
-		if containsSnapshotOperation(ops) {
-			alreadyIndexed += 1
-			continue
-		}
-
-		snapshotProto := protoutil.SnapshotToProto(snapshot)
-		indexOps = append(indexOps, &v1.Operation{
-			RepoId:          plan.Repo,
-			PlanId:          plan.Id,
-			UnixTimeStartMs: snapshotProto.UnixTimeMs,
-			UnixTimeEndMs:   snapshotProto.UnixTimeMs,
-			Status:          v1.OperationStatus_STATUS_SUCCESS,
-			SnapshotId:      snapshotProto.Id,
-			Op: &v1.Operation_OperationIndexSnapshot{
-				OperationIndexSnapshot: &v1.OperationIndexSnapshot{
-					Snapshot: snapshotProto,
-				},
-			},
-		})
-	}
-
-	if err := orchestrator.OpLog.BulkAdd(indexOps); err != nil {
-		return fmt.Errorf("BulkAdd snapshot operations: %w", err)
-	}
-
-	zap.L().Debug("Indexed snapshots",
-		zap.String("plan", plan.Id),
-		zap.Duration("duration", time.Since(startTime)),
-		zap.Int("alreadyIndexed", alreadyIndexed),
-		zap.Int("newlyAdded", len(snapshots)-alreadyIndexed),
-	)
-
-	return err
-}
-
-func containsSnapshotOperation(ops []*v1.Operation) bool {
-	for _, op := range ops {
-		if _, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
-			return true
-		}
-	}
-	return false
 }

@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"io"
 	"sort"
 	"sync"
 	"time"
@@ -114,7 +115,7 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 	l := zap.L().With(zap.String("repo", r.repoConfig.Id), zap.String("plan", plan.Id))
 
 	l.Debug("Forget snapshots", zap.Any("policy", policy))
-	result, err := r.repo.Forget(ctx, protoutil.RetentionPolicyFromProto(plan.Retention))
+	result, err := r.repo.Forget(ctx, protoutil.RetentionPolicyFromProto(plan.Retention), restic.WithFlags("--tag", tagForPlan(plan), "--group-by", ""))
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
 	}
@@ -126,6 +127,20 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 	}
 
 	return forgotten, nil
+}
+
+func (r *RepoOrchestrator) Prune(ctx context.Context, output io.Writer) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	l := zap.L().With(zap.String("repo", r.repoConfig.Id))
+
+	l.Debug("Prune snapshots")
+	err := r.repo.Prune(ctx, output)
+	if err != nil {
+		return fmt.Errorf("prune snapshots for repo %v: %w", r.repoConfig.Id, err)
+	}
+	return nil
 }
 
 func tagForPlan(plan *v1.Plan) string {

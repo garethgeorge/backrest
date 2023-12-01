@@ -8,6 +8,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
+	"go.uber.org/zap"
 )
 
 // ForgetTask tracks a forget operation.
@@ -15,6 +16,7 @@ type ForgetTask struct {
 	name         string
 	orchestrator *Orchestrator // owning orchestrator
 	plan         *v1.Plan
+	linkSnapshot string // snapshot to link the task to.
 	op           *v1.Operation
 	at           *time.Time
 	cancel       atomic.Pointer[context.CancelFunc] // nil unless operation is running.
@@ -22,11 +24,12 @@ type ForgetTask struct {
 
 var _ Task = &ForgetTask{}
 
-func NewOneofForgetTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *ForgetTask {
+func NewOneofForgetTask(orchestrator *Orchestrator, plan *v1.Plan, linkSnapshot string, at time.Time) *ForgetTask {
 	return &ForgetTask{
 		orchestrator: orchestrator,
 		plan:         plan,
 		at:           &at,
+		linkSnapshot: linkSnapshot,
 	}
 }
 
@@ -41,6 +44,7 @@ func (t *ForgetTask) Next(now time.Time) *time.Time {
 		t.op = &v1.Operation{
 			PlanId:          t.plan.Id,
 			RepoId:          t.plan.Repo,
+			SnapshotId:      t.linkSnapshot,
 			UnixTimeStartMs: timeToUnixMillis(*ret),
 			Status:          v1.OperationStatus_STATUS_PENDING,
 			Op:              &v1.Operation_OperationForget{},
@@ -65,8 +69,10 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 	t.op.Op = forgetOp
 	t.op.UnixTimeStartMs = curTimeMillis()
 
+	var repo *RepoOrchestrator
 	if err := WithOperation(t.orchestrator.OpLog, t.op, func() error {
-		repo, err := t.orchestrator.GetRepo(t.plan.Repo)
+		var err error
+		repo, err = t.orchestrator.GetRepo(t.plan.Repo)
 		if err != nil {
 			return fmt.Errorf("get repo %q: %w", t.plan.Repo, err)
 		}
@@ -83,8 +89,9 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 		return err
 	}
 
-	if t.plan.Retention.Prune {
+	if repo.repoConfig.PrunePolicy != nil {
 		// TODO: schedule a prune task.
+		zap.S().Warn("repo specified a prune policy, automatic pruning is not yet implemented.")
 	}
 
 	return nil

@@ -129,9 +129,27 @@ export const toEop = (op: Operation): EOperation => {
   };
 };
 
+enum DisplayType {
+  BACKUP,
+  SNAPSHOT,
+  FORGET,
+  PRUNE,
+}
+
+const getTypeForDisplay = (op: Operation) => {
+  if (op.operationForget) {
+    return DisplayType.FORGET;
+  } else if (op.operationPrune) {
+    return DisplayType.PRUNE;
+  } else {
+    return DisplayType.BACKUP;
+  }
+};
+
 export interface BackupInfo {
   id: string; // id of the first operation that generated this backup.
   displayTime: Date;
+  displayType: DisplayType;
   startTimeMs: number;
   endTimeMs: number;
   status: OperationStatus;
@@ -157,6 +175,7 @@ export class BackupInfoCollector {
     existing.startTimeMs = Math.min(existing.startTimeMs, newInfo.startTimeMs);
     existing.endTimeMs = Math.max(existing.endTimeMs, newInfo.endTimeMs);
     existing.displayTime = new Date(existing.startTimeMs);
+    existing.displayType = DisplayType.SNAPSHOT;
     if (newInfo.startTimeMs >= existing.startTimeMs) {
       existing.status = newInfo.status; // use the latest status
     }
@@ -183,6 +202,7 @@ export class BackupInfoCollector {
       endTimeMs,
       status: op.status!,
       displayTime: new Date(startTimeMs),
+      displayType: getTypeForDisplay(op),
       repoId: op.repoId,
       planId: op.planId,
       snapshotId: op.snapshotId,
@@ -241,7 +261,16 @@ export class BackupInfoCollector {
   public getAll(): BackupInfo[] {
     const arr = [];
     arr.push(...Object.values(this.backupByOpId));
-    arr.push(...Object.values(this.backupBySnapshotId));
+    arr.push(
+      ...Object.values(this.backupBySnapshotId).filter((b) => {
+        for (const op of b.operations) {
+          if (op.operationIndexSnapshot && op.operationIndexSnapshot.forgot) {
+            return false;
+          }
+        }
+        return true;
+      })
+    );
     return arr;
   }
 

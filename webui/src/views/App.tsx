@@ -4,36 +4,15 @@ import {
   DatabaseOutlined,
   PlusOutlined,
   CheckCircleOutlined,
-  PaperClipOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Button, Layout, List, Menu, Modal, Spin, theme } from "antd";
+import { Layout, Menu, Spin, theme } from "antd";
 import { configState, fetchConfig } from "../state/config";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { Config, Plan } from "../../gen/ts/v1/config.pb";
+import { Config } from "../../gen/ts/v1/config.pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
-import { AddPlanModal } from "./AddPlanModel";
-import { AddRepoModel } from "./AddRepoModel";
 import { MainContentArea, useSetContent } from "./MainContentArea";
-import { PlanView } from "./PlanView";
-import {
-  EOperation,
-  buildOperationListListener,
-  getOperations,
-  subscribeToOperations,
-  toEop,
-  unsubscribeFromOperations,
-} from "../state/oplog";
-import { formatTime, normalizeSnapshotId } from "../lib/formatting";
-import { SnapshotBrowser } from "../components/SnapshotBrowser";
-import { OperationRow } from "../components/OperationList";
-import {
-  Operation,
-  OperationEvent,
-  OperationEventType,
-} from "../../gen/ts/v1/operations.pb";
-import { MessageInstance } from "antd/es/message/interface";
 
 const { Header, Content, Sider } = Layout;
 
@@ -111,7 +90,8 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
       key: "add-plan",
       icon: <PlusOutlined />,
       label: "Add Plan",
-      onClick: () => {
+      onClick: async () => {
+        const { AddPlanModal } = await import("./AddPlanModal");
         showModal(<AddPlanModal template={null} />);
       },
     },
@@ -120,7 +100,9 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         key: "p-" + plan.id,
         icon: <CheckCircleOutlined style={{ color: "green" }} />,
         label: plan.id,
-        onClick: () => {
+        onClick: async () => {
+          const { PlanView } = await import("./PlanView");
+
           setContent(<PlanView plan={plan} />, [
             { title: "Plans" },
             { title: plan.id || "" },
@@ -135,8 +117,10 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
       key: "add-repo",
       icon: <PlusOutlined />,
       label: "Add Repo",
-      onClick: () => {
-        showModal(<AddRepoModel template={null} />);
+      onClick: async () => {
+        const { AddRepoModal } = await import("./AddRepoModal");
+
+        showModal(<AddRepoModal template={null} />);
       },
     },
     ...configRepos.map((repo) => {
@@ -144,8 +128,10 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         key: "r-" + repo.id,
         icon: <CheckCircleOutlined style={{ color: "green" }} />,
         label: repo.id,
-        onClick: () => {
-          showModal(<AddRepoModel template={repo} />);
+        onClick: async () => {
+          const { AddRepoModal } = await import("./AddRepoModal");
+
+          showModal(<AddRepoModal template={repo} />);
         },
       };
     }),

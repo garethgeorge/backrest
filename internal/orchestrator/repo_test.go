@@ -35,7 +35,7 @@ func TestBackup(t *testing.T) {
 
 	summary, err := orchestrator.Backup(context.Background(), plan, nil)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("backup error: %v", err)
 	}
 
 	if summary.SnapshotId == "" {

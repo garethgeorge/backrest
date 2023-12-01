@@ -3,6 +3,15 @@
 /*
 * This file is a generated Typescript file for GRPC Gateway, DO NOT MODIFY
 */
+
+type Absent<T, K extends keyof T> = { [k in Exclude<keyof T, K>]?: undefined };
+type OneOf<T> =
+  | { [k in keyof T]?: undefined }
+  | (
+    keyof T extends infer K ?
+      (K extends string & keyof T ? { [k in K]: T[K] } & Absent<T, K>
+        : never)
+    : never);
 export type Config = {
   modno?: number
   host?: string
@@ -16,6 +25,7 @@ export type Repo = {
   password?: string
   env?: string[]
   flags?: string[]
+  prunePolicy?: PrunePolicy
 }
 
 export type Plan = {
@@ -36,5 +46,12 @@ export type RetentionPolicy = {
   keepMonthly?: number
   keepYearly?: number
   keepWithinDuration?: string
-  prune?: boolean
 }
+
+
+type BasePrunePolicy = {
+  maxFrequencyDays?: number
+}
+
+export type PrunePolicy = BasePrunePolicy
+  & OneOf<{ maxUnusedPercent: number; maxUnusedBytes: number }>
