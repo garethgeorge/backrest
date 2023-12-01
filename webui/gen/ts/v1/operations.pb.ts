@@ -61,6 +61,8 @@ export type OperationBackup = {
 
 export type OperationIndexSnapshot = {
   snapshot?: V1Restic.ResticSnapshot
+  forgot?: boolean
+  forgotByOp?: string
 }
 
 export type OperationForget = {

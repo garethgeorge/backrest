@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"net/http"
 	"os"
 	"os/signal"
 	"path"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -18,11 +18,10 @@ import (
 	"github.com/garethgeorge/resticui/internal/orchestrator"
 	"github.com/garethgeorge/resticui/internal/resticinstaller"
 	"github.com/mattn/go-colorable"
+	"go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
-
-var flagAutoInstallRestic = flag.Bool("auto-install-restic", true, "Automatically install restic if $RESTICUI_")
 
 func main() {
 	ctx := context.Background()
@@ -51,6 +50,9 @@ func main() {
 	oplogFile := path.Join(config.DataDir(), "oplog.boltdb")
 	oplog, err := oplog.NewOpLog(oplogFile)
 	if err != nil {
+		if !errors.Is(err, bbolt.ErrTimeout) {
+			zap.S().Fatalf("Timeout while waiting to open database, is the database open elsewhere?")
+		}
 		zap.S().Warnf("Operation log may be corrupted, if errors recur delete the file %q and restart. Your backups stored in your repos are safe.", oplogFile)
 		zap.S().Fatalf("Error creating oplog : %v", err)
 	}
@@ -95,7 +97,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		zap.S().Infof("HTTP binding to address %v", server.Addr)
+		zap.S().Infof("Starting web server %v", server.Addr)
 		go func() {
 			<-ctx.Done()
 			server.Shutdown(context.Background())
@@ -112,7 +114,7 @@ func main() {
 
 func init() {
 	zap.ReplaceGlobals(zap.Must(zap.NewProduction()))
-	if os.Getenv("DEBUG") != "" {
+	if !strings.HasPrefix(os.Getenv("ENV"), "prod") {
 		c := zap.NewDevelopmentEncoderConfig()
 		c.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		c.EncodeTime = zapcore.ISO8601TimeEncoder

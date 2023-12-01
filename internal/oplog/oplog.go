@@ -27,9 +27,7 @@ const (
 	EventTypeOpUpdated = EventType(iota)
 )
 
-const (
-	schemaVersion int64 = 1
-)
+var ErrNotExist = errors.New("operation does not exist")
 
 var (
 	SystemBucket        = []byte("oplog.system")       // system stores metadata
@@ -37,7 +35,6 @@ var (
 	RepoIndexBucket     = []byte("oplog.repo_idx")     // repo_index tracks IDs of operations affecting a given repo
 	PlanIndexBucket     = []byte("oplog.plan_idx")     // plan_index tracks IDs of operations affecting a given plan
 	SnapshotIndexBucket = []byte("oplog.snapshot_idx") // snapshot_index tracks IDs of operations affecting a given snapshot
-	indexBuckets        = [][]byte{RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket}
 )
 
 // OpLog represents a log of operations performed.
@@ -194,7 +191,7 @@ func (o *OpLog) notifyHelper(eventType EventType, op *v1.Operation) {
 func (o *OpLog) getOperationHelper(b *bolt.Bucket, id int64) (*v1.Operation, error) {
 	bytes := b.Get(serializationutil.Itob(id))
 	if bytes == nil {
-		return nil, fmt.Errorf("operation with ID %d does not exist", id)
+		return nil, ErrNotExist
 	}
 
 	var op v1.Operation
@@ -304,57 +301,45 @@ func (o *OpLog) Get(id int64) (*v1.Operation, error) {
 	return op, nil
 }
 
-func (o *OpLog) GetByRepo(repoId string, collector indexutil.Collector) ([]*v1.Operation, error) {
-	var err error
-	var ops []*v1.Operation
-	o.db.View(func(tx *bolt.Tx) error {
+func (o *OpLog) ForEachByRepo(repoId string, collector indexutil.Collector, do func(op *v1.Operation) error) error {
+	return o.db.View(func(tx *bolt.Tx) error {
 		ids := collector(indexutil.IndexSearchByteValue(tx.Bucket(RepoIndexBucket), []byte(repoId)))
-		ops, err = o.getOpsByIds(tx, ids)
-		return nil
+		return o.forOpsByIds(tx, ids, do)
 	})
-	return ops, err
 }
 
-func (o *OpLog) GetByPlan(planId string, collector indexutil.Collector) ([]*v1.Operation, error) {
-	var err error
-	var ops []*v1.Operation
-	o.db.View(func(tx *bolt.Tx) error {
+func (o *OpLog) ForEachByPlan(planId string, collector indexutil.Collector, do func(op *v1.Operation) error) error {
+	return o.db.View(func(tx *bolt.Tx) error {
 		ids := collector(indexutil.IndexSearchByteValue(tx.Bucket(PlanIndexBucket), []byte(planId)))
-		ops, err = o.getOpsByIds(tx, ids)
-		return nil
+		return o.forOpsByIds(tx, ids, do)
 	})
-	return ops, err
 }
 
-func (o *OpLog) GetBySnapshotId(snapshotId string, collector indexutil.Collector) ([]*v1.Operation, error) {
+func (o *OpLog) ForEachBySnapshotId(snapshotId string, collector indexutil.Collector, do func(op *v1.Operation) error) error {
 	if err := restic.ValidateSnapshotId(snapshotId); err != nil {
-		return nil, err
-	}
-	var err error
-	var ops []*v1.Operation
-	o.db.View(func(tx *bolt.Tx) error {
-		ids := collector(indexutil.IndexSearchByteValue(tx.Bucket(SnapshotIndexBucket), []byte(snapshotId)))
-		ops, err = o.getOpsByIds(tx, ids)
 		return nil
+	}
+	return o.db.View(func(tx *bolt.Tx) error {
+		ids := collector(indexutil.IndexSearchByteValue(tx.Bucket(SnapshotIndexBucket), []byte(snapshotId)))
+		return o.forOpsByIds(tx, ids, do)
 	})
-	return ops, err
 }
 
-func (o *OpLog) getOpsByIds(tx *bolt.Tx, ids []int64) ([]*v1.Operation, error) {
+func (o *OpLog) forOpsByIds(tx *bolt.Tx, ids []int64, do func(*v1.Operation) error) error {
 	b := tx.Bucket(OpLogBucket)
-	ops := make([]*v1.Operation, 0, len(ids))
 	for _, id := range ids {
 		op, err := o.getOperationHelper(b, id)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		ops = append(ops, op)
+		if err := do(op); err != nil {
+			return err
+		}
 	}
-	return ops, nil
+	return nil
 }
 
-func (o *OpLog) GetAll() ([]*v1.Operation, error) {
-	var ops []*v1.Operation
+func (o *OpLog) ForAll(do func(op *v1.Operation) error) error {
 	if err := o.db.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(OpLogBucket).Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
@@ -362,13 +347,15 @@ func (o *OpLog) GetAll() ([]*v1.Operation, error) {
 			if err := proto.Unmarshal(v, op); err != nil {
 				return fmt.Errorf("error unmarshalling operation: %w", err)
 			}
-			ops = append(ops, op)
+			if err := do(op); err != nil {
+				return err
+			}
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil
 	}
-	return ops, nil
+	return nil
 }
 
 func (o *OpLog) Subscribe(callback *func(EventType, *v1.Operation)) {

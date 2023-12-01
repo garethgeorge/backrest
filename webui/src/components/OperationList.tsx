@@ -37,6 +37,7 @@ export const OperationList = ({
   req,
 }: React.PropsWithoutRef<{ req: GetOperationsRequest }>) => {
   const [operations, setOperations] = useState<EOperation[]>([]);
+  console.log("operation list with req: ", req);
 
   useEffect(() => {
     const lis = buildOperationListListener(req, (event, operation, opList) => {

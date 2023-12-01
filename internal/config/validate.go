@@ -37,7 +37,7 @@ func ValidateConfig(c *v1.Config) error {
 				err = multierror.Append(err, fmt.Errorf("plan %s: %w", plan.GetId(), e))
 			}
 		}
-	} 
+	}
 
 	return err
 }
@@ -78,14 +78,13 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 	}
 
 	if plan.Repo == "" {
-		err = multierror.Append(err,fmt.Errorf("repo is required"))
+		err = multierror.Append(err, fmt.Errorf("repo is required"))
 	}
 
 	if _, ok := repos[plan.Repo]; !ok {
 		err = multierror.Append(err, fmt.Errorf("repo %q not found", plan.Repo))
 	}
 
-	
 	if _, e := cronexpr.Parse(plan.Cron); e != nil {
 		err = multierror.Append(err, fmt.Errorf("invalid cron %q: %w", plan.Cron, e))
 	}

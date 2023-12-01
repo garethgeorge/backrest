@@ -2,11 +2,9 @@ import React, { useEffect, useState } from "react";
 import {
   BackupInfo,
   BackupInfoCollector,
-  EOperation,
   getOperations,
   shouldHideStatus,
   subscribeToOperations,
-  toEop,
   unsubscribeFromOperations,
 } from "../state/oplog";
 import { Col, Divider, Empty, Row, Tree } from "antd";
@@ -36,7 +34,6 @@ type OpTreeNode = DataNode & {
 export const OperationTree = ({
   req,
 }: React.PropsWithoutRef<{ req: GetOperationsRequest }>) => {
-  console.log("Loading operation tree with req: ", req);
   const alertApi = useAlertApi();
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [selectedBackupId, setSelectedBackupId] = useState<string | null>(null);
@@ -132,8 +129,14 @@ export const OperationTree = ({
               const b = node.backup;
               const details: string[] = [];
 
+              if (b.operations.length === 1) {
+                if (b.operations[0].operationForget) {
+                  return <>Forget {formatTime(b.displayTime)}</>;
+                }
+              }
+
               if (b.status === OperationStatus.STATUS_PENDING) {
-                details.push("pending");
+                details.push("scheduled, waiting");
               } else if (b.status === OperationStatus.STATUS_SYSTEM_CANCELLED) {
                 details.push("system cancel");
               } else if (b.status === OperationStatus.STATUS_USER_CANCELLED) {

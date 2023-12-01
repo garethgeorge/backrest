@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Plan } from "../../gen/ts/v1/config.pb";
-import { Button, Flex, Tabs } from "antd";
+import { Button, Flex, Tabs, Tooltip } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
-import { AddPlanModal } from "./AddPlanModel";
+import { AddPlanModal } from "./AddPlanModal";
 import { useShowModal } from "../components/ModalManager";
 import { useRecoilValue } from "recoil";
 import { configState } from "../state/config";
@@ -43,6 +43,10 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
     alertsApi.warning("Not implemented yet :(");
   };
 
+  const handleUnlockNow = () => {
+    alertsApi.warning("Not implemented yet :(");
+  };
+
   return (
     <>
       <Flex gap="small" align="center" wrap="wrap">
@@ -61,9 +65,16 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         <Button type="primary" onClick={handleBackupNow}>
           Backup Now
         </Button>
-        <Button type="primary" onClick={handlePruneNow}>
-          Prune Now
-        </Button>
+        <Tooltip title="Runs a prune operation on the repository that will remove old snapshots and free up space">
+          <Button type="default" onClick={handlePruneNow}>
+            Prune Now
+          </Button>
+        </Tooltip>
+        <Tooltip title="Removes lockfiles and checks the repository for errors. Only run if you are sure the repo is not being accessed by another system">
+          <Button type="default" onClick={handleUnlockNow}>
+            Run Repo Doctor
+          </Button>
+        </Tooltip>
       </Flex>
       <Tabs
         defaultActiveKey="1"
