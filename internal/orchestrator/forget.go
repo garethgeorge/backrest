@@ -80,19 +80,26 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 
 		forgetOp.OperationForget.Forget = append(forgetOp.OperationForget.Forget, forgot...)
 
+		var ops []*v1.Operation
 		for _, forgot := range forgot {
 			if e := t.orchestrator.OpLog.ForEachBySnapshotId(forgot.Id, indexutil.CollectAll(), func(op *v1.Operation) error {
-				if indexOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
-					indexOp.OperationIndexSnapshot.Forgot = true
-					if err := t.orchestrator.OpLog.Update(op); err != nil {
-						return fmt.Errorf("mark index snapshot %v as forgotten: %w", op.Id, err)
-					}
-				}
-
-				// Soft delete the operation (can be recovered if necessary, todo: implement recovery).
-				return t.orchestrator.OpLog.Delete(op.Id)
+				ops = append(ops, op)
+				return nil
 			}); e != nil {
 				err = multierror.Append(err, fmt.Errorf("cleanup snapshot %v: %w", forgot.Id, e))
+			}
+		}
+		for _, op := range ops {
+			if indexOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
+				indexOp.OperationIndexSnapshot.Forgot = true
+				if e := t.orchestrator.OpLog.Update(op); err != nil {
+					err = multierror.Append(err, fmt.Errorf("mark index snapshot %v as forgotten: %w", op.Id, e))
+					continue
+				}
+			}
+			// Soft delete the operation (can be recovered if necessary, todo: implement recovery).
+			if e := t.orchestrator.OpLog.Delete(op.Id); err != nil {
+				err = multierror.Append(err, fmt.Errorf("delete operation %v: %w", op.Id, e))
 			}
 		}
 
