@@ -68,14 +68,13 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 	defer o.mu.Unlock()
 	o.config = cfg
 
-	zap.L().Info("Applying config to orchestrator")
-
 	// Update the config provided to the repo pool.
 	if err := o.repoPool.configProvider.Update(cfg); err != nil {
 		return fmt.Errorf("failed to update repo pool config: %w", err)
 	}
 
 	// reset queued tasks, this may loose any ephemeral operations scheduled by RPC. Tasks in progress aren't returned by Reset() so they will not be cancelled.
+	zap.L().Info("Applying config to orchestrator, waiting for task queue reset.")
 	removedTasks := o.taskQueue.Reset()
 	for _, t := range removedTasks {
 		if err := t.task.Cancel(v1.OperationStatus_STATUS_SYSTEM_CANCELLED); err != nil {
@@ -84,6 +83,7 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 			zap.L().Debug("queued task cancelled due to config change", zap.String("task", t.task.Name()))
 		}
 	}
+	zap.L().Info("Applied config to orchestrator, task queue reset. Rescheduling planned tasks now.")
 
 	// Requeue tasks that are affected by the config change.
 	for _, plan := range cfg.Plans {

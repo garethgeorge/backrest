@@ -78,9 +78,10 @@ export const OperationTree = ({
 
   if (backups.length === 0) {
     return (
-      <div>
-        <QuestionOutlined /> No operations yet.
-      </div>
+      <Empty
+        description="No backups yet."
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+      ></Empty>
     );
   }
 
@@ -92,13 +93,10 @@ export const OperationTree = ({
     if (!backup) {
       oplist = <Empty description="Backup not found." />;
     } else {
-      const req: GetOperationsRequest = {
-        ids: backup.operations.map((op) => op.id!),
-      };
       oplist = (
         <>
           <h3>Backup at {formatTime(backup.displayTime)}</h3>
-          <OperationList req={req} />
+          <OperationList key={backup.id} useBackups={[backup]} />
         </>
       );
     }

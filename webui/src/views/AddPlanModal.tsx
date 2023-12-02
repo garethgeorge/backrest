@@ -478,9 +478,9 @@ const RetentionPolicyView = ({ policy }: { policy?: RetentionPolicy }) => {
           }}
         >
           <Radio.Button value={PolicyType.TimeBased}>
-            Keep Duration
+            By Time Period
           </Radio.Button>
-          <Radio.Button value={PolicyType.CountBased}>Keep Last N</Radio.Button>
+          <Radio.Button value={PolicyType.CountBased}>By Count</Radio.Button>
         </Radio.Group>
       </Form.Item>
       {elem}
