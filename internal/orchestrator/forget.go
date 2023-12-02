@@ -82,6 +82,14 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 
 		for _, forgot := range forgot {
 			if e := t.orchestrator.OpLog.ForEachBySnapshotId(forgot.Id, indexutil.CollectAll(), func(op *v1.Operation) error {
+				if indexOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
+					indexOp.OperationIndexSnapshot.Forgot = true
+					if err := t.orchestrator.OpLog.Update(op); err != nil {
+						return fmt.Errorf("mark index snapshot %v as forgotten: %w", op.Id, err)
+					}
+				}
+
+				// Soft delete the operation (can be recovered if necessary, todo: implement recovery).
 				return t.orchestrator.OpLog.Delete(op.Id)
 			}); e != nil {
 				err = multierror.Append(err, fmt.Errorf("cleanup snapshot %v: %w", forgot.Id, e))
