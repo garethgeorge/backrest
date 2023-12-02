@@ -65,58 +65,6 @@ export const unsubscribeFromOperations = (
   }
 };
 
-export const buildOperationListListener = (
-  req: GetOperationsRequest,
-  callback: (
-    event: OperationEventType | null,
-    operation: EOperation | null,
-    list: EOperation[]
-  ) => void
-) => {
-  let operations: EOperation[] = [];
-
-  (async () => {
-    const opsFromServer = await getOperations(req);
-    operations.push(...opsFromServer);
-    operations = _.uniqBy(opsFromServer, (o) => o.id!);
-    operations.sort((a, b) => {
-      return a.parsedTime! - b.parsedTime!;
-    });
-    callback(null, null, operations);
-  })();
-
-  return (event: OperationEvent) => {
-    const op = toEop(event.operation!);
-    const type = event.type!;
-    if (!!req.planId && op.planId !== req.planId) {
-      return;
-    }
-    if (!!req.repoId && op.repoId !== req.repoId) {
-      return;
-    }
-    if (req.snapshotId && op.snapshotId !== req.snapshotId) {
-      return;
-    }
-    if (req.ids && !req.ids.includes(op.id!)) {
-      return;
-    }
-    if (type === OperationEventType.EVENT_UPDATED) {
-      const index = operations.findIndex((o) => o.id === op.id);
-      if (index > -1) {
-        operations[index] = op;
-      } else {
-        operations.push(op);
-        operations.sort((a, b) => {
-          return a.parsedTime! - b.parsedTime!;
-        });
-      }
-    } else if (type === OperationEventType.EVENT_CREATED) {
-      operations.push(op);
-    }
-    callback(event.type || null, op, operations);
-  };
-};
-
 export const toEop = (op: Operation): EOperation => {
   const time = parseInt(op.unixTimeStartMs!);
   const date = new Date();
