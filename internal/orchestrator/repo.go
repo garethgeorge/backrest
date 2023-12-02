@@ -115,15 +115,21 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 	l := zap.L().With(zap.String("repo", r.repoConfig.Id), zap.String("plan", plan.Id))
 
 	l.Debug("Forget snapshots", zap.Any("policy", policy))
-	result, err := r.repo.Forget(ctx, protoutil.RetentionPolicyFromProto(plan.Retention), restic.WithFlags("--tag", tagForPlan(plan), "--group-by", ""))
+	result, err := r.repo.Forget(
+		ctx, protoutil.RetentionPolicyFromProto(plan.Retention),
+		restic.WithFlags("--tag", tagForPlan(plan)), restic.WithFlags("--group-by", "tag"))
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
 	}
-	l.Debug("Forget result", zap.Int("forgot", len(result.Remove)), zap.Int("keep", len(result.Keep)))
+	l.Debug("Forget result", zap.Any("result", result))
 
 	var forgotten []*v1.ResticSnapshot
 	for _, snapshot := range result.Remove {
-		forgotten = append(forgotten, protoutil.SnapshotToProto(&snapshot))
+		snapshotProto := protoutil.SnapshotToProto(&snapshot)
+		if err := protoutil.ValidateSnapshot(snapshotProto); err != nil {
+			return nil, fmt.Errorf("snapshot validation failed: %w", err)
+		}
+		forgotten = append(forgotten, snapshotProto)
 	}
 
 	return forgotten, nil

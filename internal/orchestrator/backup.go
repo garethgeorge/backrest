@@ -148,11 +148,11 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 		return fmt.Errorf("backup operation: %w", err)
 	}
 
+	at := time.Now()
 	if plan.Retention != nil {
-		orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, op.SnapshotId, time.Now()), taskPriorityForget)
+		orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, op.SnapshotId, at), taskPriorityForget)
 	}
-
-	orchestrator.ScheduleTask(NewOneofIndexSnapshotsTask(orchestrator, plan, time.Now()), taskPriorityIndexSnapshots)
+	orchestrator.ScheduleTask(NewOneofIndexSnapshotsTask(orchestrator, plan, at), taskPriorityIndexSnapshots)
 
 	return nil
 }

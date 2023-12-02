@@ -48,7 +48,7 @@ export const formatDate = (time: number | string | Date) => {
 };
 
 export const formatDuration = (ms: number) => {
-  const seconds = Math.ceil(ms / 100);
+  const seconds = Math.ceil(ms / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   if (hours === 0 && minutes === 0) {

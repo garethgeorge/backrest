@@ -214,16 +214,6 @@ func (r *Repo) Forget(ctx context.Context, policy *RetentionPolicy, opts ...Gene
 		return nil, NewCmdError(cmd, output, fmt.Errorf("invalid forget result: %w", err))
 	}
 
-	// then run the prune command
-	args = []string{"prune", "--json"}
-	args = append(args, r.extraArgs...)
-	args = append(args, opt.extraArgs...)
-	args = append(args, policy.toPruneFlags()...)
-
-	cmd = exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.buildEnv()...)
-	cmd.Env = append(cmd.Env, opt.extraEnv...)
-
 	return &result[0], nil
 }
 
