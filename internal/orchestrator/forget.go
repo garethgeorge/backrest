@@ -79,6 +79,7 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 		}
 
 		forgetOp.OperationForget.Forget = append(forgetOp.OperationForget.Forget, forgot...)
+		forgetOp.OperationForget.Policy = t.plan.Retention
 
 		var ops []*v1.Operation
 		for _, forgot := range forgot {

@@ -19,6 +19,7 @@ import {
   ExclamationCircleOutlined,
   PaperClipOutlined,
   SaveOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
 import {
@@ -231,6 +232,70 @@ export const OperationRow = ({
               snapshot={snapshotOp.snapshot!}
               repoId={operation.repoId!}
             />
+          }
+        />
+      </List.Item>
+    );
+  } else if (operation.operationForget) {
+    const forgetOp = operation.operationForget;
+    if (forgetOp.forget?.length === 0) {
+      return null;
+    }
+
+    const policy = forgetOp.policy! || {};
+    const policyDesc = [];
+    if (policy.keepLastN) {
+      policyDesc.push(`Keep Last ${policy.keepLastN} Snapshots`);
+    }
+    if (policy.keepHourly) {
+      policyDesc.push(`Keep Hourly for ${policy.keepHourly} Hours`);
+    }
+    if (policy.keepDaily) {
+      policyDesc.push(`Keep Daily for ${policy.keepDaily} Days`);
+    }
+    if (policy.keepWeekly) {
+      policyDesc.push(`Keep Weekly for ${policy.keepWeekly} Weeks`);
+    }
+    if (policy.keepMonthly) {
+      policyDesc.push(`Keep Monthly for ${policy.keepMonthly} Months`);
+    }
+    if (policy.keepYearly) {
+      policyDesc.push(`Keep Yearly for ${policy.keepYearly} Years`);
+    }
+
+    return (
+      <List.Item>
+        <List.Item.Meta
+          title={
+            <>{formatTime(operation.unixTimeStartMs!)} - Forget Operation</>
+          }
+          avatar={<DeleteOutlined style={{ color }} />}
+          description={
+            <>
+              <p></p>
+              <Collapse
+                size="small"
+                destroyInactivePanel
+                items={[
+                  {
+                    key: 1,
+                    label:
+                      "Removed " +
+                      forgetOp.forget?.length +
+                      " Snapshots (Policy Details)",
+                    children: (
+                      <div>
+                        <ul>
+                          {policyDesc.map((desc) => (
+                            <li>{desc}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            </>
           }
         />
       </List.Item>
