@@ -339,7 +339,7 @@ export const AddPlanModal = ({
           </Tooltip>
 
           {/* Plan.retention */}
-          <RetentionPolicyView />
+          <RetentionPolicyView policy={template?.retention} />
 
           <Form.Item shouldUpdate label="Preview">
             {() => (
@@ -354,11 +354,13 @@ export const AddPlanModal = ({
   );
 };
 
-const RetentionPolicyView = (policy: RetentionPolicy) => {
+const RetentionPolicyView = ({ policy }: { policy?: RetentionPolicy }) => {
   enum PolicyType {
     TimeBased,
     CountBased,
   }
+
+  policy = policy || {};
 
   const [policyType, setPolicyType] = useState<PolicyType>(
     policy.keepLastN ? PolicyType.CountBased : PolicyType.TimeBased

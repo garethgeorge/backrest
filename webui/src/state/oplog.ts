@@ -180,7 +180,7 @@ export class BackupInfoCollector {
       existing.status = newInfo.status; // use the latest status
     }
     existing.operations = _.uniqBy(
-      [...existing.operations, ...newInfo.operations],
+      [...newInfo.operations, ...existing.operations],
       (o) => o.id!
     );
     if (newInfo.backupLastStatus) {

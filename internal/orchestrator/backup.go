@@ -97,12 +97,6 @@ func (t *BackupTask) Cancel(status v1.OperationStatus) error {
 	if t.op == nil {
 		return nil
 	}
-
-	cancel := t.cancel.Load()
-	if cancel != nil && status == v1.OperationStatus_STATUS_USER_CANCELLED {
-		(*cancel)() // try to interrupt the running operation.
-	}
-
 	t.op.Status = status
 	t.op.UnixTimeEndMs = curTimeMillis()
 	return t.orchestrator.OpLog.Update(t.op)
@@ -154,14 +148,11 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 		return fmt.Errorf("backup operation: %w", err)
 	}
 
-	// this could alternatively be scheduled as a separate task, but it probably makes sense to index snapshots immediately after a backup.
-	if err := indexSnapshotsHelper(ctx, orchestrator, plan); err != nil {
-		return fmt.Errorf("reindexing snapshots after backup operation: %w", err)
+	if plan.Retention != nil {
+		orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, op.SnapshotId, time.Now()), taskPriorityForget)
 	}
 
-	if plan.Retention != nil {
-		orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, op.SnapshotId, time.Now()))
-	}
+	orchestrator.ScheduleTask(NewOneofIndexSnapshotsTask(orchestrator, plan, time.Now()), taskPriorityIndexSnapshots)
 
 	return nil
 }

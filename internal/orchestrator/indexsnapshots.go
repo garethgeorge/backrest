@@ -12,6 +12,43 @@ import (
 	"go.uber.org/zap"
 )
 
+// ForgetTask tracks a forget operation.
+type IndexSnapshotsTask struct {
+	orchestrator *Orchestrator // owning orchestrator
+	plan         *v1.Plan
+	at           *time.Time
+}
+
+var _ Task = &ForgetTask{}
+
+func NewOneofIndexSnapshotsTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *IndexSnapshotsTask {
+	return &IndexSnapshotsTask{
+		orchestrator: orchestrator,
+		plan:         plan,
+		at:           &at,
+	}
+}
+
+func (t *IndexSnapshotsTask) Name() string {
+	return fmt.Sprintf("index snapshots for plan %q", t.plan.Id)
+}
+
+func (t *IndexSnapshotsTask) Next(now time.Time) *time.Time {
+	ret := t.at
+	if ret != nil {
+		t.at = nil
+	}
+	return ret
+}
+
+func (t *IndexSnapshotsTask) Run(ctx context.Context) error {
+	return indexSnapshotsHelper(ctx, t.orchestrator, t.plan)
+}
+
+func (t *IndexSnapshotsTask) Cancel(withStatus v1.OperationStatus) error {
+	return nil
+}
+
 // indexSnapshotsHelper indexes all snapshots for a plan.
 //   - If the snapshot is already indexed, it is skipped.
 //   - If the snapshot is not indexed, an index snapshot operation with it's metadata is added.
