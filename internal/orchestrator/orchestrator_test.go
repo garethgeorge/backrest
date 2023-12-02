@@ -64,7 +64,7 @@ func TestTaskScheduling(t *testing.T) {
 	}()
 
 	// Act
-	orch.ScheduleTask(task)
+	orch.ScheduleTask(task, TaskPriorityDefault)
 
 	// Assert passes if all tasks run and the orchestrator exists when cancelled.
 	wg.Wait()
@@ -109,7 +109,7 @@ func TestTaskRescheduling(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, TaskPriorityDefault)
 
 	wg.Wait()
 
@@ -164,7 +164,7 @@ func TestSchedulerWait(t *testing.T) {
 			close(ran)
 			return nil
 		},
-	})
+	}, TaskPriorityDefault)
 
 	// Act
 	go orch.Run(context.Background())
@@ -188,7 +188,7 @@ func TestSchedulerWait(t *testing.T) {
 			t.Fatalf("should never run")
 			return nil
 		},
-	})
+	}, TaskPriorityDefault)
 
 	select {
 	case <-time.NewTimer(1000 * time.Millisecond).C:

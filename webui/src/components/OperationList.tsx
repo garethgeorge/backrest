@@ -41,6 +41,7 @@ export const OperationList = ({
 
   useEffect(() => {
     const lis = buildOperationListListener(req, (event, operation, opList) => {
+      console.log("got list: ", JSON.stringify(opList, null, 2));
       setOperations(opList);
     });
     subscribeToOperations(lis);

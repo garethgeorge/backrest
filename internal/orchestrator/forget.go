@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
@@ -21,7 +20,6 @@ type ForgetTask struct {
 	linkSnapshot string // snapshot to link the task to.
 	op           *v1.Operation
 	at           *time.Time
-	cancel       atomic.Pointer[context.CancelFunc] // nil unless operation is running.
 }
 
 var _ Task = &ForgetTask{}
@@ -56,10 +54,6 @@ func (t *ForgetTask) Next(now time.Time) *time.Time {
 }
 
 func (t *ForgetTask) Run(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(ctx)
-	t.cancel.Store(&cancel)
-	defer t.cancel.Store(nil)
-
 	if t.plan.Retention == nil {
 		return errors.New("plan does not have a retention policy")
 	}
@@ -111,12 +105,6 @@ func (t *ForgetTask) Cancel(status v1.OperationStatus) error {
 	if t.op == nil {
 		return nil
 	}
-
-	cancel := t.cancel.Load()
-	if cancel != nil && status == v1.OperationStatus_STATUS_USER_CANCELLED {
-		(*cancel)() // try to interrupt the running operation.
-	}
-
 	t.op.Status = status
 	t.op.UnixTimeEndMs = curTimeMillis()
 	return t.orchestrator.OpLog.Update(t.op)
