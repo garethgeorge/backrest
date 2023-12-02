@@ -183,12 +183,12 @@ func (o *OpLog) Update(op *v1.Operation) error {
 
 func (o *OpLog) Delete(id int64) error {
 	err := o.db.Update(func(tx *bolt.Tx) error {
-		val := tx.Bucket(OpLogBucket).Get(serializationutil.Itob(op.Id))
+		val := tx.Bucket(OpLogBucket).Get(serializationutil.Itob(id))
 		if val == nil {
 			return ErrNotExist
 		}
 		if err := o.deleteOperationHelper(tx, id); err != nil {
-			return fmt.Errorf("deleting operation %v: %w", op.Id, err)
+			return fmt.Errorf("deleting operation %v: %w", id, err)
 		}
 
 		b := tx.Bucket(OpLogSoftDeleteBucket)

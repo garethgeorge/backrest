@@ -30,7 +30,11 @@ jobs:
         run: ./scripts/install-deps.sh
 
       - name: Build
-        run: ./scripts/build.sh
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          distribution: goreleaser
+          version: latest
+          args: build --snapshot --clean
 
       - name: Test
         run: PATH=$(pwd):$PATH go test ./...
