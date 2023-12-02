@@ -147,7 +147,7 @@ export const OperationRow = ({
           parseInt(operation.unixTimeStartMs!)
       )}`;
     } else if (operation.status === OperationStatus.STATUS_INPROGRESS) {
-      desc += " and is still running.";
+      desc += " is still running.";
     }
 
     return (
