@@ -4,26 +4,13 @@
 
 ResticUI is a WebUI wrapper for [restic](https://restic.net/). It is intended to be used as a self-hosted application for managing backups of your data.
 
-The goals of the project are:
+The goals of this project are:
 
- * Single binary deployment: the UI and backend are bundled into a single binary that can be deployed with no dependencies (other than restic!).
- * Light weight: the binary weighs in at ~25 MB as of writing and the goal is to keep it in this territory. 
- * Easy to pull back the curtain: the UI is intended to be a wrapper around restic, but does not preclude using restic commands directly. It's easy to list snapshots directly using restic as a CLI to understand what's being stored.
- * Performant
-   * Low background memory use
-   * Snapy UI performant leveraging [bbolt](https://github.com/etcd-io/bbolt) as a state store and cache.
-
-Feature Support
-
- * [x] Configure multiple restic repositories
- * [x] Configure multiple backup plans for each repository
- * [x] Execute scheduled backup operations e.g. on a cron schedule
-* [x] Execute manually triggered backup operations
-* [x] Browse backup operation history
-* [x] Browse snapshot history
-* [x] Browse files in a snapshot
-* [ ] Restore files from a snapshot (use restic UI to identify a snapshot to restore, use restic cli to restore it today)
-* [ ] Prune snapshots after backup operations (recommend periodically running `restic prune` on the CLI until this feature is supported)
+ * Full featured web UI for restic: supports all basic operations (e.g. backup, restore, browse snapshots, prune old data, etc).
+ * Interactive: UI is fast and responds to operation progress in real time (e.g. backups show live progress bars).
+ * Safe: all backups leverage simple [restic](https://restic.net/) features and have test coverage. 
+ * Easy to pull back the curtain: all common operations should be possible from the UI, but it should be easy to drop down to the command line and use restic directly if needed.
+ * Lightweight: your backup orchestration should blend into the background. The web UI binary is fully self contained as a single executable and the binary is <20 MB with very light memory overhead at runtime.
 
 # Getting Started 
 
@@ -31,14 +18,16 @@ Feature Support
 
 Installation options
 
- * Download a release from the [releases page](https://github.com/garethgeorge/resticui/releases), extract and run the binary (you may need to mark it executable e.g. `chmod +x resticui`).
+ * Download and run a release from the [releases page](https://github.com/garethgeorge/resticui/releases).
  * Build from source ([see below](#building)).
+ * Run with docker: `garethgeorge/resticweb:latest` ([see on dockerhub](https://hub.docker.com/repository/docker/garethgeorge/resticweb/))
 
 ResticUI is accessible from a web browser. By default it binds to `0.0.0.0:9898` and can be accessed at `http://localhost:9898`. 
 
+
 # Configuration
 
-**Environment Variables**
+## Environment Variables
 
  * `RESTICUI_PORT` - the port to bind to. Defaults to 9898.
  * `RESTICUI_CONFIG_PATH` - the path to the config file. Defaults to `$HOME/.config/resticui/config.json` or if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/resticui/config.json`.
@@ -46,16 +35,64 @@ ResticUI is accessible from a web browser. By default it binds to `0.0.0.0:9898`
  * `RESTICUI_RESTIC_BIN_PATH` - the path to the restic binary. Defaults managed version of restic which will be downloaded and installed in the data directory.
  * `XDG_CACHE_HOME` -- the path to the cache directory. This is propagated to restic. 
 
-## Screenshots
 
-Configuring a backup plan:
-![Configure Backup Plan](./screenshots/screenshot-add-plan.png)
+## Configuring ResticWeb at startup
 
-Running backup operation:
-![Backup Running](./screenshots/screenshot-backup-running.png)
+ResticWeb is shipped today as a standalone executable, in future releases we'll provide system service installation for common operating systems.
 
-Browsing snapshots:
-![Browse Backup](./screenshots/screenshot-browse.png)
+### Linux
+
+<details>
+
+#### Cron (Basic)
+
+Move the resticweb binary to `/usr/local/bin`:
+
+```sh
+sudo mv resticui /usr/local/bin/resticui
+```
+
+Add the following line to your crontab (e.g. `crontab -e`):
+
+```sh
+@reboot /usr/local/bin/resticui
+```
+
+#### Systemd (Recommended)
+
+Move the resticweb binary to `/usr/local/bin`:
+
+```sh
+sudo mv resticui /usr/local/bin/resticui
+```
+
+Create a systemd service file at `/etc/systemd/system/resticweb.service` with the following contents:
+
+```ini
+[Unit]
+Description=ResticWeb
+After=network.target
+
+[Service]
+Type=simple
+User=<your linux user>
+Group=<your linux group>
+ExecStart=/usr/local/bin/resticweb
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then run the following commands to enable and start the service:
+
+```sh
+sudo systemctl enable resticweb
+sudo systemctl start resticweb
+```
+
+Note: you can set the linux user and group to your primary user (e.g. `whoami` when logged in).
+
+</details>
 
 # Developer Setup
 
