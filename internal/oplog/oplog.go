@@ -30,11 +30,12 @@ const (
 var ErrNotExist = errors.New("operation does not exist")
 
 var (
-	SystemBucket        = []byte("oplog.system")       // system stores metadata
-	OpLogBucket         = []byte("oplog.log")          // oplog stores the operations themselves
-	RepoIndexBucket     = []byte("oplog.repo_idx")     // repo_index tracks IDs of operations affecting a given repo
-	PlanIndexBucket     = []byte("oplog.plan_idx")     // plan_index tracks IDs of operations affecting a given plan
-	SnapshotIndexBucket = []byte("oplog.snapshot_idx") // snapshot_index tracks IDs of operations affecting a given snapshot
+	SystemBucket          = []byte("oplog.system")          // system stores metadata
+	OpLogBucket           = []byte("oplog.log")             // oplog stores existant operations.
+	OpLogSoftDeleteBucket = []byte("oplog.log_soft_delete") // oplog_soft_delete stores soft deleted operations
+	RepoIndexBucket       = []byte("oplog.repo_idx")        // repo_index tracks IDs of operations affecting a given repo
+	PlanIndexBucket       = []byte("oplog.plan_idx")        // plan_index tracks IDs of operations affecting a given plan
+	SnapshotIndexBucket   = []byte("oplog.snapshot_idx")    // snapshot_index tracks IDs of operations affecting a given snapshot
 )
 
 // OpLog represents a log of operations performed.
@@ -177,6 +178,27 @@ func (o *OpLog) Update(op *v1.Operation) error {
 	if err == nil {
 		o.notifyHelper(EventTypeOpUpdated, op)
 	}
+	return err
+}
+
+func (o *OpLog) Delete(id int64) error {
+	err := o.db.Update(func(tx *bolt.Tx) error {
+		val := tx.Bucket(OpLogBucket).Get(serializationutil.Itob(op.Id))
+		if val == nil {
+			return ErrNotExist
+		}
+		if err := o.deleteOperationHelper(tx, id); err != nil {
+			return fmt.Errorf("deleting operation %v: %w", op.Id, err)
+		}
+
+		b := tx.Bucket(OpLogSoftDeleteBucket)
+		if err := b.Put(serializationutil.Itob(id), val); err != nil {
+			return fmt.Errorf("putting operation %v into soft delete bucket: %w", id, err)
+		}
+
+		return nil
+	})
+
 	return err
 }
 

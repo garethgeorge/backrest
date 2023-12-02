@@ -84,6 +84,13 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 
 		forgetOp.OperationForget.Forget = append(forgetOp.OperationForget.Forget, forgot...)
 
+		for _, forgot := range forgot {
+			t.orchestrator.OpLog.ForEachBySnapshotId(forgot.Id, func(op *v1.Operation) error {
+				return t.orchestrator.OpLog.Delete(op.Id)
+			})
+
+		}
+
 		return nil
 	}); err != nil {
 		return err
