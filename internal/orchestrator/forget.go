@@ -8,6 +8,8 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
+	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
+	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 )
 
@@ -85,13 +87,14 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 		forgetOp.OperationForget.Forget = append(forgetOp.OperationForget.Forget, forgot...)
 
 		for _, forgot := range forgot {
-			t.orchestrator.OpLog.ForEachBySnapshotId(forgot.Id, func(op *v1.Operation) error {
+			if e := t.orchestrator.OpLog.ForEachBySnapshotId(forgot.Id, indexutil.CollectAll(), func(op *v1.Operation) error {
 				return t.orchestrator.OpLog.Delete(op.Id)
-			})
-
+			}); e != nil {
+				err = multierror.Append(err, fmt.Errorf("cleanup snapshot %v: %w", forgot.Id, e))
+			}
 		}
 
-		return nil
+		return err
 	}); err != nil {
 		return err
 	}
