@@ -272,7 +272,8 @@ export const AddPlanModal = ({
               <>
                 {fields.map((field, index) => (
                   <Form.Item
-                    label={index === 0 ? "Excludes" : ""}
+                    label={index === 0 ? "Excludes" : " "}
+                    colon={index === 0}
                     required={false}
                     key={field.key}
                   >
@@ -299,7 +300,10 @@ export const AddPlanModal = ({
                     />
                   </Form.Item>
                 ))}
-                <Form.Item label={fields.length === 0 ? "Excludes" : ""}>
+                <Form.Item
+                  label={fields.length === 0 ? "Excludes" : " "}
+                  colon={fields.length === 0}
+                >
                   <Button
                     type="dashed"
                     onClick={() => add()}
@@ -477,10 +481,10 @@ const RetentionPolicyView = ({ policy }: { policy?: RetentionPolicy }) => {
             setPolicyType(e.target.value);
           }}
         >
+          <Radio.Button value={PolicyType.CountBased}>By Count</Radio.Button>
           <Radio.Button value={PolicyType.TimeBased}>
             By Time Period
           </Radio.Button>
-          <Radio.Button value={PolicyType.CountBased}>By Count</Radio.Button>
         </Radio.Group>
       </Form.Item>
       {elem}
