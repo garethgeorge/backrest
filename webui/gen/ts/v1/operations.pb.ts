@@ -4,6 +4,7 @@
 * This file is a generated Typescript file for GRPC Gateway, DO NOT MODIFY
 */
 
+import * as V1Config from "./config.pb"
 import * as V1Restic from "./restic.pb"
 
 type Absent<T, K extends keyof T> = { [k in Exclude<keyof T, K>]?: undefined };
@@ -67,6 +68,7 @@ export type OperationIndexSnapshot = {
 
 export type OperationForget = {
   forget?: V1Restic.ResticSnapshot[]
+  policy?: V1Config.RetentionPolicy
 }
 
 export type OperationPrune = {
