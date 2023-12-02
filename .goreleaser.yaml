@@ -44,6 +44,7 @@ archives:
 dockers:
   - image_templates:
       - garethgeorge/resticweb:latest
+      - garethgeorge/resticweb:{{ .Tag }}
 
 changelog:
   sort: asc
