@@ -6,6 +6,8 @@ import {
   AutoComplete,
   Tooltip,
   Button,
+  Row,
+  Col,
 } from "antd";
 import React, { useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -137,6 +139,7 @@ export const AddRepoModal = ({
         open={true}
         onCancel={handleCancel}
         title={template ? "Edit Restic Repository" : "Add Restic Repository"}
+        width="40vw"
         footer={[
           <Button loading={confirmLoading} key="back" onClick={handleCancel}>
             Cancel
@@ -162,7 +165,12 @@ export const AddRepoModal = ({
           </Button>,
         ]}
       >
-        <Form layout={"vertical"} autoComplete="off" form={form}>
+        <Form
+          autoComplete="off"
+          form={form}
+          labelCol={{ span: 6 }}
+          wrapperCol={{ span: 16 }}
+        >
           {/* Repo.id */}
           <Form.Item<Repo>
             hasFeedback
@@ -220,7 +228,7 @@ export const AddRepoModal = ({
             <Form.Item<Repo>
               hasFeedback
               name="uri"
-              label="Repository URI (e.g. ./local-path or s3://bucket-name/path)"
+              label="Repository URI"
               initialValue={template ? template.uri : ""}
               validateTrigger={["onChange", "onBlur"]}
               rules={[
@@ -235,12 +243,28 @@ export const AddRepoModal = ({
           </Tooltip>
 
           {/* Repo.password */}
-          <Form.Item<Repo>
-            hasFeedback
-            name="password"
-            label={
-              <>
-                Password{" "}
+          <Form.Item<Repo> hasFeedback name="password" label={<>Password </>}>
+            <Row>
+              <Col span={16}>
+                <Form.Item
+                  name="password"
+                  initialValue={template && template.password}
+                  validateTrigger={["onChange", "onBlur"]}
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please input repo name",
+                    },
+                  ]}
+                >
+                  <Input disabled={!!template} />
+                </Form.Item>
+              </Col>
+              <Col
+                span={7}
+                offset={1}
+                style={{ display: "flex", justifyContent: "left" }}
+              >
                 <Button
                   type="text"
                   onClick={() => {
@@ -250,20 +274,10 @@ export const AddRepoModal = ({
                     });
                   }}
                 >
-                  [Create Crypto Random]
+                  [Generate]
                 </Button>
-              </>
-            }
-            initialValue={template && template.password}
-            validateTrigger={["onChange", "onBlur"]}
-            rules={[
-              {
-                required: true,
-                message: "Please input repo name",
-              },
-            ]}
-          >
-            <Input disabled={!!template} />
+              </Col>
+            </Row>
           </Form.Item>
 
           {/* Repo.env */}
@@ -283,7 +297,8 @@ export const AddRepoModal = ({
               <>
                 {fields.map((field, index) => (
                   <Form.Item
-                    label={index === 0 ? "Environment Variables" : ""}
+                    label={index === 0 ? "Environment Variables" : " "}
+                    colon={index === 0}
                     required={false}
                     key={field.key}
                   >
@@ -316,7 +331,8 @@ export const AddRepoModal = ({
                   </Form.Item>
                 ))}
                 <Form.Item
-                  label={fields.length === 0 ? "Environment Variables" : ""}
+                  label={fields.length === 0 ? "Environment Variables" : " "}
+                  colon={fields.length === 0}
                 >
                   <Button
                     type="dashed"
@@ -338,7 +354,8 @@ export const AddRepoModal = ({
               <>
                 {fields.map((field, index) => (
                   <Form.Item
-                    label={index === 0 ? "(Advanced) Flag Overrides" : ""}
+                    label={index === 0 ? "Flag Overrides" : " "}
+                    colon={index === 0}
                     required={false}
                     key={field.key}
                   >
@@ -367,7 +384,8 @@ export const AddRepoModal = ({
                   </Form.Item>
                 ))}
                 <Form.Item
-                  label={fields.length === 0 ? "(Advanced) Flag Overrides" : ""}
+                  label={fields.length === 0 ? "Flag Overrides" : " "}
+                  colon={fields.length === 0}
                 >
                   <Button
                     type="dashed"
