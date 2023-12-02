@@ -119,7 +119,7 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
 	}
-	l.Debug("Forget result", zap.Any("result", result))
+	l.Debug("Forget result", zap.Int("forgot", len(result.Remove)), zap.Int("keep", len(result.Keep)))
 
 	var forgotten []*v1.ResticSnapshot
 	for _, snapshot := range result.Remove {

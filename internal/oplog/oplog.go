@@ -71,7 +71,7 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 
 		// Create the buckets if they don't exist
 		for _, bucket := range [][]byte{
-			SystemBucket, OpLogBucket, RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket,
+			SystemBucket, OpLogBucket, OpLogSoftDeleteBucket, RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket,
 		} {
 			if _, err := tx.CreateBucketIfNotExists(bucket); err != nil {
 				return fmt.Errorf("creating bucket %s: %s", string(bucket), err)
