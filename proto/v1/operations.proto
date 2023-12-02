@@ -5,6 +5,7 @@ package v1;
 option go_package = "github.com/garethgeorge/resticui/go/proto/v1";
 
 import "v1/restic.proto";
+import "v1/config.proto";
 
 message OperationList {
   repeated Operation operations = 1;
@@ -72,6 +73,7 @@ message OperationIndexSnapshot {
 // OperationForget tracks a forget operation.
 message OperationForget {
   repeated ResticSnapshot forget = 1;
+  RetentionPolicy policy = 2;
 }
 
 // OperationPrune tracks a prune operation.

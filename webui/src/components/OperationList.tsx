@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Operation, OperationStatus } from "../../gen/ts/v1/operations.pb";
+import {
+  Operation,
+  OperationEvent,
+  OperationStatus,
+} from "../../gen/ts/v1/operations.pb";
 import {
   Card,
   Col,
@@ -15,12 +19,18 @@ import {
   ExclamationCircleOutlined,
   PaperClipOutlined,
   SaveOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
 import {
+  BackupInfo,
+  BackupInfoCollector,
   EOperation,
   buildOperationListListener,
+  getOperations,
+  shouldHideStatus,
   subscribeToOperations,
+  toEop,
   unsubscribeFromOperations,
 } from "../state/oplog";
 import { SnapshotBrowser } from "./SnapshotBrowser";
@@ -32,26 +42,67 @@ import {
 } from "../lib/formatting";
 import _ from "lodash";
 import { GetOperationsRequest } from "../../gen/ts/v1/service.pb";
+import { useAlertApi } from "./Alerts";
 
 export const OperationList = ({
   req,
-}: React.PropsWithoutRef<{ req: GetOperationsRequest }>) => {
-  const [operations, setOperations] = useState<EOperation[]>([]);
-  console.log("operation list with req: ", req);
+  useBackups,
+}: React.PropsWithoutRef<{
+  req?: GetOperationsRequest;
+  useBackups?: BackupInfo[];
+}>) => {
+  const alertApi = useAlertApi();
 
-  useEffect(() => {
-    const lis = buildOperationListListener(req, (event, operation, opList) => {
-      console.log("got list: ", JSON.stringify(opList, null, 2));
-      setOperations(opList);
-    });
-    subscribeToOperations(lis);
+  let backups: BackupInfo[] = [];
+  if (req) {
+    const [backupState, setBackups] = useState<BackupInfo[]>(useBackups || []);
+    backups = backupState;
 
-    return () => {
-      unsubscribeFromOperations(lis);
-    };
-  }, [JSON.stringify(req)]);
+    // track backups for this operation tree view.
+    useEffect(() => {
+      if (!req) {
+        return;
+      }
 
-  if (operations.length === 0) {
+      const backupCollector = new BackupInfoCollector();
+      const lis = (opEvent: OperationEvent) => {
+        if (!!req.planId && opEvent.operation!.planId !== req.planId) {
+          return;
+        }
+        if (!!req.repoId && opEvent.operation!.repoId !== req.repoId) {
+          return;
+        }
+        backupCollector.addOperation(opEvent.type!, opEvent.operation!);
+      };
+      subscribeToOperations(lis);
+
+      backupCollector.subscribe(() => {
+        let backups = backupCollector.getAll();
+        backups = backups.filter((b) => {
+          return !shouldHideStatus(b.status);
+        });
+        backups.sort((a, b) => {
+          return b.startTimeMs - a.startTimeMs;
+        });
+        setBackups(backups);
+      });
+
+      getOperations(req)
+        .then((ops) => {
+          backupCollector.bulkAddOperations(ops);
+        })
+        .catch((e) => {
+          alertApi!.error("Failed to fetch operations: " + e.message);
+        });
+      return () => {
+        unsubscribeFromOperations(lis);
+      };
+    }, [JSON.stringify(req)]);
+  } else {
+    backups = useBackups || [];
+  }
+
+  if (backups.length === 0) {
     return (
       <Empty
         description="No operations yet."
@@ -60,41 +111,27 @@ export const OperationList = ({
     );
   }
 
-  // groups items by snapshotID if one can be identified, otherwise by operation ID.
-  const groupedItems = _.values(
-    _.groupBy(operations, (op: EOperation) => {
-      return getSnapshotId(op) || op.id!;
-    })
-  );
-  groupedItems.sort((a, b) => {
-    return b[0].parsedTime - a[0].parsedTime;
-  });
-  groupedItems.forEach((group) => {
-    group.sort((a, b) => {
-      return b.parsedTime - a.parsedTime;
-    });
-  });
-
   return (
     <List
       itemLayout="horizontal"
       size="small"
-      dataSource={groupedItems}
-      renderItem={(group, index) => {
-        if (group.length === 1) {
-          return <OperationRow key={group[0].id!} operation={group[0]} />;
+      dataSource={backups}
+      renderItem={(backup) => {
+        const ops = backup.operations;
+        if (ops.length === 1) {
+          return <OperationRow key={ops[0].id!} operation={toEop(ops[0])} />;
         }
 
         return (
           <Card size="small" style={{ margin: "5px" }}>
-            {group.map((op) => (
-              <OperationRow key={op.id!} operation={op} />
+            {ops.map((op) => (
+              <OperationRow key={op.id!} operation={toEop(op)} />
             ))}
           </Card>
         );
       }}
       pagination={
-        operations.length > 50
+        backups.length > 50
           ? { position: "both", align: "center", defaultPageSize: 50 }
           : undefined
       }
@@ -195,6 +232,70 @@ export const OperationRow = ({
               snapshot={snapshotOp.snapshot!}
               repoId={operation.repoId!}
             />
+          }
+        />
+      </List.Item>
+    );
+  } else if (operation.operationForget) {
+    const forgetOp = operation.operationForget;
+    if (forgetOp.forget?.length === 0) {
+      return null;
+    }
+
+    const policy = forgetOp.policy! || {};
+    const policyDesc = [];
+    if (policy.keepLastN) {
+      policyDesc.push(`Keep Last ${policy.keepLastN} Snapshots`);
+    }
+    if (policy.keepHourly) {
+      policyDesc.push(`Keep Hourly for ${policy.keepHourly} Hours`);
+    }
+    if (policy.keepDaily) {
+      policyDesc.push(`Keep Daily for ${policy.keepDaily} Days`);
+    }
+    if (policy.keepWeekly) {
+      policyDesc.push(`Keep Weekly for ${policy.keepWeekly} Weeks`);
+    }
+    if (policy.keepMonthly) {
+      policyDesc.push(`Keep Monthly for ${policy.keepMonthly} Months`);
+    }
+    if (policy.keepYearly) {
+      policyDesc.push(`Keep Yearly for ${policy.keepYearly} Years`);
+    }
+
+    return (
+      <List.Item>
+        <List.Item.Meta
+          title={
+            <>{formatTime(operation.unixTimeStartMs!)} - Forget Operation</>
+          }
+          avatar={<DeleteOutlined style={{ color }} />}
+          description={
+            <>
+              <p></p>
+              <Collapse
+                size="small"
+                destroyInactivePanel
+                items={[
+                  {
+                    key: 1,
+                    label:
+                      "Removed " +
+                      forgetOp.forget?.length +
+                      " Snapshots (Policy Details)",
+                    children: (
+                      <div>
+                        <ul>
+                          {policyDesc.map((desc) => (
+                            <li>{desc}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            </>
           }
         />
       </List.Item>
