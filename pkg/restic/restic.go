@@ -239,6 +239,8 @@ func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...Generic
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 
+	writer.Write([]byte("command: " + strings.Join(cmd.Args, " ") + "\n"))
+
 	if err := cmd.Run(); err != nil {
 		return NewCmdError(cmd, buf.Bytes(), err)
 	}

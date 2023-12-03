@@ -40,7 +40,12 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   };
 
   const handlePruneNow = () => {
-    alertsApi.warning("Not implemented yet :(");
+    try {
+      ResticUI.Prune({ value: plan.id }, { pathPrefix: "/api" });
+      alertsApi.success("Prune scheduled.");
+    } catch (e: any) {
+      alertsApi.error("Failed to schedule prune: " + e.message);
+    }
   };
 
   const handleUnlockNow = () => {

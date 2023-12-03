@@ -300,6 +300,29 @@ export const OperationRow = ({
         />
       </List.Item>
     );
+  } else if (operation.operationPrune) {
+    const prune = operation.operationPrune;
+    return (
+      <List.Item>
+        <List.Item.Meta
+          title={<>Prune Operation</>}
+          avatar={<DeleteOutlined style={{ color }} />}
+          description={
+            <Collapse
+              size="small"
+              destroyInactivePanel
+              items={[
+                {
+                  key: 1,
+                  label: "Prune Output",
+                  children: <pre>{prune.output}</pre>,
+                },
+              ]}
+            />
+          }
+        />
+      </List.Item>
+    );
   }
 };
 
