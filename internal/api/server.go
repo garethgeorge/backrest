@@ -244,6 +244,33 @@ func (s *Server) Backup(ctx context.Context, req *types.StringValue) (*emptypb.E
 	return &emptypb.Empty{}, nil
 }
 
+func (s *Server) Forget(ctx context.Context, req *types.StringValue) (*emptypb.Empty, error) {
+	plan, err := s.orchestrator.GetPlan(req.Value)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get plan %q: %w", req.Value, err)
+	}
+
+	at := time.Now()
+
+	s.orchestrator.ScheduleTask(orchestrator.NewOneofForgetTask(s.orchestrator, plan, "", at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityForget)
+	s.orchestrator.ScheduleTask(orchestrator.NewOneofForgetTask(s.orchestrator, plan, "", at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
+
+	return &emptypb.Empty{}, nil
+}
+
+func (s *Server) Prune(ctx context.Context, req *types.StringValue) (*emptypb.Empty, error) {
+	plan, err := s.orchestrator.GetPlan(req.Value)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get plan %q: %w", req.Value, err)
+	}
+
+	at := time.Now()
+
+	s.orchestrator.ScheduleTask(orchestrator.NewOneofPruneTask(s.orchestrator, plan, "", at, true), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityPrune)
+
+	return &emptypb.Empty{}, nil
+}
+
 func (s *Server) PathAutocomplete(ctx context.Context, path *types.StringValue) (*types.StringList, error) {
 	ents, err := os.ReadDir(path.Value)
 	if errors.Is(err, os.ErrNotExist) {

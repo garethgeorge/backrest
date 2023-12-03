@@ -72,6 +72,12 @@ export class ResticUI {
   static Backup(req: TypesValue.StringValue, initReq?: fm.InitReq): Promise<GoogleProtobufEmpty.Empty> {
     return fm.fetchReq<TypesValue.StringValue, GoogleProtobufEmpty.Empty>(`/v1/cmd/backup`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
   }
+  static Prune(req: TypesValue.StringValue, initReq?: fm.InitReq): Promise<GoogleProtobufEmpty.Empty> {
+    return fm.fetchReq<TypesValue.StringValue, GoogleProtobufEmpty.Empty>(`/v1/cmd/prune`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
+  }
+  static Forget(req: TypesValue.StringValue, initReq?: fm.InitReq): Promise<GoogleProtobufEmpty.Empty> {
+    return fm.fetchReq<TypesValue.StringValue, GoogleProtobufEmpty.Empty>(`/v1/cmd/forget`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
+  }
   static PathAutocomplete(req: TypesValue.StringValue, initReq?: fm.InitReq): Promise<TypesValue.StringList> {
     return fm.fetchReq<TypesValue.StringValue, TypesValue.StringList>(`/v1/autocomplete/path`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
   }

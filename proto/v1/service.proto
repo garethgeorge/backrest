@@ -67,6 +67,20 @@ service ResticUI {
     };
   }
 
+  rpc Prune(types.StringValue) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/cmd/prune"
+      body: "*"
+    };
+  }
+
+  rpc Forget(types.StringValue) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/cmd/forget"
+      body: "*"
+    };
+  }
+
   // PathAutocomplete provides path autocompletion options for a given filesystem path.
   rpc PathAutocomplete (types.StringValue) returns (types.StringList) {
     option (google.api.http) = {

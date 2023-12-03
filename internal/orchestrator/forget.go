@@ -9,7 +9,6 @@ import (
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
 	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
 	"github.com/hashicorp/go-multierror"
-	"go.uber.org/zap"
 )
 
 // ForgetTask tracks a forget operation.
@@ -104,14 +103,13 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 			}
 		}
 
+		if len(forgot) > 0 {
+			t.orchestrator.ScheduleTask(NewOneofPruneTask(t.orchestrator, t.plan, t.op.SnapshotId, time.Now(), false), TaskPriorityPrune)
+		}
+
 		return err
 	}); err != nil {
 		return err
-	}
-
-	if repo.repoConfig.PrunePolicy != nil {
-		// TODO: schedule a prune task.
-		zap.S().Warn("repo specified a prune policy, automatic pruning is not yet implemented.")
 	}
 
 	return nil

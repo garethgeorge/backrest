@@ -131,6 +131,9 @@ export const OperationTree = ({
                 if (b.operations[0].operationForget) {
                   return <>Forget {formatTime(b.displayTime)}</>;
                 }
+                if (b.operations[0].operationPrune) {
+                  return <>Prune {formatTime(b.displayTime)}</>;
+                }
               }
 
               if (b.status === OperationStatus.STATUS_PENDING) {
