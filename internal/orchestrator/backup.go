@@ -142,17 +142,20 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 		}
 
 		zap.L().Info("Backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)), zap.Any("summary", summary))
+
+		// schedule followup tasks
+		at := time.Now()
+		if plan.Retention != nil {
+			orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityForget)
+		}
+
+		orchestrator.ScheduleTask(NewOneofIndexSnapshotsTask(orchestrator, plan, at), TaskPriorityIndexSnapshots)
+
 		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("backup operation: %w", err)
 	}
-
-	at := time.Now()
-	if plan.Retention != nil {
-		orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, op.SnapshotId, at), taskPriorityForget)
-	}
-	orchestrator.ScheduleTask(NewOneofIndexSnapshotsTask(orchestrator, plan, at), taskPriorityIndexSnapshots)
 
 	return nil
 }

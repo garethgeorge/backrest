@@ -234,7 +234,7 @@ export const AddPlanModal = ({
                       noStyle
                     >
                       <URIAutocomplete
-                        style={{ width: "100%" }}
+                        style={{ width: "90%" }}
                         onBlur={() => form.validateFields()}
                       />
                     </Form.Item>
@@ -252,7 +252,7 @@ export const AddPlanModal = ({
                   <Button
                     type="dashed"
                     onClick={() => add()}
-                    style={{ width: "60%" }}
+                    style={{ width: "90%" }}
                     icon={<PlusOutlined />}
                   >
                     Add Path
@@ -289,7 +289,7 @@ export const AddPlanModal = ({
                       noStyle
                     >
                       <URIAutocomplete
-                        style={{ width: "60%" }}
+                        style={{ width: "90%" }}
                         onBlur={() => form.validateFields()}
                       />
                     </Form.Item>
@@ -307,7 +307,7 @@ export const AddPlanModal = ({
                   <Button
                     type="dashed"
                     onClick={() => add()}
-                    style={{ width: "60%" }}
+                    style={{ width: "90%" }}
                     icon={<PlusOutlined />}
                   >
                     Add Exclusion Glob

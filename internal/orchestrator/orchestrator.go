@@ -20,10 +20,11 @@ var ErrRepoInitializationFailed = errors.New("repo initialization failed")
 var ErrPlanNotFound = errors.New("plan not found")
 
 const (
-	TaskPriorityDefault        = iota
-	TaskPriorityInteractive    // higher priority than default scheduled operations e.g. the user clicked to run an operation
-	taskPriorityIndexSnapshots // higher priority than interactive operations e.g. a system operation like a forget or index (typically scheduled by another task that wants work done immediately after it's completion).
-	taskPriorityForget
+	TaskPriorityDefault = iota
+	TaskPriorityIndexSnapshots
+	TaskPriorityPrune
+	TaskPriorityForget
+	TaskPriorityInteractive // highest priority (add other priorities to this value for offsets)
 )
 
 // Orchestrator is responsible for managing repos and backups.
