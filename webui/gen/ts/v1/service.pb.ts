@@ -23,6 +23,12 @@ export type GetOperationsRequest = {
   lastN?: string
 }
 
+export type RestoreSnapshotRequest = {
+  repoId?: string
+  snapshotId?: string
+  path?: string
+}
+
 export type ListSnapshotFilesRequest = {
   repoId?: string
   snapshotId?: string
@@ -77,6 +83,9 @@ export class ResticUI {
   }
   static Forget(req: TypesValue.StringValue, initReq?: fm.InitReq): Promise<GoogleProtobufEmpty.Empty> {
     return fm.fetchReq<TypesValue.StringValue, GoogleProtobufEmpty.Empty>(`/v1/cmd/forget`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
+  }
+  static Restore(req: RestoreSnapshotRequest, initReq?: fm.InitReq): Promise<GoogleProtobufEmpty.Empty> {
+    return fm.fetchReq<RestoreSnapshotRequest, GoogleProtobufEmpty.Empty>(`/v1/cmd/restore`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
   }
   static PathAutocomplete(req: TypesValue.StringValue, initReq?: fm.InitReq): Promise<TypesValue.StringList> {
     return fm.fetchReq<TypesValue.StringValue, TypesValue.StringList>(`/v1/autocomplete/path`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})

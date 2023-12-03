@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Input, Tree } from "antd";
+import { Button, Dropdown, Input, Modal, Space, Tree } from "antd";
 import type { DataNode, EventDataNode } from "antd/es/tree";
 import {
   ListSnapshotFilesResponse,
@@ -7,9 +7,20 @@ import {
   ResticUI,
 } from "../../gen/ts/v1/service.pb";
 import { useAlertApi } from "./Alerts";
-import { FileOutlined, FolderOutlined } from "@ant-design/icons";
+import {
+  DownOutlined,
+  DownloadOutlined,
+  FileOutlined,
+  FolderOutlined,
+  MenuFoldOutlined,
+} from "@ant-design/icons";
+import { drop } from "lodash";
+import { useShowModal } from "./ModalManager";
 
-type ELsEntry = LsEntry & { children?: ELsEntry[] };
+const SnapshotBrowserContext = React.createContext<{
+  snapshotId: string;
+  repoId: string;
+} | null>(null);
 
 // replaceKeyInTree returns a value only if changes are made.
 const replaceKeyInTree = (
@@ -121,7 +132,11 @@ export const SnapshotBrowser = ({
     setTreeData(newTree);
   };
 
-  return <Tree<DataNode> loadData={onLoadData} treeData={treeData} />;
+  return (
+    <SnapshotBrowserContext.Provider value={{ snapshotId, repoId }}>
+      <Tree<DataNode> loadData={onLoadData} treeData={treeData} />
+    </SnapshotBrowserContext.Provider>
+  );
 };
 
 const respToNodes = (resp: ListSnapshotFilesResponse): DataNode[] => {
@@ -134,7 +149,7 @@ const respToNodes = (resp: ListSnapshotFilesResponse): DataNode[] => {
 
       const node: DataNode = {
         key: entry.path!,
-        title: title,
+        title: <FileNode entry={entry} />,
         isLeaf: entry.type === "file",
         icon: entry.type === "file" ? <FileOutlined /> : <FolderOutlined />,
       };
@@ -145,3 +160,107 @@ const respToNodes = (resp: ListSnapshotFilesResponse): DataNode[] => {
 
   return nodes;
 };
+
+const FileNode = ({ entry }: { entry: LsEntry }) => {
+  const [dropdown, setDropdown] = useState<React.ReactNode>(null);
+  const { snapshotId, repoId } = React.useContext(SnapshotBrowserContext)!;
+
+  return (
+    <Space
+      onMouseEnter={() =>
+        setDropdown(
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: "restore",
+                  label: "Restore to path",
+                  onClick: () => {
+                    restoreFlow(repoId, snapshotId, entry.path!);
+                  },
+                },
+              ],
+            }}
+          >
+            <DownloadOutlined />
+          </Dropdown>
+        )
+      }
+      onMouseLeave={() => setDropdown(null)}
+    >
+      {entry.name}
+      {dropdown}
+    </Space>
+  );
+};
+
+const RestoreModal = ({
+  repoId,
+  snapshotId,
+  path,
+}: {
+  repoId: string;
+  snapshotId: string;
+  path: string;
+}) => {
+  const showModal = useShowModal();
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [restoreConfirmed, setRestoreConfirmed] = useState(false);
+
+  const handleCancel = () => {
+    showModal(null);
+  };
+
+  const handleOk = async () => {
+    if (!restoreConfirmed) {
+      setRestoreConfirmed(true);
+      setTimeout(() => {
+        setRestoreConfirmed(false);
+      }, 2000);
+      return;
+    }
+
+    setConfirmLoading(true);
+    try {
+      await ResticUI.RestoreSnapshot(
+        {
+          repoId,
+          snapshotId,
+          path,
+        },
+        { pathPrefix: "/api" }
+      );
+      setRestoreConfirmed(true);
+    } catch (e: any) {
+      alert("Failed to restore snapshot: " + e.message);
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={true}
+      onCancel={handleCancel}
+      title={
+        "Restore " + path + " from snapshot " + snapshotId + " in " + repoId
+      }
+      width="40vw"
+      footer={[
+        <Button loading={confirmLoading} key="back" onClick={handleCancel}>
+          Cancel
+        </Button>,
+        <Button
+          key="submit"
+          type="primary"
+          loading={confirmLoading}
+          onClick={handleOk}
+        >
+          {restoreConfirmed ? "Confirm Restore?" : "Restore"}
+        </Button>,
+      ]}
+    ></Modal>
+  );
+};
+
+const restoreFlow = (repoId: string, snapshotId: string, path: string) => {};

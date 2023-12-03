@@ -31,6 +31,7 @@ const (
 	ResticUI_Backup_FullMethodName             = "/v1.ResticUI/Backup"
 	ResticUI_Prune_FullMethodName              = "/v1.ResticUI/Prune"
 	ResticUI_Forget_FullMethodName             = "/v1.ResticUI/Forget"
+	ResticUI_Restore_FullMethodName            = "/v1.ResticUI/Restore"
 	ResticUI_PathAutocomplete_FullMethodName   = "/v1.ResticUI/PathAutocomplete"
 )
 
@@ -49,6 +50,7 @@ type ResticUIClient interface {
 	Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Prune(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Forget(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error)
 }
@@ -174,6 +176,15 @@ func (c *resticUIClient) Forget(ctx context.Context, in *types.StringValue, opts
 	return out, nil
 }
 
+func (c *resticUIClient) Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ResticUI_Restore_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *resticUIClient) PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error) {
 	out := new(types.StringList)
 	err := c.cc.Invoke(ctx, ResticUI_PathAutocomplete_FullMethodName, in, out, opts...)
@@ -198,6 +209,7 @@ type ResticUIServer interface {
 	Backup(context.Context, *types.StringValue) (*emptypb.Empty, error)
 	Prune(context.Context, *types.StringValue) (*emptypb.Empty, error)
 	Forget(context.Context, *types.StringValue) (*emptypb.Empty, error)
+	Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error)
 	mustEmbedUnimplementedResticUIServer()
@@ -236,6 +248,9 @@ func (UnimplementedResticUIServer) Prune(context.Context, *types.StringValue) (*
 }
 func (UnimplementedResticUIServer) Forget(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Forget not implemented")
+}
+func (UnimplementedResticUIServer) Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Restore not implemented")
 }
 func (UnimplementedResticUIServer) PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PathAutocomplete not implemented")
@@ -436,6 +451,24 @@ func _ResticUI_Forget_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResticUI_Restore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RestoreSnapshotRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResticUIServer).Restore(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResticUI_Restore_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResticUIServer).Restore(ctx, req.(*RestoreSnapshotRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ResticUI_PathAutocomplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
@@ -496,6 +529,10 @@ var ResticUI_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Forget",
 			Handler:    _ResticUI_Forget_Handler,
+		},
+		{
+			MethodName: "Restore",
+			Handler:    _ResticUI_Restore_Handler,
 		},
 		{
 			MethodName: "PathAutocomplete",
