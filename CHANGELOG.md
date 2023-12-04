@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/garethgeorge/resticweb/compare/v0.3.0...v0.4.0) (2023-12-04)
+
+
+### Features
+
+* implement prune support ([#25](https://github.com/garethgeorge/resticweb/issues/25)) ([a311b0a](https://github.com/garethgeorge/resticweb/commit/a311b0a3fb5315f17d66361a3e72fa10b8a744a1))
+* implement restore operation through snapshot browser UI ([#27](https://github.com/garethgeorge/resticweb/issues/27)) ([d758509](https://github.com/garethgeorge/resticweb/commit/d758509797e21e3ec4bc67eff4d974604e4a5476))
+
 ## [0.3.0](https://github.com/garethgeorge/resticweb/compare/v0.2.0...v0.3.0) (2023-12-03)
 
 
