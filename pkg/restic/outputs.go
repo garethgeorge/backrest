@@ -217,6 +217,82 @@ func (r *ForgetResult) Validate() error {
 	return nil
 }
 
+type RestoreProgressEntry struct {
+	MessageType    string  `json:"message_type"` // "summary" or "status"
+	SecondsElapsed float64 `json:"seconds_elapsed"`
+	TotalBytes     int64   `json:"total_bytes"`
+	BytesRestored  int64   `json:"bytes_restored"`
+	TotalFiles     int64   `json:"total_files"`
+	FilesRestored  int64   `json:"files_restored"`
+	PercentDone    float64 `json:"percent_done"`
+}
+
+func (e *RestoreProgressEntry) Validate() error {
+	if e.MessageType != "summary" && e.MessageType != "status" {
+		return fmt.Errorf("message_type must be 'summary' or 'status', got %v", e.MessageType)
+	}
+	return nil
+}
+
+// readRestoreProgressEntries returns the summary event or an error if the command failed.
+func readRestoreProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(event *RestoreProgressEntry)) (*RestoreProgressEntry, error) {
+	scanner := bufio.NewScanner(output)
+	scanner.Split(bufio.ScanLines)
+
+	var summary *RestoreProgressEntry
+
+	// first event is handled specially to detect non-JSON output and fast-path out.
+	if scanner.Scan() {
+		var event RestoreProgressEntry
+
+		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
+			var bytes = slices.Clone(scanner.Bytes())
+			for scanner.Scan() {
+				bytes = append(bytes, scanner.Bytes()...)
+			}
+
+			return nil, NewCmdError(cmd, bytes, fmt.Errorf("command output was not JSON: %w", err))
+		}
+		if err := event.Validate(); err != nil {
+			return nil, err
+		}
+		if callback != nil {
+			callback(&event)
+		}
+		if event.MessageType == "summary" {
+			summary = &event
+		}
+	}
+
+	// remaining events are parsed as JSON
+	for scanner.Scan() {
+		var event RestoreProgressEntry
+		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
+			return nil, fmt.Errorf("failed to parse JSON: %w", err)
+		}
+		if err := event.Validate(); err != nil {
+			return nil, err
+		}
+
+		if callback != nil {
+			callback(&event)
+		}
+		if event.MessageType == "summary" {
+			summary = &event
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return summary, fmt.Errorf("scanner encountered error: %w", err)
+	}
+
+	if summary == nil {
+		return nil, fmt.Errorf("no summary event found")
+	}
+
+	return summary, nil
+}
+
 func ValidateSnapshotId(id string) error {
 	if len(id) != 64 {
 		return fmt.Errorf("restic may be out of date (check with `restic self-upgrade`): snapshot ID must be 64 chars, got %v chars", len(id))

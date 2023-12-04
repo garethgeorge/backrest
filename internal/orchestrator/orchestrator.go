@@ -92,7 +92,7 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 		if err != nil {
 			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
 		}
-		o.ScheduleTask(t, 0)
+		o.ScheduleTask(t, TaskPriorityDefault)
 	}
 
 	return nil

@@ -17,6 +17,8 @@ import (
 
 var errAlreadyInitialized = errors.New("repo already initialized")
 
+const outputBufferLimit = 1000
+
 type Repo struct {
 	mu          sync.Mutex
 	cmd         string
@@ -107,7 +109,7 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 
 	output := bytes.NewBuffer(nil)
 	reader, writer := io.Pipe()
-	capture := io.MultiWriter(newLimitWriter(output, 1000), writer)
+	capture := io.MultiWriter(newLimitWriter(output, outputBufferLimit), writer)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
 	cmd.Env = append(cmd.Env, r.buildEnv()...)
@@ -135,7 +137,6 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 
 	wg.Add(1)
 	go func() {
-		defer capture.Write([]byte("\n"))
 		defer writer.Close()
 		defer wg.Done()
 		if err := cmd.Wait(); err != nil {
@@ -148,6 +149,7 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 	if cmdErr != nil || readErr != nil {
 		return nil, NewCmdError(cmd, output.Bytes(), errors.Join(cmdErr, readErr))
 	}
+
 	return summary, nil
 }
 
@@ -232,7 +234,7 @@ func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...Generic
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	buf := bytes.NewBuffer(nil)
-	var writer io.Writer = newLimitWriter(buf, 1000)
+	var writer io.Writer = newLimitWriter(buf, outputBufferLimit)
 	if pruneOutput != nil {
 		writer = io.MultiWriter(pruneOutput, buf)
 	}
@@ -246,6 +248,63 @@ func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...Generic
 	}
 
 	return nil
+}
+
+func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	opt := resolveOpts(opts)
+
+	args := []string{"restore", snapshot, "--json"}
+	args = append(args, r.extraArgs...)
+	args = append(args, opt.extraArgs...)
+
+	output := bytes.NewBuffer(nil)
+	reader, writer := io.Pipe()
+	capture := io.MultiWriter(newLimitWriter(output, 1000), writer)
+
+	cmd := exec.CommandContext(ctx, r.cmd, args...)
+	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, opt.extraEnv...)
+	cmd.Stderr = capture
+	cmd.Stdout = capture
+
+	if err := cmd.Start(); err != nil {
+		return nil, NewCmdError(cmd, nil, err)
+	}
+
+	var wg sync.WaitGroup
+	var summary *RestoreProgressEntry
+	var cmdErr error
+	var readErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var err error
+		summary, err = readRestoreProgressEntries(cmd, reader, callback)
+		if err != nil {
+			readErr = fmt.Errorf("processing command output: %w", err)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer writer.Close()
+		defer wg.Done()
+		if err := cmd.Wait(); err != nil {
+			cmdErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	if cmdErr != nil || readErr != nil {
+		return nil, NewCmdError(cmd, output.Bytes(), errors.Join(cmdErr, readErr))
+	}
+
+	return summary, nil
 }
 
 func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, opts ...GenericOption) (*Snapshot, []*LsEntry, error) {
@@ -281,7 +340,6 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 }
 
 type RetentionPolicy struct {
-	MaxUnused          string // e.g. a percentage i.e. 25% or a number of megabytes.
 	KeepLastN          int    // keep the last n snapshots.
 	KeepHourly         int    // keep the last n hourly snapshots.
 	KeepDaily          int    // keep the last n daily snapshots.
@@ -313,14 +371,6 @@ func (r *RetentionPolicy) toForgetFlags() []string {
 	}
 	if r.KeepWithinDuration != "" {
 		flags = append(flags, "--keep-within", r.KeepWithinDuration)
-	}
-	return flags
-}
-
-func (r *RetentionPolicy) toPruneFlags() []string {
-	flags := []string{}
-	if r.MaxUnused != "" {
-		flags = append(flags, "--max-unused", r.MaxUnused)
 	}
 	return flags
 }

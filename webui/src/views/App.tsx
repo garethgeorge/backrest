@@ -55,8 +55,10 @@ export const App: React.FC = () => {
           >
             ResticUI{" "}
           </a>
-          <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.3em" }}>
-            {process.env.BUILD_TIME ? "v" + process.env.BUILD_TIME : ""}
+          <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
+            {process.env.RESTICUI_BUILD_VERSION
+              ? process.env.RESTICUI_BUILD_VERSION
+              : ""}
           </small>
         </h1>
       </Header>

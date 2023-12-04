@@ -95,3 +95,14 @@ func RetentionPolicyToProto(p *restic.RetentionPolicy) *v1.RetentionPolicy {
 		KeepWithinDuration: p.KeepWithinDuration,
 	}
 }
+
+func RestoreProgressEntryToProto(p *restic.RestoreProgressEntry) *v1.RestoreProgressEntry {
+	return &v1.RestoreProgressEntry{
+		MessageType:   p.MessageType,
+		TotalFiles:    int64(p.TotalFiles),
+		FilesRestored: int64(p.FilesRestored),
+		TotalBytes:    int64(p.TotalBytes),
+		BytesRestored: int64(p.BytesRestored),
+		PercentDone:   p.PercentDone,
+	}
+}

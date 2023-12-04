@@ -26,13 +26,14 @@ message Operation {
   // optional, unix time in milliseconds of the operation's completion
   int64 unix_time_end_ms = 6;
   // optional, human readable context message, typically an error message.
-  string display_message = 7; 
+  string display_message = 7;
 
   oneof op {
     OperationBackup operation_backup = 100;
     OperationIndexSnapshot operation_index_snapshot = 101;
     OperationForget operation_forget = 102;
     OperationPrune operation_prune = 103;
+    OperationRestore operation_restore = 104;
   }
 }
 
@@ -79,4 +80,10 @@ message OperationForget {
 // OperationPrune tracks a prune operation.
 message OperationPrune {
   string output = 1;
+}
+
+message OperationRestore {
+  string path = 1; // path in the snapshot to restore.
+  string target = 2; // location to restore it to.
+  RestoreProgressEntry status = 3; // status of the restore.
 }

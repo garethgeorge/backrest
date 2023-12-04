@@ -57,3 +57,13 @@ export type BackupProgressSummary = {
   totalDuration?: number
   snapshotId?: string
 }
+
+export type RestoreProgressEntry = {
+  messageType?: string
+  secondsElapsed?: number
+  totalBytes?: string
+  bytesRestored?: string
+  totalFiles?: string
+  filesRestored?: string
+  percentDone?: number
+}

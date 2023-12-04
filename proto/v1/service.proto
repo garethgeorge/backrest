@@ -81,6 +81,13 @@ service ResticUI {
     };
   }
 
+  rpc Restore(RestoreSnapshotRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/cmd/restore"
+      body: "*"
+    };
+  }
+
   // PathAutocomplete provides path autocompletion options for a given filesystem path.
   rpc PathAutocomplete (types.StringValue) returns (types.StringList) {
     option (google.api.http) = {
@@ -101,6 +108,14 @@ message GetOperationsRequest {
   string snapshot_id = 4;
   repeated int64 ids = 5;
   int64 last_n = 3; // limit to the last n operations
+}
+
+message RestoreSnapshotRequest {
+  string repo_id = 1;
+  string plan_id = 2;
+  string snapshot_id = 3;
+  string path = 4;
+  string target = 5;
 }
 
 message ListSnapshotFilesRequest {

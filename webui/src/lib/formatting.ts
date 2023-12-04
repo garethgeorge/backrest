@@ -56,7 +56,7 @@ export const formatDuration = (ms: number) => {
   } else if (hours === 0) {
     return `${minutes}m${seconds % 60}s`;
   }
-  return `${hours}h${minutes % 60}m${Math.floor(seconds)}s`;
+  return `${hours}h${minutes % 60}m${Math.floor(seconds % 60)}s`;
 };
 
 export const normalizeSnapshotId = (id: string) => {

@@ -320,3 +320,39 @@ func TestResticPrune(t *testing.T) {
 		t.Errorf("wanted output to contain 'keep 1 snapshots', got: %s", output.String())
 	}
 }
+
+func TestResticRestore(t *testing.T) {
+	t.Parallel()
+
+	repo := t.TempDir()
+	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
+		Id:       "test",
+		Uri:      repo,
+		Password: "test",
+	}, WithFlags("--no-cache"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	restorePath := t.TempDir()
+
+	testData := helpers.CreateTestData(t)
+
+	snapshot, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
+	if err != nil {
+		t.Fatalf("failed to backup and create new snapshot: %v", err)
+	}
+
+	// restore all files
+	summary, err := r.Restore(context.Background(), snapshot.SnapshotId, func(event *RestoreProgressEntry) {
+		t.Logf("restore event: %v", event)
+	}, WithFlags("--target", restorePath))
+	if err != nil {
+		t.Fatalf("failed to restore snapshot: %v", err)
+	}
+
+	// should be 100 files + parent directories.
+	if summary.TotalFiles != 103 {
+		t.Errorf("wanted 101 files to be restored, got: %d", summary.TotalFiles)
+	}
+}
