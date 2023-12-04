@@ -112,8 +112,10 @@ message GetOperationsRequest {
 
 message RestoreSnapshotRequest {
   string repo_id = 1;
-  string snapshot_id = 2;
-  string path = 3;
+  string plan_id = 2;
+  string snapshot_id = 3;
+  string path = 4;
+  string target = 5;
 }
 
 message ListSnapshotFilesRequest {

@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, Dropdown, Input, Modal, Space, Tree } from "antd";
+import { Button, Dropdown, Form, Input, Modal, Space, Tree } from "antd";
 import type { DataNode, EventDataNode } from "antd/es/tree";
 import {
   ListSnapshotFilesResponse,
   LsEntry,
   ResticUI,
+  RestoreSnapshotRequest,
 } from "../../gen/ts/v1/service.pb";
 import { useAlertApi } from "./Alerts";
 import {
@@ -13,10 +14,13 @@ import {
   FolderOutlined,
 } from "@ant-design/icons";
 import { useShowModal } from "./ModalManager";
-import { formatBytes } from "../lib/formatting";
+import { formatBytes, normalizeSnapshotId } from "../lib/formatting";
+import { URIAutocomplete } from "./URIAutocomplete";
+import { validateForm } from "../lib/formutil";
 
 const SnapshotBrowserContext = React.createContext<{
   snapshotId: string;
+  planId?: string;
   repoId: string;
   showModal: (modal: React.ReactNode) => void; // slight performance hack.
 } | null>(null);
@@ -63,8 +67,13 @@ const findInTree = (curNode: DataNode, key: string): DataNode | null => {
 
 export const SnapshotBrowser = ({
   repoId,
+  planId, // optional: purely to link restore operations to the right plan.
   snapshotId,
-}: React.PropsWithoutRef<{ snapshotId: string; repoId: string }>) => {
+}: React.PropsWithoutRef<{
+  snapshotId: string;
+  repoId: string;
+  planId?: string;
+}>) => {
   const alertApi = useAlertApi();
   const showModal = useShowModal();
   const [treeData, setTreeData] = useState<DataNode[]>([]);
@@ -128,7 +137,9 @@ export const SnapshotBrowser = ({
   };
 
   return (
-    <SnapshotBrowserContext.Provider value={{ snapshotId, repoId, showModal }}>
+    <SnapshotBrowserContext.Provider
+      value={{ snapshotId, repoId, planId, showModal }}
+    >
       <Tree<DataNode> loadData={onLoadData} treeData={treeData} />
     </SnapshotBrowserContext.Provider>
   );
@@ -158,7 +169,7 @@ const respToNodes = (resp: ListSnapshotFilesResponse): DataNode[] => {
 
 const FileNode = ({ entry }: { entry: LsEntry }) => {
   const [dropdown, setDropdown] = useState<React.ReactNode>(null);
-  const { snapshotId, repoId, showModal } = React.useContext(
+  const { snapshotId, repoId, planId, showModal } = React.useContext(
     SnapshotBrowserContext
   )!;
 
@@ -188,7 +199,14 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
               key: "restore",
               label: "Restore to path",
               onClick: () => {
-                restoreFlow(repoId, snapshotId, entry.path!);
+                showModal(
+                  <RestoreModal
+                    path={entry.path!}
+                    planId={planId}
+                    repoId={repoId}
+                    snapshotId={snapshotId}
+                  />
+                );
               },
             },
           ],
@@ -213,14 +231,17 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
 };
 
 const RestoreModal = ({
+  planId,
   repoId,
   snapshotId,
   path,
 }: {
+  planId?: string; // optional: purely to link restore operations to the right plan.
   repoId: string;
   snapshotId: string;
   path: string;
 }) => {
+  const [form] = Form.useForm<RestoreSnapshotRequest>();
   const showModal = useShowModal();
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [restoreConfirmed, setRestoreConfirmed] = useState(false);
@@ -240,19 +261,23 @@ const RestoreModal = ({
 
     setConfirmLoading(true);
     try {
-      await ResticUI.RestoreSnapshot(
+      const values = await validateForm(form);
+
+      await ResticUI.Restore(
         {
+          planId,
           repoId,
           snapshotId,
           path,
+          target: values.target,
         },
         { pathPrefix: "/api" }
       );
-      setRestoreConfirmed(true);
     } catch (e: any) {
       alert("Failed to restore snapshot: " + e.message);
     } finally {
       setConfirmLoading(false);
+      showModal(null); // close.
     }
   };
 
@@ -261,7 +286,12 @@ const RestoreModal = ({
       open={true}
       onCancel={handleCancel}
       title={
-        "Restore " + path + " from snapshot " + snapshotId + " in " + repoId
+        "Restore " +
+        path +
+        " from snapshot " +
+        normalizeSnapshotId(snapshotId) +
+        " in " +
+        repoId
       }
       width="40vw"
       footer={[
@@ -277,7 +307,23 @@ const RestoreModal = ({
           {restoreConfirmed ? "Confirm Restore?" : "Restore"}
         </Button>,
       ]}
-    ></Modal>
+    >
+      <Form
+        autoComplete="off"
+        form={form}
+        labelCol={{ span: 6 }}
+        wrapperCol={{ span: 16 }}
+      >
+        <Form.Item
+          label="Restore to path"
+          name="target"
+          required={true}
+          rules={[{ required: true, message: "Please enter a restore path" }]}
+        >
+          <URIAutocomplete onBlur={() => form.validateFields()} />
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 };
 

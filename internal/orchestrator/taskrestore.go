@@ -10,11 +10,11 @@ import (
 )
 
 type RestoreTaskOpts struct {
-	planId     string
-	repoId     string
-	snapshotId string
-	path       string
-	target     string
+	PlanId     string
+	RepoId     string
+	SnapshotId string
+	Path       string
+	Target     string
 }
 
 // RestoreTask tracks a forget operation.
@@ -37,7 +37,7 @@ func NewOneofRestoreTask(orchestrator *Orchestrator, opts RestoreTaskOpts, at ti
 }
 
 func (t *RestoreTask) Name() string {
-	return fmt.Sprintf("restore snapshot %v in repo %v", t.restoreOpts.snapshotId, t.restoreOpts.repoId)
+	return fmt.Sprintf("restore snapshot %v in repo %v", t.restoreOpts.SnapshotId, t.restoreOpts.RepoId)
 }
 
 func (t *RestoreTask) Next(now time.Time) *time.Time {
@@ -45,9 +45,9 @@ func (t *RestoreTask) Next(now time.Time) *time.Time {
 	if ret != nil {
 		t.at = nil
 		if err := t.setOperation(&v1.Operation{
-			PlanId:          t.restoreOpts.planId,
-			RepoId:          t.restoreOpts.repoId,
-			SnapshotId:      t.restoreOpts.snapshotId,
+			PlanId:          t.restoreOpts.PlanId,
+			RepoId:          t.restoreOpts.RepoId,
+			SnapshotId:      t.restoreOpts.SnapshotId,
 			UnixTimeStartMs: timeToUnixMillis(*ret),
 			Status:          v1.OperationStatus_STATUS_PENDING,
 			Op:              &v1.Operation_OperationRestore{},
@@ -63,21 +63,30 @@ func (t *RestoreTask) Run(ctx context.Context) error {
 	return t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
 		forgetOp := &v1.Operation_OperationRestore{
 			OperationRestore: &v1.OperationRestore{
-				Path:   t.restoreOpts.path,
-				Target: t.restoreOpts.target,
+				Path:   t.restoreOpts.Path,
+				Target: t.restoreOpts.Target,
 			},
 		}
 		op.Op = forgetOp
 		op.UnixTimeStartMs = curTimeMillis()
 
-		repo, err := t.orch.GetRepo(t.restoreOpts.repoId)
+		repo, err := t.orch.GetRepo(t.restoreOpts.RepoId)
 		if err != nil {
-			return fmt.Errorf("couldn't get repo %q: %w", t.restoreOpts.repoId, err)
+			return fmt.Errorf("couldn't get repo %q: %w", t.restoreOpts.RepoId, err)
 		}
 
-		summary, err := repo.Restore(ctx, t.restoreOpts.snapshotId, t.restoreOpts.path, t.restoreOpts.target, func(entry *v1.RestoreProgressEntry) {
+		lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
+		summary, err := repo.Restore(ctx, t.restoreOpts.SnapshotId, t.restoreOpts.Path, t.restoreOpts.Target, func(entry *v1.RestoreProgressEntry) {
+			if time.Since(lastSent) < 250*time.Millisecond {
+				return
+			}
+			lastSent = time.Now()
+
 			zap.S().Infof("restore progress: %v", entry)
 			forgetOp.OperationRestore.Status = entry
+			if err := t.orch.OpLog.Update(op); err != nil {
+				zap.S().Errorf("failed to update oplog with progress for restore: %v", err)
+			}
 		})
 		if err != nil {
 			return fmt.Errorf("restore failed: %w", err)

@@ -25,8 +25,10 @@ export type GetOperationsRequest = {
 
 export type RestoreSnapshotRequest = {
   repoId?: string
+  planId?: string
   snapshotId?: string
   path?: string
+  target?: string
 }
 
 export type ListSnapshotFilesRequest = {
