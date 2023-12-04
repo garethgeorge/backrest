@@ -218,7 +218,7 @@ export const AddPlanModal = ({
                 {fields.map((field, index) => (
                   <Form.Item
                     label={index === 0 ? "Paths" : " "}
-                    required={false}
+                    required={index === 0}
                     key={field.key}
                     colon={index === 0}
                   >

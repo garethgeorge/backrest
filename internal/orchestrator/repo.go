@@ -18,6 +18,7 @@ import (
 type RepoOrchestrator struct {
 	mu sync.Mutex
 
+	l          *zap.Logger
 	repoConfig *v1.Repo
 	repo       *restic.Repo
 }
@@ -27,6 +28,7 @@ func newRepoOrchestrator(repoConfig *v1.Repo, repo *restic.Repo) *RepoOrchestrat
 	return &RepoOrchestrator{
 		repoConfig: repoConfig,
 		repo:       repo,
+		l:          zap.L().With(zap.String("repo", repoConfig.Id)),
 	}
 }
 
@@ -60,7 +62,7 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 		return nil, fmt.Errorf("failed to get snapshots for plan: %w", err)
 	}
 
-	zap.L().Debug("got snapshots for plan", zap.String("repo", r.repoConfig.Id), zap.Int("count", len(snapshots)), zap.String("plan", plan.Id), zap.String("tag", tagForPlan(plan)))
+	r.l.Debug("got snapshots for plan", zap.String("repo", r.repoConfig.Id), zap.Int("count", len(snapshots)), zap.String("plan", plan.Id), zap.String("tag", tagForPlan(plan)))
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -82,7 +84,7 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 		return nil, fmt.Errorf("failed to backup: %w", err)
 	}
 
-	zap.L().Debug("Backup completed", zap.String("repo", r.repoConfig.Id), zap.Duration("duration", time.Since(startTime)))
+	r.l.Debug("Backup completed", zap.String("repo", r.repoConfig.Id), zap.Duration("duration", time.Since(startTime)))
 	return summary, nil
 }
 
@@ -112,7 +114,7 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 		return nil, fmt.Errorf("plan %q has no retention policy", plan.Id)
 	}
 
-	l := zap.L().With(zap.String("repo", r.repoConfig.Id), zap.String("plan", plan.Id))
+	l := r.l.With(zap.String("plan", plan.Id))
 
 	l.Debug("Forget snapshots", zap.Any("policy", policy))
 	result, err := r.repo.Forget(
@@ -141,8 +143,6 @@ func (r *RepoOrchestrator) Prune(ctx context.Context, output io.Writer) error {
 
 	policy := r.repoConfig.PrunePolicy
 
-	l := zap.L().With(zap.String("repo", r.repoConfig.Id))
-
 	var opts []restic.GenericOption
 	if policy != nil {
 		if policy.MaxUnusedBytes != 0 {
@@ -154,12 +154,36 @@ func (r *RepoOrchestrator) Prune(ctx context.Context, output io.Writer) error {
 		opts = append(opts, restic.WithFlags("--max-unused", "25%"))
 	}
 
-	l.Debug("Prune snapshots")
+	r.l.Debug("Prune snapshots")
 	err := r.repo.Prune(ctx, output, opts...)
 	if err != nil {
 		return fmt.Errorf("prune snapshots for repo %v: %w", r.repoConfig.Id, err)
 	}
 	return nil
+}
+
+func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, path string, target string, progressCallback func(event *v1.RestoreProgressEntry)) (*v1.RestoreProgressEntry, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.l.Debug("Restore snapshot", zap.String("snapshot", snapshotId), zap.String("target", target))
+
+	var opts []restic.GenericOption
+	opts = append(opts, restic.WithFlags("--target", target))
+	if path != "" {
+		opts = append(opts, restic.WithFlags("--include", path))
+	}
+
+	summary, err := r.repo.Restore(ctx, snapshotId, func(event *restic.RestoreProgressEntry) {
+		if progressCallback != nil {
+			progressCallback(protoutil.RestoreProgressEntryToProto(event))
+		}
+	}, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("restore snapshot %q for repo %v: %w", snapshotId, r.repoConfig.Id, err)
+	}
+
+	return protoutil.RestoreProgressEntryToProto(summary), nil
 }
 
 func tagForPlan(plan *v1.Plan) string {

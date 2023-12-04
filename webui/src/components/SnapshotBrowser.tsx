@@ -8,18 +8,17 @@ import {
 } from "../../gen/ts/v1/service.pb";
 import { useAlertApi } from "./Alerts";
 import {
-  DownOutlined,
   DownloadOutlined,
   FileOutlined,
   FolderOutlined,
-  MenuFoldOutlined,
 } from "@ant-design/icons";
-import { drop } from "lodash";
 import { useShowModal } from "./ModalManager";
+import { formatBytes } from "../lib/formatting";
 
 const SnapshotBrowserContext = React.createContext<{
   snapshotId: string;
   repoId: string;
+  showModal: (modal: React.ReactNode) => void; // slight performance hack.
 } | null>(null);
 
 // replaceKeyInTree returns a value only if changes are made.
@@ -31,10 +30,7 @@ const replaceKeyInTree = (
   if (curNode.key === setKey) {
     return setValue;
   }
-  if (setKey.indexOf(curNode.key as string) === -1) {
-    return null;
-  }
-  if (!curNode.children) {
+  if (!curNode.children || setKey.indexOf(curNode.key as string) === -1) {
     return null;
   }
   for (const idx in curNode.children!) {
@@ -53,11 +49,9 @@ const findInTree = (curNode: DataNode, key: string): DataNode | null => {
   if (curNode.key === key) {
     return curNode;
   }
-
-  if (!curNode.children) {
+  if (!curNode.children || key.indexOf(curNode.key as string) === -1) {
     return null;
   }
-
   for (const child of curNode.children) {
     const found = findInTree(child, key);
     if (found) {
@@ -72,6 +66,7 @@ export const SnapshotBrowser = ({
   snapshotId,
 }: React.PropsWithoutRef<{ snapshotId: string; repoId: string }>) => {
   const alertApi = useAlertApi();
+  const showModal = useShowModal();
   const [treeData, setTreeData] = useState<DataNode[]>([]);
 
   useEffect(() => {
@@ -133,7 +128,7 @@ export const SnapshotBrowser = ({
   };
 
   return (
-    <SnapshotBrowserContext.Provider value={{ snapshotId, repoId }}>
+    <SnapshotBrowserContext.Provider value={{ snapshotId, repoId, showModal }}>
       <Tree<DataNode> loadData={onLoadData} treeData={treeData} />
     </SnapshotBrowserContext.Provider>
   );
@@ -163,32 +158,55 @@ const respToNodes = (resp: ListSnapshotFilesResponse): DataNode[] => {
 
 const FileNode = ({ entry }: { entry: LsEntry }) => {
   const [dropdown, setDropdown] = useState<React.ReactNode>(null);
-  const { snapshotId, repoId } = React.useContext(SnapshotBrowserContext)!;
+  const { snapshotId, repoId, showModal } = React.useContext(
+    SnapshotBrowserContext
+  )!;
+
+  const showDropdown = () => {
+    setDropdown(
+      <Dropdown
+        menu={{
+          items: [
+            {
+              key: "info",
+              label: "Info",
+              onClick: () => {
+                showModal(
+                  <Modal
+                    title={"Path Info for " + entry.path}
+                    open={true}
+                    cancelButtonProps={{ style: { display: "none" } }}
+                    onCancel={() => showModal(null)}
+                    onOk={() => showModal(null)}
+                  >
+                    <pre>{JSON.stringify(entry, null, 2)}</pre>
+                  </Modal>
+                );
+              },
+            },
+            {
+              key: "restore",
+              label: "Restore to path",
+              onClick: () => {
+                restoreFlow(repoId, snapshotId, entry.path!);
+              },
+            },
+          ],
+        }}
+      >
+        <DownloadOutlined />
+      </Dropdown>
+    );
+  };
 
   return (
-    <Space
-      onMouseEnter={() =>
-        setDropdown(
-          <Dropdown
-            menu={{
-              items: [
-                {
-                  key: "restore",
-                  label: "Restore to path",
-                  onClick: () => {
-                    restoreFlow(repoId, snapshotId, entry.path!);
-                  },
-                },
-              ],
-            }}
-          >
-            <DownloadOutlined />
-          </Dropdown>
-        )
-      }
-      onMouseLeave={() => setDropdown(null)}
-    >
+    <Space onMouseEnter={showDropdown} onMouseLeave={() => setDropdown(null)}>
       {entry.name}
+      {entry.type === "file" ? (
+        <span className="resticui file-details">
+          ({formatBytes(entry.size)})
+        </span>
+      ) : null}
       {dropdown}
     </Space>
   );

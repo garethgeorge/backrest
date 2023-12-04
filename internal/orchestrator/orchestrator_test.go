@@ -31,6 +31,10 @@ func (t *testTask) Cancel(withStatus v1.OperationStatus) error {
 	return nil
 }
 
+func (t *testTask) OperationId() int64 {
+	return 0
+}
+
 func TestTaskScheduling(t *testing.T) {
 	t.Parallel()
 

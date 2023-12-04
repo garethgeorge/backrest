@@ -34,6 +34,10 @@ func (t *heapTestTask) Cancel(withStatus v1.OperationStatus) error {
 	return nil
 }
 
+func (t *heapTestTask) OperationId() int64 {
+	return 0
+}
+
 func TestTaskQueueOrdering(t *testing.T) {
 	h := taskQueue{}
 

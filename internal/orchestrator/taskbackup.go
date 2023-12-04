@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
@@ -15,12 +14,10 @@ import (
 
 // BackupTask is a scheduled backup operation.
 type BackupTask struct {
-	name         string
-	orchestrator *Orchestrator // owning orchestrator
-	plan         *v1.Plan
-	op           *v1.Operation
-	scheduler    func(curTime time.Time) *time.Time
-	cancel       atomic.Pointer[context.CancelFunc] // nil unless operation is running.
+	name string
+	TaskWithOperation
+	plan      *v1.Plan
+	scheduler func(curTime time.Time) *time.Time
 }
 
 var _ Task = &BackupTask{}
@@ -32,9 +29,11 @@ func NewScheduledBackupTask(orchestrator *Orchestrator, plan *v1.Plan) (*BackupT
 	}
 
 	return &BackupTask{
-		name:         fmt.Sprintf("backup for plan %q", plan.Id),
-		orchestrator: orchestrator,
-		plan:         plan,
+		name: fmt.Sprintf("backup for plan %q", plan.Id),
+		TaskWithOperation: TaskWithOperation{
+			orch: orchestrator,
+		},
+		plan: plan,
 		scheduler: func(curTime time.Time) *time.Time {
 			next := sched.Next(curTime)
 			return &next
@@ -45,9 +44,11 @@ func NewScheduledBackupTask(orchestrator *Orchestrator, plan *v1.Plan) (*BackupT
 func NewOneofBackupTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *BackupTask {
 	didOnce := false
 	return &BackupTask{
-		name:         fmt.Sprintf("onetime backup for plan %q", plan.Id),
-		orchestrator: orchestrator,
-		plan:         plan,
+		name: fmt.Sprintf("onetime backup for plan %q", plan.Id),
+		TaskWithOperation: TaskWithOperation{
+			orch: orchestrator,
+		},
+		plan: plan,
 		scheduler: func(curTime time.Time) *time.Time {
 			if didOnce {
 				return nil
@@ -68,38 +69,23 @@ func (t *BackupTask) Next(now time.Time) *time.Time {
 		return nil
 	}
 
-	t.op = &v1.Operation{
+	if err := t.setOperation(&v1.Operation{
 		PlanId:          t.plan.Id,
 		RepoId:          t.plan.Repo,
 		UnixTimeStartMs: timeToUnixMillis(*next),
 		Status:          v1.OperationStatus_STATUS_PENDING,
 		Op:              &v1.Operation_OperationBackup{},
-	}
-
-	if err := t.orchestrator.OpLog.Add(t.op); err != nil {
+	}); err != nil {
 		zap.S().Errorf("task %v failed to add operation to oplog: %v", t.Name(), err)
-		return nil
 	}
 
 	return next
 }
 
 func (t *BackupTask) Run(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(ctx)
-	t.cancel.Store(&cancel)
-	err := backupHelper(ctx, t.orchestrator, t.plan, t.op)
-	t.op = nil
-	t.cancel.Store(nil)
-	return err
-}
-
-func (t *BackupTask) Cancel(status v1.OperationStatus) error {
-	if t.op == nil {
-		return nil
-	}
-	t.op.Status = status
-	t.op.UnixTimeEndMs = curTimeMillis()
-	return t.orchestrator.OpLog.Update(t.op)
+	return t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
+		return backupHelper(ctx, t.orch, t.plan, op)
+	})
 }
 
 // backupHelper does a backup.

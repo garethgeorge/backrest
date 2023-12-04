@@ -49,7 +49,7 @@ type BaseOperation = {
 }
 
 export type Operation = BaseOperation
-  & OneOf<{ operationBackup: OperationBackup; operationIndexSnapshot: OperationIndexSnapshot; operationForget: OperationForget; operationPrune: OperationPrune }>
+  & OneOf<{ operationBackup: OperationBackup; operationIndexSnapshot: OperationIndexSnapshot; operationForget: OperationForget; operationPrune: OperationPrune; operationRestore: OperationRestore }>
 
 export type OperationEvent = {
   type?: OperationEventType
@@ -73,4 +73,10 @@ export type OperationForget = {
 
 export type OperationPrune = {
   output?: string
+}
+
+export type OperationRestore = {
+  path?: string
+  target?: string
+  status?: V1Restic.RestoreProgressEntry
 }
