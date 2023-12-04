@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"time"
 
 	"github.com/garethgeorge/resticui/gen/go/types"
@@ -267,6 +268,35 @@ func (s *Server) Prune(ctx context.Context, req *types.StringValue) (*emptypb.Em
 	at := time.Now()
 
 	s.orchestrator.ScheduleTask(orchestrator.NewOneofPruneTask(s.orchestrator, plan, "", at, true), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityPrune)
+
+	return &emptypb.Empty{}, nil
+}
+
+func (s *Server) Restore(ctx context.Context, req *v1.RestoreSnapshotRequest) (*emptypb.Empty, error) {
+	_, err := s.orchestrator.GetRepo(req.RepoId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repo %q: %w", req.RepoId, err)
+	}
+
+	if req.Target == "" {
+		req.Target = path.Join(os.Getenv("HOME"), "Downloads")
+	}
+
+	target := path.Join(req.Target, fmt.Sprintf("restic-restore-%v", time.Now().Format("2006-01-02T15-04-05")))
+	_, err = os.Stat(target)
+	if !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("restore target dir %q already exists", req.Target)
+	}
+
+	at := time.Now()
+
+	s.orchestrator.ScheduleTask(orchestrator.NewOneofRestoreTask(s.orchestrator, orchestrator.RestoreTaskOpts{
+		PlanId:     req.PlanId,
+		RepoId:     req.RepoId,
+		SnapshotId: req.SnapshotId,
+		Path:       req.Path,
+		Target:     target,
+	}, at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityDefault)
 
 	return &emptypb.Empty{}, nil
 }

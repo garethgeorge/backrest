@@ -54,3 +54,14 @@ message BackupProgressSummary {
   double total_duration = 12;
   string snapshot_id = 13;
 }
+
+// RestoreProgressEvent represents a single entry in the restore progress stream.
+message RestoreProgressEntry {
+  string message_type = 1; // "summary" or "status"
+  double seconds_elapsed = 2;
+  int64 total_bytes = 3;
+  int64 bytes_restored = 4;
+  int64 total_files = 5;
+  int64 files_restored = 6;
+  double percent_done = 7; // 0.0 - 1.0
+}

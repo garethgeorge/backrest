@@ -2,7 +2,9 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
@@ -15,6 +17,69 @@ type Task interface {
 	Next(now time.Time) *time.Time              // when this task would like to be run.
 	Run(ctx context.Context) error              // run the task.
 	Cancel(withStatus v1.OperationStatus) error // cancel the task's execution with the given status (either STATUS_USER_CANCELLED or STATUS_SYSTEM_CANCELLED).
+	OperationId() int64                         // the id of the operation associated with this task (if any).
+}
+
+type TaskWithOperation struct {
+	orch      *Orchestrator
+	op        atomic.Pointer[v1.Operation]
+	cancelled chan struct{}
+}
+
+func (t *TaskWithOperation) OperationId() int64 {
+	return t.op.Load().GetId()
+}
+
+func (t *TaskWithOperation) setOperation(op *v1.Operation) error {
+	if t.op.Load() != nil {
+		return errors.New("task already has an operation")
+	}
+	if err := t.orch.OpLog.Add(op); err != nil {
+		return fmt.Errorf("task failed to add operation to oplog: %v", err)
+	}
+	t.op.Store(op)
+	t.cancelled = make(chan struct{}, 1)
+	return nil
+}
+
+func (t *TaskWithOperation) runWithOpAndContext(ctx context.Context, do func(ctx context.Context, op *v1.Operation) error) error {
+	op := t.op.Load()
+	if op == nil {
+		return errors.New("task has no operation, a call to setOperation first is required.")
+	}
+	go func() {
+		t.op.Store(nil)
+	}()
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	go func() {
+		select {
+		case <-ctx.Done():
+		case <-t.cancelled:
+			cancel()
+		}
+	}()
+
+	return WithOperation(t.orch.OpLog, op, func() error {
+		return do(ctx, op)
+	})
+}
+
+// Cancel marks a task as cancelled. Note that, unintuitively, it is actually an error to call cancel on a running task.
+func (t *TaskWithOperation) Cancel(withStatus v1.OperationStatus) error {
+	close(t.cancelled)
+	op := t.op.Load()
+	if op == nil {
+		return nil
+	}
+	op.Status = withStatus
+	op.UnixTimeEndMs = curTimeMillis()
+	if err := t.orch.OpLog.Update(op); err != nil {
+		return fmt.Errorf("failed to update operation %v in oplog: %w", op.Id, err)
+	}
+	return nil
 }
 
 // WithOperation is a utility that creates an operation to track the function's execution.
@@ -33,6 +98,7 @@ func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error 
 	if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
 		op.Status = v1.OperationStatus_STATUS_INPROGRESS
 	}
+	op.UnixTimeStartMs = curTimeMillis() // update the start time from the planned time to the actual time.
 	err := do()
 	if err != nil {
 		op.Status = v1.OperationStatus_STATUS_ERROR

@@ -12,14 +12,14 @@ import (
 	"go.uber.org/zap"
 )
 
-// ForgetTask tracks a forget operation.
+// IndexSnapshotsTask tracks a forget operation.
 type IndexSnapshotsTask struct {
 	orchestrator *Orchestrator // owning orchestrator
 	plan         *v1.Plan
 	at           *time.Time
 }
 
-var _ Task = &ForgetTask{}
+var _ Task = &IndexSnapshotsTask{}
 
 func NewOneofIndexSnapshotsTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *IndexSnapshotsTask {
 	return &IndexSnapshotsTask{
@@ -47,6 +47,10 @@ func (t *IndexSnapshotsTask) Run(ctx context.Context) error {
 
 func (t *IndexSnapshotsTask) Cancel(withStatus v1.OperationStatus) error {
 	return nil
+}
+
+func (t *IndexSnapshotsTask) OperationId() int64 {
+	return 0
 }
 
 // indexSnapshotsHelper indexes all snapshots for a plan.

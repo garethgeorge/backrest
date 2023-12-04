@@ -1,9 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  Operation,
-  OperationEvent,
-  OperationStatus,
-} from "../../gen/ts/v1/operations.pb";
+import { OperationEvent, OperationStatus } from "../../gen/ts/v1/operations.pb";
 import {
   Card,
   Col,
@@ -12,7 +8,6 @@ import {
   List,
   Progress,
   Row,
-  Spin,
   Typography,
 } from "antd";
 import {
@@ -20,13 +15,13 @@ import {
   PaperClipOutlined,
   SaveOutlined,
   DeleteOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
 import {
   BackupInfo,
   BackupInfoCollector,
   EOperation,
-  buildOperationListListener,
   getOperations,
   shouldHideStatus,
   subscribeToOperations,
@@ -231,6 +226,7 @@ export const OperationRow = ({
             <SnapshotInfo
               snapshot={snapshotOp.snapshot!}
               repoId={operation.repoId!}
+              planId={operation.planId}
             />
           }
         />
@@ -269,7 +265,12 @@ export const OperationRow = ({
           title={
             <>{formatTime(operation.unixTimeStartMs!)} - Forget Operation</>
           }
-          avatar={<DeleteOutlined style={{ color }} />}
+          avatar={
+            <DeleteOutlined
+              style={{ color }}
+              spin={operation.status === OperationStatus.STATUS_INPROGRESS}
+            />
+          }
           description={
             <>
               <p></p>
@@ -323,15 +324,40 @@ export const OperationRow = ({
         />
       </List.Item>
     );
+  } else if (operation.operationRestore) {
+    const restore = operation.operationRestore;
+    let progress = 0;
+    if (restore.status && restore.status.percentDone) {
+      progress = Math.round(restore.status.percentDone * 100);
+    }
+
+    return (
+      <List.Item>
+        <List.Item.Meta
+          title={<>Restore {restore.path}</>}
+          avatar={<DownloadOutlined style={{ color }} />}
+          description={
+            <>
+              Restore {restore.path} to {restore.target}
+              {operation.status === OperationStatus.STATUS_INPROGRESS ? (
+                <Progress percent={progress} status="active" />
+              ) : null}
+            </>
+          }
+        />
+      </List.Item>
+    );
   }
 };
 
 const SnapshotInfo = ({
   snapshot,
   repoId,
+  planId,
 }: {
   snapshot: ResticSnapshot;
   repoId: string;
+  planId?: string;
 }) => {
   return (
     <Collapse
@@ -371,7 +397,11 @@ const SnapshotInfo = ({
           key: 2,
           label: "Browse and Restore Files in Backup",
           children: (
-            <SnapshotBrowser snapshotId={snapshot.id!} repoId={repoId} />
+            <SnapshotBrowser
+              snapshotId={snapshot.id!}
+              repoId={repoId}
+              planId={planId}
+            />
           ),
         },
       ]}

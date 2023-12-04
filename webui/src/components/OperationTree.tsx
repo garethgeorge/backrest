@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   BackupInfo,
   BackupInfoCollector,
@@ -76,6 +76,10 @@ export const OperationTree = ({
     };
   }, [JSON.stringify(req)]);
 
+  const treeData = useMemo(() => {
+    return buildTreeYear(backups);
+  }, [backups]);
+
   if (backups.length === 0) {
     return (
       <Empty
@@ -84,8 +88,6 @@ export const OperationTree = ({
       ></Empty>
     );
   }
-
-  const treeData = buildTreeYear(backups);
 
   let oplist: React.ReactNode | null = null;
   if (selectedBackupId) {
