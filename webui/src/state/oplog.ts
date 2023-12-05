@@ -8,6 +8,7 @@ import { GetOperationsRequest, ResticUI } from "../../gen/ts/v1/service.pb";
 import { API_PREFIX } from "../constants";
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
 import _ from "lodash";
+import { formatDuration, formatTime } from "../lib/formatting";
 
 export type EOperation = Operation & {
   parsedTime: number;
@@ -77,22 +78,14 @@ export const toEop = (op: Operation): EOperation => {
   };
 };
 
-enum DisplayType {
+export enum DisplayType {
+  UNKNOWN,
   BACKUP,
   SNAPSHOT,
   FORGET,
   PRUNE,
+  RESTORE,
 }
-
-const getTypeForDisplay = (op: Operation) => {
-  if (op.operationForget) {
-    return DisplayType.FORGET;
-  } else if (op.operationPrune) {
-    return DisplayType.PRUNE;
-  } else {
-    return DisplayType.BACKUP;
-  }
-};
 
 export interface BackupInfo {
   id: string; // id of the first operation that generated this backup.
@@ -241,4 +234,123 @@ export class BackupInfoCollector {
 
 export const shouldHideStatus = (status: OperationStatus) => {
   return status === OperationStatus.STATUS_SYSTEM_CANCELLED;
+};
+
+export const getTypeForDisplay = (op: Operation) => {
+  if (op.operationForget) {
+    return DisplayType.FORGET;
+  } else if (op.operationPrune) {
+    return DisplayType.PRUNE;
+  } else if (op.operationBackup) {
+    return DisplayType.BACKUP;
+  } else if (op.operationIndexSnapshot) {
+    return DisplayType.SNAPSHOT;
+  } else if (op.operationPrune) {
+    return DisplayType.PRUNE;
+  } else if (op.operationRestore) {
+    return DisplayType.RESTORE;
+  } else {
+    return DisplayType.UNKNOWN;
+  }
+};
+
+export const displayTypeToString = (type: DisplayType) => {
+  switch (type) {
+    case DisplayType.BACKUP:
+      return "Backup";
+    case DisplayType.SNAPSHOT:
+      return "Snapshot";
+    case DisplayType.FORGET:
+      return "Forget";
+    case DisplayType.PRUNE:
+      return "Prune";
+    default:
+      return "Unknown";
+  }
+};
+// detailsForOperation returns derived display information for a given operation.
+export const detailsForOperation = (
+  op: Operation
+): {
+  state: string;
+  displayState: string;
+  duration: number;
+  percentage?: number;
+  color: string;
+} => {
+  let state = "";
+  let duration = 0;
+  let percentage: undefined | number = undefined;
+  let color: string;
+  switch (op.status!) {
+    case OperationStatus.STATUS_PENDING:
+      state = "pending";
+      color = "grey";
+      break;
+    case OperationStatus.STATUS_INPROGRESS:
+      state = "runnning";
+      duration = new Date().getTime() - parseInt(op.unixTimeStartMs!);
+      color = "blue";
+      break;
+    case OperationStatus.STATUS_ERROR:
+      state = "error";
+      color = "red";
+      break;
+    case OperationStatus.STATUS_SUCCESS:
+      state = "";
+      color = "green";
+      break;
+    case OperationStatus.STATUS_USER_CANCELLED:
+      state = "cancelled";
+      color = "orange";
+      break;
+    default:
+      state = "";
+      color = "grey";
+  }
+
+  switch (op.status) {
+    case OperationStatus.STATUS_INPROGRESS:
+      duration = new Date().getTime() - parseInt(op.unixTimeStartMs!);
+
+      if (op.operationBackup) {
+        const backup = op.operationBackup;
+        if (backup.lastStatus && backup.lastStatus.status) {
+          percentage = (backup.lastStatus.status.percentDone || 0) * 100;
+        } else if (backup.lastStatus && backup.lastStatus.summary) {
+          percentage = 100;
+        }
+      } else if (op.operationRestore) {
+        const restore = op.operationRestore;
+        if (restore.status) {
+          percentage = (restore.status.percentDone || 1) * 100;
+        }
+      }
+
+      break;
+    default:
+      duration = parseInt(op.unixTimeEndMs!) - parseInt(op.unixTimeStartMs!);
+      break;
+  }
+
+  let displayState = state;
+  if (duration > 0) {
+    if (op.status === OperationStatus.STATUS_INPROGRESS) {
+      displayState += " for " + formatDuration(duration);
+    } else {
+      displayState += " in " + formatDuration(duration);
+    }
+  }
+
+  if (percentage !== undefined) {
+    displayState += ` (${percentage.toFixed(2)}%)`;
+  }
+
+  return {
+    state,
+    displayState,
+    duration,
+    percentage,
+    color,
+  };
 };

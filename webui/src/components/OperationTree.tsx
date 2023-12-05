@@ -173,7 +173,7 @@ export const OperationTree = ({
               let detailsElem: React.ReactNode | null = null;
               if (details.length > 0) {
                 detailsElem = (
-                  <span className="resticui backup-details">
+                  <span className="resticui operation-details">
                     [{details.join(", ")}]
                   </span>
                 );

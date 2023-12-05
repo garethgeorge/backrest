@@ -301,6 +301,19 @@ func (s *Server) Restore(ctx context.Context, req *v1.RestoreSnapshotRequest) (*
 	return &emptypb.Empty{}, nil
 }
 
+func (s *Server) Unlock(ctx context.Context, req *types.StringValue) (*emptypb.Empty, error) {
+	repo, err := s.orchestrator.GetRepo(req.Value)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repo %q: %w", req.Value, err)
+	}
+
+	if err := repo.Unlock(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to unlock repo %q: %w", req.Value, err)
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (s *Server) PathAutocomplete(ctx context.Context, path *types.StringValue) (*types.StringList, error) {
 	ents, err := os.ReadDir(path.Value)
 	if errors.Is(err, os.ErrNotExist) {

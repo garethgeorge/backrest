@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { OperationEvent, OperationStatus } from "../../gen/ts/v1/operations.pb";
+import {
+  Operation,
+  OperationEvent,
+  OperationStatus,
+} from "../../gen/ts/v1/operations.pb";
 import {
   Card,
   Col,
@@ -21,8 +25,12 @@ import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
 import {
   BackupInfo,
   BackupInfoCollector,
+  DisplayType,
   EOperation,
+  detailsForOperation,
+  displayTypeToString,
   getOperations,
+  getTypeForDisplay,
   shouldHideStatus,
   subscribeToOperations,
   toEop,
@@ -137,100 +145,78 @@ export const OperationList = ({
 export const OperationRow = ({
   operation,
 }: React.PropsWithoutRef<{ operation: EOperation }>) => {
-  let color = "grey";
-  if (operation.status === OperationStatus.STATUS_SUCCESS) {
-    color = "green";
-  } else if (operation.status === OperationStatus.STATUS_ERROR) {
-    color = "red";
-  } else if (operation.status === OperationStatus.STATUS_INPROGRESS) {
-    color = "blue";
+  const details = detailsForOperation(operation);
+  const displayType = getTypeForDisplay(operation);
+  let avatar: React.ReactNode;
+  switch (displayType) {
+    case DisplayType.BACKUP:
+      avatar = (
+        <SaveOutlined
+          style={{ color: details.color }}
+          spin={operation.status === OperationStatus.STATUS_INPROGRESS}
+        />
+      );
+      break;
+    case DisplayType.FORGET:
+      avatar = (
+        <DeleteOutlined
+          style={{ color: details.color }}
+          spin={operation.status === OperationStatus.STATUS_INPROGRESS}
+        />
+      );
+      break;
+    case DisplayType.SNAPSHOT:
+      avatar = <PaperClipOutlined style={{ color: details.color }} />;
+      break;
+    case DisplayType.RESTORE:
+      avatar = <DownloadOutlined style={{ color: details.color }} />;
+      break;
+    case DisplayType.PRUNE:
+      avatar = <DeleteOutlined style={{ color: details.color }} />;
+      break;
   }
 
-  let opType = "Message";
-  if (operation.operationBackup) {
-    opType = "Backup";
-  } else if (operation.operationIndexSnapshot) {
-    opType = "Snapshot";
-  }
+  const opName = displayTypeToString(getTypeForDisplay(operation));
+  const title = (
+    <>
+      {formatTime(operation.unixTimeStartMs!)} - {opName}{" "}
+      <span className="resticui operation-details">{details.displayState}</span>
+    </>
+  );
+
+  let body: React.ReactNode | undefined;
 
   if (
     operation.displayMessage &&
     operation.status === OperationStatus.STATUS_ERROR
   ) {
-    return (
-      <List.Item>
-        <List.Item.Meta
-          title={
-            <>
-              {formatTime(operation.unixTimeStartMs!)} - {opType} Error
-            </>
-          }
-          avatar={<ExclamationCircleOutlined style={{ color }} />}
-          description={<pre>{operation.displayMessage}</pre>}
-        />
-      </List.Item>
-    );
+    body = <pre>{operation.displayMessage}</pre>;
   } else if (operation.operationBackup) {
     const backupOp = operation.operationBackup;
-    let desc = `${formatTime(operation.unixTimeStartMs!)} - Backup`;
-    if (operation.status == OperationStatus.STATUS_SUCCESS) {
-      desc += ` completed in ${formatDuration(
-        parseInt(operation.unixTimeEndMs!) -
-          parseInt(operation.unixTimeStartMs!)
-      )}`;
-    } else if (operation.status === OperationStatus.STATUS_INPROGRESS) {
-      desc += " is still running.";
-    }
-
-    return (
-      <List.Item>
-        <List.Item.Meta
-          title={desc}
-          avatar={
-            <SaveOutlined
-              style={{ color }}
-              spin={operation.status === OperationStatus.STATUS_INPROGRESS}
-            />
-          }
-          description={
-            <>
-              <Collapse
-                size="small"
-                destroyInactivePanel
-                defaultActiveKey={[1]}
-                items={[
-                  {
-                    key: 1,
-                    label: "Backup Details",
-                    children: (
-                      <BackupOperationStatus status={backupOp.lastStatus} />
-                    ),
-                  },
-                ]}
-              />
-            </>
-          }
+    body = (
+      <>
+        <Collapse
+          size="small"
+          destroyInactivePanel
+          defaultActiveKey={[1]}
+          items={[
+            {
+              key: 1,
+              label: "Backup Details",
+              children: <BackupOperationStatus status={backupOp.lastStatus} />,
+            },
+          ]}
         />
-      </List.Item>
+      </>
     );
   } else if (operation.operationIndexSnapshot) {
     const snapshotOp = operation.operationIndexSnapshot;
-    return (
-      <List.Item>
-        <List.Item.Meta
-          title={
-            <>{formatTime(snapshotOp.snapshot!.unixTimeMs!)} - Snapshot </>
-          }
-          avatar={<PaperClipOutlined style={{ color }} />}
-          description={
-            <SnapshotInfo
-              snapshot={snapshotOp.snapshot!}
-              repoId={operation.repoId!}
-              planId={operation.planId}
-            />
-          }
-        />
-      </List.Item>
+    body = (
+      <SnapshotInfo
+        snapshot={snapshotOp.snapshot!}
+        repoId={operation.repoId!}
+        planId={operation.planId}
+      />
     );
   } else if (operation.operationForget) {
     const forgetOp = operation.operationForget;
@@ -259,95 +245,65 @@ export const OperationRow = ({
       policyDesc.push(`Keep Yearly for ${policy.keepYearly} Years`);
     }
 
-    return (
-      <List.Item>
-        <List.Item.Meta
-          title={
-            <>{formatTime(operation.unixTimeStartMs!)} - Forget Operation</>
-          }
-          avatar={
-            <DeleteOutlined
-              style={{ color }}
-              spin={operation.status === OperationStatus.STATUS_INPROGRESS}
-            />
-          }
-          description={
-            <>
-              <p></p>
-              <Collapse
-                size="small"
-                destroyInactivePanel
-                items={[
-                  {
-                    key: 1,
-                    label:
-                      "Removed " +
-                      forgetOp.forget?.length +
-                      " Snapshots (Policy Details)",
-                    children: (
-                      <div>
-                        <ul>
-                          {policyDesc.map((desc) => (
-                            <li>{desc}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ),
-                  },
-                ]}
-              />
-            </>
-          }
+    body = (
+      <>
+        <p></p>
+        <Collapse
+          size="small"
+          destroyInactivePanel
+          items={[
+            {
+              key: 1,
+              label:
+                "Removed " +
+                forgetOp.forget?.length +
+                " Snapshots (Policy Details)",
+              children: (
+                <div>
+                  <ul>
+                    {policyDesc.map((desc) => (
+                      <li>{desc}</li>
+                    ))}
+                  </ul>
+                </div>
+              ),
+            },
+          ]}
         />
-      </List.Item>
+      </>
     );
   } else if (operation.operationPrune) {
     const prune = operation.operationPrune;
-    return (
-      <List.Item>
-        <List.Item.Meta
-          title={<>Prune Operation</>}
-          avatar={<DeleteOutlined style={{ color }} />}
-          description={
-            <Collapse
-              size="small"
-              destroyInactivePanel
-              items={[
-                {
-                  key: 1,
-                  label: "Prune Output",
-                  children: <pre>{prune.output}</pre>,
-                },
-              ]}
-            />
-          }
-        />
-      </List.Item>
+    body = (
+      <Collapse
+        size="small"
+        destroyInactivePanel
+        items={[
+          {
+            key: 1,
+            label: "Prune Output",
+            children: <pre>{prune.output}</pre>,
+          },
+        ]}
+      />
     );
   } else if (operation.operationRestore) {
     const restore = operation.operationRestore;
-    let progress = 0;
-    if (restore.status && restore.status.percentDone) {
-      progress = Math.round(restore.status.percentDone * 100);
-    }
-
-    return (
-      <List.Item>
-        <List.Item.Meta
-          title={<>Restore {restore.path}</>}
-          avatar={<DownloadOutlined style={{ color }} />}
-          description={
-            <>
-              Restore {restore.path} to {restore.target}
-              {operation.status === OperationStatus.STATUS_INPROGRESS ? (
-                <Progress percent={progress} status="active" />
-              ) : null}
-            </>
-          }
-        />
-      </List.Item>
+    body = (
+      <>
+        Restore {restore.path} to {restore.target}
+        {details.percentage !== undefined ? (
+          <Progress percent={details.percentage || 0} status="active" />
+        ) : null}
+      </>
     );
   }
+
+  return (
+    <List.Item>
+      <List.Item.Meta title={title} avatar={avatar} description={body} />
+    </List.Item>
+  );
 };
 
 const SnapshotInfo = ({
@@ -428,6 +384,9 @@ const BackupOperationStatus = ({
       <>
         <Progress percent={progress} status="active" />
         <br />
+        {st.currentFile && st.currentFile.length > 0 ? (
+          <pre>Current file: {st.currentFile.join("\n")}</pre>
+        ) : null}
         <Row gutter={16}>
           <Col span={12}>
             <Typography.Text strong>Bytes Done/Total</Typography.Text>

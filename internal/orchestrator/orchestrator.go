@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -40,9 +41,13 @@ type Orchestrator struct {
 }
 
 func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog) (*Orchestrator, error) {
+	cfg = proto.Clone(cfg).(*v1.Config)
+
+	// create the orchestrator.
 	var o *Orchestrator
 	o = &Orchestrator{
-		OpLog: oplog,
+		OpLog:  oplog,
+		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
 		repoPool: newResticRepoPool(resticBin, &config.MemoryStore{Config: cfg}),
 		taskQueue: taskQueue{
@@ -51,9 +56,41 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog) (*Orc
 			},
 		},
 	}
+
+	// verify the operation log and mark any incomplete operations as failed.
+	if oplog != nil { // oplog may be nil for testing.
+		var incompleteOpRepos []string
+		if err := oplog.Scan(func(incomplete *v1.Operation) {
+			incomplete.Status = v1.OperationStatus_STATUS_ERROR
+			incomplete.DisplayMessage = "Failed, orchestrator killed while operation was in progress."
+
+			if incomplete.RepoId != "" && !slices.Contains(incompleteOpRepos, incomplete.RepoId) {
+				incompleteOpRepos = append(incompleteOpRepos, incomplete.RepoId)
+			}
+		}); err != nil {
+			return nil, fmt.Errorf("scan oplog: %w", err)
+		}
+
+		for _, repoId := range incompleteOpRepos {
+			repo, err := o.GetRepo(repoId)
+			if err != nil {
+				if errors.Is(err, ErrRepoNotFound) {
+					zap.L().Warn("repo not found for incomplete operation. Possibly just deleted.", zap.String("repo", repoId))
+				}
+				return nil, fmt.Errorf("get repo %q: %w", repoId, err)
+			}
+
+			if err := repo.Unlock(context.Background()); err != nil {
+				zap.L().Error("failed to unlock repo", zap.String("repo", repoId), zap.Error(err))
+			}
+		}
+	}
+
+	// apply starting configuration which also queues initial tasks.
 	if err := o.ApplyConfig(cfg); err != nil {
 		return nil, fmt.Errorf("apply initial config: %w", err)
 	}
+
 	return o, nil
 }
 

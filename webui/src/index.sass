@@ -2,7 +2,7 @@ body
   margin: 0px
 
 .resticui
-  &.backup-details
+  &.operation-details
     color: grey
     font-family: monospace
     font-size: 0.7em
@@ -14,3 +14,9 @@ body
 pre
   // force text to wrap on overflow even in 'pre' elements.
   white-space: pre-wrap
+
+.visible-on-hover .hidden-child
+  visibility: hidden
+
+.visible-on-hover:hover .hidden-child
+  visibility: visible

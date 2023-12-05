@@ -4,15 +4,17 @@ import {
   DatabaseOutlined,
   PlusOutlined,
   CheckCircleOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Layout, Menu, Spin, theme } from "antd";
+import { Button, Layout, Menu, Spin, theme } from "antd";
 import { configState, fetchConfig } from "../state/config";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Config } from "../../gen/ts/v1/config.pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { MainContentArea, useSetContent } from "./MainContentArea";
+import { AddPlanModal } from "./AddPlanModal";
 
 const { Header, Content, Sider } = Layout;
 
@@ -101,7 +103,21 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
       return {
         key: "p-" + plan.id,
         icon: <CheckCircleOutlined style={{ color: "green" }} />,
-        label: plan.id,
+        label: (
+          <div className="resticui visible-on-hover">
+            {plan.id}{" "}
+            <Button
+              className="hidden-child"
+              type="text"
+              size="small"
+              shape="circle"
+              icon={<SettingOutlined />}
+              onClick={() => {
+                showModal(<AddPlanModal template={plan} />);
+              }}
+            />
+          </div>
+        ),
         onClick: async () => {
           const { PlanView } = await import("./PlanView");
 

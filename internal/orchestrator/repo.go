@@ -186,6 +186,16 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, path 
 	return protoutil.RestoreProgressEntryToProto(summary), nil
 }
 
+func (r *RepoOrchestrator) Unlock(ctx context.Context) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.l.Debug("Unlocking repo")
+	r.repo.Unlock(ctx)
+
+	return nil
+}
+
 func tagForPlan(plan *v1.Plan) string {
 	return fmt.Sprintf("plan:%s", plan.Id)
 }

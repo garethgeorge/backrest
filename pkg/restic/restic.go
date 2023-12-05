@@ -339,6 +339,28 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 	return snapshots, entries, nil
 }
 
+func (r *Repo) Unlock(ctx context.Context, opts ...GenericOption) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	opt := resolveOpts(opts)
+
+	args := []string{"unlock"}
+	args = append(args, r.extraArgs...)
+	args = append(args, opt.extraArgs...)
+
+	cmd := exec.CommandContext(ctx, r.cmd, args...)
+	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, opt.extraEnv...)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return NewCmdError(cmd, output, err)
+	}
+
+	return nil
+}
+
 type RetentionPolicy struct {
 	KeepLastN          int    // keep the last n snapshots.
 	KeepHourly         int    // keep the last n hourly snapshots.

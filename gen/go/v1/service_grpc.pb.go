@@ -32,6 +32,7 @@ const (
 	ResticUI_Prune_FullMethodName              = "/v1.ResticUI/Prune"
 	ResticUI_Forget_FullMethodName             = "/v1.ResticUI/Forget"
 	ResticUI_Restore_FullMethodName            = "/v1.ResticUI/Restore"
+	ResticUI_Unlock_FullMethodName             = "/v1.ResticUI/Unlock"
 	ResticUI_PathAutocomplete_FullMethodName   = "/v1.ResticUI/PathAutocomplete"
 )
 
@@ -48,9 +49,14 @@ type ResticUIClient interface {
 	ListSnapshotFiles(ctx context.Context, in *ListSnapshotFilesRequest, opts ...grpc.CallOption) (*ListSnapshotFilesResponse, error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Prune schedules a prune operation.
 	Prune(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Forget schedules a forget operation.
 	Forget(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Restore schedules a restore operation.
 	Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
+	Unlock(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error)
 }
@@ -185,6 +191,15 @@ func (c *resticUIClient) Restore(ctx context.Context, in *RestoreSnapshotRequest
 	return out, nil
 }
 
+func (c *resticUIClient) Unlock(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ResticUI_Unlock_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *resticUIClient) PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error) {
 	out := new(types.StringList)
 	err := c.cc.Invoke(ctx, ResticUI_PathAutocomplete_FullMethodName, in, out, opts...)
@@ -207,9 +222,14 @@ type ResticUIServer interface {
 	ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(context.Context, *types.StringValue) (*emptypb.Empty, error)
+	// Prune schedules a prune operation.
 	Prune(context.Context, *types.StringValue) (*emptypb.Empty, error)
+	// Forget schedules a forget operation.
 	Forget(context.Context, *types.StringValue) (*emptypb.Empty, error)
+	// Restore schedules a restore operation.
 	Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error)
+	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
+	Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error)
 	mustEmbedUnimplementedResticUIServer()
@@ -251,6 +271,9 @@ func (UnimplementedResticUIServer) Forget(context.Context, *types.StringValue) (
 }
 func (UnimplementedResticUIServer) Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Restore not implemented")
+}
+func (UnimplementedResticUIServer) Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Unlock not implemented")
 }
 func (UnimplementedResticUIServer) PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PathAutocomplete not implemented")
@@ -469,6 +492,24 @@ func _ResticUI_Restore_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResticUI_Unlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(types.StringValue)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResticUIServer).Unlock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResticUI_Unlock_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResticUIServer).Unlock(ctx, req.(*types.StringValue))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ResticUI_PathAutocomplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
@@ -533,6 +574,10 @@ var ResticUI_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Restore",
 			Handler:    _ResticUI_Restore_Handler,
+		},
+		{
+			MethodName: "Unlock",
+			Handler:    _ResticUI_Unlock_Handler,
 		},
 		{
 			MethodName: "PathAutocomplete",

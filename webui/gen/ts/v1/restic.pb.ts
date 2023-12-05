@@ -40,6 +40,7 @@ export type BackupProgressStatusEntry = {
   totalBytes?: string
   filesDone?: string
   bytesDone?: string
+  currentFile?: string[]
 }
 
 export type BackupProgressSummary = {

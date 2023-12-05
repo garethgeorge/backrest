@@ -67,6 +67,7 @@ service ResticUI {
     };
   }
 
+  // Prune schedules a prune operation.
   rpc Prune(types.StringValue) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       post: "/v1/cmd/prune"
@@ -74,6 +75,7 @@ service ResticUI {
     };
   }
 
+  // Forget schedules a forget operation.
   rpc Forget(types.StringValue) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       post: "/v1/cmd/forget"
@@ -81,9 +83,18 @@ service ResticUI {
     };
   }
 
+  // Restore schedules a restore operation.
   rpc Restore(RestoreSnapshotRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       post: "/v1/cmd/restore"
+      body: "*"
+    };
+  }
+
+  // Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
+  rpc Unlock(types.StringValue) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/cmd/unlock"
       body: "*"
     };
   }
