@@ -89,6 +89,9 @@ export class ResticUI {
   static Restore(req: RestoreSnapshotRequest, initReq?: fm.InitReq): Promise<GoogleProtobufEmpty.Empty> {
     return fm.fetchReq<RestoreSnapshotRequest, GoogleProtobufEmpty.Empty>(`/v1/cmd/restore`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
   }
+  static Unlock(req: TypesValue.StringValue, initReq?: fm.InitReq): Promise<GoogleProtobufEmpty.Empty> {
+    return fm.fetchReq<TypesValue.StringValue, GoogleProtobufEmpty.Empty>(`/v1/cmd/unlock`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
+  }
   static PathAutocomplete(req: TypesValue.StringValue, initReq?: fm.InitReq): Promise<TypesValue.StringList> {
     return fm.fetchReq<TypesValue.StringValue, TypesValue.StringList>(`/v1/autocomplete/path`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
   }

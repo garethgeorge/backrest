@@ -64,11 +64,6 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 	o.nextId.Store(1)
 
 	if err := db.Update(func(tx *bolt.Tx) error {
-		sysBucket, err := tx.CreateBucketIfNotExists(SystemBucket)
-		if err != nil {
-			return fmt.Errorf("creating system bucket: %s", err)
-		}
-
 		// Create the buckets if they don't exist
 		for _, bucket := range [][]byte{
 			SystemBucket, OpLogBucket, OpLogSoftDeleteBucket, RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket,
@@ -78,7 +73,18 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 			}
 		}
 
-		// Validate the operation log on startup.
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return o, nil
+}
+
+// Scan checks the log for incomplete operations. Should only be called at startup.
+func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
+	return o.db.Update(func(tx *bolt.Tx) error {
+		sysBucket := tx.Bucket(SystemBucket)
 		opLogBucket := tx.Bucket(OpLogBucket)
 		c := opLogBucket.Cursor()
 		if lastValidated := sysBucket.Get([]byte("last_validated")); lastValidated != nil {
@@ -96,6 +102,7 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 				o.deleteOperationHelper(tx, op.Id)
 				continue
 			} else if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
+				onIncomplete(op)
 				o.deleteOperationHelper(tx, op.Id)
 			}
 
@@ -109,13 +116,8 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 				return fmt.Errorf("checkpointing last_validated key: %w", err)
 			}
 		}
-
 		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	return o, nil
+	})
 }
 
 func (o *OpLog) Close() error {

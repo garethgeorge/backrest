@@ -49,22 +49,19 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   };
 
   const handleUnlockNow = () => {
-    alertsApi.warning("Not implemented yet :(");
+    try {
+      alertsApi.info("Unlocking repo...");
+      ResticUI.Unlock({ value: plan.repo! }, { pathPrefix: "/api" });
+      alertsApi.success("Repo unlocked.");
+    } catch (e: any) {
+      alertsApi.error("Failed to unlock repo: " + e.message);
+    }
   };
 
   return (
     <>
       <Flex gap="small" align="center" wrap="wrap">
         <h1>{plan.id}</h1>
-        <Button
-          type="text"
-          size="small"
-          shape="circle"
-          icon={<SettingOutlined />}
-          onClick={() => {
-            showModal(<AddPlanModal template={plan} />);
-          }}
-        />
       </Flex>
       <Flex gap="small" align="center" wrap="wrap">
         <Button type="primary" onClick={handleBackupNow}>
@@ -77,7 +74,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         </Tooltip>
         <Tooltip title="Removes lockfiles and checks the repository for errors. Only run if you are sure the repo is not being accessed by another system">
           <Button type="default" onClick={handleUnlockNow}>
-            Run Repo Doctor
+            Unlock Repo
           </Button>
         </Tooltip>
       </Flex>

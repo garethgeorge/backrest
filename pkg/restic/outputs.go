@@ -67,11 +67,12 @@ type BackupProgressEntry struct {
 	SnapshotId          string  `json:"snapshot_id"`
 
 	// Status fields
-	PercentDone float64 `json:"percent_done"`
-	TotalFiles  int     `json:"total_files"`
-	FilesDone   int     `json:"files_done"`
-	TotalBytes  int     `json:"total_bytes"`
-	BytesDone   int     `json:"bytes_done"`
+	PercentDone  float64  `json:"percent_done"`
+	TotalFiles   int      `json:"total_files"`
+	FilesDone    int      `json:"files_done"`
+	TotalBytes   int      `json:"total_bytes"`
+	BytesDone    int      `json:"bytes_done"`
+	CurrentFiles []string `json:"current_files"`
 }
 
 func (b *BackupProgressEntry) Validate() error {

@@ -85,6 +85,7 @@ func (t *TaskWithOperation) Cancel(withStatus v1.OperationStatus) error {
 // WithOperation is a utility that creates an operation to track the function's execution.
 // timestamps are automatically added and the status is automatically updated if an error occurs.
 func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error {
+	op.UnixTimeStartMs = curTimeMillis() // update the start time from the planned time to the actual time.
 	if op.Id != 0 {
 		if err := oplog.Update(op); err != nil {
 			return fmt.Errorf("failed to add operation to oplog: %w", err)
@@ -98,7 +99,6 @@ func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error 
 	if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
 		op.Status = v1.OperationStatus_STATUS_INPROGRESS
 	}
-	op.UnixTimeStartMs = curTimeMillis() // update the start time from the planned time to the actual time.
 	err := do()
 	if err != nil {
 		op.Status = v1.OperationStatus_STATUS_ERROR

@@ -90,58 +90,49 @@ func (t *BackupTask) Run(ctx context.Context) error {
 
 // backupHelper does a backup.
 func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan, op *v1.Operation) error {
+	startTime := time.Now()
 	backupOp := &v1.Operation_OperationBackup{
 		OperationBackup: &v1.OperationBackup{},
 	}
-
-	startTime := time.Now()
 	op.Op = backupOp
-	op.UnixTimeStartMs = curTimeMillis()
 
-	err := WithOperation(orchestrator.OpLog, op, func() error {
-		zap.L().Info("Starting backup", zap.String("plan", plan.Id), zap.Int64("opId", op.Id))
-		repo, err := orchestrator.GetRepo(plan.Repo)
-		if err != nil {
-			return fmt.Errorf("couldn't get repo %q: %w", plan.Repo, err)
+	zap.L().Info("Starting backup", zap.String("plan", plan.Id), zap.Int64("opId", op.Id))
+	repo, err := orchestrator.GetRepo(plan.Repo)
+	if err != nil {
+		return fmt.Errorf("couldn't get repo %q: %w", plan.Repo, err)
+	}
+
+	lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
+	summary, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
+		if time.Since(lastSent) < 250*time.Millisecond {
+			return
 		}
+		lastSent = time.Now()
 
-		lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
-		summary, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
-			if time.Since(lastSent) < 250*time.Millisecond {
-				return
-			}
-			lastSent = time.Now()
-
-			backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(entry)
-			if err := orchestrator.OpLog.Update(op); err != nil {
-				zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
-			}
-		})
-		if err != nil {
-			return fmt.Errorf("repo.Backup for repo %q: %w", plan.Repo, err)
+		backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(entry)
+		if err := orchestrator.OpLog.Update(op); err != nil {
+			zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
 		}
-
-		op.SnapshotId = summary.SnapshotId
-		backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(summary)
-		if backupOp.OperationBackup.LastStatus == nil {
-			return fmt.Errorf("expected a final backup progress entry, got nil")
-		}
-
-		zap.L().Info("Backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)), zap.Any("summary", summary))
-
-		// schedule followup tasks
-		at := time.Now()
-		if plan.Retention != nil {
-			orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityForget)
-		}
-
-		orchestrator.ScheduleTask(NewOneofIndexSnapshotsTask(orchestrator, plan, at), TaskPriorityIndexSnapshots)
-
-		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("backup operation: %w", err)
+		return fmt.Errorf("repo.Backup for repo %q: %w", plan.Repo, err)
 	}
+
+	op.SnapshotId = summary.SnapshotId
+	backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(summary)
+	if backupOp.OperationBackup.LastStatus == nil {
+		return fmt.Errorf("expected a final backup progress entry, got nil")
+	}
+
+	zap.L().Info("Backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)), zap.Any("summary", summary))
+
+	// schedule followup tasks
+	at := time.Now()
+	if plan.Retention != nil {
+		orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityForget)
+	}
+
+	orchestrator.ScheduleTask(NewOneofIndexSnapshotsTask(orchestrator, plan, at), TaskPriorityIndexSnapshots)
 
 	return nil
 }

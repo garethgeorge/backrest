@@ -36,6 +36,7 @@ message BackupProgressStatusEntry {
   int64 total_bytes = 3;
   int64 files_done = 4;
   int64 bytes_done = 5;
+  repeated string current_file = 6;
 }
 
 // BackupProgressSummary represents a the summary event emitted at the end of a backup stream.

@@ -64,6 +64,7 @@ func BackupProgressEntryToProto(b *restic.BackupProgressEntry) *v1.BackupProgres
 					FilesDone:   int64(b.FilesDone),
 					TotalBytes:  int64(b.TotalBytes),
 					BytesDone:   int64(b.BytesDone),
+					CurrentFile: b.CurrentFiles,
 				},
 			},
 		}
