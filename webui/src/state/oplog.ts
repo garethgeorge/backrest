@@ -124,6 +124,9 @@ export class BackupInfoCollector {
       [...newInfo.operations, ...existing.operations],
       (o) => o.id!
     );
+    existing.operations.sort((a, b) => {
+      return parseInt(a.unixTimeStartMs!) - parseInt(b.unixTimeStartMs!);
+    });
     if (newInfo.backupLastStatus) {
       existing.backupLastStatus = newInfo.backupLastStatus;
     }
@@ -264,6 +267,8 @@ export const displayTypeToString = (type: DisplayType) => {
       return "Forget";
     case DisplayType.PRUNE:
       return "Prune";
+    case DisplayType.RESTORE:
+      return "Restore";
     default:
       return "Unknown";
   }

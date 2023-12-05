@@ -55,7 +55,7 @@ export const App: React.FC = () => {
             style={{ color: colorTextLightSolid }}
             onClick={() => setContent(null, [])}
           >
-            ResticUI{" "}
+            BackRest<span style={{ color: "grey" }}>ic</span>{" "}
           </a>
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
             {process.env.RESTICUI_BUILD_VERSION

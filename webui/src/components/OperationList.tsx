@@ -15,7 +15,6 @@ import {
   Typography,
 } from "antd";
 import {
-  ExclamationCircleOutlined,
   PaperClipOutlined,
   SaveOutlined,
   DeleteOutlined,
