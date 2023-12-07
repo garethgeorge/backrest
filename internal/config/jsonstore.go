@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -8,13 +9,13 @@ import (
 	"sync"
 
 	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/google/renameio"
+	"github.com/natefinch/atomic"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type JsonFileStore struct {
 	Path string
-	mu sync.Mutex
+	mu   sync.Mutex
 }
 
 var _ ConfigStore = &JsonFileStore{}
@@ -32,7 +33,7 @@ func (f *JsonFileStore) Get() (*v1.Config, error) {
 	}
 
 	var config v1.Config
-	
+
 	if err = protojson.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
@@ -53,8 +54,8 @@ func (f *JsonFileStore) Update(config *v1.Config) error {
 	}
 
 	data, err := protojson.MarshalOptions{
-		Indent: "  ",
-		Multiline: true,
+		Indent:          "  ",
+		Multiline:       true,
 		EmitUnpopulated: true,
 	}.Marshal(config)
 	if err != nil {
@@ -66,7 +67,7 @@ func (f *JsonFileStore) Update(config *v1.Config) error {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	err = renameio.WriteFile(f.Path, data, 0644)
+	err = atomic.WriteFile(f.Path, bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
