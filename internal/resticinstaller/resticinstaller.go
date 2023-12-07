@@ -1,6 +1,8 @@
 package resticinstaller
 
 import (
+	"archive/zip"
+	"bytes"
 	"compress/bzip2"
 	"errors"
 	"fmt"
@@ -28,10 +30,13 @@ var (
 )
 
 func resticDownloadURL(version string) string {
+	if runtime.GOOS == "windows" {
+		return fmt.Sprintf("https://github.com/restic/restic/releases/download/v%v/restic_%v_windows_%v.zip", version, version, runtime.GOARCH)
+	}
 	return fmt.Sprintf("https://github.com/restic/restic/releases/download/v%v/restic_%v_%v_%v.bz2", version, version, runtime.GOOS, runtime.GOARCH)
 }
 
-func downloadFile(url string, path string) error {
+func downloadFile(url string, downloadPath string) error {
 	// Download ur as a file and save it to path
 	resp, err := http.Get(url)
 	if err != nil {
@@ -42,19 +47,38 @@ func downloadFile(url string, path string) error {
 	var body io.Reader = resp.Body
 	if strings.HasSuffix(url, ".bz2") {
 		body = bzip2.NewReader(resp.Body)
+	} else if strings.HasSuffix(url, ".zip") {
+		var fullBody bytes.Buffer
+		_, err := io.Copy(&fullBody, resp.Body)
+		if err != nil {
+			return fmt.Errorf("copy response body to buffer: %w", err)
+		}
+
+		archive, err := zip.NewReader(bytes.NewReader(fullBody.Bytes()), int64(fullBody.Len()))
+		if err != nil {
+			return fmt.Errorf("open zip archive: %w", err)
+		}
+
+		if len(archive.File) != 1 {
+			return fmt.Errorf("expected zip archive to contain exactly one file, got %v", len(archive.File))
+		}
+		body, err = archive.File[0].Open()
+		if err != nil {
+			return fmt.Errorf("open zip archive file %v: %w", archive.File[0].Name, err)
+		}
 	}
 
-	out, err := os.Create(path)
+	out, err := os.Create(downloadPath)
 	if err != nil {
-		return fmt.Errorf("create file %v: %w", path, err)
+		return fmt.Errorf("create file %v: %w", downloadPath, err)
 	}
 	defer out.Close()
 	if err != nil {
-		return fmt.Errorf("create file %v: %w", path, err)
+		return fmt.Errorf("create file %v: %w", downloadPath, err)
 	}
 	_, err = io.Copy(out, body)
 	if err != nil {
-		return fmt.Errorf("copy response body to file %v: %w", path, err)
+		return fmt.Errorf("copy response body to file %v: %w", downloadPath, err)
 	}
 
 	return nil
@@ -115,6 +139,13 @@ func FindOrInstallResticBinary() (string, error) {
 
 	// Check for restic installation in data directory.
 	resticInstallPath := path.Join(config.DataDir(), fmt.Sprintf("restic-%v", RequiredResticVersion))
+	if runtime.GOOS == "windows" {
+		programFiles := os.Getenv("programfiles(x86)")
+		if programFiles == "" {
+			programFiles = os.Getenv("programfiles")
+		}
+		resticInstallPath = path.Join(programFiles, "restic", fmt.Sprintf("restic-%v.exe", RequiredResticVersion))
+	}
 	if _, err := os.Stat(resticInstallPath); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return "", fmt.Errorf("could not stat restic binary at %v: %w", resticBin, err)
@@ -125,7 +156,7 @@ func FindOrInstallResticBinary() (string, error) {
 		}
 		didTryInstall = true
 
-		zap.S().Infof("Installing restic %v...", RequiredResticVersion)
+		zap.S().Infof("Installing restic %v to %v...", resticInstallPath, RequiredResticVersion)
 		if err := installResticIfNotExists(resticInstallPath); err != nil {
 			return "", fmt.Errorf("install restic: %w", err)
 		}

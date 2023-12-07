@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 )
 
@@ -14,22 +15,30 @@ var (
 	EnvVarBinPath     = "RESTICUI_RESTIC_BIN_PATH"
 )
 
+// ConfigFilePath
+// - *nix systems use $XDG_CONFIG_HOME/resticui/config.json
+// - windows uses %APPDATA%/resticui/config.json
 func ConfigFilePath() string {
 	if val := os.Getenv(EnvVarConfigPath); val != "" {
 		return val
 	}
-	if val := os.Getenv("XDG_CONFIG_HOME"); val != "" {
-		return path.Join(val, "resticui/config.json")
-	}
-	return path.Join(getHomeDir(), ".config/resticui/config.json")
+
+	return path.Join(getConfigDir(), "resticui/config.json")
 }
 
+// DataDir
+// - *nix systems use $XDG_DATA_HOME/resticui
+// - windows uses %APPDATA%/resticui/data
 func DataDir() string {
 	if val := os.Getenv(EnvVarDataDir); val != "" {
 		return val
 	}
 	if val := os.Getenv("XDG_DATA_HOME"); val != "" {
 		return path.Join(val, "resticui")
+	}
+
+	if runtime.GOOS == "windows" {
+		return path.Join(getConfigDir(), "resticui/data")
 	}
 	return path.Join(getHomeDir(), ".local/share/resticui")
 }
@@ -57,4 +66,12 @@ func getHomeDir() string {
 		panic(fmt.Errorf("couldn't determine home directory: %v", err))
 	}
 	return home
+}
+
+func getConfigDir() string {
+	cfgDir, err := os.UserConfigDir()
+	if err != nil {
+		panic(fmt.Errorf("couldn't determine config directory: %v", err))
+	}
+	return cfgDir
 }

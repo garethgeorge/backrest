@@ -12,6 +12,12 @@ The goals of this project are:
  * Easy to pull back the curtain: all common operations should be possible from the UI, but it should be easy to drop down to the command line and use restic directly if needed.
  * Lightweight: your backup orchestration should blend into the background. The web UI binary is fully self contained as a single executable and the binary is <20 MB with very light memory overhead at runtime.
 
+OS Support
+
+ * Linux 
+ * MacOS (Darwin)
+ * Windows (note: must be run as administrator on first execution to install the restic binary in Program Files).
+
 # Getting Started 
 
 ## Running 
