@@ -49,14 +49,20 @@ export const App: React.FC = () => {
   const items = getSidenavItems(config);
 
   return (
-    <Layout style={{ height: "auto" }}>
-      <Header style={{ display: "flex", alignItems: "center" }}>
+    <Layout style={{ height: "auto", minHeight: "100vh" }}>
+      <Header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          backgroundColor: "#1b232c",
+        }}
+      >
         <h1>
           <a
             style={{ color: colorTextLightSolid }}
             onClick={() => setContent(null, [])}
           >
-            BackRest<span style={{ color: "grey" }}>ic</span>{" "}
+            Restora{" "}
           </a>
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
             {uiBuildVersion}

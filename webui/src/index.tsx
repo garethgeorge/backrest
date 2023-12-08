@@ -6,6 +6,7 @@ import { AlertContextProvider } from "./components/Alerts";
 import { ModalContextProvider } from "./components/ModalManager";
 
 import "react-js-cron/dist/styles.css";
+import { ConfigProvider, theme } from "antd";
 
 const Root = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -17,10 +18,21 @@ const Root = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+const darkThemeMq = true; // window.matchMedia("(prefers-color-scheme: dark)");
+
 const el = document.querySelector("#app");
 el &&
   createRoot(el).render(
-    <Root>
-      <App />
-    </Root>
+    <ConfigProvider
+      theme={{
+        algorithm: [
+          darkThemeMq ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          theme.compactAlgorithm,
+        ],
+      }}
+    >
+      <Root>
+        <App />
+      </Root>
+    </ConfigProvider>
   );
