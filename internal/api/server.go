@@ -161,21 +161,21 @@ func (s *Server) ListSnapshotFiles(ctx context.Context, query *v1.ListSnapshotFi
 func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.ResticUI_GetOperationEventsServer) error {
 	errorChan := make(chan error)
 	defer close(errorChan)
-	callback := func(eventType oplog.EventType, op *v1.Operation) {
+	callback := func(oldOp *v1.Operation, newOp *v1.Operation) {
 		var eventTypeMapped v1.OperationEventType
-		switch eventType {
-		case oplog.EventTypeOpCreated:
+		eventType := oplog.EventTypeUnknown
+		if oldOp == nil && newOp != nil {
 			eventTypeMapped = v1.OperationEventType_EVENT_CREATED
-		case oplog.EventTypeOpUpdated:
+		} else if oldOp != nil && newOp != nil {
 			eventTypeMapped = v1.OperationEventType_EVENT_UPDATED
-		default:
+		} else {
 			zap.L().Error("Unknown event type", zap.Int("eventType", int(eventType)))
-			eventTypeMapped = v1.OperationEventType_EVENT_UNKNOWN
+			return
 		}
 
 		event := &v1.OperationEvent{
 			Type:      eventTypeMapped,
-			Operation: op,
+			Operation: newOp,
 		}
 
 		go func() {
