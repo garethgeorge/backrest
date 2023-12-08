@@ -287,29 +287,29 @@ func (o *OpLog) deleteOperationHelper(tx *bolt.Tx, id int64) (*v1.Operation, err
 
 	prevValue, err := o.getOperationHelper(b, id)
 	if err != nil {
-		return prevValue, fmt.Errorf("getting operation %v: %w", id, err)
+		return nil, fmt.Errorf("getting operation %v: %w", id, err)
 	}
 
 	if prevValue.PlanId != "" {
 		if err := indexutil.IndexRemoveByteValue(tx.Bucket(PlanIndexBucket), []byte(prevValue.PlanId), id); err != nil {
-			return prevValue, fmt.Errorf("removing operation %v from plan index: %w", id, err)
+			return nil, fmt.Errorf("removing operation %v from plan index: %w", id, err)
 		}
 	}
 
 	if prevValue.RepoId != "" {
 		if err := indexutil.IndexRemoveByteValue(tx.Bucket(RepoIndexBucket), []byte(prevValue.RepoId), id); err != nil {
-			return prevValue, fmt.Errorf("removing operation %v from repo index: %w", id, err)
+			return nil, fmt.Errorf("removing operation %v from repo index: %w", id, err)
 		}
 	}
 
 	if prevValue.SnapshotId != "" {
 		if err := indexutil.IndexRemoveByteValue(tx.Bucket(SnapshotIndexBucket), []byte(prevValue.SnapshotId), id); err != nil {
-			return prevValue, fmt.Errorf("removing operation %v from snapshot index: %w", id, err)
+			return nil, fmt.Errorf("removing operation %v from snapshot index: %w", id, err)
 		}
 	}
 
 	if err := b.Delete(serializationutil.Itob(id)); err != nil {
-		return prevValue, fmt.Errorf("deleting operation %v from bucket: %w", id, err)
+		return nil, fmt.Errorf("deleting operation %v from bucket: %w", id, err)
 	}
 
 	return prevValue, nil
