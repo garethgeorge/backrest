@@ -22,7 +22,6 @@ func ConfigFilePath() string {
 	if val := os.Getenv(EnvVarConfigPath); val != "" {
 		return val
 	}
-
 	return path.Join(getConfigDir(), "resticui/config.json")
 }
 
@@ -69,9 +68,15 @@ func getHomeDir() string {
 }
 
 func getConfigDir() string {
-	cfgDir, err := os.UserConfigDir()
-	if err != nil {
-		panic(fmt.Errorf("couldn't determine config directory: %v", err))
+	if runtime.GOOS == "windows" {
+		cfgDir, err := os.UserConfigDir()
+		if err != nil {
+			panic(fmt.Errorf("couldn't determine config directory: %v", err))
+		}
+		return cfgDir
 	}
-	return cfgDir
+	if val := os.Getenv("XDG_CONFIG_HOME"); val != "" {
+		return val
+	}
+	return path.Join(getHomeDir(), ".config")
 }
