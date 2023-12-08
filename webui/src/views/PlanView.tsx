@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plan } from "../../gen/ts/v1/config.pb";
-import { Button, Flex, Tabs, Tooltip } from "antd";
-import { SettingOutlined } from "@ant-design/icons";
-import { AddPlanModal } from "./AddPlanModal";
+import { Button, Flex, Tabs, Tooltip, Typography } from "antd";
 import { useShowModal } from "../components/ModalManager";
 import { useRecoilValue } from "recoil";
 import { configState } from "../state/config";
@@ -10,7 +8,6 @@ import { useAlertApi } from "../components/Alerts";
 import { ResticUI } from "../../gen/ts/v1/service.pb";
 import {
   EOperation,
-  buildOperationListListener,
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
@@ -61,7 +58,9 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   return (
     <>
       <Flex gap="small" align="center" wrap="wrap">
-        <h1>{plan.id}</h1>
+        <Typography.Title>
+          <h1>{plan.id}</h1>
+        </Typography.Title>
       </Flex>
       <Flex gap="small" align="center" wrap="wrap">
         <Button type="primary" onClick={handleBackupNow}>
