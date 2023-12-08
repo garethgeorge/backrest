@@ -88,7 +88,7 @@ func (b *BackupProgressEntry) Validate() error {
 	return nil
 }
 
-// readBackupProgressEntrys returns the summary event or an error if the command failed.
+// readBackupProgressEntries returns the summary event or an error if the command failed.
 func readBackupProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
@@ -122,10 +122,12 @@ func readBackupProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(ev
 	for scanner.Scan() {
 		var event BackupProgressEntry
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			return nil, fmt.Errorf("failed to parse JSON: %w", err)
+			// skip it. This is a best-effort attempt to parse the output.
+			continue
 		}
 		if err := event.Validate(); err != nil {
-			return nil, err
+			// skip it. This is a best-effort attempt to parse the output.
+			continue
 		}
 
 		if callback != nil {
