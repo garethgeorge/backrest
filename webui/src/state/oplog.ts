@@ -125,7 +125,7 @@ export class BackupInfoCollector {
       (o) => o.id!
     );
     existing.operations.sort((a, b) => {
-      return parseInt(a.unixTimeStartMs!) - parseInt(b.unixTimeStartMs!);
+      return parseInt(b.unixTimeStartMs!) - parseInt(a.unixTimeStartMs!);
     });
     if (newInfo.backupLastStatus) {
       existing.backupLastStatus = newInfo.backupLastStatus;
