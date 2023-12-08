@@ -291,6 +291,7 @@ export const AddPlanModal = ({
                       <URIAutocomplete
                         style={{ width: "90%" }}
                         onBlur={() => form.validateFields()}
+                        globAllowed={true}
                       />
                     </Form.Item>
                     <MinusCircleOutlined

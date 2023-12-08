@@ -9,14 +9,15 @@ import {
 import type { MenuProps } from "antd";
 import { Button, Layout, Menu, Spin, theme } from "antd";
 import { configState, fetchConfig } from "../state/config";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState } from "recoil";
 import { Config } from "../../gen/ts/v1/config.pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { MainContentArea, useSetContent } from "./MainContentArea";
 import { AddPlanModal } from "./AddPlanModal";
+import { uiBuildVersion } from "../state/buildcfg";
 
-const { Header, Content, Sider } = Layout;
+const { Header, Sider } = Layout;
 
 export const App: React.FC = () => {
   const {
@@ -58,9 +59,7 @@ export const App: React.FC = () => {
             BackRest<span style={{ color: "grey" }}>ic</span>{" "}
           </a>
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
-            {process.env.RESTICUI_BUILD_VERSION
-              ? process.env.RESTICUI_BUILD_VERSION
-              : ""}
+            {uiBuildVersion}
           </small>
         </h1>
       </Header>
