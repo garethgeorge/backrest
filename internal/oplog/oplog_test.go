@@ -103,7 +103,6 @@ func TestAddOperation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
 			if err := log.Add(tc.op); (err != nil) != tc.wantErr {
 				t.Errorf("Add() error = %v, wantErr %v", err, tc.wantErr)
 			}
