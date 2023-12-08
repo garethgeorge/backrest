@@ -103,11 +103,19 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 	}
 
 	lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
+	var lastFiles []string
 	summary, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
 		if time.Since(lastSent) < 250*time.Millisecond {
 			return
 		}
 		lastSent = time.Now()
+
+		// prevents flickering output when a status entry omits the CurrentFiles property. Largely cosmetic.
+		if len(entry.CurrentFiles) == 0 {
+			entry.CurrentFiles = lastFiles
+		} else {
+			lastFiles = entry.CurrentFiles
+		}
 
 		backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(entry)
 		if err := orchestrator.OpLog.Update(op); err != nil {
