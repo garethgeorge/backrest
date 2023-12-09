@@ -349,7 +349,7 @@ export const AddRepoModal = ({
           </Form.List>
 
           {/* Repo.flags */}
-          <Form.List name="flags" initialValue={[]}>
+          <Form.List name="flags" initialValue={template ? template.flags : []}>
             {(fields, { add, remove }, { errors }) => (
               <>
                 {fields.map((field, index) => (
