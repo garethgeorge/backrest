@@ -105,7 +105,7 @@ func readBackupProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(ev
 				bytes = append(bytes, scanner.Bytes()...)
 			}
 
-			return nil, NewCmdError(cmd, bytes, fmt.Errorf("command output was not JSON: %w", err))
+			return nil, newCmdError(cmd, string(bytes), fmt.Errorf("command output was not JSON: %w", err))
 		}
 		if err := event.Validate(); err != nil {
 			return nil, err
@@ -254,7 +254,7 @@ func readRestoreProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(e
 				bytes = append(bytes, scanner.Bytes()...)
 			}
 
-			return nil, NewCmdError(cmd, bytes, fmt.Errorf("command output was not JSON: %w", err))
+			return nil, newCmdError(cmd, string(bytes), fmt.Errorf("command output was not JSON: %w", err))
 		}
 		if err := event.Validate(); err != nil {
 			return nil, err
@@ -271,10 +271,12 @@ func readRestoreProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(e
 	for scanner.Scan() {
 		var event RestoreProgressEntry
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			return nil, fmt.Errorf("failed to parse JSON: %w", err)
+			// skip it. Best effort parsing, restic will return with a non-zero exit code if it fails.
+			continue
 		}
 		if err := event.Validate(); err != nil {
-			return nil, err
+			// skip it. Best effort parsing, restic will return with a non-zero exit code if it fails.
+			continue
 		}
 
 		if callback != nil {

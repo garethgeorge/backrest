@@ -89,9 +89,6 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 }
 
 func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId string, path string) ([]*v1.LsEntry, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	_, entries, err := r.repo.ListDirectory(ctx, snapshotId, path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list snapshot files: %w", err)
