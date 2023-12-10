@@ -198,7 +198,7 @@ export const OperationTree = ({
 
 const buildTreeYear = (operations: BackupInfo[]): OpTreeNode[] => {
   const grouped = _.groupBy(operations, (op) => {
-    return op.displayTime.getFullYear();
+    return op.displayTime.toISOString().substring(0, 4);
   });
 
   const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
@@ -214,7 +214,7 @@ const buildTreeYear = (operations: BackupInfo[]): OpTreeNode[] => {
 
 const buildTreeMonth = (operations: BackupInfo[]): OpTreeNode[] => {
   const grouped = _.groupBy(operations, (op) => {
-    return `y${op.displayTime.getFullYear()}m${op.displayTime.getMonth()}`;
+    return op.displayTime.toISOString().substring(0, 7);
   });
   const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
     return {
@@ -231,7 +231,7 @@ const buildTreeMonth = (operations: BackupInfo[]): OpTreeNode[] => {
 
 const buildTreeDay = (operations: BackupInfo[]): OpTreeNode[] => {
   const grouped = _.groupBy(operations, (op) => {
-    return `y${op.displayTime.getFullYear()}m${op.displayTime.getMonth()}d${op.displayTime.getDate()}`;
+    return op.displayTime.toISOString().substring(0, 10);
   });
 
   const entries = _.map(grouped, (value, key) => {
