@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/garethgeorge/resticui/internal/config"
+	"github.com/garethgeorge/restora/internal/config"
 	"go.uber.org/zap"
 )
 

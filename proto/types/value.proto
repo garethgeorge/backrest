@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package types;
 
-option go_package = "github.com/garethgeorge/resticui/gen/go/types";
+option go_package = "github.com/garethgeorge/restora/gen/go/types";
 
 message StringValue {
   string value = 1;

@@ -1,4 +1,4 @@
-module github.com/garethgeorge/resticui
+module github.com/garethgeorge/restora
 
 go 1.21.3
 

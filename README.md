@@ -1,8 +1,8 @@
-# ResticUI
+# Restora
 
-[![Build and Test](https://github.com/garethgeorge/resticui/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/garethgeorge/resticui/actions/workflows/build-and-test.yml)
+[![Build and Test](https://github.com/garethgeorge/restora/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/garethgeorge/restora/actions/workflows/build-and-test.yml)
 
-ResticUI is a WebUI wrapper for [restic](https://restic.net/). It is intended to be used as a self-hosted application for managing backups of your data.
+Restora is a WebUI wrapper for [restic](https://restic.net/). It is intended to be used as a self-hosted application for managing backups of your data.
 
 The goals of this project are:
 
@@ -24,21 +24,21 @@ OS Support
 
 Installation options
 
- * Download and run a release from the [releases page](https://github.com/garethgeorge/resticui/releases).
+ * Download and run a release from the [releases page](https://github.com/garethgeorge/restora/releases).
  * Build from source ([see below](#building)).
- * Run with docker: `garethgeorge/resticweb:latest` ([see on dockerhub](https://hub.docker.com/repository/docker/garethgeorge/resticweb/))
+ * Run with docker: `garethgeorge/restora:latest` ([see on dockerhub](https://hub.docker.com/repository/docker/garethgeorge/restora/))
 
-ResticUI is accessible from a web browser. By default it binds to `0.0.0.0:9898` and can be accessed at `http://localhost:9898`. 
+Restora is accessible from a web browser. By default it binds to `0.0.0.0:9898` and can be accessed at `http://localhost:9898`. 
 
 
 # Configuration
 
 ## Environment Variables
 
- * `RESTICUI_PORT` - the port to bind to. Defaults to 9898.
- * `RESTICUI_CONFIG_PATH` - the path to the config file. Defaults to `$HOME/.config/resticui/config.json` or if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/resticui/config.json`.
- * `RESTICUI_DATA_DIR` - the path to the data directory. Defaults to `$HOME/.local/share/resticui` or if `$XDG_DATA_HOME` is set, `$XDG_DATA_HOME/resticui`.
- * `RESTICUI_RESTIC_BIN_PATH` - the path to the restic binary. Defaults managed version of restic which will be downloaded and installed in the data directory.
+ * `RESTORA_PORT` - the port to bind to. Defaults to 9898.
+ * `RESTORA_CONFIG_PATH` - the path to the config file. Defaults to `$HOME/.config/restora/config.json` or if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/restora/config.json`.
+ * `RESTORA_DATA_DIR` - the path to the data directory. Defaults to `$HOME/.local/share/restora` or if `$XDG_DATA_HOME` is set, `$XDG_DATA_HOME/restora`.
+ * `RESTORA_RESTIC_BIN_PATH` - the path to the restic binary. Defaults managed version of restic which will be downloaded and installed in the data directory.
  * `XDG_CACHE_HOME` -- the path to the cache directory. This is propagated to restic. 
 
 
@@ -52,27 +52,27 @@ ResticWeb is shipped today as a standalone executable, in future releases we'll 
 
 #### Cron (Basic)
 
-Move the resticweb binary to `/usr/local/bin`:
+Move the restora binary to `/usr/local/bin`:
 
 ```sh
-sudo mv resticui /usr/local/bin/resticui
+sudo mv restora /usr/local/bin/restora
 ```
 
 Add the following line to your crontab (e.g. `crontab -e`):
 
 ```sh
-@reboot /usr/local/bin/resticui
+@reboot /usr/local/bin/restora
 ```
 
 #### Systemd (Recommended)
 
-Move the resticweb binary to `/usr/local/bin`:
+Move the restora binary to `/usr/local/bin`:
 
 ```sh
-sudo mv resticui /usr/local/bin/resticui
+sudo mv restora /usr/local/bin/restora
 ```
 
-Create a systemd service file at `/etc/systemd/system/resticweb.service` with the following contents:
+Create a systemd service file at `/etc/systemd/system/restora.service` with the following contents:
 
 ```ini
 [Unit]
@@ -83,7 +83,7 @@ After=network.target
 Type=simple
 User=<your linux user>
 Group=<your linux group>
-ExecStart=/usr/local/bin/resticweb
+ExecStart=/usr/local/bin/restora
 
 [Install]
 WantedBy=multi-user.target
@@ -92,8 +92,8 @@ WantedBy=multi-user.target
 Then run the following commands to enable and start the service:
 
 ```sh
-sudo systemctl enable resticweb
-sudo systemctl start resticweb
+sudo systemctl enable restora
+sudo systemctl start restora
 ```
 
 Note: you can set the linux user and group to your primary user (e.g. `whoami` when logged in).
@@ -125,5 +125,5 @@ go install github.com/bufbuild/buf/cmd/buf@v1.27.2
 
 ```sh
 (cd webui && npm i && npm run build)
-(cd cmd/resticui && go build .)
+(cd cmd/restora && go build .)
 ```
