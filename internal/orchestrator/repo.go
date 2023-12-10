@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/internal/protoutil"
-	"github.com/garethgeorge/resticui/pkg/restic"
+	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	"github.com/garethgeorge/restora/internal/protoutil"
+	"github.com/garethgeorge/restora/pkg/restic"
 	"go.uber.org/zap"
 )
 
@@ -89,9 +89,6 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 }
 
 func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId string, path string) ([]*v1.LsEntry, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	_, entries, err := r.repo.ListDirectory(ctx, snapshotId, path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list snapshot files: %w", err)

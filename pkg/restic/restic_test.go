@@ -8,8 +8,8 @@ import (
 	"slices"
 	"testing"
 
-	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/test/helpers"
+	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	"github.com/garethgeorge/restora/test/helpers"
 )
 
 func TestResticInit(t *testing.T) {
@@ -79,8 +79,10 @@ func TestResticBackup(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			gotEvent := false
 			summary, err := r.Backup(context.Background(), func(event *BackupProgressEntry) {
 				t.Logf("backup event: %v", event)
+				gotEvent = true
 			}, tc.opts...)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wanted error: %v, got: %v", tc.wantErr, err)
@@ -96,6 +98,10 @@ func TestResticBackup(t *testing.T) {
 
 			if summary.TotalFilesProcessed != tc.files {
 				t.Errorf("wanted %d files, got: %d", tc.files, summary.TotalFilesProcessed)
+			}
+
+			if !gotEvent {
+				t.Errorf("wanted backup event, got: false")
 			}
 		})
 	}

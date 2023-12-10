@@ -8,7 +8,7 @@ package v1
 
 import (
 	context "context"
-	types "github.com/garethgeorge/resticui/gen/go/types"
+	types "github.com/garethgeorge/restora/gen/go/types"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -21,29 +21,29 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ResticUI_GetConfig_FullMethodName          = "/v1.ResticUI/GetConfig"
-	ResticUI_SetConfig_FullMethodName          = "/v1.ResticUI/SetConfig"
-	ResticUI_AddRepo_FullMethodName            = "/v1.ResticUI/AddRepo"
-	ResticUI_GetOperationEvents_FullMethodName = "/v1.ResticUI/GetOperationEvents"
-	ResticUI_GetOperations_FullMethodName      = "/v1.ResticUI/GetOperations"
-	ResticUI_ListSnapshots_FullMethodName      = "/v1.ResticUI/ListSnapshots"
-	ResticUI_ListSnapshotFiles_FullMethodName  = "/v1.ResticUI/ListSnapshotFiles"
-	ResticUI_Backup_FullMethodName             = "/v1.ResticUI/Backup"
-	ResticUI_Prune_FullMethodName              = "/v1.ResticUI/Prune"
-	ResticUI_Forget_FullMethodName             = "/v1.ResticUI/Forget"
-	ResticUI_Restore_FullMethodName            = "/v1.ResticUI/Restore"
-	ResticUI_Unlock_FullMethodName             = "/v1.ResticUI/Unlock"
-	ResticUI_PathAutocomplete_FullMethodName   = "/v1.ResticUI/PathAutocomplete"
+	Restora_GetConfig_FullMethodName          = "/v1.Restora/GetConfig"
+	Restora_SetConfig_FullMethodName          = "/v1.Restora/SetConfig"
+	Restora_AddRepo_FullMethodName            = "/v1.Restora/AddRepo"
+	Restora_GetOperationEvents_FullMethodName = "/v1.Restora/GetOperationEvents"
+	Restora_GetOperations_FullMethodName      = "/v1.Restora/GetOperations"
+	Restora_ListSnapshots_FullMethodName      = "/v1.Restora/ListSnapshots"
+	Restora_ListSnapshotFiles_FullMethodName  = "/v1.Restora/ListSnapshotFiles"
+	Restora_Backup_FullMethodName             = "/v1.Restora/Backup"
+	Restora_Prune_FullMethodName              = "/v1.Restora/Prune"
+	Restora_Forget_FullMethodName             = "/v1.Restora/Forget"
+	Restora_Restore_FullMethodName            = "/v1.Restora/Restore"
+	Restora_Unlock_FullMethodName             = "/v1.Restora/Unlock"
+	Restora_PathAutocomplete_FullMethodName   = "/v1.Restora/PathAutocomplete"
 )
 
-// ResticUIClient is the client API for ResticUI service.
+// RestoraClient is the client API for Restora service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ResticUIClient interface {
+type RestoraClient interface {
 	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error)
 	SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error)
 	AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error)
-	GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (ResticUI_GetOperationEventsClient, error)
+	GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Restora_GetOperationEventsClient, error)
 	GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error)
 	ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error)
 	ListSnapshotFiles(ctx context.Context, in *ListSnapshotFilesRequest, opts ...grpc.CallOption) (*ListSnapshotFilesResponse, error)
@@ -61,47 +61,47 @@ type ResticUIClient interface {
 	PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error)
 }
 
-type resticUIClient struct {
+type restoraClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewResticUIClient(cc grpc.ClientConnInterface) ResticUIClient {
-	return &resticUIClient{cc}
+func NewRestoraClient(cc grpc.ClientConnInterface) RestoraClient {
+	return &restoraClient{cc}
 }
 
-func (c *resticUIClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error) {
+func (c *restoraClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error) {
 	out := new(Config)
-	err := c.cc.Invoke(ctx, ResticUI_GetConfig_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Restora_GetConfig_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resticUIClient) SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error) {
+func (c *restoraClient) SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error) {
 	out := new(Config)
-	err := c.cc.Invoke(ctx, ResticUI_SetConfig_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Restora_SetConfig_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resticUIClient) AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error) {
+func (c *restoraClient) AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error) {
 	out := new(Config)
-	err := c.cc.Invoke(ctx, ResticUI_AddRepo_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Restora_AddRepo_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resticUIClient) GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (ResticUI_GetOperationEventsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ResticUI_ServiceDesc.Streams[0], ResticUI_GetOperationEvents_FullMethodName, opts...)
+func (c *restoraClient) GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Restora_GetOperationEventsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Restora_ServiceDesc.Streams[0], Restora_GetOperationEvents_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &resticUIGetOperationEventsClient{stream}
+	x := &restoraGetOperationEventsClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -111,16 +111,16 @@ func (c *resticUIClient) GetOperationEvents(ctx context.Context, in *emptypb.Emp
 	return x, nil
 }
 
-type ResticUI_GetOperationEventsClient interface {
+type Restora_GetOperationEventsClient interface {
 	Recv() (*OperationEvent, error)
 	grpc.ClientStream
 }
 
-type resticUIGetOperationEventsClient struct {
+type restoraGetOperationEventsClient struct {
 	grpc.ClientStream
 }
 
-func (x *resticUIGetOperationEventsClient) Recv() (*OperationEvent, error) {
+func (x *restoraGetOperationEventsClient) Recv() (*OperationEvent, error) {
 	m := new(OperationEvent)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -128,95 +128,95 @@ func (x *resticUIGetOperationEventsClient) Recv() (*OperationEvent, error) {
 	return m, nil
 }
 
-func (c *resticUIClient) GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error) {
+func (c *restoraClient) GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error) {
 	out := new(OperationList)
-	err := c.cc.Invoke(ctx, ResticUI_GetOperations_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Restora_GetOperations_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resticUIClient) ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error) {
+func (c *restoraClient) ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error) {
 	out := new(ResticSnapshotList)
-	err := c.cc.Invoke(ctx, ResticUI_ListSnapshots_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Restora_ListSnapshots_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resticUIClient) ListSnapshotFiles(ctx context.Context, in *ListSnapshotFilesRequest, opts ...grpc.CallOption) (*ListSnapshotFilesResponse, error) {
+func (c *restoraClient) ListSnapshotFiles(ctx context.Context, in *ListSnapshotFilesRequest, opts ...grpc.CallOption) (*ListSnapshotFilesResponse, error) {
 	out := new(ListSnapshotFilesResponse)
-	err := c.cc.Invoke(ctx, ResticUI_ListSnapshotFiles_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Restora_ListSnapshotFiles_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resticUIClient) Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *restoraClient) Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, ResticUI_Backup_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Restora_Backup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resticUIClient) Prune(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *restoraClient) Prune(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, ResticUI_Prune_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Restora_Prune_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resticUIClient) Forget(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *restoraClient) Forget(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, ResticUI_Forget_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Restora_Forget_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resticUIClient) Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *restoraClient) Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, ResticUI_Restore_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Restora_Restore_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resticUIClient) Unlock(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *restoraClient) Unlock(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, ResticUI_Unlock_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Restora_Unlock_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resticUIClient) PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error) {
+func (c *restoraClient) PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error) {
 	out := new(types.StringList)
-	err := c.cc.Invoke(ctx, ResticUI_PathAutocomplete_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Restora_PathAutocomplete_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// ResticUIServer is the server API for ResticUI service.
-// All implementations must embed UnimplementedResticUIServer
+// RestoraServer is the server API for Restora service.
+// All implementations must embed UnimplementedRestoraServer
 // for forward compatibility
-type ResticUIServer interface {
+type RestoraServer interface {
 	GetConfig(context.Context, *emptypb.Empty) (*Config, error)
 	SetConfig(context.Context, *Config) (*Config, error)
 	AddRepo(context.Context, *Repo) (*Config, error)
-	GetOperationEvents(*emptypb.Empty, ResticUI_GetOperationEventsServer) error
+	GetOperationEvents(*emptypb.Empty, Restora_GetOperationEventsServer) error
 	GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error)
 	ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error)
 	ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error)
@@ -232,362 +232,362 @@ type ResticUIServer interface {
 	Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error)
-	mustEmbedUnimplementedResticUIServer()
+	mustEmbedUnimplementedRestoraServer()
 }
 
-// UnimplementedResticUIServer must be embedded to have forward compatible implementations.
-type UnimplementedResticUIServer struct {
+// UnimplementedRestoraServer must be embedded to have forward compatible implementations.
+type UnimplementedRestoraServer struct {
 }
 
-func (UnimplementedResticUIServer) GetConfig(context.Context, *emptypb.Empty) (*Config, error) {
+func (UnimplementedRestoraServer) GetConfig(context.Context, *emptypb.Empty) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetConfig not implemented")
 }
-func (UnimplementedResticUIServer) SetConfig(context.Context, *Config) (*Config, error) {
+func (UnimplementedRestoraServer) SetConfig(context.Context, *Config) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetConfig not implemented")
 }
-func (UnimplementedResticUIServer) AddRepo(context.Context, *Repo) (*Config, error) {
+func (UnimplementedRestoraServer) AddRepo(context.Context, *Repo) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRepo not implemented")
 }
-func (UnimplementedResticUIServer) GetOperationEvents(*emptypb.Empty, ResticUI_GetOperationEventsServer) error {
+func (UnimplementedRestoraServer) GetOperationEvents(*emptypb.Empty, Restora_GetOperationEventsServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetOperationEvents not implemented")
 }
-func (UnimplementedResticUIServer) GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error) {
+func (UnimplementedRestoraServer) GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOperations not implemented")
 }
-func (UnimplementedResticUIServer) ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error) {
+func (UnimplementedRestoraServer) ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshots not implemented")
 }
-func (UnimplementedResticUIServer) ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error) {
+func (UnimplementedRestoraServer) ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshotFiles not implemented")
 }
-func (UnimplementedResticUIServer) Backup(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+func (UnimplementedRestoraServer) Backup(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Backup not implemented")
 }
-func (UnimplementedResticUIServer) Prune(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+func (UnimplementedRestoraServer) Prune(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Prune not implemented")
 }
-func (UnimplementedResticUIServer) Forget(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+func (UnimplementedRestoraServer) Forget(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Forget not implemented")
 }
-func (UnimplementedResticUIServer) Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error) {
+func (UnimplementedRestoraServer) Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Restore not implemented")
 }
-func (UnimplementedResticUIServer) Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+func (UnimplementedRestoraServer) Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Unlock not implemented")
 }
-func (UnimplementedResticUIServer) PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error) {
+func (UnimplementedRestoraServer) PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PathAutocomplete not implemented")
 }
-func (UnimplementedResticUIServer) mustEmbedUnimplementedResticUIServer() {}
+func (UnimplementedRestoraServer) mustEmbedUnimplementedRestoraServer() {}
 
-// UnsafeResticUIServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ResticUIServer will
+// UnsafeRestoraServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to RestoraServer will
 // result in compilation errors.
-type UnsafeResticUIServer interface {
-	mustEmbedUnimplementedResticUIServer()
+type UnsafeRestoraServer interface {
+	mustEmbedUnimplementedRestoraServer()
 }
 
-func RegisterResticUIServer(s grpc.ServiceRegistrar, srv ResticUIServer) {
-	s.RegisterService(&ResticUI_ServiceDesc, srv)
+func RegisterRestoraServer(s grpc.ServiceRegistrar, srv RestoraServer) {
+	s.RegisterService(&Restora_ServiceDesc, srv)
 }
 
-func _ResticUI_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Restora_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResticUIServer).GetConfig(ctx, in)
+		return srv.(RestoraServer).GetConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResticUI_GetConfig_FullMethodName,
+		FullMethod: Restora_GetConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResticUIServer).GetConfig(ctx, req.(*emptypb.Empty))
+		return srv.(RestoraServer).GetConfig(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResticUI_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Restora_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Config)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResticUIServer).SetConfig(ctx, in)
+		return srv.(RestoraServer).SetConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResticUI_SetConfig_FullMethodName,
+		FullMethod: Restora_SetConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResticUIServer).SetConfig(ctx, req.(*Config))
+		return srv.(RestoraServer).SetConfig(ctx, req.(*Config))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResticUI_AddRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Restora_AddRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Repo)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResticUIServer).AddRepo(ctx, in)
+		return srv.(RestoraServer).AddRepo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResticUI_AddRepo_FullMethodName,
+		FullMethod: Restora_AddRepo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResticUIServer).AddRepo(ctx, req.(*Repo))
+		return srv.(RestoraServer).AddRepo(ctx, req.(*Repo))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResticUI_GetOperationEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _Restora_GetOperationEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(emptypb.Empty)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(ResticUIServer).GetOperationEvents(m, &resticUIGetOperationEventsServer{stream})
+	return srv.(RestoraServer).GetOperationEvents(m, &restoraGetOperationEventsServer{stream})
 }
 
-type ResticUI_GetOperationEventsServer interface {
+type Restora_GetOperationEventsServer interface {
 	Send(*OperationEvent) error
 	grpc.ServerStream
 }
 
-type resticUIGetOperationEventsServer struct {
+type restoraGetOperationEventsServer struct {
 	grpc.ServerStream
 }
 
-func (x *resticUIGetOperationEventsServer) Send(m *OperationEvent) error {
+func (x *restoraGetOperationEventsServer) Send(m *OperationEvent) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _ResticUI_GetOperations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Restora_GetOperations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetOperationsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResticUIServer).GetOperations(ctx, in)
+		return srv.(RestoraServer).GetOperations(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResticUI_GetOperations_FullMethodName,
+		FullMethod: Restora_GetOperations_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResticUIServer).GetOperations(ctx, req.(*GetOperationsRequest))
+		return srv.(RestoraServer).GetOperations(ctx, req.(*GetOperationsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResticUI_ListSnapshots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Restora_ListSnapshots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListSnapshotsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResticUIServer).ListSnapshots(ctx, in)
+		return srv.(RestoraServer).ListSnapshots(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResticUI_ListSnapshots_FullMethodName,
+		FullMethod: Restora_ListSnapshots_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResticUIServer).ListSnapshots(ctx, req.(*ListSnapshotsRequest))
+		return srv.(RestoraServer).ListSnapshots(ctx, req.(*ListSnapshotsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResticUI_ListSnapshotFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Restora_ListSnapshotFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListSnapshotFilesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResticUIServer).ListSnapshotFiles(ctx, in)
+		return srv.(RestoraServer).ListSnapshotFiles(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResticUI_ListSnapshotFiles_FullMethodName,
+		FullMethod: Restora_ListSnapshotFiles_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResticUIServer).ListSnapshotFiles(ctx, req.(*ListSnapshotFilesRequest))
+		return srv.(RestoraServer).ListSnapshotFiles(ctx, req.(*ListSnapshotFilesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResticUI_Backup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Restora_Backup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResticUIServer).Backup(ctx, in)
+		return srv.(RestoraServer).Backup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResticUI_Backup_FullMethodName,
+		FullMethod: Restora_Backup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResticUIServer).Backup(ctx, req.(*types.StringValue))
+		return srv.(RestoraServer).Backup(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResticUI_Prune_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Restora_Prune_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResticUIServer).Prune(ctx, in)
+		return srv.(RestoraServer).Prune(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResticUI_Prune_FullMethodName,
+		FullMethod: Restora_Prune_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResticUIServer).Prune(ctx, req.(*types.StringValue))
+		return srv.(RestoraServer).Prune(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResticUI_Forget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Restora_Forget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResticUIServer).Forget(ctx, in)
+		return srv.(RestoraServer).Forget(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResticUI_Forget_FullMethodName,
+		FullMethod: Restora_Forget_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResticUIServer).Forget(ctx, req.(*types.StringValue))
+		return srv.(RestoraServer).Forget(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResticUI_Restore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Restora_Restore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RestoreSnapshotRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResticUIServer).Restore(ctx, in)
+		return srv.(RestoraServer).Restore(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResticUI_Restore_FullMethodName,
+		FullMethod: Restora_Restore_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResticUIServer).Restore(ctx, req.(*RestoreSnapshotRequest))
+		return srv.(RestoraServer).Restore(ctx, req.(*RestoreSnapshotRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResticUI_Unlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Restora_Unlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResticUIServer).Unlock(ctx, in)
+		return srv.(RestoraServer).Unlock(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResticUI_Unlock_FullMethodName,
+		FullMethod: Restora_Unlock_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResticUIServer).Unlock(ctx, req.(*types.StringValue))
+		return srv.(RestoraServer).Unlock(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResticUI_PathAutocomplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Restora_PathAutocomplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResticUIServer).PathAutocomplete(ctx, in)
+		return srv.(RestoraServer).PathAutocomplete(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResticUI_PathAutocomplete_FullMethodName,
+		FullMethod: Restora_PathAutocomplete_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResticUIServer).PathAutocomplete(ctx, req.(*types.StringValue))
+		return srv.(RestoraServer).PathAutocomplete(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// ResticUI_ServiceDesc is the grpc.ServiceDesc for ResticUI service.
+// Restora_ServiceDesc is the grpc.ServiceDesc for Restora service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var ResticUI_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "v1.ResticUI",
-	HandlerType: (*ResticUIServer)(nil),
+var Restora_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "v1.Restora",
+	HandlerType: (*RestoraServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetConfig",
-			Handler:    _ResticUI_GetConfig_Handler,
+			Handler:    _Restora_GetConfig_Handler,
 		},
 		{
 			MethodName: "SetConfig",
-			Handler:    _ResticUI_SetConfig_Handler,
+			Handler:    _Restora_SetConfig_Handler,
 		},
 		{
 			MethodName: "AddRepo",
-			Handler:    _ResticUI_AddRepo_Handler,
+			Handler:    _Restora_AddRepo_Handler,
 		},
 		{
 			MethodName: "GetOperations",
-			Handler:    _ResticUI_GetOperations_Handler,
+			Handler:    _Restora_GetOperations_Handler,
 		},
 		{
 			MethodName: "ListSnapshots",
-			Handler:    _ResticUI_ListSnapshots_Handler,
+			Handler:    _Restora_ListSnapshots_Handler,
 		},
 		{
 			MethodName: "ListSnapshotFiles",
-			Handler:    _ResticUI_ListSnapshotFiles_Handler,
+			Handler:    _Restora_ListSnapshotFiles_Handler,
 		},
 		{
 			MethodName: "Backup",
-			Handler:    _ResticUI_Backup_Handler,
+			Handler:    _Restora_Backup_Handler,
 		},
 		{
 			MethodName: "Prune",
-			Handler:    _ResticUI_Prune_Handler,
+			Handler:    _Restora_Prune_Handler,
 		},
 		{
 			MethodName: "Forget",
-			Handler:    _ResticUI_Forget_Handler,
+			Handler:    _Restora_Forget_Handler,
 		},
 		{
 			MethodName: "Restore",
-			Handler:    _ResticUI_Restore_Handler,
+			Handler:    _Restora_Restore_Handler,
 		},
 		{
 			MethodName: "Unlock",
-			Handler:    _ResticUI_Unlock_Handler,
+			Handler:    _Restora_Unlock_Handler,
 		},
 		{
 			MethodName: "PathAutocomplete",
-			Handler:    _ResticUI_PathAutocomplete_Handler,
+			Handler:    _Restora_PathAutocomplete_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "GetOperationEvents",
-			Handler:       _ResticUI_GetOperationEvents_Handler,
+			Handler:       _Restora_GetOperationEvents_Handler,
 			ServerStreams: true,
 		},
 	},

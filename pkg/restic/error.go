@@ -5,10 +5,12 @@ import (
 	"os/exec"
 )
 
+const outputBufferLimit = 1000
+
 type CmdError struct {
 	Command string
-	Err error
-	Output string
+	Err     error
+	Output  string
 }
 
 func (e *CmdError) Error() string {
@@ -28,18 +30,23 @@ func (e *CmdError) Is(target error) bool {
 	return ok
 }
 
-// NewCmdError creates a new error indicating that running a command failed.
-func NewCmdError(cmd *exec.Cmd, output []byte, err error) *CmdError {
+// newCmdError creates a new error indicating that running a command failed.
+func newCmdError(cmd *exec.Cmd, output string, err error) *CmdError {
 	cerr := &CmdError{
 		Command: cmd.String(),
-		Err: err,
+		Err:     err,
 	}
 
-	if len(output) > 0 {
-		if len(output) > 1000 {
-			output = output[:1000]
-		}
-		cerr.Output = string(output)
+	if len(output) >= outputBufferLimit {
+		cerr.Output = output[:outputBufferLimit] + "\n...[truncated]"
 	}
+
 	return cerr
+}
+
+func newCmdErrorPreformatted(cmd *exec.Cmd, output string, err error) *CmdError {
+	return &CmdError{
+		Command: cmd.String(),
+		Err:     err,
+	}
 }

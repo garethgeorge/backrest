@@ -5,7 +5,7 @@ import { useShowModal } from "../components/ModalManager";
 import { useRecoilValue } from "recoil";
 import { configState } from "../state/config";
 import { useAlertApi } from "../components/Alerts";
-import { ResticUI } from "../../gen/ts/v1/service.pb";
+import { Restora } from "../../gen/ts/v1/service.pb";
 import {
   EOperation,
   subscribeToOperations,
@@ -29,7 +29,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
   const handleBackupNow = async () => {
     try {
-      ResticUI.Backup({ value: plan.id }, { pathPrefix: "/api" });
+      Restora.Backup({ value: plan.id }, { pathPrefix: "/api" });
       alertsApi.success("Backup scheduled.");
     } catch (e: any) {
       alertsApi.error("Failed to schedule backup: " + e.message);
@@ -38,7 +38,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
   const handlePruneNow = () => {
     try {
-      ResticUI.Prune({ value: plan.id }, { pathPrefix: "/api" });
+      Restora.Prune({ value: plan.id }, { pathPrefix: "/api" });
       alertsApi.success("Prune scheduled.");
     } catch (e: any) {
       alertsApi.error("Failed to schedule prune: " + e.message);
@@ -48,7 +48,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const handleUnlockNow = () => {
     try {
       alertsApi.info("Unlocking repo...");
-      ResticUI.Unlock({ value: plan.repo! }, { pathPrefix: "/api" });
+      Restora.Unlock({ value: plan.repo! }, { pathPrefix: "/api" });
       alertsApi.success("Repo unlocked.");
     } catch (e: any) {
       alertsApi.error("Failed to unlock repo: " + e.message);

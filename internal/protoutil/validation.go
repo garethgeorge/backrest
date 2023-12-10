@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/pkg/restic"
+	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	"github.com/garethgeorge/restora/pkg/restic"
 )
 
 // ValidateOperation verifies critical properties of the operation proto.

@@ -13,7 +13,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/garethgeorge/resticui/gen/go/types"
+	"github.com/garethgeorge/restora/gen/go/types"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/utilities"
 	"google.golang.org/grpc"
@@ -33,7 +33,7 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 var _ = metadata.Join
 
-func request_ResticUI_GetConfig_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Restora_GetConfig_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq emptypb.Empty
 	var metadata runtime.ServerMetadata
 
@@ -42,7 +42,7 @@ func request_ResticUI_GetConfig_0(ctx context.Context, marshaler runtime.Marshal
 
 }
 
-func local_request_ResticUI_GetConfig_0(ctx context.Context, marshaler runtime.Marshaler, server ResticUIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Restora_GetConfig_0(ctx context.Context, marshaler runtime.Marshaler, server RestoraServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq emptypb.Empty
 	var metadata runtime.ServerMetadata
 
@@ -51,7 +51,7 @@ func local_request_ResticUI_GetConfig_0(ctx context.Context, marshaler runtime.M
 
 }
 
-func request_ResticUI_SetConfig_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Restora_SetConfig_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq Config
 	var metadata runtime.ServerMetadata
 
@@ -68,7 +68,7 @@ func request_ResticUI_SetConfig_0(ctx context.Context, marshaler runtime.Marshal
 
 }
 
-func local_request_ResticUI_SetConfig_0(ctx context.Context, marshaler runtime.Marshaler, server ResticUIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Restora_SetConfig_0(ctx context.Context, marshaler runtime.Marshaler, server RestoraServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq Config
 	var metadata runtime.ServerMetadata
 
@@ -85,7 +85,7 @@ func local_request_ResticUI_SetConfig_0(ctx context.Context, marshaler runtime.M
 
 }
 
-func request_ResticUI_AddRepo_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Restora_AddRepo_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq Repo
 	var metadata runtime.ServerMetadata
 
@@ -102,7 +102,7 @@ func request_ResticUI_AddRepo_0(ctx context.Context, marshaler runtime.Marshaler
 
 }
 
-func local_request_ResticUI_AddRepo_0(ctx context.Context, marshaler runtime.Marshaler, server ResticUIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Restora_AddRepo_0(ctx context.Context, marshaler runtime.Marshaler, server RestoraServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq Repo
 	var metadata runtime.ServerMetadata
 
@@ -119,7 +119,7 @@ func local_request_ResticUI_AddRepo_0(ctx context.Context, marshaler runtime.Mar
 
 }
 
-func request_ResticUI_GetOperationEvents_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (ResticUI_GetOperationEventsClient, runtime.ServerMetadata, error) {
+func request_Restora_GetOperationEvents_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (Restora_GetOperationEventsClient, runtime.ServerMetadata, error) {
 	var protoReq emptypb.Empty
 	var metadata runtime.ServerMetadata
 
@@ -136,7 +136,7 @@ func request_ResticUI_GetOperationEvents_0(ctx context.Context, marshaler runtim
 
 }
 
-func request_ResticUI_GetOperations_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Restora_GetOperations_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetOperationsRequest
 	var metadata runtime.ServerMetadata
 
@@ -153,7 +153,7 @@ func request_ResticUI_GetOperations_0(ctx context.Context, marshaler runtime.Mar
 
 }
 
-func local_request_ResticUI_GetOperations_0(ctx context.Context, marshaler runtime.Marshaler, server ResticUIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Restora_GetOperations_0(ctx context.Context, marshaler runtime.Marshaler, server RestoraServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetOperationsRequest
 	var metadata runtime.ServerMetadata
 
@@ -170,7 +170,7 @@ func local_request_ResticUI_GetOperations_0(ctx context.Context, marshaler runti
 
 }
 
-func request_ResticUI_ListSnapshots_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Restora_ListSnapshots_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListSnapshotsRequest
 	var metadata runtime.ServerMetadata
 
@@ -187,7 +187,7 @@ func request_ResticUI_ListSnapshots_0(ctx context.Context, marshaler runtime.Mar
 
 }
 
-func local_request_ResticUI_ListSnapshots_0(ctx context.Context, marshaler runtime.Marshaler, server ResticUIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Restora_ListSnapshots_0(ctx context.Context, marshaler runtime.Marshaler, server RestoraServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListSnapshotsRequest
 	var metadata runtime.ServerMetadata
 
@@ -204,7 +204,7 @@ func local_request_ResticUI_ListSnapshots_0(ctx context.Context, marshaler runti
 
 }
 
-func request_ResticUI_ListSnapshotFiles_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Restora_ListSnapshotFiles_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListSnapshotFilesRequest
 	var metadata runtime.ServerMetadata
 
@@ -221,7 +221,7 @@ func request_ResticUI_ListSnapshotFiles_0(ctx context.Context, marshaler runtime
 
 }
 
-func local_request_ResticUI_ListSnapshotFiles_0(ctx context.Context, marshaler runtime.Marshaler, server ResticUIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Restora_ListSnapshotFiles_0(ctx context.Context, marshaler runtime.Marshaler, server RestoraServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListSnapshotFilesRequest
 	var metadata runtime.ServerMetadata
 
@@ -238,7 +238,7 @@ func local_request_ResticUI_ListSnapshotFiles_0(ctx context.Context, marshaler r
 
 }
 
-func request_ResticUI_Backup_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Restora_Backup_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.StringValue
 	var metadata runtime.ServerMetadata
 
@@ -255,7 +255,7 @@ func request_ResticUI_Backup_0(ctx context.Context, marshaler runtime.Marshaler,
 
 }
 
-func local_request_ResticUI_Backup_0(ctx context.Context, marshaler runtime.Marshaler, server ResticUIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Restora_Backup_0(ctx context.Context, marshaler runtime.Marshaler, server RestoraServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.StringValue
 	var metadata runtime.ServerMetadata
 
@@ -272,7 +272,7 @@ func local_request_ResticUI_Backup_0(ctx context.Context, marshaler runtime.Mars
 
 }
 
-func request_ResticUI_Prune_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Restora_Prune_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.StringValue
 	var metadata runtime.ServerMetadata
 
@@ -289,7 +289,7 @@ func request_ResticUI_Prune_0(ctx context.Context, marshaler runtime.Marshaler, 
 
 }
 
-func local_request_ResticUI_Prune_0(ctx context.Context, marshaler runtime.Marshaler, server ResticUIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Restora_Prune_0(ctx context.Context, marshaler runtime.Marshaler, server RestoraServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.StringValue
 	var metadata runtime.ServerMetadata
 
@@ -306,7 +306,7 @@ func local_request_ResticUI_Prune_0(ctx context.Context, marshaler runtime.Marsh
 
 }
 
-func request_ResticUI_Forget_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Restora_Forget_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.StringValue
 	var metadata runtime.ServerMetadata
 
@@ -323,7 +323,7 @@ func request_ResticUI_Forget_0(ctx context.Context, marshaler runtime.Marshaler,
 
 }
 
-func local_request_ResticUI_Forget_0(ctx context.Context, marshaler runtime.Marshaler, server ResticUIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Restora_Forget_0(ctx context.Context, marshaler runtime.Marshaler, server RestoraServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.StringValue
 	var metadata runtime.ServerMetadata
 
@@ -340,7 +340,7 @@ func local_request_ResticUI_Forget_0(ctx context.Context, marshaler runtime.Mars
 
 }
 
-func request_ResticUI_Restore_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Restora_Restore_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq RestoreSnapshotRequest
 	var metadata runtime.ServerMetadata
 
@@ -357,7 +357,7 @@ func request_ResticUI_Restore_0(ctx context.Context, marshaler runtime.Marshaler
 
 }
 
-func local_request_ResticUI_Restore_0(ctx context.Context, marshaler runtime.Marshaler, server ResticUIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Restora_Restore_0(ctx context.Context, marshaler runtime.Marshaler, server RestoraServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq RestoreSnapshotRequest
 	var metadata runtime.ServerMetadata
 
@@ -374,7 +374,7 @@ func local_request_ResticUI_Restore_0(ctx context.Context, marshaler runtime.Mar
 
 }
 
-func request_ResticUI_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Restora_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.StringValue
 	var metadata runtime.ServerMetadata
 
@@ -391,7 +391,7 @@ func request_ResticUI_Unlock_0(ctx context.Context, marshaler runtime.Marshaler,
 
 }
 
-func local_request_ResticUI_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, server ResticUIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Restora_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, server RestoraServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.StringValue
 	var metadata runtime.ServerMetadata
 
@@ -408,7 +408,7 @@ func local_request_ResticUI_Unlock_0(ctx context.Context, marshaler runtime.Mars
 
 }
 
-func request_ResticUI_PathAutocomplete_0(ctx context.Context, marshaler runtime.Marshaler, client ResticUIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Restora_PathAutocomplete_0(ctx context.Context, marshaler runtime.Marshaler, client RestoraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.StringValue
 	var metadata runtime.ServerMetadata
 
@@ -425,7 +425,7 @@ func request_ResticUI_PathAutocomplete_0(ctx context.Context, marshaler runtime.
 
 }
 
-func local_request_ResticUI_PathAutocomplete_0(ctx context.Context, marshaler runtime.Marshaler, server ResticUIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Restora_PathAutocomplete_0(ctx context.Context, marshaler runtime.Marshaler, server RestoraServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.StringValue
 	var metadata runtime.ServerMetadata
 
@@ -442,13 +442,13 @@ func local_request_ResticUI_PathAutocomplete_0(ctx context.Context, marshaler ru
 
 }
 
-// RegisterResticUIHandlerServer registers the http handlers for service ResticUI to "mux".
-// UnaryRPC     :call ResticUIServer directly.
+// RegisterRestoraHandlerServer registers the http handlers for service Restora to "mux".
+// UnaryRPC     :call RestoraServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
-// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterResticUIHandlerFromEndpoint instead.
-func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, server ResticUIServer) error {
+// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterRestoraHandlerFromEndpoint instead.
+func RegisterRestoraHandlerServer(ctx context.Context, mux *runtime.ServeMux, server RestoraServer) error {
 
-	mux.Handle("GET", pattern_ResticUI_GetConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_Restora_GetConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -456,12 +456,12 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.ResticUI/GetConfig", runtime.WithHTTPPathPattern("/v1/config"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.Restora/GetConfig", runtime.WithHTTPPathPattern("/v1/config"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResticUI_GetConfig_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Restora_GetConfig_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -469,11 +469,11 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 
-		forward_ResticUI_GetConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_GetConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_SetConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_SetConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -481,12 +481,12 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.ResticUI/SetConfig", runtime.WithHTTPPathPattern("/v1/config"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.Restora/SetConfig", runtime.WithHTTPPathPattern("/v1/config"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResticUI_SetConfig_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Restora_SetConfig_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -494,11 +494,11 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 
-		forward_ResticUI_SetConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_SetConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_AddRepo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_AddRepo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -506,12 +506,12 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.ResticUI/AddRepo", runtime.WithHTTPPathPattern("/v1/config/repo"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.Restora/AddRepo", runtime.WithHTTPPathPattern("/v1/config/repo"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResticUI_AddRepo_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Restora_AddRepo_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -519,18 +519,18 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 
-		forward_ResticUI_AddRepo_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_AddRepo_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_ResticUI_GetOperationEvents_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_Restora_GetOperationEvents_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		err := status.Error(codes.Unimplemented, "streaming calls are not yet supported in the in-process transport")
 		_, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 		return
 	})
 
-	mux.Handle("POST", pattern_ResticUI_GetOperations_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_GetOperations_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -538,12 +538,12 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.ResticUI/GetOperations", runtime.WithHTTPPathPattern("/v1/operations"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.Restora/GetOperations", runtime.WithHTTPPathPattern("/v1/operations"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResticUI_GetOperations_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Restora_GetOperations_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -551,11 +551,11 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 
-		forward_ResticUI_GetOperations_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_GetOperations_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_ListSnapshots_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_ListSnapshots_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -563,12 +563,12 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.ResticUI/ListSnapshots", runtime.WithHTTPPathPattern("/v1/snapshots"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.Restora/ListSnapshots", runtime.WithHTTPPathPattern("/v1/snapshots"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResticUI_ListSnapshots_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Restora_ListSnapshots_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -576,11 +576,11 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 
-		forward_ResticUI_ListSnapshots_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_ListSnapshots_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_ListSnapshotFiles_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_ListSnapshotFiles_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -588,12 +588,12 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.ResticUI/ListSnapshotFiles", runtime.WithHTTPPathPattern("/v1/snapshots/files"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.Restora/ListSnapshotFiles", runtime.WithHTTPPathPattern("/v1/snapshots/files"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResticUI_ListSnapshotFiles_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Restora_ListSnapshotFiles_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -601,11 +601,11 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 
-		forward_ResticUI_ListSnapshotFiles_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_ListSnapshotFiles_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_Backup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_Backup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -613,12 +613,12 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.ResticUI/Backup", runtime.WithHTTPPathPattern("/v1/cmd/backup"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.Restora/Backup", runtime.WithHTTPPathPattern("/v1/cmd/backup"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResticUI_Backup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Restora_Backup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -626,11 +626,11 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 
-		forward_ResticUI_Backup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_Backup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_Prune_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_Prune_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -638,12 +638,12 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.ResticUI/Prune", runtime.WithHTTPPathPattern("/v1/cmd/prune"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.Restora/Prune", runtime.WithHTTPPathPattern("/v1/cmd/prune"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResticUI_Prune_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Restora_Prune_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -651,11 +651,11 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 
-		forward_ResticUI_Prune_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_Prune_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_Forget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_Forget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -663,12 +663,12 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.ResticUI/Forget", runtime.WithHTTPPathPattern("/v1/cmd/forget"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.Restora/Forget", runtime.WithHTTPPathPattern("/v1/cmd/forget"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResticUI_Forget_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Restora_Forget_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -676,11 +676,11 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 
-		forward_ResticUI_Forget_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_Forget_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_Restore_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_Restore_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -688,12 +688,12 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.ResticUI/Restore", runtime.WithHTTPPathPattern("/v1/cmd/restore"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.Restora/Restore", runtime.WithHTTPPathPattern("/v1/cmd/restore"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResticUI_Restore_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Restora_Restore_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -701,11 +701,11 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 
-		forward_ResticUI_Restore_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_Restore_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_Unlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_Unlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -713,12 +713,12 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.ResticUI/Unlock", runtime.WithHTTPPathPattern("/v1/cmd/unlock"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.Restora/Unlock", runtime.WithHTTPPathPattern("/v1/cmd/unlock"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResticUI_Unlock_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Restora_Unlock_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -726,11 +726,11 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 
-		forward_ResticUI_Unlock_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_Unlock_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_PathAutocomplete_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_PathAutocomplete_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -738,12 +738,12 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.ResticUI/PathAutocomplete", runtime.WithHTTPPathPattern("/v1/autocomplete/path"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/v1.Restora/PathAutocomplete", runtime.WithHTTPPathPattern("/v1/autocomplete/path"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResticUI_PathAutocomplete_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Restora_PathAutocomplete_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -751,16 +751,16 @@ func RegisterResticUIHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 
-		forward_ResticUI_PathAutocomplete_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_PathAutocomplete_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
 	return nil
 }
 
-// RegisterResticUIHandlerFromEndpoint is same as RegisterResticUIHandler but
+// RegisterRestoraHandlerFromEndpoint is same as RegisterRestoraHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterResticUIHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterRestoraHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.DialContext(ctx, endpoint, opts...)
 	if err != nil {
 		return err
@@ -780,305 +780,305 @@ func RegisterResticUIHandlerFromEndpoint(ctx context.Context, mux *runtime.Serve
 		}()
 	}()
 
-	return RegisterResticUIHandler(ctx, mux, conn)
+	return RegisterRestoraHandler(ctx, mux, conn)
 }
 
-// RegisterResticUIHandler registers the http handlers for service ResticUI to "mux".
+// RegisterRestoraHandler registers the http handlers for service Restora to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterResticUIHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterResticUIHandlerClient(ctx, mux, NewResticUIClient(conn))
+func RegisterRestoraHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterRestoraHandlerClient(ctx, mux, NewRestoraClient(conn))
 }
 
-// RegisterResticUIHandlerClient registers the http handlers for service ResticUI
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "ResticUIClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "ResticUIClient"
+// RegisterRestoraHandlerClient registers the http handlers for service Restora
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "RestoraClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "RestoraClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "ResticUIClient" to call the correct interceptors.
-func RegisterResticUIHandlerClient(ctx context.Context, mux *runtime.ServeMux, client ResticUIClient) error {
+// "RestoraClient" to call the correct interceptors.
+func RegisterRestoraHandlerClient(ctx context.Context, mux *runtime.ServeMux, client RestoraClient) error {
 
-	mux.Handle("GET", pattern_ResticUI_GetConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_Restora_GetConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/GetConfig", runtime.WithHTTPPathPattern("/v1/config"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/GetConfig", runtime.WithHTTPPathPattern("/v1/config"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_GetConfig_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_GetConfig_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_GetConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_GetConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_SetConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_SetConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/SetConfig", runtime.WithHTTPPathPattern("/v1/config"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/SetConfig", runtime.WithHTTPPathPattern("/v1/config"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_SetConfig_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_SetConfig_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_SetConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_SetConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_AddRepo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_AddRepo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/AddRepo", runtime.WithHTTPPathPattern("/v1/config/repo"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/AddRepo", runtime.WithHTTPPathPattern("/v1/config/repo"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_AddRepo_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_AddRepo_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_AddRepo_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_AddRepo_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_ResticUI_GetOperationEvents_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_Restora_GetOperationEvents_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/GetOperationEvents", runtime.WithHTTPPathPattern("/v1/events/operations"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/GetOperationEvents", runtime.WithHTTPPathPattern("/v1/events/operations"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_GetOperationEvents_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_GetOperationEvents_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_GetOperationEvents_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
+		forward_Restora_GetOperationEvents_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_GetOperations_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_GetOperations_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/GetOperations", runtime.WithHTTPPathPattern("/v1/operations"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/GetOperations", runtime.WithHTTPPathPattern("/v1/operations"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_GetOperations_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_GetOperations_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_GetOperations_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_GetOperations_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_ListSnapshots_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_ListSnapshots_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/ListSnapshots", runtime.WithHTTPPathPattern("/v1/snapshots"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/ListSnapshots", runtime.WithHTTPPathPattern("/v1/snapshots"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_ListSnapshots_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_ListSnapshots_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_ListSnapshots_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_ListSnapshots_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_ListSnapshotFiles_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_ListSnapshotFiles_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/ListSnapshotFiles", runtime.WithHTTPPathPattern("/v1/snapshots/files"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/ListSnapshotFiles", runtime.WithHTTPPathPattern("/v1/snapshots/files"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_ListSnapshotFiles_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_ListSnapshotFiles_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_ListSnapshotFiles_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_ListSnapshotFiles_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_Backup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_Backup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/Backup", runtime.WithHTTPPathPattern("/v1/cmd/backup"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/Backup", runtime.WithHTTPPathPattern("/v1/cmd/backup"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_Backup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_Backup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_Backup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_Backup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_Prune_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_Prune_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/Prune", runtime.WithHTTPPathPattern("/v1/cmd/prune"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/Prune", runtime.WithHTTPPathPattern("/v1/cmd/prune"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_Prune_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_Prune_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_Prune_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_Prune_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_Forget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_Forget_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/Forget", runtime.WithHTTPPathPattern("/v1/cmd/forget"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/Forget", runtime.WithHTTPPathPattern("/v1/cmd/forget"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_Forget_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_Forget_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_Forget_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_Forget_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_Restore_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_Restore_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/Restore", runtime.WithHTTPPathPattern("/v1/cmd/restore"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/Restore", runtime.WithHTTPPathPattern("/v1/cmd/restore"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_Restore_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_Restore_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_Restore_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_Restore_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_Unlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_Unlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/Unlock", runtime.WithHTTPPathPattern("/v1/cmd/unlock"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/Unlock", runtime.WithHTTPPathPattern("/v1/cmd/unlock"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_Unlock_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_Unlock_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_Unlock_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_Unlock_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResticUI_PathAutocomplete_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Restora_PathAutocomplete_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.ResticUI/PathAutocomplete", runtime.WithHTTPPathPattern("/v1/autocomplete/path"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/v1.Restora/PathAutocomplete", runtime.WithHTTPPathPattern("/v1/autocomplete/path"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResticUI_PathAutocomplete_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Restora_PathAutocomplete_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResticUI_PathAutocomplete_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Restora_PathAutocomplete_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1086,57 +1086,57 @@ func RegisterResticUIHandlerClient(ctx context.Context, mux *runtime.ServeMux, c
 }
 
 var (
-	pattern_ResticUI_GetConfig_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "config"}, ""))
+	pattern_Restora_GetConfig_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "config"}, ""))
 
-	pattern_ResticUI_SetConfig_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "config"}, ""))
+	pattern_Restora_SetConfig_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "config"}, ""))
 
-	pattern_ResticUI_AddRepo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "config", "repo"}, ""))
+	pattern_Restora_AddRepo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "config", "repo"}, ""))
 
-	pattern_ResticUI_GetOperationEvents_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "events", "operations"}, ""))
+	pattern_Restora_GetOperationEvents_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "events", "operations"}, ""))
 
-	pattern_ResticUI_GetOperations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "operations"}, ""))
+	pattern_Restora_GetOperations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "operations"}, ""))
 
-	pattern_ResticUI_ListSnapshots_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "snapshots"}, ""))
+	pattern_Restora_ListSnapshots_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "snapshots"}, ""))
 
-	pattern_ResticUI_ListSnapshotFiles_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "snapshots", "files"}, ""))
+	pattern_Restora_ListSnapshotFiles_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "snapshots", "files"}, ""))
 
-	pattern_ResticUI_Backup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cmd", "backup"}, ""))
+	pattern_Restora_Backup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cmd", "backup"}, ""))
 
-	pattern_ResticUI_Prune_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cmd", "prune"}, ""))
+	pattern_Restora_Prune_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cmd", "prune"}, ""))
 
-	pattern_ResticUI_Forget_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cmd", "forget"}, ""))
+	pattern_Restora_Forget_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cmd", "forget"}, ""))
 
-	pattern_ResticUI_Restore_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cmd", "restore"}, ""))
+	pattern_Restora_Restore_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cmd", "restore"}, ""))
 
-	pattern_ResticUI_Unlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cmd", "unlock"}, ""))
+	pattern_Restora_Unlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cmd", "unlock"}, ""))
 
-	pattern_ResticUI_PathAutocomplete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "autocomplete", "path"}, ""))
+	pattern_Restora_PathAutocomplete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "autocomplete", "path"}, ""))
 )
 
 var (
-	forward_ResticUI_GetConfig_0 = runtime.ForwardResponseMessage
+	forward_Restora_GetConfig_0 = runtime.ForwardResponseMessage
 
-	forward_ResticUI_SetConfig_0 = runtime.ForwardResponseMessage
+	forward_Restora_SetConfig_0 = runtime.ForwardResponseMessage
 
-	forward_ResticUI_AddRepo_0 = runtime.ForwardResponseMessage
+	forward_Restora_AddRepo_0 = runtime.ForwardResponseMessage
 
-	forward_ResticUI_GetOperationEvents_0 = runtime.ForwardResponseStream
+	forward_Restora_GetOperationEvents_0 = runtime.ForwardResponseStream
 
-	forward_ResticUI_GetOperations_0 = runtime.ForwardResponseMessage
+	forward_Restora_GetOperations_0 = runtime.ForwardResponseMessage
 
-	forward_ResticUI_ListSnapshots_0 = runtime.ForwardResponseMessage
+	forward_Restora_ListSnapshots_0 = runtime.ForwardResponseMessage
 
-	forward_ResticUI_ListSnapshotFiles_0 = runtime.ForwardResponseMessage
+	forward_Restora_ListSnapshotFiles_0 = runtime.ForwardResponseMessage
 
-	forward_ResticUI_Backup_0 = runtime.ForwardResponseMessage
+	forward_Restora_Backup_0 = runtime.ForwardResponseMessage
 
-	forward_ResticUI_Prune_0 = runtime.ForwardResponseMessage
+	forward_Restora_Prune_0 = runtime.ForwardResponseMessage
 
-	forward_ResticUI_Forget_0 = runtime.ForwardResponseMessage
+	forward_Restora_Forget_0 = runtime.ForwardResponseMessage
 
-	forward_ResticUI_Restore_0 = runtime.ForwardResponseMessage
+	forward_Restora_Restore_0 = runtime.ForwardResponseMessage
 
-	forward_ResticUI_Unlock_0 = runtime.ForwardResponseMessage
+	forward_Restora_Unlock_0 = runtime.ForwardResponseMessage
 
-	forward_ResticUI_PathAutocomplete_0 = runtime.ForwardResponseMessage
+	forward_Restora_PathAutocomplete_0 = runtime.ForwardResponseMessage
 )

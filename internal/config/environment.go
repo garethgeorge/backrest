@@ -9,37 +9,37 @@ import (
 )
 
 var (
-	EnvVarConfigPath  = "RESTICUI_CONFIG_PATH"
-	EnvVarDataDir     = "RESTICUI_DATA_DIR"
-	EnvVarBindAddress = "RESTICUI_PORT"
-	EnvVarBinPath     = "RESTICUI_RESTIC_BIN_PATH"
+	EnvVarConfigPath  = "RESTORA_CONFIG"         // path to config file
+	EnvVarDataDir     = "RESTORA_DATA"           // path to data directory
+	EnvVarBindAddress = "RESTORA_PORT"           // port to bind to (default 9898)
+	EnvVarBinPath     = "RESTORA_RESTIC_COMMAND" // path to restic binary (default restic)
 )
 
 // ConfigFilePath
-// - *nix systems use $XDG_CONFIG_HOME/resticui/config.json
-// - windows uses %APPDATA%/resticui/config.json
+// - *nix systems use $XDG_CONFIG_HOME/restora/config.json
+// - windows uses %APPDATA%/restora/config.json
 func ConfigFilePath() string {
 	if val := os.Getenv(EnvVarConfigPath); val != "" {
 		return val
 	}
-	return path.Join(getConfigDir(), "resticui/config.json")
+	return path.Join(getConfigDir(), "restora/config.json")
 }
 
 // DataDir
-// - *nix systems use $XDG_DATA_HOME/resticui
-// - windows uses %APPDATA%/resticui/data
+// - *nix systems use $XDG_DATA_HOME/restora
+// - windows uses %APPDATA%/restora/data
 func DataDir() string {
 	if val := os.Getenv(EnvVarDataDir); val != "" {
 		return val
 	}
 	if val := os.Getenv("XDG_DATA_HOME"); val != "" {
-		return path.Join(val, "resticui")
+		return path.Join(val, "restora")
 	}
 
 	if runtime.GOOS == "windows" {
-		return path.Join(getConfigDir(), "resticui/data")
+		return path.Join(getConfigDir(), "restora/data")
 	}
-	return path.Join(getHomeDir(), ".local/share/resticui")
+	return path.Join(getHomeDir(), ".local/share/restora")
 }
 
 func BindAddress() string {
@@ -53,7 +53,7 @@ func BindAddress() string {
 }
 
 func ResticBinPath() string {
-	if val := os.Getenv("RESTICUI_RESTIC_BIN_PATH"); val != "" {
+	if val := os.Getenv(EnvVarBinPath); val != "" {
 		return val
 	}
 	return ""
