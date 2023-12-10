@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.0](https://github.com/garethgeorge/restora/compare/v0.4.0...v0.5.0) (2023-12-10)
+
+
+### Features
+
+* implement repo unlocking and operation list implementation ([6665ad9](https://github.com/garethgeorge/restora/commit/6665ad98d7f54bea30ea532932a8a3409717c913))
+* initial Windows OS support ([f048cbf](https://github.com/garethgeorge/restora/commit/f048cbf10dc60da51cd7f5aee4614a8750fd85b2))
+* match system color theme (darkmode support) ([a8762dc](https://github.com/garethgeorge/restora/commit/a8762dca329927b93db40b01cc011c00e12891f0))
+
+
+### Bug Fixes
+
+* improve output detail collection for command failures ([c492f9b](https://github.com/garethgeorge/restora/commit/c492f9ba63169942509349797ebe951879b53635))
+* improve Windows path handling ([426aad4](https://github.com/garethgeorge/restora/commit/426aad4890d2de5d70cd2e0232c0d11c42606c92))
+* ordering of operations when viewed from backup tree ([063f086](https://github.com/garethgeorge/restora/commit/063f086a6e31df250dd9be42cdb5fa549307106f))
+* relax output parsing to skip over warnings ([8f85b74](https://github.com/garethgeorge/restora/commit/8f85b747f57844bbc898668723eec50a1666aa39))
+* snapshots out of order in UI ([b9bcc7e](https://github.com/garethgeorge/restora/commit/b9bcc7e7c758abafa4878b6ef895adf2d2d0bc42))
+* unexpected config location on MacOS ([8d40576](https://github.com/garethgeorge/restora/commit/8d40576c6526d6f180c96fbeb81d7f59f56b51b8))
+
 ## [0.4.0](https://github.com/garethgeorge/restora/compare/v0.3.0...v0.4.0) (2023-12-04)
 
 
