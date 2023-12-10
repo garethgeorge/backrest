@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/garethgeorge/resticui/gen/go/v1"
+	v1 "github.com/garethgeorge/restora/gen/go/v1"
 )
 
 type heapTestTask struct {

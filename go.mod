@@ -1,4 +1,4 @@
-module github.com/garethgeorge/resticui
+module github.com/garethgeorge/restora
 
 go 1.21.3
 
@@ -20,7 +20,6 @@ require (
 require (
 	github.com/daaku/go.zipexe v1.0.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/renameio v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

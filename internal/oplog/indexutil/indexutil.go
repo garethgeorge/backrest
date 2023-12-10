@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/garethgeorge/resticui/internal/oplog/serializationutil"
+	"github.com/garethgeorge/restora/internal/oplog/serializationutil"
 	bolt "go.etcd.io/bbolt"
 )
 

@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
+	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	"github.com/garethgeorge/restora/internal/oplog/indexutil"
 )
 
 const (

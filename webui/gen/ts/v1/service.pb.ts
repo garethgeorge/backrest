@@ -55,7 +55,7 @@ export type LsEntry = {
   ctime?: string
 }
 
-export class ResticUI {
+export class Restora {
   static GetConfig(req: GoogleProtobufEmpty.Empty, initReq?: fm.InitReq): Promise<V1Config.Config> {
     return fm.fetchReq<GoogleProtobufEmpty.Empty, V1Config.Config>(`/v1/config?${fm.renderURLSearchParams(req, [])}`, {...initReq, method: "GET"})
   }

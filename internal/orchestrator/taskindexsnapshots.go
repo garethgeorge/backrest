@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/internal/oplog"
-	"github.com/garethgeorge/resticui/internal/oplog/indexutil"
-	"github.com/garethgeorge/resticui/internal/protoutil"
+	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	"github.com/garethgeorge/restora/internal/oplog"
+	"github.com/garethgeorge/restora/internal/oplog/indexutil"
+	"github.com/garethgeorge/restora/internal/protoutil"
 	"go.uber.org/zap"
 )
 

@@ -109,7 +109,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         key: "p-" + plan.id,
         icon: <CheckCircleOutlined style={{ color: "green" }} />,
         label: (
-          <div className="resticui visible-on-hover">
+          <div className="restora visible-on-hover">
             {plan.id}{" "}
             <Button
               className="hidden-child"

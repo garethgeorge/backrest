@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/internal/config"
-	"github.com/garethgeorge/resticui/internal/oplog"
-	"github.com/garethgeorge/resticui/pkg/restic"
+	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	"github.com/garethgeorge/restora/internal/config"
+	"github.com/garethgeorge/restora/internal/oplog"
+	"github.com/garethgeorge/restora/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )

@@ -43,8 +43,8 @@ archives:
 
 dockers:
   - image_templates:
-      - garethgeorge/resticweb:latest
-      - garethgeorge/resticweb:{{ .Tag }}
+      - garethgeorge/restora:latest
+      - garethgeorge/restora:{{ .Tag }}
 
 changelog:
   sort: asc
@@ -56,4 +56,4 @@ changelog:
 release:
   github:
     owner: garethgeorge
-    name: resticweb
+    name: restora

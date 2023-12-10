@@ -4,7 +4,7 @@ import {
   OperationEventType,
   OperationStatus,
 } from "../../gen/ts/v1/operations.pb";
-import { GetOperationsRequest, ResticUI } from "../../gen/ts/v1/service.pb";
+import { GetOperationsRequest, Restora } from "../../gen/ts/v1/service.pb";
 import { API_PREFIX } from "../constants";
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
 import _ from "lodash";
@@ -22,7 +22,7 @@ const subscribers: ((event: OperationEvent) => void)[] = [];
   while (true) {
     let nextConnWaitUntil = new Date().getTime() + 5000;
     try {
-      await ResticUI.GetOperationEvents(
+      await Restora.GetOperationEvents(
         {},
         (event: OperationEvent) => {
           console.log("operation event", event);
@@ -44,7 +44,7 @@ const subscribers: ((event: OperationEvent) => void)[] = [];
 export const getOperations = async (
   req: GetOperationsRequest
 ): Promise<EOperation[]> => {
-  const opList = await ResticUI.GetOperations(req, {
+  const opList = await Restora.GetOperations(req, {
     pathPrefix: API_PREFIX,
   });
   return (opList.operations || []).map(toEop);
@@ -125,7 +125,7 @@ export class BackupInfoCollector {
       (o) => o.id!
     );
     existing.operations.sort((a, b) => {
-      return parseInt(a.unixTimeStartMs!) - parseInt(b.unixTimeStartMs!);
+      return parseInt(b.unixTimeStartMs!) - parseInt(a.unixTimeStartMs!);
     });
     if (newInfo.backupLastStatus) {
       existing.backupLastStatus = newInfo.backupLastStatus;

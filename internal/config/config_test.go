@@ -4,36 +4,35 @@ import (
 	"strings"
 	"testing"
 
-	v1 "github.com/garethgeorge/resticui/gen/go/v1"
+	v1 "github.com/garethgeorge/restora/gen/go/v1"
 	"google.golang.org/protobuf/proto"
 )
-
 
 func TestConfig(t *testing.T) {
 	dir := t.TempDir()
 
 	testRepo := &v1.Repo{
-		Id: "test-repo",
-		Uri: "/tmp/test",
+		Id:       "test-repo",
+		Uri:      "/tmp/test",
 		Password: "test",
 	}
 
 	testPlan := &v1.Plan{
-		Id: "test-plan",
-		Repo: "test-repo",
+		Id:    "test-plan",
+		Repo:  "test-repo",
 		Paths: []string{"/tmp/foo"},
-		Cron: "* * * * *",
+		Cron:  "* * * * *",
 	}
 
 	tests := []struct {
-		name string
-		config *v1.Config
-		wantErr bool
+		name            string
+		config          *v1.Config
+		wantErr         bool
 		wantErrContains string
-		store ConfigStore
+		store           ConfigStore
 	}{
 		{
-			name: "default config",
+			name:   "default config",
 			config: NewDefaultConfig(),
 			store:  &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/default-config.json"}},
 		},
@@ -50,8 +49,8 @@ func TestConfig(t *testing.T) {
 			config: &v1.Config{
 				Plans: []*v1.Plan{testPlan},
 			},
-			store:  &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/invalid-config.json"}},
-			wantErr: true,
+			store:           &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/invalid-config.json"}},
+			wantErr:         true,
 			wantErrContains: "repo \"test-repo\" not found",
 		},
 		{
@@ -62,8 +61,8 @@ func TestConfig(t *testing.T) {
 					testRepo,
 				},
 			},
-			store:  &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/invalid-config2.json"}},
-			wantErr: true,
+			store:           &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/invalid-config2.json"}},
+			wantErr:         true,
 			wantErrContains: "repo test-repo: duplicate id",
 		},
 		{
@@ -74,15 +73,15 @@ func TestConfig(t *testing.T) {
 				},
 				Plans: []*v1.Plan{
 					{
-						Id: "test-plan",
-						Repo: "test-repo",
+						Id:    "test-plan",
+						Repo:  "test-repo",
 						Paths: []string{"/tmp/foo"},
-						Cron: "bad cron",
+						Cron:  "bad cron",
 					},
 				},
 			},
-			store:  &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/invalid-config3.json"}},
-			wantErr: true,
+			store:           &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/invalid-config3.json"}},
+			wantErr:         true,
 			wantErrContains: "invalid cron \"bad cron\"",
 		},
 	}

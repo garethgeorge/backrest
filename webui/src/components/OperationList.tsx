@@ -179,7 +179,7 @@ export const OperationRow = ({
   const title = (
     <>
       {formatTime(operation.unixTimeStartMs!)} - {opName}{" "}
-      <span className="resticui operation-details">{details.displayState}</span>
+      <span className="restora operation-details">{details.displayState}</span>
     </>
   );
 
