@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/internal/config"
+	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	"github.com/garethgeorge/restora/internal/config"
 )
 
 type testTask struct {

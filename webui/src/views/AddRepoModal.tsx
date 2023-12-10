@@ -15,7 +15,7 @@ import { Repo } from "../../gen/ts/v1/config.pb";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { useAlertApi } from "../components/Alerts";
-import { ResticUI } from "../../gen/ts/v1/service.pb";
+import { Restora } from "../../gen/ts/v1/service.pb";
 import {
   addRepo,
   configState,
@@ -110,7 +110,7 @@ export const AddRepoModal = ({
 
         // Update the snapshots for the repo to confirm the config works.
         // TODO: this operation is only used here, find a different RPC for this purpose.
-        await ResticUI.ListSnapshots(
+        await Restora.ListSnapshots(
           {
             repoId: repo.id,
           },

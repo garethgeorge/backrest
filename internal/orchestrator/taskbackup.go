@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/internal/protoutil"
-	"github.com/garethgeorge/resticui/pkg/restic"
+	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	"github.com/garethgeorge/restora/internal/protoutil"
+	"github.com/garethgeorge/restora/pkg/restic"
 	"github.com/gitploy-io/cronexpr"
 	"go.uber.org/zap"
 )

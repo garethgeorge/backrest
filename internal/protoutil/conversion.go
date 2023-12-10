@@ -1,8 +1,8 @@
 package protoutil
 
 import (
-	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/pkg/restic"
+	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	"github.com/garethgeorge/restora/pkg/restic"
 )
 
 func SnapshotToProto(s *restic.Snapshot) *v1.ResticSnapshot {

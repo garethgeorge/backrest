@@ -2,6 +2,6 @@
 set -x
 
 (cd webui && npm i && npm run build)
-rm -f resticui
+rm -f restora
 go build .
-rice append --exec resticui
+rice append --exec restora

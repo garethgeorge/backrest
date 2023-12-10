@@ -8,8 +8,8 @@ import (
 	"slices"
 	"testing"
 
-	v1 "github.com/garethgeorge/resticui/gen/go/v1"
-	"github.com/garethgeorge/resticui/test/helpers"
+	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	"github.com/garethgeorge/restora/test/helpers"
 )
 
 func TestResticInit(t *testing.T) {

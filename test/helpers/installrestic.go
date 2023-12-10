@@ -3,7 +3,7 @@ package helpers
 import (
 	"testing"
 
-	"github.com/garethgeorge/resticui/internal/resticinstaller"
+	"github.com/garethgeorge/restora/internal/resticinstaller"
 )
 
 func ResticBinary(t *testing.T) string {

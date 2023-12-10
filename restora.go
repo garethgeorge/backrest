@@ -13,11 +13,11 @@ import (
 	"syscall"
 
 	rice "github.com/GeertJohan/go.rice"
-	"github.com/garethgeorge/resticui/internal/api"
-	"github.com/garethgeorge/resticui/internal/config"
-	"github.com/garethgeorge/resticui/internal/oplog"
-	"github.com/garethgeorge/resticui/internal/orchestrator"
-	"github.com/garethgeorge/resticui/internal/resticinstaller"
+	"github.com/garethgeorge/restora/internal/api"
+	"github.com/garethgeorge/restora/internal/config"
+	"github.com/garethgeorge/restora/internal/oplog"
+	"github.com/garethgeorge/restora/internal/orchestrator"
+	"github.com/garethgeorge/restora/internal/resticinstaller"
 	"github.com/mattn/go-colorable"
 	"go.etcd.io/bbolt"
 	"go.uber.org/zap"
@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	installOnly = flag.Bool("install-deps", false, "Install resticui and exit")
+	installOnly = flag.Bool("install-deps", false, "Install restora and exit")
 )
 
 func main() {
@@ -148,11 +148,4 @@ func onterm(callback func()) {
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGTERM)
 	<-sigchan
 	callback()
-}
-
-func findResticBin() {
-	resticBin := config.ResticBinPath()
-	if resticBin != "" {
-
-	}
 }
