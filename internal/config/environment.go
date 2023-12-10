@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	EnvVarConfigPath  = "RESTORA_CONFIG_PATH"
-	EnvVarDataDir     = "RESTORA_DATA_DIR"
-	EnvVarBindAddress = "RESTORA_PORT"
-	EnvVarBinPath     = "RESTORA_RESTIC_BIN_PATH"
+	EnvVarConfigPath  = "RESTORA_CONFIG"         // path to config file
+	EnvVarDataDir     = "RESTORA_DATA"           // path to data directory
+	EnvVarBindAddress = "RESTORA_PORT"           // port to bind to (default 9898)
+	EnvVarBinPath     = "RESTORA_RESTIC_COMMAND" // path to restic binary (default restic)
 )
 
 // ConfigFilePath
@@ -53,7 +53,7 @@ func BindAddress() string {
 }
 
 func ResticBinPath() string {
-	if val := os.Getenv("RESTORA_RESTIC_BIN_PATH"); val != "" {
+	if val := os.Getenv(EnvVarBinPath); val != "" {
 		return val
 	}
 	return ""
