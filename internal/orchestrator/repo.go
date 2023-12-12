@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -18,9 +19,10 @@ import (
 type RepoOrchestrator struct {
 	mu sync.Mutex
 
-	l          *zap.Logger
-	repoConfig *v1.Repo
-	repo       *restic.Repo
+	initialized bool
+	l           *zap.Logger
+	repoConfig  *v1.Repo
+	repo        *restic.Repo
 }
 
 // newRepoOrchestrator accepts a config and a repo that is configured with the properties of that config object.
@@ -29,6 +31,22 @@ func newRepoOrchestrator(repoConfig *v1.Repo, repo *restic.Repo) *RepoOrchestrat
 		repoConfig: repoConfig,
 		repo:       repo,
 		l:          zap.L().With(zap.String("repo", repoConfig.Id)),
+	}
+}
+
+// tryInit attempts repo initialization. Should only be called when r.mu is held.
+func (r *RepoOrchestrator) tryInit() {
+	if r.initialized {
+		return
+	}
+	r.initialized = true
+
+	if err := r.repo.Init(context.Background()); err != nil {
+		if !errors.Is(err, restic.ErrRepoExists) {
+			zap.L().Warn("failed to initialize repo, commonly because it already exists", zap.String("repo", r.repoConfig.Id), zap.Error(err))
+		}
+	} else {
+		zap.L().Debug("initialized repo", zap.String("repo", r.repoConfig.Id))
 	}
 }
 
@@ -52,6 +70,8 @@ func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) 
 
 func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCallback func(event *restic.BackupProgressEntry)) (*restic.BackupProgressEntry, error) {
 	zap.L().Debug("repo orchestrator starting backup", zap.String("repo", r.repoConfig.Id))
+
+	r.tryInit()
 
 	snapshots, err := r.SnapshotsForPlan(ctx, plan)
 	if err != nil {

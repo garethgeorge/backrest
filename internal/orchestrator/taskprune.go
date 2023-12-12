@@ -92,7 +92,8 @@ func (t *PruneTask) Run(ctx context.Context) error {
 				return fmt.Errorf("get next prune time: %w", err)
 			}
 			if nextPruneTime.After(time.Now()) {
-				opPrune.OperationPrune.Output = "Skipping prune operation.\nPrune will next run at (or after): " + nextPruneTime.String() + "\nAdjust prune policy's MaxFrequencyDays to increase or decrease the interval."
+				opPrune.OperationPrune.Output = "skipped"
+				op.Status = v1.OperationStatus_STATUS_SYSTEM_CANCELLED
 				return nil
 			}
 		}
@@ -104,7 +105,6 @@ func (t *PruneTask) Run(ctx context.Context) error {
 		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
-
 			defer wg.Done()
 			for {
 				select {

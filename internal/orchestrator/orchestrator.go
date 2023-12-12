@@ -57,41 +57,50 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog) (*Orc
 		},
 	}
 
-	// verify the operation log and mark any incomplete operations as failed.
-	if oplog != nil { // oplog may be nil for testing.
-		var incompleteOpRepos []string
-		if err := oplog.Scan(func(incomplete *v1.Operation) {
-			incomplete.Status = v1.OperationStatus_STATUS_ERROR
-			incomplete.DisplayMessage = "Failed, orchestrator killed while operation was in progress."
-
-			if incomplete.RepoId != "" && !slices.Contains(incompleteOpRepos, incomplete.RepoId) {
-				incompleteOpRepos = append(incompleteOpRepos, incomplete.RepoId)
-			}
-		}); err != nil {
-			return nil, fmt.Errorf("scan oplog: %w", err)
+	if oplog != nil {
+		if err := o.startupChecks(); err != nil {
+			return nil, fmt.Errorf("startup checks: %w", err)
 		}
 
-		for _, repoId := range incompleteOpRepos {
-			repo, err := o.GetRepo(repoId)
-			if err != nil {
-				if errors.Is(err, ErrRepoNotFound) {
-					zap.L().Warn("repo not found for incomplete operation. Possibly just deleted.", zap.String("repo", repoId))
-				}
-				return nil, fmt.Errorf("get repo %q: %w", repoId, err)
-			}
-
-			if err := repo.Unlock(context.Background()); err != nil {
-				zap.L().Error("failed to unlock repo", zap.String("repo", repoId), zap.Error(err))
-			}
+		// apply starting configuration which also queues initial tasks.
+		if err := o.ApplyConfig(cfg); err != nil {
+			return nil, fmt.Errorf("apply initial config: %w", err)
 		}
-	}
-
-	// apply starting configuration which also queues initial tasks.
-	if err := o.ApplyConfig(cfg); err != nil {
-		return nil, fmt.Errorf("apply initial config: %w", err)
 	}
 
 	return o, nil
+}
+
+func (o *Orchestrator) startupChecks() error {
+	// verify the operation log and mark any incomplete operations as failed.
+	var incompleteOpRepos []string
+	if err := o.OpLog.Scan(func(incomplete *v1.Operation) {
+		incomplete.Status = v1.OperationStatus_STATUS_ERROR
+		incomplete.DisplayMessage = "Failed, orchestrator killed while operation was in progress."
+
+		if incomplete.RepoId != "" && !slices.Contains(incompleteOpRepos, incomplete.RepoId) {
+			incompleteOpRepos = append(incompleteOpRepos, incomplete.RepoId)
+		}
+	}); err != nil {
+		return fmt.Errorf("scan oplog: %w", err)
+	}
+
+	// unlock any locked repos.
+	for _, repoId := range incompleteOpRepos {
+		repo, err := o.GetRepo(repoId)
+		if err != nil {
+			if errors.Is(err, ErrRepoNotFound) {
+				zap.L().Warn("repo not found for incomplete operation. Possibly just deleted.", zap.String("repo", repoId))
+			}
+			return fmt.Errorf("get repo %q: %w", repoId, err)
+		}
+
+		if err := repo.Unlock(context.Background()); err != nil {
+			zap.L().Error("failed to unlock repo", zap.String("repo", repoId), zap.Error(err))
+		}
+	}
+
+	return nil
 }
 
 func (o *Orchestrator) curTime() time.Time {
@@ -124,6 +133,7 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 	zap.L().Info("Applied config to orchestrator, task queue reset. Rescheduling planned tasks now.")
 
 	// Requeue tasks that are affected by the config change.
+	o.ScheduleTask(&CollectGarbageTask{orchestrator: o}, TaskPriorityDefault)
 	for _, plan := range cfg.Plans {
 		t, err := NewScheduledBackupTask(o, plan)
 		if err != nil {

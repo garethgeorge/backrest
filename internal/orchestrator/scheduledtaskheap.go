@@ -139,8 +139,7 @@ type scheduledTask struct {
 }
 
 type scheduledTaskHeap struct {
-	tasks      []*scheduledTask
-	comparator func(i, j *scheduledTask) bool
+	tasks []*scheduledTask
 }
 
 func (h *scheduledTaskHeap) Len() int {

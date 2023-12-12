@@ -15,13 +15,16 @@ import (
 	v1 "github.com/garethgeorge/restora/gen/go/v1"
 )
 
-var errAlreadyInitialized = errors.New("repo already initialized")
+var (
+	ErrRepoExists    = errors.New("repo already initialized")
+	ErrPartialBackup = errors.New("partial backup")
+	ErrBackupFailed  = errors.New("backup failed")
+)
 
 type Repo struct {
-	mu          sync.Mutex
-	cmd         string
-	repo        *v1.Repo
-	initialized bool
+	mu   sync.Mutex
+	cmd  string
+	repo *v1.Repo
 
 	extraArgs []string
 	extraEnv  []string
@@ -35,11 +38,10 @@ func NewRepo(resticBin string, repo *v1.Repo, opts ...GenericOption) *Repo {
 	}
 
 	return &Repo{
-		cmd:         resticBin, // TODO: configurable binary path
-		repo:        repo,
-		initialized: false,
-		extraArgs:   opt.extraArgs,
-		extraEnv:    opt.extraEnv,
+		cmd:       resticBin, // TODO: configurable binary path
+		repo:      repo,
+		extraArgs: opt.extraArgs,
+		extraEnv:  opt.extraEnv,
 	}
 }
 
@@ -53,12 +55,7 @@ func (r *Repo) buildEnv() []string {
 	return env
 }
 
-// init initializes the repo, the command will be cancelled with the context.
-func (r *Repo) init(ctx context.Context) error {
-	if r.initialized {
-		return nil
-	}
-
+func (r *Repo) Init(ctx context.Context) error {
 	var args = []string{"init", "--json"}
 	args = append(args, r.extraArgs...)
 
@@ -67,19 +64,11 @@ func (r *Repo) init(ctx context.Context) error {
 
 	if output, err := cmd.CombinedOutput(); err != nil {
 		if strings.Contains(string(output), "config file already exists") || strings.Contains(string(output), "already initialized") {
-			return errAlreadyInitialized
+			return ErrRepoExists
 		}
 		return newCmdError(cmd, string(output), err)
 	}
 
-	r.initialized = true
-	return nil
-}
-
-func (r *Repo) Init(ctx context.Context) error {
-	if err := r.init(ctx); err != nil && !errors.Is(err, errAlreadyInitialized) {
-		return fmt.Errorf("init failed: %w", err)
-	}
 	return nil
 }
 
@@ -133,6 +122,13 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 		defer writer.Close()
 		defer wg.Done()
 		if err := cmd.Wait(); err != nil {
+			if exiterr, ok := err.(*exec.ExitError); ok {
+				if exiterr.ExitCode() == 3 {
+					err = fmt.Errorf("%w: %v", ErrPartialBackup, err)
+				} else {
+					err = fmt.Errorf("%w: %v", ErrBackupFailed, err)
+				}
+			}
 			cmdErr = err
 		}
 	}()
@@ -159,12 +155,12 @@ func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapsho
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, newCmdError(cmd, "", err)
+		return nil, newCmdError(cmd, string(output), err)
 	}
 
 	var snapshots []*Snapshot
 	if err := json.Unmarshal(output, &snapshots); err != nil {
-		return nil, newCmdError(cmd, "", fmt.Errorf("command output is not valid JSON: %w", err))
+		return nil, newCmdError(cmd, string(output), fmt.Errorf("command output is not valid JSON: %w", err))
 	}
 	for _, snapshot := range snapshots {
 		if err := snapshot.Validate(); err != nil {

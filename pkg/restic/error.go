@@ -38,8 +38,9 @@ func newCmdError(cmd *exec.Cmd, output string, err error) *CmdError {
 	}
 
 	if len(output) >= outputBufferLimit {
-		cerr.Output = output[:outputBufferLimit] + "\n...[truncated]"
+		output = output[:outputBufferLimit] + "\n...[truncated]"
 	}
+	cerr.Output = output
 
 	return cerr
 }
@@ -48,5 +49,6 @@ func newCmdErrorPreformatted(cmd *exec.Cmd, output string, err error) *CmdError 
 	return &CmdError{
 		Command: cmd.String(),
 		Err:     err,
+		Output:  output,
 	}
 }

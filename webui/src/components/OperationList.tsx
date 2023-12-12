@@ -384,7 +384,7 @@ const BackupOperationStatus = ({
         <Progress percent={progress} status="active" />
         <br />
         {st.currentFile && st.currentFile.length > 0 ? (
-          <pre>Current file: {st.currentFile.join("\n")}</pre>
+          <pre>Current file: {st.currentFile[0]}</pre>
         ) : null}
         <Row gutter={16}>
           <Col span={12}>

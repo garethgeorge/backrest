@@ -55,7 +55,8 @@ enum OperationStatus {
   STATUS_PENDING = 1; // used to indicate that the operation is pending.
   STATUS_INPROGRESS = 2; // used to indicate that the operation is in progress.
   STATUS_SUCCESS = 3; // used to indicate that the operation completed successfully.
-  STATUS_ERROR = 4; // used to indicate that the operation failed.
+  STATUS_WARNING = 7; // used to indicate that the operation completed mostly-successfully. (e.g. partial backup) message may be set.
+  STATUS_ERROR = 4; // used to indicate that the operation failed. message will be set.
   STATUS_SYSTEM_CANCELLED = 5; // indicates operation cancelled by the system.
   STATUS_USER_CANCELLED = 6; // indicates operation cancelled by the user.
 }
@@ -68,7 +69,6 @@ message OperationBackup {
 message OperationIndexSnapshot {
   ResticSnapshot snapshot = 2; // the snapshot that was indexed.
   bool forgot = 3; // tracks whether this snapshot is forgotten yet.
-  int64 forgot_by_op = 4; // ID of a forget operation that removed this snapshot.
 }
 
 // OperationForget tracks a forget operation.

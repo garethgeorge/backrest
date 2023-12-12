@@ -206,6 +206,28 @@ func (o *OpLog) Delete(id int64) error {
 	return err
 }
 
+func (o *OpLog) DeleteAll(ids []int64) error {
+	err := o.db.Update(func(tx *bolt.Tx) error {
+		for _, id := range ids {
+			val := tx.Bucket(OpLogBucket).Get(serializationutil.Itob(id))
+			if val == nil {
+				return ErrNotExist
+			}
+			if _, err := o.deleteOperationHelper(tx, id); err != nil {
+				return fmt.Errorf("deleting operation %v: %w", id, err)
+			}
+			b := tx.Bucket(OpLogSoftDeleteBucket)
+			if err := b.Put(serializationutil.Itob(id), val); err != nil {
+				return fmt.Errorf("putting operation %v into soft delete bucket: %w", id, err)
+			}
+		}
+
+		return nil
+	})
+
+	return err
+}
+
 func (o *OpLog) notifyHelper(old *v1.Operation, new *v1.Operation) {
 	o.subscribersMu.RLock()
 	defer o.subscribersMu.RUnlock()
