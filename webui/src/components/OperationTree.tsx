@@ -22,7 +22,7 @@ import {
   QuestionOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
-import { OperationEvent, OperationStatus } from "../../gen/ts/v1/operations.pb";
+import { OperationEvent, OperationEventType, OperationStatus } from "../../gen/ts/v1/operations.pb";
 import { useAlertApi } from "./Alerts";
 import { OperationList } from "./OperationList";
 import { GetOperationsRequest } from "../../gen/ts/v1/service.pb";
@@ -50,7 +50,11 @@ export const OperationTree = ({
       if (!!req.repoId && opEvent.operation!.repoId !== req.repoId) {
         return;
       }
-      backupCollector.addOperation(opEvent.type!, opEvent.operation!);
+      if (opEvent.type !== OperationEventType.EVENT_DELETED) {
+        backupCollector.addOperation(opEvent.type!, opEvent.operation!);
+      } else {
+        backupCollector.removeOperation(opEvent.operation!);
+      }
     };
     subscribeToOperations(lis);
 

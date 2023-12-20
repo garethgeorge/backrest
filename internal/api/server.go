@@ -162,20 +162,25 @@ func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.Restora_GetOpera
 	errorChan := make(chan error)
 	defer close(errorChan)
 	callback := func(oldOp *v1.Operation, newOp *v1.Operation) {
-		var eventTypeMapped v1.OperationEventType
-		eventType := oplog.EventTypeUnknown
+		var event *v1.OperationEvent
 		if oldOp == nil && newOp != nil {
-			eventTypeMapped = v1.OperationEventType_EVENT_CREATED
+			event = &v1.OperationEvent{
+				Type:      v1.OperationEventType_EVENT_CREATED,
+				Operation: newOp,
+			}
 		} else if oldOp != nil && newOp != nil {
-			eventTypeMapped = v1.OperationEventType_EVENT_UPDATED
+			event = &v1.OperationEvent{
+				Type:      v1.OperationEventType_EVENT_UPDATED,
+				Operation: newOp,
+			}
+		} else if oldOp != nil && newOp == nil {
+			event = &v1.OperationEvent{
+				Type:      v1.OperationEventType_EVENT_DELETED,
+				Operation: oldOp,
+			}
 		} else {
-			zap.L().Error("Unknown event type", zap.Int("eventType", int(eventType)))
+			zap.L().Error("Unknown event type")
 			return
-		}
-
-		event := &v1.OperationEvent{
-			Type:      eventTypeMapped,
-			Operation: newOp,
 		}
 
 		go func() {
@@ -316,10 +321,38 @@ func (s *Server) Unlock(ctx context.Context, req *types.StringValue) (*emptypb.E
 
 func (s *Server) Cancel(ctx context.Context, req *types.Int64Value) (*emptypb.Empty, error) {
 	if err := s.orchestrator.CancelOperation(req.Value, v1.OperationStatus_STATUS_USER_CANCELLED); err != nil {
-		return nil, fmt.Errorf("failed to cancel operation %d: %w", req.Value, err)
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (s *Server) ClearHistory(ctx context.Context, req *v1.ClearHistoryRequest) (*emptypb.Empty, error) {
+	var err error
+	var ids []int64
+	opCollector := func(op *v1.Operation) error {
+		if !req.OnlyFailed || op.Status == v1.OperationStatus_STATUS_ERROR {
+			ids = append(ids, op.Id)
+		}
+		return nil
 	}
 
-	return &emptypb.Empty{}, nil
+	if req.RepoId != "" && req.PlanId != "" {
+		return nil, errors.New("cannot specify both repoId and planId")
+	} else if req.PlanId != "" {
+		err = s.oplog.ForEachByPlan(req.PlanId, indexutil.CollectAll(), opCollector)
+	} else if req.RepoId != "" {
+		err = s.oplog.ForEachByRepo(req.RepoId, indexutil.CollectAll(), opCollector)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get operations to delete: %w", err)
+	}
+
+	if err := s.oplog.Delete(ids...); err != nil {
+		return nil, fmt.Errorf("failed to delete operations: %w", err)
+	}
+
+	return nil, err
 }
 
 func (s *Server) PathAutocomplete(ctx context.Context, path *types.StringValue) (*types.StringList, error) {

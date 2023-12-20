@@ -20,7 +20,6 @@ import (
 var ErrRepoNotFound = errors.New("repo not found")
 var ErrRepoInitializationFailed = errors.New("repo initialization failed")
 var ErrPlanNotFound = errors.New("plan not found")
-var ErrTaskNotFound = errors.New("task not found")
 
 const (
 	TaskPriorityDefault = iota

@@ -193,6 +193,17 @@ export class BackupInfoCollector {
     return backupInfo;
   }
 
+  // removeOperaiton is not quite correct from a formal standpoint; but will look correct in the UI.
+  public removeOperation(op: Operation) {
+    if (op.snapshotId) {
+      delete this.backupBySnapshotId[op.snapshotId];
+    } else {
+      delete this.backupByOpId[op.id!];
+    }
+
+    this.listeners.forEach((l) => l(OperationEventType.EVENT_DELETED, this.getAll()));
+  }
+
   public bulkAddOperations(ops: Operation[]): BackupInfo[] {
     const backupInfos = ops.map((op) => this.addHelper(op));
     this.listeners.forEach((l) =>

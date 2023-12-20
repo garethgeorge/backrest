@@ -185,24 +185,33 @@ func (o *OpLog) Update(op *v1.Operation) error {
 	return err
 }
 
-func (o *OpLog) Delete(id int64) error {
+func (o *OpLog) Delete(ids ...int64) error {
+	removedOps := make([]*v1.Operation, 0, len(ids))
 	err := o.db.Update(func(tx *bolt.Tx) error {
-		val := tx.Bucket(OpLogBucket).Get(serializationutil.Itob(id))
-		if val == nil {
-			return ErrNotExist
-		}
-		if _, err := o.deleteOperationHelper(tx, id); err != nil {
-			return fmt.Errorf("deleting operation %v: %w", id, err)
-		}
+		for _, id := range ids {
+			removed, err := o.deleteOperationHelper(tx, id)
+			if err != nil {
+				return fmt.Errorf("deleting operation %v: %w", id, err)
+			}
+			removedOps = append(removedOps, removed)
 
-		b := tx.Bucket(OpLogSoftDeleteBucket)
-		if err := b.Put(serializationutil.Itob(id), val); err != nil {
-			return fmt.Errorf("putting operation %v into soft delete bucket: %w", id, err)
+			b := tx.Bucket(OpLogSoftDeleteBucket)
+			val, err := proto.Marshal(removed)
+			if err != nil {
+				return fmt.Errorf("marshalling operation %v: %w", id, err)
+			}
+			if err := b.Put(serializationutil.Itob(id), val); err != nil {
+				return fmt.Errorf("putting operation %v into soft delete bucket: %w", id, err)
+			}
 		}
 
 		return nil
 	})
-
+	if err == nil {
+		for _, op := range removedOps {
+			o.notifyHelper(op, nil)
+		}
+	}
 	return err
 }
 

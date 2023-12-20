@@ -10,6 +10,12 @@ import * as TypesValue from "../types/value.pb"
 import * as V1Config from "./config.pb"
 import * as V1Operations from "./operations.pb"
 import * as V1Restic from "./restic.pb"
+export type ClearHistoryRequest = {
+  repoId?: string
+  planId?: string
+  onlyFailed?: boolean
+}
+
 export type ListSnapshotsRequest = {
   repoId?: string
   planId?: string
@@ -94,6 +100,9 @@ export class Restora {
   }
   static Cancel(req: TypesValue.Int64Value, initReq?: fm.InitReq): Promise<GoogleProtobufEmpty.Empty> {
     return fm.fetchReq<TypesValue.Int64Value, GoogleProtobufEmpty.Empty>(`/v1/cmd/cancel`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
+  }
+  static ClearHistory(req: ClearHistoryRequest, initReq?: fm.InitReq): Promise<GoogleProtobufEmpty.Empty> {
+    return fm.fetchReq<ClearHistoryRequest, GoogleProtobufEmpty.Empty>(`/v1/cmd/clear_history`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})
   }
   static PathAutocomplete(req: TypesValue.StringValue, initReq?: fm.InitReq): Promise<TypesValue.StringList> {
     return fm.fetchReq<TypesValue.StringValue, TypesValue.StringList>(`/v1/autocomplete/path`, {...initReq, method: "POST", body: JSON.stringify(req, fm.replacer)})

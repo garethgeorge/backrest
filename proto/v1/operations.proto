@@ -48,6 +48,7 @@ enum OperationEventType {
   EVENT_UNKNOWN = 0;
   EVENT_CREATED = 1;
   EVENT_UPDATED = 2;
+  EVENT_DELETED = 3;
 }
 
 enum OperationStatus {

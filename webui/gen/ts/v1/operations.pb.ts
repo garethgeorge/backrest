@@ -20,6 +20,7 @@ export enum OperationEventType {
   EVENT_UNKNOWN = "EVENT_UNKNOWN",
   EVENT_CREATED = "EVENT_CREATED",
   EVENT_UPDATED = "EVENT_UPDATED",
+  EVENT_DELETED = "EVENT_DELETED",
 }
 
 export enum OperationStatus {

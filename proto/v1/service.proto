@@ -107,6 +107,13 @@ service Restora {
     };
   }
 
+  rpc ClearHistory(ClearHistoryRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/cmd/clear_history"
+      body: "*"
+    };
+  }
+
   // PathAutocomplete provides path autocompletion options for a given filesystem path.
   rpc PathAutocomplete (types.StringValue) returns (types.StringList) {
     option (google.api.http) = {
@@ -114,6 +121,12 @@ service Restora {
       body: "*"
     };
   }
+}
+
+message ClearHistoryRequest {
+  string repo_id = 1;
+  string plan_id = 2;
+  bool only_failed = 3;
 }
 
 message ListSnapshotsRequest {
