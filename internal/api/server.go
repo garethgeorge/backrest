@@ -314,6 +314,14 @@ func (s *Server) Unlock(ctx context.Context, req *types.StringValue) (*emptypb.E
 	return &emptypb.Empty{}, nil
 }
 
+func (s *Server) Cancel(ctx context.Context, req *types.Int64Value) (*emptypb.Empty, error) {
+	if err := s.orchestrator.CancelOperation(req.Value, v1.OperationStatus_STATUS_USER_CANCELLED); err != nil {
+		return nil, fmt.Errorf("failed to cancel operation %d: %w", req.Value, err)
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (s *Server) PathAutocomplete(ctx context.Context, path *types.StringValue) (*types.StringList, error) {
 	ents, err := os.ReadDir(path.Value)
 	if errors.Is(err, os.ErrNotExist) {

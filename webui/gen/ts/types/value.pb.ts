@@ -10,3 +10,7 @@ export type StringValue = {
 export type StringList = {
   values?: string[]
 }
+
+export type Int64Value = {
+  value?: string
+}

@@ -11,3 +11,7 @@ message StringValue {
 message StringList {
   repeated string values = 1;
 }
+
+message Int64Value {
+  int64 value = 1;
+}

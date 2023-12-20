@@ -5,6 +5,7 @@ import {
   OperationStatus,
 } from "../../gen/ts/v1/operations.pb";
 import {
+  Button,
   Card,
   Col,
   Collapse,
@@ -43,8 +44,9 @@ import {
   normalizeSnapshotId,
 } from "../lib/formatting";
 import _ from "lodash";
-import { GetOperationsRequest } from "../../gen/ts/v1/service.pb";
+import { GetOperationsRequest, Restora } from "../../gen/ts/v1/service.pb";
 import { useAlertApi } from "./Alerts";
+import { MessageInstance } from "antd/es/message/interface";
 
 export const OperationList = ({
   req,
@@ -121,13 +123,13 @@ export const OperationList = ({
       renderItem={(backup) => {
         const ops = backup.operations;
         if (ops.length === 1) {
-          return <OperationRow key={ops[0].id!} operation={toEop(ops[0])} />;
+          return <OperationRow alertApi={alertApi!} key={ops[0].id!} operation={toEop(ops[0])} />;
         }
 
         return (
           <Card size="small" style={{ margin: "5px" }}>
             {ops.map((op) => (
-              <OperationRow key={op.id!} operation={toEop(op)} />
+              <OperationRow alertApi={alertApi!} key={op.id!} operation={toEop(op)} />
             ))}
           </Card>
         );
@@ -143,7 +145,8 @@ export const OperationList = ({
 
 export const OperationRow = ({
   operation,
-}: React.PropsWithoutRef<{ operation: EOperation }>) => {
+  alertApi,
+}: React.PropsWithoutRef<{ operation: EOperation, alertApi?: MessageInstance }>) => {
   const details = detailsForOperation(operation);
   const displayType = getTypeForDisplay(operation);
   let avatar: React.ReactNode;
@@ -176,12 +179,23 @@ export const OperationRow = ({
   }
 
   const opName = displayTypeToString(getTypeForDisplay(operation));
-  const title = (
+  let title = (
     <>
       {formatTime(operation.unixTimeStartMs!)} - {opName}{" "}
       <span className="restora operation-details">{details.displayState}</span>
     </>
   );
+
+  if (operation.status === OperationStatus.STATUS_PENDING || operation.status == OperationStatus.STATUS_INPROGRESS) {
+    title = <>
+      {title}
+      <Button type="link" size="small" onClick={() => {
+        Restora.Cancel({ value: operation.id! }, { pathPrefix: "/api" }).then(() => {
+          alertApi?.success("Requested to cancel operation");
+        })
+      }}>[Cancel Operation]</Button>
+    </>
+  }
 
   let body: React.ReactNode | undefined;
 

@@ -24,15 +24,17 @@ func (t *taskQueue) curTime() time.Time {
 	return time.Now()
 }
 
-func (t *taskQueue) Push(task scheduledTask) {
+func (t *taskQueue) Push(tasks ...scheduledTask) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if task.task == nil {
-		panic("task cannot be nil")
+	for _, task := range tasks {
+		if task.task == nil {
+			panic("task cannot be nil")
+		}
+		heap.Push(&t.heap, &task)
 	}
 
-	heap.Push(&t.heap, &task)
 	if t.notify != nil {
 		t.notify <- struct{}{}
 	}
@@ -57,12 +59,12 @@ func (t *taskQueue) Dequeue(ctx context.Context) *scheduledTask {
 	t.dequeueMu.Lock()
 	defer t.dequeueMu.Unlock()
 
+	t.mu.Lock()
 	t.notify = make(chan struct{}, 1)
 	defer func() {
 		t.notify = nil
 	}()
 
-	t.mu.Lock()
 	for {
 		first, ok := t.heap.Peek().(*scheduledTask)
 		if !ok { // no tasks in heap.

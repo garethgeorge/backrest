@@ -33,6 +33,7 @@ const (
 	Restora_Forget_FullMethodName             = "/v1.Restora/Forget"
 	Restora_Restore_FullMethodName            = "/v1.Restora/Restore"
 	Restora_Unlock_FullMethodName             = "/v1.Restora/Unlock"
+	Restora_Cancel_FullMethodName             = "/v1.Restora/Cancel"
 	Restora_PathAutocomplete_FullMethodName   = "/v1.Restora/PathAutocomplete"
 )
 
@@ -57,6 +58,8 @@ type RestoraClient interface {
 	Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
 	Unlock(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
+	Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error)
 }
@@ -200,6 +203,15 @@ func (c *restoraClient) Unlock(ctx context.Context, in *types.StringValue, opts 
 	return out, nil
 }
 
+func (c *restoraClient) Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Restora_Cancel_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *restoraClient) PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error) {
 	out := new(types.StringList)
 	err := c.cc.Invoke(ctx, Restora_PathAutocomplete_FullMethodName, in, out, opts...)
@@ -230,6 +242,8 @@ type RestoraServer interface {
 	Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error)
 	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
 	Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error)
+	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
+	Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error)
 	mustEmbedUnimplementedRestoraServer()
@@ -274,6 +288,9 @@ func (UnimplementedRestoraServer) Restore(context.Context, *RestoreSnapshotReque
 }
 func (UnimplementedRestoraServer) Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Unlock not implemented")
+}
+func (UnimplementedRestoraServer) Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
 func (UnimplementedRestoraServer) PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PathAutocomplete not implemented")
@@ -510,6 +527,24 @@ func _Restora_Unlock_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Restora_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(types.Int64Value)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RestoraServer).Cancel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Restora_Cancel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RestoraServer).Cancel(ctx, req.(*types.Int64Value))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Restora_PathAutocomplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
@@ -578,6 +613,10 @@ var Restora_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Unlock",
 			Handler:    _Restora_Unlock_Handler,
+		},
+		{
+			MethodName: "Cancel",
+			Handler:    _Restora_Cancel_Handler,
 		},
 		{
 			MethodName: "PathAutocomplete",
