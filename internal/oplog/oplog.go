@@ -97,8 +97,8 @@ func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
 				continue
 			}
 
-			if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
-				// remove pending operations.
+			if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED || op.Status == v1.OperationStatus_STATUS_USER_CANCELLED {
+				// remove pending or user cancelled operations.
 				o.deleteOperationHelper(tx, op.Id)
 				continue
 			} else if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
