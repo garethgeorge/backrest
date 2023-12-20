@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   Operation,
   OperationEvent,
+  OperationEventType,
   OperationStatus,
 } from "../../gen/ts/v1/operations.pb";
 import {
@@ -47,6 +48,7 @@ import _ from "lodash";
 import { GetOperationsRequest, Restora } from "../../gen/ts/v1/service.pb";
 import { useAlertApi } from "./Alerts";
 import { MessageInstance } from "antd/es/message/interface";
+import Operation from "antd/es/transfer/operation";
 
 export const OperationList = ({
   req,
@@ -76,7 +78,11 @@ export const OperationList = ({
         if (!!req.repoId && opEvent.operation!.repoId !== req.repoId) {
           return;
         }
-        backupCollector.addOperation(opEvent.type!, opEvent.operation!);
+        if (opEvent.type !== OperationEventType.EVENT_DELETED) {
+          backupCollector.addOperation(opEvent.type!, opEvent.operation!);
+        } else {
+          backupCollector.removeOperation(opEvent.operation!);
+        }
       };
       subscribeToOperations(lis);
 

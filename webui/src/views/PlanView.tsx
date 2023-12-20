@@ -55,6 +55,16 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
     }
   };
 
+  const handleClearErrorHistory = () => {
+    try {
+      alertsApi.info("Clearing error history...");
+      Restora.ClearHistory({ planId: plan.id, onlyFailed: true }, { pathPrefix: "/api" });
+      alertsApi.success("Error history cleared.");
+    } catch (e: any) {
+      alertsApi.error("Failed to clear error history: " + e.message);
+    }
+  }
+
   return (
     <>
       <Flex gap="small" align="center" wrap="wrap">
@@ -74,6 +84,11 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         <Tooltip title="Removes lockfiles and checks the repository for errors. Only run if you are sure the repo is not being accessed by another system">
           <Button type="default" onClick={handleUnlockNow}>
             Unlock Repo
+          </Button>
+        </Tooltip>
+        <Tooltip title="Removes failed operations from the list">
+          <Button type="default" onClick={handleClearErrorHistory}>
+            Clear Error History
           </Button>
         </Tooltip>
       </Flex>
