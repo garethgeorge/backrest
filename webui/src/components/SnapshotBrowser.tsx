@@ -109,31 +109,31 @@ export const SnapshotBrowser = ({
       },
       { pathPrefix: "/api" }
     );
-
-    let toUpdate: DataNode | null = null;
-    for (const node of treeData) {
-      toUpdate = findInTree(node, key as string);
-      if (toUpdate) {
-        break;
+    
+    setTreeData((treeData) => {
+      let toUpdate: DataNode | null = null;
+      for (const node of treeData) {
+        toUpdate = findInTree(node, key as string);
+        if (toUpdate) {
+          break;
+        }
       }
-    }
-
-    if (!toUpdate) {
-      return;
-    }
-
-    const toUpdateCopy = { ...toUpdate };
-    toUpdateCopy.children = respToNodes(resp);
-
-    const newTree = treeData.map((node) => {
-      const didUpdate = replaceKeyInTree(node, key as string, toUpdateCopy);
-      if (didUpdate) {
-        return didUpdate;
+  
+      if (!toUpdate) {
+        return treeData;
       }
-      return node;
+  
+      const toUpdateCopy = { ...toUpdate };
+      toUpdateCopy.children = respToNodes(resp);
+  
+      return treeData.map((node) => {
+        const didUpdate = replaceKeyInTree(node, key as string, toUpdateCopy);
+        if (didUpdate) {
+          return didUpdate;
+        }
+        return node;
+      });
     });
-
-    setTreeData(newTree);
   };
 
   return (
