@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.0](https://github.com/garethgeorge/restora/compare/v0.5.0...v0.6.0) (2023-12-20)
+
+
+### Features
+
+* support task cancellation ([fc9c06d](https://github.com/garethgeorge/restora/commit/fc9c06df00409b73dda23f4be031746f492b1a24))
+
+
+### Bug Fixes
+
+* incorrrect handling of oplog events in UI ([95ca96a](https://github.com/garethgeorge/restora/commit/95ca96a31f2e1ead2702164ec8675e4b4f54cf1d))
+* operation ordering in tree view ([2b4e1a2](https://github.com/garethgeorge/restora/commit/2b4e1a2fdbf11b010ddbcd0b6fd2640d01e4dbc8))
+* operations marked as 'warn' rather than 'error' for partial backups ([fe92b62](https://github.com/garethgeorge/restora/commit/fe92b625780481193e0ab63fbbdddb889bbda2a8))
+* race condition in snapshot browser ([f239b91](https://github.com/garethgeorge/restora/commit/f239b9170415e063ec8d60a5b5e14ae3610b9bad))
+* restic should initialize repo on backup operation ([e57abbd](https://github.com/garethgeorge/restora/commit/e57abbdcb1864c362e6ae3c22850c0380671cb34))
+* restora should not init repos added manually e.g. without the UI ([68b50e1](https://github.com/garethgeorge/restora/commit/68b50e1eb5a2ebd861c869f71f49d196cb5214f8))
+
 ## [0.5.0](https://github.com/garethgeorge/restora/compare/v0.4.0...v0.5.0) (2023-12-10)
 
 
