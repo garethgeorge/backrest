@@ -16,6 +16,8 @@ import (
 )
 
 var errAlreadyInitialized = errors.New("repo already initialized")
+var ErrPartialBackup = errors.New("incomplete backup")
+var ErrBackupFailed = errors.New("backup failed")
 
 type Repo struct {
 	mu          sync.Mutex
@@ -133,6 +135,15 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 		defer writer.Close()
 		defer wg.Done()
 		if err := cmd.Wait(); err != nil {
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
+				if exitErr.ExitCode() == 1 {
+					cmdErr = ErrPartialBackup
+				} else {
+					cmdErr = fmt.Errorf("exit code %v: %w", exitErr.ExitCode(), ErrBackupFailed)
+				}
+				return
+			}
 			cmdErr = err
 		}
 	}()

@@ -55,6 +55,7 @@ enum OperationStatus {
   STATUS_PENDING = 1; // used to indicate that the operation is pending.
   STATUS_INPROGRESS = 2; // used to indicate that the operation is in progress.
   STATUS_SUCCESS = 3; // used to indicate that the operation completed successfully.
+  STATUS_WARNING = 7; // used to indicate that the operation completed with warnings.
   STATUS_ERROR = 4; // used to indicate that the operation failed.
   STATUS_SYSTEM_CANCELLED = 5; // indicates operation cancelled by the system.
   STATUS_USER_CANCELLED = 6; // indicates operation cancelled by the user.

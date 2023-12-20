@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -123,7 +124,11 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 		}
 	})
 	if err != nil {
-		return fmt.Errorf("repo.Backup for repo %q: %w", plan.Repo, err)
+		if !errors.Is(err, restic.ErrPartialBackup) {
+			return fmt.Errorf("repo.Backup for repo %q: %w", plan.Repo, err)
+		}
+		op.Status = v1.OperationStatus_STATUS_WARNING
+		op.DisplayMessage = "Partial backup, some files may not have been read completely."
 	}
 
 	op.SnapshotId = summary.SnapshotId
