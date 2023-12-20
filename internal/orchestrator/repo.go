@@ -18,9 +18,10 @@ import (
 type RepoOrchestrator struct {
 	mu sync.Mutex
 
-	l          *zap.Logger
-	repoConfig *v1.Repo
-	repo       *restic.Repo
+	l           *zap.Logger
+	repoConfig  *v1.Repo
+	repo        *restic.Repo
+	initialized bool
 }
 
 // newRepoOrchestrator accepts a config and a repo that is configured with the properties of that config object.
@@ -53,15 +54,22 @@ func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) 
 func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCallback func(event *restic.BackupProgressEntry)) (*restic.BackupProgressEntry, error) {
 	zap.L().Debug("repo orchestrator starting backup", zap.String("repo", r.repoConfig.Id))
 
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !r.initialized {
+
+		if err := r.repo.Init(ctx); err != nil {
+			return nil, fmt.Errorf("failed to initialize repo: %w", err)
+		}
+		r.initialized = true
+	}
+
 	snapshots, err := r.SnapshotsForPlan(ctx, plan)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get snapshots for plan: %w", err)
 	}
 
 	r.l.Debug("got snapshots for plan", zap.String("repo", r.repoConfig.Id), zap.Int("count", len(snapshots)), zap.String("plan", plan.Id), zap.String("tag", tagForPlan(plan)))
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
 
 	startTime := time.Now()
 
