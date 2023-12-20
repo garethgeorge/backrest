@@ -16,6 +16,7 @@ import { useShowModal } from "../components/ModalManager";
 import { MainContentArea, useSetContent } from "./MainContentArea";
 import { AddPlanModal } from "./AddPlanModal";
 import { uiBuildVersion } from "../state/buildcfg";
+import { ActivityBar } from "../components/ActivityBar";
 
 const { Header, Sider } = Layout;
 
@@ -66,6 +67,10 @@ export const App: React.FC = () => {
           </a>
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
             {uiBuildVersion}
+          </small>
+
+          <small style={{ fontSize: "0.6em", marginLeft: "30px" }}>
+            <ActivityBar />
           </small>
         </h1>
       </Header>
