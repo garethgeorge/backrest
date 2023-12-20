@@ -99,6 +99,14 @@ service Restora {
     };
   }
 
+  // Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
+  rpc Cancel(types.Int64Value) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/cmd/cancel"
+      body: "*"
+    };
+  }
+
   // PathAutocomplete provides path autocompletion options for a given filesystem path.
   rpc PathAutocomplete (types.StringValue) returns (types.StringList) {
     option (google.api.http) = {

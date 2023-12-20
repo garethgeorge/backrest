@@ -16,7 +16,7 @@ type CmdError struct {
 func (e *CmdError) Error() string {
 	m := fmt.Sprintf("command %q failed: %s", e.Command, e.Err.Error())
 	if e.Output != "" {
-		m += "\nDetails: \n" + e.Output
+		m += "\nProcess STDOUT: \n" + e.Output
 	}
 	return m
 }
@@ -35,6 +35,7 @@ func newCmdError(cmd *exec.Cmd, output string, err error) *CmdError {
 	cerr := &CmdError{
 		Command: cmd.String(),
 		Err:     err,
+		Output:  output,
 	}
 
 	if len(output) >= outputBufferLimit {
@@ -48,5 +49,6 @@ func newCmdErrorPreformatted(cmd *exec.Cmd, output string, err error) *CmdError 
 	return &CmdError{
 		Command: cmd.String(),
 		Err:     err,
+		Output:  output,
 	}
 }

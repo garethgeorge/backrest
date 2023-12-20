@@ -16,69 +16,64 @@ type Task interface {
 	Name() string                               // huamn readable name for this task.
 	Next(now time.Time) *time.Time              // when this task would like to be run.
 	Run(ctx context.Context) error              // run the task.
-	Cancel(withStatus v1.OperationStatus) error // cancel the task's execution with the given status (either STATUS_USER_CANCELLED or STATUS_SYSTEM_CANCELLED).
+	Cancel(withStatus v1.OperationStatus) error // informat the task that it's scheduled execution will be skipped (either STATUS_USER_CANCELLED or STATUS_SYSTEM_CANCELLED).
 	OperationId() int64                         // the id of the operation associated with this task (if any).
 }
 
 type TaskWithOperation struct {
-	orch      *Orchestrator
-	op        atomic.Pointer[v1.Operation]
-	cancelled chan struct{}
+	orch    *Orchestrator
+	op      *v1.Operation
+	running atomic.Bool
 }
 
 func (t *TaskWithOperation) OperationId() int64 {
-	return t.op.Load().GetId()
+	if t.op == nil {
+		return 0
+	}
+	return t.op.Id
 }
 
 func (t *TaskWithOperation) setOperation(op *v1.Operation) error {
-	if t.op.Load() != nil {
+	if t.op != nil {
 		return errors.New("task already has an operation")
 	}
 	if err := t.orch.OpLog.Add(op); err != nil {
 		return fmt.Errorf("task failed to add operation to oplog: %v", err)
 	}
-	t.op.Store(op)
-	t.cancelled = make(chan struct{}, 1)
+	t.op = op
 	return nil
 }
 
 func (t *TaskWithOperation) runWithOpAndContext(ctx context.Context, do func(ctx context.Context, op *v1.Operation) error) error {
-	op := t.op.Load()
-	if op == nil {
+	if t.op == nil {
 		return errors.New("task has no operation, a call to setOperation first is required.")
 	}
-	go func() {
-		t.op.Store(nil)
-	}()
+	if t.running.Load() {
+		return errors.New("task is already running")
+	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	t.running.Store(true)
+	defer t.running.Store(false)
 
-	go func() {
-		select {
-		case <-ctx.Done():
-		case <-t.cancelled:
-			cancel()
-		}
-	}()
-
-	return WithOperation(t.orch.OpLog, op, func() error {
-		return do(ctx, op)
+	return WithOperation(t.orch.OpLog, t.op, func() error {
+		return do(ctx, t.op)
 	})
 }
 
 // Cancel marks a task as cancelled. Note that, unintuitively, it is actually an error to call cancel on a running task.
 func (t *TaskWithOperation) Cancel(withStatus v1.OperationStatus) error {
-	close(t.cancelled)
-	op := t.op.Load()
-	if op == nil {
+	if t.running.Load() {
+		return errors.New("cannot cancel a running task") // should never happen.
+	}
+	if t.op == nil {
 		return nil
 	}
-	op.Status = withStatus
-	op.UnixTimeEndMs = curTimeMillis()
-	if err := t.orch.OpLog.Update(op); err != nil {
-		return fmt.Errorf("failed to update operation %v in oplog: %w", op.Id, err)
+	t.op.Status = withStatus
+	t.op.UnixTimeEndMs = curTimeMillis()
+	if err := t.orch.OpLog.Update(t.op); err != nil {
+		return fmt.Errorf("failed to update operation %v in oplog: %w", t.op.Id, err)
 	}
+	t.op = nil
 	return nil
 }
 

@@ -93,12 +93,13 @@ export const OperationTree = ({
   let oplist: React.ReactNode | null = null;
   if (selectedBackupId) {
     const backup = backups.find((b) => b.id === selectedBackupId);
+
     if (!backup) {
       oplist = <Empty description="Backup not found." />;
     } else {
       oplist = (
         <>
-          <h3>Backup at {formatTime(backup.displayTime)}</h3>
+          <h3>Backup on {formatTime(backup.displayTime)}</h3>
           <OperationList key={backup.id} useBackups={[backup]} />
         </>
       );
