@@ -40,6 +40,7 @@ export const OperationTree = ({
 
   // track backups for this operation tree view.
   useEffect(() => {
+    console.log("using effect");
     setSelectedBackupId(null);
     const backupCollector = new BackupInfoCollector();
     const lis = (opEvent: OperationEvent) => {
@@ -119,6 +120,7 @@ export const OperationTree = ({
               setSelectedBackupId(null);
               return;
             }
+            console.log("SELECTED ID: " + backup.id);
             setSelectedBackupId(backup.id!);
           }}
           titleRender={(node: OpTreeNode): React.ReactNode => {

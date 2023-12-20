@@ -253,19 +253,21 @@ export const OperationRow = ({
           items={[
             {
               key: 1,
-              label:
-                "Removed " +
-                forgetOp.forget?.length +
-                " Snapshots (Policy Details)",
-              children: (
-                <div>
-                  <ul>
-                    {policyDesc.map((desc) => (
-                      <li>{desc}</li>
-                    ))}
-                  </ul>
-                </div>
-              ),
+              label: "Removed " + forgetOp.forget?.length + " Snapshots",
+              children: <>
+                Removed snapshots:
+                <pre>{forgetOp.forget?.map((f) => (
+                  <>
+                    {"removed snapshot " + normalizeSnapshotId(f.id!) + " taken at " + formatTime(f.unixTimeMs!)} <br />
+                  </>
+                ))}</pre>
+                Policy:
+                <ul>
+                  {policyDesc.map((desc) => (
+                    <li>{desc}</li>
+                  ))}
+                </ul>
+              </>,
             },
           ]}
         />

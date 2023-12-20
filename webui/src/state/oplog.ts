@@ -113,6 +113,9 @@ export class BackupInfoCollector {
   private backupBySnapshotId: { [key: string]: BackupInfo } = {};
 
   private mergeBackups(existing: BackupInfo, newInfo: BackupInfo) {
+    if (existing.id > newInfo.id) {
+      existing.id = newInfo.id;
+    }
     existing.startTimeMs = Math.min(existing.startTimeMs, newInfo.startTimeMs);
     existing.endTimeMs = Math.max(existing.endTimeMs, newInfo.endTimeMs);
     existing.displayTime = new Date(existing.startTimeMs);
