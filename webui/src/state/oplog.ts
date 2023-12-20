@@ -301,6 +301,10 @@ export const detailsForOperation = (
       state = "error";
       color = "red";
       break;
+    case OperationStatus.STATUS_WARNING:
+      state = "warning";
+      color = "orange";
+      break;
     case OperationStatus.STATUS_SUCCESS:
       state = "";
       color = "green";

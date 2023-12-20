@@ -1,6 +1,6 @@
 module github.com/garethgeorge/restora
 
-go 1.21.3
+go 1.21
 
 require (
 	github.com/GeertJohan/go.rice v1.0.3
