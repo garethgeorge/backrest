@@ -60,9 +60,6 @@ export const OperationTree = ({
 
     backupCollector.subscribe(() => {
       let backups = backupCollector.getAll();
-      backups = backups.filter((b) => {
-        return !shouldHideStatus(b.status);
-      });
       backups.sort((a, b) => {
         return b.startTimeMs - a.startTimeMs;
       });

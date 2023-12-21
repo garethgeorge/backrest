@@ -88,9 +88,6 @@ export const OperationList = ({
 
       backupCollector.subscribe(() => {
         let backups = backupCollector.getAll();
-        backups = backups.filter((b) => {
-          return !shouldHideStatus(b.status);
-        });
         backups.sort((a, b) => {
           return b.startTimeMs - a.startTimeMs;
         });
@@ -134,9 +131,12 @@ export const OperationList = ({
 
         return (
           <Card size="small" style={{ margin: "5px" }}>
-            {ops.map((op) => (
-              <OperationRow alertApi={alertApi!} key={op.id!} operation={toEop(op)} />
-            ))}
+            {ops.map((op) => {
+              if (shouldHideStatus(op.status!)) {
+                return null;
+              }
+              return <OperationRow alertApi={alertApi!} key={op.id!} operation={toEop(op)} />
+            })}
           </Card>
         );
       }}
