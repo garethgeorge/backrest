@@ -34,6 +34,18 @@ export const formatTime = (time: number | string | Date) => {
   }`;
 };
 
+export const localISOTime = (time: number | string | Date) => {
+  if (typeof time === "string") {
+    time = parseInt(time);
+  } else if (time instanceof Date) {
+    time = time.getTime();
+  }
+
+  const d = new Date();
+  d.setTime(time - timezoneOffsetMs);
+  return d.toISOString();
+}
+
 // formatDate formats a time as YYYY-MM-DD
 export const formatDate = (time: number | string | Date) => {
   if (typeof time === "string") {

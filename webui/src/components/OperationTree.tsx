@@ -15,6 +15,7 @@ import {
   formatDate,
   formatDuration,
   formatTime,
+  localISOTime,
   normalizeSnapshotId,
 } from "../lib/formatting";
 import {
@@ -40,7 +41,6 @@ export const OperationTree = ({
 
   // track backups for this operation tree view.
   useEffect(() => {
-    console.log("using effect");
     setSelectedBackupId(null);
     const backupCollector = new BackupInfoCollector();
     const lis = (opEvent: OperationEvent) => {
@@ -125,7 +125,6 @@ export const OperationTree = ({
               setSelectedBackupId(null);
               return;
             }
-            console.log("SELECTED ID: " + backup.id);
             setSelectedBackupId(backup.id!);
           }}
           titleRender={(node: OpTreeNode): React.ReactNode => {
@@ -205,7 +204,7 @@ export const OperationTree = ({
 
 const buildTreeYear = (operations: BackupInfo[]): OpTreeNode[] => {
   const grouped = _.groupBy(operations, (op) => {
-    return op.displayTime.toISOString().substring(0, 4);
+    return localISOTime(op.displayTime).substring(0, 4);
   });
 
   const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
@@ -221,7 +220,7 @@ const buildTreeYear = (operations: BackupInfo[]): OpTreeNode[] => {
 
 const buildTreeMonth = (operations: BackupInfo[]): OpTreeNode[] => {
   const grouped = _.groupBy(operations, (op) => {
-    return op.displayTime.toISOString().substring(0, 7);
+    return localISOTime(op.displayTime).substring(0, 7);
   });
   const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
     return {
@@ -238,7 +237,7 @@ const buildTreeMonth = (operations: BackupInfo[]): OpTreeNode[] => {
 
 const buildTreeDay = (operations: BackupInfo[]): OpTreeNode[] => {
   const grouped = _.groupBy(operations, (op) => {
-    return op.displayTime.toISOString().substring(0, 10);
+    return localISOTime(op.displayTime).substring(0, 10);
   });
 
   const entries = _.map(grouped, (value, key) => {
