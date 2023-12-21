@@ -120,7 +120,7 @@ export class BackupInfoCollector {
     existing.endTimeMs = Math.max(existing.endTimeMs, newInfo.endTimeMs);
     existing.displayTime = new Date(existing.startTimeMs);
     existing.displayType = DisplayType.SNAPSHOT;
-    if (newInfo.startTimeMs >= existing.startTimeMs) {
+    if (newInfo.startTimeMs >= existing.startTimeMs && newInfo.status !== OperationStatus.STATUS_SYSTEM_CANCELLED) { // don't overwrite with cancelled status since that operation will be hidden.
       existing.status = newInfo.status; // use the latest status
     }
     existing.operations = _.uniqBy(
@@ -219,16 +219,7 @@ export class BackupInfoCollector {
   public getAll(): BackupInfo[] {
     const arr = [];
     arr.push(...Object.values(this.backupByOpId));
-    arr.push(
-      ...Object.values(this.backupBySnapshotId).filter((b) => {
-        for (const op of b.operations) {
-          if (op.operationIndexSnapshot && op.operationIndexSnapshot.forgot) {
-            return false;
-          }
-        }
-        return true;
-      })
-    );
+    arr.push(...Object.values(this.backupBySnapshotId));
     return arr;
   }
 

@@ -92,7 +92,7 @@ func (t *PruneTask) Run(ctx context.Context) error {
 				return fmt.Errorf("get next prune time: %w", err)
 			}
 			if nextPruneTime.After(time.Now()) {
-				opPrune.OperationPrune.Output = "Skipping prune operation.\nPrune will next run at (or after): " + nextPruneTime.String() + "\nAdjust prune policy's MaxFrequencyDays to increase or decrease the interval."
+				op.Status = v1.OperationStatus_STATUS_SYSTEM_CANCELLED
 				return nil
 			}
 		}
