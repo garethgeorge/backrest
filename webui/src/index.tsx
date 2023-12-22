@@ -18,7 +18,7 @@ const Root = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const darkThemeMq = true; // window.matchMedia("(prefers-color-scheme: dark)");
+const darkThemeMq = window.matchMedia("(prefers-color-scheme: dark)");
 
 const el = document.querySelector("#app");
 el &&

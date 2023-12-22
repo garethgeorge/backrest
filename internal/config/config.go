@@ -18,7 +18,9 @@ type ConfigStore interface {
 }
 
 func NewDefaultConfig() *v1.Config {
+	hostname, _ := os.Hostname()
 	return &v1.Config{
+		Host:  hostname,
 		Repos: []*v1.Repo{},
 		Plans: []*v1.Plan{},
 	}

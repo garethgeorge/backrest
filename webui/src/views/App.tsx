@@ -54,6 +54,7 @@ export const App: React.FC = () => {
         style={{
           display: "flex",
           alignItems: "center",
+          width: "100vw",
           backgroundColor: "#1b232c",
         }}
       >
@@ -69,6 +70,11 @@ export const App: React.FC = () => {
           </small>
           <small style={{ fontSize: "0.6em", marginLeft: "30px" }}>
             <ActivityBar />
+          </small>
+        </h1>
+        <h1 style={{ position: "absolute", right: "20px" }}>
+          <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
+            {config.host ? "Host: " + config.host : undefined}
           </small>
         </h1>
       </Header>

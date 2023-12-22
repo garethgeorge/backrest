@@ -4,7 +4,7 @@
 
 Backrest is a free and open-source web UI wrapper for [restic](https://restic.net/). 
 
-**Project goals:**
+**Project goals**
 
  * Full featured web UI for restic: supports all basic operations (e.g. backup, restore, browse snapshots, prune old data, etc).
  * Interactive: UI is fast and responds to operation progress in real time (e.g. backups show live progress bars).
@@ -32,8 +32,8 @@ Backrest is a free and open-source web UI wrapper for [restic](https://restic.ne
 
 |                                                                                                                |                                                                                                       |
 | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| <img src="https://f000.backblazeb2.com/file/gshare/screenshots/backrest-backup-view.png" width="400px"/>        | <img src="https://f000.backblazeb2.com/file/gshare/screenshots/backrest-add-repo.png" width="400px" /> |
-| <img src="https://f000.backblazeb2.com/file/gshare/screenshots/backrest-realtime-progress.png" width="400px" /> | <img src="https://f000.backblazeb2.com/file/gshare/screenshots/backrest-add-plan.png" width="400px" /> |
+| <img src="https://f000.backblazeb2.com/file/gshare/screenshots/restora-backup-view.png" width="400px"/>        | <img src="https://f000.backblazeb2.com/file/gshare/screenshots/restora-add-repo.png" width="400px" /> |
+| <img src="https://f000.backblazeb2.com/file/gshare/screenshots/restora-realtime-progress.png" width="400px" /> | <img src="https://f000.backblazeb2.com/file/gshare/screenshots/restora-add-plan.png" width="400px" /> |
 
 # Getting Started 
 
