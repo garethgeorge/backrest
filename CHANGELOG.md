@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.6.0](https://github.com/garethgeorge/restora/compare/v0.5.0...v0.6.0) (2023-12-22)
+
+
+### Features
+
+* add activity bar to UI heading ([f5c3e76](https://github.com/garethgeorge/restora/commit/f5c3e762ed4ed3c908e843d74985fb6c7b253db7))
+* add clear error history button ([48d80b9](https://github.com/garethgeorge/restora/commit/48d80b9473db6619518924d0849b0eda78e62afa))
+* add repo view ([9522ac1](https://github.com/garethgeorge/restora/commit/9522ac18deedc15311d3d464ee36c20e7f72e39f))
+* implement garbage collection of old operations ([46456a8](https://github.com/garethgeorge/restora/commit/46456a88870934506ede4b67c3dfaa2f2afcee14))
+* support task cancellation ([fc9c06d](https://github.com/garethgeorge/restora/commit/fc9c06df00409b73dda23f4be031746f492b1a24))
+
+
+### Bug Fixes
+
+* backup ordering in tree view ([b9c8b3e](https://github.com/garethgeorge/restora/commit/b9c8b3e378e88a0feff4d477d9d97eb5db075382))
+* hide no-op prune operations ([20dd78c](https://github.com/garethgeorge/restora/commit/20dd78cac4bdd6385cb7a0ea9ff0be75fde9135b))
+* incorrrect handling of oplog events in UI ([95ca96a](https://github.com/garethgeorge/restora/commit/95ca96a31f2e1ead2702164ec8675e4b4f54cf1d))
+* operation ordering in tree view ([2b4e1a2](https://github.com/garethgeorge/restora/commit/2b4e1a2fdbf11b010ddbcd0b6fd2640d01e4dbc8))
+* operations marked as 'warn' rather than 'error' for partial backups ([fe92b62](https://github.com/garethgeorge/restora/commit/fe92b625780481193e0ab63fbbdddb889bbda2a8))
+* race condition in snapshot browser ([f239b91](https://github.com/garethgeorge/restora/commit/f239b9170415e063ec8d60a5b5e14ae3610b9bad))
+* restic should initialize repo on backup operation ([e57abbd](https://github.com/garethgeorge/restora/commit/e57abbdcb1864c362e6ae3c22850c0380671cb34))
+* restora should not init repos added manually e.g. without the UI ([68b50e1](https://github.com/garethgeorge/restora/commit/68b50e1eb5a2ebd861c869f71f49d196cb5214f8))
+* task cancellation ([d49b729](https://github.com/garethgeorge/restora/commit/d49b72996ea7fd0543d55db3fc8e1127fe5a2476))
+* use timezone offset when grouping operations in OperationTree ([06240bd](https://github.com/garethgeorge/restora/commit/06240bd7adabd76424025030cfde2fb5e54c219f))
+
 ## [0.5.0](https://github.com/garethgeorge/restora/compare/v0.4.0...v0.5.0) (2023-12-10)
 
 
