@@ -297,12 +297,14 @@ const buildTreeLeaf = (operations: BackupInfo[]): OpTreeNode[] => {
     }
 
     return {
-      key: b.id!,
+      key: b.id,
       backup: b,
       icon: icon,
     };
   });
-  entries.sort(sortByKey);
+  entries.sort((a, b) => {
+    return b.backup!.startTimeMs - a.backup!.startTimeMs;
+  });
   return entries;
 };
 
