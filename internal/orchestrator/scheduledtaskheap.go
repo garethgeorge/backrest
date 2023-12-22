@@ -29,6 +29,7 @@ func (t *taskQueue) Push(tasks ...scheduledTask) {
 	defer t.mu.Unlock()
 
 	for _, task := range tasks {
+		task := task
 		if task.task == nil {
 			panic("task cannot be nil")
 		}
