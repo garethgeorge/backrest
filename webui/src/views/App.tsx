@@ -14,7 +14,6 @@ import { Config } from "../../gen/ts/v1/config.pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { MainContentArea, useSetContent } from "./MainContentArea";
-import { AddPlanModal } from "./AddPlanModal";
 import { uiBuildVersion } from "../state/buildcfg";
 import { ActivityBar } from "../components/ActivityBar";
 
@@ -121,7 +120,8 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
               size="small"
               shape="circle"
               icon={<SettingOutlined />}
-              onClick={() => {
+              onClick={async () => {
+                const { AddPlanModal } = await import("./AddPlanModal");
                 showModal(<AddPlanModal template={plan} />);
               }}
             />
