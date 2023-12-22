@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
-	"github.com/garethgeorge/restora/internal/oplog/indexutil"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"go.uber.org/zap"
 )
 

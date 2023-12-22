@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
-	"github.com/garethgeorge/restora/internal/config"
-	"github.com/garethgeorge/restora/internal/oplog"
-	"github.com/garethgeorge/restora/pkg/restic"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )

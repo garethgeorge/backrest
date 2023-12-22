@@ -4,7 +4,7 @@ import { Button, Flex, Tabs, Tooltip, Typography } from "antd";
 import { useRecoilValue } from "recoil";
 import { configState } from "../state/config";
 import { useAlertApi } from "../components/Alerts";
-import { Restora } from "../../gen/ts/v1/service.pb";
+import { Backrest } from "../../gen/ts/v1/service.pb";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY } from "../constants";

@@ -8,7 +8,7 @@ package v1
 
 import (
 	context "context"
-	types "github.com/garethgeorge/restora/gen/go/types"
+	types "github.com/garethgeorge/backrest/gen/go/types"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -21,31 +21,31 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Restora_GetConfig_FullMethodName          = "/v1.Restora/GetConfig"
-	Restora_SetConfig_FullMethodName          = "/v1.Restora/SetConfig"
-	Restora_AddRepo_FullMethodName            = "/v1.Restora/AddRepo"
-	Restora_GetOperationEvents_FullMethodName = "/v1.Restora/GetOperationEvents"
-	Restora_GetOperations_FullMethodName      = "/v1.Restora/GetOperations"
-	Restora_ListSnapshots_FullMethodName      = "/v1.Restora/ListSnapshots"
-	Restora_ListSnapshotFiles_FullMethodName  = "/v1.Restora/ListSnapshotFiles"
-	Restora_Backup_FullMethodName             = "/v1.Restora/Backup"
-	Restora_Prune_FullMethodName              = "/v1.Restora/Prune"
-	Restora_Forget_FullMethodName             = "/v1.Restora/Forget"
-	Restora_Restore_FullMethodName            = "/v1.Restora/Restore"
-	Restora_Unlock_FullMethodName             = "/v1.Restora/Unlock"
-	Restora_Cancel_FullMethodName             = "/v1.Restora/Cancel"
-	Restora_ClearHistory_FullMethodName       = "/v1.Restora/ClearHistory"
-	Restora_PathAutocomplete_FullMethodName   = "/v1.Restora/PathAutocomplete"
+	Backrest_GetConfig_FullMethodName          = "/v1.Backrest/GetConfig"
+	Backrest_SetConfig_FullMethodName          = "/v1.Backrest/SetConfig"
+	Backrest_AddRepo_FullMethodName            = "/v1.Backrest/AddRepo"
+	Backrest_GetOperationEvents_FullMethodName = "/v1.Backrest/GetOperationEvents"
+	Backrest_GetOperations_FullMethodName      = "/v1.Backrest/GetOperations"
+	Backrest_ListSnapshots_FullMethodName      = "/v1.Backrest/ListSnapshots"
+	Backrest_ListSnapshotFiles_FullMethodName  = "/v1.Backrest/ListSnapshotFiles"
+	Backrest_Backup_FullMethodName             = "/v1.Backrest/Backup"
+	Backrest_Prune_FullMethodName              = "/v1.Backrest/Prune"
+	Backrest_Forget_FullMethodName             = "/v1.Backrest/Forget"
+	Backrest_Restore_FullMethodName            = "/v1.Backrest/Restore"
+	Backrest_Unlock_FullMethodName             = "/v1.Backrest/Unlock"
+	Backrest_Cancel_FullMethodName             = "/v1.Backrest/Cancel"
+	Backrest_ClearHistory_FullMethodName       = "/v1.Backrest/ClearHistory"
+	Backrest_PathAutocomplete_FullMethodName   = "/v1.Backrest/PathAutocomplete"
 )
 
-// RestoraClient is the client API for Restora service.
+// BackrestClient is the client API for Backrest service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type RestoraClient interface {
+type BackrestClient interface {
 	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error)
 	SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error)
 	AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error)
-	GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Restora_GetOperationEventsClient, error)
+	GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Backrest_GetOperationEventsClient, error)
 	GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error)
 	ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error)
 	ListSnapshotFiles(ctx context.Context, in *ListSnapshotFilesRequest, opts ...grpc.CallOption) (*ListSnapshotFilesResponse, error)
@@ -66,47 +66,47 @@ type RestoraClient interface {
 	PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error)
 }
 
-type restoraClient struct {
+type backrestClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewRestoraClient(cc grpc.ClientConnInterface) RestoraClient {
-	return &restoraClient{cc}
+func NewBackrestClient(cc grpc.ClientConnInterface) BackrestClient {
+	return &backrestClient{cc}
 }
 
-func (c *restoraClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error) {
+func (c *backrestClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error) {
 	out := new(Config)
-	err := c.cc.Invoke(ctx, Restora_GetConfig_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_GetConfig_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error) {
+func (c *backrestClient) SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error) {
 	out := new(Config)
-	err := c.cc.Invoke(ctx, Restora_SetConfig_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_SetConfig_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error) {
+func (c *backrestClient) AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error) {
 	out := new(Config)
-	err := c.cc.Invoke(ctx, Restora_AddRepo_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_AddRepo_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Restora_GetOperationEventsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Restora_ServiceDesc.Streams[0], Restora_GetOperationEvents_FullMethodName, opts...)
+func (c *backrestClient) GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Backrest_GetOperationEventsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Backrest_ServiceDesc.Streams[0], Backrest_GetOperationEvents_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &restoraGetOperationEventsClient{stream}
+	x := &backrestGetOperationEventsClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -116,16 +116,16 @@ func (c *restoraClient) GetOperationEvents(ctx context.Context, in *emptypb.Empt
 	return x, nil
 }
 
-type Restora_GetOperationEventsClient interface {
+type Backrest_GetOperationEventsClient interface {
 	Recv() (*OperationEvent, error)
 	grpc.ClientStream
 }
 
-type restoraGetOperationEventsClient struct {
+type backrestGetOperationEventsClient struct {
 	grpc.ClientStream
 }
 
-func (x *restoraGetOperationEventsClient) Recv() (*OperationEvent, error) {
+func (x *backrestGetOperationEventsClient) Recv() (*OperationEvent, error) {
 	m := new(OperationEvent)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -133,113 +133,113 @@ func (x *restoraGetOperationEventsClient) Recv() (*OperationEvent, error) {
 	return m, nil
 }
 
-func (c *restoraClient) GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error) {
+func (c *backrestClient) GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error) {
 	out := new(OperationList)
-	err := c.cc.Invoke(ctx, Restora_GetOperations_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_GetOperations_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error) {
+func (c *backrestClient) ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error) {
 	out := new(ResticSnapshotList)
-	err := c.cc.Invoke(ctx, Restora_ListSnapshots_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_ListSnapshots_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) ListSnapshotFiles(ctx context.Context, in *ListSnapshotFilesRequest, opts ...grpc.CallOption) (*ListSnapshotFilesResponse, error) {
+func (c *backrestClient) ListSnapshotFiles(ctx context.Context, in *ListSnapshotFilesRequest, opts ...grpc.CallOption) (*ListSnapshotFilesResponse, error) {
 	out := new(ListSnapshotFilesResponse)
-	err := c.cc.Invoke(ctx, Restora_ListSnapshotFiles_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_ListSnapshotFiles_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Restora_Backup_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_Backup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) Prune(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) Prune(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Restora_Prune_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_Prune_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) Forget(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) Forget(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Restora_Forget_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_Forget_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Restora_Restore_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_Restore_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) Unlock(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) Unlock(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Restora_Unlock_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_Unlock_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Restora_Cancel_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_Cancel_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) ClearHistory(ctx context.Context, in *ClearHistoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) ClearHistory(ctx context.Context, in *ClearHistoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Restora_ClearHistory_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_ClearHistory_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *restoraClient) PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error) {
+func (c *backrestClient) PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error) {
 	out := new(types.StringList)
-	err := c.cc.Invoke(ctx, Restora_PathAutocomplete_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_PathAutocomplete_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// RestoraServer is the server API for Restora service.
-// All implementations must embed UnimplementedRestoraServer
+// BackrestServer is the server API for Backrest service.
+// All implementations must embed UnimplementedBackrestServer
 // for forward compatibility
-type RestoraServer interface {
+type BackrestServer interface {
 	GetConfig(context.Context, *emptypb.Empty) (*Config, error)
 	SetConfig(context.Context, *Config) (*Config, error)
 	AddRepo(context.Context, *Repo) (*Config, error)
-	GetOperationEvents(*emptypb.Empty, Restora_GetOperationEventsServer) error
+	GetOperationEvents(*emptypb.Empty, Backrest_GetOperationEventsServer) error
 	GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error)
 	ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error)
 	ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error)
@@ -258,412 +258,412 @@ type RestoraServer interface {
 	ClearHistory(context.Context, *ClearHistoryRequest) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error)
-	mustEmbedUnimplementedRestoraServer()
+	mustEmbedUnimplementedBackrestServer()
 }
 
-// UnimplementedRestoraServer must be embedded to have forward compatible implementations.
-type UnimplementedRestoraServer struct {
+// UnimplementedBackrestServer must be embedded to have forward compatible implementations.
+type UnimplementedBackrestServer struct {
 }
 
-func (UnimplementedRestoraServer) GetConfig(context.Context, *emptypb.Empty) (*Config, error) {
+func (UnimplementedBackrestServer) GetConfig(context.Context, *emptypb.Empty) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetConfig not implemented")
 }
-func (UnimplementedRestoraServer) SetConfig(context.Context, *Config) (*Config, error) {
+func (UnimplementedBackrestServer) SetConfig(context.Context, *Config) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetConfig not implemented")
 }
-func (UnimplementedRestoraServer) AddRepo(context.Context, *Repo) (*Config, error) {
+func (UnimplementedBackrestServer) AddRepo(context.Context, *Repo) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRepo not implemented")
 }
-func (UnimplementedRestoraServer) GetOperationEvents(*emptypb.Empty, Restora_GetOperationEventsServer) error {
+func (UnimplementedBackrestServer) GetOperationEvents(*emptypb.Empty, Backrest_GetOperationEventsServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetOperationEvents not implemented")
 }
-func (UnimplementedRestoraServer) GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error) {
+func (UnimplementedBackrestServer) GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOperations not implemented")
 }
-func (UnimplementedRestoraServer) ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error) {
+func (UnimplementedBackrestServer) ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshots not implemented")
 }
-func (UnimplementedRestoraServer) ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error) {
+func (UnimplementedBackrestServer) ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshotFiles not implemented")
 }
-func (UnimplementedRestoraServer) Backup(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) Backup(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Backup not implemented")
 }
-func (UnimplementedRestoraServer) Prune(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) Prune(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Prune not implemented")
 }
-func (UnimplementedRestoraServer) Forget(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) Forget(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Forget not implemented")
 }
-func (UnimplementedRestoraServer) Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Restore not implemented")
 }
-func (UnimplementedRestoraServer) Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Unlock not implemented")
 }
-func (UnimplementedRestoraServer) Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
-func (UnimplementedRestoraServer) ClearHistory(context.Context, *ClearHistoryRequest) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) ClearHistory(context.Context, *ClearHistoryRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearHistory not implemented")
 }
-func (UnimplementedRestoraServer) PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error) {
+func (UnimplementedBackrestServer) PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PathAutocomplete not implemented")
 }
-func (UnimplementedRestoraServer) mustEmbedUnimplementedRestoraServer() {}
+func (UnimplementedBackrestServer) mustEmbedUnimplementedBackrestServer() {}
 
-// UnsafeRestoraServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to RestoraServer will
+// UnsafeBackrestServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to BackrestServer will
 // result in compilation errors.
-type UnsafeRestoraServer interface {
-	mustEmbedUnimplementedRestoraServer()
+type UnsafeBackrestServer interface {
+	mustEmbedUnimplementedBackrestServer()
 }
 
-func RegisterRestoraServer(s grpc.ServiceRegistrar, srv RestoraServer) {
-	s.RegisterService(&Restora_ServiceDesc, srv)
+func RegisterBackrestServer(s grpc.ServiceRegistrar, srv BackrestServer) {
+	s.RegisterService(&Backrest_ServiceDesc, srv)
 }
 
-func _Restora_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).GetConfig(ctx, in)
+		return srv.(BackrestServer).GetConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_GetConfig_FullMethodName,
+		FullMethod: Backrest_GetConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).GetConfig(ctx, req.(*emptypb.Empty))
+		return srv.(BackrestServer).GetConfig(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Config)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).SetConfig(ctx, in)
+		return srv.(BackrestServer).SetConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_SetConfig_FullMethodName,
+		FullMethod: Backrest_SetConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).SetConfig(ctx, req.(*Config))
+		return srv.(BackrestServer).SetConfig(ctx, req.(*Config))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_AddRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_AddRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Repo)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).AddRepo(ctx, in)
+		return srv.(BackrestServer).AddRepo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_AddRepo_FullMethodName,
+		FullMethod: Backrest_AddRepo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).AddRepo(ctx, req.(*Repo))
+		return srv.(BackrestServer).AddRepo(ctx, req.(*Repo))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_GetOperationEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _Backrest_GetOperationEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(emptypb.Empty)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(RestoraServer).GetOperationEvents(m, &restoraGetOperationEventsServer{stream})
+	return srv.(BackrestServer).GetOperationEvents(m, &backrestGetOperationEventsServer{stream})
 }
 
-type Restora_GetOperationEventsServer interface {
+type Backrest_GetOperationEventsServer interface {
 	Send(*OperationEvent) error
 	grpc.ServerStream
 }
 
-type restoraGetOperationEventsServer struct {
+type backrestGetOperationEventsServer struct {
 	grpc.ServerStream
 }
 
-func (x *restoraGetOperationEventsServer) Send(m *OperationEvent) error {
+func (x *backrestGetOperationEventsServer) Send(m *OperationEvent) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _Restora_GetOperations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_GetOperations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetOperationsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).GetOperations(ctx, in)
+		return srv.(BackrestServer).GetOperations(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_GetOperations_FullMethodName,
+		FullMethod: Backrest_GetOperations_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).GetOperations(ctx, req.(*GetOperationsRequest))
+		return srv.(BackrestServer).GetOperations(ctx, req.(*GetOperationsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_ListSnapshots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_ListSnapshots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListSnapshotsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).ListSnapshots(ctx, in)
+		return srv.(BackrestServer).ListSnapshots(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_ListSnapshots_FullMethodName,
+		FullMethod: Backrest_ListSnapshots_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).ListSnapshots(ctx, req.(*ListSnapshotsRequest))
+		return srv.(BackrestServer).ListSnapshots(ctx, req.(*ListSnapshotsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_ListSnapshotFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_ListSnapshotFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListSnapshotFilesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).ListSnapshotFiles(ctx, in)
+		return srv.(BackrestServer).ListSnapshotFiles(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_ListSnapshotFiles_FullMethodName,
+		FullMethod: Backrest_ListSnapshotFiles_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).ListSnapshotFiles(ctx, req.(*ListSnapshotFilesRequest))
+		return srv.(BackrestServer).ListSnapshotFiles(ctx, req.(*ListSnapshotFilesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_Backup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_Backup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).Backup(ctx, in)
+		return srv.(BackrestServer).Backup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_Backup_FullMethodName,
+		FullMethod: Backrest_Backup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).Backup(ctx, req.(*types.StringValue))
+		return srv.(BackrestServer).Backup(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_Prune_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_Prune_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).Prune(ctx, in)
+		return srv.(BackrestServer).Prune(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_Prune_FullMethodName,
+		FullMethod: Backrest_Prune_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).Prune(ctx, req.(*types.StringValue))
+		return srv.(BackrestServer).Prune(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_Forget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_Forget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).Forget(ctx, in)
+		return srv.(BackrestServer).Forget(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_Forget_FullMethodName,
+		FullMethod: Backrest_Forget_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).Forget(ctx, req.(*types.StringValue))
+		return srv.(BackrestServer).Forget(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_Restore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_Restore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RestoreSnapshotRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).Restore(ctx, in)
+		return srv.(BackrestServer).Restore(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_Restore_FullMethodName,
+		FullMethod: Backrest_Restore_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).Restore(ctx, req.(*RestoreSnapshotRequest))
+		return srv.(BackrestServer).Restore(ctx, req.(*RestoreSnapshotRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_Unlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_Unlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).Unlock(ctx, in)
+		return srv.(BackrestServer).Unlock(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_Unlock_FullMethodName,
+		FullMethod: Backrest_Unlock_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).Unlock(ctx, req.(*types.StringValue))
+		return srv.(BackrestServer).Unlock(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.Int64Value)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).Cancel(ctx, in)
+		return srv.(BackrestServer).Cancel(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_Cancel_FullMethodName,
+		FullMethod: Backrest_Cancel_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).Cancel(ctx, req.(*types.Int64Value))
+		return srv.(BackrestServer).Cancel(ctx, req.(*types.Int64Value))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_ClearHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_ClearHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ClearHistoryRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).ClearHistory(ctx, in)
+		return srv.(BackrestServer).ClearHistory(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_ClearHistory_FullMethodName,
+		FullMethod: Backrest_ClearHistory_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).ClearHistory(ctx, req.(*ClearHistoryRequest))
+		return srv.(BackrestServer).ClearHistory(ctx, req.(*ClearHistoryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Restora_PathAutocomplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Backrest_PathAutocomplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RestoraServer).PathAutocomplete(ctx, in)
+		return srv.(BackrestServer).PathAutocomplete(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Restora_PathAutocomplete_FullMethodName,
+		FullMethod: Backrest_PathAutocomplete_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RestoraServer).PathAutocomplete(ctx, req.(*types.StringValue))
+		return srv.(BackrestServer).PathAutocomplete(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Restora_ServiceDesc is the grpc.ServiceDesc for Restora service.
+// Backrest_ServiceDesc is the grpc.ServiceDesc for Backrest service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Restora_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "v1.Restora",
-	HandlerType: (*RestoraServer)(nil),
+var Backrest_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "v1.Backrest",
+	HandlerType: (*BackrestServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetConfig",
-			Handler:    _Restora_GetConfig_Handler,
+			Handler:    _Backrest_GetConfig_Handler,
 		},
 		{
 			MethodName: "SetConfig",
-			Handler:    _Restora_SetConfig_Handler,
+			Handler:    _Backrest_SetConfig_Handler,
 		},
 		{
 			MethodName: "AddRepo",
-			Handler:    _Restora_AddRepo_Handler,
+			Handler:    _Backrest_AddRepo_Handler,
 		},
 		{
 			MethodName: "GetOperations",
-			Handler:    _Restora_GetOperations_Handler,
+			Handler:    _Backrest_GetOperations_Handler,
 		},
 		{
 			MethodName: "ListSnapshots",
-			Handler:    _Restora_ListSnapshots_Handler,
+			Handler:    _Backrest_ListSnapshots_Handler,
 		},
 		{
 			MethodName: "ListSnapshotFiles",
-			Handler:    _Restora_ListSnapshotFiles_Handler,
+			Handler:    _Backrest_ListSnapshotFiles_Handler,
 		},
 		{
 			MethodName: "Backup",
-			Handler:    _Restora_Backup_Handler,
+			Handler:    _Backrest_Backup_Handler,
 		},
 		{
 			MethodName: "Prune",
-			Handler:    _Restora_Prune_Handler,
+			Handler:    _Backrest_Prune_Handler,
 		},
 		{
 			MethodName: "Forget",
-			Handler:    _Restora_Forget_Handler,
+			Handler:    _Backrest_Forget_Handler,
 		},
 		{
 			MethodName: "Restore",
-			Handler:    _Restora_Restore_Handler,
+			Handler:    _Backrest_Restore_Handler,
 		},
 		{
 			MethodName: "Unlock",
-			Handler:    _Restora_Unlock_Handler,
+			Handler:    _Backrest_Unlock_Handler,
 		},
 		{
 			MethodName: "Cancel",
-			Handler:    _Restora_Cancel_Handler,
+			Handler:    _Backrest_Cancel_Handler,
 		},
 		{
 			MethodName: "ClearHistory",
-			Handler:    _Restora_ClearHistory_Handler,
+			Handler:    _Backrest_ClearHistory_Handler,
 		},
 		{
 			MethodName: "PathAutocomplete",
-			Handler:    _Restora_PathAutocomplete_Handler,
+			Handler:    _Backrest_PathAutocomplete_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "GetOperationEvents",
-			Handler:       _Restora_GetOperationEvents_Handler,
+			Handler:       _Backrest_GetOperationEvents_Handler,
 			ServerStreams: true,
 		},
 	},

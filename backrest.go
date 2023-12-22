@@ -13,11 +13,11 @@ import (
 	"syscall"
 
 	rice "github.com/GeertJohan/go.rice"
-	"github.com/garethgeorge/restora/internal/api"
-	"github.com/garethgeorge/restora/internal/config"
-	"github.com/garethgeorge/restora/internal/oplog"
-	"github.com/garethgeorge/restora/internal/orchestrator"
-	"github.com/garethgeorge/restora/internal/resticinstaller"
+	"github.com/garethgeorge/backrest/internal/api"
+	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/orchestrator"
+	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"github.com/mattn/go-colorable"
 	"go.etcd.io/bbolt"
 	"go.uber.org/zap"
@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	installOnly = flag.Bool("install-deps", false, "Install restora and exit")
+	installOnly = flag.Bool("install-deps", false, "Install backrest and exit")
 )
 
 func main() {

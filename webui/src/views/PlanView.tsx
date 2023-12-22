@@ -4,7 +4,7 @@ import { Button, Flex, Tabs, Tooltip, Typography } from "antd";
 import { useRecoilValue } from "recoil";
 import { configState } from "../state/config";
 import { useAlertApi } from "../components/Alerts";
-import { Restora } from "../../gen/ts/v1/service.pb";
+import { Backrest } from "../../gen/ts/v1/service.pb";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY } from "../constants";
@@ -22,7 +22,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
   const handleBackupNow = async () => {
     try {
-      Restora.Backup({ value: plan.id }, { pathPrefix: "/api" });
+      Backrest.Backup({ value: plan.id }, { pathPrefix: "/api" });
       alertsApi.success("Backup scheduled.");
     } catch (e: any) {
       alertsApi.error("Failed to schedule backup: " + e.message);
@@ -31,7 +31,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
   const handlePruneNow = () => {
     try {
-      Restora.Prune({ value: plan.id }, { pathPrefix: "/api" });
+      Backrest.Prune({ value: plan.id }, { pathPrefix: "/api" });
       alertsApi.success("Prune scheduled.");
     } catch (e: any) {
       alertsApi.error("Failed to schedule prune: " + e.message);
@@ -41,7 +41,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const handleUnlockNow = () => {
     try {
       alertsApi.info("Unlocking repo...");
-      Restora.Unlock({ value: plan.repo! }, { pathPrefix: "/api" });
+      Backrest.Unlock({ value: plan.repo! }, { pathPrefix: "/api" });
       alertsApi.success("Repo unlocked.");
     } catch (e: any) {
       alertsApi.error("Failed to unlock repo: " + e.message);
@@ -51,7 +51,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const handleClearErrorHistory = () => {
     try {
       alertsApi.info("Clearing error history...");
-      Restora.ClearHistory({ planId: plan.id, onlyFailed: true }, { pathPrefix: "/api" });
+      Backrest.ClearHistory({ planId: plan.id, onlyFailed: true }, { pathPrefix: "/api" });
       alertsApi.success("Error history cleared.");
     } catch (e: any) {
       alertsApi.error("Failed to clear error history: " + e.message);

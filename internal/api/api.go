@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"go.uber.org/zap"
@@ -68,7 +68,7 @@ func serveGRPC(ctx context.Context, socket string, server *Server) error {
 			logging.StreamServerInterceptor(loggingFunc(logger)),
 		),
 	)
-	v1.RegisterRestoraServer(grpcServer, server)
+	v1.RegisterBackrestServer(grpcServer, server)
 	go func() {
 		<-ctx.Done()
 		grpcServer.GracefulStop()
@@ -81,7 +81,7 @@ func serveGRPC(ctx context.Context, socket string, server *Server) error {
 }
 
 func serveHTTPHandlers(ctx context.Context, server *Server, mux *runtime.ServeMux) error {
-	tmpDir, err := os.MkdirTemp("", "restora")
+	tmpDir, err := os.MkdirTemp("", "backrest")
 	if err != nil {
 		return fmt.Errorf("failed to create temp dir for unix domain socket: %w", err)
 	}
@@ -89,10 +89,10 @@ func serveHTTPHandlers(ctx context.Context, server *Server, mux *runtime.ServeMu
 		os.RemoveAll(tmpDir)
 	}()
 
-	socket := filepath.Join(tmpDir, "restora.sock")
+	socket := filepath.Join(tmpDir, "backrest.sock")
 
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	err = v1.RegisterRestoraHandlerFromEndpoint(ctx, mux, fmt.Sprintf("unix:%v", socket), opts)
+	err = v1.RegisterBackrestHandlerFromEndpoint(ctx, mux, fmt.Sprintf("unix:%v", socket), opts)
 	if err != nil {
 		return fmt.Errorf("failed to register gateway: %w", err)
 	}

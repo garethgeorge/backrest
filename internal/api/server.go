@@ -8,28 +8,28 @@ import (
 	"path"
 	"time"
 
-	"github.com/garethgeorge/restora/gen/go/types"
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
-	"github.com/garethgeorge/restora/internal/config"
-	"github.com/garethgeorge/restora/internal/oplog"
-	"github.com/garethgeorge/restora/internal/oplog/indexutil"
-	"github.com/garethgeorge/restora/internal/orchestrator"
-	"github.com/garethgeorge/restora/internal/protoutil"
-	"github.com/garethgeorge/restora/internal/resticinstaller"
-	"github.com/garethgeorge/restora/pkg/restic"
+	"github.com/garethgeorge/backrest/gen/go/types"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
+	"github.com/garethgeorge/backrest/internal/orchestrator"
+	"github.com/garethgeorge/backrest/internal/protoutil"
+	"github.com/garethgeorge/backrest/internal/resticinstaller"
+	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type Server struct {
-	*v1.UnimplementedRestoraServer
+	*v1.UnimplementedBackrestServer
 	config       config.ConfigStore
 	orchestrator *orchestrator.Orchestrator
 	oplog        *oplog.OpLog
 }
 
-var _ v1.RestoraServer = &Server{}
+var _ v1.BackrestServer = &Server{}
 
 func NewServer(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog) *Server {
 	s := &Server{
@@ -158,7 +158,7 @@ func (s *Server) ListSnapshotFiles(ctx context.Context, query *v1.ListSnapshotFi
 }
 
 // GetOperationEvents implements GET /v1/events/operations
-func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.Restora_GetOperationEventsServer) error {
+func (s *Server) GetOperationEvents(_ *emptypb.Empty, stream v1.Backrest_GetOperationEventsServer) error {
 	errorChan := make(chan error)
 	defer close(errorChan)
 	callback := func(oldOp *v1.Operation, newOp *v1.Operation) {

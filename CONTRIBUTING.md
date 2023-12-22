@@ -27,5 +27,5 @@ go install github.com/bufbuild/buf/cmd/buf@v1.27.2
 
 ```sh
 (cd webui && npm i && npm run build)
-(cd cmd/restora && go build .)
+(cd cmd/backrest && go build .)
 ```

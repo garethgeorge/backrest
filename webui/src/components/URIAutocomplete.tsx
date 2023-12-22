@@ -1,6 +1,6 @@
 import { AutoComplete } from "antd";
 import React, { useEffect, useState } from "react";
-import { Restora } from "../../gen/ts/v1/service.pb";
+import { Backrest } from "../../gen/ts/v1/service.pb";
 import { StringList } from "../../gen/ts/types/value.pb";
 import { isWindows } from "../state/buildcfg";
 
@@ -29,7 +29,7 @@ export const URIAutocomplete = (props: React.PropsWithChildren<any>) => {
     }
 
     timeout = setTimeout(() => {
-      Restora.PathAutocomplete({ value: value + sep }, { pathPrefix: "/api" })
+      Backrest.PathAutocomplete({ value: value + sep }, { pathPrefix: "/api" })
         .then((res: StringList) => {
           if (!res.values) {
             return;

@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
-	"github.com/garethgeorge/restora/internal/oplog"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/hashicorp/go-multierror"
 )
 

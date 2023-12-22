@@ -1,4 +1,4 @@
-module github.com/garethgeorge/restora
+module github.com/garethgeorge/backrest
 
 go 1.21
 

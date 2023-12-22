@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
-	"github.com/garethgeorge/restora/internal/protoutil"
-	"github.com/garethgeorge/restora/pkg/restic"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/protoutil"
+	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
 )
 

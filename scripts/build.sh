@@ -2,6 +2,6 @@
 set -x
 
 (cd webui && npm i && npm run build)
-rm -f restora
+rm -f backrest
 go build .
-rice append --exec restora
+rice append --exec backrest

@@ -7,7 +7,7 @@ import (
 	"path"
 	"sync"
 
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
 
 var ErrConfigNotFound = fmt.Errorf("config not found")
@@ -30,7 +30,7 @@ func configDir(override string) string {
 	}
 
 	if env := os.Getenv("XDG_CONFIG_HOME"); env != "" {
-		return path.Join(env, "restora")
+		return path.Join(env, "backrest")
 	}
 
 	home, err := os.UserHomeDir()
@@ -38,7 +38,7 @@ func configDir(override string) string {
 		panic(err)
 	}
 
-	return fmt.Sprintf("%v/.config/restora", home)
+	return fmt.Sprintf("%v/.config/backrest", home)
 }
 
 type CachingValidatingStore struct {
