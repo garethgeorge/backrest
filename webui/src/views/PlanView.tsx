@@ -1,22 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Plan } from "../../gen/ts/v1/config.pb";
 import { Button, Flex, Tabs, Tooltip, Typography } from "antd";
-import { useShowModal } from "../components/ModalManager";
 import { useRecoilValue } from "recoil";
 import { configState } from "../state/config";
 import { useAlertApi } from "../components/Alerts";
 import { Restora } from "../../gen/ts/v1/service.pb";
-import {
-  EOperation,
-  subscribeToOperations,
-  unsubscribeFromOperations,
-} from "../state/oplog";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY } from "../constants";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
-  const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
 
   // Gracefully handle deletions by checking if the plan is still in the config.

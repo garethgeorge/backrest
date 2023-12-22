@@ -163,35 +163,9 @@ export class BackupInfoCollector {
       backupLastStatus,
       snapshotInfo,
       forgotten,
+      planId: operations[0].planId,
+      repoId: operations[0].repoId,
     };
-  }
-
-  private operationToBackup(op: Operation): BackupInfo {
-    const startTimeMs = parseInt(op.unixTimeStartMs!);
-    const endTimeMs = parseInt(op.unixTimeEndMs!);
-
-    const b: BackupInfo = {
-      id: op.id!,
-      startTimeMs,
-      endTimeMs,
-      status: op.status!,
-      displayTime: new Date(startTimeMs),
-      displayType: getTypeForDisplay(op),
-      repoId: op.repoId,
-      planId: op.planId,
-      snapshotId: op.snapshotId,
-      operations: [op],
-    };
-
-    if (op.operationBackup) {
-      const ob = op.operationBackup;
-      b.backupLastStatus = ob.lastStatus;
-    }
-    if (op.operationIndexSnapshot) {
-      const oi = op.operationIndexSnapshot;
-      b.snapshotInfo = oi.snapshot;
-    }
-    return b;
   }
 
   private addHelper(op: Operation): BackupInfo {

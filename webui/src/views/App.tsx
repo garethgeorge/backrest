@@ -146,7 +146,6 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
       label: "Add Repo",
       onClick: async () => {
         const { AddRepoModal } = await import("./AddRepoModal");
-
         showModal(<AddRepoModal template={null} />);
       },
     },
@@ -154,11 +153,29 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
       return {
         key: "r-" + repo.id,
         icon: <CheckCircleOutlined style={{ color: "green" }} />,
-        label: repo.id,
+        label: (
+          <div className="restora visible-on-hover">
+            {repo.id}{" "}
+            <Button
+              className="hidden-child"
+              type="text"
+              size="small"
+              shape="circle"
+              icon={<SettingOutlined />}
+              onClick={async () => {
+                const { AddRepoModal } = await import("./AddRepoModal");
+                showModal(<AddRepoModal template={repo} />);
+              }}
+            />
+          </div>
+        ),
         onClick: async () => {
-          const { AddRepoModal } = await import("./AddRepoModal");
+          const { RepoView } = await import("./RepoView");
 
-          showModal(<AddRepoModal template={repo} />);
+          setContent(<RepoView repo={repo} />, [
+            { title: "Repos" },
+            { title: repo.id || "" },
+          ]);
         },
       };
     }),

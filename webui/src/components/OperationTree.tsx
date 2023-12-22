@@ -201,65 +201,64 @@ export const OperationTree = ({
 
 const buildTreePlan = (operations: BackupInfo[]): OpTreeNode[] => {
   const grouped = _.groupBy(operations, (op) => {
-    return op.planId;
+    return op.operations[0].planId!;
   });
 
   const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
     return {
-      key: "p" + key,
-      title: "" + key,
-      children: buildTreeYear(value),
+      key: key,
+      title: key,
+      children: buildTreeDay(key, value),
     };
   });
-  entries.sort(sortByKey);
-
   if (entries.length === 1) {
     return entries[0].children!;
   }
+  entries.sort(sortByKey);
   return entries;
 };
 
-const buildTreeYear = (operations: BackupInfo[]): OpTreeNode[] => {
+const buildTreeYear = (keyPrefix: string, operations: BackupInfo[]): OpTreeNode[] => {
   const grouped = _.groupBy(operations, (op) => {
     return localISOTime(op.displayTime).substring(0, 4);
   });
 
   const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
     return {
-      key: "y" + key,
+      key: keyPrefix + key,
       title: "" + key,
-      children: buildTreeMonth(value),
+      children: buildTreeDay(keyPrefix, value),
     };
   });
   entries.sort(sortByKey);
   return entries;
 };
 
-const buildTreeMonth = (operations: BackupInfo[]): OpTreeNode[] => {
+const buildTreeMonth = (keyPrefix: string, operations: BackupInfo[]): OpTreeNode[] => {
   const grouped = _.groupBy(operations, (op) => {
     return localISOTime(op.displayTime).substring(0, 7);
   });
   const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
     return {
-      key: key,
+      key: keyPrefix + key,
       title: value[0].displayTime.toLocaleString("default", {
         month: "long",
       }),
-      children: buildTreeDay(value),
+      children: buildTreeDay(keyPrefix, value),
     };
   });
   entries.sort(sortByKey);
   return entries;
 };
 
-const buildTreeDay = (operations: BackupInfo[]): OpTreeNode[] => {
+const buildTreeDay = (keyPrefix: string, operations: BackupInfo[]): OpTreeNode[] => {
   const grouped = _.groupBy(operations, (op) => {
     return localISOTime(op.displayTime).substring(0, 10);
   });
 
   const entries = _.map(grouped, (value, key) => {
     return {
-      key: "d" + key,
+      key: keyPrefix + key,
       title: formatDate(value[0].displayTime),
       children: buildTreeLeaf(value),
     };
