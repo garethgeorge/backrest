@@ -99,10 +99,6 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 					continue
 				}
 			}
-			// Soft delete the operation (can be recovered if necessary, todo: implement recovery).
-			if e := t.orch.OpLog.Delete(op.Id); err != nil {
-				err = multierror.Append(err, fmt.Errorf("delete operation %v: %w", op.Id, e))
-			}
 		}
 
 		if len(forgot) > 0 {

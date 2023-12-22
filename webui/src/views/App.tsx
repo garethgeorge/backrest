@@ -68,7 +68,6 @@ export const App: React.FC = () => {
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
             {uiBuildVersion}
           </small>
-
           <small style={{ fontSize: "0.6em", marginLeft: "30px" }}>
             <ActivityBar />
           </small>

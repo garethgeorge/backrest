@@ -94,12 +94,13 @@ export interface BackupInfo {
   startTimeMs: number;
   endTimeMs: number;
   status: OperationStatus;
-  operations: Operation[];
+  operations: Operation[]; // operations ordered by their unixTimeStartMs (not ID)
   repoId?: string;
   planId?: string;
   snapshotId?: string;
   backupLastStatus?: BackupProgressEntry;
   snapshotInfo?: ResticSnapshot;
+  forgotten: boolean;
 }
 
 // BackupInfoCollector maps multiple operations to single aggregate 'BackupInfo' objects.
@@ -112,31 +113,57 @@ export class BackupInfoCollector {
   private backupByOpId: { [key: string]: BackupInfo } = {};
   private backupBySnapshotId: { [key: string]: BackupInfo } = {};
 
-  private mergeBackups(existing: BackupInfo, newInfo: BackupInfo) {
-    if (existing.id > newInfo.id) {
-      existing.id = newInfo.id;
-    }
-    existing.startTimeMs = Math.min(existing.startTimeMs, newInfo.startTimeMs);
-    existing.endTimeMs = Math.max(existing.endTimeMs, newInfo.endTimeMs);
-    existing.displayTime = new Date(existing.startTimeMs);
-    existing.displayType = DisplayType.SNAPSHOT;
-    if (newInfo.startTimeMs >= existing.startTimeMs && newInfo.status !== OperationStatus.STATUS_SYSTEM_CANCELLED) { // don't overwrite with cancelled status since that operation will be hidden.
-      existing.status = newInfo.status; // use the latest status
-    }
-    existing.operations = _.uniqBy(
-      [...newInfo.operations, ...existing.operations],
-      (o) => o.id!
-    );
-    existing.operations.sort((a, b) => {
+  private createBackup(operations: Operation[]): BackupInfo {
+    // deduplicate and sort operations.
+    operations.sort((a, b) => {
       return parseInt(b.unixTimeStartMs!) - parseInt(a.unixTimeStartMs!);
     });
-    if (newInfo.backupLastStatus) {
-      existing.backupLastStatus = newInfo.backupLastStatus;
+
+    // use the lowest ID of all operations as the ID of the backup, this will be the first created operation.
+    const id = operations.reduce((prev, curr) => {
+      return prev < curr.id! ? prev : curr.id!;
+    }, operations[0].id!);
+
+    const startTimeMs = parseInt(operations[0].unixTimeStartMs!);
+    const endTimeMs = parseInt(operations[operations.length - 1].unixTimeEndMs!);
+    const displayTime = new Date(startTimeMs);
+    let displayType = DisplayType.SNAPSHOT;
+    if (operations.length === 1) {
+      displayType = getTypeForDisplay(operations[0]);
     }
-    if (newInfo.snapshotInfo) {
-      existing.snapshotInfo = newInfo.snapshotInfo;
+
+    // use the latest status that is not cancelled.
+    let statusIdx = operations.length - 1;
+    let status = OperationStatus.STATUS_SYSTEM_CANCELLED;
+    while (statusIdx > 0 || shouldHideStatus(status)) {
+      status = operations[statusIdx].status!;
+      statusIdx--;
     }
-    return existing;
+
+    let backupLastStatus = undefined;
+    let snapshotInfo = undefined;
+    let forgotten = false;
+    for (const op of operations) {
+      if (op.operationBackup) {
+        backupLastStatus = op.operationBackup.lastStatus;
+      } else if (op.operationIndexSnapshot) {
+        snapshotInfo = op.operationIndexSnapshot.snapshot;
+        forgotten = op.operationIndexSnapshot.forgot || false;
+      }
+    }
+
+    return {
+      id,
+      startTimeMs,
+      endTimeMs,
+      displayTime,
+      displayType,
+      status,
+      operations,
+      backupLastStatus,
+      snapshotInfo,
+      forgotten,
+    };
   }
 
   private operationToBackup(op: Operation): BackupInfo {
@@ -167,21 +194,29 @@ export class BackupInfoCollector {
     return b;
   }
 
-  private addHelper(op: Operation) {
+  private addHelper(op: Operation): BackupInfo {
     if (op.snapshotId) {
       delete this.backupByOpId[op.id!];
 
-      let newInfo = this.operationToBackup(op);
       const existing = this.backupBySnapshotId[op.snapshotId!];
+      let operations: Operation[];
       if (existing) {
-        this.mergeBackups(existing, newInfo);
-        return existing;
+        operations = [...existing.operations];
+        const opIdx = operations.findIndex((o) => o.id === op.id);
+        if (opIdx > -1) {
+          operations[opIdx] = op;
+        } else {
+          operations.push(op);
+        }
       } else {
-        this.backupBySnapshotId[op.snapshotId] = newInfo;
-        return newInfo;
+        operations = [op];
       }
+
+      const newInfo = this.createBackup(operations);
+      this.backupBySnapshotId[op.snapshotId!] = newInfo;
+      return newInfo;
     } else {
-      const newInfo = this.operationToBackup(op);
+      const newInfo = this.createBackup([op]);
       this.backupByOpId[op.id!] = newInfo;
       return newInfo;
     }
@@ -212,15 +247,11 @@ export class BackupInfoCollector {
     return backupInfos;
   }
 
-  public addOperationNoNotify(op: Operation) {
-    this.addHelper(op);
-  }
-
   public getAll(): BackupInfo[] {
     const arr = [];
     arr.push(...Object.values(this.backupByOpId));
     arr.push(...Object.values(this.backupBySnapshotId));
-    return arr;
+    return arr.filter((b) => !b.forgotten && !shouldHideStatus(b.status));
   }
 
   public subscribe(

@@ -35,7 +35,7 @@ export const ActivityBar = () => {
         }
     });
 
-    return <span>{details.map(details => {
-        return <>{details.displayName} in progress for plan {details.op.planId} to {details.op.repoId} for {formatDuration(details.details.duration)}</>
+    return <span>{details.map((details, idx) => {
+        return <span key={idx}>{details.displayName} in progress for plan {details.op.planId} to {details.op.repoId} for {formatDuration(details.details.duration)}</span>
     })}</span>
 }

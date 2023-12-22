@@ -248,11 +248,8 @@ func (o *OpLog) nextOperationId(b *bolt.Bucket, unixTimeMs int64) (int64, error)
 func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 	b := tx.Bucket(OpLogBucket)
 	if op.Id == 0 {
-		if op.UnixTimeStartMs == 0 {
-			return fmt.Errorf("operation must have a start time")
-		}
 		var err error
-		op.Id, err = o.nextOperationId(b, op.UnixTimeStartMs)
+		op.Id, err = o.nextOperationId(b, time.Now().UnixMilli())
 		if err != nil {
 			return fmt.Errorf("create next operation ID: %w", err)
 		}

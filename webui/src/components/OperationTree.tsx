@@ -58,13 +58,13 @@ export const OperationTree = ({
     };
     subscribeToOperations(lis);
 
-    backupCollector.subscribe(() => {
+    backupCollector.subscribe(_.debounce(() => {
       let backups = backupCollector.getAll();
       backups.sort((a, b) => {
         return b.startTimeMs - a.startTimeMs;
       });
       setBackups(backups);
-    });
+    }, 50));
 
     getOperations(req)
       .then((ops) => {
@@ -79,7 +79,7 @@ export const OperationTree = ({
   }, [JSON.stringify(req)]);
 
   const treeData = useMemo(() => {
-    return buildTreeYear(backups);
+    return buildTreePlan(backups);
   }, [backups]);
 
   if (backups.length === 0) {
@@ -197,6 +197,26 @@ export const OperationTree = ({
       <Col span={12}>{oplist}</Col>
     </Row>
   );
+};
+
+const buildTreePlan = (operations: BackupInfo[]): OpTreeNode[] => {
+  const grouped = _.groupBy(operations, (op) => {
+    return op.planId;
+  });
+
+  const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
+    return {
+      key: "p" + key,
+      title: "" + key,
+      children: buildTreeYear(value),
+    };
+  });
+  entries.sort(sortByKey);
+
+  if (entries.length === 1) {
+    return entries[0].children!;
+  }
+  return entries;
 };
 
 const buildTreeYear = (operations: BackupInfo[]): OpTreeNode[] => {

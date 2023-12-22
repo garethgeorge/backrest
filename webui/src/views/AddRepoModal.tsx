@@ -77,9 +77,9 @@ export const AddRepoModal = ({
       showModal(null);
       alertsApi.success(
         "Deleted repo " +
-          template.id +
-          " from config but files remain. To release storage delete the files manually. URI: " +
-          template.uri
+        template.id +
+        " from config but files remain. To release storage delete the files manually. URI: " +
+        template.uri
       );
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);

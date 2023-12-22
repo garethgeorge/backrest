@@ -86,13 +86,13 @@ export const OperationList = ({
       };
       subscribeToOperations(lis);
 
-      backupCollector.subscribe(() => {
+      backupCollector.subscribe(_.debounce(() => {
         let backups = backupCollector.getAll();
         backups.sort((a, b) => {
           return b.startTimeMs - a.startTimeMs;
         });
         setBackups(backups);
-      });
+      }, 50));
 
       getOperations(req)
         .then((ops) => {
@@ -106,7 +106,10 @@ export const OperationList = ({
       };
     }, [JSON.stringify(req)]);
   } else {
-    backups = useBackups || [];
+    backups = [...(useBackups || [])];
+    backups.sort((a, b) => {
+      return b.startTimeMs - a.startTimeMs;
+    });
   }
 
   if (backups.length === 0) {
@@ -277,14 +280,14 @@ export const OperationRow = ({
               children: <>
                 Removed snapshots:
                 <pre>{forgetOp.forget?.map((f) => (
-                  <>
+                  <div key={f.id}>
                     {"removed snapshot " + normalizeSnapshotId(f.id!) + " taken at " + formatTime(f.unixTimeMs!)} <br />
-                  </>
+                  </div>
                 ))}</pre>
                 Policy:
                 <ul>
-                  {policyDesc.map((desc) => (
-                    <li>{desc}</li>
+                  {policyDesc.map((desc, idx) => (
+                    <li key={idx}>{desc}</li>
                   ))}
                 </ul>
               </>,
