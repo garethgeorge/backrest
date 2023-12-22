@@ -127,6 +127,9 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 	zap.L().Info("Applied config to orchestrator, task queue reset. Rescheduling planned tasks now.")
 
 	// Requeue tasks that are affected by the config change.
+	o.ScheduleTask(&CollectGarbageTask{
+		orchestrator: o,
+	}, TaskPriorityDefault)
 	for _, plan := range cfg.Plans {
 		t, err := NewScheduledBackupTask(o, plan)
 		if err != nil {

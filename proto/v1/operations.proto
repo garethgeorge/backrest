@@ -12,7 +12,7 @@ message OperationList {
 }
 
 message Operation {
-  // required, primary ID of the operation.
+  // required, primary ID of the operation. ID is sequential based on creation time of the operation.
   int64 id = 1;
   // required, repo id if associated with a repo
   string repo_id = 2; 

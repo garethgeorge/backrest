@@ -69,7 +69,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
     <>
       <Flex gap="small" align="center" wrap="wrap">
         <Typography.Title>
-          <h1>{plan.id}</h1>
+          {plan.id}
         </Typography.Title>
       </Flex>
       <Flex gap="small" align="center" wrap="wrap">

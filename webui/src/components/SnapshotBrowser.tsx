@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, Dropdown, Form, Input, Modal, Space, Tree } from "antd";
+import { Button, Dropdown, Form, Input, Modal, Space, Spin, Tree } from "antd";
 import type { DataNode, EventDataNode } from "antd/es/tree";
 import {
   ListSnapshotFilesResponse,
@@ -109,7 +109,7 @@ export const SnapshotBrowser = ({
       },
       { pathPrefix: "/api" }
     );
-    
+
     setTreeData((treeData) => {
       let toUpdate: DataNode | null = null;
       for (const node of treeData) {
@@ -118,14 +118,14 @@ export const SnapshotBrowser = ({
           break;
         }
       }
-  
+
       if (!toUpdate) {
         return treeData;
       }
-  
+
       const toUpdateCopy = { ...toUpdate };
       toUpdateCopy.children = respToNodes(resp);
-  
+
       return treeData.map((node) => {
         const didUpdate = replaceKeyInTree(node, key as string, toUpdateCopy);
         if (didUpdate) {
@@ -135,6 +135,10 @@ export const SnapshotBrowser = ({
       });
     });
   };
+
+  if (treeData.length === 0) {
+    return <Spin />;
+  }
 
   return (
     <SnapshotBrowserContext.Provider
@@ -327,4 +331,4 @@ const RestoreModal = ({
   );
 };
 
-const restoreFlow = (repoId: string, snapshotId: string, path: string) => {};
+const restoreFlow = (repoId: string, snapshotId: string, path: string) => { };
