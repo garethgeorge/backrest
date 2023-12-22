@@ -40,7 +40,6 @@ import {
 import { SnapshotBrowser } from "./SnapshotBrowser";
 import {
   formatBytes,
-  formatDuration,
   formatTime,
   normalizeSnapshotId,
 } from "../lib/formatting";
@@ -48,14 +47,15 @@ import _ from "lodash";
 import { GetOperationsRequest, Restora } from "../../gen/ts/v1/service.pb";
 import { useAlertApi } from "./Alerts";
 import { MessageInstance } from "antd/es/message/interface";
-import Operation from "antd/es/transfer/operation";
 
 export const OperationList = ({
   req,
   useBackups,
+  showPlan,
 }: React.PropsWithoutRef<{
   req?: GetOperationsRequest;
   useBackups?: BackupInfo[];
+  showPlan?: boolean,
 }>) => {
   const alertApi = useAlertApi();
 
@@ -128,17 +128,13 @@ export const OperationList = ({
       dataSource={backups}
       renderItem={(backup) => {
         const ops = backup.operations;
-        if (ops.length === 1) {
-          return <OperationRow alertApi={alertApi!} key={ops[0].id!} operation={toEop(ops[0])} />;
-        }
-
         return (
           <Card size="small" style={{ margin: "5px" }}>
             {ops.map((op) => {
               if (shouldHideStatus(op.status!)) {
                 return null;
               }
-              return <OperationRow alertApi={alertApi!} key={op.id!} operation={toEop(op)} />
+              return <OperationRow alertApi={alertApi!} key={op.id!} operation={toEop(op)} showPlan={showPlan || false} />
             })}
           </Card>
         );
@@ -155,7 +151,8 @@ export const OperationList = ({
 export const OperationRow = ({
   operation,
   alertApi,
-}: React.PropsWithoutRef<{ operation: EOperation, alertApi?: MessageInstance }>) => {
+  showPlan,
+}: React.PropsWithoutRef<{ operation: EOperation, alertApi?: MessageInstance, showPlan: boolean }>) => {
   const details = detailsForOperation(operation);
   const displayType = getTypeForDisplay(operation);
   let avatar: React.ReactNode;
@@ -190,7 +187,7 @@ export const OperationRow = ({
   const opName = displayTypeToString(getTypeForDisplay(operation));
   let title = (
     <>
-      {formatTime(operation.unixTimeStartMs!)} - {opName}{" "}
+      {showPlan ? operation.planId + " - " : undefined} {formatTime(operation.unixTimeStartMs!)} - {opName}{" "}
       <span className="restora operation-details">{details.displayState}</span>
     </>
   );
