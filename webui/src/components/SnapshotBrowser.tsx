@@ -4,7 +4,7 @@ import type { DataNode, EventDataNode } from "antd/es/tree";
 import {
   ListSnapshotFilesResponse,
   LsEntry,
-  Restora,
+  Backrest,
   RestoreSnapshotRequest,
 } from "../../gen/ts/v1/service.pb";
 import { useAlertApi } from "./Alerts";
@@ -81,7 +81,7 @@ export const SnapshotBrowser = ({
   useEffect(() => {
     (async () => {
       try {
-        const resp = await Restora.ListSnapshotFiles(
+        const resp = await Backrest.ListSnapshotFiles(
           {
             path: "/",
             repoId,
@@ -101,7 +101,7 @@ export const SnapshotBrowser = ({
       return;
     }
 
-    const resp = await Restora.ListSnapshotFiles(
+    const resp = await Backrest.ListSnapshotFiles(
       {
         path: (key + "/") as string,
         repoId,
@@ -225,7 +225,7 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
     <Space onMouseEnter={showDropdown} onMouseLeave={() => setDropdown(null)}>
       {entry.name}
       {entry.type === "file" ? (
-        <span className="restora file-details">
+        <span className="backrest file-details">
           ({formatBytes(entry.size)})
         </span>
       ) : null}
@@ -267,7 +267,7 @@ const RestoreModal = ({
     try {
       const values = await validateForm(form);
 
-      await Restora.Restore(
+      await Backrest.Restore(
         {
           planId,
           repoId,

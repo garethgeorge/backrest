@@ -4,7 +4,7 @@ import {
   OperationEventType,
   OperationStatus,
 } from "../../gen/ts/v1/operations.pb";
-import { GetOperationsRequest, Restora } from "../../gen/ts/v1/service.pb";
+import { GetOperationsRequest, Backrest } from "../../gen/ts/v1/service.pb";
 import { API_PREFIX } from "../constants";
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
 import _ from "lodash";
@@ -22,7 +22,7 @@ const subscribers: ((event: OperationEvent) => void)[] = [];
   while (true) {
     let nextConnWaitUntil = new Date().getTime() + 5000;
     try {
-      await Restora.GetOperationEvents(
+      await Backrest.GetOperationEvents(
         {},
         (event: OperationEvent) => {
           console.log("operation event", event);
@@ -44,7 +44,7 @@ const subscribers: ((event: OperationEvent) => void)[] = [];
 export const getOperations = async (
   req: GetOperationsRequest
 ): Promise<EOperation[]> => {
-  const opList = await Restora.GetOperations(req, {
+  const opList = await Backrest.GetOperations(req, {
     pathPrefix: API_PREFIX,
   });
   return (opList.operations || []).map(toEop);

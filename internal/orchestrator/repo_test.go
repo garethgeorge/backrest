@@ -5,10 +5,10 @@ import (
 	"slices"
 	"testing"
 
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
-	"github.com/garethgeorge/restora/pkg/restic"
-	"github.com/garethgeorge/restora/test/helpers"
-	test "github.com/garethgeorge/restora/test/helpers"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/pkg/restic"
+	"github.com/garethgeorge/backrest/test/helpers"
+	test "github.com/garethgeorge/backrest/test/helpers"
 )
 
 func TestBackup(t *testing.T) {

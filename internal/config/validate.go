@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/gitploy-io/cronexpr"
 	"github.com/hashicorp/go-multierror"
 )

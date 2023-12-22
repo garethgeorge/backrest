@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/natefinch/atomic"
 	"google.golang.org/protobuf/encoding/protojson"
 )

@@ -3,8 +3,8 @@ package protoutil
 import (
 	"testing"
 
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
-	"github.com/garethgeorge/restora/pkg/restic"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/pkg/restic"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -13,7 +13,7 @@ func TestSnapshotToProto(t *testing.T) {
 		Id:       "db155169d788e6e432e320aedbdff5a54cc439653093bb56944a67682528aa52",
 		Time:     "2023-11-10T19:14:17.053824063-08:00",
 		Tree:     "3e2918b261948e69602ee9504b8f475bcc7cdc4dcec0b3f34ecdb014287d07b2",
-		Paths:    []string{"/restora"},
+		Paths:    []string{"/backrest"},
 		Hostname: "pop-os",
 		Username: "dontpanic",
 		Tags:     []string{},
@@ -24,7 +24,7 @@ func TestSnapshotToProto(t *testing.T) {
 		Id:         "db155169d788e6e432e320aedbdff5a54cc439653093bb56944a67682528aa52",
 		UnixTimeMs: 1699672457053,
 		Tree:       "3e2918b261948e69602ee9504b8f475bcc7cdc4dcec0b3f34ecdb014287d07b2",
-		Paths:      []string{"/restora"},
+		Paths:      []string{"/backrest"},
 		Hostname:   "pop-os",
 		Username:   "dontpanic",
 		Tags:       []string{},

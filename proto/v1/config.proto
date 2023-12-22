@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package v1;
 
-option go_package = "github.com/garethgeorge/restora/go/proto/v1";
+option go_package = "github.com/garethgeorge/backrest/go/proto/v1";
 
 // Config is the top level config object for restic UI.
 message Config {

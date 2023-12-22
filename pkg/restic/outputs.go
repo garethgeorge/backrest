@@ -10,7 +10,7 @@ import (
 	"slices"
 	"time"
 
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
 
 type Snapshot struct {

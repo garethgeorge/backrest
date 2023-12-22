@@ -3,7 +3,7 @@ package config
 import (
 	"sync"
 
-	v1 "github.com/garethgeorge/restora/gen/go/v1"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
 
 type MemoryStore struct {

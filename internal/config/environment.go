@@ -9,37 +9,37 @@ import (
 )
 
 var (
-	EnvVarConfigPath  = "RESTORA_CONFIG"         // path to config file
-	EnvVarDataDir     = "RESTORA_DATA"           // path to data directory
-	EnvVarBindAddress = "RESTORA_PORT"           // port to bind to (default 9898)
-	EnvVarBinPath     = "RESTORA_RESTIC_COMMAND" // path to restic binary (default restic)
+	EnvVarConfigPath  = "BACKREST_CONFIG"         // path to config file
+	EnvVarDataDir     = "BACKREST_DATA"           // path to data directory
+	EnvVarBindAddress = "BACKREST_PORT"           // port to bind to (default 9898)
+	EnvVarBinPath     = "BACKREST_RESTIC_COMMAND" // path to restic binary (default restic)
 )
 
 // ConfigFilePath
-// - *nix systems use $XDG_CONFIG_HOME/restora/config.json
-// - windows uses %APPDATA%/restora/config.json
+// - *nix systems use $XDG_CONFIG_HOME/backrest/config.json
+// - windows uses %APPDATA%/backrest/config.json
 func ConfigFilePath() string {
 	if val := os.Getenv(EnvVarConfigPath); val != "" {
 		return val
 	}
-	return path.Join(getConfigDir(), "restora/config.json")
+	return path.Join(getConfigDir(), "backrest/config.json")
 }
 
 // DataDir
-// - *nix systems use $XDG_DATA_HOME/restora
-// - windows uses %APPDATA%/restora/data
+// - *nix systems use $XDG_DATA_HOME/backrest
+// - windows uses %APPDATA%/backrest/data
 func DataDir() string {
 	if val := os.Getenv(EnvVarDataDir); val != "" {
 		return val
 	}
 	if val := os.Getenv("XDG_DATA_HOME"); val != "" {
-		return path.Join(val, "restora")
+		return path.Join(val, "backrest")
 	}
 
 	if runtime.GOOS == "windows" {
-		return path.Join(getConfigDir(), "restora/data")
+		return path.Join(getConfigDir(), "backrest/data")
 	}
-	return path.Join(getHomeDir(), ".local/share/restora")
+	return path.Join(getHomeDir(), ".local/share/backrest")
 }
 
 func BindAddress() string {

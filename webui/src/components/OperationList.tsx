@@ -44,7 +44,7 @@ import {
   normalizeSnapshotId,
 } from "../lib/formatting";
 import _ from "lodash";
-import { GetOperationsRequest, Restora } from "../../gen/ts/v1/service.pb";
+import { GetOperationsRequest, Backrest } from "../../gen/ts/v1/service.pb";
 import { useAlertApi } from "./Alerts";
 import { MessageInstance } from "antd/es/message/interface";
 
@@ -188,7 +188,7 @@ export const OperationRow = ({
   let title = (
     <>
       {showPlan ? operation.planId + " - " : undefined} {formatTime(operation.unixTimeStartMs!)} - {opName}{" "}
-      <span className="restora operation-details">{details.displayState}</span>
+      <span className="backrest operation-details">{details.displayState}</span>
     </>
   );
 
@@ -196,7 +196,7 @@ export const OperationRow = ({
     title = <>
       {title}
       <Button type="link" size="small" onClick={() => {
-        Restora.Cancel({ value: operation.id! }, { pathPrefix: "/api" }).then(() => {
+        Backrest.Cancel({ value: operation.id! }, { pathPrefix: "/api" }).then(() => {
           alertApi?.success("Requested to cancel operation");
         })
       }}>[Cancel Operation]</Button>

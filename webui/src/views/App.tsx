@@ -62,7 +62,7 @@ export const App: React.FC = () => {
             style={{ color: colorTextLightSolid }}
             onClick={() => setContent(null, [])}
           >
-            Restora{" "}
+            Backrest{" "}
           </a>
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
             {uiBuildVersion}
@@ -112,7 +112,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         key: "p-" + plan.id,
         icon: <CheckCircleOutlined style={{ color: "green" }} />,
         label: (
-          <div className="restora visible-on-hover">
+          <div className="backrest visible-on-hover">
             {plan.id}{" "}
             <Button
               className="hidden-child"
@@ -154,7 +154,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         key: "r-" + repo.id,
         icon: <CheckCircleOutlined style={{ color: "green" }} />,
         label: (
-          <div className="restora visible-on-hover">
+          <div className="backrest visible-on-hover">
             {repo.id}{" "}
             <Button
               className="hidden-child"

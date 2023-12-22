@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package v1;
 
-option go_package = "github.com/garethgeorge/restora/go/proto/v1";
+option go_package = "github.com/garethgeorge/backrest/go/proto/v1";
 
 import "v1/config.proto";
 import "v1/restic.proto";
@@ -11,7 +11,7 @@ import "types/value.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
 
-service Restora {
+service Backrest {
   rpc GetConfig (google.protobuf.Empty) returns (Config) {
     option (google.api.http) = {
       get: "/v1/config"
