@@ -126,7 +126,8 @@ export const OperationList = ({
       size="small"
       dataSource={backups}
       renderItem={(backup) => {
-        const ops = backup.operations;
+        const ops = [...backup.operations];
+        ops.reverse();
         return (
           <Card size="small" style={{ margin: "5px" }}>
             {ops.map((op) => {

@@ -85,7 +85,7 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 
 	summary, err := r.repo.Backup(ctx, progressCallback, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to backup: %w", err)
+		return summary, fmt.Errorf("failed to backup: %w", err)
 	}
 
 	r.l.Debug("Backup completed", zap.String("repo", r.repoConfig.Id), zap.Duration("duration", time.Since(startTime)))
@@ -115,16 +115,12 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 		return nil, fmt.Errorf("plan %q has no retention policy", plan.Id)
 	}
 
-	l := r.l.With(zap.String("plan", plan.Id))
-
-	l.Debug("Forget snapshots", zap.Any("policy", policy))
 	result, err := r.repo.Forget(
 		ctx, protoutil.RetentionPolicyFromProto(plan.Retention),
 		restic.WithFlags("--tag", tagForPlan(plan)), restic.WithFlags("--group-by", "tag"))
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
 	}
-	l.Debug("Forget result", zap.Any("result", result))
 
 	var forgotten []*v1.ResticSnapshot
 	for _, snapshot := range result.Remove {
@@ -134,6 +130,8 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 		}
 		forgotten = append(forgotten, snapshotProto)
 	}
+
+	zap.L().Debug("Forgot snapshots", zap.String("plan", plan.Id), zap.Int("count", len(forgotten)), zap.Any("policy", policy))
 
 	return forgotten, nil
 }

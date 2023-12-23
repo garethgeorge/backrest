@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   BackupInfo,
   BackupInfoCollector,
+  colorForStatus,
   displayTypeToString,
   getOperations,
   getTypeForDisplay,
@@ -260,26 +261,8 @@ const buildTreeDay = (keyPrefix: string, operations: BackupInfo[]): OpTreeNode[]
 
 const buildTreeLeaf = (operations: BackupInfo[]): OpTreeNode[] => {
   const entries = _.map(operations, (b): OpTreeNode => {
-    let iconColor = "grey";
+    let iconColor = colorForStatus(b.status);
     let icon: React.ReactNode | null = <QuestionOutlined />;
-
-    switch (b.status) {
-      case OperationStatus.STATUS_PENDING:
-        iconColor = "grey";
-        break;
-      case OperationStatus.STATUS_SUCCESS:
-        iconColor = "green";
-        break;
-      case OperationStatus.STATUS_ERROR:
-        iconColor = "red";
-        break;
-      case OperationStatus.STATUS_INPROGRESS:
-        iconColor = "blue";
-        break;
-      case OperationStatus.STATUS_USER_CANCELLED:
-        iconColor = "orange";
-        break;
-    }
 
     if (b.status === OperationStatus.STATUS_ERROR) {
       icon = <ExclamationOutlined style={{ color: iconColor }} />;

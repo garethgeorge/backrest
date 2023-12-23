@@ -91,7 +91,7 @@ export class BackupInfoCollector {
   private createBackup(operations: Operation[]): BackupInfo {
     // deduplicate and sort operations.
     operations.sort((a, b) => {
-      return Number(b.unixTimeStartMs - a.unixTimeStartMs);
+      return Number(a.unixTimeStartMs - b.unixTimeStartMs);
     });
 
     // use the lowest ID of all operations as the ID of the backup, this will be the first created operation.
@@ -258,6 +258,26 @@ export const displayTypeToString = (type: DisplayType) => {
       return "Unknown";
   }
 };
+
+export const colorForStatus = (status: OperationStatus) => {
+  switch (status) {
+    case OperationStatus.STATUS_PENDING:
+      return "grey";
+    case OperationStatus.STATUS_INPROGRESS:
+      return "blue";
+    case OperationStatus.STATUS_ERROR:
+      return "red";
+    case OperationStatus.STATUS_WARNING:
+      return "orange";
+    case OperationStatus.STATUS_SUCCESS:
+      return "green";
+    case OperationStatus.STATUS_USER_CANCELLED:
+      return "orange";
+    default:
+      return "grey";
+  }
+}
+
 // detailsForOperation returns derived display information for a given operation.
 export const detailsForOperation = (
   op: Operation
