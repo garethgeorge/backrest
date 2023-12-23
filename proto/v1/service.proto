@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package v1;
 
-option go_package = "github.com/garethgeorge/backrest/go/proto/v1";
+option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
 
 import "v1/config.proto";
 import "v1/restic.proto";
@@ -12,115 +12,42 @@ import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
 
 service Backrest {
-  rpc GetConfig (google.protobuf.Empty) returns (Config) {
-    option (google.api.http) = {
-      get: "/v1/config"
-    };
-  }
+  rpc GetConfig (google.protobuf.Empty) returns (Config) {}
 
-  rpc SetConfig (Config) returns (Config) {
-    option (google.api.http) = {
-      post: "/v1/config"
-      body: "*"
-    };
-  }
+  rpc SetConfig (Config) returns (Config) {}
 
-  rpc AddRepo (Repo) returns (Config) {
-    option (google.api.http) = {
-      post: "/v1/config/repo"
-      body: "*"
-    };
-  }
+  rpc AddRepo (Repo) returns (Config) {}
 
-  rpc GetOperationEvents (google.protobuf.Empty) returns (stream OperationEvent) {
-    option (google.api.http) = {
-      get: "/v1/events/operations"
-    };
-  }
+  rpc GetOperationEvents (google.protobuf.Empty) returns (stream OperationEvent) {}
 
-  rpc GetOperations (GetOperationsRequest) returns (OperationList) {
-    option (google.api.http) = {
-      post: "/v1/operations"
-      body: "*"
-    };
-  }
+  rpc GetOperations (GetOperationsRequest) returns (OperationList) {}
 
-  rpc ListSnapshots(ListSnapshotsRequest) returns (ResticSnapshotList) {
-    option (google.api.http) = {
-      post: "/v1/snapshots"
-      body: "*"
-    };
-  }
+  rpc ListSnapshots(ListSnapshotsRequest) returns (ResticSnapshotList) {}
   
-  rpc ListSnapshotFiles(ListSnapshotFilesRequest) returns (ListSnapshotFilesResponse) {
-    option (google.api.http) = {
-      post: "/v1/snapshots/files"
-      body: "*"
-    };
-  }
+  rpc ListSnapshotFiles(ListSnapshotFilesRequest) returns (ListSnapshotFilesResponse) {}
 
   // Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
-  rpc Backup(types.StringValue) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/v1/cmd/backup"
-      body: "*"
-    };
-  }
+  rpc Backup(types.StringValue) returns (google.protobuf.Empty) {}
 
   // Prune schedules a prune operation.
-  rpc Prune(types.StringValue) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/v1/cmd/prune"
-      body: "*"
-    };
-  }
+  rpc Prune(types.StringValue) returns (google.protobuf.Empty) {}
 
   // Forget schedules a forget operation.
-  rpc Forget(types.StringValue) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/v1/cmd/forget"
-      body: "*"
-    };
-  }
+  rpc Forget(types.StringValue) returns (google.protobuf.Empty) {}
 
   // Restore schedules a restore operation.
-  rpc Restore(RestoreSnapshotRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/v1/cmd/restore"
-      body: "*"
-    };
-  }
+  rpc Restore(RestoreSnapshotRequest) returns (google.protobuf.Empty) {}
 
   // Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
-  rpc Unlock(types.StringValue) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/v1/cmd/unlock"
-      body: "*"
-    };
-  }
+  rpc Unlock(types.StringValue) returns (google.protobuf.Empty) {}
 
   // Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
-  rpc Cancel(types.Int64Value) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/v1/cmd/cancel"
-      body: "*"
-    };
-  }
+  rpc Cancel(types.Int64Value) returns (google.protobuf.Empty) {}
 
-  rpc ClearHistory(ClearHistoryRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/v1/cmd/clear_history"
-      body: "*"
-    };
-  }
+  rpc ClearHistory(ClearHistoryRequest) returns (google.protobuf.Empty) {}
 
   // PathAutocomplete provides path autocompletion options for a given filesystem path.
-  rpc PathAutocomplete (types.StringValue) returns (types.StringList) {
-    option (google.api.http) = {
-      post: "/v1/autocomplete/path"
-      body: "*"
-    };
-  }
+  rpc PathAutocomplete (types.StringValue) returns (types.StringList) {}
 }
 
 message ClearHistoryRequest {

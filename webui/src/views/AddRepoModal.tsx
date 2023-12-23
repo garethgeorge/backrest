@@ -11,11 +11,10 @@ import {
 } from "antd";
 import React, { useState } from "react";
 import { useShowModal } from "../components/ModalManager";
-import { Repo } from "../../gen/ts/v1/config.pb";
+import { Repo } from "../../gen/ts/v1/config_pb";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { useAlertApi } from "../components/Alerts";
-import { Backrest } from "../../gen/ts/v1/service.pb";
 import {
   addRepo,
   configState,
@@ -25,6 +24,7 @@ import {
 import { useRecoilState } from "recoil";
 import { nameRegex } from "../lib/patterns";
 import { validateForm } from "../lib/formutil";
+import { backrestService } from "../api";
 
 export const AddRepoModal = ({
   template,
@@ -103,19 +103,14 @@ export const AddRepoModal = ({
           alertsApi.error("Can't update repo, not found");
           return;
         }
-        config.repos![idx] = { ...repo };
+        config.repos![idx] = new Repo(repo);
         setConfig(await updateConfig(config));
         showModal(null);
         alertsApi.success("Updated repo " + repo.uri);
 
         // Update the snapshots for the repo to confirm the config works.
         // TODO: this operation is only used here, find a different RPC for this purpose.
-        await Backrest.ListSnapshots(
-          {
-            repoId: repo.id,
-          },
-          { pathPrefix: "/api" }
-        );
+        await backrestService.listSnapshots({ repoId: repo.id });
       } else {
         // We are in the create repo flow, create the new repo via the service
         setConfig(await addRepo(repo));
@@ -320,7 +315,7 @@ export const AddRepoModal = ({
                       <Input
                         placeholder="KEY=VALUE"
                         onBlur={() => form.validateFields()}
-                        style={{ width: "60%" }}
+                        style={{ width: "90%" }}
                       />
                     </Form.Item>
                     <MinusCircleOutlined
@@ -337,7 +332,7 @@ export const AddRepoModal = ({
                   <Button
                     type="dashed"
                     onClick={() => add()}
-                    style={{ width: "60%" }}
+                    style={{ width: "90%" }}
                     icon={<PlusOutlined />}
                   >
                     Set Environment Variable
@@ -417,6 +412,8 @@ export const AddRepoModal = ({
 const expectedEnvVars: { [scheme: string]: string[] } = {
   s3: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"],
   b2: ["B2_ACCOUNT_ID", "B2_ACCOUNT_KEY"],
+  azure: ["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_KEY"],
+  gs: ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"],
 };
 
 const envVarSetValidator = (uri: string | undefined, envVars: string[]) => {

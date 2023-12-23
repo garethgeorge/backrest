@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { EOperation, detailsForOperation, displayTypeToString, getTypeForDisplay, subscribeToOperations, toEop, unsubscribeFromOperations } from "../state/oplog";
-import { OperationEvent, OperationStatus } from "../../gen/ts/v1/operations.pb";
+import { detailsForOperation, displayTypeToString, getTypeForDisplay, subscribeToOperations, unsubscribeFromOperations } from "../state/oplog";
 import { formatDuration } from "../lib/formatting";
+import { Operation, OperationEvent, OperationStatus } from "../../gen/ts/v1/operations_pb";
 
 export const ActivityBar = () => {
-    const [activeOperations, setActiveOperations] = useState<EOperation[]>([]);
+    const [activeOperations, setActiveOperations] = useState<Operation[]>([]);
 
     useEffect(() => {
         const callback = ({ operation, type }: OperationEvent) => {
@@ -13,9 +13,9 @@ export const ActivityBar = () => {
             setActiveOperations((ops) => {
                 ops = ops.filter((op) => op.id !== operation.id);
                 if (operation.status === OperationStatus.STATUS_INPROGRESS) {
-                    ops.push(toEop(operation));
+                    ops.push(operation);
                 }
-                ops.sort((a, b) => b.parsedTime - a.parsedTime);
+                ops.sort((a, b) => Number(b.unixTimeStartMs - a.unixTimeStartMs));
                 return ops;
             });
         }

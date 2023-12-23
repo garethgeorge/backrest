@@ -1,10 +1,10 @@
 import { AutoComplete } from "antd";
 import React, { useEffect, useState } from "react";
-import { Backrest } from "../../gen/ts/v1/service.pb";
-import { StringList } from "../../gen/ts/types/value.pb";
+import { StringList } from "../../gen/ts/types/value_pb";
 import { isWindows } from "../state/buildcfg";
+import { backrestService } from "../api";
+import _ from "lodash";
 
-let timeout: NodeJS.Timeout | undefined = undefined;
 const sep = isWindows ? "\\" : "/";
 
 export const URIAutocomplete = (props: React.PropsWithChildren<any>) => {
@@ -16,7 +16,7 @@ export const URIAutocomplete = (props: React.PropsWithChildren<any>) => {
     setShowOptions(options.filter((o) => o.value.indexOf(value) !== -1));
   }, [options]);
 
-  const onChange = (value: string) => {
+  const onChange = _.debounce((value: string) => {
     setValue(value);
 
     const lastSlash = value.lastIndexOf(sep);
@@ -24,28 +24,22 @@ export const URIAutocomplete = (props: React.PropsWithChildren<any>) => {
       value = value.substring(0, lastSlash);
     }
 
-    if (timeout) {
-      clearTimeout(timeout);
-    }
-
-    timeout = setTimeout(() => {
-      Backrest.PathAutocomplete({ value: value + sep }, { pathPrefix: "/api" })
-        .then((res: StringList) => {
-          if (!res.values) {
-            return;
-          }
-          const vals = res.values.map((v) => {
-            return {
-              value: value + sep + v,
-            };
-          });
-          setOptions(vals);
-        })
-        .catch((e) => {
-          console.log("Path autocomplete error: ", e);
+    backrestService.pathAutocomplete({ value: value + sep })
+      .then((res: StringList) => {
+        if (!res.values) {
+          return;
+        }
+        const vals = res.values.map((v) => {
+          return {
+            value: value + sep + v,
+          };
         });
-    }, 100);
-  };
+        setOptions(vals);
+      })
+      .catch((e) => {
+        console.log("Path autocomplete error: ", e);
+      });
+  }, 200);
 
   return (
     <AutoComplete
