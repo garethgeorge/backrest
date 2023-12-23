@@ -14,7 +14,7 @@ import {
 } from "antd";
 import React, { useState } from "react";
 import { useShowModal } from "../components/ModalManager";
-import { Plan, RetentionPolicy } from "../../gen/ts/v1/config.pb";
+import { Plan, RetentionPolicy } from "../../gen/ts/v1/config_pb";
 import { useRecoilState } from "recoil";
 import { configState, fetchConfig, updateConfig } from "../state/config";
 import { nameRegex } from "../lib/patterns";
@@ -365,7 +365,7 @@ const RetentionPolicyView = ({ policy }: { policy?: RetentionPolicy }) => {
     CountBased,
   }
 
-  policy = policy || {};
+  policy = policy || new RetentionPolicy();
 
   const [policyType, setPolicyType] = useState<PolicyType>(
     policy.keepLastN ? PolicyType.CountBased : PolicyType.TimeBased

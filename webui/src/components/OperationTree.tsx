@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   BackupInfo,
   BackupInfoCollector,
+  displayTypeToString,
   getOperations,
-  shouldHideStatus,
+  getTypeForDisplay,
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
@@ -23,10 +24,10 @@ import {
   QuestionOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
-import { OperationEvent, OperationEventType, OperationStatus } from "../../gen/ts/v1/operations.pb";
+import { OperationEvent, OperationEventType, OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { useAlertApi } from "./Alerts";
 import { OperationList } from "./OperationList";
-import { GetOperationsRequest } from "../../gen/ts/v1/service.pb";
+import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
 
 type OpTreeNode = DataNode & {
   backup?: BackupInfo;
@@ -114,7 +115,7 @@ export const OperationTree = ({
         <Tree<OpTreeNode>
           treeData={treeData}
           showIcon
-          defaultExpandedKeys={[backups[0].id!]}
+          defaultExpandedKeys={backups.slice(0, Math.min(5, backups.length)).map((b) => b.id!)}
           onSelect={(keys, info) => {
             if (info.selectedNodes.length === 0) return;
             const backup = info.selectedNodes[0].backup;
@@ -132,15 +133,6 @@ export const OperationTree = ({
               const b = node.backup;
               const details: string[] = [];
 
-              if (b.operations.length === 1) {
-                if (b.operations[0].operationForget) {
-                  return <>Forget {formatTime(b.displayTime)}</>;
-                }
-                if (b.operations[0].operationPrune) {
-                  return <>Prune {formatTime(b.displayTime)}</>;
-                }
-              }
-
               if (b.status === OperationStatus.STATUS_PENDING) {
                 details.push("scheduled, waiting");
               } else if (b.status === OperationStatus.STATUS_SYSTEM_CANCELLED) {
@@ -150,27 +142,25 @@ export const OperationTree = ({
               }
 
               if (b.backupLastStatus) {
-                if (b.backupLastStatus.summary) {
-                  const s = b.backupLastStatus.summary;
+                if (b.backupLastStatus.entry.case === "summary") {
+                  const s = b.backupLastStatus.entry.value;
                   details.push(
-                    `${formatBytes(s.totalBytesProcessed)} in ${formatDuration(
+                    `${formatBytes(Number(s.totalBytesProcessed))} in ${formatDuration(
                       s.totalDuration! * 1000.0 // convert to ms
                     )}`
                   );
-                } else if (b.backupLastStatus.status) {
-                  const s = b.backupLastStatus.status;
-                  const bytesDone = parseInt(s.bytesDone!);
-                  const bytesTotal = parseInt(s.totalBytes!);
-                  const percent = Math.floor((bytesDone / bytesTotal) * 100);
+                } else if (b.backupLastStatus.entry.case === "status") {
+                  const s = b.backupLastStatus.entry.value;
+                  const percent = Math.floor((Number(s.bytesDone) / Number(s.totalBytes)) * 100);
                   details.push(
                     `${percent}% processed ${formatBytes(
-                      bytesDone
-                    )} / ${formatBytes(bytesTotal)}`
+                      Number(s.bytesDone)
+                    )} / ${formatBytes(Number(s.totalBytes))}`
                   );
                 }
               }
               if (b.snapshotInfo) {
-                details.push(`ID: ${normalizeSnapshotId(b.snapshotInfo.id!)}`);
+                details.push(`ID: ${normalizeSnapshotId(b.snapshotInfo.id)}`);
               }
 
               let detailsElem: React.ReactNode | null = null;
@@ -182,9 +172,10 @@ export const OperationTree = ({
                 );
               }
 
+              const type = getTypeForDisplay(b.operations[0]);
               return (
                 <>
-                  Backup {formatTime(b.displayTime)} {detailsElem}
+                  {displayTypeToString(type)} {formatTime(b.displayTime)} {detailsElem}
                 </>
               );
             }

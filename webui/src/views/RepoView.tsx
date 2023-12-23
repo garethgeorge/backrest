@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { Repo } from "../../gen/ts/v1/config.pb";
-import { Button, Flex, Tabs, Tooltip, Typography } from "antd";
+import React from "react";
+import { Repo } from "../../gen/ts/v1/config_pb";
+import { Flex, Tabs, Typography } from "antd";
 import { useRecoilValue } from "recoil";
 import { configState } from "../state/config";
 import { useAlertApi } from "../components/Alerts";
-import { Backrest } from "../../gen/ts/v1/service.pb";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY } from "../constants";
+import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
 
 export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   const alertsApi = useAlertApi()!;
@@ -36,7 +36,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
             children: (
               <>
                 <OperationTree
-                  req={{ repoId: repo.id!, lastN: "" + MAX_OPERATION_HISTORY }}
+                  req={new GetOperationsRequest({ repoId: repo.id!, lastN: BigInt(MAX_OPERATION_HISTORY) })}
                 />
               </>
             ),
@@ -48,7 +48,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
               <>
                 <h2>Backup Action History</h2>
                 <OperationList
-                  req={{ repoId: repo.id!, lastN: "" + MAX_OPERATION_HISTORY }}
+                  req={new GetOperationsRequest({ repoId: repo.id!, lastN: BigInt(MAX_OPERATION_HISTORY) })}
                   showPlan={true}
                 />
               </>
