@@ -135,7 +135,7 @@ export class BackupInfoCollector {
     // use the latest status that is not cancelled.
     let statusIdx = operations.length - 1;
     let status = OperationStatus.STATUS_SYSTEM_CANCELLED;
-    while (statusIdx > 0 || shouldHideStatus(status)) {
+    while (statusIdx !== -1 && shouldHideStatus(status)) {
       status = operations[statusIdx].status!;
       statusIdx--;
     }
