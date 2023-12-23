@@ -4,9 +4,8 @@ import type { DataNode, EventDataNode } from "antd/es/tree";
 import {
   ListSnapshotFilesResponse,
   LsEntry,
-  Backrest,
   RestoreSnapshotRequest,
-} from "../../gen/ts/v1/service.pb";
+} from "../../gen/ts/v1/service_pb";
 import { useAlertApi } from "./Alerts";
 import {
   DownloadOutlined,
@@ -17,6 +16,7 @@ import { useShowModal } from "./ModalManager";
 import { formatBytes, normalizeSnapshotId } from "../lib/formatting";
 import { URIAutocomplete } from "./URIAutocomplete";
 import { validateForm } from "../lib/formutil";
+import { backrestService } from "../api";
 
 const SnapshotBrowserContext = React.createContext<{
   snapshotId: string;
@@ -81,14 +81,11 @@ export const SnapshotBrowser = ({
   useEffect(() => {
     (async () => {
       try {
-        const resp = await Backrest.ListSnapshotFiles(
-          {
-            path: "/",
-            repoId,
-            snapshotId,
-          },
-          { pathPrefix: "/api" }
-        );
+        const resp = await backrestService.listSnapshotFiles({
+          path: "/",
+          repoId,
+          snapshotId,
+        });
         setTreeData(respToNodes(resp));
       } catch (e: any) {
         alertApi?.error("Failed to list snapshot files: " + e.message);
@@ -101,14 +98,11 @@ export const SnapshotBrowser = ({
       return;
     }
 
-    const resp = await Backrest.ListSnapshotFiles(
-      {
-        path: (key + "/") as string,
-        repoId,
-        snapshotId,
-      },
-      { pathPrefix: "/api" }
-    );
+    const resp = await backrestService.listSnapshotFiles({
+      path: (key + "/") as string,
+      repoId,
+      snapshotId,
+    });
 
     setTreeData((treeData) => {
       let toUpdate: DataNode | null = null;
@@ -165,8 +159,6 @@ const respToNodes = (resp: ListSnapshotFilesResponse): DataNode[] => {
       };
       return node;
     });
-
-  console.log(JSON.stringify(nodes, null, 2));
 
   return nodes;
 };
@@ -226,7 +218,7 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
       {entry.name}
       {entry.type === "file" ? (
         <span className="backrest file-details">
-          ({formatBytes(entry.size)})
+          ({formatBytes(Number(entry.size))})
         </span>
       ) : null}
       {dropdown}
@@ -266,17 +258,13 @@ const RestoreModal = ({
     setConfirmLoading(true);
     try {
       const values = await validateForm(form);
-
-      await Backrest.Restore(
-        {
-          planId,
-          repoId,
-          snapshotId,
-          path,
-          target: values.target,
-        },
-        { pathPrefix: "/api" }
-      );
+      await backrestService.restore({
+        planId,
+        repoId,
+        snapshotId,
+        path,
+        target: values.target,
+      });
     } catch (e: any) {
       alert("Failed to restore snapshot: " + e.message);
     } finally {
@@ -330,5 +318,3 @@ const RestoreModal = ({
     </Modal>
   );
 };
-
-const restoreFlow = (repoId: string, snapshotId: string, path: string) => { };

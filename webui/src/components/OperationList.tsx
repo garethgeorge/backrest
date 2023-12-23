@@ -4,7 +4,7 @@ import {
   OperationEvent,
   OperationEventType,
   OperationStatus,
-} from "../../gen/ts/v1/operations.pb";
+} from "../../gen/ts/v1/operations_pb";
 import {
   Button,
   Card,
@@ -22,19 +22,17 @@ import {
   DeleteOutlined,
   DownloadOutlined,
 } from "@ant-design/icons";
-import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
+import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic_pb";
 import {
   BackupInfo,
   BackupInfoCollector,
   DisplayType,
-  EOperation,
   detailsForOperation,
   displayTypeToString,
   getOperations,
   getTypeForDisplay,
   shouldHideStatus,
   subscribeToOperations,
-  toEop,
   unsubscribeFromOperations,
 } from "../state/oplog";
 import { SnapshotBrowser } from "./SnapshotBrowser";
@@ -44,9 +42,10 @@ import {
   normalizeSnapshotId,
 } from "../lib/formatting";
 import _ from "lodash";
-import { GetOperationsRequest, Backrest } from "../../gen/ts/v1/service.pb";
+import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
 import { useAlertApi } from "./Alerts";
 import { MessageInstance } from "antd/es/message/interface";
+import { backrestService } from "../api";
 
 export const OperationList = ({
   req,
@@ -134,7 +133,7 @@ export const OperationList = ({
               if (shouldHideStatus(op.status!)) {
                 return null;
               }
-              return <OperationRow alertApi={alertApi!} key={op.id!} operation={toEop(op)} showPlan={showPlan || false} />
+              return <OperationRow alertApi={alertApi!} key={op.id} operation={op} showPlan={showPlan || false} />
             })}
           </Card>
         );
@@ -152,7 +151,7 @@ export const OperationRow = ({
   operation,
   alertApi,
   showPlan,
-}: React.PropsWithoutRef<{ operation: EOperation, alertApi?: MessageInstance, showPlan: boolean }>) => {
+}: React.PropsWithoutRef<{ operation: Operation, alertApi?: MessageInstance, showPlan: boolean }>) => {
   const details = detailsForOperation(operation);
   const displayType = getTypeForDisplay(operation);
   let avatar: React.ReactNode;
@@ -187,7 +186,7 @@ export const OperationRow = ({
   const opName = displayTypeToString(getTypeForDisplay(operation));
   let title = (
     <>
-      {showPlan ? operation.planId + " - " : undefined} {formatTime(operation.unixTimeStartMs!)} - {opName}{" "}
+      {showPlan ? operation.planId + " - " : undefined} {formatTime(Number(operation.unixTimeStartMs))} - {opName}{" "}
       <span className="backrest operation-details">{details.displayState}</span>
     </>
   );
@@ -196,9 +195,11 @@ export const OperationRow = ({
     title = <>
       {title}
       <Button type="link" size="small" onClick={() => {
-        Backrest.Cancel({ value: operation.id! }, { pathPrefix: "/api" }).then(() => {
+        backrestService.cancel({ value: operation.id! }).then(() => {
           alertApi?.success("Requested to cancel operation");
-        })
+        }).catch((e) => {
+          alertApi?.error("Failed to cancel operation: " + e.message);
+        });
       }}>[Cancel Operation]</Button>
     </>
   }
@@ -210,8 +211,8 @@ export const OperationRow = ({
     operation.status === OperationStatus.STATUS_ERROR
   ) {
     body = <pre>{operation.displayMessage}</pre>;
-  } else if (operation.operationBackup) {
-    const backupOp = operation.operationBackup;
+  } else if (operation.op.case === "operationBackup") {
+    const backupOp = operation.op.value;
     body = (
       <>
         <Collapse
@@ -228,8 +229,8 @@ export const OperationRow = ({
         />
       </>
     );
-  } else if (operation.operationIndexSnapshot) {
-    const snapshotOp = operation.operationIndexSnapshot;
+  } else if (operation.op.case === "operationIndexSnapshot") {
+    const snapshotOp = operation.op.value;
     body = (
       <SnapshotInfo
         snapshot={snapshotOp.snapshot!}
@@ -237,8 +238,8 @@ export const OperationRow = ({
         planId={operation.planId}
       />
     );
-  } else if (operation.operationForget) {
-    const forgetOp = operation.operationForget;
+  } else if (operation.op.case === "operationForget") {
+    const forgetOp = operation.op.value;
     if (forgetOp.forget?.length === 0) {
       return null;
     }
@@ -278,7 +279,7 @@ export const OperationRow = ({
                 Removed snapshots:
                 <pre>{forgetOp.forget?.map((f) => (
                   <div key={f.id}>
-                    {"removed snapshot " + normalizeSnapshotId(f.id!) + " taken at " + formatTime(f.unixTimeMs!)} <br />
+                    {"removed snapshot " + normalizeSnapshotId(f.id!) + " taken at " + formatTime(Number(f.unixTimeMs))} <br />
                   </div>
                 ))}</pre>
                 Policy:
@@ -293,8 +294,8 @@ export const OperationRow = ({
         />
       </>
     );
-  } else if (operation.operationPrune) {
-    const prune = operation.operationPrune;
+  } else if (operation.op.case === "operationPrune") {
+    const prune = operation.op.value;
     body = (
       <Collapse
         size="small"
@@ -308,8 +309,8 @@ export const OperationRow = ({
         ]}
       />
     );
-  } else if (operation.operationRestore) {
-    const restore = operation.operationRestore;
+  } else if (operation.op.case === "operationRestore") {
+    const restore = operation.op.value;
     body = (
       <>
         Restore {restore.path} to {restore.target}
@@ -395,11 +396,11 @@ const BackupOperationStatus = ({
     return <>No status yet.</>;
   }
 
-  if (status.status) {
-    const st = status.status;
+  if (status.entry.case === "status") {
+    const st = status.entry.value;
     const progress =
       Math.round(
-        (parseInt(st.bytesDone!) / Math.max(parseInt(st.totalBytes!), 1)) * 1000
+        (Number(st.bytesDone) / Math.max(Number(st.totalBytes), 1)) * 1000
       ) / 10;
     return (
       <>
@@ -412,18 +413,18 @@ const BackupOperationStatus = ({
           <Col span={12}>
             <Typography.Text strong>Bytes Done/Total</Typography.Text>
             <br />
-            {formatBytes(st.bytesDone)}/{formatBytes(st.totalBytes)}
+            {formatBytes(Number(st.bytesDone))}/{formatBytes(Number(st.totalBytes))}
           </Col>
           <Col span={12}>
             <Typography.Text strong>Files Done/Total</Typography.Text>
             <br />
-            {st.filesDone}/{st.totalFiles}
+            {Number(st.filesDone)}/{Number(st.totalFiles)}
           </Col>
         </Row>
       </>
     );
-  } else if (status.summary) {
-    const sum = status.summary;
+  } else if (status.entry.case === "summary") {
+    const sum = status.entry.value;
     return (
       <>
         <Typography.Text>
@@ -434,34 +435,34 @@ const BackupOperationStatus = ({
           <Col span={8}>
             <Typography.Text strong>Files Added</Typography.Text>
             <br />
-            {sum.filesNew}
+            {sum.filesNew.toString()}
           </Col>
           <Col span={8}>
             <Typography.Text strong>Files Changed</Typography.Text>
             <br />
-            {sum.filesChanged}
+            {sum.filesChanged.toString()}
           </Col>
           <Col span={8}>
             <Typography.Text strong>Files Unmodified</Typography.Text>
             <br />
-            {sum.filesChanged}
+            {sum.filesUnmodified.toString()}
           </Col>
         </Row>
         <Row gutter={16}>
           <Col span={8}>
             <Typography.Text strong>Bytes Added</Typography.Text>
             <br />
-            {formatBytes(sum.dataAdded)}
+            {formatBytes(Number(sum.dataAdded))}
           </Col>
           <Col span={8}>
             <Typography.Text strong>Total Bytes Processed</Typography.Text>
             <br />
-            {formatBytes(sum.totalBytesProcessed)}
+            {formatBytes(Number(sum.totalBytesProcessed))}
           </Col>
           <Col span={8}>
             <Typography.Text strong>Total Files Processed</Typography.Text>
             <br />
-            {sum.totalFilesProcessed}
+            {sum.totalFilesProcessed.toString()}
           </Col>
         </Row>
       </>
@@ -470,16 +471,4 @@ const BackupOperationStatus = ({
     console.error("GOT UNEXPECTED STATUS: ", status);
     return <>No fields set. This shouldn't happen</>;
   }
-};
-
-const getSnapshotId = (op: EOperation): string | null => {
-  if (op.operationBackup) {
-    const ob = op.operationBackup;
-    if (ob.lastStatus && ob.lastStatus.summary) {
-      return normalizeSnapshotId(ob.lastStatus.summary.snapshotId!);
-    }
-  } else if (op.operationIndexSnapshot) {
-    return normalizeSnapshotId(op.operationIndexSnapshot.snapshot!.id!);
-  }
-  return null;
 };

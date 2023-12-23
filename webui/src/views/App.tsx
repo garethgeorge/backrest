@@ -10,7 +10,7 @@ import type { MenuProps } from "antd";
 import { Button, Layout, Menu, Spin, theme } from "antd";
 import { configState, fetchConfig } from "../state/config";
 import { useRecoilState } from "recoil";
-import { Config } from "../../gen/ts/v1/config.pb";
+import { Config } from "../../gen/ts/v1/config_pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { MainContentArea, useSetContent } from "./MainContentArea";

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Plan } from "../../gen/ts/v1/config.pb";
+import { Plan } from "../../gen/ts/v1/config_pb";
 import { Button, Flex, Tabs, Tooltip, Typography } from "antd";
 import { useRecoilValue } from "recoil";
 import { configState } from "../state/config";
 import { useAlertApi } from "../components/Alerts";
-import { Backrest } from "../../gen/ts/v1/service.pb";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY } from "../constants";
+import { backrestService } from "../api";
+import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const alertsApi = useAlertApi()!;
@@ -22,7 +23,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
   const handleBackupNow = async () => {
     try {
-      Backrest.Backup({ value: plan.id }, { pathPrefix: "/api" });
+      backrestService.backup({ value: plan.id });
       alertsApi.success("Backup scheduled.");
     } catch (e: any) {
       alertsApi.error("Failed to schedule backup: " + e.message);
@@ -31,7 +32,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
   const handlePruneNow = () => {
     try {
-      Backrest.Prune({ value: plan.id }, { pathPrefix: "/api" });
+      backrestService.prune({ value: plan.id });
       alertsApi.success("Prune scheduled.");
     } catch (e: any) {
       alertsApi.error("Failed to schedule prune: " + e.message);
@@ -41,7 +42,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const handleUnlockNow = () => {
     try {
       alertsApi.info("Unlocking repo...");
-      Backrest.Unlock({ value: plan.repo! }, { pathPrefix: "/api" });
+      backrestService.unlock({ value: plan.repo! });
       alertsApi.success("Repo unlocked.");
     } catch (e: any) {
       alertsApi.error("Failed to unlock repo: " + e.message);
@@ -51,7 +52,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const handleClearErrorHistory = () => {
     try {
       alertsApi.info("Clearing error history...");
-      Backrest.ClearHistory({ planId: plan.id, onlyFailed: true }, { pathPrefix: "/api" });
+      backrestService.clearHistory({ planId: plan.id, onlyFailed: true });
       alertsApi.success("Error history cleared.");
     } catch (e: any) {
       alertsApi.error("Failed to clear error history: " + e.message);
@@ -94,7 +95,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             children: (
               <>
                 <OperationTree
-                  req={{ planId: plan.id!, lastN: "" + MAX_OPERATION_HISTORY }}
+                  req={new GetOperationsRequest({ planId: plan.id!, lastN: BigInt(MAX_OPERATION_HISTORY) })}
                 />
               </>
             ),
@@ -106,7 +107,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
               <>
                 <h2>Backup Action History</h2>
                 <OperationList
-                  req={{ planId: plan.id!, lastN: "" + MAX_OPERATION_HISTORY }}
+                  req={new GetOperationsRequest({ planId: plan.id!, lastN: BigInt(MAX_OPERATION_HISTORY) })}
                 />
               </>
             ),

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package v1;
 
-option go_package = "github.com/garethgeorge/backrest/go/proto/v1";
+option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
 
 import "v1/restic.proto";
 import "v1/config.proto";

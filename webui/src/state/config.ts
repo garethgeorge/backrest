@@ -1,25 +1,20 @@
 import { atom, useSetRecoilState } from "recoil";
-import { Config, Repo } from "../../gen/ts/v1/config.pb";
-import { Backrest } from "../../gen/ts/v1/service.pb";
-import { API_PREFIX } from "../constants";
+import { Config, Repo } from "../../gen/ts/v1/config_pb";
+import { backrestService } from "../api";
 
 export const configState = atom<Config>({
   key: "config",
-  default: {},
+  default: new Config(),
 });
 
 export const fetchConfig = async (): Promise<Config> => {
-  return await Backrest.GetConfig({}, { pathPrefix: API_PREFIX });
+  return await backrestService.getConfig({});
 };
 
 export const addRepo = async (repo: Repo): Promise<Config> => {
-  return await Backrest.AddRepo(repo, {
-    pathPrefix: API_PREFIX,
-  });
+  return await backrestService.addRepo(repo);
 };
 
 export const updateConfig = async (config: Config): Promise<Config> => {
-  return await Backrest.SetConfig(config, {
-    pathPrefix: API_PREFIX,
-  });
+  return await backrestService.setConfig(config);
 };

@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	rice "github.com/GeertJohan/go.rice"
+	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/api"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -22,16 +23,13 @@ import (
 	"go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-)
-
-var (
-	installOnly = flag.Bool("install-deps", false, "Install backrest and exit")
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 func main() {
 	flag.Parse()
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 	go onterm(cancel)
 
 	resticPath, err := resticinstaller.FindOrInstallResticBinary()
@@ -39,12 +37,8 @@ func main() {
 		zap.S().Fatalf("Error finding or installing restic: %v", err)
 	}
 
-	if *installOnly {
-		return
-	}
-
+	// Load the configuration
 	configStore := createConfigProvider()
-
 	cfg, err := configStore.Get()
 	if err != nil {
 		zap.S().Fatalf("Error loading config: %v", err)
@@ -52,16 +46,7 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	// Configure the HTTP mux
-	mux := http.NewServeMux()
-
-	if box, err := rice.FindBox("webui/dist"); err == nil {
-		mux.Handle("/", http.FileServer(box.HTTPBox()))
-	} else {
-		zap.S().Warnf("Error loading static assets, not serving UI: %v", err)
-	}
-
-	// Create and serve API server
+	// Create / load the operation log
 	oplogFile := path.Join(config.DataDir(), "oplog.boltdb")
 	oplog, err := oplog.NewOpLog(oplogFile)
 	if err != nil {
@@ -73,51 +58,50 @@ func main() {
 	}
 	defer oplog.Close()
 
+	// Create orchestrator and start task loop.
 	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, oplog)
 	if err != nil {
 		zap.S().Fatalf("Error creating orchestrator: %v", err)
 	}
 
-	// Start orchestration loop. Only exits when ctx is cancelled.
-	go orchestrator.Run(ctx)
+	wg.Add(1)
+	go func() {
+		orchestrator.Run(ctx)
+		wg.Done()
+	}()
 
+	// Create and serve the HTTP gateway
 	apiServer := api.NewServer(
 		configStore,
 		orchestrator, // TODO: eliminate default config
 		oplog,
 	)
 
-	// Serve the API
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := api.ServeAPI(ctx, apiServer, mux)
-		if err != nil {
-			zap.S().Fatal("Error serving API", zap.Error(err))
-		}
-		cancel() // cancel the context when the API server exits (e.g. on fatal error)
-	}()
+	mux := http.NewServeMux()
+
+	if box, err := rice.FindBox("webui/dist"); err == nil {
+		mux.Handle("/", http.FileServer(box.HTTPBox()))
+	} else {
+		zap.S().Warnf("Error loading static assets, not serving UI: %v", err)
+	}
+
+	mux.Handle(v1connect.NewBackrestHandler(apiServer))
 
 	// Serve the HTTP gateway
 	server := &http.Server{
 		Addr:    config.BindAddress(),
-		Handler: mux,
+		Handler: h2c.NewHandler(mux, &http2.Server{}), // h2c is HTTP/2 without TLS for grpc-connect support.
 	}
 
-	wg.Add(1)
+	zap.S().Infof("Starting web server %v", server.Addr)
 	go func() {
-		defer wg.Done()
-		zap.S().Infof("Starting web server %v", server.Addr)
-		go func() {
-			<-ctx.Done()
-			server.Shutdown(context.Background())
-		}()
-		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			zap.L().Error("Error starting server", zap.Error(err))
-		}
-		zap.L().Info("HTTP gateway shutdown")
-		cancel() // cancel the context when the HTTP server exits (e.g. on fatal error)
+		<-ctx.Done()
+		server.Shutdown(context.Background())
 	}()
+	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		zap.L().Error("Error starting server", zap.Error(err))
+	}
+	zap.L().Info("HTTP gateway shutdown")
 
 	wg.Wait()
 }

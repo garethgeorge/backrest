@@ -8,12 +8,15 @@ plugins:
     out: ../gen/go
     opt:
       - paths=source_relative
-  - plugin: grpc-gateway
+  - plugin: connect-go
     out: ../gen/go
     opt:
       - paths=source_relative
-      - generate_unbound_methods=true
-  - plugin: grpc-gateway-ts
+  - plugin: es
     out: ../webui/gen/ts
-    opt:
-      - paths=source_relative
+    opt: 
+      - target=ts
+  - plugin: connect-es
+    out: ../webui/gen/ts
+    opt: 
+      - target=ts

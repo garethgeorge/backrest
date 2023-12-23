@@ -3,17 +3,12 @@ import {
   OperationEvent,
   OperationEventType,
   OperationStatus,
-} from "../../gen/ts/v1/operations.pb";
-import { GetOperationsRequest, Backrest } from "../../gen/ts/v1/service.pb";
-import { API_PREFIX } from "../constants";
-import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic.pb";
+} from "../../gen/ts/v1/operations_pb";
+import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
+import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic_pb";
 import _ from "lodash";
 import { formatDuration, formatTime } from "../lib/formatting";
-
-export type EOperation = Operation & {
-  parsedTime: number;
-  parsedDate: Date;
-};
+import { backrestService } from "../api";
 
 const subscribers: ((event: OperationEvent) => void)[] = [];
 
@@ -22,16 +17,10 @@ const subscribers: ((event: OperationEvent) => void)[] = [];
   while (true) {
     let nextConnWaitUntil = new Date().getTime() + 5000;
     try {
-      await Backrest.GetOperationEvents(
-        {},
-        (event: OperationEvent) => {
-          console.log("operation event", event);
-          subscribers.forEach((subscriber) => subscriber(event));
-        },
-        {
-          pathPrefix: API_PREFIX,
-        }
-      );
+      for await (const event of backrestService.getOperationEvents({})) {
+        console.log("operation event", event);
+        subscribers.forEach((subscriber) => subscriber(event));
+      }
     } catch (e: any) {
       console.error("operations stream died with exception: ", e);
     }
@@ -43,11 +32,9 @@ const subscribers: ((event: OperationEvent) => void)[] = [];
 
 export const getOperations = async (
   req: GetOperationsRequest
-): Promise<EOperation[]> => {
-  const opList = await Backrest.GetOperations(req, {
-    pathPrefix: API_PREFIX,
-  });
-  return (opList.operations || []).map(toEop);
+): Promise<Operation[]> => {
+  const opList = await backrestService.getOperations(req);
+  return (opList.operations || []);
 };
 
 export const subscribeToOperations = (
@@ -64,18 +51,6 @@ export const unsubscribeFromOperations = (
     subscribers[index] = subscribers[subscribers.length - 1];
     subscribers.pop();
   }
-};
-
-export const toEop = (op: Operation): EOperation => {
-  const time = parseInt(op.unixTimeStartMs!);
-  const date = new Date();
-  date.setTime(time);
-
-  return {
-    ...op,
-    parsedTime: time,
-    parsedDate: date,
-  };
 };
 
 export enum DisplayType {
@@ -110,22 +85,22 @@ export class BackupInfoCollector {
     event: OperationEventType,
     info: BackupInfo[]
   ) => void)[] = [];
-  private backupByOpId: { [key: string]: BackupInfo } = {};
-  private backupBySnapshotId: { [key: string]: BackupInfo } = {};
+  private backupByOpId: Map<bigint, BackupInfo> = new Map();
+  private backupBySnapshotId: Map<string, BackupInfo> = new Map();
 
   private createBackup(operations: Operation[]): BackupInfo {
     // deduplicate and sort operations.
     operations.sort((a, b) => {
-      return parseInt(b.unixTimeStartMs!) - parseInt(a.unixTimeStartMs!);
+      return Number(b.unixTimeStartMs - a.unixTimeStartMs);
     });
 
     // use the lowest ID of all operations as the ID of the backup, this will be the first created operation.
     const id = operations.reduce((prev, curr) => {
-      return prev < curr.id! ? prev : curr.id!;
+      return prev < curr.id ? prev : curr.id;
     }, operations[0].id!);
 
-    const startTimeMs = parseInt(operations[0].unixTimeStartMs!);
-    const endTimeMs = parseInt(operations[operations.length - 1].unixTimeEndMs!);
+    const startTimeMs = Number(operations[0].unixTimeStartMs);
+    const endTimeMs = Number(operations[operations.length - 1].unixTimeEndMs!);
     const displayTime = new Date(startTimeMs);
     let displayType = DisplayType.SNAPSHOT;
     if (operations.length === 1) {
@@ -144,16 +119,16 @@ export class BackupInfoCollector {
     let snapshotInfo = undefined;
     let forgotten = false;
     for (const op of operations) {
-      if (op.operationBackup) {
-        backupLastStatus = op.operationBackup.lastStatus;
-      } else if (op.operationIndexSnapshot) {
-        snapshotInfo = op.operationIndexSnapshot.snapshot;
-        forgotten = op.operationIndexSnapshot.forgot || false;
+      if (op.op.case === "operationBackup") {
+        backupLastStatus = op.op.value.lastStatus;
+      } else if (op.op.case === "operationIndexSnapshot") {
+        snapshotInfo = op.op.value.snapshot;
+        forgotten = op.op.value.forgot || false;
       }
     }
 
     return {
-      id,
+      id: id.toString(16),
       startTimeMs,
       endTimeMs,
       displayTime,
@@ -170,9 +145,9 @@ export class BackupInfoCollector {
 
   private addHelper(op: Operation): BackupInfo {
     if (op.snapshotId) {
-      delete this.backupByOpId[op.id!];
+      this.backupByOpId.delete(op.id);
 
-      const existing = this.backupBySnapshotId[op.snapshotId!];
+      const existing = this.backupBySnapshotId.get(op.snapshotId)
       let operations: Operation[];
       if (existing) {
         operations = [...existing.operations];
@@ -187,11 +162,11 @@ export class BackupInfoCollector {
       }
 
       const newInfo = this.createBackup(operations);
-      this.backupBySnapshotId[op.snapshotId!] = newInfo;
+      this.backupBySnapshotId.set(op.snapshotId, newInfo);
       return newInfo;
     } else {
       const newInfo = this.createBackup([op]);
-      this.backupByOpId[op.id!] = newInfo;
+      this.backupByOpId.set(op.id, newInfo);
       return newInfo;
     }
   }
@@ -205,9 +180,9 @@ export class BackupInfoCollector {
   // removeOperaiton is not quite correct from a formal standpoint; but will look correct in the UI.
   public removeOperation(op: Operation) {
     if (op.snapshotId) {
-      delete this.backupBySnapshotId[op.snapshotId];
+      this.backupBySnapshotId.delete(op.snapshotId);
     } else {
-      delete this.backupByOpId[op.id!];
+      this.backupByOpId.delete(op.id);
     }
 
     this.listeners.forEach((l) => l(OperationEventType.EVENT_DELETED, this.getAll()));
@@ -222,9 +197,10 @@ export class BackupInfoCollector {
   }
 
   public getAll(): BackupInfo[] {
-    const arr = [];
-    arr.push(...Object.values(this.backupByOpId));
-    arr.push(...Object.values(this.backupBySnapshotId));
+    const arr = [
+      ...this.backupByOpId.values(),
+      ...this.backupBySnapshotId.values(),
+    ];
     return arr.filter((b) => !b.forgotten && !shouldHideStatus(b.status));
   }
 
@@ -250,20 +226,19 @@ export const shouldHideStatus = (status: OperationStatus) => {
 };
 
 export const getTypeForDisplay = (op: Operation) => {
-  if (op.operationForget) {
-    return DisplayType.FORGET;
-  } else if (op.operationPrune) {
-    return DisplayType.PRUNE;
-  } else if (op.operationBackup) {
-    return DisplayType.BACKUP;
-  } else if (op.operationIndexSnapshot) {
-    return DisplayType.SNAPSHOT;
-  } else if (op.operationPrune) {
-    return DisplayType.PRUNE;
-  } else if (op.operationRestore) {
-    return DisplayType.RESTORE;
-  } else {
-    return DisplayType.UNKNOWN;
+  switch (op.op.case) {
+    case "operationBackup":
+      return DisplayType.BACKUP;
+    case "operationIndexSnapshot":
+      return DisplayType.SNAPSHOT;
+    case "operationForget":
+      return DisplayType.FORGET;
+    case "operationPrune":
+      return DisplayType.PRUNE;
+    case "operationRestore":
+      return DisplayType.RESTORE;
+    default:
+      return DisplayType.UNKNOWN;
   }
 };
 
@@ -304,7 +279,7 @@ export const detailsForOperation = (
       break;
     case OperationStatus.STATUS_INPROGRESS:
       state = "runnning";
-      duration = new Date().getTime() - parseInt(op.unixTimeStartMs!);
+      duration = new Date().getTime() - Number(op.unixTimeStartMs);
       color = "blue";
       break;
     case OperationStatus.STATUS_ERROR:
@@ -330,25 +305,29 @@ export const detailsForOperation = (
 
   switch (op.status) {
     case OperationStatus.STATUS_INPROGRESS:
-      duration = new Date().getTime() - parseInt(op.unixTimeStartMs!);
+      duration = new Date().getTime() - Number(op.unixTimeStartMs);
 
-      if (op.operationBackup) {
-        const backup = op.operationBackup;
-        if (backup.lastStatus && backup.lastStatus.status) {
-          percentage = (backup.lastStatus.status.percentDone || 0) * 100;
-        } else if (backup.lastStatus && backup.lastStatus.summary) {
-          percentage = 100;
+      if (op.op.case === "operationBackup") {
+        const backup = op.op.value;
+        switch (backup.lastStatus?.entry.case) {
+          case "status":
+            percentage = (backup.lastStatus!.entry.value.percentDone || 0) * 100;
+            break;
+          case "summary":
+            percentage = 100;
+            break;
+          default:
+            break;
         }
-      } else if (op.operationRestore) {
-        const restore = op.operationRestore;
+      } else if (op.op.case === "operationRestore") {
+        const restore = op.op.value;
         if (restore.status) {
           percentage = (restore.status.percentDone || 1) * 100;
         }
       }
-
       break;
     default:
-      duration = parseInt(op.unixTimeEndMs!) - parseInt(op.unixTimeStartMs!);
+      duration = Number(op.unixTimeEndMs - op.unixTimeStartMs);
       break;
   }
 
