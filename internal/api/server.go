@@ -193,11 +193,9 @@ func (s *Server) GetOperationEvents(ctx context.Context, req *connect.Request[em
 			return
 		}
 
-		go func() {
-			if err := resp.Send(event); err != nil {
-				errorChan <- fmt.Errorf("failed to send event: %w", err)
-			}
-		}()
+		if err := resp.Send(event); err != nil {
+			errorChan <- fmt.Errorf("failed to send event: %w", err)
+		}
 	}
 	s.oplog.Subscribe(&callback)
 	defer s.oplog.Unsubscribe(&callback)
