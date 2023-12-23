@@ -49,7 +49,6 @@ export const AddPlanModal = ({
 
     try {
       let config = await fetchConfig();
-      config.plans = config.plans || [];
 
       if (!template) {
         throw new Error("template not found");
@@ -82,10 +81,9 @@ export const AddPlanModal = ({
     setConfirmLoading(true);
 
     try {
-      let plan = await validateForm<Plan>(form);
+      let plan = new Plan(await validateForm<Plan>(form));
 
       let config = await fetchConfig();
-      config.plans = config.plans || [];
 
       // Merge the new plan (or update) into the config
       if (template) {
@@ -103,6 +101,7 @@ export const AddPlanModal = ({
       showModal(null);
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);
+      console.error(e);
     } finally {
       setConfirmLoading(false);
     }
