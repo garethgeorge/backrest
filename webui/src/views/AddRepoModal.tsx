@@ -320,7 +320,7 @@ export const AddRepoModal = ({
                       <Input
                         placeholder="KEY=VALUE"
                         onBlur={() => form.validateFields()}
-                        style={{ width: "60%" }}
+                        style={{ width: "90%" }}
                       />
                     </Form.Item>
                     <MinusCircleOutlined
@@ -337,7 +337,7 @@ export const AddRepoModal = ({
                   <Button
                     type="dashed"
                     onClick={() => add()}
-                    style={{ width: "60%" }}
+                    style={{ width: "90%" }}
                     icon={<PlusOutlined />}
                   >
                     Set Environment Variable
