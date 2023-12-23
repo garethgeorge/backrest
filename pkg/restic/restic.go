@@ -137,7 +137,7 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 		if err := cmd.Wait(); err != nil {
 			var exitErr *exec.ExitError
 			if errors.As(err, &exitErr) {
-				if exitErr.ExitCode() == 1 {
+				if exitErr.ExitCode() == 3 {
 					cmdErr = ErrPartialBackup
 				} else {
 					cmdErr = fmt.Errorf("exit code %v: %w", exitErr.ExitCode(), ErrBackupFailed)
@@ -151,7 +151,7 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 	wg.Wait()
 
 	if cmdErr != nil || readErr != nil {
-		return nil, newCmdErrorPreformatted(cmd, output.String(), errors.Join(cmdErr, readErr))
+		return summary, newCmdErrorPreformatted(cmd, output.String(), errors.Join(cmdErr, readErr))
 	}
 
 	return summary, nil
