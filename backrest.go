@@ -73,7 +73,7 @@ func main() {
 	// Create and serve the HTTP gateway
 	apiServer := api.NewServer(
 		configStore,
-		orchestrator, // TODO: eliminate default config
+		orchestrator,
 		oplog,
 	)
 

@@ -107,3 +107,13 @@ func RestoreProgressEntryToProto(p *restic.RestoreProgressEntry) *v1.RestoreProg
 		PercentDone:   p.PercentDone,
 	}
 }
+
+func RepoStatsToProto(s *restic.RepoStats) *v1.RepoStats {
+	return &v1.RepoStats{
+		TotalSize:             int64(s.TotalSize),
+		TotalUncompressedSize: int64(s.TotalUncompressedSize),
+		CompressionRatio:      s.CompressionRatio,
+		TotalBlobCount:        int64(s.TotalBlobCount),
+		SnapshotCount:         int64(s.SnapshotsCount),
+	}
+}
