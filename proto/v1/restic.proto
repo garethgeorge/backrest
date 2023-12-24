@@ -66,3 +66,11 @@ message RestoreProgressEntry {
   int64 files_restored = 6;
   double percent_done = 7; // 0.0 - 1.0
 }
+
+message RepoStats {
+  int64 total_size = 1;
+  int64 total_uncompressed_size = 2;
+  double compression_ratio = 3;
+  int64 total_blob_count = 5;
+  int64 snapshot_count = 6;
+}

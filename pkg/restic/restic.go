@@ -347,6 +347,30 @@ func (r *Repo) Unlock(ctx context.Context, opts ...GenericOption) error {
 	return nil
 }
 
+func (r *Repo) Stats(ctx context.Context, opts ...GenericOption) (*RepoStats, error) {
+	opt := resolveOpts(opts)
+
+	args := []string{"stats", "--json", "--mode=raw-data"}
+	args = append(args, r.extraArgs...)
+	args = append(args, opt.extraArgs...)
+
+	cmd := exec.CommandContext(ctx, r.cmd, args...)
+	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, opt.extraEnv...)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, newCmdError(cmd, string(output), err)
+	}
+
+	var stats RepoStats
+	if err := json.Unmarshal(output, &stats); err != nil {
+		return nil, newCmdError(cmd, string(output), fmt.Errorf("command output is not valid JSON: %w", err))
+	}
+
+	return &stats, nil
+}
+
 type RetentionPolicy struct {
 	KeepLastN          int    // keep the last n snapshots.
 	KeepHourly         int    // keep the last n hourly snapshots.

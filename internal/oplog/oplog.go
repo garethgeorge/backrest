@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -30,12 +29,11 @@ const (
 var ErrNotExist = errors.New("operation does not exist")
 
 var (
-	SystemBucket          = []byte("oplog.system")          // system stores metadata
-	OpLogBucket           = []byte("oplog.log")             // oplog stores existant operations.
-	OpLogSoftDeleteBucket = []byte("oplog.log_soft_delete") // oplog_soft_delete stores soft deleted operations
-	RepoIndexBucket       = []byte("oplog.repo_idx")        // repo_index tracks IDs of operations affecting a given repo
-	PlanIndexBucket       = []byte("oplog.plan_idx")        // plan_index tracks IDs of operations affecting a given plan
-	SnapshotIndexBucket   = []byte("oplog.snapshot_idx")    // snapshot_index tracks IDs of operations affecting a given snapshot
+	SystemBucket        = []byte("oplog.system")       // system stores metadata
+	OpLogBucket         = []byte("oplog.log")          // oplog stores existant operations.
+	RepoIndexBucket     = []byte("oplog.repo_idx")     // repo_index tracks IDs of operations affecting a given repo
+	PlanIndexBucket     = []byte("oplog.plan_idx")     // plan_index tracks IDs of operations affecting a given plan
+	SnapshotIndexBucket = []byte("oplog.snapshot_idx") // snapshot_index tracks IDs of operations affecting a given snapshot
 )
 
 // OpLog represents a log of operations performed.
@@ -45,7 +43,6 @@ type OpLog struct {
 
 	subscribersMu sync.RWMutex
 	subscribers   []*func(*v1.Operation, *v1.Operation)
-	nextId        atomic.Int64
 }
 
 func NewOpLog(databasePath string) (*OpLog, error) {
@@ -61,12 +58,11 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 	o := &OpLog{
 		db: db,
 	}
-	o.nextId.Store(1)
 
 	if err := db.Update(func(tx *bolt.Tx) error {
 		// Create the buckets if they don't exist
 		for _, bucket := range [][]byte{
-			SystemBucket, OpLogBucket, OpLogSoftDeleteBucket, RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket,
+			SystemBucket, OpLogBucket, RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket,
 		} {
 			if _, err := tx.CreateBucketIfNotExists(bucket); err != nil {
 				return fmt.Errorf("creating bucket %s: %s", string(bucket), err)
@@ -194,17 +190,7 @@ func (o *OpLog) Delete(ids ...int64) error {
 				return fmt.Errorf("deleting operation %v: %w", id, err)
 			}
 			removedOps = append(removedOps, removed)
-
-			b := tx.Bucket(OpLogSoftDeleteBucket)
-			val, err := proto.Marshal(removed)
-			if err != nil {
-				return fmt.Errorf("marshalling operation %v: %w", id, err)
-			}
-			if err := b.Put(serializationutil.Itob(id), val); err != nil {
-				return fmt.Errorf("putting operation %v into soft delete bucket: %w", id, err)
-			}
 		}
-
 		return nil
 	})
 	if err == nil {

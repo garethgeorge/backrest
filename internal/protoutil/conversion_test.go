@@ -116,3 +116,45 @@ func TestBackupProgressEntryToProto(t *testing.T) {
 		})
 	}
 }
+
+func TestRepoStatsToProto(t *testing.T) {
+	cases := []struct {
+		name  string
+		stats *restic.RepoStats
+		want  *v1.RepoStats
+	}{
+		{
+			name:  "no stats",
+			stats: &restic.RepoStats{},
+			want:  &v1.RepoStats{},
+		},
+		{
+			name: "with stats",
+			stats: &restic.RepoStats{
+				TotalSize:              1,
+				TotalUncompressedSize:  2,
+				CompressionRatio:       3,
+				TotalBlobCount:         5,
+				CompressionProgress:    6,
+				CompressionSpaceSaving: 7,
+				SnapshotsCount:         8,
+			},
+			want: &v1.RepoStats{
+				TotalSize:             1,
+				TotalUncompressedSize: 2,
+				CompressionRatio:      3,
+				TotalBlobCount:        5,
+				SnapshotCount:         8,
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := RepoStatsToProto(c.stats)
+			if !proto.Equal(got, c.want) {
+				t.Errorf("wanted: %+v, got: %+v", c.want, got)
+			}
+		})
+	}
+}

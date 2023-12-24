@@ -362,3 +362,42 @@ func TestResticRestore(t *testing.T) {
 		t.Errorf("wanted 101 files to be restored, got: %d", summary.TotalFiles)
 	}
 }
+
+func TestResticStats(t *testing.T) {
+	t.Parallel()
+
+	repo := t.TempDir()
+	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
+		Id:       "test",
+		Uri:      repo,
+		Password: "test",
+	}, WithFlags("--no-cache"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	testData := helpers.CreateTestData(t)
+
+	_, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
+	if err != nil {
+		t.Fatalf("failed to backup and create new snapshot: %v", err)
+	}
+
+	// restore all files
+	stats, err := r.Stats(context.Background())
+	if err != nil {
+		t.Fatalf("failed to get stats: %v", err)
+	}
+	if stats.SnapshotsCount != 1 {
+		t.Errorf("wanted 1 snapshot, got: %d", stats.SnapshotsCount)
+	}
+	if stats.TotalSize == 0 {
+		t.Errorf("wanted non-zero total size, got: %d", stats.TotalSize)
+	}
+	if stats.TotalUncompressedSize == 0 {
+		t.Errorf("wanted non-zero total uncompressed size, got: %d", stats.TotalUncompressedSize)
+	}
+	if stats.TotalBlobCount == 0 {
+		t.Errorf("wanted non-zero total blob count, got: %d", stats.TotalBlobCount)
+	}
+}

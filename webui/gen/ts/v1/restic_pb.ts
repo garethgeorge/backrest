@@ -443,3 +443,64 @@ export class RestoreProgressEntry extends Message<RestoreProgressEntry> {
   }
 }
 
+/**
+ * @generated from message v1.RepoStats
+ */
+export class RepoStats extends Message<RepoStats> {
+  /**
+   * @generated from field: int64 total_size = 1;
+   */
+  totalSize = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 total_uncompressed_size = 2;
+   */
+  totalUncompressedSize = protoInt64.zero;
+
+  /**
+   * @generated from field: double compression_ratio = 3;
+   */
+  compressionRatio = 0;
+
+  /**
+   * @generated from field: int64 total_blob_count = 5;
+   */
+  totalBlobCount = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 snapshot_count = 6;
+   */
+  snapshotCount = protoInt64.zero;
+
+  constructor(data?: PartialMessage<RepoStats>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.RepoStats";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "total_size", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "total_uncompressed_size", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "compression_ratio", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
+    { no: 5, name: "total_blob_count", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 6, name: "snapshot_count", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RepoStats {
+    return new RepoStats().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RepoStats {
+    return new RepoStats().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RepoStats {
+    return new RepoStats().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RepoStats | PlainMessage<RepoStats> | undefined, b: RepoStats | PlainMessage<RepoStats> | undefined): boolean {
+    return proto3.util.equals(RepoStats, a, b);
+  }
+}
+
