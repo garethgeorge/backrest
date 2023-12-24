@@ -12,7 +12,7 @@ before:
   hooks:
     - go mod tidy
     - go generate ./...
-    - sh -c "ls && cd ./webui && npm i && npm run build"
+    - sh -c "ls && cd ./webui && npm i && npm run build && gzip ./dist/*"
 
 builds:
   - main: .
