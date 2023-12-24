@@ -1,13 +1,8 @@
 #! /bin/bash
 
-if [ "$EUID" -ne "0" ]; then
-  echo "Please run as root e.g. sudo ./install.sh"
-  exit
-fi
-
 uninstall_unix() {
   echo "Uninstalling backrest from /usr/local/bin/backrest"
-  rm -f /usr/local/bin/backrest
+  sudo rm -f /usr/local/bin/backrest
 }
 
 remove_systemd_service() {
@@ -17,19 +12,19 @@ remove_systemd_service() {
   fi
 
   echo "Removing systemd service at /etc/systemd/system/backrest.service"
-  systemctl stop backrest
-  systemctl disable backrest
-  rm -f /etc/systemd/system/backrest.service
+  sudo systemctl stop backrest
+  sudo systemctl disable backrest
+  sudo rm -f /etc/systemd/system/backrest.service
 
   echo "Reloading systemd daemon"
-  systemctl daemon-reload
+  sudo systemctl daemon-reload
 }
 
 remove_launchd_plist() {
   echo "Removing launchd plist at /Library/LaunchAgents/com.backrest.plist"
 
   launchctl unload /Library/LaunchAgents/com.backrest.plist || true
-  rm /Library/LaunchAgents/com.backrest.plist
+  sudo rm /Library/LaunchAgents/com.backrest.plist
 }
 
 OS=$(uname -s)

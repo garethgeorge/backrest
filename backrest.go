@@ -80,7 +80,25 @@ func main() {
 	mux := http.NewServeMux()
 
 	if box, err := rice.FindBox("webui/dist"); err == nil {
-		mux.Handle("/", http.FileServer(box.HTTPBox()))
+		mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, "/") {
+				r.URL.Path += "index.html"
+			}
+			f, err := box.Open(r.URL.Path + ".gz")
+			if err == nil {
+				defer f.Close()
+				w.Header().Set("Content-Encoding", "gzip")
+				http.ServeContent(w, r, r.URL.Path, box.Time(), f)
+				return
+			}
+			f, err = box.Open(r.URL.Path)
+			if err == nil {
+				defer f.Close()
+				http.ServeContent(w, r, r.URL.Path, box.Time(), f)
+				return
+			}
+			http.Error(w, "Not found", http.StatusNotFound)
+		}))
 	} else {
 		zap.S().Warnf("Error loading static assets, not serving UI: %v", err)
 	}
