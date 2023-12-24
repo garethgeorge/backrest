@@ -212,7 +212,7 @@ func (o *OpLog) notifyHelper(old *v1.Operation, new *v1.Operation) {
 func (o *OpLog) getOperationHelper(b *bolt.Bucket, id int64) (*v1.Operation, error) {
 	bytes := b.Get(serializationutil.Itob(id))
 	if bytes == nil {
-		return nil, ErrNotExist
+		return nil, fmt.Errorf("opid %v: %w", id, ErrNotExist)
 	}
 
 	var op v1.Operation
