@@ -4,7 +4,9 @@ import {
   DatabaseOutlined,
   PlusOutlined,
   CheckCircleOutlined,
+  ExclamationOutlined,
   SettingOutlined,
+  LoadingOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { Button, Layout, Menu, Spin, theme } from "antd";
@@ -16,6 +18,9 @@ import { useShowModal } from "../components/ModalManager";
 import { MainContentArea, useSetContent } from "./MainContentArea";
 import { uiBuildVersion } from "../state/buildcfg";
 import { ActivityBar } from "../components/ActivityBar";
+import { OperationStatus } from "../../gen/ts/v1/operations_pb";
+import { colorForStatus, getStatusForPlan, getStatusForRepo, subscribeToOperations, unsubscribeFromOperations } from "../state/oplog";
+import _ from "lodash";
 
 const { Header, Sider } = Layout;
 
@@ -116,7 +121,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     ...configPlans.map((plan) => {
       return {
         key: "p-" + plan.id,
-        icon: <CheckCircleOutlined style={{ color: "green" }} />,
+        icon: <IconForResource planId={plan.id} />,
         label: (
           <div className="backrest visible-on-hover">
             {plan.id}{" "}
@@ -158,7 +163,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     ...configRepos.map((repo) => {
       return {
         key: "r-" + repo.id,
-        icon: <CheckCircleOutlined style={{ color: "green" }} />,
+        icon: <IconForResource repoId={repo.id} />,
         label: (
           <div className="backrest visible-on-hover">
             {repo.id}{" "}
@@ -202,3 +207,39 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     },
   ];
 };
+
+const IconForResource = ({ planId, repoId }: { planId?: string, repoId?: string }) => {
+  const [status, setStatus] = useState(OperationStatus.STATUS_UNKNOWN);
+  useEffect(() => {
+    const load = async () => {
+      if (planId) {
+        setStatus(await getStatusForPlan(planId));
+      } else if (repoId) {
+        setStatus(await getStatusForRepo(repoId));
+      }
+    };
+    load();
+    const refresh = _.debounce(load, 5000);
+    subscribeToOperations(refresh);
+    return () => {
+      unsubscribeFromOperations(refresh);
+    }
+  }, [planId, repoId]);
+  return iconForStatus(status);
+}
+
+const iconForStatus = (status: OperationStatus) => {
+  const color = colorForStatus(status);
+  switch (status) {
+    case OperationStatus.STATUS_ERROR:
+      return <ExclamationOutlined style={{ color }} />;
+    case OperationStatus.STATUS_WARNING:
+      return <ExclamationOutlined style={{ color }} />;
+    case OperationStatus.STATUS_INPROGRESS:
+      return <LoadingOutlined style={{ color }} />
+    case OperationStatus.STATUS_UNKNOWN:
+      return <LoadingOutlined style={{ color }} />;
+    default:
+      return <CheckCircleOutlined style={{ color }} />;
+  }
+}

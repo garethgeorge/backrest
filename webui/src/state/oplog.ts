@@ -53,6 +53,48 @@ export const unsubscribeFromOperations = (
   }
 };
 
+export const getStatusForPlan = async (plan: string) => {
+  const req = new GetOperationsRequest({
+    planId: plan,
+    lastN: BigInt(8),
+  });
+  return await getStatus(req);
+}
+
+export const getStatusForRepo = async (repo: string) => {
+  const req = new GetOperationsRequest({
+    repoId: repo,
+    lastN: BigInt(8),
+  });
+  return await getStatus(req);
+}
+
+// getStatus returns the status of the last N operations that belong to a single snapshot.
+const getStatus = async (req: GetOperationsRequest) => {
+  let ops = await getOperations(req);
+  ops = ops.reverse().filter(op => op.status !== OperationStatus.STATUS_PENDING);
+  if (ops.length === 0) {
+    return OperationStatus.STATUS_SUCCESS;
+  }
+  const snapshotId = ops[0].snapshotId;
+  for (const op of ops) {
+    if (op.status === OperationStatus.STATUS_PENDING) {
+      continue;
+    }
+    if (op.snapshotId !== snapshotId) {
+      break;
+    }
+    if (
+      op.status !== OperationStatus.STATUS_SUCCESS &&
+      op.status !== OperationStatus.STATUS_USER_CANCELLED &&
+      op.status !== OperationStatus.STATUS_SYSTEM_CANCELLED
+    ) {
+      return op.status;
+    }
+  }
+  return OperationStatus.STATUS_SUCCESS;
+}
+
 export enum DisplayType {
   UNKNOWN,
   BACKUP,

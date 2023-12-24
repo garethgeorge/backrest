@@ -360,7 +360,7 @@ func (s *Server) ClearHistory(ctx context.Context, req *connect.Request[v1.Clear
 		return nil, fmt.Errorf("failed to delete operations: %w", err)
 	}
 
-	return nil, err
+	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
 func (s *Server) PathAutocomplete(ctx context.Context, path *connect.Request[types.StringValue]) (*connect.Response[types.StringList], error) {
