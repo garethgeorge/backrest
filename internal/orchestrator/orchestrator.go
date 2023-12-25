@@ -27,7 +27,7 @@ const (
 	TaskPriorityIndexSnapshots = 101
 	TaskPriorityForget         = 102
 	TaskPriorityPrune          = 103
-	TaskPriorityStats          = 104
+	TaskPriorityStats          = -1 // very low priority.
 )
 
 // Orchestrator is responsible for managing repos and backups.
