@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/garethgeorge/backrest/compare/v0.8.0...v0.8.1) (2023-12-25)
+
+
+### Bug Fixes
+
+* dockerfile for 0.8.1 release ([94c804c](https://github.com/garethgeorge/backrest/commit/94c804c223998111bda76838d2066593ea5a5b7e))
+
 ## [0.8.0](https://github.com/garethgeorge/backrest/compare/v0.7.0...v0.8.0) (2023-12-25)
 
 
