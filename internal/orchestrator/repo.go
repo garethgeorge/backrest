@@ -195,6 +195,19 @@ func (r *RepoOrchestrator) Unlock(ctx context.Context) error {
 	return nil
 }
 
+func (r *RepoOrchestrator) Stats(ctx context.Context) (*v1.RepoStats, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.l.Debug("Get Stats")
+	stats, err := r.repo.Stats(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("stats for repo %v: %w", r.repoConfig.Id, err)
+	}
+
+	return protoutil.RepoStatsToProto(stats), nil
+}
+
 func tagForPlan(plan *v1.Plan) string {
 	return fmt.Sprintf("plan:%s", plan.Id)
 }

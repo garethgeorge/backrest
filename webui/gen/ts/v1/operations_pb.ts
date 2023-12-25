@@ -5,7 +5,7 @@
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
-import { BackupProgressEntry, ResticSnapshot, RestoreProgressEntry } from "./restic_pb.js";
+import { BackupProgressEntry, RepoStats, ResticSnapshot, RestoreProgressEntry } from "./restic_pb.js";
 import { RetentionPolicy } from "./config_pb.js";
 
 /**
@@ -242,6 +242,12 @@ export class Operation extends Message<Operation> {
      */
     value: OperationRestore;
     case: "operationRestore";
+  } | {
+    /**
+     * @generated from field: v1.OperationStats operation_stats = 105;
+     */
+    value: OperationStats;
+    case: "operationStats";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Operation>) {
@@ -265,6 +271,7 @@ export class Operation extends Message<Operation> {
     { no: 102, name: "operation_forget", kind: "message", T: OperationForget, oneof: "op" },
     { no: 103, name: "operation_prune", kind: "message", T: OperationPrune, oneof: "op" },
     { no: 104, name: "operation_restore", kind: "message", T: OperationRestore, oneof: "op" },
+    { no: 105, name: "operation_stats", kind: "message", T: OperationStats, oneof: "op" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Operation {
@@ -559,6 +566,43 @@ export class OperationRestore extends Message<OperationRestore> {
 
   static equals(a: OperationRestore | PlainMessage<OperationRestore> | undefined, b: OperationRestore | PlainMessage<OperationRestore> | undefined): boolean {
     return proto3.util.equals(OperationRestore, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.OperationStats
+ */
+export class OperationStats extends Message<OperationStats> {
+  /**
+   * @generated from field: v1.RepoStats stats = 1;
+   */
+  stats?: RepoStats;
+
+  constructor(data?: PartialMessage<OperationStats>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.OperationStats";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "stats", kind: "message", T: RepoStats },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationStats {
+    return new OperationStats().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationStats {
+    return new OperationStats().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationStats {
+    return new OperationStats().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: OperationStats | PlainMessage<OperationStats> | undefined, b: OperationStats | PlainMessage<OperationStats> | undefined): boolean {
+    return proto3.util.equals(OperationStats, a, b);
   }
 }
 

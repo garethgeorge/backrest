@@ -135,6 +135,17 @@ export const Backrest = {
       kind: MethodKind.Unary,
     },
     /**
+     * Stats runs 'restic stats` on the repository and appends the results to the operations log.
+     *
+     * @generated from rpc v1.Backrest.Stats
+     */
+    stats: {
+      name: "Stats",
+      I: StringValue,
+      O: Empty,
+      kind: MethodKind.Unary,
+    },
+    /**
      * Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
      *
      * @generated from rpc v1.Backrest.Cancel
@@ -146,6 +157,8 @@ export const Backrest = {
       kind: MethodKind.Unary,
     },
     /**
+     * Clears the history of operations
+     *
      * @generated from rpc v1.Backrest.ClearHistory
      */
     clearHistory: {

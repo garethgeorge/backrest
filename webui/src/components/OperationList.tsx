@@ -3,6 +3,7 @@ import {
   Operation,
   OperationEvent,
   OperationEventType,
+  OperationForget,
   OperationStatus,
 } from "../../gen/ts/v1/operations_pb";
 import {
@@ -31,6 +32,7 @@ import {
   displayTypeToString,
   getOperations,
   getTypeForDisplay,
+  shouldHideOperation,
   shouldHideStatus,
   subscribeToOperations,
   unsubscribeFromOperations,
@@ -131,7 +133,7 @@ export const OperationList = ({
         return (
           <Card size="small" style={{ margin: "5px" }}>
             {ops.map((op) => {
-              if (shouldHideStatus(op.status!)) {
+              if (shouldHideOperation(op)) {
                 return null;
               }
               return <OperationRow alertApi={alertApi!} key={op.id} operation={op} showPlan={showPlan || false} />
@@ -244,57 +246,7 @@ export const OperationRow = ({
     if (forgetOp.forget?.length === 0) {
       return null;
     }
-
-    const policy = forgetOp.policy! || {};
-    const policyDesc = [];
-    if (policy.keepLastN) {
-      policyDesc.push(`Keep Last ${policy.keepLastN} Snapshots`);
-    }
-    if (policy.keepHourly) {
-      policyDesc.push(`Keep Hourly for ${policy.keepHourly} Hours`);
-    }
-    if (policy.keepDaily) {
-      policyDesc.push(`Keep Daily for ${policy.keepDaily} Days`);
-    }
-    if (policy.keepWeekly) {
-      policyDesc.push(`Keep Weekly for ${policy.keepWeekly} Weeks`);
-    }
-    if (policy.keepMonthly) {
-      policyDesc.push(`Keep Monthly for ${policy.keepMonthly} Months`);
-    }
-    if (policy.keepYearly) {
-      policyDesc.push(`Keep Yearly for ${policy.keepYearly} Years`);
-    }
-
-    body = (
-      <>
-        <p></p>
-        <Collapse
-          size="small"
-          destroyInactivePanel
-          items={[
-            {
-              key: 1,
-              label: "Removed " + forgetOp.forget?.length + " Snapshots",
-              children: <>
-                Removed snapshots:
-                <pre>{forgetOp.forget?.map((f) => (
-                  <div key={f.id}>
-                    {"removed snapshot " + normalizeSnapshotId(f.id!) + " taken at " + formatTime(Number(f.unixTimeMs))} <br />
-                  </div>
-                ))}</pre>
-                Policy:
-                <ul>
-                  {policyDesc.map((desc, idx) => (
-                    <li key={idx}>{desc}</li>
-                  ))}
-                </ul>
-              </>,
-            },
-          ]}
-        />
-      </>
-    );
+    body = <ForgetOperationDetails forgetOp={forgetOp} />
   } else if (operation.op.case === "operationPrune") {
     const prune = operation.op.value;
     body = (
@@ -407,9 +359,6 @@ const BackupOperationStatus = ({
       <>
         <Progress percent={progress} status="active" />
         <br />
-        {st.currentFile && st.currentFile.length > 0 ? (
-          <pre>Current file: {st.currentFile.join("\n")}</pre>
-        ) : null}
         <Row gutter={16}>
           <Col span={12}>
             <Typography.Text strong>Bytes Done/Total</Typography.Text>
@@ -422,6 +371,9 @@ const BackupOperationStatus = ({
             {Number(st.filesDone)}/{Number(st.totalFiles)}
           </Col>
         </Row>
+        {st.currentFile && st.currentFile.length > 0 ? (
+          <pre>Current file: {st.currentFile.join("\n")}</pre>
+        ) : null}
       </>
     );
   } else if (status.entry.case === "summary") {
@@ -473,3 +425,53 @@ const BackupOperationStatus = ({
     return <>No fields set. This shouldn't happen</>;
   }
 };
+
+const ForgetOperationDetails = ({ forgetOp }: { forgetOp: OperationForget }) => {
+  const policy = forgetOp.policy! || {};
+  const policyDesc = [];
+  if (policy.keepLastN) {
+    policyDesc.push(`Keep Last ${policy.keepLastN} Snapshots`);
+  }
+  if (policy.keepHourly) {
+    policyDesc.push(`Keep Hourly for ${policy.keepHourly} Hours`);
+  }
+  if (policy.keepDaily) {
+    policyDesc.push(`Keep Daily for ${policy.keepDaily} Days`);
+  }
+  if (policy.keepWeekly) {
+    policyDesc.push(`Keep Weekly for ${policy.keepWeekly} Weeks`);
+  }
+  if (policy.keepMonthly) {
+    policyDesc.push(`Keep Monthly for ${policy.keepMonthly} Months`);
+  }
+  if (policy.keepYearly) {
+    policyDesc.push(`Keep Yearly for ${policy.keepYearly} Years`);
+  }
+
+  return (
+    <Collapse
+      size="small"
+      destroyInactivePanel
+      items={[
+        {
+          key: 1,
+          label: "Removed " + forgetOp.forget?.length + " Snapshots",
+          children: <>
+            Removed snapshots:
+            <pre>{forgetOp.forget?.map((f) => (
+              <div key={f.id}>
+                {"removed snapshot " + normalizeSnapshotId(f.id!) + " taken at " + formatTime(Number(f.unixTimeMs))} <br />
+              </div>
+            ))}</pre>
+            Policy:
+            <ul>
+              {policyDesc.map((desc, idx) => (
+                <li key={idx}>{desc}</li>
+              ))}
+            </ul>
+          </>,
+        },
+      ]}
+    />
+  );
+}

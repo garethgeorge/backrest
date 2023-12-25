@@ -33,6 +33,7 @@ const (
 	Backrest_Forget_FullMethodName             = "/v1.Backrest/Forget"
 	Backrest_Restore_FullMethodName            = "/v1.Backrest/Restore"
 	Backrest_Unlock_FullMethodName             = "/v1.Backrest/Unlock"
+	Backrest_Stats_FullMethodName              = "/v1.Backrest/Stats"
 	Backrest_Cancel_FullMethodName             = "/v1.Backrest/Cancel"
 	Backrest_ClearHistory_FullMethodName       = "/v1.Backrest/ClearHistory"
 	Backrest_PathAutocomplete_FullMethodName   = "/v1.Backrest/PathAutocomplete"
@@ -59,8 +60,11 @@ type BackrestClient interface {
 	Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
 	Unlock(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Stats runs 'restic stats` on the repository and appends the results to the operations log.
+	Stats(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Clears the history of operations
 	ClearHistory(ctx context.Context, in *ClearHistoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error)
@@ -205,6 +209,15 @@ func (c *backrestClient) Unlock(ctx context.Context, in *types.StringValue, opts
 	return out, nil
 }
 
+func (c *backrestClient) Stats(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Backrest_Stats_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *backrestClient) Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Backrest_Cancel_FullMethodName, in, out, opts...)
@@ -253,8 +266,11 @@ type BackrestServer interface {
 	Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error)
 	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
 	Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error)
+	// Stats runs 'restic stats` on the repository and appends the results to the operations log.
+	Stats(context.Context, *types.StringValue) (*emptypb.Empty, error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error)
+	// Clears the history of operations
 	ClearHistory(context.Context, *ClearHistoryRequest) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error)
@@ -300,6 +316,9 @@ func (UnimplementedBackrestServer) Restore(context.Context, *RestoreSnapshotRequ
 }
 func (UnimplementedBackrestServer) Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Unlock not implemented")
+}
+func (UnimplementedBackrestServer) Stats(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Stats not implemented")
 }
 func (UnimplementedBackrestServer) Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
@@ -542,6 +561,24 @@ func _Backrest_Unlock_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Backrest_Stats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(types.StringValue)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackrestServer).Stats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Backrest_Stats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackrestServer).Stats(ctx, req.(*types.StringValue))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Backrest_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.Int64Value)
 	if err := dec(in); err != nil {
@@ -646,6 +683,10 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Unlock",
 			Handler:    _Backrest_Unlock_Handler,
+		},
+		{
+			MethodName: "Stats",
+			Handler:    _Backrest_Stats_Handler,
 		},
 		{
 			MethodName: "Cancel",

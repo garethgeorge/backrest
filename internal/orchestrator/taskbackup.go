@@ -146,6 +146,7 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 	}
 
 	orchestrator.ScheduleTask(NewOneofIndexSnapshotsTask(orchestrator, plan, at), TaskPriorityIndexSnapshots)
+	orchestrator.ScheduleTask(NewOneofStatsTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityStats)
 
 	return nil
 }

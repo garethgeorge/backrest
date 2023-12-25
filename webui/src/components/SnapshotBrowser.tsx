@@ -199,7 +199,6 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
                   <RestoreModal
                     path={entry.path!}
                     planId={planId}
-                    repoId={repoId}
                     snapshotId={snapshotId}
                   />
                 );
@@ -228,12 +227,10 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
 
 const RestoreModal = ({
   planId,
-  repoId,
   snapshotId,
   path,
 }: {
   planId?: string; // optional: purely to link restore operations to the right plan.
-  repoId: string;
   snapshotId: string;
   path: string;
 }) => {
@@ -260,7 +257,6 @@ const RestoreModal = ({
       const values = await validateForm(form);
       await backrestService.restore({
         planId,
-        repoId,
         snapshotId,
         path,
         target: values.target,
@@ -281,9 +277,7 @@ const RestoreModal = ({
         "Restore " +
         path +
         " from snapshot " +
-        normalizeSnapshotId(snapshotId) +
-        " in " +
-        repoId
+        normalizeSnapshotId(snapshotId)
       }
       width="40vw"
       footer={[
