@@ -102,6 +102,7 @@ export enum DisplayType {
   FORGET,
   PRUNE,
   RESTORE,
+  STATS,
 }
 
 export interface BackupInfo {
@@ -152,7 +153,7 @@ export class BackupInfoCollector {
     // use the latest status that is not cancelled.
     let statusIdx = operations.length - 1;
     let status = OperationStatus.STATUS_SYSTEM_CANCELLED;
-    while (statusIdx !== -1 && shouldHideStatus(status)) {
+    while (statusIdx !== -1 && (shouldHideStatus(status) || status === OperationStatus.STATUS_PENDING)) {
       status = operations[statusIdx].status!;
       statusIdx--;
     }
@@ -263,6 +264,10 @@ export class BackupInfoCollector {
   }
 }
 
+
+export const shouldHideOperation = (operation: Operation) => {
+  return operation.op.case === "operationStats" || shouldHideStatus(operation.status);
+}
 export const shouldHideStatus = (status: OperationStatus) => {
   return status === OperationStatus.STATUS_SYSTEM_CANCELLED;
 };
@@ -279,6 +284,8 @@ export const getTypeForDisplay = (op: Operation) => {
       return DisplayType.PRUNE;
     case "operationRestore":
       return DisplayType.RESTORE;
+    case "operationStats":
+      return DisplayType.STATS;
     default:
       return DisplayType.UNKNOWN;
   }
@@ -296,6 +303,8 @@ export const displayTypeToString = (type: DisplayType) => {
       return "Prune";
     case DisplayType.RESTORE:
       return "Restore";
+    case DisplayType.STATS:
+      return "Stats";
     default:
       return "Unknown";
   }

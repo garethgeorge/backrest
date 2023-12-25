@@ -112,7 +112,6 @@ export const OperationTree = ({
   return (
     <Row>
       <Col span={12}>
-        <h3>Browse Backups</h3>
         <Tree<OpTreeNode>
           treeData={treeData}
           showIcon
@@ -206,39 +205,6 @@ const buildTreePlan = (operations: BackupInfo[]): OpTreeNode[] => {
   if (entries.length === 1) {
     return entries[0].children!;
   }
-  entries.sort(sortByKey);
-  return entries;
-};
-
-const buildTreeYear = (keyPrefix: string, operations: BackupInfo[]): OpTreeNode[] => {
-  const grouped = _.groupBy(operations, (op) => {
-    return localISOTime(op.displayTime).substring(0, 4);
-  });
-
-  const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
-    return {
-      key: keyPrefix + key,
-      title: "" + key,
-      children: buildTreeDay(keyPrefix, value),
-    };
-  });
-  entries.sort(sortByKey);
-  return entries;
-};
-
-const buildTreeMonth = (keyPrefix: string, operations: BackupInfo[]): OpTreeNode[] => {
-  const grouped = _.groupBy(operations, (op) => {
-    return localISOTime(op.displayTime).substring(0, 7);
-  });
-  const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
-    return {
-      key: keyPrefix + key,
-      title: value[0].displayTime.toLocaleString("default", {
-        month: "long",
-      }),
-      children: buildTreeDay(keyPrefix, value),
-    };
-  });
   entries.sort(sortByKey);
   return entries;
 };

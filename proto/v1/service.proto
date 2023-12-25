@@ -41,6 +41,9 @@ service Backrest {
   // Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
   rpc Unlock(types.StringValue) returns (google.protobuf.Empty) {}
 
+  // Stats runs 'restic stats` on the repository and appends the results to the operations log.
+  rpc Stats(types.StringValue) returns (google.protobuf.Empty) {}
+
   // Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
   rpc Cancel(types.Int64Value) returns (google.protobuf.Empty) {}
 
@@ -71,11 +74,10 @@ message GetOperationsRequest {
 }
 
 message RestoreSnapshotRequest {
-  string repo_id = 1;
-  string plan_id = 2;
-  string snapshot_id = 3;
-  string path = 4;
-  string target = 5;
+  string plan_id = 1;
+  string snapshot_id = 2;
+  string path = 3;
+  string target = 4;
 }
 
 message ListSnapshotFilesRequest {

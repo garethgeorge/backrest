@@ -61,6 +61,8 @@ const (
 	BackrestRestoreProcedure = "/v1.Backrest/Restore"
 	// BackrestUnlockProcedure is the fully-qualified name of the Backrest's Unlock RPC.
 	BackrestUnlockProcedure = "/v1.Backrest/Unlock"
+	// BackrestStatsProcedure is the fully-qualified name of the Backrest's Stats RPC.
+	BackrestStatsProcedure = "/v1.Backrest/Stats"
 	// BackrestCancelProcedure is the fully-qualified name of the Backrest's Cancel RPC.
 	BackrestCancelProcedure = "/v1.Backrest/Cancel"
 	// BackrestClearHistoryProcedure is the fully-qualified name of the Backrest's ClearHistory RPC.
@@ -85,6 +87,7 @@ var (
 	backrestForgetMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Forget")
 	backrestRestoreMethodDescriptor            = backrestServiceDescriptor.Methods().ByName("Restore")
 	backrestUnlockMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Unlock")
+	backrestStatsMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Stats")
 	backrestCancelMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Cancel")
 	backrestClearHistoryMethodDescriptor       = backrestServiceDescriptor.Methods().ByName("ClearHistory")
 	backrestPathAutocompleteMethodDescriptor   = backrestServiceDescriptor.Methods().ByName("PathAutocomplete")
@@ -109,8 +112,11 @@ type BackrestClient interface {
 	Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error)
 	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
 	Unlock(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
+	// Stats runs 'restic stats` on the repository and appends the results to the operations log.
+	Stats(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error)
+	// Clears the history of operations
 	ClearHistory(context.Context, *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(context.Context, *connect.Request[types.StringValue]) (*connect.Response[types.StringList], error)
@@ -198,6 +204,12 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestUnlockMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		stats: connect.NewClient[types.StringValue, emptypb.Empty](
+			httpClient,
+			baseURL+BackrestStatsProcedure,
+			connect.WithSchema(backrestStatsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		cancel: connect.NewClient[types.Int64Value, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestCancelProcedure,
@@ -233,6 +245,7 @@ type backrestClient struct {
 	forget             *connect.Client[types.StringValue, emptypb.Empty]
 	restore            *connect.Client[v1.RestoreSnapshotRequest, emptypb.Empty]
 	unlock             *connect.Client[types.StringValue, emptypb.Empty]
+	stats              *connect.Client[types.StringValue, emptypb.Empty]
 	cancel             *connect.Client[types.Int64Value, emptypb.Empty]
 	clearHistory       *connect.Client[v1.ClearHistoryRequest, emptypb.Empty]
 	pathAutocomplete   *connect.Client[types.StringValue, types.StringList]
@@ -298,6 +311,11 @@ func (c *backrestClient) Unlock(ctx context.Context, req *connect.Request[types.
 	return c.unlock.CallUnary(ctx, req)
 }
 
+// Stats calls v1.Backrest.Stats.
+func (c *backrestClient) Stats(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+	return c.stats.CallUnary(ctx, req)
+}
+
 // Cancel calls v1.Backrest.Cancel.
 func (c *backrestClient) Cancel(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {
 	return c.cancel.CallUnary(ctx, req)
@@ -332,8 +350,11 @@ type BackrestHandler interface {
 	Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error)
 	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
 	Unlock(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
+	// Stats runs 'restic stats` on the repository and appends the results to the operations log.
+	Stats(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error)
+	// Clears the history of operations
 	ClearHistory(context.Context, *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(context.Context, *connect.Request[types.StringValue]) (*connect.Response[types.StringList], error)
@@ -417,6 +438,12 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		connect.WithSchema(backrestUnlockMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	backrestStatsHandler := connect.NewUnaryHandler(
+		BackrestStatsProcedure,
+		svc.Stats,
+		connect.WithSchema(backrestStatsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	backrestCancelHandler := connect.NewUnaryHandler(
 		BackrestCancelProcedure,
 		svc.Cancel,
@@ -461,6 +488,8 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 			backrestRestoreHandler.ServeHTTP(w, r)
 		case BackrestUnlockProcedure:
 			backrestUnlockHandler.ServeHTTP(w, r)
+		case BackrestStatsProcedure:
+			backrestStatsHandler.ServeHTTP(w, r)
 		case BackrestCancelProcedure:
 			backrestCancelHandler.ServeHTTP(w, r)
 		case BackrestClearHistoryProcedure:
@@ -522,6 +551,10 @@ func (UnimplementedBackrestHandler) Restore(context.Context, *connect.Request[v1
 
 func (UnimplementedBackrestHandler) Unlock(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Unlock is not implemented"))
+}
+
+func (UnimplementedBackrestHandler) Stats(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Stats is not implemented"))
 }
 
 func (UnimplementedBackrestHandler) Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {

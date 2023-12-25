@@ -22,11 +22,12 @@ var ErrRepoInitializationFailed = errors.New("repo initialization failed")
 var ErrPlanNotFound = errors.New("plan not found")
 
 const (
-	TaskPriorityDefault = iota
-	TaskPriorityIndexSnapshots
-	TaskPriorityPrune
-	TaskPriorityForget
-	TaskPriorityInteractive // highest priority (add other priorities to this value for offsets)
+	TaskPriorityDefault        = 0
+	TaskPriorityInteractive    = 10
+	TaskPriorityIndexSnapshots = 101
+	TaskPriorityForget         = 102
+	TaskPriorityPrune          = 103
+	TaskPriorityStats          = 104
 )
 
 // Orchestrator is responsible for managing repos and backups.

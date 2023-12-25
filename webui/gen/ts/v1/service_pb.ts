@@ -166,27 +166,22 @@ export class GetOperationsRequest extends Message<GetOperationsRequest> {
  */
 export class RestoreSnapshotRequest extends Message<RestoreSnapshotRequest> {
   /**
-   * @generated from field: string repo_id = 1;
-   */
-  repoId = "";
-
-  /**
-   * @generated from field: string plan_id = 2;
+   * @generated from field: string plan_id = 1;
    */
   planId = "";
 
   /**
-   * @generated from field: string snapshot_id = 3;
+   * @generated from field: string snapshot_id = 2;
    */
   snapshotId = "";
 
   /**
-   * @generated from field: string path = 4;
+   * @generated from field: string path = 3;
    */
   path = "";
 
   /**
-   * @generated from field: string target = 5;
+   * @generated from field: string target = 4;
    */
   target = "";
 
@@ -198,11 +193,10 @@ export class RestoreSnapshotRequest extends Message<RestoreSnapshotRequest> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.RestoreSnapshotRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 5, name: "target", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "target", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RestoreSnapshotRequest {

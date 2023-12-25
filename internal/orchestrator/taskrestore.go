@@ -10,8 +10,7 @@ import (
 )
 
 type RestoreTaskOpts struct {
-	PlanId     string
-	RepoId     string
+	Plan       *v1.Plan
 	SnapshotId string
 	Path       string
 	Target     string
@@ -37,7 +36,7 @@ func NewOneofRestoreTask(orchestrator *Orchestrator, opts RestoreTaskOpts, at ti
 }
 
 func (t *RestoreTask) Name() string {
-	return fmt.Sprintf("restore snapshot %v in repo %v", t.restoreOpts.SnapshotId, t.restoreOpts.RepoId)
+	return fmt.Sprintf("restore snapshot %v in repo %v", t.restoreOpts.SnapshotId, t.restoreOpts.Plan.Repo)
 }
 
 func (t *RestoreTask) Next(now time.Time) *time.Time {
@@ -45,8 +44,8 @@ func (t *RestoreTask) Next(now time.Time) *time.Time {
 	if ret != nil {
 		t.at = nil
 		if err := t.setOperation(&v1.Operation{
-			PlanId:          t.restoreOpts.PlanId,
-			RepoId:          t.restoreOpts.RepoId,
+			PlanId:          t.restoreOpts.Plan.Id,
+			RepoId:          t.restoreOpts.Plan.Repo,
 			SnapshotId:      t.restoreOpts.SnapshotId,
 			UnixTimeStartMs: timeToUnixMillis(*ret),
 			Status:          v1.OperationStatus_STATUS_PENDING,
@@ -70,9 +69,9 @@ func (t *RestoreTask) Run(ctx context.Context) error {
 		op.Op = forgetOp
 		op.UnixTimeStartMs = curTimeMillis()
 
-		repo, err := t.orch.GetRepo(t.restoreOpts.RepoId)
+		repo, err := t.orch.GetRepo(t.restoreOpts.Plan.Repo)
 		if err != nil {
-			return fmt.Errorf("couldn't get repo %q: %w", t.restoreOpts.RepoId, err)
+			return fmt.Errorf("couldn't get repo %q: %w", t.restoreOpts.Plan.Repo, err)
 		}
 
 		lastSent := time.Now() // debounce progress updates, these can endup being very frequent.

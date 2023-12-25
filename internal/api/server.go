@@ -267,7 +267,7 @@ func (s *Server) Forget(ctx context.Context, req *connect.Request[types.StringVa
 	at := time.Now()
 
 	s.orchestrator.ScheduleTask(orchestrator.NewOneofForgetTask(s.orchestrator, plan, "", at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityForget)
-	s.orchestrator.ScheduleTask(orchestrator.NewOneofForgetTask(s.orchestrator, plan, "", at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
+	s.orchestrator.ScheduleTask(orchestrator.NewOneofIndexSnapshotsTask(s.orchestrator, plan, at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
@@ -285,9 +285,9 @@ func (s *Server) Prune(ctx context.Context, req *connect.Request[types.StringVal
 }
 
 func (s *Server) Restore(ctx context.Context, req *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error) {
-	_, err := s.orchestrator.GetRepo(req.Msg.RepoId)
+	plan, err := s.orchestrator.GetPlan(req.Msg.PlanId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.RepoId, err)
+		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.PlanId, err)
 	}
 
 	if req.Msg.Target == "" {
@@ -303,8 +303,7 @@ func (s *Server) Restore(ctx context.Context, req *connect.Request[v1.RestoreSna
 	at := time.Now()
 
 	s.orchestrator.ScheduleTask(orchestrator.NewOneofRestoreTask(s.orchestrator, orchestrator.RestoreTaskOpts{
-		PlanId:     req.Msg.PlanId,
-		RepoId:     req.Msg.RepoId,
+		Plan:       plan,
 		SnapshotId: req.Msg.SnapshotId,
 		Path:       req.Msg.Path,
 		Target:     target,
