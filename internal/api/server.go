@@ -254,7 +254,7 @@ func (s *Server) Backup(ctx context.Context, req *connect.Request[types.StringVa
 	if err != nil {
 		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.Value, err)
 	}
-	s.orchestrator.ScheduleTask(orchestrator.NewOneofBackupTask(s.orchestrator, plan, time.Now()), orchestrator.TaskPriorityInteractive)
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffBackupTask(s.orchestrator, plan, time.Now()), orchestrator.TaskPriorityInteractive)
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
@@ -266,8 +266,8 @@ func (s *Server) Forget(ctx context.Context, req *connect.Request[types.StringVa
 
 	at := time.Now()
 
-	s.orchestrator.ScheduleTask(orchestrator.NewOneofForgetTask(s.orchestrator, plan, "", at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityForget)
-	s.orchestrator.ScheduleTask(orchestrator.NewOneofIndexSnapshotsTask(s.orchestrator, plan, at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffForgetTask(s.orchestrator, plan, "", at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityForget)
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffIndexSnapshotsTask(s.orchestrator, plan, at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
@@ -279,7 +279,7 @@ func (s *Server) Prune(ctx context.Context, req *connect.Request[types.StringVal
 	}
 
 	at := time.Now()
-	s.orchestrator.ScheduleTask(orchestrator.NewOneofPruneTask(s.orchestrator, plan, "", at, true), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityPrune)
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffPruneTask(s.orchestrator, plan, "", at, true), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityPrune)
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
@@ -302,7 +302,7 @@ func (s *Server) Restore(ctx context.Context, req *connect.Request[v1.RestoreSna
 
 	at := time.Now()
 
-	s.orchestrator.ScheduleTask(orchestrator.NewOneofRestoreTask(s.orchestrator, orchestrator.RestoreTaskOpts{
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffRestoreTask(s.orchestrator, orchestrator.RestoreTaskOpts{
 		Plan:       plan,
 		SnapshotId: req.Msg.SnapshotId,
 		Path:       req.Msg.Path,

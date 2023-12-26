@@ -42,7 +42,7 @@ func NewScheduledBackupTask(orchestrator *Orchestrator, plan *v1.Plan) (*BackupT
 	}, nil
 }
 
-func NewOneofBackupTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *BackupTask {
+func NewOneoffBackupTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *BackupTask {
 	didOnce := false
 	return &BackupTask{
 		name: fmt.Sprintf("onetime backup for plan %q", plan.Id),
@@ -142,11 +142,11 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 	// schedule followup tasks
 	at := time.Now()
 	if plan.Retention != nil {
-		orchestrator.ScheduleTask(NewOneofForgetTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityForget)
+		orchestrator.ScheduleTask(NewOneoffForgetTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityForget)
 	}
 
-	orchestrator.ScheduleTask(NewOneofIndexSnapshotsTask(orchestrator, plan, at), TaskPriorityIndexSnapshots)
-	orchestrator.ScheduleTask(NewOneofStatsTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityStats)
+	orchestrator.ScheduleTask(NewOneoffIndexSnapshotsTask(orchestrator, plan, at), TaskPriorityIndexSnapshots)
+	orchestrator.ScheduleTask(NewOneoffStatsTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityStats)
 
 	return nil
 }

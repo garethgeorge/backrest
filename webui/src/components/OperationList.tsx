@@ -209,12 +209,7 @@ export const OperationRow = ({
 
   let body: React.ReactNode | undefined;
 
-  if (
-    operation.displayMessage &&
-    operation.status === OperationStatus.STATUS_ERROR
-  ) {
-    body = <pre>{operation.displayMessage}</pre>;
-  } else if (operation.op.case === "operationBackup") {
+  if (operation.op.case === "operationBackup") {
     const backupOp = operation.op.value;
     body = (
       <>
@@ -270,6 +265,15 @@ export const OperationRow = ({
         {details.percentage !== undefined ? (
           <Progress percent={details.percentage || 0} status="active" />
         ) : null}
+      </>
+    );
+  }
+
+  if (operation.displayMessage) {
+    body = (
+      <>
+        <pre>{details.state}: {operation.displayMessage}</pre>
+        {body}
       </>
     );
   }

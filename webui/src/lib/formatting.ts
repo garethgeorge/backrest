@@ -29,9 +29,10 @@ export const formatTime = (time: number | string | Date) => {
   const hours = d.getUTCHours() % 12 == 0 ? 12 : d.getUTCHours() % 12;
   const minutes =
     d.getUTCMinutes() < 10 ? "0" + d.getUTCMinutes() : d.getUTCMinutes();
-  return `${isoStr.substring(0, 10)} at ${hours}:${minutes} ${
-    d.getUTCHours() > 12 ? "PM" : "AM"
-  }`;
+  const seconds =
+    d.getUTCSeconds() < 10 ? "0" + d.getUTCSeconds() : d.getUTCSeconds();
+  return `${isoStr.substring(0, 10)} at ${hours}:${minutes}:${seconds} ${d.getUTCHours() > 12 ? "PM" : "AM"
+    }`;
 };
 
 export const localISOTime = (time: number | string | Date) => {

@@ -25,7 +25,7 @@ type RestoreTask struct {
 
 var _ Task = &RestoreTask{}
 
-func NewOneofRestoreTask(orchestrator *Orchestrator, opts RestoreTaskOpts, at time.Time) *RestoreTask {
+func NewOneoffRestoreTask(orchestrator *Orchestrator, opts RestoreTaskOpts, at time.Time) *RestoreTask {
 	return &RestoreTask{
 		TaskWithOperation: TaskWithOperation{
 			orch: orchestrator,
