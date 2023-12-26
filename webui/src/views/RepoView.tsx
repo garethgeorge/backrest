@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Repo } from "../../gen/ts/v1/config_pb";
-import { Col, Empty, Flex, Row, Tabs, Typography } from "antd";
+import { Col, Empty, Flex, Row, Spin, Tabs, Typography } from "antd";
 import { useRecoilValue } from "recoil";
 import { configState } from "../state/config";
 import { useAlertApi } from "../components/Alerts";
@@ -14,9 +14,11 @@ import { formatBytes } from "../lib/formatting";
 
 export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   const alertsApi = useAlertApi()!;
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<RepoStats | null>(null);
 
   useEffect(() => {
+    setLoading(true);
     setStats(null);
     getOperations(new GetOperationsRequest({ repoId: repo.id!, lastN: BigInt(10) })).then((operations) => {
       for (const op of operations) {
@@ -29,9 +31,10 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
       }
     }).catch((e) => {
       console.error(e);
+    }).finally(() => {
+      setLoading(false);
     });
   }, [repo.id]);
-
 
   // Gracefully handle deletions by checking if the plan is still in the config.
   const config = useRecoilValue(configState);
@@ -41,8 +44,8 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   }
   repo = repoInConfig;
 
-  if (!stats) {
-    return <Empty description="No stats available. Run a backup." />;
+  if (loading) {
+    return <Spin />;
   }
 
   const items = [
@@ -52,22 +55,24 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
       children: (
         <>
           <h3>Repo Stats</h3>
-          <Row>
-            <Col style={{ paddingRight: "20px" }}>
-              <p><strong>Total Size: </strong></p>
-              <p><strong>Total Size Uncompressed: </strong></p>
-              <p><strong>Blob Count: </strong></p>
-              <p><strong>Snapshot Count: </strong></p>
-              <p><strong>Compression Ratio: </strong></p>
-            </Col>
-            <Col>
-              <p>{formatBytes(Number(stats.totalSize))}</p>
-              <p>{formatBytes(Number(stats.totalUncompressedSize))}</p>
-              <p>{Number(stats.totalBlobCount)} blobs</p>
-              <p>{Number(stats.snapshotCount)} snapshots</p>
-              <p>{Math.round(stats.compressionRatio * 1000) / 1000}</p>
-            </Col>
-          </Row>
+          {stats === null ? <Empty description="No data. Have you run a backup yet?" /> :
+            <Row>
+              <Col style={{ paddingRight: "20px" }}>
+                <p><strong>Total Size: </strong></p>
+                <p><strong>Total Size Uncompressed: </strong></p>
+                <p><strong>Blob Count: </strong></p>
+                <p><strong>Snapshot Count: </strong></p>
+                <p><strong>Compression Ratio: </strong></p>
+              </Col>
+              <Col>
+                <p>{formatBytes(Number(stats.totalSize))}</p>
+                <p>{formatBytes(Number(stats.totalUncompressedSize))}</p>
+                <p>{Number(stats.totalBlobCount)} blobs</p>
+                <p>{Number(stats.snapshotCount)} snapshots</p>
+                <p>{Math.round(stats.compressionRatio * 1000) / 1000}</p>
+              </Col>
+            </Row>
+          }
         </>
       ),
     },

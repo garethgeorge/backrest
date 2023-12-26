@@ -23,7 +23,7 @@ type ForgetTask struct {
 
 var _ Task = &ForgetTask{}
 
-func NewOneofForgetTask(orchestrator *Orchestrator, plan *v1.Plan, linkSnapshot string, at time.Time) *ForgetTask {
+func NewOneoffForgetTask(orchestrator *Orchestrator, plan *v1.Plan, linkSnapshot string, at time.Time) *ForgetTask {
 	return &ForgetTask{
 		TaskWithOperation: TaskWithOperation{
 			orch: orchestrator,
@@ -102,7 +102,7 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 		}
 
 		if len(forgot) > 0 {
-			t.orch.ScheduleTask(NewOneofPruneTask(t.orch, t.plan, op.SnapshotId, time.Now(), false), TaskPriorityPrune)
+			t.orch.ScheduleTask(NewOneoffPruneTask(t.orch, t.plan, op.SnapshotId, time.Now(), false), TaskPriorityPrune)
 		}
 
 		return err

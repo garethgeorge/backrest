@@ -21,7 +21,7 @@ type IndexSnapshotsTask struct {
 
 var _ Task = &IndexSnapshotsTask{}
 
-func NewOneofIndexSnapshotsTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *IndexSnapshotsTask {
+func NewOneoffIndexSnapshotsTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *IndexSnapshotsTask {
 	return &IndexSnapshotsTask{
 		orchestrator: orchestrator,
 		plan:         plan,

@@ -23,7 +23,7 @@ type PruneTask struct {
 
 var _ Task = &PruneTask{}
 
-func NewOneofPruneTask(orchestrator *Orchestrator, plan *v1.Plan, linkSnapshot string, at time.Time, force bool) *PruneTask {
+func NewOneoffPruneTask(orchestrator *Orchestrator, plan *v1.Plan, linkSnapshot string, at time.Time, force bool) *PruneTask {
 	return &PruneTask{
 		TaskWithOperation: TaskWithOperation{
 			orch: orchestrator,
@@ -60,7 +60,7 @@ func (t *PruneTask) Next(now time.Time) *time.Time {
 
 func (t *PruneTask) getNextPruneTime(repo *RepoOrchestrator, policy *v1.PrunePolicy) (time.Time, error) {
 	var lastPruneTime time.Time
-	t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.CollectLastN(1000), func(op *v1.Operation) error {
+	t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.CollectLastN(100), func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationPrune); ok {
 			lastPruneTime = time.Unix(0, op.UnixTimeStartMs*int64(time.Millisecond))
 		}
@@ -144,6 +144,8 @@ func (t *PruneTask) Run(ctx context.Context) error {
 				Output: output,
 			},
 		}
+
+		// Schedule a task to update persisted stats for the repo
 
 		return nil
 	})

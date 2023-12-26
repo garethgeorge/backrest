@@ -153,8 +153,16 @@ export class BackupInfoCollector {
     // use the latest status that is not cancelled.
     let statusIdx = operations.length - 1;
     let status = OperationStatus.STATUS_SYSTEM_CANCELLED;
-    while (statusIdx !== -1 && (shouldHideStatus(status) || status === OperationStatus.STATUS_PENDING)) {
-      status = operations[statusIdx].status!;
+    while (statusIdx !== -1) {
+      const curStatus = operations[statusIdx].status;
+      if (
+        shouldHideStatus(status) ||
+        status === OperationStatus.STATUS_PENDING ||
+        curStatus === OperationStatus.STATUS_ERROR ||
+        curStatus === OperationStatus.STATUS_WARNING
+      ) {
+        status = operations[statusIdx].status;
+      }
       statusIdx--;
     }
 

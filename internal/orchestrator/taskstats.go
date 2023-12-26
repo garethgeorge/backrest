@@ -20,7 +20,7 @@ type StatsTask struct {
 
 var _ Task = &ForgetTask{}
 
-func NewOneofStatsTask(orchestrator *Orchestrator, plan *v1.Plan, linkSnapshot string, at time.Time) *StatsTask {
+func NewOneoffStatsTask(orchestrator *Orchestrator, plan *v1.Plan, linkSnapshot string, at time.Time) *StatsTask {
 	return &StatsTask{
 		TaskWithOperation: TaskWithOperation{
 			orch: orchestrator,
