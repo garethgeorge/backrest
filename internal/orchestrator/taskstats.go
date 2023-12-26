@@ -39,7 +39,7 @@ func (t *StatsTask) Name() string {
 }
 
 func (t *StatsTask) shouldRun() (bool, error) {
-	var bytesSinceLastStat int64
+	var bytesSinceLastStat int64 = -1
 	if err := t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.CollectLastN(50), func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationStats); ok {
 			bytesSinceLastStat = 0
@@ -55,7 +55,7 @@ func (t *StatsTask) shouldRun() (bool, error) {
 
 	zap.L().Debug("bytes since last stat", zap.Int64("bytes", bytesSinceLastStat), zap.String("repo", t.plan.Repo))
 
-	if bytesSinceLastStat > statBytesThreshold {
+	if bytesSinceLastStat == -1 || bytesSinceLastStat > statBytesThreshold {
 		zap.S().Debugf("bytes since last stat (%v) exceeds threshold (%v)", bytesSinceLastStat, statBytesThreshold)
 		return true, nil
 	}
