@@ -54,6 +54,9 @@ func (t *TaskWithOperation) runWithOpAndContext(ctx context.Context, do func(ctx
 
 	t.running.Store(true)
 	defer t.running.Store(false)
+	defer func() {
+		t.op = nil
+	}()
 
 	return WithOperation(t.orch.OpLog, t.op, func() error {
 		return do(ctx, t.op)
