@@ -10,22 +10,23 @@ import { MAX_OPERATION_HISTORY } from "../constants";
 import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
 import { getOperations } from "../state/oplog";
 import { RepoStats } from "../../gen/ts/v1/restic_pb";
-import { formatBytes } from "../lib/formatting";
+import { formatBytes, formatDate, formatTime } from "../lib/formatting";
+import { Operation } from "../../gen/ts/v1/operations_pb";
 
 export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   const alertsApi = useAlertApi()!;
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<RepoStats | null>(null);
+  const [statsOperation, setStatsOperation] = useState<Operation | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    setStats(null);
-    getOperations(new GetOperationsRequest({ repoId: repo.id!, lastN: BigInt(10) })).then((operations) => {
+    setStatsOperation(null);
+    getOperations(new GetOperationsRequest({ repoId: repo.id!, lastN: BigInt(100) })).then((operations) => {
       for (const op of operations) {
         if (op.op.case === "operationStats") {
           const stats = op.op.value.stats;
           if (stats) {
-            setStats(stats);
+            setStatsOperation(op);
           }
         }
       }
@@ -54,24 +55,12 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
       label: "Stats",
       children: (
         <>
-          <h3>Repo Stats</h3>
-          {stats === null ? <Empty description="No data. Have you run a backup yet?" /> :
-            <Row>
-              <Col style={{ paddingRight: "20px" }}>
-                <p><strong>Total Size: </strong></p>
-                <p><strong>Total Size Uncompressed: </strong></p>
-                <p><strong>Blob Count: </strong></p>
-                <p><strong>Snapshot Count: </strong></p>
-                <p><strong>Compression Ratio: </strong></p>
-              </Col>
-              <Col>
-                <p>{formatBytes(Number(stats.totalSize))}</p>
-                <p>{formatBytes(Number(stats.totalUncompressedSize))}</p>
-                <p>{Number(stats.totalBlobCount)} blobs</p>
-                <p>{Number(stats.snapshotCount)} snapshots</p>
-                <p>{Math.round(stats.compressionRatio * 1000) / 1000}</p>
-              </Col>
-            </Row>
+          {statsOperation === null ? <Empty description="No data. Have you run a backup yet?" /> :
+            <>
+              <h3>Repo stats computed on {formatTime(Number(statsOperation.unixTimeStartMs))}</h3>
+              {statsOperation.op.case === "operationStats" && <StatsTable stats={statsOperation.op.value.stats!} />}
+              <small>Stats are refreshed periodically in the background as new data is added.</small>
+            </>
           }
         </>
       ),
@@ -116,3 +105,22 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
     </>
   );
 };
+
+const StatsTable = ({ stats }: { stats: RepoStats }) => {
+  return <Row>
+    <Col style={{ paddingRight: "20px" }}>
+      <p><strong>Total Size: </strong></p>
+      <p><strong>Total Size Uncompressed: </strong></p>
+      <p><strong>Blob Count: </strong></p>
+      <p><strong>Snapshot Count: </strong></p>
+      <p><strong>Compression Ratio: </strong></p>
+    </Col>
+    <Col>
+      <p>{formatBytes(Number(stats.totalSize))}</p>
+      <p>{formatBytes(Number(stats.totalUncompressedSize))}</p>
+      <p>{Number(stats.totalBlobCount)} blobs</p>
+      <p>{Number(stats.snapshotCount)} snapshots</p>
+      <p>{Math.round(stats.compressionRatio * 1000) / 1000}</p>
+    </Col>
+  </Row>
+}
