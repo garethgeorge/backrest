@@ -7,14 +7,26 @@ import (
 	"time"
 )
 
+var taskQueueDefaultPollInterval = 15 * time.Minute
+
 type taskQueue struct {
-	dequeueMu sync.Mutex
-	mu        sync.Mutex
-	heap      scheduledTaskHeapByTime
-	notify    chan struct{}
-	ready     scheduledTaskHeapByPriorityThenTime
+	dequeueMu    sync.Mutex
+	mu           sync.Mutex
+	heap         scheduledTaskHeapByTime
+	notify       chan struct{}
+	ready        scheduledTaskHeapByPriorityThenTime
+	pollInterval time.Duration
 
 	Now func() time.Time
+}
+
+func newTaskQueue(now func() time.Time) taskQueue {
+	return taskQueue{
+		heap:         scheduledTaskHeapByTime{},
+		ready:        scheduledTaskHeapByPriorityThenTime{},
+		pollInterval: taskQueueDefaultPollInterval,
+		Now:          now,
+	}
 }
 
 func (t *taskQueue) curTime() time.Time {
@@ -94,7 +106,13 @@ func (t *taskQueue) Dequeue(ctx context.Context) *scheduledTask {
 		}
 
 		t.mu.Unlock()
-		timer := time.NewTimer(first.runAt.Sub(now))
+		d := first.runAt.Sub(now)
+		if t.pollInterval > 0 && d > t.pollInterval {
+			// A poll interval may be set to work around clock changes
+			// e.g. when a laptop wakes from sleep or the system clock is adjusted.
+			d = t.pollInterval
+		}
+		timer := time.NewTimer(d)
 
 		select {
 		case <-timer.C:
