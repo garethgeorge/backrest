@@ -111,6 +111,9 @@ func (s *Server) AddRepo(ctx context.Context, req *connect.Request[v1.Repo]) (*c
 
 	s.orchestrator.ApplyConfig(c)
 
+	// index snapshots for the newly added repository.
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffIndexSnapshotsTask(s.orchestrator, req.Msg.Id, time.Now()), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
+
 	return connect.NewResponse(c), nil
 }
 
@@ -249,6 +252,17 @@ func (s *Server) GetOperations(ctx context.Context, req *connect.Request[v1.GetO
 	}), nil
 }
 
+func (s *Server) IndexSnapshots(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+	_, err := s.orchestrator.GetRepo(req.Msg.Value)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.Value, err)
+	}
+
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffIndexSnapshotsTask(s.orchestrator, req.Msg.Value, time.Now()), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
+
+	return connect.NewResponse(&emptypb.Empty{}), nil
+}
+
 func (s *Server) Backup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
 	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
 	if err != nil {
@@ -267,7 +281,7 @@ func (s *Server) Forget(ctx context.Context, req *connect.Request[types.StringVa
 	at := time.Now()
 
 	s.orchestrator.ScheduleTask(orchestrator.NewOneoffForgetTask(s.orchestrator, plan, "", at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityForget)
-	s.orchestrator.ScheduleTask(orchestrator.NewOneoffIndexSnapshotsTask(s.orchestrator, plan, at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffIndexSnapshotsTask(s.orchestrator, plan.Repo, at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }

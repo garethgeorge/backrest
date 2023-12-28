@@ -80,6 +80,17 @@ export const Backrest = {
       kind: MethodKind.Unary,
     },
     /**
+     * IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.
+     *
+     * @generated from rpc v1.Backrest.IndexSnapshots
+     */
+    indexSnapshots: {
+      name: "IndexSnapshots",
+      I: StringValue,
+      O: Empty,
+      kind: MethodKind.Unary,
+    },
+    /**
      * Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
      *
      * @generated from rpc v1.Backrest.Backup
@@ -91,7 +102,7 @@ export const Backrest = {
       kind: MethodKind.Unary,
     },
     /**
-     * Prune schedules a prune operation.
+     * Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
      *
      * @generated from rpc v1.Backrest.Prune
      */
@@ -102,7 +113,7 @@ export const Backrest = {
       kind: MethodKind.Unary,
     },
     /**
-     * Forget schedules a forget operation.
+     * Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
      *
      * @generated from rpc v1.Backrest.Forget
      */

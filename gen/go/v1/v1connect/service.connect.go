@@ -51,6 +51,8 @@ const (
 	// BackrestListSnapshotFilesProcedure is the fully-qualified name of the Backrest's
 	// ListSnapshotFiles RPC.
 	BackrestListSnapshotFilesProcedure = "/v1.Backrest/ListSnapshotFiles"
+	// BackrestIndexSnapshotsProcedure is the fully-qualified name of the Backrest's IndexSnapshots RPC.
+	BackrestIndexSnapshotsProcedure = "/v1.Backrest/IndexSnapshots"
 	// BackrestBackupProcedure is the fully-qualified name of the Backrest's Backup RPC.
 	BackrestBackupProcedure = "/v1.Backrest/Backup"
 	// BackrestPruneProcedure is the fully-qualified name of the Backrest's Prune RPC.
@@ -82,6 +84,7 @@ var (
 	backrestGetOperationsMethodDescriptor      = backrestServiceDescriptor.Methods().ByName("GetOperations")
 	backrestListSnapshotsMethodDescriptor      = backrestServiceDescriptor.Methods().ByName("ListSnapshots")
 	backrestListSnapshotFilesMethodDescriptor  = backrestServiceDescriptor.Methods().ByName("ListSnapshotFiles")
+	backrestIndexSnapshotsMethodDescriptor     = backrestServiceDescriptor.Methods().ByName("IndexSnapshots")
 	backrestBackupMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Backup")
 	backrestPruneMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Prune")
 	backrestForgetMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Forget")
@@ -102,11 +105,13 @@ type BackrestClient interface {
 	GetOperations(context.Context, *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error)
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error)
 	ListSnapshotFiles(context.Context, *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error)
+	// IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.
+	IndexSnapshots(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
-	// Prune schedules a prune operation.
+	// Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
 	Prune(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
-	// Forget schedules a forget operation.
+	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
 	Forget(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Restore schedules a restore operation.
 	Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error)
@@ -172,6 +177,12 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			httpClient,
 			baseURL+BackrestListSnapshotFilesProcedure,
 			connect.WithSchema(backrestListSnapshotFilesMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		indexSnapshots: connect.NewClient[types.StringValue, emptypb.Empty](
+			httpClient,
+			baseURL+BackrestIndexSnapshotsProcedure,
+			connect.WithSchema(backrestIndexSnapshotsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		backup: connect.NewClient[types.StringValue, emptypb.Empty](
@@ -240,6 +251,7 @@ type backrestClient struct {
 	getOperations      *connect.Client[v1.GetOperationsRequest, v1.OperationList]
 	listSnapshots      *connect.Client[v1.ListSnapshotsRequest, v1.ResticSnapshotList]
 	listSnapshotFiles  *connect.Client[v1.ListSnapshotFilesRequest, v1.ListSnapshotFilesResponse]
+	indexSnapshots     *connect.Client[types.StringValue, emptypb.Empty]
 	backup             *connect.Client[types.StringValue, emptypb.Empty]
 	prune              *connect.Client[types.StringValue, emptypb.Empty]
 	forget             *connect.Client[types.StringValue, emptypb.Empty]
@@ -284,6 +296,11 @@ func (c *backrestClient) ListSnapshots(ctx context.Context, req *connect.Request
 // ListSnapshotFiles calls v1.Backrest.ListSnapshotFiles.
 func (c *backrestClient) ListSnapshotFiles(ctx context.Context, req *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error) {
 	return c.listSnapshotFiles.CallUnary(ctx, req)
+}
+
+// IndexSnapshots calls v1.Backrest.IndexSnapshots.
+func (c *backrestClient) IndexSnapshots(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+	return c.indexSnapshots.CallUnary(ctx, req)
 }
 
 // Backup calls v1.Backrest.Backup.
@@ -340,11 +357,13 @@ type BackrestHandler interface {
 	GetOperations(context.Context, *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error)
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error)
 	ListSnapshotFiles(context.Context, *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error)
+	// IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.
+	IndexSnapshots(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
-	// Prune schedules a prune operation.
+	// Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
 	Prune(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
-	// Forget schedules a forget operation.
+	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
 	Forget(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Restore schedules a restore operation.
 	Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error)
@@ -406,6 +425,12 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		BackrestListSnapshotFilesProcedure,
 		svc.ListSnapshotFiles,
 		connect.WithSchema(backrestListSnapshotFilesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	backrestIndexSnapshotsHandler := connect.NewUnaryHandler(
+		BackrestIndexSnapshotsProcedure,
+		svc.IndexSnapshots,
+		connect.WithSchema(backrestIndexSnapshotsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestBackupHandler := connect.NewUnaryHandler(
@@ -478,6 +503,8 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 			backrestListSnapshotsHandler.ServeHTTP(w, r)
 		case BackrestListSnapshotFilesProcedure:
 			backrestListSnapshotFilesHandler.ServeHTTP(w, r)
+		case BackrestIndexSnapshotsProcedure:
+			backrestIndexSnapshotsHandler.ServeHTTP(w, r)
 		case BackrestBackupProcedure:
 			backrestBackupHandler.ServeHTTP(w, r)
 		case BackrestPruneProcedure:
@@ -531,6 +558,10 @@ func (UnimplementedBackrestHandler) ListSnapshots(context.Context, *connect.Requ
 
 func (UnimplementedBackrestHandler) ListSnapshotFiles(context.Context, *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.ListSnapshotFiles is not implemented"))
+}
+
+func (UnimplementedBackrestHandler) IndexSnapshots(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.IndexSnapshots is not implemented"))
 }
 
 func (UnimplementedBackrestHandler) Backup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
