@@ -54,11 +54,9 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog) (*Orc
 		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
 		repoPool: newResticRepoPool(resticBin, &config.MemoryStore{Config: cfg}),
-		taskQueue: taskQueue{
-			Now: func() time.Time {
-				return o.curTime()
-			},
-		},
+		taskQueue: newTaskQueue(func() time.Time {
+			return o.curTime()
+		}),
 	}
 
 	// verify the operation log and mark any incomplete operations as failed.
