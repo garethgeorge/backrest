@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -12,25 +13,27 @@ import (
 	"go.uber.org/zap"
 )
 
+const planForUntrackedSnapshots = "_unassociated_"
+
 // IndexSnapshotsTask tracks a forget operation.
 type IndexSnapshotsTask struct {
 	orchestrator *Orchestrator // owning orchestrator
-	plan         *v1.Plan
+	repoId       string
 	at           *time.Time
 }
 
 var _ Task = &IndexSnapshotsTask{}
 
-func NewOneoffIndexSnapshotsTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *IndexSnapshotsTask {
+func NewOneoffIndexSnapshotsTask(orchestrator *Orchestrator, repoId string, at time.Time) *IndexSnapshotsTask {
 	return &IndexSnapshotsTask{
 		orchestrator: orchestrator,
-		plan:         plan,
+		repoId:       repoId,
 		at:           &at,
 	}
 }
 
 func (t *IndexSnapshotsTask) Name() string {
-	return fmt.Sprintf("index snapshots for plan %q", t.plan.Id)
+	return fmt.Sprintf("index snapshots for plan %q", t.repoId)
 }
 
 func (t *IndexSnapshotsTask) Next(now time.Time) *time.Time {
@@ -42,7 +45,7 @@ func (t *IndexSnapshotsTask) Next(now time.Time) *time.Time {
 }
 
 func (t *IndexSnapshotsTask) Run(ctx context.Context) error {
-	return indexSnapshotsHelper(ctx, t.orchestrator, t.plan)
+	return indexSnapshotsHelper(ctx, t.orchestrator, t.repoId)
 }
 
 func (t *IndexSnapshotsTask) Cancel(withStatus v1.OperationStatus) error {
@@ -57,22 +60,22 @@ func (t *IndexSnapshotsTask) OperationId() int64 {
 //   - If the snapshot is already indexed, it is skipped.
 //   - If the snapshot is not indexed, an index snapshot operation with it's metadata is added.
 //   - If an index snapshot operation is found for a snapshot that is not returned by the repo, it is marked as forgotten.
-func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan) error {
-	repo, err := orchestrator.GetRepo(plan.Repo)
+func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, repoId string) error {
+	repo, err := orchestrator.GetRepo(repoId)
 	if err != nil {
-		return fmt.Errorf("couldn't get repo %q: %w", plan.Repo, err)
+		return fmt.Errorf("couldn't get repo %q: %w", repoId, err)
 	}
 
 	// collect all tracked snapshots for the plan.
-	snapshots, err := repo.SnapshotsForPlan(ctx, plan)
+	snapshots, err := repo.Snapshots(ctx)
 	if err != nil {
-		return fmt.Errorf("get snapshots for plan %q: %w", plan.Id, err)
+		return fmt.Errorf("get snapshots for repo %q: %w", repoId, err)
 	}
 
 	// collect all current snapshot IDs.
-	currentIds, err := indexCurrentSnapshotIdsForPlan(orchestrator.OpLog, plan.Id)
+	currentIds, err := indexCurrentSnapshotIdsForRepo(orchestrator.OpLog, repoId)
 	if err != nil {
-		return fmt.Errorf("get known snapshot IDs for plan %q: %w", plan.Id, err)
+		return fmt.Errorf("get known snapshot IDs for repo %q: %w", repoId, err)
 	}
 
 	foundIds := make(map[string]bool)
@@ -87,9 +90,10 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan 
 		}
 
 		snapshotProto := protoutil.SnapshotToProto(snapshot)
+		planId := planForSnapshot(snapshotProto)
 		indexOps = append(indexOps, &v1.Operation{
-			RepoId:          plan.Repo,
-			PlanId:          plan.Id,
+			RepoId:          repoId,
+			PlanId:          planId,
 			UnixTimeStartMs: snapshotProto.UnixTimeMs,
 			UnixTimeEndMs:   snapshotProto.UnixTimeMs,
 			Status:          v1.OperationStatus_STATUS_SUCCESS,
@@ -107,14 +111,13 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan 
 	}
 
 	// Mark missing operations as newly forgotten.
-	var forgetIds []int64
 	for id, opId := range currentIds {
-		if _, ok := foundIds[id]; !ok {
-			forgetIds = append(forgetIds, opId)
+		if _, ok := foundIds[id]; ok {
+			// skip snapshots that were found.
+			continue
 		}
-	}
 
-	for _, opId := range forgetIds {
+		// mark snapshot forgotten.
 		op, err := orchestrator.OpLog.Get(opId)
 		if err != nil {
 			// should only be possible in the case of a data race (e.g. operation was somehow deleted).
@@ -134,7 +137,7 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan 
 
 	// Print stats at the end of indexing.
 	zap.L().Debug("Indexed snapshots",
-		zap.String("plan", plan.Id),
+		zap.String("repo", repoId),
 		zap.Duration("duration", time.Since(startTime)),
 		zap.Int("alreadyIndexed", len(foundIds)),
 		zap.Int("newlyAdded", len(indexOps)),
@@ -145,14 +148,14 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, plan 
 }
 
 // returns a map of current (e.g. not forgotten) snapshot IDs for the plan.
-func indexCurrentSnapshotIdsForPlan(log *oplog.OpLog, planId string) (map[string]int64, error) {
+func indexCurrentSnapshotIdsForRepo(log *oplog.OpLog, repoId string) (map[string]int64, error) {
 	knownIds := make(map[string]int64)
 
 	startTime := time.Now()
-	if err := log.ForEachByPlan(planId, indexutil.CollectAll(), func(op *v1.Operation) error {
+	if err := log.ForEachByRepo(repoId, indexutil.CollectAll(), func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
 			if snapshotOp.OperationIndexSnapshot == nil {
-				return fmt.Errorf("operation %q has nil OperationIndexSnapshot, this shouldn't be possible.", op.Id)
+				return fmt.Errorf("operation %q has nil OperationIndexSnapshot, this shouldn't be possible", op.Id)
 			}
 			if !snapshotOp.OperationIndexSnapshot.Forgot {
 				knownIds[snapshotOp.OperationIndexSnapshot.Snapshot.Id] = op.Id
@@ -162,6 +165,15 @@ func indexCurrentSnapshotIdsForPlan(log *oplog.OpLog, planId string) (map[string
 	}); err != nil {
 		return nil, err
 	}
-	zap.S().Debugf("Indexed known (and not forgotten) snapshot IDs for plan %v in %v", planId, time.Since(startTime))
+	zap.S().Debugf("Indexed known (and not forgotten) snapshot IDs for plan %v in %v", repoId, time.Since(startTime))
 	return knownIds, nil
+}
+
+func planForSnapshot(snapshot *v1.ResticSnapshot) string {
+	for _, tag := range snapshot.Tags {
+		if strings.HasPrefix(tag, "plan:") {
+			return tag[5:]
+		}
+	}
+	return planForUntrackedSnapshots
 }

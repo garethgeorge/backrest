@@ -54,7 +54,6 @@ func (t *StatsTask) shouldRun() (bool, error) {
 	}
 
 	zap.L().Debug("bytes since last stat", zap.Int64("bytes", bytesSinceLastStat), zap.String("repo", t.plan.Repo))
-
 	if bytesSinceLastStat == -1 || bytesSinceLastStat > statBytesThreshold {
 		zap.S().Debugf("bytes since last stat (%v) exceeds threshold (%v)", bytesSinceLastStat, statBytesThreshold)
 		return true, nil

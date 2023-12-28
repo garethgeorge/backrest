@@ -229,10 +229,11 @@ func (o *Orchestrator) Run(mainCtx context.Context) {
 			zap.L().Fatal("failed to start task, another task is already running. Was Run() called twice?")
 		}
 
+		start := time.Now()
 		if err := t.task.Run(taskCtx); err != nil {
 			zap.L().Error("task failed", zap.String("task", t.task.Name()), zap.Error(err))
 		} else {
-			zap.L().Info("task finished", zap.String("task", t.task.Name()))
+			zap.L().Info("task finished", zap.String("task", t.task.Name()), zap.Duration("duration", time.Since(start)))
 		}
 
 		o.runningTask.Store(nil)

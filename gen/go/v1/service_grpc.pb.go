@@ -28,6 +28,7 @@ const (
 	Backrest_GetOperations_FullMethodName      = "/v1.Backrest/GetOperations"
 	Backrest_ListSnapshots_FullMethodName      = "/v1.Backrest/ListSnapshots"
 	Backrest_ListSnapshotFiles_FullMethodName  = "/v1.Backrest/ListSnapshotFiles"
+	Backrest_IndexSnapshots_FullMethodName     = "/v1.Backrest/IndexSnapshots"
 	Backrest_Backup_FullMethodName             = "/v1.Backrest/Backup"
 	Backrest_Prune_FullMethodName              = "/v1.Backrest/Prune"
 	Backrest_Forget_FullMethodName             = "/v1.Backrest/Forget"
@@ -50,11 +51,13 @@ type BackrestClient interface {
 	GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error)
 	ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error)
 	ListSnapshotFiles(ctx context.Context, in *ListSnapshotFilesRequest, opts ...grpc.CallOption) (*ListSnapshotFilesResponse, error)
+	// IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.
+	IndexSnapshots(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Prune schedules a prune operation.
+	// Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
 	Prune(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Forget schedules a forget operation.
+	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
 	Forget(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Restore schedules a restore operation.
 	Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -164,6 +167,15 @@ func (c *backrestClient) ListSnapshotFiles(ctx context.Context, in *ListSnapshot
 	return out, nil
 }
 
+func (c *backrestClient) IndexSnapshots(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Backrest_IndexSnapshots_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *backrestClient) Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Backrest_Backup_FullMethodName, in, out, opts...)
@@ -256,11 +268,13 @@ type BackrestServer interface {
 	GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error)
 	ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error)
 	ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error)
+	// IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.
+	IndexSnapshots(context.Context, *types.StringValue) (*emptypb.Empty, error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(context.Context, *types.StringValue) (*emptypb.Empty, error)
-	// Prune schedules a prune operation.
+	// Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
 	Prune(context.Context, *types.StringValue) (*emptypb.Empty, error)
-	// Forget schedules a forget operation.
+	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
 	Forget(context.Context, *types.StringValue) (*emptypb.Empty, error)
 	// Restore schedules a restore operation.
 	Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error)
@@ -301,6 +315,9 @@ func (UnimplementedBackrestServer) ListSnapshots(context.Context, *ListSnapshots
 }
 func (UnimplementedBackrestServer) ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshotFiles not implemented")
+}
+func (UnimplementedBackrestServer) IndexSnapshots(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method IndexSnapshots not implemented")
 }
 func (UnimplementedBackrestServer) Backup(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Backup not implemented")
@@ -467,6 +484,24 @@ func _Backrest_ListSnapshotFiles_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BackrestServer).ListSnapshotFiles(ctx, req.(*ListSnapshotFilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Backrest_IndexSnapshots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(types.StringValue)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackrestServer).IndexSnapshots(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Backrest_IndexSnapshots_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackrestServer).IndexSnapshots(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -663,6 +698,10 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSnapshotFiles",
 			Handler:    _Backrest_ListSnapshotFiles_Handler,
+		},
+		{
+			MethodName: "IndexSnapshots",
+			Handler:    _Backrest_IndexSnapshots_Handler,
 		},
 		{
 			MethodName: "Backup",

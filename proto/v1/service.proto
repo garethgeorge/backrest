@@ -26,13 +26,16 @@ service Backrest {
   
   rpc ListSnapshotFiles(ListSnapshotFilesRequest) returns (ListSnapshotFilesResponse) {}
 
+  // IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.
+  rpc IndexSnapshots(types.StringValue) returns (google.protobuf.Empty) {}
+
   // Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
   rpc Backup(types.StringValue) returns (google.protobuf.Empty) {}
 
-  // Prune schedules a prune operation.
+  // Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
   rpc Prune(types.StringValue) returns (google.protobuf.Empty) {}
 
-  // Forget schedules a forget operation.
+  // Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
   rpc Forget(types.StringValue) returns (google.protobuf.Empty) {}
 
   // Restore schedules a restore operation.
