@@ -9,7 +9,7 @@ import {
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
-import { Col, Divider, Empty, Row, Tree } from "antd";
+import { Col, Divider, Empty, Modal, Row, Tree } from "antd";
 import _ from "lodash";
 import { DataNode } from "antd/es/tree";
 import {
@@ -29,6 +29,8 @@ import { OperationEvent, OperationEventType, OperationStatus } from "../../gen/t
 import { useAlertApi } from "./Alerts";
 import { OperationList } from "./OperationList";
 import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
+import { isMobile } from "../lib/browserutil";
+import { useShowModal } from "./ModalManager";
 
 type OpTreeNode = DataNode & {
   backup?: BackupInfo;
@@ -38,6 +40,7 @@ export const OperationTree = ({
   req,
 }: React.PropsWithoutRef<{ req: GetOperationsRequest }>) => {
   const alertApi = useAlertApi();
+  const showModal = useShowModal();
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [selectedBackupId, setSelectedBackupId] = useState<string | null>(null);
 
@@ -93,99 +96,99 @@ export const OperationTree = ({
     );
   }
 
-  let oplist: React.ReactNode | null = null;
-  if (selectedBackupId) {
-    const backup = backups.find((b) => b.id === selectedBackupId);
+  const useMobileLayout = isMobile();
 
-    if (!backup) {
-      oplist = <Empty description="Backup not found." />;
-    } else {
-      oplist = (
-        <>
-          <h3>Backup on {formatTime(backup.displayTime)}</h3>
-          <OperationList key={backup.id} useBackups={[backup]} />
-        </>
+  const backupTree = <Tree<OpTreeNode>
+    treeData={treeData}
+    showIcon
+    defaultExpandedKeys={backups.slice(0, Math.min(5, backups.length)).map((b) => b.id!)}
+    onSelect={(keys, info) => {
+      if (info.selectedNodes.length === 0) return;
+      const backup = info.selectedNodes[0].backup;
+      if (!backup) {
+        setSelectedBackupId(null);
+        return;
+      }
+      setSelectedBackupId(backup.id!);
+
+      if (useMobileLayout) {
+        showModal(
+          <Modal visible={true} footer={null} onCancel={() => { showModal(null); }}>
+            <BackupView backup={backup} />
+          </Modal>
+        );
+      }
+    }}
+    titleRender={(node: OpTreeNode): React.ReactNode => {
+      if (node.title) {
+        return <>{node.title}</>;
+      }
+      if (node.backup) {
+        const b = node.backup;
+        const details: string[] = [];
+
+        if (b.status === OperationStatus.STATUS_PENDING) {
+          details.push("scheduled, waiting");
+        } else if (b.status === OperationStatus.STATUS_SYSTEM_CANCELLED) {
+          details.push("system cancel");
+        } else if (b.status === OperationStatus.STATUS_USER_CANCELLED) {
+          details.push("cancelled");
+        }
+
+        if (b.backupLastStatus) {
+          if (b.backupLastStatus.entry.case === "summary") {
+            const s = b.backupLastStatus.entry.value;
+            details.push(
+              `${formatBytes(Number(s.totalBytesProcessed))} in ${formatDuration(
+                s.totalDuration! * 1000.0 // convert to ms
+              )}`
+            );
+          } else if (b.backupLastStatus.entry.case === "status") {
+            const s = b.backupLastStatus.entry.value;
+            const percent = Math.floor((Number(s.bytesDone) / Number(s.totalBytes)) * 100);
+            details.push(
+              `${percent}% processed ${formatBytes(
+                Number(s.bytesDone)
+              )} / ${formatBytes(Number(s.totalBytes))}`
+            );
+          }
+        }
+        if (b.snapshotInfo) {
+          details.push(`ID: ${normalizeSnapshotId(b.snapshotInfo.id)}`);
+        }
+
+        let detailsElem: React.ReactNode | null = null;
+        if (details.length > 0) {
+          detailsElem = (
+            <span className="backrest operation-details">
+              [{details.join(", ")}]
+            </span>
+          );
+        }
+
+        const type = getTypeForDisplay(b.operations[0]);
+        return (
+          <>
+            {displayTypeToString(type)} {formatTime(b.displayTime)} {detailsElem}
+          </>
+        );
+      }
+      return (
+        <span>ERROR: this element should not appear, this is a bug.</span>
       );
-    }
+    }}
+  />;
+
+  if (useMobileLayout) {
+    return backupTree;
   }
 
   return (
     <Row>
       <Col span={12}>
-        <Tree<OpTreeNode>
-          treeData={treeData}
-          showIcon
-          defaultExpandedKeys={backups.slice(0, Math.min(5, backups.length)).map((b) => b.id!)}
-          onSelect={(keys, info) => {
-            if (info.selectedNodes.length === 0) return;
-            const backup = info.selectedNodes[0].backup;
-            if (!backup) {
-              setSelectedBackupId(null);
-              return;
-            }
-            setSelectedBackupId(backup.id!);
-          }}
-          titleRender={(node: OpTreeNode): React.ReactNode => {
-            if (node.title) {
-              return <>{node.title}</>;
-            }
-            if (node.backup) {
-              const b = node.backup;
-              const details: string[] = [];
-
-              if (b.status === OperationStatus.STATUS_PENDING) {
-                details.push("scheduled, waiting");
-              } else if (b.status === OperationStatus.STATUS_SYSTEM_CANCELLED) {
-                details.push("system cancel");
-              } else if (b.status === OperationStatus.STATUS_USER_CANCELLED) {
-                details.push("cancelled");
-              }
-
-              if (b.backupLastStatus) {
-                if (b.backupLastStatus.entry.case === "summary") {
-                  const s = b.backupLastStatus.entry.value;
-                  details.push(
-                    `${formatBytes(Number(s.totalBytesProcessed))} in ${formatDuration(
-                      s.totalDuration! * 1000.0 // convert to ms
-                    )}`
-                  );
-                } else if (b.backupLastStatus.entry.case === "status") {
-                  const s = b.backupLastStatus.entry.value;
-                  const percent = Math.floor((Number(s.bytesDone) / Number(s.totalBytes)) * 100);
-                  details.push(
-                    `${percent}% processed ${formatBytes(
-                      Number(s.bytesDone)
-                    )} / ${formatBytes(Number(s.totalBytes))}`
-                  );
-                }
-              }
-              if (b.snapshotInfo) {
-                details.push(`ID: ${normalizeSnapshotId(b.snapshotInfo.id)}`);
-              }
-
-              let detailsElem: React.ReactNode | null = null;
-              if (details.length > 0) {
-                detailsElem = (
-                  <span className="backrest operation-details">
-                    [{details.join(", ")}]
-                  </span>
-                );
-              }
-
-              const type = getTypeForDisplay(b.operations[0]);
-              return (
-                <>
-                  {displayTypeToString(type)} {formatTime(b.displayTime)} {detailsElem}
-                </>
-              );
-            }
-            return (
-              <span>ERROR: this element should not appear, this is a bug.</span>
-            );
-          }}
-        ></Tree>
+        {backupTree}
       </Col>
-      <Col span={12}>{oplist}</Col>
+      <Col span={12}>{selectedBackupId ? <BackupView backup={backups.find((b) => b.id === selectedBackupId)} /> : null}</Col>
     </Row>
   );
 };
@@ -256,3 +259,14 @@ const sortByKey = (a: OpTreeNode, b: OpTreeNode) => {
   }
   return 0;
 };
+
+const BackupView = ({ backup }: { backup?: BackupInfo }) => {
+  if (!backup) {
+    return <Empty description="Backup not found." />;
+  } else {
+    return <>
+      <h3>Backup on {formatTime(backup.displayTime)}</h3>
+      <OperationList key={backup.id} useBackups={[backup]} />
+    </>;
+  }
+}
