@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var statBytesThreshold int64 = 1024 * 1024 * 1024 // 1GB
+var statBytesThreshold int64 = 10 * 1024 * 1024 * 1024 // 10 GB added.
 
 // StatsTask tracks a restic stats operation.
 type StatsTask struct {

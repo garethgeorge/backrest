@@ -40,6 +40,14 @@ func (t *PruneTask) Name() string {
 }
 
 func (t *PruneTask) Next(now time.Time) *time.Time {
+	shouldRun, err := t.shouldRun(now)
+	if err != nil {
+		zap.S().Errorf("task %v failed to check if it should run: %v", t.Name(), err)
+	}
+	if !shouldRun {
+		return nil
+	}
+
 	ret := t.at
 	if ret != nil {
 		t.at = nil
@@ -56,6 +64,24 @@ func (t *PruneTask) Next(now time.Time) *time.Time {
 		}
 	}
 	return ret
+}
+
+func (t *PruneTask) shouldRun(now time.Time) (bool, error) {
+	if t.force {
+		return true, nil
+	}
+
+	repo, err := t.orch.GetRepo(t.plan.Repo)
+	if err != nil {
+		return false, fmt.Errorf("get repo %v: %w", t.plan.Repo, err)
+	}
+
+	nextPruneTime, err := t.getNextPruneTime(repo, repo.repoConfig.PrunePolicy)
+	if err != nil {
+		return false, fmt.Errorf("get next prune time: %w", err)
+	}
+
+	return nextPruneTime.Before(now), nil
 }
 
 func (t *PruneTask) getNextPruneTime(repo *RepoOrchestrator, policy *v1.PrunePolicy) (time.Time, error) {
@@ -85,17 +111,6 @@ func (t *PruneTask) Run(ctx context.Context) error {
 			OperationPrune: &v1.OperationPrune{},
 		}
 		op.Op = opPrune
-
-		if !t.force {
-			nextPruneTime, err := t.getNextPruneTime(repo, repo.repoConfig.PrunePolicy)
-			if err != nil {
-				return fmt.Errorf("get next prune time: %w", err)
-			}
-			if nextPruneTime.After(time.Now()) {
-				op.Status = v1.OperationStatus_STATUS_SYSTEM_CANCELLED
-				return nil
-			}
-		}
 
 		ctx, cancel := context.WithCancel(ctx)
 		interval := time.NewTicker(1 * time.Second)

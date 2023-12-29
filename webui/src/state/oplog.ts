@@ -9,6 +9,7 @@ import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic_pb";
 import _ from "lodash";
 import { formatDuration, formatTime } from "../lib/formatting";
 import { backrestService } from "../api";
+import { STATS_OPERATION_HISTORY } from "../constants";
 
 const subscribers: ((event: OperationEvent) => void)[] = [];
 
@@ -56,7 +57,7 @@ export const unsubscribeFromOperations = (
 export const getStatusForPlan = async (plan: string) => {
   const req = new GetOperationsRequest({
     planId: plan,
-    lastN: BigInt(8),
+    lastN: BigInt(STATS_OPERATION_HISTORY),
   });
   return await getStatus(req);
 }
@@ -64,7 +65,7 @@ export const getStatusForPlan = async (plan: string) => {
 export const getStatusForRepo = async (repo: string) => {
   const req = new GetOperationsRequest({
     repoId: repo,
-    lastN: BigInt(8),
+    lastN: BigInt(STATS_OPERATION_HISTORY),
   });
   return await getStatus(req);
 }
