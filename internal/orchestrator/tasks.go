@@ -46,7 +46,7 @@ func (t *TaskWithOperation) setOperation(op *v1.Operation) error {
 
 func (t *TaskWithOperation) runWithOpAndContext(ctx context.Context, do func(ctx context.Context, op *v1.Operation) error) error {
 	if t.op == nil {
-		return errors.New("task has no operation, a call to setOperation first is required.")
+		return errors.New("task has no operation, a call to setOperation first is required")
 	}
 	if t.running.Load() {
 		return errors.New("task is already running")

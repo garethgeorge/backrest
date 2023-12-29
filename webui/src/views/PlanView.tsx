@@ -9,6 +9,7 @@ import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY } from "../constants";
 import { backrestService } from "../api";
 import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
+import { SpinButton } from "../components/SpinButton";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const alertsApi = useAlertApi()!;
@@ -30,29 +31,29 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
     }
   };
 
-  const handlePruneNow = () => {
+  const handlePruneNow = async () => {
     try {
-      backrestService.prune({ value: plan.id });
+      await backrestService.prune({ value: plan.id });
       alertsApi.success("Prune scheduled.");
     } catch (e: any) {
       alertsApi.error("Failed to schedule prune: " + e.message);
     }
   };
 
-  const handleUnlockNow = () => {
+  const handleUnlockNow = async () => {
     try {
       alertsApi.info("Unlocking repo...");
-      backrestService.unlock({ value: plan.repo! });
+      await backrestService.unlock({ value: plan.repo! });
       alertsApi.success("Repo unlocked.");
     } catch (e: any) {
       alertsApi.error("Failed to unlock repo: " + e.message);
     }
   };
 
-  const handleClearErrorHistory = () => {
+  const handleClearErrorHistory = async () => {
     try {
       alertsApi.info("Clearing error history...");
-      backrestService.clearHistory({ planId: plan.id, onlyFailed: true });
+      await backrestService.clearHistory({ planId: plan.id, onlyFailed: true });
       alertsApi.success("Error history cleared.");
     } catch (e: any) {
       alertsApi.error("Failed to clear error history: " + e.message);
@@ -67,23 +68,23 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         </Typography.Title>
       </Flex>
       <Flex gap="small" align="center" wrap="wrap">
-        <Button type="primary" onClick={handleBackupNow}>
+        <SpinButton type="primary" onClickAsync={handleBackupNow}>
           Backup Now
-        </Button>
+        </SpinButton>
         <Tooltip title="Runs a prune operation on the repository that will remove old snapshots and free up space">
-          <Button type="default" onClick={handlePruneNow}>
+          <SpinButton type="default" onClickAsync={handlePruneNow}>
             Prune Now
-          </Button>
+          </SpinButton>
         </Tooltip>
         <Tooltip title="Removes lockfiles and checks the repository for errors. Only run if you are sure the repo is not being accessed by another system">
-          <Button type="default" onClick={handleUnlockNow}>
+          <SpinButton type="default" onClickAsync={handleUnlockNow}>
             Unlock Repo
-          </Button>
+          </SpinButton>
         </Tooltip>
         <Tooltip title="Removes failed operations from the list">
-          <Button type="default" onClick={handleClearErrorHistory}>
+          <SpinButton type="default" onClickAsync={handleClearErrorHistory}>
             Clear Error History
-          </Button>
+          </SpinButton>
         </Tooltip>
       </Flex>
       <Tabs

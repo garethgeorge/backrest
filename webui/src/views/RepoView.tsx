@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { Repo } from "../../gen/ts/v1/config_pb";
-import { Col, Empty, Flex, Row, Spin, Tabs, Typography } from "antd";
+import { Col, Empty, Flex, Row, Spin, TabsProps, Tabs, Tooltip, Typography } from "antd";
 import { useRecoilValue } from "recoil";
 import { configState } from "../state/config";
 import { useAlertApi } from "../components/Alerts";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
-import { MAX_OPERATION_HISTORY } from "../constants";
+import { MAX_OPERATION_HISTORY, STATS_OPERATION_HISTORY } from "../constants";
 import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
 import { getOperations } from "../state/oplog";
 import { RepoStats } from "../../gen/ts/v1/restic_pb";
-import { formatBytes, formatDate, formatTime } from "../lib/formatting";
+import { formatBytes, formatTime } from "../lib/formatting";
 import { Operation } from "../../gen/ts/v1/operations_pb";
+import { backrestService } from "../api";
+import { StringValue } from "@bufbuild/protobuf";
+import { SpinButton } from "../components/SpinButton";
 
 export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   const alertsApi = useAlertApi()!;
@@ -21,7 +24,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   useEffect(() => {
     setLoading(true);
     setStatsOperation(null);
-    getOperations(new GetOperationsRequest({ repoId: repo.id!, lastN: BigInt(100) })).then((operations) => {
+    getOperations(new GetOperationsRequest({ repoId: repo.id!, lastN: BigInt(STATS_OPERATION_HISTORY) })).then((operations) => {
       for (const op of operations) {
         if (op.op.case === "operationStats") {
           const stats = op.op.value.stats;
@@ -36,6 +39,11 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
       setLoading(false);
     });
   }, [repo.id]);
+
+  // Task handlers
+  const handleIndexNow = async () => {
+    await backrestService.indexSnapshots(new StringValue({ value: repo.id! }));
+  }
 
   // Gracefully handle deletions by checking if the plan is still in the config.
   const config = useRecoilValue(configState);
@@ -64,6 +72,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           }
         </>
       ),
+      destroyInactiveTabPane: true,
     },
     {
       key: "2",
@@ -76,6 +85,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           />
         </>
       ),
+      destroyInactiveTabPane: true,
     },
     {
       key: "3",
@@ -89,6 +99,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           />
         </>
       ),
+      destroyInactiveTabPane: true,
     },
   ]
   return (
@@ -97,6 +108,18 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
         <Typography.Title>
           {repo.id}
         </Typography.Title>
+      </Flex>
+      <Flex gap="small" align="center" wrap="wrap">
+        <Tooltip title="Indexes the snapshots in the repository. Snapshots are also indexed automatically after each backup.">
+          <SpinButton type="default" onClickAsync={handleIndexNow}>
+            Index Snapshots
+          </SpinButton>
+        </Tooltip>
+        <Tooltip title="Computes stats for the repository. May take some time to refresh.">
+          <SpinButton type="default" onClickAsync={handleIndexNow}>
+            Index Snapshots
+          </SpinButton>
+        </Tooltip>
       </Flex>
       <Tabs
         defaultActiveKey={items[0].key}

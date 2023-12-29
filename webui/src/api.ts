@@ -5,6 +5,7 @@ import { Backrest } from "../gen/ts/v1/service_connect";
 
 const transport = createConnectTransport({
   baseUrl: "/",
+  useBinaryFormat: true,
 });
 
 export const backrestService = createPromiseClient(Backrest, transport);
