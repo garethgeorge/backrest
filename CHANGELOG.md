@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.9.0](https://github.com/garethgeorge/backrest/compare/v0.8.1...v0.9.0) (2023-12-31)
+
+
+### Features
+
+* add backrest logo ([5add0d8](https://github.com/garethgeorge/backrest/commit/5add0d8ffa829a71103520c94eacae17966f2a9f))
+* add mobile layout ([9c7f227](https://github.com/garethgeorge/backrest/commit/9c7f227ad0f5df34d66390c94b64e9f5181d24f0))
+* index snapshots created outside of backrest ([7711297](https://github.com/garethgeorge/backrest/commit/7711297a84170a733c5ccdb3e89617efc878cf69))
+* schedule index operations and stats refresh from repo view ([851bd12](https://github.com/garethgeorge/backrest/commit/851bd125b640e65a5b98b67d28d2f29e94411646))
+
+
+### Bug Fixes
+
+* operations associated with incorrect ID when tasks are rescheduled ([25871c9](https://github.com/garethgeorge/backrest/commit/25871c99920d8717e91bf1a921109b9df82a59a1))
+* reduce stats refresh frequency ([adbe005](https://github.com/garethgeorge/backrest/commit/adbe0056d82a5d9f890ce79b1120f5084bdc7124))
+* stat never runs ([3f3252d](https://github.com/garethgeorge/backrest/commit/3f3252d47951270fbf5f21b0831effb121d3ba3f))
+* stats task priority ([6bfe769](https://github.com/garethgeorge/backrest/commit/6bfe769fe037a5f2d35947574a5ed7e26ba981a8))
+* tasks run late when laptops resume from sleep ([cb78298](https://github.com/garethgeorge/backrest/commit/cb78298cffb492560717d5f8bdcd5941f7976f2e))
+* UI and code quality improvements ([c5e435d](https://github.com/garethgeorge/backrest/commit/c5e435d640bc8e79ceacf7f64d4cf75644859204))
+
 ## [0.8.0](https://github.com/garethgeorge/backrest/compare/v0.7.0...v0.8.0) (2023-12-25)
 
 
