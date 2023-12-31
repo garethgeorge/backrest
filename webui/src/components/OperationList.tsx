@@ -240,9 +240,6 @@ export const OperationRow = ({
     );
   } else if (operation.op.case === "operationForget") {
     const forgetOp = operation.op.value;
-    if (forgetOp.forget?.length === 0) {
-      return null;
-    }
     body = <ForgetOperationDetails forgetOp={forgetOp} />
   } else if (operation.op.case === "operationPrune") {
     const prune = operation.op.value;
