@@ -154,9 +154,10 @@ func (t *taskQueue) Dequeue(ctx context.Context) *scheduledTask {
 }
 
 type scheduledTask struct {
-	task     Task
-	runAt    time.Time
-	priority int
+	task      Task
+	runAt     time.Time
+	priority  int
+	callbacks []func(error)
 }
 
 type scheduledTaskHeap struct {

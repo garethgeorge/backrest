@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -268,8 +269,14 @@ func (s *Server) Backup(ctx context.Context, req *connect.Request[types.StringVa
 	if err != nil {
 		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.Value, err)
 	}
-	s.orchestrator.ScheduleTask(orchestrator.NewOneoffBackupTask(s.orchestrator, plan, time.Now()), orchestrator.TaskPriorityInteractive)
-	return connect.NewResponse(&emptypb.Empty{}), nil
+	var wg sync.WaitGroup
+	wg.Add(1)
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffBackupTask(s.orchestrator, plan, time.Now()), orchestrator.TaskPriorityInteractive, func(e error) {
+		err = e
+		wg.Done()
+	})
+	wg.Wait()
+	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
 func (s *Server) Forget(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
@@ -279,11 +286,15 @@ func (s *Server) Forget(ctx context.Context, req *connect.Request[types.StringVa
 	}
 
 	at := time.Now()
-
-	s.orchestrator.ScheduleTask(orchestrator.NewOneoffForgetTask(s.orchestrator, plan, "", at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityForget)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffForgetTask(s.orchestrator, plan, "", at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityForget, func(e error) {
+		err = e
+		wg.Done()
+	})
 	s.orchestrator.ScheduleTask(orchestrator.NewOneoffIndexSnapshotsTask(s.orchestrator, plan.Repo, at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
-
-	return connect.NewResponse(&emptypb.Empty{}), nil
+	wg.Wait()
+	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
 func (s *Server) Prune(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
@@ -293,7 +304,13 @@ func (s *Server) Prune(ctx context.Context, req *connect.Request[types.StringVal
 	}
 
 	at := time.Now()
-	s.orchestrator.ScheduleTask(orchestrator.NewOneoffPruneTask(s.orchestrator, plan, "", at, true), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityPrune)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffPruneTask(s.orchestrator, plan, "", at, true), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityPrune, func(e error) {
+		err = e
+		wg.Done()
+	})
+	wg.Wait()
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }

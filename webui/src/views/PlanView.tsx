@@ -24,7 +24,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
   const handleBackupNow = async () => {
     try {
-      backrestService.backup({ value: plan.id });
+      await backrestService.backup({ value: plan.id });
       alertsApi.success("Backup scheduled.");
     } catch (e: any) {
       alertsApi.error("Failed to schedule backup: " + e.message);
