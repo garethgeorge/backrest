@@ -67,7 +67,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
             <>
               <h3>Repo stats computed on {formatTime(Number(statsOperation.unixTimeStartMs))}</h3>
               {statsOperation.op.case === "operationStats" && <StatsTable stats={statsOperation.op.value.stats!} />}
-              <small>Stats are refreshed periodically in the background as new data is added.</small>
+              <small>Stats are refreshed periodically in the background as new data is added (e.g. every 10GB added or every 50 operations).</small>
             </>
           }
         </>

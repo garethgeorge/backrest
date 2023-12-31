@@ -230,13 +230,17 @@ func (o *Orchestrator) Run(mainCtx context.Context) {
 		}
 
 		start := time.Now()
-		if err := t.task.Run(taskCtx); err != nil {
-			zap.L().Error("task failed", zap.String("task", t.task.Name()), zap.Error(err))
+		err := t.task.Run(taskCtx)
+		if err != nil {
+			zap.L().Error("task failed", zap.String("task", t.task.Name()), zap.Error(err), zap.Duration("duration", time.Since(start)))
 		} else {
 			zap.L().Info("task finished", zap.String("task", t.task.Name()), zap.Duration("duration", time.Since(start)))
 		}
-
 		o.runningTask.Store(nil)
+
+		for _, cb := range t.callbacks {
+			cb(err)
+		}
 
 		if nextTime := t.task.Next(o.curTime()); nextTime != nil {
 			o.taskQueue.Push(scheduledTask{
@@ -247,16 +251,17 @@ func (o *Orchestrator) Run(mainCtx context.Context) {
 	}
 }
 
-func (o *Orchestrator) ScheduleTask(t Task, priority int) {
+func (o *Orchestrator) ScheduleTask(t Task, priority int, callbacks ...func(error)) {
 	nextRun := t.Next(o.curTime())
 	if nextRun == nil {
 		return
 	}
 	zap.L().Info("scheduling task", zap.String("task", t.Name()), zap.String("runAt", nextRun.Format(time.RFC3339)))
 	o.taskQueue.Push(scheduledTask{
-		task:     t,
-		runAt:    *nextRun,
-		priority: priority,
+		task:      t,
+		runAt:     *nextRun,
+		priority:  priority,
+		callbacks: callbacks,
 	})
 }
 
