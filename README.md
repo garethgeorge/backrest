@@ -2,7 +2,7 @@
 
 [![Build and Test](https://github.com/garethgeorge/backrest/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/garethgeorge/backrest/actions/workflows/build-and-test.yml)
 
-Backrest is a free and open-source web UI wrapper for [restic](https://restic.net/). 
+Backrest is a free and open-source web UI wrapper for [restic](https://restic.net/). Backrest aims to take away the burden of setting up and managing restic backups by providing a simple web UI that supports both scheduling backup operations as well as browsing and restoring from existing backups.
 
 **Project goals**
 
@@ -22,11 +22,26 @@ Backrest is a free and open-source web UI wrapper for [restic](https://restic.ne
 
 **Features**
 
- * Scheduled (and one off) backup operations
- * Scheduled restic forget and prune operations with configurable retention policy (e.g. keep 1 snapshot per day for 30 days, 1 snapshot per week for 1 year, etc) to manage repo size.
- * Backup to local or remote repositories (e.g. S3, Backblaze, etc)
- * Graphical backup browser and restore interface
- * Real time progress visualization for backup and restore operations.
+ * WebUI for restic supports local and remote access (e.g. run on a NAS and access from your desktop)
+ * Graphical operation progress (e.g. live progress bars for backup operations)
+ * Graphical operation history (e.g. view past backup operations and their status)
+ * Graphical snapshot browser
+ * Graphical restore interface
+ * Highly configurable backups
+   * Detailed scheduling options
+   * Configurable retention policies with restic forget (e.g. keep 1 snapshot per day for 30 days, 1 snapshot per week for 6 months, etc)
+   * Include lists
+   * Exclusion lists
+   * Custom CLI flags e.g. for use with rclone
+   * Supported destinations are any restic supported repository (e.g. local filesystem, S3, Backblaze, rclone, etc).
+ * Automatic repo health operations e.g. forget and prune.
+ * Multiple backup plans can be configured running on different schedules and with different retention policies.
+ * Multiple restic repositories can be configured and used in different plans.
+
+**Planned Features**
+ * [ ] Authentication support e.g. to password protect the web UI.
+ * [ ] WebUI for rclone configuration, today this must be done by passing extra flags in the repository configuration.
+ * [ ] Notifications e.g. email, discord, slack, webhook, etc.
 
 # Preview
 
@@ -79,6 +94,25 @@ services:
 
 Download a release from the [releases page](https://github.com/garethgeorge/backrest/releases)
 
+#### Using systemd with the install script (Recommended)
+
+Extract the release you downloaded and run the install script:
+
+```
+# extract the release to a subfolder of the current directory
+mkdir backrest && tar -xzvf backrest_Linux_x86_64.tar.gz -C backrest
+# run the install script
+cd backrest && ./install.sh
+```
+
+The install script will:
+
+ * Move the backrest binary to `/usr/local/bin`
+ * Create a systemd service file at `/etc/systemd/system/backrest.service`
+ * Enable and start the service
+
+Read the script before running it to make sure you are comfortable with these operations.
+
 #### Run on startup with cron (Basic)
 
 Move the backrest binary to `/usr/local/bin`:
@@ -93,11 +127,7 @@ Add the following line to your crontab (e.g. `crontab -e`):
 @reboot /usr/local/bin/backrest
 ```
 
-#### Run on startup with systemd (Recommended)
-
-
-
-Download a Linux release from the [releases page](https://github.com/garethgeorge/backrest/releases). Move the backrest binary to `/usr/local/bin`:
+#### Run on startup with systemd manually
 
 ```sh
 sudo mv backrest /usr/local/bin/backrest
@@ -137,7 +167,28 @@ Note: you can set the linux user and group to your primary user (e.g. `whoami` w
 
 Download a Darwin release from the [releases page](https://github.com/garethgeorge/backrest/releases) and install it to `/usr/local/bin`.
 
-At the moment there is no automated way to run Backrest on startup on MacOS. You can run it manually or create a launch agent to run it on startup. See [lingon](https://www.peterborgapps.com/lingon/) for a GUI tool to create a launch agent that runs Backrest at startup.
+#### Using launchd with the install script (Recommended)
+
+Extract the release you downloaded and run the install script:
+
+```
+# extract the release to a subfolder of the current directory
+mkdir backrest && tar -xzvf backrest_Darwin_arm64.tar.gz -C backrest
+# run the install script
+cd backrest && ./install.sh
+```
+
+The install script will:
+
+ * Move the backrest binary to `/usr/local/bin`
+ * Create a launch agent file at `~/Library/LaunchAgents/com.backrest.plist`
+ * Load the launch agent
+
+Read the script before running it to make sure you are comfortable with these operations.
+
+#### Manually
+
+If setting up backrest manually it's recommended to install the binary to `/usr/local/bin` and run it manually. You can also create a launch agent to run it on startup or may run it manually when needed.
 
 </details>
 
@@ -148,6 +199,8 @@ At the moment there is no automated way to run Backrest on startup on MacOS. You
 Download a Windows release from the [releases page](https://github.com/garethgeorge/backrest/releases) and install it to `C:\Program Files\Backrest\backrest.exe` (create the path if it does not exist).
 
 To run the binary on login, create a shortcut to the binary and place it in the `shell:startup` folder. See [this windows support article](https://support.microsoft.com/en-us/windows/add-an-app-to-run-automatically-at-startup-in-windows-10-150da165-dcd9-7230-517b-cf3c295d89dd) for more details.
+
+warning: If you get filesystem errors you may need to run Backrest as administrator for full filesystem access.
 
 warning: Backrest is not tested on Windows to the same bar as Linux and MacOS. Please report any issues you encounter. Some folders may not be accessible to Backrest or to restic on Windows due to permissions issues.
 
