@@ -15,7 +15,7 @@ create_systemd_service() {
 
   echo "Creating systemd service at /etc/systemd/system/backrest.service"
 
-  sudo cat > /etc/systemd/system/backrest.service <<- EOM
+  sudo tee /etc/systemd/system/backrest.service > /dev/null <<- EOM
 [Unit]
 Description=Backrest Service
 After=network.target
