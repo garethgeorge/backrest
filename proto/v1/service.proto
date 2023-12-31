@@ -57,6 +57,15 @@ service Backrest {
   rpc PathAutocomplete (types.StringValue) returns (types.StringList) {}
 }
 
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string jwt = 1;
+}
+
 message ClearHistoryRequest {
   string repo_id = 1;
   string plan_id = 2;
