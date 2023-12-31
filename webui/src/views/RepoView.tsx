@@ -115,11 +115,6 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
             Index Snapshots
           </SpinButton>
         </Tooltip>
-        <Tooltip title="Computes stats for the repository. May take some time to refresh.">
-          <SpinButton type="default" onClickAsync={handleIndexNow}>
-            Index Snapshots
-          </SpinButton>
-        </Tooltip>
       </Flex>
       <Tabs
         defaultActiveKey={items[0].key}

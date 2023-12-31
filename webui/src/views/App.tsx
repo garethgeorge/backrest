@@ -20,6 +20,7 @@ import { uiBuildVersion } from "../state/buildcfg";
 import { ActivityBar } from "../components/ActivityBar";
 import { OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { colorForStatus, getStatusForPlan, getStatusForRepo, subscribeToOperations, unsubscribeFromOperations } from "../state/oplog";
+import LogoSvg from "url:../../assets/logo.svg";
 import _ from "lodash";
 
 const { Header, Sider } = Layout;
@@ -60,16 +61,17 @@ export const App: React.FC = () => {
           display: "flex",
           alignItems: "center",
           width: "100vw",
+          height: "60px",
           backgroundColor: "#1b232c",
         }}
       >
+        <a
+          style={{ color: colorTextLightSolid }}
+          onClick={() => setContent(null, [])}
+        >
+          <img src={LogoSvg} style={{ height: "30px", color: "white", marginBottom: "-8px", paddingRight: "10px", }} />
+        </a>
         <h1>
-          <a
-            style={{ color: colorTextLightSolid }}
-            onClick={() => setContent(null, [])}
-          >
-            Backrest{" "}
-          </a>
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
             {uiBuildVersion}
           </small>

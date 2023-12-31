@@ -1,4 +1,4 @@
-# Backrest
+<img src="./webui/assets/logo-black.svg" width="400px"/>
 
 [![Build and Test](https://github.com/garethgeorge/backrest/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/garethgeorge/backrest/actions/workflows/build-and-test.yml)
 
