@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/garethgeorge/backrest/compare/v0.9.1...v0.9.2) (2024-01-01)
+
+
+### Bug Fixes
+
+* possible race condition in scheduled task heap ([30874c9](https://github.com/garethgeorge/backrest/commit/30874c9150f32a0fba5f1ea99bc77bcc978d8b03))
+
 ## [0.9.1](https://github.com/garethgeorge/backrest/compare/v0.9.0...v0.9.1) (2024-01-01)
 
 
