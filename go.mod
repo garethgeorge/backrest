@@ -5,7 +5,6 @@ go 1.21
 require (
 	connectrpc.com/connect v1.14.0
 	github.com/GeertJohan/go.rice v1.0.3
-	github.com/NYTimes/gziphandler v1.1.1
 	github.com/gitploy-io/cronexpr v0.2.2
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/mattn/go-colorable v0.1.13
@@ -22,10 +21,10 @@ require (
 require (
 	github.com/daaku/go.zipexe v1.0.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

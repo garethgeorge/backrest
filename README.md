@@ -79,6 +79,8 @@ services:
       - BACKREST_CONFIG=/config/config.json # path for the backrest config file.
       - XDG_CACHE_HOME=/cache # path for the restic cache which greatly improves performance.
     restart: unless-stopped
+    ports:
+      - 9898:9898
 ```
 </details>
 
