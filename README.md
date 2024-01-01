@@ -14,18 +14,19 @@ Backrest is a fully open source web UI wrapper for [restic](https://restic.net/)
 **Features**
 
  * WebUI for restic supports local and remote access (e.g. run on a NAS and access from your desktop)
- * Graphical operation progress (e.g. live progress bars for backup operations)
- * Graphical operation history (e.g. view past backup operations and their status)
- * Graphical snapshot browser
- * Graphical restore interface
+ * Realtime UI e.g. live progress bars for backup operations and live refreshes of operation history.
+ * Snapshot browser
+ * Restore interface
  * Highly configurable backups
    * Detailed scheduling options
    * Configurable retention policies with restic forget (e.g. keep 1 snapshot per day for 30 days, 1 snapshot per week for 6 months, etc)
    * Include lists
    * Exclusion lists
-   * Custom CLI flags e.g. for use with rclone
+   * Add custom CLI flags for detailed control of restic e.g. for use with rclone
    * Supported destinations are any restic supported repository (e.g. local filesystem, S3, Backblaze, rclone, etc).
  * Automatic repo health operations e.g. forget and prune.
+   * Forget runs after every backup.
+   * Prune once every 7 days by default.
  * Multiple backup plans can be configured running on different schedules and with different retention policies.
  * Multiple restic repositories can be configured and used in different plans.
 
@@ -43,7 +44,7 @@ Backrest is a fully open source web UI wrapper for [restic](https://restic.net/)
 
 # Getting Started 
 
-Backrest is packaged as a single executable. It can be run directly on Linux, MacOS, and Windows with no dependencies. [restic](https://github.com/restic/restic) will be downloaded and installed automatically on first run.
+Backrest is packaged as a single executable. It can be run directly on Linux, MacOS, and Windows with no dependencies. [restic](https://github.com/restic/restic) will be downloaded and installed in the data directory on first run.
 
 Download options
 
@@ -52,6 +53,8 @@ Download options
  * Run with docker: `garethgeorge/backrest:latest` ([see on dockerhub](https://hub.docker.com/repository/docker/garethgeorge/backrest/))
 
 Backrest is accessible from a web browser. By default it binds to `0.0.0.0:9898` and can be accessed at `http://localhost:9898`. Change the port with the `BACKREST_PORT` environment variable e.g. `BACKREST_PORT=127.0.0.1 backrest` to listen only on local interfaces.
+
+Note: backrest installs a specific restic version to ensure that the version of restic matches the version backrest is tested against. This provides the best guarantees for stability. If you wish to use a different version of restic OR if you would prefer to install restic manually you may do so by setting the `BACKREST_RESTIC_COMMAND` environment variable to the path of the restic binary you wish to use.
 
 ## Running with Docker Compose
 
