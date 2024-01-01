@@ -2,16 +2,7 @@
 
 [![Build and Test](https://github.com/garethgeorge/backrest/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/garethgeorge/backrest/actions/workflows/build-and-test.yml)
 
-Backrest is a free and open-source web UI wrapper for [restic](https://restic.net/). Backrest aims to take away the burden of setting up and managing restic backups by providing a simple web UI that supports both scheduling backup operations as well as browsing and restoring from existing backups.
-
-**Project goals**
-
- * Full featured web UI for restic: supports all basic operations (e.g. backup, restore, browse snapshots, prune old data, etc).
- * Interactive: UI is fast and responds to operation progress in real time (e.g. backups show live progress bars).
- * Safe: all backups leverage simple [restic](https://restic.net/) features and have test coverage. 
- * Easy to pull back the curtain: all common operations should be possible from the UI, but it should be easy to drop down to the command line and use restic directly if needed.
- * Lightweight: your backup orchestration should blend into the background. The web UI binary is fully self contained as a single executable and the binary is ~25 MB with very light memory overhead at runtime.
- * Runs everywhere: Backrest should be able to run on any platform that restic supports and that you need backed up. Backrest is originally conceived of as a self-hosted backup tool for NAS devices but runs just as well on an interactive Desktop or Laptop. 
+Backrest is a fully open source web UI wrapper for [restic](https://restic.net/). Backrest aims to take away the burden of setting up and managing restic backups by providing a simple web UI that supports both scheduling backup operations as well as browsing and restoring from existing backups. Backrest is shipped as a self-contained and light weight (<20 MB on all platforms) binary with no installation dependencies. 
 
 **Platform Support**
 
@@ -60,7 +51,7 @@ Download options
  * Build from source ([see below](#building)).
  * Run with docker: `garethgeorge/backrest:latest` ([see on dockerhub](https://hub.docker.com/repository/docker/garethgeorge/backrest/))
 
-Backrest is accessible from a web browser. By default it binds to `0.0.0.0:9898` and can be accessed at `http://localhost:9898`. 
+Backrest is accessible from a web browser. By default it binds to `0.0.0.0:9898` and can be accessed at `http://localhost:9898`. Change the port with the `BACKREST_PORT` environment variable e.g. `BACKREST_PORT=127.0.0.1 backrest` to listen only on local interfaces.
 
 ## Running with Docker Compose
 
