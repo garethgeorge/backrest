@@ -110,11 +110,14 @@ func (s *Server) AddRepo(ctx context.Context, req *connect.Request[v1.Repo]) (*c
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
 
+	zap.L().Debug("Applying config")
 	s.orchestrator.ApplyConfig(c)
 
 	// index snapshots for the newly added repository.
+	zap.L().Debug("Scheduling index snapshots task")
 	s.orchestrator.ScheduleTask(orchestrator.NewOneoffIndexSnapshotsTask(s.orchestrator, req.Msg.Id, time.Now()), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
 
+	zap.L().Debug("Done add repo")
 	return connect.NewResponse(c), nil
 }
 

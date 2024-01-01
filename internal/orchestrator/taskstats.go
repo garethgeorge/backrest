@@ -44,6 +44,9 @@ func (t *StatsTask) shouldRun() (bool, error) {
 		if _, ok := op.Op.(*v1.Operation_OperationStats); ok {
 			bytesSinceLastStat = 0
 		} else if backup, ok := op.Op.(*v1.Operation_OperationBackup); ok && backup.OperationBackup.LastStatus != nil {
+			if bytesSinceLastStat == -1 {
+				return nil
+			}
 			if summary, ok := backup.OperationBackup.LastStatus.Entry.(*v1.BackupProgressEntry_Summary); ok {
 				bytesSinceLastStat += summary.Summary.DataAdded
 			}

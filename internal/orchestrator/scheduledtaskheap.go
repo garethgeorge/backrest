@@ -73,8 +73,10 @@ func (t *taskQueue) Dequeue(ctx context.Context) *scheduledTask {
 	defer t.dequeueMu.Unlock()
 
 	t.mu.Lock()
-	t.notify = make(chan struct{}, 1)
+	defer t.mu.Unlock()
+	t.notify = make(chan struct{}, 10)
 	defer func() {
+		close(t.notify)
 		t.notify = nil
 	}()
 
@@ -82,12 +84,12 @@ func (t *taskQueue) Dequeue(ctx context.Context) *scheduledTask {
 		first, ok := t.heap.Peek().(*scheduledTask)
 		if !ok { // no tasks in heap.
 			if t.ready.Len() > 0 {
-				t.mu.Unlock()
 				return heap.Pop(&t.ready).(*scheduledTask)
 			}
 			t.mu.Unlock()
 			select {
 			case <-ctx.Done():
+				t.mu.Lock()
 				return nil
 			case <-t.notify:
 			}
@@ -101,7 +103,6 @@ func (t *taskQueue) Dequeue(ctx context.Context) *scheduledTask {
 		ready, ok := t.ready.Peek().(*scheduledTask)
 		if ok && now.Before(first.runAt) {
 			heap.Pop(&t.ready)
-			t.mu.Unlock()
 			return ready
 		}
 
@@ -137,7 +138,6 @@ func (t *taskQueue) Dequeue(ctx context.Context) *scheduledTask {
 			if t.ready.Len() == 0 {
 				break
 			}
-			t.mu.Unlock()
 			return heap.Pop(&t.ready).(*scheduledTask)
 		case <-t.notify: // new task was added, loop again to ensure we have the earliest task.
 			t.mu.Lock()
@@ -145,6 +145,7 @@ func (t *taskQueue) Dequeue(ctx context.Context) *scheduledTask {
 				<-timer.C
 			}
 		case <-ctx.Done():
+			t.mu.Lock()
 			if !timer.Stop() {
 				<-timer.C
 			}
