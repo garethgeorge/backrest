@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.1](https://github.com/garethgeorge/backrest/compare/v0.9.0...v0.9.1) (2024-01-01)
+
+
+### Bug Fixes
+
+* failed forget operations are hidden in the UI ([9896446](https://github.com/garethgeorge/backrest/commit/9896446ccfbcb8475a21b5fb565ebb73cb6bac2c))
+* UI buttons spin while waiting for tasks to complete ([c767fa7](https://github.com/garethgeorge/backrest/commit/c767fa7476d76f1b4eb49443a19ee1cedb4eb70a))
+
 ## [0.9.0](https://github.com/garethgeorge/backrest/compare/v0.8.1...v0.9.0) (2023-12-31)
 
 
