@@ -84,6 +84,9 @@ func (t *TaskWithOperation) Cancel(withStatus v1.OperationStatus) error {
 // timestamps are automatically added and the status is automatically updated if an error occurs.
 func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error {
 	op.UnixTimeStartMs = curTimeMillis() // update the start time from the planned time to the actual time.
+	if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
+		op.Status = v1.OperationStatus_STATUS_INPROGRESS
+	}
 	if op.Id != 0 {
 		if err := oplog.Update(op); err != nil {
 			return fmt.Errorf("failed to add operation to oplog: %w", err)
@@ -92,10 +95,6 @@ func WithOperation(oplog *oplog.OpLog, op *v1.Operation, do func() error) error 
 		if err := oplog.Add(op); err != nil {
 			return fmt.Errorf("failed to add operation to oplog: %w", err)
 		}
-	}
-
-	if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
-		op.Status = v1.OperationStatus_STATUS_INPROGRESS
 	}
 	err := do()
 	if err != nil {
