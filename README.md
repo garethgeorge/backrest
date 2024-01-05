@@ -37,10 +37,14 @@ Backrest is a fully open source web UI wrapper for [restic](https://restic.net/)
 
 # Preview
 
-|                                                                                                                |                                                                                                       |
-| -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| <img src="https://f000.backblazeb2.com/file/gshare/screenshots/restora-backup-view.png" width="400px"/>        | <img src="https://f000.backblazeb2.com/file/gshare/screenshots/restora-add-repo.png" width="400px" /> |
-| <img src="https://f000.backblazeb2.com/file/gshare/screenshots/restora-realtime-progress.png" width="400px" /> | <img src="https://f000.backblazeb2.com/file/gshare/screenshots/restora-add-plan.png" width="400px" /> |
+Operation History & Snapshot Browser
+
+<img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-30-14.png" width="700px" />
+
+Repo Creation Wizard
+
+<img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-19-50.png" width="700px" />
+
 
 # Getting Started 
 
@@ -60,7 +64,6 @@ Note: backrest installs a specific restic version to ensure that the version of 
 
 Docker image: https://hub.docker.com/garethgeorge/backrest
 
-<details>
 Example compose file:
 
 ```yaml
@@ -74,6 +77,7 @@ services:
       - ./backrest/config:/config
       - ./backrest/cache:/cache
       - /MY-BACKUP-DATA:/userdata # mount your directories to backup somewhere in the filesystem
+      - /MY-REPOS:/repos # (optional) mount your restic repositories somewhere in the filesystem.
     environment:
       - BACKREST_DATA=/data # path for backrest data. restic binary and the database are placed here.
       - BACKREST_CONFIG=/config/config.json # path for the backrest config file.
@@ -82,11 +86,8 @@ services:
     ports:
       - 9898:9898
 ```
-</details>
 
 ## Running on Linux
-
-<details>
 
 Download a release from the [releases page](https://github.com/garethgeorge/backrest/releases)
 
@@ -155,11 +156,7 @@ sudo systemctl start backrest
 
 Note: you can set the linux user and group to your primary user (e.g. `whoami` when logged in).
 
-</details>
-
 ## Running on MacOS
-
-<details>
 
 Download a Darwin release from the [releases page](https://github.com/garethgeorge/backrest/releases) and install it to `/usr/local/bin`.
 
@@ -186,11 +183,7 @@ Read the script before running it to make sure you are comfortable with these op
 
 If setting up backrest manually it's recommended to install the binary to `/usr/local/bin` and run it manually. You can also create a launch agent to run it on startup or may run it manually when needed.
 
-</details>
-
 ## Running on Windows
-
-<details>
 
 Download a Windows release from the [releases page](https://github.com/garethgeorge/backrest/releases) and install it to `C:\Program Files\Backrest\backrest.exe` (create the path if it does not exist).
 
@@ -198,9 +191,7 @@ To run the binary on login, create a shortcut to the binary and place it in the 
 
 warning: If you get filesystem errors you may need to run Backrest as administrator for full filesystem access.
 
-warning: Backrest is not tested on Windows to the same bar as Linux and MacOS. Please report any issues you encounter. Some folders may not be accessible to Backrest or to restic on Windows due to permissions issues.
-
-</details>
+warning: Backrest is not tested on Windows to the same bar as Linux and MacOS. Some features may not work as expected.
 
 # Configuration
 
@@ -212,7 +203,7 @@ warning: Backrest is not tested on Windows to the same bar as Linux and MacOS. P
  * `BACKREST_RESTIC_COMMAND` - the path to the restic binary. Defaults managed version of restic which will be downloaded and installed in the data directory.
  * `XDG_CACHE_HOME` -- the path to the cache directory. This is propagated to restic. 
 
-# Usage 
+# User Guide 
 
 ## Adding a Repository
 
@@ -236,3 +227,4 @@ Backups are run automatically based on the scheduled specified in your plan. You
  * Backup your configuration (e.g. `$BACKREST_CONFIG` or `$HOME/.config/backrest/config.json` by default on Linux/MacOS)
    * Your configuration contains the encryption keys for your repositories. If you loose this file you will not be able to restore your backups.
    * You may alternatively backup your encryption keys individually in which case you will be able to use restic directly to restore your backups.
+ 
