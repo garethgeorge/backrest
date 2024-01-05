@@ -26,7 +26,7 @@ el &&
     <ConfigProvider
       theme={{
         algorithm: [
-          darkThemeMq ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          darkThemeMq.matches ? theme.darkAlgorithm : theme.defaultAlgorithm,
           theme.compactAlgorithm,
         ],
       }}
