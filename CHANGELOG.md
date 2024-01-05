@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.3](https://github.com/garethgeorge/backrest/compare/v0.9.2...v0.9.3) (2024-01-05)
+
+
+### Bug Fixes
+
+* correctly mark tasks as inprogress before execution ([b19438a](https://github.com/garethgeorge/backrest/commit/b19438afbd7b83dc964774347e64491143a3a5d2))
+* correctly select light/dark mode based on system colortheme ([b64199c](https://github.com/garethgeorge/backrest/commit/b64199c140db7d2a77b58219cee088d22ec81954))
+
 ## [0.9.2](https://github.com/garethgeorge/backrest/compare/v0.9.1...v0.9.2) (2024-01-01)
 
 
