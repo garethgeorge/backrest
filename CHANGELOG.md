@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.0](https://github.com/garethgeorge/backrest/compare/v0.9.3...v0.10.0) (2024-01-15)
+
+
+### Features
+
+* make prune policy configurable in the addrepoview in the UI ([3fd08eb](https://github.com/garethgeorge/backrest/commit/3fd08eb8e4b455db656a0680318851824fdad2db))
+* update restic dependency to v0.16.3 ([ac8db31](https://github.com/garethgeorge/backrest/commit/ac8db31713d4db3c2240b7f7c006e518e9e0726c))
+* verify gpg signature when downloading and installing restic binary ([04106d1](https://github.com/garethgeorge/backrest/commit/04106d15d5ad73db6e670e84340ac1f9be200a23))
+
 ## [0.9.3](https://github.com/garethgeorge/backrest/compare/v0.9.2...v0.9.3) (2024-01-05)
 
 
