@@ -8,6 +8,8 @@ import {
   Button,
   Row,
   Col,
+  Card,
+  InputNumber,
 } from "antd";
 import React, { useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -395,6 +397,37 @@ export const AddRepoModal = ({
               </>
             )}
           </Form.List>
+
+          {/* Repo.prunePolicy */}
+          <Form.Item
+            required={false}
+            label={
+              <Tooltip title={<span>The schedule on which prune operations are run for this repository. Read <a href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning">the restic docs on customizing prune operations</a> for more details.</span>}>
+                Prune Policy
+              </Tooltip>
+            }
+          >
+            <Card>
+              <Form.Item
+                name={["prunePolicy", "maxFrequencyDays"]}
+                initialValue={template?.prunePolicy?.maxFrequencyDays || 7}
+                required={false}
+              >
+                <InputNumber addonBefore={<div style={{ width: "12em" }}>Max Frequency Days</div>} />
+              </Form.Item>
+              <Form.Item
+                name={["prunePolicy", "maxUnusedPercent"]}
+                initialValue={template?.prunePolicy?.maxUnusedPercent || 25}
+                required={false}
+              >
+                <InputNumber addonBefore={
+                  <Tooltip title="The maximum percentage of the repo size that may be unused after a prune operation completes. High values reduce copying at the expense of storage.">
+                    <div style={{ width: "12em" }}>Max Unused Percent</div>
+                  </Tooltip>}
+                />
+              </Form.Item>
+            </Card>
+          </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">
             {() => (
