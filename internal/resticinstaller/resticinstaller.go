@@ -4,6 +4,9 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/bzip2"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -36,68 +39,122 @@ func resticDownloadURL(version string) string {
 	return fmt.Sprintf("https://github.com/restic/restic/releases/download/v%v/restic_%v_%v_%v.bz2", version, version, runtime.GOOS, runtime.GOARCH)
 }
 
-func downloadFile(url string, downloadPath string) error {
-	// Download ur as a file and save it to path
+func hashDownloadURL(version string) string {
+	return fmt.Sprintf("https://github.com/restic/restic/releases/download/v%v/SHA256SUMS", version)
+}
+
+func sigDownloadURL(version string) string {
+	return fmt.Sprintf("https://github.com/restic/restic/releases/download/v%v/SHA256SUMS.asc", version)
+}
+
+// getURL downloads the given url and returns the response body as a string.
+func getURL(url string) ([]byte, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return fmt.Errorf("http GET %v: %w", url, err)
+		return nil, fmt.Errorf("http GET %v: %w", url, err)
 	}
 	defer resp.Body.Close()
 
-	var body io.Reader = resp.Body
-	if strings.HasSuffix(url, ".bz2") {
-		body = bzip2.NewReader(resp.Body)
-	} else if strings.HasSuffix(url, ".zip") {
-		var fullBody bytes.Buffer
-		_, err := io.Copy(&fullBody, resp.Body)
-		if err != nil {
-			return fmt.Errorf("copy response body to buffer: %w", err)
-		}
+	var body bytes.Buffer
+	_, err = io.Copy(&body, resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("copy response body to buffer: %w", err)
+	}
+	return body.Bytes(), nil
+}
 
-		archive, err := zip.NewReader(bytes.NewReader(fullBody.Bytes()), int64(fullBody.Len()))
-		if err != nil {
-			return fmt.Errorf("open zip archive: %w", err)
-		}
-
-		if len(archive.File) != 1 {
-			return fmt.Errorf("expected zip archive to contain exactly one file, got %v", len(archive.File))
-		}
-		body, err = archive.File[0].Open()
-		if err != nil {
-			return fmt.Errorf("open zip archive file %v: %w", archive.File[0].Name, err)
-		}
+func verify(sha256 string) error {
+	sha256sums, err := getURL(hashDownloadURL(RequiredResticVersion))
+	if err != nil {
+		return fmt.Errorf("get sha256sums: %w", err)
 	}
 
-	out, err := os.Create(downloadPath)
+	signature, err := getURL(sigDownloadURL(RequiredResticVersion))
 	if err != nil {
-		return fmt.Errorf("create file %v: %w", downloadPath, err)
+		return fmt.Errorf("get signature: %w", err)
 	}
-	defer out.Close()
-	if err != nil {
-		return fmt.Errorf("create file %v: %w", downloadPath, err)
+
+	if ok, err := gpgVerify(sha256sums, signature); !ok || err != nil {
+		return fmt.Errorf("gpg verification failed: ok=%v err=%v", ok, err)
 	}
-	_, err = io.Copy(out, body)
-	if err != nil {
-		return fmt.Errorf("copy response body to file %v: %w", downloadPath, err)
+
+	if !strings.Contains(string(sha256sums), sha256) {
+		fmt.Fprintf(os.Stderr, "sha256sums:\n%v\n", string(sha256sums))
+		return fmt.Errorf("sha256sums do not contain %v", sha256)
 	}
 
 	return nil
 }
 
-func downloadExecutable(url string, path string) error {
-	if err := downloadFile(url, path+".tmp"); err != nil {
-		return err
+// downloadFile downloads a file from the given url and saves it to the given path. The sha256 checksum of the file is returned on success.
+func downloadFile(url string, downloadPath string) (string, error) {
+	// Download ur as a file and save it to path
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Accept", "application/octet-stream")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("http GET %v: %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("http GET %v: %v", url, resp.Status)
 	}
 
-	if err := os.Chmod(path+".tmp", 0755); err != nil {
-		return fmt.Errorf("chmod executable %v: %w", path, err)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read response body: %w", err)
+	}
+	hash := sha256.Sum256(body)
+
+	if strings.HasSuffix(url, ".bz2") {
+		body, err = io.ReadAll(bzip2.NewReader(bytes.NewReader(body)))
+		if err != nil {
+			return "", fmt.Errorf("bz2 decompress body: %w", err)
+		}
+	} else if strings.HasSuffix(url, ".zip") {
+		var fullBody bytes.Buffer
+		_, err := io.Copy(&fullBody, resp.Body)
+		if err != nil {
+			return "", fmt.Errorf("copy response body to buffer: %w", err)
+		}
+
+		archive, err := zip.NewReader(bytes.NewReader(fullBody.Bytes()), int64(fullBody.Len()))
+		if err != nil {
+			return "", fmt.Errorf("open zip archive: %w", err)
+		}
+
+		if len(archive.File) != 1 {
+			return "", fmt.Errorf("expected zip archive to contain exactly one file, got %v", len(archive.File))
+		}
+		f, err := archive.File[0].Open()
+		if err != nil {
+			return "", fmt.Errorf("open zip archive file %v: %w", archive.File[0].Name, err)
+		}
+
+		body, err = io.ReadAll(f)
+		if err != nil {
+			return "", fmt.Errorf("read zip archive file %v: %w", archive.File[0].Name, err)
+		}
 	}
 
-	if err := os.Rename(path+".tmp", path); err != nil {
-		return fmt.Errorf("rename %v.tmp to %v: %w", path, path, err)
+	out, err := os.Create(downloadPath)
+	if err != nil {
+		return "", fmt.Errorf("create file %v: %w", downloadPath, err)
+	}
+	defer out.Close()
+	if err != nil {
+		return "", fmt.Errorf("create file %v: %w", downloadPath, err)
+	}
+	_, err = io.Copy(out, bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("copy response body to file %v: %w", downloadPath, err)
 	}
 
-	return nil
+	return hex.EncodeToString(hash[:]), nil
 }
 
 func installResticIfNotExists(resticInstallPath string) error {
@@ -112,8 +169,22 @@ func installResticIfNotExists(resticInstallPath string) error {
 			return fmt.Errorf("create restic install directory %v: %w", path.Dir(resticInstallPath), err)
 		}
 
-		if err := downloadExecutable(resticDownloadURL(RequiredResticVersion), resticInstallPath); err != nil {
-			return fmt.Errorf("download restic version %v: %w", RequiredResticVersion, err)
+		hash, err := downloadFile(resticDownloadURL(RequiredResticVersion), resticInstallPath+".tmp")
+		if err != nil {
+			return err
+		}
+
+		if err := verify(hash); err != nil {
+			os.Remove(resticInstallPath) // try to remove the bad binary.
+			return fmt.Errorf("failed to verify the authenticity of the downloaded restic binary: %v", err)
+		}
+
+		if err := os.Chmod(resticInstallPath+".tmp", 0755); err != nil {
+			return fmt.Errorf("chmod executable %v: %w", resticInstallPath, err)
+		}
+
+		if err := os.Rename(resticInstallPath+".tmp", resticInstallPath); err != nil {
+			return fmt.Errorf("rename %v.tmp to %v: %w", resticInstallPath, resticInstallPath, err)
 		}
 
 		return nil
