@@ -6,7 +6,7 @@ option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
 
 // Config is the top level config object for restic UI.
 message Config {
-   // modification number, used for read-modify-write consistency in the UI. Incremented on every write.
+  // modification number, used for read-modify-write consistency in the UI. Incremented on every write.
   int32 modno = 1 [json_name="modno"];
 
   // override the hostname tagged on backups. If provided it will be used in addition to tags to group backups.
@@ -49,9 +49,9 @@ message RetentionPolicy {
 }
 
 message PrunePolicy {
-  int32 max_frequency_days = 1; // max frequency of prune runs in days. If 0, prune will be run on every backup.
-  int32 max_unused_percent = 100; // max percentage of repo size that can be unused before prune is run.
-  int32 max_unused_bytes = 101; // max number of bytes that can be unused before prune is run.
+  int32 max_frequency_days = 1 [json_name="maxFrequencyDays"]; // max frequency of prune runs in days. If 0, prune will be run on every backup.
+  int32 max_unused_percent = 100 [json_name="maxUnusedPercent"]; // max percentage of repo size that can be unused before prune is run.
+  int32 max_unused_bytes = 101 [json_name="maxUnusedBytes"]; // max number of bytes that can be unused before prune is run.
 }
 
 message User {

@@ -57,7 +57,7 @@ func (t *PruneTask) Next(now time.Time) *time.Time {
 			SnapshotId:      t.linkSnapshot,
 			UnixTimeStartMs: timeToUnixMillis(*ret),
 			Status:          v1.OperationStatus_STATUS_PENDING,
-			Op:              &v1.Operation_OperationForget{},
+			Op:              &v1.Operation_OperationPrune{},
 		}); err != nil {
 			zap.S().Errorf("task %v failed to add operation to oplog: %v", t.Name(), err)
 			return nil
