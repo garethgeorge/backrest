@@ -1,9 +1,11 @@
 #! /bin/bash
 
+cd "$(dirname "$0")" # cd to the directory of this script
 
 install_unix() {
   echo "Installing backrest to /usr/local/bin"
   sudo mkdir -p /usr/local/bin
+
   sudo cp $(ls -1 backrest | head -n 1) /usr/local/bin
 }
 
