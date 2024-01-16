@@ -1,5 +1,7 @@
 #! /bin/bash
 
+cd "$(dirname "$0")" # cd to the directory of this script
+
 uninstall_unix() {
   echo "Uninstalling backrest from /usr/local/bin/backrest"
   sudo rm -f /usr/local/bin/backrest
