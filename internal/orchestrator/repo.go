@@ -58,7 +58,7 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 	defer r.mu.Unlock()
 	if !r.initialized {
 
-		if err := r.repo.Init(ctx); err != nil {
+		if err := r.repo.Init(ctx, restic.WithPropagatedEnvVars(restic.EnvToPropagate...)); err != nil {
 			return nil, fmt.Errorf("failed to initialize repo: %w", err)
 		}
 		r.initialized = true

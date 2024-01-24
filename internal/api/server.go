@@ -100,8 +100,9 @@ func (s *Server) AddRepo(ctx context.Context, req *connect.Request[v1.Repo]) (*c
 	}
 
 	r := restic.NewRepo(bin, req.Msg)
+
 	// use background context such that the init op can try to complete even if the connection is closed.
-	if err := r.Init(context.Background()); err != nil {
+	if err := r.Init(context.Background(), restic.WithPropagatedEnvVars(restic.EnvToPropagate...)); err != nil {
 		return nil, fmt.Errorf("failed to init repo: %w", err)
 	}
 

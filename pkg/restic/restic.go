@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"sync"
 
@@ -20,7 +21,6 @@ var ErrPartialBackup = errors.New("incomplete backup")
 var ErrBackupFailed = errors.New("backup failed")
 
 type Repo struct {
-	mu          sync.Mutex
 	cmd         string
 	repo        *v1.Repo
 	initialized bool
@@ -34,6 +34,10 @@ func NewRepo(resticBin string, repo *v1.Repo, opts ...GenericOption) *Repo {
 	opt := &GenericOpts{}
 	for _, o := range opts {
 		o(opt)
+	}
+
+	if slices.Index(opt.extraArgs, "sftp.args") == -1 {
+		opt.extraArgs = append(opt.extraArgs, "-o", "sftp.args=-oBatchMode=yes")
 	}
 
 	return &Repo{
@@ -56,16 +60,20 @@ func (r *Repo) buildEnv() []string {
 }
 
 // init initializes the repo, the command will be cancelled with the context.
-func (r *Repo) init(ctx context.Context) error {
+func (r *Repo) init(ctx context.Context, opts ...GenericOption) error {
 	if r.initialized {
 		return nil
 	}
 
+	opt := resolveOpts(opts)
+
 	var args = []string{"init", "--json"}
 	args = append(args, r.extraArgs...)
+	args = append(args, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
 	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	if output, err := cmd.CombinedOutput(); err != nil {
 		if strings.Contains(string(output), "config file already exists") || strings.Contains(string(output), "already initialized") {
@@ -78,8 +86,8 @@ func (r *Repo) init(ctx context.Context) error {
 	return nil
 }
 
-func (r *Repo) Init(ctx context.Context) error {
-	if err := r.init(ctx); err != nil && !errors.Is(err, errAlreadyInitialized) {
+func (r *Repo) Init(ctx context.Context, opts ...GenericOption) error {
+	if err := r.init(ctx, opts...); err != nil && !errors.Is(err, errAlreadyInitialized) {
 		return fmt.Errorf("init failed: %w", err)
 	}
 	return nil
