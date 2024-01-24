@@ -24,7 +24,6 @@ import {
   updateConfig,
 } from "../state/config";
 import { useRecoilState } from "recoil";
-import { nameRegex } from "../lib/patterns";
 import { validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
 
@@ -179,10 +178,6 @@ export const AddRepoModal = ({
               {
                 required: true,
                 message: "Please input plan name",
-              },
-              {
-                pattern: nameRegex,
-                message: "Invalid symbol",
               },
               {
                 validator: async (_, value) => {
