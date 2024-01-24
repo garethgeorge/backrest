@@ -17,7 +17,6 @@ import { useShowModal } from "../components/ModalManager";
 import { Plan, RetentionPolicy } from "../../gen/ts/v1/config_pb";
 import { useRecoilState } from "recoil";
 import { configState, fetchConfig, updateConfig } from "../state/config";
-import { nameRegex } from "../lib/patterns";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { useAlertApi } from "../components/Alerts";
@@ -162,10 +161,6 @@ export const AddPlanModal = ({
               {
                 required: true,
                 message: "Please input plan name",
-              },
-              {
-                pattern: nameRegex,
-                message: "Invalid symbol",
               },
               {
                 validator: async (_, value) => {
