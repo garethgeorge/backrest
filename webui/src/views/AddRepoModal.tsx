@@ -235,10 +235,11 @@ export const AddRepoModal = ({
           </Tooltip>
 
           {/* Repo.password */}
-          <Form.Item<Repo> hasFeedback name="password" label={<>Password </>}>
+          <Form.Item label="Password" required={true}>
             <Row>
               <Col span={16}>
-                <Form.Item
+                <Form.Item<Repo>
+                  hasFeedback
                   name="password"
                   initialValue={template && template.password}
                   validateTrigger={["onChange", "onBlur"]}

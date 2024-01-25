@@ -24,6 +24,7 @@ message Repo {
   repeated string env = 4 [json_name="env"]; // extra environment variables to set for restic.
   repeated string flags = 5 [json_name="flags"]; // extra flags set on the restic command.
   PrunePolicy prune_policy = 6 [json_name="prunePolicy"]; // policy for when to run prune.
+  repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on backup events.
 }
 
 message Plan {
@@ -58,5 +59,21 @@ message User {
   string name = 1;
   oneof password {
     string password_bcrypt = 2;
+  }
+}
+
+message Hook {
+  enum Condition {
+    CONDITION_UNKNOWN = 0;
+    CONDITION_BACKUP_START = 1;
+    CONDITION_BACKUP_END = 2;
+    CONDITION_BACKUP_FAILED = 3;
+    CONDITION_BACKUP_SUCCESS = 4;
+  }
+
+  repeated Condition conditions = 1;
+
+  oneof hook {
+    string command = 100;
   }
 }

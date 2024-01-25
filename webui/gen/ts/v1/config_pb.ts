@@ -119,6 +119,20 @@ export class Repo extends Message<Repo> {
    */
   prunePolicy?: PrunePolicy;
 
+  /**
+   * hooks to run before backup.
+   *
+   * @generated from field: repeated v1.Hook pre_backup_hooks = 7;
+   */
+  preBackupHooks: Hook[] = [];
+
+  /**
+   * hooks to run after backup.
+   *
+   * @generated from field: repeated v1.Hook post_backup_hooks = 8;
+   */
+  postBackupHooks: Hook[] = [];
+
   constructor(data?: PartialMessage<Repo>) {
     super();
     proto3.util.initPartial(data, this);
@@ -133,6 +147,8 @@ export class Repo extends Message<Repo> {
     { no: 4, name: "env", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 5, name: "flags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 6, name: "prune_policy", kind: "message", T: PrunePolicy },
+    { no: 7, name: "pre_backup_hooks", kind: "message", T: Hook, repeated: true },
+    { no: 8, name: "post_backup_hooks", kind: "message", T: Hook, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Repo {
@@ -431,4 +447,91 @@ export class User extends Message<User> {
     return proto3.util.equals(User, a, b);
   }
 }
+
+/**
+ * @generated from message v1.Hook
+ */
+export class Hook extends Message<Hook> {
+  /**
+   * @generated from field: repeated v1.Hook.Condition conditions = 1;
+   */
+  conditions: Hook_Condition[] = [];
+
+  /**
+   * @generated from oneof v1.Hook.hook
+   */
+  hook: {
+    /**
+     * @generated from field: string command = 100;
+     */
+    value: string;
+    case: "command";
+  } | { case: undefined; value?: undefined } = { case: undefined };
+
+  constructor(data?: PartialMessage<Hook>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.Hook";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "conditions", kind: "enum", T: proto3.getEnumType(Hook_Condition), repeated: true },
+    { no: 100, name: "command", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "hook" },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook {
+    return new Hook().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook {
+    return new Hook().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook {
+    return new Hook().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Hook | PlainMessage<Hook> | undefined, b: Hook | PlainMessage<Hook> | undefined): boolean {
+    return proto3.util.equals(Hook, a, b);
+  }
+}
+
+/**
+ * @generated from enum v1.Hook.Condition
+ */
+export enum Hook_Condition {
+  /**
+   * @generated from enum value: CONDITION_UNKNOWN = 0;
+   */
+  UNKNOWN = 0,
+
+  /**
+   * @generated from enum value: CONDITION_BACKUP_START = 1;
+   */
+  BACKUP_START = 1,
+
+  /**
+   * @generated from enum value: CONDITION_BACKUP_END = 2;
+   */
+  BACKUP_END = 2,
+
+  /**
+   * @generated from enum value: CONDITION_BACKUP_FAILED = 3;
+   */
+  BACKUP_FAILED = 3,
+
+  /**
+   * @generated from enum value: CONDITION_BACKUP_SUCCESS = 4;
+   */
+  BACKUP_SUCCESS = 4,
+}
+// Retrieve enum metadata with: proto3.getEnumType(Hook_Condition)
+proto3.util.setEnumType(Hook_Condition, "v1.Hook.Condition", [
+  { no: 0, name: "CONDITION_UNKNOWN" },
+  { no: 1, name: "CONDITION_BACKUP_START" },
+  { no: 2, name: "CONDITION_BACKUP_END" },
+  { no: 3, name: "CONDITION_BACKUP_FAILED" },
+  { no: 4, name: "CONDITION_BACKUP_SUCCESS" },
+]);
 
