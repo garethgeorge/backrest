@@ -177,7 +177,7 @@ export const AddRepoModal = ({
             rules={[
               {
                 required: true,
-                message: "Please input plan name",
+                message: "Please input repo name",
               },
               {
                 validator: async (_, value) => {
@@ -245,7 +245,7 @@ export const AddRepoModal = ({
                   rules={[
                     {
                       required: true,
-                      message: "Please input repo name",
+                      message: "Please input repo password",
                     },
                   ]}
                 >
