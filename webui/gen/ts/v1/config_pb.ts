@@ -120,18 +120,11 @@ export class Repo extends Message<Repo> {
   prunePolicy?: PrunePolicy;
 
   /**
-   * hooks to run before backup.
+   * hooks to run on backup events.
    *
-   * @generated from field: repeated v1.Hook pre_backup_hooks = 7;
+   * @generated from field: repeated v1.Hook hooks = 7;
    */
-  preBackupHooks: Hook[] = [];
-
-  /**
-   * hooks to run after backup.
-   *
-   * @generated from field: repeated v1.Hook post_backup_hooks = 8;
-   */
-  postBackupHooks: Hook[] = [];
+  hooks: Hook[] = [];
 
   constructor(data?: PartialMessage<Repo>) {
     super();
@@ -147,8 +140,7 @@ export class Repo extends Message<Repo> {
     { no: 4, name: "env", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 5, name: "flags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 6, name: "prune_policy", kind: "message", T: PrunePolicy },
-    { no: 7, name: "pre_backup_hooks", kind: "message", T: Hook, repeated: true },
-    { no: 8, name: "post_backup_hooks", kind: "message", T: Hook, repeated: true },
+    { no: 7, name: "hooks", kind: "message", T: Hook, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Repo {
@@ -458,14 +450,14 @@ export class Hook extends Message<Hook> {
   conditions: Hook_Condition[] = [];
 
   /**
-   * @generated from oneof v1.Hook.hook
+   * @generated from oneof v1.Hook.action
    */
-  hook: {
+  action: {
     /**
-     * @generated from field: string command = 100;
+     * @generated from field: v1.Hook.Command action_command = 100;
      */
-    value: string;
-    case: "command";
+    value: Hook_Command;
+    case: "actionCommand";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Hook>) {
@@ -477,7 +469,7 @@ export class Hook extends Message<Hook> {
   static readonly typeName = "v1.Hook";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "conditions", kind: "enum", T: proto3.getEnumType(Hook_Condition), repeated: true },
-    { no: 100, name: "command", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "hook" },
+    { no: 100, name: "action_command", kind: "message", T: Hook_Command, oneof: "action" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook {
@@ -534,4 +526,41 @@ proto3.util.setEnumType(Hook_Condition, "v1.Hook.Condition", [
   { no: 3, name: "CONDITION_BACKUP_FAILED" },
   { no: 4, name: "CONDITION_BACKUP_SUCCESS" },
 ]);
+
+/**
+ * @generated from message v1.Hook.Command
+ */
+export class Hook_Command extends Message<Hook_Command> {
+  /**
+   * @generated from field: string command = 1;
+   */
+  command = "";
+
+  constructor(data?: PartialMessage<Hook_Command>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.Hook.Command";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "command", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Command {
+    return new Hook_Command().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Command {
+    return new Hook_Command().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Command {
+    return new Hook_Command().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Hook_Command | PlainMessage<Hook_Command> | undefined, b: Hook_Command | PlainMessage<Hook_Command> | undefined): boolean {
+    return proto3.util.equals(Hook_Command, a, b);
+  }
+}
 

@@ -73,7 +73,11 @@ message Hook {
 
   repeated Condition conditions = 1;
 
-  oneof hook {
-    string command = 100;
+  oneof action {
+    Command action_command = 100;
+  }
+
+  message Command {
+    string command = 1;
   }
 }
