@@ -33,8 +33,7 @@ func (f *JsonFileStore) Get() (*v1.Config, error) {
 	}
 
 	var config v1.Config
-
-	if err = protojson.Unmarshal(data, &config); err != nil {
+	if err = (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
@@ -70,6 +69,11 @@ func (f *JsonFileStore) Update(config *v1.Config) error {
 	err = atomic.WriteFile(f.Path, bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	// only the user running backrest should be able to read the config.
+	if err := os.Chmod(f.Path, 0600); err != nil {
+		return fmt.Errorf("chmod(0600) config file: %w", err)
 	}
 
 	return nil
