@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.1](https://github.com/garethgeorge/backrest/compare/v0.10.0...v0.10.1) (2024-01-25)
+
+
+### Bug Fixes
+
+* chmod config 0600 such that only the creating user can read ([ecff0e5](https://github.com/garethgeorge/backrest/commit/ecff0e57c1fa4d65f35774d227a27222af8e7921))
+* install scripts handle working dir correctly ([dcff2ad](https://github.com/garethgeorge/backrest/commit/dcff2adf60222030043d7a227d27e74f555ab376))
+* relax name regex for plans and repos ([ee6134a](https://github.com/garethgeorge/backrest/commit/ee6134af76c3e90f542f67b89b2571f060db5590))
+* sftp support using public key authentication ([bedb302](https://github.com/garethgeorge/backrest/commit/bedb302a025438a58309f26b046c9b6d49316414))
+* typos in validation error messages in addrepomodel ([3b79afb](https://github.com/garethgeorge/backrest/commit/3b79afb2b18530deaa10cca08a60941a64c6fd9b))
+
 ## [0.10.0](https://github.com/garethgeorge/backrest/compare/v0.9.3...v0.10.0) (2024-01-15)
 
 
