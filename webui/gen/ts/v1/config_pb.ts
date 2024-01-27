@@ -120,7 +120,7 @@ export class Repo extends Message<Repo> {
   prunePolicy?: PrunePolicy;
 
   /**
-   * hooks to run on backup events.
+   * hooks to run on events for this repo.
    *
    * @generated from field: repeated v1.Hook hooks = 7;
    */
@@ -206,6 +206,13 @@ export class Plan extends Message<Plan> {
    */
   retention?: RetentionPolicy;
 
+  /**
+   * hooks to run on events for this plan.
+   *
+   * @generated from field: repeated v1.Hook hooks = 8;
+   */
+  hooks: Hook[] = [];
+
   constructor(data?: PartialMessage<Plan>) {
     super();
     proto3.util.initPartial(data, this);
@@ -220,6 +227,7 @@ export class Plan extends Message<Plan> {
     { no: 5, name: "excludes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 6, name: "cron", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "retention", kind: "message", T: RetentionPolicy },
+    { no: 8, name: "hooks", kind: "message", T: Hook, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Plan {
@@ -458,6 +466,18 @@ export class Hook extends Message<Hook> {
      */
     value: Hook_Command;
     case: "actionCommand";
+  } | {
+    /**
+     * @generated from field: v1.Hook.Webhook action_webhook = 101;
+     */
+    value: Hook_Webhook;
+    case: "actionWebhook";
+  } | {
+    /**
+     * @generated from field: v1.Hook.Discord action_discord = 102;
+     */
+    value: Hook_Discord;
+    case: "actionDiscord";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Hook>) {
@@ -470,6 +490,8 @@ export class Hook extends Message<Hook> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "conditions", kind: "enum", T: proto3.getEnumType(Hook_Condition), repeated: true },
     { no: 100, name: "action_command", kind: "message", T: Hook_Command, oneof: "action" },
+    { no: 101, name: "action_webhook", kind: "message", T: Hook_Webhook, oneof: "action" },
+    { no: 102, name: "action_discord", kind: "message", T: Hook_Discord, oneof: "action" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook {
@@ -499,32 +521,32 @@ export enum Hook_Condition {
   UNKNOWN = 0,
 
   /**
+   * backup started.
+   *
    * @generated from enum value: CONDITION_BACKUP_START = 1;
    */
   BACKUP_START = 1,
 
   /**
+   * backup completed (success or fail).
+   *
    * @generated from enum value: CONDITION_BACKUP_END = 2;
    */
   BACKUP_END = 2,
 
   /**
-   * @generated from enum value: CONDITION_BACKUP_FAILED = 3;
+   * error running any operation.
+   *
+   * @generated from enum value: CONDITION_ERROR = 5;
    */
-  BACKUP_FAILED = 3,
-
-  /**
-   * @generated from enum value: CONDITION_BACKUP_SUCCESS = 4;
-   */
-  BACKUP_SUCCESS = 4,
+  ERROR = 5,
 }
 // Retrieve enum metadata with: proto3.getEnumType(Hook_Condition)
 proto3.util.setEnumType(Hook_Condition, "v1.Hook.Condition", [
   { no: 0, name: "CONDITION_UNKNOWN" },
   { no: 1, name: "CONDITION_BACKUP_START" },
   { no: 2, name: "CONDITION_BACKUP_END" },
-  { no: 3, name: "CONDITION_BACKUP_FAILED" },
-  { no: 4, name: "CONDITION_BACKUP_SUCCESS" },
+  { no: 5, name: "CONDITION_ERROR" },
 ]);
 
 /**
@@ -561,6 +583,80 @@ export class Hook_Command extends Message<Hook_Command> {
 
   static equals(a: Hook_Command | PlainMessage<Hook_Command> | undefined, b: Hook_Command | PlainMessage<Hook_Command> | undefined): boolean {
     return proto3.util.equals(Hook_Command, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.Hook.Webhook
+ */
+export class Hook_Webhook extends Message<Hook_Webhook> {
+  /**
+   * @generated from field: string webhook_url = 1;
+   */
+  webhookUrl = "";
+
+  constructor(data?: PartialMessage<Hook_Webhook>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.Hook.Webhook";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "webhook_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Webhook {
+    return new Hook_Webhook().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Webhook {
+    return new Hook_Webhook().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Webhook {
+    return new Hook_Webhook().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Hook_Webhook | PlainMessage<Hook_Webhook> | undefined, b: Hook_Webhook | PlainMessage<Hook_Webhook> | undefined): boolean {
+    return proto3.util.equals(Hook_Webhook, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.Hook.Discord
+ */
+export class Hook_Discord extends Message<Hook_Discord> {
+  /**
+   * @generated from field: string webhook_url = 1;
+   */
+  webhookUrl = "";
+
+  constructor(data?: PartialMessage<Hook_Discord>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.Hook.Discord";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "webhook_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Discord {
+    return new Hook_Discord().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Discord {
+    return new Hook_Discord().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Discord {
+    return new Hook_Discord().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Hook_Discord | PlainMessage<Hook_Discord> | undefined, b: Hook_Discord | PlainMessage<Hook_Discord> | undefined): boolean {
+    return proto3.util.equals(Hook_Discord, a, b);
   }
 }
 

@@ -202,116 +202,109 @@ export const AddPlanModal = ({
           </Form.Item>
 
           {/* Plan.paths */}
-          <Form.List
-            name="paths"
-            rules={[]}
-            initialValue={template ? template.paths : []}
-          >
-            {(fields, { add, remove }, { errors }) => (
-              <>
-                {fields.map((field, index) => (
-                  <Form.Item
-                    label={index === 0 ? "Paths" : " "}
-                    required={index === 0}
-                    key={field.key}
-                    colon={index === 0}
-                  >
+          <Form.Item label="Paths" required={true}>
+            <Form.List
+              name="paths"
+              rules={[]}
+              initialValue={template ? template.paths : []}
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => (
                     <Form.Item
-                      {...field}
-                      validateTrigger={["onChange", "onBlur"]}
-                      initialValue={""}
-                      rules={[
-                        {
-                          required: true,
-                        },
-                      ]}
-                      noStyle
+                      key={field.key}
                     >
-                      <URIAutocomplete
-                        style={{ width: "90%" }}
-                        onBlur={() => form.validateFields()}
+                      <Form.Item
+                        {...field}
+                        validateTrigger={["onChange", "onBlur"]}
+                        initialValue={""}
+                        rules={[
+                          {
+                            required: true,
+                          },
+                        ]}
+                        noStyle
+                      >
+                        <URIAutocomplete
+                          style={{ width: "90%" }}
+                          onBlur={() => form.validateFields()}
+                        />
+                      </Form.Item>
+                      <MinusCircleOutlined
+                        className="dynamic-delete-button"
+                        onClick={() => remove(field.name)}
+                        style={{ paddingLeft: "5px" }}
                       />
                     </Form.Item>
-                    <MinusCircleOutlined
-                      className="dynamic-delete-button"
-                      onClick={() => remove(field.name)}
-                      style={{ paddingLeft: "5px" }}
-                    />
+                  ))}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      style={{ width: "90%" }}
+                      icon={<PlusOutlined />}
+                    >
+                      Add Path
+                    </Button>
+                    <Form.ErrorList errors={errors} />
                   </Form.Item>
-                ))}
-                <Form.Item
-                  label={fields.length === 0 ? "Paths" : " "}
-                  colon={fields.length === 0}
-                >
-                  <Button
-                    type="dashed"
-                    onClick={() => add()}
-                    style={{ width: "90%" }}
-                    icon={<PlusOutlined />}
-                  >
-                    Add Path
-                  </Button>
-                  <Form.ErrorList errors={errors} />
-                </Form.Item>
-              </>
-            )}
-          </Form.List>
+                </>
+              )}
+            </Form.List>
+          </Form.Item>
           {/* Plan.excludes */}
-          <Form.List
-            name="excludes"
-            rules={[]}
-            initialValue={template ? template.excludes : []}
-          >
-            {(fields, { add, remove }, { errors }) => (
-              <>
-                {fields.map((field, index) => (
-                  <Form.Item
-                    label={index === 0 ? "Excludes" : " "}
-                    colon={index === 0}
-                    required={false}
-                    key={field.key}
-                  >
+          <Form.Item label="Excludes" required={false}>
+            <Form.List
+              name="excludes"
+              rules={[]}
+              initialValue={template ? template.excludes : []}
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => (
                     <Form.Item
-                      {...field}
-                      validateTrigger={["onChange", "onBlur"]}
-                      initialValue={""}
-                      rules={[
-                        {
-                          required: true,
-                        },
-                      ]}
-                      noStyle
+                      required={false}
+                      key={field.key}
                     >
-                      <URIAutocomplete
-                        style={{ width: "90%" }}
-                        onBlur={() => form.validateFields()}
-                        globAllowed={true}
+                      <Form.Item
+                        {...field}
+                        validateTrigger={["onChange", "onBlur"]}
+                        initialValue={""}
+                        rules={[
+                          {
+                            required: true,
+                          },
+                        ]}
+                        noStyle
+                      >
+                        <URIAutocomplete
+                          style={{ width: "90%" }}
+                          onBlur={() => form.validateFields()}
+                          globAllowed={true}
+                        />
+                      </Form.Item>
+                      <MinusCircleOutlined
+                        className="dynamic-delete-button"
+                        onClick={() => remove(field.name)}
+                        style={{ paddingLeft: "5px" }}
                       />
                     </Form.Item>
-                    <MinusCircleOutlined
-                      className="dynamic-delete-button"
-                      onClick={() => remove(field.name)}
-                      style={{ paddingLeft: "5px" }}
-                    />
+                  ))}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      style={{ width: "90%" }}
+                      icon={<PlusOutlined />}
+                    >
+                      Add Exclusion Glob
+                    </Button>
+                    <Form.ErrorList errors={errors} />
                   </Form.Item>
-                ))}
-                <Form.Item
-                  label={fields.length === 0 ? "Excludes" : " "}
-                  colon={fields.length === 0}
-                >
-                  <Button
-                    type="dashed"
-                    onClick={() => add()}
-                    style={{ width: "90%" }}
-                    icon={<PlusOutlined />}
-                  >
-                    Add Exclusion Glob
-                  </Button>
-                  <Form.ErrorList errors={errors} />
-                </Form.Item>
-              </>
-            )}
-          </Form.List>
+                </>
+              )}
+            </Form.List>
+          </Form.Item>
 
           {/* Plan.cron */}
           <Tooltip title="Cron expression to schedule the plan in 24 hour time">
@@ -371,87 +364,75 @@ const RetentionPolicyView = ({ policy }: { policy?: RetentionPolicy }) => {
       elem = (
         <Form.Item
           required={true}
-          label={
-            <Tooltip title="The specified numbers of daily, weekly, monthly, etc backups will be retained. Retention policy is applied to drop older snapshots after each backup run.">
-              Retain by Time
-            </Tooltip>
-          }
         >
-          <Card>
-            <Row>
-              <Col span={11}>
-                <Form.Item
-                  name={["retention", "keepYearly"]}
-                  initialValue={policy.keepYearly || 0}
-                  validateTrigger={["onChange", "onBlur"]}
-                  required={false}
-                >
-                  <InputNumber
-                    addonBefore={<div style={{ width: "5em" }}>Yearly</div>}
-                    type="number"
-                  />
-                </Form.Item>
-                <Form.Item
-                  name={["retention", "keepMonthly"]}
-                  initialValue={policy.keepMonthly || 3}
-                  validateTrigger={["onChange", "onBlur"]}
-                  required={false}
-                >
-                  <InputNumber
-                    addonBefore={<div style={{ width: "5em" }}>Monthly</div>}
-                    type="number"
-                  />
-                </Form.Item>
-                <Form.Item
-                  name={["retention", "keepWeekly"]}
-                  initialValue={policy.keepWeekly || 4}
-                  validateTrigger={["onChange", "onBlur"]}
-                  required={false}
-                >
-                  <InputNumber
-                    addonBefore={<div style={{ width: "5em" }}>Weekly</div>}
-                    type="number"
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={11} offset={1}>
-                <Form.Item
-                  name={["retention", "keepDaily"]}
-                  initialValue={policy.keepDaily || 7}
-                  validateTrigger={["onChange", "onBlur"]}
-                  required={false}
-                >
-                  <InputNumber
-                    addonBefore={<div style={{ width: "5em" }}>Daily</div>}
-                    type="number"
-                  />
-                </Form.Item>
-                <Form.Item
-                  name={["retention", "keepHourly"]}
-                  initialValue={policy.keepHourly || 24}
-                  validateTrigger={["onChange", "onBlur"]}
-                  required={false}
-                >
-                  <InputNumber
-                    addonBefore={<div style={{ width: "5em" }}>Hourly</div>}
-                    type="number"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-          </Card>
-        </Form.Item>
+          <Row>
+            <Col span={11}>
+              <Form.Item
+                name={["retention", "keepYearly"]}
+                initialValue={policy.keepYearly || 0}
+                validateTrigger={["onChange", "onBlur"]}
+                required={false}
+              >
+                <InputNumber
+                  addonBefore={<div style={{ width: "5em" }}>Yearly</div>}
+                  type="number"
+                />
+              </Form.Item>
+              <Form.Item
+                name={["retention", "keepMonthly"]}
+                initialValue={policy.keepMonthly || 3}
+                validateTrigger={["onChange", "onBlur"]}
+                required={false}
+              >
+                <InputNumber
+                  addonBefore={<div style={{ width: "5em" }}>Monthly</div>}
+                  type="number"
+                />
+              </Form.Item>
+              <Form.Item
+                name={["retention", "keepWeekly"]}
+                initialValue={policy.keepWeekly || 4}
+                validateTrigger={["onChange", "onBlur"]}
+                required={false}
+              >
+                <InputNumber
+                  addonBefore={<div style={{ width: "5em" }}>Weekly</div>}
+                  type="number"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={11} offset={1}>
+              <Form.Item
+                name={["retention", "keepDaily"]}
+                initialValue={policy.keepDaily || 7}
+                validateTrigger={["onChange", "onBlur"]}
+                required={false}
+              >
+                <InputNumber
+                  addonBefore={<div style={{ width: "5em" }}>Daily</div>}
+                  type="number"
+                />
+              </Form.Item>
+              <Form.Item
+                name={["retention", "keepHourly"]}
+                initialValue={policy.keepHourly || 24}
+                validateTrigger={["onChange", "onBlur"]}
+                required={false}
+              >
+                <InputNumber
+                  addonBefore={<div style={{ width: "5em" }}>Hourly</div>}
+                  type="number"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form.Item >
       );
       break;
     case PolicyType.CountBased:
       elem = (
         <Form.Item
           name={["retention", "keepLastN"]}
-          label={
-            <Tooltip title="The last N snapshots will be kept by restic. Retention policy is applied to drop older snapshots after each backup run.">
-              Retain Last N
-            </Tooltip>
-          }
           initialValue={policy.keepLastN || 30}
           validateTrigger={["onChange", "onBlur"]}
           rules={[
@@ -461,7 +442,7 @@ const RetentionPolicyView = ({ policy }: { policy?: RetentionPolicy }) => {
             },
           ]}
         >
-          <InputNumber type="number" />
+          <InputNumber addonBefore={<div style={{ width: "5em" }}>Count</div>} type="number" />
         </Form.Item>
       );
       break;
@@ -470,19 +451,30 @@ const RetentionPolicyView = ({ policy }: { policy?: RetentionPolicy }) => {
   return (
     <>
       <Form.Item label="Retention Policy">
-        <Radio.Group
-          value={policyType}
-          onChange={(e) => {
-            setPolicyType(e.target.value);
-          }}
-        >
-          <Radio.Button value={PolicyType.CountBased}>By Count</Radio.Button>
-          <Radio.Button value={PolicyType.TimeBased}>
-            By Time Period
-          </Radio.Button>
-        </Radio.Group>
+        <Row>
+          <Radio.Group
+            value={policyType}
+            onChange={(e) => {
+              setPolicyType(e.target.value);
+            }}
+          >
+            <Radio.Button value={PolicyType.CountBased}>
+              <Tooltip title="The last N snapshots will be kept by restic. Retention policy is applied to drop older snapshots after each backup run.">
+                By Count
+              </Tooltip>
+            </Radio.Button>
+            <Radio.Button value={PolicyType.TimeBased}>
+              <Tooltip title="Snapshots older than the specified time period will be dropped by restic. Retention policy is applied to drop older snapshots after each backup run." >
+                By Time Period
+              </Tooltip>
+            </Radio.Button>
+          </Radio.Group>
+        </Row>
+        <br />
+        <Row>
+          {elem}
+        </Row>
       </Form.Item>
-      {elem}
     </>
   );
 };

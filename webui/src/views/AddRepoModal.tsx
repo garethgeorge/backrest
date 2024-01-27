@@ -26,6 +26,7 @@ import {
 import { useRecoilState } from "recoil";
 import { validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
+import { HooksFormList } from "../components/HooksFormList";
 
 export const AddRepoModal = ({
   template,
@@ -235,7 +236,7 @@ export const AddRepoModal = ({
           </Tooltip>
 
           {/* Repo.password */}
-          <Form.Item label="Password" required={true}>
+          <Form.Item label="Password" required={true} >
             <Row>
               <Col span={16}>
                 <Form.Item<Repo>
@@ -274,125 +275,118 @@ export const AddRepoModal = ({
           </Form.Item>
 
           {/* Repo.env */}
-          <Form.List
-            name="env"
-            rules={[
-              {
-                validator: async (_, envVars) => {
-                  let uri = form.getFieldValue("uri");
-                  return await envVarSetValidator(uri, envVars);
+          <Form.Item label="Env Vars">
+            <Form.List
+              name="env"
+              rules={[
+                {
+                  validator: async (_, envVars) => {
+                    let uri = form.getFieldValue("uri");
+                    return await envVarSetValidator(uri, envVars);
+                  },
                 },
-              },
-            ]}
-            initialValue={template ? template.env : []}
-          >
-            {(fields, { add, remove }, { errors }) => (
-              <>
-                {fields.map((field, index) => (
-                  <Form.Item
-                    label={index === 0 ? "Environment Variables" : " "}
-                    colon={index === 0}
-                    required={false}
-                    key={field.key}
-                  >
+              ]}
+              initialValue={template ? template.env : []}
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => (
                     <Form.Item
-                      {...field}
-                      validateTrigger={["onChange", "onBlur"]}
-                      initialValue={""}
-                      rules={[
-                        {
-                          required: true,
-                          whitespace: true,
-                          pattern: /^[\w-]+=.*$/,
-                          message:
-                            "Environment variable must be in format KEY=VALUE",
-                        },
-                      ]}
-                      noStyle
+                      key={field.key}
                     >
-                      <Input
-                        placeholder="KEY=VALUE"
-                        onBlur={() => form.validateFields()}
-                        style={{ width: "90%" }}
+                      <Form.Item
+                        {...field}
+                        validateTrigger={["onChange", "onBlur"]}
+                        initialValue={""}
+                        rules={[
+                          {
+                            required: true,
+                            whitespace: true,
+                            pattern: /^[\w-]+=.*$/,
+                            message:
+                              "Environment variable must be in format KEY=VALUE",
+                          },
+                        ]}
+                        noStyle
+                      >
+                        <Input
+                          placeholder="KEY=VALUE"
+                          onBlur={() => form.validateFields()}
+                          style={{ width: "90%" }}
+                        />
+                      </Form.Item>
+                      <MinusCircleOutlined
+                        className="dynamic-delete-button"
+                        onClick={() => remove(field.name)}
+                        style={{ paddingLeft: "5px" }}
                       />
                     </Form.Item>
-                    <MinusCircleOutlined
-                      className="dynamic-delete-button"
-                      onClick={() => remove(field.name)}
-                      style={{ paddingLeft: "5px" }}
-                    />
+                  ))}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      style={{ width: "90%" }}
+                      icon={<PlusOutlined />}
+                    >
+                      Set Environment Variable
+                    </Button>
+                    <Form.ErrorList errors={errors} />
                   </Form.Item>
-                ))}
-                <Form.Item
-                  label={fields.length === 0 ? "Environment Variables" : " "}
-                  colon={fields.length === 0}
-                >
-                  <Button
-                    type="dashed"
-                    onClick={() => add()}
-                    style={{ width: "90%" }}
-                    icon={<PlusOutlined />}
-                  >
-                    Set Environment Variable
-                  </Button>
-                  <Form.ErrorList errors={errors} />
-                </Form.Item>
-              </>
-            )}
-          </Form.List>
+                </>
+              )}
+            </Form.List>
+          </Form.Item>
 
           {/* Repo.flags */}
-          <Form.List name="flags" initialValue={template ? template.flags : []}>
-            {(fields, { add, remove }, { errors }) => (
-              <>
-                {fields.map((field, index) => (
-                  <Form.Item
-                    label={index === 0 ? "Flag Overrides" : " "}
-                    colon={index === 0}
-                    required={false}
-                    key={field.key}
-                  >
+          <Form.Item label="Flags">
+            <Form.List name="flags" initialValue={template ? template.flags : []}>
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => (
                     <Form.Item
-                      {...field}
-                      validateTrigger={["onChange", "onBlur"]}
-                      initialValue={""}
-                      rules={[
-                        {
-                          required: true,
-                          whitespace: true,
-                          pattern: /^\-\-[A-Za-z0-9_\-]*$/,
-                          message:
-                            "Value should be a CLI flag e.g. see restic --help",
-                        },
-                      ]}
-                      noStyle
+                      required={false}
+                      key={field.key}
                     >
-                      <Input placeholder="--flag" style={{ width: "60%" }} />
+                      <Form.Item
+                        {...field}
+                        validateTrigger={["onChange", "onBlur"]}
+                        initialValue={""}
+                        rules={[
+                          {
+                            required: true,
+                            whitespace: true,
+                            pattern: /^\-\-[A-Za-z0-9_\-]*$/,
+                            message:
+                              "Value should be a CLI flag e.g. see restic --help",
+                          },
+                        ]}
+                        noStyle
+                      >
+                        <Input placeholder="--flag" style={{ width: "60%" }} />
+                      </Form.Item>
+                      <MinusCircleOutlined
+                        className="dynamic-delete-button"
+                        onClick={() => remove(field.name)}
+                        style={{ paddingLeft: "5px" }}
+                      />
                     </Form.Item>
-                    <MinusCircleOutlined
-                      className="dynamic-delete-button"
-                      onClick={() => remove(field.name)}
-                      style={{ paddingLeft: "5px" }}
-                    />
+                  ))}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      style={{ width: "60%" }}
+                      icon={<PlusOutlined />}
+                    >
+                      Set Flag
+                    </Button>
+                    <Form.ErrorList errors={errors} />
                   </Form.Item>
-                ))}
-                <Form.Item
-                  label={fields.length === 0 ? "Flag Overrides" : " "}
-                  colon={fields.length === 0}
-                >
-                  <Button
-                    type="dashed"
-                    onClick={() => add()}
-                    style={{ width: "60%" }}
-                    icon={<PlusOutlined />}
-                  >
-                    Set Flag
-                  </Button>
-                  <Form.ErrorList errors={errors} />
-                </Form.Item>
-              </>
-            )}
-          </Form.List>
+                </>
+              )}
+            </Form.List>
+          </Form.Item>
 
           {/* Repo.prunePolicy */}
           <Form.Item
@@ -403,26 +397,28 @@ export const AddRepoModal = ({
               </Tooltip>
             }
           >
-            <Card>
-              <Form.Item
-                name={["prunePolicy", "maxFrequencyDays"]}
-                initialValue={template?.prunePolicy?.maxFrequencyDays || 7}
-                required={false}
-              >
-                <InputNumber addonBefore={<div style={{ width: "12em" }}>Max Frequency Days</div>} />
-              </Form.Item>
-              <Form.Item
-                name={["prunePolicy", "maxUnusedPercent"]}
-                initialValue={template?.prunePolicy?.maxUnusedPercent || 25}
-                required={false}
-              >
-                <InputNumber addonBefore={
-                  <Tooltip title="The maximum percentage of the repo size that may be unused after a prune operation completes. High values reduce copying at the expense of storage.">
-                    <div style={{ width: "12em" }}>Max Unused Percent</div>
-                  </Tooltip>}
-                />
-              </Form.Item>
-            </Card>
+            <Form.Item
+              name={["prunePolicy", "maxFrequencyDays"]}
+              initialValue={template?.prunePolicy?.maxFrequencyDays || 7}
+              required={false}
+            >
+              <InputNumber addonBefore={<div style={{ width: "12em" }}>Max Frequency Days</div>} />
+            </Form.Item>
+            <Form.Item
+              name={["prunePolicy", "maxUnusedPercent"]}
+              initialValue={template?.prunePolicy?.maxUnusedPercent || 25}
+              required={false}
+            >
+              <InputNumber addonBefore={
+                <Tooltip title="The maximum percentage of the repo size that may be unused after a prune operation completes. High values reduce copying at the expense of storage.">
+                  <div style={{ width: "12em" }}>Max Unused Percent</div>
+                </Tooltip>}
+              />
+            </Form.Item>
+          </Form.Item>
+
+          <Form.Item label="Hooks">
+            <HooksFormList hooks={template?.hooks || []} />
           </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">
@@ -433,7 +429,7 @@ export const AddRepoModal = ({
             )}
           </Form.Item>
         </Form>
-      </Modal>
+      </Modal >
     </>
   );
 };

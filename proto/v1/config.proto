@@ -24,7 +24,7 @@ message Repo {
   repeated string env = 4 [json_name="env"]; // extra environment variables to set for restic.
   repeated string flags = 5 [json_name="flags"]; // extra flags set on the restic command.
   PrunePolicy prune_policy = 6 [json_name="prunePolicy"]; // policy for when to run prune.
-  repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on backup events.
+  repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on events for this repo.
 }
 
 message Plan {
@@ -34,6 +34,7 @@ message Plan {
   repeated string excludes = 5 [json_name="excludes"]; // glob patterns to exclude.
   string cron = 6 [json_name="cron"]; // cron expression describing the backup schedule.
   RetentionPolicy retention = 7 [json_name="retention"]; // retention policy for snapshots.
+  repeated Hook hooks = 8 [json_name="hooks"]; // hooks to run on events for this plan.
 }
 
 message RetentionPolicy {
@@ -65,19 +66,28 @@ message User {
 message Hook {
   enum Condition {
     CONDITION_UNKNOWN = 0;
-    CONDITION_BACKUP_START = 1;
-    CONDITION_BACKUP_END = 2;
-    CONDITION_BACKUP_FAILED = 3;
-    CONDITION_BACKUP_SUCCESS = 4;
+    CONDITION_BACKUP_START = 1; // backup started.
+    CONDITION_BACKUP_END = 2; // backup completed (success or fail).
+    CONDITION_ERROR = 5; // error running any operation.
   }
 
-  repeated Condition conditions = 1;
+  repeated Condition conditions = 1 [json_name="conditions"];
 
   oneof action {
-    Command action_command = 100;
+    Command action_command = 100 [json_name="actionCommand"];
+    Webhook action_webhook = 101 [json_name="actionWebhook"];
+    Discord action_discord = 102 [json_name="actionDiscord"];
   }
 
   message Command {
-    string command = 1;
+    string command = 1 [json_name="command"];
+  }
+
+  message Webhook {
+    string webhook_url = 1 [json_name="webhookUrl"];
+  }
+
+  message Discord {
+    string webhook_url = 1 [json_name="webhookUrl"];
   }
 }

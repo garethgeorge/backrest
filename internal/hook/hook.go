@@ -33,10 +33,8 @@ func (h *Hook) Do(event v1.Hook_Condition, vars map[string]string) error {
 		substs["EVENT"] = "backup start"
 	case v1.Hook_CONDITION_BACKUP_END:
 		substs["EVENT"] = "backup end"
-	case v1.Hook_CONDITION_BACKUP_SUCCESS:
-		substs["EVENT"] = "backup success"
-	case v1.Hook_CONDITION_BACKUP_FAILED:
-		substs["EVENT"] = "backup failure"
+	case v1.Hook_CONDITION_ERROR:
+		substs["EVENT"] = "error"
 	default:
 		return fmt.Errorf("unknown hook event: %v", event)
 	}
@@ -50,15 +48,7 @@ func (h *Hook) Do(event v1.Hook_Condition, vars map[string]string) error {
 }
 
 func (h *Hook) doCommand(cmd *v1.Hook_ActionCommand, substs map[string]string) error {
-	template, err := template.New("command").Parse(cmd.ActionCommand.GetCommand())
-	if err != nil {
-		return fmt.Errorf("parse command template: %w", err)
-	}
-
-	buf := &bytes.Buffer{}
-	template.Execute(buf, substs)
-
-	command := buf.String()
+	command := h.makeSubstitutions(cmd.ActionCommand.Command, substs)
 
 	// Parse out the shell to use if a #! prefix is present
 	shell := "sh"
@@ -88,4 +78,20 @@ func (h *Hook) doCommand(cmd *v1.Hook_ActionCommand, substs map[string]string) e
 	}()
 
 	return execCmd.Run()
+}
+
+func (h *Hook) doDiscord(cmd *v1.Hook_ActionDiscord, substs map[string]string) error {
+	return nil
+}
+
+func (h *Hook) makeSubstitutions(text string, substs map[string]string) string {
+	template, err := template.New("command").Parse(text)
+	if err != nil {
+		panic(err)
+	}
+
+	buf := &bytes.Buffer{}
+	template.Execute(buf, substs)
+
+	return buf.String()
 }

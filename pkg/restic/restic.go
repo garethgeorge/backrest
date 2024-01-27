@@ -36,7 +36,9 @@ func NewRepo(resticBin string, repo *v1.Repo, opts ...GenericOption) *Repo {
 		o(opt)
 	}
 
-	if slices.Index(opt.extraArgs, "sftp.args") == -1 {
+	if slices.IndexFunc(opt.extraArgs, func(a string) bool {
+		return strings.Contains(a, "sftp.args")
+	}) == -1 {
 		opt.extraArgs = append(opt.extraArgs, "-o", "sftp.args=-oBatchMode=yes")
 	}
 
@@ -502,4 +504,8 @@ func WithPropagatedEnvVars(extras ...string) GenericOption {
 	}
 
 	return WithEnv(extension...)
+}
+
+func WithEnviron() GenericOption {
+	return WithEnv(os.Environ()...)
 }

@@ -50,3 +50,7 @@ exit $counter`,
 		t.Fatalf("expected exit code 3, got %v", err.(*exec.ExitError).ExitCode())
 	}
 }
+
+// func TestHookDiscord(t *testing.T) {
+
+// }
