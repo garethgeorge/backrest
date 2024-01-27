@@ -10,6 +10,7 @@ import {
   Col,
   Card,
   InputNumber,
+  FormInstance,
 } from "antd";
 import React, { useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -236,20 +237,14 @@ export const AddRepoModal = ({
           </Tooltip>
 
           {/* Repo.password */}
-          <Form.Item label="Password" required={true} >
+          <Form.Item label="Password" >
             <Row>
               <Col span={16}>
                 <Form.Item<Repo>
                   hasFeedback
                   name="password"
-                  initialValue={template && template.password}
+                  initialValue={template ? template.password : ""}
                   validateTrigger={["onChange", "onBlur"]}
-                  rules={[
-                    {
-                      required: true,
-                      message: "Please input repo password",
-                    },
-                  ]}
                 >
                   <Input disabled={!!template} />
                 </Form.Item>
@@ -281,8 +276,7 @@ export const AddRepoModal = ({
               rules={[
                 {
                   validator: async (_, envVars) => {
-                    let uri = form.getFieldValue("uri");
-                    return await envVarSetValidator(uri, envVars);
+                    return await envVarSetValidator(form, envVars);
                   },
                 },
               ]}
@@ -441,10 +435,30 @@ const expectedEnvVars: { [scheme: string]: string[] } = {
   gs: ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"],
 };
 
-const envVarSetValidator = (uri: string | undefined, envVars: string[]) => {
+const envVarSetValidator = (form: FormInstance<Repo>, envVars: string[]) => {
+  let uri = form.getFieldValue("uri");
   if (!uri) {
     return Promise.resolve();
   }
+
+
+  const envVarNames = envVars.map((e) => e && e.split("=")[0]);
+
+  // check that password is provided in some form
+  if (
+    form.getFieldValue("password").length === 0 &&
+    !envVarNames.includes("RESTIC_PASSWORD") &&
+    !envVarNames.includes("RESTIC_PASSWORD_COMMAND") &&
+    !envVarNames.includes("RESTIC_PASSWORD_FILE")
+  ) {
+    return Promise.reject(
+      new Error(
+        "Missing repo password. Either provide a password or set one of the env variables RESTIC_PASSWORD, RESTIC_PASSWORD_COMMAND, RESTIC_PASSWORD_FILE."
+      )
+    );
+  }
+
+  // find expected env for scheme
   let schemeIdx = uri.indexOf(":");
   if (schemeIdx === -1) {
     return Promise.resolve();
@@ -455,8 +469,6 @@ const envVarSetValidator = (uri: string | undefined, envVars: string[]) => {
   if (!expected) {
     return Promise.resolve();
   }
-
-  const envVarNames = envVars.map((e) => e && e.split("=")[0]);
 
   let missing: string[] = [];
   for (let e of expected) {
