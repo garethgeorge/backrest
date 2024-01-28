@@ -23,8 +23,6 @@ export const hooksListTooltipText = <>
     <li>.Time - the formatted time of the operation if available.</li>
     <li>.Snapshot - the restic snapshot structure if this is finish snapshot operation and it completed successfully.</li>
   </ul>
-
-
 </>
 
 /**

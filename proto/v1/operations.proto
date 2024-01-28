@@ -35,6 +35,7 @@ message Operation {
     OperationPrune operation_prune = 103;
     OperationRestore operation_restore = 104;
     OperationStats operation_stats = 105;
+    OperationRunHook operation_run_hook = 106;
   }
 }
 
@@ -93,4 +94,9 @@ message OperationRestore {
 
 message OperationStats {
   RepoStats stats = 1;
+}
+
+message OperationRunHook {
+  string hook_desc = 1; // description of the hook that was run. typically repo/hook_idx or plan/hook_idx
+  string output = 2; // output of the hook.
 }
