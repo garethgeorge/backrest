@@ -1,41 +1,106 @@
 import React, { useState } from 'react';
-import { Hook, Hook_Command } from '../../gen/ts/v1/config_pb';
-import { Button, Card, Collapse, CollapseProps, Form, FormListFieldData, Input, Radio, Row, Tooltip } from 'antd';
+import { Hook, Hook_Command, Hook_Condition, Hook_Discord, Hook_Webhook } from '../../gen/ts/v1/config_pb';
+import { Button, Card, Collapse, CollapseProps, Form, FormListFieldData, Input, Popover, Radio, Row, Select, Tooltip } from 'antd';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 
-export const HooksFormList = ({ hooks }: { hooks: Hook[] }) => {
-  return <Form.List name="hooks" initialValue={hooks || []}>
+export const hooksListTooltipText = <>
+  Hooks are actions that can execute on backup lifecycle events.
+
+  Available events are:
+  <ul>
+    <li>On Finish Snapshot: Runs after a snapshot is finished.</li>
+    <li>On Start Snapshot: Runs when a snapshot is started.</li>
+    <li>On Snapshot Error: Runs when a snapshot fails.</li>
+    <li>On Any Error: Runs when any error occurs.</li>
+  </ul>
+
+  Arguments are available to hooks as <a target="_blank" rel="noopener noreferrer" href="https://pkg.go.dev/text/template" >Go template variables</a>
+  <ul>
+    <li>.Event - the event that triggered the hook.</li>
+    <li>.Repo - the name of the repo the event applies to.</li>
+    <li>.Plan - the name of the plan the event applies to.</li>
+    <li>.Error - the error if any is available.</li>
+    <li>.Time - the formatted time of the operation if available.</li>
+    <li>.Snapshot - the restic snapshot structure if this is finish snapshot operation and it completed successfully.</li>
+  </ul>
+
+
+</>
+
+/**
+ * HooksFormList is a UI component for editing a list of hooks that can apply either at the repo level or at the plan level.
+ */
+export const HooksFormList = (props: { hooks: Hook[] }) => {
+  const [hooks, _] = useState([...props.hooks] || []);
+
+  const hookTypes: {
+    name: string,
+    action: typeof Hook.prototype.action,
+  }[] = [
+      {
+        name: "Command", action: {
+          case: "actionCommand",
+          value: new Hook_Command(),
+        }
+      },
+    ];
+
+  return <Form.List name="hooks" initialValue={props.hooks || []}>
     {(fields, { add, remove }, { errors }) => (
       <>
         {fields.map((field, index) => {
-          // const items: CollapseProps["items"] = [
-          //   {
-          //     key: "1",
-          //     label: <>
-          //       <strong>Hook {(index + 1)}</strong>
-          //       <MinusCircleOutlined
-          //         className="dynamic-delete-button"
-          //         onClick={() => remove(field.name)}
-          //         style={{ marginRight: "5px", float: "right" }}
-          //       />
-          //     </>,
-          //     children: 
-          //   }
-          // ];
-
-          return <Card key={field.key}>
-            <HookBuilder hook={hooks[index]} field={field} />
+          console.log(index, field);
+          const hook = hooks[index];
+          if (!hook) return null;
+          return <Card key={index} title={<>
+            Hook {index + 1}
+            <MinusCircleOutlined
+              className="dynamic-delete-button"
+              onClick={() => remove(field.name)}
+              style={{ marginRight: "5px", marginTop: "2px", float: "right" }}
+            />
+          </>
+          } size="small" >
+            <Form.Item name={[field.name, "conditions"]} initialValue={hook.conditions}>
+              <Select
+                mode="multiple"
+                allowClear
+                style={{ width: '100%' }}
+                placeholder="Runs when..."
+                defaultValue={hook.conditions}
+                options={[
+                  { label: "On Finish Snapshot", value: Hook_Condition.SNAPSHOT_END },
+                  { label: "On Start Snapshot", value: Hook_Condition.SNAPSHOT_START },
+                  { label: "On Snapshot Error", value: Hook_Condition.SNAPSHOT_ERROR },
+                  { label: "On Any Error", value: Hook_Condition.ANY_ERROR },
+                ]}
+              />
+            </Form.Item>
+            <HookBuilder hook={hook} field={field} />
           </Card>
         })}
         <Form.Item>
-          <Button
-            type="dashed"
-            onClick={() => add()}
+          <Popover
+            content={<>
+              {hookTypes.map((hookType, index) => {
+                return <Button key={index} onClick={() => {
+                  const hook = new Hook({
+                    action: hookType.action
+                  });
+                  hooks.push(hook);
+                  add(hook);
+                }}>
+                  {hookType.name}
+                </Button>
+              })}
+            </>}
             style={{ width: "60%" }}
-            icon={<PlusOutlined />}
+            placement="bottom"
           >
-            Add Hook
-          </Button>
+            <Button type="dashed" icon={<PlusOutlined />}>
+              Add Hook
+            </Button>
+          </Popover>
           <Form.ErrorList errors={errors} />
         </Form.Item>
       </>
@@ -43,51 +108,28 @@ export const HooksFormList = ({ hooks }: { hooks: Hook[] }) => {
   </Form.List >
 }
 
-const HookBuilder = ({ field, hook }: { field: FormListFieldData, hook?: Hook }) => {
-  const [hookVal, setHookVal] = useState<Hook>(hook || new Hook());
-
+const HookBuilder = ({ field, hook }: { field: FormListFieldData, hook: Hook }) => {
   let component: React.ReactNode;
-  switch (hookVal.action.case) {
+  switch (hook.action.case) {
     case "actionDiscord":
-      component = <Form.Item name={[field.name, "actionDiscord", "webhookUrl"]} initialValue={hookVal.action.value ? hookVal.action.value.webhookUrl : ""}>
-        <Input addonBefore={<div style={{ width: "8em" }}>Webhook URL</div>} />
+      return <Form.Item name={[field.name, "action", "value", "webhookUrl"]} initialValue={hook.action.value ? hook.action.value.webhookUrl : ""}>
+        <Input addonBefore={<div style={{ width: "8em" }}>Discord Webhook</div>} />
       </Form.Item>
-      break;
     case "actionWebhook":
-      component = <Form.Item name={[field.name, "actionWebhook", "webhookUrl"]} initialValue={hookVal.action.value ? hookVal.action.value.webhookUrl : ""}>
+      return <Form.Item name={[field.name, "action", "value", "webhookUrl"]} initialValue={hook.action.value ? hook.action.value.webhookUrl : ""}>
         <Input addonBefore={<div style={{ width: "8em" }}>Webhook URL</div>} />
       </Form.Item>
-      break;
     case "actionCommand":
-    default:
-      component = <>
+      return <>
         <Tooltip title="Script to execute. Commands will not work in the docker build of Backrest.">
           Script:
         </Tooltip>
-        <Form.Item name={[field.name, "actionCommand", "command"]} initialValue={hookVal.action.value ? hookVal.action.value.command : "#!/bin/sh\n"}>
-          <Input.TextArea style={{ width: "100%" }} />
+        <Form.Item name={[field.name, "action", "value", "command"]} initialValue={hook.action.value ? hook.action.value.command : "#!/bin/sh\n"}>
+          <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
         </Form.Item>
       </>
+    default:
+      return <p>Unknown hook {hook.action.case}</p>
   }
 
-  return <Form.Item>
-    <Row>
-      <Radio.Group onChange={(val) => {
-        const hook = new Hook(hookVal);
-        hook.action = {
-          case: val.target.value,
-          value: undefined,
-        }
-        setHookVal(hook);
-      }}>
-        <Radio.Button value="actionCommand">Command</Radio.Button>
-        <Radio.Button value="actionWebhook">Webhook</Radio.Button>
-        <Radio.Button value="actionDiscord">Discord</Radio.Button>
-      </Radio.Group>
-    </Row>
-    <br />
-    <Row>
-      {component}
-    </Row>
-  </Form.Item>
 }

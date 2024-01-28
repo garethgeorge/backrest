@@ -29,12 +29,14 @@ func (h *Hook) Do(event v1.Hook_Condition, vars map[string]string) error {
 	}
 
 	switch event {
-	case v1.Hook_CONDITION_BACKUP_START:
-		substs["EVENT"] = "backup start"
-	case v1.Hook_CONDITION_BACKUP_END:
-		substs["EVENT"] = "backup end"
-	case v1.Hook_CONDITION_ERROR:
-		substs["EVENT"] = "error"
+	case v1.Hook_CONDITION_SNAPSHOT_START:
+		substs["Event"] = "backup start"
+	case v1.Hook_CONDITION_SNAPSHOT_END:
+		substs["Event"] = "backup end"
+	case v1.Hook_CONDITION_ANY_ERROR:
+		substs["Event"] = "error"
+	case v1.Hook_CONDITION_SNAPSHOT_ERROR:
+		substs["Event"] = "backup error"
 	default:
 		return fmt.Errorf("unknown hook event: %v", event)
 	}
@@ -78,10 +80,6 @@ func (h *Hook) doCommand(cmd *v1.Hook_ActionCommand, substs map[string]string) e
 	}()
 
 	return execCmd.Run()
-}
-
-func (h *Hook) doDiscord(cmd *v1.Hook_ActionDiscord, substs map[string]string) error {
-	return nil
 }
 
 func (h *Hook) makeSubstitutions(text string, substs map[string]string) string {

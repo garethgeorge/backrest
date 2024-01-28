@@ -66,9 +66,10 @@ message User {
 message Hook {
   enum Condition {
     CONDITION_UNKNOWN = 0;
-    CONDITION_BACKUP_START = 1; // backup started.
-    CONDITION_BACKUP_END = 2; // backup completed (success or fail).
-    CONDITION_ERROR = 5; // error running any operation.
+    CONDITION_ANY_ERROR = 1; // error running any operation.
+    CONDITION_SNAPSHOT_START = 2; // backup started.
+    CONDITION_SNAPSHOT_END = 3; // backup completed (success or fail).
+    CONDITION_SNAPSHOT_ERROR = 4; // snapshot failed.
   }
 
   repeated Condition conditions = 1 [json_name="conditions"];

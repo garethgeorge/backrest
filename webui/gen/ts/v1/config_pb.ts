@@ -521,32 +521,40 @@ export enum Hook_Condition {
   UNKNOWN = 0,
 
   /**
+   * error running any operation.
+   *
+   * @generated from enum value: CONDITION_ANY_ERROR = 1;
+   */
+  ANY_ERROR = 1,
+
+  /**
    * backup started.
    *
-   * @generated from enum value: CONDITION_BACKUP_START = 1;
+   * @generated from enum value: CONDITION_SNAPSHOT_START = 2;
    */
-  BACKUP_START = 1,
+  SNAPSHOT_START = 2,
 
   /**
    * backup completed (success or fail).
    *
-   * @generated from enum value: CONDITION_BACKUP_END = 2;
+   * @generated from enum value: CONDITION_SNAPSHOT_END = 3;
    */
-  BACKUP_END = 2,
+  SNAPSHOT_END = 3,
 
   /**
-   * error running any operation.
+   * snapshot failed.
    *
-   * @generated from enum value: CONDITION_ERROR = 5;
+   * @generated from enum value: CONDITION_SNAPSHOT_ERROR = 4;
    */
-  ERROR = 5,
+  SNAPSHOT_ERROR = 4,
 }
 // Retrieve enum metadata with: proto3.getEnumType(Hook_Condition)
 proto3.util.setEnumType(Hook_Condition, "v1.Hook.Condition", [
   { no: 0, name: "CONDITION_UNKNOWN" },
-  { no: 1, name: "CONDITION_BACKUP_START" },
-  { no: 2, name: "CONDITION_BACKUP_END" },
-  { no: 5, name: "CONDITION_ERROR" },
+  { no: 1, name: "CONDITION_ANY_ERROR" },
+  { no: 2, name: "CONDITION_SNAPSHOT_START" },
+  { no: 3, name: "CONDITION_SNAPSHOT_END" },
+  { no: 4, name: "CONDITION_SNAPSHOT_ERROR" },
 ]);
 
 /**

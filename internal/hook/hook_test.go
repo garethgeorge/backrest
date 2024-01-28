@@ -9,7 +9,7 @@ import (
 
 func TestHookCommandInDefaultShell(t *testing.T) {
 	hook := Hook(v1.Hook{
-		Conditions: []v1.Hook_Condition{v1.Hook_CONDITION_BACKUP_START},
+		Conditions: []v1.Hook_Condition{v1.Hook_CONDITION_SNAPSHOT_START},
 		Action: &v1.Hook_ActionCommand{
 			ActionCommand: &v1.Hook_Command{
 				Command: "exit 2",
@@ -17,7 +17,7 @@ func TestHookCommandInDefaultShell(t *testing.T) {
 		},
 	})
 
-	err := hook.Do(v1.Hook_CONDITION_BACKUP_START, nil)
+	err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -28,7 +28,7 @@ func TestHookCommandInDefaultShell(t *testing.T) {
 
 func TestHookCommandInBashShell(t *testing.T) {
 	hook := Hook(v1.Hook{
-		Conditions: []v1.Hook_Condition{v1.Hook_CONDITION_BACKUP_START},
+		Conditions: []v1.Hook_Condition{v1.Hook_CONDITION_SNAPSHOT_START},
 		Action: &v1.Hook_ActionCommand{
 			ActionCommand: &v1.Hook_Command{
 				Command: `#!/bin/bash
@@ -42,7 +42,7 @@ exit $counter`,
 		},
 	})
 
-	err := hook.Do(v1.Hook_CONDITION_BACKUP_START, nil)
+	err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -50,7 +50,3 @@ exit $counter`,
 		t.Fatalf("expected exit code 3, got %v", err.(*exec.ExitError).ExitCode())
 	}
 }
-
-// func TestHookDiscord(t *testing.T) {
-
-// }

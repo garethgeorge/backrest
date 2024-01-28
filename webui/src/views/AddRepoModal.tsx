@@ -27,7 +27,8 @@ import {
 import { useRecoilState } from "recoil";
 import { validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
-import { HooksFormList } from "../components/HooksFormList";
+import { HooksFormList, hooksListTooltipText } from "../components/HooksFormList";
+import { isDevBuild } from "../state/buildcfg";
 
 export const AddRepoModal = ({
   template,
@@ -350,7 +351,7 @@ export const AddRepoModal = ({
                           {
                             required: true,
                             whitespace: true,
-                            pattern: /^\-\-[A-Za-z0-9_\-]*$/,
+                            pattern: /^\-\-?.*$/,
                             message:
                               "Value should be a CLI flag e.g. see restic --help",
                           },
@@ -411,14 +412,15 @@ export const AddRepoModal = ({
             </Form.Item>
           </Form.Item>
 
-          <Form.Item label="Hooks">
+          <Form.Item label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>} >
             <HooksFormList hooks={template?.hooks || []} />
           </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">
             {() => (
               <Typography>
-                <pre>{JSON.stringify(form.getFieldsValue(), null, 2)}</pre>
+                <pre>{new Repo(form.getFieldsValue()).toJsonString({ prettySpaces: 2 })}</pre>
+                {isDevBuild ? <pre>{JSON.stringify(form.getFieldsValue(), null, 2)}</pre> : null}
               </Typography>
             )}
           </Form.Item>
