@@ -310,7 +310,7 @@ func (s *Server) Prune(ctx context.Context, req *connect.Request[types.StringVal
 	at := time.Now()
 	var wg sync.WaitGroup
 	wg.Add(1)
-	s.orchestrator.ScheduleTask(orchestrator.NewOneoffPruneTask(s.orchestrator, plan, "", at, true), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityPrune, func(e error) {
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffPruneTask(s.orchestrator, plan, at, true), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityPrune, func(e error) {
 		err = e
 		wg.Done()
 	})

@@ -86,12 +86,12 @@ func (t *BackupTask) Next(now time.Time) *time.Time {
 
 func (t *BackupTask) Run(ctx context.Context) error {
 	return t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
-		return backupHelper(ctx, t.orch, t.plan, op)
+		return backupHelper(ctx, t, t.orch, t.plan, op)
 	})
 }
 
 // backupHelper does a backup.
-func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan, op *v1.Operation) error {
+func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan *v1.Plan, op *v1.Operation) error {
 	startTime := time.Now()
 	backupOp := &v1.Operation_OperationBackup{
 		OperationBackup: &v1.OperationBackup{},
@@ -106,7 +106,9 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 
 	hook.ExecuteHooks(orchestrator.OpLog, repo.Config(), plan, "", []v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_START,
-	}, hook.HookVars{})
+	}, hook.HookVars{
+		Task: t.Name(),
+	})
 
 	lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
 	var lastFiles []string
@@ -129,8 +131,10 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 		}
 	})
 
-	vars := hook.HookVars{}
-
+	vars := hook.HookVars{
+		Task:          t.Name(),
+		SnapshotStats: *summary,
+	}
 	if err != nil {
 		vars.Error = err.Error()
 		hook.ExecuteHooks(orchestrator.OpLog, repo.Config(), plan, "", []v1.Hook_Condition{

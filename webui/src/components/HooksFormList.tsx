@@ -13,15 +13,15 @@ export const hooksListTooltipText = <>
     <li>On Snapshot Error: Runs when a snapshot fails.</li>
     <li>On Any Error: Runs when any error occurs.</li>
   </ul>
-
   Arguments are available to hooks as <a target="_blank" rel="noopener noreferrer" href="https://pkg.go.dev/text/template" >Go template variables</a>
   <ul>
+    <li>.Task - the name of the task that triggered the hook.</li>
     <li>.Event - the event that triggered the hook.</li>
     <li>.Repo - the name of the repo the event applies to.</li>
     <li>.Plan - the name of the plan the event applies to.</li>
     <li>.Error - the error if any is available.</li>
-    <li>.Time - the formatted time of the operation if available.</li>
-    <li>.Snapshot - the restic snapshot structure if this is finish snapshot operation and it completed successfully.</li>
+    <li>.CurTime - the time of the event.</li>
+    <li>.SnapshotId - the restic snapshot structure if this is finish snapshot operation and it completed successfully.</li>
   </ul>
 </>
 

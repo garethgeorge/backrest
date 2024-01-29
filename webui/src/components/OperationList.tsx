@@ -4,6 +4,7 @@ import {
   OperationEvent,
   OperationEventType,
   OperationForget,
+  OperationRunHook,
   OperationStatus,
 } from "../../gen/ts/v1/operations_pb";
 import {
@@ -33,7 +34,6 @@ import {
   getOperations,
   getTypeForDisplay,
   shouldHideOperation,
-  shouldHideStatus,
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
@@ -44,7 +44,7 @@ import {
   normalizeSnapshotId,
 } from "../lib/formatting";
 import _ from "lodash";
-import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
+import { GetOperationsRequest, OperationDataRequest } from "../../gen/ts/v1/service_pb";
 import { useAlertApi } from "./Alerts";
 import { MessageInstance } from "antd/es/message/interface";
 import { backrestService } from "../api";
@@ -266,6 +266,9 @@ export const OperationRow = ({
         ) : null}
       </>
     );
+  } else if (operation.op.case === "operationRunHook") {
+    const hook = operation.op.value;
+    body = <RunHookOperationStatus op={operation} />
   }
 
   if (operation.displayMessage) {
@@ -477,4 +480,33 @@ const ForgetOperationDetails = ({ forgetOp }: { forgetOp: OperationForget }) => 
       ]}
     />
   );
+}
+
+const RunHookOperationStatus = ({ op }: { op: Operation }) => {
+  const [output, setOutput] = useState<string | undefined>(undefined);
+
+  if (op.op.case !== "operationRunHook") {
+    return <>Wrong operation type</>;
+  }
+
+  const hook = op.op.value;
+
+  useEffect(() => {
+    if (!hook.outputRef) {
+      return;
+    }
+    backrestService.getOperationData(new OperationDataRequest({
+      id: op.id,
+      key: hook.outputRef,
+    })).then((resp) => {
+      setOutput(new TextDecoder("utf-8").decode(resp.value));
+    }).catch((e) => {
+      console.error("Failed to fetch hook output: ", e);
+    });
+  }, [hook.outputRef]);
+
+  return <pre>
+    Hook: {hook.name} <br />
+    {output}
+  </pre>
 }

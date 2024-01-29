@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/natefinch/atomic"
+	"go.uber.org/zap"
 )
 
 type BigOpDataStore struct {
@@ -37,7 +38,8 @@ func (s *BigOpDataStore) DeleteOperationData(opId int64) error {
 			continue
 		}
 		if err := os.Remove(dir + "/" + dirent.Name()); err != nil {
-			return err
+			zap.S().Errorf("deleting big operation data for operation %v failed to delete %v: %v", opId, dirent.Name(), err)
+			continue
 		}
 	}
 	return os.Remove(dir)

@@ -16,23 +16,21 @@ import (
 // PruneTask tracks a forget operation.
 type PruneTask struct {
 	TaskWithOperation
-	plan         *v1.Plan
-	linkSnapshot string // snapshot to link the task to.
-	at           *time.Time
-	force        bool
+	plan  *v1.Plan
+	at    *time.Time
+	force bool
 }
 
 var _ Task = &PruneTask{}
 
-func NewOneoffPruneTask(orchestrator *Orchestrator, plan *v1.Plan, linkSnapshot string, at time.Time, force bool) *PruneTask {
+func NewOneoffPruneTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time, force bool) *PruneTask {
 	return &PruneTask{
 		TaskWithOperation: TaskWithOperation{
 			orch: orchestrator,
 		},
-		plan:         plan,
-		at:           &at,
-		linkSnapshot: linkSnapshot,
-		force:        force, // overrides the PrunePolicy's MaxFrequencyDays
+		plan:  plan,
+		at:    &at,
+		force: force, // overrides the PrunePolicy's MaxFrequencyDays
 	}
 }
 
@@ -55,7 +53,6 @@ func (t *PruneTask) Next(now time.Time) *time.Time {
 		if err := t.setOperation(&v1.Operation{
 			PlanId:          t.plan.Id,
 			RepoId:          t.plan.Repo,
-			SnapshotId:      t.linkSnapshot,
 			UnixTimeStartMs: timeToUnixMillis(*ret),
 			Status:          v1.OperationStatus_STATUS_PENDING,
 			Op:              &v1.Operation_OperationPrune{},

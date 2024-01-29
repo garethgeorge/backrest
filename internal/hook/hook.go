@@ -45,6 +45,7 @@ func ExecuteHooks(oplog *oplog.OpLog, repo *v1.Repo, plan *v1.Plan, snapshotId s
 				Name: name,
 			},
 		}
+		zap.L().Info("Running hook", zap.String("plan", plan.Id), zap.Int64("opId", operation.Id), zap.String("hook", name))
 		executeHook(oplog, operation, h, event, vars)
 	}
 
@@ -77,7 +78,7 @@ func firstMatchingCondition(hook *Hook, events []v1.Hook_Condition) v1.Hook_Cond
 	return v1.Hook_CONDITION_UNKNOWN
 }
 
-func executeHook(oplog *oplog.OpLog, op *v1.Operation, hook *Hook, events v1.Hook_Condition, vars HookVars) {
+func executeHook(oplog *oplog.OpLog, op *v1.Operation, hook *Hook, event v1.Hook_Condition, vars HookVars) {
 	if err := oplog.Add(op); err != nil {
 		zap.S().Errorf("execute hook: add operation: %v", err)
 		return
@@ -94,9 +95,9 @@ func executeHook(oplog *oplog.OpLog, op *v1.Operation, hook *Hook, events v1.Hoo
 	}()
 	defer pw.Close()
 
-	if err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, vars, io.MultiWriter(output, pw)); err != nil {
+	if err := hook.Do(event, vars, io.MultiWriter(output, pw)); err != nil {
 		output.Write([]byte(fmt.Sprintf("Error: %v", err)))
-		op.DisplayMessage = output.String()
+		op.DisplayMessage = err.Error()
 		op.Status = v1.OperationStatus_STATUS_ERROR
 	} else {
 		op.Status = v1.OperationStatus_STATUS_SUCCESS
@@ -125,6 +126,8 @@ func (h *Hook) Do(event v1.Hook_Condition, vars HookVars, output io.Writer) erro
 		return nil
 	}
 
+	vars.Event = event
+
 	switch action := h.Action.(type) {
 	case *v1.Hook_ActionCommand:
 		return h.doCommand(action, vars, output)
@@ -145,38 +148,4 @@ func (h *Hook) makeSubstitutions(text string, vars HookVars) (string, error) {
 	}
 
 	return buf.String(), nil
-}
-
-// HookVars is the set of variables that are available to a hook. Some of these are optional.
-type HookVars struct {
-	Event      v1.Hook_Condition // the event that triggered the hook.
-	Repo       *v1.Repo          // the v1.Repo that triggered the hook.
-	Plan       *v1.Plan          // the v1.Plan that triggered the hook.
-	SnapshotId string            // the snapshot ID that triggered the hook.
-	CurTime    time.Time         // the current time as time.Time
-	Error      string            // the error that caused the hook to run as a string.
-	Task       string            // the name of the task that triggered the hook.
-}
-
-func (v *HookVars) EventName(cond v1.Hook_Condition) string {
-	switch cond {
-	case v1.Hook_CONDITION_SNAPSHOT_START:
-		return "snapshot start"
-	case v1.Hook_CONDITION_SNAPSHOT_END:
-		return "snapshot end"
-	case v1.Hook_CONDITION_ANY_ERROR:
-		return "error"
-	case v1.Hook_CONDITION_SNAPSHOT_ERROR:
-		return "snapshot error"
-	default:
-		return "unknown"
-	}
-}
-
-func (v *HookVars) FormatTime(t time.Time) string {
-	return t.Format(time.RFC3339)
-}
-
-func (v *HookVars) IsError(cond v1.Hook_Condition) bool {
-	return cond == v1.Hook_CONDITION_ANY_ERROR || cond == v1.Hook_CONDITION_SNAPSHOT_ERROR
 }

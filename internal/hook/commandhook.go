@@ -26,7 +26,8 @@ func (h *Hook) doCommand(cmd *v1.Hook_ActionCommand, vars HookVars, output io.Wr
 		command = command[nextLine+1:]
 	}
 
-	output.Write([]byte(fmt.Sprintf("Running command:\n#! %v\n%v\n", shell, command)))
+	output.Write([]byte(fmt.Sprintf("------- script -------\n#! %v\n%v\n", shell, command)))
+	output.Write([]byte("------- output -------\n"))
 
 	// Run the command in the specified shell
 	execCmd := exec.Command(shell)

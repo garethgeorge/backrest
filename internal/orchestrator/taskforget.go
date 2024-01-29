@@ -103,7 +103,7 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 		}
 
 		if len(forgot) > 0 {
-			t.orch.ScheduleTask(NewOneoffPruneTask(t.orch, t.plan, op.SnapshotId, time.Now(), false), TaskPriorityPrune)
+			t.orch.ScheduleTask(NewOneoffPruneTask(t.orch, t.plan, time.Now(), false), TaskPriorityPrune)
 		}
 
 		return err
