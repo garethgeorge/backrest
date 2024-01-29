@@ -43,6 +43,14 @@ func (t *CollectGarbageTask) Next(now time.Time) *time.Time {
 }
 
 func (t *CollectGarbageTask) Run(ctx context.Context) error {
+	if err := t.gcOperations(); err != nil {
+		return fmt.Errorf("collecting garbage: %w", err)
+	}
+
+	return nil
+}
+
+func (t *CollectGarbageTask) gcOperations() error {
 	oplog := t.orchestrator.OpLog
 
 	// pass 1: identify forgotten snapshots.
@@ -100,7 +108,6 @@ func (t *CollectGarbageTask) Run(ctx context.Context) error {
 	zap.L().Info("collecting garbage",
 		zap.Int("forgotten_snapshots", len(snapshotIsForgotten)),
 		zap.Any("operations_removed", len(gcOps)))
-
 	return nil
 }
 

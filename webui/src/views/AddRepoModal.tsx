@@ -10,6 +10,7 @@ import {
   Col,
   Card,
   InputNumber,
+  FormInstance,
 } from "antd";
 import React, { useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -26,6 +27,11 @@ import {
 import { useRecoilState } from "recoil";
 import { validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
+import {
+  HooksFormList,
+  hooksListTooltipText,
+} from "../components/HooksFormList";
+import { isDevBuild } from "../state/buildcfg";
 
 export const AddRepoModal = ({
   template,
@@ -235,19 +241,14 @@ export const AddRepoModal = ({
           </Tooltip>
 
           {/* Repo.password */}
-          <Form.Item<Repo> hasFeedback name="password" label={<>Password </>}>
+          <Form.Item label="Password">
             <Row>
               <Col span={16}>
-                <Form.Item
+                <Form.Item<Repo>
+                  hasFeedback
                   name="password"
-                  initialValue={template && template.password}
+                  initialValue={template ? template.password : ""}
                   validateTrigger={["onChange", "onBlur"]}
-                  rules={[
-                    {
-                      required: true,
-                      message: "Please input repo password",
-                    },
-                  ]}
                 >
                   <Input disabled={!!template} />
                 </Form.Item>
@@ -273,161 +274,176 @@ export const AddRepoModal = ({
           </Form.Item>
 
           {/* Repo.env */}
-          <Form.List
-            name="env"
-            rules={[
-              {
-                validator: async (_, envVars) => {
-                  let uri = form.getFieldValue("uri");
-                  return await envVarSetValidator(uri, envVars);
+          <Form.Item label="Env Vars">
+            <Form.List
+              name="env"
+              rules={[
+                {
+                  validator: async (_, envVars) => {
+                    return await envVarSetValidator(form, envVars);
+                  },
                 },
-              },
-            ]}
-            initialValue={template ? template.env : []}
-          >
-            {(fields, { add, remove }, { errors }) => (
-              <>
-                {fields.map((field, index) => (
-                  <Form.Item
-                    label={index === 0 ? "Environment Variables" : " "}
-                    colon={index === 0}
-                    required={false}
-                    key={field.key}
-                  >
-                    <Form.Item
-                      {...field}
-                      validateTrigger={["onChange", "onBlur"]}
-                      initialValue={""}
-                      rules={[
-                        {
-                          required: true,
-                          whitespace: true,
-                          pattern: /^[\w-]+=.*$/,
-                          message:
-                            "Environment variable must be in format KEY=VALUE",
-                        },
-                      ]}
-                      noStyle
-                    >
-                      <Input
-                        placeholder="KEY=VALUE"
-                        onBlur={() => form.validateFields()}
-                        style={{ width: "90%" }}
+              ]}
+              initialValue={template ? template.env : []}
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => (
+                    <Form.Item key={field.key}>
+                      <Form.Item
+                        {...field}
+                        validateTrigger={["onChange", "onBlur"]}
+                        initialValue={""}
+                        rules={[
+                          {
+                            required: true,
+                            whitespace: true,
+                            pattern: /^[\w-]+=.*$/,
+                            message:
+                              "Environment variable must be in format KEY=VALUE",
+                          },
+                        ]}
+                        noStyle
+                      >
+                        <Input
+                          placeholder="KEY=VALUE"
+                          onBlur={() => form.validateFields()}
+                          style={{ width: "90%" }}
+                        />
+                      </Form.Item>
+                      <MinusCircleOutlined
+                        className="dynamic-delete-button"
+                        onClick={() => remove(field.name)}
+                        style={{ paddingLeft: "5px" }}
                       />
                     </Form.Item>
-                    <MinusCircleOutlined
-                      className="dynamic-delete-button"
-                      onClick={() => remove(field.name)}
-                      style={{ paddingLeft: "5px" }}
-                    />
+                  ))}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      style={{ width: "90%" }}
+                      icon={<PlusOutlined />}
+                    >
+                      Set Environment Variable
+                    </Button>
+                    <Form.ErrorList errors={errors} />
                   </Form.Item>
-                ))}
-                <Form.Item
-                  label={fields.length === 0 ? "Environment Variables" : " "}
-                  colon={fields.length === 0}
-                >
-                  <Button
-                    type="dashed"
-                    onClick={() => add()}
-                    style={{ width: "90%" }}
-                    icon={<PlusOutlined />}
-                  >
-                    Set Environment Variable
-                  </Button>
-                  <Form.ErrorList errors={errors} />
-                </Form.Item>
-              </>
-            )}
-          </Form.List>
+                </>
+              )}
+            </Form.List>
+          </Form.Item>
 
           {/* Repo.flags */}
-          <Form.List name="flags" initialValue={template ? template.flags : []}>
-            {(fields, { add, remove }, { errors }) => (
-              <>
-                {fields.map((field, index) => (
-                  <Form.Item
-                    label={index === 0 ? "Flag Overrides" : " "}
-                    colon={index === 0}
-                    required={false}
-                    key={field.key}
-                  >
-                    <Form.Item
-                      {...field}
-                      validateTrigger={["onChange", "onBlur"]}
-                      initialValue={""}
-                      rules={[
-                        {
-                          required: true,
-                          whitespace: true,
-                          pattern: /^\-\-[A-Za-z0-9_\-]*$/,
-                          message:
-                            "Value should be a CLI flag e.g. see restic --help",
-                        },
-                      ]}
-                      noStyle
-                    >
-                      <Input placeholder="--flag" style={{ width: "60%" }} />
+          <Form.Item label="Flags">
+            <Form.List
+              name="flags"
+              initialValue={template ? template.flags : []}
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => (
+                    <Form.Item required={false} key={field.key}>
+                      <Form.Item
+                        {...field}
+                        validateTrigger={["onChange", "onBlur"]}
+                        initialValue={""}
+                        rules={[
+                          {
+                            required: true,
+                            whitespace: true,
+                            pattern: /^\-\-?.*$/,
+                            message:
+                              "Value should be a CLI flag e.g. see restic --help",
+                          },
+                        ]}
+                        noStyle
+                      >
+                        <Input placeholder="--flag" style={{ width: "60%" }} />
+                      </Form.Item>
+                      <MinusCircleOutlined
+                        className="dynamic-delete-button"
+                        onClick={() => remove(field.name)}
+                        style={{ paddingLeft: "5px" }}
+                      />
                     </Form.Item>
-                    <MinusCircleOutlined
-                      className="dynamic-delete-button"
-                      onClick={() => remove(field.name)}
-                      style={{ paddingLeft: "5px" }}
-                    />
+                  ))}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      style={{ width: "60%" }}
+                      icon={<PlusOutlined />}
+                    >
+                      Set Flag
+                    </Button>
+                    <Form.ErrorList errors={errors} />
                   </Form.Item>
-                ))}
-                <Form.Item
-                  label={fields.length === 0 ? "Flag Overrides" : " "}
-                  colon={fields.length === 0}
-                >
-                  <Button
-                    type="dashed"
-                    onClick={() => add()}
-                    style={{ width: "60%" }}
-                    icon={<PlusOutlined />}
-                  >
-                    Set Flag
-                  </Button>
-                  <Form.ErrorList errors={errors} />
-                </Form.Item>
-              </>
-            )}
-          </Form.List>
+                </>
+              )}
+            </Form.List>
+          </Form.Item>
 
           {/* Repo.prunePolicy */}
           <Form.Item
             required={false}
             label={
-              <Tooltip title={<span>The schedule on which prune operations are run for this repository. Read <a href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning">the restic docs on customizing prune operations</a> for more details.</span>}>
+              <Tooltip
+                title={
+                  <span>
+                    The schedule on which prune operations are run for this
+                    repository. Read{" "}
+                    <a href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning">
+                      the restic docs on customizing prune operations
+                    </a>{" "}
+                    for more details.
+                  </span>
+                }
+              >
                 Prune Policy
               </Tooltip>
             }
           >
-            <Card>
-              <Form.Item
-                name={["prunePolicy", "maxFrequencyDays"]}
-                initialValue={template?.prunePolicy?.maxFrequencyDays || 7}
-                required={false}
-              >
-                <InputNumber addonBefore={<div style={{ width: "12em" }}>Max Frequency Days</div>} />
-              </Form.Item>
-              <Form.Item
-                name={["prunePolicy", "maxUnusedPercent"]}
-                initialValue={template?.prunePolicy?.maxUnusedPercent || 25}
-                required={false}
-              >
-                <InputNumber addonBefore={
+            <Form.Item
+              name={["prunePolicy", "maxFrequencyDays"]}
+              initialValue={template?.prunePolicy?.maxFrequencyDays || 7}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={
+                  <div style={{ width: "12em" }}>Max Frequency Days</div>
+                }
+              />
+            </Form.Item>
+            <Form.Item
+              name={["prunePolicy", "maxUnusedPercent"]}
+              initialValue={template?.prunePolicy?.maxUnusedPercent || 25}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={
                   <Tooltip title="The maximum percentage of the repo size that may be unused after a prune operation completes. High values reduce copying at the expense of storage.">
                     <div style={{ width: "12em" }}>Max Unused Percent</div>
-                  </Tooltip>}
-                />
-              </Form.Item>
-            </Card>
+                  </Tooltip>
+                }
+              />
+            </Form.Item>
+          </Form.Item>
+
+          <Form.Item
+            label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>}
+          >
+            <HooksFormList hooks={template?.hooks || []} />
           </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">
             {() => (
               <Typography>
-                <pre>{JSON.stringify(form.getFieldsValue(), null, 2)}</pre>
+                <pre>
+                  {new Repo(form.getFieldsValue()).toJsonString({
+                    prettySpaces: 2,
+                  })}
+                </pre>
               </Typography>
             )}
           </Form.Item>
@@ -444,10 +460,35 @@ const expectedEnvVars: { [scheme: string]: string[] } = {
   gs: ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"],
 };
 
-const envVarSetValidator = (uri: string | undefined, envVars: string[]) => {
+const envVarSetValidator = (form: FormInstance<Repo>, envVars: string[]) => {
+  let uri = form.getFieldValue("uri");
   if (!uri) {
     return Promise.resolve();
   }
+
+  const envVarNames = envVars.map((e) => {
+    let idx = e.indexOf("=");
+    if (idx === -1) {
+      return "";
+    }
+    return e.substring(0, idx);
+  });
+
+  // check that password is provided in some form
+  if (
+    form.getFieldValue("password").length === 0 &&
+    !envVarNames.includes("RESTIC_PASSWORD") &&
+    !envVarNames.includes("RESTIC_PASSWORD_COMMAND") &&
+    !envVarNames.includes("RESTIC_PASSWORD_FILE")
+  ) {
+    return Promise.reject(
+      new Error(
+        "Missing repo password. Either provide a password or set one of the env variables RESTIC_PASSWORD, RESTIC_PASSWORD_COMMAND, RESTIC_PASSWORD_FILE."
+      )
+    );
+  }
+
+  // find expected env for scheme
   let schemeIdx = uri.indexOf(":");
   if (schemeIdx === -1) {
     return Promise.resolve();
@@ -458,8 +499,6 @@ const envVarSetValidator = (uri: string | undefined, envVars: string[]) => {
   if (!expected) {
     return Promise.resolve();
   }
-
-  const envVarNames = envVars.map((e) => e && e.split("=")[0]);
 
   let missing: string[] = [];
   for (let e of expected) {

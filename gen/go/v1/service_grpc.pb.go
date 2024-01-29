@@ -36,6 +36,7 @@ const (
 	Backrest_Unlock_FullMethodName             = "/v1.Backrest/Unlock"
 	Backrest_Stats_FullMethodName              = "/v1.Backrest/Stats"
 	Backrest_Cancel_FullMethodName             = "/v1.Backrest/Cancel"
+	Backrest_GetOperationData_FullMethodName   = "/v1.Backrest/GetOperationData"
 	Backrest_ClearHistory_FullMethodName       = "/v1.Backrest/ClearHistory"
 	Backrest_PathAutocomplete_FullMethodName   = "/v1.Backrest/PathAutocomplete"
 )
@@ -67,6 +68,8 @@ type BackrestClient interface {
 	Stats(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// GetOperationData returns the keyed large data for the given operation.
+	GetOperationData(ctx context.Context, in *OperationDataRequest, opts ...grpc.CallOption) (*types.BytesValue, error)
 	// Clears the history of operations
 	ClearHistory(ctx context.Context, in *ClearHistoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
@@ -239,6 +242,15 @@ func (c *backrestClient) Cancel(ctx context.Context, in *types.Int64Value, opts 
 	return out, nil
 }
 
+func (c *backrestClient) GetOperationData(ctx context.Context, in *OperationDataRequest, opts ...grpc.CallOption) (*types.BytesValue, error) {
+	out := new(types.BytesValue)
+	err := c.cc.Invoke(ctx, Backrest_GetOperationData_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *backrestClient) ClearHistory(ctx context.Context, in *ClearHistoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Backrest_ClearHistory_FullMethodName, in, out, opts...)
@@ -284,6 +296,8 @@ type BackrestServer interface {
 	Stats(context.Context, *types.StringValue) (*emptypb.Empty, error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error)
+	// GetOperationData returns the keyed large data for the given operation.
+	GetOperationData(context.Context, *OperationDataRequest) (*types.BytesValue, error)
 	// Clears the history of operations
 	ClearHistory(context.Context, *ClearHistoryRequest) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
@@ -339,6 +353,9 @@ func (UnimplementedBackrestServer) Stats(context.Context, *types.StringValue) (*
 }
 func (UnimplementedBackrestServer) Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
+}
+func (UnimplementedBackrestServer) GetOperationData(context.Context, *OperationDataRequest) (*types.BytesValue, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetOperationData not implemented")
 }
 func (UnimplementedBackrestServer) ClearHistory(context.Context, *ClearHistoryRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearHistory not implemented")
@@ -632,6 +649,24 @@ func _Backrest_Cancel_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Backrest_GetOperationData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OperationDataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackrestServer).GetOperationData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Backrest_GetOperationData_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackrestServer).GetOperationData(ctx, req.(*OperationDataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Backrest_ClearHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ClearHistoryRequest)
 	if err := dec(in); err != nil {
@@ -730,6 +765,10 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Cancel",
 			Handler:    _Backrest_Cancel_Handler,
+		},
+		{
+			MethodName: "GetOperationData",
+			Handler:    _Backrest_GetOperationData_Handler,
 		},
 		{
 			MethodName: "ClearHistory",

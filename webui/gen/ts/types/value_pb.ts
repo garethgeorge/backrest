@@ -44,6 +44,43 @@ export class StringValue extends Message<StringValue> {
 }
 
 /**
+ * @generated from message types.BytesValue
+ */
+export class BytesValue extends Message<BytesValue> {
+  /**
+   * @generated from field: bytes value = 1;
+   */
+  value = new Uint8Array(0);
+
+  constructor(data?: PartialMessage<BytesValue>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "types.BytesValue";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "value", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BytesValue {
+    return new BytesValue().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BytesValue {
+    return new BytesValue().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BytesValue {
+    return new BytesValue().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BytesValue | PlainMessage<BytesValue> | undefined, b: BytesValue | PlainMessage<BytesValue> | undefined): boolean {
+    return proto3.util.equals(BytesValue, a, b);
+  }
+}
+
+/**
  * @generated from message types.StringList
  */
 export class StringList extends Message<StringList> {

@@ -52,10 +52,6 @@ func validateRepo(repo *v1.Repo) error {
 		err = multierror.Append(err, errors.New("uri is required"))
 	}
 
-	if repo.Password == "" {
-		err = multierror.Append(err, errors.New("password is required"))
-	}
-
 	for _, env := range repo.Env {
 		if !strings.Contains(env, "=") {
 			err = multierror.Append(err, fmt.Errorf("invalid env var %s, must take format KEY=VALUE", env))

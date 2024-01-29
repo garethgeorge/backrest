@@ -310,7 +310,7 @@ func (s *Server) Prune(ctx context.Context, req *connect.Request[types.StringVal
 	at := time.Now()
 	var wg sync.WaitGroup
 	wg.Add(1)
-	s.orchestrator.ScheduleTask(orchestrator.NewOneoffPruneTask(s.orchestrator, plan, "", at, true), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityPrune, func(e error) {
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffPruneTask(s.orchestrator, plan, at, true), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityPrune, func(e error) {
 		err = e
 		wg.Done()
 	})
@@ -395,6 +395,14 @@ func (s *Server) ClearHistory(ctx context.Context, req *connect.Request[v1.Clear
 	}
 
 	return connect.NewResponse(&emptypb.Empty{}), err
+}
+
+func (s *Server) GetOperationData(ctx context.Context, req *connect.Request[v1.OperationDataRequest]) (*connect.Response[types.BytesValue], error) {
+	data, err := s.oplog.GetBigData(req.Msg.Id, req.Msg.Key)
+	if err != nil {
+		return nil, fmt.Errorf("get operation data: %w", err)
+	}
+	return connect.NewResponse(&types.BytesValue{Value: data}), nil
 }
 
 func (s *Server) PathAutocomplete(ctx context.Context, path *connect.Request[types.StringValue]) (*connect.Response[types.StringList], error) {

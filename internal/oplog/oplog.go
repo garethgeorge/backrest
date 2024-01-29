@@ -13,6 +13,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog/serializationutil"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
+	"github.com/hashicorp/go-multierror"
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -40,6 +41,7 @@ var (
 // Operations are indexed by repo and plan.
 type OpLog struct {
 	db *bolt.DB
+	*BigOpDataStore
 
 	subscribersMu sync.RWMutex
 	subscribers   []*func(*v1.Operation, *v1.Operation)
@@ -57,6 +59,9 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 
 	o := &OpLog{
 		db: db,
+		BigOpDataStore: &BigOpDataStore{
+			path: path.Dir(databasePath) + "/opdatav1",
+		},
 	}
 
 	if err := db.Update(func(tx *bolt.Tx) error {
@@ -79,7 +84,9 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 
 // Scan checks the log for incomplete operations. Should only be called at startup.
 func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
-	return o.db.Update(func(tx *bolt.Tx) error {
+	removeIds := make([]int64, 0)
+
+	err := o.db.Update(func(tx *bolt.Tx) error {
 		sysBucket := tx.Bucket(SystemBucket)
 		opLogBucket := tx.Bucket(OpLogBucket)
 		c := opLogBucket.Cursor()
@@ -95,11 +102,11 @@ func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
 
 			if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED || op.Status == v1.OperationStatus_STATUS_USER_CANCELLED {
 				// remove pending or user cancelled operations.
-				o.deleteOperationHelper(tx, op.Id)
+				removeIds = append(removeIds, op.Id)
 				continue
 			} else if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
 				onIncomplete(op)
-				o.deleteOperationHelper(tx, op.Id)
+				removeIds = append(removeIds, op.Id)
 			}
 
 			if err := o.addOperationHelper(tx, op); err != nil {
@@ -114,6 +121,16 @@ func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
 		}
 		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("scanning log: %v", err)
+	}
+
+	if len(removeIds) > 0 {
+		if err := o.Delete(removeIds...); err != nil {
+			return fmt.Errorf("removing incomplete operations: %w", err)
+		}
+	}
+	return nil
 }
 
 func (o *OpLog) Close() error {
@@ -196,6 +213,11 @@ func (o *OpLog) Delete(ids ...int64) error {
 	if err == nil {
 		for _, op := range removedOps {
 			o.notifyHelper(op, nil)
+		}
+		for _, id := range ids {
+			if e := o.DeleteOperationData(id); e != nil {
+				err = multierror.Append(err, fmt.Errorf("deleting big data for operation %v: %w", id, e))
+			}
 		}
 	}
 	return err
