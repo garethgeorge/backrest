@@ -444,9 +444,6 @@ export const AddRepoModal = ({
                     prettySpaces: 2,
                   })}
                 </pre>
-                {isDevBuild ? (
-                  <pre>{JSON.stringify(form.getFieldsValue(), null, 2)}</pre>
-                ) : null}
               </Typography>
             )}
           </Form.Item>

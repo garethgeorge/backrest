@@ -22,6 +22,7 @@ import { URIAutocomplete } from "../components/URIAutocomplete";
 import { useAlertApi } from "../components/Alerts";
 import { Cron } from "react-js-cron";
 import { validateForm } from "../lib/formutil";
+import { HooksFormList, hooksListTooltipText } from "../components/HooksFormList";
 
 export const AddPlanModal = ({
   template,
@@ -332,6 +333,15 @@ export const AddPlanModal = ({
 
           {/* Plan.retention */}
           <RetentionPolicyView policy={template?.retention} />
+
+
+          {/* Plan.hooks */}
+          <Form.Item
+            label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>}
+          >
+            <HooksFormList hooks={template?.hooks || []} />
+          </Form.Item>
+
 
           <Form.Item shouldUpdate label="Preview">
             {() => (
