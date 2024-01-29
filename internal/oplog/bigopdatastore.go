@@ -1,8 +1,11 @@
 package oplog
 
 import (
+	"bytes"
 	"os"
 	"strconv"
+
+	"github.com/natefinch/atomic"
 )
 
 type BigOpDataStore struct {
@@ -15,10 +18,13 @@ func NewBigOpDataStore(path string) *BigOpDataStore {
 	}
 }
 
-func (s *BigOpDataStore) DeleteAll(opId int64) error {
+func (s *BigOpDataStore) DeleteBigData(opId int64) error {
 	dir := s.path + "/" + strconv.FormatInt(opId, 16)
 	files, err := os.ReadDir(dir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
 		return err
 	}
 
@@ -33,12 +39,15 @@ func (s *BigOpDataStore) DeleteAll(opId int64) error {
 	return os.Remove(dir)
 }
 
-func (s *BigOpDataStore) Set(opId int64, key string, data []byte) error {
+func (s *BigOpDataStore) SetBigData(opId int64, key string, data []byte) error {
+	if err := os.MkdirAll(s.path+"/"+strconv.FormatInt(opId, 16), 0755); err != nil {
+		return err
+	}
 	filePath := s.path + "/" + strconv.FormatInt(opId, 16) + "/" + key
-	return os.WriteFile(filePath, data, 0600)
+	return atomic.WriteFile(filePath, bytes.NewReader(data))
 }
 
-func (s *BigOpDataStore) Get(opId int64, key string) ([]byte, error) {
+func (s *BigOpDataStore) GetBigData(opId int64, key string) ([]byte, error) {
 	filePath := s.path + "/" + strconv.FormatInt(opId, 16) + "/" + key
 	return os.ReadFile(filePath)
 }
