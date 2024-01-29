@@ -111,18 +111,15 @@ func downloadFile(url string, downloadPath string) (string, error) {
 	hash := sha256.Sum256(body)
 
 	if strings.HasSuffix(url, ".bz2") {
+		zap.S().Infof("Decompressing bz2 archive (size=%v)...", len(body))
 		body, err = io.ReadAll(bzip2.NewReader(bytes.NewReader(body)))
 		if err != nil {
 			return "", fmt.Errorf("bz2 decompress body: %w", err)
 		}
 	} else if strings.HasSuffix(url, ".zip") {
-		var fullBody bytes.Buffer
-		_, err := io.Copy(&fullBody, resp.Body)
-		if err != nil {
-			return "", fmt.Errorf("copy response body to buffer: %w", err)
-		}
+		zap.S().Infof("Decompressing zip archive (size=%v)...", len(body))
 
-		archive, err := zip.NewReader(bytes.NewReader(fullBody.Bytes()), int64(fullBody.Len()))
+		archive, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
 		if err != nil {
 			return "", fmt.Errorf("open zip archive: %w", err)
 		}
