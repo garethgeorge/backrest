@@ -1,6 +1,7 @@
 package hook
 
 import (
+	"bytes"
 	"os/exec"
 	"testing"
 
@@ -17,7 +18,7 @@ func TestHookCommandInDefaultShell(t *testing.T) {
 		},
 	})
 
-	err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, nil)
+	err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, nil, &bytes.Buffer{})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -42,7 +43,7 @@ exit $counter`,
 		},
 	})
 
-	err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, nil)
+	err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, nil, &bytes.Buffer{})
 	if err == nil {
 		t.Fatal("expected error")
 	}

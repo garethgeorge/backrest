@@ -27,7 +27,10 @@ import {
 import { useRecoilState } from "recoil";
 import { validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
-import { HooksFormList, hooksListTooltipText } from "../components/HooksFormList";
+import {
+  HooksFormList,
+  hooksListTooltipText,
+} from "../components/HooksFormList";
 import { isDevBuild } from "../state/buildcfg";
 
 export const AddRepoModal = ({
@@ -81,9 +84,9 @@ export const AddRepoModal = ({
       showModal(null);
       alertsApi.success(
         "Deleted repo " +
-        template.id +
-        " from config but files remain. To release storage delete the files manually. URI: " +
-        template.uri
+          template.id +
+          " from config but files remain. To release storage delete the files manually. URI: " +
+          template.uri
       );
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);
@@ -238,7 +241,7 @@ export const AddRepoModal = ({
           </Tooltip>
 
           {/* Repo.password */}
-          <Form.Item label="Password" >
+          <Form.Item label="Password">
             <Row>
               <Col span={16}>
                 <Form.Item<Repo>
@@ -286,9 +289,7 @@ export const AddRepoModal = ({
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
-                    <Form.Item
-                      key={field.key}
-                    >
+                    <Form.Item key={field.key}>
                       <Form.Item
                         {...field}
                         validateTrigger={["onChange", "onBlur"]}
@@ -335,14 +336,14 @@ export const AddRepoModal = ({
 
           {/* Repo.flags */}
           <Form.Item label="Flags">
-            <Form.List name="flags" initialValue={template ? template.flags : []}>
+            <Form.List
+              name="flags"
+              initialValue={template ? template.flags : []}
+            >
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
-                    <Form.Item
-                      required={false}
-                      key={field.key}
-                    >
+                    <Form.Item required={false} key={field.key}>
                       <Form.Item
                         {...field}
                         validateTrigger={["onChange", "onBlur"]}
@@ -387,7 +388,18 @@ export const AddRepoModal = ({
           <Form.Item
             required={false}
             label={
-              <Tooltip title={<span>The schedule on which prune operations are run for this repository. Read <a href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning">the restic docs on customizing prune operations</a> for more details.</span>}>
+              <Tooltip
+                title={
+                  <span>
+                    The schedule on which prune operations are run for this
+                    repository. Read{" "}
+                    <a href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning">
+                      the restic docs on customizing prune operations
+                    </a>{" "}
+                    for more details.
+                  </span>
+                }
+              >
                 Prune Policy
               </Tooltip>
             }
@@ -397,35 +409,49 @@ export const AddRepoModal = ({
               initialValue={template?.prunePolicy?.maxFrequencyDays || 7}
               required={false}
             >
-              <InputNumber addonBefore={<div style={{ width: "12em" }}>Max Frequency Days</div>} />
+              <InputNumber
+                addonBefore={
+                  <div style={{ width: "12em" }}>Max Frequency Days</div>
+                }
+              />
             </Form.Item>
             <Form.Item
               name={["prunePolicy", "maxUnusedPercent"]}
               initialValue={template?.prunePolicy?.maxUnusedPercent || 25}
               required={false}
             >
-              <InputNumber addonBefore={
-                <Tooltip title="The maximum percentage of the repo size that may be unused after a prune operation completes. High values reduce copying at the expense of storage.">
-                  <div style={{ width: "12em" }}>Max Unused Percent</div>
-                </Tooltip>}
+              <InputNumber
+                addonBefore={
+                  <Tooltip title="The maximum percentage of the repo size that may be unused after a prune operation completes. High values reduce copying at the expense of storage.">
+                    <div style={{ width: "12em" }}>Max Unused Percent</div>
+                  </Tooltip>
+                }
               />
             </Form.Item>
           </Form.Item>
 
-          <Form.Item label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>} >
+          <Form.Item
+            label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>}
+          >
             <HooksFormList hooks={template?.hooks || []} />
           </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">
             {() => (
               <Typography>
-                <pre>{new Repo(form.getFieldsValue()).toJsonString({ prettySpaces: 2 })}</pre>
-                {isDevBuild ? <pre>{JSON.stringify(form.getFieldsValue(), null, 2)}</pre> : null}
+                <pre>
+                  {new Repo(form.getFieldsValue()).toJsonString({
+                    prettySpaces: 2,
+                  })}
+                </pre>
+                {isDevBuild ? (
+                  <pre>{JSON.stringify(form.getFieldsValue(), null, 2)}</pre>
+                ) : null}
               </Typography>
             )}
           </Form.Item>
         </Form>
-      </Modal >
+      </Modal>
     </>
   );
 };
@@ -443,8 +469,13 @@ const envVarSetValidator = (form: FormInstance<Repo>, envVars: string[]) => {
     return Promise.resolve();
   }
 
-
-  const envVarNames = envVars.map((e) => e && e.split("=")[0]);
+  const envVarNames = envVars.map((e) => {
+    let idx = e.indexOf("=");
+    if (idx === -1) {
+      return "";
+    }
+    return e.substring(0, idx);
+  });
 
   // check that password is provided in some form
   if (

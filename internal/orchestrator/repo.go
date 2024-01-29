@@ -12,6 +12,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 // RepoOrchestrator is responsible for managing a single repo.
@@ -206,6 +207,10 @@ func (r *RepoOrchestrator) Stats(ctx context.Context) (*v1.RepoStats, error) {
 	}
 
 	return protoutil.RepoStatsToProto(stats), nil
+}
+
+func (r *RepoOrchestrator) Config() *v1.Repo {
+	return proto.Clone(r.repoConfig).(*v1.Repo)
 }
 
 func tagForPlan(plan *v1.Plan) string {

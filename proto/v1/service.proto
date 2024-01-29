@@ -23,7 +23,7 @@ service Backrest {
   rpc GetOperations (GetOperationsRequest) returns (OperationList) {}
 
   rpc ListSnapshots(ListSnapshotsRequest) returns (ResticSnapshotList) {}
-  
+
   rpc ListSnapshotFiles(ListSnapshotFilesRequest) returns (ListSnapshotFilesResponse) {}
 
   // IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.

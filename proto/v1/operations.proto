@@ -83,7 +83,7 @@ message OperationForget {
 
 // OperationPrune tracks a prune operation.
 message OperationPrune {
-  string output = 1;
+  string output = 1; // output of the prune.
 }
 
 message OperationRestore {
@@ -97,6 +97,6 @@ message OperationStats {
 }
 
 message OperationRunHook {
-  string hook_desc = 1; // description of the hook that was run. typically repo/hook_idx or plan/hook_idx
-  string output = 2; // output of the hook.
+  string hook_desc = 1; // description of the hook that was run. typically repo/hook_idx or plan/hook_idx.
+  string output_ref = 2; // reference to the output of the hook.
 }
