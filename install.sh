@@ -62,8 +62,9 @@ EOM
 }
 
 enable_launchd_plist() {
-  echo "Enabling launchd plist com.backrest.plist"
+  echo "Trying to unload any previous version of com.backrest.plist"
   launchctl unload /Library/LaunchAgents/com.backrest.plist || true
+  echo "Loading com.backrest.plist"
   launchctl load -w /Library/LaunchAgents/com.backrest.plist
 }
 
@@ -84,3 +85,6 @@ else
   echo "Unknown OS: $OS. This script only supports Darwin and Linux."
   exit 1
 fi
+
+echo "Logs are available at /tmp/backrest.log"
+echo "Access backrest WebUI at http://localhost:9898"
