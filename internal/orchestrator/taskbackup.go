@@ -133,7 +133,7 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 
 	vars := hook.HookVars{
 		Task:          t.Name(),
-		SnapshotStats: *summary,
+		SnapshotStats: summary,
 	}
 	if err != nil {
 		vars.Error = err.Error()

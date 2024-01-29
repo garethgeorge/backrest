@@ -35,7 +35,7 @@ export const getOperations = async (
   req: GetOperationsRequest
 ): Promise<Operation[]> => {
   const opList = await backrestService.getOperations(req);
-  return (opList.operations || []);
+  return opList.operations || [];
 };
 
 export const subscribeToOperations = (
@@ -60,7 +60,7 @@ export const getStatusForPlan = async (plan: string) => {
     lastN: BigInt(STATS_OPERATION_HISTORY),
   });
   return await getStatus(req);
-}
+};
 
 export const getStatusForRepo = async (repo: string) => {
   const req = new GetOperationsRequest({
@@ -68,12 +68,14 @@ export const getStatusForRepo = async (repo: string) => {
     lastN: BigInt(STATS_OPERATION_HISTORY),
   });
   return await getStatus(req);
-}
+};
 
 // getStatus returns the status of the last N operations that belong to a single snapshot.
 const getStatus = async (req: GetOperationsRequest) => {
   let ops = await getOperations(req);
-  ops = ops.reverse().filter(op => op.status !== OperationStatus.STATUS_PENDING);
+  ops = ops
+    .reverse()
+    .filter((op) => op.status !== OperationStatus.STATUS_PENDING);
   if (ops.length === 0) {
     return OperationStatus.STATUS_SUCCESS;
   }
@@ -94,7 +96,7 @@ const getStatus = async (req: GetOperationsRequest) => {
     }
   }
   return OperationStatus.STATUS_SUCCESS;
-}
+};
 
 export enum DisplayType {
   UNKNOWN,
@@ -104,6 +106,7 @@ export enum DisplayType {
   PRUNE,
   RESTORE,
   STATS,
+  RUNHOOK,
 }
 
 export interface BackupInfo {
@@ -120,6 +123,7 @@ export interface BackupInfo {
   backupLastStatus?: BackupProgressEntry;
   snapshotInfo?: ResticSnapshot;
   forgotten: boolean;
+  hidden: boolean;
 }
 
 // BackupInfoCollector maps multiple operations to single aggregate 'BackupInfo' objects.
@@ -170,12 +174,16 @@ export class BackupInfoCollector {
     let backupLastStatus = undefined;
     let snapshotInfo = undefined;
     let forgotten = false;
+    let hidden = true;
     for (const op of operations) {
       if (op.op.case === "operationBackup") {
         backupLastStatus = op.op.value.lastStatus;
       } else if (op.op.case === "operationIndexSnapshot") {
         snapshotInfo = op.op.value.snapshot;
         forgotten = op.op.value.forgot || false;
+      }
+      if (hidden && !shouldHideOperation(op)) {
+        hidden = false;
       }
     }
 
@@ -190,6 +198,7 @@ export class BackupInfoCollector {
       backupLastStatus,
       snapshotInfo,
       forgotten,
+      hidden,
       planId: operations[0].planId,
       repoId: operations[0].repoId,
     };
@@ -199,7 +208,7 @@ export class BackupInfoCollector {
     if (op.snapshotId) {
       this.backupByOpId.delete(op.id);
 
-      const existing = this.backupBySnapshotId.get(op.snapshotId)
+      const existing = this.backupBySnapshotId.get(op.snapshotId);
       let operations: Operation[];
       if (existing) {
         operations = [...existing.operations];
@@ -237,15 +246,41 @@ export class BackupInfoCollector {
       this.backupByOpId.delete(op.id);
     }
 
-    this.listeners.forEach((l) => l(OperationEventType.EVENT_DELETED, this.getAll()));
+    this.listeners.forEach((l) =>
+      l(OperationEventType.EVENT_DELETED, this.getAll())
+    );
   }
 
   public bulkAddOperations(ops: Operation[]): BackupInfo[] {
-    const backupInfos = ops.map((op) => this.addHelper(op));
-    this.listeners.forEach((l) =>
-      l(OperationEventType.EVENT_UNKNOWN, backupInfos)
+    let grouped = _.groupBy(ops, (op) =>
+      op.snapshotId ? op.snapshotId : op.id
     );
-    return backupInfos;
+
+    const info: BackupInfo[] = [];
+
+    for (const operations of Object.values(grouped)) {
+      if (operations[0].snapshotId) {
+        const existing = this.backupBySnapshotId.get(operations[0].snapshotId);
+        if (existing) {
+          const newOps = [...existing.operations, ...operations];
+          const newInfo = this.createBackup(newOps);
+          this.backupBySnapshotId.set(operations[0].snapshotId, newInfo);
+          info.push(newInfo);
+        } else {
+          const newInfo = this.createBackup(operations);
+          this.backupBySnapshotId.set(operations[0].snapshotId, newInfo);
+          info.push(newInfo);
+        }
+      } else {
+        const op = operations[0];
+        const newInfo = this.createBackup([op]);
+        this.backupByOpId.set(op.id, newInfo);
+        info.push(newInfo);
+      }
+    }
+
+    this.listeners.forEach((l) => l(OperationEventType.EVENT_CREATED, info));
+    return info;
   }
 
   public getAll(): BackupInfo[] {
@@ -253,7 +288,9 @@ export class BackupInfoCollector {
       ...this.backupByOpId.values(),
       ...this.backupBySnapshotId.values(),
     ];
-    return arr.filter((b) => !b.forgotten && !shouldHideStatus(b.status));
+    return arr.filter(
+      (b) => !b.forgotten && !b.hidden && !shouldHideStatus(b.status)
+    );
   }
 
   public subscribe(
@@ -273,10 +310,14 @@ export class BackupInfoCollector {
   }
 }
 
-
 export const shouldHideOperation = (operation: Operation) => {
-  return operation.op.case === "operationStats" || shouldHideStatus(operation.status);
-}
+  return (
+    operation.op.case === "operationStats" ||
+    (operation.op.case === "operationRunHook" &&
+      operation.status === OperationStatus.STATUS_SUCCESS) ||
+    shouldHideStatus(operation.status)
+  );
+};
 export const shouldHideStatus = (status: OperationStatus) => {
   return status === OperationStatus.STATUS_SYSTEM_CANCELLED;
 };
@@ -295,6 +336,8 @@ export const getTypeForDisplay = (op: Operation) => {
       return DisplayType.RESTORE;
     case "operationStats":
       return DisplayType.STATS;
+    case "operationRunHook":
+      return DisplayType.RUNHOOK;
     default:
       return DisplayType.UNKNOWN;
   }
@@ -314,6 +357,8 @@ export const displayTypeToString = (type: DisplayType) => {
       return "Restore";
     case DisplayType.STATS:
       return "Stats";
+    case DisplayType.RUNHOOK:
+      return "Run Hook";
     default:
       return "Unknown";
   }
@@ -336,7 +381,7 @@ export const colorForStatus = (status: OperationStatus) => {
     default:
       return "grey";
   }
-}
+};
 
 // detailsForOperation returns derived display information for a given operation.
 export const detailsForOperation = (
@@ -391,7 +436,8 @@ export const detailsForOperation = (
         const backup = op.op.value;
         switch (backup.lastStatus?.entry.case) {
           case "status":
-            percentage = (backup.lastStatus!.entry.value.percentDone || 0) * 100;
+            percentage =
+              (backup.lastStatus!.entry.value.percentDone || 0) * 100;
             break;
           case "summary":
             percentage = 100;

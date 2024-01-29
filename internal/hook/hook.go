@@ -90,7 +90,7 @@ func executeHook(oplog *oplog.OpLog, op *v1.Operation, hook *Hook, event v1.Hook
 		defer pr.Close()
 		scanner := bufio.NewScanner(pr)
 		for scanner.Scan() {
-			zap.S().Infof("hook output: %v", scanner.Text())
+			zap.S().Debugf("hook output: %v", scanner.Text())
 		}
 	}()
 	defer pw.Close()

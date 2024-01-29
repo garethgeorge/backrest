@@ -51,7 +51,7 @@ export const HooksFormList = (props: { hooks: Hook[] }) => {
           const hook = hooks[index];
           if (!hook) return null;
           return <Card key={index} title={<>
-            Hook {index + 1}
+            Hook {index}
             <MinusCircleOutlined
               className="dynamic-delete-button"
               onClick={() => remove(field.name)}

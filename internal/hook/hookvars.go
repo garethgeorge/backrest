@@ -2,6 +2,7 @@ package hook
 
 import (
 	"bytes"
+	"encoding/json"
 	"text/template"
 	"time"
 
@@ -14,14 +15,14 @@ import (
 // NOTE: names of HookVars may change between versions of backrest. This is not a guaranteed stable API.
 // when names change hooks will require updating.
 type HookVars struct {
-	Task          string                     // the name of the task that triggered the hook.
-	Event         v1.Hook_Condition          // the event that triggered the hook.
-	Repo          *v1.Repo                   // the v1.Repo that triggered the hook.
-	Plan          *v1.Plan                   // the v1.Plan that triggered the hook.
-	SnapshotId    string                     // the snapshot ID that triggered the hook.
-	SnapshotStats restic.BackupProgressEntry // the summary of the backup operation.
-	CurTime       time.Time                  // the current time as time.Time
-	Error         string                     // the error that caused the hook to run as a string.
+	Task          string                      // the name of the task that triggered the hook.
+	Event         v1.Hook_Condition           // the event that triggered the hook.
+	Repo          *v1.Repo                    // the v1.Repo that triggered the hook.
+	Plan          *v1.Plan                    // the v1.Plan that triggered the hook.
+	SnapshotId    string                      // the snapshot ID that triggered the hook.
+	SnapshotStats *restic.BackupProgressEntry // the summary of the backup operation.
+	CurTime       time.Time                   // the current time as time.Time
+	Error         string                      // the error that caused the hook to run as a string.
 }
 
 func (v HookVars) EventName(cond v1.Hook_Condition) string {
@@ -49,6 +50,14 @@ func (v HookVars) IsError(cond v1.Hook_Condition) bool {
 
 func (v HookVars) ShellEscape(s string) string {
 	return shellescape.Quote(s)
+}
+
+func (v HookVars) JSONEscape(s string) string {
+	b, err := json.Marshal(s)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 func (v HookVars) Summary() (string, error) {
@@ -82,22 +91,23 @@ func (v HookVars) renderTemplate(templ string) (string, error) {
 
 var templateForSnapshotEnd = `Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
 Repo: {{ .Repo.Id }} Plan: {{ .Plan.Id }} Snapshot: {{ .SnapshotId }}
-{{ if .Error }}
+{{ if .Error -}}
 Failed to create snapshot: {{ .Error }}
-{{ else }}
-{{ if .SnapshotStats }}
-Files new: {{ .SnapshotStats.FilesNew }}
-Files changed: {{ .SnapshotStats.FilesChanged }}
-Files unmodified: {{ .SnapshotStats.FilesUnmodified }}
-Dirs new: {{ .SnapshotStats.DirsNew }}
-Dirs changed: {{ .SnapshotStats.DirsChanged }}
-Dirs unmodified: {{ .SnapshotStats.DirsUnmodified }}
-Data blobs: {{ .SnapshotStats.DataBlobs }}
-Tree blobs: {{ .SnapshotStats.TreeBlobs }}
-Data added: {{ .SnapshotStats.DataAdded }}
-Total files processed: {{ .SnapshotStats.TotalFilesProcessed }}
-Total bytes processed: {{ .SnapshotStats.TotalBytesProcessed }}
-Total duration: {{ .SnapshotStats.TotalDuration }}
+{{ else -}}
+{{ if .SnapshotStats -}}
+Stats:
+ - Files new: {{ .SnapshotStats.FilesNew }}
+ - Files changed: {{ .SnapshotStats.FilesChanged }}
+ - Files unmodified: {{ .SnapshotStats.FilesUnmodified }}
+ - Dirs new: {{ .SnapshotStats.DirsNew }}
+ - Dirs changed: {{ .SnapshotStats.DirsChanged }}
+ - Dirs unmodified: {{ .SnapshotStats.DirsUnmodified }}
+ - Data blobs: {{ .SnapshotStats.DataBlobs }}
+ - Tree blobs: {{ .SnapshotStats.TreeBlobs }}
+ - Data added: {{ .SnapshotStats.DataAdded }} bytes
+ - Total files processed: {{ .SnapshotStats.TotalFilesProcessed }}
+ - Total bytes processed: {{ .SnapshotStats.TotalBytesProcessed }} bytes
+ - Total duration: {{ .SnapshotStats.TotalDuration }}s
 {{ end }}
 {{ end }}`
 
