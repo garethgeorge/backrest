@@ -6,6 +6,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/hook"
 	"go.uber.org/zap"
 )
 
@@ -59,7 +60,7 @@ func (t *RestoreTask) Next(now time.Time) *time.Time {
 }
 
 func (t *RestoreTask) Run(ctx context.Context) error {
-	return t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
+	if err := t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
 		forgetOp := &v1.Operation_OperationRestore{
 			OperationRestore: &v1.OperationRestore{
 				Path:   t.restoreOpts.Path,
@@ -93,5 +94,15 @@ func (t *RestoreTask) Run(ctx context.Context) error {
 		forgetOp.OperationRestore.Status = summary
 
 		return nil
-	})
+	}); err != nil {
+		repo, _ := t.orch.GetRepo(t.restoreOpts.Plan.Repo)
+		hook.ExecuteHooks(t.orch.OpLog, repo.Config(), nil, "", []v1.Hook_Condition{
+			v1.Hook_CONDITION_ANY_ERROR,
+		}, hook.HookVars{
+			Task:  t.Name(),
+			Error: err.Error(),
+		})
+		return err
+	}
+	return nil
 }

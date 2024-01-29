@@ -7,6 +7,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"github.com/gitploy-io/cronexpr"
@@ -103,6 +104,10 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 		return fmt.Errorf("couldn't get repo %q: %w", plan.Repo, err)
 	}
 
+	hook.ExecuteHooks(orchestrator.OpLog, repo.Config(), plan, "", []v1.Hook_Condition{
+		v1.Hook_CONDITION_SNAPSHOT_START,
+	}, hook.HookVars{})
+
 	lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
 	var lastFiles []string
 	summary, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
@@ -123,13 +128,25 @@ func backupHelper(ctx context.Context, orchestrator *Orchestrator, plan *v1.Plan
 			zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
 		}
 	})
+
+	vars := hook.HookVars{}
+
 	if err != nil {
+		vars.Error = err.Error()
+		hook.ExecuteHooks(orchestrator.OpLog, repo.Config(), plan, "", []v1.Hook_Condition{
+			v1.Hook_CONDITION_SNAPSHOT_ERROR, v1.Hook_CONDITION_ANY_ERROR,
+		}, vars)
+
 		if !errors.Is(err, restic.ErrPartialBackup) {
 			return fmt.Errorf("repo.Backup for repo %q: %w", plan.Repo, err)
 		}
 		op.Status = v1.OperationStatus_STATUS_WARNING
 		op.DisplayMessage = "Partial backup, some files may not have been read completely."
 	}
+
+	hook.ExecuteHooks(orchestrator.OpLog, repo.Config(), plan, "", []v1.Hook_Condition{
+		v1.Hook_CONDITION_SNAPSHOT_END,
+	}, vars)
 
 	op.SnapshotId = summary.SnapshotId
 	backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(summary)

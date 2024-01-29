@@ -18,7 +18,11 @@ func NewBigOpDataStore(path string) *BigOpDataStore {
 	}
 }
 
-func (s *BigOpDataStore) DeleteBigData(opId int64) error {
+func (s *BigOpDataStore) resolvePath(opId int64) string {
+	return s.path + "/" + strconv.FormatInt(opId, 16)
+}
+
+func (s *BigOpDataStore) DeleteOperationData(opId int64) error {
 	dir := s.path + "/" + strconv.FormatInt(opId, 16)
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -40,14 +44,17 @@ func (s *BigOpDataStore) DeleteBigData(opId int64) error {
 }
 
 func (s *BigOpDataStore) SetBigData(opId int64, key string, data []byte) error {
-	if err := os.MkdirAll(s.path+"/"+strconv.FormatInt(opId, 16), 0755); err != nil {
+	dir := s.resolvePath(opId)
+	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	filePath := s.path + "/" + strconv.FormatInt(opId, 16) + "/" + key
-	return atomic.WriteFile(filePath, bytes.NewReader(data))
+	return atomic.WriteFile(dir+"/"+key, bytes.NewReader(data))
 }
 
 func (s *BigOpDataStore) GetBigData(opId int64, key string) ([]byte, error) {
-	filePath := s.path + "/" + strconv.FormatInt(opId, 16) + "/" + key
-	return os.ReadFile(filePath)
+	return os.ReadFile(s.resolvePath(opId) + "/" + key)
+}
+
+func (s *BigOpDataStore) DeleteBigData(opId int64, key string) error {
+	return os.Remove(s.resolvePath(opId) + "/" + key)
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/protoutil"
@@ -45,7 +46,17 @@ func (t *IndexSnapshotsTask) Next(now time.Time) *time.Time {
 }
 
 func (t *IndexSnapshotsTask) Run(ctx context.Context) error {
-	return indexSnapshotsHelper(ctx, t.orchestrator, t.repoId)
+	if err := indexSnapshotsHelper(ctx, t.orchestrator, t.repoId); err != nil {
+		repo, _ := t.orchestrator.GetRepo(t.repoId)
+		hook.ExecuteHooks(t.orchestrator.OpLog, repo.Config(), nil, "", []v1.Hook_Condition{
+			v1.Hook_CONDITION_ANY_ERROR,
+		}, hook.HookVars{
+			Task:  t.Name(),
+			Error: err.Error(),
+		})
+		return err
+	}
+	return nil
 }
 
 func (t *IndexSnapshotsTask) Cancel(withStatus v1.OperationStatus) error {

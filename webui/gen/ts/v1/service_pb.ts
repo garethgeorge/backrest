@@ -389,6 +389,53 @@ export class ListSnapshotFilesResponse extends Message<ListSnapshotFilesResponse
 }
 
 /**
+ * @generated from message v1.OperationDataRequest
+ */
+export class OperationDataRequest extends Message<OperationDataRequest> {
+  /**
+   * operation id
+   *
+   * @generated from field: int64 id = 1;
+   */
+  id = protoInt64.zero;
+
+  /**
+   * data key
+   *
+   * @generated from field: string key = 2;
+   */
+  key = "";
+
+  constructor(data?: PartialMessage<OperationDataRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.OperationDataRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationDataRequest {
+    return new OperationDataRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationDataRequest {
+    return new OperationDataRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationDataRequest {
+    return new OperationDataRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: OperationDataRequest | PlainMessage<OperationDataRequest> | undefined, b: OperationDataRequest | PlainMessage<OperationDataRequest> | undefined): boolean {
+    return proto3.util.equals(OperationDataRequest, a, b);
+  }
+}
+
+/**
  * @generated from message v1.LsEntry
  */
 export class LsEntry extends Message<LsEntry> {

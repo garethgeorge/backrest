@@ -210,6 +210,9 @@ func (r *RepoOrchestrator) Stats(ctx context.Context) (*v1.RepoStats, error) {
 }
 
 func (r *RepoOrchestrator) Config() *v1.Repo {
+	if r == nil {
+		return nil
+	}
 	return proto.Clone(r.repoConfig).(*v1.Repo)
 }
 

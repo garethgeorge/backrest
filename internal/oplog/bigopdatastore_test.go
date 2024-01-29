@@ -25,7 +25,7 @@ func TestBigOpLogDataStore(t *testing.T) {
 		t.Fatalf("expected %q, got %q", "hello world 2", string(byte))
 	}
 
-	if err := store.DeleteBigData(1); err != nil {
+	if err := store.DeleteOperationData(1); err != nil {
 		t.Fatal(err)
 	}
 

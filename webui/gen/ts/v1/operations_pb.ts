@@ -622,9 +622,9 @@ export class OperationRunHook extends Message<OperationRunHook> {
   /**
    * description of the hook that was run. typically repo/hook_idx or plan/hook_idx.
    *
-   * @generated from field: string hook_desc = 1;
+   * @generated from field: string name = 1;
    */
-  hookDesc = "";
+  name = "";
 
   /**
    * reference to the output of the hook.
@@ -641,7 +641,7 @@ export class OperationRunHook extends Message<OperationRunHook> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.OperationRunHook";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "hook_desc", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "output_ref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 

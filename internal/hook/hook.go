@@ -1,83 +1,100 @@
 package hook
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
-	"os/exec"
 	"slices"
-	"strings"
 	"text/template"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/orchestrator"
+	"github.com/garethgeorge/backrest/internal/oplog"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 // ExecuteHooks schedules tasks for the hooks subscribed to the given event. The vars map is used to substitute variables
 // Hooks are pulled both from the provided plan and from the repo config.
-func ExecuteHooks(orch *orchestrator.Orchestrator, plan *v1.Plan, linkSnapshot string, event v1.Hook_Condition, vars map[string]string) {
-	repo, err := orch.GetRepo(plan.Repo)
-	if err != nil {
-		zap.S().Errorf("execute hooks: get repo %q: %v", plan.Repo, err)
-		return
+func ExecuteHooks(oplog *oplog.OpLog, repo *v1.Repo, plan *v1.Plan, snapshotId string, events []v1.Hook_Condition, vars HookVars) {
+	operationBase := v1.Operation{
+		Status:     v1.OperationStatus_STATUS_INPROGRESS,
+		PlanId:     plan.Id,
+		RepoId:     plan.Repo,
+		SnapshotId: snapshotId,
 	}
 
-	repoCfg := repo.Config()
+	vars.SnapshotId = snapshotId
+	vars.Repo = repo
+	vars.Plan = plan
+	vars.CurTime = time.Now()
 
-	for idx, hook := range repoCfg.Hooks {
-		if !slices.Contains(hook.Conditions, event) {
+	for idx, hook := range repo.GetHooks() {
+		h := (*Hook)(hook)
+		event := firstMatchingCondition(h, events)
+		if event == v1.Hook_CONDITION_UNKNOWN {
 			continue
 		}
 
-		operation := v1.Operation{
-			UnixTimeStartMs: curTimeMs(),
-			Status:          v1.OperationStatus_STATUS_INPROGRESS,
-			PlanId:          plan.Id,
-			RepoId:          plan.Repo,
-			SnapshotId:      linkSnapshot,
-			Op: &v1.Operation_OperationRunHook{
-				OperationRunHook: &v1.OperationRunHook{
-					HookDesc: fmt.Sprintf("repo/%v/hook/%v", repoCfg.Id, idx),
-				},
+		name := fmt.Sprintf("repo/%v/hook/%v", repo.Id, idx)
+		operation := proto.Clone(&operationBase).(*v1.Operation)
+		operation.UnixTimeStartMs = curTimeMs()
+		operation.Op = &v1.Operation_OperationRunHook{
+			OperationRunHook: &v1.OperationRunHook{
+				Name: name,
 			},
 		}
-
-		executeHook(orch, &operation, (*Hook)(hook), event, vars)
+		executeHook(oplog, operation, h, event, vars)
 	}
 
-	for idx, hook := range plan.Hooks {
-		if !slices.Contains(hook.Conditions, event) {
+	for idx, hook := range plan.GetHooks() {
+		h := (*Hook)(hook)
+		event := firstMatchingCondition(h, events)
+		if event == v1.Hook_CONDITION_UNKNOWN {
 			continue
 		}
 
-		operation := v1.Operation{
-			UnixTimeStartMs: curTimeMs(),
-			Status:          v1.OperationStatus_STATUS_INPROGRESS,
-			PlanId:          plan.Id,
-			RepoId:          plan.Repo,
-			SnapshotId:      linkSnapshot,
-			Op: &v1.Operation_OperationRunHook{
-				OperationRunHook: &v1.OperationRunHook{
-					HookDesc: fmt.Sprintf("plan/%v/hook/%v", plan.Id, idx),
-				},
+		name := fmt.Sprintf("plan/%v/hook/%v", plan.Id, idx)
+		operation := proto.Clone(&operationBase).(*v1.Operation)
+		operation.UnixTimeStartMs = curTimeMs()
+		operation.Op = &v1.Operation_OperationRunHook{
+			OperationRunHook: &v1.OperationRunHook{
+				Name: name,
 			},
 		}
-
-		executeHook(orch, &operation, (*Hook)(hook), event, vars)
+		zap.L().Info("Running hook", zap.String("plan", plan.Id), zap.Int64("opId", operation.Id), zap.String("hook", name))
+		executeHook(oplog, operation, (*Hook)(hook), event, vars)
 	}
 }
 
-func executeHook(orch *orchestrator.Orchestrator, op *v1.Operation, hook *Hook, events v1.Hook_Condition, vars map[string]string) {
-	if err := orch.OpLog.Add(op); err != nil {
+func firstMatchingCondition(hook *Hook, events []v1.Hook_Condition) v1.Hook_Condition {
+	for _, event := range events {
+		if slices.Contains(hook.Conditions, event) {
+			return event
+		}
+	}
+	return v1.Hook_CONDITION_UNKNOWN
+}
+
+func executeHook(oplog *oplog.OpLog, op *v1.Operation, hook *Hook, events v1.Hook_Condition, vars HookVars) {
+	if err := oplog.Add(op); err != nil {
 		zap.S().Errorf("execute hook: add operation: %v", err)
 		return
 	}
 
 	output := &bytes.Buffer{}
+	pr, pw := io.Pipe()
+	go func() {
+		defer pr.Close()
+		scanner := bufio.NewScanner(pr)
+		for scanner.Scan() {
+			zap.S().Infof("hook output: %v", scanner.Text())
+		}
+	}()
+	defer pw.Close()
 
-	if err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, vars, output); err != nil {
+	if err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, vars, io.MultiWriter(output, pw)); err != nil {
 		output.Write([]byte(fmt.Sprintf("Error: %v", err)))
 		op.DisplayMessage = output.String()
 		op.Status = v1.OperationStatus_STATUS_ERROR
@@ -85,9 +102,13 @@ func executeHook(orch *orchestrator.Orchestrator, op *v1.Operation, hook *Hook, 
 		op.Status = v1.OperationStatus_STATUS_SUCCESS
 	}
 
-	op.UnixTimeEndMs = curTimeMs()
+	if err := oplog.SetBigData(op.Id, "hook.log", output.Bytes()); err != nil {
+		zap.S().Errorf("execute hook: set big data %q: %v", "hook.log", err)
+	}
+	op.Op.(*v1.Operation_OperationRunHook).OperationRunHook.OutputRef = "hook.log"
 
-	if err := orch.OpLog.Update(op); err != nil {
+	op.UnixTimeEndMs = curTimeMs()
+	if err := oplog.Update(op); err != nil {
 		zap.S().Errorf("execute hook: update operation: %v", err)
 		return
 	}
@@ -99,83 +120,63 @@ func curTimeMs() int64 {
 
 type Hook v1.Hook
 
-type HookVars map[string]string
-
-func (h *Hook) Do(event v1.Hook_Condition, vars map[string]string, output io.Writer) error {
+func (h *Hook) Do(event v1.Hook_Condition, vars HookVars, output io.Writer) error {
 	if !slices.Contains(h.Conditions, event) {
 		return nil
 	}
 
-	substs := make(map[string]string)
-	for k, v := range vars {
-		substs[k] = v
-	}
-	installTemplateFuncs(substs)
-
 	switch action := h.Action.(type) {
 	case *v1.Hook_ActionCommand:
-		return h.doCommand(action, substs, output)
+		return h.doCommand(action, vars, output)
 	default:
 		return fmt.Errorf("unknown hook action: %v", action)
 	}
 }
 
-func (h *Hook) doCommand(cmd *v1.Hook_ActionCommand, substs map[string]string, output io.Writer) error {
-	command := h.makeSubstitutions(cmd.ActionCommand.Command, substs)
-
-	// Parse out the shell to use if a #! prefix is present
-	shell := "sh"
-	if len(command) > 2 && command[0:2] == "#!" {
-		nextLine := strings.Index(command, "\n")
-		if nextLine == -1 {
-			nextLine = len(command)
-		}
-		shell = strings.Trim(command[2:nextLine], " ")
-		command = command[nextLine+1:]
-	}
-
-	output.Write([]byte(fmt.Sprintf("Running command:\n#! %v\n%v", shell, command)))
-
-	// Run the command in the specified shell
-	execCmd := exec.Command(shell)
-	execCmd.Stdin = strings.NewReader(command)
-
-	execCmd.Stderr = output
-	execCmd.Stdout = output
-
-	return execCmd.Run()
-}
-
-func (h *Hook) makeSubstitutions(text string, substs map[string]string) string {
+func (h *Hook) makeSubstitutions(text string, vars HookVars) (string, error) {
 	template, err := template.New("command").Parse(text)
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("parse template: %w", err)
 	}
 
 	buf := &bytes.Buffer{}
-	template.Execute(buf, substs)
+	if err := template.Execute(buf, vars); err != nil {
+		return "", fmt.Errorf("execute template: %w", err)
+	}
 
-	return buf.String()
+	return buf.String(), nil
 }
 
-func installTemplateFuncs(vars map[string]string) template.FuncMap {
-	return template.FuncMap{
-		"EventName": func(cond v1.Hook_Condition) string {
-			switch cond {
-			case v1.Hook_CONDITION_SNAPSHOT_START:
-				return "snapshot start"
-			case v1.Hook_CONDITION_SNAPSHOT_END:
-				return "snapshot end"
-			case v1.Hook_CONDITION_ANY_ERROR:
-				return "error"
-			case v1.Hook_CONDITION_SNAPSHOT_ERROR:
-				return "snapshot error"
-			default:
-				return "unknown"
-			}
-		},
-		"IsError": func(cond v1.Hook_Condition) bool {
-			return cond == v1.Hook_CONDITION_ANY_ERROR || cond == v1.Hook_CONDITION_SNAPSHOT_ERROR
-		},
+// HookVars is the set of variables that are available to a hook. Some of these are optional.
+type HookVars struct {
+	Event      v1.Hook_Condition // the event that triggered the hook.
+	Repo       *v1.Repo          // the v1.Repo that triggered the hook.
+	Plan       *v1.Plan          // the v1.Plan that triggered the hook.
+	SnapshotId string            // the snapshot ID that triggered the hook.
+	CurTime    time.Time         // the current time as time.Time
+	Error      string            // the error that caused the hook to run as a string.
+	Task       string            // the name of the task that triggered the hook.
+}
+
+func (v *HookVars) EventName(cond v1.Hook_Condition) string {
+	switch cond {
+	case v1.Hook_CONDITION_SNAPSHOT_START:
+		return "snapshot start"
+	case v1.Hook_CONDITION_SNAPSHOT_END:
+		return "snapshot end"
+	case v1.Hook_CONDITION_ANY_ERROR:
+		return "error"
+	case v1.Hook_CONDITION_SNAPSHOT_ERROR:
+		return "snapshot error"
+	default:
+		return "unknown"
 	}
+}
+
+func (v *HookVars) FormatTime(t time.Time) string {
+	return t.Format(time.RFC3339)
+}
+
+func (v *HookVars) IsError(cond v1.Hook_Condition) bool {
+	return cond == v1.Hook_CONDITION_ANY_ERROR || cond == v1.Hook_CONDITION_SNAPSHOT_ERROR
 }

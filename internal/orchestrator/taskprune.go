@@ -8,6 +8,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"go.uber.org/zap"
 )
@@ -101,7 +102,7 @@ func (t *PruneTask) getNextPruneTime(repo *RepoOrchestrator, policy *v1.PrunePol
 }
 
 func (t *PruneTask) Run(ctx context.Context) error {
-	return t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
+	if err := t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
 		repo, err := t.orch.GetRepo(t.plan.Repo)
 		if err != nil {
 			return fmt.Errorf("get repo %v: %w", t.plan.Repo, err)
@@ -160,10 +161,18 @@ func (t *PruneTask) Run(ctx context.Context) error {
 			},
 		}
 
-		// Schedule a task to update persisted stats for the repo
-
 		return nil
-	})
+	}); err != nil {
+		repo, _ := t.orch.GetRepo(t.plan.Repo)
+		hook.ExecuteHooks(t.orch.OpLog, repo.Config(), t.plan, "", []v1.Hook_Condition{
+			v1.Hook_CONDITION_ANY_ERROR,
+		}, hook.HookVars{
+			Task:  t.Name(),
+			Error: err.Error(),
+		})
+		return err
+	}
+	return nil
 }
 
 // synchronizedBuffer is used for collecting prune command's output

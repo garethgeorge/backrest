@@ -40,8 +40,8 @@ var (
 // OpLog represents a log of operations performed.
 // Operations are indexed by repo and plan.
 type OpLog struct {
-	db           *bolt.DB
-	BigDataStore *BigOpDataStore
+	db *bolt.DB
+	*BigOpDataStore
 
 	subscribersMu sync.RWMutex
 	subscribers   []*func(*v1.Operation, *v1.Operation)
@@ -59,7 +59,7 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 
 	o := &OpLog{
 		db: db,
-		BigDataStore: &BigOpDataStore{
+		BigOpDataStore: &BigOpDataStore{
 			path: path.Dir(databasePath) + "/opdatav1",
 		},
 	}
@@ -215,7 +215,7 @@ func (o *OpLog) Delete(ids ...int64) error {
 			o.notifyHelper(op, nil)
 		}
 		for _, id := range ids {
-			if e := o.BigDataStore.DeleteBigData(id); e != nil {
+			if e := o.DeleteOperationData(id); e != nil {
 				err = multierror.Append(err, fmt.Errorf("deleting big data for operation %v: %w", id, e))
 			}
 		}
