@@ -7,6 +7,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
@@ -62,7 +63,7 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 		return errors.New("plan does not have a retention policy")
 	}
 
-	return t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
+	if err := t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
 		forgetOp := &v1.Operation_OperationForget{
 			OperationForget: &v1.OperationForget{},
 		}
@@ -102,9 +103,18 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 		}
 
 		if len(forgot) > 0 {
-			t.orch.ScheduleTask(NewOneoffPruneTask(t.orch, t.plan, op.SnapshotId, time.Now(), false), TaskPriorityPrune)
+			t.orch.ScheduleTask(NewOneoffPruneTask(t.orch, t.plan, time.Now(), false), TaskPriorityPrune)
 		}
 
 		return err
-	})
+	}); err != nil {
+		repo, _ := t.orch.GetRepo(t.plan.Repo)
+		hook.ExecuteHooks(t.orch.OpLog, repo.Config(), t.plan, t.linkSnapshot, []v1.Hook_Condition{
+			v1.Hook_CONDITION_ANY_ERROR,
+		}, hook.HookVars{
+			Task:  t.Name(),
+			Error: err.Error(),
+		})
+	}
+	return nil
 }

@@ -8,6 +8,10 @@ message StringValue {
   string value = 1;
 }
 
+message BytesValue {
+  bytes value = 1;
+}
+
 message StringList {
   repeated string values = 1;
 }

@@ -248,6 +248,12 @@ export class Operation extends Message<Operation> {
      */
     value: OperationStats;
     case: "operationStats";
+  } | {
+    /**
+     * @generated from field: v1.OperationRunHook operation_run_hook = 106;
+     */
+    value: OperationRunHook;
+    case: "operationRunHook";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Operation>) {
@@ -272,6 +278,7 @@ export class Operation extends Message<Operation> {
     { no: 103, name: "operation_prune", kind: "message", T: OperationPrune, oneof: "op" },
     { no: 104, name: "operation_restore", kind: "message", T: OperationRestore, oneof: "op" },
     { no: 105, name: "operation_stats", kind: "message", T: OperationStats, oneof: "op" },
+    { no: 106, name: "operation_run_hook", kind: "message", T: OperationRunHook, oneof: "op" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Operation {
@@ -482,6 +489,8 @@ export class OperationForget extends Message<OperationForget> {
  */
 export class OperationPrune extends Message<OperationPrune> {
   /**
+   * output of the prune.
+   *
    * @generated from field: string output = 1;
    */
   output = "";
@@ -603,6 +612,53 @@ export class OperationStats extends Message<OperationStats> {
 
   static equals(a: OperationStats | PlainMessage<OperationStats> | undefined, b: OperationStats | PlainMessage<OperationStats> | undefined): boolean {
     return proto3.util.equals(OperationStats, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.OperationRunHook
+ */
+export class OperationRunHook extends Message<OperationRunHook> {
+  /**
+   * description of the hook that was run. typically repo/hook_idx or plan/hook_idx.
+   *
+   * @generated from field: string name = 1;
+   */
+  name = "";
+
+  /**
+   * reference to the output of the hook.
+   *
+   * @generated from field: string output_ref = 2;
+   */
+  outputRef = "";
+
+  constructor(data?: PartialMessage<OperationRunHook>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.OperationRunHook";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "output_ref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationRunHook {
+    return new OperationRunHook().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationRunHook {
+    return new OperationRunHook().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationRunHook {
+    return new OperationRunHook().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: OperationRunHook | PlainMessage<OperationRunHook> | undefined, b: OperationRunHook | PlainMessage<OperationRunHook> | undefined): boolean {
+    return proto3.util.equals(OperationRunHook, a, b);
   }
 }
 
