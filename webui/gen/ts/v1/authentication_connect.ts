@@ -5,6 +5,7 @@
 
 import { LoginRequest, LoginResponse } from "./authentication_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
+import { StringValue } from "../types/value_pb.js";
 
 /**
  * @generated from service v1.Authentication
@@ -19,6 +20,15 @@ export const Authentication = {
       name: "Login",
       I: LoginRequest,
       O: LoginResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc v1.Authentication.HashPassword
+     */
+    hashPassword: {
+      name: "HashPassword",
+      I: StringValue,
+      O: StringValue,
       kind: MethodKind.Unary,
     },
   }

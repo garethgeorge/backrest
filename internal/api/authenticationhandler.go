@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/auth"
@@ -39,4 +40,12 @@ func (s *AuthenticationHandler) Login(ctx context.Context, req *connect.Request[
 	return connect.NewResponse(&v1.LoginResponse{
 		Token: token,
 	}), nil
+}
+
+func (s *AuthenticationHandler) HashPassword(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[types.StringValue], error) {
+	hash, err := auth.CreatePassword(req.Msg.Value)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&types.StringValue{Value: hash}), nil
 }

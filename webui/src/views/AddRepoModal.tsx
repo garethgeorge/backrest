@@ -11,6 +11,7 @@ import {
   Card,
   InputNumber,
   FormInstance,
+  Collapse,
 } from "antd";
 import React, { useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -438,13 +439,22 @@ export const AddRepoModal = ({
 
           <Form.Item shouldUpdate label="Preview">
             {() => (
-              <Typography>
-                <pre>
-                  {new Repo(form.getFieldsValue()).toJsonString({
-                    prettySpaces: 2,
-                  })}
-                </pre>
-              </Typography>
+              <Collapse
+                size="small"
+                items={[
+                  {
+                    key: "1",
+                    label: "Repo Config as JSON",
+                    children: (
+                      <Typography>
+                        <pre>{new Repo(form.getFieldsValue()).toJsonString({
+                          prettySpaces: 2,
+                        })}</pre>
+                      </Typography>
+                    ),
+                  },
+                ]}
+              />
             )}
           </Form.Item>
         </Form>

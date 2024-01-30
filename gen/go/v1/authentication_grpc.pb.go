@@ -8,6 +8,7 @@ package v1
 
 import (
 	context "context"
+	types "github.com/garethgeorge/backrest/gen/go/types"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -19,7 +20,8 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Authentication_Login_FullMethodName = "/v1.Authentication/Login"
+	Authentication_Login_FullMethodName        = "/v1.Authentication/Login"
+	Authentication_HashPassword_FullMethodName = "/v1.Authentication/HashPassword"
 )
 
 // AuthenticationClient is the client API for Authentication service.
@@ -27,6 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthenticationClient interface {
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	HashPassword(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringValue, error)
 }
 
 type authenticationClient struct {
@@ -46,11 +49,21 @@ func (c *authenticationClient) Login(ctx context.Context, in *LoginRequest, opts
 	return out, nil
 }
 
+func (c *authenticationClient) HashPassword(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringValue, error) {
+	out := new(types.StringValue)
+	err := c.cc.Invoke(ctx, Authentication_HashPassword_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthenticationServer is the server API for Authentication service.
 // All implementations must embed UnimplementedAuthenticationServer
 // for forward compatibility
 type AuthenticationServer interface {
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	HashPassword(context.Context, *types.StringValue) (*types.StringValue, error)
 	mustEmbedUnimplementedAuthenticationServer()
 }
 
@@ -60,6 +73,9 @@ type UnimplementedAuthenticationServer struct {
 
 func (UnimplementedAuthenticationServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedAuthenticationServer) HashPassword(context.Context, *types.StringValue) (*types.StringValue, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HashPassword not implemented")
 }
 func (UnimplementedAuthenticationServer) mustEmbedUnimplementedAuthenticationServer() {}
 
@@ -92,6 +108,24 @@ func _Authentication_Login_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Authentication_HashPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(types.StringValue)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthenticationServer).HashPassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Authentication_HashPassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthenticationServer).HashPassword(ctx, req.(*types.StringValue))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Authentication_ServiceDesc is the grpc.ServiceDesc for Authentication service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -102,6 +136,10 @@ var Authentication_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _Authentication_Login_Handler,
+		},
+		{
+			MethodName: "HashPassword",
+			Handler:    _Authentication_HashPassword_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

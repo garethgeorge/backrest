@@ -11,6 +11,7 @@ import "google/api/annotations.proto";
 
 service Authentication {
   rpc Login(LoginRequest) returns (LoginResponse) {}
+  rpc HashPassword(types.StringValue) returns (types.StringValue) {}
 }
 
 message LoginRequest {

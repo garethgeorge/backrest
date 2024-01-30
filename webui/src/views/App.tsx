@@ -223,6 +223,15 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
       label: "Repositories",
       children: repos,
     },
+    {
+      key: "settings",
+      icon: React.createElement(SettingOutlined),
+      label: "Settings",
+      onClick: async () => {
+        const { SettingsModal } = await import("./SettingsModal");
+        showModal(<SettingsModal />);
+      }
+    },
   ];
 };
 

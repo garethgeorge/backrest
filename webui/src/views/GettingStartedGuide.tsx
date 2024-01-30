@@ -48,7 +48,9 @@ export const GettingStartedGuide = () => {
               label: "Config JSON hidden for security",
               children: (
                 <Typography>
-                  <pre>{JSON.stringify(config, null, 2)}</pre>
+                  <pre>{config.toJsonString({
+                    prettySpaces: 2,
+                  })}</pre>
                 </Typography>
               ),
             },

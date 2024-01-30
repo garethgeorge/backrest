@@ -96,13 +96,12 @@ message Hook {
 }
 
 message Auth {
-  bool allow_anonymous = 1 [json_name="allowAnonymous"]; // allow anonymous access to the UI.
   repeated User users = 2 [json_name="users"]; // users to allow access to the UI.
 }
 
 message User {
-  string name = 1;
+  string name = 1 [json_name="name"];
   oneof password {
-    string password_bcrypt = 2;
+    string password_bcrypt = 2 [json_name="passwordBcrypt"];
   }
 }

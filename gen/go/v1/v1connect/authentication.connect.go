@@ -8,6 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
+	types "github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	http "net/http"
 	strings "strings"
@@ -35,17 +36,22 @@ const (
 const (
 	// AuthenticationLoginProcedure is the fully-qualified name of the Authentication's Login RPC.
 	AuthenticationLoginProcedure = "/v1.Authentication/Login"
+	// AuthenticationHashPasswordProcedure is the fully-qualified name of the Authentication's
+	// HashPassword RPC.
+	AuthenticationHashPasswordProcedure = "/v1.Authentication/HashPassword"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	authenticationServiceDescriptor     = v1.File_v1_authentication_proto.Services().ByName("Authentication")
-	authenticationLoginMethodDescriptor = authenticationServiceDescriptor.Methods().ByName("Login")
+	authenticationServiceDescriptor            = v1.File_v1_authentication_proto.Services().ByName("Authentication")
+	authenticationLoginMethodDescriptor        = authenticationServiceDescriptor.Methods().ByName("Login")
+	authenticationHashPasswordMethodDescriptor = authenticationServiceDescriptor.Methods().ByName("HashPassword")
 )
 
 // AuthenticationClient is a client for the v1.Authentication service.
 type AuthenticationClient interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	HashPassword(context.Context, *connect.Request[types.StringValue]) (*connect.Response[types.StringValue], error)
 }
 
 // NewAuthenticationClient constructs a client for the v1.Authentication service. By default, it
@@ -64,12 +70,19 @@ func NewAuthenticationClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(authenticationLoginMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		hashPassword: connect.NewClient[types.StringValue, types.StringValue](
+			httpClient,
+			baseURL+AuthenticationHashPasswordProcedure,
+			connect.WithSchema(authenticationHashPasswordMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authenticationClient implements AuthenticationClient.
 type authenticationClient struct {
-	login *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	login        *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	hashPassword *connect.Client[types.StringValue, types.StringValue]
 }
 
 // Login calls v1.Authentication.Login.
@@ -77,9 +90,15 @@ func (c *authenticationClient) Login(ctx context.Context, req *connect.Request[v
 	return c.login.CallUnary(ctx, req)
 }
 
+// HashPassword calls v1.Authentication.HashPassword.
+func (c *authenticationClient) HashPassword(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[types.StringValue], error) {
+	return c.hashPassword.CallUnary(ctx, req)
+}
+
 // AuthenticationHandler is an implementation of the v1.Authentication service.
 type AuthenticationHandler interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	HashPassword(context.Context, *connect.Request[types.StringValue]) (*connect.Response[types.StringValue], error)
 }
 
 // NewAuthenticationHandler builds an HTTP handler from the service implementation. It returns the
@@ -94,10 +113,18 @@ func NewAuthenticationHandler(svc AuthenticationHandler, opts ...connect.Handler
 		connect.WithSchema(authenticationLoginMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	authenticationHashPasswordHandler := connect.NewUnaryHandler(
+		AuthenticationHashPasswordProcedure,
+		svc.HashPassword,
+		connect.WithSchema(authenticationHashPasswordMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/v1.Authentication/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthenticationLoginProcedure:
 			authenticationLoginHandler.ServeHTTP(w, r)
+		case AuthenticationHashPasswordProcedure:
+			authenticationHashPasswordHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -109,4 +136,8 @@ type UnimplementedAuthenticationHandler struct{}
 
 func (UnimplementedAuthenticationHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Authentication.Login is not implemented"))
+}
+
+func (UnimplementedAuthenticationHandler) HashPassword(context.Context, *connect.Request[types.StringValue]) (*connect.Response[types.StringValue], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Authentication.HashPassword is not implemented"))
 }

@@ -11,6 +11,7 @@ import {
   Row,
   Card,
   Col,
+  Collapse,
 } from "antd";
 import React, { useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -345,9 +346,22 @@ export const AddPlanModal = ({
 
           <Form.Item shouldUpdate label="Preview">
             {() => (
-              <Typography>
-                <pre>{JSON.stringify(form.getFieldsValue(), null, 2)}</pre>
-              </Typography>
+              <Collapse
+                size="small"
+                items={[
+                  {
+                    key: "1",
+                    label: "Plan Config as JSON",
+                    children: (
+                      <Typography>
+                        <pre>{new Plan(form.getFieldsValue()).toJsonString({
+                          prettySpaces: 2,
+                        })}</pre>
+                      </Typography>
+                    ),
+                  },
+                ]}
+              />
             )}
           </Form.Item>
         </Form>

@@ -698,13 +698,6 @@ export class Hook_Gotify extends Message<Hook_Gotify> {
  */
 export class Auth extends Message<Auth> {
   /**
-   * allow anonymous access to the UI.
-   *
-   * @generated from field: bool allow_anonymous = 1;
-   */
-  allowAnonymous = false;
-
-  /**
    * users to allow access to the UI.
    *
    * @generated from field: repeated v1.User users = 2;
@@ -719,7 +712,6 @@ export class Auth extends Message<Auth> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.Auth";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "allow_anonymous", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 2, name: "users", kind: "message", T: User, repeated: true },
   ]);
 
