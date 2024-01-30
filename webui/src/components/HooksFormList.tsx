@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Hook, Hook_Command, Hook_Condition, Hook_Discord, Hook_Webhook } from '../../gen/ts/v1/config_pb';
+import { Hook, Hook_Command, Hook_Condition, Hook_Discord, Hook_Gotify, Hook_Webhook } from '../../gen/ts/v1/config_pb';
 import { Button, Card, Collapse, CollapseProps, Form, FormListFieldData, Input, Popover, Radio, Row, Select, Tooltip } from 'antd';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 
@@ -123,6 +123,17 @@ const hookTypes: {
         }),
       }
     },
+    {
+      name: "Gotify", action: {
+        case: "actionGotify",
+        value: new Hook_Gotify({
+          baseUrl: "",
+          token: "",
+          template: "{{ .Summary }}",
+          titleTemplate: "Backrest {{ .EventName .Event }} in plan {{ .Plan.Id }}",
+        }),
+      }
+    }
   ];
 
 const HookBuilder = ({ field, hook }: { field: FormListFieldData, hook: Hook }) => {
@@ -133,7 +144,7 @@ const HookBuilder = ({ field, hook }: { field: FormListFieldData, hook: Hook }) 
         <Form.Item name={[field.name, "action", "value", "webhookUrl"]} required={true}>
           <Input addonBefore={<div style={{ width: "8em" }}>Discord Webhook</div>} />
         </Form.Item>
-        Text:
+        Text Template:
         <Form.Item name={[field.name, "action", "value", "template"]} required={true}>
           <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
         </Form.Item>
@@ -144,6 +155,22 @@ const HookBuilder = ({ field, hook }: { field: FormListFieldData, hook: Hook }) 
           Script:
         </Tooltip>
         <Form.Item name={[field.name, "action", "value", "command"]}>
+          <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
+        </Form.Item>
+      </>
+    case "actionGotify":
+      return <>
+        <Form.Item name={[field.name, "action", "value", "baseUrl"]} required={true}>
+          <Input addonBefore={<div style={{ width: "8em" }}>Gotify Base URL</div>} />
+        </Form.Item>
+        <Form.Item name={[field.name, "action", "value", "token"]} required={true}>
+          <Input addonBefore={<div style={{ width: "8em" }}>Gotify Token</div>} />
+        </Form.Item>
+        <Form.Item name={[field.name, "action", "value", "titleTemplate"]} required={true}>
+          <Input addonBefore={<div style={{ width: "8em" }}>Title Template</div>} />
+        </Form.Item>
+        Text Template:
+        <Form.Item name={[field.name, "action", "value", "template"]} required={true}>
           <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
         </Form.Item>
       </>

@@ -78,6 +78,7 @@ message Hook {
     Command action_command = 100 [json_name="actionCommand"];
     Webhook action_webhook = 101 [json_name="actionWebhook"];
     Discord action_discord = 102 [json_name="actionDiscord"];
+    Gotify action_gotify = 103 [json_name="actionGotify"];
   }
 
   message Command {
@@ -90,7 +91,14 @@ message Hook {
 
   message Discord {
     string webhook_url = 1 [json_name="webhookUrl"];
-    string template = 2; // template for the webhook payload.
+    string template = 2 [json_name="template"]; // template for the webhook payload.
+  }
+
+  message Gotify {
+    string base_url = 1 [json_name="baseUrl"];
+    string token = 3 [json_name="token"];
+    string template = 100 [json_name="template"]; // template for the webhook payload.
+    string title_template = 101 [json_name="titleTemplate"]; // template for the webhook title.
   }
 }
 

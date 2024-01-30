@@ -9,7 +9,7 @@ import (
 func post(url string, contentType string, body io.Reader) (string, error) {
 	r, err := http.Post(url, contentType, body)
 	if err != nil {
-		return "", fmt.Errorf("send request: %w", url, err)
+		return "", fmt.Errorf("send request %v: %w", url, err)
 	}
 	if r.StatusCode == 204 {
 		return "", nil
