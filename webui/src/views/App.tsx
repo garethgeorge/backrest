@@ -24,6 +24,7 @@ import LogoSvg from "url:../../assets/logo.svg";
 import _ from "lodash";
 import { Code } from "@connectrpc/connect";
 import { LoginModal } from "./LoginModal";
+import { SettingsModal } from "./SettingsModal";
 
 const { Header, Sider } = Layout;
 
@@ -43,7 +44,11 @@ export const App: React.FC = () => {
     fetchConfig()
       .then((config) => {
         setConfig(config);
-        showModal(null);
+        if (!config.auth || config.auth.users.length === 0) {
+          showModal(<SettingsModal />);
+        } else {
+          showModal(null);
+        }
       })
       .catch((err) => {
         if (err.code) {

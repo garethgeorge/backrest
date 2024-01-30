@@ -37,12 +37,6 @@ export const SettingsModal = () => {
     users: config.auth?.users || [],
   });
 
-  const data: SettingsFormData = {
-    users: config.auth?.users || [],
-  };
-
-  data.users[0].password.value
-
   const handleOk = async () => {
     try {
       let formData = await validateForm<SettingsFormData>(form);
@@ -58,8 +52,10 @@ export const SettingsModal = () => {
 
       // Update config and notify success.
       setConfig(await updateConfig(copy));
-      showModal(null);
       alertsApi.success("Settings updated", 5);
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);
       console.error(e);
