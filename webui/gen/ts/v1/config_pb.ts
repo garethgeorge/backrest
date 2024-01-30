@@ -478,6 +478,12 @@ export class Hook extends Message<Hook> {
      */
     value: Hook_Discord;
     case: "actionDiscord";
+  } | {
+    /**
+     * @generated from field: v1.Hook.Gotify action_gotify = 103;
+     */
+    value: Hook_Gotify;
+    case: "actionGotify";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Hook>) {
@@ -492,6 +498,7 @@ export class Hook extends Message<Hook> {
     { no: 100, name: "action_command", kind: "message", T: Hook_Command, oneof: "action" },
     { no: 101, name: "action_webhook", kind: "message", T: Hook_Webhook, oneof: "action" },
     { no: 102, name: "action_discord", kind: "message", T: Hook_Discord, oneof: "action" },
+    { no: 103, name: "action_gotify", kind: "message", T: Hook_Gotify, oneof: "action" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook {
@@ -673,6 +680,65 @@ export class Hook_Discord extends Message<Hook_Discord> {
 
   static equals(a: Hook_Discord | PlainMessage<Hook_Discord> | undefined, b: Hook_Discord | PlainMessage<Hook_Discord> | undefined): boolean {
     return proto3.util.equals(Hook_Discord, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.Hook.Gotify
+ */
+export class Hook_Gotify extends Message<Hook_Gotify> {
+  /**
+   * @generated from field: string base_url = 1;
+   */
+  baseUrl = "";
+
+  /**
+   * @generated from field: string token = 3;
+   */
+  token = "";
+
+  /**
+   * template for the webhook payload.
+   *
+   * @generated from field: string template = 100;
+   */
+  template = "";
+
+  /**
+   * template for the webhook title.
+   *
+   * @generated from field: string title_template = 101;
+   */
+  titleTemplate = "";
+
+  constructor(data?: PartialMessage<Hook_Gotify>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.Hook.Gotify";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "base_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 100, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 101, name: "title_template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Gotify {
+    return new Hook_Gotify().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Gotify {
+    return new Hook_Gotify().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Gotify {
+    return new Hook_Gotify().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Hook_Gotify | PlainMessage<Hook_Gotify> | undefined, b: Hook_Gotify | PlainMessage<Hook_Gotify> | undefined): boolean {
+    return proto3.util.equals(Hook_Gotify, a, b);
   }
 }
 

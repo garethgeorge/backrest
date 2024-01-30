@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	defaultTemplate = `{{.Summary}}`
+	defaultTemplate = `{{ .Summary }}`
 )
 
 // ExecuteHooks schedules tasks for the hooks subscribed to the given event. The vars map is used to substitute variables
@@ -138,6 +138,8 @@ func (h *Hook) Do(event v1.Hook_Condition, vars HookVars, output io.Writer) erro
 		return h.doCommand(action, vars, output)
 	case *v1.Hook_ActionDiscord:
 		return h.doDiscord(action, vars, output)
+	case *v1.Hook_ActionGotify:
+		return h.doGotify(action, vars, output)
 	default:
 		return fmt.Errorf("unknown hook action: %v", action)
 	}
