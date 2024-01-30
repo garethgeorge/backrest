@@ -67,7 +67,3 @@ func makePass(t *testing.T, pass string) string {
 	}
 	return p
 }
-
-func TestFoo(t *testing.T) {
-	t.Fatalf("password: %v", makePass(t, "password"))
-}

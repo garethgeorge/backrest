@@ -24,7 +24,7 @@ func (s *BigOpDataStore) resolvePath(opId int64) string {
 }
 
 func (s *BigOpDataStore) DeleteOperationData(opId int64) error {
-	dir := s.path + "/" + strconv.FormatInt(opId, 16)
+	dir := s.resolvePath(opId)
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
