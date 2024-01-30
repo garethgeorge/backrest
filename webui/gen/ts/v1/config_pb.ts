@@ -640,6 +640,13 @@ export class Hook_Discord extends Message<Hook_Discord> {
    */
   webhookUrl = "";
 
+  /**
+   * template for the webhook payload.
+   *
+   * @generated from field: string template = 2;
+   */
+  template = "";
+
   constructor(data?: PartialMessage<Hook_Discord>) {
     super();
     proto3.util.initPartial(data, this);
@@ -649,6 +656,7 @@ export class Hook_Discord extends Message<Hook_Discord> {
   static readonly typeName = "v1.Hook.Discord";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "webhook_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Discord {

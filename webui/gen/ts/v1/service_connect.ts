@@ -168,12 +168,12 @@ export const Backrest = {
       kind: MethodKind.Unary,
     },
     /**
-     * GetOperationData returns the keyed large data for the given operation.
+     * GetBigOperationData returns the keyed large data for the given operation.
      *
-     * @generated from rpc v1.Backrest.GetOperationData
+     * @generated from rpc v1.Backrest.GetBigOperationData
      */
-    getOperationData: {
-      name: "GetOperationData",
+    getBigOperationData: {
+      name: "GetBigOperationData",
       I: OperationDataRequest,
       O: BytesValue,
       kind: MethodKind.Unary,

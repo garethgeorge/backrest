@@ -397,7 +397,7 @@ func (s *Server) ClearHistory(ctx context.Context, req *connect.Request[v1.Clear
 	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
-func (s *Server) GetOperationData(ctx context.Context, req *connect.Request[v1.OperationDataRequest]) (*connect.Response[types.BytesValue], error) {
+func (s *Server) GetBigOperationData(ctx context.Context, req *connect.Request[v1.OperationDataRequest]) (*connect.Response[types.BytesValue], error) {
 	data, err := s.oplog.GetBigData(req.Msg.Id, req.Msg.Key)
 	if err != nil {
 		return nil, fmt.Errorf("get operation data: %w", err)

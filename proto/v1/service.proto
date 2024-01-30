@@ -50,8 +50,8 @@ service Backrest {
   // Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
   rpc Cancel(types.Int64Value) returns (google.protobuf.Empty) {}
 
-  // GetOperationData returns the keyed large data for the given operation.
-  rpc GetOperationData(OperationDataRequest) returns (types.BytesValue) {}
+  // GetBigOperationData returns the keyed large data for the given operation.
+  rpc GetBigOperationData(OperationDataRequest) returns (types.BytesValue) {}
 
   // Clears the history of operations
   rpc ClearHistory(ClearHistoryRequest) returns (google.protobuf.Empty) {}

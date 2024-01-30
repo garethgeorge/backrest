@@ -495,7 +495,7 @@ const RunHookOperationStatus = ({ op }: { op: Operation }) => {
     if (!hook.outputRef) {
       return;
     }
-    backrestService.getOperationData(new OperationDataRequest({
+    backrestService.getBigOperationData(new OperationDataRequest({
       id: op.id,
       key: hook.outputRef,
     })).then((resp) => {
@@ -505,8 +505,11 @@ const RunHookOperationStatus = ({ op }: { op: Operation }) => {
     });
   }, [hook.outputRef]);
 
-  return <pre>
+  return <>
     Hook: {hook.name} <br />
-    {output}
-  </pre>
+    Output: <br />
+    <pre>
+      {output}
+    </pre>
+  </>
 }

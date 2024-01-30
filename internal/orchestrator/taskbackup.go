@@ -148,7 +148,7 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 		op.DisplayMessage = "Partial backup, some files may not have been read completely."
 	}
 
-	hook.ExecuteHooks(orchestrator.OpLog, repo.Config(), plan, "", []v1.Hook_Condition{
+	hook.ExecuteHooks(orchestrator.OpLog, repo.Config(), plan, summary.SnapshotId, []v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_END,
 	}, vars)
 
