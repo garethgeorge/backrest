@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"flag"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/api"
+	"github.com/garethgeorge/backrest/internal/auth"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
@@ -44,6 +46,13 @@ func main() {
 		zap.S().Fatalf("Error loading config: %v", err)
 	}
 
+	// Create the authenticator
+	secret := make([]byte, 32)
+	if n, err := rand.Read(secret); err != nil || n != 32 {
+		zap.S().Fatalf("Error generating secret: %v", err)
+	}
+	authenticator := auth.NewAuthenticator(secret, configStore)
+
 	var wg sync.WaitGroup
 
 	// Create / load the operation log
@@ -71,11 +80,13 @@ func main() {
 	}()
 
 	// Create and serve the HTTP gateway
-	apiServer := api.NewServer(
+	apiBackrestHandler := api.NewBackrestHandler(
 		configStore,
 		orchestrator,
 		oplog,
 	)
+
+	apiAuthenticationHandler := api.NewAuthenticationHandler(authenticator)
 
 	mux := http.NewServeMux()
 
@@ -103,7 +114,9 @@ func main() {
 		zap.S().Warnf("Error loading static assets, not serving UI: %v", err)
 	}
 
-	mux.Handle(v1connect.NewBackrestHandler(apiServer))
+	mux.Handle(v1connect.NewAuthenticationHandler(apiAuthenticationHandler))
+	backrestHandlerPath, backrestHandler := v1connect.NewBackrestHandler(apiBackrestHandler)
+	mux.Handle(backrestHandlerPath, auth.RequireAuthentication(backrestHandler, authenticator))
 
 	// Serve the HTTP gateway
 	server := &http.Server{

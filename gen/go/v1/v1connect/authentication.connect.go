@@ -9,7 +9,6 @@ import (
 	context "context"
 	errors "errors"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	http "net/http"
 	strings "strings"
 )
@@ -36,21 +35,17 @@ const (
 const (
 	// AuthenticationLoginProcedure is the fully-qualified name of the Authentication's Login RPC.
 	AuthenticationLoginProcedure = "/v1.Authentication/Login"
-	// AuthenticationLogoutProcedure is the fully-qualified name of the Authentication's Logout RPC.
-	AuthenticationLogoutProcedure = "/v1.Authentication/Logout"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	authenticationServiceDescriptor      = v1.File_v1_authentication_proto.Services().ByName("Authentication")
-	authenticationLoginMethodDescriptor  = authenticationServiceDescriptor.Methods().ByName("Login")
-	authenticationLogoutMethodDescriptor = authenticationServiceDescriptor.Methods().ByName("Logout")
+	authenticationServiceDescriptor     = v1.File_v1_authentication_proto.Services().ByName("Authentication")
+	authenticationLoginMethodDescriptor = authenticationServiceDescriptor.Methods().ByName("Login")
 )
 
 // AuthenticationClient is a client for the v1.Authentication service.
 type AuthenticationClient interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
-	Logout(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewAuthenticationClient constructs a client for the v1.Authentication service. By default, it
@@ -69,19 +64,12 @@ func NewAuthenticationClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(authenticationLoginMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		logout: connect.NewClient[emptypb.Empty, emptypb.Empty](
-			httpClient,
-			baseURL+AuthenticationLogoutProcedure,
-			connect.WithSchema(authenticationLogoutMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
 // authenticationClient implements AuthenticationClient.
 type authenticationClient struct {
-	login  *connect.Client[v1.LoginRequest, v1.LoginResponse]
-	logout *connect.Client[emptypb.Empty, emptypb.Empty]
+	login *connect.Client[v1.LoginRequest, v1.LoginResponse]
 }
 
 // Login calls v1.Authentication.Login.
@@ -89,15 +77,9 @@ func (c *authenticationClient) Login(ctx context.Context, req *connect.Request[v
 	return c.login.CallUnary(ctx, req)
 }
 
-// Logout calls v1.Authentication.Logout.
-func (c *authenticationClient) Logout(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
-	return c.logout.CallUnary(ctx, req)
-}
-
 // AuthenticationHandler is an implementation of the v1.Authentication service.
 type AuthenticationHandler interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
-	Logout(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewAuthenticationHandler builds an HTTP handler from the service implementation. It returns the
@@ -112,18 +94,10 @@ func NewAuthenticationHandler(svc AuthenticationHandler, opts ...connect.Handler
 		connect.WithSchema(authenticationLoginMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	authenticationLogoutHandler := connect.NewUnaryHandler(
-		AuthenticationLogoutProcedure,
-		svc.Logout,
-		connect.WithSchema(authenticationLogoutMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/v1.Authentication/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthenticationLoginProcedure:
 			authenticationLoginHandler.ServeHTTP(w, r)
-		case AuthenticationLogoutProcedure:
-			authenticationLogoutHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -135,8 +109,4 @@ type UnimplementedAuthenticationHandler struct{}
 
 func (UnimplementedAuthenticationHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Authentication.Login is not implemented"))
-}
-
-func (UnimplementedAuthenticationHandler) Logout(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Authentication.Logout is not implemented"))
 }

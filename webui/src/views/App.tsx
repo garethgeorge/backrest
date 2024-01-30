@@ -22,6 +22,8 @@ import { OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { colorForStatus, getStatusForPlan, getStatusForRepo, subscribeToOperations, unsubscribeFromOperations } from "../state/oplog";
 import LogoSvg from "url:../../assets/logo.svg";
 import _ from "lodash";
+import { Code } from "@connectrpc/connect";
+import { LoginModal } from "./LoginModal";
 
 const { Header, Sider } = Layout;
 
@@ -44,6 +46,20 @@ export const App: React.FC = () => {
         showModal(null);
       })
       .catch((err) => {
+        if (err.code) {
+          const code = err.code;
+          if (code === Code.Unauthenticated) {
+            showModal(<LoginModal />)
+            return;
+          } else if (code === Code.Unavailable || code === Code.DeadlineExceeded) {
+            alertApi.error(
+              "Failed to fetch initial config, typically this means the UI could not connect to the backend",
+              0
+            );
+            return;
+          }
+        }
+
         alertApi.error(err.message, 0);
         alertApi.error(
           "Failed to fetch initial config, typically this means the UI could not connect to the backend",

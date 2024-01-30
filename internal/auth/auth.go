@@ -12,28 +12,41 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var defaultUsers = []*v1.User{
+	{
+		Name:     "default",
+		Password: &v1.User_PasswordBcrypt{PasswordBcrypt: "JDJhJDEwJDNCdzJoNFlhaWFZQy9TSDN3ZGxSRHVPZHdzV2lsNmtBSHdFSmtIWHk1dS8wYjZuUWJrMGFx"}, // default password is "password"
+	},
+}
+
 type Authenticator struct {
 	config config.ConfigStore
 	key    []byte
 }
 
-func NewAuthenticator(key string, configProvider config.ConfigStore) *Authenticator {
+func NewAuthenticator(key []byte, configProvider config.ConfigStore) *Authenticator {
 	return &Authenticator{
 		config: configProvider,
-		key:    []byte(key),
+		key:    key,
 	}
 }
 
 var ErrUserNotFound = errors.New("user not found")
-var ErrInvalidPassword = errors.New("invalid password")
+var ErrInvalidPassword = errors.New("wrong password")
 
-func (a *Authenticator) Login(username, password string) (*v1.User, error) {
+func (a *Authenticator) users() []*v1.User {
 	config, err := a.config.Get()
 	if err != nil {
-		return nil, fmt.Errorf("get config: %w", err)
+		return nil
 	}
+	if len(config.Auth.GetUsers()) != 0 {
+		return config.Auth.GetUsers()
+	}
+	return defaultUsers
+}
 
-	for _, user := range config.Auth.GetUsers() {
+func (a *Authenticator) Login(username, password string) (*v1.User, error) {
+	for _, user := range a.users() {
 		if user.Name != username {
 			continue
 		}
@@ -65,12 +78,7 @@ func (a *Authenticator) VerifyJWT(token string) (*v1.User, error) {
 		return nil, fmt.Errorf("get subject: %w", err)
 	}
 
-	config, err := a.config.Get()
-	if err != nil {
-		return nil, fmt.Errorf("get config: %w", err)
-	}
-
-	for _, user := range config.Auth.GetUsers() {
+	for _, user := range a.users() {
 		if user.Name == subject {
 			return user, nil
 		}
@@ -85,7 +93,7 @@ func (a *Authenticator) CreateJWT(user *v1.User) (string, error) {
 		Subject:   user.Name,
 	}
 
-	t := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	s, err := t.SignedString(a.key)
 	if err != nil {
 		return "", fmt.Errorf("sign token: %w", err)

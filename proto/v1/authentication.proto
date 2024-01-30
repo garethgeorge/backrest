@@ -10,18 +10,7 @@ import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
 
 service Authentication {
-  rpc Login(LoginRequest) returns (LoginResponse) {
-    option (google.api.http) = {
-      post: "/v1/auth/login"
-      body: "*"
-    };
-  }
-
-  rpc Logout(google.protobuf.Empty) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/v1/auth/logout"
-    };
-  }
+  rpc Login(LoginRequest) returns (LoginResponse) {}
 }
 
 message LoginRequest {

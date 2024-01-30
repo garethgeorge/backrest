@@ -33,7 +33,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	auth := NewAuthenticator("key", config)
+	auth := NewAuthenticator([]byte("key"), config)
 
 	tests := []struct {
 		name     string
@@ -66,4 +66,8 @@ func makePass(t *testing.T, pass string) string {
 		t.Fatalf("Error creating password: %v", err)
 	}
 	return p
+}
+
+func TestFoo(t *testing.T) {
+	t.Fatalf("password: %v", makePass(t, "password"))
 }

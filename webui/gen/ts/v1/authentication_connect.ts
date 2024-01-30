@@ -4,7 +4,7 @@
 // @ts-nocheck
 
 import { LoginRequest, LoginResponse } from "./authentication_pb.js";
-import { Empty, MethodKind } from "@bufbuild/protobuf";
+import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * @generated from service v1.Authentication
@@ -19,15 +19,6 @@ export const Authentication = {
       name: "Login",
       I: LoginRequest,
       O: LoginResponse,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * @generated from rpc v1.Authentication.Logout
-     */
-    logout: {
-      name: "Logout",
-      I: Empty,
-      O: Empty,
       kind: MethodKind.Unary,
     },
   }
