@@ -10,9 +10,9 @@ import (
 )
 
 func (h *Hook) doCommand(cmd *v1.Hook_ActionCommand, vars HookVars, output io.Writer) error {
-	command, err := h.makeSubstitutions(cmd.ActionCommand.Command, vars)
+	command, err := h.renderTemplate(cmd.ActionCommand.Command, vars)
 	if err != nil {
-		return fmt.Errorf("template formatting: %w", err)
+		return fmt.Errorf("template rendering: %w", err)
 	}
 
 	// Parse out the shell to use if a #! prefix is present

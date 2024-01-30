@@ -90,5 +90,7 @@ message Hook {
 
   message Discord {
     string webhook_url = 1 [json_name="webhookUrl"];
+    string template = 2; // template for the webhook payload.
   }
 }
+

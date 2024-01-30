@@ -17,7 +17,7 @@ const (
 	// - it has no snapshot associated with it
 	// - it has a forgotten snapshot associated with it
 	gcHistoryAge      = 30 * 24 * time.Hour
-	gcHistoryMaxCount = 100
+	gcHistoryMaxCount = 200
 )
 
 type CollectGarbageTask struct {

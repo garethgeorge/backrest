@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 	"text/template"
 	"time"
 
@@ -13,6 +14,10 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
+)
+
+var (
+	defaultTemplate = `{{.Summary}}`
 )
 
 // ExecuteHooks schedules tasks for the hooks subscribed to the given event. The vars map is used to substitute variables
@@ -131,13 +136,15 @@ func (h *Hook) Do(event v1.Hook_Condition, vars HookVars, output io.Writer) erro
 	switch action := h.Action.(type) {
 	case *v1.Hook_ActionCommand:
 		return h.doCommand(action, vars, output)
+	case *v1.Hook_ActionDiscord:
+		return h.doDiscord(action, vars, output)
 	default:
 		return fmt.Errorf("unknown hook action: %v", action)
 	}
 }
 
-func (h *Hook) makeSubstitutions(text string, vars HookVars) (string, error) {
-	template, err := template.New("command").Parse(text)
+func (h *Hook) renderTemplate(text string, vars HookVars) (string, error) {
+	template, err := template.New("template").Parse(text)
 	if err != nil {
 		return "", fmt.Errorf("parse template: %w", err)
 	}
@@ -148,4 +155,11 @@ func (h *Hook) makeSubstitutions(text string, vars HookVars) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+func (h *Hook) renderTemplateOrDefault(template string, defaultTmpl string, vars HookVars) (string, error) {
+	if strings.Trim(template, " ") == "" {
+		return h.renderTemplate(defaultTmpl, vars)
+	}
+	return h.renderTemplate(template, vars)
 }

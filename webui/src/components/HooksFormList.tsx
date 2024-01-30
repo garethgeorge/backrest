@@ -23,6 +23,14 @@ export const hooksListTooltipText = <>
     <li>.CurTime - the time of the event.</li>
     <li>.SnapshotId - the restic snapshot structure if this is finish snapshot operation and it completed successfully.</li>
   </ul>
+  Functions
+  <ul>
+    <li>.ShellEscape - escapes a string to be used in a shell command.</li>
+    <li>.JsonMarshal - serializes a value to be used in a json string.</li>
+    <li>.Summary - prints a formatted summary of the event.</li>
+    <li>.FormatTime - prints time formatted as RFC3339.</li>
+    <li>.FormatSizeBytes - prints a formatted size in bytes.</li>
+  </ul>
 </>
 
 /**
@@ -30,18 +38,6 @@ export const hooksListTooltipText = <>
  */
 export const HooksFormList = (props: { hooks: Hook[] }) => {
   const [hooks, _] = useState([...props.hooks] || []);
-
-  const hookTypes: {
-    name: string,
-    action: typeof Hook.prototype.action,
-  }[] = [
-      {
-        name: "Command", action: {
-          case: "actionCommand",
-          value: new Hook_Command(),
-        }
-      },
-    ];
 
   return <Form.List name="hooks" initialValue={props.hooks || []}>
     {(fields, { add, remove }, { errors }) => (
@@ -106,28 +102,52 @@ export const HooksFormList = (props: { hooks: Hook[] }) => {
   </Form.List >
 }
 
+const hookTypes: {
+  name: string,
+  action: typeof Hook.prototype.action,
+}[] = [
+    {
+      name: "Command", action: {
+        case: "actionCommand",
+        value: new Hook_Command({
+          command: "echo {{ .ShellEscape .Summary }}",
+        }),
+      }
+    },
+    {
+      name: "Discord", action: {
+        case: "actionDiscord",
+        value: new Hook_Discord({
+          webhookUrl: "",
+          template: "{{ .Summary }}",
+        }),
+      }
+    },
+  ];
+
 const HookBuilder = ({ field, hook }: { field: FormListFieldData, hook: Hook }) => {
   let component: React.ReactNode;
   switch (hook.action.case) {
     case "actionDiscord":
-      return <Form.Item name={[field.name, "action", "value", "webhookUrl"]} initialValue={hook.action.value ? hook.action.value.webhookUrl : ""}>
-        <Input addonBefore={<div style={{ width: "8em" }}>Discord Webhook</div>} />
-      </Form.Item>
-    case "actionWebhook":
-      return <Form.Item name={[field.name, "action", "value", "webhookUrl"]} initialValue={hook.action.value ? hook.action.value.webhookUrl : ""}>
-        <Input addonBefore={<div style={{ width: "8em" }}>Webhook URL</div>} />
-      </Form.Item>
+      return <>
+        <Form.Item name={[field.name, "action", "value", "webhookUrl"]} required={true}>
+          <Input addonBefore={<div style={{ width: "8em" }}>Discord Webhook</div>} />
+        </Form.Item>
+        Text:
+        <Form.Item name={[field.name, "action", "value", "template"]} required={true}>
+          <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
+        </Form.Item>
+      </>
     case "actionCommand":
       return <>
         <Tooltip title="Script to execute. Commands will not work in the docker build of Backrest.">
           Script:
         </Tooltip>
-        <Form.Item name={[field.name, "action", "value", "command"]} initialValue={hook.action.value ? hook.action.value.command : "#!/bin/sh\n"}>
+        <Form.Item name={[field.name, "action", "value", "command"]}>
           <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
         </Form.Item>
       </>
     default:
       return <p>Unknown hook {hook.action.case}</p>
   }
-
 }

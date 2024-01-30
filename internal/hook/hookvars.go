@@ -3,6 +3,7 @@ package hook
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"text/template"
 	"time"
 
@@ -44,6 +45,32 @@ func (v HookVars) FormatTime(t time.Time) string {
 	return t.Format(time.RFC3339)
 }
 
+func (v HookVars) number(n any) int {
+	switch n := n.(type) {
+	case int:
+		return n
+	case int32:
+		return int(n)
+	case int64:
+		return int(n)
+	default:
+		return 0
+	}
+}
+
+func (v HookVars) FormatSizeBytes(val any) string {
+	size := v.number(val)
+	sizes := []string{"B", "KB", "MB", "GB", "TB", "PB"}
+	i := 0
+	prev := size
+	for size > 1000 {
+		size /= 1000
+		prev = size
+		i++
+	}
+	return fmt.Sprintf("%d.%03d %s", size, prev, sizes[i])
+}
+
 func (v HookVars) IsError(cond v1.Hook_Condition) bool {
 	return cond == v1.Hook_CONDITION_ANY_ERROR || cond == v1.Hook_CONDITION_SNAPSHOT_ERROR
 }
@@ -52,7 +79,7 @@ func (v HookVars) ShellEscape(s string) string {
 	return shellescape.Quote(s)
 }
 
-func (v HookVars) JSONEscape(s string) string {
+func (v HookVars) JsonMarshal(s any) string {
 	b, err := json.Marshal(s)
 	if err != nil {
 		return ""
@@ -90,34 +117,43 @@ func (v HookVars) renderTemplate(templ string) (string, error) {
 }
 
 var templateForSnapshotEnd = `Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
-Repo: {{ .Repo.Id }} Plan: {{ .Plan.Id }} Snapshot: {{ .SnapshotId }}
+Event: {{ .EventName .Event }}
+Repo: {{ .Repo.Id }} 
+Plan: {{ .Plan.Id }} 
+Snapshot: {{ .SnapshotId }}
 {{ if .Error -}}
 Failed to create snapshot: {{ .Error }}
 {{ else -}}
 {{ if .SnapshotStats -}}
-Stats:
- - Files new: {{ .SnapshotStats.FilesNew }}
- - Files changed: {{ .SnapshotStats.FilesChanged }}
- - Files unmodified: {{ .SnapshotStats.FilesUnmodified }}
- - Dirs new: {{ .SnapshotStats.DirsNew }}
- - Dirs changed: {{ .SnapshotStats.DirsChanged }}
- - Dirs unmodified: {{ .SnapshotStats.DirsUnmodified }}
- - Data blobs: {{ .SnapshotStats.DataBlobs }}
- - Tree blobs: {{ .SnapshotStats.TreeBlobs }}
- - Data added: {{ .SnapshotStats.DataAdded }} bytes
- - Total files processed: {{ .SnapshotStats.TotalFilesProcessed }}
- - Total bytes processed: {{ .SnapshotStats.TotalBytesProcessed }} bytes
- - Total duration: {{ .SnapshotStats.TotalDuration }}s
+
+Overview:
+- Data added: {{ .FormatSizeBytes .SnapshotStats.DataAdded }}
+- Total files processed: {{ .SnapshotStats.TotalFilesProcessed }}
+- Total bytes processed: {{ .FormatSizeBytes .SnapshotStats.TotalBytesProcessed }}
+
+Backup Statistics:
+- Files new: {{ .SnapshotStats.FilesNew }}
+- Files changed: {{ .SnapshotStats.FilesChanged }}
+- Files unmodified: {{ .SnapshotStats.FilesUnmodified }}
+- Dirs new: {{ .SnapshotStats.DirsNew }}
+- Dirs changed: {{ .SnapshotStats.DirsChanged }}
+- Dirs unmodified: {{ .SnapshotStats.DirsUnmodified }}
+- Data blobs: {{ .SnapshotStats.DataBlobs }}
+- Tree blobs: {{ .SnapshotStats.TreeBlobs }}
+- Total duration: {{ .SnapshotStats.TotalDuration }}s
 {{ end }}
 {{ end }}`
 
 var templateForError = `Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
-{{ if .Error }}
+{{ if .Error -}}
 Error: {{ .Error }}
 {{ end }}`
 
 var templateForSnapshotStart = `Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
-Repo: {{ .Repo.Id }} Plan: {{ .Plan.Id }}
-Paths: {{ range .Plan.Paths }}
+Event: {{ .EventName .Event }}
+Repo: {{ .Repo.Id }} 
+Plan: {{ .Plan.Id }} 
+Paths: 
+{{ range .Plan.Paths -}}
  - {{ . }}
 {{ end }}`
