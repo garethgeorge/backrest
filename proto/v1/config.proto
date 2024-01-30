@@ -14,7 +14,7 @@ message Config {
 
   repeated Repo repos = 3 [json_name="repos"];
   repeated Plan plans = 4 [json_name="plans"];
-  repeated User users = 5 [json_name="users"];
+  Auth auth = 5 [json_name="auth"];
 }
 
 message Repo {
@@ -54,6 +54,11 @@ message PrunePolicy {
   int32 max_frequency_days = 1 [json_name="maxFrequencyDays"]; // max frequency of prune runs in days. If 0, prune will be run on every backup.
   int32 max_unused_percent = 100 [json_name="maxUnusedPercent"]; // max percentage of repo size that can be unused before prune is run.
   int32 max_unused_bytes = 101 [json_name="maxUnusedBytes"]; // max number of bytes that can be unused before prune is run.
+}
+
+message Auth {
+  bool allow_anonymous = 1 [json_name="allowAnonymous"]; // allow anonymous access to the UI.
+  repeated User users = 2 [json_name="users"]; // users to allow access to the UI.
 }
 
 message User {
