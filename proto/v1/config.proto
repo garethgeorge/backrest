@@ -56,18 +56,6 @@ message PrunePolicy {
   int32 max_unused_bytes = 101 [json_name="maxUnusedBytes"]; // max number of bytes that can be unused before prune is run.
 }
 
-message Auth {
-  bool allow_anonymous = 1 [json_name="allowAnonymous"]; // allow anonymous access to the UI.
-  repeated User users = 2 [json_name="users"]; // users to allow access to the UI.
-}
-
-message User {
-  string name = 1;
-  oneof password {
-    string password_bcrypt = 2;
-  }
-}
-
 message Hook {
   enum Condition {
     CONDITION_UNKNOWN = 0;
@@ -107,3 +95,14 @@ message Hook {
   }
 }
 
+message Auth {
+  bool allow_anonymous = 1 [json_name="allowAnonymous"]; // allow anonymous access to the UI.
+  repeated User users = 2 [json_name="users"]; // users to allow access to the UI.
+}
+
+message User {
+  string name = 1;
+  oneof password {
+    string password_bcrypt = 2;
+  }
+}
