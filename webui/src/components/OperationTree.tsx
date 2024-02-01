@@ -6,6 +6,7 @@ import {
   displayTypeToString,
   getOperations,
   getTypeForDisplay,
+  shouldHideOperation,
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
@@ -266,7 +267,7 @@ const BackupView = ({ backup }: { backup?: BackupInfo }) => {
   } else {
     return <>
       <h3>Backup on {formatTime(backup.displayTime)}</h3>
-      <OperationList key={backup.id} useBackups={[backup]} />
+      <OperationList key={backup.id} useBackups={[backup]} filter={(op) => op && !shouldHideOperation(op)} />
     </>;
   }
 }
