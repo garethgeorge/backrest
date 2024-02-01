@@ -47,11 +47,7 @@ func main() {
 	}
 
 	// Create the authenticator
-	secret := make([]byte, 32)
-	if n, err := rand.Read(secret); err != nil || n != 32 {
-		zap.S().Fatalf("Error generating secret: %v", err)
-	}
-	authenticator := auth.NewAuthenticator(secret, configStore)
+	authenticator := auth.NewAuthenticator(getSecret(), configStore)
 
 	var wg sync.WaitGroup
 
@@ -163,4 +159,23 @@ func onterm(callback func()) {
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGTERM)
 	<-sigchan
 	callback()
+}
+
+func getSecret() []byte {
+	secretFile := path.Join(config.DataDir(), "jwt-secret")
+	data, err := os.ReadFile(secretFile)
+	if err == nil {
+		zap.L().Debug("Loaded auth secret from file")
+		return data
+	}
+
+	zap.L().Info("Generating new auth secret")
+	secret := make([]byte, 64)
+	if n, err := rand.Read(secret); err != nil || n != 64 {
+		zap.S().Fatalf("Error generating secret: %v", err)
+	}
+	if err := os.WriteFile(secretFile, secret, 0600); err != nil {
+		zap.S().Fatalf("Error writing secret to file: %v", err)
+	}
+	return secret
 }

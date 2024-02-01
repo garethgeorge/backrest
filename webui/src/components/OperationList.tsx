@@ -34,7 +34,6 @@ import {
   displayTypeToString,
   getOperations,
   getTypeForDisplay,
-  shouldHideOperation,
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
@@ -56,10 +55,12 @@ export const OperationList = ({
   req,
   useBackups,
   showPlan,
+  filter,
 }: React.PropsWithoutRef<{
   req?: GetOperationsRequest;
   useBackups?: BackupInfo[];
   showPlan?: boolean,
+  filter?: (op: Operation) => boolean,
 }>) => {
   const alertApi = useAlertApi();
 
@@ -122,11 +123,13 @@ export const OperationList = ({
     );
   }
 
-  const operations = backups.flatMap((b) => b.operations);
+  let operations = backups.flatMap((b) => b.operations);
+  if (filter) {
+    operations = operations.filter(filter);
+  }
   operations.sort((a, b) => {
     return Number(b.unixTimeStartMs - a.unixTimeStartMs)
   });
-
   return (
     <List
       itemLayout="horizontal"
