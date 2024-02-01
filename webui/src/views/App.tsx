@@ -22,7 +22,7 @@ import _ from "lodash";
 import { Code } from "@connectrpc/connect";
 import { LoginModal } from "./LoginModal";
 import { SettingsModal } from "./SettingsModal";
-import { backrestService } from "../api";
+import { backrestService, setAuthToken } from "../api";
 import { MainContentArea, useSetContent } from "./MainContentArea";
 import { GettingStartedGuide } from "./GettingStartedGuide";
 import { useConfig } from "../components/ConfigProvider";
@@ -120,6 +120,16 @@ export const App: React.FC = () => {
             {config && config.host ? "Host: " + config.host : undefined}
           </small>
         </h1>
+        <Button
+          type="text"
+          style={{ position: "absolute", right: "10px" }}
+          onClick={() => {
+            setAuthToken("");
+            window.location.reload();
+          }}
+        >
+          Logout
+        </Button>
       </Header>
       <Layout>
         <Sider width={300} style={{ background: colorBgContainer }}>

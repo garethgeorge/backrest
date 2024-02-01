@@ -26,8 +26,8 @@ interface FormData {
   auth: {
     users: ({
       name: string;
-      passwordBcrypt?: string;
-      password?: string;
+      passwordBcrypt: string;
+      needsBcrypt?: boolean;
     })[];
   }
 }
@@ -49,15 +49,16 @@ export const SettingsModal = () => {
       let formData = await validateForm(form);
 
       for (const user of formData.auth?.users) {
-        if (user.password) {
-          const hash = await authenticationService.hashPassword({ value: user.password });
+        if (user.needsBcrypt) {
+          const hash = await authenticationService.hashPassword({ value: user.passwordBcrypt });
           user.passwordBcrypt = hash.value;
-          delete user.password;
+          delete user.needsBcrypt;
         }
       }
 
       // Update configuration
-      let newConfig = config!.clone().fromJson(formData as any, { ignoreUnknownFields: false });
+      let newConfig = config!.clone();
+      newConfig.auth = new Auth().fromJson(formData.auth, { ignoreUnknownFields: false });
 
       setConfig(await backrestService.setConfig(newConfig));
       alertsApi.success("Settings updated", 5);
@@ -116,33 +117,39 @@ export const SettingsModal = () => {
             >
               {(fields, { add, remove }) => (
                 <>
-                  {fields.map((field, index) => (
-                    <Row key={field.key} gutter={16}>
-                      <Col span={11}>
-                        <Form.Item
-                          name={[field.name, "name"]}
-                          rules={[{ required: true }, { pattern: namePattern, message: "Name must be alphanumeric with dashes or underscores as separators" }]}
-                        >
-                          <Input placeholder="Username" />
-                        </Form.Item>
-                      </Col>
-                      <Col span={11}>
-                        <Form.Item
-                          name={[field.name, "password"]}
-                          rules={[{ required: true }]}
-                        >
-                          <Input.Password placeholder="Password" />
-                        </Form.Item>
-                      </Col>
-                      <Col span={2}>
-                        <MinusCircleOutlined
-                          onClick={() => {
-                            remove(field.name);
-                          }}
-                        />
-                      </Col>
-                    </Row>
-                  ))}
+                  {fields.map((field, index) => {
+
+                    return (
+                      <Row key={field.key} gutter={16}>
+                        <Col span={11}>
+                          <Form.Item
+                            name={[field.name, "name"]}
+                            rules={[{ required: true }, { pattern: namePattern, message: "Name must be alphanumeric with dashes or underscores as separators" }]}
+                          >
+                            <Input placeholder="Username" />
+                          </Form.Item>
+                        </Col>
+                        <Col span={11}>
+                          <Form.Item
+                            name={[field.name, "passwordBcrypt"]}
+                            rules={[{ required: true }]}
+                          >
+                            <Input.Password placeholder="Password" onFocus={() => {
+                              form.setFieldValue(["auth", "users", index, "needsBcrypt"], true);
+                              form.setFieldValue(["auth", "users", index, "passwordBcrypt"], "");
+                            }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={2}>
+                          <MinusCircleOutlined
+                            onClick={() => {
+                              remove(field.name);
+                            }}
+                          />
+                        </Col>
+                      </Row>
+                    )
+                  })}
                   <Form.Item>
                     <Button
                       type="dashed"

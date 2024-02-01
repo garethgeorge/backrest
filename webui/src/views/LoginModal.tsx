@@ -5,14 +5,8 @@ import { authenticationService, setAuthToken } from '../api';
 import { LoginRequest } from '../../gen/ts/v1/authentication_pb';
 import { useAlertApi } from '../components/Alerts';
 
-const credentialsKey = "backrest-ui-credentials";
-
 export const LoginModal = () => {
   let defaultCreds = new LoginRequest();
-  const credsInStorage = localStorage.getItem(credentialsKey);
-  if (credsInStorage) {
-    defaultCreds = LoginRequest.fromJson(JSON.parse(credsInStorage));
-  }
 
   const [form] = Form.useForm();
   const alertApi = useAlertApi()!;
@@ -36,7 +30,6 @@ export const LoginModal = () => {
       password: values.password,
     });
 
-    localStorage.setItem(credentialsKey, loginReq.toJsonString());
     try {
       const loginResponse = await authenticationService.login(loginReq);
       setAuthToken(loginResponse.token);
@@ -44,8 +37,8 @@ export const LoginModal = () => {
       setTimeout(() => {
         window.location.reload();
       }, 500);
-    } catch (e) {
-      alertApi.error("Login failed: " + e, 10);
+    } catch (e: any) {
+      alertApi.error("Login failed: " + (e.message ? e.message : '' + e), 10);
     }
   };
 

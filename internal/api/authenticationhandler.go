@@ -29,7 +29,7 @@ func (s *AuthenticationHandler) Login(ctx context.Context, req *connect.Request[
 	user, err := s.authenticator.Login(req.Msg.Username, req.Msg.Password)
 	if err != nil {
 		zap.L().Warn("failed login attempt", zap.Error(err))
-		return nil, auth.ErrInvalidPassword
+		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidPassword)
 	}
 
 	token, err := s.authenticator.CreateJWT(user)
