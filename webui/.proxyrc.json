@@ -2,5 +2,9 @@
   "/v1.Backrest": {
     "target": "http://localhost:9898",
     "secure": false
+  },
+  "/v1.Authentication": {
+    "target": "http://localhost:9898",
+    "secure": false
   }
 }

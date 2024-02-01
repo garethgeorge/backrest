@@ -23,6 +23,7 @@ import {
   SaveOutlined,
   DeleteOutlined,
   DownloadOutlined,
+  RobotOutlined,
 } from "@ant-design/icons";
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic_pb";
 import {
@@ -110,9 +111,6 @@ export const OperationList = ({
     }, [JSON.stringify(req)]);
   } else {
     backups = [...(useBackups || [])];
-    backups.sort((a, b) => {
-      return b.startTimeMs - a.startTimeMs;
-    });
   }
 
   if (backups.length === 0) {
@@ -124,28 +122,22 @@ export const OperationList = ({
     );
   }
 
+  const operations = backups.flatMap((b) => b.operations);
+  operations.sort((a, b) => {
+    return Number(b.unixTimeStartMs - a.unixTimeStartMs)
+  });
+
   return (
     <List
       itemLayout="horizontal"
       size="small"
-      dataSource={backups}
-      renderItem={(backup) => {
-        const ops = [...backup.operations];
-        ops.reverse();
-        return (
-          <Card size="small" style={{ margin: "5px" }}>
-            {ops.map((op) => {
-              if (shouldHideOperation(op)) {
-                return null;
-              }
-              return <OperationRow alertApi={alertApi!} key={op.id} operation={op} showPlan={showPlan || false} />
-            })}
-          </Card>
-        );
+      dataSource={operations}
+      renderItem={(op) => {
+        return <OperationRow alertApi={alertApi!} key={op.id} operation={op} showPlan={showPlan || false} />
       }}
       pagination={
-        backups.length > 50
-          ? { position: "both", align: "center", defaultPageSize: 50 }
+        operations.length > 25
+          ? { position: "both", align: "center", defaultPageSize: 25 }
           : undefined
       }
     />
@@ -186,6 +178,9 @@ export const OperationRow = ({
     case DisplayType.PRUNE:
       avatar = <DeleteOutlined style={{ color: details.color }} />;
       break;
+    case DisplayType.RUNHOOK:
+      avatar = <RobotOutlined style={{ color: details.color }} />;
+
   }
 
   const opName = displayTypeToString(getTypeForDisplay(operation));
@@ -483,7 +478,6 @@ const ForgetOperationDetails = ({ forgetOp }: { forgetOp: OperationForget }) => 
 }
 
 const RunHookOperationStatus = ({ op }: { op: Operation }) => {
-  const [output, setOutput] = useState<string | undefined>(undefined);
 
   if (op.op.case !== "operationRunHook") {
     return <>Wrong operation type</>;
@@ -491,25 +485,36 @@ const RunHookOperationStatus = ({ op }: { op: Operation }) => {
 
   const hook = op.op.value;
 
+  return <>
+    <Collapse size="small" destroyInactivePanel items={[
+      {
+        key: 1,
+        label: "Logs for hook " + hook.name,
+        children: <>
+          <BigOperationDataVerbatim id={op.id!} outputRef={hook.outputRef} />
+        </>
+      },
+    ]} />
+  </>
+}
+
+// TODO: refactor this to use the provider pattern
+const BigOperationDataVerbatim = ({ id, outputRef }: { id: bigint, outputRef: string }) => {
+  const [output, setOutput] = useState<string | undefined>(undefined);
+
   useEffect(() => {
-    if (!hook.outputRef) {
+    if (!outputRef) {
       return;
     }
     backrestService.getBigOperationData(new OperationDataRequest({
-      id: op.id,
-      key: hook.outputRef,
+      id: id,
+      key: outputRef,
     })).then((resp) => {
       setOutput(new TextDecoder("utf-8").decode(resp.value));
     }).catch((e) => {
       console.error("Failed to fetch hook output: ", e);
     });
-  }, [hook.outputRef]);
+  }, [id, outputRef]);
 
-  return <>
-    Hook: {hook.name} <br />
-    Output: <br />
-    <pre>
-      {output}
-    </pre>
-  </>
+  return <pre>{output}</pre>;
 }

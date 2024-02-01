@@ -11,45 +11,40 @@ import {
   Row,
   Card,
   Col,
+  Collapse,
 } from "antd";
 import React, { useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import { Plan, RetentionPolicy } from "../../gen/ts/v1/config_pb";
-import { useRecoilState } from "recoil";
-import { configState, fetchConfig, updateConfig } from "../state/config";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { useAlertApi } from "../components/Alerts";
 import { Cron } from "react-js-cron";
-import { validateForm } from "../lib/formutil";
+import { namePattern, validateForm } from "../lib/formutil";
 import { HooksFormList, hooksListTooltipText } from "../components/HooksFormList";
+import { ConfirmButton, SpinButton } from "../components/SpinButton";
+import { useConfig } from "../components/ConfigProvider";
+import { backrestService } from "../api";
 
 export const AddPlanModal = ({
   template,
 }: {
   template: Partial<Plan> | null;
 }) => {
-  const [config, setConfig] = useRecoilState(configState);
-  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
+  const [config, setConfig] = useConfig();
   const [form] = Form.useForm<Plan>();
 
-  const handleDestroy = async () => {
-    if (!deleteConfirmed) {
-      setDeleteConfirmed(true);
-      setTimeout(() => {
-        setDeleteConfirmed(false);
-      }, 2000);
-      return;
-    }
+  if (!config) {
+    return null;
+  }
 
+  const handleDestroy = async () => {
     setConfirmLoading(true);
 
     try {
-      let config = await fetchConfig();
-
       if (!template) {
         throw new Error("template not found");
       }
@@ -63,7 +58,7 @@ export const AddPlanModal = ({
       config.plans.splice(idx, 1);
 
       // Update config and notify success.
-      setConfig(await updateConfig(config));
+      setConfig(await backrestService.setConfig(config));
       showModal(null);
 
       alertsApi.success(
@@ -83,8 +78,6 @@ export const AddPlanModal = ({
     try {
       let plan = new Plan(await validateForm<Plan>(form));
 
-      let config = await fetchConfig();
-
       // Merge the new plan (or update) into the config
       if (template) {
         const idx = config.plans.findIndex((r) => r.id === template.id);
@@ -97,7 +90,7 @@ export const AddPlanModal = ({
       }
 
       // Update config and notify success.
-      setConfig(await updateConfig(config));
+      setConfig(await backrestService.setConfig(config));
       showModal(null);
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);
@@ -125,24 +118,23 @@ export const AddPlanModal = ({
             Cancel
           </Button>,
           template != null ? (
-            <Button
+            <ConfirmButton
               key="delete"
               type="primary"
               danger
-              loading={confirmLoading}
-              onClick={handleDestroy}
+              onClickAsync={handleDestroy}
+              confirmTitle="Confirm Delete"
             >
-              {deleteConfirmed ? "Confirm delete?" : "Delete"}
-            </Button>
+              Delete
+            </ConfirmButton>
           ) : null,
-          <Button
+          <SpinButton
             key="submit"
             type="primary"
-            loading={confirmLoading}
-            onClick={handleOk}
+            onClickAsync={handleOk}
           >
             Submit
-          </Button>,
+          </SpinButton>,
         ]}
       >
         <Form
@@ -150,13 +142,14 @@ export const AddPlanModal = ({
           form={form}
           labelCol={{ span: 6 }}
           wrapperCol={{ span: 16 }}
+          disabled={confirmLoading}
         >
           {/* Plan.id */}
           <Form.Item<Plan>
             hasFeedback
             name="id"
             label="Plan Name"
-            initialValue={template && template.id}
+            initialValue={template ? template.id : ""}
             validateTrigger={["onChange", "onBlur"]}
             rules={[
               {
@@ -172,6 +165,10 @@ export const AddPlanModal = ({
                 },
                 message: "Plan with name already exists",
               },
+              {
+                pattern: namePattern,
+                message: "Name must be alphanumeric with dashes or underscores as separators",
+              }
             ]}
           >
             <Input
@@ -185,7 +182,7 @@ export const AddPlanModal = ({
             name="repo"
             label="Repository"
             validateTrigger={["onChange", "onBlur"]}
-            initialValue={template && template.repo}
+            initialValue={template ? template.repo : ""}
             rules={[
               {
                 required: true,
@@ -345,9 +342,20 @@ export const AddPlanModal = ({
 
           <Form.Item shouldUpdate label="Preview">
             {() => (
-              <Typography>
-                <pre>{JSON.stringify(form.getFieldsValue(), null, 2)}</pre>
-              </Typography>
+              <Collapse
+                size="small"
+                items={[
+                  {
+                    key: "1",
+                    label: "Plan Config as JSON",
+                    children: (
+                      <Typography>
+                        <pre>{new Plan(form.getFieldsValue()).toJsonString({ prettySpaces: 2 })}</pre>
+                      </Typography>
+                    ),
+                  },
+                ]}
+              />
             )}
           </Form.Item>
         </Form>

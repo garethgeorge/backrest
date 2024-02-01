@@ -154,3 +154,13 @@ func CollectLastN(lastN int) Collector {
 		return ids
 	}
 }
+
+func Reversed(collector Collector) Collector {
+	return func(iter IndexIterator) []int64 {
+		ids := collector(iter)
+		for i, j := 0, len(ids)-1; i < j; i, j = i+1, j-1 {
+			ids[i], ids[j] = ids[j], ids[i]
+		}
+		return ids
+	}
+}

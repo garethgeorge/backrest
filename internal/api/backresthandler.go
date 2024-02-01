@@ -25,17 +25,17 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type Server struct {
+type BackrestHandler struct {
 	v1connect.UnimplementedBackrestHandler
 	config       config.ConfigStore
 	orchestrator *orchestrator.Orchestrator
 	oplog        *oplog.OpLog
 }
 
-var _ v1connect.BackrestHandler = &Server{}
+var _ v1connect.BackrestHandler = &BackrestHandler{}
 
-func NewServer(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog) *Server {
-	s := &Server{
+func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog) *BackrestHandler {
+	s := &BackrestHandler{
 		config:       config,
 		orchestrator: orchestrator,
 		oplog:        oplog,
@@ -45,7 +45,7 @@ func NewServer(config config.ConfigStore, orchestrator *orchestrator.Orchestrato
 }
 
 // GetConfig implements GET /v1/config
-func (s *Server) GetConfig(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.Config], error) {
+func (s *BackrestHandler) GetConfig(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.Config], error) {
 	config, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
@@ -54,7 +54,7 @@ func (s *Server) GetConfig(ctx context.Context, req *connect.Request[emptypb.Emp
 }
 
 // SetConfig implements POST /v1/config
-func (s *Server) SetConfig(ctx context.Context, req *connect.Request[v1.Config]) (*connect.Response[v1.Config], error) {
+func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1.Config]) (*connect.Response[v1.Config], error) {
 	existing, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to check current config: %w", err)
@@ -81,7 +81,7 @@ func (s *Server) SetConfig(ctx context.Context, req *connect.Request[v1.Config])
 }
 
 // AddRepo implements POST /v1/config/repo, it includes validation that the repo can be initialized.
-func (s *Server) AddRepo(ctx context.Context, req *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error) {
+func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error) {
 	c, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
@@ -123,7 +123,7 @@ func (s *Server) AddRepo(ctx context.Context, req *connect.Request[v1.Repo]) (*c
 }
 
 // ListSnapshots implements POST /v1/snapshots
-func (s *Server) ListSnapshots(ctx context.Context, req *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error) {
+func (s *BackrestHandler) ListSnapshots(ctx context.Context, req *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error) {
 	query := req.Msg
 	repo, err := s.orchestrator.GetRepo(query.RepoId)
 	if err != nil {
@@ -157,7 +157,7 @@ func (s *Server) ListSnapshots(ctx context.Context, req *connect.Request[v1.List
 	}), nil
 }
 
-func (s *Server) ListSnapshotFiles(ctx context.Context, req *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error) {
+func (s *BackrestHandler) ListSnapshotFiles(ctx context.Context, req *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error) {
 	query := req.Msg
 	repo, err := s.orchestrator.GetRepo(query.RepoId)
 	if err != nil {
@@ -176,7 +176,7 @@ func (s *Server) ListSnapshotFiles(ctx context.Context, req *connect.Request[v1.
 }
 
 // GetOperationEvents implements GET /v1/events/operations
-func (s *Server) GetOperationEvents(ctx context.Context, req *connect.Request[emptypb.Empty], resp *connect.ServerStream[v1.OperationEvent]) error {
+func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.Request[emptypb.Empty], resp *connect.ServerStream[v1.OperationEvent]) error {
 	errorChan := make(chan error)
 	defer close(errorChan)
 	callback := func(oldOp *v1.Operation, newOp *v1.Operation) {
@@ -215,7 +215,7 @@ func (s *Server) GetOperationEvents(ctx context.Context, req *connect.Request[em
 	}
 }
 
-func (s *Server) GetOperations(ctx context.Context, req *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error) {
+func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error) {
 	idCollector := indexutil.CollectAll()
 
 	if req.Msg.LastN != 0 {
@@ -257,7 +257,7 @@ func (s *Server) GetOperations(ctx context.Context, req *connect.Request[v1.GetO
 	}), nil
 }
 
-func (s *Server) IndexSnapshots(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) IndexSnapshots(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
 	_, err := s.orchestrator.GetRepo(req.Msg.Value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.Value, err)
@@ -268,7 +268,7 @@ func (s *Server) IndexSnapshots(ctx context.Context, req *connect.Request[types.
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func (s *Server) Backup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
 	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.Value, err)
@@ -283,7 +283,7 @@ func (s *Server) Backup(ctx context.Context, req *connect.Request[types.StringVa
 	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
-func (s *Server) Forget(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
 	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.Value, err)
@@ -301,7 +301,7 @@ func (s *Server) Forget(ctx context.Context, req *connect.Request[types.StringVa
 	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
-func (s *Server) Prune(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) Prune(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
 	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.Value, err)
@@ -319,7 +319,7 @@ func (s *Server) Prune(ctx context.Context, req *connect.Request[types.StringVal
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func (s *Server) Restore(ctx context.Context, req *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error) {
 	plan, err := s.orchestrator.GetPlan(req.Msg.PlanId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.PlanId, err)
@@ -347,7 +347,7 @@ func (s *Server) Restore(ctx context.Context, req *connect.Request[v1.RestoreSna
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func (s *Server) Unlock(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) Unlock(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
 	repo, err := s.orchestrator.GetRepo(req.Msg.Value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.Value, err)
@@ -360,7 +360,7 @@ func (s *Server) Unlock(ctx context.Context, req *connect.Request[types.StringVa
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func (s *Server) Cancel(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) Cancel(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {
 	if err := s.orchestrator.CancelOperation(req.Msg.Value, v1.OperationStatus_STATUS_USER_CANCELLED); err != nil {
 		return nil, err
 	}
@@ -368,7 +368,7 @@ func (s *Server) Cancel(ctx context.Context, req *connect.Request[types.Int64Val
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func (s *Server) ClearHistory(ctx context.Context, req *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error) {
 	var err error
 	var ids []int64
 	opCollector := func(op *v1.Operation) error {
@@ -397,7 +397,7 @@ func (s *Server) ClearHistory(ctx context.Context, req *connect.Request[v1.Clear
 	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
-func (s *Server) GetBigOperationData(ctx context.Context, req *connect.Request[v1.OperationDataRequest]) (*connect.Response[types.BytesValue], error) {
+func (s *BackrestHandler) GetBigOperationData(ctx context.Context, req *connect.Request[v1.OperationDataRequest]) (*connect.Response[types.BytesValue], error) {
 	data, err := s.oplog.GetBigData(req.Msg.Id, req.Msg.Key)
 	if err != nil {
 		return nil, fmt.Errorf("get operation data: %w", err)
@@ -405,7 +405,7 @@ func (s *Server) GetBigOperationData(ctx context.Context, req *connect.Request[v
 	return connect.NewResponse(&types.BytesValue{Value: data}), nil
 }
 
-func (s *Server) PathAutocomplete(ctx context.Context, path *connect.Request[types.StringValue]) (*connect.Response[types.StringList], error) {
+func (s *BackrestHandler) PathAutocomplete(ctx context.Context, path *connect.Request[types.StringValue]) (*connect.Response[types.StringList], error) {
 	ents, err := os.ReadDir(path.Msg.Value)
 	if errors.Is(err, os.ErrNotExist) {
 		return connect.NewResponse(&types.StringList{}), nil

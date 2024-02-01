@@ -28,7 +28,6 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-js-cron": "^5.0.1",
-    "recoil": "^0.7.7",
     "typescript": "^5.2.2"
   },
   "devDependencies": {

@@ -13,3 +13,6 @@ export const validateForm = async <T>(form: FormInstance<T>) => {
     throw e;
   }
 };
+
+// regex allows alphanumeric, underscore, dash, and dot
+export const namePattern = /^[a-zA-Z0-9_\-\.]+$/;

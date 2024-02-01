@@ -10,18 +10,22 @@ import {
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { Button, Layout, Menu, Spin, theme } from "antd";
-import { configState, fetchConfig } from "../state/config";
-import { useRecoilState } from "recoil";
 import { Config } from "../../gen/ts/v1/config_pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
-import { MainContentArea, useSetContent } from "./MainContentArea";
 import { uiBuildVersion } from "../state/buildcfg";
 import { ActivityBar } from "../components/ActivityBar";
 import { OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { colorForStatus, getStatusForPlan, getStatusForRepo, subscribeToOperations, unsubscribeFromOperations } from "../state/oplog";
 import LogoSvg from "url:../../assets/logo.svg";
 import _ from "lodash";
+import { Code } from "@connectrpc/connect";
+import { LoginModal } from "./LoginModal";
+import { SettingsModal } from "./SettingsModal";
+import { backrestService, setAuthToken } from "../api";
+import { MainContentArea, useSetContent } from "./MainContentArea";
+import { GettingStartedGuide } from "./GettingStartedGuide";
+import { useConfig } from "../components/ConfigProvider";
 
 const { Header, Sider } = Layout;
 
@@ -29,21 +33,38 @@ export const App: React.FC = () => {
   const {
     token: { colorBgContainer, colorTextLightSolid },
   } = theme.useToken();
-
-  const [config, setConfig] = useRecoilState(configState);
   const alertApi = useAlertApi()!;
   const showModal = useShowModal();
   const setContent = useSetContent();
+  const [config, setConfig] = useConfig();
 
   useEffect(() => {
     showModal(<Spin spinning={true} fullscreen />);
 
-    fetchConfig()
+    backrestService.getConfig({})
       .then((config) => {
         setConfig(config);
-        showModal(null);
+        if (!config.auth || config.auth.users.length === 0) {
+          showModal(<SettingsModal />);
+        } else {
+          showModal(null);
+        }
       })
       .catch((err) => {
+        if (err.code) {
+          const code = err.code;
+          if (code === Code.Unauthenticated) {
+            showModal(<LoginModal />)
+            return;
+          } else if (code === Code.Unavailable || code === Code.DeadlineExceeded) {
+            alertApi.error(
+              "Failed to fetch initial config, typically this means the UI could not connect to the backend",
+              0
+            );
+            return;
+          }
+        }
+
         alertApi.error(err.message, 0);
         alertApi.error(
           "Failed to fetch initial config, typically this means the UI could not connect to the backend",
@@ -51,6 +72,21 @@ export const App: React.FC = () => {
         );
       });
   }, []);
+
+  const showGettingStarted = () => {
+    setContent(<GettingStartedGuide />, [{
+      title: "Getting Started",
+    }]);
+  }
+
+  useEffect(() => {
+    if (config === null) {
+      setContent(<p>Loading...</p>, []);
+    } else {
+      showGettingStarted();
+    }
+  }, [config === null]);
+
 
   const items = getSidenavItems(config);
 
@@ -67,7 +103,7 @@ export const App: React.FC = () => {
       >
         <a
           style={{ color: colorTextLightSolid }}
-          onClick={() => setContent(null, [])}
+          onClick={showGettingStarted}
         >
           <img src={LogoSvg} style={{ height: "30px", color: "white", marginBottom: "-8px", paddingRight: "10px", }} />
         </a>
@@ -81,9 +117,19 @@ export const App: React.FC = () => {
         </h1>
         <h1 style={{ position: "absolute", right: "20px" }}>
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
-            {config.host ? "Host: " + config.host : undefined}
+            {config && config.host ? "Host: " + config.host : undefined}
           </small>
         </h1>
+        <Button
+          type="text"
+          style={{ position: "absolute", right: "10px" }}
+          onClick={() => {
+            setAuthToken("");
+            window.location.reload();
+          }}
+        >
+          Logout
+        </Button>
       </Header>
       <Layout>
         <Sider width={300} style={{ background: colorBgContainer }}>
@@ -206,6 +252,15 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
       icon: React.createElement(DatabaseOutlined),
       label: "Repositories",
       children: repos,
+    },
+    {
+      key: "settings",
+      icon: React.createElement(SettingOutlined),
+      label: "Settings",
+      onClick: async () => {
+        const { SettingsModal } = await import("./SettingsModal");
+        showModal(<SettingsModal />);
+      }
     },
   ];
 };

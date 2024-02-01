@@ -14,7 +14,7 @@ message Config {
 
   repeated Repo repos = 3 [json_name="repos"];
   repeated Plan plans = 4 [json_name="plans"];
-  repeated User users = 5 [json_name="users"];
+  Auth auth = 5 [json_name="auth"];
 }
 
 message Repo {
@@ -56,13 +56,6 @@ message PrunePolicy {
   int32 max_unused_bytes = 101 [json_name="maxUnusedBytes"]; // max number of bytes that can be unused before prune is run.
 }
 
-message User {
-  string name = 1;
-  oneof password {
-    string password_bcrypt = 2;
-  }
-}
-
 message Hook {
   enum Condition {
     CONDITION_UNKNOWN = 0;
@@ -102,3 +95,13 @@ message Hook {
   }
 }
 
+message Auth {
+  repeated User users = 2 [json_name="users"]; // users to allow access to the UI.
+}
+
+message User {
+  string name = 1 [json_name="name"];
+  oneof password {
+    string password_bcrypt = 2 [json_name="passwordBcrypt"];
+  }
+}
