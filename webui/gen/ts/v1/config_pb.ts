@@ -37,9 +37,9 @@ export class Config extends Message<Config> {
   plans: Plan[] = [];
 
   /**
-   * @generated from field: repeated v1.User users = 5;
+   * @generated from field: v1.Auth auth = 5;
    */
-  users: User[] = [];
+  auth?: Auth;
 
   constructor(data?: PartialMessage<Config>) {
     super();
@@ -53,7 +53,7 @@ export class Config extends Message<Config> {
     { no: 2, name: "host", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "repos", kind: "message", T: Repo, repeated: true },
     { no: 4, name: "plans", kind: "message", T: Plan, repeated: true },
-    { no: 5, name: "users", kind: "message", T: User, repeated: true },
+    { no: 5, name: "auth", kind: "message", T: Auth },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Config {
@@ -400,55 +400,6 @@ export class PrunePolicy extends Message<PrunePolicy> {
 }
 
 /**
- * @generated from message v1.User
- */
-export class User extends Message<User> {
-  /**
-   * @generated from field: string name = 1;
-   */
-  name = "";
-
-  /**
-   * @generated from oneof v1.User.password
-   */
-  password: {
-    /**
-     * @generated from field: string password_bcrypt = 2;
-     */
-    value: string;
-    case: "passwordBcrypt";
-  } | { case: undefined; value?: undefined } = { case: undefined };
-
-  constructor(data?: PartialMessage<User>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "v1.User";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "password_bcrypt", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "password" },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): User {
-    return new User().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): User {
-    return new User().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): User {
-    return new User().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: User | PlainMessage<User> | undefined, b: User | PlainMessage<User> | undefined): boolean {
-    return proto3.util.equals(User, a, b);
-  }
-}
-
-/**
  * @generated from message v1.Hook
  */
 export class Hook extends Message<Hook> {
@@ -739,6 +690,94 @@ export class Hook_Gotify extends Message<Hook_Gotify> {
 
   static equals(a: Hook_Gotify | PlainMessage<Hook_Gotify> | undefined, b: Hook_Gotify | PlainMessage<Hook_Gotify> | undefined): boolean {
     return proto3.util.equals(Hook_Gotify, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.Auth
+ */
+export class Auth extends Message<Auth> {
+  /**
+   * users to allow access to the UI.
+   *
+   * @generated from field: repeated v1.User users = 2;
+   */
+  users: User[] = [];
+
+  constructor(data?: PartialMessage<Auth>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.Auth";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 2, name: "users", kind: "message", T: User, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Auth {
+    return new Auth().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Auth {
+    return new Auth().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Auth {
+    return new Auth().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Auth | PlainMessage<Auth> | undefined, b: Auth | PlainMessage<Auth> | undefined): boolean {
+    return proto3.util.equals(Auth, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.User
+ */
+export class User extends Message<User> {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name = "";
+
+  /**
+   * @generated from oneof v1.User.password
+   */
+  password: {
+    /**
+     * @generated from field: string password_bcrypt = 2;
+     */
+    value: string;
+    case: "passwordBcrypt";
+  } | { case: undefined; value?: undefined } = { case: undefined };
+
+  constructor(data?: PartialMessage<User>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.User";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "password_bcrypt", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "password" },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): User {
+    return new User().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): User {
+    return new User().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): User {
+    return new User().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: User | PlainMessage<User> | undefined, b: User | PlainMessage<User> | undefined): boolean {
+    return proto3.util.equals(User, a, b);
   }
 }
 

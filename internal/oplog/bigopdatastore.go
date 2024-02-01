@@ -20,11 +20,11 @@ func NewBigOpDataStore(path string) *BigOpDataStore {
 }
 
 func (s *BigOpDataStore) resolvePath(opId int64) string {
-	return s.path + "/" + strconv.FormatInt(opId, 16)
+	return s.path + "/" + strconv.FormatInt(opId&0xFF, 16) + "/" + strconv.FormatInt(opId, 16)
 }
 
 func (s *BigOpDataStore) DeleteOperationData(opId int64) error {
-	dir := s.path + "/" + strconv.FormatInt(opId, 16)
+	dir := s.resolvePath(opId)
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {

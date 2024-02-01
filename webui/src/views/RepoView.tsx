@@ -1,9 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Repo } from "../../gen/ts/v1/config_pb";
 import { Col, Empty, Flex, Row, Spin, TabsProps, Tabs, Tooltip, Typography } from "antd";
-import { useRecoilValue } from "recoil";
-import { configState } from "../state/config";
-import { useAlertApi } from "../components/Alerts";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY, STATS_OPERATION_HISTORY } from "../constants";
@@ -15,11 +12,13 @@ import { Operation } from "../../gen/ts/v1/operations_pb";
 import { backrestService } from "../api";
 import { StringValue } from "@bufbuild/protobuf";
 import { SpinButton } from "../components/SpinButton";
+import { ConfigContext } from "antd/es/config-provider";
+import { useConfig } from "../components/ConfigProvider";
 
 export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
-  const alertsApi = useAlertApi()!;
   const [loading, setLoading] = useState(true);
   const [statsOperation, setStatsOperation] = useState<Operation | null>(null);
+  const [config, setConfig] = useConfig();
 
   useEffect(() => {
     setLoading(true);
@@ -46,10 +45,14 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   }
 
   // Gracefully handle deletions by checking if the plan is still in the config.
-  const config = useRecoilValue(configState);
-  let repoInConfig = config.repos?.find((p) => p.id === repo.id);
+  let repoInConfig = config?.repos?.find((r) => r.id === repo.id);
   if (!repoInConfig) {
-    return <p>Repo was deleted.</p>;
+    return <>
+      Repo was deleted
+      <pre>
+        {JSON.stringify(config, null, 2)}
+      </pre>
+    </>
   }
   repo = repoInConfig;
 

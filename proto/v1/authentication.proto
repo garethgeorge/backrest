@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package v1;
+
+option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
+
+import "v1/config.proto";
+import "types/value.proto";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
+
+service Authentication {
+  rpc Login(LoginRequest) returns (LoginResponse) {}
+  rpc HashPassword(types.StringValue) returns (types.StringValue) {}
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string token = 1; // JWT token
+}

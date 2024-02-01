@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Hook, Hook_Command, Hook_Condition, Hook_Discord, Hook_Gotify, Hook_Webhook } from '../../gen/ts/v1/config_pb';
 import { Button, Card, Collapse, CollapseProps, Form, FormListFieldData, Input, Popover, Radio, Row, Select, Tooltip } from 'antd';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { Rule } from 'antd/es/form';
 
 export const hooksListTooltipText = <>
   Hooks are actions that can execute on backup lifecycle events.
@@ -141,36 +142,36 @@ const HookBuilder = ({ field, hook }: { field: FormListFieldData, hook: Hook }) 
   switch (hook.action.case) {
     case "actionDiscord":
       return <>
-        <Form.Item name={[field.name, "action", "value", "webhookUrl"]} required={true}>
+        <Form.Item name={[field.name, "action", "value", "webhookUrl"]} rules={[requiredField("webhook URL is required")]} >
           <Input addonBefore={<div style={{ width: "8em" }}>Discord Webhook</div>} />
-        </Form.Item>
+        </Form.Item >
         Text Template:
-        <Form.Item name={[field.name, "action", "value", "template"]} required={true}>
+        <Form.Item name={[field.name, "action", "value", "template"]} >
           <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
-        </Form.Item>
+        </Form.Item >
       </>
     case "actionCommand":
       return <>
         <Tooltip title="Script to execute. Commands will not work in the docker build of Backrest.">
           Script:
         </Tooltip>
-        <Form.Item name={[field.name, "action", "value", "command"]}>
+        <Form.Item name={[field.name, "action", "value", "command"]} rules={[requiredField("command is required")]}>
           <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
         </Form.Item>
       </>
     case "actionGotify":
       return <>
-        <Form.Item name={[field.name, "action", "value", "baseUrl"]} required={true}>
+        <Form.Item name={[field.name, "action", "value", "baseUrl"]} rules={[requiredField("gotify base URL is required"), { type: "url" }]}>
           <Input addonBefore={<div style={{ width: "8em" }}>Gotify Base URL</div>} />
-        </Form.Item>
-        <Form.Item name={[field.name, "action", "value", "token"]} required={true}>
+        </Form.Item >
+        <Form.Item name={[field.name, "action", "value", "token"]} rules={[requiredField("gotify token is required")]}>
           <Input addonBefore={<div style={{ width: "8em" }}>Gotify Token</div>} />
         </Form.Item>
-        <Form.Item name={[field.name, "action", "value", "titleTemplate"]} required={true}>
+        <Form.Item name={[field.name, "action", "value", "titleTemplate"]} rules={[requiredField("gotify title template is required")]}>
           <Input addonBefore={<div style={{ width: "8em" }}>Title Template</div>} />
         </Form.Item>
         Text Template:
-        <Form.Item name={[field.name, "action", "value", "template"]} required={true}>
+        <Form.Item name={[field.name, "action", "value", "template"]}>
           <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
         </Form.Item>
       </>
@@ -178,3 +179,5 @@ const HookBuilder = ({ field, hook }: { field: FormListFieldData, hook: Hook }) 
       return <p>Unknown hook {hook.action.case}</p>
   }
 }
+
+const requiredField = (message: string, extra?: Rule) => ({ required: true, message: message });

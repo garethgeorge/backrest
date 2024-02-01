@@ -1,10 +1,11 @@
-import { Collapse, Divider, Typography } from "antd";
-import React from "react";
-import { useRecoilValue } from "recoil";
-import { configState } from "../state/config";
+import { Collapse, Divider, Spin, Typography } from "antd";
+import React, { useEffect, useState } from "react";
+import { backrestService } from "../api";
+import { useConfig } from "../components/ConfigProvider";
+import { Config } from "../../gen/ts/v1/config_pb";
 
 export const GettingStartedGuide = () => {
-  const config = useRecoilValue(configState);
+  const config = useConfig()[0];
 
   return (
     <>
@@ -46,11 +47,11 @@ export const GettingStartedGuide = () => {
             {
               key: "1",
               label: "Config JSON hidden for security",
-              children: (
-                <Typography>
-                  <pre>{JSON.stringify(config, null, 2)}</pre>
-                </Typography>
-              ),
+              children: config ? <Typography>
+                <pre>{config.toJsonString({
+                  prettySpaces: 2,
+                })}</pre>
+              </Typography> : <Spin />,
             },
           ]}
         />
