@@ -19,46 +19,34 @@ import { Repo } from "../../gen/ts/v1/config_pb";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { useAlertApi } from "../components/Alerts";
-import {
-  addRepo,
-  configState,
-  fetchConfig,
-  updateConfig,
-} from "../state/config";
-import { useRecoilState } from "recoil";
-import { validateForm } from "../lib/formutil";
+import { namePattern, validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
 import {
   HooksFormList,
   hooksListTooltipText,
 } from "../components/HooksFormList";
-import { isDevBuild } from "../state/buildcfg";
+import { ConfirmButton } from "../components/SpinButton";
+import { useConfig } from "../components/ConfigProvider";
 
 export const AddRepoModal = ({
   template,
 }: {
   template: Partial<Repo> | null;
 }) => {
-  const [config, setConfig] = useRecoilState(configState);
-  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
+  const [config, setConfig] = useConfig();
   const [form] = Form.useForm<Repo>();
 
-  const handleDestroy = async () => {
-    if (!deleteConfirmed) {
-      setDeleteConfirmed(true);
-      setTimeout(() => {
-        setDeleteConfirmed(false);
-      }, 2000);
-      return;
-    }
+  if (!config) {
+    return null;
+  }
 
+  const handleDestroy = async () => {
     setConfirmLoading(true);
 
     try {
-      let config = await fetchConfig();
       config.repos = config.repos || [];
 
       if (!template) {
@@ -81,7 +69,7 @@ export const AddRepoModal = ({
       config.repos.splice(idx, 1);
 
       // Update config and notify success.
-      setConfig(await updateConfig(config));
+      setConfig(await backrestService.setConfig(config));
       showModal(null);
       alertsApi.success(
         "Deleted repo " +
@@ -92,7 +80,6 @@ export const AddRepoModal = ({
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);
     } finally {
-      setDeleteConfirmed(false);
       setConfirmLoading(false);
     }
   };
@@ -105,14 +92,13 @@ export const AddRepoModal = ({
 
       if (template !== null) {
         // We are in the edit repo flow, update the repo in the config
-        let config = await fetchConfig();
         const idx = config.repos!.findIndex((r) => r.id === template!.id);
         if (idx === -1) {
           alertsApi.error("Can't update repo, not found");
           return;
         }
         config.repos![idx] = new Repo(repo);
-        setConfig(await updateConfig(config));
+        setConfig(await backrestService.setConfig(config));
         showModal(null);
         alertsApi.success("Updated repo " + repo.uri);
 
@@ -121,7 +107,7 @@ export const AddRepoModal = ({
         await backrestService.listSnapshots({ repoId: repo.id });
       } else {
         // We are in the create repo flow, create the new repo via the service
-        setConfig(await addRepo(repo));
+        setConfig(await backrestService.addRepo(repo));
         showModal(null);
         alertsApi.success("Added repo " + repo.uri);
       }
@@ -148,15 +134,15 @@ export const AddRepoModal = ({
             Cancel
           </Button>,
           template != null ? (
-            <Button
+            <ConfirmButton
               key="delete"
               type="primary"
               danger
-              loading={confirmLoading}
-              onClick={handleDestroy}
+              onClickAsync={handleDestroy}
+              confirmTitle="Confirm Delete"
             >
-              {deleteConfirmed ? "Confirm delete?" : "Delete"}
-            </Button>
+              Delete
+            </ConfirmButton>
           ) : null,
           <Button
             key="submit"
@@ -173,6 +159,7 @@ export const AddRepoModal = ({
           form={form}
           labelCol={{ span: 6 }}
           wrapperCol={{ span: 16 }}
+          disabled={confirmLoading}
         >
           {/* Repo.id */}
           <Form.Item<Repo>
@@ -195,6 +182,10 @@ export const AddRepoModal = ({
                 },
                 message: "Repo with name already exists",
               },
+              {
+                pattern: namePattern,
+                message: "Name must be alphanumeric with dashes or underscores as separators",
+              }
             ]}
           >
             <Input

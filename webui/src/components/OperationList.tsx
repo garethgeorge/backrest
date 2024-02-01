@@ -144,8 +144,8 @@ export const OperationList = ({
         );
       }}
       pagination={
-        backups.length > 50
-          ? { position: "both", align: "center", defaultPageSize: 50 }
+        backups.length > 10
+          ? { position: "both", align: "center", defaultPageSize: 10 }
           : undefined
       }
     />

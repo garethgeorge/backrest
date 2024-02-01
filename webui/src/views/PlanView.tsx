@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plan } from "../../gen/ts/v1/config_pb";
-import { Button, Flex, Tabs, Tooltip, Typography } from "antd";
-import { useRecoilValue } from "recoil";
-import { configState } from "../state/config";
+import { Flex, Tabs, Tooltip, Typography } from "antd";
 import { useAlertApi } from "../components/Alerts";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
@@ -13,14 +11,6 @@ import { SpinButton } from "../components/SpinButton";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const alertsApi = useAlertApi()!;
-
-  // Gracefully handle deletions by checking if the plan is still in the config.
-  const config = useRecoilValue(configState);
-  let planInConfig = config.plans?.find((p) => p.id === plan.id);
-  if (!planInConfig) {
-    return <p>Plan was deleted.</p>;
-  }
-  plan = planInConfig;
 
   const handleBackupNow = async () => {
     try {

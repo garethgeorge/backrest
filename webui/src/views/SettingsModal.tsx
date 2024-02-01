@@ -16,42 +16,50 @@ import {
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import { Auth, Config, User } from "../../gen/ts/v1/config_pb";
-import { useRecoilState } from "recoil";
-import { configState, updateConfig } from "../state/config";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { useAlertApi } from "../components/Alerts";
-import { validateForm } from "../lib/formutil";
-import { authenticationService } from "../api";
-import { StringValue } from "../../gen/ts/types/value_pb";
+import { namePattern, validateForm } from "../lib/formutil";
+import { useConfig } from "../components/ConfigProvider";
+import { authenticationService, backrestService } from "../api";
 
-interface SettingsFormData {
-  users: User[],
+interface FormData {
+  auth: {
+    users: ({
+      name: string;
+      passwordBcrypt?: string;
+      password?: string;
+    })[];
+  }
 }
 
 export const SettingsModal = () => {
-  let [config, setConfig] = useRecoilState(configState);
+  let [config, setConfig] = useConfig();
+  const configObj = JSON.parse(config!.toJsonString());
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
-  const [form] = Form.useForm<SettingsFormData>();
-  form.setFieldsValue({
-    users: config.auth?.users || [],
-  });
+  const [form] = Form.useForm<FormData>();
+
+  if (!config) {
+    return null;
+  }
 
   const handleOk = async () => {
     try {
-      let formData = await validateForm<SettingsFormData>(form);
+      // Validate form
+      let formData = await validateForm(form);
 
-      let copy = config.clone();
-      copy.auth ||= new Auth();
-      copy.auth.users = formData.users.map((u) => {
-        return new User({
-          name: u.name,
-          password: u.password,
-        });
-      });
+      for (const user of formData.auth?.users) {
+        if (user.password) {
+          const hash = await authenticationService.hashPassword({ value: user.password });
+          user.passwordBcrypt = hash.value;
+          delete user.password;
+        }
+      }
 
-      // Update config and notify success.
-      setConfig(await updateConfig(copy));
+      // Update configuration
+      let newConfig = config!.clone().fromJson(formData as any, { ignoreUnknownFields: false });
+
+      setConfig(await backrestService.setConfig(newConfig));
       alertsApi.success("Settings updated", 5);
       setTimeout(() => {
         window.location.reload();
@@ -94,7 +102,7 @@ export const SettingsModal = () => {
         >
           <Form.Item label="Users" required={true}>
             <Form.List
-              name={["users"]}
+              name={["auth", "users"]}
               rules={[
                 {
                   validator: async (_, users) => {
@@ -104,7 +112,7 @@ export const SettingsModal = () => {
                   },
                 },
               ]}
-              initialValue={config.auth?.users || []}
+              initialValue={configObj.auth?.users || []}
             >
               {(fields, { add, remove }) => (
                 <>
@@ -113,29 +121,17 @@ export const SettingsModal = () => {
                       <Col span={11}>
                         <Form.Item
                           name={[field.name, "name"]}
-                          rules={[{ required: true }]}
+                          rules={[{ required: true }, { pattern: namePattern, message: "Name must be alphanumeric with dashes or underscores as separators" }]}
                         >
                           <Input placeholder="Username" />
                         </Form.Item>
                       </Col>
                       <Col span={11}>
                         <Form.Item
-                          name={[field.name, "password", "value"]}
+                          name={[field.name, "password"]}
                           rules={[{ required: true }]}
                         >
-                          <Input.Password placeholder="Password" onFocus={(e) => {
-                            form.setFieldValue(["users", field.name], new User({
-                              name: form.getFieldValue(["users", field.name, "name"]),
-                              password: {
-                                case: "passwordBcrypt",
-                                value: "",
-                              },
-                            }));
-                          }} onBlur={(e) => {
-                            authenticationService.hashPassword(new StringValue({ value: e.target.value })).then((res) => {
-                              form.setFieldValue(["users", field.name, "password", "value"], res.value);
-                            })
-                          }} />
+                          <Input.Password placeholder="Password" />
                         </Form.Item>
                       </Col>
                       <Col span={2}>

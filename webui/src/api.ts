@@ -4,8 +4,10 @@ import { createPromiseClient } from "@connectrpc/connect";
 import { Backrest } from "../gen/ts/v1/service_connect";
 import { Authentication } from "../gen/ts/v1/authentication_connect";
 
+const tokenKey = "backrest-ui-authToken";
+
 export const setAuthToken = (token: string) => {
-  localStorage.setItem("backrest-ui-authToken", token);
+  localStorage.setItem(tokenKey, token);
 };
 
 const fetch = (
@@ -13,10 +15,10 @@ const fetch = (
   init?: RequestInit
 ): Promise<Response> => {
   const headers = new Headers(init?.headers);
-  headers.set(
-    "Authorization",
-    "Bearer " + localStorage.getItem("backrest-ui-authToken")
-  );
+  let token = localStorage.getItem(tokenKey);
+  if (token && token !== "") {
+    headers.set("Authorization", "Bearer " + token);
+  }
   init = { ...init, headers };
   return window.fetch(input, init);
 };

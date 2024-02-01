@@ -28,6 +28,7 @@ const (
 )
 
 var ErrNotExist = errors.New("operation does not exist")
+var ErrStopIteration = errors.New("stop iteration")
 
 var (
 	SystemBucket        = []byte("oplog.system")       // system stores metadata
@@ -373,6 +374,9 @@ func (o *OpLog) forOpsByIds(tx *bolt.Tx, ids []int64, do func(*v1.Operation) err
 			return err
 		}
 		if err := do(op); err != nil {
+			if err == ErrStopIteration {
+				break
+			}
 			return err
 		}
 	}

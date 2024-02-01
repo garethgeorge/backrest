@@ -8,6 +8,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"go.uber.org/zap"
 )
@@ -41,13 +42,10 @@ func (t *StatsTask) Name() string {
 
 func (t *StatsTask) shouldRun() (bool, error) {
 	var bytesSinceLastStat int64 = -1
-	if err := t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.CollectLastN(50), func(op *v1.Operation) error {
+	if err := t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationStats); ok {
-			bytesSinceLastStat = 0
+			return oplog.ErrStopIteration
 		} else if backup, ok := op.Op.(*v1.Operation_OperationBackup); ok && backup.OperationBackup.LastStatus != nil {
-			if bytesSinceLastStat == -1 {
-				return nil
-			}
 			if summary, ok := backup.OperationBackup.LastStatus.Entry.(*v1.BackupProgressEntry_Summary); ok {
 				bytesSinceLastStat += summary.Summary.DataAdded
 			}

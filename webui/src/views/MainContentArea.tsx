@@ -1,50 +1,59 @@
 import { Breadcrumb, Layout, Spin, theme } from "antd";
 import { Content } from "antd/es/layout/layout";
-import React from "react";
-import { atom, useRecoilValue, useSetRecoilState } from "recoil";
-import { GettingStartedGuide } from "./GettingStartedGuide";
+import React, { useState } from "react";
 
 interface Breadcrumb {
   title: string;
   onClick?: () => void;
 }
 
-const contentPanel = atom<React.ReactNode | null>({
-  key: "ui.content",
-  default: null,
-});
+interface ContentAreaState {
+  content: React.ReactNode | null;
+  breadcrumbs: Breadcrumb[];
+}
 
-const breadcrumbs = atom<Breadcrumb[]>({
-  key: "ui.breadcrumbs",
-  default: [],
-});
+type ContentAreaCtx = [ContentAreaState, (content: React.ReactNode, breadcrumbs: Breadcrumb[]) => void];
 
-export const useSetContent = () => {
-  const setContent = useSetRecoilState(contentPanel);
-  const setBreadcrumbs = useSetRecoilState(breadcrumbs);
+const ContentAreaContext = React.createContext<ContentAreaCtx>([{
+  content: null,
+  breadcrumbs: [],
+}, (content, breadcrumbs) => { }]);
 
-  return (content: React.ReactNode | null, breadcrumbs: Breadcrumb[]) => {
-    setContent(content);
-    setBreadcrumbs(breadcrumbs);
-  };
+export const MainContentProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
+  const [state, setState] = useState<ContentAreaState>({
+    content: null,
+    breadcrumbs: [],
+  });
+
+  return (
+    <>
+      <ContentAreaContext.Provider value={[state, (content, breadcrumbs) => {
+        setState({ content, breadcrumbs });
+      }]}>
+        {children}
+      </ContentAreaContext.Provider >
+    </>
+  );
 };
 
+export const useSetContent = () => {
+  const context = React.useContext(ContentAreaContext);
+  return context[1];
+}
+
 export const MainContentArea = () => {
+  const { breadcrumbs, content } = React.useContext(ContentAreaContext)[0];
   const {
     token: { colorBgContainer },
   } = theme.useToken();
 
-  let content = useRecoilValue(contentPanel);
-  let crumbs = useRecoilValue(breadcrumbs);
-
-  if (!content) {
-    content = <GettingStartedGuide />;
-    crumbs = [{ title: "Getting started" }];
-  }
-
   return (
     <Layout style={{ padding: "0 24px 24px" }}>
-      <Breadcrumb style={{ margin: "16px 0" }} items={[...crumbs]}></Breadcrumb>
+      <Breadcrumb style={{ margin: "16px 0" }} items={[...(breadcrumbs || [])]}></Breadcrumb>
       <Content
         style={{
           padding: 24,
@@ -57,4 +66,4 @@ export const MainContentArea = () => {
       </Content>
     </Layout>
   );
-};
+}

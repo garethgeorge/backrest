@@ -9,6 +9,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"go.uber.org/zap"
 )
@@ -84,9 +85,10 @@ func (t *PruneTask) shouldRun(now time.Time) (bool, error) {
 
 func (t *PruneTask) getNextPruneTime(repo *RepoOrchestrator, policy *v1.PrunePolicy) (time.Time, error) {
 	var lastPruneTime time.Time
-	t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.CollectLastN(100), func(op *v1.Operation) error {
+	t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationPrune); ok {
 			lastPruneTime = time.Unix(0, op.UnixTimeStartMs*int64(time.Millisecond))
+			return oplog.ErrStopIteration
 		}
 		return nil
 	})
