@@ -51,7 +51,7 @@ service Backrest {
   rpc Cancel(types.Int64Value) returns (google.protobuf.Empty) {}
 
   // GetBigOperationData returns the keyed large data for the given operation.
-  rpc GetBigOperationData(OperationDataRequest) returns (types.BytesValue) {}
+  rpc GetLogs(LogDataRequest) returns (types.BytesValue) {}
 
   // Clears the history of operations
   rpc ClearHistory(ClearHistoryRequest) returns (google.protobuf.Empty) {}
@@ -97,9 +97,8 @@ message ListSnapshotFilesResponse {
   repeated LsEntry entries = 2;
 }
 
-message OperationDataRequest {
-  int64 id = 1; // operation id
-  string key = 2; // data key
+message LogDataRequest {
+  string ref = 1;
 }
 
 message LsEntry {

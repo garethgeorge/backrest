@@ -21,6 +21,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
+	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"github.com/mattn/go-colorable"
 	"go.etcd.io/bbolt"
 	"go.uber.org/zap"
@@ -63,8 +64,14 @@ func main() {
 	}
 	defer oplog.Close()
 
+	// Create rotating log storage
+	logStore := rotatinglog.NewRotatingLog(path.Join(config.DataDir(), "rotatinglogs"), 30)
+	if err != nil {
+		zap.S().Fatalf("Error creating rotating log storage: %v", err)
+	}
+
 	// Create orchestrator and start task loop.
-	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, oplog)
+	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, oplog, logStore)
 	if err != nil {
 		zap.S().Fatalf("Error creating orchestrator: %v", err)
 	}
@@ -80,6 +87,7 @@ func main() {
 		configStore,
 		orchestrator,
 		oplog,
+		logStore,
 	)
 
 	apiAuthenticationHandler := api.NewAuthenticationHandler(authenticator)

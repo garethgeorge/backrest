@@ -627,11 +627,11 @@ export class OperationRunHook extends Message<OperationRunHook> {
   name = "";
 
   /**
-   * reference to the output of the hook.
+   * logref of the hook's output.
    *
-   * @generated from field: string output_ref = 2;
+   * @generated from field: string output_logref = 2;
    */
-  outputRef = "";
+  outputLogref = "";
 
   constructor(data?: PartialMessage<OperationRunHook>) {
     super();
@@ -642,7 +642,7 @@ export class OperationRunHook extends Message<OperationRunHook> {
   static readonly typeName = "v1.OperationRunHook";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "output_ref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationRunHook {

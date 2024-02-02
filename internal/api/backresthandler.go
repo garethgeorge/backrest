@@ -19,6 +19,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
+	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -30,15 +31,17 @@ type BackrestHandler struct {
 	config       config.ConfigStore
 	orchestrator *orchestrator.Orchestrator
 	oplog        *oplog.OpLog
+	logStore     *rotatinglog.RotatingLog
 }
 
 var _ v1connect.BackrestHandler = &BackrestHandler{}
 
-func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog) *BackrestHandler {
+func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) *BackrestHandler {
 	s := &BackrestHandler{
 		config:       config,
 		orchestrator: orchestrator,
 		oplog:        oplog,
+		logStore:     logStore,
 	}
 
 	return s
@@ -397,10 +400,10 @@ func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request
 	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
-func (s *BackrestHandler) GetBigOperationData(ctx context.Context, req *connect.Request[v1.OperationDataRequest]) (*connect.Response[types.BytesValue], error) {
-	data, err := s.oplog.GetBigData(req.Msg.Id, req.Msg.Key)
+func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error) {
+	data, err := s.logStore.Read(req.Msg.GetRef())
 	if err != nil {
-		return nil, fmt.Errorf("get operation data: %w", err)
+		return nil, fmt.Errorf("get log data %v: %w", req.Msg.GetRef(), err)
 	}
 	return connect.NewResponse(&types.BytesValue{Value: data}), nil
 }

@@ -104,7 +104,7 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 		return fmt.Errorf("couldn't get repo %q: %w", plan.Repo, err)
 	}
 
-	hook.ExecuteHooks(orchestrator.OpLog, repo.Config(), plan, "", []v1.Hook_Condition{
+	orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, "", []v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_START,
 	}, hook.HookVars{
 		Task: t.Name(),
@@ -137,7 +137,7 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 	}
 	if err != nil {
 		vars.Error = err.Error()
-		hook.ExecuteHooks(orchestrator.OpLog, repo.Config(), plan, "", []v1.Hook_Condition{
+		orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, "", []v1.Hook_Condition{
 			v1.Hook_CONDITION_SNAPSHOT_ERROR, v1.Hook_CONDITION_ANY_ERROR,
 		}, vars)
 
@@ -148,7 +148,7 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 		op.DisplayMessage = "Partial backup, some files may not have been read completely."
 	}
 
-	hook.ExecuteHooks(orchestrator.OpLog, repo.Config(), plan, summary.SnapshotId, []v1.Hook_Condition{
+	orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, summary.SnapshotId, []v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_END,
 	}, vars)
 

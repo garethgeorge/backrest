@@ -12,6 +12,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
@@ -20,9 +21,21 @@ var (
 	defaultTemplate = `{{ .Summary }}`
 )
 
+type HookExecutor struct {
+	oplog    *oplog.OpLog
+	logStore *rotatinglog.RotatingLog
+}
+
+func NewHookExecutor(oplog *oplog.OpLog, bigOutputStore *rotatinglog.RotatingLog) *HookExecutor {
+	return &HookExecutor{
+		oplog:    oplog,
+		logStore: bigOutputStore,
+	}
+}
+
 // ExecuteHooks schedules tasks for the hooks subscribed to the given event. The vars map is used to substitute variables
 // Hooks are pulled both from the provided plan and from the repo config.
-func ExecuteHooks(oplog *oplog.OpLog, repo *v1.Repo, plan *v1.Plan, snapshotId string, events []v1.Hook_Condition, vars HookVars) {
+func (e *HookExecutor) ExecuteHooks(repo *v1.Repo, plan *v1.Plan, snapshotId string, events []v1.Hook_Condition, vars HookVars) {
 	operationBase := v1.Operation{
 		Status:     v1.OperationStatus_STATUS_INPROGRESS,
 		PlanId:     plan.Id,
@@ -51,7 +64,7 @@ func ExecuteHooks(oplog *oplog.OpLog, repo *v1.Repo, plan *v1.Plan, snapshotId s
 			},
 		}
 		zap.L().Info("Running hook", zap.String("plan", plan.Id), zap.Int64("opId", operation.Id), zap.String("hook", name))
-		executeHook(oplog, operation, h, event, vars)
+		e.executeHook(operation, h, event, vars)
 	}
 
 	for idx, hook := range plan.GetHooks() {
@@ -70,7 +83,7 @@ func ExecuteHooks(oplog *oplog.OpLog, repo *v1.Repo, plan *v1.Plan, snapshotId s
 			},
 		}
 		zap.L().Info("Running hook", zap.String("plan", plan.Id), zap.Int64("opId", operation.Id), zap.String("hook", name))
-		executeHook(oplog, operation, (*Hook)(hook), event, vars)
+		e.executeHook(operation, h, event, vars)
 	}
 }
 
@@ -83,8 +96,8 @@ func firstMatchingCondition(hook *Hook, events []v1.Hook_Condition) v1.Hook_Cond
 	return v1.Hook_CONDITION_UNKNOWN
 }
 
-func executeHook(oplog *oplog.OpLog, op *v1.Operation, hook *Hook, event v1.Hook_Condition, vars HookVars) {
-	if err := oplog.Add(op); err != nil {
+func (e *HookExecutor) executeHook(op *v1.Operation, hook *Hook, event v1.Hook_Condition, vars HookVars) {
+	if err := e.oplog.Add(op); err != nil {
 		zap.S().Errorf("execute hook: add operation: %v", err)
 		return
 	}
@@ -108,13 +121,15 @@ func executeHook(oplog *oplog.OpLog, op *v1.Operation, hook *Hook, event v1.Hook
 		op.Status = v1.OperationStatus_STATUS_SUCCESS
 	}
 
-	if err := oplog.SetBigData(op.Id, "hook.log", output.Bytes()); err != nil {
-		zap.S().Errorf("execute hook: set big data %q: %v", "hook.log", err)
+	outputRef, err := e.logStore.Write(output.Bytes())
+	if err != nil {
+		zap.S().Errorf("execute hook: write log: %v", err)
+		return
 	}
-	op.Op.(*v1.Operation_OperationRunHook).OperationRunHook.OutputRef = "hook.log"
+	op.Op.(*v1.Operation_OperationRunHook).OperationRunHook.OutputLogref = outputRef
 
 	op.UnixTimeEndMs = curTimeMs()
-	if err := oplog.Update(op); err != nil {
+	if err := e.oplog.Update(op); err != nil {
 		zap.S().Errorf("execute hook: update operation: %v", err)
 		return
 	}

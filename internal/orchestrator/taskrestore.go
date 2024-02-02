@@ -96,7 +96,7 @@ func (t *RestoreTask) Run(ctx context.Context) error {
 		return nil
 	}); err != nil {
 		repo, _ := t.orch.GetRepo(t.restoreOpts.Plan.Repo)
-		hook.ExecuteHooks(t.orch.OpLog, repo.Config(), nil, t.restoreOpts.SnapshotId, []v1.Hook_Condition{
+		t.orch.hookExecutor.ExecuteHooks(repo.Config(), nil, t.restoreOpts.SnapshotId, []v1.Hook_Condition{
 			v1.Hook_CONDITION_ANY_ERROR,
 		}, hook.HookVars{
 			Task:  t.Name(),
