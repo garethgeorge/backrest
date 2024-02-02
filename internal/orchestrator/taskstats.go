@@ -47,6 +47,9 @@ func (t *StatsTask) shouldRun() (bool, error) {
 			return oplog.ErrStopIteration
 		} else if backup, ok := op.Op.(*v1.Operation_OperationBackup); ok && backup.OperationBackup.LastStatus != nil {
 			if summary, ok := backup.OperationBackup.LastStatus.Entry.(*v1.BackupProgressEntry_Summary); ok {
+				if bytesSinceLastStat == -1 {
+					bytesSinceLastStat = 0
+				}
 				bytesSinceLastStat += summary.Summary.DataAdded
 			}
 		}
@@ -115,7 +118,7 @@ func (t *StatsTask) Run(ctx context.Context) error {
 		return err
 	}); err != nil {
 		repo, _ := t.orch.GetRepo(t.plan.Repo)
-		hook.ExecuteHooks(t.orch.OpLog, repo.Config(), t.plan, "", []v1.Hook_Condition{
+		t.orch.hookExecutor.ExecuteHooks(repo.Config(), t.plan, "", []v1.Hook_Condition{
 			v1.Hook_CONDITION_ANY_ERROR,
 		}, hook.HookVars{
 			Task:  t.Name(),

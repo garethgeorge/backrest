@@ -67,9 +67,8 @@ const (
 	BackrestStatsProcedure = "/v1.Backrest/Stats"
 	// BackrestCancelProcedure is the fully-qualified name of the Backrest's Cancel RPC.
 	BackrestCancelProcedure = "/v1.Backrest/Cancel"
-	// BackrestGetBigOperationDataProcedure is the fully-qualified name of the Backrest's
-	// GetBigOperationData RPC.
-	BackrestGetBigOperationDataProcedure = "/v1.Backrest/GetBigOperationData"
+	// BackrestGetLogsProcedure is the fully-qualified name of the Backrest's GetLogs RPC.
+	BackrestGetLogsProcedure = "/v1.Backrest/GetLogs"
 	// BackrestClearHistoryProcedure is the fully-qualified name of the Backrest's ClearHistory RPC.
 	BackrestClearHistoryProcedure = "/v1.Backrest/ClearHistory"
 	// BackrestPathAutocompleteProcedure is the fully-qualified name of the Backrest's PathAutocomplete
@@ -79,25 +78,25 @@ const (
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	backrestServiceDescriptor                   = v1.File_v1_service_proto.Services().ByName("Backrest")
-	backrestGetConfigMethodDescriptor           = backrestServiceDescriptor.Methods().ByName("GetConfig")
-	backrestSetConfigMethodDescriptor           = backrestServiceDescriptor.Methods().ByName("SetConfig")
-	backrestAddRepoMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("AddRepo")
-	backrestGetOperationEventsMethodDescriptor  = backrestServiceDescriptor.Methods().ByName("GetOperationEvents")
-	backrestGetOperationsMethodDescriptor       = backrestServiceDescriptor.Methods().ByName("GetOperations")
-	backrestListSnapshotsMethodDescriptor       = backrestServiceDescriptor.Methods().ByName("ListSnapshots")
-	backrestListSnapshotFilesMethodDescriptor   = backrestServiceDescriptor.Methods().ByName("ListSnapshotFiles")
-	backrestIndexSnapshotsMethodDescriptor      = backrestServiceDescriptor.Methods().ByName("IndexSnapshots")
-	backrestBackupMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Backup")
-	backrestPruneMethodDescriptor               = backrestServiceDescriptor.Methods().ByName("Prune")
-	backrestForgetMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Forget")
-	backrestRestoreMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Restore")
-	backrestUnlockMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Unlock")
-	backrestStatsMethodDescriptor               = backrestServiceDescriptor.Methods().ByName("Stats")
-	backrestCancelMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Cancel")
-	backrestGetBigOperationDataMethodDescriptor = backrestServiceDescriptor.Methods().ByName("GetBigOperationData")
-	backrestClearHistoryMethodDescriptor        = backrestServiceDescriptor.Methods().ByName("ClearHistory")
-	backrestPathAutocompleteMethodDescriptor    = backrestServiceDescriptor.Methods().ByName("PathAutocomplete")
+	backrestServiceDescriptor                  = v1.File_v1_service_proto.Services().ByName("Backrest")
+	backrestGetConfigMethodDescriptor          = backrestServiceDescriptor.Methods().ByName("GetConfig")
+	backrestSetConfigMethodDescriptor          = backrestServiceDescriptor.Methods().ByName("SetConfig")
+	backrestAddRepoMethodDescriptor            = backrestServiceDescriptor.Methods().ByName("AddRepo")
+	backrestGetOperationEventsMethodDescriptor = backrestServiceDescriptor.Methods().ByName("GetOperationEvents")
+	backrestGetOperationsMethodDescriptor      = backrestServiceDescriptor.Methods().ByName("GetOperations")
+	backrestListSnapshotsMethodDescriptor      = backrestServiceDescriptor.Methods().ByName("ListSnapshots")
+	backrestListSnapshotFilesMethodDescriptor  = backrestServiceDescriptor.Methods().ByName("ListSnapshotFiles")
+	backrestIndexSnapshotsMethodDescriptor     = backrestServiceDescriptor.Methods().ByName("IndexSnapshots")
+	backrestBackupMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Backup")
+	backrestPruneMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Prune")
+	backrestForgetMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Forget")
+	backrestRestoreMethodDescriptor            = backrestServiceDescriptor.Methods().ByName("Restore")
+	backrestUnlockMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Unlock")
+	backrestStatsMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Stats")
+	backrestCancelMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Cancel")
+	backrestGetLogsMethodDescriptor            = backrestServiceDescriptor.Methods().ByName("GetLogs")
+	backrestClearHistoryMethodDescriptor       = backrestServiceDescriptor.Methods().ByName("ClearHistory")
+	backrestPathAutocompleteMethodDescriptor   = backrestServiceDescriptor.Methods().ByName("PathAutocomplete")
 )
 
 // BackrestClient is a client for the v1.Backrest service.
@@ -126,7 +125,7 @@ type BackrestClient interface {
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error)
 	// GetBigOperationData returns the keyed large data for the given operation.
-	GetBigOperationData(context.Context, *connect.Request[v1.OperationDataRequest]) (*connect.Response[types.BytesValue], error)
+	GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error)
 	// Clears the history of operations
 	ClearHistory(context.Context, *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
@@ -233,10 +232,10 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestCancelMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		getBigOperationData: connect.NewClient[v1.OperationDataRequest, types.BytesValue](
+		getLogs: connect.NewClient[v1.LogDataRequest, types.BytesValue](
 			httpClient,
-			baseURL+BackrestGetBigOperationDataProcedure,
-			connect.WithSchema(backrestGetBigOperationDataMethodDescriptor),
+			baseURL+BackrestGetLogsProcedure,
+			connect.WithSchema(backrestGetLogsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		clearHistory: connect.NewClient[v1.ClearHistoryRequest, emptypb.Empty](
@@ -256,24 +255,24 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 
 // backrestClient implements BackrestClient.
 type backrestClient struct {
-	getConfig           *connect.Client[emptypb.Empty, v1.Config]
-	setConfig           *connect.Client[v1.Config, v1.Config]
-	addRepo             *connect.Client[v1.Repo, v1.Config]
-	getOperationEvents  *connect.Client[emptypb.Empty, v1.OperationEvent]
-	getOperations       *connect.Client[v1.GetOperationsRequest, v1.OperationList]
-	listSnapshots       *connect.Client[v1.ListSnapshotsRequest, v1.ResticSnapshotList]
-	listSnapshotFiles   *connect.Client[v1.ListSnapshotFilesRequest, v1.ListSnapshotFilesResponse]
-	indexSnapshots      *connect.Client[types.StringValue, emptypb.Empty]
-	backup              *connect.Client[types.StringValue, emptypb.Empty]
-	prune               *connect.Client[types.StringValue, emptypb.Empty]
-	forget              *connect.Client[types.StringValue, emptypb.Empty]
-	restore             *connect.Client[v1.RestoreSnapshotRequest, emptypb.Empty]
-	unlock              *connect.Client[types.StringValue, emptypb.Empty]
-	stats               *connect.Client[types.StringValue, emptypb.Empty]
-	cancel              *connect.Client[types.Int64Value, emptypb.Empty]
-	getBigOperationData *connect.Client[v1.OperationDataRequest, types.BytesValue]
-	clearHistory        *connect.Client[v1.ClearHistoryRequest, emptypb.Empty]
-	pathAutocomplete    *connect.Client[types.StringValue, types.StringList]
+	getConfig          *connect.Client[emptypb.Empty, v1.Config]
+	setConfig          *connect.Client[v1.Config, v1.Config]
+	addRepo            *connect.Client[v1.Repo, v1.Config]
+	getOperationEvents *connect.Client[emptypb.Empty, v1.OperationEvent]
+	getOperations      *connect.Client[v1.GetOperationsRequest, v1.OperationList]
+	listSnapshots      *connect.Client[v1.ListSnapshotsRequest, v1.ResticSnapshotList]
+	listSnapshotFiles  *connect.Client[v1.ListSnapshotFilesRequest, v1.ListSnapshotFilesResponse]
+	indexSnapshots     *connect.Client[types.StringValue, emptypb.Empty]
+	backup             *connect.Client[types.StringValue, emptypb.Empty]
+	prune              *connect.Client[types.StringValue, emptypb.Empty]
+	forget             *connect.Client[types.StringValue, emptypb.Empty]
+	restore            *connect.Client[v1.RestoreSnapshotRequest, emptypb.Empty]
+	unlock             *connect.Client[types.StringValue, emptypb.Empty]
+	stats              *connect.Client[types.StringValue, emptypb.Empty]
+	cancel             *connect.Client[types.Int64Value, emptypb.Empty]
+	getLogs            *connect.Client[v1.LogDataRequest, types.BytesValue]
+	clearHistory       *connect.Client[v1.ClearHistoryRequest, emptypb.Empty]
+	pathAutocomplete   *connect.Client[types.StringValue, types.StringList]
 }
 
 // GetConfig calls v1.Backrest.GetConfig.
@@ -351,9 +350,9 @@ func (c *backrestClient) Cancel(ctx context.Context, req *connect.Request[types.
 	return c.cancel.CallUnary(ctx, req)
 }
 
-// GetBigOperationData calls v1.Backrest.GetBigOperationData.
-func (c *backrestClient) GetBigOperationData(ctx context.Context, req *connect.Request[v1.OperationDataRequest]) (*connect.Response[types.BytesValue], error) {
-	return c.getBigOperationData.CallUnary(ctx, req)
+// GetLogs calls v1.Backrest.GetLogs.
+func (c *backrestClient) GetLogs(ctx context.Context, req *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error) {
+	return c.getLogs.CallUnary(ctx, req)
 }
 
 // ClearHistory calls v1.Backrest.ClearHistory.
@@ -392,7 +391,7 @@ type BackrestHandler interface {
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error)
 	// GetBigOperationData returns the keyed large data for the given operation.
-	GetBigOperationData(context.Context, *connect.Request[v1.OperationDataRequest]) (*connect.Response[types.BytesValue], error)
+	GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error)
 	// Clears the history of operations
 	ClearHistory(context.Context, *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
@@ -495,10 +494,10 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		connect.WithSchema(backrestCancelMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	backrestGetBigOperationDataHandler := connect.NewUnaryHandler(
-		BackrestGetBigOperationDataProcedure,
-		svc.GetBigOperationData,
-		connect.WithSchema(backrestGetBigOperationDataMethodDescriptor),
+	backrestGetLogsHandler := connect.NewUnaryHandler(
+		BackrestGetLogsProcedure,
+		svc.GetLogs,
+		connect.WithSchema(backrestGetLogsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestClearHistoryHandler := connect.NewUnaryHandler(
@@ -545,8 +544,8 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 			backrestStatsHandler.ServeHTTP(w, r)
 		case BackrestCancelProcedure:
 			backrestCancelHandler.ServeHTTP(w, r)
-		case BackrestGetBigOperationDataProcedure:
-			backrestGetBigOperationDataHandler.ServeHTTP(w, r)
+		case BackrestGetLogsProcedure:
+			backrestGetLogsHandler.ServeHTTP(w, r)
 		case BackrestClearHistoryProcedure:
 			backrestClearHistoryHandler.ServeHTTP(w, r)
 		case BackrestPathAutocompleteProcedure:
@@ -620,8 +619,8 @@ func (UnimplementedBackrestHandler) Cancel(context.Context, *connect.Request[typ
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Cancel is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) GetBigOperationData(context.Context, *connect.Request[v1.OperationDataRequest]) (*connect.Response[types.BytesValue], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetBigOperationData is not implemented"))
+func (UnimplementedBackrestHandler) GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetLogs is not implemented"))
 }
 
 func (UnimplementedBackrestHandler) ClearHistory(context.Context, *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error) {

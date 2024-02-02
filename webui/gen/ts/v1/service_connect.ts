@@ -6,7 +6,7 @@
 import { Empty, MethodKind } from "@bufbuild/protobuf";
 import { Config, Repo } from "./config_pb.js";
 import { OperationEvent, OperationList } from "./operations_pb.js";
-import { ClearHistoryRequest, GetOperationsRequest, ListSnapshotFilesRequest, ListSnapshotFilesResponse, ListSnapshotsRequest, OperationDataRequest, RestoreSnapshotRequest } from "./service_pb.js";
+import { ClearHistoryRequest, GetOperationsRequest, ListSnapshotFilesRequest, ListSnapshotFilesResponse, ListSnapshotsRequest, LogDataRequest, RestoreSnapshotRequest } from "./service_pb.js";
 import { ResticSnapshotList } from "./restic_pb.js";
 import { BytesValue, Int64Value, StringList, StringValue } from "../types/value_pb.js";
 
@@ -170,11 +170,11 @@ export const Backrest = {
     /**
      * GetBigOperationData returns the keyed large data for the given operation.
      *
-     * @generated from rpc v1.Backrest.GetBigOperationData
+     * @generated from rpc v1.Backrest.GetLogs
      */
-    getBigOperationData: {
-      name: "GetBigOperationData",
-      I: OperationDataRequest,
+    getLogs: {
+      name: "GetLogs",
+      I: LogDataRequest,
       O: BytesValue,
       kind: MethodKind.Unary,
     },

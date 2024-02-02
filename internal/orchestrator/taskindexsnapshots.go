@@ -48,7 +48,7 @@ func (t *IndexSnapshotsTask) Next(now time.Time) *time.Time {
 func (t *IndexSnapshotsTask) Run(ctx context.Context) error {
 	if err := indexSnapshotsHelper(ctx, t.orchestrator, t.repoId); err != nil {
 		repo, _ := t.orchestrator.GetRepo(t.repoId)
-		hook.ExecuteHooks(t.orchestrator.OpLog, repo.Config(), nil, "", []v1.Hook_Condition{
+		t.orchestrator.hookExecutor.ExecuteHooks(repo.Config(), nil, "", []v1.Hook_Condition{
 			v1.Hook_CONDITION_ANY_ERROR,
 		}, hook.HookVars{
 			Task:  t.Name(),

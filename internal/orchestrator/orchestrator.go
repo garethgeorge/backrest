@@ -11,7 +11,9 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -33,11 +35,12 @@ const (
 
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
-	mu        sync.Mutex
-	config    *v1.Config
-	OpLog     *oplog.OpLog
-	repoPool  *resticRepoPool
-	taskQueue taskQueue
+	mu           sync.Mutex
+	config       *v1.Config
+	OpLog        *oplog.OpLog
+	repoPool     *resticRepoPool
+	taskQueue    taskQueue
+	hookExecutor *hook.HookExecutor
 
 	// now for the purpose of testing; used by Run() to get the current time.
 	now func() time.Time
@@ -45,7 +48,7 @@ type Orchestrator struct {
 	runningTask atomic.Pointer[taskExecutionInfo]
 }
 
-func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog) (*Orchestrator, error) {
+func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) (*Orchestrator, error) {
 	cfg = proto.Clone(cfg).(*v1.Config)
 
 	// create the orchestrator.
@@ -58,6 +61,7 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog) (*Orc
 		taskQueue: newTaskQueue(func() time.Time {
 			return o.curTime()
 		}),
+		hookExecutor: hook.NewHookExecutor(oplog, logStore),
 	}
 
 	// verify the operation log and mark any incomplete operations as failed.

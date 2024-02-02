@@ -44,7 +44,7 @@ import {
   normalizeSnapshotId,
 } from "../lib/formatting";
 import _ from "lodash";
-import { GetOperationsRequest, OperationDataRequest } from "../../gen/ts/v1/service_pb";
+import { GetOperationsRequest, LogDataRequest } from "../../gen/ts/v1/service_pb";
 import { useAlertApi } from "./Alerts";
 import { MessageInstance } from "antd/es/message/interface";
 import { backrestService } from "../api";
@@ -494,7 +494,7 @@ const RunHookOperationStatus = ({ op }: { op: Operation }) => {
         key: 1,
         label: "Logs for hook " + hook.name,
         children: <>
-          <BigOperationDataVerbatim id={op.id!} outputRef={hook.outputRef} />
+          <BigOperationDataVerbatim logref={hook.outputLogref} />
         </>
       },
     ]} />
@@ -502,22 +502,21 @@ const RunHookOperationStatus = ({ op }: { op: Operation }) => {
 }
 
 // TODO: refactor this to use the provider pattern
-const BigOperationDataVerbatim = ({ id, outputRef }: { id: bigint, outputRef: string }) => {
+const BigOperationDataVerbatim = ({ logref }: { logref: string }) => {
   const [output, setOutput] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!outputRef) {
+    if (!logref) {
       return;
     }
-    backrestService.getBigOperationData(new OperationDataRequest({
-      id: id,
-      key: outputRef,
+    backrestService.getLogs(new LogDataRequest({
+      ref: logref,
     })).then((resp) => {
       setOutput(new TextDecoder("utf-8").decode(resp.value));
     }).catch((e) => {
       console.error("Failed to fetch hook output: ", e);
     });
-  }, [id, outputRef]);
+  }, [logref]);
 
   return <pre>{output}</pre>;
 }

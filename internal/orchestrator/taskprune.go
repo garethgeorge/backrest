@@ -163,7 +163,7 @@ func (t *PruneTask) Run(ctx context.Context) error {
 		return nil
 	}); err != nil {
 		repo, _ := t.orch.GetRepo(t.plan.Repo)
-		hook.ExecuteHooks(t.orch.OpLog, repo.Config(), t.plan, "", []v1.Hook_Condition{
+		t.orch.hookExecutor.ExecuteHooks(repo.Config(), t.plan, "", []v1.Hook_Condition{
 			v1.Hook_CONDITION_ANY_ERROR,
 		}, hook.HookVars{
 			Task:  t.Name(),
