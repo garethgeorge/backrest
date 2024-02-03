@@ -101,6 +101,17 @@ export const SettingsModal = () => {
           labelCol={{ span: 6 }}
           wrapperCol={{ span: 16 }}
         >
+          {config.auth?.users?.length === 0 ? (
+            <>
+              <strong>Initial backrest setup! </strong>
+              <p>
+                Backrest has detected that you do not have any users configured, please add at least one user to secure the web interface.
+              </p>
+              <p>
+                You can add more users later or can reset users by editing the configuration file.
+              </p>
+            </>
+          ) : null}
           <Form.Item label="Users" required={true}>
             <Form.List
               name={["auth", "users"]}
