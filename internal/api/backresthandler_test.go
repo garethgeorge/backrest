@@ -3,6 +3,9 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
+	"path"
 	"slices"
 	"testing"
 	"time"
@@ -15,6 +18,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"github.com/garethgeorge/backrest/internal/rotatinglog"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -216,6 +220,172 @@ func TestMultipleBackup(t *testing.T) {
 	}
 }
 
+func TestHookExecution(t *testing.T) {
+	dir := t.TempDir()
+
+	hookOutputBefore := path.Join(dir, "before.txt")
+	hookOutputAfter := path.Join(dir, "after.txt")
+
+	sut := createSystemUnderTest(t, &config.MemoryStore{
+		Config: &v1.Config{
+			Modno: 1234,
+			Repos: []*v1.Repo{
+				{
+					Id:       "local",
+					Uri:      t.TempDir(),
+					Password: "test",
+				},
+			},
+			Plans: []*v1.Plan{
+				{
+					Id:   "test",
+					Repo: "local",
+					Paths: []string{
+						t.TempDir(),
+					},
+					Cron: "0 0 1 1 *",
+					Hooks: []*v1.Hook{
+						{
+							Conditions: []v1.Hook_Condition{
+								v1.Hook_CONDITION_SNAPSHOT_START,
+							},
+							Action: &v1.Hook_ActionCommand{
+								ActionCommand: &v1.Hook_Command{
+									Command: "echo before > " + hookOutputBefore,
+								},
+							},
+						},
+						{
+							Conditions: []v1.Hook_Condition{
+								v1.Hook_CONDITION_SNAPSHOT_END,
+							},
+							Action: &v1.Hook_ActionCommand{
+								ActionCommand: &v1.Hook_Command{
+									Command: "echo after > " + hookOutputAfter,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		sut.orch.Run(ctx)
+	}()
+
+	_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
+	if err != nil {
+		t.Fatalf("Backup() error = %v", err)
+	}
+
+	// Wait for two hook operations to appear in the oplog
+	if err := retry(t, 10, 2*time.Second, func() error {
+		hookOps := slices.DeleteFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+			_, ok := op.GetOp().(*v1.Operation_OperationRunHook)
+			return !ok
+		})
+
+		if len(hookOps) == 2 {
+			return nil
+		}
+		return fmt.Errorf("expected 2 hook operations, got %d", len(hookOps))
+	}); err != nil {
+		t.Fatalf("Couldn't find hooks in oplog: %v", err)
+	}
+
+	// expect the hook output files to exist
+	if _, err := os.Stat(hookOutputBefore); err != nil {
+		t.Fatalf("hook output file before not found")
+	}
+
+	if _, err := os.Stat(hookOutputAfter); err != nil {
+		t.Fatalf("hook output file after not found")
+	}
+}
+
+func TestCancelBackup(t *testing.T) {
+	sut := createSystemUnderTest(t, &config.MemoryStore{
+		Config: &v1.Config{
+			Modno: 1234,
+			Repos: []*v1.Repo{
+				{
+					Id:       "local",
+					Uri:      t.TempDir(),
+					Password: "test",
+				},
+			},
+			Plans: []*v1.Plan{
+				{
+					Id:   "test",
+					Repo: "local",
+					Paths: []string{
+						t.TempDir(),
+					},
+					Cron: "0 0 1 1 *",
+					Retention: &v1.RetentionPolicy{
+						KeepHourly: 1,
+					},
+				},
+			},
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		sut.orch.Run(ctx)
+	}()
+
+	// Start a backup
+	var errgroup errgroup.Group
+	errgroup.Go(func() error {
+		backupReq := connect.NewRequest(&types.StringValue{Value: "test"})
+		_, err := sut.handler.Backup(context.Background(), backupReq)
+		if err != nil {
+			return fmt.Errorf("Backup() error = %v", err)
+		}
+		return nil
+	})
+
+	// Find the backup operation ID in the oplog
+	var backupOpId int64
+	if err := retry(t, 100, 50*time.Millisecond, func() error {
+		operations := getOperations(t, sut.oplog)
+		for _, op := range operations {
+			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
+			if ok {
+				backupOpId = op.Id
+				return nil
+			}
+		}
+		return errors.New("backup operation not found")
+	}); err != nil {
+		t.Fatalf("Couldn't find backup operation in oplog")
+	}
+
+	errgroup.Go(func() error {
+		if _, err := sut.handler.Cancel(context.Background(), connect.NewRequest(&types.Int64Value{Value: backupOpId})); err != nil {
+			return fmt.Errorf("Cancel() error = %v, wantErr nil", err)
+		}
+		return nil
+	})
+	if err := errgroup.Wait(); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	// Assert that the backup operation was cancelled
+	if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+		_, ok := op.GetOp().(*v1.Operation_OperationBackup)
+		return op.Status == v1.OperationStatus_STATUS_USER_CANCELLED && ok
+	}) == -1 {
+		t.Fatalf("Expected a cancelled backup operation in the log")
+	}
+}
+
 type systemUnderTest struct {
 	handler  *BackrestHandler
 	oplog    *oplog.OpLog
@@ -273,6 +443,7 @@ func retry(t *testing.T, times int, backoff time.Duration, f func() error) error
 }
 
 func getOperations(t *testing.T, oplog *oplog.OpLog) []*v1.Operation {
+	t.Logf("Reading oplog")
 	operations := []*v1.Operation{}
 	if err := oplog.ForAll(func(op *v1.Operation) error {
 		operations = append(operations, op)
