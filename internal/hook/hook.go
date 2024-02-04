@@ -38,8 +38,8 @@ func NewHookExecutor(oplog *oplog.OpLog, bigOutputStore *rotatinglog.RotatingLog
 func (e *HookExecutor) ExecuteHooks(repo *v1.Repo, plan *v1.Plan, snapshotId string, events []v1.Hook_Condition, vars HookVars) {
 	operationBase := v1.Operation{
 		Status:     v1.OperationStatus_STATUS_INPROGRESS,
-		PlanId:     plan.Id,
-		RepoId:     plan.Repo,
+		PlanId:     plan.GetId(),
+		RepoId:     repo.GetId(),
 		SnapshotId: snapshotId,
 	}
 

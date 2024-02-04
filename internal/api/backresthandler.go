@@ -67,6 +67,11 @@ func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1
 	if existing.Modno != req.Msg.Modno {
 		return nil, errors.New("config modno mismatch, reload and try again")
 	}
+
+	if err := config.ValidateConfig(req.Msg); err != nil {
+		return nil, fmt.Errorf("validation error: %w", err)
+	}
+
 	req.Msg.Modno += 1
 
 	if err := s.config.Update(req.Msg); err != nil {
