@@ -12,6 +12,7 @@ import {
   Card,
   Col,
   Collapse,
+  FormInstance,
 } from "antd";
 import React, { useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -329,7 +330,7 @@ export const AddPlanModal = ({
           </Tooltip>
 
           {/* Plan.retention */}
-          <RetentionPolicyView policy={template?.retention} />
+          <RetentionPolicyView policy={template?.retention} form={form} />
 
 
           {/* Plan.hooks */}
@@ -364,17 +365,23 @@ export const AddPlanModal = ({
   );
 };
 
-const RetentionPolicyView = ({ policy }: { policy?: RetentionPolicy }) => {
+const RetentionPolicyView = ({ form, policy }: { policy?: RetentionPolicy, form: FormInstance }) => {
   enum PolicyType {
     TimeBased,
     CountBased,
+    None,
   }
 
   policy = policy || new RetentionPolicy();
 
-  const [policyType, setPolicyType] = useState<PolicyType>(
-    policy.keepLastN ? PolicyType.CountBased : PolicyType.TimeBased
-  );
+  let defaultPolicyType = PolicyType.None;
+  if (policy.keepLastN) {
+    defaultPolicyType = PolicyType.CountBased;
+  } else if (policy) {
+    defaultPolicyType = PolicyType.TimeBased;
+  }
+
+  const [policyType, setPolicyType] = useState<PolicyType>(defaultPolicyType);
 
   let elem = null;
   switch (policyType) {
@@ -464,6 +471,8 @@ const RetentionPolicyView = ({ policy }: { policy?: RetentionPolicy }) => {
         </Form.Item>
       );
       break;
+    case PolicyType.None:
+      elem = <p>All backups are retained e.g. for append-only repos.</p>
   }
 
   return (
@@ -474,6 +483,9 @@ const RetentionPolicyView = ({ policy }: { policy?: RetentionPolicy }) => {
             value={policyType}
             onChange={(e) => {
               setPolicyType(e.target.value);
+              if (e.target.value === PolicyType.None) {
+                form.resetFields(["retention"]);
+              }
             }}
           >
             <Radio.Button value={PolicyType.CountBased}>
@@ -484,6 +496,11 @@ const RetentionPolicyView = ({ policy }: { policy?: RetentionPolicy }) => {
             <Radio.Button value={PolicyType.TimeBased}>
               <Tooltip title="Snapshots older than the specified time period will be dropped by restic. Retention policy is applied to drop older snapshots after each backup run." >
                 By Time Period
+              </Tooltip>
+            </Radio.Button>
+            <Radio.Button value={PolicyType.None}>
+              <Tooltip title="All backups will be retained. Note that this may result in slow backups if the set of snapshots grows very large.">
+                None
               </Tooltip>
             </Radio.Button>
           </Radio.Group>

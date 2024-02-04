@@ -12,6 +12,7 @@ import (
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"github.com/gitploy-io/cronexpr"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 // BackupTask is a scheduled backup operation.
@@ -162,7 +163,7 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 
 	// schedule followup tasks
 	at := time.Now()
-	if plan.Retention != nil {
+	if plan.Retention != nil && !proto.Equal(plan.Retention, &v1.RetentionPolicy{}) {
 		orchestrator.ScheduleTask(NewOneoffForgetTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityForget)
 	}
 	orchestrator.ScheduleTask(NewOneoffIndexSnapshotsTask(orchestrator, plan.Repo, at), TaskPriorityIndexSnapshots)
