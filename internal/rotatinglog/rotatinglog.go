@@ -29,6 +29,7 @@ type RotatingLog struct {
 	dir         string
 	lastFile    string
 	maxLogFiles int
+	now         func() time.Time
 }
 
 func NewRotatingLog(dir string, maxLogFiles int) *RotatingLog {
@@ -36,26 +37,24 @@ func NewRotatingLog(dir string, maxLogFiles int) *RotatingLog {
 }
 
 func (r *RotatingLog) curfile() string {
-	return path.Join(r.dir, time.Now().Format("2006-01-02.tar.gz"))
+	t := time.Now()
+	if r.now != nil {
+		t = r.now() // for testing
+	}
+	return path.Join(r.dir, t.Format("2006-01-02-logs.tar"))
 }
 
 func (r *RotatingLog) removeExpiredFiles() error {
 	if r.maxLogFiles < 0 {
 		return nil
 	}
-	files, err := os.ReadDir(r.dir)
+	files, err := r.files()
 	if err != nil {
-		return err
+		return fmt.Errorf("list files: %w", err)
 	}
-	files = slices.DeleteFunc(files, func(f fs.DirEntry) bool {
-		return f.IsDir()
-	})
-	sort.Slice(files, func(i, j int) bool {
-		return files[i].Name() < files[j].Name()
-	})
 	if len(files) >= r.maxLogFiles {
 		for i := 0; i < len(files)-r.maxLogFiles+1; i++ {
-			if err := os.Remove(path.Join(r.dir, files[i].Name())); err != nil {
+			if err := os.Remove(path.Join(r.dir, files[i])); err != nil {
 				return err
 			}
 		}
@@ -165,6 +164,24 @@ func (r *RotatingLog) Read(name string) ([]byte, error) {
 		}
 	}
 	return nil, ErrNotFound
+}
+
+func (r *RotatingLog) files() ([]string, error) {
+	files, err := os.ReadDir(r.dir)
+	if err != nil {
+		return nil, err
+	}
+	files = slices.DeleteFunc(files, func(f fs.DirEntry) bool {
+		return f.IsDir() || !strings.HasSuffix(f.Name(), "-logs.tar")
+	})
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Name() < files[j].Name()
+	})
+	var result []string
+	for _, f := range files {
+		result = append(result, f.Name())
+	}
+	return result, nil
 }
 
 func compress(data []byte) ([]byte, error) {

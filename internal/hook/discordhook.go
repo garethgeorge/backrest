@@ -25,6 +25,9 @@ func (h *Hook) doDiscord(cmd *v1.Hook_ActionDiscord, vars HookVars, output io.Wr
 
 	requestBytes, _ := json.Marshal(request)
 
+	fmt.Fprintf(output, "Sending Discord message to %s\n---- payload ----", cmd.ActionDiscord.GetWebhookUrl())
+	output.Write(requestBytes)
+
 	_, err = post(cmd.ActionDiscord.GetWebhookUrl(), "application/json", bytes.NewReader(requestBytes))
 	return err
 }
