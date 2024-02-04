@@ -43,7 +43,9 @@ func (t *StatsTask) Name() string {
 
 func (t *StatsTask) shouldRun() (bool, error) {
 	var bytesSinceLastStat int64 = -1
+	var howFarBack int = 0
 	if err := t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.Reversed(indexutil.CollectLastN(statOperationsThreshold)), func(op *v1.Operation) error {
+		howFarBack++
 		if _, ok := op.Op.(*v1.Operation_OperationStats); ok {
 			return oplog.ErrStopIteration
 		} else if backup, ok := op.Op.(*v1.Operation_OperationBackup); ok && backup.OperationBackup.LastStatus != nil {
@@ -59,7 +61,11 @@ func (t *StatsTask) shouldRun() (bool, error) {
 		return false, fmt.Errorf("iterate oplog: %w", err)
 	}
 
-	zap.L().Debug("bytes since last stat", zap.Int64("bytes", bytesSinceLastStat), zap.String("repo", t.plan.Repo))
+	zap.L().Debug("distance since last stat", zap.Int64("bytes", bytesSinceLastStat), zap.String("repo", t.plan.Repo), zap.Int("opsBack", howFarBack))
+	if howFarBack >= statOperationsThreshold {
+		zap.S().Debugf("distance since last stat (%v) is exceeds threshold (%v)", howFarBack, statOperationsThreshold)
+		return true, nil
+	}
 	if bytesSinceLastStat == -1 || bytesSinceLastStat > statBytesThreshold {
 		zap.S().Debugf("bytes since last stat (%v) exceeds threshold (%v)", bytesSinceLastStat, statBytesThreshold)
 		return true, nil

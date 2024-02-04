@@ -283,11 +283,14 @@ export class BackupInfoCollector {
     return info;
   }
 
-  public getAll(): BackupInfo[] {
+  public getAll(filter: boolean = true): BackupInfo[] {
     const arr = [
       ...this.backupByOpId.values(),
       ...this.backupBySnapshotId.values(),
     ];
+    if (!filter) {
+      return arr.filter((b) => !b.forgotten);
+    }
     return arr.filter(
       (b) => !b.forgotten && !b.hidden && !shouldHideStatus(b.status)
     );

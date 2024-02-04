@@ -92,7 +92,7 @@ export const OperationList = ({
       subscribeToOperations(lis);
 
       backupCollector.subscribe(_.debounce(() => {
-        let backups = backupCollector.getAll();
+        let backups = backupCollector.getAll(false);
         backups.sort((a, b) => {
           return b.startTimeMs - a.startTimeMs;
         });

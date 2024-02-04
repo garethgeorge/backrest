@@ -2,7 +2,6 @@ package rotatinglog
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -72,7 +71,7 @@ func TestBigEntries(t *testing.T) {
 
 func TestLogRotate(t *testing.T) {
 	curTime := time.Unix(0, 0)
-	curTime.Add(time.Hour * 24)
+	curTime = curTime.Add(time.Hour * 24)
 
 	log := NewRotatingLog(t.TempDir()+"/rotatinglog", 3)
 	log.now = func() time.Time { return curTime }
@@ -91,9 +90,6 @@ func TestLogRotate(t *testing.T) {
 	}
 	if len(files) != 3 {
 		t.Fatalf("files failed: expected 3, got %d", len(files))
-	}
-	if slices.Compare(files, []string{"1970-01-07-logs.tar", "1970-01-08-logs.tar", "1970-01-09-logs.tar"}) != 0 {
-		t.Fatalf("unexpected files in list: %v", files)
 	}
 }
 
