@@ -14,6 +14,7 @@ import (
 )
 
 var statBytesThreshold int64 = 10 * 1024 * 1024 * 1024 // 10 GB added.
+var statOperationsThreshold int = 100                  // run a stat command every 100 operations.
 
 // StatsTask tracks a restic stats operation.
 type StatsTask struct {
@@ -42,7 +43,7 @@ func (t *StatsTask) Name() string {
 
 func (t *StatsTask) shouldRun() (bool, error) {
 	var bytesSinceLastStat int64 = -1
-	if err := t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
+	if err := t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.Reversed(indexutil.CollectLastN(statOperationsThreshold)), func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationStats); ok {
 			return oplog.ErrStopIteration
 		} else if backup, ok := op.Op.(*v1.Operation_OperationBackup); ok && backup.OperationBackup.LastStatus != nil {

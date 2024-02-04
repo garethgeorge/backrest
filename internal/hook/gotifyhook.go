@@ -44,7 +44,9 @@ func (h *Hook) doGotify(cmd *v1.Hook_ActionGotify, vars HookVars, output io.Writ
 		baseUrl,
 		url.QueryEscape(cmd.ActionGotify.GetToken()))
 
-	output.Write([]byte(fmt.Sprintf("Sending gotify message to %s\n", postUrl)))
+	fmt.Fprintf(output, "Sending gotify message to %s\n", postUrl)
+	fmt.Fprintf(output, "---- payload ----\n")
+	output.Write(b)
 
 	body, err := post(postUrl, "application/json", bytes.NewReader(b))
 
