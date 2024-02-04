@@ -472,7 +472,7 @@ const RetentionPolicyView = ({ form, policy }: { policy?: RetentionPolicy, form:
       );
       break;
     case PolicyType.None:
-      elem = <p>All backups are retained e.g. for append-only repos.</p>
+      elem = <p>All backups are retained e.g. for append-only repos. Ensure that you manually forget / prune backups elsewhere. Backrest will register forgets performed externally on the next backup.</p>
   }
 
   return (
