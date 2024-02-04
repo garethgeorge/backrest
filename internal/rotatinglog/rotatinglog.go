@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 var ErrFileNotFound = errors.New("file not found")
@@ -76,6 +78,9 @@ func (r *RotatingLog) Write(data []byte) (string, error) {
 			return "", err
 		}
 		r.lastFile = file
+		if err := r.removeExpiredFiles(); err != nil {
+			zap.L().Error("failed to remove expired files for rotatinglog", zap.Error(err), zap.String("dir", r.dir))
+		}
 	}
 	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
@@ -96,9 +101,9 @@ func (r *RotatingLog) Write(data []byte) (string, error) {
 	}
 	tw := tar.NewWriter(f)
 	defer tw.Close()
-	name := fmt.Sprintf("%s/%d", path.Base(file), pos)
+
 	tw.WriteHeader(&tar.Header{
-		Name:     name,
+		Name:     fmt.Sprintf("%d.gz", pos),
 		Size:     int64(len(data)),
 		Mode:     0600,
 		Typeflag: tar.TypeReg,
@@ -110,7 +115,7 @@ func (r *RotatingLog) Write(data []byte) (string, error) {
 		return "", err
 	}
 
-	return name, nil
+	return fmt.Sprintf("%s/%d", path.Base(file), pos), nil
 }
 
 func (r *RotatingLog) Read(name string) ([]byte, error) {
@@ -140,6 +145,7 @@ func (r *RotatingLog) Read(name string) ([]byte, error) {
 	f.Seek(int64(offset), io.SeekStart)
 
 	// search for the tarball segment in the tarball and read + decompress it if found
+	seekName := fmt.Sprintf("%d.gz", offset)
 	tr := tar.NewReader(f)
 	for {
 		hdr, err := tr.Next()
@@ -149,7 +155,7 @@ func (r *RotatingLog) Read(name string) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("next failed: %v", err)
 		}
-		if hdr.Name == name {
+		if hdr.Name == seekName {
 			buf := make([]byte, hdr.Size)
 			_, err := io.ReadFull(tr, buf)
 			if err != nil {
