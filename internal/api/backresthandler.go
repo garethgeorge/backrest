@@ -408,6 +408,12 @@ func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request
 func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error) {
 	data, err := s.logStore.Read(req.Msg.GetRef())
 	if err != nil {
+		if errors.Is(err, rotatinglog.ErrFileNotFound) {
+			return connect.NewResponse(&types.BytesValue{
+				Value: []byte(fmt.Sprintf("file associated with log %v not found, it may have rotated out of the log history", req.Msg.GetRef())),
+			}), nil
+		}
+
 		return nil, fmt.Errorf("get log data %v: %w", req.Msg.GetRef(), err)
 	}
 	return connect.NewResponse(&types.BytesValue{Value: data}), nil

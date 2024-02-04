@@ -119,17 +119,18 @@ export const App: React.FC = () => {
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
             {config && config.host ? "Host: " + config.host : undefined}
           </small>
+          <Button
+            type="text"
+            style={{ marginLeft: "10px" }}
+            onClick={() => {
+              setAuthToken("");
+              window.location.reload();
+            }}
+          >
+            Logout
+          </Button>
         </h1>
-        <Button
-          type="text"
-          style={{ position: "absolute", right: "10px" }}
-          onClick={() => {
-            setAuthToken("");
-            window.location.reload();
-          }}
-        >
-          Logout
-        </Button>
+
       </Header>
       <Layout>
         <Sider width={300} style={{ background: colorBgContainer }}>

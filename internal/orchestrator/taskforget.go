@@ -11,6 +11,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 // ForgetTask tracks a forget operation.
@@ -59,7 +60,7 @@ func (t *ForgetTask) Next(now time.Time) *time.Time {
 }
 
 func (t *ForgetTask) Run(ctx context.Context) error {
-	if t.plan.Retention == nil {
+	if t.plan.Retention == nil || proto.Equal(t.plan.Retention, &v1.RetentionPolicy{}) {
 		return errors.New("plan does not have a retention policy")
 	}
 

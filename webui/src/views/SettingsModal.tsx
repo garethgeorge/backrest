@@ -75,6 +75,8 @@ export const SettingsModal = () => {
     showModal(null);
   };
 
+  const users = config.auth?.users || [];
+
   return (
     <>
       <Modal
@@ -101,17 +103,17 @@ export const SettingsModal = () => {
           labelCol={{ span: 6 }}
           wrapperCol={{ span: 16 }}
         >
-          {config.auth?.users?.length === 0 ? (
+          {users.length > 0 ? null : (
             <>
               <strong>Initial backrest setup! </strong>
               <p>
                 Backrest has detected that you do not have any users configured, please add at least one user to secure the web interface.
               </p>
               <p>
-                You can add more users later or can reset users by editing the configuration file.
+                You can add more users later or, if you forget your password, reset users by editing the configuration file (typically in $HOME/.backrest/config.json)
               </p>
             </>
-          ) : null}
+          )}
           <Form.Item label="Users" required={true}>
             <Form.List
               name={["auth", "users"]}
@@ -135,7 +137,7 @@ export const SettingsModal = () => {
                         <Col span={11}>
                           <Form.Item
                             name={[field.name, "name"]}
-                            rules={[{ required: true }, { pattern: namePattern, message: "Name must be alphanumeric with dashes or underscores as separators" }]}
+                            rules={[{ required: true, message: "Name is required" }, { pattern: namePattern, message: "Name must be alphanumeric with dashes or underscores as separators" }]}
                           >
                             <Input placeholder="Username" />
                           </Form.Item>
@@ -143,7 +145,7 @@ export const SettingsModal = () => {
                         <Col span={11}>
                           <Form.Item
                             name={[field.name, "passwordBcrypt"]}
-                            rules={[{ required: true }]}
+                            rules={[{ required: true, message: "Password is required" }]}
                           >
                             <Input.Password placeholder="Password" onFocus={() => {
                               form.setFieldValue(["auth", "users", index, "needsBcrypt"], true);
