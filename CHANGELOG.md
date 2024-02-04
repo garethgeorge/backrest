@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.11.0](https://github.com/garethgeorge/backrest/compare/v0.10.1...v0.11.0) (2024-02-04)
+
+
+### Features
+
+* add user configurable command hooks for backup lifecycle events ([#60](https://github.com/garethgeorge/backrest/issues/60)) ([9be413b](https://github.com/garethgeorge/backrest/commit/9be413bbcca796862f161a769991ab695a50b464))
+* authentication for WebUI ([#62](https://github.com/garethgeorge/backrest/issues/62)) ([4a1f326](https://github.com/garethgeorge/backrest/commit/4a1f3268a7de0533e0a979b9e97a7117b028358e))
+* implement discord hook type ([25924b6](https://github.com/garethgeorge/backrest/commit/25924b6197c870f9dfc1e04f5be39377251e7f2d))
+* implement gotify hook type ([e0ce655](https://github.com/garethgeorge/backrest/commit/e0ce6558c047f3aff068ee5d475fa1bdba380c4d))
+* support keep-all retention policy for append-only backups ([f163c02](https://github.com/garethgeorge/backrest/commit/f163c02d7d2c798b4057037a996de44e34de9f2b))
+
+
+### Bug Fixes
+
+* add API test coverage and fix minor bugs ([f5bb74b](https://github.com/garethgeorge/backrest/commit/f5bb74bf246fcd5712dbbc85f4233169f7db4aa7))
+* add first time setup hint for user authentication ([4a565f2](https://github.com/garethgeorge/backrest/commit/4a565f2cdcd091e0eabc302ab91e53012f53eb26))
+* add test coverage for log rotation ([f1084ca](https://github.com/garethgeorge/backrest/commit/f1084cab4894751ba4a92f9be6b6b70d9084d0e6))
+* bugfixes for auth flow ([427792c](https://github.com/garethgeorge/backrest/commit/427792c7244fb712bbea0557d4a6c7ee07052534))
+* stats not displaying on long running repos ([f1ba1d9](https://github.com/garethgeorge/backrest/commit/f1ba1d91f37234f24ae5202d27114a33432366da))
+* store large log outputs in tar bundles of logs ([0cf01e0](https://github.com/garethgeorge/backrest/commit/0cf01e020640b0145bcd0d25a38cde1fce940aff))
+* windows install errors on decompressing zip archive ([5323b9f](https://github.com/garethgeorge/backrest/commit/5323b9ffc065bc3b28171575cdccc4358b69750b))
+
 ## [0.10.1](https://github.com/garethgeorge/backrest/compare/v0.10.0...v0.10.1) (2024-01-25)
 
 
