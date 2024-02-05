@@ -142,16 +142,17 @@ func (r *RepoOrchestrator) Prune(ctx context.Context, output io.Writer) error {
 	defer r.mu.Unlock()
 
 	policy := r.repoConfig.PrunePolicy
+	if policy == nil {
+		policy = &v1.PrunePolicy{
+			MaxUnusedPercent: 25,
+		}
+	}
 
 	var opts []restic.GenericOption
-	if policy != nil {
-		if policy.MaxUnusedBytes != 0 {
-			opts = append(opts, restic.WithFlags("--max-unused", fmt.Sprintf("%v", policy.MaxUnusedBytes)))
-		} else if policy.MaxUnusedPercent != 0 {
-			opts = append(opts, restic.WithFlags("--max-unused", fmt.Sprintf("%v", policy.MaxUnusedPercent)))
-		}
-	} else {
-		opts = append(opts, restic.WithFlags("--max-unused", "25%"))
+	if policy.MaxUnusedBytes != 0 {
+		opts = append(opts, restic.WithFlags("--max-unused", fmt.Sprintf("%vB", policy.MaxUnusedBytes)))
+	} else if policy.MaxUnusedPercent != 0 {
+		opts = append(opts, restic.WithFlags("--max-unused", fmt.Sprintf("%v%%", policy.MaxUnusedPercent)))
 	}
 
 	r.l.Debug("Prune snapshots")
