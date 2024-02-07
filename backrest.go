@@ -182,6 +182,9 @@ func getSecret() []byte {
 	if n, err := rand.Read(secret); err != nil || n != 64 {
 		zap.S().Fatalf("Error generating secret: %v", err)
 	}
+	if err := os.MkdirAll(config.DataDir(), 0700); err != nil {
+		zap.S().Fatalf("Error creating data directory: %v", err)
+	}
 	if err := os.WriteFile(secretFile, secret, 0600); err != nil {
 		zap.S().Fatalf("Error writing secret to file: %v", err)
 	}
