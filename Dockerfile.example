@@ -1,0 +1,8 @@
+FROM garethgeorge/backrest:latest AS backrest
+FROM ubuntu:14.04 AS ubuntu
+COPY --from=backrest /tmp /tmp
+COPY --from=backrest /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=backrest /backrest /backrest
+# install custom binaries for use with backrest hooks
+RUN apt-get update && apt-get install -y curl bash
+ENTRYPOINT ["/backrest"]
