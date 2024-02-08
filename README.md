@@ -2,14 +2,19 @@
 
 [![Build and Test](https://github.com/garethgeorge/backrest/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/garethgeorge/backrest/actions/workflows/build-and-test.yml)
 
-Backrest is a fully open source web UI wrapper for [restic](https://restic.net/). Backrest aims to take away the burden of setting up and managing restic backups by providing a simple web UI that supports both scheduling backup operations as well as browsing and restoring from existing backups. Backrest is shipped as a self-contained and light weight (<20 MB on all platforms) binary with no installation dependencies. 
+
+Backrest is a web-accessible backup solution built on top of [restic](https://restic.net/). Backrest provides a WebUI which wraps the restic CLI and makes it easy to create repos, browse snapshots, and restore files. Additionally, Backrest can run in the background and take an opinionated approach to scheduling snapshots and orchestrating repo health operations.
+
+By building on restic Backrest gets the advantages of restic mature feature set: restic provides fast, reliable (used by tens of thousands of individuals and by corporations in production environments), and secure backup operations. Backrest itself is built in Golang (matching restic's implementation) and is shipped as a self-contained and light weight (<20 MB on all platforms) binary with no dependecies other than restic (which backrest can download for you and keep up to date).
+
+This project aims to be the easiest way to setup and get started with backups on any system. You can expect to be able to perform all operations from the web interface but should you ever need more poworeful control, you are free to browse your repo and perform operations using the [restic cli](https://restic.readthedocs.io/en/latest/manual_rest.html). Backrest safely detects and imports external operations (e.g. manual backups).
 
 **Platform Support**
 
+ * [Docker](https://hub.docker.com/r/garethgeorge/backrest)
  * Linux
- * Docker
- * MacOS (Darwin)
- * (experimental) Windows
+ * MacOS
+ * (experimental, no CI coverage) Windows
 
 **Features**
 
@@ -17,8 +22,8 @@ Backrest is a fully open source web UI wrapper for [restic](https://restic.net/)
  * Realtime UI e.g. live progress bars for backup operations and live refreshes of operation history.
  * Snapshot browser
  * Restore interface
- * Highly configurable backups
-   * Detailed scheduling options
+ * Configurable backup plans
+   * Cronexprs provide flexible scheduling options
    * Configurable retention policies with restic forget (e.g. keep 1 snapshot per day for 30 days, 1 snapshot per week for 6 months, etc)
    * Include lists
    * Exclusion lists
@@ -29,11 +34,11 @@ Backrest is a fully open source web UI wrapper for [restic](https://restic.net/)
    * Prune once every 7 days by default.
  * Multiple backup plans can be configured running on different schedules and with different retention policies.
  * Multiple restic repositories can be configured and used in different plans.
-
-**Planned Features**
- * [ ] Authentication support e.g. to password protect the web UI.
- * [ ] WebUI for rclone configuration, today this must be done by passing extra flags in the repository configuration.
- * [ ] Notifications e.g. email, discord, slack, webhook, etc.
+ * Event hooks for notifications
+   * Lifecycle hooks are triggered with status information from operations backrest runs on your behalf.
+   * Supported services: Discord, Gotify, Shell Command
+   * Events: Backup Start, Backup Finish, Backup Error, Any Error
+ * Multi-user authentication: backrest can be secured with a username and password.
 
 # Preview
 
@@ -46,23 +51,27 @@ Repo Creation Wizard
 <img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-19-50.png" width="700px" />
 
 
-# Getting Started 
+# User Guide
 
-Backrest is packaged as a single executable. It can be run directly on Linux, MacOS, and Windows with no dependencies. [restic](https://github.com/restic/restic) will be downloaded and installed in the data directory on first run.
+[See the backrest wiki](https://github.com/garethgeorge/backrest/wiki).
+
+# Installation
+
+Backrest is packaged as a single executable. It can be run directly on Linux, MacOS, and Windows. [restic](https://github.com/restic/restic) will be downloaded and installed in the data directory on first run.
 
 Download options
 
  * Download and run a release from the [releases page](https://github.com/garethgeorge/backrest/releases).
  * Build from source ([see below](#building)).
- * Run with docker: `garethgeorge/backrest:latest` ([see on dockerhub](https://hub.docker.com/repository/docker/garethgeorge/backrest/))
+ * Run with docker: `garethgeorge/backrest:latest` ([see on dockerhub](https://hub.docker.com/r/garethgeorge/backrest))
 
-Backrest is accessible from a web browser. By default it binds to `0.0.0.0:9898` and can be accessed at `http://localhost:9898`. Change the port with the `BACKREST_PORT` environment variable e.g. `BACKREST_PORT=127.0.0.1 backrest` to listen only on local interfaces.
+Backrest is accessible from a web browser. By default it binds to `0.0.0.0:9898` and can be accessed at `http://localhost:9898`. Change the port with the `BACKREST_PORT` environment variable e.g. `BACKREST_PORT=127.0.0.1 backrest` to listen only on local interfaces. On first startup backrest will prompt you to create a default username and password, this can be changed later in the settings page.
 
 Note: backrest installs a specific restic version to ensure that the version of restic matches the version backrest is tested against. This provides the best guarantees for stability. If you wish to use a different version of restic OR if you would prefer to install restic manually you may do so by setting the `BACKREST_RESTIC_COMMAND` environment variable to the path of the restic binary you wish to use.
 
 ## Running with Docker Compose
 
-Docker image: https://hub.docker.com/garethgeorge/backrest
+Docker image: https://hub.docker.com/r/garethgeorge/backrest
 
 Example compose file:
 
@@ -202,29 +211,3 @@ warning: Backrest is not tested on Windows to the same bar as Linux and MacOS. S
  * `BACKREST_DATA` - the path to the data directory. Defaults to `$HOME/.local/share/backrest` or if `$XDG_DATA_HOME` is set, `$XDG_DATA_HOME/backrest`.
  * `BACKREST_RESTIC_COMMAND` - the path to the restic binary. Defaults managed version of restic which will be downloaded and installed in the data directory.
  * `XDG_CACHE_HOME` -- the path to the cache directory. This is propagated to restic. 
-
-# User Guide 
-
-## Adding a Repository
-
-A backrest repository maps to the concept of a restic repository (and is indeed a restic repo under-the-hood). A repository is a location where backrest will store your backups.
-
-To add a repository, click the "Add Repository" button on the side nav. You will be prompted to enter a name for the repository and a path to the repository. The path can be a local path or a remote path (e.g. an S3 bucket). See the [restic docs](https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html) for more details on the types of repositories that restic supports. Backrest allows you to configure environment variables which should be used to pass additional credentials for remote repositories. For example, if you are using an S3 bucket, you can configure the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables to pass your AWS credentials to restic.
-
-## Adding a Plan
-
-A plan is a new concept introduced by backrest. A plan is a set of rules for backing up data. A plan can be configured to backup one or more directories to a single repository. Each plan has it's own schedule and retention policy controlling when backups are run and how long backups are kept.
-
-To add a plan, click the "Add Plan" button on the side nav. You will be prompted to enter a name for the plan and select a repository to backup to. You will then be prompted to select one or more directories to backup. A default retention policy is given but you can also pick between time based retention or keeping a configurable number of snapshots. 
-
-## Running a Backup
-
-Backups are run automatically based on the scheduled specified in your plan. You may additionally click the "Backup Now" button on the plan page to run a backup immediately. You can additionally trigger an immediate "Prune Now" or "Unlock Now" operation from the plan page, these operations are also run automatically in the course of a backup cycle but can be run manually if needed.
-
-## Best Practices
-
- * Configure a reasonable retention policy for each plan. Backrest performs well up to a history of ~1000s of snapshots but too many may eventually slow performance.
- * Backup your configuration (e.g. `$BACKREST_CONFIG` or `$HOME/.config/backrest/config.json` by default on Linux/MacOS)
-   * Your configuration contains the encryption keys for your repositories. If you loose this file you will not be able to restore your backups.
-   * You may alternatively backup your encryption keys individually in which case you will be able to use restic directly to restore your backups.
- 
