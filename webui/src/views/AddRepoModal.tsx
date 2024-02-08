@@ -13,9 +13,9 @@ import {
   FormInstance,
   Collapse,
 } from "antd";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
-import { Repo } from "../../gen/ts/v1/config_pb";
+import { Hook, Repo } from "../../gen/ts/v1/config_pb";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { useAlertApi } from "../components/Alerts";
@@ -24,6 +24,7 @@ import { backrestService } from "../api";
 import {
   HooksFormList,
   hooksListTooltipText,
+  HookFormData,
 } from "../components/HooksFormList";
 import { ConfirmButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
@@ -31,13 +32,16 @@ import { useConfig } from "../components/ConfigProvider";
 export const AddRepoModal = ({
   template,
 }: {
-  template: Partial<Repo> | null;
+  template: Repo | null;
 }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
   const [config, setConfig] = useConfig();
-  const [form] = Form.useForm<Repo>();
+  const [form] = Form.useForm();
+  useEffect(() => {
+    form.setFieldsValue(template ? JSON.parse(template.toJsonString()) : {});
+  }, [template])
 
   if (!config) {
     return null;
@@ -88,7 +92,8 @@ export const AddRepoModal = ({
     setConfirmLoading(true);
 
     try {
-      let repo = await validateForm<Repo>(form);
+      let repoFormData = await validateForm(form);
+      const repo = new Repo().fromJsonString(JSON.stringify(repoFormData), { ignoreUnknownFields: false });
 
       if (template !== null) {
         // We are in the edit repo flow, update the repo in the config
@@ -97,7 +102,7 @@ export const AddRepoModal = ({
           alertsApi.error("Can't update repo, not found");
           return;
         }
-        config.repos![idx] = new Repo(repo);
+        config.repos![idx] = repo;
         setConfig(await backrestService.setConfig(config));
         showModal(null);
         alertsApi.success("Updated repo " + repo.uri);
@@ -166,7 +171,6 @@ export const AddRepoModal = ({
             hasFeedback
             name="id"
             label="Repo Name"
-            initialValue={template ? template.id : ""}
             validateTrigger={["onChange", "onBlur"]}
             rules={[
               {
@@ -219,7 +223,6 @@ export const AddRepoModal = ({
               hasFeedback
               name="uri"
               label="Repository URI"
-              initialValue={template ? template.uri : ""}
               validateTrigger={["onChange", "onBlur"]}
               rules={[
                 {
@@ -239,7 +242,6 @@ export const AddRepoModal = ({
                 <Form.Item<Repo>
                   hasFeedback
                   name="password"
-                  initialValue={template ? template.password : ""}
                   validateTrigger={["onChange", "onBlur"]}
                 >
                   <Input disabled={!!template} />
@@ -276,16 +278,15 @@ export const AddRepoModal = ({
                   },
                 },
               ]}
-              initialValue={template ? template.env : []}
             >
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
+                    console.log("FIELD: ", field),
                     <Form.Item key={field.key}>
                       <Form.Item
                         {...field}
                         validateTrigger={["onChange", "onBlur"]}
-                        initialValue={""}
                         rules={[
                           {
                             required: true,
@@ -305,7 +306,7 @@ export const AddRepoModal = ({
                       </Form.Item>
                       <MinusCircleOutlined
                         className="dynamic-delete-button"
-                        onClick={() => remove(field.name)}
+                        onClick={() => remove(index)}
                         style={{ paddingLeft: "5px" }}
                       />
                     </Form.Item>
@@ -313,7 +314,7 @@ export const AddRepoModal = ({
                   <Form.Item>
                     <Button
                       type="dashed"
-                      onClick={() => add()}
+                      onClick={() => add("THIS IS A NEW VALUE")}
                       style={{ width: "90%" }}
                       icon={<PlusOutlined />}
                     >
@@ -330,7 +331,6 @@ export const AddRepoModal = ({
           <Form.Item label="Flags">
             <Form.List
               name="flags"
-              initialValue={template ? template.flags : []}
             >
               {(fields, { add, remove }, { errors }) => (
                 <>
@@ -339,7 +339,6 @@ export const AddRepoModal = ({
                       <Form.Item
                         {...field}
                         validateTrigger={["onChange", "onBlur"]}
-                        initialValue={""}
                         rules={[
                           {
                             required: true,
@@ -355,7 +354,7 @@ export const AddRepoModal = ({
                       </Form.Item>
                       <MinusCircleOutlined
                         className="dynamic-delete-button"
-                        onClick={() => remove(field.name)}
+                        onClick={() => remove(index)}
                         style={{ paddingLeft: "5px" }}
                       />
                     </Form.Item>
@@ -398,7 +397,7 @@ export const AddRepoModal = ({
           >
             <Form.Item
               name={["prunePolicy", "maxFrequencyDays"]}
-              initialValue={template?.prunePolicy?.maxFrequencyDays || 7}
+              initialValue={7}
               required={false}
             >
               <InputNumber
@@ -409,7 +408,7 @@ export const AddRepoModal = ({
             </Form.Item>
             <Form.Item
               name={["prunePolicy", "maxUnusedPercent"]}
-              initialValue={template?.prunePolicy?.maxUnusedPercent || 25}
+              initialValue={25}
               required={false}
             >
               <InputNumber
@@ -425,7 +424,7 @@ export const AddRepoModal = ({
           <Form.Item
             label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>}
           >
-            <HooksFormList hooks={template?.hooks || []} />
+            <HooksFormList />
           </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">
@@ -438,9 +437,7 @@ export const AddRepoModal = ({
                     label: "Repo Config as JSON",
                     children: (
                       <Typography>
-                        <pre>{new Repo(form.getFieldsValue()).toJsonString({
-                          prettySpaces: 2,
-                        })}</pre>
+                        <pre>{JSON.stringify(form.getFieldsValue(), undefined, 2)}</pre>
                       </Typography>
                     ),
                   },
@@ -461,13 +458,20 @@ const expectedEnvVars: { [scheme: string]: string[] } = {
   gs: ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"],
 };
 
-const envVarSetValidator = (form: FormInstance<Repo>, envVars: string[]) => {
+const envVarSetValidator = (form: FormInstance<FormData>, envVars: string[]) => {
+  if (!envVars) {
+    return Promise.resolve();
+  }
+
   let uri = form.getFieldValue("uri");
   if (!uri) {
     return Promise.resolve();
   }
 
   const envVarNames = envVars.map((e) => {
+    if (!e) {
+      return "";
+    }
     let idx = e.indexOf("=");
     if (idx === -1) {
       return "";

@@ -11,6 +11,7 @@ export const GettingStartedGuide = () => {
     <>
       <Typography.Text>
         <h1>Getting Started</h1>
+        <p><a href="https://github.com/garethgeorge/backrest">Backrest documentation on GitHub</a></p>
         <Divider orientation="left">Overview</Divider>
         <ul>
           <li>

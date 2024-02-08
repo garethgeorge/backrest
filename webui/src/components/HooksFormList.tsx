@@ -4,6 +4,20 @@ import { Button, Card, Collapse, CollapseProps, Form, FormListFieldData, Input, 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Rule } from 'antd/es/form';
 
+export interface HookFormData {
+  hooks: {
+    conditions: string[];
+  }[];
+}
+
+export interface HookFields {
+  conditions: string[];
+  actionCommand?: any;
+  actionGotify?: any;
+  actionDiscord?: any;
+  actionWebhook?: any;
+}
+
 export const hooksListTooltipText = <>
   Hooks are actions that can execute on backup lifecycle events.
 
@@ -34,19 +48,15 @@ export const hooksListTooltipText = <>
   </ul>
 </>
 
+
 /**
  * HooksFormList is a UI component for editing a list of hooks that can apply either at the repo level or at the plan level.
  */
-export const HooksFormList = (props: { hooks: Hook[] }) => {
-  const [hooks, _] = useState([...props.hooks] || []);
-
-  return <Form.List name="hooks" initialValue={props.hooks || []}>
+export const HooksFormList = () => {
+  return <Form.List name="hooks">
     {(fields, { add, remove }, { errors }) => (
       <>
         {fields.map((field, index) => {
-          console.log(index, field);
-          const hook = hooks[index];
-          if (!hook) return null;
           return <Card key={index} title={<>
             Hook {index}
             <MinusCircleOutlined
@@ -56,13 +66,12 @@ export const HooksFormList = (props: { hooks: Hook[] }) => {
             />
           </>
           } size="small" >
-            <Form.Item name={[field.name, "conditions"]} initialValue={hook.conditions}>
+            <Form.Item name={[field.name, "conditions"]} >
               <Select
                 mode="multiple"
                 allowClear
                 style={{ width: '100%' }}
                 placeholder="Runs when..."
-                defaultValue={hook.conditions}
                 options={[
                   { label: "On Finish Snapshot", value: Hook_Condition.SNAPSHOT_END },
                   { label: "On Start Snapshot", value: Hook_Condition.SNAPSHOT_START },
@@ -71,7 +80,11 @@ export const HooksFormList = (props: { hooks: Hook[] }) => {
                 ]}
               />
             </Form.Item>
-            <HookBuilder hook={hook} field={field} />
+            <Form.Item shouldUpdate={(prevValues, curValues) => {
+              return prevValues.hooks[index] !== curValues.hooks[index];
+            }}>
+              <HookBuilder field={field} />
+            </Form.Item>
           </Card>
         })}
         <Form.Item>
@@ -79,11 +92,7 @@ export const HooksFormList = (props: { hooks: Hook[] }) => {
             content={<>
               {hookTypes.map((hookType, index) => {
                 return <Button key={index} onClick={() => {
-                  const hook = new Hook({
-                    action: hookType.action
-                  });
-                  hooks.push(hook);
-                  add(hook);
+                  add(structuredClone(hookType.template));
                 }}>
                   {hookType.name}
                 </Button>
@@ -105,78 +114,79 @@ export const HooksFormList = (props: { hooks: Hook[] }) => {
 
 const hookTypes: {
   name: string,
-  action: typeof Hook.prototype.action,
+  template: HookFields,
 }[] = [
     {
-      name: "Command", action: {
-        case: "actionCommand",
-        value: new Hook_Command({
+      name: "Command", template: {
+        actionCommand: {
           command: "echo {{ .ShellEscape .Summary }}",
-        }),
-      }
+        },
+        conditions: [],
+      },
     },
     {
-      name: "Discord", action: {
-        case: "actionDiscord",
-        value: new Hook_Discord({
+      name: "Discord", template: {
+        actionDiscord: {
           webhookUrl: "",
           template: "{{ .Summary }}",
-        }),
+        },
+        conditions: [],
       }
     },
     {
-      name: "Gotify", action: {
-        case: "actionGotify",
-        value: new Hook_Gotify({
+      name: "Gotify", template: {
+        actionGotify: {
           baseUrl: "",
           token: "",
           template: "{{ .Summary }}",
           titleTemplate: "Backrest {{ .EventName .Event }} in plan {{ .Plan.Id }}",
-        }),
+        },
+        conditions: [],
       }
     }
   ];
 
-const HookBuilder = ({ field, hook }: { field: FormListFieldData, hook: Hook }) => {
-  let component: React.ReactNode;
-  switch (hook.action.case) {
-    case "actionDiscord":
-      return <>
-        <Form.Item name={[field.name, "action", "value", "webhookUrl"]} rules={[requiredField("webhook URL is required")]} >
-          <Input addonBefore={<div style={{ width: "8em" }}>Discord Webhook</div>} />
-        </Form.Item >
-        Text Template:
-        <Form.Item name={[field.name, "action", "value", "template"]} >
-          <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
-        </Form.Item >
-      </>
-    case "actionCommand":
-      return <>
-        <Tooltip title="Script to execute. Commands will not work in the docker build of Backrest.">
-          Script:
-        </Tooltip>
-        <Form.Item name={[field.name, "action", "value", "command"]} rules={[requiredField("command is required")]}>
-          <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
-        </Form.Item>
-      </>
-    case "actionGotify":
-      return <>
-        <Form.Item name={[field.name, "action", "value", "baseUrl"]} rules={[requiredField("gotify base URL is required"), { type: "url" }]}>
-          <Input addonBefore={<div style={{ width: "8em" }}>Gotify Base URL</div>} />
-        </Form.Item >
-        <Form.Item name={[field.name, "action", "value", "token"]} rules={[requiredField("gotify token is required")]}>
-          <Input addonBefore={<div style={{ width: "8em" }}>Gotify Token</div>} />
-        </Form.Item>
-        <Form.Item name={[field.name, "action", "value", "titleTemplate"]} rules={[requiredField("gotify title template is required")]}>
-          <Input addonBefore={<div style={{ width: "8em" }}>Title Template</div>} />
-        </Form.Item>
-        Text Template:
-        <Form.Item name={[field.name, "action", "value", "template"]}>
-          <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
-        </Form.Item>
-      </>
-    default:
-      return <p>Unknown hook {hook.action.case}</p>
+const HookBuilder = ({ field }: { field: FormListFieldData }) => {
+  const form = Form.useFormInstance();
+  const hookData = form.getFieldValue(["hooks", field.name]) as HookFields;
+
+  if (hookData.actionDiscord) {
+    return <>
+      <Form.Item name={[field.name, "action", "value", "webhookUrl"]} rules={[requiredField("webhook URL is required")]} >
+        <Input addonBefore={<div style={{ width: "8em" }}>Discord Webhook</div>} />
+      </Form.Item >
+      Text Template:
+      <Form.Item name={[field.name, "action", "value", "template"]} >
+        <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
+      </Form.Item >
+    </>
+  } else if (hookData.actionCommand) {
+    return <>
+      <Tooltip title="Script to execute. Commands will not work in the docker build of Backrest.">
+        Script:
+      </Tooltip>
+      <Form.Item name={[field.name, "action", "value", "command"]} rules={[requiredField("command is required")]}>
+        <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
+      </Form.Item>
+    </>
+  } else if (hookData.actionGotify) {
+    return <>
+      <Form.Item name={[field.name, "action", "value", "baseUrl"]} rules={[requiredField("gotify base URL is required"), { type: "url" }]}>
+        <Input addonBefore={<div style={{ width: "8em" }}>Gotify Base URL</div>} />
+      </Form.Item >
+      <Form.Item name={[field.name, "action", "value", "token"]} rules={[requiredField("gotify token is required")]}>
+        <Input addonBefore={<div style={{ width: "8em" }}>Gotify Token</div>} />
+      </Form.Item>
+      <Form.Item name={[field.name, "action", "value", "titleTemplate"]} rules={[requiredField("gotify title template is required")]}>
+        <Input addonBefore={<div style={{ width: "8em" }}>Title Template</div>} />
+      </Form.Item>
+      Text Template:
+      <Form.Item name={[field.name, "action", "value", "template"]}>
+        <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
+      </Form.Item>
+    </>
+  } else {
+    return <p>Unknown hook</p>
   }
 }
 
