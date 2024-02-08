@@ -152,11 +152,11 @@ const HookBuilder = ({ field }: { field: FormListFieldData }) => {
 
   if (hookData.actionDiscord) {
     return <>
-      <Form.Item name={[field.name, "action", "value", "webhookUrl"]} rules={[requiredField("webhook URL is required")]} >
+      <Form.Item name={[field.name, "actionDiscord", "webhookUrl"]} rules={[requiredField("webhook URL is required")]} >
         <Input addonBefore={<div style={{ width: "8em" }}>Discord Webhook</div>} />
       </Form.Item >
       Text Template:
-      <Form.Item name={[field.name, "action", "value", "template"]} >
+      <Form.Item name={[field.name, "actionDiscord", "template"]} >
         <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
       </Form.Item >
     </>
@@ -165,23 +165,23 @@ const HookBuilder = ({ field }: { field: FormListFieldData }) => {
       <Tooltip title="Script to execute. Commands will not work in the docker build of Backrest.">
         Script:
       </Tooltip>
-      <Form.Item name={[field.name, "action", "value", "command"]} rules={[requiredField("command is required")]}>
+      <Form.Item name={[field.name, "actionCommand", "command"]} rules={[requiredField("command is required")]}>
         <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
       </Form.Item>
     </>
   } else if (hookData.actionGotify) {
     return <>
-      <Form.Item name={[field.name, "action", "value", "baseUrl"]} rules={[requiredField("gotify base URL is required"), { type: "url" }]}>
+      <Form.Item name={[field.name, "actionGotify", "baseUrl"]} rules={[requiredField("gotify base URL is required"), { type: "url" }]}>
         <Input addonBefore={<div style={{ width: "8em" }}>Gotify Base URL</div>} />
       </Form.Item >
-      <Form.Item name={[field.name, "action", "value", "token"]} rules={[requiredField("gotify token is required")]}>
+      <Form.Item name={[field.name, "actionGotify", "token"]} rules={[requiredField("gotify token is required")]}>
         <Input addonBefore={<div style={{ width: "8em" }}>Gotify Token</div>} />
       </Form.Item>
-      <Form.Item name={[field.name, "action", "value", "titleTemplate"]} rules={[requiredField("gotify title template is required")]}>
+      <Form.Item name={[field.name, "actionGotify", "titleTemplate"]} rules={[requiredField("gotify title template is required")]}>
         <Input addonBefore={<div style={{ width: "8em" }}>Title Template</div>} />
       </Form.Item>
       Text Template:
-      <Form.Item name={[field.name, "action", "value", "template"]}>
+      <Form.Item name={[field.name, "actionGotify", "template"]}>
         <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
       </Form.Item>
     </>
