@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.11.1](https://github.com/garethgeorge/backrest/compare/v0.11.0...v0.11.1) (2024-02-08)
+
+
+### Bug Fixes
+
+* backrest fails to create directory for jwt secrets ([0067edf](https://github.com/garethgeorge/backrest/commit/0067edf378b01147f0041c225994098cb9c452ab))
+* form bugs in UI e.g. awkward behavior when modifying hooks ([4fcf526](https://github.com/garethgeorge/backrest/commit/4fcf52602c114e2c639fc4302a9b8e8d51180a4d))
+* update restic version to 1.16.4 ([668a7cb](https://github.com/garethgeorge/backrest/commit/668a7cb5bb5c0955a0e3186b2dd9329cedddd96f))
+* wrong field names in hooks form ([3540904](https://github.com/garethgeorge/backrest/commit/354090497b73d40d8a9e705d1aa0c4662ffc4b0e))
+* wrong value passed to --max-unused when providing a custom prune policy ([34175f2](https://github.com/garethgeorge/backrest/commit/34175f273630f7d2324a4d6b5f9f2f7576dd6608))
+
 ## [0.11.0](https://github.com/garethgeorge/backrest/compare/v0.10.1...v0.11.0) (2024-02-04)
 
 
