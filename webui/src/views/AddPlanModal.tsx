@@ -13,6 +13,7 @@ import {
   Col,
   Collapse,
   FormInstance,
+  Checkbox,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -38,7 +39,7 @@ export const AddPlanModal = ({
   const [config, setConfig] = useConfig();
   const [form] = Form.useForm();
   useEffect(() => {
-    form.setFieldsValue(template ? JSON.parse(template.toJsonString()) : {});
+    form.setFieldsValue(template ? JSON.parse(template.toJsonString()) : { cron: "0 0 * * *" });
   }, [template])
 
   if (!config) {
@@ -81,6 +82,7 @@ export const AddPlanModal = ({
 
     try {
       let planFormData = await validateForm(form);
+      delete planFormData.scheduleEnabled;
       const plan = new Plan().fromJsonString(JSON.stringify(planFormData), { ignoreUnknownFields: false });
 
       if (plan.retention && plan.retention.equals(new RetentionPolicy())) {
@@ -114,6 +116,8 @@ export const AddPlanModal = ({
   };
 
   const repos = config?.repos || [];
+
+  const cronSchedule = Form.useWatch("cron", form);
 
   return (
     <>
@@ -158,7 +162,6 @@ export const AddPlanModal = ({
             hasFeedback
             name="id"
             label="Plan Name"
-            initialValue={template ? template.id : ""}
             validateTrigger={["onChange", "onBlur"]}
             rules={[
               {
@@ -191,7 +194,6 @@ export const AddPlanModal = ({
             name="repo"
             label="Repository"
             validateTrigger={["onChange", "onBlur"]}
-            initialValue={template ? template.repo : ""}
             rules={[
               {
                 required: true,
@@ -213,7 +215,6 @@ export const AddPlanModal = ({
             <Form.List
               name="paths"
               rules={[]}
-              initialValue={template ? template.paths : []}
             >
               {(fields, { add, remove }, { errors }) => (
                 <>
@@ -224,7 +225,6 @@ export const AddPlanModal = ({
                       <Form.Item
                         {...field}
                         validateTrigger={["onChange", "onBlur"]}
-                        initialValue={""}
                         rules={[
                           {
                             required: true,
@@ -264,7 +264,6 @@ export const AddPlanModal = ({
             <Form.List
               name="excludes"
               rules={[]}
-              initialValue={template ? template.excludes : []}
             >
               {(fields, { add, remove }, { errors }) => (
                 <>
@@ -276,7 +275,6 @@ export const AddPlanModal = ({
                       <Form.Item
                         {...field}
                         validateTrigger={["onChange", "onBlur"]}
-                        initialValue={""}
                         rules={[
                           {
                             required: true,
@@ -313,22 +311,34 @@ export const AddPlanModal = ({
             </Form.List>
           </Form.Item>
 
+          <Form.Item label="Schedule Enabled">
+            <Form.Item
+              name="scheduleEnabled"
+              valuePropName="checked"
+              initialValue={cronSchedule !== ""}
+              noStyle
+            >
+              <Checkbox onChange={(e) => {
+                if (e.target.checked) {
+                  form.setFieldValue("cron", "0 0 * * *");
+                } else {
+                  form.setFieldValue("cron", "");
+                }
+              }} />
+            </Form.Item>
+          </Form.Item>
+
           {/* Plan.cron */}
           <Tooltip title="Cron expression to schedule the plan in 24 hour time">
             <Form.Item<Plan>
               name="cron"
-              label="Schedule"
-              initialValue={template ? template.cron : "0 0 * * *"}
+              label="Cron Schedule"
               validateTrigger={["onChange", "onBlur"]}
-              rules={[
-                {
-                  required: true,
-                  message: "Please input schedule",
-                },
-              ]}
+              hidden={!Form.useWatch("scheduleEnabled", form)}
             >
+
               <Cron
-                value={form.getFieldValue("cron")}
+                value={cronSchedule}
                 setValue={(val: string) => {
                   form.setFieldValue("cron", val);
                 }}

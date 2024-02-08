@@ -135,6 +135,9 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 		orchestrator: o,
 	}, TaskPriorityDefault)
 	for _, plan := range cfg.Plans {
+		if plan.Cron == "" {
+			continue
+		}
 		t, err := NewScheduledBackupTask(o, plan)
 		if err != nil {
 			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
