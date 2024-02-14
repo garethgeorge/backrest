@@ -1,3 +1,4 @@
+import { PartialMessage } from '@bufbuild/protobuf';
 import {
   Form,
   Modal,
@@ -358,7 +359,7 @@ export const AddPlanModal = ({
                     label: "Plan Config as JSON",
                     children: (
                       <Typography>
-                        <pre>{new Plan(form.getFieldsValue()).toJsonString({ prettySpaces: 2 })}</pre>
+                        <pre>{new Plan(sanitizeFormValues(form.getFieldsValue())).toJsonString({ prettySpaces: 2 })}</pre>
                       </Typography>
                     ),
                   },
@@ -508,3 +509,35 @@ const RetentionPolicyView = () => {
     </>
   );
 };
+
+const sanitizeFormValues = (data: PartialMessage<Plan>): PartialMessage<Plan> => {
+  if (!data.retention) {
+    return data;
+  }
+
+  if (data.retention.keepLastN === null) {
+    data.retention.keepLastN = 0;
+  }
+
+  if (data.retention.keepHourly === null) {
+    data.retention.keepHourly = 0;
+  }
+
+  if (data.retention.keepDaily === null) {
+    data.retention.keepDaily = 0;
+  }
+
+  if (data.retention.keepWeekly === null) {
+    data.retention.keepWeekly = 0;
+  }
+
+  if (data.retention.keepMonthly === null) {
+    data.retention.keepMonthly = 0;
+  }
+
+  if (data.retention.keepYearly === null) {
+    data.retention.keepYearly = 0;
+  }
+
+  return data;
+}
