@@ -451,11 +451,11 @@ export const AddRepoModal = ({
   );
 };
 
-const expectedEnvVars: { [scheme: string]: string[] } = {
-  s3: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"],
-  b2: ["B2_ACCOUNT_ID", "B2_ACCOUNT_KEY"],
-  azure: ["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_KEY"],
-  gs: ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"],
+const expectedEnvVars: { [scheme: string]: string[][] } = {
+  s3: [["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]],
+  b2: [["B2_ACCOUNT_ID", "B2_ACCOUNT_KEY"]],
+  azure: [["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_KEY"], ["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_SAS"]],
+  gs: [["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"], ["GOOGLE_ACCESS_TOKEN"]],
 };
 
 const envVarSetValidator = (form: FormInstance<FormData>, envVars: string[]) => {
@@ -500,27 +500,8 @@ const envVarSetValidator = (form: FormInstance<FormData>, envVars: string[]) => 
   }
 
   let scheme = uri.substring(0, schemeIdx);
-  let expected = expectedEnvVars[scheme];
-  if (!expected) {
-    return Promise.resolve();
-  }
 
-  let missing: string[] = [];
-  for (let e of expected) {
-    if (!envVarNames.includes(e)) {
-      missing.push(e);
-    }
-  }
-
-  if (missing.length === 0) {
-    return Promise.resolve();
-  }
-
-  return Promise.reject(
-    new Error(
-      "Missing env vars " + missing.join(", ") + " for scheme " + scheme
-    )
-  );
+  return checkSchemeEnvVars(scheme, envVarNames);
 };
 
 const cryptoRandomPassword = (): string => {
@@ -528,3 +509,46 @@ const cryptoRandomPassword = (): string => {
   // 48 chars is at least log2(64) * 48 = ~288 bits of entropy.
   return btoa(String.fromCharCode(...vals)).slice(0, 48);
 };
+
+const checkSchemeEnvVars = (scheme: string, envVarNames: string[]): Promise<void> => {
+  let expected = expectedEnvVars[scheme];
+  if (!expected) {
+    return Promise.resolve();
+  }
+
+  const missingVarsCollection: string[][] = [];
+
+  for (let possibility of expected) {
+    const missingVars = possibility.filter(envVar => !envVarNames.includes(envVar));
+
+    // If no env vars are missing, we have a full match and are good
+    if (missingVars.length === 0) {
+      return Promise.resolve();
+    }
+
+    // First pass: Only add those missing vars from sets where at least one existing env var already exists
+    if (missingVars.length < possibility.length) {
+      missingVarsCollection.push(missingVars);
+    }
+  }
+
+  // If we didn't find any env var set with a partial match, then add all expected sets
+  if (!missingVarsCollection.length) {
+    missingVarsCollection.push(...expected);
+  }
+
+  return Promise.reject(
+    new Error(
+      "Missing env vars " + formatMissingEnvVars(missingVarsCollection) + " for scheme " + scheme
+    )
+  );
+}
+
+const formatMissingEnvVars = (partialMatches: string[][]): string => {
+  return partialMatches.map(x => {
+    if (x.length > 1) {
+      return `[ ${ x.join(", ") } ]`;
+    }
+    return x[0];
+  }).join(" or ");
+}
