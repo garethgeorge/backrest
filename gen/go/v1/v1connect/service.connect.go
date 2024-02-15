@@ -115,7 +115,7 @@ type BackrestClient interface {
 	// Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
 	Prune(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
-	Forget(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
+	Forget(context.Context, *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error)
 	// Restore schedules a restore operation.
 	Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error)
 	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
@@ -202,7 +202,7 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestPruneMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		forget: connect.NewClient[types.StringValue, emptypb.Empty](
+		forget: connect.NewClient[v1.ForgetRequest, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestForgetProcedure,
 			connect.WithSchema(backrestForgetMethodDescriptor),
@@ -265,7 +265,7 @@ type backrestClient struct {
 	indexSnapshots     *connect.Client[types.StringValue, emptypb.Empty]
 	backup             *connect.Client[types.StringValue, emptypb.Empty]
 	prune              *connect.Client[types.StringValue, emptypb.Empty]
-	forget             *connect.Client[types.StringValue, emptypb.Empty]
+	forget             *connect.Client[v1.ForgetRequest, emptypb.Empty]
 	restore            *connect.Client[v1.RestoreSnapshotRequest, emptypb.Empty]
 	unlock             *connect.Client[types.StringValue, emptypb.Empty]
 	stats              *connect.Client[types.StringValue, emptypb.Empty]
@@ -326,7 +326,7 @@ func (c *backrestClient) Prune(ctx context.Context, req *connect.Request[types.S
 }
 
 // Forget calls v1.Backrest.Forget.
-func (c *backrestClient) Forget(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (c *backrestClient) Forget(ctx context.Context, req *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.forget.CallUnary(ctx, req)
 }
 
@@ -381,7 +381,7 @@ type BackrestHandler interface {
 	// Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
 	Prune(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
-	Forget(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
+	Forget(context.Context, *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error)
 	// Restore schedules a restore operation.
 	Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error)
 	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
@@ -599,7 +599,7 @@ func (UnimplementedBackrestHandler) Prune(context.Context, *connect.Request[type
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Prune is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) Forget(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (UnimplementedBackrestHandler) Forget(context.Context, *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Forget is not implemented"))
 }
 

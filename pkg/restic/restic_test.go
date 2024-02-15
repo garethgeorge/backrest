@@ -252,10 +252,10 @@ func TestResticForget(t *testing.T) {
 		ids = append(ids, output.SnapshotId)
 	}
 
-	// prune all snapshots
+	// forget snapshots
 	res, err := r.Forget(context.Background(), &RetentionPolicy{KeepLastN: 3})
 	if err != nil {
-		t.Fatalf("failed to prune snapshots: %v", err)
+		t.Fatalf("failed to forget snapshots: %v", err)
 	}
 
 	if len(res.Keep) != 3 {
@@ -283,6 +283,45 @@ func TestResticForget(t *testing.T) {
 
 	if !reflect.DeepEqual(keptIds, ids[7:]) {
 		t.Errorf("wanted kept ids to be %v, got: %v", ids[7:], keptIds)
+	}
+}
+
+func TestForgetSnapshotId(t *testing.T) {
+	t.Parallel()
+
+	repo := t.TempDir()
+	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
+		Id:       "test",
+		Uri:      repo,
+		Password: "test",
+	}, WithFlags("--no-cache"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	testData := helpers.CreateTestData(t)
+
+	ids := make([]string, 0)
+	for i := 0; i < 5; i++ {
+		output, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
+		if err != nil {
+			t.Fatalf("failed to backup and create new snapshot: %v", err)
+		}
+		ids = append(ids, output.SnapshotId)
+	}
+
+	// forget snapshot by ID
+	err := r.ForgetSnapshot(context.Background(), ids[0])
+	if err != nil {
+		t.Fatalf("failed to forget snapshots: %v", err)
+	}
+
+	snapshots, err := r.Snapshots(context.Background())
+	if err != nil {
+		t.Fatalf("failed to list snapshots: %v", err)
+	}
+	if len(snapshots) != 4 {
+		t.Errorf("wanted 4 snapshots, got: %d", len(snapshots))
 	}
 }
 

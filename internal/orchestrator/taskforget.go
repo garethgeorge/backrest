@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 // ForgetTask tracks a forget operation.
@@ -60,10 +58,6 @@ func (t *ForgetTask) Next(now time.Time) *time.Time {
 }
 
 func (t *ForgetTask) Run(ctx context.Context) error {
-	if t.plan.Retention == nil || proto.Equal(t.plan.Retention, &v1.RetentionPolicy{}) {
-		return errors.New("plan does not have a retention policy")
-	}
-
 	if err := t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
 		forgetOp := &v1.Operation_OperationForget{
 			OperationForget: &v1.OperationForget{},

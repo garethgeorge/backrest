@@ -199,6 +199,7 @@ export class BackupInfoCollector {
       snapshotInfo,
       forgotten,
       hidden,
+      snapshotId: operations[0].snapshotId,
       planId: operations[0].planId,
       repoId: operations[0].repoId,
     };

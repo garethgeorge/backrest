@@ -137,6 +137,14 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 	return forgotten, nil
 }
 
+func (r *RepoOrchestrator) ForgetSnapshot(ctx context.Context, snapshotId string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.l.Debug("Forget snapshot with ID", zap.String("snapshot", snapshotId))
+	return r.repo.ForgetSnapshot(ctx, snapshotId)
+}
+
 func (r *RepoOrchestrator) Prune(ctx context.Context, output io.Writer) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

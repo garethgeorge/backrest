@@ -6,7 +6,7 @@
 import { Empty, MethodKind } from "@bufbuild/protobuf";
 import { Config, Repo } from "./config_pb.js";
 import { OperationEvent, OperationList } from "./operations_pb.js";
-import { ClearHistoryRequest, GetOperationsRequest, ListSnapshotFilesRequest, ListSnapshotFilesResponse, ListSnapshotsRequest, LogDataRequest, RestoreSnapshotRequest } from "./service_pb.js";
+import { ClearHistoryRequest, ForgetRequest, GetOperationsRequest, ListSnapshotFilesRequest, ListSnapshotFilesResponse, ListSnapshotsRequest, LogDataRequest, RestoreSnapshotRequest } from "./service_pb.js";
 import { ResticSnapshotList } from "./restic_pb.js";
 import { BytesValue, Int64Value, StringList, StringValue } from "../types/value_pb.js";
 
@@ -119,7 +119,7 @@ export const Backrest = {
      */
     forget: {
       name: "Forget",
-      I: StringValue,
+      I: ForgetRequest,
       O: Empty,
       kind: MethodKind.Unary,
     },
