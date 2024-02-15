@@ -281,6 +281,28 @@ const BackupView = ({ backup }: { backup?: BackupInfo }) => {
       }
     }
 
+    const deleteButton = backup.snapshotId ?
+      <Tooltip title="This will remove the snapshot from the repository. This is irreversible.">
+        <ConfirmButton
+          type="text"
+          style={{ color: "white" }}
+          confirmTitle="Confirm forget?"
+          confirmTimeout={2000}
+          onClickAsync={doDeleteSnapshot}
+        >Forget (Destructive)</ConfirmButton>
+      </Tooltip> : <ConfirmButton
+        type="text"
+        style={{ color: "white" }}
+        confirmTitle="Confirm clear?"
+        onClickAsync={async () => {
+          backrestService.clearHistory(new ClearHistoryRequest({
+            ops: backup.operations.map((op) => op.id),
+          }))
+        }}
+      >
+        Delete Event
+      </ConfirmButton>;
+
     return <div style={{ width: "100%" }}>
       <div style={{
         alignItems: "center",
@@ -291,27 +313,7 @@ const BackupView = ({ backup }: { backup?: BackupInfo }) => {
       }}>
         <h3>Backup on {formatTime(backup.displayTime)}</h3>
         <div style={{ position: "absolute", right: "20px" }}>
-          {backup.snapshotId ?
-            <Tooltip title="This will remove the snapshot from the repository. This is irreversible.">
-              <ConfirmButton
-                type="text"
-                style={{ color: "white" }}
-                confirmTitle="Confirm forget?"
-                confirmTimeout={2000}
-                onClickAsync={doDeleteSnapshot}
-              >Forget Snapshot (Destructive)</ConfirmButton>
-            </Tooltip> : <ConfirmButton
-              type="text"
-              style={{ color: "white" }}
-              confirmTitle="Confirm clear?"
-              onClickAsync={async () => {
-                backrestService.clearHistory(new ClearHistoryRequest({
-                  ops: backup.operations.map((op) => op.id),
-                }))
-              }}
-            >
-              Delete Event
-            </ConfirmButton>}
+          {backup.status !== OperationStatus.STATUS_PENDING && backup.status != OperationStatus.STATUS_INPROGRESS ? deleteButton : null}
         </div>
       </div>
       <OperationList key={backup.id} useBackups={[backup]} filter={(op) => op && !shouldHideOperation(op)} />
