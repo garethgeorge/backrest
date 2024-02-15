@@ -11,8 +11,9 @@ version: 1
 before:
   hooks:
     - go mod tidy
-    - go generate ./...
-    - sh -c "ls && cd ./webui && npm i && npm run build && gzip ./dist/*"
+    - npm --prefix webui install
+    - sh -c "GOOS=linux go generate ./..."
+    - sh -c "GOOS=windows go generate ./..."
 
 builds:
   - main: .
