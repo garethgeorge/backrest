@@ -159,7 +159,7 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 		return fmt.Errorf("expected a final backup progress entry, got nil")
 	}
 
-	zap.L().Info("Backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)), zap.Any("summary", summary))
+	zap.L().Info("Backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)), zap.Any("summary", backupOp.OperationBackup.LastStatus))
 
 	// schedule followup tasks
 	at := time.Now()
