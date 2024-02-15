@@ -36,7 +36,7 @@ service Backrest {
   rpc Prune(types.StringValue) returns (google.protobuf.Empty) {}
 
   // Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
-  rpc Forget(types.StringValue) returns (google.protobuf.Empty) {}
+  rpc Forget(ForgetRequest) returns (google.protobuf.Empty) {}
 
   // Restore schedules a restore operation.
   rpc Restore(RestoreSnapshotRequest) returns (google.protobuf.Empty) {}
@@ -65,6 +65,12 @@ message ClearHistoryRequest {
   string plan_id = 2;
   bool only_failed = 3;
   repeated int64 ops = 4;
+}
+
+message ForgetRequest {
+  string repo_id = 1;
+  string plan_id = 2;
+  string snapshot_id = 3;
 }
 
 message ListSnapshotsRequest {

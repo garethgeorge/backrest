@@ -291,22 +291,40 @@ func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types
 	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
-func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.Value, err)
+func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {
+	at := time.Now()
+	var err error
+	if req.Msg.SnapshotId != "" && req.Msg.PlanId != "" && req.Msg.RepoId != "" {
+		wait := make(chan struct{})
+		s.orchestrator.ScheduleTask(
+			orchestrator.NewOneoffForgetSnapshotTask(s.orchestrator, req.Msg.RepoId, req.Msg.PlanId, req.Msg.SnapshotId, at),
+			orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityForget, func(e error) {
+				err = e
+				close(wait)
+			})
+		<-wait
+	} else if req.Msg.RepoId != "" && req.Msg.PlanId != "" {
+		plan, err := s.orchestrator.GetPlan(req.Msg.PlanId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.PlanId, err)
+		}
+
+		wait := make(chan struct{})
+		s.orchestrator.ScheduleTask(
+			orchestrator.NewOneoffForgetTask(s.orchestrator, plan, "", at),
+			orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityForget, func(e error) {
+				err = e
+				close(wait)
+			})
+		<-wait
+	} else {
+		return nil, errors.New("must specify repoId and planId and (optionally) snapshotId")
 	}
 
-	at := time.Now()
-	var wg sync.WaitGroup
-	wg.Add(1)
-	s.orchestrator.ScheduleTask(orchestrator.NewOneoffForgetTask(s.orchestrator, plan, "", at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityForget, func(e error) {
-		err = e
-		wg.Done()
-	})
-	s.orchestrator.ScheduleTask(orchestrator.NewOneoffIndexSnapshotsTask(s.orchestrator, plan.Repo, at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
-	wg.Wait()
-	return connect.NewResponse(&emptypb.Empty{}), err
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
 func (s *BackrestHandler) Prune(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {

@@ -10,7 +10,7 @@ import {
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
-import { Button, Col, Divider, Empty, Modal, Row, Tree } from "antd";
+import { Button, Col, Divider, Empty, Modal, Row, Tooltip, Tree } from "antd";
 import _ from "lodash";
 import { DataNode } from "antd/es/tree";
 import {
@@ -29,10 +29,11 @@ import {
 import { OperationEvent, OperationEventType, OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { useAlertApi } from "./Alerts";
 import { OperationList } from "./OperationList";
-import { ClearHistoryRequest, GetOperationsRequest } from "../../gen/ts/v1/service_pb";
+import { ClearHistoryRequest, ForgetRequest, GetOperationsRequest } from "../../gen/ts/v1/service_pb";
 import { isMobile } from "../lib/browserutil";
 import { useShowModal } from "./ModalManager";
 import { backrestService } from "../api";
+import { ConfirmButton } from "./SpinButton";
 
 type OpTreeNode = DataNode & {
   backup?: BackupInfo;
@@ -263,9 +264,23 @@ const sortByKey = (a: OpTreeNode, b: OpTreeNode) => {
 };
 
 const BackupView = ({ backup }: { backup?: BackupInfo }) => {
+  const alertApi = useAlertApi();
   if (!backup) {
     return <Empty description="Backup not found." />;
   } else {
+    const doDeleteSnapshot = async () => {
+      try {
+        await backrestService.forget(new ForgetRequest({
+          planId: backup.planId!,
+          repoId: backup.repoId!,
+          snapshotId: backup.snapshotId!
+        }));
+        alertApi!.success("Snapshot forgotten.");
+      } catch (e) {
+        alertApi!.error("Failed to forget snapshot: " + e);
+      }
+    }
+
     return <div style={{ width: "100%" }}>
       <div style={{
         alignItems: "center",
@@ -276,17 +291,27 @@ const BackupView = ({ backup }: { backup?: BackupInfo }) => {
       }}>
         <h3>Backup on {formatTime(backup.displayTime)}</h3>
         <div style={{ position: "absolute", right: "20px" }}>
-          <Button
-            type="text"
-            style={{ color: "white" }}
-            onClick={() => {
-              backrestService.clearHistory(new ClearHistoryRequest({
-                ops: backup.operations.map((op) => op.id),
-              }))
-            }}
-          >
-            Clear From History
-          </Button>
+          {backup.snapshotId ?
+            <Tooltip title="This will remove the snapshot from the repository. This is irreversible.">
+              <ConfirmButton
+                type="text"
+                style={{ color: "white" }}
+                confirmTitle="Confirm forget?"
+                confirmTimeout={2000}
+                onClickAsync={doDeleteSnapshot}
+              >Forget Snapshot (Destructive)</ConfirmButton>
+            </Tooltip> : <ConfirmButton
+              type="text"
+              style={{ color: "white" }}
+              confirmTitle="Confirm clear?"
+              onClickAsync={async () => {
+                backrestService.clearHistory(new ClearHistoryRequest({
+                  ops: backup.operations.map((op) => op.id),
+                }))
+              }}
+            >
+              Delete Event
+            </ConfirmButton>}
         </div>
       </div>
       <OperationList key={backup.id} useBackups={[backup]} filter={(op) => op && !shouldHideOperation(op)} />

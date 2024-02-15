@@ -59,7 +59,7 @@ type BackrestClient interface {
 	// Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
 	Prune(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
-	Forget(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Forget(ctx context.Context, in *ForgetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Restore schedules a restore operation.
 	Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
@@ -197,7 +197,7 @@ func (c *backrestClient) Prune(ctx context.Context, in *types.StringValue, opts 
 	return out, nil
 }
 
-func (c *backrestClient) Forget(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) Forget(ctx context.Context, in *ForgetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Backrest_Forget_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -287,7 +287,7 @@ type BackrestServer interface {
 	// Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
 	Prune(context.Context, *types.StringValue) (*emptypb.Empty, error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
-	Forget(context.Context, *types.StringValue) (*emptypb.Empty, error)
+	Forget(context.Context, *ForgetRequest) (*emptypb.Empty, error)
 	// Restore schedules a restore operation.
 	Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error)
 	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
@@ -339,7 +339,7 @@ func (UnimplementedBackrestServer) Backup(context.Context, *types.StringValue) (
 func (UnimplementedBackrestServer) Prune(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Prune not implemented")
 }
-func (UnimplementedBackrestServer) Forget(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) Forget(context.Context, *ForgetRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Forget not implemented")
 }
 func (UnimplementedBackrestServer) Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error) {
@@ -560,7 +560,7 @@ func _Backrest_Prune_Handler(srv interface{}, ctx context.Context, dec func(inte
 }
 
 func _Backrest_Forget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(types.StringValue)
+	in := new(ForgetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -572,7 +572,7 @@ func _Backrest_Forget_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: Backrest_Forget_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).Forget(ctx, req.(*types.StringValue))
+		return srv.(BackrestServer).Forget(ctx, req.(*ForgetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

@@ -45,6 +45,7 @@ export const ConfirmButton: React.FC<ButtonProps & {
       setTimeout(() => {
         setClicked(false);
       }, confirmTimeout);
+      return;
     }
 
     setClicked(false);

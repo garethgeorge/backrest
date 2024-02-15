@@ -227,6 +227,26 @@ func (r *Repo) Forget(ctx context.Context, policy *RetentionPolicy, opts ...Gene
 	return &result[0], nil
 }
 
+func (r *Repo) ForgetSnapshot(ctx context.Context, snapshotId string, opts ...GenericOption) error {
+	opt := resolveOpts(opts)
+
+	args := []string{"forget", "--json", snapshotId}
+	args = append(args, r.extraArgs...)
+	args = append(args, opt.extraArgs...)
+	args = append(args, snapshotId)
+
+	cmd := exec.CommandContext(ctx, r.cmd, args...)
+	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, opt.extraEnv...)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return newCmdError(cmd, string(output), err)
+	}
+
+	return nil
+}
+
 func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...GenericOption) error {
 	opt := resolveOpts(opts)
 
