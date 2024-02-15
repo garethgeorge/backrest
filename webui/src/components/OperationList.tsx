@@ -9,7 +9,6 @@ import {
 } from "../../gen/ts/v1/operations_pb";
 import {
   Button,
-  Card,
   Col,
   Collapse,
   Empty,

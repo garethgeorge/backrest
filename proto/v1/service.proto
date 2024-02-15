@@ -64,6 +64,7 @@ message ClearHistoryRequest {
   string repo_id = 1;
   string plan_id = 2;
   bool only_failed = 3;
+  repeated int64 ops = 4;
 }
 
 message ListSnapshotsRequest {

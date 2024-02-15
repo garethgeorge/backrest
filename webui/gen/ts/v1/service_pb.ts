@@ -25,6 +25,11 @@ export class ClearHistoryRequest extends Message<ClearHistoryRequest> {
    */
   onlyFailed = false;
 
+  /**
+   * @generated from field: repeated int64 ops = 4;
+   */
+  ops: bigint[] = [];
+
   constructor(data?: PartialMessage<ClearHistoryRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -36,6 +41,7 @@ export class ClearHistoryRequest extends Message<ClearHistoryRequest> {
     { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "only_failed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 4, name: "ops", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ClearHistoryRequest {

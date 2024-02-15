@@ -45,14 +45,17 @@ func (t *StatsTask) shouldRun() (bool, error) {
 	var bytesSinceLastStat int64 = -1
 	var howFarBack int = 0
 	if err := t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.Reversed(indexutil.CollectLastN(statOperationsThreshold)), func(op *v1.Operation) error {
+		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_INPROGRESS {
+			return nil
+		}
 		howFarBack++
 		if _, ok := op.Op.(*v1.Operation_OperationStats); ok {
+			if bytesSinceLastStat == -1 {
+				bytesSinceLastStat = 0
+			}
 			return oplog.ErrStopIteration
 		} else if backup, ok := op.Op.(*v1.Operation_OperationBackup); ok && backup.OperationBackup.LastStatus != nil {
 			if summary, ok := backup.OperationBackup.LastStatus.Entry.(*v1.BackupProgressEntry_Summary); ok {
-				if bytesSinceLastStat == -1 {
-					bytesSinceLastStat = 0
-				}
 				bytesSinceLastStat += summary.Summary.DataAdded
 			}
 		}
@@ -74,17 +77,18 @@ func (t *StatsTask) shouldRun() (bool, error) {
 }
 
 func (t *StatsTask) Next(now time.Time) *time.Time {
-	shouldRun, err := t.shouldRun()
-	if err != nil {
-		zap.S().Errorf("task %v failed to check if it should run: %v", t.Name(), err)
-	}
-	if !shouldRun {
-		return nil
-	}
-
 	ret := t.at
 	if ret != nil {
 		t.at = nil
+
+		shouldRun, err := t.shouldRun()
+		if err != nil {
+			zap.S().Errorf("task %v failed to check if it should run: %v", t.Name(), err)
+		}
+		if !shouldRun {
+			return nil
+		}
+
 		if err := t.setOperation(&v1.Operation{
 			PlanId:          t.plan.Id,
 			RepoId:          t.plan.Repo,

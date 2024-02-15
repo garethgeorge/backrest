@@ -379,6 +379,11 @@ func (s *BackrestHandler) Cancel(ctx context.Context, req *connect.Request[types
 func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error) {
 	var err error
 	var ids []int64
+
+	if len(req.Msg.Ops) != 0 {
+		ids = append(ids, req.Msg.Ops...)
+	}
+
 	opCollector := func(op *v1.Operation) error {
 		if !req.Msg.OnlyFailed || op.Status == v1.OperationStatus_STATUS_ERROR {
 			ids = append(ids, op.Id)
