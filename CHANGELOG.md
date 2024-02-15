@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.12.0](https://github.com/garethgeorge/backrest/compare/v0.11.1...v0.12.0) (2024-02-15)
+
+
+### Features
+
+* add button to forget individual snapshots ([276b1d2](https://github.com/garethgeorge/backrest/commit/276b1d2c602ad0f787958452070771af3e69f073))
+* add slack webhook ([8fa90ab](https://github.com/garethgeorge/backrest/commit/8fa90ab9ca48f0888ed0a5d263cb697758063188))
+* Add support for multiple sets of expected env vars per repo scheme ([#90](https://github.com/garethgeorge/backrest/issues/90)) ([da0551c](https://github.com/garethgeorge/backrest/commit/da0551c19a98fe675d278e34f8e3cc58ac9edaf5))
+* clear operations from history ([dc7a3a5](https://github.com/garethgeorge/backrest/commit/dc7a3a59a2400f97dd6b8140c6e70a34105496f9))
+* Windows WebUI uses correct path separator ([f5521e7](https://github.com/garethgeorge/backrest/commit/f5521e7b56e446fa2062a95560f315621b77d3e6))
+
+
+### Bug Fixes
+
+* cleanup old versions of restic when upgrading ([79f529f](https://github.com/garethgeorge/backrest/commit/79f529f8edfb9bf893e74f7b1355bd7f2d7bdc3f))
+* hide delete operation button if operation is in progress or pending ([08c8762](https://github.com/garethgeorge/backrest/commit/08c876243febb99a68740c449055e850f37d740e))
+* retention policy configuration in add plan view ([dd24d90](https://github.com/garethgeorge/backrest/commit/dd24d9024f5ade62535956b1449dae75627ce493))
+* stats operations running at wrong interval ([05e5ae0](https://github.com/garethgeorge/backrest/commit/05e5ae0c455680bf9fbc9b4b2a9fbf96bcfdfc3b))
+
 ## [0.11.1](https://github.com/garethgeorge/backrest/compare/v0.11.0...v0.11.1) (2024-02-08)
 
 
