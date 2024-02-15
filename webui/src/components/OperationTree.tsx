@@ -10,7 +10,7 @@ import {
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
-import { Col, Divider, Empty, Modal, Row, Tree } from "antd";
+import { Button, Col, Divider, Empty, Modal, Row, Tree } from "antd";
 import _ from "lodash";
 import { DataNode } from "antd/es/tree";
 import {
@@ -29,9 +29,10 @@ import {
 import { OperationEvent, OperationEventType, OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { useAlertApi } from "./Alerts";
 import { OperationList } from "./OperationList";
-import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
+import { ClearHistoryRequest, GetOperationsRequest } from "../../gen/ts/v1/service_pb";
 import { isMobile } from "../lib/browserutil";
 import { useShowModal } from "./ModalManager";
+import { backrestService } from "../api";
 
 type OpTreeNode = DataNode & {
   backup?: BackupInfo;
@@ -265,9 +266,30 @@ const BackupView = ({ backup }: { backup?: BackupInfo }) => {
   if (!backup) {
     return <Empty description="Backup not found." />;
   } else {
-    return <>
-      <h3>Backup on {formatTime(backup.displayTime)}</h3>
+    return <div style={{ width: "100%" }}>
+      <div style={{
+        alignItems: "center",
+        display: "flex",
+        flexDirection: "row",
+        width: "100%",
+        height: "60px",
+      }}>
+        <h3>Backup on {formatTime(backup.displayTime)}</h3>
+        <div style={{ position: "absolute", right: "20px" }}>
+          <Button
+            type="text"
+            style={{ color: "white" }}
+            onClick={() => {
+              backrestService.clearHistory(new ClearHistoryRequest({
+                ops: backup.operations.map((op) => op.id),
+              }))
+            }}
+          >
+            Clear From History
+          </Button>
+        </div>
+      </div>
       <OperationList key={backup.id} useBackups={[backup]} filter={(op) => op && !shouldHideOperation(op)} />
-    </>;
+    </div>;
   }
 }
