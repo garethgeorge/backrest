@@ -5,7 +5,7 @@
 
 Backrest is a web-accessible backup solution built on top of [restic](https://restic.net/). Backrest provides a WebUI which wraps the restic CLI and makes it easy to create repos, browse snapshots, and restore files. Additionally, Backrest can run in the background and take an opinionated approach to scheduling snapshots and orchestrating repo health operations.
 
-By building on restic Backrest gets the advantages of restic mature feature set: restic provides fast, reliable (used by tens of thousands of individuals and by corporations in production environments), and secure backup operations. Backrest itself is built in Golang (matching restic's implementation) and is shipped as a self-contained and light weight (<20 MB on all platforms) binary with no dependecies other than restic (which backrest can download for you and keep up to date).
+By building on restic, Backrest leverages restic's mature feature set. Restic provides fast, reliable (used by tens of thousands of individuals and by corporations in production environments), and secure backup operations. Backrest itself is built in Golang (matching restic's implementation) and is shipped as a self-contained and light weight (<20 MB on all platforms) binary with no dependecies other than restic (which backrest can download for you and keep up to date).
 
 This project aims to be the easiest way to setup and get started with backups on any system. You can expect to be able to perform all operations from the web interface but should you ever need more poworeful control, you are free to browse your repo and perform operations using the [restic cli](https://restic.readthedocs.io/en/latest/manual_rest.html). Backrest safely detects and imports external operations (e.g. manual backups).
 

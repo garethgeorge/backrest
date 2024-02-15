@@ -5,7 +5,7 @@
   "scripts": {
     "start": "parcel serve src/index.html",
     "build": "BACKREST_BUILD_VERSION=$(git describe --tags --abbrev=0) UI_OS=unix parcel build src/index.html",
-    "build-windows": "set UI_OS=windows & parcel build src/index.html",
+    "build-windows": "BACKREST_BUILD_VERSION=$(git describe --tags --abbrev=0) UI_OS=windows parcel build src/index.html --dist-dir dist-windows",
     "test": "echo \"Error: no test specified\" && exit 1",
     "check": "tsc --noEmit"
   },

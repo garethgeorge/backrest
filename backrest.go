@@ -13,7 +13,6 @@ import (
 	"sync"
 	"syscall"
 
-	rice "github.com/GeertJohan/go.rice"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/api"
 	"github.com/garethgeorge/backrest/internal/auth"
@@ -94,7 +93,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	if box, err := rice.FindBox("webui/dist"); err == nil {
+	if box, err := WebUIBox(); err == nil {
 		mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasSuffix(r.URL.Path, "/") {
 				r.URL.Path += "index.html"
