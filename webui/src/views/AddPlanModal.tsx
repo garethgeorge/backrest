@@ -374,13 +374,27 @@ export const AddPlanModal = ({
 
 const RetentionPolicyView = () => {
   const form = Form.useFormInstance();
-  const retention = form.getFieldValue("retention") as RetentionPolicy | undefined;
-  const [mode, setMode] = useState(!retention ? 2 : retention.keepLastN ? 0 : 1);
+  const retention = Form.useWatch('retention', { form, preserve: true }) as RetentionPolicy | undefined;
+  console.log("RETENTION: " + JSON.stringify(retention));
+
+  let [mode, setMode] = useState(0);
+  useEffect(() => {
+    if (!retention || (!retention.keepDaily && !retention.keepHourly && !retention.keepLastN && !retention.keepMonthly && !retention.keepWeekly && !retention.keepYearly)) {
+      console.log("RETENTION NOT SET");
+      setMode(0);
+    } else if (!!retention.keepLastN) {
+      console.log("KEEP LAST N: ", retention.keepLastN);
+      setMode(1);
+    } else {
+      setMode(2);
+    }
+  }, [retention])
+  console.log("MODE: ", mode);
 
   let elem: React.ReactNode = null;
-  if (mode === 2) {
+  if (mode === 0) {
     elem = <p>All backups are retained e.g. for append-only repos. Ensure that you manually forget / prune backups elsewhere. Backrest will register forgets performed externally on the next backup.</p>;
-  } else if (mode === 0) {
+  } else if (mode === 1) {
     elem = (
       <Form.Item
         name={["retention", "keepLastN"]}
@@ -396,73 +410,69 @@ const RetentionPolicyView = () => {
         <InputNumber addonBefore={<div style={{ width: "5em" }}>Count</div>} type="number" />
       </Form.Item>
     );
-  } else {
+  } else if (mode === 2) {
     elem = (
-      <Form.Item
-        required={true}
-      >
-        <Row>
-          <Col span={11}>
-            <Form.Item
-              name={["retention", "keepYearly"]}
-              validateTrigger={["onChange", "onBlur"]}
-              initialValue={0}
-              required={false}
-            >
-              <InputNumber
-                addonBefore={<div style={{ width: "5em" }}>Yearly</div>}
-                type="number"
-              />
-            </Form.Item>
-            <Form.Item
-              name={["retention", "keepMonthly"]}
-              initialValue={3}
-              validateTrigger={["onChange", "onBlur"]}
-              required={false}
-            >
-              <InputNumber
-                addonBefore={<div style={{ width: "5em" }}>Monthly</div>}
-                type="number"
-              />
-            </Form.Item>
-            <Form.Item
-              name={["retention", "keepWeekly"]}
-              initialValue={4}
-              validateTrigger={["onChange", "onBlur"]}
-              required={false}
-            >
-              <InputNumber
-                addonBefore={<div style={{ width: "5em" }}>Weekly</div>}
-                type="number"
-              />
-            </Form.Item>
-          </Col>
-          <Col span={11} offset={1}>
-            <Form.Item
-              name={["retention", "keepDaily"]}
-              initialValue={7}
-              validateTrigger={["onChange", "onBlur"]}
-              required={false}
-            >
-              <InputNumber
-                addonBefore={<div style={{ width: "5em" }}>Daily</div>}
-                type="number"
-              />
-            </Form.Item>
-            <Form.Item
-              name={["retention", "keepHourly"]}
-              initialValue={24}
-              validateTrigger={["onChange", "onBlur"]}
-              required={false}
-            >
-              <InputNumber
-                addonBefore={<div style={{ width: "5em" }}>Hourly</div>}
-                type="number"
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-      </Form.Item >
+      <Row>
+        <Col span={11}>
+          <Form.Item
+            name={["retention", "keepYearly"]}
+            validateTrigger={["onChange", "onBlur"]}
+            initialValue={0}
+            required={false}
+          >
+            <InputNumber
+              addonBefore={<div style={{ width: "5em" }}>Yearly</div>}
+              type="number"
+            />
+          </Form.Item>
+          <Form.Item
+            name={["retention", "keepMonthly"]}
+            initialValue={3}
+            validateTrigger={["onChange", "onBlur"]}
+            required={false}
+          >
+            <InputNumber
+              addonBefore={<div style={{ width: "5em" }}>Monthly</div>}
+              type="number"
+            />
+          </Form.Item>
+          <Form.Item
+            name={["retention", "keepWeekly"]}
+            initialValue={4}
+            validateTrigger={["onChange", "onBlur"]}
+            required={false}
+          >
+            <InputNumber
+              addonBefore={<div style={{ width: "5em" }}>Weekly</div>}
+              type="number"
+            />
+          </Form.Item>
+        </Col>
+        <Col span={11} offset={1}>
+          <Form.Item
+            name={["retention", "keepDaily"]}
+            initialValue={7}
+            validateTrigger={["onChange", "onBlur"]}
+            required={false}
+          >
+            <InputNumber
+              addonBefore={<div style={{ width: "5em" }}>Daily</div>}
+              type="number"
+            />
+          </Form.Item>
+          <Form.Item
+            name={["retention", "keepHourly"]}
+            initialValue={24}
+            validateTrigger={["onChange", "onBlur"]}
+            required={false}
+          >
+            <InputNumber
+              addonBefore={<div style={{ width: "5em" }}>Hourly</div>}
+              type="number"
+            />
+          </Form.Item>
+        </Col>
+      </Row>
     );
   }
 
@@ -471,29 +481,27 @@ const RetentionPolicyView = () => {
       <Form.Item label="Retention Policy">
         <Row>
           <Radio.Group value={mode} onChange={e => {
+            console.log("SELECTED: ", e.target);
             const selected = e.target.value;
-            if (selected === 0) {
-              setMode(0);
+            if (selected === 1) {
               form.setFieldValue("retention", { keepLastN: 30 });
-            } else if (selected === 1) {
-              setMode(1);
+            } else if (selected === 2) {
               form.setFieldValue("retention", { keepYearly: 0, keepMonthly: 3, keepWeekly: 4, keepDaily: 7, keepHourly: 24 });
             } else {
-              setMode(2);
               form.setFieldValue("retention", null);
             }
           }}>
-            <Radio.Button value={0}>
+            <Radio.Button value={1}>
               <Tooltip title="The last N snapshots will be kept by restic. Retention policy is applied to drop older snapshots after each backup run.">
                 By Count
               </Tooltip>
             </Radio.Button>
-            <Radio.Button value={1}>
+            <Radio.Button value={2}>
               <Tooltip title="Snapshots older than the specified time period will be dropped by restic. Retention policy is applied to drop older snapshots after each backup run." >
                 By Time Period
               </Tooltip>
             </Radio.Button>
-            <Radio.Button value={2}>
+            <Radio.Button value={0}>
               <Tooltip title="All backups will be retained. Note that this may result in slow backups if the set of snapshots grows very large.">
                 None
               </Tooltip>
@@ -502,7 +510,9 @@ const RetentionPolicyView = () => {
         </Row>
         <br />
         <Row>
-          {elem}
+          <Form.Item>
+            {elem}
+          </Form.Item>
         </Row>
       </Form.Item >
     </>
