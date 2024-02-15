@@ -358,7 +358,7 @@ export const AddPlanModal = ({
                     label: "Plan Config as JSON",
                     children: (
                       <Typography>
-                        <pre>{new Plan(form.getFieldsValue()).toJsonString({ prettySpaces: 2 })}</pre>
+                        <pre>{JSON.stringify(form.getFieldsValue(), null, 2)}</pre>
                       </Typography>
                     ),
                   },

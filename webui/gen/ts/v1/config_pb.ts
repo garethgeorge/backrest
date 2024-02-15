@@ -435,6 +435,12 @@ export class Hook extends Message<Hook> {
      */
     value: Hook_Gotify;
     case: "actionGotify";
+  } | {
+    /**
+     * @generated from field: v1.Hook.Slack action_slack = 104;
+     */
+    value: Hook_Slack;
+    case: "actionSlack";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Hook>) {
@@ -450,6 +456,7 @@ export class Hook extends Message<Hook> {
     { no: 101, name: "action_webhook", kind: "message", T: Hook_Webhook, oneof: "action" },
     { no: 102, name: "action_discord", kind: "message", T: Hook_Discord, oneof: "action" },
     { no: 103, name: "action_gotify", kind: "message", T: Hook_Gotify, oneof: "action" },
+    { no: 104, name: "action_slack", kind: "message", T: Hook_Slack, oneof: "action" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook {
@@ -690,6 +697,51 @@ export class Hook_Gotify extends Message<Hook_Gotify> {
 
   static equals(a: Hook_Gotify | PlainMessage<Hook_Gotify> | undefined, b: Hook_Gotify | PlainMessage<Hook_Gotify> | undefined): boolean {
     return proto3.util.equals(Hook_Gotify, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.Hook.Slack
+ */
+export class Hook_Slack extends Message<Hook_Slack> {
+  /**
+   * @generated from field: string webhook_url = 1;
+   */
+  webhookUrl = "";
+
+  /**
+   * template for the webhook payload.
+   *
+   * @generated from field: string template = 2;
+   */
+  template = "";
+
+  constructor(data?: PartialMessage<Hook_Slack>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.Hook.Slack";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "webhook_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Slack {
+    return new Hook_Slack().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Slack {
+    return new Hook_Slack().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Slack {
+    return new Hook_Slack().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Hook_Slack | PlainMessage<Hook_Slack> | undefined, b: Hook_Slack | PlainMessage<Hook_Slack> | undefined): boolean {
+    return proto3.util.equals(Hook_Slack, a, b);
   }
 }
 

@@ -16,6 +16,7 @@ export interface HookFields {
   actionGotify?: any;
   actionDiscord?: any;
   actionWebhook?: any;
+  actionSlack?: any;
 }
 
 export const hooksListTooltipText = <>
@@ -143,6 +144,15 @@ const hookTypes: {
         },
         conditions: [],
       }
+    },
+    {
+      name: "Slack", template: {
+        actionSlack: {
+          webhookUrl: "",
+          template: "{{ .Summary }}",
+        },
+        conditions: [],
+      }
     }
   ];
 
@@ -152,7 +162,7 @@ const HookBuilder = ({ field }: { field: FormListFieldData }) => {
 
   if (hookData.actionDiscord) {
     return <>
-      <Form.Item name={[field.name, "actionDiscord", "webhookUrl"]} rules={[requiredField("webhook URL is required")]} >
+      <Form.Item name={[field.name, "actionDiscord", "webhookUrl"]} rules={[requiredField("webhook URL is required"), { type: "url" }]} >
         <Input addonBefore={<div style={{ width: "8em" }}>Discord Webhook</div>} />
       </Form.Item >
       Text Template:
@@ -184,6 +194,16 @@ const HookBuilder = ({ field }: { field: FormListFieldData }) => {
       <Form.Item name={[field.name, "actionGotify", "template"]}>
         <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
       </Form.Item>
+    </>
+  } else if (hookData.actionSlack) {
+    return <>
+      <Form.Item name={[field.name, "actionSlack", "webhookUrl"]} rules={[requiredField("webhook URL is required"), { type: "url" }]} >
+        <Input addonBefore={<div style={{ width: "8em" }}>Slack Webhook</div>} />
+      </Form.Item >
+      Text Template:
+      <Form.Item name={[field.name, "actionSlack", "template"]} >
+        <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
+      </Form.Item >
     </>
   } else {
     return <p>Unknown hook</p>
