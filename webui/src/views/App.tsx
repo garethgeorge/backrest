@@ -130,7 +130,6 @@ export const App: React.FC = () => {
             Logout
           </Button>
         </h1>
-
       </Header>
       <Layout>
         <Sider width={300} style={{ background: colorBgContainer }}>
