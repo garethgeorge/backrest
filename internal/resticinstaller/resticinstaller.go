@@ -188,6 +188,24 @@ func installResticIfNotExists(resticInstallPath string) error {
 	})
 }
 
+func removeOldVersions(installDir string) {
+	files, err := os.ReadDir(installDir)
+	if err != nil {
+		zap.S().Errorf("remove old restic versions: read dir %v: %v", installDir, err)
+		return
+	}
+
+	for _, file := range files {
+		if !strings.HasPrefix(file.Name(), "restic-") || strings.Contains(file.Name(), RequiredResticVersion) {
+			continue
+		}
+
+		if err := os.Remove(path.Join(installDir, file.Name())); err != nil {
+			zap.S().Errorf("remove old restic version %v: %v", file.Name(), err)
+		}
+	}
+}
+
 // FindOrInstallResticBinary first tries to find the restic binary if provided as an environment variable. Otherwise it downloads restic if not already installed.
 func FindOrInstallResticBinary() (string, error) {
 	findResticMu.Lock()
@@ -229,6 +247,7 @@ func FindOrInstallResticBinary() (string, error) {
 			return "", fmt.Errorf("install restic: %w", err)
 		}
 		zap.S().Infof("Installed restic %v", RequiredResticVersion)
+		removeOldVersions(path.Dir(resticInstallPath))
 	}
 
 	return resticInstallPath, nil
