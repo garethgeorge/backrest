@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.1](https://github.com/garethgeorge/backrest/compare/v0.12.0...v0.12.1) (2024-02-16)
+
+
+### Bug Fixes
+
+* delete event button in UI is hard to see on light theme ([8a05df8](https://github.com/garethgeorge/backrest/commit/8a05df87fcc44699c890f0cbe1065d79f49e1cc2))
+* use 'embed' to package WebUI sources instead of go.rice ([e3ba5cf](https://github.com/garethgeorge/backrest/commit/e3ba5cf12ebfedafaa2125687bd7522f29ccab51))
+
 ## [0.12.0](https://github.com/garethgeorge/backrest/compare/v0.11.1...v0.12.0) (2024-02-15)
 
 
