@@ -285,14 +285,12 @@ const BackupView = ({ backup }: { backup?: BackupInfo }) => {
       <Tooltip title="This will remove the snapshot from the repository. This is irreversible.">
         <ConfirmButton
           type="text"
-          style={{ color: "white" }}
           confirmTitle="Confirm forget?"
           confirmTimeout={2000}
           onClickAsync={doDeleteSnapshot}
         >Forget (Destructive)</ConfirmButton>
       </Tooltip> : <ConfirmButton
         type="text"
-        style={{ color: "white" }}
         confirmTitle="Confirm clear?"
         onClickAsync={async () => {
           backrestService.clearHistory(new ClearHistoryRequest({
