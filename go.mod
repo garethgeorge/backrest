@@ -4,7 +4,6 @@ go 1.21
 
 require (
 	connectrpc.com/connect v1.14.0
-	github.com/GeertJohan/go.rice v1.0.3
 	github.com/alessio/shellescape v1.4.2
 	github.com/gitploy-io/cronexpr v0.2.2
 	github.com/golang-jwt/jwt/v5 v5.2.0
@@ -22,7 +21,6 @@ require (
 )
 
 require (
-	github.com/daaku/go.zipexe v1.0.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
