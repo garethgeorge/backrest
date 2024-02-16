@@ -1,4 +1,4 @@
-name: "tagged-release"
+name: Tagged Release
 
 on:
   push:

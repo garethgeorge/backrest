@@ -4,8 +4,9 @@
   "description": "",
   "scripts": {
     "start": "parcel serve src/index.html",
-    "build": "BACKREST_BUILD_VERSION=$(git describe --tags --abbrev=0) UI_OS=unix parcel build src/index.html",
-    "build-windows": "BACKREST_BUILD_VERSION=$(git describe --tags --abbrev=0) UI_OS=windows parcel build src/index.html --dist-dir dist-windows",
+    "build": "cross-env BACKREST_BUILD_VERSION=$(git describe --tags --abbrev=0) UI_OS=unix parcel build src/index.html",
+    "build-windows": "cross-env BACKREST_BUILD_VERSION=$(git describe --tags --abbrev=0) UI_OS=windows parcel build src/index.html --dist-dir dist-windows",
+    "build-windows-devel": "cross-env BACKREST_BUILD_VERSION=dev UI_OS=windows parcel build src/index.html --dist-dir dist-windows",
     "test": "echo \"Error: no test specified\" && exit 1",
     "check": "tsc --noEmit"
   },
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@parcel/transformer-sass": "^2.10.3",
+    "cross-env": "^7.0.3",
     "events": "^3.3.0",
     "stream-browserify": "^3.0.0"
   }

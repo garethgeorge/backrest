@@ -2,7 +2,6 @@ package webui
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
@@ -48,15 +47,4 @@ func serveFile(f fs.File, w http.ResponseWriter, r *http.Request, path string) {
 	}
 
 	http.ServeContent(w, r, path, stat.ModTime(), bytes.NewReader(data))
-}
-
-func init() {
-	files, err := fs.ReadDir(content, contentPrefix)
-	if err != nil {
-		panic("expected embedded files for WebUI")
-	}
-
-	if len(files) == 0 {
-		panic(fmt.Sprintf("expected >0 embedded files for WebUI, got %d", len(files)))
-	}
 }

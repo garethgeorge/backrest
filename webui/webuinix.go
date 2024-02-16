@@ -1,7 +1,9 @@
 //go:build linux || darwin
 // +build linux darwin
 
-//go:generate sh -c "rm -rf ./dist && UI_OS=unix npm run build && gzip ./dist/*"
+//go:generate npm install
+//go:generate npm run build
+//go:generate gzip -r -k dist
 
 package webui
 
