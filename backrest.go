@@ -21,6 +21,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"github.com/garethgeorge/backrest/internal/rotatinglog"
+	"github.com/garethgeorge/backrest/webui"
 	"github.com/mattn/go-colorable"
 	"go.etcd.io/bbolt"
 	"go.uber.org/zap"
@@ -92,34 +93,10 @@ func main() {
 	apiAuthenticationHandler := api.NewAuthenticationHandler(authenticator)
 
 	mux := http.NewServeMux()
-
-	if box, err := WebUIBox(); err == nil {
-		mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasSuffix(r.URL.Path, "/") {
-				r.URL.Path += "index.html"
-			}
-			f, err := box.Open(r.URL.Path + ".gz")
-			if err == nil {
-				defer f.Close()
-				w.Header().Set("Content-Encoding", "gzip")
-				http.ServeContent(w, r, r.URL.Path, box.Time(), f)
-				return
-			}
-			f, err = box.Open(r.URL.Path)
-			if err == nil {
-				defer f.Close()
-				http.ServeContent(w, r, r.URL.Path, box.Time(), f)
-				return
-			}
-			http.Error(w, "Not found", http.StatusNotFound)
-		}))
-	} else {
-		zap.S().Warnf("Error loading static assets, not serving UI: %v", err)
-	}
-
 	mux.Handle(v1connect.NewAuthenticationHandler(apiAuthenticationHandler))
 	backrestHandlerPath, backrestHandler := v1connect.NewBackrestHandler(apiBackrestHandler)
 	mux.Handle(backrestHandlerPath, auth.RequireAuthentication(backrestHandler, authenticator))
+	mux.Handle("/", webui.Handler())
 
 	// Serve the HTTP gateway
 	server := &http.Server{

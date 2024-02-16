@@ -26,8 +26,6 @@ builds:
     goarch:
       - amd64
       - arm64
-    hooks:
-      post: rice append --exec {{ .Path }}
 
 archives:
   - format: tar.gz
