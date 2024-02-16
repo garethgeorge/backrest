@@ -1,7 +1,8 @@
 //go:build windows
 // +build windows
 
-//go:generate sh -c "rm -rf ./dist-windows && UI_OS=unix npm run build-windows && gzip ./dist-windows/*"
+//go:generate npm install
+//go:generate npm run build-windows
 
 package webui
 

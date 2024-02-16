@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"runtime"
 	"slices"
 	"testing"
 	"time"
@@ -221,6 +222,10 @@ func TestMultipleBackup(t *testing.T) {
 }
 
 func TestHookExecution(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping test on windows")
+	}
+
 	dir := t.TempDir()
 
 	hookOutputBefore := path.Join(dir, "before.txt")
@@ -410,6 +415,9 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 	if err != nil {
 		t.Fatalf("Failed to create oplog: %v", err)
 	}
+	t.Cleanup(func() {
+		oplog.Close()
+	})
 	logStore := rotatinglog.NewRotatingLog(dir+"/log", 10)
 	orch, err := orchestrator.NewOrchestrator(
 		resticBin, cfg, oplog, logStore,

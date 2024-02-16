@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-nix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -26,9 +26,6 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install Deps
-        run: ./scripts/install-deps.sh
-
       - name: Build
         uses: goreleaser/goreleaser-action@v5
         with:
@@ -38,3 +35,28 @@ jobs:
 
       - name: Test
         run: PATH=$(pwd):$PATH go test ./...
+
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate
+        run: cd webui && npm install && npm run build-windows-devel
+
+      - name: Build
+        run: go build ./...
+
+      - name: Targeted Test
+        run: |
+          go test ./internal/api
