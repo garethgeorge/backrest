@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.2](https://github.com/garethgeorge/backrest/compare/v0.12.1...v0.12.2) (2024-02-16)
+
+
+### Bug Fixes
+
+* release-please automation ([63ddf15](https://github.com/garethgeorge/backrest/commit/63ddf15bf9799de30bda8548421e11e1bcd9ed05))
+
 ## [0.12.1](https://github.com/garethgeorge/backrest/compare/v0.12.0...v0.12.1) (2024-02-16)
 
 
