@@ -118,6 +118,7 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
 	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.StdoutPipe()
 	cmd.Stderr = capture
 	cmd.Stdout = capture
 
@@ -185,7 +186,7 @@ func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapsho
 
 	var snapshots []*Snapshot
 	if err := json.Unmarshal(output, &snapshots); err != nil {
-		return nil, newCmdError(cmd, "", fmt.Errorf("command output is not valid JSON: %w", err))
+		return nil, newCmdError(cmd, string(output), fmt.Errorf("command output is not valid JSON: %w", err))
 	}
 	for _, snapshot := range snapshots {
 		if err := snapshot.Validate(); err != nil {
