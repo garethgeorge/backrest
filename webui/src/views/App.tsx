@@ -15,7 +15,7 @@ import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { uiBuildVersion } from "../state/buildcfg";
 import { ActivityBar } from "../components/ActivityBar";
-import { OperationStatus } from "../../gen/ts/v1/operations_pb";
+import { OperationEvent, OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { colorForStatus, getStatusForPlan, getStatusForRepo, subscribeToOperations, unsubscribeFromOperations } from "../state/oplog";
 import LogoSvg from "url:../../assets/logo.svg";
 import _ from "lodash";
@@ -278,10 +278,17 @@ const IconForResource = ({ planId, repoId }: { planId?: string, repoId?: string 
       }
     };
     load();
-    const refresh = _.debounce(load, 5000);
-    subscribeToOperations(refresh);
+    const refresh = _.debounce(load, 1000, { maxWait: 5000, trailing: true });
+    const callback = ({ operation }: OperationEvent) => {
+      if (!operation) return;
+      if (operation.planId === planId || operation.repoId === repoId) {
+        refresh();
+      }
+    }
+
+    subscribeToOperations(callback);
     return () => {
-      unsubscribeFromOperations(refresh);
+      unsubscribeFromOperations(callback);
     }
   }, [planId, repoId]);
   return iconForStatus(status);
