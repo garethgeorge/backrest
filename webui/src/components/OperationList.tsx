@@ -210,19 +210,29 @@ export const OperationRow = ({
 
   if (operation.op.case === "operationBackup") {
     const backupOp = operation.op.value;
+    const items: { key: number, label: string, children: React.ReactNode }[] = [
+      {
+        key: 1,
+        label: "Backup Details",
+        children: <BackupOperationStatus status={backupOp.lastStatus} />,
+      },
+    ];
+
+    if (backupOp.errors.length > 0) {
+      items.splice(0, 0, {
+        key: 2,
+        label: "Item Errors",
+        children: <pre>{backupOp.errors.map(e => "Error on item: " + e.item).join("\n")}</pre>,
+      });
+    }
+
     body = (
       <>
         <Collapse
           size="small"
           destroyInactivePanel
           defaultActiveKey={[1]}
-          items={[
-            {
-              key: 1,
-              label: "Backup Details",
-              children: <BackupOperationStatus status={backupOp.lastStatus} />,
-            },
-          ]}
+          items={items}
         />
       </>
     );
