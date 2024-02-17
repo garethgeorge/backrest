@@ -82,9 +82,8 @@ func BackupProgressEntryToBackupError(b *restic.BackupProgressEntry) (*v1.Backup
 	}
 
 	return &v1.BackupProgressError{
-		Error:  b.Error,
-		During: b.During,
 		Item:   b.Item,
+		During: b.During,
 	}, nil
 }
 

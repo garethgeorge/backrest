@@ -62,7 +62,7 @@ message BackupProgressError {
   // See https://restic.readthedocs.io/en/stable/075_scripting.html#error
   string item = 1;
   string during = 2;
-
+  string message = 3;
 }
 
 // RestoreProgressEvent represents a single entry in the restore progress stream.

@@ -3,6 +3,7 @@ package restic
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"slices"
@@ -131,9 +132,26 @@ func TestResticPartialBackup(t *testing.T) {
 	testDataUnreadable := t.TempDir()
 	helpers.CreateUnreadable(t, testDataUnreadable+"/unreadable")
 
-	summary, err := r.Backup(context.Background(), nil, WithBackupPaths(testDataUnreadable))
-	if err == nil {
-		t.Fatalf("wanted error, got: nil")
+	var entries []*BackupProgressEntry
+
+	summary, err := r.Backup(context.Background(), func(entry *BackupProgressEntry) {
+		entries = append(entries, entry)
+	}, WithBackupPaths(testDataUnreadable))
+	if !errors.Is(err, ErrPartialBackup) {
+		t.Fatalf("wanted error to be partial backup, got: %v", err)
+	}
+	if summary == nil {
+		t.Fatalf("wanted summary, got: nil")
+	}
+
+	if summary.TotalFilesProcessed != 0 {
+		t.Errorf("wanted 0 files, got: %d", summary.TotalFilesProcessed)
+	}
+
+	if !slices.ContainsFunc(entries, func(e *BackupProgressEntry) bool {
+		return e.MessageType == "error" && e.Item == testDataUnreadable+"/unreadable"
+	}) {
+		t.Errorf("wanted entries to contain an error event for the unreadable file, got: %v", entries)
 	}
 }
 
