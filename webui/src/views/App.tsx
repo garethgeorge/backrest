@@ -108,9 +108,11 @@ export const App: React.FC = () => {
           <img src={LogoSvg} style={{ height: "30px", color: "white", marginBottom: "-8px", paddingRight: "10px", }} />
         </a>
         <h1>
-          <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
-            {uiBuildVersion}
-          </small>
+          <a href="https://github.com/garethgeorge/backrest" target="_blank">
+            <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
+              {uiBuildVersion}
+            </small>
+          </a>
           <small style={{ fontSize: "0.6em", marginLeft: "30px" }}>
             <ActivityBar />
           </small>
