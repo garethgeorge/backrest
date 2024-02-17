@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -116,10 +117,6 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 	lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
 	var lastFiles []string
 	summary, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
-		if time.Since(lastSent) < 250*time.Millisecond {
-			return
-		}
-		lastSent = time.Now()
 
 		if entry.MessageType == "status" {
 			// prevents flickering output when a status entry omits the CurrentFiles property. Largely cosmetic.
@@ -130,23 +127,31 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 			}
 
 			backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(entry)
-			if err := orchestrator.OpLog.Update(op); err != nil {
-				zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
-			}
 		} else if entry.MessageType == "error" {
-			zap.S().Warnf("backup error: %v", entry.Error)
+			zap.S().Warnf("backup error: %v", entry.Item)
 			backupError, err := protoutil.BackupProgressEntryToBackupError(entry)
 			if err != nil {
 				zap.S().Errorf("failed to convert backup progress entry to backup error: %v", err)
 				return
 			}
-			if len(backupOp.OperationBackup.Errors) > maxBackupErrorHistoryLength {
-				zap.S().Warnf("too many errors, not adding more to backup entry.")
+			if len(backupOp.OperationBackup.Errors) > maxBackupErrorHistoryLength ||
+				slices.ContainsFunc(backupOp.OperationBackup.Errors, func(i *v1.BackupProgressError) bool {
+					return i.Item == backupError.Item
+				}) {
 				return
 			}
 			backupOp.OperationBackup.Errors = append(backupOp.OperationBackup.Errors, backupError)
 		} else if entry.MessageType != "summary" {
 			zap.S().Warnf("unexpected message type %q in backup progress entry", entry.MessageType)
+		}
+
+		if time.Since(lastSent) < 500*time.Millisecond {
+			return
+		}
+		lastSent = time.Now()
+
+		if err := orchestrator.OpLog.Update(op); err != nil {
+			zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
 		}
 	})
 
