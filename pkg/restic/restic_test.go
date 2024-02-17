@@ -3,6 +3,7 @@ package restic
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"slices"
@@ -43,6 +44,8 @@ func TestResticBackup(t *testing.T) {
 
 	testData := helpers.CreateTestData(t)
 	testData2 := helpers.CreateTestData(t)
+	testDataUnreadable := t.TempDir()
+	helpers.CreateUnreadable(t, testDataUnreadable+"/unreadable")
 
 	var tests = []struct {
 		name    string
@@ -75,6 +78,11 @@ func TestResticBackup(t *testing.T) {
 			opts:    []BackupOption{},
 			wantErr: true,
 		},
+		{
+			name:    "with unreadable file",
+			opts:    []BackupOption{WithBackupPaths(testData), WithBackupPaths(testDataUnreadable)},
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -104,6 +112,46 @@ func TestResticBackup(t *testing.T) {
 				t.Errorf("wanted backup event, got: false")
 			}
 		})
+	}
+}
+
+func TestResticPartialBackup(t *testing.T) {
+	t.Parallel()
+	repo := t.TempDir()
+
+	// create a new repo with cache disabled for testing
+	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
+		Id:       "test",
+		Uri:      repo,
+		Password: "test",
+	}, WithFlags("--no-cache"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	testDataUnreadable := t.TempDir()
+	helpers.CreateUnreadable(t, testDataUnreadable+"/unreadable")
+
+	var entries []*BackupProgressEntry
+
+	summary, err := r.Backup(context.Background(), func(entry *BackupProgressEntry) {
+		entries = append(entries, entry)
+	}, WithBackupPaths(testDataUnreadable))
+	if !errors.Is(err, ErrPartialBackup) {
+		t.Fatalf("wanted error to be partial backup, got: %v", err)
+	}
+	if summary == nil {
+		t.Fatalf("wanted summary, got: nil")
+	}
+
+	if summary.TotalFilesProcessed != 0 {
+		t.Errorf("wanted 0 files, got: %d", summary.TotalFilesProcessed)
+	}
+
+	if !slices.ContainsFunc(entries, func(e *BackupProgressEntry) bool {
+		return e.MessageType == "error" && e.Item == testDataUnreadable+"/unreadable"
+	}) {
+		t.Errorf("wanted entries to contain an error event for the unreadable file, got: %v", entries)
 	}
 }
 

@@ -31,6 +31,7 @@ message BackupProgressEntry {
 
 // BackupProgressStatusEntry represents a single status entry in the backup progress stream.
 message BackupProgressStatusEntry {
+  // See https://restic.readthedocs.io/en/stable/075_scripting.html#id1
   double percent_done = 1; // 0.0 - 1.0
   int64 total_files = 2;
   int64 total_bytes = 3;
@@ -41,6 +42,7 @@ message BackupProgressStatusEntry {
 
 // BackupProgressSummary represents a the summary event emitted at the end of a backup stream.
 message BackupProgressSummary {
+  // See https://restic.readthedocs.io/en/stable/075_scripting.html#summary
   int64 files_new = 1;
   int64 files_changed = 2;
   int64 files_unmodified = 3;
@@ -54,6 +56,13 @@ message BackupProgressSummary {
   int64 total_bytes_processed = 11;
   double total_duration = 12;
   string snapshot_id = 13;
+}
+
+message BackupProgressError {
+  // See https://restic.readthedocs.io/en/stable/075_scripting.html#error
+  string item = 1;
+  string during = 2;
+  string message = 3;
 }
 
 // RestoreProgressEvent represents a single entry in the restore progress stream.

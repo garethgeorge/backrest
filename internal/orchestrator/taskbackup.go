@@ -15,6 +15,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var maxBackupErrorHistoryLength = 20 // arbitrary limit on the number of file read errors recorded in a backup operation to prevent it from growing too large.
+
 // BackupTask is a scheduled backup operation.
 type BackupTask struct {
 	name string
@@ -119,16 +121,32 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 		}
 		lastSent = time.Now()
 
-		// prevents flickering output when a status entry omits the CurrentFiles property. Largely cosmetic.
-		if len(entry.CurrentFiles) == 0 {
-			entry.CurrentFiles = lastFiles
-		} else {
-			lastFiles = entry.CurrentFiles
-		}
+		if entry.MessageType == "status" {
+			// prevents flickering output when a status entry omits the CurrentFiles property. Largely cosmetic.
+			if len(entry.CurrentFiles) == 0 {
+				entry.CurrentFiles = lastFiles
+			} else {
+				lastFiles = entry.CurrentFiles
+			}
 
-		backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(entry)
-		if err := orchestrator.OpLog.Update(op); err != nil {
-			zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
+			backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(entry)
+			if err := orchestrator.OpLog.Update(op); err != nil {
+				zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
+			}
+		} else if entry.MessageType == "error" {
+			zap.S().Warnf("backup error: %v", entry.Error)
+			backupError, err := protoutil.BackupProgressEntryToBackupError(entry)
+			if err != nil {
+				zap.S().Errorf("failed to convert backup progress entry to backup error: %v", err)
+				return
+			}
+			if len(backupOp.OperationBackup.Errors) > maxBackupErrorHistoryLength {
+				zap.S().Warnf("too many errors, not adding more to backup entry.")
+				return
+			}
+			backupOp.OperationBackup.Errors = append(backupOp.OperationBackup.Errors, backupError)
+		} else if entry.MessageType != "summary" {
+			zap.S().Warnf("unexpected message type %q in backup progress entry", entry.MessageType)
 		}
 	})
 

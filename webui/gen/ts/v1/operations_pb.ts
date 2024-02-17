@@ -5,7 +5,7 @@
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
-import { BackupProgressEntry, RepoStats, ResticSnapshot, RestoreProgressEntry } from "./restic_pb.js";
+import { BackupProgressEntry, BackupProgressError, RepoStats, ResticSnapshot, RestoreProgressEntry } from "./restic_pb.js";
 import { RetentionPolicy } from "./config_pb.js";
 
 /**
@@ -352,6 +352,11 @@ export class OperationBackup extends Message<OperationBackup> {
    */
   lastStatus?: BackupProgressEntry;
 
+  /**
+   * @generated from field: repeated v1.BackupProgressError errors = 4;
+   */
+  errors: BackupProgressError[] = [];
+
   constructor(data?: PartialMessage<OperationBackup>) {
     super();
     proto3.util.initPartial(data, this);
@@ -361,6 +366,7 @@ export class OperationBackup extends Message<OperationBackup> {
   static readonly typeName = "v1.OperationBackup";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 3, name: "last_status", kind: "message", T: BackupProgressEntry },
+    { no: 4, name: "errors", kind: "message", T: BackupProgressError, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationBackup {
