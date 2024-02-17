@@ -2,8 +2,9 @@
 // +build linux darwin
 
 //go:generate npm install
+//go:generate npm run clean
 //go:generate npm run build
-//go:generate gzip -r -k dist
+//go:generate gzip -r dist
 
 package webui
 

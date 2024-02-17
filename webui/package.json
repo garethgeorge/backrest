@@ -4,10 +4,10 @@
   "description": "",
   "scripts": {
     "start": "parcel serve src/index.html",
-    "build": "cross-env BACKREST_BUILD_VERSION=$(git describe --tags --abbrev=0) UI_OS=unix parcel build src/index.html",
-    "build-windows": "cross-env BACKREST_BUILD_VERSION=$(git describe --tags --abbrev=0) UI_OS=windows parcel build src/index.html --dist-dir dist-windows",
-    "build-windows-devel": "cross-env BACKREST_BUILD_VERSION=dev UI_OS=windows parcel build src/index.html --dist-dir dist-windows",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rimraf dist",
+    "clean-windows": "rimraf dist-windows",
+    "build": "cross-env UI_OS=unix parcel build src/index.html",
+    "build-windows": "cross-env UI_OS=windows parcel build src/index.html --dist-dir dist-windows",
     "check": "tsc --noEmit"
   },
   "author": "",
@@ -35,6 +35,7 @@
     "@parcel/transformer-sass": "^2.10.3",
     "cross-env": "^7.0.3",
     "events": "^3.3.0",
+    "rimraf": "^5.0.5",
     "stream-browserify": "^3.0.0"
   }
 }

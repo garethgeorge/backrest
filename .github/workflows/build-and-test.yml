@@ -52,7 +52,7 @@ jobs:
           node-version: "20"
 
       - name: Generate
-        run: cd webui && npm install && npm run build-windows-devel
+        run: go generate ./...
 
       - name: Build
         run: go build ./...

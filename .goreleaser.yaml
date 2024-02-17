@@ -8,12 +8,16 @@
 
 version: 1
 
+env:
+  - BACKREST_BUILD_VERSION={{.Version}}
+
 before:
   hooks:
+    - bash -c "echo {{.Version}} > /tmp/version.txt"
     - go mod tidy
     - npm --prefix webui install
-    - sh -c "GOOS=linux go generate ./..."
-    - sh -c "GOOS=windows go generate ./..."
+    - sh -c "GOOS=linux BACKREST_BUILD_VERSION={{.Version}} go generate ./..."
+    - sh -c "GOOS=windows BACKREST_BUILD_VERSION={{.Version}} go generate ./..."
 
 builds:
   - main: .
