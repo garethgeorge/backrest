@@ -49,7 +49,12 @@ func (s *Snapshot) Validate() error {
 
 type BackupProgressEntry struct {
 	// Common fields
-	MessageType string `json:"message_type"` // "summary" or "status"
+	MessageType string `json:"message_type"` // "summary" or "status" or "error"
+
+	// Error fields
+	Error  any    `json:"error"`
+	During string `json:"during"`
+	Item   string `json:"item"`
 
 	// Summary fields
 	FilesNew            int     `json:"files_new"`

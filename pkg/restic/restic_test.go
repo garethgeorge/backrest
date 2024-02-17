@@ -43,6 +43,8 @@ func TestResticBackup(t *testing.T) {
 
 	testData := helpers.CreateTestData(t)
 	testData2 := helpers.CreateTestData(t)
+	testDataUnreadable := t.TempDir()
+	helpers.CreateUnreadable(t, testDataUnreadable+"/unreadable")
 
 	var tests = []struct {
 		name    string
@@ -75,6 +77,11 @@ func TestResticBackup(t *testing.T) {
 			opts:    []BackupOption{},
 			wantErr: true,
 		},
+		{
+			name:    "with unreadable file",
+			opts:    []BackupOption{WithBackupPaths(testData), WithBackupPaths(testDataUnreadable)},
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -104,6 +111,29 @@ func TestResticBackup(t *testing.T) {
 				t.Errorf("wanted backup event, got: false")
 			}
 		})
+	}
+}
+
+func TestResticPartialBackup(t *testing.T) {
+	t.Parallel()
+	repo := t.TempDir()
+
+	// create a new repo with cache disabled for testing
+	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
+		Id:       "test",
+		Uri:      repo,
+		Password: "test",
+	}, WithFlags("--no-cache"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	testDataUnreadable := t.TempDir()
+	helpers.CreateUnreadable(t, testDataUnreadable+"/unreadable")
+
+	summary, err := r.Backup(context.Background(), nil, WithBackupPaths(testDataUnreadable))
+	if err == nil {
+		t.Fatalf("wanted error, got: nil")
 	}
 }
 

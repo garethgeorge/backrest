@@ -1,6 +1,8 @@
 package protoutil
 
 import (
+	"errors"
+
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/pkg/restic"
 )
@@ -71,6 +73,19 @@ func BackupProgressEntryToProto(b *restic.BackupProgressEntry) *v1.BackupProgres
 	default:
 		return nil
 	}
+}
+
+// BackupProgressEntryToBackupError converts a BackupProgressEntry to a BackupError if it's type is "error"
+func BackupProgressEntryToBackupError(b *restic.BackupProgressEntry) (*v1.BackupProgressError, error) {
+	if b.MessageType != "error" {
+		return nil, errors.New("BackupProgressEntry is not of type error")
+	}
+
+	return &v1.BackupProgressError{
+		Error:  b.Error,
+		During: b.During,
+		Item:   b.Item,
+	}, nil
 }
 
 func RetentionPolicyFromProto(p *v1.RetentionPolicy) *restic.RetentionPolicy {

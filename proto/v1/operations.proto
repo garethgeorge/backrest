@@ -66,6 +66,7 @@ enum OperationStatus {
 
 message OperationBackup {
   BackupProgressEntry last_status = 3;
+  repeated BackupProgressError errors = 4;
 }
 
 // OperationIndexSnapshot tracks that a snapshot was detected by backrest. 
