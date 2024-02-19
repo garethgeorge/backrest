@@ -195,6 +195,20 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, path 
 	return protoutil.RestoreProgressEntryToProto(summary), nil
 }
 
+// UnlockIfAutoEnabled unlocks the repo if the auto unlock feature is enabled.
+func (r *RepoOrchestrator) UnlockIfAutoEnabled(ctx context.Context) error {
+	if !r.repoConfig.AutoUnlock {
+		return nil
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	zap.L().Debug("AutoUnlocking repo", zap.String("repo", r.repoConfig.Id))
+
+	return r.repo.Unlock(ctx)
+}
+
 func (r *RepoOrchestrator) Unlock(ctx context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

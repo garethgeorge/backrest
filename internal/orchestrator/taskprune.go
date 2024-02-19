@@ -107,6 +107,11 @@ func (t *PruneTask) Run(ctx context.Context) error {
 			return fmt.Errorf("get repo %v: %w", t.plan.Repo, err)
 		}
 
+		err = repo.UnlockIfAutoEnabled(ctx)
+		if err != nil {
+			return fmt.Errorf("auto unlock repo %q: %w", t.plan.Repo, err)
+		}
+
 		opPrune := &v1.Operation_OperationPrune{
 			OperationPrune: &v1.OperationPrune{},
 		}
