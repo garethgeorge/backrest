@@ -12,6 +12,7 @@ import {
   InputNumber,
   FormInstance,
   Collapse,
+  Checkbox,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -421,6 +422,13 @@ export const AddRepoModal = ({
             </Form.Item>
           </Form.Item>
 
+          <Form.Item label={<Tooltip title={"Auto-unlock will remove lockfiles at the start of forget and prune operations. "
+            + "This is potentially unsafe if the repo is shared by multiple client devices. Opt-in (and disabled) by default."}>
+            Auto Unlock
+          </Tooltip>} name="autoUnlock" valuePropName="checked">
+            <Checkbox />
+          </Form.Item>
+
           <Form.Item
             label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>}
           >
@@ -446,7 +454,7 @@ export const AddRepoModal = ({
             )}
           </Form.Item>
         </Form>
-      </Modal>
+      </Modal >
     </>
   );
 };
@@ -547,7 +555,7 @@ const checkSchemeEnvVars = (scheme: string, envVarNames: string[]): Promise<void
 const formatMissingEnvVars = (partialMatches: string[][]): string => {
   return partialMatches.map(x => {
     if (x.length > 1) {
-      return `[ ${ x.join(", ") } ]`;
+      return `[ ${x.join(", ")} ]`;
     }
     return x[0];
   }).join(" or ");
