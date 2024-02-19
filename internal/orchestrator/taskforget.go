@@ -70,6 +70,11 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 			return fmt.Errorf("get repo %q: %w", t.plan.Repo, err)
 		}
 
+		err = repo.UnlockIfAutoEnabled(ctx)
+		if err != nil {
+			return fmt.Errorf("auto unlock repo %q: %w", t.plan.Repo, err)
+		}
+
 		forgot, err := repo.Forget(ctx, t.plan)
 		if err != nil {
 			return fmt.Errorf("forget: %w", err)

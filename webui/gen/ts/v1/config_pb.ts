@@ -126,6 +126,13 @@ export class Repo extends Message<Repo> {
    */
   hooks: Hook[] = [];
 
+  /**
+   * automatically unlock the repo when needed.
+   *
+   * @generated from field: bool auto_unlock = 8;
+   */
+  autoUnlock = false;
+
   constructor(data?: PartialMessage<Repo>) {
     super();
     proto3.util.initPartial(data, this);
@@ -141,6 +148,7 @@ export class Repo extends Message<Repo> {
     { no: 5, name: "flags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 6, name: "prune_policy", kind: "message", T: PrunePolicy },
     { no: 7, name: "hooks", kind: "message", T: Hook, repeated: true },
+    { no: 8, name: "auto_unlock", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Repo {

@@ -25,6 +25,7 @@ message Repo {
   repeated string flags = 5 [json_name="flags"]; // extra flags set on the restic command.
   PrunePolicy prune_policy = 6 [json_name="prunePolicy"]; // policy for when to run prune.
   repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on events for this repo.
+  bool auto_unlock = 8 [json_name="autoUnlock"]; // automatically unlock the repo when needed.
 }
 
 message Plan {
