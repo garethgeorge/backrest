@@ -52,30 +52,56 @@ archives:
 
 dockers:
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-amd64
-    dockerfile: Dockerfile
+      - garethgeorge/backrest:{{ .Tag }}-alpine-amd64
+    dockerfile: Dockerfile.alpine
     use: buildx
     build_flag_templates:
       - "--pull"
       - "--platform=linux/amd64"
 
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-arm64
+      - garethgeorge/backrest:{{ .Tag }}-alpine-arm64
+    dockerfile: Dockerfile.alpine
     goarch: arm64
     use: buildx
     build_flag_templates:
       - "--pull"
       - "--platform=linux/arm64/v8"
 
+  - image_templates:
+      - garethgeorge/backrest:{{ .Tag }}-scratch-arm64
+    dockerfile: Dockerfile.scratch
+    goarch: arm64
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm64/v8"
+
+  - image_templates:
+      - garethgeorge/backrest:{{ .Tag }}-scratch-amd64
+    dockerfile: Dockerfile.scratch
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/amd64"
+
 docker_manifests:
   - name_template: "garethgeorge/backrest:latest"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-arm64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
   - name_template: "garethgeorge/backrest:{{ .Tag }}"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-arm64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
+  - name_template: "garethgeorge/backrest:latest-alpine"
+    image_templates:
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
+  - name_template: "garethgeorge/backrest:{{ .Tag }}-alpine"
+    image_templates:
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
 
 changelog:
   sort: asc
