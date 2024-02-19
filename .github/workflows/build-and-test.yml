@@ -34,7 +34,7 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          args: build --snapshot --clean
+          args: release --snapshot --clean
 
       - name: Test
         run: PATH=$(pwd):$PATH go test ./...
