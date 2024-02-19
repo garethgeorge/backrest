@@ -459,6 +459,14 @@ func WithBackupExcludes(excludes ...string) BackupOption {
 	}
 }
 
+func WithBackupIExcludes(iexcludes ...string) BackupOption {
+	return func(opts *BackupOpts) {
+		for _, iexclude := range iexcludes {
+			opts.extraArgs = append(opts.extraArgs, "--iexclude", iexclude)
+		}
+	}
+}
+
 func WithBackupTags(tags ...string) BackupOption {
 	return func(opts *BackupOpts) {
 		for _, tag := range tags {

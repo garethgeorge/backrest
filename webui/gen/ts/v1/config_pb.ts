@@ -201,6 +201,13 @@ export class Plan extends Message<Plan> {
   excludes: string[] = [];
 
   /**
+   * case insensitive glob patterns to exclude.
+   *
+   * @generated from field: repeated string iexcludes = 9;
+   */
+  iexcludes: string[] = [];
+
+  /**
    * cron expression describing the backup schedule.
    *
    * @generated from field: string cron = 6;
@@ -233,6 +240,7 @@ export class Plan extends Message<Plan> {
     { no: 2, name: "repo", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "paths", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 5, name: "excludes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 9, name: "iexcludes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 6, name: "cron", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "retention", kind: "message", T: RetentionPolicy },
     { no: 8, name: "hooks", kind: "message", T: Hook, repeated: true },
