@@ -52,8 +52,30 @@ archives:
 
 dockers:
   - image_templates:
-      - garethgeorge/backrest:latest
-      - garethgeorge/backrest:{{ .Tag }}
+      - garethgeorge/backrest:{{ .Tag }}-amd64
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/amd64"
+
+  - image_templates:
+      - garethgeorge/backrest:{{ .Tag }}-arm64
+    goarch: arm64
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm64/v8"
+
+docker_manifests:
+  - name_template: "garethgeorge/backrest:latest"
+    image_templates:
+      - "garethgeorge/backrest:{{ .Tag }}-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-arm64"
+  - name_template: "garethgeorge/backrest:{{ .Tag }}"
+    image_templates:
+      - "garethgeorge/backrest:{{ .Tag }}-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-arm64"
 
 changelog:
   sort: asc
