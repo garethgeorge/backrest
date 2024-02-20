@@ -490,7 +490,6 @@ const ForgetOperationDetails = ({ forgetOp }: { forgetOp: OperationForget }) => 
 }
 
 const RunHookOperationStatus = ({ op }: { op: Operation }) => {
-
   if (op.op.case !== "operationRunHook") {
     return <>Wrong operation type</>;
   }

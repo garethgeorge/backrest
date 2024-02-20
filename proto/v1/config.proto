@@ -8,6 +8,7 @@ option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
 message Config {
   // modification number, used for read-modify-write consistency in the UI. Incremented on every write.
   int32 modno = 1 [json_name="modno"];
+  int32 version = 6 [json_name="version"]; // version of the config file format. Used to determine when to run migrations.
 
   // override the hostname tagged on backups. If provided it will be used in addition to tags to group backups.
   string host = 2 [json_name="host"];
@@ -40,16 +41,29 @@ message Plan {
 }
 
 message RetentionPolicy {
-  // max_unused_limit is used to decide when forget should be run.
-  string max_unused_limit = 1 [json_name="maxUnusedLimit"]; // e.g. a percentage i.e. 25% or a number of megabytes.
+  string max_unused_limit = 1 [json_name="maxUnusedLimit", deprecated = true]; 
 
-  int32 keep_last_n = 2 [json_name="keepLastN"]; // keep the last n snapshots.
-  int32 keep_hourly = 3 [json_name="keepHourly"]; // keep the last n hourly snapshots.
-  int32 keep_daily = 4 [json_name="keepDaily"]; // keep the last n daily snapshots.
-  int32 keep_weekly = 5 [json_name="keepWeekly"]; // keep the last n weekly snapshots.
-  int32 keep_monthly = 6 [json_name="keepMonthly"]; // keep the last n monthly snapshots.
-  int32 keep_yearly = 7 [json_name="keepYearly"]; // keep the last n yearly snapshots.
-  string keep_within_duration = 8 [json_name="keepWithinDuration"]; // keep snapshots within a duration e.g. 1y2m3d4h5m6s
+  int32 keep_last_n = 2 [json_name="keepLastN", deprecated = true];
+  int32 keep_hourly = 3 [json_name="keepHourly", deprecated = true];
+  int32 keep_daily = 4 [json_name="keepDaily", deprecated = true];
+  int32 keep_weekly = 5 [json_name="keepWeekly", deprecated = true];
+  int32 keep_monthly = 6 [json_name="keepMonthly", deprecated = true];
+  int32 keep_yearly = 7 [json_name="keepYearly", deprecated = true];
+  string keep_within_duration = 8 [json_name="keepWithinDuration", deprecated = true]; // keep snapshots within a duration e.g. 1y2m3d4h5m6s
+
+  oneof policy {
+    int32 policy_keep_last_n = 10 [json_name="policyKeepLastN"];
+    TimeBucketedCounts policy_time_bucketed = 11 [json_name="policyTimeBucketed"];
+    bool policy_keep_all = 12 [json_name="policyKeepAll"];
+  }
+
+  message TimeBucketedCounts {
+    int32 hourly = 1 [json_name="hourly"]; // keep the last n hourly snapshots.
+    int32 daily = 2 [json_name="daily"]; // keep the last n daily snapshots.
+    int32 weekly = 3 [json_name="weekly"]; // keep the last n weekly snapshots.
+    int32 monthly = 4 [json_name="monthly"]; // keep the last n monthly snapshots.
+    int32 yearly = 5 [json_name="yearly"];  // keep the last n yearly snapshots.
+  }
 }
 
 message PrunePolicy {

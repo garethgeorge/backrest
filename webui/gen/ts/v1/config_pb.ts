@@ -20,6 +20,13 @@ export class Config extends Message<Config> {
   modno = 0;
 
   /**
+   * version of the config file format. Used to determine when to run migrations.
+   *
+   * @generated from field: int32 version = 6;
+   */
+  version = 0;
+
+  /**
    * override the hostname tagged on backups. If provided it will be used in addition to tags to group backups.
    *
    * @generated from field: string host = 2;
@@ -50,6 +57,7 @@ export class Config extends Message<Config> {
   static readonly typeName = "v1.Config";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "modno", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "version", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 2, name: "host", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "repos", kind: "message", T: Repo, repeated: true },
     { no: 4, name: "plans", kind: "message", T: Plan, repeated: true },
@@ -268,62 +276,77 @@ export class Plan extends Message<Plan> {
  */
 export class RetentionPolicy extends Message<RetentionPolicy> {
   /**
-   * max_unused_limit is used to decide when forget should be run.
-   *
-   * e.g. a percentage i.e. 25% or a number of megabytes.
-   *
-   * @generated from field: string max_unused_limit = 1;
+   * @generated from field: string max_unused_limit = 1 [deprecated = true];
+   * @deprecated
    */
   maxUnusedLimit = "";
 
   /**
-   * keep the last n snapshots.
-   *
-   * @generated from field: int32 keep_last_n = 2;
+   * @generated from field: int32 keep_last_n = 2 [deprecated = true];
+   * @deprecated
    */
   keepLastN = 0;
 
   /**
-   * keep the last n hourly snapshots.
-   *
-   * @generated from field: int32 keep_hourly = 3;
+   * @generated from field: int32 keep_hourly = 3 [deprecated = true];
+   * @deprecated
    */
   keepHourly = 0;
 
   /**
-   * keep the last n daily snapshots.
-   *
-   * @generated from field: int32 keep_daily = 4;
+   * @generated from field: int32 keep_daily = 4 [deprecated = true];
+   * @deprecated
    */
   keepDaily = 0;
 
   /**
-   * keep the last n weekly snapshots.
-   *
-   * @generated from field: int32 keep_weekly = 5;
+   * @generated from field: int32 keep_weekly = 5 [deprecated = true];
+   * @deprecated
    */
   keepWeekly = 0;
 
   /**
-   * keep the last n monthly snapshots.
-   *
-   * @generated from field: int32 keep_monthly = 6;
+   * @generated from field: int32 keep_monthly = 6 [deprecated = true];
+   * @deprecated
    */
   keepMonthly = 0;
 
   /**
-   * keep the last n yearly snapshots.
-   *
-   * @generated from field: int32 keep_yearly = 7;
+   * @generated from field: int32 keep_yearly = 7 [deprecated = true];
+   * @deprecated
    */
   keepYearly = 0;
 
   /**
    * keep snapshots within a duration e.g. 1y2m3d4h5m6s
    *
-   * @generated from field: string keep_within_duration = 8;
+   * @generated from field: string keep_within_duration = 8 [deprecated = true];
+   * @deprecated
    */
   keepWithinDuration = "";
+
+  /**
+   * @generated from oneof v1.RetentionPolicy.policy
+   */
+  policy: {
+    /**
+     * @generated from field: int32 policy_keep_last_n = 10;
+     */
+    value: number;
+    case: "policyKeepLastN";
+  } | {
+    /**
+     * @generated from field: v1.RetentionPolicy.TimeBucketedCounts policy_time_bucketed = 11;
+     */
+    value: RetentionPolicy_TimeBucketedCounts;
+    case: "policyTimeBucketed";
+  } | {
+    /**
+     * @generated from field: bool policy_keep_all = 12;
+     */
+    value: boolean;
+    case: "policyKeepAll";
+  } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<RetentionPolicy>) {
     super();
@@ -341,6 +364,9 @@ export class RetentionPolicy extends Message<RetentionPolicy> {
     { no: 6, name: "keep_monthly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 7, name: "keep_yearly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 8, name: "keep_within_duration", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "policy_keep_last_n", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "policy" },
+    { no: 11, name: "policy_time_bucketed", kind: "message", T: RetentionPolicy_TimeBucketedCounts, oneof: "policy" },
+    { no: 12, name: "policy_keep_all", kind: "scalar", T: 8 /* ScalarType.BOOL */, oneof: "policy" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RetentionPolicy {
@@ -357,6 +383,77 @@ export class RetentionPolicy extends Message<RetentionPolicy> {
 
   static equals(a: RetentionPolicy | PlainMessage<RetentionPolicy> | undefined, b: RetentionPolicy | PlainMessage<RetentionPolicy> | undefined): boolean {
     return proto3.util.equals(RetentionPolicy, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.RetentionPolicy.TimeBucketedCounts
+ */
+export class RetentionPolicy_TimeBucketedCounts extends Message<RetentionPolicy_TimeBucketedCounts> {
+  /**
+   * keep the last n hourly snapshots.
+   *
+   * @generated from field: int32 hourly = 1;
+   */
+  hourly = 0;
+
+  /**
+   * keep the last n daily snapshots.
+   *
+   * @generated from field: int32 daily = 2;
+   */
+  daily = 0;
+
+  /**
+   * keep the last n weekly snapshots.
+   *
+   * @generated from field: int32 weekly = 3;
+   */
+  weekly = 0;
+
+  /**
+   * keep the last n monthly snapshots.
+   *
+   * @generated from field: int32 monthly = 4;
+   */
+  monthly = 0;
+
+  /**
+   * keep the last n yearly snapshots.
+   *
+   * @generated from field: int32 yearly = 5;
+   */
+  yearly = 0;
+
+  constructor(data?: PartialMessage<RetentionPolicy_TimeBucketedCounts>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.RetentionPolicy.TimeBucketedCounts";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "hourly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "daily", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "weekly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "monthly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "yearly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RetentionPolicy_TimeBucketedCounts {
+    return new RetentionPolicy_TimeBucketedCounts().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RetentionPolicy_TimeBucketedCounts {
+    return new RetentionPolicy_TimeBucketedCounts().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RetentionPolicy_TimeBucketedCounts {
+    return new RetentionPolicy_TimeBucketedCounts().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RetentionPolicy_TimeBucketedCounts | PlainMessage<RetentionPolicy_TimeBucketedCounts> | undefined, b: RetentionPolicy_TimeBucketedCounts | PlainMessage<RetentionPolicy_TimeBucketedCounts> | undefined): boolean {
+    return proto3.util.equals(RetentionPolicy_TimeBucketedCounts, a, b);
   }
 }
 
