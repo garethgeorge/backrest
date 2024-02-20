@@ -259,6 +259,7 @@ export const AddPlanModal = ({
               )}
             </Form.List>
           </Form.Item>
+
           {/* Plan.excludes */}
           <Form.Item label="Excludes" required={false}>
             <Form.List
@@ -305,6 +306,60 @@ export const AddPlanModal = ({
                       icon={<PlusOutlined />}
                     >
                       Add Exclusion Glob
+                    </Button>
+                    <Form.ErrorList errors={errors} />
+                  </Form.Item>
+                </>
+              )}
+            </Form.List>
+          </Form.Item>
+
+          {/* Plan.excludes */}
+          <Form.Item label="Excludes (Case Insensitive)" required={false}>
+            <Form.List
+              name="iexcludes"
+              rules={[]}
+              initialValue={template ? template.iexcludes : []}
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => (
+                    <Form.Item
+                      required={false}
+                      key={field.key}
+                    >
+                      <Form.Item
+                        {...field}
+                        validateTrigger={["onChange", "onBlur"]}
+                        initialValue={""}
+                        rules={[
+                          {
+                            required: true,
+                          },
+                        ]}
+                        noStyle
+                      >
+                        <URIAutocomplete
+                          style={{ width: "90%" }}
+                          onBlur={() => form.validateFields()}
+                          globAllowed={true}
+                        />
+                      </Form.Item>
+                      <MinusCircleOutlined
+                        className="dynamic-delete-button"
+                        onClick={() => remove(field.name)}
+                        style={{ paddingLeft: "5px" }}
+                      />
+                    </Form.Item>
+                  ))}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      style={{ width: "90%" }}
+                      icon={<PlusOutlined />}
+                    >
+                      Add Case Insensitive Exclusion Glob
                     </Button>
                     <Form.ErrorList errors={errors} />
                   </Form.Item>
