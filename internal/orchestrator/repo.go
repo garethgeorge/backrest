@@ -77,6 +77,7 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 	var opts []restic.BackupOption
 	opts = append(opts, restic.WithBackupPaths(plan.Paths...))
 	opts = append(opts, restic.WithBackupExcludes(plan.Excludes...))
+	opts = append(opts, restic.WithBackupIExcludes(plan.Iexcludes...))
 	opts = append(opts, restic.WithBackupTags(tagForPlan(plan)))
 
 	if len(snapshots) > 0 {
