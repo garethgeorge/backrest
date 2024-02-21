@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,6 +27,8 @@ import (
 )
 
 func TestUpdateConfig(t *testing.T) {
+	t.Parallel()
+
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
 			Modno: 1234,
@@ -81,6 +86,8 @@ func TestUpdateConfig(t *testing.T) {
 }
 
 func TestBackup(t *testing.T) {
+	t.Parallel()
+
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
 			Modno: 1234,
@@ -167,6 +174,8 @@ func TestBackup(t *testing.T) {
 }
 
 func TestMultipleBackup(t *testing.T) {
+	t.Parallel()
+
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
 			Modno: 1234,
@@ -222,6 +231,8 @@ func TestMultipleBackup(t *testing.T) {
 }
 
 func TestHookExecution(t *testing.T) {
+	t.Parallel()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("skipping test on windows")
 	}
@@ -313,6 +324,8 @@ func TestHookExecution(t *testing.T) {
 }
 
 func TestCancelBackup(t *testing.T) {
+	t.Parallel()
+
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
 			Modno: 1234,
@@ -388,6 +401,127 @@ func TestCancelBackup(t *testing.T) {
 		return op.Status == v1.OperationStatus_STATUS_USER_CANCELLED && ok
 	}) == -1 {
 		t.Fatalf("Expected a cancelled backup operation in the log")
+	}
+}
+
+func TestRestore(t *testing.T) {
+	t.Parallel()
+
+	backupDataDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(backupDataDir, "findme.txt"), []byte("test data"), 0644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	sut := createSystemUnderTest(t, &config.MemoryStore{
+		Config: &v1.Config{
+			Modno: 1234,
+			Repos: []*v1.Repo{
+				{
+					Id:       "local",
+					Uri:      t.TempDir(),
+					Password: "test",
+				},
+			},
+			Plans: []*v1.Plan{
+				{
+					Id:   "test",
+					Repo: "local",
+					Paths: []string{
+						backupDataDir,
+					},
+					Cron: "0 0 1 1 *",
+					Retention: &v1.RetentionPolicy{
+						KeepHourly: 1,
+					},
+				},
+			},
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		sut.orch.Run(ctx)
+	}()
+
+	_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
+	if err != nil {
+		t.Fatalf("Backup() error = %v", err)
+	}
+
+	// Check that there is a successful backup recorded in the log.
+	if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+		_, ok := op.GetOp().(*v1.Operation_OperationBackup)
+		return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
+	}) == -1 {
+		t.Fatalf("Expected a backup operation")
+	}
+
+	// Wait for the index snapshot operation to appear in the oplog.
+	var snapshotId string
+	if err := retry(t, 10, 2*time.Second, func() error {
+		operations := getOperations(t, sut.oplog)
+		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
+			_, ok := op.GetOp().(*v1.Operation_OperationIndexSnapshot)
+			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
+		}); index != -1 {
+			op := operations[index]
+			snapshotId = op.SnapshotId
+			return nil
+		}
+		return errors.New("snapshot not indexed")
+	}); err != nil {
+		t.Fatalf("Couldn't find snapshot in oplog")
+	}
+
+	if snapshotId == "" {
+		t.Fatalf("snapshotId must be set")
+	}
+
+	restoreTarget := t.TempDir()
+
+	_, err = sut.handler.Restore(context.Background(), connect.NewRequest(&v1.RestoreSnapshotRequest{
+		SnapshotId: snapshotId,
+		PlanId:     "test",
+		RepoId:     "local",
+		Target:     restoreTarget,
+	}))
+	if err != nil {
+		t.Fatalf("Restore() error = %v", err)
+	}
+
+	// Wait for a restore operation to appear in the oplog.
+	if err := retry(t, 10, 2*time.Second, func() error {
+		operations := getOperations(t, sut.oplog)
+		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
+			_, ok := op.GetOp().(*v1.Operation_OperationRestore)
+			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
+		}); index != -1 {
+			op := operations[index]
+			if op.SnapshotId != snapshotId {
+				t.Fatalf("Snapshot ID mismatch on restore operation")
+			}
+			return nil
+		}
+		return errors.New("restore not indexed")
+	}); err != nil {
+		t.Fatalf("Couldn't find restore in oplog")
+	}
+
+	// Check that the restore target contains the expected file.
+	var files []string
+	filepath.Walk(restoreTarget, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			t.Errorf("Walk() error = %v", err)
+		}
+		files = append(files, path)
+		return nil
+	})
+	t.Logf("files: %v", files)
+	if !slices.ContainsFunc(files, func(s string) bool {
+		return strings.HasSuffix(s, "findme.txt")
+	}) {
+		t.Fatalf("Expected file not found in restore target")
 	}
 }
 

@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,10 +12,11 @@ import (
 )
 
 type RestoreTaskOpts struct {
-	Plan       *v1.Plan
-	SnapshotId string
-	Path       string
-	Target     string
+	RepoId     string // optional
+	PlanId     string // optional
+	SnapshotId string // required
+	Path       string // required
+	Target     string // required
 }
 
 // RestoreTask tracks a forget operation.
@@ -37,7 +39,7 @@ func NewOneoffRestoreTask(orchestrator *Orchestrator, opts RestoreTaskOpts, at t
 }
 
 func (t *RestoreTask) Name() string {
-	return fmt.Sprintf("restore snapshot %v in repo %v", t.restoreOpts.SnapshotId, t.restoreOpts.Plan.Repo)
+	return fmt.Sprintf("restore snapshot %v in repo %v", t.restoreOpts.SnapshotId, t.restoreOpts.RepoId)
 }
 
 func (t *RestoreTask) Next(now time.Time) *time.Time {
@@ -45,8 +47,8 @@ func (t *RestoreTask) Next(now time.Time) *time.Time {
 	if ret != nil {
 		t.at = nil
 		if err := t.setOperation(&v1.Operation{
-			PlanId:          t.restoreOpts.Plan.Id,
-			RepoId:          t.restoreOpts.Plan.Repo,
+			PlanId:          t.restoreOpts.PlanId,
+			RepoId:          t.restoreOpts.RepoId,
 			SnapshotId:      t.restoreOpts.SnapshotId,
 			UnixTimeStartMs: timeToUnixMillis(*ret),
 			Status:          v1.OperationStatus_STATUS_PENDING,
@@ -60,6 +62,10 @@ func (t *RestoreTask) Next(now time.Time) *time.Time {
 }
 
 func (t *RestoreTask) Run(ctx context.Context) error {
+	if t.restoreOpts.SnapshotId == "" || t.restoreOpts.Path == "" || t.restoreOpts.Target == "" {
+		return errors.New("snapshotId, path, and target are required")
+	}
+
 	if err := t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
 		forgetOp := &v1.Operation_OperationRestore{
 			OperationRestore: &v1.OperationRestore{
@@ -70,9 +76,9 @@ func (t *RestoreTask) Run(ctx context.Context) error {
 		op.Op = forgetOp
 		op.UnixTimeStartMs = curTimeMillis()
 
-		repo, err := t.orch.GetRepo(t.restoreOpts.Plan.Repo)
+		repo, err := t.orch.GetRepo(t.restoreOpts.RepoId)
 		if err != nil {
-			return fmt.Errorf("couldn't get repo %q: %w", t.restoreOpts.Plan.Repo, err)
+			return fmt.Errorf("couldn't get repo %q: %w", t.restoreOpts.RepoId, err)
 		}
 
 		lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
@@ -95,13 +101,15 @@ func (t *RestoreTask) Run(ctx context.Context) error {
 
 		return nil
 	}); err != nil {
-		repo, _ := t.orch.GetRepo(t.restoreOpts.Plan.Repo)
-		t.orch.hookExecutor.ExecuteHooks(repo.Config(), nil, t.restoreOpts.SnapshotId, []v1.Hook_Condition{
-			v1.Hook_CONDITION_ANY_ERROR,
-		}, hook.HookVars{
-			Task:  t.Name(),
-			Error: err.Error(),
-		})
+		if t.restoreOpts.RepoId != "" {
+			repo, _ := t.orch.GetRepo(t.restoreOpts.RepoId)
+			t.orch.hookExecutor.ExecuteHooks(repo.Config(), nil, t.restoreOpts.SnapshotId, []v1.Hook_Condition{
+				v1.Hook_CONDITION_ANY_ERROR,
+			}, hook.HookVars{
+				Task:  t.Name(),
+				Error: err.Error(),
+			})
+		}
 		return err
 	}
 	return nil

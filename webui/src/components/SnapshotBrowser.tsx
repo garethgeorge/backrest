@@ -17,6 +17,7 @@ import { formatBytes, normalizeSnapshotId } from "../lib/formatting";
 import { URIAutocomplete } from "./URIAutocomplete";
 import { validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
+import { ConfirmButton } from "./SpinButton";
 
 const SnapshotBrowserContext = React.createContext<{
   snapshotId: string;
@@ -198,6 +199,7 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
                 showModal(
                   <RestoreModal
                     path={entry.path!}
+                    repoId={repoId}
                     planId={planId}
                     snapshotId={snapshotId}
                   />
@@ -226,36 +228,28 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
 };
 
 const RestoreModal = ({
+  repoId,
   planId,
   snapshotId,
   path,
 }: {
+  repoId: string;
   planId?: string; // optional: purely to link restore operations to the right plan.
   snapshotId: string;
   path: string;
 }) => {
   const [form] = Form.useForm<RestoreSnapshotRequest>();
   const showModal = useShowModal();
-  const [confirmLoading, setConfirmLoading] = useState(false);
-  const [restoreConfirmed, setRestoreConfirmed] = useState(false);
 
   const handleCancel = () => {
     showModal(null);
   };
 
   const handleOk = async () => {
-    if (!restoreConfirmed) {
-      setRestoreConfirmed(true);
-      setTimeout(() => {
-        setRestoreConfirmed(false);
-      }, 2000);
-      return;
-    }
-
-    setConfirmLoading(true);
     try {
       const values = await validateForm(form);
       await backrestService.restore({
+        repoId,
         planId,
         snapshotId,
         path,
@@ -264,7 +258,6 @@ const RestoreModal = ({
     } catch (e: any) {
       alert("Failed to restore snapshot: " + e.message);
     } finally {
-      setConfirmLoading(false);
       showModal(null); // close.
     }
   };
@@ -274,24 +267,21 @@ const RestoreModal = ({
       open={true}
       onCancel={handleCancel}
       title={
-        "Restore " +
-        path +
-        " from snapshot " +
-        normalizeSnapshotId(snapshotId)
+        "Restore " + path + " from snapshot " + normalizeSnapshotId(snapshotId)
       }
       width="40vw"
       footer={[
-        <Button loading={confirmLoading} key="back" onClick={handleCancel}>
+        <Button key="back" onClick={handleCancel}>
           Cancel
         </Button>,
-        <Button
+        <ConfirmButton
           key="submit"
           type="primary"
-          loading={confirmLoading}
-          onClick={handleOk}
+          confirmTitle="Confirm Restore?"
+          onClickAsync={handleOk}
         >
-          {restoreConfirmed ? "Confirm Restore?" : "Restore"}
-        </Button>,
+          Restore
+        </ConfirmButton>,
       ]}
     >
       <Form

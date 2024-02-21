@@ -346,17 +346,15 @@ func (s *BackrestHandler) Prune(ctx context.Context, req *connect.Request[types.
 }
 
 func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error) {
-	plan, err := s.orchestrator.GetPlan(req.Msg.PlanId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.PlanId, err)
-	}
-
 	if req.Msg.Target == "" {
 		req.Msg.Target = path.Join(os.Getenv("HOME"), "Downloads")
 	}
+	if req.Msg.Path == "" {
+		req.Msg.Path = "/"
+	}
 
 	target := path.Join(req.Msg.Target, fmt.Sprintf("restic-restore-%v", time.Now().Format("2006-01-02T15-04-05")))
-	_, err = os.Stat(target)
+	_, err := os.Stat(target)
 	if !errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("restore target dir %q already exists", req.Msg.Target)
 	}
@@ -364,7 +362,8 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 	at := time.Now()
 
 	s.orchestrator.ScheduleTask(orchestrator.NewOneoffRestoreTask(s.orchestrator, orchestrator.RestoreTaskOpts{
-		Plan:       plan,
+		RepoId:     req.Msg.RepoId,
+		PlanId:     req.Msg.PlanId,
 		SnapshotId: req.Msg.SnapshotId,
 		Path:       req.Msg.Path,
 		Target:     target,
