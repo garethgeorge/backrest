@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.13.0](https://github.com/garethgeorge/backrest/compare/v0.12.2...v0.13.0) (2024-02-21)
+
+
+### Features
+
+* add case insensitive excludes (iexcludes) ([#108](https://github.com/garethgeorge/backrest/issues/108)) ([bf6fb7e](https://github.com/garethgeorge/backrest/commit/bf6fb7e71402590961271e91ad6da63db27ff5ad))
+* add flags to configure backrest options e.g. --config-file, --data-dir, --restic-cmd, --bind-address ([41ddc8e](https://github.com/garethgeorge/backrest/commit/41ddc8e1a9d5501a92498c8cf3c72625bd181f8a))
+* add opt-in auto-unlock feature to remove locks on forget and prune ([#107](https://github.com/garethgeorge/backrest/issues/107)) ([c1ee33f](https://github.com/garethgeorge/backrest/commit/c1ee33f0cd65a23ec0090852ee0fc5fa50e72b64))
+* add rclone binary to docker image and arm64 support ([#105](https://github.com/garethgeorge/backrest/issues/105)) ([5a49f2f](https://github.com/garethgeorge/backrest/commit/5a49f2f063e887cba85bba0347ebce3efe15753e))
+* bundle rclone, busybox commands, and bash in default backrest docker image ([cec04f8](https://github.com/garethgeorge/backrest/commit/cec04f8f745d4bcfd49829c43367c61cb9778174))
+* display non-fatal errors in backup operations (e.g. unreadable files) in UI ([#100](https://github.com/garethgeorge/backrest/issues/100)) ([caac35a](https://github.com/garethgeorge/backrest/commit/caac35a5402d056b626b59d19084d6a699d4346d))
+
+
+### Bug Fixes
+
+* improve error message when rclone config is missing ([663b430](https://github.com/garethgeorge/backrest/commit/663b430598e0890df74989af12ae81fae7922251))
+* improved sidebar status refresh interval during live operations ([3d192fd](https://github.com/garethgeorge/backrest/commit/3d192fd59d98c242ed583d00eeec37e68a4a2ff5))
+* live backup progress updates with partial-backup errors ([97a4948](https://github.com/garethgeorge/backrest/commit/97a494847ac5031866c31db0bb32219e6b2a0038))
+* migrate prune policy options to oneof ([ef41d34](https://github.com/garethgeorge/backrest/commit/ef41d34d5312b6a3bcc4af536f64275cd20da657))
+* restore operations should succeed for unassociated snapshots ([448107d](https://github.com/garethgeorge/backrest/commit/448107d22612f040fd45493246088277a4a72f63))
+* separate docker images for scratch and alpine linux base ([#106](https://github.com/garethgeorge/backrest/issues/106)) ([40e3e04](https://github.com/garethgeorge/backrest/commit/40e3e04a686f0a1749fa39e15821e6310e0ccf52))
+
 ## [0.12.2](https://github.com/garethgeorge/backrest/compare/v0.12.1...v0.12.2) (2024-02-16)
 
 
