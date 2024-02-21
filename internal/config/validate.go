@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -85,32 +84,9 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 		err = multierror.Append(err, fmt.Errorf("invalid cron %q: %w", plan.Cron, e))
 	}
 
-	if plan.GetRetention() != nil {
-		if e := validateRetention(plan.Retention); e != nil {
-			err = multierror.Append(err, fmt.Errorf("invalid retention policy: %w", e))
-		}
+	if plan.Retention != nil && plan.Retention.Policy == nil {
+		err = multierror.Append(err, errors.New("retention policy must be nil or must specify a policy"))
 	}
 
-	return err
-}
-
-func validateRetention(policy *v1.RetentionPolicy) error {
-	var err error
-	if policy.KeepWithinDuration != "" {
-		match, e := regexp.Match(`(\d+h)?(\d+m)?(\d+s)?`, []byte(policy.KeepWithinDuration))
-		if e != nil {
-			panic(e) // regex error
-		}
-		if !match {
-			err = multierror.Append(err, fmt.Errorf("invalid keep_within_duration %q", policy.KeepWithinDuration))
-		}
-		if policy.KeepLastN != 0 || policy.KeepHourly != 0 || policy.KeepDaily != 0 || policy.KeepWeekly != 0 || policy.KeepMonthly != 0 || policy.KeepYearly != 0 {
-			err = multierror.Append(err, fmt.Errorf("keep_within_duration cannot be used with other retention settings"))
-		}
-	} else {
-		if policy.KeepLastN == 0 && policy.KeepHourly == 0 && policy.KeepDaily == 0 && policy.KeepWeekly == 0 && policy.KeepMonthly == 0 && policy.KeepYearly == 0 {
-			err = multierror.Append(err, fmt.Errorf("at least one retention policy must be set"))
-		}
-	}
 	return err
 }
