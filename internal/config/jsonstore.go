@@ -37,10 +37,6 @@ func (f *JsonFileStore) Get() (*v1.Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	if err := ValidateConfig(&config); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
-	}
-
 	return &config, nil
 }
 
@@ -48,14 +44,9 @@ func (f *JsonFileStore) Update(config *v1.Config) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	if err := ValidateConfig(config); err != nil {
-		return fmt.Errorf("invalid config: %w", err)
-	}
-
 	data, err := protojson.MarshalOptions{
-		Indent:          "  ",
-		Multiline:       true,
-		EmitUnpopulated: true,
+		Indent:    "  ",
+		Multiline: true,
 	}.Marshal(config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)

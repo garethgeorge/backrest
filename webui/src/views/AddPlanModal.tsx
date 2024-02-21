@@ -476,26 +476,29 @@ export const AddPlanModal = ({
 
 const RetentionPolicyView = () => {
   const form = Form.useFormInstance();
-  const retention = Form.useWatch('retention', { form, preserve: true }) as RetentionPolicy | undefined;
+  const retention = Form.useWatch('retention', { form, preserve: true }) as any;
 
-  let [mode, setMode] = useState(0);
-  useEffect(() => {
-    if (!retention || (!retention.keepDaily && !retention.keepHourly && !retention.keepLastN && !retention.keepMonthly && !retention.keepWeekly && !retention.keepYearly)) {
-      setMode(0);
-    } else if (!!retention.keepLastN) {
-      setMode(1);
-    } else {
-      setMode(2);
+  const determineMode = () => {
+    console.log("DERIVE MODE BASED ON RETENTION: " + JSON.stringify(retention));
+    if (!retention || retention.policyTimeBucketed) {
+      return 2;
+    } else if (retention.policyKeepAll) {
+      return 0;
+    } else if (retention.policyKeepLastN) {
+      return 1;
     }
-  }, [retention])
+  }
+
+  const mode = determineMode();
 
   let elem: React.ReactNode = null;
+  console.log("RENDERING WITH MODE: ", mode);
   if (mode === 0) {
     elem = <p>All backups are retained e.g. for append-only repos. Ensure that you manually forget / prune backups elsewhere. Backrest will register forgets performed externally on the next backup.</p>;
   } else if (mode === 1) {
     elem = (
       <Form.Item
-        name={["retention", "keepLastN"]}
+        name={["retention", "policyKeepLastN"]}
         initialValue={30}
         validateTrigger={["onChange", "onBlur"]}
         rules={[
@@ -513,7 +516,7 @@ const RetentionPolicyView = () => {
       <Row>
         <Col span={11}>
           <Form.Item
-            name={["retention", "keepYearly"]}
+            name={["retention", "policyTimeBucketed", "yearly"]}
             validateTrigger={["onChange", "onBlur"]}
             initialValue={0}
             required={false}
@@ -524,7 +527,7 @@ const RetentionPolicyView = () => {
             />
           </Form.Item>
           <Form.Item
-            name={["retention", "keepMonthly"]}
+            name={["retention", "policyTimeBucketed", "monthly"]}
             initialValue={3}
             validateTrigger={["onChange", "onBlur"]}
             required={false}
@@ -535,7 +538,7 @@ const RetentionPolicyView = () => {
             />
           </Form.Item>
           <Form.Item
-            name={["retention", "keepWeekly"]}
+            name={["retention", "policyTimeBucketed", "weekly"]}
             initialValue={4}
             validateTrigger={["onChange", "onBlur"]}
             required={false}
@@ -548,7 +551,7 @@ const RetentionPolicyView = () => {
         </Col>
         <Col span={11} offset={1}>
           <Form.Item
-            name={["retention", "keepDaily"]}
+            name={["retention", "policyTimeBucketed", "daily"]}
             initialValue={7}
             validateTrigger={["onChange", "onBlur"]}
             required={false}
@@ -559,7 +562,7 @@ const RetentionPolicyView = () => {
             />
           </Form.Item>
           <Form.Item
-            name={["retention", "keepHourly"]}
+            name={["retention", "policyTimeBucketed", "hourly"]}
             initialValue={24}
             validateTrigger={["onChange", "onBlur"]}
             required={false}
@@ -579,14 +582,13 @@ const RetentionPolicyView = () => {
       <Form.Item label="Retention Policy">
         <Row>
           <Radio.Group value={mode} onChange={e => {
-            console.log("SELECTED: ", e.target);
             const selected = e.target.value;
             if (selected === 1) {
-              form.setFieldValue("retention", { keepLastN: 30 });
+              form.setFieldValue("retention", { policyKeepLastN: 30 });
             } else if (selected === 2) {
-              form.setFieldValue("retention", { keepYearly: 0, keepMonthly: 3, keepWeekly: 4, keepDaily: 7, keepHourly: 24 });
+              form.setFieldValue("retention", { policyTimeBucketed: { keepYearly: 0, keepMonthly: 3, keepWeekly: 4, keepDaily: 7, keepHourly: 24 } });
             } else {
-              form.setFieldValue("retention", null);
+              form.setFieldValue("retention", { policyKeepAll: true });
             }
           }}>
             <Radio.Button value={1}>
