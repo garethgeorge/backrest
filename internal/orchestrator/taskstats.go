@@ -44,7 +44,7 @@ func (t *StatsTask) Name() string {
 func (t *StatsTask) shouldRun() (bool, error) {
 	var bytesSinceLastStat int64 = -1
 	var howFarBack int = 0
-	if err := t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.Reversed(indexutil.CollectLastN(statOperationsThreshold)), func(op *v1.Operation) error {
+	if err := t.orch.OpLog.ForEachByRepo(t.plan.Repo, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_INPROGRESS {
 			return nil
 		}

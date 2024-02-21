@@ -96,7 +96,7 @@ func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
 				continue
 			}
 
-			if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED || op.Status == v1.OperationStatus_STATUS_USER_CANCELLED {
+			if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED || op.Status == v1.OperationStatus_STATUS_USER_CANCELLED || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
 				// remove pending or user cancelled operations.
 				removeIds = append(removeIds, op.Id)
 				continue
