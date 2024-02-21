@@ -88,6 +88,7 @@ message GetOperationsRequest {
 
 message RestoreSnapshotRequest {
   string plan_id = 1;
+  string repo_id = 5;
   string snapshot_id = 2;
   string path = 3;
   string target = 4;
