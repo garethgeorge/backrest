@@ -1,0 +1,51 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "npm i",
+            "type": "shell",
+            "command": "cd webui && npm i",
+        },
+        {
+            "label": "Parcel",
+            "type": "npm",
+            "script": "start",
+            "dependsOn": "npm i",
+            "isBackground": true,
+            "problemMatcher": {
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "parcel serve",
+                    "endsPattern": "Built in"
+                },
+                "pattern": {
+                    "regexp": ".*"
+                }
+            },
+            "path": "webui"
+        },
+        {
+            "label": "Build Webui",
+            "type": "npm",
+            "script": "build",
+            "path": "webui",
+            "group": "build",
+            "problemMatcher": [],
+            "dependsOn": "npm i"
+        },
+         {
+            "label": "Terminate Parcel",
+            "command": "echo ${input:terminate}",
+            "type": "shell",
+            "problemMatcher": []
+          }
+    ],
+    "inputs": [
+        {
+          "id": "terminate",
+          "type": "command",
+          "command": "workbench.action.tasks.terminate",
+          "args": "Parcel"
+        }
+      ]
+}
