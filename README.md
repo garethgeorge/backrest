@@ -80,7 +80,8 @@ version: "3.2"
 services:
   backrest:
     image: garethgeorge/backrest
-    container_name: backrest 
+    container_name: backrest
+    hostname: backrest #Use this to set the hostname instead of container ID to the config.json and WebUI.
     volumes:
       - ./backrest/data:/data
       - ./backrest/config:/config
