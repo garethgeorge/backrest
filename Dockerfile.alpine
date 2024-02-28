@@ -1,4 +1,5 @@
-RUN apk --no-cache add ca-certificates curl bash rclone
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates curl bash rclone openssh
 RUN mkdir -p /tmp
 
 ENTRYPOINT ["/backrest"]
