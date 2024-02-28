@@ -29,3 +29,15 @@ npm install -g @bufbuild/protoc-gen-es @connectrpc/protoc-gen-connect-es
 (cd webui && npm i && npm run build)
 (cd cmd/backrest && go build .)
 ```
+
+## Using VSCode Dev Containers
+
+You can also use VSCode with `Dev Containers` extension to quickly get up and running with a working development and debugging environment.
+
+0. Make sure Docker and VSCode with Dev Containers extension is installed
+1. Clone this repository
+2. Open this folder in VSCode
+3. When propmpted, click on `Open in Container` button, or run `> Dev Containers: Rebuild and Reopen in Containers` command
+4. When container is started, go to `Run and Debug`, choose `Debug Backrest (backend+frontend)` and run it
+
+Provided launch configuration has hot reload for typescript frontend.
