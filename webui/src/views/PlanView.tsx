@@ -8,6 +8,7 @@ import { MAX_OPERATION_HISTORY } from "../constants";
 import { backrestService } from "../api";
 import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
 import { SpinButton } from "../components/SpinButton";
+import { shouldHideStatus } from "../state/oplog";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const alertsApi = useAlertApi()!;
@@ -99,6 +100,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                 <h2>Backup Action History</h2>
                 <OperationList
                   req={new GetOperationsRequest({ planId: plan.id!, lastN: BigInt(MAX_OPERATION_HISTORY) })}
+                  filter={(operation) => shouldHideStatus(operation.status)}
                 />
               </>
             ),
