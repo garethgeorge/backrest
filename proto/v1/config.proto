@@ -38,6 +38,7 @@ message Plan {
   string cron = 6 [json_name="cron"]; // cron expression describing the backup schedule.
   RetentionPolicy retention = 7 [json_name="retention"]; // retention policy for snapshots.
   repeated Hook hooks = 8 [json_name="hooks"]; // hooks to run on events for this plan.
+  repeated string backup_flags = 10 [json_name="backup_flags"]; // extra flags to set when running a backup command.
 }
 
 message RetentionPolicy {

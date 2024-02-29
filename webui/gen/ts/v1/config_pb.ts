@@ -236,6 +236,13 @@ export class Plan extends Message<Plan> {
    */
   hooks: Hook[] = [];
 
+  /**
+   * extra flags to set when running a backup command.
+   *
+   * @generated from field: repeated string backup_flags = 10 [json_name = "backup_flags"];
+   */
+  backupFlags: string[] = [];
+
   constructor(data?: PartialMessage<Plan>) {
     super();
     proto3.util.initPartial(data, this);
@@ -252,6 +259,7 @@ export class Plan extends Message<Plan> {
     { no: 6, name: "cron", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "retention", kind: "message", T: RetentionPolicy },
     { no: 8, name: "hooks", kind: "message", T: Hook, repeated: true },
+    { no: 10, name: "backup_flags", jsonName: "backup_flags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Plan {

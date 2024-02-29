@@ -402,6 +402,53 @@ export const AddPlanModal = ({
             <HooksFormList />
           </Form.Item>
 
+          {/* Plan.backup_flags */}
+          <Form.Item label={<Tooltip title="Extra flags to add to the 'restic backup' command">Backup Flags</Tooltip>}>
+            <Form.List
+              name="backup_flags"
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => (
+                    <Form.Item required={false} key={field.key}>
+                      <Form.Item
+                        {...field}
+                        validateTrigger={["onChange", "onBlur"]}
+                        rules={[
+                          {
+                            required: true,
+                            whitespace: true,
+                            pattern: /^\-\-?.*$/,
+                            message:
+                              "Value should be a CLI flag e.g. see restic backup --help",
+                          },
+                        ]}
+                        noStyle
+                      >
+                        <Input placeholder="--flag" style={{ width: "60%" }} />
+                      </Form.Item>
+                      <MinusCircleOutlined
+                        className="dynamic-delete-button"
+                        onClick={() => remove(index)}
+                        style={{ paddingLeft: "5px" }}
+                      />
+                    </Form.Item>
+                  ))}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      style={{ width: "60%" }}
+                      icon={<PlusOutlined />}
+                    >
+                      Set Flag
+                    </Button>
+                    <Form.ErrorList errors={errors} />
+                  </Form.Item>
+                </>
+              )}
+            </Form.List>
+          </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">
             {() => (

@@ -96,6 +96,13 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 	opts = append(opts, restic.WithBackupExcludes(plan.Excludes...))
 	opts = append(opts, restic.WithBackupIExcludes(plan.Iexcludes...))
 	opts = append(opts, restic.WithBackupTags(tagForPlan(plan)))
+	for _, f := range plan.GetBackupFlags() {
+		args, err := shlex.Split(f)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse backup flag %q for plan %q: %w", f, plan.Id, err)
+		}
+		opts = append(opts, restic.WithBackupFlags(args...))
+	}
 
 	if len(snapshots) > 0 {
 		// TODO: design a test strategy to verify that the backup parent is used correctly.
