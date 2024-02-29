@@ -481,6 +481,12 @@ func WithBackupParent(parent string) BackupOption {
 	}
 }
 
+func WithBackupFlags(flags ...string) BackupOption {
+	return func(opts *BackupOpts) {
+		opts.extraArgs = append(opts.extraArgs, flags...)
+	}
+}
+
 type GenericOpts struct {
 	extraArgs []string
 	extraEnv  []string
