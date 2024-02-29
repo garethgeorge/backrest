@@ -18,6 +18,8 @@ const (
 	// - it has a forgotten snapshot associated with it
 	gcHistoryAge      = 30 * 24 * time.Hour
 	gcHistoryMaxCount = 1000
+	// keep stats operations for 1 year (they're small and useful for long term trends)
+	gcHistoryStatsAge = 365 * 24 * time.Hour
 )
 
 type CollectGarbageTask struct {
@@ -72,9 +74,11 @@ func (t *CollectGarbageTask) gcOperations() error {
 	operationsByPlan := make(map[string][]gcOpInfo)
 	if err := oplog.ForAll(func(op *v1.Operation) error {
 		if op.SnapshotId == "" || snapshotIsForgotten[op.SnapshotId] {
+			_, isStats := op.Op.(*v1.Operation_OperationStats)
 			operationsByPlan[op.PlanId] = append(operationsByPlan[op.PlanId], gcOpInfo{
 				id:        op.Id,
 				timestamp: op.UnixTimeStartMs,
+				isStats:   isStats,
 			})
 		}
 		return nil
@@ -94,7 +98,11 @@ func (t *CollectGarbageTask) gcOperations() error {
 
 		// check if each operation timestamp is old.
 		for _, opInfo := range opInfos {
-			if curTime-opInfo.timestamp > gcHistoryAge.Milliseconds() {
+			maxAgeForType := gcHistoryAge.Milliseconds()
+			if opInfo.isStats {
+				maxAgeForType = gcHistoryStatsAge.Milliseconds()
+			}
+			if curTime-opInfo.timestamp > maxAgeForType {
 				gcOps = append(gcOps, opInfo.id)
 			}
 		}
@@ -122,4 +130,5 @@ func (t *CollectGarbageTask) OperationId() int64 {
 type gcOpInfo struct {
 	id        int64 // operation ID
 	timestamp int64 // unix time milliseconds
+	isStats   bool  // true if this is a stats operation
 }

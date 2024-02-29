@@ -91,6 +91,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                 />
               </>
             ),
+            destroyInactiveTabPane: true,
           },
           {
             key: "2",
@@ -100,10 +101,11 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                 <h2>Backup Action History</h2>
                 <OperationList
                   req={new GetOperationsRequest({ planId: plan.id!, lastN: BigInt(MAX_OPERATION_HISTORY) })}
-                  filter={(operation) => shouldHideStatus(operation.status)}
+                  filter={(op) => !shouldHideStatus(op.status)}
                 />
               </>
             ),
+            destroyInactiveTabPane: true,
           },
         ]}
       />
