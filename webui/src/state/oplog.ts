@@ -235,6 +235,7 @@ export class BackupInfoCollector {
 
   public addOperation(event: OperationEventType, op: Operation): BackupInfo | null {
     if (!this.filter(op)) {
+      this.removeOperation(op);
       return null;
     }
     const backupInfo = this.addHelper(op);
@@ -245,7 +246,15 @@ export class BackupInfoCollector {
   // removeOperaiton is not quite correct from a formal standpoint; but will look correct in the UI.
   public removeOperation(op: Operation) {
     if (op.snapshotId) {
-      this.backupBySnapshotId.delete(op.snapshotId);
+      let existing = this.backupBySnapshotId.get(op.snapshotId);
+      if (existing) {
+        const operations = existing.operations.filter((o) => o.id !== op.id);
+        if (operations.length === 0) {
+          this.backupBySnapshotId.delete(op.snapshotId);
+        } else {
+          this.backupBySnapshotId.set(op.snapshotId, this.createBackup(operations));
+        }
+      }
     } else {
       this.backupByOpId.delete(op.id);
     }
@@ -293,7 +302,7 @@ export class BackupInfoCollector {
       ...this.backupByOpId.values(),
       ...this.backupBySnapshotId.values(),
     ];
-    return arr.filter((b) => !b.forgotten);
+    return arr.filter((b) => !b.forgotten && !shouldHideStatus(b.status));
   }
 
   public subscribe(

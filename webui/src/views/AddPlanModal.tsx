@@ -477,21 +477,17 @@ export const AddPlanModal = ({
 const RetentionPolicyView = () => {
   const form = Form.useFormInstance();
   const retention = Form.useWatch('retention', { form, preserve: true }) as RetentionPolicy | undefined;
-  console.log("RETENTION: " + JSON.stringify(retention));
 
   let [mode, setMode] = useState(0);
   useEffect(() => {
     if (!retention || (!retention.keepDaily && !retention.keepHourly && !retention.keepLastN && !retention.keepMonthly && !retention.keepWeekly && !retention.keepYearly)) {
-      console.log("RETENTION NOT SET");
       setMode(0);
     } else if (!!retention.keepLastN) {
-      console.log("KEEP LAST N: ", retention.keepLastN);
       setMode(1);
     } else {
       setMode(2);
     }
   }, [retention])
-  console.log("MODE: ", mode);
 
   let elem: React.ReactNode = null;
   if (mode === 0) {
