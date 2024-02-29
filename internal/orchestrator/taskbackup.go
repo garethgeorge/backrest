@@ -128,7 +128,7 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 
 			backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(entry)
 		} else if entry.MessageType == "error" {
-			zap.S().Warnf("backup error: %v", entry.Item)
+			zap.S().Warnf("an unknown error was encountered in processing item: %v", entry.Item)
 			backupError, err := protoutil.BackupProgressEntryToBackupError(entry)
 			if err != nil {
 				zap.S().Errorf("failed to convert backup progress entry to backup error: %v", err)

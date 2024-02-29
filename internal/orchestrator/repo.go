@@ -11,6 +11,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
+	"github.com/google/shlex"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
@@ -26,12 +27,28 @@ type RepoOrchestrator struct {
 }
 
 // newRepoOrchestrator accepts a config and a repo that is configured with the properties of that config object.
-func newRepoOrchestrator(repoConfig *v1.Repo, repo *restic.Repo) *RepoOrchestrator {
+func newRepoOrchestrator(repoConfig *v1.Repo, resticPath string) (*RepoOrchestrator, error) {
+	var opts []restic.GenericOption
+	opts = append(opts, restic.WithPropagatedEnvVars(restic.EnvToPropagate...))
+	if len(repoConfig.GetEnv()) > 0 {
+		opts = append(opts, restic.WithEnv(repoConfig.GetEnv()...))
+	}
+
+	for _, f := range repoConfig.GetFlags() {
+		args, err := shlex.Split(f)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse flag %q for repo %q: %w", f, repoConfig.Id, err)
+		}
+		opts = append(opts, restic.WithFlags(args...))
+	}
+
+	repo := restic.NewRepo(resticPath, repoConfig, opts...)
+
 	return &RepoOrchestrator{
 		repoConfig: repoConfig,
 		repo:       repo,
 		l:          zap.L().With(zap.String("repo", repoConfig.Id)),
-	}
+	}, nil
 }
 
 func (r *RepoOrchestrator) Snapshots(ctx context.Context) ([]*restic.Snapshot, error) {
