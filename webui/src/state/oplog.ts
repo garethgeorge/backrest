@@ -123,7 +123,6 @@ export interface BackupInfo {
   backupLastStatus?: BackupProgressEntry;
   snapshotInfo?: ResticSnapshot;
   forgotten: boolean;
-  hidden: boolean;
 }
 
 // BackupInfoCollector maps multiple operations to single aggregate 'BackupInfo' objects.
@@ -135,6 +134,12 @@ export class BackupInfoCollector {
   ) => void)[] = [];
   private backupByOpId: Map<bigint, BackupInfo> = new Map();
   private backupBySnapshotId: Map<string, BackupInfo> = new Map();
+
+  /**
+   * 
+   * @param filter a function that returns true if an operation should be displayed, false otherwise.
+   */
+  constructor(private filter: (op: Operation) => boolean = (op) => !shouldHideOperation(op)) { }
 
   private createBackup(operations: Operation[]): BackupInfo {
     // deduplicate and sort operations.
@@ -155,7 +160,7 @@ export class BackupInfoCollector {
       displayType = getTypeForDisplay(operations[0]);
     }
 
-    // use the latest status that is not cancelled.
+    // use the latest status that is not a hidden status
     let statusIdx = operations.length - 1;
     let status = OperationStatus.STATUS_SYSTEM_CANCELLED;
     while (statusIdx !== -1) {
@@ -174,16 +179,12 @@ export class BackupInfoCollector {
     let backupLastStatus = undefined;
     let snapshotInfo = undefined;
     let forgotten = false;
-    let hidden = true;
     for (const op of operations) {
       if (op.op.case === "operationBackup") {
         backupLastStatus = op.op.value.lastStatus;
       } else if (op.op.case === "operationIndexSnapshot") {
         snapshotInfo = op.op.value.snapshot;
         forgotten = op.op.value.forgot || false;
-      }
-      if (hidden && !shouldHideOperation(op)) {
-        hidden = false;
       }
     }
 
@@ -198,7 +199,6 @@ export class BackupInfoCollector {
       backupLastStatus,
       snapshotInfo,
       forgotten,
-      hidden,
       snapshotId: operations[0].snapshotId,
       planId: operations[0].planId,
       repoId: operations[0].repoId,
@@ -233,7 +233,10 @@ export class BackupInfoCollector {
     }
   }
 
-  public addOperation(event: OperationEventType, op: Operation): BackupInfo {
+  public addOperation(event: OperationEventType, op: Operation): BackupInfo | null {
+    if (!this.filter(op)) {
+      return null;
+    }
     const backupInfo = this.addHelper(op);
     this.listeners.forEach((l) => l(event, [backupInfo]));
     return backupInfo;
@@ -253,6 +256,7 @@ export class BackupInfoCollector {
   }
 
   public bulkAddOperations(ops: Operation[]): BackupInfo[] {
+    ops = ops.filter(this.filter);
     let grouped = _.groupBy(ops, (op) =>
       op.snapshotId ? op.snapshotId : op.id
     );
@@ -284,17 +288,12 @@ export class BackupInfoCollector {
     return info;
   }
 
-  public getAll(filter: boolean = true): BackupInfo[] {
+  public getAll(): BackupInfo[] {
     const arr = [
       ...this.backupByOpId.values(),
       ...this.backupBySnapshotId.values(),
     ];
-    if (!filter) {
-      return arr.filter((b) => !b.forgotten);
-    }
-    return arr.filter(
-      (b) => !b.forgotten && !b.hidden && !shouldHideStatus(b.status)
-    );
+    return arr.filter((b) => !b.forgotten);
   }
 
   public subscribe(

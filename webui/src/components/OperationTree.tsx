@@ -79,7 +79,7 @@ export const OperationTree = ({
         backupCollector.bulkAddOperations(ops);
       })
       .catch((e) => {
-        alertApi!.error("Failed to fetch operations: " + e.message);
+        alertApi!.error("Failed to fetch operations: " + e.messag);
       });
     return () => {
       unsubscribeFromOperations(lis);
@@ -314,7 +314,7 @@ const BackupView = ({ backup }: { backup?: BackupInfo }) => {
           {backup.status !== OperationStatus.STATUS_PENDING && backup.status != OperationStatus.STATUS_INPROGRESS ? deleteButton : null}
         </div>
       </div>
-      <OperationList key={backup.id} useBackups={[backup]} filter={(op) => op && !shouldHideOperation(op)} />
+      <OperationList key={backup.id} useBackups={[backup]} />
     </div>;
   }
 }

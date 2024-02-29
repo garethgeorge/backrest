@@ -1,6 +1,6 @@
 export const formatBytes = (bytes?: number | string) => {
   if (!bytes) {
-    return 0;
+    return "0B";
   }
   if (typeof bytes === "string") {
     bytes = parseInt(bytes);

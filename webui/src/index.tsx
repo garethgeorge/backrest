@@ -8,6 +8,7 @@ import "react-js-cron/dist/styles.css";
 import { ConfigProvider as AntdConfigProvider, theme } from "antd";
 import { ConfigContextProvider } from "./components/ConfigProvider";
 import { MainContentProvider } from "./views/MainContentArea";
+import { ThemeProvider, createTheme } from "@mui/material";
 
 const Root = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -34,8 +35,14 @@ el &&
         ],
       }}
     >
-      <Root>
-        <App />
-      </Root>
+      <ThemeProvider theme={createTheme({
+        palette: {
+          mode: "dark",
+        },
+      })}>
+        <Root>
+          <App />
+        </Root>
+      </ThemeProvider>
     </AntdConfigProvider>
   );

@@ -5,39 +5,21 @@ import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY, STATS_OPERATION_HISTORY } from "../constants";
 import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
-import { getOperations } from "../state/oplog";
+import { BackupInfo, BackupInfoCollector, getOperations, shouldHideStatus } from "../state/oplog";
 import { RepoStats } from "../../gen/ts/v1/restic_pb";
-import { formatBytes, formatTime } from "../lib/formatting";
-import { Operation } from "../../gen/ts/v1/operations_pb";
+import { formatBytes, formatDate, formatTime } from "../lib/formatting";
+import { Operation, OperationStats, OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { backrestService } from "../api";
 import { StringValue } from "@bufbuild/protobuf";
 import { SpinButton } from "../components/SpinButton";
 import { ConfigContext } from "antd/es/config-provider";
 import { useConfig } from "../components/ConfigProvider";
+import { useAlertApi } from "../components/Alerts";
+import { LineChart } from "@mui/x-charts";
+
 
 export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
-  const [loading, setLoading] = useState(true);
-  const [statsOperation, setStatsOperation] = useState<Operation | null>(null);
   const [config, setConfig] = useConfig();
-
-  useEffect(() => {
-    setLoading(true);
-    setStatsOperation(null);
-    getOperations(new GetOperationsRequest({ repoId: repo.id!, lastN: BigInt(STATS_OPERATION_HISTORY) })).then((operations) => {
-      for (const op of operations) {
-        if (op.op.case === "operationStats") {
-          const stats = op.op.value.stats;
-          if (stats) {
-            setStatsOperation(op);
-          }
-        }
-      }
-    }).catch((e) => {
-      console.error(e);
-    }).finally(() => {
-      setLoading(false);
-    });
-  }, [repo.id]);
 
   // Task handlers
   const handleIndexNow = async () => {
@@ -56,23 +38,13 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   }
   repo = repoInConfig;
 
-  if (loading) {
-    return <Spin />;
-  }
-
   const items = [
     {
       key: "1",
       label: "Stats",
       children: (
         <>
-          {statsOperation === null ? <Empty description="No data. Have you run a backup yet?" /> :
-            <>
-              <h3>Repo stats computed on {formatTime(Number(statsOperation.unixTimeStartMs))}</h3>
-              {statsOperation.op.case === "operationStats" && <StatsTable stats={statsOperation.op.value.stats!} />}
-              <small>Stats are refreshed periodically in the background as new data is added (e.g. every 10GB added or every 50 operations).</small>
-            </>
-          }
+          <StatsPanel repoId={repo.id!} />
         </>
       ),
       destroyInactiveTabPane: true,
@@ -99,6 +71,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           <OperationList
             req={new GetOperationsRequest({ repoId: repo.id!, lastN: BigInt(MAX_OPERATION_HISTORY) })}
             showPlan={true}
+            filter={(op) => !shouldHideStatus(op.status)}
           />
         </>
       ),
@@ -127,21 +100,132 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   );
 };
 
-const StatsTable = ({ stats }: { stats: RepoStats }) => {
-  return <Row>
-    <Col style={{ paddingRight: "20px" }}>
-      <p><strong>Total Size: </strong></p>
-      <p><strong>Total Size Uncompressed: </strong></p>
-      <p><strong>Blob Count: </strong></p>
-      <p><strong>Snapshot Count: </strong></p>
-      <p><strong>Compression Ratio: </strong></p>
-    </Col>
-    <Col>
-      <p>{formatBytes(Number(stats.totalSize))}</p>
-      <p>{formatBytes(Number(stats.totalUncompressedSize))}</p>
-      <p>{Number(stats.totalBlobCount)} blobs</p>
-      <p>{Number(stats.snapshotCount)} snapshots</p>
-      <p>{Math.round(stats.compressionRatio * 1000) / 1000}</p>
-    </Col>
-  </Row>
+const StatsPanel = ({ repoId }: { repoId: string }) => {
+  const [operations, setOperations] = useState<Operation[]>([]);
+  const alertApi = useAlertApi();
+
+  useEffect(() => {
+    if (!repoId) {
+      return;
+    }
+
+    const backupCollector = new BackupInfoCollector((op) => {
+      return op.status === OperationStatus.STATUS_SUCCESS && op.op.case === "operationStats" && !!op.op.value.stats
+    });
+
+    getOperations(new GetOperationsRequest({ repoId: repoId, lastN: BigInt(MAX_OPERATION_HISTORY) }))
+      .then((ops) => {
+        backupCollector.bulkAddOperations(ops);
+
+        const operations = backupCollector.getAll().flatMap((b) => b.operations);
+        operations.sort((a, b) => {
+          return Number(b.unixTimeEndMs - a.unixTimeEndMs);
+        });
+        setOperations(operations);
+      })
+      .catch((e) => {
+        alertApi!.error("Failed to fetch operations: " + e.message);
+      });
+  }, [repoId]);
+
+  if (operations.length === 0) {
+    return <Empty description="No stats available. Have you run a prune operation yet?" />
+  }
+
+  const dataset: {
+    time: number,
+    totalSizeMb: number,
+    compressionRatio: number,
+    snapshotCount: number,
+    totalBlobCount: number,
+  }[] = operations.map((op) => {
+    const stats = (op.op.value! as OperationStats).stats!;
+    return {
+      time: Number(op.unixTimeEndMs!),
+      totalSizeMb: Number(stats.totalSize) / 1000000,
+      compressionRatio: Number(stats.compressionRatio),
+      snapshotCount: Number(stats.snapshotCount),
+      totalBlobCount: Number(stats.totalBlobCount),
+    }
+  });
+
+  const minTime = Math.min(...dataset.map((d) => d.time));
+  const maxTime = Math.max(...dataset.map((d) => d.time));
+
+  return <>
+    <Row>
+      <Col span={12}>
+        <LineChart
+          xAxis={[{
+            dataKey: "time",
+            valueFormatter: (v) => formatDate(v as number),
+            min: minTime,
+            max: maxTime,
+          }]}
+          series={[
+            {
+              dataKey: "totalSizeMb",
+              label: "Total Size (MB)",
+              valueFormatter: (v: any) => formatBytes(v * 1000000 as number),
+            },
+          ]}
+          height={300}
+          dataset={dataset}
+        />
+
+        <LineChart
+          xAxis={[{
+            dataKey: "time",
+            valueFormatter: (v) => formatDate(v as number),
+            min: minTime,
+            max: maxTime,
+          }]}
+          series={[
+            {
+              dataKey: "compressionRatio",
+              label: "Compression Ratio",
+            },
+          ]}
+          height={300}
+          dataset={dataset}
+        />
+      </Col>
+      <Col span={12}>
+        <LineChart
+          xAxis={[{
+            dataKey: "time",
+            valueFormatter: (v) => formatDate(v as number),
+            min: minTime,
+            max: maxTime,
+          }]}
+          series={[
+            {
+              dataKey: "snapshotCount",
+              label: "Snapshot Count",
+            },
+          ]}
+          height={300}
+          dataset={dataset}
+        />
+
+        <LineChart
+          xAxis={[{
+            dataKey: "time",
+            valueFormatter: (v) => formatDate(v as number),
+            min: minTime,
+            max: maxTime,
+          }]}
+          series={[
+            {
+              dataKey: "totalBlobCount",
+              label: "Blob Count",
+            },
+          ]}
+          height={300}
+          dataset={dataset}
+        />
+      </Col>
+    </Row>
+  </>
+
 }
