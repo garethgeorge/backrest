@@ -20,16 +20,26 @@ before:
     - sh -c "GOOS=windows BACKREST_BUILD_VERSION={{.Version}} go generate ./..."
 
 builds:
-  - main: .
+  - id: other
+    main: .
     env:
       - CGO_ENABLED=0
     goos:
-      - linux
       - darwin
       - windows
     goarch:
       - amd64
       - arm64
+  - id: linux
+    main: .
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+      - arm
 
 archives:
   - format: tar.gz
@@ -85,11 +95,20 @@ dockers:
       - "--pull"
       - "--platform=linux/amd64"
 
+  - image_templates:
+      - garethgeorge/backrest:{{ .Tag }}-scratch-armv6
+    dockerfile: Dockerfile.scratch
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm/v6"
+
 docker_manifests:
   - name_template: "garethgeorge/backrest:latest"
     image_templates:
       - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
       - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
   - name_template: "garethgeorge/backrest:{{ .Tag }}"
     image_templates:
       - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
