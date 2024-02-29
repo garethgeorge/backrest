@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/pkg/restic"
 	"github.com/garethgeorge/backrest/test/helpers"
 	test "github.com/garethgeorge/backrest/test/helpers"
 )
@@ -31,7 +30,10 @@ func TestBackup(t *testing.T) {
 		Paths: []string{testData},
 	}
 
-	orchestrator := newRepoOrchestrator(r, restic.NewRepo(helpers.ResticBinary(t), r, restic.WithFlags("--no-cache")))
+	orchestrator, err := newRepoOrchestrator(r, helpers.ResticBinary(t))
+	if err != nil {
+		t.Fatalf("failed to create repo orchestrator: %v", err)
+	}
 
 	summary, err := orchestrator.Backup(context.Background(), plan, nil)
 	if err != nil {
@@ -74,7 +76,10 @@ func TestSnapshotParenting(t *testing.T) {
 		},
 	}
 
-	orchestrator := newRepoOrchestrator(r, restic.NewRepo(helpers.ResticBinary(t), r, restic.WithFlags("--no-cache")))
+	orchestrator, err := newRepoOrchestrator(r, helpers.ResticBinary(t))
+	if err != nil {
+		t.Fatalf("failed to create repo orchestrator: %v", err)
+	}
 
 	for i := 0; i < 4; i++ {
 		for _, plan := range plans {

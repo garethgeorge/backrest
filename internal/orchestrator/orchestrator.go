@@ -14,7 +14,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/rotatinglog"
-	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
@@ -317,17 +316,11 @@ func (rp *resticRepoPool) GetRepo(repoId string) (repo *RepoOrchestrator, err er
 	}
 	delete(rp.repos, repoId)
 
-	var opts []restic.GenericOption
-	opts = append(opts, restic.WithPropagatedEnvVars(restic.EnvToPropagate...))
-	if len(repoProto.GetEnv()) > 0 {
-		opts = append(opts, restic.WithEnv(repoProto.GetEnv()...))
-	}
-	if len(repoProto.GetFlags()) > 0 {
-		opts = append(opts, restic.WithFlags(repoProto.GetFlags()...))
-	}
-
 	// Otherwise create a new repo.
-	repo = newRepoOrchestrator(repoProto, restic.NewRepo(rp.resticPath, repoProto, opts...))
+	repo, err = newRepoOrchestrator(repoProto, rp.resticPath)
+	if err != nil {
+		return nil, err
+	}
 	rp.repos[repoId] = repo
 	return repo, nil
 }
