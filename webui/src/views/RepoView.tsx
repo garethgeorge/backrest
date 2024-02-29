@@ -26,6 +26,10 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
     await backrestService.indexSnapshots(new StringValue({ value: repo.id! }));
   }
 
+  const handleStatsNow = async () => {
+    await backrestService.stats(new StringValue({ value: repo.id! }));
+  }
+
   // Gracefully handle deletions by checking if the plan is still in the config.
   let repoInConfig = config?.repos?.find((r) => r.id === repo.id);
   if (!repoInConfig) {
@@ -89,6 +93,12 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
         <Tooltip title="Indexes the snapshots in the repository. Snapshots are also indexed automatically after each backup.">
           <SpinButton type="default" onClickAsync={handleIndexNow}>
             Index Snapshots
+          </SpinButton>
+        </Tooltip>
+
+        <Tooltip title="Runs restic stats on the repository, this may be a slow operation">
+          <SpinButton type="default" onClickAsync={handleStatsNow}>
+            Compute Stats
           </SpinButton>
         </Tooltip>
       </Flex>

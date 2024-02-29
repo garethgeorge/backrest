@@ -14,8 +14,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const planForUntrackedSnapshots = "_unassociated_"
-
 // IndexSnapshotsTask tracks a forget operation.
 type IndexSnapshotsTask struct {
 	orchestrator *Orchestrator // owning orchestrator
@@ -186,5 +184,5 @@ func planForSnapshot(snapshot *v1.ResticSnapshot) string {
 			return tag[5:]
 		}
 	}
-	return planForUntrackedSnapshots
+	return PlanForUnassociatedOperations
 }
