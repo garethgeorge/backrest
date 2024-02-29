@@ -165,7 +165,7 @@ const StatsPanel = ({ repoId }: { repoId: string }) => {
           series={[
             {
               dataKey: "totalSizeMb",
-              label: "Total Size (MB)",
+              label: "Total Size",
               valueFormatter: (v: any) => formatBytes(v * 1000000 as number),
             },
           ]}

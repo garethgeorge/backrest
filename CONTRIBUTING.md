@@ -10,7 +10,6 @@ This repo uses [Conventional Commits](https://www.conventionalcommits.org/en/v1.
 
  * Node.JS for UI development
  * Go 1.21 or greater for server development
- * go.rice `go install github.com/GeertJohan/go.rice@latest` and `go install github.com/GeertJohan/go.rice/rice@latest`
  * goreleaser `go install github.com/goreleaser/goreleaser@latest`
 
 **To Edit Protobuffers**
