@@ -177,7 +177,7 @@ func (t *PruneTask) Run(ctx context.Context) error {
 		return err
 	}
 
-	t.orch.ScheduleTask(NewOneoffStatsTask(t.orch, t.plan, time.Now()), TaskPriorityStats)
+	t.orch.ScheduleTask(NewOneoffStatsTask(t.orch, t.plan.Repo, t.plan.Id, time.Now()), TaskPriorityStats)
 
 	return nil
 }

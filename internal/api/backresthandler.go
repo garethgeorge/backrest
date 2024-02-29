@@ -385,6 +385,20 @@ func (s *BackrestHandler) Unlock(ctx context.Context, req *connect.Request[types
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
+func (s *BackrestHandler) Stats(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+	at := time.Now()
+	var err error
+	var wg sync.WaitGroup
+	wg.Add(1)
+	s.orchestrator.ScheduleTask(orchestrator.NewOneoffStatsTask(s.orchestrator, req.Msg.Value, orchestrator.PlanForUnassociatedOperations, at), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityStats, func(e error) {
+		err = e
+		wg.Done()
+	})
+	wg.Wait()
+	return connect.NewResponse(&emptypb.Empty{}), err
+
+}
+
 func (s *BackrestHandler) Cancel(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {
 	if err := s.orchestrator.CancelOperation(req.Msg.Value, v1.OperationStatus_STATUS_USER_CANCELLED); err != nil {
 		return nil, err

@@ -22,6 +22,8 @@ var ErrRepoNotFound = errors.New("repo not found")
 var ErrRepoInitializationFailed = errors.New("repo initialization failed")
 var ErrPlanNotFound = errors.New("plan not found")
 
+const PlanForUnassociatedOperations = "_unassociated_"
+
 const (
 	TaskPriorityDefault        = 0
 	TaskPriorityInteractive    = 10

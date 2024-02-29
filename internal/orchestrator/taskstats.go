@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -14,24 +13,26 @@ import (
 // StatsTask tracks a restic stats operation.
 type StatsTask struct {
 	TaskWithOperation
-	plan *v1.Plan
-	at   *time.Time
+	planId string
+	repoId string
+	at     *time.Time
 }
 
 var _ Task = &StatsTask{}
 
-func NewOneoffStatsTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *StatsTask {
+func NewOneoffStatsTask(orchestrator *Orchestrator, repoId, planId string, at time.Time) *StatsTask {
 	return &StatsTask{
 		TaskWithOperation: TaskWithOperation{
 			orch: orchestrator,
 		},
-		plan: plan,
-		at:   &at,
+		planId: planId,
+		repoId: repoId,
+		at:     &at,
 	}
 }
 
 func (t *StatsTask) Name() string {
-	return fmt.Sprintf("stats for plan %q", t.plan.Id)
+	return fmt.Sprintf("stats for repo %q", t.repoId)
 }
 
 func (t *StatsTask) Next(now time.Time) *time.Time {
@@ -40,8 +41,8 @@ func (t *StatsTask) Next(now time.Time) *time.Time {
 		t.at = nil
 
 		if err := t.setOperation(&v1.Operation{
-			PlanId:          t.plan.Id,
-			RepoId:          t.plan.Repo,
+			PlanId:          t.planId,
+			RepoId:          t.repoId,
 			UnixTimeStartMs: timeToUnixMillis(*ret),
 			Status:          v1.OperationStatus_STATUS_PENDING,
 			Op:              &v1.Operation_OperationStats{},
@@ -54,14 +55,10 @@ func (t *StatsTask) Next(now time.Time) *time.Time {
 }
 
 func (t *StatsTask) Run(ctx context.Context) error {
-	if t.plan.Retention == nil {
-		return errors.New("plan does not have a retention policy")
-	}
-
 	if err := t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
-		repo, err := t.orch.GetRepo(t.plan.Repo)
+		repo, err := t.orch.GetRepo(t.repoId)
 		if err != nil {
-			return fmt.Errorf("get repo %q: %w", t.plan.Repo, err)
+			return fmt.Errorf("get repo %q: %w", t.repoId, err)
 		}
 
 		stats, err := repo.Stats(ctx)
@@ -77,8 +74,9 @@ func (t *StatsTask) Run(ctx context.Context) error {
 
 		return err
 	}); err != nil {
-		repo, _ := t.orch.GetRepo(t.plan.Repo)
-		t.orch.hookExecutor.ExecuteHooks(repo.Config(), t.plan, "", []v1.Hook_Condition{
+		repo, _ := t.orch.GetRepo(t.repoId)
+		plan, _ := t.orch.GetPlan(t.planId)
+		t.orch.hookExecutor.ExecuteHooks(repo.Config(), plan, "", []v1.Hook_Condition{
 			v1.Hook_CONDITION_ANY_ERROR,
 		}, hook.HookVars{
 			Task:  t.Name(),
