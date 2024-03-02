@@ -283,7 +283,6 @@ export const AddRepoModal = ({
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
-                    console.log("FIELD: ", field),
                     <Form.Item key={field.key}>
                       <Form.Item
                         {...field}
@@ -315,7 +314,7 @@ export const AddRepoModal = ({
                   <Form.Item>
                     <Button
                       type="dashed"
-                      onClick={() => add("THIS IS A NEW VALUE")}
+                      onClick={() => add("")}
                       style={{ width: "90%" }}
                       icon={<PlusOutlined />}
                     >
@@ -488,8 +487,9 @@ const envVarSetValidator = (form: FormInstance<FormData>, envVars: string[]) => 
   });
 
   // check that password is provided in some form
+  const password = form.getFieldValue("password");
   if (
-    form.getFieldValue("password").length === 0 &&
+    (!password || password.length === 0) &&
     !envVarNames.includes("RESTIC_PASSWORD") &&
     !envVarNames.includes("RESTIC_PASSWORD_COMMAND") &&
     !envVarNames.includes("RESTIC_PASSWORD_FILE")
