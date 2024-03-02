@@ -392,16 +392,6 @@ export const AddPlanModal = ({
             </Form.Item>
           </Tooltip>
 
-          {/* Plan.retention */}
-          <RetentionPolicyView />
-
-          {/* Plan.hooks */}
-          <Form.Item
-            label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>}
-          >
-            <HooksFormList />
-          </Form.Item>
-
           {/* Plan.backup_flags */}
           <Form.Item label={<Tooltip title="Extra flags to add to the 'restic backup' command">Backup Flags</Tooltip>}>
             <Form.List
@@ -448,6 +438,16 @@ export const AddPlanModal = ({
                 </>
               )}
             </Form.List>
+          </Form.Item>
+
+          {/* Plan.retention */}
+          <RetentionPolicyView />
+
+          {/* Plan.hooks */}
+          <Form.Item
+            label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>}
+          >
+            <HooksFormList />
           </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">
