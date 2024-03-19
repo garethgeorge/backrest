@@ -51,10 +51,6 @@ type CachingValidatingStore struct {
 	config *v1.Config
 }
 
-func (c *CachingValidatingStore) doMigrateIfNeeded(config *v1.Config) error {
-	return nil
-}
-
 func (c *CachingValidatingStore) Get() (*v1.Config, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

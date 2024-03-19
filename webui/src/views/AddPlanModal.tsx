@@ -13,6 +13,7 @@ import {
   Col,
   Collapse,
   FormInstance,
+  Checkbox,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -448,6 +449,14 @@ export const AddPlanModal = ({
             label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>}
           >
             <HooksFormList />
+          </Form.Item>
+
+
+          {/* Disabled? toggles whether the plan will be scheduled. */}
+          <Form.Item label={<Tooltip title={"Toggles whether the plan's scheduling is enabled. If disabled no scheduled operations will be run."}>
+            Disable Scheduling
+          </Tooltip>} name="disabled" valuePropName="disabled">
+            <Checkbox />
           </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">

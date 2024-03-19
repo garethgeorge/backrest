@@ -32,6 +32,7 @@ message Repo {
 message Plan {
   string id = 1 [json_name="id"]; // unique but human readable ID for this plan.
   string repo = 2 [json_name="repo"]; // ID of the repo to use.
+  bool disabled = 11 [json_name="disabled"];
   repeated string paths = 4 [json_name="paths"]; // paths to include in the backup.
   repeated string excludes = 5 [json_name="excludes"]; // glob patterns to exclude.
   repeated string iexcludes = 9 [json_name="iexcludes"]; // case insensitive glob patterns to exclude.
