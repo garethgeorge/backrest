@@ -60,6 +60,10 @@ func NewRepoOrchestrator(repoConfig *v1.Repo, resticPath string) (*RepoOrchestra
 	}, nil
 }
 
+func (r *RepoOrchestrator) Init(ctx context.Context) error {
+	return r.repo.Init(ctx)
+}
+
 func (r *RepoOrchestrator) Snapshots(ctx context.Context) ([]*restic.Snapshot, error) {
 	snapshots, err := r.repo.Snapshots(ctx)
 	if err != nil {

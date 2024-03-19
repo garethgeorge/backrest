@@ -107,10 +107,13 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
 	}
 
-	r := restic.NewRepo(bin, req.Msg)
+	r, err := orchestrator.NewRepoOrchestrator(req.Msg, bin)
+	if err != nil {
+		return nil, fmt.Errorf("failed to configure repo: %w", err)
+	}
 
 	// use background context such that the init op can try to complete even if the connection is closed.
-	if err := r.Init(context.Background(), restic.WithPropagatedEnvVars(restic.EnvToPropagate...)); err != nil {
+	if err := r.Init(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed to init repo: %w", err)
 	}
 

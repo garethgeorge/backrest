@@ -136,6 +136,9 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 		orchestrator: o,
 	}, TaskPriorityDefault)
 	for _, plan := range cfg.Plans {
+		if plan.Disabled {
+			continue
+		}
 		t, err := NewScheduledBackupTask(o, plan)
 		if err != nil {
 			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
@@ -319,7 +322,7 @@ func (rp *resticRepoPool) GetRepo(repoId string) (repo *RepoOrchestrator, err er
 	delete(rp.repos, repoId)
 
 	// Otherwise create a new repo.
-	repo, err = newRepoOrchestrator(repoProto, rp.resticPath)
+	repo, err = NewRepoOrchestrator(repoProto, rp.resticPath)
 	if err != nil {
 		return nil, err
 	}
