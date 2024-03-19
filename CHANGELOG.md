@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/garethgeorge/backrest/compare/v0.15.0...v0.15.1) (2024-03-19)
+
+
+### Bug Fixes
+
+* forget operations failing with new retention policy format ([0a059bb](https://github.com/garethgeorge/backrest/commit/0a059bbb39ea6d5f6f989cc4a4541ec8aedbc071))
+
 ## [0.15.0](https://github.com/garethgeorge/backrest/compare/v0.13.0...v0.15.0) (2024-03-19)
 
 
