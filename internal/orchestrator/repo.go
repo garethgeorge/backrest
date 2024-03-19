@@ -34,6 +34,10 @@ func newRepoOrchestrator(repoConfig *v1.Repo, resticPath string) (*RepoOrchestra
 		opts = append(opts, restic.WithEnv(repoConfig.GetEnv()...))
 	}
 
+	if p := repoConfig.GetPassword(); p != "" {
+		opts = append(opts, restic.WithEnv("RESTIC_PASSWORD="+p))
+	}
+
 	for _, f := range repoConfig.GetFlags() {
 		args, err := shlex.Split(f)
 		if err != nil {
@@ -42,7 +46,11 @@ func newRepoOrchestrator(repoConfig *v1.Repo, resticPath string) (*RepoOrchestra
 		opts = append(opts, restic.WithFlags(args...))
 	}
 
-	repo := restic.NewRepo(resticPath, repoConfig, opts...)
+	if env := repoConfig.GetEnv(); len(env) != 0 {
+		opts = append(opts, restic.WithEnv(repoConfig.GetEnv()...))
+	}
+
+	repo := restic.NewRepo(resticPath, repoConfig.GetUri(), opts...)
 
 	return &RepoOrchestrator{
 		repoConfig: repoConfig,
@@ -75,7 +83,6 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if !r.initialized {
-
 		if err := r.repo.Init(ctx, restic.WithPropagatedEnvVars(restic.EnvToPropagate...)); err != nil {
 			return nil, fmt.Errorf("failed to initialize repo: %w", err)
 		}

@@ -12,8 +12,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-
-	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
 
 var errAlreadyInitialized = errors.New("repo already initialized")
@@ -22,15 +20,15 @@ var ErrBackupFailed = errors.New("backup failed")
 
 type Repo struct {
 	cmd         string
-	repo        *v1.Repo
+	uri         string
 	initialized bool
 
 	extraArgs []string
 	extraEnv  []string
 }
 
-// NewRepo instantiates a new repository. TODO: should not accept a v1.Repo, should instead be configured by parameters.
-func NewRepo(resticBin string, repo *v1.Repo, opts ...GenericOption) *Repo {
+// NewRepo instantiates a new repository.
+func NewRepo(resticBin string, uri string, opts ...GenericOption) *Repo {
 	opt := &GenericOpts{}
 	for _, o := range opts {
 		o(opt)
@@ -42,23 +40,15 @@ func NewRepo(resticBin string, repo *v1.Repo, opts ...GenericOption) *Repo {
 		opt.extraArgs = append(opt.extraArgs, "-o", "sftp.args=-oBatchMode=yes")
 	}
 
+	opt.extraEnv = append(opt.extraEnv, "RESTIC_REPOSITORY="+uri)
+
 	return &Repo{
 		cmd:         resticBin, // TODO: configurable binary path
-		repo:        repo,
+		uri:         uri,
 		initialized: false,
 		extraArgs:   opt.extraArgs,
 		extraEnv:    opt.extraEnv,
 	}
-}
-
-func (r *Repo) buildEnv() []string {
-	env := []string{
-		"RESTIC_REPOSITORY=" + r.repo.GetUri(),
-		"RESTIC_PASSWORD=" + r.repo.GetPassword(),
-	}
-	env = append(env, r.extraEnv...)
-	env = append(env, r.repo.GetEnv()...)
-	return env
 }
 
 // init initializes the repo, the command will be cancelled with the context.
@@ -74,7 +64,7 @@ func (r *Repo) init(ctx context.Context, opts ...GenericOption) error {
 	args = append(args, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -117,7 +107,7 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 	capture := io.MultiWriter(output, writer)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.StdoutPipe()
 	cmd.Stderr = capture
 	cmd.Stdout = capture
@@ -176,7 +166,7 @@ func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapsho
 	args = append(args, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	output, err := cmd.CombinedOutput()
@@ -206,7 +196,7 @@ func (r *Repo) Forget(ctx context.Context, policy *RetentionPolicy, opts ...Gene
 	args = append(args, policy.toForgetFlags()...)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	output, err := cmd.CombinedOutput()
@@ -237,7 +227,7 @@ func (r *Repo) ForgetSnapshot(ctx context.Context, snapshotId string, opts ...Ge
 	args = append(args, snapshotId)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	output, err := cmd.CombinedOutput()
@@ -256,7 +246,7 @@ func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...Generic
 	args = append(args, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	var output = newOutputCapturer(outputBufferLimit)
@@ -288,7 +278,7 @@ func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*Rest
 	capture := io.MultiWriter(output, writer)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 	cmd.Stderr = capture
 	cmd.Stdout = capture
@@ -343,7 +333,7 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 	args = append(args, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	output, err := cmd.CombinedOutput()
@@ -367,7 +357,7 @@ func (r *Repo) Unlock(ctx context.Context, opts ...GenericOption) error {
 	args = append(args, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	output, err := cmd.CombinedOutput()
@@ -386,7 +376,7 @@ func (r *Repo) Stats(ctx context.Context, opts ...GenericOption) (*RepoStats, er
 	args = append(args, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.buildEnv()...)
+	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	output, err := cmd.CombinedOutput()
