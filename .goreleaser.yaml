@@ -27,6 +27,7 @@ builds:
     goos:
       - darwin
       - windows
+      - freebsd
     goarch:
       - amd64
       - arm64
