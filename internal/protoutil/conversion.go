@@ -88,6 +88,25 @@ func BackupProgressEntryToBackupError(b *restic.BackupProgressEntry) (*v1.Backup
 }
 
 func RetentionPolicyFromProto(p *v1.RetentionPolicy) *restic.RetentionPolicy {
+	if p.Policy != nil {
+		switch p := p.Policy.(type) {
+		case *v1.RetentionPolicy_PolicyKeepAll:
+			return nil
+		case *v1.RetentionPolicy_PolicyTimeBucketed:
+			return &restic.RetentionPolicy{
+				KeepDaily:   int(p.PolicyTimeBucketed.Daily),
+				KeepHourly:  int(p.PolicyTimeBucketed.Hourly),
+				KeepWeekly:  int(p.PolicyTimeBucketed.Weekly),
+				KeepMonthly: int(p.PolicyTimeBucketed.Monthly),
+				KeepYearly:  int(p.PolicyTimeBucketed.Yearly),
+			}
+		case *v1.RetentionPolicy_PolicyKeepLastN:
+			return &restic.RetentionPolicy{
+				KeepLastN: int(p.PolicyKeepLastN),
+			}
+		}
+	}
+
 	return &restic.RetentionPolicy{
 		KeepLastN:          int(p.KeepLastN),
 		KeepHourly:         int(p.KeepHourly),

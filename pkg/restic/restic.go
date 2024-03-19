@@ -37,7 +37,7 @@ func NewRepo(resticBin string, uri string, opts ...GenericOption) *Repo {
 	if slices.IndexFunc(opt.extraArgs, func(a string) bool {
 		return strings.Contains(a, "sftp.args")
 	}) == -1 {
-		opt.extraArgs = append(opt.extraArgs, "-o", "sftp.args=-oBatchMode=yes")
+		// opt.extraArgs = append(opt.extraArgs, "-o", "sftp.args=-oBatchMode=yes")
 	}
 
 	opt.extraEnv = append(opt.extraEnv, "RESTIC_REPOSITORY="+uri)

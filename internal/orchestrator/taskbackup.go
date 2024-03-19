@@ -13,7 +13,6 @@ import (
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"github.com/gitploy-io/cronexpr"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 var maxBackupErrorHistoryLength = 20 // arbitrary limit on the number of file read errors recorded in a backup operation to prevent it from growing too large.
@@ -186,7 +185,7 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 
 	// schedule followup tasks
 	at := time.Now()
-	if plan.Retention != nil && !proto.Equal(plan.Retention, &v1.RetentionPolicy{}) {
+	if _, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyKeepAll); plan.Retention != nil && !ok {
 		orchestrator.ScheduleTask(NewOneoffForgetTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityForget)
 	}
 	orchestrator.ScheduleTask(NewOneoffIndexSnapshotsTask(orchestrator, plan.Repo, at), TaskPriorityIndexSnapshots)

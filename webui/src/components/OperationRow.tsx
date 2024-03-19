@@ -377,12 +377,12 @@ const ForgetOperationDetails = ({ forgetOp }: { forgetOp: OperationForget }) => 
                 {"removed snapshot " + normalizeSnapshotId(f.id!) + " taken at " + formatTime(Number(f.unixTimeMs))} <br />
               </div>
             ))}</pre>
-            Policy:
+            {/* Policy:
             <ul>
               {policyDesc.map((desc, idx) => (
                 <li key={idx}>{desc}</li>
               ))}
-            </ul>
+            </ul> */}
           </>,
         },
       ]}
