@@ -30,7 +30,7 @@ func TestBackup(t *testing.T) {
 		Paths: []string{testData},
 	}
 
-	orchestrator, err := newRepoOrchestrator(r, helpers.ResticBinary(t))
+	orchestrator, err := NewRepoOrchestrator(r, helpers.ResticBinary(t))
 	if err != nil {
 		t.Fatalf("failed to create repo orchestrator: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestSnapshotParenting(t *testing.T) {
 		},
 	}
 
-	orchestrator, err := newRepoOrchestrator(r, helpers.ResticBinary(t))
+	orchestrator, err := NewRepoOrchestrator(r, helpers.ResticBinary(t))
 	if err != nil {
 		t.Fatalf("failed to create repo orchestrator: %v", err)
 	}

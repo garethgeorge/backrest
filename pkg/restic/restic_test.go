@@ -9,7 +9,6 @@ import (
 	"slices"
 	"testing"
 
-	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/test/helpers"
 )
 
@@ -17,11 +16,7 @@ func TestResticInit(t *testing.T) {
 	t.Parallel()
 	repo := t.TempDir()
 
-	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-	}, WithFlags("--no-cache"))
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
 
 	if err := r.Init(context.Background()); err != nil {
 		t.Fatalf("failed to init repo: %v", err)
@@ -33,11 +28,7 @@ func TestResticBackup(t *testing.T) {
 	repo := t.TempDir()
 
 	// create a new repo with cache disabled for testing
-	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-	}, WithFlags("--no-cache"))
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
 	if err := r.Init(context.Background()); err != nil {
 		t.Fatalf("failed to init repo: %v", err)
 	}
@@ -120,11 +111,7 @@ func TestResticPartialBackup(t *testing.T) {
 	repo := t.TempDir()
 
 	// create a new repo with cache disabled for testing
-	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-	}, WithFlags("--no-cache"))
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
 	if err := r.Init(context.Background()); err != nil {
 		t.Fatalf("failed to init repo: %v", err)
 	}
@@ -162,11 +149,7 @@ func TestResticBackupLots(t *testing.T) {
 	repo := t.TempDir()
 
 	// create a new repo with cache disabled for testing
-	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-	}, WithFlags("--no-cache"))
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
 	if err := r.Init(context.Background()); err != nil {
 		t.Fatalf("failed to init repo: %v", err)
 	}
@@ -189,11 +172,7 @@ func TestSnapshot(t *testing.T) {
 
 	repo := t.TempDir()
 
-	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-	}, WithFlags("--no-cache"))
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
 	if err := r.Init(context.Background()); err != nil {
 		t.Fatalf("failed to init repo: %v", err)
 	}
@@ -249,11 +228,7 @@ func TestLs(t *testing.T) {
 	t.Parallel()
 
 	repo := t.TempDir()
-	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-	}, WithFlags("--no-cache"))
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
 	if err := r.Init(context.Background()); err != nil {
 		t.Fatalf("failed to init repo: %v", err)
 	}
@@ -280,11 +255,7 @@ func TestResticForget(t *testing.T) {
 	t.Parallel()
 
 	repo := t.TempDir()
-	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-	}, WithFlags("--no-cache"))
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
 	if err := r.Init(context.Background()); err != nil {
 		t.Fatalf("failed to init repo: %v", err)
 	}
@@ -338,11 +309,7 @@ func TestForgetSnapshotId(t *testing.T) {
 	t.Parallel()
 
 	repo := t.TempDir()
-	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-	}, WithFlags("--no-cache"))
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
 	if err := r.Init(context.Background()); err != nil {
 		t.Fatalf("failed to init repo: %v", err)
 	}
@@ -377,11 +344,7 @@ func TestResticPrune(t *testing.T) {
 	t.Parallel()
 
 	repo := t.TempDir()
-	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-	}, WithFlags("--no-cache"))
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
 	if err := r.Init(context.Background()); err != nil {
 		t.Fatalf("failed to init repo: %v", err)
 	}
@@ -418,11 +381,7 @@ func TestResticRestore(t *testing.T) {
 	t.Parallel()
 
 	repo := t.TempDir()
-	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-	}, WithFlags("--no-cache"))
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
 	if err := r.Init(context.Background()); err != nil {
 		t.Fatalf("failed to init repo: %v", err)
 	}
@@ -454,11 +413,7 @@ func TestResticStats(t *testing.T) {
 	t.Parallel()
 
 	repo := t.TempDir()
-	r := NewRepo(helpers.ResticBinary(t), &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-	}, WithFlags("--no-cache"))
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
 	if err := r.Init(context.Background()); err != nil {
 		t.Fatalf("failed to init repo: %v", err)
 	}
