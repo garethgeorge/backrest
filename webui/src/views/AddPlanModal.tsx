@@ -455,7 +455,7 @@ export const AddPlanModal = ({
           {/* Disabled? toggles whether the plan will be scheduled. */}
           <Form.Item label={<Tooltip title={"Toggles whether the plan's scheduling is enabled. If disabled no scheduled operations will be run."}>
             Disable Scheduling
-          </Tooltip>} name="disabled" valuePropName="disabled">
+          </Tooltip>} name="disabled" valuePropName="checked">
             <Checkbox />
           </Form.Item>
 
@@ -488,22 +488,32 @@ const RetentionPolicyView = () => {
   const retention = Form.useWatch('retention', { form, preserve: true }) as any;
 
   const determineMode = () => {
-    console.log("DERIVE MODE BASED ON RETENTION: " + JSON.stringify(retention));
-    if (!retention || retention.policyTimeBucketed) {
+    if (!retention) {
       return 2;
-    } else if (retention.policyKeepAll) {
-      return 0;
     } else if (retention.policyKeepLastN) {
       return 1;
+    } else if (retention.policyKeepAll) {
+      return 0;
+    } else if (retention.policyTimeBucketed) {
+      return 2;
     }
   }
 
   const mode = determineMode();
 
   let elem: React.ReactNode = null;
-  console.log("RENDERING WITH MODE: ", mode);
   if (mode === 0) {
-    elem = <p>All backups are retained e.g. for append-only repos. Ensure that you manually forget / prune backups elsewhere. Backrest will register forgets performed externally on the next backup.</p>;
+    elem = <>
+      <p>All backups are retained e.g. for append-only repos. Ensure that you manually forget / prune backups elsewhere. Backrest will register forgets performed externally on the next backup.</p>
+      <Form.Item
+        name={["retention", "policyKeepAll"]}
+        valuePropName="checked"
+        initialValue={true}
+        hidden={true}
+      >
+        <Checkbox />
+      </Form.Item>
+    </>
   } else if (mode === 1) {
     elem = (
       <Form.Item
