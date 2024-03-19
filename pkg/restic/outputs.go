@@ -314,7 +314,7 @@ type RepoStats struct {
 	TotalSize              int64   `json:"total_size"`
 	TotalUncompressedSize  int64   `json:"total_uncompressed_size"`
 	CompressionRatio       float64 `json:"compression_ratio"`
-	CompressionProgress    int64   `json:"compression_progress"`
+	CompressionProgress    float64 `json:"compression_progress"`
 	CompressionSpaceSaving float64 `json:"compression_space_saving"`
 	TotalBlobCount         int64   `json:"total_blob_count"`
 	SnapshotsCount         int64   `json:"snapshots_count"`
