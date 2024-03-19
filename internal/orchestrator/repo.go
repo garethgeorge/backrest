@@ -26,10 +26,11 @@ type RepoOrchestrator struct {
 	initialized bool
 }
 
-// newRepoOrchestrator accepts a config and a repo that is configured with the properties of that config object.
-func newRepoOrchestrator(repoConfig *v1.Repo, resticPath string) (*RepoOrchestrator, error) {
+// NewRepoOrchestrator accepts a config and a repo that is configured with the properties of that config object.
+func NewRepoOrchestrator(repoConfig *v1.Repo, resticPath string) (*RepoOrchestrator, error) {
 	var opts []restic.GenericOption
-	opts = append(opts, restic.WithPropagatedEnvVars(restic.EnvToPropagate...))
+	opts = append(opts, restic.WithEnviron())
+
 	if len(repoConfig.GetEnv()) > 0 {
 		opts = append(opts, restic.WithEnv(repoConfig.GetEnv()...))
 	}
@@ -83,7 +84,7 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if !r.initialized {
-		if err := r.repo.Init(ctx, restic.WithPropagatedEnvVars(restic.EnvToPropagate...)); err != nil {
+		if err := r.repo.Init(ctx, restic.WithEnviron()); err != nil {
 			return nil, fmt.Errorf("failed to initialize repo: %w", err)
 		}
 		r.initialized = true
