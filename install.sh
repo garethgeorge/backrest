@@ -74,7 +74,7 @@ if [ "$OS" = "Darwin" ]; then
   install_unix
   create_launchd_plist
   enable_launchd_plist
-  sudo xattr -r -d com.apple.quarantine /usr/local/bin/backrest # remove quarantine flag
+  sudo xattr -d com.apple.quarantine /usr/local/bin/backrest # remove quarantine flag
 elif [ "$OS" = "Linux" ]; then
   echo "Installing on Linux"
   install_unix
