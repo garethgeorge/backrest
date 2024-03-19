@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.15.0](https://github.com/garethgeorge/backrest/compare/v0.13.0...v0.15.0) (2024-03-19)
+
+
+### Features
+
+* add 'compute stats' button to refresh stats on repo view ([1f42b6a](https://github.com/garethgeorge/backrest/commit/1f42b6ab4e0313bbb12e6bc22b561d7544504644))
+* add option to disable scheduled execution of a plan ([aea74c5](https://github.com/garethgeorge/backrest/commit/aea74c51c0fb3908ece57f813c9ae6190e1fd46b))
+* add release artifacts for arm32 ([a737371](https://github.com/garethgeorge/backrest/commit/a737371ed559f5b65e734b0d97c44dcb2749ce53))
+* automatically remove Apples quarantine flag ([#155](https://github.com/garethgeorge/backrest/issues/155)) ([3e76beb](https://github.com/garethgeorge/backrest/commit/3e76bebd054eb7bfc9f8da4681459b863ae50c55))
+* check for basic auth ([#110](https://github.com/garethgeorge/backrest/issues/110)) ([#129](https://github.com/garethgeorge/backrest/issues/129)) ([871c54f](https://github.com/garethgeorge/backrest/commit/871c54f35f8651632714ca7d3a3ab0e809549b51))
+* improved stats visualization with graphs and cleanup operation filtering ([5b362cc](https://github.com/garethgeorge/backrest/commit/5b362ccbb45e59954dad574b93848195d45b55ef))
+* pass through all env variables from parent process to restic ([24afd51](https://github.com/garethgeorge/backrest/commit/24afd514ad80f542e6e1862d1c42195c6fbe1b47))
+* support flag overrides for 'restic backup' in plan configuration ([56f5e40](https://github.com/garethgeorge/backrest/commit/56f5e405037a6309a3d1299356b363cd84281aef))
+* use disambiguated retention policy format ([5a5a229](https://github.com/garethgeorge/backrest/commit/5a5a229f456bf3d4d34cb4751c2a2ff3b6907511))
+
+
+### Bug Fixes
+
+* alpine linux Dockerfile and add openssh ([3cb9d27](https://github.com/garethgeorge/backrest/commit/3cb9d2717c1bda7bb7ed4e029ac938c851b9f664))
+* backrest shows hidden operations in list view ([c013f06](https://github.com/garethgeorge/backrest/commit/c013f069ff5eab6177d2bde373f23efe34b1aa8d))
+* BackupInfoCollector handling of filtered events ([f1e4619](https://github.com/garethgeorge/backrest/commit/f1e4619e9d98416289fb0ee51d56ff48e163b85d))
+* bugs in env var validation and form field handling ([7e909c4](https://github.com/garethgeorge/backrest/commit/7e909c4a96b053e8093f3b4f3d26c46b1c618947))
+* compression progress ratio should be float64 ([1759b5d](https://github.com/garethgeorge/backrest/commit/1759b5dc55ab17a1c76d47adee7f4e21f7ef09f5))
+* handle timezone correctly with tzdata package on alpine ([0e94f30](https://github.com/garethgeorge/backrest/commit/0e94f308cde40059f9c4104ed21f8c701a349c57))
+* install rclone with apk for alpine image ([#138](https://github.com/garethgeorge/backrest/issues/138)) ([79715a9](https://github.com/garethgeorge/backrest/commit/79715a97b34af60ca90894065d89c9ae603f0a59))
+* proper display of retention policy ([38ff5fe](https://github.com/garethgeorge/backrest/commit/38ff5fecee3ff3cdff5c7ccecb48e600eb714511))
+* properly parse repo flags ([348ec46](https://github.com/garethgeorge/backrest/commit/348ec4690cab74c3089f2be33d889df3002a5a97))
+* stat operation interval for long running repos ([f2477ab](https://github.com/garethgeorge/backrest/commit/f2477ab06cbe571723cd7290e06e8890747f81aa))
+* stats chart titles invisible on light color theme ([746fd9c](https://github.com/garethgeorge/backrest/commit/746fd9cf768f0c87a25f0015bd20289716b08604))
+
+
+### Miscellaneous Chores
+
+* bump version to 0.15.0 ([db4b76d](https://github.com/garethgeorge/backrest/commit/db4b76de8ed09c9eda6216e8dfe041518f5bbfc5))
+
 ## [0.13.0](https://github.com/garethgeorge/backrest/compare/v0.12.2...v0.13.0) (2024-02-21)
 
 
