@@ -1,20 +1,35 @@
-<img src="./webui/assets/logo-black.svg" width="400px"/>
+<p align="center"><img src="./webui/assets/logo-black.svg" width="400px"/></p>
 
-[![Build and Test](https://github.com/garethgeorge/backrest/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/garethgeorge/backrest/actions/workflows/build-and-test.yml)
+<p align="center">
+  <img src="https://github.com/garethgeorge/backrest/actions/workflows/build-and-test.yml/badge.svg" />
+  <img src="https://img.shields.io/github/downloads/garethgeorge/backrest/total" />
+  <img src="https://img.shields.io/docker/pulls/garethgeorge/backrest" />
+</p>
 
+-----
+
+**Overview**
 
 Backrest is a web-accessible backup solution built on top of [restic](https://restic.net/). Backrest provides a WebUI which wraps the restic CLI and makes it easy to create repos, browse snapshots, and restore files. Additionally, Backrest can run in the background and take an opinionated approach to scheduling snapshots and orchestrating repo health operations.
 
-By building on restic, Backrest leverages restic's mature feature set. Restic provides fast, reliable (used by tens of thousands of individuals and by corporations in production environments), and secure backup operations. Backrest itself is built in Golang (matching restic's implementation) and is shipped as a self-contained and light weight (<20 MB on all platforms) binary with no dependecies other than restic (which backrest can download for you and keep up to date).
+By building on restic, Backrest leverages restic's mature feature set. Restic provides fast, reliable (used by tens of thousands of individuals and by corporations in production environments), and secure backup operations. Backrest itself is built in Golang (matching restic's implementation) and is shipped as a self-contained and light weight (<20 MB on all platforms) binary with no dependecies other than restic.
 
-This project aims to be the easiest way to setup and get started with backups on any system. You can expect to be able to perform all operations from the web interface but should you ever need more poworeful control, you are free to browse your repo and perform operations using the [restic cli](https://restic.readthedocs.io/en/latest/manual_rest.html). Backrest safely detects and imports external operations (e.g. manual backups).
+This project aims to be the easiest way to setup and get started with backups on any system. You can expect to be able to perform all operations from the web interface but should you ever need more control, you are free to browse your repo and perform operations using the [restic cli](https://restic.readthedocs.io/en/latest/manual_rest.html). Backrest safely detects and imports external operations (e.g. manual backups).
+
+**Preview**
+
+<p align="center">
+   <img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-19-50.png" width="60%" />
+   <img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-30-14.png" width="60%" />
+</p>
 
 **Platform Support**
 
  * [Docker](https://hub.docker.com/r/garethgeorge/backrest)
  * Linux
  * MacOS
- * (experimental, no CI coverage) Windows
+ * Windows
+ * FreeBSD
 
 **Features**
 
@@ -40,16 +55,7 @@ This project aims to be the easiest way to setup and get started with backups on
    * Events: Backup Start, Backup Finish, Backup Error, Any Error
  * Multi-user authentication: backrest can be secured with a username and password.
 
-# Preview
-
-Operation History & Snapshot Browser
-
-<img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-30-14.png" width="700px" />
-
-Repo Creation Wizard
-
-<img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-19-50.png" width="700px" />
-
+-----
 
 # User Guide
 
@@ -211,4 +217,4 @@ warning: Backrest is not tested on Windows to the same bar as Linux and MacOS. S
  * `BACKREST_CONFIG` - the path to the config file. Defaults to `$HOME/.config/backrest/config.json` or if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/backrest/config.json`.
  * `BACKREST_DATA` - the path to the data directory. Defaults to `$HOME/.local/share/backrest` or if `$XDG_DATA_HOME` is set, `$XDG_DATA_HOME/backrest`.
  * `BACKREST_RESTIC_COMMAND` - the path to the restic binary. Defaults managed version of restic which will be downloaded and installed in the data directory.
- * `XDG_CACHE_HOME` -- the path to the cache directory. This is propagated to restic. 
+ * `XDG_CACHE_HOME` -- the path to the cache directory. This is propagated to restic.
