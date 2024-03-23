@@ -120,6 +120,7 @@ message Hook {
 }
 
 message Auth {
+  bool disabled = 1 [json_name="disabled"]; // disable authentication.
   repeated User users = 2 [json_name="users"]; // users to allow access to the UI.
 }
 

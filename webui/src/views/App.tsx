@@ -21,7 +21,6 @@ import LogoSvg from "url:../../assets/logo.svg";
 import _ from "lodash";
 import { Code } from "@connectrpc/connect";
 import { LoginModal } from "./LoginModal";
-import { SettingsModal } from "./SettingsModal";
 import { backrestService, setAuthToken } from "../api";
 import { MainContentArea, useSetContent } from "./MainContentArea";
 import { GettingStartedGuide } from "./GettingStartedGuide";
@@ -44,8 +43,10 @@ export const App: React.FC = () => {
     backrestService.getConfig({})
       .then((config) => {
         setConfig(config);
-        if (!config.auth || config.auth.users.length === 0) {
-          showModal(<SettingsModal />);
+        if (!config.auth || (!config.auth.disabled && config.auth.users.length === 0)) {
+          import("./SettingsModal").then(({ SettingsModal }) => {
+            showModal(<SettingsModal />);
+          });
         } else {
           showModal(null);
         }
