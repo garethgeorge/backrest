@@ -6,8 +6,8 @@
     "start": "parcel serve src/index.html",
     "clean": "rimraf dist",
     "clean-windows": "rimraf dist-windows",
-    "build": "cross-env UI_OS=unix parcel build src/index.html",
-    "build-windows": "cross-env UI_OS=windows parcel build src/index.html --dist-dir dist-windows",
+    "build": "cross-env UI_OS=unix parcel build src/index.html --public-url ./",
+    "build-windows": "cross-env UI_OS=windows parcel build src/index.html --dist-dir dist-windows --public-url ./",
     "check": "tsc --noEmit"
   },
   "author": "",
