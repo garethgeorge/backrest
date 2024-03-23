@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-var taskQueueDefaultPollInterval = 15 * time.Minute
+var taskQueueDefaultPollInterval = 3 * time.Minute
 
 type taskQueue struct {
 	dequeueMu    sync.Mutex
