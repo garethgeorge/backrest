@@ -251,12 +251,7 @@ func (o *Orchestrator) Run(mainCtx context.Context) {
 			cb(err)
 		}
 
-		if nextTime := t.task.Next(o.curTime()); nextTime != nil {
-			o.taskQueue.Push(scheduledTask{
-				task:  t.task,
-				runAt: *nextTime,
-			})
-		}
+		o.ScheduleTask(t.task, t.priority)
 	}
 }
 
