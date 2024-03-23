@@ -24,7 +24,7 @@ const fetch = (
 };
 
 const transport = createConnectTransport({
-  baseUrl: "/",
+  baseUrl: "./",
   useBinaryFormat: true,
   fetch: fetch as typeof globalThis.fetch,
 });
