@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.16.0](https://github.com/garethgeorge/backrest/compare/v0.15.1...v0.16.0) (2024-03-23)
+
+
+### Features
+
+* allow disabling authentication ([8429174](https://github.com/garethgeorge/backrest/commit/84291746af5fc863f90bcf7ae9ba5a2d3ca26cdd))
+
+
+### Bug Fixes
+
+* add new logs to orchestrator and increase clock change polling to every 5 minutes ([5b7e2b0](https://github.com/garethgeorge/backrest/commit/5b7e2b080d31a2f77a5f9b6737dfbb84cfb63cce))
+* api path relative to UI serving location to support reverse proxies with prefix stripping ([ac7f24e](https://github.com/garethgeorge/backrest/commit/ac7f24ed04679ed6cc3ea779325c0e0b49c9f526))
+
 ## [0.15.1](https://github.com/garethgeorge/backrest/compare/v0.15.0...v0.15.1) (2024-03-19)
 
 
