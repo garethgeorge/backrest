@@ -22,7 +22,7 @@ const Root = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const darkThemeMq = window.matchMedia("(prefers-color-scheme: dark)");
+const darkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
 const el = document.querySelector("#app");
 el &&
@@ -30,7 +30,7 @@ el &&
     <AntdConfigProvider
       theme={{
         algorithm: [
-          darkThemeMq.matches ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          darkTheme ? theme.darkAlgorithm : theme.defaultAlgorithm,
           theme.compactAlgorithm,
         ],
       }}
@@ -38,7 +38,7 @@ el &&
       <StyledEngineProvider injectFirst>
         <ThemeProvider theme={createTheme({
           palette: {
-            mode: darkThemeMq ? "dark" : "light"
+            mode: darkTheme ? "dark" : "light"
           },
         })}>
           <Root>

@@ -12,6 +12,7 @@ import {
   Card,
   Col,
   Collapse,
+  Checkbox,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -48,17 +49,23 @@ export const SettingsModal = () => {
       // Validate form
       let formData = await validateForm(form);
 
-      for (const user of formData.auth?.users) {
-        if (user.needsBcrypt) {
-          const hash = await authenticationService.hashPassword({ value: user.passwordBcrypt });
-          user.passwordBcrypt = hash.value;
-          delete user.needsBcrypt;
+      if (formData.auth?.users) {
+        for (const user of formData.auth?.users) {
+          if (user.needsBcrypt) {
+            const hash = await authenticationService.hashPassword({ value: user.passwordBcrypt });
+            user.passwordBcrypt = hash.value;
+            delete user.needsBcrypt;
+          }
         }
       }
 
       // Update configuration
       let newConfig = config!.clone();
       newConfig.auth = new Auth().fromJson(formData.auth, { ignoreUnknownFields: false });
+
+      if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
+        throw new Error("At least one user must be configured or authentication must be disabled");
+      }
 
       setConfig(await backrestService.setConfig(newConfig));
       alertsApi.success("Settings updated", 5);
@@ -114,19 +121,13 @@ export const SettingsModal = () => {
               </p>
             </>
           )}
+          <Form.Item label="Disable Authentication" name={["auth", "disabled"]} valuePropName="checked" initialValue={config.auth?.disabled || false}>
+            <Checkbox />
+          </Form.Item>
           <Form.Item label="Users" required={true}>
             <Form.List
               name={["auth", "users"]}
-              rules={[
-                {
-                  validator: async (_, users) => {
-                    if (!users || users.length < 1) {
-                      return Promise.reject(new Error("At least one user is required"));
-                    }
-                  },
-                },
-              ]}
-              initialValue={configObj.auth?.users || []}
+              initialValue={config.auth?.users || []}
             >
               {(fields, { add, remove }) => (
                 <>

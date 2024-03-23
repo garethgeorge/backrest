@@ -12,21 +12,24 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var defaultUsers = []*v1.User{
-	{
+var (
+	anonymousUser = &v1.User{
 		Name:     "default",
 		Password: &v1.User_PasswordBcrypt{PasswordBcrypt: "JDJhJDEwJDNCdzJoNFlhaWFZQy9TSDN3ZGxSRHVPZHdzV2lsNmtBSHdFSmtIWHk1dS8wYjZuUWJrMGFx"}, // default password is "password"
-	},
-}
+	}
+	defaultUsers = []*v1.User{
+		anonymousUser,
+	}
+)
 
 type Authenticator struct {
 	config config.ConfigStore
 	key    []byte
 }
 
-func NewAuthenticator(key []byte, configProvider config.ConfigStore) *Authenticator {
+func NewAuthenticator(key []byte, config config.ConfigStore) *Authenticator {
 	return &Authenticator{
-		config: configProvider,
+		config: config,
 		key:    key,
 	}
 }
@@ -34,19 +37,17 @@ func NewAuthenticator(key []byte, configProvider config.ConfigStore) *Authentica
 var ErrUserNotFound = errors.New("user not found")
 var ErrInvalidPassword = errors.New("invalid password")
 
-func (a *Authenticator) users() []*v1.User {
+func (a *Authenticator) Login(username, password string) (*v1.User, error) {
 	config, err := a.config.Get()
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("get config: %w", err)
 	}
-	if len(config.Auth.GetUsers()) != 0 {
-		return config.Auth.GetUsers()
+	auth := config.GetAuth()
+	if auth.GetDisabled() {
+		return nil, errors.New("authentication is disabled")
 	}
-	return defaultUsers
-}
 
-func (a *Authenticator) Login(username, password string) (*v1.User, error) {
-	for _, user := range a.users() {
+	for _, user := range auth.GetUsers() {
 		if user.Name != username {
 			continue
 		}
@@ -62,6 +63,15 @@ func (a *Authenticator) Login(username, password string) (*v1.User, error) {
 }
 
 func (a *Authenticator) VerifyJWT(token string) (*v1.User, error) {
+	config, err := a.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("get config: %w", err)
+	}
+	auth := config.GetAuth()
+	if auth == nil {
+		return nil, fmt.Errorf("auth config not set")
+	}
+
 	t, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
 		return a.key, nil
 	})
@@ -78,7 +88,7 @@ func (a *Authenticator) VerifyJWT(token string) (*v1.User, error) {
 		return nil, fmt.Errorf("get subject: %w", err)
 	}
 
-	for _, user := range a.users() {
+	for _, user := range auth.GetUsers() {
 		if user.Name == subject {
 			return user, nil
 		}
