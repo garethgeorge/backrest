@@ -31,11 +31,11 @@ interface FormData {
       needsBcrypt?: boolean;
     })[];
   }
+  host: string;
 }
 
 export const SettingsModal = () => {
   let [config, setConfig] = useConfig();
-  const configObj = JSON.parse(config!.toJsonString());
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
   const [form] = Form.useForm<FormData>();
@@ -62,6 +62,7 @@ export const SettingsModal = () => {
       // Update configuration
       let newConfig = config!.clone();
       newConfig.auth = new Auth().fromJson(formData.auth, { ignoreUnknownFields: false });
+      newConfig.host = formData.host;
 
       if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
         throw new Error("At least one user must be configured or authentication must be disabled");
@@ -110,7 +111,7 @@ export const SettingsModal = () => {
           labelCol={{ span: 6 }}
           wrapperCol={{ span: 16 }}
         >
-          {users.length > 0 ? null : (
+          {(users.length > 0 || config.auth?.disabled) ? null : (
             <>
               <strong>Initial backrest setup! </strong>
               <p>
@@ -121,6 +122,16 @@ export const SettingsModal = () => {
               </p>
             </>
           )}
+          <Form.Item
+            hasFeedback
+            name="host"
+            label="Hostname"
+            initialValue={config.host || ""}
+          >
+            <Input
+              placeholder={"Set a hostname to identify this instance"}
+            />
+          </Form.Item>
           <Form.Item label="Disable Authentication" name={["auth", "disabled"]} valuePropName="checked" initialValue={config.auth?.disabled || false}>
             <Checkbox />
           </Form.Item>
