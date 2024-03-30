@@ -1,9 +1,13 @@
 FROM golang:alpine as gobuild
 RUN mkdir /tmp-orig
+COPY backrest /backrest
+RUN /backrest --install-deps-only
+RUN mkdir -p /bin && mv /root/.local/share/backrest/* /bin
 
 FROM scratch 
 COPY --from=gobuild /tmp-orig /tmp
 COPY --from=gobuild /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=gobuild /bin /bin
 
 ENTRYPOINT ["/backrest"]
 COPY backrest /backrest
