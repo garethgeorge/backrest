@@ -350,7 +350,7 @@ export const AddRepoModal = ({
                         ]}
                         noStyle
                       >
-                        <Input placeholder="--flag" style={{ width: "60%" }} />
+                        <Input placeholder="--flag" style={{ width: "90%" }} />
                       </Form.Item>
                       <MinusCircleOutlined
                         className="dynamic-delete-button"
@@ -363,7 +363,7 @@ export const AddRepoModal = ({
                     <Button
                       type="dashed"
                       onClick={() => add()}
-                      style={{ width: "60%" }}
+                      style={{ width: "90%" }}
                       icon={<PlusOutlined />}
                     >
                       Set Flag
