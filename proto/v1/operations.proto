@@ -27,6 +27,8 @@ message Operation {
   int64 unix_time_end_ms = 6;
   // optional, human readable context message, typically an error message.
   string display_message = 7;
+  // logref can point to arbitrary logs associated with the operation.
+  string logref = 9; 
 
   oneof op {
     OperationBackup operation_backup = 100;

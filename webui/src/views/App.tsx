@@ -124,7 +124,7 @@ export const App: React.FC = () => {
           </small>
           <Button
             type="text"
-            style={{ marginLeft: "10px", color: "white" }}
+            style={{ marginLeft: "10px", color: "white", visibility: config?.auth?.disabled ? "hidden" : "visible" }}
             onClick={() => {
               setAuthToken("");
               window.location.reload();

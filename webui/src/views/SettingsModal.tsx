@@ -138,7 +138,7 @@ export const SettingsModal = () => {
           <Form.Item label="Users" required={true}>
             <Form.List
               name={["auth", "users"]}
-              initialValue={config.auth?.users || []}
+              initialValue={config.auth?.users?.map(protoToObj) || []}
             >
               {(fields, { add, remove }) => (
                 <>
@@ -214,3 +214,7 @@ export const SettingsModal = () => {
     </>
   );
 };
+
+const protoToObj = (proto: any) => {
+  return JSON.parse(proto.toJsonString());
+}

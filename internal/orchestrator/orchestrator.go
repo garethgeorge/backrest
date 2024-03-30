@@ -42,6 +42,7 @@ type Orchestrator struct {
 	repoPool     *resticRepoPool
 	taskQueue    taskQueue
 	hookExecutor *hook.HookExecutor
+	logStore     *rotatinglog.RotatingLog
 
 	// now for the purpose of testing; used by Run() to get the current time.
 	now func() time.Time
@@ -63,6 +64,7 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 			return o.curTime()
 		}),
 		hookExecutor: hook.NewHookExecutor(oplog, logStore),
+		logStore:     logStore,
 	}
 
 	// verify the operation log and mark any incomplete operations as failed.
