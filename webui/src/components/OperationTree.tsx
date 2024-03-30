@@ -44,6 +44,7 @@ export const OperationTree = ({
 }: React.PropsWithoutRef<{ req: GetOperationsRequest }>) => {
   const alertApi = useAlertApi();
   const showModal = useShowModal();
+  const [loading, setLoading] = useState(true);
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [selectedBackupId, setSelectedBackupId] = useState<string | null>(null);
 
@@ -80,6 +81,8 @@ export const OperationTree = ({
       })
       .catch((e) => {
         alertApi!.error("Failed to fetch operations: " + e.messag);
+      }).finally(() => {
+        setLoading(false);
       });
     return () => {
       unsubscribeFromOperations(lis);
@@ -93,7 +96,7 @@ export const OperationTree = ({
   if (backups.length === 0) {
     return (
       <Empty
-        description="No backups yet."
+        description={loading ? "Loading..." : "No backups yet."}
         image={Empty.PRESENTED_IMAGE_SIMPLE}
       ></Empty>
     );
