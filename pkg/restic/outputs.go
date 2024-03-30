@@ -2,6 +2,7 @@ package restic
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -94,7 +95,7 @@ func (b *BackupProgressEntry) Validate() error {
 }
 
 // readBackupProgressEntries returns the summary event or an error if the command failed.
-func readBackupProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
+func readBackupProgressEntries(ctx context.Context, cmd *exec.Cmd, output io.Reader, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
@@ -110,7 +111,7 @@ func readBackupProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(ev
 				bytes = append(bytes, scanner.Bytes()...)
 			}
 
-			return nil, newCmdError(cmd, string(bytes), fmt.Errorf("command output was not JSON: %w", err))
+			return nil, newCmdError(ctx, cmd, string(bytes), fmt.Errorf("command output was not JSON: %w", err))
 		}
 		if err := event.Validate(); err != nil {
 			return nil, err
@@ -243,7 +244,7 @@ func (e *RestoreProgressEntry) Validate() error {
 }
 
 // readRestoreProgressEntries returns the summary event or an error if the command failed.
-func readRestoreProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(event *RestoreProgressEntry)) (*RestoreProgressEntry, error) {
+func readRestoreProgressEntries(ctx context.Context, cmd *exec.Cmd, output io.Reader, callback func(event *RestoreProgressEntry)) (*RestoreProgressEntry, error) {
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
@@ -259,7 +260,7 @@ func readRestoreProgressEntries(cmd *exec.Cmd, output io.Reader, callback func(e
 				bytes = append(bytes, scanner.Bytes()...)
 			}
 
-			return nil, newCmdError(cmd, string(bytes), fmt.Errorf("command output was not JSON: %w", err))
+			return nil, newCmdError(ctx, cmd, string(bytes), fmt.Errorf("command output was not JSON: %w", err))
 		}
 		if err := event.Validate(); err != nil {
 			return nil, err

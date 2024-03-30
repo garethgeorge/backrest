@@ -1,6 +1,7 @@
 package restic
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 )
@@ -31,7 +32,7 @@ func (e *CmdError) Is(target error) bool {
 }
 
 // newCmdError creates a new error indicating that running a command failed.
-func newCmdError(cmd *exec.Cmd, output string, err error) *CmdError {
+func newCmdError(ctx context.Context, cmd *exec.Cmd, output string, err error) *CmdError {
 	cerr := &CmdError{
 		Command: cmd.String(),
 		Err:     err,
@@ -41,14 +42,20 @@ func newCmdError(cmd *exec.Cmd, output string, err error) *CmdError {
 	if len(output) >= outputBufferLimit {
 		cerr.Output = output[:outputBufferLimit] + "\n...[truncated]"
 	}
-
+	if logger := LoggerFromContext(ctx); logger != nil {
+		logger.Write([]byte(cerr.Error()))
+	}
 	return cerr
 }
 
-func newCmdErrorPreformatted(cmd *exec.Cmd, output string, err error) *CmdError {
-	return &CmdError{
+func newCmdErrorPreformatted(ctx context.Context, cmd *exec.Cmd, output string, err error) *CmdError {
+	cerr := &CmdError{
 		Command: cmd.String(),
 		Err:     err,
 		Output:  output,
 	}
+	if logger := LoggerFromContext(ctx); logger != nil {
+		logger.Write([]byte(cerr.Error()))
+	}
+	return cerr
 }
