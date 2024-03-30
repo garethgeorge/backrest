@@ -192,7 +192,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         onClick: async () => {
           const { PlanView } = await import("./PlanView");
 
-          setContent(<PlanView plan={plan} />, [
+          setContent(<PlanView key={plan.id} plan={plan} />, [
             { title: "Plans" },
             { title: plan.id || "" },
           ]);
@@ -234,7 +234,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         onClick: async () => {
           const { RepoView } = await import("./RepoView");
 
-          setContent(<RepoView repo={repo} />, [
+          setContent(<RepoView key={repo.id} repo={repo} />, [
             { title: "Repos" },
             { title: repo.id || "" },
           ]);
