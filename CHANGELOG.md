@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.16.0](https://github.com/garethgeorge/backrest/compare/v0.15.1...v0.16.0) (2024-03-30)
+
+
+### Features
+
+* allow disabling authentication ([8429174](https://github.com/garethgeorge/backrest/commit/84291746af5fc863f90bcf7ae9ba5a2d3ca26cdd))
+* improve consistency of restic command execution and output capture ([16e22aa](https://github.com/garethgeorge/backrest/commit/16e22aa623c5a0a6e6b0e6df12a8e3d09c2ff31f))
+* improve observability by exposing restic command logs in UI ([eeb8c8e](https://github.com/garethgeorge/backrest/commit/eeb8c8e6b377f96c0c39bd2b169b86986933d570))
+* make hostname configurable in settings panel ([2e4e3cf](https://github.com/garethgeorge/backrest/commit/2e4e3cf9c78cac587a3a40635ec068726b3f4d2d))
+* sort lists in configuration ([6f330ac](https://github.com/garethgeorge/backrest/commit/6f330ac37b8ce621fbe82594c41d6f5091f03dfd))
+* support shoutrrr notification service ([fa6407c](https://github.com/garethgeorge/backrest/commit/fa6407cac25ed8f0a32cc9ed5fdd8454bc9abbe5))
+* switch alpine as the default base image for docker releases ([7425c9b](https://github.com/garethgeorge/backrest/commit/7425c9bb0e08cf650e596ae43a736507313e3f2f))
+* update macos install script to set PATH env var for use with rclone ([8cf43f2](https://github.com/garethgeorge/backrest/commit/8cf43f28921ef7182f1c655fa82470e74698d3ce))
+
+
+### Bug Fixes
+
+* add new logs to orchestrator and increase clock change polling to every 5 minutes ([5b7e2b0](https://github.com/garethgeorge/backrest/commit/5b7e2b080d31a2f77a5f9b6737dfbb84cfb63cce))
+* api path relative to UI serving location to support reverse proxies with prefix stripping ([ac7f24e](https://github.com/garethgeorge/backrest/commit/ac7f24ed04679ed6cc3ea779325c0e0b49c9f526))
+* cleanup spacing and hook titles in AddRepoModal and AddPlanModal ([c32874c](https://github.com/garethgeorge/backrest/commit/c32874c1d6fc8292a2fb91f0b22c7146083bc468))
+* correctly auto-expand first 5 backups when opening plan/repo ([d7ca35b](https://github.com/garethgeorge/backrest/commit/d7ca35b66f61c12360905e98b775e3256210176e))
+* include error messages in restic logs ([b68f7c6](https://github.com/garethgeorge/backrest/commit/b68f7c69138d516f84f9fca3040003604bff24e6))
+* include restic binary in alpine and scratch docker images ([f7bd9f7](https://github.com/garethgeorge/backrest/commit/f7bd9f7d0a9c62baedd1a341eb76e836fb00cfa5))
+* incorrectly indicate AM/PM in formatted date strings ([5d34e0b](https://github.com/garethgeorge/backrest/commit/5d34e0bfb5cffd44d971b0e1052574fe640049e7))
+* make notification title optional on discord notifications ([e8bbe2c](https://github.com/garethgeorge/backrest/commit/e8bbe2c8f509de67181750f8451fae841b3fa195))
+* make tree view the default panel for repo overview ([3f9c9f4](https://github.com/garethgeorge/backrest/commit/3f9c9f4ff8bea0f79b03222609d7c302e241bab2))
+* tasks duplicated when config is updated during a running operation ([035684c](https://github.com/garethgeorge/backrest/commit/035684ca343b47dfb3f131c89e15f06e8155f550))
+
 ## [0.15.1](https://github.com/garethgeorge/backrest/compare/v0.15.0...v0.15.1) (2024-03-19)
 
 
