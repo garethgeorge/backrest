@@ -157,6 +157,8 @@ func (h *Hook) Do(event v1.Hook_Condition, vars HookVars, output io.Writer) erro
 		return h.doGotify(action, vars, output)
 	case *v1.Hook_ActionSlack:
 		return h.doSlack(action, vars, output)
+	case *v1.Hook_ActionShoutrrr:
+		return h.doShoutrrr(action, vars, output)
 	default:
 		return fmt.Errorf("unknown hook action: %v", action)
 	}

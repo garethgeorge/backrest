@@ -17,6 +17,7 @@ export interface HookFields {
   actionDiscord?: any;
   actionWebhook?: any;
   actionSlack?: any;
+  actionShoutrrr?: any;
 }
 
 export const hooksListTooltipText = <>
@@ -139,6 +140,32 @@ const hookTypes: {
           <Form.Item name={[field.name, "actionCommand", "command"]} rules={[requiredField("command is required")]}>
             <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
           </Form.Item>
+        </>
+      }
+    },
+    {
+      name: "Shoutrrr", template: {
+        actionShoutrrr: {
+          template: "{{ .Summary }}",
+        },
+        conditions: [],
+      },
+      oneofKey: "actionShoutrrr",
+      component: ({ field }: { field: FormListFieldData }) => {
+        return <>
+          <Form.Item name={[field.name, "actionShoutrrr", "shoutrrrUrl"]} rules={[requiredField("shoutrrr URL is required")]} >
+            <Input addonBefore={
+              <Tooltip title={
+                <>Shoutrrr is a multi-platform notification service, <a href="https://containrrr.dev/shoutrrr/v0.8/services/overview/" target="_blank">see docs</a> to learn more about supported services</>
+              }>
+                <div style={{ width: "8em" }}>Shoutrrr URL</div>
+              </Tooltip>}
+            />
+          </Form.Item >
+          Text Template:
+          <Form.Item name={[field.name, "actionShoutrrr", "template"]} >
+            <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
+          </Form.Item >
         </>
       }
     },

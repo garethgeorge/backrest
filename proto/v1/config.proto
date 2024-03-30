@@ -91,6 +91,7 @@ message Hook {
     Discord action_discord = 102 [json_name="actionDiscord"];
     Gotify action_gotify = 103 [json_name="actionGotify"];
     Slack action_slack = 104 [json_name="actionSlack"];
+    Shoutrrr action_shoutrrr = 105 [json_name="actionShoutrrr"];
   }
 
   message Command {
@@ -116,6 +117,11 @@ message Hook {
   message Slack {
     string webhook_url = 1 [json_name="webhookUrl"];
     string template = 2 [json_name="template"]; // template for the webhook payload.
+  }
+
+  message Shoutrrr {
+    string shoutrrr_url = 1 [json_name="shoutrrrUrl"];
+    string template = 2 [json_name="template"];
   }
 }
 

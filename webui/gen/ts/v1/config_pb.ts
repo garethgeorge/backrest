@@ -568,6 +568,12 @@ export class Hook extends Message<Hook> {
      */
     value: Hook_Slack;
     case: "actionSlack";
+  } | {
+    /**
+     * @generated from field: v1.Hook.Shoutrrr action_shoutrrr = 105;
+     */
+    value: Hook_Shoutrrr;
+    case: "actionShoutrrr";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Hook>) {
@@ -584,6 +590,7 @@ export class Hook extends Message<Hook> {
     { no: 102, name: "action_discord", kind: "message", T: Hook_Discord, oneof: "action" },
     { no: 103, name: "action_gotify", kind: "message", T: Hook_Gotify, oneof: "action" },
     { no: 104, name: "action_slack", kind: "message", T: Hook_Slack, oneof: "action" },
+    { no: 105, name: "action_shoutrrr", kind: "message", T: Hook_Shoutrrr, oneof: "action" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook {
@@ -869,6 +876,49 @@ export class Hook_Slack extends Message<Hook_Slack> {
 
   static equals(a: Hook_Slack | PlainMessage<Hook_Slack> | undefined, b: Hook_Slack | PlainMessage<Hook_Slack> | undefined): boolean {
     return proto3.util.equals(Hook_Slack, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.Hook.Shoutrrr
+ */
+export class Hook_Shoutrrr extends Message<Hook_Shoutrrr> {
+  /**
+   * @generated from field: string shoutrrr_url = 1;
+   */
+  shoutrrrUrl = "";
+
+  /**
+   * @generated from field: string template = 2;
+   */
+  template = "";
+
+  constructor(data?: PartialMessage<Hook_Shoutrrr>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.Hook.Shoutrrr";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "shoutrrr_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Shoutrrr {
+    return new Hook_Shoutrrr().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Shoutrrr {
+    return new Hook_Shoutrrr().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Shoutrrr {
+    return new Hook_Shoutrrr().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Hook_Shoutrrr | PlainMessage<Hook_Shoutrrr> | undefined, b: Hook_Shoutrrr | PlainMessage<Hook_Shoutrrr> | undefined): boolean {
+    return proto3.util.equals(Hook_Shoutrrr, a, b);
   }
 }
 

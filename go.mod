@@ -5,6 +5,7 @@ go 1.21
 require (
 	connectrpc.com/connect v1.16.0
 	github.com/alessio/shellescape v1.4.2
+	github.com/containrrr/shoutrrr v0.8.0
 	github.com/gitploy-io/cronexpr v0.2.2
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -22,6 +23,7 @@ require (
 )
 
 require (
+	github.com/fatih/color v1.16.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
