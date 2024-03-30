@@ -43,16 +43,6 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   const items = [
     {
       key: "1",
-      label: "Stats",
-      children: (
-        <>
-          <StatsPanel repoId={repo.id!} />
-        </>
-      ),
-      destroyInactiveTabPane: true,
-    },
-    {
-      key: "2",
       label: "Tree View",
       children: (
         <>
@@ -65,7 +55,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
       destroyInactiveTabPane: true,
     },
     {
-      key: "3",
+      key: "2",
       label: "Operation List",
       children: (
         <>
@@ -75,6 +65,16 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
             showPlan={true}
             filter={(op) => !shouldHideStatus(op.status)}
           />
+        </>
+      ),
+      destroyInactiveTabPane: true,
+    },
+    {
+      key: "3",
+      label: "Stats",
+      children: (
+        <>
+          <StatsPanel repoId={repo.id!} />
         </>
       ),
       destroyInactiveTabPane: true,
