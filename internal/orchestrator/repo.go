@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -45,6 +47,13 @@ func NewRepoOrchestrator(repoConfig *v1.Repo, resticPath string) (*RepoOrchestra
 			return nil, fmt.Errorf("failed to parse flag %q for repo %q: %w", f, repoConfig.Id, err)
 		}
 		opts = append(opts, restic.WithFlags(args...))
+	}
+
+	// Add BatchMode=yes to sftp.args if it's not already set.
+	if slices.IndexFunc(repoConfig.GetFlags(), func(a string) bool {
+		return strings.Contains(a, "sftp.args")
+	}) == -1 {
+		opts = append(opts, restic.WithFlags("-o", "sftp.args=-oBatchMode=yes"))
 	}
 
 	if env := repoConfig.GetEnv(); len(env) != 0 {
@@ -103,25 +112,29 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 
 	startTime := time.Now()
 
-	var opts []restic.BackupOption
-	opts = append(opts, restic.WithBackupPaths(plan.Paths...))
-	opts = append(opts, restic.WithBackupExcludes(plan.Excludes...))
-	opts = append(opts, restic.WithBackupIExcludes(plan.Iexcludes...))
-	opts = append(opts, restic.WithBackupTags(tagForPlan(plan)))
+	var opts []restic.GenericOption
+	opts = append(opts, restic.WithFlags("--exclude-caches"))
+	opts = append(opts, restic.WithFlags("--tag", tagForPlan(plan)))
+	for _, exclude := range plan.Excludes {
+		opts = append(opts, restic.WithFlags("--exclude", exclude))
+	}
+	for _, iexclude := range plan.Iexcludes {
+		opts = append(opts, restic.WithFlags("--iexclude", iexclude))
+	}
+
+	if len(snapshots) > 0 {
+		opts = append(opts, restic.WithFlags("--parent", snapshots[len(snapshots)-1].Id))
+	}
+
 	for _, f := range plan.GetBackupFlags() {
 		args, err := shlex.Split(f)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse backup flag %q for plan %q: %w", f, plan.Id, err)
 		}
-		opts = append(opts, restic.WithBackupFlags(args...))
+		opts = append(opts, restic.WithFlags(args...))
 	}
 
-	if len(snapshots) > 0 {
-		// TODO: design a test strategy to verify that the backup parent is used correctly.
-		opts = append(opts, restic.WithBackupParent(snapshots[len(snapshots)-1].Id))
-	}
-
-	summary, err := r.repo.Backup(ctx, progressCallback, opts...)
+	summary, err := r.repo.Backup(ctx, plan.Paths, progressCallback, opts...)
 	if err != nil {
 		return summary, fmt.Errorf("failed to backup: %w", err)
 	}

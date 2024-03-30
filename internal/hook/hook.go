@@ -1,7 +1,6 @@
 package hook
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -103,20 +102,12 @@ func (e *HookExecutor) executeHook(op *v1.Operation, hook *Hook, event v1.Hook_C
 	}
 
 	output := &bytes.Buffer{}
-	pr, pw := io.Pipe()
-	go func() {
-		defer pr.Close()
-		scanner := bufio.NewScanner(pr)
-		for scanner.Scan() {
-			zap.S().Debugf("hook output: %v", scanner.Text())
-		}
-	}()
-	defer pw.Close()
 
-	if err := hook.Do(event, vars, io.MultiWriter(output, pw)); err != nil {
+	if err := hook.Do(event, vars, io.MultiWriter(output)); err != nil {
 		output.Write([]byte(fmt.Sprintf("Error: %v", err)))
 		op.DisplayMessage = err.Error()
 		op.Status = v1.OperationStatus_STATUS_ERROR
+		zap.S().Errorf("execute hook: %v", err)
 	} else {
 		op.Status = v1.OperationStatus_STATUS_SUCCESS
 	}

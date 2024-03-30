@@ -34,12 +34,6 @@ func NewRepo(resticBin string, uri string, opts ...GenericOption) *Repo {
 		o(opt)
 	}
 
-	if slices.IndexFunc(opt.extraArgs, func(a string) bool {
-		return strings.Contains(a, "sftp.args")
-	}) == -1 {
-		// opt.extraArgs = append(opt.extraArgs, "-o", "sftp.args=-oBatchMode=yes")
-	}
-
 	opt.extraEnv = append(opt.extraEnv, "RESTIC_REPOSITORY="+uri)
 
 	return &Repo{
@@ -51,15 +45,9 @@ func NewRepo(resticBin string, uri string, opts ...GenericOption) *Repo {
 	}
 }
 
-// init initializes the repo, the command will be cancelled with the context.
-func (r *Repo) init(ctx context.Context, opts ...GenericOption) error {
-	if r.initialized {
-		return nil
-	}
-
+func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...GenericOption) *exec.Cmd {
 	opt := resolveOpts(opts)
 
-	var args = []string{"init", "--json"}
 	args = append(args, r.extraArgs...)
 	args = append(args, opt.extraArgs...)
 
@@ -67,11 +55,45 @@ func (r *Repo) init(ctx context.Context, opts ...GenericOption) error {
 	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
-	if output, err := cmd.CombinedOutput(); err != nil {
-		if strings.Contains(string(output), "config file already exists") || strings.Contains(string(output), "already initialized") {
+	addLoggingToCommand(ctx, cmd)
+
+	if logger := LoggerFromContext(ctx); logger != nil {
+		fmt.Fprintf(logger, "command: %v %v\n", r.cmd, strings.Join(args, " "))
+	}
+
+	return cmd
+}
+
+func (r *Repo) pipeCmdOutputToWriter(cmd *exec.Cmd, handlers ...io.Writer) {
+	stdoutHandlers := slices.Clone(handlers)
+	stderrHandlers := slices.Clone(handlers)
+
+	if cmd.Stdout != nil {
+		handlers = append(stdoutHandlers, cmd.Stdout)
+	}
+	if cmd.Stderr != nil {
+		handlers = append(stderrHandlers, cmd.Stderr)
+	}
+
+	cmd.Stdout = io.MultiWriter(handlers...)
+	cmd.Stderr = io.MultiWriter(handlers...)
+}
+
+// init initializes the repo, the command will be cancelled with the context.
+func (r *Repo) init(ctx context.Context, opts ...GenericOption) error {
+	if r.initialized {
+		return nil
+	}
+
+	cmd := r.commandWithContext(ctx, []string{"init", "--json"}, opts...)
+	output := bytes.NewBuffer(nil)
+	r.pipeCmdOutputToWriter(cmd, output)
+
+	if err := cmd.Run(); err != nil {
+		if strings.Contains(output.String(), "config file already exists") || strings.Contains(output.String(), "already initialized") {
 			return errAlreadyInitialized
 		}
-		return newCmdError(cmd, string(output), err)
+		return newCmdError(cmd, output.String(), err)
 	}
 
 	r.initialized = true
@@ -85,32 +107,20 @@ func (r *Repo) Init(ctx context.Context, opts ...GenericOption) error {
 	return nil
 }
 
-func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgressEntry), opts ...BackupOption) (*BackupProgressEntry, error) {
-	opt := &BackupOpts{}
-	for _, o := range opts {
-		o(opt)
-	}
-
-	for _, p := range opt.paths {
+func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func(*BackupProgressEntry), opts ...GenericOption) (*BackupProgressEntry, error) {
+	for _, p := range paths {
 		if _, err := os.Stat(p); err != nil {
 			return nil, fmt.Errorf("path %s does not exist: %w", p, err)
 		}
 	}
 
 	args := []string{"backup", "--json", "--exclude-caches"}
-	args = append(args, r.extraArgs...)
-	args = append(args, opt.paths...)
-	args = append(args, opt.extraArgs...)
+	args = append(args, paths...)
 
-	output := newOutputCapturer(outputBufferLimit)
+	cmd := r.commandWithContext(ctx, args, opts...)
+	capture := newOutputCapturer(outputBufferLimit)
 	reader, writer := io.Pipe()
-	capture := io.MultiWriter(output, writer)
-
-	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.extraEnv...)
-	cmd.StdoutPipe()
-	cmd.Stderr = capture
-	cmd.Stdout = capture
+	r.pipeCmdOutputToWriter(cmd, writer, capture)
 
 	if err := cmd.Start(); err != nil {
 		return nil, newCmdError(cmd, "", err)
@@ -152,32 +162,26 @@ func (r *Repo) Backup(ctx context.Context, progressCallback func(*BackupProgress
 	wg.Wait()
 
 	if cmdErr != nil || readErr != nil {
-		return summary, newCmdErrorPreformatted(cmd, output.String(), errors.Join(cmdErr, readErr))
+		return summary, newCmdErrorPreformatted(cmd, capture.String(), errors.Join(cmdErr, readErr))
 	}
 
 	return summary, nil
 }
 
 func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapshot, error) {
-	opt := resolveOpts(opts)
+	cmd := r.commandWithContext(ctx, []string{"snapshots", "--json"}, opts...)
+	output := bytes.NewBuffer(nil)
+	r.pipeCmdOutputToWriter(cmd, output)
 
-	args := []string{"snapshots", "--json"}
-	args = append(args, r.extraArgs...)
-	args = append(args, opt.extraArgs...)
-
-	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.extraEnv...)
-	cmd.Env = append(cmd.Env, opt.extraEnv...)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, newCmdError(cmd, "", err)
+	if err := cmd.Run(); err != nil {
+		return nil, newCmdError(cmd, output.String(), err)
 	}
 
 	var snapshots []*Snapshot
-	if err := json.Unmarshal(output, &snapshots); err != nil {
-		return nil, newCmdError(cmd, string(output), fmt.Errorf("command output is not valid JSON: %w", err))
+	if err := json.Unmarshal(output.Bytes(), &snapshots); err != nil {
+		return nil, newCmdError(cmd, output.String(), fmt.Errorf("command output is not valid JSON: %w", err))
 	}
+
 	for _, snapshot := range snapshots {
 		if err := snapshot.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid snapshot: %w", err)
@@ -187,82 +191,54 @@ func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapsho
 }
 
 func (r *Repo) Forget(ctx context.Context, policy *RetentionPolicy, opts ...GenericOption) (*ForgetResult, error) {
-	// first run the forget command
-	opt := resolveOpts(opts)
-
 	args := []string{"forget", "--json"}
-	args = append(args, r.extraArgs...)
-	args = append(args, opt.extraArgs...)
 	args = append(args, policy.toForgetFlags()...)
 
-	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.extraEnv...)
-	cmd.Env = append(cmd.Env, opt.extraEnv...)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, newCmdError(cmd, string(output), err)
+	cmd := r.commandWithContext(ctx, args, opts...)
+	output := bytes.NewBuffer(nil)
+	r.pipeCmdOutputToWriter(cmd, output)
+	if err := cmd.Run(); err != nil {
+		return nil, newCmdError(cmd, output.String(), err)
 	}
 
 	var result []ForgetResult
-	if err := json.Unmarshal(output, &result); err != nil {
-		return nil, newCmdError(cmd, string(output), fmt.Errorf("command output is not valid JSON: %w", err))
+	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
+		return nil, newCmdError(cmd, output.String(), fmt.Errorf("command output is not valid JSON: %w", err))
 	}
 	if len(result) != 1 {
 		return nil, fmt.Errorf("expected 1 output from forget, got %v", len(result))
 	}
 	if err := result[0].Validate(); err != nil {
-		return nil, newCmdError(cmd, string(output), fmt.Errorf("invalid forget result: %w", err))
+		return nil, newCmdError(cmd, output.String(), fmt.Errorf("invalid forget result: %w", err))
 	}
 
 	return &result[0], nil
 }
 
 func (r *Repo) ForgetSnapshot(ctx context.Context, snapshotId string, opts ...GenericOption) error {
-	opt := resolveOpts(opts)
-
 	args := []string{"forget", "--json", snapshotId}
-	args = append(args, r.extraArgs...)
-	args = append(args, opt.extraArgs...)
-	args = append(args, snapshotId)
 
-	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.extraEnv...)
-	cmd.Env = append(cmd.Env, opt.extraEnv...)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return newCmdError(cmd, string(output), err)
+	cmd := r.commandWithContext(ctx, args, opts...)
+	output := bytes.NewBuffer(nil)
+	r.pipeCmdOutputToWriter(cmd, output)
+	if err := cmd.Run(); err != nil {
+		return newCmdError(cmd, output.String(), err)
 	}
 
 	return nil
 }
 
 func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...GenericOption) error {
-	opt := resolveOpts(opts)
-
 	args := []string{"prune"}
-	args = append(args, r.extraArgs...)
-	args = append(args, opt.extraArgs...)
-
-	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.extraEnv...)
-	cmd.Env = append(cmd.Env, opt.extraEnv...)
-
-	var output = newOutputCapturer(outputBufferLimit)
-	var writer io.Writer = output
+	cmd := r.commandWithContext(ctx, args, opts...)
+	output := bytes.NewBuffer(nil)
+	r.pipeCmdOutputToWriter(cmd, output)
 	if pruneOutput != nil {
-		writer = io.MultiWriter(pruneOutput, output)
+		r.pipeCmdOutputToWriter(cmd, pruneOutput)
 	}
-	cmd.Stdout = writer
-	cmd.Stderr = writer
-
-	writer.Write([]byte("command: " + strings.Join(cmd.Args, " ") + "\n"))
-
 	if err := cmd.Run(); err != nil {
 		return newCmdErrorPreformatted(cmd, output.String(), err)
 	}
-
 	return nil
 }
 
@@ -426,55 +402,6 @@ func (r *RetentionPolicy) toForgetFlags() []string {
 		flags = append(flags, "--keep-within", r.KeepWithinDuration)
 	}
 	return flags
-}
-
-type BackupOpts struct {
-	paths     []string
-	extraArgs []string
-}
-
-type BackupOption func(opts *BackupOpts)
-
-func WithBackupPaths(paths ...string) BackupOption {
-	return func(opts *BackupOpts) {
-		opts.paths = append(opts.paths, paths...)
-	}
-}
-
-func WithBackupExcludes(excludes ...string) BackupOption {
-	return func(opts *BackupOpts) {
-		for _, exclude := range excludes {
-			opts.extraArgs = append(opts.extraArgs, "--exclude", exclude)
-		}
-	}
-}
-
-func WithBackupIExcludes(iexcludes ...string) BackupOption {
-	return func(opts *BackupOpts) {
-		for _, iexclude := range iexcludes {
-			opts.extraArgs = append(opts.extraArgs, "--iexclude", iexclude)
-		}
-	}
-}
-
-func WithBackupTags(tags ...string) BackupOption {
-	return func(opts *BackupOpts) {
-		for _, tag := range tags {
-			opts.extraArgs = append(opts.extraArgs, "--tag", tag)
-		}
-	}
-}
-
-func WithBackupParent(parent string) BackupOption {
-	return func(opts *BackupOpts) {
-		opts.extraArgs = append(opts.extraArgs, "--parent", parent)
-	}
-}
-
-func WithBackupFlags(flags ...string) BackupOption {
-	return func(opts *BackupOpts) {
-		opts.extraArgs = append(opts.extraArgs, flags...)
-	}
 }
 
 type GenericOpts struct {
