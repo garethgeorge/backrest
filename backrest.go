@@ -30,15 +30,23 @@ import (
 	"golang.org/x/net/http2/h2c"
 )
 
+var InstallDepsOnly = flag.Bool("install-deps-only", false, "install dependencies and exit")
+
 func main() {
 	flag.Parse()
-	ctx, cancel := context.WithCancel(context.Background())
-	go onterm(cancel)
 
 	resticPath, err := resticinstaller.FindOrInstallResticBinary()
 	if err != nil {
 		zap.S().Fatalf("Error finding or installing restic: %v", err)
 	}
+
+	if *InstallDepsOnly {
+		zap.S().Info("Dependencies installed, exiting")
+		return
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go onterm(cancel)
 
 	// Load the configuration
 	configStore := createConfigProvider()

@@ -32,6 +32,13 @@ var (
 	didTryInstall bool
 )
 
+func resticBinName() string {
+	if runtime.GOOS == "windows" {
+		return fmt.Sprintf("restic-%v.exe", RequiredResticVersion)
+	}
+	return fmt.Sprintf("restic-%v", RequiredResticVersion)
+}
+
 func resticDownloadURL(version string) string {
 	if runtime.GOOS == "windows" {
 		return fmt.Sprintf("https://github.com/restic/restic/releases/download/v%v/restic_%v_windows_%v.zip", version, version, runtime.GOARCH)
@@ -223,15 +230,26 @@ func FindOrInstallResticBinary() (string, error) {
 		return resticBin, nil
 	}
 
+	// Search the PATH for the specific restic version.
+	resticBinName := resticBinName()
+	for _, dir := range strings.Split(os.Getenv("PATH"), string(os.PathListSeparator)) {
+		candidatePath := path.Join(dir, resticBinName)
+		if _, err := os.Stat(candidatePath); err == nil {
+			return candidatePath, nil
+		}
+	}
+
 	// Check for restic installation in data directory.
-	resticInstallPath := path.Join(config.DataDir(), fmt.Sprintf("restic-%v", RequiredResticVersion))
+	resticInstallPath := path.Join(config.DataDir(), resticBinName)
 	if runtime.GOOS == "windows" {
 		programFiles := os.Getenv("programfiles(x86)")
 		if programFiles == "" {
 			programFiles = os.Getenv("programfiles")
 		}
-		resticInstallPath = path.Join(programFiles, "restic", fmt.Sprintf("restic-%v.exe", RequiredResticVersion))
+		resticInstallPath = path.Join(programFiles, "restic", resticBinName)
 	}
+
+	// Install restic if not found.
 	if _, err := os.Stat(resticInstallPath); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return "", fmt.Errorf("could not stat restic binary at %v: %w", resticBin, err)
