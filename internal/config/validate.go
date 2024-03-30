@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -23,6 +24,12 @@ func ValidateConfig(c *v1.Config) error {
 			}
 			repos[repo.Id] = repo
 		}
+		slices.SortFunc(c.Repos, func(a, b *v1.Repo) int {
+			if a.Id < b.Id {
+				return -1
+			}
+			return 1
+		})
 	}
 
 	if c.Plans != nil {
@@ -36,6 +43,12 @@ func ValidateConfig(c *v1.Config) error {
 				err = multierror.Append(err, fmt.Errorf("plan %s: %w", plan.GetId(), e))
 			}
 		}
+		slices.SortFunc(c.Plans, func(a, b *v1.Plan) int {
+			if a.Id < b.Id {
+				return -1
+			}
+			return 1
+		})
 	}
 
 	return err
@@ -56,6 +69,8 @@ func validateRepo(repo *v1.Repo) error {
 			err = multierror.Append(err, fmt.Errorf("invalid env var %s, must take format KEY=VALUE", env))
 		}
 	}
+
+	slices.Sort(repo.Env)
 
 	return err
 }
@@ -87,6 +102,10 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 	if plan.Retention != nil && plan.Retention.Policy == nil {
 		err = multierror.Append(err, errors.New("retention policy must be nil or must specify a policy"))
 	}
+
+	slices.Sort(plan.Paths)
+	slices.Sort(plan.Excludes)
+	slices.Sort(plan.Iexcludes)
 
 	return err
 }
