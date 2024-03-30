@@ -116,7 +116,9 @@ func (v HookVars) renderTemplate(templ string) (string, error) {
 	return buf.String(), nil
 }
 
-var templateForSnapshotEnd = `Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
+var templateForSnapshotEnd = `
+Backrest Notification for Snapshot End
+Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
 Event: {{ .EventName .Event }}
 Repo: {{ .Repo.Id }} 
 Plan: {{ .Plan.Id }} 
@@ -144,12 +146,16 @@ Backup Statistics:
 {{ end }}
 {{ end }}`
 
-var templateForError = `Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
+var templateForError = `
+Backrest Notification for Error
+Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
 {{ if .Error -}}
 Error: {{ .Error }}
 {{ end }}`
 
-var templateForSnapshotStart = `Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
+var templateForSnapshotStart = `
+Backrest Notification for Snapshot Start
+Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
 Event: {{ .EventName .Event }}
 Repo: {{ .Repo.Id }} 
 Plan: {{ .Plan.Id }} 
