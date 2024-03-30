@@ -5,6 +5,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
 
 var taskQueueDefaultPollInterval = 3 * time.Minute
@@ -159,6 +161,7 @@ type scheduledTask struct {
 	runAt     time.Time
 	priority  int
 	callbacks []func(error)
+	config    *v1.Config
 }
 
 type scheduledTaskHeap struct {
