@@ -13,6 +13,7 @@ import {
   Collapse,
   Empty,
   List,
+  Modal,
   Progress,
   Row,
   Typography,
@@ -42,6 +43,7 @@ import _ from "lodash";
 import { LogDataRequest } from "../../gen/ts/v1/service_pb";
 import { MessageInstance } from "antd/es/message/interface";
 import { backrestService } from "../api";
+import { useShowModal } from "./ModalManager";
 
 
 export const OperationRow = ({
@@ -49,6 +51,7 @@ export const OperationRow = ({
   alertApi,
   showPlan,
 }: React.PropsWithoutRef<{ operation: Operation, alertApi?: MessageInstance, showPlan: boolean }>) => {
+  const showModal = useShowModal();
   const details = detailsForOperation(operation);
   const displayType = getTypeForDisplay(operation);
   let avatar: React.ReactNode;
@@ -97,13 +100,29 @@ export const OperationRow = ({
   if (operation.status === OperationStatus.STATUS_PENDING || operation.status == OperationStatus.STATUS_INPROGRESS) {
     title = <>
       {title}
-      <Button type="link" size="small" onClick={() => {
+      <Button type="link" size="small" className="backrest operation-details" onClick={() => {
         backrestService.cancel({ value: operation.id! }).then(() => {
           alertApi?.success("Requested to cancel operation");
         }).catch((e) => {
           alertApi?.error("Failed to cancel operation: " + e.message);
         });
       }}>[Cancel Operation]</Button>
+    </>
+  }
+
+  if (operation.logref) {
+    title = <>
+      {title}
+      <small>
+        <Button type="link" size="middle" className="backrest operation-details" onClick={() => {
+          showModal(<Modal
+            width="50%"
+            title={"Logs for operation " + opName + " at " + formatTime(Number(operation.unixTimeStartMs))}
+            visible={true} footer={null} onCancel={() => { showModal(null); }}>
+            <BigOperationDataVerbatim logref={operation.logref!} />
+          </Modal>);
+        }}>[View Restic Logs]</Button>
+      </small >
     </>
   }
 
@@ -179,18 +198,19 @@ export const OperationRow = ({
     body = <RunHookOperationStatus op={operation} />
   }
 
+  const children = [];
+
   if (operation.displayMessage) {
-    body = (
-      <>
-        <pre>{details.state}: {operation.displayMessage}</pre>
-        {body}
-      </>
-    );
+    children.push(<>
+      <pre>{details.state}: {operation.displayMessage}</pre>
+    </>);
   }
+
+  children.push(body);
 
   return (
     <List.Item>
-      <List.Item.Meta title={title} avatar={avatar} description={body} />
+      <List.Item.Meta title={title} avatar={avatar} description={children} />
     </List.Item>
   );
 };

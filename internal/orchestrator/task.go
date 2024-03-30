@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,7 +10,9 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/pkg/restic"
 	"github.com/hashicorp/go-multierror"
+	"go.uber.org/zap"
 )
 
 type Task interface {
@@ -59,7 +62,21 @@ func (t *TaskWithOperation) runWithOpAndContext(ctx context.Context, do func(ctx
 	}()
 
 	return WithOperation(t.orch.OpLog, t.op, func() error {
-		return do(ctx, t.op)
+		buf := bytes.NewBuffer(nil)
+		ctx = restic.ContextWithLogger(ctx, buf)
+
+		err := do(ctx, t.op)
+
+		if bytes := buf.Bytes(); len(bytes) > 0 {
+			ref, e := t.orch.logStore.Write(bytes)
+			if e != nil {
+				errors.Join(err, fmt.Errorf("failed to write log to logstore: %w", e))
+			}
+			t.op.Logref = ref
+			zap.S().Debug("wrote operation log to %v", ref)
+		}
+
+		return err
 	})
 }
 

@@ -210,6 +210,13 @@ export class Operation extends Message<Operation> {
   displayMessage = "";
 
   /**
+   * logref can point to arbitrary logs associated with the operation.
+   *
+   * @generated from field: string logref = 9;
+   */
+  logref = "";
+
+  /**
    * @generated from oneof v1.Operation.op
    */
   op: {
@@ -272,6 +279,7 @@ export class Operation extends Message<Operation> {
     { no: 5, name: "unix_time_start_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 6, name: "unix_time_end_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 7, name: "display_message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 100, name: "operation_backup", kind: "message", T: OperationBackup, oneof: "op" },
     { no: 101, name: "operation_index_snapshot", kind: "message", T: OperationIndexSnapshot, oneof: "op" },
     { no: 102, name: "operation_forget", kind: "message", T: OperationForget, oneof: "op" },
