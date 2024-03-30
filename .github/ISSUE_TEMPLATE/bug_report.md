@@ -7,6 +7,8 @@ assignees: ''
 
 ---
 
+Note: if you have a question please post in the [discussions area](https://github.com/garethgeorge/backrest/wiki).
+
 **Describe the bug**
 A clear and concise description of what the bug is.
 
