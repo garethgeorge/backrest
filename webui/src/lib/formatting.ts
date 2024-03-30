@@ -31,7 +31,7 @@ export const formatTime = (time: number | string | Date) => {
     d.getUTCMinutes() < 10 ? "0" + d.getUTCMinutes() : d.getUTCMinutes();
   const seconds =
     d.getUTCSeconds() < 10 ? "0" + d.getUTCSeconds() : d.getUTCSeconds();
-  return `${isoStr.substring(0, 10)} at ${hours}:${minutes}:${seconds} ${d.getUTCHours() > 12 ? "PM" : "AM"
+  return `${isoStr.substring(0, 10)} at ${hours}:${minutes}:${seconds} ${d.getUTCHours() >= 12 ? "PM" : "AM"
     }`;
 };
 
