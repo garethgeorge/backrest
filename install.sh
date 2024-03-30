@@ -56,6 +56,11 @@ create_launchd_plist() {
     <string>/tmp/backrest.log</string>
     <key>StandardErrorPath</key>
     <string>/tmp/backrest.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
 </dict>
 </plist>
 EOM
