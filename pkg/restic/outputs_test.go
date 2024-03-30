@@ -2,6 +2,7 @@ package restic
 
 import (
 	"bytes"
+	"context"
 	"os/exec"
 	"testing"
 )
@@ -13,7 +14,7 @@ func TestReadBackupProgressEntries(t *testing.T) {
 
 	b := bytes.NewBuffer([]byte(testInput))
 
-	summary, err := readBackupProgressEntries(&exec.Cmd{}, b, func(event *BackupProgressEntry) {
+	summary, err := readBackupProgressEntries(context.Background(), &exec.Cmd{}, b, func(event *BackupProgressEntry) {
 		t.Logf("event: %v", event)
 	})
 	if err != nil {
