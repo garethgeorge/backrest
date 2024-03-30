@@ -195,7 +195,9 @@ func TestMultipleBackup(t *testing.T) {
 					},
 					Cron: "0 0 1 1 *",
 					Retention: &v1.RetentionPolicy{
-						KeepLastN: 1,
+						Policy: &v1.RetentionPolicy_PolicyKeepLastN{
+							PolicyKeepLastN: 1,
+						},
 					},
 				},
 			},
