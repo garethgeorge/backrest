@@ -40,38 +40,45 @@ func TestResticBackup(t *testing.T) {
 
 	var tests = []struct {
 		name    string
-		opts    []BackupOption
+		opts    []GenericOption
+		paths   []string
 		files   int // expected files at the end of the backup
 		wantErr bool
 	}{
 		{
 			name:  "no options",
-			opts:  []BackupOption{WithBackupPaths(testData)},
+			paths: []string{testData},
+			opts:  []GenericOption{},
 			files: 100,
 		},
 		{
 			name:  "with two paths",
-			opts:  []BackupOption{WithBackupPaths(testData), WithBackupPaths(testData2)},
+			paths: []string{testData, testData2},
+			opts:  []GenericOption{},
 			files: 200,
 		},
 		{
 			name:  "with exclude",
-			opts:  []BackupOption{WithBackupPaths(testData), WithBackupExcludes("file1*")},
+			paths: []string{testData},
+			opts:  []GenericOption{WithFlags("--exclude", "file1*")},
 			files: 90,
 		},
 		{
 			name:  "with exclude pattern",
-			opts:  []BackupOption{WithBackupPaths(testData), WithBackupExcludes("file*")},
+			paths: []string{testData},
+			opts:  []GenericOption{WithFlags("--iexclude=file*")},
 			files: 0,
 		},
 		{
 			name:    "with nothing to backup",
-			opts:    []BackupOption{},
+			paths:   []string{},
+			opts:    []GenericOption{},
 			wantErr: true,
 		},
 		{
 			name:    "with unreadable file",
-			opts:    []BackupOption{WithBackupPaths(testData), WithBackupPaths(testDataUnreadable)},
+			paths:   []string{testData, testDataUnreadable},
+			opts:    []GenericOption{},
 			wantErr: true,
 		},
 	}
@@ -79,7 +86,7 @@ func TestResticBackup(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			gotEvent := false
-			summary, err := r.Backup(context.Background(), func(event *BackupProgressEntry) {
+			summary, err := r.Backup(context.Background(), tc.paths, func(event *BackupProgressEntry) {
 				t.Logf("backup event: %v", event)
 				gotEvent = true
 			}, tc.opts...)
@@ -121,9 +128,9 @@ func TestResticPartialBackup(t *testing.T) {
 
 	var entries []*BackupProgressEntry
 
-	summary, err := r.Backup(context.Background(), func(entry *BackupProgressEntry) {
+	summary, err := r.Backup(context.Background(), []string{testDataUnreadable}, func(entry *BackupProgressEntry) {
 		entries = append(entries, entry)
-	}, WithBackupPaths(testDataUnreadable))
+	})
 	if !errors.Is(err, ErrPartialBackup) {
 		t.Fatalf("wanted error to be partial backup, got: %v", err)
 	}
@@ -158,9 +165,9 @@ func TestResticBackupLots(t *testing.T) {
 
 	// backup 25 times
 	for i := 0; i < 25; i++ {
-		_, err := r.Backup(context.Background(), func(e *BackupProgressEntry) {
+		_, err := r.Backup(context.Background(), []string{testData}, func(e *BackupProgressEntry) {
 			t.Logf("backup event: %+v", e)
-		}, WithBackupPaths(testData))
+		})
 		if err != nil {
 			t.Fatalf("failed to backup and create new snapshot: %v", err)
 		}
@@ -180,7 +187,7 @@ func TestSnapshot(t *testing.T) {
 	testData := helpers.CreateTestData(t)
 
 	for i := 0; i < 10; i++ {
-		_, err := r.Backup(context.Background(), nil, WithBackupPaths(testData), WithBackupTags(fmt.Sprintf("tag%d", i)))
+		_, err := r.Backup(context.Background(), []string{testData}, nil, WithFlags("--tag", fmt.Sprintf("tag%d", i)))
 		if err != nil {
 			t.Fatalf("failed to backup and create new snapshot: %v", err)
 		}
@@ -235,7 +242,7 @@ func TestLs(t *testing.T) {
 
 	testData := helpers.CreateTestData(t)
 
-	snapshot, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
+	snapshot, err := r.Backup(context.Background(), []string{testData}, nil)
 	if err != nil {
 		t.Fatalf("failed to backup and create new snapshot: %v", err)
 	}
@@ -264,7 +271,7 @@ func TestResticForget(t *testing.T) {
 
 	ids := make([]string, 0)
 	for i := 0; i < 10; i++ {
-		output, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
+		output, err := r.Backup(context.Background(), []string{testData}, nil)
 		if err != nil {
 			t.Fatalf("failed to backup and create new snapshot: %v", err)
 		}
@@ -318,7 +325,7 @@ func TestForgetSnapshotId(t *testing.T) {
 
 	ids := make([]string, 0)
 	for i := 0; i < 5; i++ {
-		output, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
+		output, err := r.Backup(context.Background(), []string{testData}, nil)
 		if err != nil {
 			t.Fatalf("failed to backup and create new snapshot: %v", err)
 		}
@@ -352,7 +359,7 @@ func TestResticPrune(t *testing.T) {
 	testData := helpers.CreateTestData(t)
 
 	for i := 0; i < 3; i++ {
-		_, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
+		_, err := r.Backup(context.Background(), []string{testData}, nil)
 		if err != nil {
 			t.Fatalf("failed to backup: %v", err)
 		}
@@ -390,7 +397,7 @@ func TestResticRestore(t *testing.T) {
 
 	testData := helpers.CreateTestData(t)
 
-	snapshot, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
+	snapshot, err := r.Backup(context.Background(), []string{testData}, nil)
 	if err != nil {
 		t.Fatalf("failed to backup and create new snapshot: %v", err)
 	}
@@ -420,7 +427,7 @@ func TestResticStats(t *testing.T) {
 
 	testData := helpers.CreateTestData(t)
 
-	_, err := r.Backup(context.Background(), nil, WithBackupPaths(testData))
+	_, err := r.Backup(context.Background(), []string{testData}, nil)
 	if err != nil {
 		t.Fatalf("failed to backup and create new snapshot: %v", err)
 	}
