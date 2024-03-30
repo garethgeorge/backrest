@@ -20,7 +20,7 @@ func (h *Hook) doDiscord(cmd *v1.Hook_ActionDiscord, vars HookVars, output io.Wr
 	}
 
 	request := Message{
-		Content: "Backrest Notification\n" + payload, // leading newline looks better in discord.
+		Content: payload, // leading newline looks better in discord.
 	}
 
 	requestBytes, _ := json.Marshal(request)
