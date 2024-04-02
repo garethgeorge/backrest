@@ -518,7 +518,7 @@ const RetentionPolicyView = () => {
     elem = (
       <Form.Item
         name={["retention", "policyKeepLastN"]}
-        initialValue={30}
+        initialValue={0}
         validateTrigger={["onChange", "onBlur"]}
         rules={[
           {
@@ -547,7 +547,7 @@ const RetentionPolicyView = () => {
           </Form.Item>
           <Form.Item
             name={["retention", "policyTimeBucketed", "monthly"]}
-            initialValue={3}
+            initialValue={0}
             validateTrigger={["onChange", "onBlur"]}
             required={false}
           >
@@ -558,7 +558,7 @@ const RetentionPolicyView = () => {
           </Form.Item>
           <Form.Item
             name={["retention", "policyTimeBucketed", "weekly"]}
-            initialValue={4}
+            initialValue={0}
             validateTrigger={["onChange", "onBlur"]}
             required={false}
           >
@@ -571,8 +571,8 @@ const RetentionPolicyView = () => {
         <Col span={11} offset={1}>
           <Form.Item
             name={["retention", "policyTimeBucketed", "daily"]}
-            initialValue={7}
             validateTrigger={["onChange", "onBlur"]}
+            initialValue={0}
             required={false}
           >
             <InputNumber
@@ -582,8 +582,8 @@ const RetentionPolicyView = () => {
           </Form.Item>
           <Form.Item
             name={["retention", "policyTimeBucketed", "hourly"]}
-            initialValue={24}
             validateTrigger={["onChange", "onBlur"]}
+            initialValue={0}
             required={false}
           >
             <InputNumber
