@@ -146,6 +146,8 @@ brews:
 
     service: |
       run opt_bin/"backrest"
+      error_log_path var/"log/backrest.log"
+      log_path var/"log/backrest.log"
 
 changelog:
   sort: asc
