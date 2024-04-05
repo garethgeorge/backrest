@@ -25,13 +25,13 @@ export const GettingStartedGuide = () => {
           </li>
           <li>
             See{" "}
-            <a href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html">
+            <a href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html" target="_blank">
               the restic docs on preparing a new repository
             </a>{" "}
             for details about available repository types and how they can be
             configured.
           </li>
-          <li>See <a href="https://github.com/garethgeorge/backrest/wiki">the Backrest wiki</a> for instructions on how to configure Backrest.</li>
+          <li>See <a href="https://github.com/garethgeorge/backrest/wiki" target="_blank">the Backrest wiki</a> for instructions on how to configure Backrest.</li>
         </ul>
         <Divider orientation="left">Tips</Divider>
         <ul>
