@@ -144,7 +144,8 @@ brews:
       branch: main
       token: "{{ .Env.GH_BREW_TOKEN }}"
 
-    service: backrest
+    service: |
+      run opt_bin/"backrest"
 
 changelog:
   sort: asc
