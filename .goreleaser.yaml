@@ -128,6 +128,46 @@ docker_manifests:
       - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
       - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
 
+brews:
+  - name: backrest
+    homepage: https://github.com/garethgeorge/backrest
+
+    url_template: "https://github.com/garethgeorge/backrest/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+
+    repository:
+      owner: johnmaguire
+      name: backrest-tap
+      branch: main
+
+    plist: |
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+          <key>Label</key>
+          <string>com.backrest</string>
+          <key>ProgramArguments</key>
+          <array>
+          <string>/usr/local/bin/backrest</string>
+          </array>
+          <key>KeepAlive</key>
+          <true/>
+          <key>StandardOutPath</key>
+          <string>/tmp/backrest.log</string>
+          <key>StandardErrorPath</key>
+          <string>/tmp/backrest.log</string>
+          <key>EnvironmentVariables</key>
+          <dict>
+              <key>PATH</key>
+              <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+          </dict>
+      </dict>
+      </plist>
+
 changelog:
   sort: asc
   filters:
@@ -137,5 +177,5 @@ changelog:
 
 release:
   github:
-    owner: garethgeorge
+    owner: johnmaguire
     name: backrest
