@@ -140,7 +140,7 @@ brews:
 
     repository:
       owner: johnmaguire
-      name: backrest-tap
+      name: homebrew-backrest-tap
       branch: main
       token: "{{ .Env.GH_BREW_TOKEN }}"
 
