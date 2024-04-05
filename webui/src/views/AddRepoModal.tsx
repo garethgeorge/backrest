@@ -211,7 +211,7 @@ export const AddRepoModal = ({
                   <li>SFTP e.g. sftp://user@host:/repo-path</li>
                   <li>
                     See{" "}
-                    <a href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository">
+                    <a href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository" target="_blank">
                       restic docs
                     </a>{" "}
                     for more info.
@@ -384,7 +384,7 @@ export const AddRepoModal = ({
                   <span>
                     The schedule on which prune operations are run for this
                     repository. Read{" "}
-                    <a href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning">
+                    <a href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning" target="_blank">
                       the restic docs on customizing prune operations
                     </a>{" "}
                     for more details.
