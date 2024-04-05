@@ -63,7 +63,7 @@ archives:
 
 dockers:
   - image_templates:
-      - jmaguire/backrest:{{ .Tag }}-alpine-amd64
+      - garethgeorge/backrest:{{ .Tag }}-alpine-amd64
     dockerfile: Dockerfile.alpine
     use: buildx
     build_flag_templates:
@@ -71,7 +71,7 @@ dockers:
       - "--platform=linux/amd64"
 
   - image_templates:
-      - jmaguire/backrest:{{ .Tag }}-alpine-arm64
+      - garethgeorge/backrest:{{ .Tag }}-alpine-arm64
     dockerfile: Dockerfile.alpine
     goarch: arm64
     use: buildx
@@ -80,7 +80,7 @@ dockers:
       - "--platform=linux/arm64/v8"
 
   - image_templates:
-      - jmaguire/backrest:{{ .Tag }}-scratch-arm64
+      - garethgeorge/backrest:{{ .Tag }}-scratch-arm64
     dockerfile: Dockerfile.scratch
     goarch: arm64
     use: buildx
@@ -89,7 +89,7 @@ dockers:
       - "--platform=linux/arm64/v8"
 
   - image_templates:
-      - jmaguire/backrest:{{ .Tag }}-scratch-amd64
+      - garethgeorge/backrest:{{ .Tag }}-scratch-amd64
     dockerfile: Dockerfile.scratch
     use: buildx
     build_flag_templates:
@@ -97,7 +97,7 @@ dockers:
       - "--platform=linux/amd64"
 
   - image_templates:
-      - jmaguire/backrest:{{ .Tag }}-scratch-armv6
+      - garethgeorge/backrest:{{ .Tag }}-scratch-armv6
     dockerfile: Dockerfile.scratch
     use: buildx
     build_flag_templates:
@@ -105,41 +105,41 @@ dockers:
       - "--platform=linux/arm/v6"
 
 docker_manifests:
-  - name_template: "jmaguire/backrest:latest"
+  - name_template: "garethgeorge/backrest:latest"
     image_templates:
-      - "jmaguire/backrest:{{ .Tag }}-alpine-amd64"
-      - "jmaguire/backrest:{{ .Tag }}-alpine-arm64"
-  - name_template: "jmaguire/backrest:{{ .Tag }}"
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
+  - name_template: "garethgeorge/backrest:{{ .Tag }}"
     image_templates:
-      - "jmaguire/backrest:{{ .Tag }}-alpine-amd64"
-      - "jmaguire/backrest:{{ .Tag }}-alpine-arm64"
-  - name_template: "jmaguire/backrest:latest-alpine"
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
+  - name_template: "garethgeorge/backrest:latest-alpine"
     image_templates:
-      - "jmaguire/backrest:{{ .Tag }}-alpine-amd64"
-      - "jmaguire/backrest:{{ .Tag }}-alpine-arm64"
-  - name_template: "jmaguire/backrest:scratch"
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
+  - name_template: "garethgeorge/backrest:scratch"
     image_templates:
-      - "jmaguire/backrest:{{ .Tag }}-scratch-amd64"
-      - "jmaguire/backrest:{{ .Tag }}-scratch-arm64"
-      - "jmaguire/backrest:{{ .Tag }}-scratch-armv6"
-  - name_template: "jmaguire/backrest:{{ .Tag }}-scratch"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
+  - name_template: "garethgeorge/backrest:{{ .Tag }}-scratch"
     image_templates:
-      - "jmaguire/backrest:{{ .Tag }}-scratch-amd64"
-      - "jmaguire/backrest:{{ .Tag }}-scratch-arm64"
-      - "jmaguire/backrest:{{ .Tag }}-scratch-armv6"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
 
 brews:
   - name: backrest
     homepage: https://github.com/garethgeorge/backrest
 
-    url_template: "https://github.com/johnmaguire/backrest/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    url_template: "https://github.com/garethgeorge/backrest/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
 
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
 
     repository:
-      owner: johnmaguire
+      owner: garethgeorge
       name: homebrew-backrest-tap
       branch: main
       token: "{{ .Env.GH_BREW_TOKEN }}"
@@ -156,5 +156,5 @@ changelog:
 
 release:
   github:
-    owner: johnmaguire
+    owner: garethgeorge
     name: backrest
