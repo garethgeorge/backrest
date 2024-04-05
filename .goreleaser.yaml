@@ -132,7 +132,7 @@ brews:
   - name: backrest
     homepage: https://github.com/garethgeorge/backrest
 
-    url_template: "https://github.com/garethgeorge/backrest/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    url_template: "https://github.com/johnmaguire/backrest/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
 
     commit_author:
       name: goreleaserbot
