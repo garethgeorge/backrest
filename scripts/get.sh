@@ -114,7 +114,7 @@ Start_Menu(){
             Install
         ;;
         1)
-            uninstall
+            Uninstall
         ;;
         2)
             Start
