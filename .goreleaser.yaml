@@ -63,7 +63,7 @@ archives:
 
 dockers:
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-alpine-amd64
+      - jmaguire/backrest:{{ .Tag }}-alpine-amd64
     dockerfile: Dockerfile.alpine
     use: buildx
     build_flag_templates:
@@ -71,7 +71,7 @@ dockers:
       - "--platform=linux/amd64"
 
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-alpine-arm64
+      - jmaguire/backrest:{{ .Tag }}-alpine-arm64
     dockerfile: Dockerfile.alpine
     goarch: arm64
     use: buildx
@@ -80,7 +80,7 @@ dockers:
       - "--platform=linux/arm64/v8"
 
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-scratch-arm64
+      - jmaguire/backrest:{{ .Tag }}-scratch-arm64
     dockerfile: Dockerfile.scratch
     goarch: arm64
     use: buildx
@@ -89,7 +89,7 @@ dockers:
       - "--platform=linux/arm64/v8"
 
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-scratch-amd64
+      - jmaguire/backrest:{{ .Tag }}-scratch-amd64
     dockerfile: Dockerfile.scratch
     use: buildx
     build_flag_templates:
@@ -97,7 +97,7 @@ dockers:
       - "--platform=linux/amd64"
 
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-scratch-armv6
+      - jmaguire/backrest:{{ .Tag }}-scratch-armv6
     dockerfile: Dockerfile.scratch
     use: buildx
     build_flag_templates:
@@ -105,28 +105,28 @@ dockers:
       - "--platform=linux/arm/v6"
 
 docker_manifests:
-  - name_template: "garethgeorge/backrest:latest"
+  - name_template: "jmaguire/backrest:latest"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-  - name_template: "garethgeorge/backrest:{{ .Tag }}"
+      - "jmaguire/backrest:{{ .Tag }}-alpine-amd64"
+      - "jmaguire/backrest:{{ .Tag }}-alpine-arm64"
+  - name_template: "jmaguire/backrest:{{ .Tag }}"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-  - name_template: "garethgeorge/backrest:latest-alpine"
+      - "jmaguire/backrest:{{ .Tag }}-alpine-amd64"
+      - "jmaguire/backrest:{{ .Tag }}-alpine-arm64"
+  - name_template: "jmaguire/backrest:latest-alpine"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-  - name_template: "garethgeorge/backrest:scratch"
+      - "jmaguire/backrest:{{ .Tag }}-alpine-amd64"
+      - "jmaguire/backrest:{{ .Tag }}-alpine-arm64"
+  - name_template: "jmaguire/backrest:scratch"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
-  - name_template: "garethgeorge/backrest:{{ .Tag }}-scratch"
+      - "jmaguire/backrest:{{ .Tag }}-scratch-amd64"
+      - "jmaguire/backrest:{{ .Tag }}-scratch-arm64"
+      - "jmaguire/backrest:{{ .Tag }}-scratch-armv6"
+  - name_template: "jmaguire/backrest:{{ .Tag }}-scratch"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
+      - "jmaguire/backrest:{{ .Tag }}-scratch-amd64"
+      - "jmaguire/backrest:{{ .Tag }}-scratch-arm64"
+      - "jmaguire/backrest:{{ .Tag }}-scratch-armv6"
 
 brews:
   - name: backrest
