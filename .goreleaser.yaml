@@ -142,6 +142,7 @@ brews:
       owner: johnmaguire
       name: backrest-tap
       branch: main
+      token: "{{ .Env.GH_BREW_TOKEN }}"
 
     plist: |
       <?xml version="1.0" encoding="UTF-8"?>
