@@ -244,6 +244,12 @@ export const AddRepoModal = ({
                   hasFeedback
                   name="password"
                   validateTrigger={["onChange", "onBlur"]}
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please input repo password",
+                    },
+                  ]}
                 >
                   <Input disabled={!!template} />
                 </Form.Item>
