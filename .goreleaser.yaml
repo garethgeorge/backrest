@@ -128,6 +128,27 @@ docker_manifests:
       - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
       - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
 
+brews:
+  - name: backrest
+    homepage: https://github.com/garethgeorge/backrest
+
+    url_template: "https://github.com/garethgeorge/backrest/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+
+    repository:
+      owner: garethgeorge
+      name: homebrew-backrest-tap
+      branch: main
+      token: "{{ .Env.GH_BREW_TOKEN }}"
+
+    service: |
+      run opt_bin/"backrest"
+      error_log_path var/"log/backrest.log"
+      log_path var/"log/backrest.log"
+
 changelog:
   sort: asc
   filters:
