@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"github.com/hashicorp/go-multierror"
@@ -62,8 +62,8 @@ func (t *TaskWithOperation) runWithOpAndContext(ctx context.Context, do func(ctx
 	}()
 
 	return WithOperation(t.orch.OpLog, t.op, func() error {
-		buf := bytes.NewBuffer(nil)
-		ctx = restic.ContextWithLogger(ctx, buf)
+		capture := ioutil.NewOutputCapturer(32_000) // 32k of logs
+		ctx = restic.ContextWithLogger(ctx, capture)
 
 		err := do(ctx, t.op)
 

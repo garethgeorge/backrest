@@ -12,6 +12,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/garethgeorge/backrest/internal/ioutil"
 )
 
 var errAlreadyInitialized = errors.New("repo already initialized")
@@ -124,7 +126,7 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 	args = append(args, paths...)
 
 	cmd := r.commandWithContext(ctx, args, opts...)
-	capture := newOutputCapturer(outputBufferLimit)
+	capture := ioutil.NewOutputCapturer(outputBufferLimit)
 	reader, writer := io.Pipe()
 	r.pipeCmdOutputToWriter(cmd, writer, capture)
 
@@ -209,7 +211,6 @@ func (r *Repo) Forget(ctx context.Context, policy *RetentionPolicy, opts ...Gene
 	cmd := r.commandWithContext(ctx, args, opts...)
 	output := bytes.NewBuffer(nil)
 	r.pipeCmdOutputToWriter(cmd, output)
-	r.pipeCmdOutputToLogger(ctx, cmd)
 	if err := cmd.Run(); err != nil {
 		return nil, newCmdError(ctx, cmd, output.String(), err)
 	}
@@ -234,7 +235,6 @@ func (r *Repo) ForgetSnapshot(ctx context.Context, snapshotId string, opts ...Ge
 	cmd := r.commandWithContext(ctx, args, opts...)
 	output := bytes.NewBuffer(nil)
 	r.pipeCmdOutputToWriter(cmd, output)
-	r.pipeCmdOutputToLogger(ctx, cmd)
 	if err := cmd.Run(); err != nil {
 		return newCmdError(ctx, cmd, output.String(), err)
 	}
@@ -259,7 +259,7 @@ func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...Generic
 
 func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
 	cmd := r.commandWithContext(ctx, []string{"restore", "--json", snapshot}, opts...)
-	output := newOutputCapturer(outputBufferLimit)
+	output := ioutil.NewOutputCapturer(outputBufferLimit)
 	reader, writer := io.Pipe()
 	r.pipeCmdOutputToWriter(cmd, output, writer)
 	r.pipeCmdOutputToLogger(ctx, cmd)
