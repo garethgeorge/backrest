@@ -168,36 +168,38 @@ export const AddRepoModal = ({
           disabled={confirmLoading}
         >
           {/* Repo.id */}
-          <Form.Item<Repo>
-            hasFeedback
-            name="id"
-            label="Repo Name"
-            validateTrigger={["onChange", "onBlur"]}
-            rules={[
-              {
-                required: true,
-                message: "Please input repo name",
-              },
-              {
-                validator: async (_, value) => {
-                  if (template) return;
-                  if (config?.repos?.find((r) => r.id === value)) {
-                    throw new Error();
-                  }
+          <Tooltip title={"Unique ID that identifies this repo in the backrest UI (e.g. s3-mybucket). This cannot be changed after creation."}>
+            <Form.Item<Repo>
+              hasFeedback
+              name="id"
+              label="Repo Name"
+              validateTrigger={["onChange", "onBlur"]}
+              rules={[
+                {
+                  required: true,
+                  message: "Please input repo name",
                 },
-                message: "Repo with name already exists",
-              },
-              {
-                pattern: namePattern,
-                message: "Name must be alphanumeric with dashes or underscores as separators",
-              }
-            ]}
-          >
-            <Input
-              disabled={!!template}
-              placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
-            />
-          </Form.Item>
+                {
+                  validator: async (_, value) => {
+                    if (template) return;
+                    if (config?.repos?.find((r) => r.id === value)) {
+                      throw new Error();
+                    }
+                  },
+                  message: "Repo with name already exists",
+                },
+                {
+                  pattern: namePattern,
+                  message: "Name must be alphanumeric with dashes or underscores as separators",
+                }
+              ]}
+            >
+              <Input
+                disabled={!!template}
+                placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
+              />
+            </Form.Item>
+          </Tooltip>
 
           {/* Repo.uri */}
 
@@ -237,36 +239,47 @@ export const AddRepoModal = ({
           </Tooltip>
 
           {/* Repo.password */}
-          <Form.Item label="Password">
-            <Row>
-              <Col span={16}>
-                <Form.Item<Repo>
-                  hasFeedback
-                  name="password"
-                  validateTrigger={["onChange", "onBlur"]}
+          <Tooltip
+            title={<>
+              This password that encrypts data in your repository.
+              <ul>
+                <li>Recommended to pick a value that is 128 bits of entropy (20 chars or longer)</li>
+                <li>You may alternatively provide env variable credentials e.g. RESTIC_PASSWORD, RESTIC_PASSWORD_FILE, or RESTIC_PASSWORD_COMMAND.</li>
+                <li>Click [Generate] to seed a random password from your browser's crypto random API.</li>
+              </ul>
+            </>}
+          >
+            <Form.Item label="Password">
+              <Row>
+                <Col span={16}>
+                  <Form.Item<Repo>
+                    hasFeedback
+                    name="password"
+                    validateTrigger={["onChange", "onBlur"]}
+                  >
+                    <Input disabled={!!template} />
+                  </Form.Item>
+                </Col>
+                <Col
+                  span={7}
+                  offset={1}
+                  style={{ display: "flex", justifyContent: "left" }}
                 >
-                  <Input disabled={!!template} />
-                </Form.Item>
-              </Col>
-              <Col
-                span={7}
-                offset={1}
-                style={{ display: "flex", justifyContent: "left" }}
-              >
-                <Button
-                  type="text"
-                  onClick={() => {
-                    if (template) return;
-                    form.setFieldsValue({
-                      password: cryptoRandomPassword(),
-                    });
-                  }}
-                >
-                  [Generate]
-                </Button>
-              </Col>
-            </Row>
-          </Form.Item>
+                  <Button
+                    type="text"
+                    onClick={() => {
+                      if (template) return;
+                      form.setFieldsValue({
+                        password: cryptoRandomPassword(),
+                      });
+                    }}
+                  >
+                    [Generate]
+                  </Button>
+                </Col>
+              </Row>
+            </Form.Item>
+          </Tooltip>
 
           {/* Repo.env */}
           <Form.Item label="Env Vars">
