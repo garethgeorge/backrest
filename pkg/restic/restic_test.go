@@ -5,8 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/garethgeorge/backrest/test/helpers"
@@ -396,6 +399,11 @@ func TestResticRestore(t *testing.T) {
 	restorePath := t.TempDir()
 
 	testData := helpers.CreateTestData(t)
+	dirCount := strings.Count(testData, string(filepath.Separator))
+	if runtime.GOOS == "windows" {
+		// On Windows, the volume name is also included as a dir in the path.
+		dirCount += 1
+	}
 
 	snapshot, err := r.Backup(context.Background(), []string{testData}, nil)
 	if err != nil {
@@ -411,8 +419,9 @@ func TestResticRestore(t *testing.T) {
 	}
 
 	// should be 100 files + parent directories.
-	if summary.TotalFiles != 103 {
-		t.Errorf("wanted 101 files to be restored, got: %d", summary.TotalFiles)
+	fileCount := 100 + dirCount
+	if summary.TotalFiles != int64(fileCount) {
+		t.Errorf("wanted %d files to be restored, got: %d", fileCount, summary.TotalFiles)
 	}
 }
 
