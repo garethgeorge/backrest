@@ -5,6 +5,8 @@ import (
 	"os"
 	"path"
 	"testing"
+
+	acl "github.com/hectane/go-acl"
 )
 
 func CreateTestData(t *testing.T) string {
@@ -27,5 +29,9 @@ func CreateUnreadable(t *testing.T, path string) {
 	err := os.WriteFile(path, []byte("test data"), 0200)
 	if err != nil {
 		t.Fatalf("failed to create unreadable file: %v", err)
+	}
+
+	if err := acl.Chmod(path, 0200); err != nil {
+		t.Fatalf("failed to set file ACL: %v", err)
 	}
 }
