@@ -3,6 +3,7 @@ package hook
 import (
 	"bytes"
 	"os/exec"
+	"runtime"
 	"testing"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -28,6 +29,10 @@ func TestHookCommandInDefaultShell(t *testing.T) {
 }
 
 func TestHookCommandInBashShell(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping test on windows")
+	}
+
 	hook := Hook(v1.Hook{
 		Conditions: []v1.Hook_Condition{v1.Hook_CONDITION_SNAPSHOT_START},
 		Action: &v1.Hook_ActionCommand{
