@@ -127,12 +127,13 @@ func TestResticPartialBackup(t *testing.T) {
 	}
 
 	testDataUnreadable := t.TempDir()
-	helpers.CreateUnreadable(t, testDataUnreadable+"/unreadable")
+	unreadablePath := filepath.Join(testDataUnreadable, "unreadable")
+	helpers.CreateUnreadable(t, unreadablePath)
 
-	var entries []*BackupProgressEntry
+	var entries []BackupProgressEntry
 
 	summary, err := r.Backup(context.Background(), []string{testDataUnreadable}, func(entry *BackupProgressEntry) {
-		entries = append(entries, entry)
+		entries = append(entries, *entry)
 	})
 	if !errors.Is(err, ErrPartialBackup) {
 		t.Fatalf("wanted error to be partial backup, got: %v", err)
@@ -145,10 +146,14 @@ func TestResticPartialBackup(t *testing.T) {
 		t.Errorf("wanted 0 files, got: %d", summary.TotalFilesProcessed)
 	}
 
-	if !slices.ContainsFunc(entries, func(e *BackupProgressEntry) bool {
-		return e.MessageType == "error" && e.Item == testDataUnreadable+"/unreadable"
+	if !slices.ContainsFunc(entries, func(e BackupProgressEntry) bool {
+		return e.MessageType == "error" && e.Item == unreadablePath
 	}) {
-		t.Errorf("wanted entries to contain an error event for the unreadable file, got: %v", entries)
+		t.Errorf("wanted entries to contain an error event for the unreadable file (%s), but did not find it", unreadablePath)
+		t.Logf("entries:\n")
+		for _, entry := range entries {
+			t.Logf("%+v\n", entry)
+		}
 	}
 }
 
