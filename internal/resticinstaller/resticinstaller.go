@@ -41,7 +41,12 @@ func resticBinName() string {
 
 func resticDownloadURL(version string) string {
 	if runtime.GOOS == "windows" {
-		return fmt.Sprintf("https://github.com/restic/restic/releases/download/v%v/restic_%v_windows_%v.zip", version, version, runtime.GOARCH)
+		// restic is only built for 386 and amd64 on Windows, default to amd64 for other platforms (e.g. arm64.)
+		arch := "amd64"
+		if runtime.GOARCH == "386" || runtime.GOARCH == "amd64" {
+			arch = runtime.GOARCH
+		}
+		return fmt.Sprintf("https://github.com/restic/restic/releases/download/v%v/restic_%v_windows_%v.zip", version, version, arch)
 	}
 	return fmt.Sprintf("https://github.com/restic/restic/releases/download/v%v/restic_%v_%v_%v.bz2", version, version, runtime.GOOS, runtime.GOARCH)
 }
