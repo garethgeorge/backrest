@@ -466,6 +466,12 @@ func TestResticStats(t *testing.T) {
 }
 
 func toRepoPath(path string) string {
+	if runtime.GOOS != "windows" {
+		return path
+	}
+
+	// On Windows, the temp directory path needs to be converted to a repo path
+	// for restic to interpret it correctly in restore/snapshot operations.
 	sepIdx := strings.Index(path, string(filepath.Separator))
 	if sepIdx != 2 || path[1] != ':' {
 		return path
