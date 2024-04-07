@@ -3,77 +3,77 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
 #=================================================
-#	System Required: Linux
 #	Description: Backrest Helper
-#	Author: Nebulosa Cat
-#	WebSite: https://nebulosa-cat.moe
+#	Contributed-By: https://github.com/Nebulosa-Cat
 #=================================================
 
-userHomeDir=$( getent passwd "$USER" | cut -d: -f6 )
+OS=$(uname -s)
+if [[ "${OS}" != "Linux" ]]; then
+    echo -e "This script is only for Linux"
+    exit 1
+fi
 
-#Coler the Bash output
-Green_font_prefix="\033[32m" && Red_font_prefix="\033[31m" && Green_background_prefix="\033[42;37m" && Red_background_prefix="\033[41;37m" && Font_color_suffix="\033[0m" && Yellow_font_prefix="\033[0;33m"
+# Formatting Variables
+Green_font_prefix="\033[32m"
+Red_font_prefix="\033[31m"
+Green_background_prefix="\033[42;37m"
+Red_background_prefix="\033[41;37m"
+Font_color_suffix="\033[0m"
+Yellow_font_prefix="\033[0;33m"
 Info="${Green_font_prefix}[Info]${Font_color_suffix}"
 Error="${Red_font_prefix}[Error]${Font_color_suffix}"
-Warring="${Yellow_font_prefix}[Warring]${Font_color_suffix}"
+Warning="${Yellow_font_prefix}[Warning]${Font_color_suffix}"
 
 # Check Kernal Type
 sysArch() {
+    echo -e "${Info} Checking OS info..."
     uname=$(uname -m)
+
     if [[ "$uname" == "x86_64" ]]; then
         arch="x86_64"
-        elif [[ "$uname" == *"armv7"* ]] || [[ "$uname" == "armv6l" ]]; then
+    elif [[ "$uname" == "armv7" ]] || [[ "$uname" == "armv6l" ]]; then
         arch="armv6"
-        elif [[ "$uname" == *"armv8"* ]] || [[ "$uname" == "aarch64" ]]; then
+    elif [[ "$uname" == "armv8" ]] || [[ "$uname" == "aarch64" ]]; then
         arch="arm64"
     else
-        echo "${Error} Not Support Kernal" && exit 1
+        echo -e "${Error} Unsupported Architecture ${arch}" && exit 1
     fi
+
+    echo -e "${Info} You are running ${arch}."
 }
 
+
 Install() {
-    clear
-    echo -e "${Info} Checking Kernal Type..."
     sysArch
-    echo -e "${Info} Your Kernel Type is ${arch}."
-    cd "${userHomeDir}"
-    echo -e "${Info} Downloading Target Version..."
-    clear
+    tempdir=$(mktemp -d)
+    cd "${tempdir}"
+    echo -e  "${Info} Downloading Latest Version..."
     wget https://github.com/garethgeorge/backrest/releases/latest/download/backrest_Linux_${arch}.tar.gz
     rm -r ./backrest
     mkdir ./backrest
     tar -xzvf backrest_Linux_${arch}.tar.gz -C ./backrest
     cd backrest
-    clear
     echo -e "${Info} Starting Install Script..."
     ./install.sh
-    echo -e "${Info} Clear Install file..."
-    cd "${userHomeDir}"
-    rm -r ./backrest
-    rm backrest_Linux_${arch}.tar.gz
+    echo -e "${Info} Clearing temporary directory for install..."
+    rm -rf ${tempdir}
     echo -e "${Info} Install Completed!"
 }
 
 Uninstall(){
-    clear
-    echo -e "${Info} Checking Kernal Type..."
     sysArch
-    echo -e "${Info} Your Kernel Type is ${arch}."
-    cd "${userHomeDir}"
-    echo -e "${Info} Downloading Target Version..."
-    clear
+    tempdir=$(mktemp -d)
+    cd "${tempdir}"
+    echo -e "${Info} Downloading Latest Version of uninstaller..."
     wget https://github.com/garethgeorge/backrest/releases/latest/download/backrest_Linux_${arch}.tar.gz
     rm -r ./backrest
     mkdir ./backrest
     tar -xzvf backrest_Linux_${arch}.tar.gz -C ./backrest
     cd backrest
-    clear
     echo -e "${Info} Starting Uninstall Script..."
     ./uninstall.sh
-    echo -e "${Info} Clear Install file..."
-    cd "${userHomeDir}"
-    rm -r ./backrest
-    rm backrest_Linux_${arch}.tar.gz
+    echo -e "${Info} Clear temporary directory for uninstall script..."
+    rm -rf ${tempdir}
     echo -e "${Info} Uninstall Completed!"
 }
 
@@ -81,7 +81,7 @@ Start(){
     sudo systemctl start backrest
 }
 
-Stoper(){
+Stop(){
     sudo systemctl stop backrest
 }
 
@@ -95,7 +95,7 @@ Start_Menu(){
 =============================================
            Backrest Install Helper
 =============================================
- ${Red_font_prefix} Warring: This Script Only Work On Linux !${Font_color_suffix}
+ ${Red_font_prefix} Warning: This Script Only Work On Linux !${Font_color_suffix}
 ————————————————————————————————-------------
  ${Green_font_prefix} 0.${Font_color_suffix} Install / Update Backrest
  ${Green_font_prefix} 1.${Font_color_suffix} Uninstall Backrest
@@ -108,7 +108,7 @@ Start_Menu(){
  ${Green_font_prefix} 9.${Font_color_suffix} Exit Script
 =============================================
 "
-    read -e -p " Please Input [0-9]:" num
+    read -p " Please Input [0-9]:" num
     case "$num" in
         0)
             Install
@@ -120,28 +120,17 @@ Start_Menu(){
             Start
         ;;
         3)
-            Stoper
+            Stop
         ;;
         4)
             Status
-        ;;
-        5)
-            exit 1
-        ;;
-        6)
-            exit 1
-        ;;
-        7)
-            exit 1
-        ;;
-        8)
-            exit 1
         ;;
         9)
             exit 1
         ;;
         *)
-            echo "Please input correct number ${Yellow_font_prefix}[0-9]${Font_color_suffix}"
+            echo -e "${Error} Please enter a correct number [0-9]"
+            exit 1
         ;;
     esac
 }
