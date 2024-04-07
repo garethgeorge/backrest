@@ -306,7 +306,6 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 		// an empty path can trigger very expensive operations (e.g. iterates all files in the snapshot)
 		return nil, nil, errors.New("path must not be empty")
 	}
-	path = toPathFilter(path)
 
 	cmd := r.commandWithContext(ctx, []string{"ls", "--json", snapshot, path}, opts...)
 	output := bytes.NewBuffer(nil)

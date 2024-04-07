@@ -255,7 +255,7 @@ func TestLs(t *testing.T) {
 		t.Fatalf("failed to backup and create new snapshot: %v", err)
 	}
 
-	_, entries, err := r.ListDirectory(context.Background(), snapshot.SnapshotId, testData)
+	_, entries, err := r.ListDirectory(context.Background(), snapshot.SnapshotId, toRepoPath(testData))
 
 	if err != nil {
 		t.Fatalf("failed to list directory: %v", err)
@@ -463,4 +463,16 @@ func TestResticStats(t *testing.T) {
 	if stats.TotalBlobCount == 0 {
 		t.Errorf("wanted non-zero total blob count, got: %d", stats.TotalBlobCount)
 	}
+}
+
+func toRepoPath(path string) string {
+	sepIdx := strings.Index(path, string(filepath.Separator))
+	if sepIdx != 2 || path[1] != ':' {
+		return path
+	}
+	return filepath.ToSlash(filepath.Join(
+		string(filepath.Separator), // leading slash
+		string(path[0]),            // drive volume
+		path[3:],                   // path
+	))
 }
