@@ -153,10 +153,17 @@ func TestSchedulerWait(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create orchestrator: %v", err)
 	}
+	orch.taskQueue.Reset()
+
 	ran := make(chan struct{})
+	didRun := false
 	orch.ScheduleTask(&testTask{
 		onNext: func(t time.Time) *time.Time {
-			t = t.Add(150 * time.Millisecond)
+			if didRun {
+				return nil
+			}
+			t = t.Add(100 * time.Millisecond)
+			didRun = true
 			return &t
 		},
 		onRun: func() error {
