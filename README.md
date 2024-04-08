@@ -158,6 +158,7 @@ Type=simple
 User=<your linux user>
 Group=<your linux group>
 ExecStart=/usr/local/bin/backrest
+Environment="BACKREST_PORT=127.0.0.1:9898"
 
 [Install]
 WantedBy=multi-user.target
