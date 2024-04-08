@@ -60,6 +60,5 @@ jobs:
       - name: Build
         run: go build ./...
 
-      - name: Targeted Test
-        run: |
-          go test ./internal/api
+      - name: Test
+        run: go test ./...
