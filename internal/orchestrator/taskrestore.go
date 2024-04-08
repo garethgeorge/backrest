@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -81,18 +82,26 @@ func (t *RestoreTask) Run(ctx context.Context) error {
 			return fmt.Errorf("couldn't get repo %q: %w", t.restoreOpts.RepoId, err)
 		}
 
+		var sendWg sync.WaitGroup
 		lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
 		summary, err := repo.Restore(ctx, t.restoreOpts.SnapshotId, t.restoreOpts.Path, t.restoreOpts.Target, func(entry *v1.RestoreProgressEntry) {
-			if time.Since(lastSent) < 250*time.Millisecond {
+			sendWg.Wait()
+			if time.Since(lastSent) < 1*time.Second {
 				return
 			}
 			lastSent = time.Now()
 
 			zap.S().Infof("restore progress: %v", entry)
+
 			forgetOp.OperationRestore.Status = entry
-			if err := t.orch.OpLog.Update(op); err != nil {
-				zap.S().Errorf("failed to update oplog with progress for restore: %v", err)
-			}
+
+			sendWg.Add(1)
+			go func() {
+				if err := t.orch.OpLog.Update(op); err != nil {
+					zap.S().Errorf("failed to update oplog with progress for restore: %v", err)
+				}
+				sendWg.Done()
+			}()
 		})
 		if err != nil {
 			return fmt.Errorf("restore failed: %w", err)
