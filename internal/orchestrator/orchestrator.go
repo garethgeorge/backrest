@@ -13,6 +13,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/queue"
 	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -40,14 +41,10 @@ type Orchestrator struct {
 	config       *v1.Config
 	OpLog        *oplog.OpLog
 	repoPool     *resticRepoPool
-	taskQueue    taskQueue
+	taskQueue    *queue.TimePriorityQueue[scheduledTask]
 	hookExecutor *hook.HookExecutor
 	logStore     *rotatinglog.RotatingLog
-
-	// now for the purpose of testing; used by Run() to get the current time.
-	now func() time.Time
-
-	runningTask atomic.Pointer[taskExecutionInfo]
+	runningTask  atomic.Pointer[taskExecutionInfo]
 }
 
 func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) (*Orchestrator, error) {
@@ -59,10 +56,8 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 		OpLog:  oplog,
 		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
-		repoPool: newResticRepoPool(resticBin, &config.MemoryStore{Config: cfg}),
-		taskQueue: newTaskQueue(func() time.Time {
-			return o.curTime()
-		}),
+		repoPool:     newResticRepoPool(resticBin, &config.MemoryStore{Config: cfg}),
+		taskQueue:    queue.NewTimePriorityQueue[scheduledTask](),
 		hookExecutor: hook.NewHookExecutor(oplog, logStore),
 		logStore:     logStore,
 	}
@@ -104,13 +99,6 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 	return o, nil
 }
 
-func (o *Orchestrator) curTime() time.Time {
-	if o.now != nil {
-		return o.now()
-	}
-	return time.Now()
-}
-
 func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -121,12 +109,13 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 		return fmt.Errorf("failed to update repo pool config: %w", err)
 	}
 
-	return o.ScheduleDefaultTasks(cfg)
+	return o.scheduleDefaultTasks(cfg)
 }
 
 // rescheduleTasksIfNeeded checks if any tasks need to be rescheduled based on config changes.
-func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
+func (o *Orchestrator) scheduleDefaultTasks(config *v1.Config) error {
 	zap.L().Info("scheduling default tasks, waiting for task queue reset.")
+
 	removedTasks := o.taskQueue.Reset()
 	for _, t := range removedTasks {
 		if err := t.task.Cancel(v1.OperationStatus_STATUS_SYSTEM_CANCELLED); err != nil {
@@ -195,27 +184,21 @@ func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationSta
 	}
 
 	tasks := o.taskQueue.Reset()
-	remaining := make([]scheduledTask, 0, len(tasks))
-
 	for _, t := range tasks {
 		if t.task.OperationId() == operationId {
 			if err := t.task.Cancel(status); err != nil {
 				return fmt.Errorf("cancel task %q: %w", t.task.Name(), err)
 			}
 
-			// check if the task has a next after it's current 'runAt' time, if it does then we will schedule the next run.
-			if nextTime := t.task.Next(t.runAt); nextTime != nil {
-				remaining = append(remaining, scheduledTask{
-					task:  t.task,
-					runAt: *nextTime,
-				})
+			nextTime := t.task.Next(t.runAt)
+			if nextTime == nil {
+				continue
 			}
-		} else {
-			remaining = append(remaining, *t)
-		}
-	}
 
-	o.taskQueue.Push(remaining...)
+			t.runAt = *nextTime
+		}
+		o.taskQueue.Enqueue(t.runAt, t.priority, t) // requeue the task.
+	}
 
 	return nil
 }
@@ -231,7 +214,7 @@ func (o *Orchestrator) Run(mainCtx context.Context) {
 		}
 
 		t := o.taskQueue.Dequeue(mainCtx)
-		if t == nil {
+		if t.task == nil {
 			continue
 		}
 
@@ -267,12 +250,12 @@ func (o *Orchestrator) Run(mainCtx context.Context) {
 }
 
 func (o *Orchestrator) ScheduleTask(t Task, priority int, callbacks ...func(error)) {
-	nextRun := t.Next(o.curTime())
+	nextRun := t.Next(time.Now())
 	if nextRun == nil {
 		return
 	}
 	zap.L().Info("scheduling task", zap.String("task", t.Name()), zap.String("runAt", nextRun.Format(time.RFC3339)))
-	o.taskQueue.Push(scheduledTask{
+	o.taskQueue.Enqueue(*nextRun, priority, scheduledTask{
 		task:      t,
 		runAt:     *nextRun,
 		priority:  priority,
@@ -340,4 +323,12 @@ func (rp *resticRepoPool) GetRepo(repoId string) (repo *RepoOrchestrator, err er
 type taskExecutionInfo struct {
 	operationId int64
 	cancel      func()
+}
+
+type scheduledTask struct {
+	task      Task
+	runAt     time.Time
+	priority  int
+	callbacks []func(error)
+	config    *v1.Config
 }

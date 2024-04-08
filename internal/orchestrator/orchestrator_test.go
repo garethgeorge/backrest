@@ -149,19 +149,14 @@ func TestSchedulerWait(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	curTime := time.Now()
 	orch, err := NewOrchestrator("", config.NewDefaultConfig(), nil, nil)
 	if err != nil {
 		t.Fatalf("failed to create orchestrator: %v", err)
 	}
-	orch.now = func() time.Time {
-		return curTime
-	}
-
 	ran := make(chan struct{})
 	orch.ScheduleTask(&testTask{
 		onNext: func(t time.Time) *time.Time {
-			t = t.Add(5 * time.Millisecond)
+			t = t.Add(150 * time.Millisecond)
 			return &t
 		},
 		onRun: func() error {
@@ -180,12 +175,10 @@ func TestSchedulerWait(t *testing.T) {
 		t.Errorf("expected task to not run yet")
 	}
 
-	curTime = time.Now()
-
 	// Schedule another task just to trigger a queue refresh
 	orch.ScheduleTask(&testTask{
 		onNext: func(t time.Time) *time.Time {
-			t = t.Add(5 * time.Millisecond)
+			t = t.Add(1000 * time.Second)
 			return &t
 		},
 		onRun: func() error {
@@ -195,7 +188,7 @@ func TestSchedulerWait(t *testing.T) {
 	}, TaskPriorityDefault)
 
 	select {
-	case <-time.NewTimer(1000 * time.Millisecond).C:
+	case <-time.NewTimer(200 * time.Millisecond).C:
 		t.Errorf("expected task to run")
 	case <-ran:
 	}
