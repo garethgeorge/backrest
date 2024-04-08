@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"sync"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -113,10 +114,11 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 		Task: t.Name(),
 	})
 
+	var sendWg sync.WaitGroup
 	lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
 	var lastFiles []string
 	summary, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
-
+		sendWg.Wait()
 		if entry.MessageType == "status" {
 			// prevents flickering output when a status entry omits the CurrentFiles property. Largely cosmetic.
 			if len(entry.CurrentFiles) == 0 {
@@ -144,14 +146,18 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 			zap.S().Warnf("unexpected message type %q in backup progress entry", entry.MessageType)
 		}
 
-		if time.Since(lastSent) < 500*time.Millisecond {
+		if time.Since(lastSent) < 1*time.Second {
 			return
 		}
 		lastSent = time.Now()
 
-		if err := orchestrator.OpLog.Update(op); err != nil {
-			zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
-		}
+		sendWg.Add(1)
+		go func() {
+			if err := orchestrator.OpLog.Update(op); err != nil {
+				zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
+			}
+			sendWg.Done()
+		}()
 	})
 
 	vars := hook.HookVars{
