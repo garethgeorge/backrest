@@ -27,6 +27,7 @@ Type=simple
 User=$(whoami)
 Group=$(whoami)
 ExecStart=/usr/local/bin/backrest
+Environment="BACKREST_PORT=127.0.0.1:9898"
 
 [Install]
 WantedBy=multi-user.target
@@ -60,6 +61,8 @@ create_launchd_plist() {
     <dict>
         <key>PATH</key>
         <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>BACKREST_PORT</key>
+        <string>127.0.0.1:9898</string>
     </dict>
 </dict>
 </plist>
