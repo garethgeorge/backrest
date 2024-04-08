@@ -70,7 +70,7 @@ func (c *CachingValidatingStore) Get() (*v1.Config, error) {
 
 	// Check if we need to migrate
 	if config.Version < migrations.CurrentVersion {
-		zap.S().Infof("Migrating config from version %d to %d", config.Version, migrations.CurrentVersion)
+		zap.S().Infof("migrating config from version %d to %d", config.Version, migrations.CurrentVersion)
 		if err := migrations.ApplyMigrations(config); err != nil {
 			return nil, err
 		}

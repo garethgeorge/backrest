@@ -182,7 +182,7 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 		forgotten = append(forgotten, snapshotProto)
 	}
 
-	zap.L().Debug("Forgot snapshots", zap.String("plan", plan.Id), zap.Int("count", len(forgotten)), zap.Any("policy", policy))
+	zap.L().Debug("forget snapshots", zap.String("plan", plan.Id), zap.Int("count", len(forgotten)), zap.Any("policy", policy))
 
 	return forgotten, nil
 }
@@ -191,7 +191,7 @@ func (r *RepoOrchestrator) ForgetSnapshot(ctx context.Context, snapshotId string
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.l.Debug("Forget snapshot with ID", zap.String("snapshot", snapshotId))
+	r.l.Debug("forget snapshot with ID", zap.String("snapshot", snapshotId), zap.String("repo", r.repoConfig.Id))
 	return r.repo.ForgetSnapshot(ctx, snapshotId)
 }
 
@@ -213,7 +213,7 @@ func (r *RepoOrchestrator) Prune(ctx context.Context, output io.Writer) error {
 		opts = append(opts, restic.WithFlags("--max-unused", fmt.Sprintf("%v%%", policy.MaxUnusedPercent)))
 	}
 
-	r.l.Debug("Prune snapshots")
+	r.l.Debug("prune snapshots")
 	err := r.repo.Prune(ctx, output, opts...)
 	if err != nil {
 		return fmt.Errorf("prune snapshots for repo %v: %w", r.repoConfig.Id, err)
@@ -225,7 +225,7 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, path 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.l.Debug("Restore snapshot", zap.String("snapshot", snapshotId), zap.String("target", target))
+	r.l.Debug("restore snapshot", zap.String("snapshot", snapshotId), zap.String("target", target))
 
 	var opts []restic.GenericOption
 	opts = append(opts, restic.WithFlags("--target", target))
@@ -254,7 +254,7 @@ func (r *RepoOrchestrator) UnlockIfAutoEnabled(ctx context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	zap.L().Debug("AutoUnlocking repo", zap.String("repo", r.repoConfig.Id))
+	zap.L().Debug("auto-unlocking repo", zap.String("repo", r.repoConfig.Id))
 
 	return r.repo.Unlock(ctx)
 }
@@ -263,7 +263,7 @@ func (r *RepoOrchestrator) Unlock(ctx context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.l.Debug("Unlocking repo")
+	r.l.Debug("unlocking repo", zap.String("repo", r.repoConfig.Id))
 	r.repo.Unlock(ctx)
 
 	return nil
@@ -273,7 +273,7 @@ func (r *RepoOrchestrator) Stats(ctx context.Context) (*v1.RepoStats, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.l.Debug("Get Stats")
+	r.l.Debug("getting repo stats", zap.String("repo", r.repoConfig.Id))
 	stats, err := r.repo.Stats(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("stats for repo %v: %w", r.repoConfig.Id, err)

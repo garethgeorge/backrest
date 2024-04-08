@@ -123,13 +123,13 @@ func downloadFile(url string, downloadPath string) (string, error) {
 	hash := sha256.Sum256(body)
 
 	if strings.HasSuffix(url, ".bz2") {
-		zap.S().Infof("Decompressing bz2 archive (size=%v)...", len(body))
+		zap.S().Infof("decompressing bz2 archive (size=%v)...", len(body))
 		body, err = io.ReadAll(bzip2.NewReader(bytes.NewReader(body)))
 		if err != nil {
 			return "", fmt.Errorf("bz2 decompress body: %w", err)
 		}
 	} else if strings.HasSuffix(url, ".zip") {
-		zap.S().Infof("Decompressing zip archive (size=%v)...", len(body))
+		zap.S().Infof("decompressing zip archive (size=%v)...", len(body))
 
 		archive, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
 		if err != nil {
@@ -262,11 +262,11 @@ func FindOrInstallResticBinary() (string, error) {
 		}
 		didTryInstall = true
 
-		zap.S().Infof("Installing restic %v to %v...", resticInstallPath, RequiredResticVersion)
+		zap.S().Infof("installing restic %v to %v...", resticInstallPath, RequiredResticVersion)
 		if err := installResticIfNotExists(resticInstallPath); err != nil {
 			return "", fmt.Errorf("install restic: %w", err)
 		}
-		zap.S().Infof("Installed restic %v", RequiredResticVersion)
+		zap.S().Infof("installed restic %v", RequiredResticVersion)
 		removeOldVersions(path.Dir(resticInstallPath))
 	}
 

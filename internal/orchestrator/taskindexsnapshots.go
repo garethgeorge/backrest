@@ -145,7 +145,7 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, repoI
 	}
 
 	// Print stats at the end of indexing.
-	zap.L().Debug("Indexed snapshots",
+	zap.L().Debug("indexed snapshots",
 		zap.String("repo", repoId),
 		zap.Duration("duration", time.Since(startTime)),
 		zap.Int("alreadyIndexed", len(foundIds)),
@@ -174,7 +174,7 @@ func indexCurrentSnapshotIdsForRepo(log *oplog.OpLog, repoId string) (map[string
 	}); err != nil {
 		return nil, err
 	}
-	zap.S().Debugf("Indexed known (and not forgotten) snapshot IDs for plan %v in %v", repoId, time.Since(startTime))
+	zap.S().Debugf("indexed known snapshot IDs for repo %v in %v", repoId, time.Since(startTime))
 	return knownIds, nil
 }
 

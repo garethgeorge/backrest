@@ -73,7 +73,7 @@ func (t *TaskWithOperation) runWithOpAndContext(ctx context.Context, do func(ctx
 				errors.Join(err, fmt.Errorf("failed to write log to logstore: %w", e))
 			}
 			t.op.Logref = ref
-			zap.S().Debug("wrote operation log to %v", ref)
+			zap.S().Debugf("wrote operation log to %v", ref)
 		}
 
 		return err
