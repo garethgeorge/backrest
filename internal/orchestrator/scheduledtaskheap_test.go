@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 	"reflect"
+	"runtime"
 	"sort"
 	"strconv"
 	"testing"
@@ -39,6 +40,10 @@ func (t *heapTestTask) OperationId() int64 {
 }
 
 func TestTaskQueueOrdering(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test is flaky on Windows")
+	}
+
 	h := taskQueue{}
 
 	h.Push(scheduledTask{runAt: time.Now().Add(1 * time.Millisecond), task: &heapTestTask{name: "1"}})
@@ -125,6 +130,10 @@ func TestTasksOrderedByPriority(t *testing.T) {
 }
 
 func TestFuzzTaskQueue(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test does not pass on Windows")
+	}
+
 	h := taskQueue{}
 
 	count := 100

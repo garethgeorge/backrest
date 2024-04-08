@@ -5,8 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/garethgeorge/backrest/test/helpers"
@@ -124,12 +127,13 @@ func TestResticPartialBackup(t *testing.T) {
 	}
 
 	testDataUnreadable := t.TempDir()
-	helpers.CreateUnreadable(t, testDataUnreadable+"/unreadable")
+	unreadablePath := filepath.Join(testDataUnreadable, "unreadable")
+	helpers.CreateUnreadable(t, unreadablePath)
 
-	var entries []*BackupProgressEntry
+	var entries []BackupProgressEntry
 
 	summary, err := r.Backup(context.Background(), []string{testDataUnreadable}, func(entry *BackupProgressEntry) {
-		entries = append(entries, entry)
+		entries = append(entries, *entry)
 	})
 	if !errors.Is(err, ErrPartialBackup) {
 		t.Fatalf("wanted error to be partial backup, got: %v", err)
@@ -142,10 +146,14 @@ func TestResticPartialBackup(t *testing.T) {
 		t.Errorf("wanted 0 files, got: %d", summary.TotalFilesProcessed)
 	}
 
-	if !slices.ContainsFunc(entries, func(e *BackupProgressEntry) bool {
-		return e.MessageType == "error" && e.Item == testDataUnreadable+"/unreadable"
+	if !slices.ContainsFunc(entries, func(e BackupProgressEntry) bool {
+		return e.MessageType == "error" && e.Item == unreadablePath
 	}) {
-		t.Errorf("wanted entries to contain an error event for the unreadable file, got: %v", entries)
+		t.Errorf("wanted entries to contain an error event for the unreadable file (%s), but did not find it", unreadablePath)
+		t.Logf("entries:\n")
+		for _, entry := range entries {
+			t.Logf("%+v\n", entry)
+		}
 	}
 }
 
@@ -247,7 +255,7 @@ func TestLs(t *testing.T) {
 		t.Fatalf("failed to backup and create new snapshot: %v", err)
 	}
 
-	_, entries, err := r.ListDirectory(context.Background(), snapshot.SnapshotId, testData)
+	_, entries, err := r.ListDirectory(context.Background(), snapshot.SnapshotId, toRepoPath(testData))
 
 	if err != nil {
 		t.Fatalf("failed to list directory: %v", err)
@@ -396,6 +404,11 @@ func TestResticRestore(t *testing.T) {
 	restorePath := t.TempDir()
 
 	testData := helpers.CreateTestData(t)
+	dirCount := strings.Count(testData, string(filepath.Separator))
+	if runtime.GOOS == "windows" {
+		// On Windows, the volume name is also included as a dir in the path.
+		dirCount += 1
+	}
 
 	snapshot, err := r.Backup(context.Background(), []string{testData}, nil)
 	if err != nil {
@@ -411,8 +424,9 @@ func TestResticRestore(t *testing.T) {
 	}
 
 	// should be 100 files + parent directories.
-	if summary.TotalFiles != 103 {
-		t.Errorf("wanted 101 files to be restored, got: %d", summary.TotalFiles)
+	fileCount := 100 + dirCount
+	if summary.TotalFiles != int64(fileCount) {
+		t.Errorf("wanted %d files to be restored, got: %d", fileCount, summary.TotalFiles)
 	}
 }
 
@@ -449,4 +463,22 @@ func TestResticStats(t *testing.T) {
 	if stats.TotalBlobCount == 0 {
 		t.Errorf("wanted non-zero total blob count, got: %d", stats.TotalBlobCount)
 	}
+}
+
+func toRepoPath(path string) string {
+	if runtime.GOOS != "windows" {
+		return path
+	}
+
+	// On Windows, the temp directory path needs to be converted to a repo path
+	// for restic to interpret it correctly in restore/snapshot operations.
+	sepIdx := strings.Index(path, string(filepath.Separator))
+	if sepIdx != 2 || path[1] != ':' {
+		return path
+	}
+	return filepath.ToSlash(filepath.Join(
+		string(filepath.Separator), // leading slash
+		string(path[0]),            // drive volume
+		path[3:],                   // path
+	))
 }

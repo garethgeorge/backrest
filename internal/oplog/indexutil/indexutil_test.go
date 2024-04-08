@@ -13,6 +13,7 @@ func TestIndexing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error opening database: %s", err)
 	}
+	defer db.Close()
 
 	if err := db.Update(func(tx *bbolt.Tx) error {
 		b, err := tx.CreateBucket([]byte("test"))
@@ -51,6 +52,7 @@ func TestIndexJoin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error opening database: %s", err)
 	}
+	defer db.Close()
 
 	if err := db.Update(func(tx *bbolt.Tx) error {
 		b, err := tx.CreateBucket([]byte("test"))
