@@ -117,19 +117,19 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		return nil, fmt.Errorf("failed to init repo: %w", err)
 	}
 
-	zap.L().Debug("Updating config")
+	zap.L().Debug("updating config", zap.Int32("version", c.Version))
 	if err := s.config.Update(c); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
 
-	zap.L().Debug("Applying config")
+	zap.L().Debug("applying config", zap.Int32("version", c.Version))
 	s.orchestrator.ApplyConfig(c)
 
 	// index snapshots for the newly added repository.
-	zap.L().Debug("Scheduling index snapshots task")
+	zap.L().Debug("scheduling index snapshots task")
 	s.orchestrator.ScheduleTask(orchestrator.NewOneoffIndexSnapshotsTask(s.orchestrator, req.Msg.Id, time.Now()), orchestrator.TaskPriorityInteractive+orchestrator.TaskPriorityIndexSnapshots)
 
-	zap.L().Debug("Done add repo")
+	zap.L().Debug("done add repo")
 	return connect.NewResponse(c), nil
 }
 

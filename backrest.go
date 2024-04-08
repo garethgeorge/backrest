@@ -37,11 +37,11 @@ func main() {
 
 	resticPath, err := resticinstaller.FindOrInstallResticBinary()
 	if err != nil {
-		zap.S().Fatalf("Error finding or installing restic: %v", err)
+		zap.S().Fatalf("error finding or installing restic: %v", err)
 	}
 
 	if *InstallDepsOnly {
-		zap.S().Info("Dependencies installed, exiting")
+		zap.S().Info("dependencies installed, exiting")
 		return
 	}
 
@@ -52,7 +52,7 @@ func main() {
 	configStore := createConfigProvider()
 	cfg, err := configStore.Get()
 	if err != nil {
-		zap.S().Fatalf("Error loading config: %v", err)
+		zap.S().Fatalf("error loading config: %v", err)
 	}
 
 	// Create the authenticator
@@ -65,23 +65,23 @@ func main() {
 	oplog, err := oplog.NewOpLog(oplogFile)
 	if err != nil {
 		if !errors.Is(err, bbolt.ErrTimeout) {
-			zap.S().Fatalf("Timeout while waiting to open database, is the database open elsewhere?")
+			zap.S().Fatalf("timeout while waiting to open database, is the database open elsewhere?")
 		}
-		zap.S().Warnf("Operation log may be corrupted, if errors recur delete the file %q and restart. Your backups stored in your repos are safe.", oplogFile)
-		zap.S().Fatalf("Error creating oplog : %v", err)
+		zap.S().Warnf("operation log may be corrupted, if errors recur delete the file %q and restart. Your backups stored in your repos are safe.", oplogFile)
+		zap.S().Fatalf("error creating oplog : %v", err)
 	}
 	defer oplog.Close()
 
 	// Create rotating log storage
 	logStore := rotatinglog.NewRotatingLog(path.Join(config.DataDir(), "rotatinglogs"), 30) // 30 days of logs
 	if err != nil {
-		zap.S().Fatalf("Error creating rotating log storage: %v", err)
+		zap.S().Fatalf("error creating rotating log storage: %v", err)
 	}
 
 	// Create orchestrator and start task loop.
 	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, oplog, logStore)
 	if err != nil {
-		zap.S().Fatalf("Error creating orchestrator: %v", err)
+		zap.S().Fatalf("error creating orchestrator: %v", err)
 	}
 
 	wg.Add(1)
@@ -112,13 +112,13 @@ func main() {
 		Handler: h2c.NewHandler(mux, &http2.Server{}), // h2c is HTTP/2 without TLS for grpc-connect support.
 	}
 
-	zap.S().Infof("Starting web server %v", server.Addr)
+	zap.S().Infof("starting web server %v", server.Addr)
 	go func() {
 		<-ctx.Done()
 		server.Shutdown(context.Background())
 	}()
 	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		zap.L().Error("Error starting server", zap.Error(err))
+		zap.L().Error("error starting server", zap.Error(err))
 	}
 	zap.L().Info("HTTP gateway shutdown")
 
@@ -157,20 +157,20 @@ func getSecret() []byte {
 	secretFile := path.Join(config.DataDir(), "jwt-secret")
 	data, err := os.ReadFile(secretFile)
 	if err == nil {
-		zap.L().Debug("Loaded auth secret from file")
+		zap.L().Debug("loading auth secret from file")
 		return data
 	}
 
-	zap.L().Info("Generating new auth secret")
+	zap.L().Info("generating new auth secret")
 	secret := make([]byte, 64)
 	if n, err := rand.Read(secret); err != nil || n != 64 {
-		zap.S().Fatalf("Error generating secret: %v", err)
+		zap.S().Fatalf("error generating secret: %v", err)
 	}
 	if err := os.MkdirAll(config.DataDir(), 0700); err != nil {
-		zap.S().Fatalf("Error creating data directory: %v", err)
+		zap.S().Fatalf("error creating data directory: %v", err)
 	}
 	if err := os.WriteFile(secretFile, secret, 0600); err != nil {
-		zap.S().Fatalf("Error writing secret to file: %v", err)
+		zap.S().Fatalf("error writing secret to file: %v", err)
 	}
 	return secret
 }

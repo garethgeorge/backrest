@@ -8,6 +8,7 @@ import (
 
 // TestTPQEnqueue tests that enqueued elements are retruned highest priority first.
 func TestTPQPriority(t *testing.T) {
+	t.Parallel()
 	tpq := NewTimePriorityQueue[int]()
 
 	now := time.Now().Add(-time.Second)
@@ -28,6 +29,7 @@ func TestTPQPriority(t *testing.T) {
 }
 
 func TestTPQMixedReadinessStates(t *testing.T) {
+	t.Parallel()
 	tpq := NewTimePriorityQueue[int]()
 
 	now := time.Now()
