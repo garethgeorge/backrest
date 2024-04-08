@@ -48,6 +48,17 @@ func (t *TimeQueue[T]) Peek() T {
 	return t.heap.Peek().v
 }
 
+func (t *TimeQueue[T]) Reset() []T {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	var res []T
+	for t.heap.Len() > 0 {
+		res = append(res, heap.Pop(&t.heap).(timeQueueEntry[T]).v)
+	}
+	return res
+}
+
 func (t *TimeQueue[T]) Dequeue(ctx context.Context) T {
 	t.dequeueMu.Lock()
 	defer t.dequeueMu.Unlock()

@@ -37,6 +37,19 @@ func (t *TimePriorityQueue[T]) Peek() T {
 	return t.tqueue.Peek().v
 }
 
+func (t *TimePriorityQueue[T]) Reset() []T {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	var res []T
+	for t.ready.Len() > 0 {
+		res = append(res, heap.Pop(&t.ready).(priorityEntry[T]).v)
+	}
+	for t.tqueue.Len() > 0 {
+		res = append(res, heap.Pop(&t.tqueue.heap).(timeQueueEntry[priorityEntry[T]]).v.v)
+	}
+	return res
+}
+
 func (t *TimePriorityQueue[T]) Enqueue(at time.Time, priority int, v T) {
 	t.mu.Lock()
 	t.tqueue.Enqueue(at, priorityEntry[T]{at, priority, v})
