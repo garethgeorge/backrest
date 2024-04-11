@@ -59,7 +59,7 @@ func (t *TimePriorityQueue[T]) Enqueue(at time.Time, priority int, v T) {
 func (t *TimePriorityQueue[T]) Dequeue(ctx context.Context) T {
 	t.mu.Lock()
 	for {
-		for t.tqueue.Len() > 0 {
+		for t.tqueue.heap.Len() > 0 {
 			thead := t.tqueue.Peek() // peek at the head of the time queue
 			if thead.at.Before(time.Now()) {
 				tqe := heap.Pop(&t.tqueue.heap).(timeQueueEntry[priorityEntry[T]])

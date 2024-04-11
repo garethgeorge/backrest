@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -13,7 +14,7 @@ type TimeQueue[T any] struct {
 
 	dequeueMu sync.Mutex
 	mu        sync.Mutex
-	notify    chan struct{}
+	notify    atomic.Pointer[chan struct{}]
 }
 
 func NewTimeQueue[T any]() *TimeQueue[T] {
@@ -25,10 +26,13 @@ func NewTimeQueue[T any]() *TimeQueue[T] {
 func (t *TimeQueue[T]) Enqueue(at time.Time, v T) {
 	t.mu.Lock()
 	heap.Push(&t.heap, timeQueueEntry[T]{at, v})
-	if t.notify != nil {
-		t.notify <- struct{}{}
-	}
 	t.mu.Unlock()
+	if n := t.notify.Load(); n != nil {
+		select {
+		case *n <- struct{}{}:
+		default:
+		}
+	}
 }
 
 func (t *TimeQueue[T]) Len() int {
@@ -63,29 +67,23 @@ func (t *TimeQueue[T]) Dequeue(ctx context.Context) T {
 	t.dequeueMu.Lock()
 	defer t.dequeueMu.Unlock()
 
-	t.mu.Lock()
-	t.notify = make(chan struct{}, 1)
-	defer func() {
-		t.mu.Lock()
-		close(t.notify)
-		t.notify = nil
-		t.mu.Unlock()
-	}()
-	t.mu.Unlock()
+	notify := make(chan struct{}, 1)
+	t.notify.Store(&notify)
+	defer t.notify.Store(nil)
 
 	for {
 		t.mu.Lock()
-
 		var wait time.Duration
-		if t.heap.Len() == 0 {
-			wait = 3 * time.Minute
-		} else {
+		if t.heap.Len() > 0 {
 			val := t.heap.Peek()
 			wait = time.Until(val.at)
 			if wait <= 0 {
-				t.mu.Unlock()
+				defer t.mu.Unlock()
 				return heap.Pop(&t.heap).(timeQueueEntry[T]).v
 			}
+		}
+		if wait == 0 || wait > 3*time.Minute {
+			wait = 3 * time.Minute
 		}
 		t.mu.Unlock()
 
@@ -101,7 +99,7 @@ func (t *TimeQueue[T]) Dequeue(ctx context.Context) T {
 			}
 			t.mu.Unlock()
 			return val.v
-		case <-t.notify: // new task was added, loop again to ensure we have the earliest task.
+		case <-notify: // new task was added, loop again to ensure we have the earliest task.
 			if !timer.Stop() {
 				<-timer.C
 			}
