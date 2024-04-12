@@ -92,6 +92,10 @@ func (t *TimeQueue[T]) Dequeue(ctx context.Context) T {
 		select {
 		case <-timer.C:
 			t.mu.Lock()
+			if len(t.heap) == 0 {
+				t.mu.Unlock()
+				continue
+			}
 			val, ok := heap.Pop(&t.heap).(timeQueueEntry[T])
 			if !ok || val.at.After(time.Now()) {
 				t.mu.Unlock()
