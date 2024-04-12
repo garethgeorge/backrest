@@ -13,7 +13,6 @@ env:
 
 before:
   hooks:
-    - bash -c "echo {{.Version}} > /tmp/version.txt"
     - go mod tidy
     - npm --prefix webui install
     - sh -c "GOOS=linux BACKREST_BUILD_VERSION={{.Version}} go generate ./..."
@@ -131,6 +130,7 @@ docker_manifests:
 brews:
   - name: backrest
     homepage: https://github.com/garethgeorge/backrest
+    description: "Backrest is a web UI and orchestrator for restic backup."
 
     url_template: "https://github.com/garethgeorge/backrest/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
 
@@ -142,7 +142,7 @@ brews:
       owner: garethgeorge
       name: homebrew-backrest-tap
       branch: main
-      token: "{{ .Env.GH_BREW_TOKEN }}"
+      token: "{{ .Env.HOMEBREW_GITHUB_TOKEN }}"
 
     service: |
       run opt_bin/"backrest"
