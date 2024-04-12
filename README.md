@@ -105,6 +105,15 @@ services:
 
 ## Running on Linux
 
+### Arch Linux
+
+```shell
+paru -Sy backrest
+sudo systemctl enable --now backreset@$USER.service
+```
+
+### Download release
+
 Download a release from the [releases page](https://github.com/garethgeorge/backrest/releases)
 
 #### Using systemd with the install script (Recommended)
