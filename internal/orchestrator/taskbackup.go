@@ -108,11 +108,30 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 		return fmt.Errorf("couldn't get repo %q: %w", plan.Repo, err)
 	}
 
-	orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, "", []v1.Hook_Condition{
+	// Run start hooks e.g. preflight checks and backup start notifications.
+	if err := orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, []v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_START,
 	}, hook.HookVars{
 		Task: t.Name(),
-	})
+	}); err != nil {
+		var cancelErr *hook.HookErrorRequestCancel
+		if errors.As(err, &cancelErr) {
+			op.Status = v1.OperationStatus_STATUS_USER_CANCELLED // user visible cancelled status
+			op.DisplayMessage = err.Error()
+			return nil
+		}
+
+		// If the snapshot start hook fails we trigger error notification hooks.
+		retErr := fmt.Errorf("hook failed: %w", err)
+		_ = orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, []v1.Hook_Condition{
+			v1.Hook_CONDITION_ANY_ERROR,
+		}, hook.HookVars{
+			Task:  t.Name(),
+			Error: retErr.Error(),
+		})
+
+		return retErr
+	}
 
 	var sendWg sync.WaitGroup
 	lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
@@ -160,24 +179,30 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 		}()
 	})
 
+	sendWg.Wait()
+
+	if summary == nil {
+		summary = &restic.BackupProgressEntry{}
+	}
+
 	vars := hook.HookVars{
 		Task:          t.Name(),
 		SnapshotStats: summary,
+		SnapshotId:    summary.SnapshotId,
 	}
 	if err != nil {
 		vars.Error = err.Error()
-		orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, "", []v1.Hook_Condition{
-			v1.Hook_CONDITION_SNAPSHOT_ERROR, v1.Hook_CONDITION_ANY_ERROR,
-		}, vars)
-
 		if !errors.Is(err, restic.ErrPartialBackup) {
+			_ = orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, []v1.Hook_Condition{
+				v1.Hook_CONDITION_SNAPSHOT_ERROR, v1.Hook_CONDITION_ANY_ERROR,
+			}, vars)
 			return fmt.Errorf("repo.Backup for repo %q: %w", plan.Repo, err)
 		}
 		op.Status = v1.OperationStatus_STATUS_WARNING
 		op.DisplayMessage = "Partial backup, some files may not have been read completely."
 	}
 
-	orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, summary.SnapshotId, []v1.Hook_Condition{
+	orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, []v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_END,
 	}, vars)
 

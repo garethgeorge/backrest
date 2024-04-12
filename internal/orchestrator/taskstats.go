@@ -76,7 +76,7 @@ func (t *StatsTask) Run(ctx context.Context) error {
 	}); err != nil {
 		repo, _ := t.orch.GetRepo(t.repoId)
 		plan, _ := t.orch.GetPlan(t.planId)
-		t.orch.hookExecutor.ExecuteHooks(repo.Config(), plan, "", []v1.Hook_Condition{
+		_ = t.orch.hookExecutor.ExecuteHooks(repo.Config(), plan, []v1.Hook_Condition{
 			v1.Hook_CONDITION_ANY_ERROR,
 		}, hook.HookVars{
 			Task:  t.Name(),

@@ -19,3 +19,5 @@ message StringList {
 message Int64Value {
   int64 value = 1;
 }
+
+message Empty {}

@@ -536,6 +536,11 @@ export class Hook extends Message<Hook> {
   conditions: Hook_Condition[] = [];
 
   /**
+   * @generated from field: v1.Hook.OnError on_error = 2;
+   */
+  onError = Hook_OnError.IGNORE;
+
+  /**
    * @generated from oneof v1.Hook.action
    */
   action: {
@@ -585,6 +590,7 @@ export class Hook extends Message<Hook> {
   static readonly typeName = "v1.Hook";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "conditions", kind: "enum", T: proto3.getEnumType(Hook_Condition), repeated: true },
+    { no: 2, name: "on_error", kind: "enum", T: proto3.getEnumType(Hook_OnError) },
     { no: 100, name: "action_command", kind: "message", T: Hook_Command, oneof: "action" },
     { no: 101, name: "action_webhook", kind: "message", T: Hook_Webhook, oneof: "action" },
     { no: 102, name: "action_discord", kind: "message", T: Hook_Discord, oneof: "action" },
@@ -657,6 +663,36 @@ proto3.util.setEnumType(Hook_Condition, "v1.Hook.Condition", [
 ]);
 
 /**
+ * @generated from enum v1.Hook.OnError
+ */
+export enum Hook_OnError {
+  /**
+   * @generated from enum value: ON_ERROR_IGNORE = 0;
+   */
+  IGNORE = 0,
+
+  /**
+   * cancels the operation and skips subsequent hooks
+   *
+   * @generated from enum value: ON_ERROR_CANCEL = 1;
+   */
+  CANCEL = 1,
+
+  /**
+   * fails the operation and subsequent hooks
+   *
+   * @generated from enum value: ON_ERROR_FATAL = 2;
+   */
+  FATAL = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(Hook_OnError)
+proto3.util.setEnumType(Hook_OnError, "v1.Hook.OnError", [
+  { no: 0, name: "ON_ERROR_IGNORE" },
+  { no: 1, name: "ON_ERROR_CANCEL" },
+  { no: 2, name: "ON_ERROR_FATAL" },
+]);
+
+/**
  * @generated from message v1.Hook.Command
  */
 export class Hook_Command extends Message<Hook_Command> {
@@ -702,6 +738,16 @@ export class Hook_Webhook extends Message<Hook_Webhook> {
    */
   webhookUrl = "";
 
+  /**
+   * @generated from field: v1.Hook.Webhook.Method method = 2;
+   */
+  method = Hook_Webhook_Method.UNKNOWN;
+
+  /**
+   * @generated from field: string template = 100;
+   */
+  template = "";
+
   constructor(data?: PartialMessage<Hook_Webhook>) {
     super();
     proto3.util.initPartial(data, this);
@@ -711,6 +757,8 @@ export class Hook_Webhook extends Message<Hook_Webhook> {
   static readonly typeName = "v1.Hook.Webhook";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "webhook_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "method", kind: "enum", T: proto3.getEnumType(Hook_Webhook_Method) },
+    { no: 100, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Webhook {
@@ -729,6 +777,32 @@ export class Hook_Webhook extends Message<Hook_Webhook> {
     return proto3.util.equals(Hook_Webhook, a, b);
   }
 }
+
+/**
+ * @generated from enum v1.Hook.Webhook.Method
+ */
+export enum Hook_Webhook_Method {
+  /**
+   * @generated from enum value: UNKNOWN = 0;
+   */
+  UNKNOWN = 0,
+
+  /**
+   * @generated from enum value: GET = 1;
+   */
+  GET = 1,
+
+  /**
+   * @generated from enum value: POST = 2;
+   */
+  POST = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(Hook_Webhook_Method)
+proto3.util.setEnumType(Hook_Webhook_Method, "v1.Hook.Webhook.Method", [
+  { no: 0, name: "UNKNOWN" },
+  { no: 1, name: "GET" },
+  { no: 2, name: "POST" },
+]);
 
 /**
  * @generated from message v1.Hook.Discord
