@@ -487,22 +487,26 @@ const RetentionPolicyView = () => {
   const form = Form.useFormInstance();
   const retention = Form.useWatch('retention', { form, preserve: true }) as any;
 
+  if (!retention) {
+    form.setFieldValue("retention", { policyTimeBucketed: { yearly: 0, monthly: 3, weekly: 4, daily: 7, hourly: 24 } });
+  }
+
   const determineMode = () => {
     if (!retention) {
-      return 2;
+      return "policyTimeBucketed";
     } else if (retention.policyKeepLastN) {
-      return 1;
+      return "policyKeepLastN"
     } else if (retention.policyKeepAll) {
-      return 0;
+      return "policyKeepAll"
     } else if (retention.policyTimeBucketed) {
-      return 2;
+      return "policyTimeBucketed"
     }
   }
 
   const mode = determineMode();
 
   let elem: React.ReactNode = null;
-  if (mode === 0) {
+  if (mode === "policyKeepAll") {
     elem = <>
       <p>All backups are retained e.g. for append-only repos. Ensure that you manually forget / prune backups elsewhere. Backrest will register forgets performed externally on the next backup.</p>
       <Form.Item
@@ -514,7 +518,7 @@ const RetentionPolicyView = () => {
         <Checkbox />
       </Form.Item>
     </>
-  } else if (mode === 1) {
+  } else if (mode === "policyKeepLastN") {
     elem = (
       <Form.Item
         name={["retention", "policyKeepLastN"]}
@@ -530,7 +534,7 @@ const RetentionPolicyView = () => {
         <InputNumber addonBefore={<div style={{ width: "5em" }}>Count</div>} type="number" />
       </Form.Item>
     );
-  } else if (mode === 2) {
+  } else if (mode === "policyTimeBucketed") {
     elem = (
       <Row>
         <Col span={11}>
@@ -602,25 +606,25 @@ const RetentionPolicyView = () => {
         <Row>
           <Radio.Group value={mode} onChange={e => {
             const selected = e.target.value;
-            if (selected === 1) {
+            if (selected === "policyKeepLastN") {
               form.setFieldValue("retention", { policyKeepLastN: 30 });
-            } else if (selected === 2) {
-              form.setFieldValue("retention", { policyTimeBucketed: { keepYearly: 0, keepMonthly: 3, keepWeekly: 4, keepDaily: 7, keepHourly: 24 } });
+            } else if (selected === "policyTimeBucketed") {
+              form.setFieldValue("retention", { policyTimeBucketed: { yearly: 0, monthly: 3, weekly: 4, daily: 7, hourly: 24 } });
             } else {
               form.setFieldValue("retention", { policyKeepAll: true });
             }
           }}>
-            <Radio.Button value={1}>
+            <Radio.Button value={"policyKeepLastN"}>
               <Tooltip title="The last N snapshots will be kept by restic. Retention policy is applied to drop older snapshots after each backup run.">
                 By Count
               </Tooltip>
             </Radio.Button>
-            <Radio.Button value={2}>
+            <Radio.Button value={"policyTimeBucketed"}>
               <Tooltip title="Snapshots older than the specified time period will be dropped by restic. Retention policy is applied to drop older snapshots after each backup run." >
                 By Time Period
               </Tooltip>
             </Radio.Button>
-            <Radio.Button value={0}>
+            <Radio.Button value={"policyKeepAll"}>
               <Tooltip title="All backups will be retained. Note that this may result in slow backups if the set of snapshots grows very large.">
                 None
               </Tooltip>

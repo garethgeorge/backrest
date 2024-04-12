@@ -230,7 +230,6 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 		case <-ctx.Done():
 			return nil
 		case event := <-events:
-			zap.S().Infof("sending event %v", event)
 			if err := resp.Send(event); err != nil {
 				return fmt.Errorf("failed to write event: %w", err)
 			}
