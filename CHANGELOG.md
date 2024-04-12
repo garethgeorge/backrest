@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/garethgeorge/backrest/compare/v0.17.0...v0.17.1) (2024-04-12)
+
+
+### Bug Fixes
+
+* revert orchestrator changes ([07cffcb](https://github.com/garethgeorge/backrest/commit/07cffcb5d8dc018631fcd0d1f98cc01553a6574e))
+
 ## [0.17.0](https://github.com/garethgeorge/backrest/compare/v0.16.0...v0.17.0) (2024-04-12)
 
 
