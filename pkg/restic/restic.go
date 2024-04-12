@@ -81,12 +81,6 @@ func (r *Repo) pipeCmdOutputToWriter(cmd *exec.Cmd, handlers ...io.Writer) {
 	cmd.Stderr = io.MultiWriter(handlers...)
 }
 
-func (r *Repo) pipeCmdOutputToLogger(ctx context.Context, cmd *exec.Cmd) {
-	if logger := LoggerFromContext(ctx); logger != nil {
-		r.pipeCmdOutputToWriter(cmd, logger)
-	}
-}
-
 // init initializes the repo, the command will be cancelled with the context.
 func (r *Repo) init(ctx context.Context, opts ...GenericOption) error {
 	if r.initialized {
@@ -175,7 +169,7 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 	}
 
 	if cmdErr != nil || readErr != nil {
-		return summary, newCmdErrorPreformatted(ctx, cmd, capture.String(), errors.Join(cmdErr, readErr))
+		return summary, newCmdErrorPreformatted(ctx, cmd, string(capture.Bytes()), errors.Join(cmdErr, readErr))
 	}
 
 	return summary, nil
@@ -185,7 +179,6 @@ func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapsho
 	cmd := r.commandWithContext(ctx, []string{"snapshots", "--json"}, opts...)
 	output := bytes.NewBuffer(nil)
 	r.pipeCmdOutputToWriter(cmd, output)
-	r.pipeCmdOutputToLogger(ctx, cmd)
 
 	if err := cmd.Run(); err != nil {
 		return nil, newCmdError(ctx, cmd, output.String(), err)
@@ -247,12 +240,11 @@ func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...Generic
 	cmd := r.commandWithContext(ctx, args, opts...)
 	output := bytes.NewBuffer(nil)
 	r.pipeCmdOutputToWriter(cmd, output)
-	r.pipeCmdOutputToLogger(ctx, cmd)
 	if pruneOutput != nil {
 		r.pipeCmdOutputToWriter(cmd, pruneOutput)
 	}
 	if err := cmd.Run(); err != nil {
-		return newCmdErrorPreformatted(ctx, cmd, output.String(), err)
+		return newCmdError(ctx, cmd, output.String(), err)
 	}
 	return nil
 }
@@ -262,7 +254,6 @@ func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*Rest
 	output := ioutil.NewOutputCapturer(outputBufferLimit)
 	reader, writer := io.Pipe()
 	r.pipeCmdOutputToWriter(cmd, output, writer)
-	r.pipeCmdOutputToLogger(ctx, cmd)
 
 	if err := cmd.Start(); err != nil {
 		return nil, newCmdError(ctx, cmd, "", err)
@@ -295,7 +286,7 @@ func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*Rest
 	wg.Wait()
 
 	if cmdErr != nil || readErr != nil {
-		return nil, newCmdErrorPreformatted(ctx, cmd, output.String(), errors.Join(cmdErr, readErr))
+		return nil, newCmdErrorPreformatted(ctx, cmd, string(output.Bytes()), errors.Join(cmdErr, readErr))
 	}
 
 	return summary, nil
@@ -310,7 +301,6 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 	cmd := r.commandWithContext(ctx, []string{"ls", "--json", snapshot, path}, opts...)
 	output := bytes.NewBuffer(nil)
 	r.pipeCmdOutputToWriter(cmd, output)
-	r.pipeCmdOutputToLogger(ctx, cmd)
 
 	if err := cmd.Run(); err != nil {
 		return nil, nil, newCmdError(ctx, cmd, output.String(), err)
@@ -328,7 +318,6 @@ func (r *Repo) Unlock(ctx context.Context, opts ...GenericOption) error {
 	cmd := r.commandWithContext(ctx, []string{"unlock"}, opts...)
 	output := bytes.NewBuffer(nil)
 	r.pipeCmdOutputToWriter(cmd, output)
-	r.pipeCmdOutputToLogger(ctx, cmd)
 	if err := cmd.Run(); err != nil {
 		return newCmdError(ctx, cmd, output.String(), err)
 	}
@@ -339,7 +328,6 @@ func (r *Repo) Stats(ctx context.Context, opts ...GenericOption) (*RepoStats, er
 	cmd := r.commandWithContext(ctx, []string{"stats", "--json", "--mode=raw-data"}, opts...)
 	output := bytes.NewBuffer(nil)
 	r.pipeCmdOutputToWriter(cmd, output)
-	r.pipeCmdOutputToLogger(ctx, cmd)
 
 	if err := cmd.Run(); err != nil {
 		return nil, newCmdError(ctx, cmd, output.String(), err)

@@ -67,8 +67,8 @@ func (t *TaskWithOperation) runWithOpAndContext(ctx context.Context, do func(ctx
 
 		err := do(ctx, t.op)
 
-		if str := capture.String(); len(str) > 0 {
-			ref, e := t.orch.logStore.Write([]byte(str))
+		if bytes := capture.Bytes(); len(bytes) > 0 {
+			ref, e := t.orch.logStore.Write(bytes)
 			if e != nil {
 				errors.Join(err, fmt.Errorf("failed to write log to logstore: %w", e))
 			}
