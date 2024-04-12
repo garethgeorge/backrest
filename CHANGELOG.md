@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.17.0](https://github.com/garethgeorge/backrest/compare/v0.16.0...v0.17.0) (2024-04-12)
+
+
+### Features
+
+* add a Bash script to help Linux user manage Backrest ([#187](https://github.com/garethgeorge/backrest/issues/187)) ([d78bcfa](https://github.com/garethgeorge/backrest/commit/d78bcfab845a86523868a91fe200b2a3c4c07e07))
+* allow hook exit codes to control backup execution (e.g fail, skip, etc) ([c4ae5b3](https://github.com/garethgeorge/backrest/commit/c4ae5b3f2257d6c04ed08188cfc509023137b460))
+* release backrest as a homebrew tap  ([16a7d0e](https://github.com/garethgeorge/backrest/commit/16a7d0e95ae51c9f86e2d38e2c494b324245a9db))
+* use amd64 restic for arm64 Windows ([#201](https://github.com/garethgeorge/backrest/issues/201)) ([3770966](https://github.com/garethgeorge/backrest/commit/3770966111f096c84b4702e6639397e8efab93a7))
+* use new task queue implementation in orchestrator ([1d04898](https://github.com/garethgeorge/backrest/commit/1d0489847e6fee5baed807117379738aceca4a2d))
+
+
+### Bug Fixes
+
+* address minor data race in command output handling and enable --race in coverage ([3223138](https://github.com/garethgeorge/backrest/commit/32231385ed20c0dccda12361eaac7cc088ec15a0))
+* bugs in refactored task queue and improved coverage ([834b74f](https://github.com/garethgeorge/backrest/commit/834b74f0f3eec42055d1af6ecfe34d448f71d97b))
+* cannot set retention policy buckets to 0 ([7e9bf15](https://github.com/garethgeorge/backrest/commit/7e9bf15976006c7f3ff96948d2b2c291737c9e88))
+* **css:** fixing overflow issue ([#191](https://github.com/garethgeorge/backrest/issues/191)) ([1d9e43e](https://github.com/garethgeorge/backrest/commit/1d9e43e49b21adc4ed8ce1ec96199084981d709a))
+* default BACKREST_PORT to 127.0.0.1:9898 (localhost only) when using install.sh ([eb07230](https://github.com/garethgeorge/backrest/commit/eb07230cc0843643406fa44ca21c3a138baced77))
+* handle backpressure correctly in event stream ([4e2bf1f](https://github.com/garethgeorge/backrest/commit/4e2bf1f76c4d35d61fc48111baaa33b7b7a8c133))
+* improve tooltips on AddRepoModal ([e2be189](https://github.com/garethgeorge/backrest/commit/e2be189f9e4bb617a69e4b9c15da3d1920549349))
+* include ioutil helpers ([88a926b](https://github.com/garethgeorge/backrest/commit/88a926b0a3a52efb82da5df3423a001ed140639c))
+* limit cmd log length to 32KB per operation ([92d52be](https://github.com/garethgeorge/backrest/commit/92d52bed8e84d6cd8dd331a1fa52a6e2d30cb7a7))
+* misc UI and backend bug fixes ([e96f403](https://github.com/garethgeorge/backrest/commit/e96f4036df6849650d6e378c9a175fef86b2962b))
+* refactor priority ordered task queue implementation ([8b9280e](https://github.com/garethgeorge/backrest/commit/8b9280ed57b84b7da814e285542c57b7c14209ae))
+* spawn goroutine to update oplog with progress during backup/restore ([eab1c1b](https://github.com/garethgeorge/backrest/commit/eab1c1bffe2a1aec6afa9e054278ff98ca3047cf))
+* use C:\Program Files\backrest on both x64 and 32-bit ([#200](https://github.com/garethgeorge/backrest/issues/200)) ([7b0d3aa](https://github.com/garethgeorge/backrest/commit/7b0d3aa1be7bc93363b00154d09502b4e4e63ba5))
+
 ## [0.16.0](https://github.com/garethgeorge/backrest/compare/v0.15.1...v0.16.0) (2024-03-30)
 
 
