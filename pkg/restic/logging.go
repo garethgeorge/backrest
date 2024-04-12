@@ -24,8 +24,12 @@ func addLoggingToCommand(ctx context.Context, cmd *exec.Cmd) {
 	}
 	if cmd.Stdout != nil {
 		cmd.Stdout = io.MultiWriter(cmd.Stdout, logger)
+	} else {
+		cmd.Stdout = logger
 	}
 	if cmd.Stderr != nil {
 		cmd.Stderr = io.MultiWriter(cmd.Stderr, logger)
+	} else {
+		cmd.Stderr = logger
 	}
 }

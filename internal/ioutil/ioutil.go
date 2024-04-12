@@ -1,12 +1,20 @@
 package ioutil
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"slices"
+	"sync"
 )
+
+type Capturer interface {
+	Bytes() []byte
+}
 
 // HeadWriter keeps the first 'Limit' bytes in memory.
 type HeadWriter struct {
+	mu    sync.Mutex
 	Buf   []byte
 	Limit int
 }
@@ -25,11 +33,14 @@ func (w *HeadWriter) Write(p []byte) (n int, err error) {
 }
 
 func (w *HeadWriter) Bytes() []byte {
-	return w.Buf
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return slices.Clone(w.Buf)
 }
 
 // tailWriter keeps the last 'Limit' bytes in memory.
 type TailWriter struct {
+	mu    sync.Mutex
 	Buf   []byte
 	Limit int
 }
@@ -37,6 +48,8 @@ type TailWriter struct {
 var _ io.Writer = &TailWriter{}
 
 func (w *TailWriter) Write(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	w.Buf = append(w.Buf, p...)
 	if len(w.Buf) > w.Limit {
 		w.Buf = w.Buf[len(w.Buf)-w.Limit:]
@@ -45,10 +58,13 @@ func (w *TailWriter) Write(p []byte) (n int, err error) {
 }
 
 func (w *TailWriter) Bytes() []byte {
-	return w.Buf
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return slices.Clone(w.Buf)
 }
 
 type OutputCapturer struct {
+	mu sync.Mutex
 	HeadWriter
 	TailWriter
 	Limit      int
@@ -66,21 +82,31 @@ func NewOutputCapturer(limit int) *OutputCapturer {
 }
 
 func (w *OutputCapturer) Write(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	w.HeadWriter.Write(p)
 	w.TailWriter.Write(p)
 	w.totalBytes += len(p)
 	return len(p), nil
 }
 
-func (w *OutputCapturer) String() string {
+func (w *OutputCapturer) Bytes() []byte {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	head := w.HeadWriter.Bytes()
 	tail := w.TailWriter.Bytes()
 	if w.totalBytes <= w.Limit {
-		return string(head)
+		return head
 	}
 
 	head = head[:w.Limit/2]
 	tail = tail[len(tail)-w.Limit/2:]
 
-	return fmt.Sprintf("%s...[%v bytes dropped]...%s", string(head), w.totalBytes-len(head)-len(tail), string(tail))
+	buf := bytes.NewBuffer(make([]byte, 0, len(head)+len(tail)+100))
+
+	buf.Write(head)
+	buf.WriteString(fmt.Sprintf("...[%v bytes dropped]...", w.totalBytes-len(head)-len(tail)))
+	buf.Write(tail)
+
+	return buf.Bytes()
 }

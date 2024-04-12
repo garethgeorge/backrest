@@ -37,7 +37,7 @@ jobs:
           args: release --snapshot --clean
 
       - name: Test
-        run: PATH=$(pwd):$PATH go test ./...
+        run: PATH=$(pwd):$PATH go test ./... --race
 
   build-win:
     runs-on: windows-latest
