@@ -4,6 +4,8 @@ package v1;
 
 option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
 
+import "google/protobuf/empty.proto";
+
 // Config is the top level config object for restic UI.
 message Config {
   // modification number, used for read-modify-write consistency in the UI. Incremented on every write.
@@ -83,7 +85,14 @@ message Hook {
     CONDITION_SNAPSHOT_ERROR = 4; // snapshot failed.
   }
 
+  enum OnError {
+    ON_ERROR_IGNORE = 0;
+    ON_ERROR_CANCEL = 1; // cancels the operation and skips subsequent hooks
+    ON_ERROR_FATAL = 2; // fails the operation and subsequent hooks
+  }
+
   repeated Condition conditions = 1 [json_name="conditions"];
+  OnError on_error = 2 [json_name="onError"];
 
   oneof action {
     Command action_command = 100 [json_name="actionCommand"];
@@ -100,6 +109,13 @@ message Hook {
 
   message Webhook {
     string webhook_url = 1 [json_name="webhookUrl"];
+    enum Method {
+      UNKNOWN = 0;
+      GET = 1;
+      POST = 2;
+    }
+    Method method = 2 [json_name="method"];
+    string template = 100 [json_name="template"];
   }
 
   message Discord {

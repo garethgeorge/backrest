@@ -121,7 +121,7 @@ export const OperationRow = ({
             visible={true} footer={null} onCancel={() => { showModal(null); }}>
             <BigOperationDataVerbatim logref={operation.logref!} />
           </Modal>);
-        }}>[View Restic Logs]</Button>
+        }}>[View Logs]</Button>
       </small >
     </>
   }
@@ -194,15 +194,14 @@ export const OperationRow = ({
       </>
     );
   } else if (operation.op.case === "operationRunHook") {
-    const hook = operation.op.value;
-    body = <RunHookOperationStatus op={operation} />
+    body = <></>
   }
 
   const children = [];
 
   if (operation.displayMessage) {
     children.push(<>
-      <pre>{details.state}: {operation.displayMessage}</pre>
+      <pre>{details.state ? details.state + ": " : null}{operation.displayMessage}</pre>
     </>);
   }
 
@@ -408,26 +407,6 @@ const ForgetOperationDetails = ({ forgetOp }: { forgetOp: OperationForget }) => 
       ]}
     />
   );
-}
-
-const RunHookOperationStatus = ({ op }: { op: Operation }) => {
-  if (op.op.case !== "operationRunHook") {
-    return <>Wrong operation type</>;
-  }
-
-  const hook = op.op.value;
-
-  return <>
-    <Collapse size="small" destroyInactivePanel items={[
-      {
-        key: 1,
-        label: "Logs for hook " + hook.name,
-        children: <>
-          <BigOperationDataVerbatim logref={hook.outputLogref} />
-        </>
-      },
-    ]} />
-  </>
 }
 
 // TODO: refactor this to use the provider pattern

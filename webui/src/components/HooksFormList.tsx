@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Hook, Hook_Command, Hook_Condition, Hook_Discord, Hook_Gotify, Hook_Webhook } from '../../gen/ts/v1/config_pb';
+import { Hook, Hook_Command, Hook_Condition, Hook_Discord, Hook_Gotify, Hook_OnError, Hook_Webhook } from '../../gen/ts/v1/config_pb';
 import { Button, Card, Collapse, CollapseProps, Form, FormListFieldData, Input, Popover, Radio, Row, Select, Tooltip } from 'antd';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Rule } from 'antd/es/form';
+import { proto3 } from '@bufbuild/protobuf';
 
 export interface HookFormData {
   hooks: {
@@ -64,7 +65,7 @@ export const HooksFormList = () => {
           const hookData = form.getFieldValue(["hooks", field.name]) as HookFields;
 
           return <Card key={index} title={<>
-            Hook {index} <small>{findHookTypeName(hookData)}</small>
+            Hook {index} {findHookTypeName(hookData)}
             <MinusCircleOutlined
               className="dynamic-delete-button"
               onClick={() => remove(field.name)}
@@ -78,12 +79,7 @@ export const HooksFormList = () => {
                 allowClear
                 style={{ width: '100%' }}
                 placeholder="Runs when..."
-                options={[
-                  { label: "On Finish Snapshot", value: Hook_Condition.SNAPSHOT_END },
-                  { label: "On Start Snapshot", value: Hook_Condition.SNAPSHOT_START },
-                  { label: "On Snapshot Error", value: Hook_Condition.SNAPSHOT_ERROR },
-                  { label: "On Any Error", value: Hook_Condition.ANY_ERROR },
-                ]}
+                options={proto3.getEnumType(Hook_Condition).values.map(v => ({ label: v.name, value: v.name }))}
               />
             </Form.Item>
             <Form.Item shouldUpdate={(prevValues, curValues) => {
@@ -140,6 +136,7 @@ const hookTypes: {
           <Form.Item name={[field.name, "actionCommand", "command"]} rules={[requiredField("command is required")]}>
             <Input.TextArea style={{ width: "100%", fontFamily: "monospace" }} />
           </Form.Item>
+          <ItemOnErrorSelector field={field} />
         </>
       }
     },
@@ -269,6 +266,28 @@ const HookBuilder = ({ field }: { field: FormListFieldData }) => {
   }
 
   return <p>Unknown hook type</p>;
+}
+
+const ItemOnErrorSelector = ({ field }: { field: FormListFieldData }) => {
+  return <>
+    <Tooltip title={<>
+      What happens when the hook fails (currently only has effect on backup start hooks)
+      <ul>
+        <li>IGNORE - the failure is ignored, subsequent hooks and the backup operation will run as normal.</li>
+        <li>FATAL - stops the backup with an error status (triggers an error notification). Skips running all subsequent hooks.</li>
+        <li>CANCEL - marks the backup as cancelled but does not trigger any error notification. Skips running all subsequent hooks.</li>
+      </ul>
+    </>}>Error Behavior:
+    </Tooltip>
+    <Form.Item name={[field.name, "onError"]}>
+      <Select
+        allowClear
+        style={{ width: '100%' }}
+        placeholder={"Specify what happens when this hook fails..."}
+        options={proto3.getEnumType(Hook_OnError).values.map(v => ({ label: v.name, value: v.name }))}
+      />
+    </Form.Item>
+  </>
 }
 
 const requiredField = (message: string, extra?: Rule) => ({ required: true, message: message });

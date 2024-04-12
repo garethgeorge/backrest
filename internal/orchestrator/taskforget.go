@@ -109,11 +109,12 @@ func (t *ForgetTask) Run(ctx context.Context) error {
 		return err
 	}); err != nil {
 		repo, _ := t.orch.GetRepo(t.plan.Repo)
-		t.orch.hookExecutor.ExecuteHooks(repo.Config(), t.plan, t.linkSnapshot, []v1.Hook_Condition{
+		_ = t.orch.hookExecutor.ExecuteHooks(repo.Config(), t.plan, []v1.Hook_Condition{
 			v1.Hook_CONDITION_ANY_ERROR,
 		}, hook.HookVars{
-			Task:  t.Name(),
-			Error: err.Error(),
+			Task:       t.Name(),
+			Error:      err.Error(),
+			SnapshotId: t.linkSnapshot,
 		})
 	}
 	return nil

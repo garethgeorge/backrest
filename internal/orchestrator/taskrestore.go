@@ -112,11 +112,12 @@ func (t *RestoreTask) Run(ctx context.Context) error {
 	}); err != nil {
 		if t.restoreOpts.RepoId != "" {
 			repo, _ := t.orch.GetRepo(t.restoreOpts.RepoId)
-			t.orch.hookExecutor.ExecuteHooks(repo.Config(), nil, t.restoreOpts.SnapshotId, []v1.Hook_Condition{
+			_ = t.orch.hookExecutor.ExecuteHooks(repo.Config(), nil, []v1.Hook_Condition{
 				v1.Hook_CONDITION_ANY_ERROR,
 			}, hook.HookVars{
-				Task:  t.Name(),
-				Error: err.Error(),
+				Task:       t.Name(),
+				Error:      err.Error(),
+				SnapshotId: t.restoreOpts.SnapshotId,
 			})
 		}
 		return err
