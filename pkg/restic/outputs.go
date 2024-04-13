@@ -2,13 +2,10 @@ package restic
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"os/exec"
-	"slices"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -95,7 +92,7 @@ func (b *BackupProgressEntry) Validate() error {
 }
 
 // readBackupProgressEntries returns the summary event or an error if the command failed.
-func readBackupProgressEntries(ctx context.Context, cmd *exec.Cmd, output io.Reader, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
+func readBackupProgressEntries(output io.Reader, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
@@ -104,14 +101,8 @@ func readBackupProgressEntries(ctx context.Context, cmd *exec.Cmd, output io.Rea
 	// first event is handled specially to detect non-JSON output and fast-path out.
 	if scanner.Scan() {
 		var event BackupProgressEntry
-
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			var bytes = slices.Clone(scanner.Bytes())
-			for scanner.Scan() {
-				bytes = append(bytes, scanner.Bytes()...)
-			}
-
-			return nil, newCmdError(ctx, cmd, string(bytes), fmt.Errorf("command output was not JSON: %w", err))
+			return nil, fmt.Errorf("command output was not JSON: %w", err)
 		}
 		if err := event.Validate(); err != nil {
 			return nil, err
@@ -135,7 +126,6 @@ func readBackupProgressEntries(ctx context.Context, cmd *exec.Cmd, output io.Rea
 			// skip it. This is a best-effort attempt to parse the output.
 			continue
 		}
-
 		if callback != nil {
 			callback(&event)
 		}
@@ -143,15 +133,12 @@ func readBackupProgressEntries(ctx context.Context, cmd *exec.Cmd, output io.Rea
 			summary = &event
 		}
 	}
-
 	if err := scanner.Err(); err != nil {
 		return summary, fmt.Errorf("scanner encountered error: %w", err)
 	}
-
 	if summary == nil {
 		return nil, fmt.Errorf("no summary event found")
 	}
-
 	return summary, nil
 }
 
@@ -244,7 +231,7 @@ func (e *RestoreProgressEntry) Validate() error {
 }
 
 // readRestoreProgressEntries returns the summary event or an error if the command failed.
-func readRestoreProgressEntries(ctx context.Context, cmd *exec.Cmd, output io.Reader, callback func(event *RestoreProgressEntry)) (*RestoreProgressEntry, error) {
+func readRestoreProgressEntries(output io.Reader, callback func(event *RestoreProgressEntry)) (*RestoreProgressEntry, error) {
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
@@ -255,12 +242,7 @@ func readRestoreProgressEntries(ctx context.Context, cmd *exec.Cmd, output io.Re
 		var event RestoreProgressEntry
 
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			var bytes = slices.Clone(scanner.Bytes())
-			for scanner.Scan() {
-				bytes = append(bytes, scanner.Bytes()...)
-			}
-
-			return nil, newCmdError(ctx, cmd, string(bytes), fmt.Errorf("command output was not JSON: %w", err))
+			return nil, fmt.Errorf("command output was not JSON: %w", err)
 		}
 		if err := event.Validate(); err != nil {
 			return nil, err
