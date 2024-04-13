@@ -5,12 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/garethgeorge/backrest/test/helpers"
 )
@@ -481,4 +483,50 @@ func toRepoPath(path string) string {
 		string(path[0]),            // drive volume
 		path[3:],                   // path
 	))
+}
+
+func BenchmarkBackup(t *testing.B) {
+	repo := t.TempDir()
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	workdir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+
+	t.ResetTimer()
+
+	for i := 0; i < t.N; i++ {
+		_, err := r.Backup(context.Background(), []string{workdir}, func(e *BackupProgressEntry) {})
+		if err != nil {
+			t.Fatalf("failed to backup: %v", err)
+		}
+	}
+}
+
+func BenchmarkBackupWithSimulatedCallback(t *testing.B) {
+	repo := t.TempDir()
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	workdir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+
+	t.ResetTimer()
+
+	for i := 0; i < t.N; i++ {
+		_, err := r.Backup(context.Background(), []string{workdir}, func(e *BackupProgressEntry) {
+			time.Sleep(50 * time.Millisecond) // simulate work being done in the callback
+		})
+		if err != nil {
+			t.Fatalf("failed to backup: %v", err)
+		}
+	}
 }

@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/djherbis/buffer"
+	nio "github.com/djherbis/nio/v3"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 )
 
@@ -120,58 +122,42 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 	args = append(args, paths...)
 
 	cmd := r.commandWithContext(ctx, args, opts...)
-	capture := ioutil.NewOutputCapturer(outputBufferLimit)
-	reader, writer := io.Pipe()
-	r.pipeCmdOutputToWriter(cmd, writer, capture)
+	fullOutput := ioutil.NewOutputCapturer(outputBufferLimit)
+	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
+	reader, writer := nio.Pipe(buf)
+	r.pipeCmdOutputToWriter(cmd, fullOutput, writer)
 
-	if err := cmd.Start(); err != nil {
-		return nil, newCmdError(ctx, cmd, "", err)
-	}
-
-	var wg sync.WaitGroup
-	var summary *BackupProgressEntry
-	var cmdErr error
 	var readErr error
-
+	var summary *BackupProgressEntry
+	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		var err error
-		summary, err = readBackupProgressEntries(ctx, cmd, reader, progressCallback)
+		summary, err = readBackupProgressEntries(reader, progressCallback)
 		if err != nil {
 			readErr = fmt.Errorf("processing command output: %w", err)
+			_ = cmd.Cancel() // cancel the command to prevent it from hanging now that we're not reading from it.
 		}
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer writer.Close()
-		defer wg.Done()
-		if err := cmd.Wait(); err != nil {
+	cmdErr := cmd.Run()
+	writer.Close()
+	wg.Wait()
+
+	if cmdErr != nil || readErr != nil {
+		if cmdErr != nil {
 			var exitErr *exec.ExitError
-			if errors.As(err, &exitErr) {
+			if errors.As(cmdErr, &exitErr) {
 				if exitErr.ExitCode() == 3 {
 					cmdErr = ErrPartialBackup
 				} else {
-					cmdErr = fmt.Errorf("exit code %v: %w", exitErr.ExitCode(), ErrBackupFailed)
+					cmdErr = fmt.Errorf("exit code %d: %w", exitErr.ExitCode(), ErrBackupFailed)
 				}
-				return
 			}
-			cmdErr = err
 		}
-	}()
-
-	wg.Wait()
-
-	if logger := LoggerFromContext(ctx); logger != nil && summary != nil {
-		bytes, _ := json.MarshalIndent(summary, "", "  ")
-		logger.Write(bytes)
+		return summary, newCmdErrorPreformatted(ctx, cmd, string(fullOutput.Bytes()), errors.Join(cmdErr, readErr))
 	}
-
-	if cmdErr != nil || readErr != nil {
-		return summary, newCmdErrorPreformatted(ctx, cmd, string(capture.Bytes()), errors.Join(cmdErr, readErr))
-	}
-
 	return summary, nil
 }
 
@@ -251,44 +237,41 @@ func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...Generic
 
 func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
 	cmd := r.commandWithContext(ctx, []string{"restore", "--json", snapshot}, opts...)
-	output := ioutil.NewOutputCapturer(outputBufferLimit)
+	capture := ioutil.NewOutputCapturer(outputBufferLimit) // for error reporting.
 	reader, writer := io.Pipe()
-	r.pipeCmdOutputToWriter(cmd, output, writer)
+	r.pipeCmdOutputToWriter(cmd, writer, capture)
 
-	if err := cmd.Start(); err != nil {
-		return nil, newCmdError(ctx, cmd, "", err)
-	}
-
-	var wg sync.WaitGroup
-	var summary *RestoreProgressEntry
-	var cmdErr error
 	var readErr error
-
+	var summary *RestoreProgressEntry
+	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		var err error
-		summary, err = readRestoreProgressEntries(ctx, cmd, reader, callback)
+		summary, err = readRestoreProgressEntries(reader, callback)
 		if err != nil {
 			readErr = fmt.Errorf("processing command output: %w", err)
+			_ = cmd.Cancel() // cancel the command to prevent it from hanging now that we're not reading from it.
 		}
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer writer.Close()
-		defer wg.Done()
-		if err := cmd.Wait(); err != nil {
-			cmdErr = err
-		}
-	}()
-
+	cmdErr := cmd.Run()
+	writer.Close()
 	wg.Wait()
-
 	if cmdErr != nil || readErr != nil {
-		return nil, newCmdErrorPreformatted(ctx, cmd, string(output.Bytes()), errors.Join(cmdErr, readErr))
-	}
+		if cmdErr != nil {
+			var exitErr *exec.ExitError
+			if errors.As(cmdErr, &exitErr) {
+				if exitErr.ExitCode() == 3 {
+					cmdErr = ErrPartialBackup
+				} else {
+					cmdErr = fmt.Errorf("exit code %d: %w", exitErr.ExitCode(), ErrBackupFailed)
+				}
+			}
+		}
 
+		return summary, newCmdErrorPreformatted(ctx, cmd, string(capture.Bytes()), errors.Join(cmdErr, readErr))
+	}
 	return summary, nil
 }
 
