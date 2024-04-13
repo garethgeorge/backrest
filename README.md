@@ -109,7 +109,7 @@ services:
 
 ```shell
 paru -Sy backrest
-sudo systemctl enable --now backreset@$USER.service
+sudo systemctl enable --now backrest@$USER.service
 ```
 
 ### Download release
