@@ -13,6 +13,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/queue"
 	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -40,7 +41,7 @@ type Orchestrator struct {
 	config       *v1.Config
 	OpLog        *oplog.OpLog
 	repoPool     *resticRepoPool
-	taskQueue    taskQueue
+	taskQueue    *queue.TimePriorityQueue[scheduledTask]
 	hookExecutor *hook.HookExecutor
 	logStore     *rotatinglog.RotatingLog
 
@@ -59,10 +60,8 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 		OpLog:  oplog,
 		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
-		repoPool: newResticRepoPool(resticBin, &config.MemoryStore{Config: cfg}),
-		taskQueue: newTaskQueue(func() time.Time {
-			return o.curTime()
-		}),
+		repoPool:     newResticRepoPool(resticBin, &config.MemoryStore{Config: cfg}),
+		taskQueue:    queue.NewTimePriorityQueue[scheduledTask](),
 		hookExecutor: hook.NewHookExecutor(oplog, logStore),
 		logStore:     logStore,
 	}
@@ -194,29 +193,23 @@ func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationSta
 		running.cancel()
 	}
 
-	tasks := o.taskQueue.Reset()
-	remaining := make([]scheduledTask, 0, len(tasks))
-
-	for _, t := range tasks {
-		if t.task.OperationId() == operationId {
-			if err := t.task.Cancel(status); err != nil {
-				return fmt.Errorf("cancel task %q: %w", t.task.Name(), err)
-			}
-
-			// check if the task has a next after it's current 'runAt' time, if it does then we will schedule the next run.
-			if nextTime := t.task.Next(t.runAt); nextTime != nil {
-				remaining = append(remaining, scheduledTask{
-					task:  t.task,
-					runAt: *nextTime,
-				})
-			}
-		} else {
-			remaining = append(remaining, *t)
-		}
+	allTasks := o.taskQueue.GetAll()
+	idx := slices.IndexFunc(allTasks, func(t scheduledTask) bool {
+		return t.task.OperationId() == operationId
+	})
+	if idx == -1 {
+		return nil
 	}
 
-	o.taskQueue.Push(remaining...)
-
+	t := allTasks[idx]
+	o.taskQueue.Remove(t)
+	if err := t.task.Cancel(status); err != nil {
+		return fmt.Errorf("cancel task %q: %w", t.task.Name(), err)
+	}
+	if nextTime := t.task.Next(t.runAt.Add(1 * time.Second)); nextTime != nil {
+		t.runAt = *nextTime
+		o.taskQueue.Enqueue(*nextTime, t.priority, t)
+	}
 	return nil
 }
 
@@ -231,7 +224,7 @@ func (o *Orchestrator) Run(mainCtx context.Context) {
 		}
 
 		t := o.taskQueue.Dequeue(mainCtx)
-		if t == nil {
+		if t.task == nil {
 			continue
 		}
 
@@ -272,7 +265,7 @@ func (o *Orchestrator) ScheduleTask(t Task, priority int, callbacks ...func(erro
 		return
 	}
 	zap.L().Info("scheduling task", zap.String("task", t.Name()), zap.String("runAt", nextRun.Format(time.RFC3339)))
-	o.taskQueue.Push(scheduledTask{
+	o.taskQueue.Enqueue(*nextRun, priority, scheduledTask{
 		task:      t,
 		runAt:     *nextRun,
 		priority:  priority,

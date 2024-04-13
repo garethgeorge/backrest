@@ -9,7 +9,7 @@ import (
 )
 
 // TimeQueue is a priority queue that dequeues elements at (or after) a specified time. It is safe for concurrent use.
-type TimeQueue[T any] struct {
+type TimeQueue[T equals[T]] struct {
 	heap genericHeap[timeQueueEntry[T]]
 
 	dequeueMu sync.Mutex
@@ -17,7 +17,7 @@ type TimeQueue[T any] struct {
 	notify    atomic.Pointer[chan struct{}]
 }
 
-func NewTimeQueue[T any]() *TimeQueue[T] {
+func NewTimeQueue[T equals[T]]() *TimeQueue[T] {
 	return &TimeQueue[T]{
 		heap: genericHeap[timeQueueEntry[T]]{},
 	}
@@ -59,6 +59,29 @@ func (t *TimeQueue[T]) Reset() []T {
 	var res []T
 	for t.heap.Len() > 0 {
 		res = append(res, heap.Pop(&t.heap).(timeQueueEntry[T]).v)
+	}
+	return res
+}
+
+func (t *TimeQueue[T]) Remove(v T) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	for idx := 0; idx < t.heap.Len(); idx++ {
+		if t.heap[idx].v.Eq(v) {
+			heap.Remove(&t.heap, idx)
+			return
+		}
+	}
+}
+
+func (t *TimeQueue[T]) GetAll() []T {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	res := make([]T, 0, t.heap.Len())
+	for _, entry := range t.heap {
+		res = append(res, entry.v)
 	}
 	return res
 }
@@ -129,4 +152,8 @@ func (t timeQueueEntry[T]) Less(other timeQueueEntry[T]) bool {
 
 func (t timeQueueEntry[T]) Eq(other timeQueueEntry[T]) bool {
 	return t.at.Equal(other.at)
+}
+
+type equals[T any] interface {
+	Eq(other T) bool
 }

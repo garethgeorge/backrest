@@ -13,7 +13,12 @@ func (v val) Less(other val) bool {
 	return v.v < other.v
 }
 
+func (v val) Eq(other val) bool {
+	return v.v == other.v
+}
+
 func TestGenericHeapInit(t *testing.T) {
+	t.Parallel()
 	genHeap := genericHeap[val]{{v: 3}, {v: 2}, {v: 1}}
 	heap.Init(&genHeap)
 
@@ -30,6 +35,7 @@ func TestGenericHeapInit(t *testing.T) {
 }
 
 func TestGenericHeapPushPop(t *testing.T) {
+	t.Parallel()
 	genHeap := genericHeap[val]{} // empty heap
 	heap.Push(&genHeap, val{v: 3})
 	heap.Push(&genHeap, val{v: 2})
