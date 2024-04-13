@@ -1,17 +1,15 @@
 # This workflow will build a golang project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
-name: Build and Test
+name: Build Snapshot Relaese
 
 on:
   push:
     branches: ["main"]
-  pull_request:
-    branches: ["main"]
   workflow_dispatch:
 
 jobs:
-  build-nix:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -36,29 +34,10 @@ jobs:
           version: latest
           args: release --snapshot --clean
 
-      - name: Test
-        run: PATH=$(pwd):$PATH go test ./... --race
-
-  build-win:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
         with:
-          go-version: "1.21"
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Generate
-        run: go generate ./...
-
-      - name: Build
-        run: go build ./...
-
-      - name: Test
-        run: go test ./...
+          name: backrest-snapshot-builds
+          path: |
+            dist/*.tar.gz
+            dist/*.zip

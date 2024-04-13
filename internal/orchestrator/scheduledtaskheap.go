@@ -164,6 +164,17 @@ type scheduledTask struct {
 	config    *v1.Config
 }
 
+func (s *scheduledTask) Less(other *scheduledTask) bool {
+	if s.priority != other.priority {
+		return s.priority > other.priority
+	}
+	return s.runAt.Before(other.runAt)
+}
+
+func (s scheduledTask) Eq(other scheduledTask) bool {
+	return s.task == other.task && s.runAt.Equal(other.runAt) && s.priority == other.priority && s.config == other.config
+}
+
 type scheduledTaskHeap struct {
 	tasks      []*scheduledTask
 	comparator func(i, j *scheduledTask) bool

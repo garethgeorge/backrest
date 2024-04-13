@@ -8,13 +8,13 @@ import (
 )
 
 // TimePriorityQueue is a priority queue that dequeues elements at (or after) a specified time, and prioritizes elements based on a priority value. It is safe for concurrent use.
-type TimePriorityQueue[T any] struct {
+type TimePriorityQueue[T equals[T]] struct {
 	mu     sync.Mutex
 	tqueue TimeQueue[priorityEntry[T]]
 	ready  genericHeap[priorityEntry[T]]
 }
 
-func NewTimePriorityQueue[T any]() *TimePriorityQueue[T] {
+func NewTimePriorityQueue[T equals[T]]() *TimePriorityQueue[T] {
 	return &TimePriorityQueue[T]{
 		tqueue: TimeQueue[priorityEntry[T]]{},
 		ready:  genericHeap[priorityEntry[T]]{},
@@ -23,31 +23,78 @@ func NewTimePriorityQueue[T any]() *TimePriorityQueue[T] {
 
 func (t *TimePriorityQueue[T]) Len() int {
 	t.mu.Lock()
+	t.tqueue.mu.Lock()
 	defer t.mu.Unlock()
-	return t.tqueue.Len() + t.ready.Len()
+	defer t.tqueue.mu.Unlock()
+	return t.tqueue.heap.Len() + t.ready.Len()
 }
 
 func (t *TimePriorityQueue[T]) Peek() T {
 	t.mu.Lock()
+	t.tqueue.mu.Lock()
 	defer t.mu.Unlock()
+	defer t.tqueue.mu.Unlock()
 
 	if t.ready.Len() > 0 {
 		return t.ready.Peek().v
 	}
-	return t.tqueue.Peek().v
+	if t.tqueue.heap.Len() > 0 {
+		return t.tqueue.heap.Peek().v.v
+	}
+	var zero T
+	return zero
 }
 
 func (t *TimePriorityQueue[T]) Reset() []T {
 	t.mu.Lock()
+	t.tqueue.mu.Lock()
 	defer t.mu.Unlock()
+	defer t.tqueue.mu.Unlock()
+
 	var res []T
 	for t.ready.Len() > 0 {
 		res = append(res, heap.Pop(&t.ready).(priorityEntry[T]).v)
 	}
-	for t.tqueue.Len() > 0 {
+	for t.tqueue.heap.Len() > 0 {
 		res = append(res, heap.Pop(&t.tqueue.heap).(timeQueueEntry[priorityEntry[T]]).v.v)
 	}
 	return res
+}
+
+func (t *TimePriorityQueue[T]) GetAll() []T {
+	t.mu.Lock()
+	t.tqueue.mu.Lock()
+	defer t.mu.Unlock()
+	defer t.tqueue.mu.Unlock()
+	res := make([]T, 0, t.tqueue.heap.Len()+t.ready.Len())
+	for _, entry := range t.tqueue.heap {
+		res = append(res, entry.v.v)
+	}
+	for _, entry := range t.ready {
+		res = append(res, entry.v)
+	}
+	return res
+}
+
+func (t *TimePriorityQueue[T]) Remove(v T) {
+	t.mu.Lock()
+	t.tqueue.mu.Lock()
+	defer t.mu.Unlock()
+	defer t.tqueue.mu.Unlock()
+
+	for idx := 0; idx < t.tqueue.heap.Len(); idx++ {
+		if t.tqueue.heap[idx].v.v.Eq(v) {
+			heap.Remove(&t.tqueue.heap, idx)
+			return
+		}
+	}
+
+	for idx := 0; idx < t.ready.Len(); idx++ {
+		if t.ready[idx].v.Eq(v) {
+			heap.Remove(&t.ready, idx)
+			return
+		}
+	}
 }
 
 func (t *TimePriorityQueue[T]) Enqueue(at time.Time, priority int, v T) {
@@ -59,8 +106,9 @@ func (t *TimePriorityQueue[T]) Enqueue(at time.Time, priority int, v T) {
 func (t *TimePriorityQueue[T]) Dequeue(ctx context.Context) T {
 	t.mu.Lock()
 	for {
+		t.tqueue.mu.Lock()
 		for t.tqueue.heap.Len() > 0 {
-			thead := t.tqueue.Peek() // peek at the head of the time queue
+			thead := t.tqueue.heap.Peek() // peek at the head of the time queue
 			if thead.at.Before(time.Now()) {
 				tqe := heap.Pop(&t.tqueue.heap).(timeQueueEntry[priorityEntry[T]])
 				heap.Push(&t.ready, tqe.v)
@@ -68,6 +116,7 @@ func (t *TimePriorityQueue[T]) Dequeue(ctx context.Context) T {
 				break
 			}
 		}
+		t.tqueue.mu.Unlock()
 		if t.ready.Len() > 0 {
 			defer t.mu.Unlock()
 			return heap.Pop(&t.ready).(priorityEntry[T]).v
@@ -80,7 +129,7 @@ func (t *TimePriorityQueue[T]) Dequeue(ctx context.Context) T {
 	}
 }
 
-type priorityEntry[T any] struct {
+type priorityEntry[T equals[T]] struct {
 	at       time.Time
 	priority int
 	v        T
@@ -88,4 +137,8 @@ type priorityEntry[T any] struct {
 
 func (t priorityEntry[T]) Less(other priorityEntry[T]) bool {
 	return t.priority > other.priority
+}
+
+func (t priorityEntry[T]) Eq(other priorityEntry[T]) bool {
+	return t.at == other.at && t.priority == other.priority && t.v.Eq(other.v)
 }
