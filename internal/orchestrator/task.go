@@ -2,9 +2,7 @@ package orchestrator
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -15,86 +13,44 @@ import (
 	"go.uber.org/zap"
 )
 
+// TaskRunner is an interface for running tasks. It is used by tasks to create operations and write logs.
+type TaskRunner interface {
+	// CreateOperation creates the operation in storage and sets the operation ID in the task.
+	CreateOperation(*v1.Operation) error
+	// UpdateOperation updates the operation in storage. It must be called after CreateOperation.
+	UpdateOperation(*v1.Operation) error
+	// WriteLog writes the log to storage and returns the reference.
+	WriteLog([]byte) (string, error)
+}
+
+// ScheduledTask is a task that is scheduled to run at a specific time.
+type ScheduledTask struct {
+	Task  Task          // the task to run
+	RunAt time.Time     // the time at which the task should be run.
+	Op    *v1.Operation // optional operation associated with this execution of the task.
+}
+
+// Task is a task that can be scheduled to run at a specific time.
 type Task interface {
-	Name() string                               // huamn readable name for this task.
-	Next(now time.Time) *time.Time              // when this task would like to be run.
-	Run(ctx context.Context) error              // run the task.
-	Cancel(withStatus v1.OperationStatus) error // informat the task that it's scheduled execution will be skipped (either STATUS_USER_CANCELLED or STATUS_SYSTEM_CANCELLED).
-	OperationId() int64                         // the id of the operation associated with this task (if any).
+	Name() string                                                             // huamn readable name for this task.
+	Next(now time.Time, runner TaskRunner) ScheduledTask                      // returns the next scheduled task.
+	Run(ctx context.Context, execInfo ScheduledTask, runner TaskRunner) error // run the task.
 }
 
-type TaskWithOperation struct {
-	orch    *Orchestrator
-	op      *v1.Operation
-	running atomic.Bool
-}
-
-func (t *TaskWithOperation) OperationId() int64 {
-	if t.op == nil {
-		return 0
-	}
-	return t.op.Id
-}
-
-func (t *TaskWithOperation) setOperation(op *v1.Operation) error {
-	if t.op != nil {
-		return errors.New("task already has an operation")
-	}
-	if err := t.orch.OpLog.Add(op); err != nil {
-		return fmt.Errorf("task failed to add operation to oplog: %v", err)
-	}
-	t.op = op
-	return nil
-}
-
-func (t *TaskWithOperation) runWithOpAndContext(ctx context.Context, do func(ctx context.Context, op *v1.Operation) error) error {
-	if t.op == nil {
-		return errors.New("task has no operation, a call to setOperation first is required")
-	}
-	if t.running.Load() {
-		return errors.New("task is already running")
-	}
-
-	t.running.Store(true)
-	defer t.running.Store(false)
-	defer func() {
-		t.op = nil
-	}()
-
-	return WithOperation(t.orch.OpLog, t.op, func() error {
-		capture := ioutil.NewOutputCapturer(32_000) // 32k of logs
-		ctx = restic.ContextWithLogger(ctx, capture)
-
-		err := do(ctx, t.op)
-
+func LogToOperation(ctx context.Context, op *v1.Operation, runner TaskRunner) (context.Context, func() error) {
+	capture := ioutil.NewOutputCapturer(32_000) // 32k of logs
+	ctxWithLogger := restic.ContextWithLogger(ctx, capture)
+	return ctxWithLogger, func() error {
 		if bytes := capture.Bytes(); len(bytes) > 0 {
-			ref, e := t.orch.logStore.Write(bytes)
+			ref, e := runner.WriteLog(bytes)
 			if e != nil {
-				errors.Join(err, fmt.Errorf("failed to write log to logstore: %w", e))
+				return fmt.Errorf("failed to write log to logstore: %w", e)
 			}
-			t.op.Logref = ref
+			op.Logref = ref
 			zap.S().Debugf("wrote operation log to %v", ref)
 		}
-
-		return err
-	})
-}
-
-// Cancel marks a task as cancelled. Note that, unintuitively, it is actually an error to call cancel on a running task.
-func (t *TaskWithOperation) Cancel(withStatus v1.OperationStatus) error {
-	if t.running.Load() {
-		return errors.New("cannot cancel a running task") // should never happen.
-	}
-	if t.op == nil {
 		return nil
 	}
-	t.op.Status = withStatus
-	t.op.UnixTimeEndMs = curTimeMillis()
-	if err := t.orch.OpLog.Update(t.op); err != nil {
-		return fmt.Errorf("failed to update operation %v in oplog: %w", t.op.Id, err)
-	}
-	t.op = nil
-	return nil
 }
 
 // WithOperation is a utility that creates an operation to track the function's execution.

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -45,10 +44,10 @@ type Orchestrator struct {
 	hookExecutor *hook.HookExecutor
 	logStore     *rotatinglog.RotatingLog
 
+	runningTask Task
+
 	// now for the purpose of testing; used by Run() to get the current time.
 	now func() time.Time
-
-	runningTask atomic.Pointer[taskExecutionInfo]
 }
 
 func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) (*Orchestrator, error) {
@@ -188,9 +187,11 @@ func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationSta
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	// note: if the task is running the requested status will not be set.
-	if running := o.runningTask.Load(); running != nil && running.operationId == operationId {
-		running.cancel()
+	if o.runningTask != nil && o.runningTask.OperationId() == operationId {
+		if err := o.runningTask.Cancel(status); err != nil {
+			return fmt.Errorf("cancel running task %q: %w", o.runningTask.Name(), err)
+		}
+		return nil
 	}
 
 	allTasks := o.taskQueue.GetAll()
@@ -214,48 +215,50 @@ func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationSta
 }
 
 // Run is the main orchestration loop. Cancel the context to stop the loop.
-func (o *Orchestrator) Run(mainCtx context.Context) {
+func (o *Orchestrator) Run(ctx context.Context) {
 	zap.L().Info("starting orchestrator loop")
 
 	for {
-		if mainCtx.Err() != nil {
+		if ctx.Err() != nil {
 			zap.L().Info("shutting down orchestrator loop, context cancelled.")
 			break
 		}
 
-		t := o.taskQueue.Dequeue(mainCtx)
+		t := o.taskQueue.Dequeue(ctx)
 		if t.task == nil {
 			continue
 		}
 
 		zap.L().Info("running task", zap.String("task", t.task.Name()))
 
-		taskCtx, cancel := context.WithCancel(mainCtx)
-
-		if swapped := o.runningTask.CompareAndSwap(nil, &taskExecutionInfo{
-			operationId: t.task.OperationId(),
-			cancel:      cancel,
-		}); !swapped {
-			zap.L().Fatal("failed to start task, another task is already running. Was Run() called twice?")
+		o.mu.Lock()
+		if o.runningTask != nil {
+			panic("running task already set")
 		}
+		o.runningTask = t.task
+		o.mu.Unlock()
 
 		start := time.Now()
-		err := t.task.Run(taskCtx)
+		err := t.task.Run(ctx)
 		if err != nil {
 			zap.L().Error("task failed", zap.String("task", t.task.Name()), zap.Error(err), zap.Duration("duration", time.Since(start)))
 		} else {
 			zap.L().Info("task finished", zap.String("task", t.task.Name()), zap.Duration("duration", time.Since(start)))
 		}
-		o.runningTask.Store(nil)
 
-		for _, cb := range t.callbacks {
-			cb(err)
-		}
-
+		o.mu.Lock()
+		o.runningTask = nil
 		if t.config == o.config {
 			// Only reschedule tasks if the config hasn't changed since the task was scheduled.
 			o.ScheduleTask(t.task, t.priority)
 		}
+		o.mu.Unlock()
+
+		go func() {
+			for _, cb := range t.callbacks {
+				cb(err)
+			}
+		}()
 	}
 }
 
