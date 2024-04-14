@@ -119,11 +119,12 @@ func (t *TimeQueue[T]) Dequeue(ctx context.Context) T {
 				t.mu.Unlock()
 				continue
 			}
-			val, ok := heap.Pop(&t.heap).(timeQueueEntry[T])
-			if !ok || val.at.After(time.Now()) {
+			val := t.heap.Peek()
+			if val.at.After(time.Now()) {
 				t.mu.Unlock()
 				continue
 			}
+			heap.Pop(&t.heap)
 			t.mu.Unlock()
 			return val.v
 		case <-notify: // new task was added, loop again to ensure we have the earliest task.
