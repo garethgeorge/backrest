@@ -2,8 +2,14 @@
 
 cd "$(dirname "$0")" # cd to the directory of this script
 
-install_unix() {
-  echo "Installing backrest to /usr/local/bin"
+install_or_update_unix() {
+  if systemctl is-active --quiet backrest; then
+    sudo systemctl stop backrest
+    echo "Updating backrest in /usr/local/bin"
+  else
+    echo "Installing backrest to /usr/local/bin"
+  fi
+  
   sudo mkdir -p /usr/local/bin
 
   sudo cp $(ls -1 backrest | head -n 1) /usr/local/bin
@@ -13,6 +19,11 @@ create_systemd_service() {
   if [ ! -d /etc/systemd/system ]; then
     echo "Systemd not found. This script is only for systemd based systems."
     exit 1
+  fi
+
+  if [ -f /etc/systemd/system/backrest.service ]; then
+    echo "Systemd unit already exists. Skipping creation."
+    return 0
   fi
 
   echo "Creating systemd service at /etc/systemd/system/backrest.service"
@@ -85,7 +96,7 @@ if [ "$OS" = "Darwin" ]; then
   sudo xattr -d com.apple.quarantine /usr/local/bin/backrest # remove quarantine flag
 elif [ "$OS" = "Linux" ]; then
   echo "Installing on Linux"
-  install_unix
+  install_or_update_unix
   create_systemd_service
   echo "Enabling systemd service backrest.service"
   sudo systemctl enable backrest
