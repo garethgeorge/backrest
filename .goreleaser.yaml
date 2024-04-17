@@ -103,6 +103,14 @@ dockers:
       - "--pull"
       - "--platform=linux/arm/v6"
 
+  - image_templates:
+      - garethgeorge/backrest:{{ .Tag }}-scratch-armv7
+    dockerfile: Dockerfile.scratch
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm/v7"
+
 docker_manifests:
   - name_template: "garethgeorge/backrest:latest"
     image_templates:
@@ -121,11 +129,13 @@ docker_manifests:
       - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
       - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
       - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv7"
   - name_template: "garethgeorge/backrest:{{ .Tag }}-scratch"
     image_templates:
       - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
       - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
       - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv7"
 
 brews:
   - name: backrest
