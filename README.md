@@ -1,7 +1,7 @@
 <p align="center"><img src="./webui/assets/logo-black.svg" width="400px"/></p>
 
 <p align="center">
-  <img src="https://github.com/garethgeorge/backrest/actions/workflows/build-and-test.yml/badge.svg" />
+  <img src="https://github.com/garethgeorge/backrest/actions/workflows/test.yml/badge.svg" />
   <img src="https://img.shields.io/github/downloads/garethgeorge/backrest/total" />
   <img src="https://img.shields.io/docker/pulls/garethgeorge/backrest" />
 </p>
@@ -12,9 +12,9 @@
 
 Backrest is a web-accessible backup solution built on top of [restic](https://restic.net/). Backrest provides a WebUI which wraps the restic CLI and makes it easy to create repos, browse snapshots, and restore files. Additionally, Backrest can run in the background and take an opinionated approach to scheduling snapshots and orchestrating repo health operations.
 
-By building on restic, Backrest leverages restic's mature feature set. Restic provides fast, reliable (used by tens of thousands of individuals and by corporations in production environments), and secure backup operations. Backrest itself is built in Golang (matching restic's implementation) and is shipped as a self-contained and light weight (<20 MB on all platforms) binary with no dependecies other than restic.
+By building on restic, Backrest leverages restic's mature feature set. Restic provides fast, reliable, and secure backup operations. 
 
-This project aims to be the easiest way to setup and get started with backups on any system. You can expect to be able to perform all operations from the web interface but should you ever need more control, you are free to browse your repo and perform operations using the [restic cli](https://restic.readthedocs.io/en/latest/manual_rest.html). Backrest safely detects and imports external operations (e.g. manual backups).
+Backrest itself is built in Golang (matching restic's implementation) and is shipped as a self-contained and light weight binary with no dependecies other than restic. This project aims to be the easiest way to setup and get started with backups on any system. You can expect to be able to perform all operations from the web interface but should you ever need more control, you are free to browse your repo and perform operations using the [restic cli](https://restic.readthedocs.io/en/latest/manual_rest.html). Additionally, Backrest can safely detect and import your existing snapshots (or externally created snapshots on an ongoing basis).
 
 **Preview**
 
@@ -175,9 +175,22 @@ Note: you can set the linux user and group to your primary user (e.g. `whoami` w
 
 ## Running on MacOS
 
-Download a Darwin release from the [releases page](https://github.com/garethgeorge/backrest/releases) and install it to `/usr/local/bin`.
+#### Using Brew (Recommended)
 
-#### Using launchd with the install script (Recommended)
+Backrest is provided as a [homebrew](https://brew.sh/) tap. To install with brew run:
+
+```sh
+brew tap garethgeorge/homebrew-backrest-tap
+brew install backrest
+```
+
+This tap uses [Brew services](https://github.com/Homebrew/homebrew-services) to launch and manage Backrest's lifecycle. Backrest will launch on startup and run on port ':9898` by default.
+
+
+
+#### Manually using the install script (Recommended)
+
+Download a Darwin release from the [releases page](https://github.com/garethgeorge/backrest/releases) and install it to `/usr/local/bin`.
 
 Extract the release you downloaded and run the install script:
 
