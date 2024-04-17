@@ -105,6 +105,20 @@ services:
 
 ## Running on Linux
 
+### Arch Linux
+
+> Note: [Backrest on AUR](https://aur.archlinux.org/packages/backrest) is not maintained by the backrest official and has made minor adjustments to the recommended services. Please refer to [here](https://aur.archlinux.org/cgit/aur.git/tree/backrest@.service?h=backrest) for details. In [backrest@.service](https://aur.archlinux.org/cgit/aur.git/tree/backrest@.service?h=backrest), use `restic` from the Arch Linux official repository by setting `BACKREST_RESTIC_COMMAND`. And for information on enable/starting/stopping services, please refer to [Systemd#Using_units](https://wiki.archlinux.org/title/Systemd#Using_units).
+
+```shell
+## install backrest from AUR
+paru -Sy backrest  # or: yay -Sy backrest
+
+## enable backrest service for current user
+sudo systemctl enable --now backrest@$USER.service
+```
+
+### Download release
+
 Download a release from the [releases page](https://github.com/garethgeorge/backrest/releases)
 
 #### Using systemd with the install script (Recommended)
