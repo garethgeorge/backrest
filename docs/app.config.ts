@@ -8,7 +8,7 @@ export default defineAppConfig({
       github: 'garethgeorge/backrest',
     },
     github: {
-      dir: 'docs',
+      dir: 'docs/content',
       branch: 'main',
       repo: 'backrest',
       owner: 'garethgeorge',
