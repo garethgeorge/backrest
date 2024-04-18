@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.17.2](https://github.com/garethgeorge/backrest/compare/v0.17.1...v0.17.2) (2024-04-18)
+
+
+### Bug Fixes
+
+* add tini to docker images to reap rclone processes left behind by restic ([6408518](https://github.com/garethgeorge/backrest/commit/6408518582fb2a1b529f5c9fb0c595df230f3df6))
+* armv7 support for docker releases ([ec39533](https://github.com/garethgeorge/backrest/commit/ec39533e4cddf2f0354ec3fcb4c52ba37a9b00ec))
+* bug in new task queue implementation ([5d6074e](https://github.com/garethgeorge/backrest/commit/5d6074eb296e6737f1959fba913c67e09e60ef47))
+* improve restic pkg's output handling and buffering ([aacdf9b](https://github.com/garethgeorge/backrest/commit/aacdf9b7cd529a6f677cd7f1d9ed2fbbcadc9b8a))
+* Linux ./install.sh script fails when used for updating backrest  ([#226](https://github.com/garethgeorge/backrest/issues/226)) ([be09303](https://github.com/garethgeorge/backrest/commit/be0930368b83ba8f159b28bc286300c56bd6a3a3))
+* use new orchestrator queue ([4a81889](https://github.com/garethgeorge/backrest/commit/4a81889d810d409ed42fcf07a0fa6a4ac97db72b))
+
 ## [0.17.1](https://github.com/garethgeorge/backrest/compare/v0.17.0...v0.17.1) (2024-04-12)
 
 
