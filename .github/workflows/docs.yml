@@ -9,34 +9,33 @@ on:
   workflow_dispatch:
 
 jobs:
-  jobs:
-    build:
-      runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-      steps:
-        - uses: actions/checkout@v3
+    steps:
+      - uses: actions/checkout@v3
 
-        - name: Set up NodeJS
-          uses: actions/setup-node@v2
-          with:
-            node-version: "20"
+      - name: Set up NodeJS
+        uses: actions/setup-node@v2
+        with:
+          node-version: "20"
 
-        - name: Install dependencies
-          run: npm install --prefix ./docs
+      - name: Install dependencies
+        run: npm install --prefix ./docs
 
-        - name: Build
-          run: npm run generate --prefix ./docs
+      - name: Build
+        run: npm run generate --prefix ./docs
 
-        - name: Fix permissions
-          run: |
-            chmod -c -R +rX "./docs/dist/" | while read line; do
-              echo "::warning title=Invalid file permissions automatically fixed::$line"
-            done
+      - name: Fix permissions
+        run: |
+          chmod -c -R +rX "./docs/.output/public" | while read line; do
+            echo "::warning title=Invalid file permissions automatically fixed::$line"
+          done
 
-        - name: Upload Pages artifact
-          uses: actions/upload-pages-artifact@v2
-          with:
-            path: ./docs/dist
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: ./docs/.output/public
 
   deploy:
     needs: build
@@ -44,6 +43,7 @@ jobs:
     permissions:
       pages: write
       id-token: write
+      actions: read
 
     environment:
       name: github-pages
@@ -53,4 +53,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v2
