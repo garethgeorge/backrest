@@ -33,33 +33,21 @@ Backrest itself is built in Golang (matching restic's implementation) and is shi
 
 **Features**
 
- * WebUI for restic supports local and remote access (e.g. run on a NAS and access from your desktop)
- * Realtime UI e.g. live progress bars for backup operations and live refreshes of operation history.
- * Snapshot browser
- * Restore interface
- * Configurable backup plans
-   * Cronexprs provide flexible scheduling options
-   * Configurable retention policies with restic forget (e.g. keep 1 snapshot per day for 30 days, 1 snapshot per week for 6 months, etc)
-   * Include lists
-   * Exclusion lists
-   * Add custom CLI flags for detailed control of restic e.g. for use with rclone
-   * Supported destinations are any restic supported repository (e.g. local filesystem, S3, Backblaze, rclone, etc).
- * Automatic repo health operations e.g. forget and prune.
-   * Forget runs after every backup.
-   * Prune once every 7 days by default.
- * Multiple backup plans can be configured running on different schedules and with different retention policies.
- * Multiple restic repositories can be configured and used in different plans.
- * Event hooks for notifications
-   * Lifecycle hooks are triggered with status information from operations backrest runs on your behalf.
-   * Supported services: Discord, Gotify, Shell Command
-   * Events: Backup Start, Backup Finish, Backup Error, Any Error
- * Multi-user authentication: backrest can be secured with a username and password.
+  * WebUI supports local and remote access (e.g. run on a NAS and access from your desktop)
+  * Multi-platform support (Linux, MacOS, Windows, FreeBSD, [Docker](https://hub.docker.com/r/garethgeorge/backrest))
+  * Import your existing restic repositories
+  * Cron scheduled backups and health operations (e.g. prune and forget)
+  * UI for browing and restoring files from snapshots
+  * Configurable backup notifications (e.g. Discord, Slack, Shoutrrr, Gotify)
+  * Add shell command hooks to run before and after backup operations.
+  * Compatible with rclone remotes
+  * Backup to any restic supported storage (e.g. S3, B2, Azure, GCS, local, SFTP, and all [rclone remotes](https://rclone.org/))
 
 -----
 
 # User Guide
 
-[See the backrest wiki](https://github.com/garethgeorge/backrest/wiki).
+[See the backrest docs](https://garethgeorge.github.io/backrest/introduction/getting-started).
 
 # Installation
 
