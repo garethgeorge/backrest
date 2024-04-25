@@ -6,6 +6,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/oplog"
 	"go.uber.org/zap"
 )
 
@@ -23,37 +24,41 @@ const (
 )
 
 type CollectGarbageTask struct {
-	orchestrator *Orchestrator // owning orchestrator
-	firstRun     bool
+	BaseTask
+	firstRun bool
 }
 
 var _ Task = &CollectGarbageTask{}
 
-func (t *CollectGarbageTask) Name() string {
-	return "collect garbage"
-}
-
-func (t *CollectGarbageTask) Next(now time.Time) *time.Time {
+func (t *CollectGarbageTask) Next(now time.Time, runner TaskRunner) ScheduledTask {
 	if !t.firstRun {
 		t.firstRun = true
 		runAt := now.Add(gcStartupDelay)
-		return &runAt
+		return ScheduledTask{
+			Task:  t,
+			RunAt: runAt,
+		}
 	}
 
 	runAt := now.Add(gcInterval)
-	return &runAt
+	return ScheduledTask{
+		Task:  t,
+		RunAt: runAt,
+	}
 }
 
-func (t *CollectGarbageTask) Run(ctx context.Context) error {
-	if err := t.gcOperations(); err != nil {
+func (t *CollectGarbageTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
+	oplog := runner.Orchestrator().OpLog()
+
+	if err := t.gcOperations(oplog); err != nil {
 		return fmt.Errorf("collecting garbage: %w", err)
 	}
 
 	return nil
 }
 
-func (t *CollectGarbageTask) gcOperations() error {
-	oplog := t.orchestrator.OpLog
+func (t *CollectGarbageTask) gcOperations(oplog *oplog.OpLog) error {
+	oplog := st
 
 	// pass 1: identify forgotten snapshots.
 	snapshotIsForgotten := make(map[string]bool)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -15,6 +16,26 @@ type taskRunnerImpl struct {
 	st           ScheduledTask
 	logs         bytes.Buffer
 	logsWriter   ioutil.LockedWriter
+	repo         *v1.Repo // cache, populated on first call to Repo()
+	plan         *v1.Plan // cache, populated on first call to Plan()
+}
+
+func (t *taskRunnerImpl) FindRepo() (*v1.Repo, error) {
+	if t.repo != nil {
+		return t.repo, nil
+	}
+	var err error
+	t.repo, err = t.orchestrator.GetRepo(t.st.Task.RepoID())
+	return t.repo, err
+}
+
+func (t *taskRunnerImpl) FindPlan() (*v1.Plan, error) {
+	if t.plan != nil {
+		return t.plan, nil
+	}
+	var err error
+	t.plan, err = t.orchestrator.GetPlan(t.st.Task.PlanID())
+	return t.plan, err
 }
 
 var _ TaskRunner = &taskRunnerImpl{}
@@ -56,4 +77,26 @@ func (t *taskRunnerImpl) AppendRawLog(data []byte) error {
 
 func (t *taskRunnerImpl) Orchestrator() *Orchestrator {
 	return t.orchestrator
+}
+
+func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.HookVars) error {
+	repoID := t.st.Task.RepoID()
+	planID := t.st.Task.PlanID()
+	var repo *v1.Repo
+	var plan *v1.Plan
+	if repoID == "" {
+		var err error
+		repo, err = t.FindRepo()
+		if err != nil {
+			return err
+		}
+	}
+	if planID == "" {
+		var err error
+		plan, err = t.FindPlan()
+		if err != nil {
+			return err
+		}
+	}
+	return t.orchestrator.hookExecutor.ExecuteHooks(repo, plan, events, vars)
 }

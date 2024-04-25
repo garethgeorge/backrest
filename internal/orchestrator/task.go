@@ -70,11 +70,11 @@ func (s ScheduledTask) cancel(oplog *oplog.OpLog) error {
 
 // Task is a task that can be scheduled to run at a specific time.
 type Task interface {
-	Name() string                                                             // human readable name for this task.
-	Next(now time.Time, runner TaskRunner) ScheduledTask                      // returns the next scheduled task.
-	Run(ctx context.Context, execInfo ScheduledTask, runner TaskRunner) error // run the task.
-	PlanID() string                                                           // the ID of the plan this task is associated with.
-	RepoID() string                                                           // the ID of the repo this task is associated with.
+	Name() string                                                       // human readable name for this task.
+	Next(now time.Time, runner TaskRunner) ScheduledTask                // returns the next scheduled task.
+	Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error // run the task.
+	PlanID() string                                                     // the ID of the plan this task is associated with.
+	RepoID() string                                                     // the ID of the repo this task is associated with.
 }
 
 type BaseTask struct {
