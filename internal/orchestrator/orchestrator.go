@@ -25,13 +25,12 @@ var ErrPlanNotFound = errors.New("plan not found")
 const PlanForUnassociatedOperations = "_unassociated_"
 
 const (
+	TaskPriorityStats          = -1
 	TaskPriorityDefault        = 0
-	TaskPriorityInteractive    = 10
-	TaskPriorityIndexSnapshots = 101
-	TaskPriorityForget         = 102
-	TaskPriorityPrune          = 103
-	TaskPriorityHook           = 1000 // runs before any other task.
-	TaskPriorityStats          = -1   // very low priority.
+	TaskPriorityInteractive    = 1 << 1
+	TaskPriorityIndexSnapshots = 1 << 2
+	TaskPriorityForget         = 1 << 3
+	TaskPriorityPrune          = 1 << 4
 )
 
 // Orchestrator is responsible for managing repos and backups.
@@ -176,7 +175,7 @@ func (o *Orchestrator) GetRepo(repoId string) (*v1.Repo, error) {
 		}
 	}
 
-	return nil, ErrRepoNotFound
+	return nil, fmt.Errorf("get repo %q: %w", repoId, ErrRepoNotFound)
 }
 
 func (o *Orchestrator) GetPlan(planId string) (*v1.Plan, error) {
@@ -189,14 +188,14 @@ func (o *Orchestrator) GetPlan(planId string) (*v1.Plan, error) {
 		}
 	}
 
-	return nil, ErrPlanNotFound
+	return nil, fmt.Errorf("get plan %q: %w", planId, ErrPlanNotFound)
 }
 
 func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationStatus) error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	if o.runningTask != nil && o.runningTask.Op.Id == operationId {
+	if o.runningTask != nil && o.runningTask.OperationId() == operationId {
 		if err := o.runningTask.Cancel(status); err != nil {
 			return fmt.Errorf("cancel running task %q: %w", o.runningTask.Name(), err)
 		}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/pkg/restic"
@@ -14,12 +15,16 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var NeverScheduledTask = ScheduledTask{}
+
 // TaskRunner is an interface for running tasks. It is used by tasks to create operations and write logs.
 type TaskRunner interface {
 	// CreateOperation creates the operation in storage and sets the operation ID in the task.
 	CreateOperation(*v1.Operation) error
 	// UpdateOperation updates the operation in storage. It must be called after CreateOperation.
 	UpdateOperation(*v1.Operation) error
+	// ExecuteHooks
+	ExecuteHooks(events []v1.Hook_Condition, vars hook.HookVars) error
 	// Logger returns a logger for the run of the task.
 	Logger() *zap.Logger
 	// AppendRawLog writes the raw log data to the log for this task.
@@ -68,15 +73,26 @@ type Task interface {
 	Name() string                                                             // human readable name for this task.
 	Next(now time.Time, runner TaskRunner) ScheduledTask                      // returns the next scheduled task.
 	Run(ctx context.Context, execInfo ScheduledTask, runner TaskRunner) error // run the task.
-	PlanID() string                                                           // the ID of the plan associated with this task.
-	RepoID() string                                                           // the ID of the repo associated with this task.
-	FlowID() string                                                           // the ID of the flow associated with this task.
+	PlanID() string                                                           // the ID of the plan this task is associated with.
+	RepoID() string                                                           // the ID of the repo this task is associated with.
 }
 
 type BaseTask struct {
-	Name   string
-	PlanId string
-	RepoId string
+	TaskName   string
+	TaskPlanID string
+	TaskRepoID string
+}
+
+func (b BaseTask) Name() string {
+	return b.TaskName
+}
+
+func (b BaseTask) PlanID() string {
+	return b.TaskPlanID
+}
+
+func (b BaseTask) RepoID() string {
+	return b.TaskRepoID
 }
 
 func WithResticLogger(ctx context.Context, runner TaskRunner) (context.Context, func()) {

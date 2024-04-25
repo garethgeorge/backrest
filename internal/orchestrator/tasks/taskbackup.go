@@ -10,6 +10,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"github.com/gitploy-io/cronexpr"
@@ -20,25 +21,24 @@ var maxBackupErrorHistoryLength = 20 // arbitrary limit on the number of file re
 
 // BackupTask is a scheduled backup operation.
 type BackupTask struct {
-	name      string
-	plan      *v1.Plan
+	orchestrator.BaseTask
 	scheduler func(curTime time.Time) *time.Time
 }
 
-var _ Task = &BackupTask{}
+var _ orchestrator.Task = &BackupTask{}
 
-func NewScheduledBackupTask(orchestrator *Orchestrator, plan *v1.Plan) (*BackupTask, error) {
+func NewScheduledBackupTask(plan *v1.Plan) (*BackupTask, error) {
 	sched, err := cronexpr.ParseInLocation(plan.Cron, time.Now().Location().String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse schedule %q: %w", plan.Cron, err)
 	}
 
 	return &BackupTask{
-		name: fmt.Sprintf("backup for plan %q", plan.Id),
-		TaskWithOperation: TaskWithOperation{
-			orch: orchestrator,
+		BaseTask: orchestrator.BaseTask{
+			TaskName:   fmt.Sprintf("backup for plan %q", plan.Id),
+			TaskRepoID: plan.Repo,
+			TaskPlanID: plan.Id,
 		},
-		plan: plan,
 		scheduler: func(curTime time.Time) *time.Time {
 			next := sched.Next(curTime)
 			return &next
@@ -46,14 +46,14 @@ func NewScheduledBackupTask(orchestrator *Orchestrator, plan *v1.Plan) (*BackupT
 	}, nil
 }
 
-func NewOneoffBackupTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time) *BackupTask {
+func NewOneoffBackupTask(plan *v1.Plan, at time.Time) *BackupTask {
 	didOnce := false
 	return &BackupTask{
-		name: fmt.Sprintf("onetime backup for plan %q", plan.Id),
-		TaskWithOperation: TaskWithOperation{
-			orch: orchestrator,
+		BaseTask: orchestrator.BaseTask{
+			TaskName:   fmt.Sprintf("backup for plan %q", plan.Id),
+			TaskRepoID: plan.Repo,
+			TaskPlanID: plan.Id,
 		},
-		plan: plan,
 		scheduler: func(curTime time.Time) *time.Time {
 			if didOnce {
 				return nil
@@ -64,72 +64,53 @@ func NewOneoffBackupTask(orchestrator *Orchestrator, plan *v1.Plan, at time.Time
 	}
 }
 
-func (t *BackupTask) Name() string {
-	return t.name
-}
-
-func (t *BackupTask) Next(now time.Time) *time.Time {
+func (t *BackupTask) Next(now time.Time, runner orchestrator.TaskRunner) orchestrator.ScheduledTask {
 	next := t.scheduler(now)
 	if next == nil {
-		return nil
+		return orchestrator.NeverScheduledTask
 	}
 
-	if err := t.setOperation(&v1.Operation{
-		PlanId:          t.plan.Id,
-		RepoId:          t.plan.Repo,
-		UnixTimeStartMs: timeToUnixMillis(*next),
-		Status:          v1.OperationStatus_STATUS_PENDING,
-		Op:              &v1.Operation_OperationBackup{},
-	}); err != nil {
-		zap.S().Errorf("task %v failed to add operation to oplog: %v", t.Name(), err)
+	return orchestrator.ScheduledTask{
+		Task:  t,
+		RunAt: *next,
+		Op: &v1.Operation{
+			PlanId:          t.PlanID(),
+			RepoId:          t.RepoID(),
+			UnixTimeStartMs: (*next).UnixMilli(),
+			Status:          v1.OperationStatus_STATUS_PENDING,
+			Op:              &v1.Operation_OperationBackup{},
+		},
 	}
-
-	return next
 }
 
-func (t *BackupTask) Run(ctx context.Context) error {
-	return t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
-		return backupHelper(ctx, t, t.orch, t.plan, op)
-	})
-}
-
-// backupHelper does a backup.
-func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan *v1.Plan, op *v1.Operation) error {
+func (t *BackupTask) Run(ctx context.Context, st orchestrator.ScheduledTask, runner orchestrator.TaskRunner) error {
 	startTime := time.Now()
+	op := st.Op
 	backupOp := &v1.Operation_OperationBackup{
 		OperationBackup: &v1.OperationBackup{},
 	}
 	op.Op = backupOp
 
-	zap.L().Info("Starting backup", zap.String("plan", plan.Id), zap.Int64("opId", op.Id))
-	repo, err := orchestrator.GetRepo(plan.Repo)
+	repo, err := runner.Orchestrator().GetRepoOrchestrator(t.RepoID())
 	if err != nil {
-		return fmt.Errorf("couldn't get repo %q: %w", plan.Repo, err)
+		return err
 	}
 
-	// Run start hooks e.g. preflight checks and backup start notifications.
-	if err := orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, []v1.Hook_Condition{
+	plan, err := runner.Orchestrator().GetPlan(t.PlanID())
+	if err != nil {
+		return err
+	}
+
+	if err := runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_START,
-	}, hook.HookVars{
-		Task: t.Name(),
-	}); err != nil {
+	}, hook.HookVars{}); err != nil {
 		var cancelErr *hook.HookErrorRequestCancel
 		if errors.As(err, &cancelErr) {
 			op.Status = v1.OperationStatus_STATUS_USER_CANCELLED // user visible cancelled status
 			op.DisplayMessage = err.Error()
 			return nil
 		}
-
-		// If the snapshot start hook fails we trigger error notification hooks.
-		retErr := fmt.Errorf("hook failed: %w", err)
-		_ = orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, []v1.Hook_Condition{
-			v1.Hook_CONDITION_ANY_ERROR,
-		}, hook.HookVars{
-			Task:  t.Name(),
-			Error: retErr.Error(),
-		})
-
-		return retErr
+		return fmt.Errorf("hook failed: %w", err)
 	}
 
 	var sendWg sync.WaitGroup
@@ -171,13 +152,12 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 
 		sendWg.Add(1)
 		go func() {
-			if err := orchestrator.OpLog.Update(op); err != nil {
+			if err := runner.UpdateOperation(op); err != nil {
 				zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
 			}
 			sendWg.Done()
 		}()
 	})
-
 	sendWg.Wait()
 
 	if summary == nil {
@@ -192,16 +172,17 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 	if err != nil {
 		vars.Error = err.Error()
 		if !errors.Is(err, restic.ErrPartialBackup) {
-			_ = orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, []v1.Hook_Condition{
-				v1.Hook_CONDITION_SNAPSHOT_ERROR, v1.Hook_CONDITION_ANY_ERROR,
+			runner.ExecuteHooks([]v1.Hook_Condition{
+				v1.Hook_CONDITION_SNAPSHOT_ERROR,
+				v1.Hook_CONDITION_ANY_ERROR,
 			}, vars)
-			return fmt.Errorf("repo.Backup for repo %q: %w", plan.Repo, err)
+			return nil
 		}
 		op.Status = v1.OperationStatus_STATUS_WARNING
 		op.DisplayMessage = "Partial backup, some files may not have been read completely."
 	}
 
-	orchestrator.hookExecutor.ExecuteHooks(repo.Config(), plan, []v1.Hook_Condition{
+	runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_END,
 	}, vars)
 
@@ -216,9 +197,9 @@ func backupHelper(ctx context.Context, t Task, orchestrator *Orchestrator, plan 
 	// schedule followup tasks
 	at := time.Now()
 	if _, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyKeepAll); plan.Retention != nil && !ok {
-		orchestrator.ScheduleTask(NewOneoffForgetTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityForget)
+		runner.Orchestrator().ScheduleTask(NewOneoffForgetTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityForget)
 	}
-	orchestrator.ScheduleTask(NewOneoffIndexSnapshotsTask(orchestrator, plan.Repo, at), TaskPriorityIndexSnapshots)
+	runner.Orchestrator().ScheduleTask(NewOneoffIndexSnapshotsTask(orchestrator, plan.Repo, at), TaskPriorityIndexSnapshots)
 
 	return nil
 }
