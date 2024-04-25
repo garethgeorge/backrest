@@ -40,11 +40,11 @@ type Orchestrator struct {
 	config       *v1.Config
 	OpLog        *oplog.OpLog
 	repoPool     *resticRepoPool
-	taskQueue    *queue.TimePriorityQueue[scheduledTask]
+	taskQueue    *queue.TimePriorityQueue[ScheduledTask]
 	hookExecutor *hook.HookExecutor
 	logStore     *rotatinglog.RotatingLog
 
-	runningTask Task
+	runningTask ScheduledTask
 
 	// now for the purpose of testing; used by Run() to get the current time.
 	now func() time.Time
@@ -60,7 +60,7 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
 		repoPool:     newResticRepoPool(resticBin, &config.MemoryStore{Config: cfg}),
-		taskQueue:    queue.NewTimePriorityQueue[scheduledTask](),
+		taskQueue:    queue.NewTimePriorityQueue[ScheduledTask](),
 		hookExecutor: hook.NewHookExecutor(oplog, logStore),
 		logStore:     logStore,
 	}
@@ -127,17 +127,17 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 	zap.L().Info("scheduling default tasks, waiting for task queue reset.")
 	removedTasks := o.taskQueue.Reset()
 	for _, t := range removedTasks {
-		if err := t.task.Cancel(v1.OperationStatus_STATUS_SYSTEM_CANCELLED); err != nil {
-			zap.L().Error("failed to cancel queued task", zap.String("task", t.task.Name()), zap.Error(err))
+		if err := t.cancel(o.OpLog); err != nil {
+			zap.L().Error("failed to cancel queued task", zap.String("task", t.Task.Name()), zap.Error(err))
 		} else {
-			zap.L().Debug("queued task cancelled due to config change", zap.String("task", t.task.Name()))
+			zap.L().Debug("queued task cancelled due to config change", zap.String("task", t.Task.Name()))
 		}
 	}
 
 	zap.L().Info("reset task queue, scheduling new task set.")
 
 	// Requeue tasks that are affected by the config change.
-	o.ScheduleTask(&CollectGarbageTask{
+	o.ScheduleTask(&tasks.CollectGarbageTask{
 		orchestrator: o,
 	}, TaskPriorityDefault)
 
@@ -155,7 +155,7 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 	return nil
 }
 
-func (o *Orchestrator) GetRepo(repoId string) (repo *RepoOrchestrator, err error) {
+func (o *Orchestrator) GetRepoOrchestrator(repoId string) (repo *RepoOrchestrator, err error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
@@ -166,13 +166,22 @@ func (o *Orchestrator) GetRepo(repoId string) (repo *RepoOrchestrator, err error
 	return r, nil
 }
 
-func (o *Orchestrator) GetPlan(planId string) (*v1.Plan, error) {
+func (o *Orchestrator) GetRepo(repoId string) (*v1.Repo, error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	if o.config.Plans == nil {
-		return nil, ErrPlanNotFound
+	for _, r := range o.config.Repos {
+		if r.GetId() == repoId {
+			return r, nil
+		}
 	}
+
+	return nil, ErrRepoNotFound
+}
+
+func (o *Orchestrator) GetPlan(planId string) (*v1.Plan, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
 
 	for _, p := range o.config.Plans {
 		if p.Id == planId {
@@ -187,7 +196,7 @@ func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationSta
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	if o.runningTask != nil && o.runningTask.OperationId() == operationId {
+	if o.runningTask != nil && o.runningTask.Op.Id == operationId {
 		if err := o.runningTask.Cancel(status); err != nil {
 			return fmt.Errorf("cancel running task %q: %w", o.runningTask.Name(), err)
 		}

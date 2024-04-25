@@ -5,7 +5,9 @@ import (
 	"fmt"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/oplog/serializationutil"
 	"go.etcd.io/bbolt"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -13,20 +15,37 @@ var migrations = []func(*OpLog, *bbolt.Tx) error{
 	migration001FlowID,
 }
 
-var CurrentVersion = int32(len(migrations))
+var CurrentVersion = int64(len(migrations))
 
-func ApplyMigrations(oplog *OpLog, tx *bbolt.Tx, version int64) (int64, error) {
+func ApplyMigrations(oplog *OpLog, tx *bbolt.Tx) error {
+	var version int64
+	versionBytes := tx.Bucket(SystemBucket).Get([]byte("version"))
+	if versionBytes == nil {
+		version = 0
+	} else {
+		v, err := serializationutil.Btoi(versionBytes)
+		if err != nil {
+			return fmt.Errorf("couldn't parse version: %w", err)
+		}
+		version = v
+	}
+
 	startMigration := int(version)
 	if startMigration < 0 {
 		startMigration = 0
 	}
 	for idx := startMigration; idx < len(migrations); idx += 1 {
+		zap.L().Info("applying oplog migration", zap.Int("migration_no", idx))
 		if err := migrations[idx](oplog, tx); err != nil {
-			return version, fmt.Errorf("couldn't apply migration %d: %w", idx, err)
+			zap.L().Error("failed to apply migration", zap.Int("migration_no", idx), zap.Error(err))
+			return fmt.Errorf("couldn't apply migration %d: %w", idx, err)
 		}
 	}
 
-	return int64(CurrentVersion), nil
+	if err := tx.Bucket(SystemBucket).Put([]byte("version"), serializationutil.Itob(CurrentVersion)); err != nil {
+		return fmt.Errorf("couldn't update version: %w", err)
+	}
+	return nil
 }
 
 func transformOperations(oplog *OpLog, tx *bbolt.Tx, f func(op *v1.Operation) error) error {
@@ -85,6 +104,7 @@ func migration001FlowID(oplog *OpLog, tx *bbolt.Tx) error {
 			snapshotIdToFlow[op.SnapshotId] = op.Id
 			op.FlowId = op.Id
 		}
+
 		return nil
 	})
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 // TaskRunner is an interface for running tasks. It is used by tasks to create operations and write logs.
@@ -22,18 +23,44 @@ type TaskRunner interface {
 	// Logger returns a logger for the run of the task.
 	Logger() *zap.Logger
 	// AppendRawLog writes the raw log data to the log for this task.
+	// this data will be handled in a way that is appropriate for large logs (e.g. stored in a file, not printed to stdout).
 	AppendRawLog([]byte) error
-	// FindPlanById finds a plan by its ID.
-	FindPlanById(planId string) (*v1.Plan, error)
-	// FindRepoById finds a repo by its ID.
-	FindRepoById(repoId string) (*v1.Repo, error)
+	// Orchestrator returns the orchestrator that is running the task.
+	Orchestrator() *Orchestrator
 }
 
 // ScheduledTask is a task that is scheduled to run at a specific time.
 type ScheduledTask struct {
 	Task  Task          // the task to run
 	RunAt time.Time     // the time at which the task should be run.
-	Op    *v1.Operation // optional operation associated with this execution of the task.
+	Op    *v1.Operation // operation associated with this execution of the task.
+}
+
+func (s ScheduledTask) Eq(other ScheduledTask) bool {
+	return s.Task == other.Task && s.RunAt.Equal(other.RunAt)
+}
+
+func (s ScheduledTask) Less(other ScheduledTask) bool {
+	if s.RunAt.Equal(other.RunAt) {
+		return s.Task.Name() < other.Task.Name()
+	}
+	return s.RunAt.Before(other.RunAt)
+}
+
+func (s ScheduledTask) cancel(oplog *oplog.OpLog) error {
+	if s.Op == nil {
+		return nil
+	}
+
+	opCopy := proto.Clone(s.Op).(*v1.Operation)
+	opCopy.Status = v1.OperationStatus_STATUS_SYSTEM_CANCELLED
+	opCopy.DisplayMessage = "operation cancelled"
+	opCopy.UnixTimeEndMs = curTimeMillis()
+	if err := oplog.Update(opCopy); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Task is a task that can be scheduled to run at a specific time.

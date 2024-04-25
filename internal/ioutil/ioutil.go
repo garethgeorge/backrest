@@ -110,3 +110,16 @@ func (w *OutputCapturer) Bytes() []byte {
 
 	return buf.Bytes()
 }
+
+type LockedWriter struct {
+	mu sync.Mutex
+	W  io.Writer
+}
+
+var _ io.Writer = &LockedWriter{}
+
+func (w *LockedWriter) Write(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.W.Write(p)
+}

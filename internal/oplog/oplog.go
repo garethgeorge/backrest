@@ -70,21 +70,8 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 			}
 		}
 
-		var version int64
-		if versionBytes := tx.Bucket(SystemBucket).Get([]byte("version")); versionBytes != nil {
-			var err error
-			version, err = serializationutil.Btoi(versionBytes)
-			if err != nil {
-				return err
-			}
-		}
-
-		newVersion, err := ApplyMigrations(o, tx, version)
-		if err != nil {
-			return fmt.Errorf("migrating database: %w", err)
-		}
-		if err := tx.Bucket(SystemBucket).Put([]byte("version"), serializationutil.Itob(newVersion)); err != nil {
-			return fmt.Errorf("updating version: %w", err)
+		if err := ApplyMigrations(o, tx); err != nil {
+			return fmt.Errorf("applying migrations: %w", err)
 		}
 
 		return nil
@@ -272,11 +259,7 @@ func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 	}
 
 	if op.FlowId == 0 {
-		var err error
-		op.FlowId, err = o.nextID(b, time.Now().UnixMilli())
-		if err != nil {
-			return fmt.Errorf("create next flow ID: %w", err)
-		}
+		op.FlowId = op.Id
 	}
 
 	if err := protoutil.ValidateOperation(op); err != nil {
