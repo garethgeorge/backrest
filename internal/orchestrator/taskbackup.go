@@ -20,8 +20,7 @@ var maxBackupErrorHistoryLength = 20 // arbitrary limit on the number of file re
 
 // BackupTask is a scheduled backup operation.
 type BackupTask struct {
-	name string
-	TaskWithOperation
+	name      string
 	plan      *v1.Plan
 	scheduler func(curTime time.Time) *time.Time
 }

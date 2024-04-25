@@ -70,6 +70,23 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 			}
 		}
 
+		var version int64
+		if versionBytes := tx.Bucket(SystemBucket).Get([]byte("version")); versionBytes != nil {
+			var err error
+			version, err = serializationutil.Btoi(versionBytes)
+			if err != nil {
+				return err
+			}
+		}
+
+		newVersion, err := ApplyMigrations(o, tx, version)
+		if err != nil {
+			return fmt.Errorf("migrating database: %w", err)
+		}
+		if err := tx.Bucket(SystemBucket).Put([]byte("version"), serializationutil.Itob(newVersion)); err != nil {
+			return fmt.Errorf("updating version: %w", err)
+		}
+
 		return nil
 	}); err != nil {
 		return nil, err
@@ -236,7 +253,7 @@ func (o *OpLog) getOperationHelper(b *bolt.Bucket, id int64) (*v1.Operation, err
 	return &op, nil
 }
 
-func (o *OpLog) nextOperationId(b *bolt.Bucket, unixTimeMs int64) (int64, error) {
+func (o *OpLog) nextID(b *bolt.Bucket, unixTimeMs int64) (int64, error) {
 	seq, err := b.NextSequence()
 	if err != nil {
 		return 0, fmt.Errorf("next sequence: %w", err)
@@ -248,9 +265,17 @@ func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 	b := tx.Bucket(OpLogBucket)
 	if op.Id == 0 {
 		var err error
-		op.Id, err = o.nextOperationId(b, time.Now().UnixMilli())
+		op.Id, err = o.nextID(b, time.Now().UnixMilli())
 		if err != nil {
 			return fmt.Errorf("create next operation ID: %w", err)
+		}
+	}
+
+	if op.FlowId == 0 {
+		var err error
+		op.FlowId, err = o.nextID(b, time.Now().UnixMilli())
+		if err != nil {
+			return fmt.Errorf("create next flow ID: %w", err)
 		}
 	}
 

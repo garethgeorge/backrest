@@ -19,8 +19,14 @@ type TaskRunner interface {
 	CreateOperation(*v1.Operation) error
 	// UpdateOperation updates the operation in storage. It must be called after CreateOperation.
 	UpdateOperation(*v1.Operation) error
-	// WriteLog writes the log to storage and returns the reference.
-	WriteLog([]byte) (string, error)
+	// Logger returns a logger for the run of the task.
+	Logger() *zap.Logger
+	// AppendRawLog writes the raw log data to the log for this task.
+	AppendRawLog([]byte) error
+	// FindPlanById finds a plan by its ID.
+	FindPlanById(planId string) (*v1.Plan, error)
+	// FindRepoById finds a repo by its ID.
+	FindRepoById(repoId string) (*v1.Repo, error)
 }
 
 // ScheduledTask is a task that is scheduled to run at a specific time.
@@ -32,24 +38,28 @@ type ScheduledTask struct {
 
 // Task is a task that can be scheduled to run at a specific time.
 type Task interface {
-	Name() string                                                             // huamn readable name for this task.
+	Name() string                                                             // human readable name for this task.
 	Next(now time.Time, runner TaskRunner) ScheduledTask                      // returns the next scheduled task.
 	Run(ctx context.Context, execInfo ScheduledTask, runner TaskRunner) error // run the task.
+	PlanID() string                                                           // the ID of the plan associated with this task.
+	RepoID() string                                                           // the ID of the repo associated with this task.
+	FlowID() string                                                           // the ID of the flow associated with this task.
 }
 
-func LogToOperation(ctx context.Context, op *v1.Operation, runner TaskRunner) (context.Context, func() error) {
-	capture := ioutil.NewOutputCapturer(32_000) // 32k of logs
-	ctxWithLogger := restic.ContextWithLogger(ctx, capture)
-	return ctxWithLogger, func() error {
-		if bytes := capture.Bytes(); len(bytes) > 0 {
-			ref, e := runner.WriteLog(bytes)
-			if e != nil {
-				return fmt.Errorf("failed to write log to logstore: %w", e)
+type BaseTask struct {
+	Name   string
+	PlanId string
+	RepoId string
+}
+
+func WithResticLogger(ctx context.Context, runner TaskRunner) (context.Context, func()) {
+	capturer := ioutil.NewOutputCapturer(32_000) // 32k of logs
+	return restic.ContextWithLogger(ctx, capturer), func() {
+		if bytes := capturer.Bytes(); len(bytes) > 0 {
+			if e := runner.AppendRawLog(bytes); e != nil {
+				runner.Logger().Error("failed to append restic logs", zap.Error(e))
 			}
-			op.Logref = ref
-			zap.S().Debugf("wrote operation log to %v", ref)
 		}
-		return nil
 	}
 }
 
