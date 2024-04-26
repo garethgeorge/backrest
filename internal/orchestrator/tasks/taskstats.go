@@ -7,82 +7,57 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
-	"go.uber.org/zap"
+	"github.com/garethgeorge/backrest/internal/orchestrator"
 )
 
-// StatsTask tracks a restic stats operation.
-type StatsTask struct {
-	TaskWithOperation
-	planId string
-	repoId string
-	at     *time.Time
-}
-
-var _ Task = &StatsTask{}
-
-func NewOneoffStatsTask(orchestrator *Orchestrator, repoId, planId string, at time.Time) *StatsTask {
-	return &StatsTask{
-		TaskWithOperation: TaskWithOperation{
-			orch: orchestrator,
+func NewOneoffStatsTask(repoID, planID, at time.Time) orchestrator.Task {
+	return &orchestrator.GenericOneoffTask{
+		BaseTask: orchestrator.BaseTask{
+			TaskName:   fmt.Sprintf("stats for repo %q", repoID),
+			TaskRepoID: repoID,
+			TaskPlanID: planID,
 		},
-		planId: planId,
-		repoId: repoId,
-		at:     &at,
-	}
-}
-
-func (t *StatsTask) Name() string {
-	return fmt.Sprintf("stats for repo %q", t.repoId)
-}
-
-func (t *StatsTask) Next(now time.Time) *time.Time {
-	ret := t.at
-	if ret != nil {
-		t.at = nil
-
-		if err := t.setOperation(&v1.Operation{
-			PlanId:          t.planId,
-			RepoId:          t.repoId,
-			UnixTimeStartMs: timeToUnixMillis(*ret),
-			Status:          v1.OperationStatus_STATUS_PENDING,
-			Op:              &v1.Operation_OperationStats{},
-		}); err != nil {
-			zap.S().Errorf("task %v failed to add operation to oplog: %v", t.Name(), err)
-			return nil
-		}
-	}
-	return ret
-}
-
-func (t *StatsTask) Run(ctx context.Context) error {
-	if err := t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
-		repo, err := t.orch.GetRepo(t.repoId)
-		if err != nil {
-			return fmt.Errorf("get repo %q: %w", t.repoId, err)
-		}
-
-		stats, err := repo.Stats(ctx)
-		if err != nil {
-			return fmt.Errorf("get stats: %w", err)
-		}
-
-		op.Op = &v1.Operation_OperationStats{
-			OperationStats: &v1.OperationStats{
-				Stats: stats,
+		OneoffTask: orchestrator.OneoffTask{
+			RunAt: at,
+			ProtoOp: &v1.Operation{
+				Op: &v1.Operation_OperationStats{},
 			},
-		}
-
-		return err
-	}); err != nil {
-		repo, _ := t.orch.GetRepo(t.repoId)
-		plan, _ := t.orch.GetPlan(t.planId)
-		_ = t.orch.hookExecutor.ExecuteHooks(repo.Config(), plan, []v1.Hook_Condition{
-			v1.Hook_CONDITION_ANY_ERROR,
-		}, hook.HookVars{
-			Task:  t.Name(),
-			Error: err.Error(),
-		})
-		return err
+		},
+		Do: func(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner) error {
+			if err := statsHelper(ctx, st, taskRunner); err != nil {
+				taskRunner.ExecuteHooks([]v1.Hook_Condition{
+					v1.Hook_CONDITION_ANY_ERROR,
+				}, hook.HookVars{
+					Task:  st.Task.Name(),
+					Error: err.Error(),
+				})
+				return err
+			}
+			return nil
+		},
 	}
+}
+
+func statsHelper(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner) error {
+	t := st.Task
+	orchestrator := taskRunner.Orchestrator()
+
+	repo, err := orchestrator.GetRepoOrchestrator(t.RepoID())
+	if err != nil {
+		return fmt.Errorf("get repo %q: %w", t.RepoID(), err)
+	}
+
+	stats, err := repo.Stats(ctx)
+	if err != nil {
+		return fmt.Errorf("get stats: %w", err)
+	}
+
+	op := st.Op
+	op.Op = &v1.Operation_OperationStats{
+		OperationStats: &v1.OperationStats{
+			Stats: stats,
+		},
+	}
+
 	return nil
 }

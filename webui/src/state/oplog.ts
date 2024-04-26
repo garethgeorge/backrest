@@ -110,7 +110,7 @@ export enum DisplayType {
 }
 
 export interface BackupInfo {
-  id: string; // id of the first operation that generated this backup.
+  id: string; // flow ID of the operations that make up this backup.
   displayTime: Date;
   displayType: DisplayType;
   startTimeMs: number;
@@ -132,8 +132,9 @@ export class BackupInfoCollector {
     event: OperationEventType,
     info: BackupInfo[]
   ) => void)[] = [];
-  private backupByOpId: Map<bigint, BackupInfo> = new Map();
-  private backupBySnapshotId: Map<string, BackupInfo> = new Map();
+
+  // backups maps a flow ID to a backup info object.
+  private backups: Map<bigint, BackupInfo> = new Map();
 
   /**
    * 
@@ -179,17 +180,19 @@ export class BackupInfoCollector {
     let backupLastStatus = undefined;
     let snapshotInfo = undefined;
     let forgotten = false;
+    let snapshotId = "";
     for (const op of operations) {
       if (op.op.case === "operationBackup") {
         backupLastStatus = op.op.value.lastStatus;
       } else if (op.op.case === "operationIndexSnapshot") {
         snapshotInfo = op.op.value.snapshot;
         forgotten = op.op.value.forgot || false;
+        snapshotId = op.op.value.snapshot?.id || "";
       }
     }
 
     return {
-      id: id.toString(16),
+      id: operations[0].flowId.toString(16),
       startTimeMs,
       endTimeMs,
       displayTime,
@@ -199,7 +202,7 @@ export class BackupInfoCollector {
       backupLastStatus,
       snapshotInfo,
       forgotten,
-      snapshotId: operations[0].snapshotId,
+      snapshotId: snapshotId,
       planId: operations[0].planId,
       repoId: operations[0].repoId,
     };
