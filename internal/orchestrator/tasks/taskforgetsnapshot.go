@@ -10,10 +10,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 )
 
-// ForgetSnapshotTask tracks a forget snapshot operation.
-type ForgetSnapshotTask struct {
-}
-
 func NewOneoffForgetSnapshotTask(repoID, planID string, flowID int64, at time.Time, snapshotID string) orchestrator.Task {
 	return &orchestrator.GenericOneoffTask{
 		BaseTask: orchestrator.BaseTask{
@@ -64,25 +60,7 @@ func forgetSnapshotHelper(ctx context.Context, st orchestrator.ScheduledTask, ta
 	}
 
 	taskRunner.Orchestrator().ScheduleTask(NewOneoffIndexSnapshotsTask(t.RepoID(), time.Now()), orchestrator.TaskPriorityIndexSnapshots)
-
 	taskRunner.OpLog().Delete(st.Op.Id)
 	st.Op = nil
-
 	return err
-}
-
-func (t *ForgetSnapshotTask) Run(ctx context.Context) error {
-	id := t.op.Id
-	if err := t.runWithOpAndContext(ctx, func(ctx context.Context, op *v1.Operation) error {
-		repo, err := t.orch.GetRepo(t.repoId)
-		if err != nil {
-			return fmt.Errorf("get repo %q: %w", t.repoId, err)
-		}
-
-		return err
-	}); err != nil {
-		return err
-	}
-
-	return t.orch.OpLog.Delete(id)
 }
