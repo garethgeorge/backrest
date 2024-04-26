@@ -6,54 +6,69 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
-	"github.com/hashicorp/go-multierror"
-	"go.uber.org/zap"
+	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/orchestrator"
 )
 
-// ForgetTask tracks a forget operation.
+// ForgetSnapshotTask tracks a forget snapshot operation.
 type ForgetSnapshotTask struct {
-	TaskWithOperation
-	repoId         string
-	planId         string
-	forgetSnapshot string
-	at             *time.Time
 }
 
-var _ Task = &ForgetSnapshotTask{}
-
-func NewOneoffForgetSnapshotTask(orchestrator *Orchestrator, repoId, planId, forgetSnapshot string, at time.Time) *ForgetSnapshotTask {
-	return &ForgetSnapshotTask{
-		TaskWithOperation: TaskWithOperation{
-			orch: orchestrator,
+func NewOneoffForgetSnapshotTask(repoID, planID string, flowID int64, at time.Time, snapshotID string) orchestrator.Task {
+	return &orchestrator.GenericOneoffTask{
+		BaseTask: orchestrator.BaseTask{
+			TaskName:   fmt.Sprintf("forget snapshot %q for plan %q in repo %q", snapshotID, planID, repoID),
+			TaskRepoID: repoID,
+			TaskPlanID: planID,
 		},
-		repoId:         repoId,
-		planId:         planId,
-		at:             &at,
-		forgetSnapshot: forgetSnapshot,
+		OneoffTask: orchestrator.OneoffTask{
+			FlowID: flowID,
+			RunAt:  at,
+			ProtoOp: &v1.Operation{
+				Op: &v1.Operation_OperationForget{},
+			},
+		},
+		Do: func(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner) error {
+			op := st.Op
+			forgetOp := op.GetOperationForget()
+			if forgetOp == nil {
+				panic("forget task with non-forget operation")
+			}
+
+			if err := forgetSnapshotHelper(ctx, st, taskRunner, snapshotID); err != nil {
+				taskRunner.ExecuteHooks([]v1.Hook_Condition{
+					v1.Hook_CONDITION_ANY_ERROR,
+				}, hook.HookVars{
+					Error: err.Error(),
+				})
+			}
+		},
 	}
 }
 
-func (t *ForgetSnapshotTask) Name() string {
-	return fmt.Sprintf("forget snapshot %q", t.forgetSnapshot)
-}
+func forgetSnapshotHelper(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner, snapshotID string) error {
+	t := st.Task
 
-func (t *ForgetSnapshotTask) Next(now time.Time) *time.Time {
-	ret := t.at
-	if ret != nil {
-		t.at = nil
-		if err := t.setOperation(&v1.Operation{
-			PlanId:          t.planId,
-			RepoId:          t.repoId,
-			UnixTimeStartMs: timeToUnixMillis(*ret),
-			Status:          v1.OperationStatus_STATUS_PENDING,
-			Op:              &v1.Operation_OperationForget{},
-		}); err != nil {
-			zap.S().Errorf("task %v failed to add operation to oplog: %v", t.Name(), err)
-			return nil
-		}
+	repo, err := taskRunner.Orchestrator().GetRepoOrchestrator(t.RepoID())
+	if err != nil {
+		return fmt.Errorf("get repo %q: %w", t.RepoID(), err)
 	}
-	return ret
+
+	err = repo.UnlockIfAutoEnabled(ctx)
+	if err != nil {
+		return fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err)
+	}
+
+	if err := repo.ForgetSnapshot(ctx, snapshotID); err != nil {
+		return fmt.Errorf("forget %q: %w", snapshotID, err)
+	}
+
+	taskRunner.Orchestrator().ScheduleTask(NewOneoffIndexSnapshotsTask(t.RepoID(), time.Now()), orchestrator.TaskPriorityIndexSnapshots)
+
+	taskRunner.OpLog().Delete(st.Op.Id)
+	st.Op = nil
+
+	return err
 }
 
 func (t *ForgetSnapshotTask) Run(ctx context.Context) error {
@@ -62,27 +77,6 @@ func (t *ForgetSnapshotTask) Run(ctx context.Context) error {
 		repo, err := t.orch.GetRepo(t.repoId)
 		if err != nil {
 			return fmt.Errorf("get repo %q: %w", t.repoId, err)
-		}
-
-		// Find snapshot to forget
-		var ops []*v1.Operation
-		t.orch.OpLog.ForEachBySnapshotId(t.forgetSnapshot, indexutil.CollectAll(), func(op *v1.Operation) error {
-			ops = append(ops, op)
-			return nil
-		})
-
-		for _, op := range ops {
-			if indexOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
-				err := repo.ForgetSnapshot(ctx, op.SnapshotId)
-				if err != nil {
-					return fmt.Errorf("forget %q: %w", op.SnapshotId, err)
-				}
-				indexOp.OperationIndexSnapshot.Forgot = true
-				if e := t.orch.OpLog.Update(op); err != nil {
-					err = multierror.Append(err, fmt.Errorf("mark index snapshot %v as forgotten: %w", op.Id, e))
-					continue
-				}
-			}
 		}
 
 		return err

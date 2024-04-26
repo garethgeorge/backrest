@@ -10,81 +10,60 @@ import (
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
+	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
 )
 
-// IndexSnapshotsTask tracks a forget operation.
-type IndexSnapshotsTask struct {
-	orchestrator *Orchestrator // owning orchestrator
-	repoId       string
-	at           *time.Time
-}
-
-var _ Task = &IndexSnapshotsTask{}
-
-func NewOneoffIndexSnapshotsTask(orchestrator *Orchestrator, repoId string, at time.Time) *IndexSnapshotsTask {
-	return &IndexSnapshotsTask{
-		orchestrator: orchestrator,
-		repoId:       repoId,
-		at:           &at,
+func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) orchestrator.Task {
+	return &orchestrator.GenericOneoffTask{
+		BaseTask: orchestrator.BaseTask{
+			TaskName:   fmt.Sprintf("index snapshots for repo %q", repoID),
+			TaskRepoID: repoID,
+		},
+		OneoffTask: orchestrator.OneoffTask{
+			RunAt:   at,
+			ProtoOp: nil,
+		},
+		Do: func(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner) error {
+			if err := indexSnapshotsHelper(ctx, st, taskRunner); err != nil {
+				taskRunner.ExecuteHooks([]v1.Hook_Condition{
+					v1.Hook_CONDITION_ANY_ERROR,
+				}, hook.HookVars{
+					Task:  st.Task.Name(),
+					Error: err.Error(),
+				})
+				return err
+			}
+			return nil
+		},
 	}
-}
-
-func (t *IndexSnapshotsTask) Name() string {
-	return fmt.Sprintf("index snapshots for plan %q", t.repoId)
-}
-
-func (t *IndexSnapshotsTask) Next(now time.Time) *time.Time {
-	ret := t.at
-	if ret != nil {
-		t.at = nil
-	}
-	return ret
-}
-
-func (t *IndexSnapshotsTask) Run(ctx context.Context) error {
-	if err := indexSnapshotsHelper(ctx, t.orchestrator, t.repoId); err != nil {
-		repo, _ := t.orchestrator.GetRepo(t.repoId)
-		t.orchestrator.hookExecutor.ExecuteHooks(repo.Config(), nil, []v1.Hook_Condition{
-			v1.Hook_CONDITION_ANY_ERROR,
-		}, hook.HookVars{
-			Task:  t.Name(),
-			Error: err.Error(),
-		})
-		return err
-	}
-	return nil
-}
-
-func (t *IndexSnapshotsTask) Cancel(withStatus v1.OperationStatus) error {
-	return nil
-}
-
-func (t *IndexSnapshotsTask) OperationId() int64 {
-	return 0
 }
 
 // indexSnapshotsHelper indexes all snapshots for a plan.
 //   - If the snapshot is already indexed, it is skipped.
 //   - If the snapshot is not indexed, an index snapshot operation with it's metadata is added.
 //   - If an index snapshot operation is found for a snapshot that is not returned by the repo, it is marked as forgotten.
-func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, repoId string) error {
-	repo, err := orchestrator.GetRepo(repoId)
+func indexSnapshotsHelper(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner) error {
+	t := st.Task
+	orchestrator := taskRunner.Orchestrator()
+	oplog := taskRunner.OpLog()
+
+	repo, err := orchestrator.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
-		return fmt.Errorf("couldn't get repo %q: %w", repoId, err)
+		return fmt.Errorf("couldn't get repo %q: %w", t.RepoID(), err)
 	}
 
 	// collect all tracked snapshots for the plan.
 	snapshots, err := repo.Snapshots(ctx)
 	if err != nil {
-		return fmt.Errorf("get snapshots for repo %q: %w", repoId, err)
+		return fmt.Errorf("get snapshots for repo %q: %w", t.RepoID(), err)
 	}
 
 	// collect all current snapshot IDs.
-	currentIds, err := indexCurrentSnapshotIdsForRepo(orchestrator.OpLog, repoId)
+	currentIds, err := indexCurrentSnapshotIdsForRepo(taskRunner.OpLog(), t.RepoID())
 	if err != nil {
-		return fmt.Errorf("get known snapshot IDs for repo %q: %w", repoId, err)
+		return fmt.Errorf("get known snapshot IDs for repo %q: %w", t.RepoID(), err)
 	}
 
 	foundIds := make(map[string]bool)
@@ -101,7 +80,7 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, repoI
 		snapshotProto := protoutil.SnapshotToProto(snapshot)
 		planId := planForSnapshot(snapshotProto)
 		indexOps = append(indexOps, &v1.Operation{
-			RepoId:          repoId,
+			RepoId:          t.RepoID(),
 			PlanId:          planId,
 			UnixTimeStartMs: snapshotProto.UnixTimeMs,
 			UnixTimeEndMs:   snapshotProto.UnixTimeMs,
@@ -115,7 +94,7 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, repoI
 		})
 	}
 
-	if err := orchestrator.OpLog.BulkAdd(indexOps); err != nil {
+	if err := taskRunner.OpLog().BulkAdd(indexOps); err != nil {
 		return fmt.Errorf("BulkAdd snapshot operations: %w", err)
 	}
 
@@ -127,7 +106,7 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, repoI
 		}
 
 		// mark snapshot forgotten.
-		op, err := orchestrator.OpLog.Get(opId)
+		op, err := oplog.Get(opId)
 		if err != nil {
 			// should only be possible in the case of a data race (e.g. operation was somehow deleted).
 			return fmt.Errorf("get operation %v: %w", opId, err)
@@ -139,14 +118,14 @@ func indexSnapshotsHelper(ctx context.Context, orchestrator *Orchestrator, repoI
 		}
 		snapshotOp.OperationIndexSnapshot.Forgot = true
 
-		if err := orchestrator.OpLog.Update(op); err != nil {
+		if err := oplog.Update(op); err != nil {
 			return fmt.Errorf("mark index snapshot operation %v as forgotten: %w", opId, err)
 		}
 	}
 
 	// Print stats at the end of indexing.
 	zap.L().Debug("indexed snapshots",
-		zap.String("repo", repoId),
+		zap.String("repo", t.RepoID()),
 		zap.Duration("duration", time.Since(startTime)),
 		zap.Int("alreadyIndexed", len(foundIds)),
 		zap.Int("newlyAdded", len(indexOps)),
@@ -184,5 +163,5 @@ func planForSnapshot(snapshot *v1.ResticSnapshot) string {
 			return tag[5:]
 		}
 	}
-	return PlanForUnassociatedOperations
+	return orchestrator.PlanForUnassociatedOperations
 }

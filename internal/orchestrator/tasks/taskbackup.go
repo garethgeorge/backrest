@@ -176,7 +176,7 @@ func (t *BackupTask) Run(ctx context.Context, st orchestrator.ScheduledTask, run
 				v1.Hook_CONDITION_SNAPSHOT_ERROR,
 				v1.Hook_CONDITION_ANY_ERROR,
 			}, vars)
-			return nil
+			return err
 		}
 		op.Status = v1.OperationStatus_STATUS_WARNING
 		op.DisplayMessage = "Partial backup, some files may not have been read completely."
@@ -197,9 +197,9 @@ func (t *BackupTask) Run(ctx context.Context, st orchestrator.ScheduledTask, run
 	// schedule followup tasks
 	at := time.Now()
 	if _, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyKeepAll); plan.Retention != nil && !ok {
-		runner.Orchestrator().ScheduleTask(NewOneoffForgetTask(orchestrator, plan, op.SnapshotId, at), TaskPriorityForget)
+		runner.Orchestrator().ScheduleTask(NewOneoffForgetTask(t.RepoID(), t.PlanID(), op.FlowId, at), orchestrator.TaskPriorityForget)
 	}
-	runner.Orchestrator().ScheduleTask(NewOneoffIndexSnapshotsTask(orchestrator, plan.Repo, at), TaskPriorityIndexSnapshots)
+	runner.Orchestrator().ScheduleTask(NewOneoffIndexSnapshotsTask(t.RepoID(), at), orchestrator.TaskPriorityIndexSnapshots)
 
 	return nil
 }

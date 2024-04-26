@@ -32,6 +32,8 @@ type TaskRunner interface {
 	AppendRawLog([]byte) error
 	// Orchestrator returns the orchestrator that is running the task.
 	Orchestrator() *Orchestrator
+	// OpLog returns the oplog for the operations.
+	OpLog() *oplog.OpLog
 }
 
 // ScheduledTask is a task that is scheduled to run at a specific time.
@@ -93,6 +95,46 @@ func (b BaseTask) PlanID() string {
 
 func (b BaseTask) RepoID() string {
 	return b.TaskRepoID
+}
+
+type OneoffTask struct {
+	BaseTask
+	RunAt       time.Time
+	FlowID      int64 // the ID of the flow this task is associated with.
+	DidSchedule bool
+	ProtoOp     *v1.Operation // the prototype operation for this class of task.
+}
+
+func (o *OneoffTask) Next(now time.Time, runner TaskRunner) ScheduledTask {
+	if o.DidSchedule {
+		return NeverScheduledTask
+	}
+	o.DidSchedule = true
+
+	var op *v1.Operation
+	if o.ProtoOp != nil {
+		op = proto.Clone(o.ProtoOp).(*v1.Operation)
+		op.PlanId = o.PlanID()
+		op.RepoId = o.RepoID()
+		op.FlowId = o.FlowID
+		op.UnixTimeStartMs = timeToUnixMillis(o.RunAt) // TODO: this should be updated before Run is called.
+		op.Status = v1.OperationStatus_STATUS_PENDING
+	}
+
+	return ScheduledTask{
+		RunAt: o.RunAt,
+		Op:    op,
+	}
+}
+
+type GenericOneoffTask struct {
+	BaseTask
+	OneoffTask
+	Do func(ctx context.Context, st ScheduledTask, runner TaskRunner) error
+}
+
+func (g *GenericOneoffTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
+	return g.Do(ctx, st.Op, runner)
 }
 
 func WithResticLogger(ctx context.Context, runner TaskRunner) (context.Context, func()) {
