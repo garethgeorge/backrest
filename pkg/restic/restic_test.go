@@ -47,7 +47,7 @@ func TestResticBackup(t *testing.T) {
 		name    string
 		opts    []GenericOption
 		paths   []string
-		files   int // expected files at the end of the backup
+		files   int64 // expected files at the end of the backup
 		wantErr bool
 	}{
 		{
