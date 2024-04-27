@@ -306,7 +306,14 @@ func (o *Orchestrator) Run(ctx context.Context) {
 
 		start := time.Now()
 		runner := newTaskRunnerImpl(o, t.Task)
-		err := t.Task.Run(taskCtx, t.ScheduledTask, runner)
+		var err error
+		if t.Op != nil {
+			err = tasks.WithOperation(o.OpLog, t.Op, func() error {
+				return t.Task.Run(taskCtx, t.ScheduledTask, runner)
+			})
+		} else {
+			err = t.Task.Run(taskCtx, t.ScheduledTask, runner)
+		}
 		cancel()
 
 		if err != nil {
@@ -363,7 +370,7 @@ func (o *Orchestrator) scheduleTaskHelper(t tasks.Task, priority int, callbacks 
 
 	zap.L().Info("scheduling task", zap.String("task", t.Name()), zap.String("runAt", nextRun.RunAt.Format(time.RFC3339)))
 	o.taskQueue.Enqueue(nextRun.RunAt, priority, stc)
-	return o.ScheduleTask(t, tasks.TaskPriorityDefault, callbacks...)
+	return nil
 }
 
 // resticRepoPool caches restic repos.
