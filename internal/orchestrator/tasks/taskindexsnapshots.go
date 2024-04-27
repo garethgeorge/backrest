@@ -10,22 +10,21 @@ import (
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
-	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
 )
 
-func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) orchestrator.Task {
-	return &orchestrator.GenericOneoffTask{
-		BaseTask: orchestrator.BaseTask{
+func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) Task {
+	return &GenericOneoffTask{
+		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("index snapshots for repo %q", repoID),
 			TaskRepoID: repoID,
 		},
-		OneoffTask: orchestrator.OneoffTask{
+		OneoffTask: OneoffTask{
 			RunAt:   at,
 			ProtoOp: nil,
 		},
-		Do: func(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner) error {
+		Do: func(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 			if err := indexSnapshotsHelper(ctx, st, taskRunner); err != nil {
 				taskRunner.ExecuteHooks([]v1.Hook_Condition{
 					v1.Hook_CONDITION_ANY_ERROR,
@@ -44,12 +43,11 @@ func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) orchestrator.Task 
 //   - If the snapshot is already indexed, it is skipped.
 //   - If the snapshot is not indexed, an index snapshot operation with it's metadata is added.
 //   - If an index snapshot operation is found for a snapshot that is not returned by the repo, it is marked as forgotten.
-func indexSnapshotsHelper(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner) error {
+func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 	t := st.Task
-	orchestrator := taskRunner.Orchestrator()
 	oplog := taskRunner.OpLog()
 
-	repo, err := orchestrator.GetRepoOrchestrator(t.RepoID())
+	repo, err := taskRunner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
 		return fmt.Errorf("couldn't get repo %q: %w", t.RepoID(), err)
 	}
@@ -163,5 +161,5 @@ func planForSnapshot(snapshot *v1.ResticSnapshot) string {
 			return tag[5:]
 		}
 	}
-	return orchestrator.PlanForUnassociatedOperations
+	return PlanForUnassociatedOperations
 }

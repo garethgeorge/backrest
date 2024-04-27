@@ -11,24 +11,23 @@ import (
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
-	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"go.uber.org/zap"
 )
 
 type PruneTask struct {
-	orchestrator.BaseTask
-	orchestrator.OneoffTask
+	BaseTask
+	OneoffTask
 	force bool
 }
 
-func NewOneoffPruneTask(repoID, planID string, flowID int64, at time.Time, force bool) orchestrator.Task {
+func NewOneoffPruneTask(repoID, planID string, flowID int64, at time.Time, force bool) Task {
 	return &PruneTask{
-		BaseTask: orchestrator.BaseTask{
+		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("prune for plan %q in repo %q", planID, repoID),
 			TaskRepoID: repoID,
 			TaskPlanID: planID,
 		},
-		OneoffTask: orchestrator.OneoffTask{
+		OneoffTask: OneoffTask{
 			FlowID: flowID,
 			RunAt:  at,
 			ProtoOp: &v1.Operation{
@@ -39,7 +38,7 @@ func NewOneoffPruneTask(repoID, planID string, flowID int64, at time.Time, force
 	}
 }
 
-func (t *PruneTask) Next(now time.Time, runner orchestrator.TaskRunner) orchestrator.ScheduledTask {
+func (t *PruneTask) Next(now time.Time, runner TaskRunner) ScheduledTask {
 	if t.force {
 		return t.OneoffTask.Next(now, runner)
 	}
@@ -47,17 +46,17 @@ func (t *PruneTask) Next(now time.Time, runner orchestrator.TaskRunner) orchestr
 	shouldRun, err := t.shouldRun(now, runner)
 	if err != nil {
 		zap.S().Errorf("task %v failed to check if it should run: %v", t.Name(), err)
-		return orchestrator.NeverScheduledTask
+		return NeverScheduledTask
 	}
 	if !shouldRun {
-		return orchestrator.NeverScheduledTask
+		return NeverScheduledTask
 	}
 
 	return t.OneoffTask.Next(now, runner)
 }
 
-func (t *PruneTask) shouldRun(now time.Time, runner orchestrator.TaskRunner) (bool, error) {
-	repo, err := runner.Orchestrator().GetRepo(t.RepoID())
+func (t *PruneTask) shouldRun(now time.Time, runner TaskRunner) (bool, error) {
+	repo, err := runner.GetRepo(t.RepoID())
 	if err != nil {
 		return false, fmt.Errorf("get repo %v: %w", t.RepoID(), err)
 	}
@@ -70,7 +69,7 @@ func (t *PruneTask) shouldRun(now time.Time, runner orchestrator.TaskRunner) (bo
 	return nextPruneTime.Before(now), nil
 }
 
-func (t *PruneTask) getNextPruneTime(runner orchestrator.TaskRunner, policy *v1.PrunePolicy) (time.Time, error) {
+func (t *PruneTask) getNextPruneTime(runner TaskRunner, policy *v1.PrunePolicy) (time.Time, error) {
 	var lastPruneTime time.Time
 	runner.OpLog().ForEachByRepo(t.RepoID(), indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationPrune); ok {
@@ -87,10 +86,10 @@ func (t *PruneTask) getNextPruneTime(runner orchestrator.TaskRunner, policy *v1.
 	}
 }
 
-func (t *PruneTask) Run(ctx context.Context, st orchestrator.ScheduledTask, runner orchestrator.TaskRunner) error {
+func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
 	op := st.Op
 
-	repo, err := runner.Orchestrator().GetRepoOrchestrator(t.RepoID())
+	repo, err := runner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
 		return fmt.Errorf("couldn't get repo %q: %w", t.RepoID(), err)
 	}

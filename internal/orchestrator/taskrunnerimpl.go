@@ -7,6 +7,8 @@ import (
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
+	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -14,19 +16,21 @@ import (
 // taskRunnerImpl is an implementation of TaskRunner for the default orchestrator.
 type taskRunnerImpl struct {
 	orchestrator *Orchestrator
-	st           ScheduledTask
+	t            tasks.Task
 	logs         bytes.Buffer
 	logsWriter   ioutil.LockedWriter
 	repo         *v1.Repo // cache, populated on first call to Repo()
 	plan         *v1.Plan // cache, populated on first call to Plan()
 }
 
+var _ tasks.TaskRunner = &taskRunnerImpl{}
+
 func (t *taskRunnerImpl) FindRepo() (*v1.Repo, error) {
 	if t.repo != nil {
 		return t.repo, nil
 	}
 	var err error
-	t.repo, err = t.orchestrator.GetRepo(t.st.Task.RepoID())
+	t.repo, err = t.orchestrator.GetRepo(t.t.RepoID())
 	return t.repo, err
 }
 
@@ -35,16 +39,14 @@ func (t *taskRunnerImpl) FindPlan() (*v1.Plan, error) {
 		return t.plan, nil
 	}
 	var err error
-	t.plan, err = t.orchestrator.GetPlan(t.st.Task.PlanID())
+	t.plan, err = t.orchestrator.GetPlan(t.t.PlanID())
 	return t.plan, err
 }
 
-var _ TaskRunner = &taskRunnerImpl{}
-
-func newTaskRunnerImpl(orchestrator *Orchestrator, task ScheduledTask) *taskRunnerImpl {
+func newTaskRunnerImpl(orchestrator *Orchestrator, task tasks.Task) *taskRunnerImpl {
 	impl := &taskRunnerImpl{
 		orchestrator: orchestrator,
-		st:           task,
+		t:            task,
 	}
 	impl.logsWriter = ioutil.LockedWriter{W: &impl.logs}
 	return impl
@@ -68,7 +70,7 @@ func (t *taskRunnerImpl) Logger() *zap.Logger {
 		zap.L().Core(),
 		zapcore.NewCore(fe, zapcore.AddSync(&t.logsWriter), zapcore.DebugLevel),
 	))
-	return l.Named(t.st.Task.Name())
+	return l.Named(t.t.Name())
 }
 
 func (t *taskRunnerImpl) AppendRawLog(data []byte) error {
@@ -85,8 +87,8 @@ func (t *taskRunnerImpl) OpLog() *oplog.OpLog {
 }
 
 func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.HookVars) error {
-	repoID := t.st.Task.RepoID()
-	planID := t.st.Task.PlanID()
+	repoID := t.t.RepoID()
+	planID := t.t.PlanID()
 	var repo *v1.Repo
 	var plan *v1.Plan
 	if repoID == "" {
@@ -104,4 +106,20 @@ func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.Hook
 		}
 	}
 	return t.orchestrator.hookExecutor.ExecuteHooks(repo, plan, events, vars)
+}
+
+func (t *taskRunnerImpl) GetRepo(repoID string) (*v1.Repo, error) {
+	return t.orchestrator.GetRepo(repoID)
+}
+
+func (t *taskRunnerImpl) GetPlan(planID string) (*v1.Plan, error) {
+	return t.orchestrator.GetPlan(planID)
+}
+
+func (t *taskRunnerImpl) GetRepoOrchestrator(repoID string) (*repo.RepoOrchestrator, error) {
+	return t.orchestrator.GetRepoOrchestrator(repoID)
+}
+
+func (t *taskRunnerImpl) ScheduleTask(task tasks.Task, priority int) error {
+	return t.orchestrator.ScheduleTask(task, priority)
 }

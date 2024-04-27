@@ -7,24 +7,23 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
-	"github.com/garethgeorge/backrest/internal/orchestrator"
 )
 
-func NewOneoffForgetSnapshotTask(repoID, planID string, flowID int64, at time.Time, snapshotID string) orchestrator.Task {
-	return &orchestrator.GenericOneoffTask{
-		BaseTask: orchestrator.BaseTask{
+func NewOneoffForgetSnapshotTask(repoID, planID string, flowID int64, at time.Time, snapshotID string) Task {
+	return &GenericOneoffTask{
+		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("forget snapshot %q for plan %q in repo %q", snapshotID, planID, repoID),
 			TaskRepoID: repoID,
 			TaskPlanID: planID,
 		},
-		OneoffTask: orchestrator.OneoffTask{
+		OneoffTask: OneoffTask{
 			FlowID: flowID,
 			RunAt:  at,
 			ProtoOp: &v1.Operation{
 				Op: &v1.Operation_OperationForget{},
 			},
 		},
-		Do: func(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner) error {
+		Do: func(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 			op := st.Op
 			forgetOp := op.GetOperationForget()
 			if forgetOp == nil {
@@ -37,15 +36,17 @@ func NewOneoffForgetSnapshotTask(repoID, planID string, flowID int64, at time.Ti
 				}, hook.HookVars{
 					Error: err.Error(),
 				})
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func forgetSnapshotHelper(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner, snapshotID string) error {
+func forgetSnapshotHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner, snapshotID string) error {
 	t := st.Task
 
-	repo, err := taskRunner.Orchestrator().GetRepoOrchestrator(t.RepoID())
+	repo, err := taskRunner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
 		return fmt.Errorf("get repo %q: %w", t.RepoID(), err)
 	}
@@ -59,7 +60,7 @@ func forgetSnapshotHelper(ctx context.Context, st orchestrator.ScheduledTask, ta
 		return fmt.Errorf("forget %q: %w", snapshotID, err)
 	}
 
-	taskRunner.Orchestrator().ScheduleTask(NewOneoffIndexSnapshotsTask(t.RepoID(), time.Now()), orchestrator.TaskPriorityIndexSnapshots)
+	taskRunner.ScheduleTask(NewOneoffIndexSnapshotsTask(t.RepoID(), time.Now()), TaskPriorityIndexSnapshots)
 	taskRunner.OpLog().Delete(st.Op.Id)
 	st.Op = nil
 	return err

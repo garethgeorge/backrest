@@ -1,4 +1,4 @@
-package orchestrator
+package repo
 
 import (
 	"context"
@@ -15,7 +15,6 @@ import (
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"github.com/google/shlex"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 // RepoOrchestrator is responsible for managing a single repo.
@@ -286,7 +285,7 @@ func (r *RepoOrchestrator) Config() *v1.Repo {
 	if r == nil {
 		return nil
 	}
-	return proto.Clone(r.repoConfig).(*v1.Repo)
+	return r.repoConfig
 }
 
 func tagForPlan(plan *v1.Plan) string {

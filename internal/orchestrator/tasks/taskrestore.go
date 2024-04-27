@@ -9,25 +9,24 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
-	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"go.uber.org/zap"
 )
 
-func NewOneoffRestoreTask(repoID, planID string, flowID int64, at time.Time, snapshotID, path, target string) orchestrator.Task {
-	return &orchestrator.GenericOneoffTask{
-		BaseTask: orchestrator.BaseTask{
+func NewOneoffRestoreTask(repoID, planID string, flowID int64, at time.Time, snapshotID, path, target string) Task {
+	return &GenericOneoffTask{
+		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("restore snapshot %q in repo %q", snapshotID, repoID),
 			TaskRepoID: repoID,
 			TaskPlanID: planID,
 		},
-		OneoffTask: orchestrator.OneoffTask{
+		OneoffTask: OneoffTask{
 			FlowID: flowID,
 			RunAt:  at,
 			ProtoOp: &v1.Operation{
 				Op: &v1.Operation_OperationRestore{},
 			},
 		},
-		Do: func(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner) error {
+		Do: func(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 			if err := restoreHelper(ctx, st, taskRunner, snapshotID, path, target); err != nil {
 				taskRunner.ExecuteHooks([]v1.Hook_Condition{
 					v1.Hook_CONDITION_ANY_ERROR,
@@ -42,10 +41,10 @@ func NewOneoffRestoreTask(repoID, planID string, flowID int64, at time.Time, sna
 	}
 }
 
-func restoreHelper(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner, snapshotID, path, target string) error {
+func restoreHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner, snapshotID, path, target string) error {
 	t := st.Task
-	orchestrator := taskRunner.Orchestrator()
 	oplog := taskRunner.OpLog()
+	op := st.Op
 
 	if snapshotID == "" || path == "" || target == "" {
 		return errors.New("snapshotID, path, and target are required")
@@ -56,7 +55,7 @@ func restoreHelper(ctx context.Context, st orchestrator.ScheduledTask, taskRunne
 		return errors.New("operation is not a restore operation")
 	}
 
-	repo, err := orchestrator.GetRepoOrchestrator(t.RepoID())
+	repo, err := taskRunner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
 		return fmt.Errorf("couldn't get repo %q: %w", t.RepoID(), err)
 	}

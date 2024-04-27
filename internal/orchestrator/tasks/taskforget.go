@@ -8,25 +8,24 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
-	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/hashicorp/go-multierror"
 )
 
-func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) orchestrator.Task {
-	return &orchestrator.GenericOneoffTask{
-		BaseTask: orchestrator.BaseTask{
+func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) Task {
+	return &GenericOneoffTask{
+		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("forget for plan %q in repo %q", planID),
 			TaskRepoID: repoID,
 			TaskPlanID: planID,
 		},
-		OneoffTask: orchestrator.OneoffTask{
+		OneoffTask: OneoffTask{
 			FlowID: flowID,
 			RunAt:  at,
 			ProtoOp: &v1.Operation{
 				Op: &v1.Operation_OperationForget{},
 			},
 		},
-		Do: func(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner) error {
+		Do: func(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 			op := st.Op
 			forgetOp := op.GetOperationForget()
 			if forgetOp == nil {
@@ -47,10 +46,10 @@ func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) orch
 	}
 }
 
-func forgetHelper(ctx context.Context, st orchestrator.ScheduledTask, taskRunner orchestrator.TaskRunner) error {
+func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 	t := st.Task
 
-	repo, err := taskRunner.Orchestrator().GetRepoOrchestrator(t.RepoID())
+	repo, err := taskRunner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
 		return fmt.Errorf("get repo %q: %w", t.RepoID(), err)
 	}
@@ -60,7 +59,7 @@ func forgetHelper(ctx context.Context, st orchestrator.ScheduledTask, taskRunner
 		return fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err)
 	}
 
-	plan, err := taskRunner.Orchestrator().GetPlan(t.PlanID())
+	plan, err := taskRunner.GetPlan(t.PlanID())
 	if err != nil {
 		return fmt.Errorf("get plan %q: %w", t.PlanID(), err)
 	}
@@ -97,7 +96,9 @@ func forgetHelper(ctx context.Context, st orchestrator.ScheduledTask, taskRunner
 	}
 
 	if len(forgot) > 0 {
-		taskRunner.Orchestrator().ScheduleTask(NewOneoffPruneTask(t.orch, t.plan, time.Now(), false), TaskPriorityPrune)
+		if err := taskRunner.ScheduleTask(NewOneoffPruneTask(t.RepoID(), t.PlanID(), st.Op.FlowId, time.Now(), false), TaskPriorityPrune); err != nil {
+			return fmt.Errorf("schedule prune task: %w", err)
+		}
 	}
 
 	return err

@@ -10,7 +10,6 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
-	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"github.com/gitploy-io/cronexpr"
@@ -21,11 +20,11 @@ var maxBackupErrorHistoryLength = 20 // arbitrary limit on the number of file re
 
 // BackupTask is a scheduled backup operation.
 type BackupTask struct {
-	orchestrator.BaseTask
+	BaseTask
 	scheduler func(curTime time.Time) *time.Time
 }
 
-var _ orchestrator.Task = &BackupTask{}
+var _ Task = &BackupTask{}
 
 func NewScheduledBackupTask(plan *v1.Plan) (*BackupTask, error) {
 	sched, err := cronexpr.ParseInLocation(plan.Cron, time.Now().Location().String())
@@ -34,7 +33,7 @@ func NewScheduledBackupTask(plan *v1.Plan) (*BackupTask, error) {
 	}
 
 	return &BackupTask{
-		BaseTask: orchestrator.BaseTask{
+		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("backup for plan %q", plan.Id),
 			TaskRepoID: plan.Repo,
 			TaskPlanID: plan.Id,
@@ -49,7 +48,7 @@ func NewScheduledBackupTask(plan *v1.Plan) (*BackupTask, error) {
 func NewOneoffBackupTask(plan *v1.Plan, at time.Time) *BackupTask {
 	didOnce := false
 	return &BackupTask{
-		BaseTask: orchestrator.BaseTask{
+		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("backup for plan %q", plan.Id),
 			TaskRepoID: plan.Repo,
 			TaskPlanID: plan.Id,
@@ -64,13 +63,13 @@ func NewOneoffBackupTask(plan *v1.Plan, at time.Time) *BackupTask {
 	}
 }
 
-func (t *BackupTask) Next(now time.Time, runner orchestrator.TaskRunner) orchestrator.ScheduledTask {
+func (t *BackupTask) Next(now time.Time, runner TaskRunner) ScheduledTask {
 	next := t.scheduler(now)
 	if next == nil {
-		return orchestrator.NeverScheduledTask
+		return NeverScheduledTask
 	}
 
-	return orchestrator.ScheduledTask{
+	return ScheduledTask{
 		Task:  t,
 		RunAt: *next,
 		Op: &v1.Operation{
@@ -83,7 +82,7 @@ func (t *BackupTask) Next(now time.Time, runner orchestrator.TaskRunner) orchest
 	}
 }
 
-func (t *BackupTask) Run(ctx context.Context, st orchestrator.ScheduledTask, runner orchestrator.TaskRunner) error {
+func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
 	startTime := time.Now()
 	op := st.Op
 	backupOp := &v1.Operation_OperationBackup{
@@ -91,12 +90,12 @@ func (t *BackupTask) Run(ctx context.Context, st orchestrator.ScheduledTask, run
 	}
 	op.Op = backupOp
 
-	repo, err := runner.Orchestrator().GetRepoOrchestrator(t.RepoID())
+	repo, err := runner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
 		return err
 	}
 
-	plan, err := runner.Orchestrator().GetPlan(t.PlanID())
+	plan, err := runner.GetPlan(t.PlanID())
 	if err != nil {
 		return err
 	}
@@ -197,9 +196,13 @@ func (t *BackupTask) Run(ctx context.Context, st orchestrator.ScheduledTask, run
 	// schedule followup tasks
 	at := time.Now()
 	if _, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyKeepAll); plan.Retention != nil && !ok {
-		runner.Orchestrator().ScheduleTask(NewOneoffForgetTask(t.RepoID(), t.PlanID(), op.FlowId, at), orchestrator.TaskPriorityForget)
+		if err := runner.ScheduleTask(NewOneoffForgetTask(t.RepoID(), t.PlanID(), op.FlowId, at), TaskPriorityForget); err != nil {
+			return fmt.Errorf("failed to schedule forget task: %w", err)
+		}
 	}
-	runner.Orchestrator().ScheduleTask(NewOneoffIndexSnapshotsTask(t.RepoID(), at), orchestrator.TaskPriorityIndexSnapshots)
+	if err := runner.ScheduleTask(NewOneoffIndexSnapshotsTask(t.RepoID(), at), TaskPriorityIndexSnapshots); err != nil {
+		return fmt.Errorf("failed to schedule index snapshots task: %w", err)
+	}
 
 	return nil
 }

@@ -1,4 +1,4 @@
-package orchestrator
+package tasks
 
 import (
 	"context"
@@ -26,6 +26,14 @@ const (
 type CollectGarbageTask struct {
 	BaseTask
 	firstRun bool
+}
+
+func NewCollectGarbageTask() *CollectGarbageTask {
+	return &CollectGarbageTask{
+		BaseTask: BaseTask{
+			TaskName: "collect garbage",
+		},
+	}
 }
 
 var _ Task = &CollectGarbageTask{}
