@@ -55,26 +55,26 @@ type BackupProgressEntry struct {
 	Item   string `json:"item"`
 
 	// Summary fields
-	FilesNew            int     `json:"files_new"`
-	FilesChanged        int     `json:"files_changed"`
-	FilesUnmodified     int     `json:"files_unmodified"`
-	DirsNew             int     `json:"dirs_new"`
-	DirsChanged         int     `json:"dirs_changed"`
-	DirsUnmodified      int     `json:"dirs_unmodified"`
-	DataBlobs           int     `json:"data_blobs"`
-	TreeBlobs           int     `json:"tree_blobs"`
-	DataAdded           int     `json:"data_added"`
-	TotalFilesProcessed int     `json:"total_files_processed"`
-	TotalBytesProcessed int     `json:"total_bytes_processed"`
+	FilesNew            int64   `json:"files_new"`
+	FilesChanged        int64   `json:"files_changed"`
+	FilesUnmodified     int64   `json:"files_unmodified"`
+	DirsNew             int64   `json:"dirs_new"`
+	DirsChanged         int64   `json:"dirs_changed"`
+	DirsUnmodified      int64   `json:"dirs_unmodified"`
+	DataBlobs           int64   `json:"data_blobs"`
+	TreeBlobs           int64   `json:"tree_blobs"`
+	DataAdded           int64   `json:"data_added"`
+	TotalFilesProcessed int64   `json:"total_files_processed"`
+	TotalBytesProcessed int64   `json:"total_bytes_processed"`
 	TotalDuration       float64 `json:"total_duration"`
 	SnapshotId          string  `json:"snapshot_id"`
 
 	// Status fields
 	PercentDone  float64  `json:"percent_done"`
-	TotalFiles   int      `json:"total_files"`
-	FilesDone    int      `json:"files_done"`
-	TotalBytes   int      `json:"total_bytes"`
-	BytesDone    int      `json:"bytes_done"`
+	TotalFiles   int64    `json:"total_files"`
+	FilesDone    int64    `json:"files_done"`
+	TotalBytes   int64    `json:"total_bytes"`
+	BytesDone    int64    `json:"bytes_done"`
 	CurrentFiles []string `json:"current_files"`
 }
 
@@ -146,10 +146,10 @@ type LsEntry struct {
 	Name  string `json:"name"`
 	Type  string `json:"type"`
 	Path  string `json:"path"`
-	Uid   int    `json:"uid"`
-	Gid   int    `json:"gid"`
-	Size  int    `json:"size"`
-	Mode  int    `json:"mode"`
+	Uid   int64  `json:"uid"`
+	Gid   int64  `json:"gid"`
+	Size  int64  `json:"size"`
+	Mode  int64  `json:"mode"`
 	Mtime string `json:"mtime"`
 	Atime string `json:"atime"`
 	Ctime string `json:"ctime"`
