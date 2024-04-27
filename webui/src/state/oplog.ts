@@ -134,7 +134,8 @@ export class BackupInfoCollector {
   ) => void)[] = [];
 
   // backups maps a flow ID to a backup info object.
-  private backups: Map<bigint, BackupInfo> = new Map();
+  private operationsByFlowId: Map<bigint, Operation[]> = new Map();
+  private backupsByFlowId: Map<bigint, BackupInfo> = new Map();
 
   /**
    * 
@@ -208,32 +209,32 @@ export class BackupInfoCollector {
     };
   }
 
-  private addHelper(op: Operation): BackupInfo {
-    if (op.snapshotId) {
-      this.backupByOpId.delete(op.id);
-
-      const existing = this.backupBySnapshotId.get(op.snapshotId);
-      let operations: Operation[];
-      if (existing) {
-        operations = [...existing.operations];
-        const opIdx = operations.findIndex((o) => o.id === op.id);
-        if (opIdx > -1) {
-          operations[opIdx] = op;
-        } else {
-          operations.push(op);
-        }
-      } else {
-        operations = [op];
-      }
-
-      const newInfo = this.createBackup(operations);
-      this.backupBySnapshotId.set(op.snapshotId, newInfo);
-      return newInfo;
+  private addOrUpdateHelper(op: Operation) {
+    const existing = this.operationsByFlowId.get(op.flowId);
+    if (existing === undefined) {
+      this.operationsByFlowId.set(op.flowId, [op]);
     } else {
-      const newInfo = this.createBackup([op]);
-      this.backupByOpId.set(op.id, newInfo);
-      return newInfo;
+      const idx = existing.findIndex((o) => o.id === op.id);
+      if (idx === -1) {
+        existing.push(op);
+      } else {
+        existing[idx] = op;
+      }
     }
+    this.backupsByFlowId.delete(op.flowId);
+  }
+
+  private getBackupInfo(flowId: bigint): BackupInfo | undefined {
+    let existing = this.backupsByFlowId.get(flowId);
+    if (existing === undefined) {
+      const operations = this.operationsByFlowId.get(flowId);
+      if (!operations) {
+        return undefined;
+      }
+      existing = this.createBackup(operations);
+      this.backupsByFlowId.set(flowId, existing);
+    }
+    return existing;
   }
 
   public addOperation(event: OperationEventType, op: Operation): BackupInfo | null {
@@ -241,26 +242,28 @@ export class BackupInfoCollector {
       this.removeOperation(op);
       return null;
     }
-    const backupInfo = this.addHelper(op);
+    this.addOrUpdateHelper(op);
+    const backupInfo = this.getBackupInfo(op.flowId)!;
     this.listeners.forEach((l) => l(event, [backupInfo]));
     return backupInfo;
   }
 
   // removeOperaiton is not quite correct from a formal standpoint; but will look correct in the UI.
   public removeOperation(op: Operation) {
-    if (op.snapshotId) {
-      let existing = this.backupBySnapshotId.get(op.snapshotId);
-      if (existing) {
-        const operations = existing.operations.filter((o) => o.id !== op.id);
-        if (operations.length === 0) {
-          this.backupBySnapshotId.delete(op.snapshotId);
-        } else {
-          this.backupBySnapshotId.set(op.snapshotId, this.createBackup(operations));
-        }
-      }
-    } else {
-      this.backupByOpId.delete(op.id);
+    const existing = this.operationsByFlowId.get(op.flowId);
+    if (existing === undefined) {
+      return;
     }
+    const idx = existing.findIndex((o) => o.id === op.id);
+    if (idx === -1) {
+      return;
+    }
+    existing.splice(idx, 1);
+    if (existing.length === 0) {
+      this.operationsByFlowId.delete(op.flowId);
+    }
+    this.backupsByFlowId.delete(op.flowId); // delete the cache for lazy recomputation.
+
 
     this.listeners.forEach((l) =>
       l(OperationEventType.EVENT_DELETED, this.getAll())
@@ -268,43 +271,20 @@ export class BackupInfoCollector {
   }
 
   public bulkAddOperations(ops: Operation[]): BackupInfo[] {
-    ops = ops.filter(this.filter);
-    let grouped = _.groupBy(ops, (op) =>
-      op.snapshotId ? op.snapshotId : op.id
-    );
-
-    const info: BackupInfo[] = [];
-
-    for (const operations of Object.values(grouped)) {
-      if (operations[0].snapshotId) {
-        const existing = this.backupBySnapshotId.get(operations[0].snapshotId);
-        if (existing) {
-          const newOps = [...existing.operations, ...operations];
-          const newInfo = this.createBackup(newOps);
-          this.backupBySnapshotId.set(operations[0].snapshotId, newInfo);
-          info.push(newInfo);
-        } else {
-          const newInfo = this.createBackup(operations);
-          this.backupBySnapshotId.set(operations[0].snapshotId, newInfo);
-          info.push(newInfo);
-        }
-      } else {
-        const op = operations[0];
-        const newInfo = this.createBackup([op]);
-        this.backupByOpId.set(op.id, newInfo);
-        info.push(newInfo);
-      }
+    for (const op of ops) {
+      this.addOrUpdateHelper(op);
     }
-
+    const flowIDs = _.uniq(ops.map((op) => op.flowId));
+    const info = flowIDs.map((flowId) => this.getBackupInfo(flowId)!);
     this.listeners.forEach((l) => l(OperationEventType.EVENT_CREATED, info));
     return info;
   }
 
   public getAll(): BackupInfo[] {
-    const arr = [
-      ...this.backupByOpId.values(),
-      ...this.backupBySnapshotId.values(),
-    ];
+    const arr = []
+    for (const key of this.operationsByFlowId.keys()) {
+      arr.push(this.getBackupInfo(key)!);
+    }
     return arr.filter((b) => !b.forgotten && !shouldHideStatus(b.status));
   }
 

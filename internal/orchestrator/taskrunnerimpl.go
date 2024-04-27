@@ -6,6 +6,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/ioutil"
+	"github.com/garethgeorge/backrest/internal/oplog"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -77,6 +78,10 @@ func (t *taskRunnerImpl) AppendRawLog(data []byte) error {
 
 func (t *taskRunnerImpl) Orchestrator() *Orchestrator {
 	return t.orchestrator
+}
+
+func (t *taskRunnerImpl) OpLog() *oplog.OpLog {
+	return t.orchestrator.OpLog
 }
 
 func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.HookVars) error {

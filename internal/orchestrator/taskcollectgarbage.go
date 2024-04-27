@@ -1,4 +1,4 @@
-package tasks
+package orchestrator
 
 import (
 	"context"
@@ -48,7 +48,7 @@ func (t *CollectGarbageTask) Next(now time.Time, runner TaskRunner) ScheduledTas
 }
 
 func (t *CollectGarbageTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
-	oplog := runner.Orchestrator().OpLog()
+	oplog := runner.OpLog()
 
 	if err := t.gcOperations(oplog); err != nil {
 		return fmt.Errorf("collecting garbage: %w", err)
@@ -58,69 +58,45 @@ func (t *CollectGarbageTask) Run(ctx context.Context, st ScheduledTask, runner T
 }
 
 func (t *CollectGarbageTask) gcOperations(oplog *oplog.OpLog) error {
-	oplog := st
-
-	// pass 1: identify forgotten snapshots.
-	snapshotIsForgotten := make(map[string]bool)
+	// snapshotForgottenForFlow returns whether the snapshot associated with the flow is forgotten
+	snapshotForgottenForFlow := make(map[int64]bool)
 	if err := oplog.ForAll(func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
-			if snapshotOp.OperationIndexSnapshot.Forgot {
-				snapshotIsForgotten[snapshotOp.OperationIndexSnapshot.Snapshot.Id] = true
-			}
+			snapshotForgottenForFlow[op.FlowId] = snapshotOp.OperationIndexSnapshot.Forgot
 		}
 		return nil
 	}); err != nil {
 		return fmt.Errorf("identifying forgotten snapshots: %w", err)
 	}
 
-	// pass 2: identify operations that are gc eligible
-	//  - any operation that has no snapshot associated with it
-	//  - any operation that has a forgotten snapshot associated with it
-	operationsByPlan := make(map[string][]gcOpInfo)
+	forgetIDs := []int64{}
+	curTime := curTimeMillis()
 	if err := oplog.ForAll(func(op *v1.Operation) error {
-		if op.SnapshotId == "" || snapshotIsForgotten[op.SnapshotId] {
-			_, isStats := op.Op.(*v1.Operation_OperationStats)
-			operationsByPlan[op.PlanId] = append(operationsByPlan[op.PlanId], gcOpInfo{
-				id:        op.Id,
-				timestamp: op.UnixTimeStartMs,
-				isStats:   isStats,
-			})
+		forgot, ok := snapshotForgottenForFlow[op.FlowId]
+		if !ok {
+			// no snapshot associated with this flow; check if it's old enough to be gc'd
+			maxAgeForType := gcHistoryAge.Milliseconds()
+			if _, isStats := op.Op.(*v1.Operation_OperationStats); isStats {
+				maxAgeForType = gcHistoryStatsAge.Milliseconds()
+			}
+			if curTime-op.UnixTimeStartMs > maxAgeForType {
+				forgetIDs = append(forgetIDs, op.Id)
+			}
+		} else if forgot {
+			// snapshot is forgotten; this operation is eligible for gc
+			forgetIDs = append(forgetIDs, op.Id)
 		}
 		return nil
 	}); err != nil {
 		return fmt.Errorf("identifying gc eligible operations: %w", err)
 	}
 
-	var gcOps []int64
-	curTime := curTimeMillis()
-	for _, opInfos := range operationsByPlan {
-		if len(opInfos) >= gcHistoryMaxCount {
-			for _, opInfo := range opInfos[:len(opInfos)-gcHistoryMaxCount] {
-				gcOps = append(gcOps, opInfo.id)
-			}
-			opInfos = opInfos[len(opInfos)-gcHistoryMaxCount:]
-		}
-
-		// check if each operation timestamp is old.
-		for _, opInfo := range opInfos {
-			maxAgeForType := gcHistoryAge.Milliseconds()
-			if opInfo.isStats {
-				maxAgeForType = gcHistoryStatsAge.Milliseconds()
-			}
-			if curTime-opInfo.timestamp > maxAgeForType {
-				gcOps = append(gcOps, opInfo.id)
-			}
-		}
-	}
-
-	// pass 3: remove gc eligible operations
-	if err := oplog.Delete(gcOps...); err != nil {
+	if err := oplog.Delete(forgetIDs...); err != nil {
 		return fmt.Errorf("removing gc eligible operations: %w", err)
 	}
 
 	zap.L().Info("collecting garbage",
-		zap.Int("forgotten_snapshots", len(snapshotIsForgotten)),
-		zap.Any("operations_removed", len(gcOps)))
+		zap.Any("operations_removed", len(forgetIDs)))
 	return nil
 }
 
