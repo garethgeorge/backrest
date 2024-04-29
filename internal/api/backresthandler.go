@@ -373,7 +373,7 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 
 	at := time.Now()
 
-	flowID, err := s.orchestrator.FlowIDForSnapshotID(req.Msg.SnapshotId)
+	flowID, err := tasks.FlowIDForSnapshotID(s.oplog, req.Msg.SnapshotId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get flow ID for snapshot %q: %w", req.Msg.SnapshotId, err)
 	}

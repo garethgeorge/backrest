@@ -76,10 +76,15 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 		}
 
 		snapshotProto := protoutil.SnapshotToProto(snapshot)
+		flowID, err := FlowIDForSnapshotID(taskRunner.OpLog(), snapshot.Id)
+		if err != nil {
+			return fmt.Errorf("get flow ID for snapshot %q: %w", snapshot.Id, err)
+		}
 		planId := planForSnapshot(snapshotProto)
 		indexOps = append(indexOps, &v1.Operation{
 			RepoId:          t.RepoID(),
 			PlanId:          planId,
+			FlowId:          flowID,
 			UnixTimeStartMs: snapshotProto.UnixTimeMs,
 			UnixTimeEndMs:   snapshotProto.UnixTimeMs,
 			Status:          v1.OperationStatus_STATUS_SUCCESS,

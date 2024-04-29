@@ -9,12 +9,13 @@ import (
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/hashicorp/go-multierror"
+	"go.uber.org/zap"
 )
 
 func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) Task {
 	return &GenericOneoffTask{
 		BaseTask: BaseTask{
-			TaskName:   fmt.Sprintf("forget for plan %q in repo %q", planID),
+			TaskName:   fmt.Sprintf("forget for plan %q in repo %q", repoID, planID),
 			TaskRepoID: repoID,
 			TaskPlanID: planID,
 		},
@@ -69,7 +70,9 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 		return fmt.Errorf("forget: %w", err)
 	}
 
-	forgetOp := &v1.Operation_OperationForget{}
+	forgetOp := &v1.Operation_OperationForget{
+		OperationForget: &v1.OperationForget{},
+	}
 	st.Op.Op = forgetOp
 
 	forgetOp.OperationForget.Forget = append(forgetOp.OperationForget.Forget, forgot...)
@@ -84,6 +87,8 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 			err = multierror.Append(err, fmt.Errorf("cleanup snapshot %v: %w", forgot.Id, e))
 		}
 	}
+
+	zap.S().Debugf("found %v snapshots were forgotten, marking this in oplog", len(ops))
 
 	for _, op := range ops {
 		if indexOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
