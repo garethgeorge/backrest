@@ -268,7 +268,6 @@ export class BackupInfoCollector {
     }
     this.backupsByFlowId.delete(op.flowId); // delete the cache for lazy recomputation.
 
-
     this.listeners.forEach((l) =>
       l(OperationEventType.EVENT_DELETED, this.getAll())
     );
