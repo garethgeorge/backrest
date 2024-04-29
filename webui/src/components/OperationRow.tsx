@@ -44,6 +44,8 @@ import { LogDataRequest } from "../../gen/ts/v1/service_pb";
 import { MessageInstance } from "antd/es/message/interface";
 import { backrestService } from "../api";
 import { useShowModal } from "./ModalManager";
+import { proto3 } from "@bufbuild/protobuf";
+import { Hook_Condition } from "../../gen/ts/v1/config_pb";
 
 
 export const OperationRow = ({
@@ -127,6 +129,7 @@ export const OperationRow = ({
   }
 
   let body: React.ReactNode | undefined;
+  let displayMessage = operation.displayMessage;
 
   if (operation.op.case === "operationBackup") {
     const backupOp = operation.op.value;
@@ -194,14 +197,18 @@ export const OperationRow = ({
       </>
     );
   } else if (operation.op.case === "operationRunHook") {
-    body = <></>
+    const hook = operation.op.value;
+    const triggeringCondition = proto3.getEnumType(Hook_Condition).findNumber(hook.condition);
+    if (triggeringCondition !== undefined) {
+      displayMessage += "\ntriggered by condition: " + triggeringCondition.name;
+    }
   }
 
   const children = [];
 
   if (operation.displayMessage) {
     children.push(<>
-      <pre>{details.state ? details.state + ": " : null}{operation.displayMessage}</pre>
+      <pre>{details.state ? details.state + ": " : null}{displayMessage}</pre>
     </>);
   }
 

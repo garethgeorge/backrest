@@ -1,4 +1,4 @@
-package orchestrator
+package repo
 
 import (
 	"context"
@@ -15,7 +15,6 @@ import (
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"github.com/google/shlex"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 // RepoOrchestrator is responsible for managing a single repo.
@@ -70,10 +69,16 @@ func NewRepoOrchestrator(repoConfig *v1.Repo, resticPath string) (*RepoOrchestra
 }
 
 func (r *RepoOrchestrator) Init(ctx context.Context) error {
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
+
 	return r.repo.Init(ctx)
 }
 
 func (r *RepoOrchestrator) Snapshots(ctx context.Context) ([]*restic.Snapshot, error) {
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
+
 	snapshots, err := r.repo.Snapshots(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
@@ -83,6 +88,9 @@ func (r *RepoOrchestrator) Snapshots(ctx context.Context) ([]*restic.Snapshot, e
 }
 
 func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) ([]*restic.Snapshot, error) {
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
+
 	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--tag", tagForPlan(plan)))
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for plan %q: %w", plan.Id, err)
@@ -96,6 +104,7 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	if !r.initialized {
 		if err := r.repo.Init(ctx, restic.WithEnviron()); err != nil {
 			return nil, fmt.Errorf("failed to initialize repo: %w", err)
@@ -134,6 +143,8 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 		opts = append(opts, restic.WithFlags(args...))
 	}
 
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
 	summary, err := r.repo.Backup(ctx, plan.Paths, progressCallback, opts...)
 	if err != nil {
 		return summary, fmt.Errorf("failed to backup: %w", err)
@@ -144,6 +155,9 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 }
 
 func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId string, path string) ([]*v1.LsEntry, error) {
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
+
 	_, entries, err := r.repo.ListDirectory(ctx, snapshotId, path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list snapshot files: %w", err)
@@ -160,6 +174,8 @@ func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId str
 func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.ResticSnapshot, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
 
 	policy := plan.Retention
 	if policy == nil {
@@ -190,6 +206,8 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 func (r *RepoOrchestrator) ForgetSnapshot(ctx context.Context, snapshotId string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
 
 	r.l.Debug("forget snapshot with ID", zap.String("snapshot", snapshotId), zap.String("repo", r.repoConfig.Id))
 	return r.repo.ForgetSnapshot(ctx, snapshotId)
@@ -198,6 +216,8 @@ func (r *RepoOrchestrator) ForgetSnapshot(ctx context.Context, snapshotId string
 func (r *RepoOrchestrator) Prune(ctx context.Context, output io.Writer) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
 
 	policy := r.repoConfig.PrunePolicy
 	if policy == nil {
@@ -224,6 +244,8 @@ func (r *RepoOrchestrator) Prune(ctx context.Context, output io.Writer) error {
 func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, path string, target string, progressCallback func(event *v1.RestoreProgressEntry)) (*v1.RestoreProgressEntry, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
 
 	r.l.Debug("restore snapshot", zap.String("snapshot", snapshotId), zap.String("target", target))
 
@@ -250,9 +272,10 @@ func (r *RepoOrchestrator) UnlockIfAutoEnabled(ctx context.Context) error {
 	if !r.repoConfig.AutoUnlock {
 		return nil
 	}
-
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
 
 	zap.L().Debug("auto-unlocking repo", zap.String("repo", r.repoConfig.Id))
 
@@ -272,6 +295,8 @@ func (r *RepoOrchestrator) Unlock(ctx context.Context) error {
 func (r *RepoOrchestrator) Stats(ctx context.Context) (*v1.RepoStats, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
 
 	r.l.Debug("getting repo stats", zap.String("repo", r.repoConfig.Id))
 	stats, err := r.repo.Stats(ctx)
@@ -286,7 +311,7 @@ func (r *RepoOrchestrator) Config() *v1.Repo {
 	if r == nil {
 		return nil
 	}
-	return proto.Clone(r.repoConfig).(*v1.Repo)
+	return r.repoConfig
 }
 
 func tagForPlan(plan *v1.Plan) string {

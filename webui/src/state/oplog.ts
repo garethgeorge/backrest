@@ -9,7 +9,7 @@ import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic_pb";
 import _ from "lodash";
 import { formatDuration, formatTime } from "../lib/formatting";
 import { backrestService } from "../api";
-import { STATS_OPERATION_HISTORY } from "../constants";
+import { STATS_OPERATION_HISTORY, STATUS_OPERATION_HISTORY } from "../constants";
 
 const subscribers: ((event: OperationEvent) => void)[] = [];
 
@@ -57,7 +57,7 @@ export const unsubscribeFromOperations = (
 export const getStatusForPlan = async (plan: string) => {
   const req = new GetOperationsRequest({
     planId: plan,
-    lastN: BigInt(STATS_OPERATION_HISTORY),
+    lastN: BigInt(STATUS_OPERATION_HISTORY),
   });
   return await getStatus(req);
 };
@@ -65,7 +65,7 @@ export const getStatusForPlan = async (plan: string) => {
 export const getStatusForRepo = async (repo: string) => {
   const req = new GetOperationsRequest({
     repoId: repo,
-    lastN: BigInt(STATS_OPERATION_HISTORY),
+    lastN: BigInt(STATUS_OPERATION_HISTORY),
   });
   return await getStatus(req);
 };
@@ -79,12 +79,12 @@ const getStatus = async (req: GetOperationsRequest) => {
   if (ops.length === 0) {
     return OperationStatus.STATUS_SUCCESS;
   }
-  const snapshotId = ops[0].snapshotId;
+  const flowId = ops[0].flowId;
   for (const op of ops) {
     if (op.status === OperationStatus.STATUS_PENDING) {
       continue;
     }
-    if (op.snapshotId !== snapshotId) {
+    if (op.flowId !== flowId) {
       break;
     }
     if (
@@ -110,7 +110,7 @@ export enum DisplayType {
 }
 
 export interface BackupInfo {
-  id: string; // id of the first operation that generated this backup.
+  id: string; // flow ID of the operations that make up this backup.
   displayTime: Date;
   displayType: DisplayType;
   startTimeMs: number;
@@ -132,8 +132,10 @@ export class BackupInfoCollector {
     event: OperationEventType,
     info: BackupInfo[]
   ) => void)[] = [];
-  private backupByOpId: Map<bigint, BackupInfo> = new Map();
-  private backupBySnapshotId: Map<string, BackupInfo> = new Map();
+
+  // backups maps a flow ID to a backup info object.
+  private operationsByFlowId: Map<bigint, Operation[]> = new Map();
+  private backupsByFlowId: Map<bigint, BackupInfo> = new Map();
 
   /**
    * 
@@ -164,6 +166,10 @@ export class BackupInfoCollector {
     let statusIdx = operations.length - 1;
     let status = OperationStatus.STATUS_SYSTEM_CANCELLED;
     while (statusIdx !== -1) {
+      if (operations[statusIdx].op.case === "operationRunHook") {
+        statusIdx--;
+        continue;
+      }
       const curStatus = operations[statusIdx].status;
       if (
         shouldHideStatus(status) ||
@@ -179,17 +185,19 @@ export class BackupInfoCollector {
     let backupLastStatus = undefined;
     let snapshotInfo = undefined;
     let forgotten = false;
+    let snapshotId = "";
     for (const op of operations) {
       if (op.op.case === "operationBackup") {
         backupLastStatus = op.op.value.lastStatus;
       } else if (op.op.case === "operationIndexSnapshot") {
         snapshotInfo = op.op.value.snapshot;
         forgotten = op.op.value.forgot || false;
+        snapshotId = op.op.value.snapshot?.id || "";
       }
     }
 
     return {
-      id: id.toString(16),
+      id: operations[0].flowId.toString(16),
       startTimeMs,
       endTimeMs,
       displayTime,
@@ -199,38 +207,38 @@ export class BackupInfoCollector {
       backupLastStatus,
       snapshotInfo,
       forgotten,
-      snapshotId: operations[0].snapshotId,
+      snapshotId: snapshotId,
       planId: operations[0].planId,
       repoId: operations[0].repoId,
     };
   }
 
-  private addHelper(op: Operation): BackupInfo {
-    if (op.snapshotId) {
-      this.backupByOpId.delete(op.id);
-
-      const existing = this.backupBySnapshotId.get(op.snapshotId);
-      let operations: Operation[];
-      if (existing) {
-        operations = [...existing.operations];
-        const opIdx = operations.findIndex((o) => o.id === op.id);
-        if (opIdx > -1) {
-          operations[opIdx] = op;
-        } else {
-          operations.push(op);
-        }
-      } else {
-        operations = [op];
-      }
-
-      const newInfo = this.createBackup(operations);
-      this.backupBySnapshotId.set(op.snapshotId, newInfo);
-      return newInfo;
+  private addOrUpdateHelper(op: Operation) {
+    const existing = this.operationsByFlowId.get(op.flowId);
+    if (existing === undefined) {
+      this.operationsByFlowId.set(op.flowId, [op]);
     } else {
-      const newInfo = this.createBackup([op]);
-      this.backupByOpId.set(op.id, newInfo);
-      return newInfo;
+      const idx = existing.findIndex((o) => o.id === op.id);
+      if (idx === -1) {
+        existing.push(op);
+      } else {
+        existing[idx] = op;
+      }
     }
+    this.backupsByFlowId.delete(op.flowId);
+  }
+
+  private getBackupInfo(flowId: bigint): BackupInfo | undefined {
+    let existing = this.backupsByFlowId.get(flowId);
+    if (existing === undefined) {
+      const operations = this.operationsByFlowId.get(flowId);
+      if (!operations) {
+        return undefined;
+      }
+      existing = this.createBackup(operations);
+      this.backupsByFlowId.set(flowId, existing);
+    }
+    return existing;
   }
 
   public addOperation(event: OperationEventType, op: Operation): BackupInfo | null {
@@ -238,26 +246,27 @@ export class BackupInfoCollector {
       this.removeOperation(op);
       return null;
     }
-    const backupInfo = this.addHelper(op);
+    this.addOrUpdateHelper(op);
+    const backupInfo = this.getBackupInfo(op.flowId)!;
     this.listeners.forEach((l) => l(event, [backupInfo]));
     return backupInfo;
   }
 
   // removeOperaiton is not quite correct from a formal standpoint; but will look correct in the UI.
   public removeOperation(op: Operation) {
-    if (op.snapshotId) {
-      let existing = this.backupBySnapshotId.get(op.snapshotId);
-      if (existing) {
-        const operations = existing.operations.filter((o) => o.id !== op.id);
-        if (operations.length === 0) {
-          this.backupBySnapshotId.delete(op.snapshotId);
-        } else {
-          this.backupBySnapshotId.set(op.snapshotId, this.createBackup(operations));
-        }
-      }
-    } else {
-      this.backupByOpId.delete(op.id);
+    const existing = this.operationsByFlowId.get(op.flowId);
+    if (existing === undefined) {
+      return;
     }
+    const idx = existing.findIndex((o) => o.id === op.id);
+    if (idx === -1) {
+      return;
+    }
+    existing.splice(idx, 1);
+    if (existing.length === 0) {
+      this.operationsByFlowId.delete(op.flowId);
+    }
+    this.backupsByFlowId.delete(op.flowId); // delete the cache for lazy recomputation.
 
     this.listeners.forEach((l) =>
       l(OperationEventType.EVENT_DELETED, this.getAll())
@@ -265,43 +274,20 @@ export class BackupInfoCollector {
   }
 
   public bulkAddOperations(ops: Operation[]): BackupInfo[] {
-    ops = ops.filter(this.filter);
-    let grouped = _.groupBy(ops, (op) =>
-      op.snapshotId ? op.snapshotId : op.id
-    );
-
-    const info: BackupInfo[] = [];
-
-    for (const operations of Object.values(grouped)) {
-      if (operations[0].snapshotId) {
-        const existing = this.backupBySnapshotId.get(operations[0].snapshotId);
-        if (existing) {
-          const newOps = [...existing.operations, ...operations];
-          const newInfo = this.createBackup(newOps);
-          this.backupBySnapshotId.set(operations[0].snapshotId, newInfo);
-          info.push(newInfo);
-        } else {
-          const newInfo = this.createBackup(operations);
-          this.backupBySnapshotId.set(operations[0].snapshotId, newInfo);
-          info.push(newInfo);
-        }
-      } else {
-        const op = operations[0];
-        const newInfo = this.createBackup([op]);
-        this.backupByOpId.set(op.id, newInfo);
-        info.push(newInfo);
-      }
+    for (const op of ops) {
+      this.addOrUpdateHelper(op);
     }
-
+    const flowIDs = _.uniq(ops.map((op) => op.flowId));
+    const info = flowIDs.map((flowId) => this.getBackupInfo(flowId)!);
     this.listeners.forEach((l) => l(OperationEventType.EVENT_CREATED, info));
     return info;
   }
 
   public getAll(): BackupInfo[] {
-    const arr = [
-      ...this.backupByOpId.values(),
-      ...this.backupBySnapshotId.values(),
-    ];
+    const arr = []
+    for (const key of this.operationsByFlowId.keys()) {
+      arr.push(this.getBackupInfo(key)!);
+    }
     return arr.filter((b) => !b.forgotten && !shouldHideStatus(b.status));
   }
 
@@ -325,8 +311,6 @@ export class BackupInfoCollector {
 export const shouldHideOperation = (operation: Operation) => {
   return (
     operation.op.case === "operationStats" ||
-    (operation.op.case === "operationRunHook" &&
-      operation.status === OperationStatus.STATUS_SUCCESS) ||
     shouldHideStatus(operation.status)
   );
 };

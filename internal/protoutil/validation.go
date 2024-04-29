@@ -13,6 +13,9 @@ func ValidateOperation(op *v1.Operation) error {
 	if op.Id == 0 {
 		return errors.New("operation.id is required")
 	}
+	if op.FlowId == 0 {
+		return errors.New("operation.flow_id is required")
+	}
 	if op.RepoId == "" {
 		return errors.New("operation.repo_id is required")
 	}
