@@ -278,7 +278,10 @@ func (o *Orchestrator) Run(ctx context.Context) {
 
 		zap.L().Info("running task", zap.String("task", t.Task.Name()))
 
+		logs := bytes.NewBuffer(nil)
 		taskCtx, cancelTaskCtx := context.WithCancel(ctx)
+		taskCtx = logging.ContextWithWriter(taskCtx, &ioutil.SynchronizedWriter{W: logs})
+
 		go func() {
 			for {
 				select {
@@ -312,8 +315,6 @@ func (o *Orchestrator) Run(ctx context.Context) {
 			}
 		}
 
-		logs := bytes.NewBuffer(nil)
-		taskCtx = logging.ContextWithWriter(taskCtx, &ioutil.SynchronizedWriter{W: logs})
 		err := t.Task.Run(taskCtx, t.ScheduledTask, runner)
 
 		if op != nil {
