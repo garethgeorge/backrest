@@ -6,33 +6,42 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 )
 
 type testTask struct {
+	tasks.BaseTask
 	onRun  func() error
 	onNext func(curTime time.Time) *time.Time
 }
 
-func (t *testTask) Name() string {
-	return "test"
+var _ tasks.Task = &testTask{}
+
+func newTestTask(onRun func() error, onNext func(curTime time.Time) *time.Time) tasks.Task {
+	return &testTask{
+		BaseTask: tasks.BaseTask{
+			TaskName:   "test task",
+			TaskRepoID: "repo",
+			TaskPlanID: "plan",
+		},
+		onRun:  onRun,
+		onNext: onNext,
+	}
+}
+func (t *testTask) Next(curTime time.Time, runner tasks.TaskRunner) tasks.ScheduledTask {
+	at := t.onNext(curTime)
+	if at == nil {
+		return tasks.NeverScheduledTask
+	}
+	return tasks.ScheduledTask{
+		Task:  t,
+		RunAt: *at,
+	}
 }
 
-func (t *testTask) Next(now time.Time) *time.Time {
-	return t.onNext(now)
-}
-
-func (t *testTask) Run(ctx context.Context) error {
+func (t *testTask) Run(ctx context.Context, st tasks.ScheduledTask, runner tasks.TaskRunner) error {
 	return t.onRun()
-}
-
-func (t *testTask) Cancel(withStatus v1.OperationStatus) error {
-	return nil
-}
-
-func (t *testTask) OperationId() int64 {
-	return 0
 }
 
 func TestTaskScheduling(t *testing.T) {
@@ -49,17 +58,17 @@ func TestTaskScheduling(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	task := &testTask{
-		onRun: func() error {
+	task := newTestTask(
+		func() error {
 			wg.Done()
 			cancel()
 			return nil
 		},
-		onNext: func(t time.Time) *time.Time {
+		func(t time.Time) *time.Time {
 			t = t.Add(10 * time.Millisecond)
 			return &t
 		},
-	}
+	)
 
 	wg.Add(1)
 	go func() {
@@ -68,7 +77,7 @@ func TestTaskScheduling(t *testing.T) {
 	}()
 
 	// Act
-	orch.ScheduleTask(task, TaskPriorityDefault)
+	orch.ScheduleTask(task, tasks.TaskPriorityDefault)
 
 	// Assert passes if all tasks run and the orchestrator exists when cancelled.
 	wg.Wait()
@@ -98,22 +107,22 @@ func TestTaskRescheduling(t *testing.T) {
 	count := 0
 	ranTimes := 0
 
-	orch.ScheduleTask(&testTask{
-		onNext: func(t time.Time) *time.Time {
-			if count < 10 {
-				count += 1
-				return &t
-			}
-			return nil
-		},
-		onRun: func() error {
+	orch.ScheduleTask(newTestTask(
+		func() error {
 			ranTimes += 1
 			if ranTimes == 10 {
 				cancel()
 			}
 			return nil
 		},
-	}, TaskPriorityDefault)
+		func(t time.Time) *time.Time {
+			if count < 10 {
+				count += 1
+				return &t
+			}
+			return nil
+		},
+	), tasks.TaskPriorityDefault)
 
 	wg.Wait()
 
@@ -157,8 +166,12 @@ func TestSchedulerWait(t *testing.T) {
 
 	ran := make(chan struct{})
 	didRun := false
-	orch.ScheduleTask(&testTask{
-		onNext: func(t time.Time) *time.Time {
+	orch.ScheduleTask(newTestTask(
+		func() error {
+			close(ran)
+			return nil
+		},
+		func(t time.Time) *time.Time {
 			if didRun {
 				return nil
 			}
@@ -166,11 +179,7 @@ func TestSchedulerWait(t *testing.T) {
 			didRun = true
 			return &t
 		},
-		onRun: func() error {
-			close(ran)
-			return nil
-		},
-	}, TaskPriorityDefault)
+	), tasks.TaskPriorityDefault)
 
 	// Act
 	go orch.Run(context.Background())
@@ -192,7 +201,7 @@ func TestSchedulerWait(t *testing.T) {
 			t.Fatalf("should never run")
 			return nil
 		},
-	}, TaskPriorityDefault)
+	}, tasks.TaskPriorityDefault)
 
 	select {
 	case <-time.NewTimer(200 * time.Millisecond).C:
