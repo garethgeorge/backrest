@@ -133,6 +133,11 @@ export const OperationTree = ({
         const b = node.backup;
         const details: string[] = [];
 
+        if (b.operations.length === 0) {
+          // this happens when all operations in a backup are deleted; it should be hidden until the deletion propagates to a refresh of the tree layout.
+          return null;
+        }
+
         if (b.status === OperationStatus.STATUS_PENDING) {
           details.push("scheduled, waiting");
         } else if (b.status === OperationStatus.STATUS_SYSTEM_CANCELLED) {

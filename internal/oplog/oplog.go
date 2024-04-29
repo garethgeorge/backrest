@@ -34,6 +34,7 @@ var (
 	OpLogBucket         = []byte("oplog.log")          // oplog stores existant operations.
 	RepoIndexBucket     = []byte("oplog.repo_idx")     // repo_index tracks IDs of operations affecting a given repo
 	PlanIndexBucket     = []byte("oplog.plan_idx")     // plan_index tracks IDs of operations affecting a given plan
+	FlowIdIndexBucket   = []byte("oplog.flow_id_idx")  // flow_id_index tracks IDs of operations affecting a given flow
 	SnapshotIndexBucket = []byte("oplog.snapshot_idx") // snapshot_index tracks IDs of operations affecting a given snapshot
 )
 
@@ -63,11 +64,15 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 	if err := db.Update(func(tx *bolt.Tx) error {
 		// Create the buckets if they don't exist
 		for _, bucket := range [][]byte{
-			SystemBucket, OpLogBucket, RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket,
+			SystemBucket, OpLogBucket, RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket, FlowIdIndexBucket,
 		} {
 			if _, err := tx.CreateBucketIfNotExists(bucket); err != nil {
 				return fmt.Errorf("creating bucket %s: %s", string(bucket), err)
 			}
+		}
+
+		if err := ApplyMigrations(o, tx); err != nil {
+			return fmt.Errorf("applying migrations: %w", err)
 		}
 
 		return nil
@@ -236,7 +241,7 @@ func (o *OpLog) getOperationHelper(b *bolt.Bucket, id int64) (*v1.Operation, err
 	return &op, nil
 }
 
-func (o *OpLog) nextOperationId(b *bolt.Bucket, unixTimeMs int64) (int64, error) {
+func (o *OpLog) nextID(b *bolt.Bucket, unixTimeMs int64) (int64, error) {
 	seq, err := b.NextSequence()
 	if err != nil {
 		return 0, fmt.Errorf("next sequence: %w", err)
@@ -248,10 +253,14 @@ func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 	b := tx.Bucket(OpLogBucket)
 	if op.Id == 0 {
 		var err error
-		op.Id, err = o.nextOperationId(b, time.Now().UnixMilli())
+		op.Id, err = o.nextID(b, time.Now().UnixMilli())
 		if err != nil {
 			return fmt.Errorf("create next operation ID: %w", err)
 		}
+	}
+
+	if op.FlowId == 0 {
+		op.FlowId = op.Id
 	}
 
 	if err := protoutil.ValidateOperation(op); err != nil {
@@ -283,6 +292,11 @@ func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 			return fmt.Errorf("error adding operation to snapshot index: %w", err)
 		}
 	}
+	if op.FlowId != 0 {
+		if err := indexutil.IndexByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(op.FlowId), op.Id); err != nil {
+			return fmt.Errorf("error adding operation to flow index: %w", err)
+		}
+	}
 
 	return nil
 }
@@ -310,6 +324,12 @@ func (o *OpLog) deleteOperationHelper(tx *bolt.Tx, id int64) (*v1.Operation, err
 	if prevValue.SnapshotId != "" {
 		if err := indexutil.IndexRemoveByteValue(tx.Bucket(SnapshotIndexBucket), []byte(prevValue.SnapshotId), id); err != nil {
 			return nil, fmt.Errorf("removing operation %v from snapshot index: %w", id, err)
+		}
+	}
+
+	if prevValue.FlowId != 0 {
+		if err := indexutil.IndexRemoveByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(prevValue.FlowId), id); err != nil {
+			return nil, fmt.Errorf("removing operation %v from flow index: %w", id, err)
 		}
 	}
 
@@ -352,6 +372,13 @@ func (o *OpLog) ForEachBySnapshotId(snapshotId string, collector indexutil.Colle
 	}
 	return o.db.View(func(tx *bolt.Tx) error {
 		ids := collector(indexutil.IndexSearchByteValue(tx.Bucket(SnapshotIndexBucket), []byte(snapshotId)))
+		return o.forOpsByIds(tx, ids, do)
+	})
+}
+
+func (o *OpLog) ForEachByFlowId(flowId int64, collector indexutil.Collector, do func(op *v1.Operation) error) error {
+	return o.db.View(func(tx *bolt.Tx) error {
+		ids := collector(indexutil.IndexSearchByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(flowId)))
 		return o.forOpsByIds(tx, ids, do)
 	})
 }

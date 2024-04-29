@@ -134,15 +134,14 @@ func TestBackup(t *testing.T) {
 	}
 
 	// Wait for the index snapshot operation to appear in the oplog.
-	var snapshotId string
+	var snapshotOp *v1.Operation
 	if err := retry(t, 10, 2*time.Second, func() error {
 		operations := getOperations(t, sut.oplog)
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationIndexSnapshot)
 			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
 		}); index != -1 {
-			op := operations[index]
-			snapshotId = op.SnapshotId
+			snapshotOp = operations[index]
 			return nil
 		}
 		return errors.New("snapshot not indexed")
@@ -150,7 +149,7 @@ func TestBackup(t *testing.T) {
 		t.Fatalf("Couldn't find snapshot in oplog")
 	}
 
-	if snapshotId == "" {
+	if snapshotOp.SnapshotId == "" {
 		t.Fatalf("snapshotId must be set")
 	}
 
@@ -162,8 +161,8 @@ func TestBackup(t *testing.T) {
 			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
 		}); index != -1 {
 			op := operations[index]
-			if op.SnapshotId != snapshotId {
-				t.Fatalf("Snapshot ID mismatch on forget operation")
+			if op.FlowId != snapshotOp.FlowId {
+				t.Fatalf("Flow ID mismatch on forget operation")
 			}
 			return nil
 		}
@@ -460,15 +459,14 @@ func TestRestore(t *testing.T) {
 	}
 
 	// Wait for the index snapshot operation to appear in the oplog.
-	var snapshotId string
+	var snapshotOp *v1.Operation
 	if err := retry(t, 10, 2*time.Second, func() error {
 		operations := getOperations(t, sut.oplog)
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationIndexSnapshot)
 			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
 		}); index != -1 {
-			op := operations[index]
-			snapshotId = op.SnapshotId
+			snapshotOp = operations[index]
 			return nil
 		}
 		return errors.New("snapshot not indexed")
@@ -476,14 +474,14 @@ func TestRestore(t *testing.T) {
 		t.Fatalf("Couldn't find snapshot in oplog")
 	}
 
-	if snapshotId == "" {
+	if snapshotOp.SnapshotId == "" {
 		t.Fatalf("snapshotId must be set")
 	}
 
 	restoreTarget := t.TempDir()
 
 	_, err = sut.handler.Restore(context.Background(), connect.NewRequest(&v1.RestoreSnapshotRequest{
-		SnapshotId: snapshotId,
+		SnapshotId: snapshotOp.SnapshotId,
 		PlanId:     "test",
 		RepoId:     "local",
 		Target:     restoreTarget,
@@ -500,8 +498,11 @@ func TestRestore(t *testing.T) {
 			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
 		}); index != -1 {
 			op := operations[index]
-			if op.SnapshotId != snapshotId {
-				t.Fatalf("Snapshot ID mismatch on restore operation")
+			if op.FlowId != snapshotOp.FlowId {
+				t.Errorf("Flow ID mismatch on restore operation")
+			}
+			if op.SnapshotId != snapshotOp.SnapshotId {
+				t.Errorf("Snapshot ID mismatch on restore operation")
 			}
 			return nil
 		}

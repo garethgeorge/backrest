@@ -215,6 +215,42 @@ func TestListOperation(t *testing.T) {
 	}
 }
 
+func TestListByFlowId(t *testing.T) {
+	t.Parallel()
+
+	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
+	if err != nil {
+		t.Fatalf("error creating oplog: %s", err)
+	}
+	t.Cleanup(func() { log.Close() })
+
+	op := &v1.Operation{
+		UnixTimeStartMs: 1234,
+		PlanId:          "plan1",
+		RepoId:          "repo1",
+		FlowId:          1,
+		Op:              &v1.Operation_OperationBackup{},
+	}
+
+	if err := log.Add(op); err != nil {
+		t.Fatalf("error adding operation: %s", err)
+	}
+
+	var ops []*v1.Operation
+	if err := log.ForEachByFlowId(1, indexutil.CollectAll(), func(op *v1.Operation) error {
+		ops = append(ops, op)
+		return nil
+	}); err != nil {
+		t.Fatalf("error listing operations: %s", err)
+	}
+	if len(ops) != 1 {
+		t.Fatalf("want 1 operation, got %d", len(ops))
+	}
+	if ops[0].Id != op.Id {
+		t.Errorf("want operation ID %d, got %d", op.Id, ops[0].Id)
+	}
+}
+
 func TestBigIO(t *testing.T) {
 	t.Parallel()
 

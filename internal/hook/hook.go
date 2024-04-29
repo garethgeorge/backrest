@@ -35,11 +35,12 @@ func NewHookExecutor(oplog *oplog.OpLog, bigOutputStore *rotatinglog.RotatingLog
 
 // ExecuteHooks schedules tasks for the hooks subscribed to the given event. The vars map is used to substitute variables
 // Hooks are pulled both from the provided plan and from the repo config.
-func (e *HookExecutor) ExecuteHooks(repo *v1.Repo, plan *v1.Plan, events []v1.Hook_Condition, vars HookVars) error {
+func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, events []v1.Hook_Condition, vars HookVars) error {
 	operationBase := v1.Operation{
 		Status: v1.OperationStatus_STATUS_INPROGRESS,
 		PlanId: plan.GetId(),
 		RepoId: repo.GetId(),
+		FlowId: flowID,
 	}
 
 	vars.Repo = repo
@@ -59,10 +60,11 @@ func (e *HookExecutor) ExecuteHooks(repo *v1.Repo, plan *v1.Plan, events []v1.Ho
 		operation.UnixTimeStartMs = curTimeMs()
 		operation.Op = &v1.Operation_OperationRunHook{
 			OperationRunHook: &v1.OperationRunHook{
-				Name: name,
+				Name:      name,
+				Condition: event,
 			},
 		}
-		zap.L().Info("running hook", zap.String("plan", plan.Id), zap.Int64("opId", operation.Id), zap.String("hook", name))
+		zap.L().Info("running hook", zap.String("plan", repo.Id), zap.Int64("opId", operation.Id), zap.String("hook", name))
 		if err := e.executeHook(operation, h, event, vars); err != nil {
 			zap.S().Errorf("error on repo hook %v on condition %v: %v", idx, event.String(), err)
 			if isHaltingError(err) {
@@ -84,7 +86,8 @@ func (e *HookExecutor) ExecuteHooks(repo *v1.Repo, plan *v1.Plan, events []v1.Ho
 		operation.UnixTimeStartMs = curTimeMs()
 		operation.Op = &v1.Operation_OperationRunHook{
 			OperationRunHook: &v1.OperationRunHook{
-				Name: name,
+				Name:      name,
+				Condition: event,
 			},
 		}
 
