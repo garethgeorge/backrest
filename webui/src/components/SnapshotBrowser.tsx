@@ -222,7 +222,7 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
           ({formatBytes(Number(entry.size))})
         </span>
       ) : null}
-      {dropdown}
+      {dropdown || <div style={{ width: 16 }}></div>}
     </Space>
   );
 };
