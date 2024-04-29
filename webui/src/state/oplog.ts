@@ -308,8 +308,6 @@ export class BackupInfoCollector {
 export const shouldHideOperation = (operation: Operation) => {
   return (
     operation.op.case === "operationStats" ||
-    (operation.op.case === "operationRunHook" &&
-      operation.status === OperationStatus.STATUS_SUCCESS) ||
     shouldHideStatus(operation.status)
   );
 };

@@ -6,11 +6,8 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
-	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
-	"github.com/garethgeorge/backrest/pkg/restic"
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -35,11 +32,6 @@ type TaskRunner interface {
 	UpdateOperation(*v1.Operation) error
 	// ExecuteHooks
 	ExecuteHooks(events []v1.Hook_Condition, vars hook.HookVars) error
-	// Logger returns a logger for the run of the task.
-	Logger() *zap.Logger
-	// AppendRawLog writes the raw log data to the log for this task.
-	// this data will be handled in a way that is appropriate for large logs (e.g. stored in a file, not printed to stdout).
-	AppendRawLog([]byte) error
 	// OpLog returns the oplog for the operations.
 	OpLog() *oplog.OpLog
 	// GetRepo returns the repo with the given ID.
@@ -153,17 +145,6 @@ type GenericOneoffTask struct {
 
 func (g *GenericOneoffTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
 	return g.Do(ctx, st, runner)
-}
-
-func WithResticLogger(ctx context.Context, runner TaskRunner) (context.Context, func()) {
-	capturer := ioutil.NewOutputCapturer(32_000) // 32k of logs
-	return restic.ContextWithLogger(ctx, capturer), func() {
-		if bytes := capturer.Bytes(); len(bytes) > 0 {
-			if e := runner.AppendRawLog(bytes); e != nil {
-				runner.Logger().Error("failed to append restic logs", zap.Error(e))
-			}
-		}
-	}
 }
 
 func timeToUnixMillis(t time.Time) int64 {

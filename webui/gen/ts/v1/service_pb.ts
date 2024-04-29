@@ -173,6 +173,11 @@ export class GetOperationsRequest extends Message<GetOperationsRequest> {
   snapshotId = "";
 
   /**
+   * @generated from field: int64 flow_id = 6;
+   */
+  flowId = protoInt64.zero;
+
+  /**
    * @generated from field: repeated int64 ids = 5;
    */
   ids: bigint[] = [];
@@ -195,6 +200,7 @@ export class GetOperationsRequest extends Message<GetOperationsRequest> {
     { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "flow_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 5, name: "ids", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
     { no: 3, name: "last_n", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);

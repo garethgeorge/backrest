@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -11,7 +12,9 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/orchestrator/logging"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 	"github.com/garethgeorge/backrest/internal/queue"
@@ -290,7 +293,8 @@ func (o *Orchestrator) Run(ctx context.Context) {
 		}()
 
 		start := time.Now()
-		runner := newTaskRunnerImpl(o, t.Task)
+		runner := newTaskRunnerImpl(o, t.Task, t.Op)
+
 		op := t.Op
 		if op != nil {
 			op.UnixTimeStartMs = time.Now().UnixMilli()
@@ -308,9 +312,21 @@ func (o *Orchestrator) Run(ctx context.Context) {
 			}
 		}
 
+		logs := bytes.NewBuffer(nil)
+		taskCtx = logging.ContextWithWriter(taskCtx, &ioutil.SynchronizedWriter{W: logs})
 		err := t.Task.Run(taskCtx, t.ScheduledTask, runner)
 
 		if op != nil {
+			// write logs to log storage for this task.
+			if logs.Len() > 0 {
+				ref, err := o.logStore.Write(logs.Bytes())
+				if err != nil {
+					zap.S().Errorf("failed to write logs for task %q to log store: %v", t.Task.Name(), err)
+				} else {
+					op.Logref = ref
+				}
+			}
+
 			if err != nil {
 				if taskCtx.Err() != nil {
 					// task was cancelled
@@ -360,7 +376,7 @@ func (o *Orchestrator) ScheduleTask(t tasks.Task, priority int, callbacks ...fun
 }
 
 func (o *Orchestrator) scheduleTaskHelper(t tasks.Task, priority int, curTime time.Time, callbacks ...func(error)) error {
-	nextRun := t.Next(curTime, newTaskRunnerImpl(o, t))
+	nextRun := t.Next(curTime, newTaskRunnerImpl(o, t, nil))
 	if nextRun.Eq(tasks.NeverScheduledTask) {
 		return nil
 	}

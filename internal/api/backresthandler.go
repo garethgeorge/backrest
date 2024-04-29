@@ -259,6 +259,8 @@ func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Reques
 		err = s.oplog.ForEachByRepo(req.Msg.RepoId, idCollector, opCollector)
 	} else if req.Msg.SnapshotId != "" {
 		err = s.oplog.ForEachBySnapshotId(req.Msg.SnapshotId, idCollector, opCollector)
+	} else if req.Msg.FlowId != 0 {
+		err = s.oplog.ForEachBy
 	} else if len(req.Msg.Ids) > 0 {
 		ops = make([]*v1.Operation, 0, len(req.Msg.Ids))
 		for i, id := range req.Msg.Ids {

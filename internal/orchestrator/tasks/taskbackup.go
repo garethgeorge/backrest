@@ -83,6 +83,8 @@ func (t *BackupTask) Next(now time.Time, runner TaskRunner) ScheduledTask {
 }
 
 func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
+	l := Logger(ctx, st.Task)
+
 	startTime := time.Now()
 	op := st.Op
 	backupOp := &v1.Operation_OperationBackup{
@@ -191,7 +193,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		return fmt.Errorf("expected a final backup progress entry, got nil")
 	}
 
-	zap.L().Info("Backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)), zap.Any("summary", backupOp.OperationBackup.LastStatus))
+	l.Info("backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)), zap.Any("summary", backupOp.OperationBackup.LastStatus))
 
 	// schedule followup tasks
 	at := time.Now()
