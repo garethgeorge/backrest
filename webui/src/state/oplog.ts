@@ -9,7 +9,7 @@ import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic_pb";
 import _ from "lodash";
 import { formatDuration, formatTime } from "../lib/formatting";
 import { backrestService } from "../api";
-import { STATS_OPERATION_HISTORY } from "../constants";
+import { STATS_OPERATION_HISTORY, STATUS_OPERATION_HISTORY } from "../constants";
 
 const subscribers: ((event: OperationEvent) => void)[] = [];
 
@@ -57,7 +57,7 @@ export const unsubscribeFromOperations = (
 export const getStatusForPlan = async (plan: string) => {
   const req = new GetOperationsRequest({
     planId: plan,
-    lastN: BigInt(STATS_OPERATION_HISTORY),
+    lastN: BigInt(STATUS_OPERATION_HISTORY),
   });
   return await getStatus(req);
 };
@@ -65,7 +65,7 @@ export const getStatusForPlan = async (plan: string) => {
 export const getStatusForRepo = async (repo: string) => {
   const req = new GetOperationsRequest({
     repoId: repo,
-    lastN: BigInt(STATS_OPERATION_HISTORY),
+    lastN: BigInt(STATUS_OPERATION_HISTORY),
   });
   return await getStatus(req);
 };
@@ -79,12 +79,12 @@ const getStatus = async (req: GetOperationsRequest) => {
   if (ops.length === 0) {
     return OperationStatus.STATUS_SUCCESS;
   }
-  const snapshotId = ops[0].snapshotId;
+  const flowId = ops[0].flowId;
   for (const op of ops) {
     if (op.status === OperationStatus.STATUS_PENDING) {
       continue;
     }
-    if (op.snapshotId !== snapshotId) {
+    if (op.flowId !== flowId) {
       break;
     }
     if (
@@ -166,6 +166,10 @@ export class BackupInfoCollector {
     let statusIdx = operations.length - 1;
     let status = OperationStatus.STATUS_SYSTEM_CANCELLED;
     while (statusIdx !== -1) {
+      if (operations[statusIdx].op.case === "operationRunHook") {
+        statusIdx--;
+        continue;
+      }
       const curStatus = operations[statusIdx].status;
       if (
         shouldHideStatus(status) ||

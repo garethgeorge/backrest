@@ -103,5 +103,6 @@ message OperationStats {
 
 message OperationRunHook {
   string name = 1; // description of the hook that was run. typically repo/hook_idx or plan/hook_idx.
-  string output_logref = 2; // logref of the hook's output.
+  string output_logref = 2; // logref of the hook's output. DEPRECATED.
+  Hook.Condition condition = 3; // triggering condition of the hook.
 }

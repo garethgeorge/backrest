@@ -60,10 +60,11 @@ func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, 
 		operation.UnixTimeStartMs = curTimeMs()
 		operation.Op = &v1.Operation_OperationRunHook{
 			OperationRunHook: &v1.OperationRunHook{
-				Name: name,
+				Name:      name,
+				Condition: event,
 			},
 		}
-		zap.L().Info("running hook", zap.String("plan", plan.Id), zap.Int64("opId", operation.Id), zap.String("hook", name))
+		zap.L().Info("running hook", zap.String("plan", repo.Id), zap.Int64("opId", operation.Id), zap.String("hook", name))
 		if err := e.executeHook(operation, h, event, vars); err != nil {
 			zap.S().Errorf("error on repo hook %v on condition %v: %v", idx, event.String(), err)
 			if isHaltingError(err) {
@@ -85,7 +86,8 @@ func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, 
 		operation.UnixTimeStartMs = curTimeMs()
 		operation.Op = &v1.Operation_OperationRunHook{
 			OperationRunHook: &v1.OperationRunHook{
-				Name: name,
+				Name:      name,
+				Condition: event,
 			},
 		}
 

@@ -6,7 +6,7 @@
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
 import { BackupProgressEntry, BackupProgressError, RepoStats, ResticSnapshot, RestoreProgressEntry } from "./restic_pb.js";
-import { RetentionPolicy } from "./config_pb.js";
+import { Hook_Condition, RetentionPolicy } from "./config_pb.js";
 
 /**
  * OperationEventType indicates whether the operation was created or updated
@@ -651,11 +651,18 @@ export class OperationRunHook extends Message<OperationRunHook> {
   name = "";
 
   /**
-   * logref of the hook's output.
+   * logref of the hook's output. DEPRECATED.
    *
    * @generated from field: string output_logref = 2;
    */
   outputLogref = "";
+
+  /**
+   * triggering condition of the hook.
+   *
+   * @generated from field: v1.Hook.Condition condition = 3;
+   */
+  condition = Hook_Condition.UNKNOWN;
 
   constructor(data?: PartialMessage<OperationRunHook>) {
     super();
@@ -667,6 +674,7 @@ export class OperationRunHook extends Message<OperationRunHook> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "condition", kind: "enum", T: proto3.getEnumType(Hook_Condition) },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationRunHook {
