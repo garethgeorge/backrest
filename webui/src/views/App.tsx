@@ -25,6 +25,7 @@ import { backrestService, setAuthToken } from "../api";
 import { MainContentArea, useSetContent } from "./MainContentArea";
 import { GettingStartedGuide } from "./GettingStartedGuide";
 import { useConfig } from "../components/ConfigProvider";
+import { shouldShowSettings } from "../state/configutil";
 
 const { Header, Sider } = Layout;
 
@@ -43,7 +44,7 @@ export const App: React.FC = () => {
     backrestService.getConfig({})
       .then((config) => {
         setConfig(config);
-        if (!config.auth || (!config.auth.disabled && config.auth.users.length === 0)) {
+        if (shouldShowSettings(config)) {
           import("./SettingsModal").then(({ SettingsModal }) => {
             showModal(<SettingsModal />);
           });

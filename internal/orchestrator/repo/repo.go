@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -22,13 +23,14 @@ type RepoOrchestrator struct {
 	mu sync.Mutex
 
 	l           *zap.Logger
+	config      *v1.Config
 	repoConfig  *v1.Repo
 	repo        *restic.Repo
 	initialized bool
 }
 
 // NewRepoOrchestrator accepts a config and a repo that is configured with the properties of that config object.
-func NewRepoOrchestrator(repoConfig *v1.Repo, resticPath string) (*RepoOrchestrator, error) {
+func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath string) (*RepoOrchestrator, error) {
 	var opts []restic.GenericOption
 	opts = append(opts, restic.WithEnviron())
 
@@ -62,6 +64,7 @@ func NewRepoOrchestrator(repoConfig *v1.Repo, resticPath string) (*RepoOrchestra
 	repo := restic.NewRepo(resticPath, repoConfig.GetUri(), opts...)
 
 	return &RepoOrchestrator{
+		config:     config,
 		repoConfig: repoConfig,
 		repo:       repo,
 		l:          zap.L().With(zap.String("repo", repoConfig.Id)),
@@ -124,13 +127,19 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 	var opts []restic.GenericOption
 	opts = append(opts, restic.WithFlags("--exclude-caches"))
 	opts = append(opts, restic.WithFlags("--tag", tagForPlan(plan)))
+	if r.config.Host != "" {
+		opts = append(opts, restic.WithFlags("--host", r.config.Host))
+		opts = append(opts, restic.WithFlags("--tag", fmt.Sprintf("bkrst-inst:%s", r.config.Host))) // Add a tag for the host. This will be used to filter snapshots by host (--host is purely informational).
+	} else {
+		return nil, errors.New("host is a required field in the backrest config")
+	}
+
 	for _, exclude := range plan.Excludes {
 		opts = append(opts, restic.WithFlags("--exclude", exclude))
 	}
 	for _, iexclude := range plan.Iexcludes {
 		opts = append(opts, restic.WithFlags("--iexclude", iexclude))
 	}
-
 	if len(snapshots) > 0 {
 		opts = append(opts, restic.WithFlags("--parent", snapshots[len(snapshots)-1].Id))
 	}
@@ -184,7 +193,7 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 
 	result, err := r.repo.Forget(
 		ctx, protoutil.RetentionPolicyFromProto(plan.Retention),
-		restic.WithFlags("--tag", tagForPlan(plan)), restic.WithFlags("--group-by", "tag"))
+		restic.WithFlags("--tag", tagForPlan(plan)))
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
 	}

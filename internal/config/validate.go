@@ -7,11 +7,14 @@ import (
 	"strings"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/config/stringutil"
 	"github.com/gitploy-io/cronexpr"
 	"github.com/hashicorp/go-multierror"
 )
 
 func ValidateConfig(c *v1.Config) error {
+	c.Host = stringutil.SanitizeID(c.Host)
+
 	var err error
 	repos := make(map[string]*v1.Repo)
 	if c.Repos != nil {

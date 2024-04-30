@@ -122,16 +122,25 @@ export const SettingsModal = () => {
               </p>
             </>
           )}
-          <Form.Item
-            hasFeedback
-            name="host"
-            label="Hostname"
-            initialValue={config.host || ""}
-          >
-            <Input
-              placeholder={"Set a hostname to identify this instance"}
-            />
-          </Form.Item>
+          <Tooltip title="This hostname will be used to identify this backrest install. It will be used to tag snapshots (as `bkrst-inst:hostname`) and will identify backups created by this instance if using multiple backrest installations.">
+
+            <Form.Item
+              hasFeedback
+              name="host"
+              label="Hostname"
+              required
+              initialValue={config.host || ""}
+              rules={[
+                { required: true, message: "Hostname is required" },
+                { pattern: namePattern, message: "Hostname must be alphanumeric with '_-.' allowed as separators" },
+              ]}
+            >
+              <Input
+                placeholder={"Set unique hostname for this instance (e.g. my-backrest-server)"}
+                disabled={!!config.host}
+              />
+            </Form.Item>
+          </Tooltip>
           <Form.Item label="Disable Authentication" name={["auth", "disabled"]} valuePropName="checked" initialValue={config.auth?.disabled || false}>
             <Checkbox />
           </Form.Item>

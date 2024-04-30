@@ -108,7 +108,7 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
 	}
 
-	r, err := repo.NewRepoOrchestrator(req.Msg, bin)
+	r, err := repo.NewRepoOrchestrator(c, req.Msg, bin)
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure repo: %w", err)
 	}
