@@ -5,11 +5,13 @@ cd "$(dirname "$0")" # cd to the directory of this script
 install_or_update_unix() {
   if systemctl is-active --quiet backrest; then
     sudo systemctl stop backrest
-    echo "Updating backrest in /usr/local/bin"
-  else
-    echo "Installing backrest to /usr/local/bin"
+    echo "Paused backrest for update"
   fi
-  
+  install_unix
+}
+
+install_unix() {
+  echo "Installing backrest to /usr/local/bin"
   sudo mkdir -p /usr/local/bin
 
   sudo cp $(ls -1 backrest | head -n 1) /usr/local/bin
