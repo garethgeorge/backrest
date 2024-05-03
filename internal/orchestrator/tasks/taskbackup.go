@@ -178,6 +178,11 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 				v1.Hook_CONDITION_ANY_ERROR,
 			}, vars)
 			return err
+		} else {
+			vars.Error = fmt.Sprintf("partial backup, %d files may not have been read completely.", len(backupOp.OperationBackup.Errors))
+			runner.ExecuteHooks([]v1.Hook_Condition{
+				v1.Hook_CONDITION_SNAPSHOT_WARNING,
+			}, vars)
 		}
 		op.Status = v1.OperationStatus_STATUS_WARNING
 		op.DisplayMessage = "Partial backup, some files may not have been read completely."

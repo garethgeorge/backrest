@@ -84,6 +84,7 @@ message Hook {
     CONDITION_SNAPSHOT_START = 2; // backup started.
     CONDITION_SNAPSHOT_END = 3; // backup completed (success or fail).
     CONDITION_SNAPSHOT_ERROR = 4; // snapshot failed.
+    CONDITION_SNAPSHOT_WARNING = 5; // snapshot completed with warnings.
   }
 
   enum OnError {

@@ -653,6 +653,13 @@ export enum Hook_Condition {
    * @generated from enum value: CONDITION_SNAPSHOT_ERROR = 4;
    */
   SNAPSHOT_ERROR = 4,
+
+  /**
+   * snapshot completed with warnings.
+   *
+   * @generated from enum value: CONDITION_SNAPSHOT_WARNING = 5;
+   */
+  SNAPSHOT_WARNING = 5,
 }
 // Retrieve enum metadata with: proto3.getEnumType(Hook_Condition)
 proto3.util.setEnumType(Hook_Condition, "v1.Hook.Condition", [
@@ -661,6 +668,7 @@ proto3.util.setEnumType(Hook_Condition, "v1.Hook.Condition", [
   { no: 2, name: "CONDITION_SNAPSHOT_START" },
   { no: 3, name: "CONDITION_SNAPSHOT_END" },
   { no: 4, name: "CONDITION_SNAPSHOT_ERROR" },
+  { no: 5, name: "CONDITION_SNAPSHOT_WARNING" },
 ]);
 
 /**
