@@ -129,8 +129,8 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 	opts = append(opts, restic.WithFlags("--exclude-caches"))
 	opts = append(opts, restic.WithFlags("--tag", tagForPlan(plan)))
 	if r.config.Instance != "" {
-		opts = append(opts, restic.WithFlags("--tag", tagForHost(r.config.Instance)))
 		opts = append(opts, restic.WithFlags("--host", r.config.Instance))
+		opts = append(opts, restic.WithFlags("--tag", tagForInstance(r.config.Instance)))
 	} else {
 		return nil, errors.New("host is a required field in the backrest config")
 	}
@@ -195,8 +195,9 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 
 	result, err := r.repo.Forget(
 		ctx, protoutil.RetentionPolicyFromProto(plan.Retention),
-		restic.WithFlags("--tag", tagForPlan(plan)),
-		restic.WithFlags("--tag", tagForHost(r.config.Instance)))
+		restic.WithFlags("--tag", tagForPlan(plan)+","+tagForInstance(r.config.Instance)),
+		restic.WithFlags("--group-by", ""),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
 	}
@@ -319,6 +320,20 @@ func (r *RepoOrchestrator) Stats(ctx context.Context) (*v1.RepoStats, error) {
 	return protoutil.RepoStatsToProto(stats), nil
 }
 
+func (r *RepoOrchestrator) AddTags(ctx context.Context, snapshotIDs []string, tags []string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for idx, snapshotIDs := range chunkBy(snapshotIDs, 20) {
+		r.l.Debug("adding tag to snapshots", zap.Strings("snapshots", snapshotIDs), zap.Strings("tags", tags))
+		if err := r.repo.AddTags(ctx, snapshotIDs, tags); err != nil {
+			return fmt.Errorf("batch %v: %w", idx, err)
+		}
+	}
+
+	return nil
+}
+
 func (r *RepoOrchestrator) Config() *v1.Repo {
 	if r == nil {
 		return nil
@@ -330,7 +345,7 @@ func tagForPlan(plan *v1.Plan) string {
 	return fmt.Sprintf("plan:%s", plan.Id)
 }
 
-func tagForHost(host string) string {
+func tagForInstance(host string) string {
 	return fmt.Sprintf("created-by:%s", host)
 }
 
@@ -338,4 +353,11 @@ func sortSnapshotsByTime(snapshots []*restic.Snapshot) {
 	sort.SliceStable(snapshots, func(i, j int) bool {
 		return snapshots[i].UnixTimeMs() < snapshots[j].UnixTimeMs()
 	})
+}
+
+func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
+	for chunkSize < len(items) {
+		items, chunks = items[chunkSize:], append(chunks, items[0:chunkSize:chunkSize])
+	}
+	return append(chunks, items)
 }
