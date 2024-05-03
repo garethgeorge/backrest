@@ -97,6 +97,8 @@ func (v HookVars) Summary() (string, error) {
 		return v.renderTemplate(templateForError)
 	case v1.Hook_CONDITION_SNAPSHOT_ERROR:
 		return v.renderTemplate(templateForError)
+	case v1.Hook_CONDITION_SNAPSHOT_WARNING:
+		return v.renderTemplate(templateForError)
 	default:
 		return "unknown event", nil
 	}
@@ -151,7 +153,10 @@ Backrest Notification for Error
 Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
 {{ if .Error -}}
 Error: {{ .Error }}
-{{ end }}`
+{{ end }}
+{{ if .Items -}}
+
+`
 
 var templateForSnapshotStart = `
 Backrest Notification for Snapshot Start
