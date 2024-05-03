@@ -10,7 +10,6 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -67,7 +66,7 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 		OpLog:  oplog,
 		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
-		repoPool:     newResticRepoPool(resticBin, &config.MemoryStore{Config: cfg}),
+		repoPool:     newResticRepoPool(resticBin, cfg),
 		taskQueue:    queue.NewTimePriorityQueue[stContainer](),
 		hookExecutor: hook.NewHookExecutor(oplog, logStore),
 		logStore:     logStore,
@@ -121,13 +120,8 @@ func (o *Orchestrator) curTime() time.Time {
 
 func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 	o.mu.Lock()
-	o.config = cfg
-
-	// Update the config provided to the repo pool which is cached and diffed separately.
-	if err := o.repoPool.configProvider.Update(cfg); err != nil {
-		o.mu.Unlock()
-		return fmt.Errorf("failed to update repo pool config: %w", err)
-	}
+	o.config = proto.Clone(cfg).(*v1.Config)
+	o.repoPool = newResticRepoPool(o.repoPool.resticPath, o.config)
 	o.mu.Unlock()
 	return o.ScheduleDefaultTasks(cfg)
 }
@@ -404,55 +398,51 @@ func (o *Orchestrator) scheduleTaskHelper(t tasks.Task, priority int, curTime ti
 	return nil
 }
 
-// resticRepoPool caches restic repos.
-type resticRepoPool struct {
-	mu             sync.Mutex
-	resticPath     string
-	repos          map[string]*repo.RepoOrchestrator
-	configProvider config.ConfigStore
+func (o *Orchestrator) Config() *v1.Config {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return proto.Clone(o.config).(*v1.Config)
 }
 
-func newResticRepoPool(resticPath string, configProvider config.ConfigStore) *resticRepoPool {
+// resticRepoPool caches restic repos.
+type resticRepoPool struct {
+	mu         sync.Mutex
+	resticPath string
+	repos      map[string]*repo.RepoOrchestrator
+	config     *v1.Config
+}
+
+func newResticRepoPool(resticPath string, config *v1.Config) *resticRepoPool {
 	return &resticRepoPool{
-		resticPath:     resticPath,
-		repos:          make(map[string]*repo.RepoOrchestrator),
-		configProvider: configProvider,
+		resticPath: resticPath,
+		repos:      make(map[string]*repo.RepoOrchestrator),
+		config:     config,
 	}
 }
 
 func (rp *resticRepoPool) GetRepo(repoId string) (*repo.RepoOrchestrator, error) {
-	cfg, err := rp.configProvider.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get config: %w", err)
-	}
-
 	rp.mu.Lock()
 	defer rp.mu.Unlock()
 
-	if cfg.Repos == nil {
+	if rp.config.Repos == nil {
 		return nil, ErrRepoNotFound
 	}
 
 	var repoProto *v1.Repo
-	for _, r := range cfg.Repos {
+	for _, r := range rp.config.Repos {
 		if r.GetId() == repoId {
 			repoProto = r
 		}
 	}
 
-	if repoProto == nil {
-		return nil, ErrRepoNotFound
-	}
-
 	// Check if we already have a repo for this id, if we do return it.
 	r, ok := rp.repos[repoId]
-	if ok && proto.Equal(r.Config(), repoProto) {
+	if ok {
 		return r, nil
 	}
-	delete(rp.repos, repoId)
 
 	// Otherwise create a new repo.
-	r, err = repo.NewRepoOrchestrator(repoProto, rp.resticPath)
+	r, err := repo.NewRepoOrchestrator(rp.config, repoProto, rp.resticPath)
 	if err != nil {
 		return nil, err
 	}

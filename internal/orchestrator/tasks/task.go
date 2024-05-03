@@ -42,15 +42,15 @@ type TaskRunner interface {
 	GetRepoOrchestrator(repoID string) (*repo.RepoOrchestrator, error)
 	// ScheduleTask schedules a task to run at a specific time.
 	ScheduleTask(task Task, priority int) error
+	// Config returns the current config.
+	Config() *v1.Config
 }
 
 // ScheduledTask is a task that is scheduled to run at a specific time.
 type ScheduledTask struct {
-	Task        Task          // the task to run
-	RunAt       time.Time     // the time at which the task should be run.
-	Op          *v1.Operation // operation associated with this execution of the task.
-	configModno int32         // used by to detect if the config has changed since this task was scheduled.
-	callbacks   []func(error) // callbacks to run after the task is run.
+	Task  Task          // the task to run
+	RunAt time.Time     // the time at which the task should be run.
+	Op    *v1.Operation // operation associated with this execution of the task.
 }
 
 func (s ScheduledTask) Eq(other ScheduledTask) bool {
@@ -62,22 +62,6 @@ func (s ScheduledTask) Less(other ScheduledTask) bool {
 		return s.Task.Name() < other.Task.Name()
 	}
 	return s.RunAt.Before(other.RunAt)
-}
-
-func (s ScheduledTask) cancel(oplog *oplog.OpLog) error {
-	if s.Op == nil {
-		return nil
-	}
-
-	opCopy := proto.Clone(s.Op).(*v1.Operation)
-	opCopy.Status = v1.OperationStatus_STATUS_SYSTEM_CANCELLED
-	opCopy.DisplayMessage = "operation cancelled"
-	opCopy.UnixTimeEndMs = curTimeMillis()
-	if err := oplog.Update(opCopy); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Task is a task that can be scheduled to run at a specific time.

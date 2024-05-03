@@ -25,6 +25,7 @@ import { backrestService, setAuthToken } from "../api";
 import { MainContentArea, useSetContent } from "./MainContentArea";
 import { GettingStartedGuide } from "./GettingStartedGuide";
 import { useConfig } from "../components/ConfigProvider";
+import { shouldShowSettings } from "../state/configutil";
 
 const { Header, Sider } = Layout;
 
@@ -43,7 +44,7 @@ export const App: React.FC = () => {
     backrestService.getConfig({})
       .then((config) => {
         setConfig(config);
-        if (!config.auth || (!config.auth.disabled && config.auth.users.length === 0)) {
+        if (shouldShowSettings(config)) {
           import("./SettingsModal").then(({ SettingsModal }) => {
             showModal(<SettingsModal />);
           });
@@ -120,7 +121,7 @@ export const App: React.FC = () => {
         </h1>
         <h1 style={{ position: "absolute", right: "20px" }}>
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
-            {config && config.host ? "Host: " + config.host : undefined}
+            {config && config.instance ? config.instance : undefined}
           </small>
           <Button
             type="text"

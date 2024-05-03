@@ -27,11 +27,12 @@ export class Config extends Message<Config> {
   version = 0;
 
   /**
-   * override the hostname tagged on backups. If provided it will be used in addition to tags to group backups.
+   * The instance name for the Backrest installation. 
+   * This identifies backups created by this instance and is displayed in the UI. 
    *
-   * @generated from field: string host = 2;
+   * @generated from field: string instance = 2;
    */
-  host = "";
+  instance = "";
 
   /**
    * @generated from field: repeated v1.Repo repos = 3;
@@ -58,7 +59,7 @@ export class Config extends Message<Config> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "modno", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 6, name: "version", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 2, name: "host", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "instance", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "repos", kind: "message", T: Repo, repeated: true },
     { no: 4, name: "plans", kind: "message", T: Plan, repeated: true },
     { no: 5, name: "auth", kind: "message", T: Auth },

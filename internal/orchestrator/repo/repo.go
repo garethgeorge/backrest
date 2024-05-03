@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -22,15 +23,17 @@ type RepoOrchestrator struct {
 	mu sync.Mutex
 
 	l           *zap.Logger
+	config      *v1.Config
 	repoConfig  *v1.Repo
 	repo        *restic.Repo
 	initialized bool
 }
 
 // NewRepoOrchestrator accepts a config and a repo that is configured with the properties of that config object.
-func NewRepoOrchestrator(repoConfig *v1.Repo, resticPath string) (*RepoOrchestrator, error) {
+func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath string) (*RepoOrchestrator, error) {
 	var opts []restic.GenericOption
 	opts = append(opts, restic.WithEnviron())
+	opts = append(opts, restic.WithEnv("RESTIC_PROGRESS_FPS=0.5"))
 
 	if len(repoConfig.GetEnv()) > 0 {
 		opts = append(opts, restic.WithEnv(repoConfig.GetEnv()...))
@@ -62,6 +65,7 @@ func NewRepoOrchestrator(repoConfig *v1.Repo, resticPath string) (*RepoOrchestra
 	repo := restic.NewRepo(resticPath, repoConfig.GetUri(), opts...)
 
 	return &RepoOrchestrator{
+		config:     config,
 		repoConfig: repoConfig,
 		repo:       repo,
 		l:          zap.L().With(zap.String("repo", repoConfig.Id)),
@@ -91,7 +95,7 @@ func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) 
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
 
-	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--tag", tagForPlan(plan)))
+	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--tag", tagForPlan(plan), "--tag", r.config.Instance))
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for plan %q: %w", plan.Id, err)
 	}
@@ -124,13 +128,19 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 	var opts []restic.GenericOption
 	opts = append(opts, restic.WithFlags("--exclude-caches"))
 	opts = append(opts, restic.WithFlags("--tag", tagForPlan(plan)))
+	if r.config.Instance != "" {
+		opts = append(opts, restic.WithFlags("--tag", tagForHost(r.config.Instance)))
+		opts = append(opts, restic.WithFlags("--host", r.config.Instance))
+	} else {
+		return nil, errors.New("host is a required field in the backrest config")
+	}
+
 	for _, exclude := range plan.Excludes {
 		opts = append(opts, restic.WithFlags("--exclude", exclude))
 	}
 	for _, iexclude := range plan.Iexcludes {
 		opts = append(opts, restic.WithFlags("--iexclude", iexclude))
 	}
-
 	if len(snapshots) > 0 {
 		opts = append(opts, restic.WithFlags("--parent", snapshots[len(snapshots)-1].Id))
 	}
@@ -145,12 +155,13 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
+	r.l.Debug("starting backup", zap.String("repo", r.repoConfig.Id), zap.String("plan", plan.Id))
 	summary, err := r.repo.Backup(ctx, plan.Paths, progressCallback, opts...)
 	if err != nil {
 		return summary, fmt.Errorf("failed to backup: %w", err)
 	}
 
-	r.l.Debug("Backup completed", zap.String("repo", r.repoConfig.Id), zap.Duration("duration", time.Since(startTime)))
+	r.l.Debug("backup completed", zap.String("repo", r.repoConfig.Id), zap.Duration("duration", time.Since(startTime)))
 	return summary, nil
 }
 
@@ -184,7 +195,8 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 
 	result, err := r.repo.Forget(
 		ctx, protoutil.RetentionPolicyFromProto(plan.Retention),
-		restic.WithFlags("--tag", tagForPlan(plan)), restic.WithFlags("--group-by", "tag"))
+		restic.WithFlags("--tag", tagForPlan(plan)),
+		restic.WithFlags("--tag", tagForHost(r.config.Instance)))
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
 	}
@@ -316,6 +328,10 @@ func (r *RepoOrchestrator) Config() *v1.Repo {
 
 func tagForPlan(plan *v1.Plan) string {
 	return fmt.Sprintf("plan:%s", plan.Id)
+}
+
+func tagForHost(host string) string {
+	return fmt.Sprintf("created-by:%s", host)
 }
 
 func sortSnapshotsByTime(snapshots []*restic.Snapshot) {

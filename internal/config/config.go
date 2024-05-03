@@ -3,8 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path"
 	"sync"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -20,29 +18,11 @@ type ConfigStore interface {
 }
 
 func NewDefaultConfig() *v1.Config {
-	hostname, _ := os.Hostname()
 	return &v1.Config{
-		Host:  hostname,
-		Repos: []*v1.Repo{},
-		Plans: []*v1.Plan{},
+		Instance: "",
+		Repos:    []*v1.Repo{},
+		Plans:    []*v1.Plan{},
 	}
-}
-
-func configDir(override string) string {
-	if override != "" {
-		return override
-	}
-
-	if env := os.Getenv("XDG_CONFIG_HOME"); env != "" {
-		return path.Join(env, "backrest")
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-
-	return fmt.Sprintf("%v/.config/backrest", home)
 }
 
 type CachingValidatingStore struct {
