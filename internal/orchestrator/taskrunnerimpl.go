@@ -13,8 +13,9 @@ type taskRunnerImpl struct {
 	orchestrator *Orchestrator
 	t            tasks.Task
 	op           *v1.Operation
-	repo         *v1.Repo // cache, populated on first call to Repo()
-	plan         *v1.Plan // cache, populated on first call to Plan()
+	repo         *v1.Repo   // cache, populated on first call to Repo()
+	plan         *v1.Plan   // cache, populated on first call to Plan()
+	config       *v1.Config // cache, populated on first call to Config()
 }
 
 var _ tasks.TaskRunner = &taskRunnerImpl{}
@@ -46,10 +47,12 @@ func newTaskRunnerImpl(orchestrator *Orchestrator, task tasks.Task, op *v1.Opera
 }
 
 func (t *taskRunnerImpl) CreateOperation(op *v1.Operation) error {
+	op.InstanceId = t.orchestrator.config.Instance
 	return t.orchestrator.OpLog.Add(op)
 }
 
 func (t *taskRunnerImpl) UpdateOperation(op *v1.Operation) error {
+	op.InstanceId = t.orchestrator.config.Instance
 	return t.orchestrator.OpLog.Update(op)
 }
 
@@ -84,7 +87,8 @@ func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.Hook
 	if t.op != nil {
 		flowID = t.op.FlowId
 	}
-	return t.orchestrator.hookExecutor.ExecuteHooks(flowID, repo, plan, events, vars)
+	executor := hook.NewHookExecutor(t.Config(), t.orchestrator.OpLog, t.orchestrator.logStore)
+	return executor.ExecuteHooks(flowID, repo, plan, events, vars)
 }
 
 func (t *taskRunnerImpl) GetRepo(repoID string) (*v1.Repo, error) {
@@ -104,5 +108,9 @@ func (t *taskRunnerImpl) ScheduleTask(task tasks.Task, priority int) error {
 }
 
 func (t *taskRunnerImpl) Config() *v1.Config {
-	return t.orchestrator.Config()
+	if t.config != nil {
+		return t.config
+	}
+	t.config = t.orchestrator.Config()
+	return t.config
 }
