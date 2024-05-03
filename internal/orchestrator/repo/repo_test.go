@@ -10,6 +10,10 @@ import (
 	test "github.com/garethgeorge/backrest/test/helpers"
 )
 
+var configForTest = &v1.Config{
+	Instance: "test",
+}
+
 func TestBackup(t *testing.T) {
 	t.Parallel()
 
@@ -30,7 +34,7 @@ func TestBackup(t *testing.T) {
 		Paths: []string{testData},
 	}
 
-	orchestrator, err := NewRepoOrchestrator(r, helpers.ResticBinary(t))
+	orchestrator, err := NewRepoOrchestrator(configForTest, r, helpers.ResticBinary(t))
 	if err != nil {
 		t.Fatalf("failed to create repo orchestrator: %v", err)
 	}
@@ -76,7 +80,7 @@ func TestSnapshotParenting(t *testing.T) {
 		},
 	}
 
-	orchestrator, err := NewRepoOrchestrator(r, helpers.ResticBinary(t))
+	orchestrator, err := NewRepoOrchestrator(configForTest, r, helpers.ResticBinary(t))
 	if err != nil {
 		t.Fatalf("failed to create repo orchestrator: %v", err)
 	}

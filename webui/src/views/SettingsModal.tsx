@@ -31,7 +31,7 @@ interface FormData {
       needsBcrypt?: boolean;
     })[];
   }
-  host: string;
+  instance: string;
 }
 
 export const SettingsModal = () => {
@@ -62,7 +62,7 @@ export const SettingsModal = () => {
       // Update configuration
       let newConfig = config!.clone();
       newConfig.auth = new Auth().fromJson(formData.auth, { ignoreUnknownFields: false });
-      newConfig.host = formData.host;
+      newConfig.instance = formData.instance;
 
       if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
         throw new Error("At least one user must be configured or authentication must be disabled");
@@ -122,16 +122,25 @@ export const SettingsModal = () => {
               </p>
             </>
           )}
-          <Form.Item
-            hasFeedback
-            name="host"
-            label="Hostname"
-            initialValue={config.host || ""}
-          >
-            <Input
-              placeholder={"Set a hostname to identify this instance"}
-            />
-          </Form.Item>
+          <Tooltip title="The instance name will be used to identify this backrest install. It will be used to tag snapshots (as `bkrst-inst:instancename`) and will identify backups created by this instance if using multiple backrest installations.">
+
+            <Form.Item
+              hasFeedback
+              name="instance"
+              label="Instance ID"
+              required
+              initialValue={config.instance || ""}
+              rules={[
+                { required: true, message: "Instance ID is required" },
+                { pattern: namePattern, message: "Instance ID must be alphanumeric with '_-.' allowed as separators" },
+              ]}
+            >
+              <Input
+                placeholder={"Unique instance ID for this instance (e.g. my-backrest-server)"}
+                disabled={!!config.instance}
+              />
+            </Form.Item>
+          </Tooltip>
           <Form.Item label="Disable Authentication" name={["auth", "disabled"]} valuePropName="checked" initialValue={config.auth?.disabled || false}>
             <Checkbox />
           </Form.Item>

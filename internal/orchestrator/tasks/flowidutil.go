@@ -18,7 +18,7 @@ func FlowIDForSnapshotID(oplog *oplog.OpLog, snapshotID string) (int64, error) {
 		flowID = op.FlowId
 		return nil
 	}); err != nil {
-		return 0, fmt.Errorf("get flow id for snapshot %q: %w", snapshotID, err)
+		return 0, fmt.Errorf("get flow id for snapshot %q : %w", snapshotID, err)
 	}
 	return flowID, nil
 }

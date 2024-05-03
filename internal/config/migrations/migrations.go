@@ -1,6 +1,9 @@
 package migrations
 
-import v1 "github.com/garethgeorge/backrest/gen/go/v1"
+import (
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"go.uber.org/zap"
+)
 
 var migrations = []func(*v1.Config){
 	migration001PrunePolicy,
@@ -14,6 +17,7 @@ func ApplyMigrations(config *v1.Config) error {
 		startMigration = 0
 	}
 	for idx := startMigration; idx < len(migrations); idx += 1 {
+		zap.S().Infof("applying config migration %d", idx+1)
 		migrations[idx](config)
 	}
 	config.Version = CurrentVersion
