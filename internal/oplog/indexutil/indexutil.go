@@ -30,11 +30,18 @@ type IndexIterator interface {
 	Next() (int64, bool)
 }
 
+type SeekableIndexIterator interface {
+	IndexIterator
+	Seek(int64) (int64, bool) // seek to the first recordId >= id and return it or return false.
+}
+
 type IndexSearchIterator struct {
 	c      *bolt.Cursor
 	k      []byte
 	prefix []byte
 }
+
+var _ SeekableIndexIterator = &IndexSearchIterator{}
 
 func newSearchIterator(b *bolt.Bucket, prefix []byte) IndexIterator {
 	c := b.Cursor()
@@ -59,13 +66,38 @@ func (i *IndexSearchIterator) Next() (int64, bool) {
 	return id, true
 }
 
+func (i *IndexSearchIterator) Seek(id int64) (int64, bool) {
+	seekTo := []byte{}
+	seekTo = append(seekTo, i.prefix...)
+	seekTo = append(seekTo, serializationutil.Itob(id)...)
+	k, _ := i.c.Seek(seekTo)
+	if k == nil || !bytes.HasPrefix(k, i.prefix) {
+		return 0, false
+	}
+	id, err := serializationutil.Btoi(k[len(i.prefix):])
+	if err != nil {
+		return 0, false
+	}
+	return id, true
+}
+
 type JoinIterator struct {
-	iters []IndexIterator
+	iters     []IndexIterator
+	seekables []SeekableIndexIterator
 }
 
 func NewJoinIterator(iters ...IndexIterator) *JoinIterator {
+	seekables := make([]SeekableIndexIterator, 0, len(iters))
+	for _, iter := range iters {
+		if seekable, ok := iter.(SeekableIndexIterator); ok {
+			seekables = append(seekables, seekable)
+		} else {
+			seekables = append(seekables, nil)
+		}
+	}
 	return &JoinIterator{
-		iters: iters,
+		iters:     iters,
+		seekables: seekables,
 	}
 }
 
@@ -104,9 +136,17 @@ func (j *JoinIterator) Next() (int64, bool) {
 			if id == nexts[maxIdx] {
 				continue
 			}
-			nexts[idx], ok = j.iters[idx].Next()
-			if !ok {
-				return 0, false
+
+			if j.seekables[idx] != nil {
+				nexts[idx], ok = j.seekables[idx].Seek(nexts[maxIdx])
+				if !ok {
+					return 0, false
+				}
+			} else {
+				nexts[idx], ok = j.iters[idx].Next()
+				if !ok {
+					return 0, false
+				}
 			}
 		}
 	}
