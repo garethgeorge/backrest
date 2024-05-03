@@ -81,6 +81,9 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 			return fmt.Errorf("get flow ID for snapshot %q: %w", snapshot.Id, err)
 		}
 		planId := planForSnapshot(snapshotProto)
+		hostId := hostForSnapshot(snapshotProto)
+		if hostId == "" {
+		}
 		indexOps = append(indexOps, &v1.Operation{
 			RepoId:          t.RepoID(),
 			PlanId:          planId,
@@ -163,8 +166,17 @@ func indexCurrentSnapshotIdsForRepo(log *oplog.OpLog, repoId string) (map[string
 func planForSnapshot(snapshot *v1.ResticSnapshot) string {
 	for _, tag := range snapshot.Tags {
 		if strings.HasPrefix(tag, "plan:") {
-			return tag[5:]
+			return tag[len("plan:"):]
 		}
 	}
 	return PlanForUnassociatedOperations
+}
+
+func hostForSnapshot(snapshot *v1.ResticSnapshot) string {
+	for _, tag := range snapshot.Tags {
+		if strings.HasPrefix(tag, "created-by:") {
+			return tag[len("created-by:"):]
+		}
+	}
+	return ""
 }

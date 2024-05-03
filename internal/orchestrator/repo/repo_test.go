@@ -11,7 +11,7 @@ import (
 )
 
 var configForTest = &v1.Config{
-	Host: "test",
+	Instance: "test",
 }
 
 func TestBackup(t *testing.T) {

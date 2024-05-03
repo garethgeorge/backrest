@@ -12,8 +12,9 @@ message Config {
   int32 modno = 1 [json_name="modno"];
   int32 version = 6 [json_name="version"]; // version of the config file format. Used to determine when to run migrations.
 
-  // override the hostname tagged on backups. If provided it will be used in addition to tags to group backups.
-  string host = 2 [json_name="host"];
+  // The instance name for the Backrest installation. 
+  // This identifies backups created by this instance and is displayed in the UI. 
+  string instance = 2 [json_name="instance"];
 
   repeated Repo repos = 3 [json_name="repos"];
   repeated Plan plans = 4 [json_name="plans"];

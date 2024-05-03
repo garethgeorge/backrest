@@ -90,7 +90,8 @@ func TestBackup(t *testing.T) {
 
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
-			Modno: 1234,
+			Modno:    1234,
+			Instance: "test",
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
@@ -177,7 +178,8 @@ func TestMultipleBackup(t *testing.T) {
 
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
-			Modno: 1234,
+			Modno:    1234,
+			Instance: "test",
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
@@ -245,7 +247,8 @@ func TestHookExecution(t *testing.T) {
 
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
-			Modno: 1234,
+			Modno:    1234,
+			Instance: "test",
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
@@ -415,7 +418,8 @@ func TestRestore(t *testing.T) {
 
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
-			Modno: 1234,
+			Modno:    1234,
+			Instance: "test",
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",

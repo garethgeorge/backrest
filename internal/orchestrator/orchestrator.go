@@ -398,6 +398,12 @@ func (o *Orchestrator) scheduleTaskHelper(t tasks.Task, priority int, curTime ti
 	return nil
 }
 
+func (o *Orchestrator) Config() *v1.Config {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return proto.Clone(o.config).(*v1.Config)
+}
+
 // resticRepoPool caches restic repos.
 type resticRepoPool struct {
 	mu         sync.Mutex

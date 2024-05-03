@@ -13,9 +13,13 @@ import (
 )
 
 func ValidateConfig(c *v1.Config) error {
-	c.Host = stringutil.SanitizeID(c.Host)
-
 	var err error
+
+	c.Instance, err = validateID(c.Instance)
+	if err != nil {
+		err = multierror.Append(err, fmt.Errorf("instance ID: %w", err))
+	}
+
 	repos := make(map[string]*v1.Repo)
 	if c.Repos != nil {
 		for _, repo := range c.Repos {
@@ -111,4 +115,11 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 	slices.Sort(plan.Iexcludes)
 
 	return err
+}
+
+func validateID(id string) (string, error) {
+	if len(id) > 32 {
+		return "", fmt.Errorf("id %q is too long", id)
+	}
+	return stringutil.SanitizeID(id), nil
 }

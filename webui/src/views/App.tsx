@@ -121,7 +121,7 @@ export const App: React.FC = () => {
         </h1>
         <h1 style={{ position: "absolute", right: "20px" }}>
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
-            {config && config.host ? "Host: " + config.host : undefined}
+            {config && config.instance ? config.instance : undefined}
           </small>
           <Button
             type="text"
