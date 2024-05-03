@@ -16,10 +16,9 @@ message Operation {
   int64 id = 1;
   // flow id groups operations together, e.g. by an execution of a plan.
   int64 flow_id = 10; // optional, flow id if associated with a flow
-  // required, repo id if associated with a repo
   string repo_id = 2; 
-  // required, plan id if associated with a plan
   string plan_id = 3; 
+  string instance_id = 11;
   // optional snapshot id if associated with a snapshot.
   string snapshot_id = 8; 
   OperationStatus status = 4;

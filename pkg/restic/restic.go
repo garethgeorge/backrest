@@ -324,6 +324,21 @@ func (r *Repo) Stats(ctx context.Context, opts ...GenericOption) (*RepoStats, er
 	return &stats, nil
 }
 
+// AddTags adds tags to the specified snapshots.
+func (r *Repo) AddTags(ctx context.Context, snapshotIDs []string, tags []string, opts ...GenericOption) error {
+	args := []string{"tag"}
+	args = append(args, "--add", strings.Join(tags, ","))
+	args = append(args, snapshotIDs...)
+
+	cmd := r.commandWithContext(ctx, args, opts...)
+	output := bytes.NewBuffer(nil)
+	r.pipeCmdOutputToWriter(cmd, output)
+	if err := cmd.Run(); err != nil {
+		return newCmdError(ctx, cmd, output.String(), err)
+	}
+	return nil
+}
+
 type RetentionPolicy struct {
 	KeepLastN          int    // keep the last n snapshots.
 	KeepHourly         int    // keep the last n hourly snapshots.
