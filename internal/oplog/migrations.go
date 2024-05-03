@@ -13,6 +13,7 @@ import (
 
 var migrations = []func(*OpLog, *bbolt.Tx) error{
 	migration001FlowID,
+	migration002InstanceID,
 }
 
 var CurrentVersion = int64(len(migrations))
@@ -105,6 +106,17 @@ func migration001FlowID(oplog *OpLog, tx *bbolt.Tx) error {
 			op.FlowId = op.Id
 		}
 
+		return nil
+	})
+}
+
+func migration002InstanceID(oplog *OpLog, tx *bbolt.Tx) error {
+	return transformOperations(oplog, tx, func(op *v1.Operation) error {
+		if op.InstanceId != "" {
+			return nil
+		}
+
+		op.InstanceId = "__unassociated__"
 		return nil
 	})
 }

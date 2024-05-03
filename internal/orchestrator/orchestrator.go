@@ -66,10 +66,9 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 		OpLog:  oplog,
 		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
-		repoPool:     newResticRepoPool(resticBin, cfg),
-		taskQueue:    queue.NewTimePriorityQueue[stContainer](),
-		hookExecutor: hook.NewHookExecutor(oplog, logStore),
-		logStore:     logStore,
+		repoPool:  newResticRepoPool(resticBin, cfg),
+		taskQueue: queue.NewTimePriorityQueue[stContainer](),
+		logStore:  logStore,
 	}
 
 	// verify the operation log and mark any incomplete operations as failed.
@@ -383,6 +382,7 @@ func (o *Orchestrator) scheduleTaskHelper(t tasks.Task, priority int, curTime ti
 	}
 
 	if stc.Op != nil {
+		stc.Op.InstanceId = o.config.Instance
 		stc.Op.PlanId = t.PlanID()
 		stc.Op.RepoId = t.RepoID()
 		stc.Op.Status = v1.OperationStatus_STATUS_PENDING

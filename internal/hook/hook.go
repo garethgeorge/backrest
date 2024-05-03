@@ -22,12 +22,14 @@ var (
 )
 
 type HookExecutor struct {
+	config   *v1.Config
 	oplog    *oplog.OpLog
 	logStore *rotatinglog.RotatingLog
 }
 
-func NewHookExecutor(oplog *oplog.OpLog, bigOutputStore *rotatinglog.RotatingLog) *HookExecutor {
+func NewHookExecutor(config *v1.Config, oplog *oplog.OpLog, bigOutputStore *rotatinglog.RotatingLog) *HookExecutor {
 	return &HookExecutor{
+		config:   config,
 		oplog:    oplog,
 		logStore: bigOutputStore,
 	}
@@ -37,10 +39,11 @@ func NewHookExecutor(oplog *oplog.OpLog, bigOutputStore *rotatinglog.RotatingLog
 // Hooks are pulled both from the provided plan and from the repo config.
 func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, events []v1.Hook_Condition, vars HookVars) error {
 	operationBase := v1.Operation{
-		Status: v1.OperationStatus_STATUS_INPROGRESS,
-		PlanId: plan.GetId(),
-		RepoId: repo.GetId(),
-		FlowId: flowID,
+		Status:     v1.OperationStatus_STATUS_INPROGRESS,
+		PlanId:     plan.GetId(),
+		RepoId:     repo.GetId(),
+		InstanceId: e.config.Instance,
+		FlowId:     flowID,
 	}
 
 	vars.Repo = repo

@@ -22,6 +22,9 @@ func ValidateOperation(op *v1.Operation) error {
 	if op.PlanId == "" {
 		return errors.New("operation.plan_id is required")
 	}
+	if op.InstanceId == "" {
+		return errors.New("operation.instance_id is required")
+	}
 	if op.SnapshotId != "" {
 		if err := restic.ValidateSnapshotId(op.SnapshotId); err != nil {
 			return fmt.Errorf("operation.snapshot_id is invalid: %w", err)
