@@ -172,18 +172,19 @@ export class Operation extends Message<Operation> {
   flowId = protoInt64.zero;
 
   /**
-   * required, repo id if associated with a repo
-   *
    * @generated from field: string repo_id = 2;
    */
   repoId = "";
 
   /**
-   * required, plan id if associated with a plan
-   *
    * @generated from field: string plan_id = 3;
    */
   planId = "";
+
+  /**
+   * @generated from field: string instance_id = 11;
+   */
+  instanceId = "";
 
   /**
    * optional snapshot id if associated with a snapshot.
@@ -284,6 +285,7 @@ export class Operation extends Message<Operation> {
     { no: 10, name: "flow_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 2, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "instance_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 8, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "status", kind: "enum", T: proto3.getEnumType(OperationStatus) },
     { no: 5, name: "unix_time_start_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },

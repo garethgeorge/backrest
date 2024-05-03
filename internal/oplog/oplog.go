@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"slices"
 	"sync"
 	"time"
 
@@ -35,6 +36,7 @@ var (
 	RepoIndexBucket     = []byte("oplog.repo_idx")     // repo_index tracks IDs of operations affecting a given repo
 	PlanIndexBucket     = []byte("oplog.plan_idx")     // plan_index tracks IDs of operations affecting a given plan
 	FlowIdIndexBucket   = []byte("oplog.flow_id_idx")  // flow_id_index tracks IDs of operations affecting a given flow
+	InstanceIndexBucket = []byte("oplog.instance_idx") // instance_id_index tracks IDs of operations affecting a given instance
 	SnapshotIndexBucket = []byte("oplog.snapshot_idx") // snapshot_index tracks IDs of operations affecting a given snapshot
 )
 
@@ -64,7 +66,7 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 	if err := db.Update(func(tx *bolt.Tx) error {
 		// Create the buckets if they don't exist
 		for _, bucket := range [][]byte{
-			SystemBucket, OpLogBucket, RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket, FlowIdIndexBucket,
+			SystemBucket, OpLogBucket, RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket, FlowIdIndexBucket, InstanceIndexBucket,
 		} {
 			if _, err := tx.CreateBucketIfNotExists(bucket); err != nil {
 				return fmt.Errorf("creating bucket %s: %s", string(bucket), err)
@@ -221,8 +223,10 @@ func (o *OpLog) Delete(ids ...int64) error {
 
 func (o *OpLog) notifyHelper(old *v1.Operation, new *v1.Operation) {
 	o.subscribersMu.RLock()
-	defer o.subscribersMu.RUnlock()
-	for _, sub := range o.subscribers {
+	subscribers := slices.Clone(o.subscribers)
+	o.subscribersMu.RUnlock()
+
+	for _, sub := range subscribers {
 		(*sub)(old, new)
 	}
 }
@@ -297,6 +301,11 @@ func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 			return fmt.Errorf("error adding operation to flow index: %w", err)
 		}
 	}
+	if op.InstanceId != "" {
+		if err := indexutil.IndexByteValue(tx.Bucket(InstanceIndexBucket), []byte(op.InstanceId), op.Id); err != nil {
+			return fmt.Errorf("error adding operation to instance index: %w", err)
+		}
+	}
 
 	return nil
 }
@@ -330,6 +339,12 @@ func (o *OpLog) deleteOperationHelper(tx *bolt.Tx, id int64) (*v1.Operation, err
 	if prevValue.FlowId != 0 {
 		if err := indexutil.IndexRemoveByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(prevValue.FlowId), id); err != nil {
 			return nil, fmt.Errorf("removing operation %v from flow index: %w", id, err)
+		}
+	}
+
+	if prevValue.InstanceId != "" {
+		if err := indexutil.IndexRemoveByteValue(tx.Bucket(InstanceIndexBucket), []byte(prevValue.InstanceId), id); err != nil {
+			return nil, fmt.Errorf("removing operation %v from instance index: %w", id, err)
 		}
 	}
 
