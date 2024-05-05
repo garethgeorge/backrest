@@ -146,7 +146,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 			zap.S().Warnf("unexpected message type %q in backup progress entry", entry.MessageType)
 		}
 
-		if time.Since(lastSent) < 1*time.Second {
+		if time.Since(lastSent) <= 1000*time.Millisecond {
 			return
 		}
 		lastSent = time.Now()

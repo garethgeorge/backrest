@@ -50,8 +50,6 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 	t := st.Task
 	oplog := taskRunner.OpLog()
 
-	config := taskRunner.Config()
-
 	repo, err := taskRunner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
 		return fmt.Errorf("couldn't get repo %q: %w", t.RepoID(), err)
