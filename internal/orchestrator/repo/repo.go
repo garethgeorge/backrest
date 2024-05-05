@@ -59,7 +59,9 @@ func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath stri
 	}
 
 	if env := repoConfig.GetEnv(); len(env) != 0 {
-		opts = append(opts, restic.WithEnv(repoConfig.GetEnv()...))
+		for _, e := range env {
+			opts = append(opts, restic.WithEnv(ExpandEnv(e)))
+		}
 	}
 
 	repo := restic.NewRepo(resticPath, repoConfig.GetUri(), opts...)

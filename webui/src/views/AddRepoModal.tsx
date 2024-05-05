@@ -282,63 +282,65 @@ export const AddRepoModal = ({
           </Tooltip>
 
           {/* Repo.env */}
-          <Form.Item label="Env Vars">
-            <Form.List
-              name="env"
-              rules={[
-                {
-                  validator: async (_, envVars) => {
-                    return await envVarSetValidator(form, envVars);
+          <Tooltip title={"Environment variables that are passed to restic (e.g. to provide S3 or B2 credentials). References to parent-process env variables are supported as FOO=${MY_FOO_VAR}."}>
+            <Form.Item label="Env Vars">
+              <Form.List
+                name="env"
+                rules={[
+                  {
+                    validator: async (_, envVars) => {
+                      return await envVarSetValidator(form, envVars);
+                    },
                   },
-                },
-              ]}
-            >
-              {(fields, { add, remove }, { errors }) => (
-                <>
-                  {fields.map((field, index) => (
-                    <Form.Item key={field.key}>
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        rules={[
-                          {
-                            required: true,
-                            whitespace: true,
-                            pattern: /^[\w-]+=.*$/,
-                            message:
-                              "Environment variable must be in format KEY=VALUE",
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <Input
-                          placeholder="KEY=VALUE"
-                          onBlur={() => form.validateFields()}
-                          style={{ width: "90%" }}
+                ]}
+              >
+                {(fields, { add, remove }, { errors }) => (
+                  <>
+                    {fields.map((field, index) => (
+                      <Form.Item key={field.key}>
+                        <Form.Item
+                          {...field}
+                          validateTrigger={["onChange", "onBlur"]}
+                          rules={[
+                            {
+                              required: true,
+                              whitespace: true,
+                              pattern: /^[\w-]+=.*$/,
+                              message:
+                                "Environment variable must be in format KEY=VALUE",
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <Input
+                            placeholder="KEY=VALUE"
+                            onBlur={() => form.validateFields()}
+                            style={{ width: "90%" }}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(index)}
+                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(index)}
-                        style={{ paddingLeft: "5px" }}
-                      />
+                    ))}
+                    <Form.Item>
+                      <Button
+                        type="dashed"
+                        onClick={() => add("")}
+                        style={{ width: "90%" }}
+                        icon={<PlusOutlined />}
+                      >
+                        Set Environment Variable
+                      </Button>
+                      <Form.ErrorList errors={errors} />
                     </Form.Item>
-                  ))}
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => add("")}
-                      style={{ width: "90%" }}
-                      icon={<PlusOutlined />}
-                    >
-                      Set Environment Variable
-                    </Button>
-                    <Form.ErrorList errors={errors} />
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
-          </Form.Item>
+                  </>
+                )}
+              </Form.List>
+            </Form.Item>
+          </Tooltip>
 
           {/* Repo.flags */}
           <Form.Item label="Flags">
