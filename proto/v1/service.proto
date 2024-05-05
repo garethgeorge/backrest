@@ -50,8 +50,11 @@ service Backrest {
   // Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
   rpc Cancel(types.Int64Value) returns (google.protobuf.Empty) {}
 
-  // GetBigOperationData returns the keyed large data for the given operation.
+  // GetLogs returns the keyed large data for the given operation.
   rpc GetLogs(LogDataRequest) returns (types.BytesValue) {}
+
+  // GetDownloadURL returns a signed download URL given a forget operation ID.
+  rpc GetDownloadURL(types.Int64Value) returns (types.StringValue) {}
 
   // Clears the history of operations
   rpc ClearHistory(ClearHistoryRequest) returns (google.protobuf.Empty) {}
