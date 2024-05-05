@@ -131,8 +131,7 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 	opts = append(opts, restic.WithFlags(
 		"--exclude-caches",
 		"--tag", TagForPlan(plan.Id),
-		"--tag", TagForInstance(r.config.Instance),
-		"--host", r.config.Instance),
+		"--tag", TagForInstance(r.config.Instance)),
 	)
 
 	for _, exclude := range plan.Excludes {

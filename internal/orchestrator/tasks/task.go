@@ -19,8 +19,8 @@ const (
 	TaskPriorityStats          = -1
 	TaskPriorityDefault        = 0
 	TaskPriorityInteractive    = 1 << 1
-	TaskPriorityIndexSnapshots = 1 << 2
-	TaskPriorityForget         = 1 << 3
+	TaskPriorityForget         = 1 << 2
+	TaskPriorityIndexSnapshots = 1 << 3
 	TaskPriorityPrune          = 1 << 4
 )
 
