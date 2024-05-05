@@ -178,10 +178,11 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
           <div className="backrest visible-on-hover">
             {plan.id}{" "}
             <Button
-              className="hidden-child"
+              className="hidden-child float-center-right"
               type="text"
               size="small"
               shape="circle"
+              style={{ width: "30px", height: "30px" }}
               icon={<SettingOutlined />}
               onClick={async () => {
                 const { AddPlanModal } = await import("./AddPlanModal");
@@ -220,17 +221,18 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
           <div className="backrest visible-on-hover">
             {repo.id}{" "}
             <Button
-              className="hidden-child"
               type="text"
               size="small"
               shape="circle"
+              className="hidden-child float-center-right"
+              style={{ width: "30px", height: "30px" }}
               icon={<SettingOutlined />}
               onClick={async () => {
                 const { AddRepoModal } = await import("./AddRepoModal");
                 showModal(<AddRepoModal template={repo} />);
               }}
             />
-          </div>
+          </div >
         ),
         onClick: async () => {
           const { RepoView } = await import("./RepoView");
