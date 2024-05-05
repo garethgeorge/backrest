@@ -275,7 +275,11 @@ export class BackupInfoCollector {
 
   public bulkAddOperations(ops: Operation[]): BackupInfo[] {
     for (const op of ops) {
-      this.addOrUpdateHelper(op);
+      if (this.filter(op)) {
+        this.addOrUpdateHelper(op);
+      } else {
+        this.removeOperation(op);
+      }
     }
     const flowIDs = _.uniq(ops.map((op) => op.flowId));
     const info = flowIDs.map((flowId) => this.getBackupInfo(flowId)!);
@@ -311,6 +315,7 @@ export class BackupInfoCollector {
 export const shouldHideOperation = (operation: Operation) => {
   return (
     operation.op.case === "operationStats" ||
+    (operation.op.case === "operationRunHook" && operation.status === OperationStatus.STATUS_SUCCESS) ||
     shouldHideStatus(operation.status)
   );
 };
