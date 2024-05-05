@@ -95,7 +95,7 @@ func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
 		if lastValidated := sysBucket.Get([]byte("last_validated")); lastValidated != nil {
 			c.Seek(lastValidated)
 		}
-		for k, v := c.Next(); k != nil; k, v = c.Next() {
+		for k, v := c.Prev(); k != nil; k, v = c.Next() {
 			op := &v1.Operation{}
 			if err := proto.Unmarshal(v, op); err != nil {
 				zap.L().Error("error unmarshalling operation, there may be corruption in the oplog", zap.Error(err))

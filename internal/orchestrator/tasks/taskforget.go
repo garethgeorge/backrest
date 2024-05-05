@@ -142,9 +142,9 @@ func useLegacyCompatMode(oplog *oplog.OpLog, planID string) (bool, error) {
 	}
 	delete(instanceIDs, "")
 	if len(instanceIDs) > 1 {
-		zap.L().Warn("found mixed instance IDs in indexed snapshots, forcing forget to use new behavior (e.g. --tags including instance ID) despite the presence of legacy (e.g. untagged) snapshots.")
+		zap.L().Warn("found mixed instance IDs in indexed snapshots, overriding legacy forget behavior to include instance ID tags. This may result in unexpected behavior -- please inspect the tags on your snapshots.")
 		return false, nil
 	}
-	zap.L().Warn("found legacy snapshots without instance ID, forget will use legacy behavior e.g. --tags not including instance ID")
+	zap.L().Warn("found legacy snapshots without instance ID, recommending legacy forget behavior.")
 	return true, nil
 }
