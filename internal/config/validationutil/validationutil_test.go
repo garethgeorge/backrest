@@ -1,6 +1,8 @@
-package stringutil
+package validationutil
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestSanitizeID(t *testing.T) {
 	tcs := []struct {

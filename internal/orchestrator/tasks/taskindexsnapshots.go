@@ -15,7 +15,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
-	"golang.org/x/exp/maps"
 )
 
 func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) Task {
@@ -71,20 +70,20 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 	}
 
 	// check if any migrations are required
-	if migrated, err := tryMigrate(ctx, repo, config, snapshots); err != nil {
-		return fmt.Errorf("migrate snapshots for repo %q: %w", t.RepoID(), err)
-	} else if migrated {
-		// Delete snapshot operations
-		if err := oplog.Delete(maps.Values(currentIds)...); err != nil {
-			return fmt.Errorf("delete prior indexed operations: %w", err)
-		}
+	// if migrated, err := tryMigrate(ctx, repo, config, snapshots); err != nil {
+	// 	return fmt.Errorf("migrate snapshots for repo %q: %w", t.RepoID(), err)
+	// } else if migrated {
+	// 	// Delete snapshot operations
+	// 	if err := oplog.Delete(maps.Values(currentIds)...); err != nil {
+	// 		return fmt.Errorf("delete prior indexed operations: %w", err)
+	// 	}
 
-		snapshots, err = repo.Snapshots(ctx)
-		if err != nil {
-			return fmt.Errorf("get snapshots for repo %q: %w", t.RepoID(), err)
-		}
-		currentIds = nil
-	}
+	// 	snapshots, err = repo.Snapshots(ctx)
+	// 	if err != nil {
+	// 		return fmt.Errorf("get snapshots for repo %q: %w", t.RepoID(), err)
+	// 	}
+	// 	currentIds = nil
+	// }
 
 	foundIds := make(map[string]struct{})
 
@@ -103,7 +102,7 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 			return fmt.Errorf("get flow ID for snapshot %q: %w", snapshot.Id, err)
 		}
 		planId := planForSnapshot(snapshotProto)
-		instanceID := hostForSnapshot(snapshotProto)
+		instanceID := instanceIDForSnapshot(snapshotProto)
 		indexOps = append(indexOps, &v1.Operation{
 			RepoId:          t.RepoID(),
 			PlanId:          planId,
@@ -185,21 +184,15 @@ func indexCurrentSnapshotIdsForRepo(log *oplog.OpLog, repoId string) (map[string
 }
 
 func planForSnapshot(snapshot *v1.ResticSnapshot) string {
-	for _, tag := range snapshot.Tags {
-		if strings.HasPrefix(tag, "plan:") {
-			return tag[len("plan:"):]
-		}
+	p := repo.PlanFromTags(snapshot.Tags)
+	if p != "" {
+		return p
 	}
 	return PlanForUnassociatedOperations
 }
 
-func hostForSnapshot(snapshot *v1.ResticSnapshot) string {
-	for _, tag := range snapshot.Tags {
-		if strings.HasPrefix(tag, "created-by:") {
-			return tag[len("created-by:"):]
-		}
-	}
-	return ""
+func instanceIDForSnapshot(snapshot *v1.ResticSnapshot) string {
+	return repo.InstanceIDFromTags(snapshot.Tags)
 }
 
 // tryMigrate checks if the snapshots use the latest backrest tag set and migrates them if necessary.

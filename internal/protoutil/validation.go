@@ -6,6 +6,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/pkg/restic"
+	"go.uber.org/zap"
 )
 
 // ValidateOperation verifies critical properties of the operation proto.
@@ -23,7 +24,7 @@ func ValidateOperation(op *v1.Operation) error {
 		return errors.New("operation.plan_id is required")
 	}
 	if op.InstanceId == "" {
-		return errors.New("operation.instance_id is required")
+		zap.L().Warn("operation.instance_id should typically be set")
 	}
 	if op.SnapshotId != "" {
 		if err := restic.ValidateSnapshotId(op.SnapshotId); err != nil {
