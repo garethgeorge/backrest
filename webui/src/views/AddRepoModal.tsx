@@ -210,7 +210,7 @@ export const AddRepoModal = ({
                 <ul>
                   <li>Local filesystem path</li>
                   <li>S3 e.g. s3:// ...</li>
-                  <li>SFTP e.g. sftp://user@host:/repo-path</li>
+                  <li>SFTP e.g. sftp:user@host:/repo-path</li>
                   <li>
                     See{" "}
                     <a href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository" target="_blank">
