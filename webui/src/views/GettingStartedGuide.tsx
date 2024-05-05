@@ -31,7 +31,7 @@ export const GettingStartedGuide = () => {
             for details about available repository types and how they can be
             configured.
           </li>
-          <li>See <a href="https://github.com/garethgeorge/backrest/wiki" target="_blank">the Backrest wiki</a> for instructions on how to configure Backrest.</li>
+          <li>See <a href="https://garethgeorge.github.io/backrest" target="_blank">the Backrest wiki</a> for instructions on how to configure Backrest.</li>
         </ul>
         <Divider orientation="left">Tips</Divider>
         <ul>
