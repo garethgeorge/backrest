@@ -24,7 +24,7 @@ func ValidateOperation(op *v1.Operation) error {
 		return errors.New("operation.plan_id is required")
 	}
 	if op.InstanceId == "" {
-		zap.L().Warn("operation.instance_id should typically be set", zap.Any("operation", op))
+		zap.L().Warn("operation.instance_id should typically be set")
 	}
 	if op.SnapshotId != "" {
 		if err := restic.ValidateSnapshotId(op.SnapshotId); err != nil {
