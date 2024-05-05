@@ -108,6 +108,7 @@ func main() {
 	backrestHandlerPath, backrestHandler := v1connect.NewBackrestHandler(apiBackrestHandler)
 	mux.Handle(backrestHandlerPath, auth.RequireAuthentication(backrestHandler, authenticator))
 	mux.Handle("/", webui.Handler())
+	mux.Handle("/download/", http.StripPrefix("/download", api.NewDownloadHandler(oplog)))
 
 	// Serve the HTTP gateway
 	server := &http.Server{
