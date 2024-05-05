@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-Note: if you have a question or need support please post in the [discussions area](https://github.com/garethgeorge/backrest/wiki).
+Note: if you have a question or need support please post in the [discussions area](https://github.com/garethgeorge/backrest/discussions).
 
 **Describe the bug**
 A clear and concise description of what the bug is.
