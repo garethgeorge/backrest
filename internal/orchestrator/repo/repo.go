@@ -35,8 +35,10 @@ func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath stri
 	opts = append(opts, restic.WithEnviron())
 	opts = append(opts, restic.WithEnv("RESTIC_PROGRESS_FPS=0.5"))
 
-	if len(repoConfig.GetEnv()) > 0 {
-		opts = append(opts, restic.WithEnv(repoConfig.GetEnv()...))
+	if env := repoConfig.GetEnv(); len(env) != 0 {
+		for _, e := range env {
+			opts = append(opts, restic.WithEnv(ExpandEnv(e)))
+		}
 	}
 
 	if p := repoConfig.GetPassword(); p != "" {
@@ -56,12 +58,6 @@ func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath stri
 		return strings.Contains(a, "sftp.args")
 	}) == -1 {
 		opts = append(opts, restic.WithFlags("-o", "sftp.args=-oBatchMode=yes"))
-	}
-
-	if env := repoConfig.GetEnv(); len(env) != 0 {
-		for _, e := range env {
-			opts = append(opts, restic.WithEnv(ExpandEnv(e)))
-		}
 	}
 
 	repo := restic.NewRepo(resticPath, repoConfig.GetUri(), opts...)
