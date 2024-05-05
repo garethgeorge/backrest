@@ -63,8 +63,9 @@ func ValidateConfig(c *v1.Config) error {
 
 func validateRepo(repo *v1.Repo) error {
 	var err error
-	if repo.Id == "" {
-		err = multierror.Append(err, errors.New("id is required"))
+
+	if repo.Id == "" || !stringutil.ValidateID(repo.Id) {
+		err = multierror.Append(err, fmt.Errorf("id %q contains invalid characters (or empty)", repo.Id))
 	}
 
 	if repo.Uri == "" {
@@ -86,6 +87,10 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 	var err error
 	if plan.Paths == nil || len(plan.Paths) == 0 {
 		err = multierror.Append(err, fmt.Errorf("path is required"))
+	}
+
+	if plan.Id == "" || !stringutil.ValidateID(plan.Id) {
+		err = multierror.Append(err, fmt.Errorf("id %q contains invalid characters (or empty)", plan.Id))
 	}
 
 	for idx, p := range plan.Paths {
