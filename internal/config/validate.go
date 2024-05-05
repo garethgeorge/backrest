@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/config/stringutil"
+	"github.com/garethgeorge/backrest/internal/config/validationutil"
 	"github.com/gitploy-io/cronexpr"
 	"github.com/hashicorp/go-multierror"
 )
@@ -15,9 +15,8 @@ import (
 func ValidateConfig(c *v1.Config) error {
 	var err error
 
-	c.Instance, err = validateID(c.Instance)
-	if err != nil {
-		err = multierror.Append(err, fmt.Errorf("instance ID: %w", err))
+	if e := validationutil.ValidateID(c.Instance, validationutil.IDMaxLen); e != nil {
+		err = multierror.Append(err, fmt.Errorf("instance ID %q invalid: %w", c.Instance, e))
 	}
 
 	repos := make(map[string]*v1.Repo)
@@ -63,9 +62,8 @@ func ValidateConfig(c *v1.Config) error {
 
 func validateRepo(repo *v1.Repo) error {
 	var err error
-
-	if repo.Id == "" || !stringutil.ValidateID(repo.Id) {
-		err = multierror.Append(err, fmt.Errorf("id %q contains invalid characters (or empty)", repo.Id))
+	if e := validationutil.ValidateID(repo.Id, 0); e != nil {
+		err = multierror.Append(err, fmt.Errorf("id %q invalid: %w", repo.Id, e))
 	}
 
 	if repo.Uri == "" {
@@ -85,12 +83,8 @@ func validateRepo(repo *v1.Repo) error {
 
 func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 	var err error
-	if plan.Paths == nil || len(plan.Paths) == 0 {
-		err = multierror.Append(err, fmt.Errorf("path is required"))
-	}
-
-	if plan.Id == "" || !stringutil.ValidateID(plan.Id) {
-		err = multierror.Append(err, fmt.Errorf("id %q contains invalid characters (or empty)", plan.Id))
+	if e := validationutil.ValidateID(plan.Id, 0); e != nil {
+		err = multierror.Append(err, fmt.Errorf("id %q invalid: %w", plan.Id, e))
 	}
 
 	for idx, p := range plan.Paths {
@@ -120,11 +114,4 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 	slices.Sort(plan.Iexcludes)
 
 	return err
-}
-
-func validateID(id string) (string, error) {
-	if len(id) > 32 {
-		return "", fmt.Errorf("id %q is too long", id)
-	}
-	return stringutil.SanitizeID(id), nil
 }

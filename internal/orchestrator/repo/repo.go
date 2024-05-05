@@ -31,6 +31,10 @@ type RepoOrchestrator struct {
 
 // NewRepoOrchestrator accepts a config and a repo that is configured with the properties of that config object.
 func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath string) (*RepoOrchestrator, error) {
+	if config.Instance == "" {
+		return nil, errors.New("instance is a required field in the backrest config")
+	}
+
 	var opts []restic.GenericOption
 	opts = append(opts, restic.WithEnviron())
 	opts = append(opts, restic.WithEnv("RESTIC_PROGRESS_FPS=0.5"))
@@ -93,7 +97,7 @@ func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) 
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
 
-	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--tag", tagForPlan(plan), "--tag", r.config.Instance))
+	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--tag", TagForPlan(plan.Id), "--tag", TagForInstance(r.config.Instance)))
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for plan %q: %w", plan.Id, err)
 	}
@@ -119,19 +123,17 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 		return nil, fmt.Errorf("failed to get snapshots for plan: %w", err)
 	}
 
-	r.l.Debug("got snapshots for plan", zap.String("repo", r.repoConfig.Id), zap.Int("count", len(snapshots)), zap.String("plan", plan.Id), zap.String("tag", tagForPlan(plan)))
+	r.l.Debug("got snapshots for plan", zap.String("repo", r.repoConfig.Id), zap.Int("count", len(snapshots)), zap.String("plan", plan.Id), zap.String("tag", TagForPlan(plan.Id)))
 
 	startTime := time.Now()
 
 	var opts []restic.GenericOption
-	opts = append(opts, restic.WithFlags("--exclude-caches"))
-	opts = append(opts, restic.WithFlags("--tag", tagForPlan(plan)))
-	if r.config.Instance != "" {
-		opts = append(opts, restic.WithFlags("--host", r.config.Instance))
-		opts = append(opts, restic.WithFlags("--tag", tagForInstance(r.config.Instance)))
-	} else {
-		return nil, errors.New("host is a required field in the backrest config")
-	}
+	opts = append(opts, restic.WithFlags(
+		"--exclude-caches",
+		"--tag", TagForPlan(plan.Id),
+		"--tag", TagForInstance(r.config.Instance),
+		"--host", r.config.Instance),
+	)
 
 	for _, exclude := range plan.Excludes {
 		opts = append(opts, restic.WithFlags("--exclude", exclude))
@@ -180,7 +182,7 @@ func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId str
 	return lsEnts, nil
 }
 
-func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.ResticSnapshot, error) {
+func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan, tags []string) ([]*v1.ResticSnapshot, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	ctx, flush := forwardResticLogs(ctx)
@@ -191,9 +193,13 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan) ([]*v1.Res
 		return nil, fmt.Errorf("plan %q has no retention policy", plan.Id)
 	}
 
+	if r.config.Instance == "" {
+		return nil, errors.New("instance is a required field in the backrest config")
+	}
+
 	result, err := r.repo.Forget(
 		ctx, protoutil.RetentionPolicyFromProto(plan.Retention),
-		restic.WithFlags("--tag", tagForPlan(plan)+","+tagForInstance(r.config.Instance)),
+		restic.WithFlags("--tag", strings.Join(tags, ",")),
 		restic.WithFlags("--group-by", ""),
 	)
 	if err != nil {
@@ -337,14 +343,6 @@ func (r *RepoOrchestrator) Config() *v1.Repo {
 		return nil
 	}
 	return r.repoConfig
-}
-
-func tagForPlan(plan *v1.Plan) string {
-	return fmt.Sprintf("plan:%s", plan.Id)
-}
-
-func tagForInstance(host string) string {
-	return fmt.Sprintf("created-by:%s", host)
 }
 
 func sortSnapshotsByTime(snapshots []*restic.Snapshot) {
