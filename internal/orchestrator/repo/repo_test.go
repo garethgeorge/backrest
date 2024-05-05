@@ -2,7 +2,9 @@ package repo
 
 import (
 	"context"
+	"os"
 	"slices"
+	"strings"
 	"testing"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -138,5 +140,53 @@ func TestSnapshotParenting(t *testing.T) {
 	}
 	if len(snapshots) != 8 {
 		t.Errorf("expected 8 snapshots, got %d", len(snapshots))
+	}
+}
+
+func TestEnvVarPropagation(t *testing.T) {
+	t.Parallel()
+
+	repo := t.TempDir()
+	testData := test.CreateTestData(t)
+
+	// create a new repo with cache disabled for testing
+	r := &v1.Repo{
+		Id:       "test",
+		Uri:      repo,
+		Password: "test",
+		Flags:    []string{"--no-cache"},
+		Env:      []string{"RESTIC_PASSWORD=${MY_FOO}"},
+	}
+
+	plan := &v1.Plan{
+		Id:    "test",
+		Repo:  "test",
+		Paths: []string{testData},
+	}
+
+	orchestrator, err := NewRepoOrchestrator(configForTest, r, helpers.ResticBinary(t))
+	if err != nil {
+		t.Fatalf("failed to create repo orchestrator: %v", err)
+	}
+
+	_, err = orchestrator.Backup(context.Background(), plan, nil)
+	if err == nil || !strings.Contains(err.Error(), "an empty password is not a password") {
+		t.Fatalf("expected error about RESTIC_PASSWORD, got: %v", err)
+	}
+
+	// set the env var
+	os.Setenv("MY_FOO", "bar")
+	orchestrator, err = NewRepoOrchestrator(configForTest, r, helpers.ResticBinary(t))
+	if err != nil {
+		t.Fatalf("failed to create repo orchestrator: %v", err)
+	}
+
+	summary, err := orchestrator.Backup(context.Background(), plan, nil)
+	if err != nil {
+		t.Fatalf("backup error: %v", err)
+	}
+
+	if summary.SnapshotId == "" {
+		t.Fatal("expected snapshot id")
 	}
 }
