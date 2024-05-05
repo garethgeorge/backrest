@@ -24,7 +24,12 @@ func NewOneoffRestoreTask(repoID, planID string, flowID int64, at time.Time, sna
 			RunAt:  at,
 			ProtoOp: &v1.Operation{
 				SnapshotId: snapshotID,
-				Op:         &v1.Operation_OperationRestore{},
+				Op: &v1.Operation_OperationRestore{
+					OperationRestore: &v1.OperationRestore{
+						Path:   path,
+						Target: target,
+					},
+				},
 			},
 		},
 		Do: func(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {

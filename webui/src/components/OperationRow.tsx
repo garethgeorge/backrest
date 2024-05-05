@@ -194,6 +194,10 @@ export const OperationRow = ({
         {details.percentage !== undefined ? (
           <Progress percent={details.percentage || 0} status="active" />
         ) : null}
+        {operation.status == OperationStatus.STATUS_SUCCESS ? (<>
+          <br />
+          <Button type="link" href={"/download/" + operation.id.toString(16) + '/'} target="_blank">Download File(s)</Button>
+        </>) : null}
       </>
     );
   } else if (operation.op.case === "operationRunHook") {
