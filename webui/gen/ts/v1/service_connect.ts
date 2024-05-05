@@ -168,7 +168,7 @@ export const Backrest = {
       kind: MethodKind.Unary,
     },
     /**
-     * GetBigOperationData returns the keyed large data for the given operation.
+     * GetLogs returns the keyed large data for the given operation.
      *
      * @generated from rpc v1.Backrest.GetLogs
      */
@@ -176,6 +176,17 @@ export const Backrest = {
       name: "GetLogs",
       I: LogDataRequest,
       O: BytesValue,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetDownloadURL returns a signed download URL given a forget operation ID.
+     *
+     * @generated from rpc v1.Backrest.GetDownloadURL
+     */
+    getDownloadURL: {
+      name: "GetDownloadURL",
+      I: Int64Value,
+      O: StringValue,
       kind: MethodKind.Unary,
     },
     /**

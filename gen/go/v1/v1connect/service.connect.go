@@ -69,6 +69,8 @@ const (
 	BackrestCancelProcedure = "/v1.Backrest/Cancel"
 	// BackrestGetLogsProcedure is the fully-qualified name of the Backrest's GetLogs RPC.
 	BackrestGetLogsProcedure = "/v1.Backrest/GetLogs"
+	// BackrestGetDownloadURLProcedure is the fully-qualified name of the Backrest's GetDownloadURL RPC.
+	BackrestGetDownloadURLProcedure = "/v1.Backrest/GetDownloadURL"
 	// BackrestClearHistoryProcedure is the fully-qualified name of the Backrest's ClearHistory RPC.
 	BackrestClearHistoryProcedure = "/v1.Backrest/ClearHistory"
 	// BackrestPathAutocompleteProcedure is the fully-qualified name of the Backrest's PathAutocomplete
@@ -95,6 +97,7 @@ var (
 	backrestStatsMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Stats")
 	backrestCancelMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Cancel")
 	backrestGetLogsMethodDescriptor            = backrestServiceDescriptor.Methods().ByName("GetLogs")
+	backrestGetDownloadURLMethodDescriptor     = backrestServiceDescriptor.Methods().ByName("GetDownloadURL")
 	backrestClearHistoryMethodDescriptor       = backrestServiceDescriptor.Methods().ByName("ClearHistory")
 	backrestPathAutocompleteMethodDescriptor   = backrestServiceDescriptor.Methods().ByName("PathAutocomplete")
 )
@@ -124,8 +127,10 @@ type BackrestClient interface {
 	Stats(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error)
-	// GetBigOperationData returns the keyed large data for the given operation.
+	// GetLogs returns the keyed large data for the given operation.
 	GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error)
+	// GetDownloadURL returns a signed download URL given a forget operation ID.
+	GetDownloadURL(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error)
 	// Clears the history of operations
 	ClearHistory(context.Context, *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
@@ -238,6 +243,12 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestGetLogsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getDownloadURL: connect.NewClient[types.Int64Value, types.StringValue](
+			httpClient,
+			baseURL+BackrestGetDownloadURLProcedure,
+			connect.WithSchema(backrestGetDownloadURLMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		clearHistory: connect.NewClient[v1.ClearHistoryRequest, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestClearHistoryProcedure,
@@ -271,6 +282,7 @@ type backrestClient struct {
 	stats              *connect.Client[types.StringValue, emptypb.Empty]
 	cancel             *connect.Client[types.Int64Value, emptypb.Empty]
 	getLogs            *connect.Client[v1.LogDataRequest, types.BytesValue]
+	getDownloadURL     *connect.Client[types.Int64Value, types.StringValue]
 	clearHistory       *connect.Client[v1.ClearHistoryRequest, emptypb.Empty]
 	pathAutocomplete   *connect.Client[types.StringValue, types.StringList]
 }
@@ -355,6 +367,11 @@ func (c *backrestClient) GetLogs(ctx context.Context, req *connect.Request[v1.Lo
 	return c.getLogs.CallUnary(ctx, req)
 }
 
+// GetDownloadURL calls v1.Backrest.GetDownloadURL.
+func (c *backrestClient) GetDownloadURL(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error) {
+	return c.getDownloadURL.CallUnary(ctx, req)
+}
+
 // ClearHistory calls v1.Backrest.ClearHistory.
 func (c *backrestClient) ClearHistory(ctx context.Context, req *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.clearHistory.CallUnary(ctx, req)
@@ -390,8 +407,10 @@ type BackrestHandler interface {
 	Stats(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error)
-	// GetBigOperationData returns the keyed large data for the given operation.
+	// GetLogs returns the keyed large data for the given operation.
 	GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error)
+	// GetDownloadURL returns a signed download URL given a forget operation ID.
+	GetDownloadURL(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error)
 	// Clears the history of operations
 	ClearHistory(context.Context, *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
@@ -500,6 +519,12 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		connect.WithSchema(backrestGetLogsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	backrestGetDownloadURLHandler := connect.NewUnaryHandler(
+		BackrestGetDownloadURLProcedure,
+		svc.GetDownloadURL,
+		connect.WithSchema(backrestGetDownloadURLMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	backrestClearHistoryHandler := connect.NewUnaryHandler(
 		BackrestClearHistoryProcedure,
 		svc.ClearHistory,
@@ -546,6 +571,8 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 			backrestCancelHandler.ServeHTTP(w, r)
 		case BackrestGetLogsProcedure:
 			backrestGetLogsHandler.ServeHTTP(w, r)
+		case BackrestGetDownloadURLProcedure:
+			backrestGetDownloadURLHandler.ServeHTTP(w, r)
 		case BackrestClearHistoryProcedure:
 			backrestClearHistoryHandler.ServeHTTP(w, r)
 		case BackrestPathAutocompleteProcedure:
@@ -621,6 +648,10 @@ func (UnimplementedBackrestHandler) Cancel(context.Context, *connect.Request[typ
 
 func (UnimplementedBackrestHandler) GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetLogs is not implemented"))
+}
+
+func (UnimplementedBackrestHandler) GetDownloadURL(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetDownloadURL is not implemented"))
 }
 
 func (UnimplementedBackrestHandler) ClearHistory(context.Context, *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error) {

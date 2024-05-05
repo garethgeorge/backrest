@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -464,6 +466,26 @@ func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.L
 		return nil, fmt.Errorf("get log data %v: %w", req.Msg.GetRef(), err)
 	}
 	return connect.NewResponse(&types.BytesValue{Value: data}), nil
+}
+
+func (s *BackrestHandler) GetDownloadURL(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error) {
+	op, err := s.oplog.Get(req.Msg.Value)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get operation %v: %w", req.Msg.Value, err)
+	}
+	_, ok := op.Op.(*v1.Operation_OperationRestore)
+	if !ok {
+		return nil, fmt.Errorf("operation %v is not a restore operation", req.Msg.Value)
+	}
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(op.Id))
+	signature, err := generateSignature(b)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate signature: %w", err)
+	}
+	return connect.NewResponse(&types.StringValue{
+		Value: fmt.Sprintf("./download/%x-%s/", op.Id, hex.EncodeToString(signature)),
+	}), nil
 }
 
 func (s *BackrestHandler) PathAutocomplete(ctx context.Context, path *connect.Request[types.StringValue]) (*connect.Response[types.StringList], error) {

@@ -154,8 +154,6 @@ Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
 {{ if .Error -}}
 Error: {{ .Error }}
 {{ end }}
-{{ if .Items -}}
-
 `
 
 var templateForSnapshotStart = `
