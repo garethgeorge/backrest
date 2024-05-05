@@ -37,6 +37,7 @@ const (
 	Backrest_Stats_FullMethodName              = "/v1.Backrest/Stats"
 	Backrest_Cancel_FullMethodName             = "/v1.Backrest/Cancel"
 	Backrest_GetLogs_FullMethodName            = "/v1.Backrest/GetLogs"
+	Backrest_GetDownloadURL_FullMethodName     = "/v1.Backrest/GetDownloadURL"
 	Backrest_ClearHistory_FullMethodName       = "/v1.Backrest/ClearHistory"
 	Backrest_PathAutocomplete_FullMethodName   = "/v1.Backrest/PathAutocomplete"
 )
@@ -68,8 +69,10 @@ type BackrestClient interface {
 	Stats(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// GetBigOperationData returns the keyed large data for the given operation.
+	// GetLogs returns the keyed large data for the given operation.
 	GetLogs(ctx context.Context, in *LogDataRequest, opts ...grpc.CallOption) (*types.BytesValue, error)
+	// GetDownloadURL returns a signed download URL given a forget operation ID.
+	GetDownloadURL(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*types.StringValue, error)
 	// Clears the history of operations
 	ClearHistory(ctx context.Context, in *ClearHistoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
@@ -251,6 +254,15 @@ func (c *backrestClient) GetLogs(ctx context.Context, in *LogDataRequest, opts .
 	return out, nil
 }
 
+func (c *backrestClient) GetDownloadURL(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*types.StringValue, error) {
+	out := new(types.StringValue)
+	err := c.cc.Invoke(ctx, Backrest_GetDownloadURL_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *backrestClient) ClearHistory(ctx context.Context, in *ClearHistoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Backrest_ClearHistory_FullMethodName, in, out, opts...)
@@ -296,8 +308,10 @@ type BackrestServer interface {
 	Stats(context.Context, *types.StringValue) (*emptypb.Empty, error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error)
-	// GetBigOperationData returns the keyed large data for the given operation.
+	// GetLogs returns the keyed large data for the given operation.
 	GetLogs(context.Context, *LogDataRequest) (*types.BytesValue, error)
+	// GetDownloadURL returns a signed download URL given a forget operation ID.
+	GetDownloadURL(context.Context, *types.Int64Value) (*types.StringValue, error)
 	// Clears the history of operations
 	ClearHistory(context.Context, *ClearHistoryRequest) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
@@ -356,6 +370,9 @@ func (UnimplementedBackrestServer) Cancel(context.Context, *types.Int64Value) (*
 }
 func (UnimplementedBackrestServer) GetLogs(context.Context, *LogDataRequest) (*types.BytesValue, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLogs not implemented")
+}
+func (UnimplementedBackrestServer) GetDownloadURL(context.Context, *types.Int64Value) (*types.StringValue, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDownloadURL not implemented")
 }
 func (UnimplementedBackrestServer) ClearHistory(context.Context, *ClearHistoryRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearHistory not implemented")
@@ -667,6 +684,24 @@ func _Backrest_GetLogs_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Backrest_GetDownloadURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(types.Int64Value)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackrestServer).GetDownloadURL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Backrest_GetDownloadURL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackrestServer).GetDownloadURL(ctx, req.(*types.Int64Value))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Backrest_ClearHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ClearHistoryRequest)
 	if err := dec(in); err != nil {
@@ -769,6 +804,10 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetLogs",
 			Handler:    _Backrest_GetLogs_Handler,
+		},
+		{
+			MethodName: "GetDownloadURL",
+			Handler:    _Backrest_GetDownloadURL_Handler,
 		},
 		{
 			MethodName: "ClearHistory",

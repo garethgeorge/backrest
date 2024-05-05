@@ -196,7 +196,13 @@ export const OperationRow = ({
         ) : null}
         {operation.status == OperationStatus.STATUS_SUCCESS ? (<>
           <br />
-          <Button type="link" href={"/download/" + operation.id.toString(16) + '/'} target="_blank">Download File(s)</Button>
+          <Button type="link" onClick={() => {
+            backrestService.getDownloadURL({ value: operation.id }).then((resp) => {
+              window.open(resp.value, "_blank");
+            }).catch((e) => {
+              alertApi?.error("Failed to fetch download URL: " + e.message);
+            });
+          }}>Download File(s)</Button>
         </>) : null}
       </>
     );

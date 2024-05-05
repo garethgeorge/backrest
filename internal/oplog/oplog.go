@@ -87,8 +87,7 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 
 // Scan checks the log for incomplete operations. Should only be called at startup.
 func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
-	removeIds := make([]int64, 0)
-
+	zap.L().Debug("scanning oplog for incomplete operations")
 	err := o.db.Update(func(tx *bolt.Tx) error {
 		sysBucket := tx.Bucket(SystemBucket)
 		opLogBucket := tx.Bucket(OpLogBucket)
@@ -96,7 +95,7 @@ func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
 		if lastValidated := sysBucket.Get([]byte("last_validated")); lastValidated != nil {
 			c.Seek(lastValidated)
 		}
-		for k, v := c.First(); k != nil; k, v = c.Next() {
+		for k, v := c.Next(); k != nil; k, v = c.Next() {
 			op := &v1.Operation{}
 			if err := proto.Unmarshal(v, op); err != nil {
 				zap.L().Error("error unmarshalling operation, there may be corruption in the oplog", zap.Error(err))
@@ -104,20 +103,18 @@ func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
 			}
 
 			if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED || op.Status == v1.OperationStatus_STATUS_USER_CANCELLED || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
-				// remove pending or user cancelled operations.
-				removeIds = append(removeIds, op.Id)
+				o.deleteOperationHelper(tx, op.Id)
 				continue
 			} else if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
 				onIncomplete(op)
-				removeIds = append(removeIds, op.Id)
 			}
 
 			if err := o.addOperationHelper(tx, op); err != nil {
 				zap.L().Error("error re-adding operation, there may be corruption in the oplog", zap.Error(err))
-				continue
 			}
 		}
 		if lastValidated, _ := c.Last(); lastValidated != nil {
+			zap.L().Debug("checkpointing last_validated key")
 			if err := sysBucket.Put([]byte("last_validated"), lastValidated); err != nil {
 				return fmt.Errorf("checkpointing last_validated key: %w", err)
 			}
@@ -127,12 +124,7 @@ func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
 	if err != nil {
 		return fmt.Errorf("scanning log: %v", err)
 	}
-
-	if len(removeIds) > 0 {
-		if err := o.Delete(removeIds...); err != nil {
-			return fmt.Errorf("removing incomplete operations: %w", err)
-		}
-	}
+	zap.L().Debug("scan complete")
 	return nil
 }
 
