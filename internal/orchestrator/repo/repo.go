@@ -36,6 +36,10 @@ func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath stri
 	}
 
 	var opts []restic.GenericOption
+	if p := repoConfig.GetPassword(); p != "" {
+		opts = append(opts, restic.WithEnv("RESTIC_PASSWORD="+p))
+	}
+
 	opts = append(opts, restic.WithEnviron())
 	opts = append(opts, restic.WithEnv("RESTIC_PROGRESS_FPS=2"))
 
@@ -43,10 +47,6 @@ func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath stri
 		for _, e := range env {
 			opts = append(opts, restic.WithEnv(ExpandEnv(e)))
 		}
-	}
-
-	if p := repoConfig.GetPassword(); p != "" {
-		opts = append(opts, restic.WithEnv("RESTIC_PASSWORD="+p))
 	}
 
 	for _, f := range repoConfig.GetFlags() {
@@ -97,7 +97,7 @@ func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) 
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
 
-	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--tag", TagForPlan(plan.Id), "--tag", TagForInstance(r.config.Instance)))
+	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--tag", TagForPlan(plan.Id)+","+TagForInstance(r.config.Instance)))
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for plan %q: %w", plan.Id, err)
 	}

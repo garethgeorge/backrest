@@ -79,8 +79,10 @@ func (r *Repo) pipeCmdOutputToWriter(cmd *exec.Cmd, handlers ...io.Writer) {
 		handlers = append(stderrHandlers, cmd.Stderr)
 	}
 
-	cmd.Stdout = io.MultiWriter(handlers...)
-	cmd.Stderr = io.MultiWriter(handlers...)
+	mw := io.MultiWriter(handlers...)
+	mw = &ioutil.SynchronizedWriter{W: mw}
+	cmd.Stdout = mw
+	cmd.Stderr = mw
 }
 
 // init initializes the repo, the command will be cancelled with the context.

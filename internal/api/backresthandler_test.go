@@ -51,17 +51,20 @@ func TestUpdateConfig(t *testing.T) {
 		{
 			name: "good modno",
 			req: &v1.Config{
-				Modno: 1234,
+				Modno:    1234,
+				Instance: "test",
 			},
 			wantErr: false,
 			res: &v1.Config{
-				Modno: 1235,
+				Modno:    1235,
+				Instance: "test",
 			},
 		},
 		{
 			name: "reject when validation fails",
 			req: &v1.Config{
-				Modno: 1235,
+				Modno:    1235,
+				Instance: "test",
 				Repos: []*v1.Repo{
 					{},
 				},
@@ -332,7 +335,8 @@ func TestCancelBackup(t *testing.T) {
 
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
-			Modno: 1234,
+			Modno:    1234,
+			Instance: "test",
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
