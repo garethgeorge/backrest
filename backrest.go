@@ -9,8 +9,10 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
@@ -46,7 +48,8 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	go onterm(cancel)
+	go onterm(os.Interrupt, cancel)
+	go onterm(os.Interrupt, newForceKillHandler())
 
 	// Load the configuration
 	configStore := createConfigProvider()
@@ -146,11 +149,13 @@ func createConfigProvider() config.ConfigStore {
 	}
 }
 
-func onterm(callback func()) {
+func onterm(s os.Signal, callback func()) {
 	sigchan := make(chan os.Signal, 1)
-	signal.Notify(sigchan, os.Interrupt, syscall.SIGTERM)
-	<-sigchan
-	callback()
+	signal.Notify(sigchan, s, syscall.SIGTERM)
+	for {
+		<-sigchan
+		callback()
+	}
 }
 
 func getSecret() []byte {
@@ -173,4 +178,18 @@ func getSecret() []byte {
 		zap.S().Fatalf("error writing secret to file: %v", err)
 	}
 	return secret
+}
+
+func newForceKillHandler() func() {
+	var times atomic.Int32
+	return func() {
+		if times.Load() > 0 {
+			buf := make([]byte, 1<<16)
+			runtime.Stack(buf, true)
+			os.Stderr.Write(buf)
+			zap.S().Fatal("dumped all running coroutine stack traces, forcing termination")
+		}
+		times.Add(1)
+		zap.S().Warn("attempting graceful shutdown, to force termination press Ctrl+C again")
+	}
 }
