@@ -20,7 +20,7 @@ type PruneTask struct {
 	force bool
 }
 
-func NewOneoffPruneTask(repoID, planID string, flowID int64, at time.Time, force bool) Task {
+func NewOneoffPruneTask(repoID, planID string, at time.Time, force bool) Task {
 	return &PruneTask{
 		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("prune for plan %q in repo %q", planID, repoID),
@@ -28,8 +28,7 @@ func NewOneoffPruneTask(repoID, planID string, flowID int64, at time.Time, force
 			TaskPlanID: planID,
 		},
 		OneoffTask: OneoffTask{
-			FlowID: flowID,
-			RunAt:  at,
+			RunAt: at,
 			ProtoOp: &v1.Operation{
 				Op: &v1.Operation_OperationPrune{},
 			},
