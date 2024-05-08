@@ -37,6 +37,7 @@ const (
 	Backrest_Stats_FullMethodName              = "/v1.Backrest/Stats"
 	Backrest_Cancel_FullMethodName             = "/v1.Backrest/Cancel"
 	Backrest_GetLogs_FullMethodName            = "/v1.Backrest/GetLogs"
+	Backrest_RunCommand_FullMethodName         = "/v1.Backrest/RunCommand"
 	Backrest_GetDownloadURL_FullMethodName     = "/v1.Backrest/GetDownloadURL"
 	Backrest_ClearHistory_FullMethodName       = "/v1.Backrest/ClearHistory"
 	Backrest_PathAutocomplete_FullMethodName   = "/v1.Backrest/PathAutocomplete"
@@ -71,6 +72,8 @@ type BackrestClient interface {
 	Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetLogs returns the keyed large data for the given operation.
 	GetLogs(ctx context.Context, in *LogDataRequest, opts ...grpc.CallOption) (*types.BytesValue, error)
+	// RunCommand executes a generic restic command on the repository.
+	RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (Backrest_RunCommandClient, error)
 	// GetDownloadURL returns a signed download URL given a forget operation ID.
 	GetDownloadURL(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*types.StringValue, error)
 	// Clears the history of operations
@@ -254,6 +257,38 @@ func (c *backrestClient) GetLogs(ctx context.Context, in *LogDataRequest, opts .
 	return out, nil
 }
 
+func (c *backrestClient) RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (Backrest_RunCommandClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Backrest_ServiceDesc.Streams[1], Backrest_RunCommand_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &backrestRunCommandClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Backrest_RunCommandClient interface {
+	Recv() (*types.BytesValue, error)
+	grpc.ClientStream
+}
+
+type backrestRunCommandClient struct {
+	grpc.ClientStream
+}
+
+func (x *backrestRunCommandClient) Recv() (*types.BytesValue, error) {
+	m := new(types.BytesValue)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *backrestClient) GetDownloadURL(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*types.StringValue, error) {
 	out := new(types.StringValue)
 	err := c.cc.Invoke(ctx, Backrest_GetDownloadURL_FullMethodName, in, out, opts...)
@@ -310,6 +345,8 @@ type BackrestServer interface {
 	Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error)
 	// GetLogs returns the keyed large data for the given operation.
 	GetLogs(context.Context, *LogDataRequest) (*types.BytesValue, error)
+	// RunCommand executes a generic restic command on the repository.
+	RunCommand(*RunCommandRequest, Backrest_RunCommandServer) error
 	// GetDownloadURL returns a signed download URL given a forget operation ID.
 	GetDownloadURL(context.Context, *types.Int64Value) (*types.StringValue, error)
 	// Clears the history of operations
@@ -370,6 +407,9 @@ func (UnimplementedBackrestServer) Cancel(context.Context, *types.Int64Value) (*
 }
 func (UnimplementedBackrestServer) GetLogs(context.Context, *LogDataRequest) (*types.BytesValue, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLogs not implemented")
+}
+func (UnimplementedBackrestServer) RunCommand(*RunCommandRequest, Backrest_RunCommandServer) error {
+	return status.Errorf(codes.Unimplemented, "method RunCommand not implemented")
 }
 func (UnimplementedBackrestServer) GetDownloadURL(context.Context, *types.Int64Value) (*types.StringValue, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDownloadURL not implemented")
@@ -684,6 +724,27 @@ func _Backrest_GetLogs_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Backrest_RunCommand_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(RunCommandRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(BackrestServer).RunCommand(m, &backrestRunCommandServer{stream})
+}
+
+type Backrest_RunCommandServer interface {
+	Send(*types.BytesValue) error
+	grpc.ServerStream
+}
+
+type backrestRunCommandServer struct {
+	grpc.ServerStream
+}
+
+func (x *backrestRunCommandServer) Send(m *types.BytesValue) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 func _Backrest_GetDownloadURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.Int64Value)
 	if err := dec(in); err != nil {
@@ -822,6 +883,11 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "GetOperationEvents",
 			Handler:       _Backrest_GetOperationEvents_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "RunCommand",
+			Handler:       _Backrest_RunCommand_Handler,
 			ServerStreams: true,
 		},
 	},

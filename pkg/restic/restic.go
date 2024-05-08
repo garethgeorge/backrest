@@ -124,10 +124,10 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 	args = append(args, paths...)
 
 	cmd := r.commandWithContext(ctx, args, opts...)
-	fullOutput := ioutil.NewOutputCapturer(outputBufferLimit)
+	outputForErr := ioutil.NewOutputCapturer(outputBufferLimit)
 	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
 	reader, writer := nio.Pipe(buf)
-	r.pipeCmdOutputToWriter(cmd, fullOutput, writer)
+	r.pipeCmdOutputToWriter(cmd, outputForErr, writer)
 
 	var readErr error
 	var summary *BackupProgressEntry
@@ -158,7 +158,7 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 				}
 			}
 		}
-		return summary, newCmdErrorPreformatted(ctx, cmd, string(fullOutput.Bytes()), errors.Join(cmdErr, readErr))
+		return summary, newCmdErrorPreformatted(ctx, cmd, string(outputForErr.Bytes()), errors.Join(cmdErr, readErr))
 	}
 	return summary, nil
 }
@@ -239,9 +239,10 @@ func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...Generic
 
 func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
 	cmd := r.commandWithContext(ctx, []string{"restore", "--json", snapshot}, opts...)
-	capture := ioutil.NewOutputCapturer(outputBufferLimit) // for error reporting.
-	reader, writer := io.Pipe()
-	r.pipeCmdOutputToWriter(cmd, writer, capture)
+	outputForErr := ioutil.NewOutputCapturer(outputBufferLimit) // for error reporting.
+	buf := buffer.New(32 * 1024)                                // 32KB IO buffer for the realtime event parsing
+	reader, writer := nio.Pipe(buf)
+	r.pipeCmdOutputToWriter(cmd, writer, outputForErr)
 
 	var readErr error
 	var summary *RestoreProgressEntry
@@ -272,7 +273,7 @@ func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*Rest
 			}
 		}
 
-		return summary, newCmdErrorPreformatted(ctx, cmd, string(capture.Bytes()), errors.Join(cmdErr, readErr))
+		return summary, newCmdErrorPreformatted(ctx, cmd, string(outputForErr.Bytes()), errors.Join(cmdErr, readErr))
 	}
 	return summary, nil
 }
@@ -337,6 +338,14 @@ func (r *Repo) AddTags(ctx context.Context, snapshotIDs []string, tags []string,
 	r.pipeCmdOutputToWriter(cmd, output)
 	if err := cmd.Run(); err != nil {
 		return newCmdError(ctx, cmd, output.String(), err)
+	}
+	return nil
+}
+
+func (r *Repo) GenericCommand(ctx context.Context, args []string, opts ...GenericOption) error {
+	cmd := r.commandWithContext(ctx, args, opts...)
+	if err := cmd.Run(); err != nil {
+		return err
 	}
 	return nil
 }

@@ -18,7 +18,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// RepoOrchestrator is responsible for managing a single repo.
+// RepoOrchestrator implements higher level repository operations on top of
+// the restic package. It can be thought of as a controller for a repo.
 type RepoOrchestrator struct {
 	mu sync.Mutex
 
@@ -326,6 +327,8 @@ func (r *RepoOrchestrator) Stats(ctx context.Context) (*v1.RepoStats, error) {
 func (r *RepoOrchestrator) AddTags(ctx context.Context, snapshotIDs []string, tags []string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
 
 	for idx, snapshotIDs := range chunkBy(snapshotIDs, 20) {
 		r.l.Debug("adding tag to snapshots", zap.Strings("snapshots", snapshotIDs), zap.Strings("tags", tags))
@@ -335,6 +338,24 @@ func (r *RepoOrchestrator) AddTags(ctx context.Context, snapshotIDs []string, ta
 	}
 
 	return nil
+}
+
+// RunCommand runs a command in the repo's environment. Output is buffered and sent to the onProgress callback in batches.
+func (r *RepoOrchestrator) RunCommand(ctx context.Context, command string, onProgress func([]byte)) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
+
+	r.l.Debug("running command", zap.String("command", command))
+	args, err := shlex.Split(command)
+	if err != nil {
+		return fmt.Errorf("parse command: %w", err)
+	}
+
+	ctx = restic.ContextWithLogger(ctx, &callbackWriter{callback: onProgress})
+
+	return r.repo.GenericCommand(ctx, args)
 }
 
 func (r *RepoOrchestrator) Config() *v1.Repo {
@@ -355,4 +376,13 @@ func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
 		items, chunks = items[chunkSize:], append(chunks, items[0:chunkSize:chunkSize])
 	}
 	return append(chunks, items)
+}
+
+type callbackWriter struct {
+	callback func([]byte)
+}
+
+func (w *callbackWriter) Write(p []byte) (n int, err error) {
+	w.callback(p)
+	return len(p), nil
 }

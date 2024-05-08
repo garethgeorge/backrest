@@ -411,6 +411,47 @@ func (s *BackrestHandler) Stats(ctx context.Context, req *connect.Request[types.
 
 }
 
+func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest], resp *connect.ServerStream[types.BytesValue]) error {
+	repo, err := s.orchestrator.GetRepoOrchestrator(req.Msg.RepoId)
+	if err != nil {
+		return fmt.Errorf("failed to get repo %q: %w", req.Msg.RepoId, err)
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	errChan := make(chan error, 1)
+	var outputBuf []byte
+
+	go func() {
+		if err := repo.RunCommand(ctx, req.Msg.Command, func(output []byte) {
+			outputBuf = append(outputBuf, output...)
+		}); err != nil {
+			errChan <- err
+		}
+		cancel()
+	}()
+
+	for {
+		select {
+		case err := <-errChan:
+			if err := resp.Send(&types.BytesValue{Value: outputBuf}); err != nil {
+				return fmt.Errorf("failed to write output: %w", err)
+			}
+			return err
+		case <-ctx.Done():
+			if err := resp.Send(&types.BytesValue{Value: outputBuf}); err != nil {
+				return fmt.Errorf("failed to write output: %w", err)
+			}
+			return nil
+		case <-time.After(100 * time.Millisecond):
+			if err := resp.Send(&types.BytesValue{Value: outputBuf}); err != nil {
+				return fmt.Errorf("failed to write output: %w", err)
+			}
+			outputBuf = outputBuf[:0] // clear the buffer and continue
+		}
+	}
+}
+
 func (s *BackrestHandler) Cancel(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {
 	if err := s.orchestrator.CancelOperation(req.Msg.Value, v1.OperationStatus_STATUS_USER_CANCELLED); err != nil {
 		return nil, err

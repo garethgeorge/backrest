@@ -11,12 +11,12 @@ import (
 // pipeResticLogsToWriter sets the restic logger to write to the provided writer.
 // returns a new context with the logger set and a function to flush the logs.
 func forwardResticLogs(ctx context.Context) (context.Context, func()) {
+	writer := logging.WriterFromContext(ctx)
+	if writer == nil {
+		return ctx, func() {}
+	}
 	capture := ioutil.NewOutputCapturer(64 * 1024)
 	return restic.ContextWithLogger(ctx, capture), func() {
-		writer := logging.WriterFromContext(ctx)
-		if writer == nil {
-			return
-		}
 		_, _ = writer.Write(capture.Bytes())
 	}
 }
