@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"crypto/hmac"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -57,52 +56,13 @@ func NewDownloadHandler(oplog *oplog.OpLog) http.Handler {
 		w.Header().Set("Content-Transfer-Encoding", "binary")
 
 		gzw := gzip.NewWriter(w)
-		defer gzw.Close()
-		t := tar.NewWriter(gzw)
-		zap.L().Info("creating tar archive", zap.String("path", fullPath))
-		if err := filepath.Walk(fullPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if info.IsDir() {
-				return nil
-			}
-
-			stat, err := os.Stat(path)
-			if err != nil {
-				zap.L().Warn("error stating file", zap.String("path", path), zap.Error(err))
-				return nil
-			}
-			file, err := os.OpenFile(path, os.O_RDONLY, 0)
-			if err != nil {
-				zap.L().Warn("error opening file", zap.String("path", path), zap.Error(err))
-				return nil
-			}
-			defer file.Close()
-
-			if err := t.WriteHeader(&tar.Header{
-				Name:    path[len(fullPath)+1:],
-				Size:    stat.Size(),
-				Mode:    int64(stat.Mode()),
-				ModTime: stat.ModTime(),
-			}); err != nil {
-				zap.L().Warn("error writing tar header", zap.String("path", path), zap.Error(err))
-				return nil
-			}
-			if n, err := io.CopyN(t, file, stat.Size()); err != nil {
-				zap.L().Warn("error copying file to tar archive", zap.String("path", path), zap.Error(err))
-			} else if n != stat.Size() {
-				zap.L().Warn("error copying file to tar archive: short write", zap.String("path", path))
-			}
-			return nil
-		}); err != nil {
+		if err := tarDirectory(w, fullPath); err != nil {
 			zap.S().Errorf("error creating tar archive: %v", err)
 			http.Error(w, "error creating tar archive", http.StatusInternalServerError)
+			return
 		}
-		t.Flush()
-		if err := t.Close(); err != nil {
-			zap.S().Errorf("error closing tar archive: %v", err)
-			http.Error(w, "error closing tar archive", http.StatusInternalServerError)
+		if err := gzw.Close(); err != nil {
+			http.Error(w, "error creating tar archive", http.StatusInternalServerError)
 		}
 	})
 }
@@ -128,7 +88,7 @@ func parseDownloadPath(p string) (int64, string, string, error) {
 }
 
 func checkDownloadURLSignature(id int64, signature string) (bool, error) {
-	wantSignatureBytes, err := signOperationIDForDownload(id)
+	wantSignatureBytes, err := signInt64(id)
 	if err != nil {
 		return false, err
 	}
@@ -139,12 +99,41 @@ func checkDownloadURLSignature(id int64, signature string) (bool, error) {
 	return hmac.Equal(wantSignatureBytes, signatureBytes), nil
 }
 
-func signOperationIDForDownload(id int64) ([]byte, error) {
-	opIDBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(opIDBytes, uint64(id))
-	signature, err := generateSignature(opIDBytes)
-	if err != nil {
-		return nil, err
+func tarDirectory(w io.Writer, dirpath string) error {
+	t := tar.NewWriter(w)
+	if err := filepath.Walk(dirpath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		stat, err := os.Stat(path)
+		if err != nil {
+			return fmt.Errorf("stat %v: %w", path, err)
+		}
+		file, err := os.OpenFile(path, os.O_RDONLY, 0)
+		if err != nil {
+			return fmt.Errorf("open %v: %w", path, err)
+		}
+		defer file.Close()
+
+		if err := t.WriteHeader(&tar.Header{
+			Name:    path[len(dirpath)+1:],
+			Size:    stat.Size(),
+			Mode:    int64(stat.Mode()),
+			ModTime: stat.ModTime(),
+		}); err != nil {
+			return err
+		}
+		if n, err := io.CopyN(t, file, stat.Size()); err != nil {
+			zap.L().Warn("error copying file to tar archive", zap.String("path", path), zap.Error(err))
+		} else if n != stat.Size() {
+			zap.L().Warn("error copying file to tar archive: short write", zap.String("path", path))
+		}
+		return nil
+	}); err != nil {
+		return err
 	}
-	return signature, nil
+	return t.Flush()
 }
