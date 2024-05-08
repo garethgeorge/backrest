@@ -503,3 +503,46 @@ export class LsEntry extends Message<LsEntry> {
   }
 }
 
+/**
+ * @generated from message v1.RunCommandRequest
+ */
+export class RunCommandRequest extends Message<RunCommandRequest> {
+  /**
+   * @generated from field: string repo_id = 1;
+   */
+  repoId = "";
+
+  /**
+   * @generated from field: string command = 2;
+   */
+  command = "";
+
+  constructor(data?: PartialMessage<RunCommandRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.RunCommandRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "command", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RunCommandRequest {
+    return new RunCommandRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RunCommandRequest {
+    return new RunCommandRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RunCommandRequest {
+    return new RunCommandRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RunCommandRequest | PlainMessage<RunCommandRequest> | undefined, b: RunCommandRequest | PlainMessage<RunCommandRequest> | undefined): boolean {
+    return proto3.util.equals(RunCommandRequest, a, b);
+  }
+}
+

@@ -7,6 +7,88 @@ import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialM
 import { Message, proto3 } from "@bufbuild/protobuf";
 
 /**
+ * @generated from message v1.HubConfig
+ */
+export class HubConfig extends Message<HubConfig> {
+  /**
+   * @generated from field: repeated v1.HubConfig.InstanceInfo instances = 1;
+   */
+  instances: HubConfig_InstanceInfo[] = [];
+
+  constructor(data?: PartialMessage<HubConfig>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.HubConfig";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "instances", kind: "message", T: HubConfig_InstanceInfo, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HubConfig {
+    return new HubConfig().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HubConfig {
+    return new HubConfig().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HubConfig {
+    return new HubConfig().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: HubConfig | PlainMessage<HubConfig> | undefined, b: HubConfig | PlainMessage<HubConfig> | undefined): boolean {
+    return proto3.util.equals(HubConfig, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.HubConfig.InstanceInfo
+ */
+export class HubConfig_InstanceInfo extends Message<HubConfig_InstanceInfo> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * secret used to authenticate with the hub.
+   *
+   * @generated from field: string secret = 2;
+   */
+  secret = "";
+
+  constructor(data?: PartialMessage<HubConfig_InstanceInfo>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.HubConfig.InstanceInfo";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "secret", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HubConfig_InstanceInfo {
+    return new HubConfig_InstanceInfo().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HubConfig_InstanceInfo {
+    return new HubConfig_InstanceInfo().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HubConfig_InstanceInfo {
+    return new HubConfig_InstanceInfo().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: HubConfig_InstanceInfo | PlainMessage<HubConfig_InstanceInfo> | undefined, b: HubConfig_InstanceInfo | PlainMessage<HubConfig_InstanceInfo> | undefined): boolean {
+    return proto3.util.equals(HubConfig_InstanceInfo, a, b);
+  }
+}
+
+/**
  * Config is the top level config object for restic UI.
  *
  * @generated from message v1.Config

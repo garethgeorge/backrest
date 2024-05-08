@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plan } from "../../gen/ts/v1/config_pb";
-import { Flex, Tabs, Tooltip, Typography } from "antd";
+import { Button, Flex, Tabs, Tooltip, Typography } from "antd";
 import { useAlertApi } from "../components/Alerts";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
@@ -9,9 +9,11 @@ import { backrestService } from "../api";
 import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
 import { SpinButton } from "../components/SpinButton";
 import { shouldHideStatus } from "../state/oplog";
+import { useShowModal } from "../components/ModalManager";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const alertsApi = useAlertApi()!;
+  const showModal = useShowModal();
 
   const handleBackupNow = async () => {
     try {
@@ -76,6 +78,14 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           <SpinButton type="default" onClickAsync={handleClearErrorHistory}>
             Clear Error History
           </SpinButton>
+        </Tooltip>
+        <Tooltip title="Open a restic shell to run commands on the repository.">
+          <Button type="default" onClick={async () => {
+            const { RunCommandModal } = await import("./RunCommandModal");
+            showModal(<RunCommandModal repoId={plan.repo!} />);
+          }}>
+            Run Command
+          </Button>
         </Tooltip>
       </Flex>
       <Tabs

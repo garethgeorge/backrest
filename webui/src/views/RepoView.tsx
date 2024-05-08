@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Repo } from "../../gen/ts/v1/config_pb";
-import { Col, Empty, Flex, Row, Spin, TabsProps, Tabs, Tooltip, Typography } from "antd";
+import { Col, Empty, Flex, Row, Spin, TabsProps, Tabs, Tooltip, Typography, Button } from "antd";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY, STATS_OPERATION_HISTORY } from "../constants";
@@ -14,10 +14,12 @@ import { SpinButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import { useAlertApi } from "../components/Alerts";
 import { LineChart } from "@mui/x-charts";
+import { useShowModal } from "../components/ModalManager";
 
 
 export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   const [config, setConfig] = useConfig();
+  const showModal = useShowModal();
 
   // Task handlers
   const handleIndexNow = async () => {
@@ -98,6 +100,14 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           <SpinButton type="default" onClickAsync={handleStatsNow}>
             Compute Stats
           </SpinButton>
+        </Tooltip>
+        <Tooltip title="Open a restic shell to run commands on the repository.">
+          <Button type="default" onClick={async () => {
+            const { RunCommandModal } = await import("./RunCommandModal");
+            showModal(<RunCommandModal repoId={repo.id!} />);
+          }}>
+            Run Command
+          </Button>
         </Tooltip>
       </Flex>
       <Tabs

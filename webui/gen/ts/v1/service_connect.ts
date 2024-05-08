@@ -6,7 +6,7 @@
 import { Empty, MethodKind } from "@bufbuild/protobuf";
 import { Config, Repo } from "./config_pb.js";
 import { OperationEvent, OperationList } from "./operations_pb.js";
-import { ClearHistoryRequest, ForgetRequest, GetOperationsRequest, ListSnapshotFilesRequest, ListSnapshotFilesResponse, ListSnapshotsRequest, LogDataRequest, RestoreSnapshotRequest } from "./service_pb.js";
+import { ClearHistoryRequest, ForgetRequest, GetOperationsRequest, ListSnapshotFilesRequest, ListSnapshotFilesResponse, ListSnapshotsRequest, LogDataRequest, RestoreSnapshotRequest, RunCommandRequest } from "./service_pb.js";
 import { ResticSnapshotList } from "./restic_pb.js";
 import { BytesValue, Int64Value, StringList, StringValue } from "../types/value_pb.js";
 
@@ -177,6 +177,17 @@ export const Backrest = {
       I: LogDataRequest,
       O: BytesValue,
       kind: MethodKind.Unary,
+    },
+    /**
+     * RunCommand executes a generic restic command on the repository.
+     *
+     * @generated from rpc v1.Backrest.RunCommand
+     */
+    runCommand: {
+      name: "RunCommand",
+      I: RunCommandRequest,
+      O: BytesValue,
+      kind: MethodKind.ServerStreaming,
     },
     /**
      * GetDownloadURL returns a signed download URL given a forget operation ID.
