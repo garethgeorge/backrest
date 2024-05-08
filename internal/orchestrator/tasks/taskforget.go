@@ -129,7 +129,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 func useLegacyCompatMode(oplog *oplog.OpLog, planID string) (bool, error) {
 	instanceIDs := make(map[string]struct{})
 	if err := oplog.ForEachByPlan(planID, indexutil.CollectAll(), func(op *v1.Operation) error {
-		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
+		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok && !snapshotOp.OperationIndexSnapshot.GetForgot() {
 			tags := snapshotOp.OperationIndexSnapshot.GetSnapshot().GetTags()
 			instanceIDs[repo.InstanceIDFromTags(tags)] = struct{}{}
 		}

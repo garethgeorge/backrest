@@ -420,34 +420,56 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 	ctx, cancel := context.WithCancel(ctx)
 
 	errChan := make(chan error, 1)
-	var outputBuf []byte
-
+	outputs := make(chan []byte, 100)
 	go func() {
 		if err := repo.RunCommand(ctx, req.Msg.Command, func(output []byte) {
-			outputBuf = append(outputBuf, output...)
+			outputs <- output
 		}); err != nil {
 			errChan <- err
 		}
 		cancel()
 	}()
 
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	bufSize := 32 * 1024
+	buf := make([]byte, 0, bufSize)
+
+	flush := func() error {
+		if len(buf) > 0 {
+			if err := resp.Send(&types.BytesValue{Value: buf}); err != nil {
+				return fmt.Errorf("failed to write output: %w", err)
+			}
+			buf = buf[:0]
+		}
+		return nil
+	}
+
 	for {
 		select {
 		case err := <-errChan:
-			if err := resp.Send(&types.BytesValue{Value: outputBuf}); err != nil {
-				return fmt.Errorf("failed to write output: %w", err)
+			if err := flush(); err != nil {
+				return err
 			}
 			return err
 		case <-ctx.Done():
-			if err := resp.Send(&types.BytesValue{Value: outputBuf}); err != nil {
-				return fmt.Errorf("failed to write output: %w", err)
+			return flush()
+		case output := <-outputs:
+			if len(output)+len(buf) > bufSize {
+				flush()
 			}
-			return nil
-		case <-time.After(100 * time.Millisecond):
-			if err := resp.Send(&types.BytesValue{Value: outputBuf}); err != nil {
-				return fmt.Errorf("failed to write output: %w", err)
+			if len(output) > bufSize {
+				if err := resp.Send(&types.BytesValue{Value: output}); err != nil {
+					return fmt.Errorf("failed to write output: %w", err)
+				}
+				continue
 			}
-			outputBuf = outputBuf[:0] // clear the buffer and continue
+			buf = append(buf, output...)
+		case <-ticker.C:
+			if len(buf) > 0 {
+				flush()
+			}
 		}
 	}
 }
