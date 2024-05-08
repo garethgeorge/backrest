@@ -3,7 +3,14 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
+import type {
+  BinaryReadOptions,
+  FieldList,
+  JsonReadOptions,
+  JsonValue,
+  PartialMessage,
+  PlainMessage,
+} from "@bufbuild/protobuf";
 import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
 
 /**
@@ -65,28 +72,57 @@ export class ResticSnapshot extends Message<ResticSnapshot> {
   static readonly typeName = "v1.ResticSnapshot";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "unix_time_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    {
+      no: 2,
+      name: "unix_time_ms",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
     { no: 3, name: "hostname", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "tree", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "parent", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 7, name: "paths", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 8, name: "tags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    {
+      no: 7,
+      name: "paths",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+      repeated: true,
+    },
+    {
+      no: 8,
+      name: "tags",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+      repeated: true,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResticSnapshot {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): ResticSnapshot {
     return new ResticSnapshot().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResticSnapshot {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): ResticSnapshot {
     return new ResticSnapshot().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResticSnapshot {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): ResticSnapshot {
     return new ResticSnapshot().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ResticSnapshot | PlainMessage<ResticSnapshot> | undefined, b: ResticSnapshot | PlainMessage<ResticSnapshot> | undefined): boolean {
+  static equals(
+    a: ResticSnapshot | PlainMessage<ResticSnapshot> | undefined,
+    b: ResticSnapshot | PlainMessage<ResticSnapshot> | undefined,
+  ): boolean {
     return proto3.util.equals(ResticSnapshot, a, b);
   }
 }
@@ -110,22 +146,40 @@ export class ResticSnapshotList extends Message<ResticSnapshotList> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.ResticSnapshotList";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "snapshots", kind: "message", T: ResticSnapshot, repeated: true },
+    {
+      no: 1,
+      name: "snapshots",
+      kind: "message",
+      T: ResticSnapshot,
+      repeated: true,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResticSnapshotList {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): ResticSnapshotList {
     return new ResticSnapshotList().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResticSnapshotList {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): ResticSnapshotList {
     return new ResticSnapshotList().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResticSnapshotList {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): ResticSnapshotList {
     return new ResticSnapshotList().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ResticSnapshotList | PlainMessage<ResticSnapshotList> | undefined, b: ResticSnapshotList | PlainMessage<ResticSnapshotList> | undefined): boolean {
+  static equals(
+    a: ResticSnapshotList | PlainMessage<ResticSnapshotList> | undefined,
+    b: ResticSnapshotList | PlainMessage<ResticSnapshotList> | undefined,
+  ): boolean {
     return proto3.util.equals(ResticSnapshotList, a, b);
   }
 }
@@ -139,19 +193,22 @@ export class BackupProgressEntry extends Message<BackupProgressEntry> {
   /**
    * @generated from oneof v1.BackupProgressEntry.entry
    */
-  entry: {
-    /**
-     * @generated from field: v1.BackupProgressStatusEntry status = 1;
-     */
-    value: BackupProgressStatusEntry;
-    case: "status";
-  } | {
-    /**
-     * @generated from field: v1.BackupProgressSummary summary = 2;
-     */
-    value: BackupProgressSummary;
-    case: "summary";
-  } | { case: undefined; value?: undefined } = { case: undefined };
+  entry:
+    | {
+        /**
+         * @generated from field: v1.BackupProgressStatusEntry status = 1;
+         */
+        value: BackupProgressStatusEntry;
+        case: "status";
+      }
+    | {
+        /**
+         * @generated from field: v1.BackupProgressSummary summary = 2;
+         */
+        value: BackupProgressSummary;
+        case: "summary";
+      }
+    | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<BackupProgressEntry>) {
     super();
@@ -161,23 +218,47 @@ export class BackupProgressEntry extends Message<BackupProgressEntry> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.BackupProgressEntry";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "status", kind: "message", T: BackupProgressStatusEntry, oneof: "entry" },
-    { no: 2, name: "summary", kind: "message", T: BackupProgressSummary, oneof: "entry" },
+    {
+      no: 1,
+      name: "status",
+      kind: "message",
+      T: BackupProgressStatusEntry,
+      oneof: "entry",
+    },
+    {
+      no: 2,
+      name: "summary",
+      kind: "message",
+      T: BackupProgressSummary,
+      oneof: "entry",
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BackupProgressEntry {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): BackupProgressEntry {
     return new BackupProgressEntry().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BackupProgressEntry {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): BackupProgressEntry {
     return new BackupProgressEntry().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BackupProgressEntry {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): BackupProgressEntry {
     return new BackupProgressEntry().fromJsonString(jsonString, options);
   }
 
-  static equals(a: BackupProgressEntry | PlainMessage<BackupProgressEntry> | undefined, b: BackupProgressEntry | PlainMessage<BackupProgressEntry> | undefined): boolean {
+  static equals(
+    a: BackupProgressEntry | PlainMessage<BackupProgressEntry> | undefined,
+    b: BackupProgressEntry | PlainMessage<BackupProgressEntry> | undefined,
+  ): boolean {
     return proto3.util.equals(BackupProgressEntry, a, b);
   }
 }
@@ -230,27 +311,56 @@ export class BackupProgressStatusEntry extends Message<BackupProgressStatusEntry
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.BackupProgressStatusEntry";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "percent_done", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
+    {
+      no: 1,
+      name: "percent_done",
+      kind: "scalar",
+      T: 1 /* ScalarType.DOUBLE */,
+    },
     { no: 2, name: "total_files", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 3, name: "total_bytes", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 4, name: "files_done", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 5, name: "bytes_done", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 6, name: "current_file", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    {
+      no: 6,
+      name: "current_file",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+      repeated: true,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BackupProgressStatusEntry {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): BackupProgressStatusEntry {
     return new BackupProgressStatusEntry().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BackupProgressStatusEntry {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): BackupProgressStatusEntry {
     return new BackupProgressStatusEntry().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BackupProgressStatusEntry {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): BackupProgressStatusEntry {
     return new BackupProgressStatusEntry().fromJsonString(jsonString, options);
   }
 
-  static equals(a: BackupProgressStatusEntry | PlainMessage<BackupProgressStatusEntry> | undefined, b: BackupProgressStatusEntry | PlainMessage<BackupProgressStatusEntry> | undefined): boolean {
+  static equals(
+    a:
+      | BackupProgressStatusEntry
+      | PlainMessage<BackupProgressStatusEntry>
+      | undefined,
+    b:
+      | BackupProgressStatusEntry
+      | PlainMessage<BackupProgressStatusEntry>
+      | undefined,
+  ): boolean {
     return proto3.util.equals(BackupProgressStatusEntry, a, b);
   }
 }
@@ -337,33 +447,85 @@ export class BackupProgressSummary extends Message<BackupProgressSummary> {
   static readonly typeName = "v1.BackupProgressSummary";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "files_new", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 2, name: "files_changed", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 3, name: "files_unmodified", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    {
+      no: 2,
+      name: "files_changed",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
+    {
+      no: 3,
+      name: "files_unmodified",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
     { no: 4, name: "dirs_new", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 5, name: "dirs_changed", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 6, name: "dirs_unmodified", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    {
+      no: 5,
+      name: "dirs_changed",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
+    {
+      no: 6,
+      name: "dirs_unmodified",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
     { no: 7, name: "data_blobs", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 8, name: "tree_blobs", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 9, name: "data_added", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 10, name: "total_files_processed", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 11, name: "total_bytes_processed", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 12, name: "total_duration", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
-    { no: 13, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    {
+      no: 10,
+      name: "total_files_processed",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
+    {
+      no: 11,
+      name: "total_bytes_processed",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
+    {
+      no: 12,
+      name: "total_duration",
+      kind: "scalar",
+      T: 1 /* ScalarType.DOUBLE */,
+    },
+    {
+      no: 13,
+      name: "snapshot_id",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BackupProgressSummary {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): BackupProgressSummary {
     return new BackupProgressSummary().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BackupProgressSummary {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): BackupProgressSummary {
     return new BackupProgressSummary().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BackupProgressSummary {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): BackupProgressSummary {
     return new BackupProgressSummary().fromJsonString(jsonString, options);
   }
 
-  static equals(a: BackupProgressSummary | PlainMessage<BackupProgressSummary> | undefined, b: BackupProgressSummary | PlainMessage<BackupProgressSummary> | undefined): boolean {
+  static equals(
+    a: BackupProgressSummary | PlainMessage<BackupProgressSummary> | undefined,
+    b: BackupProgressSummary | PlainMessage<BackupProgressSummary> | undefined,
+  ): boolean {
     return proto3.util.equals(BackupProgressSummary, a, b);
   }
 }
@@ -402,19 +564,31 @@ export class BackupProgressError extends Message<BackupProgressError> {
     { no: 3, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BackupProgressError {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): BackupProgressError {
     return new BackupProgressError().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BackupProgressError {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): BackupProgressError {
     return new BackupProgressError().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BackupProgressError {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): BackupProgressError {
     return new BackupProgressError().fromJsonString(jsonString, options);
   }
 
-  static equals(a: BackupProgressError | PlainMessage<BackupProgressError> | undefined, b: BackupProgressError | PlainMessage<BackupProgressError> | undefined): boolean {
+  static equals(
+    a: BackupProgressError | PlainMessage<BackupProgressError> | undefined,
+    b: BackupProgressError | PlainMessage<BackupProgressError> | undefined,
+  ): boolean {
     return proto3.util.equals(BackupProgressError, a, b);
   }
 }
@@ -472,28 +646,65 @@ export class RestoreProgressEntry extends Message<RestoreProgressEntry> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.RestoreProgressEntry";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "message_type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "seconds_elapsed", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
+    {
+      no: 1,
+      name: "message_type",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
+    {
+      no: 2,
+      name: "seconds_elapsed",
+      kind: "scalar",
+      T: 1 /* ScalarType.DOUBLE */,
+    },
     { no: 3, name: "total_bytes", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 4, name: "bytes_restored", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    {
+      no: 4,
+      name: "bytes_restored",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
     { no: 5, name: "total_files", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 6, name: "files_restored", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 7, name: "percent_done", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
+    {
+      no: 6,
+      name: "files_restored",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
+    {
+      no: 7,
+      name: "percent_done",
+      kind: "scalar",
+      T: 1 /* ScalarType.DOUBLE */,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RestoreProgressEntry {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): RestoreProgressEntry {
     return new RestoreProgressEntry().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RestoreProgressEntry {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): RestoreProgressEntry {
     return new RestoreProgressEntry().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RestoreProgressEntry {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): RestoreProgressEntry {
     return new RestoreProgressEntry().fromJsonString(jsonString, options);
   }
 
-  static equals(a: RestoreProgressEntry | PlainMessage<RestoreProgressEntry> | undefined, b: RestoreProgressEntry | PlainMessage<RestoreProgressEntry> | undefined): boolean {
+  static equals(
+    a: RestoreProgressEntry | PlainMessage<RestoreProgressEntry> | undefined,
+    b: RestoreProgressEntry | PlainMessage<RestoreProgressEntry> | undefined,
+  ): boolean {
     return proto3.util.equals(RestoreProgressEntry, a, b);
   }
 }
@@ -536,26 +747,57 @@ export class RepoStats extends Message<RepoStats> {
   static readonly typeName = "v1.RepoStats";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "total_size", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 2, name: "total_uncompressed_size", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 3, name: "compression_ratio", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
-    { no: 5, name: "total_blob_count", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 6, name: "snapshot_count", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    {
+      no: 2,
+      name: "total_uncompressed_size",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
+    {
+      no: 3,
+      name: "compression_ratio",
+      kind: "scalar",
+      T: 1 /* ScalarType.DOUBLE */,
+    },
+    {
+      no: 5,
+      name: "total_blob_count",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
+    {
+      no: 6,
+      name: "snapshot_count",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RepoStats {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): RepoStats {
     return new RepoStats().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RepoStats {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): RepoStats {
     return new RepoStats().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RepoStats {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): RepoStats {
     return new RepoStats().fromJsonString(jsonString, options);
   }
 
-  static equals(a: RepoStats | PlainMessage<RepoStats> | undefined, b: RepoStats | PlainMessage<RepoStats> | undefined): boolean {
+  static equals(
+    a: RepoStats | PlainMessage<RepoStats> | undefined,
+    b: RepoStats | PlainMessage<RepoStats> | undefined,
+  ): boolean {
     return proto3.util.equals(RepoStats, a, b);
   }
 }
-

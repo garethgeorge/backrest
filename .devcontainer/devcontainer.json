@@ -1,51 +1,47 @@
 {
-	"name": "Go",
-	"build": {
-		"dockerfile": "Dockerfile",
-		"args": {
-			// Update the VARIANT arg to pick a version of Go: 1, 1.16, 1.17
-			// Append -bullseye or -buster to pin to an OS version.
-			// Use -bullseye variants on local arm64/Apple Silicon.
-			"VARIANT": "1-1.21-bookworm",
-			// Options
-			"NODE_VERSION": "lts/*"
-		}
-	},
-	"runArgs": [
-		"--cap-add=SYS_PTRACE",
-		"--security-opt",
-		"seccomp=unconfined"
-	],
-	"customizations": {
-		"vscode": {
-			// Set *default* container specific settings.json values on container create.
-			"settings": {
-				"go.toolsManagement.checkForUpdates": "local",
-				"go.useLanguageServer": true,
-				"go.gopath": "/go",
-				"go.goroot": "/usr/local/go",
-				"typescript.tsdk": "webui/node_modules/typescript/lib",
-				"typescript.enablePromptUseWorkspaceTsdk": true,
-				"gitlens.telemetry.enabled": false
-			},
-			// Add the IDs of extensions you want installed when the container is created.
-			"extensions": [
-				"golang.Go",
-				"ms-azuretools.vscode-docker",
-				"mhutchie.git-graph",
-				"eamodio.gitlens",
-				"donjayamanne.githistory",
-				"esbenp.prettier-vscode",
-				"iulian-radu-at.vscode-tasks-sidebar"
-			]
-		}
-	},
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+  "name": "Go",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      // Update the VARIANT arg to pick a version of Go: 1, 1.16, 1.17
+      // Append -bullseye or -buster to pin to an OS version.
+      // Use -bullseye variants on local arm64/Apple Silicon.
+      "VARIANT": "1-1.21-bookworm",
+      // Options
+      "NODE_VERSION": "lts/*"
+    }
+  },
+  "runArgs": ["--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined"],
+  "customizations": {
+    "vscode": {
+      // Set *default* container specific settings.json values on container create.
+      "settings": {
+        "go.toolsManagement.checkForUpdates": "local",
+        "go.useLanguageServer": true,
+        "go.gopath": "/go",
+        "go.goroot": "/usr/local/go",
+        "typescript.tsdk": "webui/node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "gitlens.telemetry.enabled": false
+      },
+      // Add the IDs of extensions you want installed when the container is created.
+      "extensions": [
+        "golang.Go",
+        "ms-azuretools.vscode-docker",
+        "mhutchie.git-graph",
+        "eamodio.gitlens",
+        "donjayamanne.githistory",
+        "esbenp.prettier-vscode",
+        "iulian-radu-at.vscode-tasks-sidebar"
+      ]
+    }
+  },
+  // Use 'forwardPorts' to make a list of ports inside the container available locally.
+  // "forwardPorts": [],
 
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "go version",
-	
-	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-	"remoteUser": "vscode"
+  // Use 'postCreateCommand' to run commands after the container is created.
+  // "postCreateCommand": "go version",
+
+  // Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+  "remoteUser": "vscode"
 }

@@ -6,13 +6,13 @@
   <img src="https://img.shields.io/docker/pulls/garethgeorge/backrest" />
 </p>
 
------
+---
 
 **Overview**
 
 Backrest is a web-accessible backup solution built on top of [restic](https://restic.net/). Backrest provides a WebUI which wraps the restic CLI and makes it easy to create repos, browse snapshots, and restore files. Additionally, Backrest can run in the background and take an opinionated approach to scheduling snapshots and orchestrating repo health operations.
 
-By building on restic, Backrest leverages restic's mature feature set. Restic provides fast, reliable, and secure backup operations. 
+By building on restic, Backrest leverages restic's mature feature set. Restic provides fast, reliable, and secure backup operations.
 
 Backrest itself is built in Golang (matching restic's implementation) and is shipped as a self-contained and light weight binary with no dependecies other than restic. This project aims to be the easiest way to setup and get started with backups on any system. You can expect to be able to perform all operations from the web interface but should you ever need more control, you are free to browse your repo and perform operations using the [restic cli](https://restic.readthedocs.io/en/latest/manual_rest.html). Additionally, Backrest can safely detect and import your existing snapshots (or externally created snapshots on an ongoing basis).
 
@@ -25,25 +25,25 @@ Backrest itself is built in Golang (matching restic's implementation) and is shi
 
 **Platform Support**
 
- * [Docker](https://hub.docker.com/r/garethgeorge/backrest)
- * Linux
- * MacOS
- * Windows
- * FreeBSD
+- [Docker](https://hub.docker.com/r/garethgeorge/backrest)
+- Linux
+- MacOS
+- Windows
+- FreeBSD
 
 **Features**
 
-  * WebUI supports local and remote access (e.g. run on a NAS and access from your desktop)
-  * Multi-platform support (Linux, MacOS, Windows, FreeBSD, [Docker](https://hub.docker.com/r/garethgeorge/backrest))
-  * Import your existing restic repositories
-  * Cron scheduled backups and health operations (e.g. prune and forget)
-  * UI for browing and restoring files from snapshots
-  * Configurable backup notifications (e.g. Discord, Slack, Shoutrrr, Gotify)
-  * Add shell command hooks to run before and after backup operations.
-  * Compatible with rclone remotes
-  * Backup to any restic supported storage (e.g. S3, B2, Azure, GCS, local, SFTP, and all [rclone remotes](https://rclone.org/))
+- WebUI supports local and remote access (e.g. run on a NAS and access from your desktop)
+- Multi-platform support (Linux, MacOS, Windows, FreeBSD, [Docker](https://hub.docker.com/r/garethgeorge/backrest))
+- Import your existing restic repositories
+- Cron scheduled backups and health operations (e.g. prune and forget)
+- UI for browing and restoring files from snapshots
+- Configurable backup notifications (e.g. Discord, Slack, Shoutrrr, Gotify)
+- Add shell command hooks to run before and after backup operations.
+- Compatible with rclone remotes
+- Backup to any restic supported storage (e.g. S3, B2, Azure, GCS, local, SFTP, and all [rclone remotes](https://rclone.org/))
 
------
+---
 
 # User Guide
 
@@ -55,9 +55,9 @@ Backrest is packaged as a single executable. It can be run directly on Linux, Ma
 
 Download options
 
- * Download and run a release from the [releases page](https://github.com/garethgeorge/backrest/releases).
- * Build from source ([see below](#building)).
- * Run with docker: `garethgeorge/backrest:latest` ([see on dockerhub](https://hub.docker.com/r/garethgeorge/backrest)) or `garethgeorge/backrest:latest-alpine` for an image that includes rclone and common unix utilities.
+- Download and run a release from the [releases page](https://github.com/garethgeorge/backrest/releases).
+- Build from source ([see below](#building)).
+- Run with docker: `garethgeorge/backrest:latest` ([see on dockerhub](https://hub.docker.com/r/garethgeorge/backrest)) or `garethgeorge/backrest:latest-alpine` for an image that includes rclone and common unix utilities.
 
 Backrest is accessible from a web browser. By default it binds to `0.0.0.0:9898` and can be accessed at `http://localhost:9898`. Change the port with the `BACKREST_PORT` environment variable e.g. `BACKREST_PORT=127.0.0.1 backrest` to listen only on local interfaces. On first startup backrest will prompt you to create a default username and password, this can be changed later in the settings page.
 
@@ -122,9 +122,9 @@ cd backrest && ./install.sh
 
 The install script will:
 
- * Move the backrest binary to `/usr/local/bin`
- * Create a systemd service file at `/etc/systemd/system/backrest.service`
- * Enable and start the service
+- Move the backrest binary to `/usr/local/bin`
+- Create a systemd service file at `/etc/systemd/system/backrest.service`
+- Enable and start the service
 
 Read the script before running it to make sure you are comfortable with these operations.
 
@@ -188,8 +188,6 @@ brew install backrest
 
 This tap uses [Brew services](https://github.com/Homebrew/homebrew-services) to launch and manage Backrest's lifecycle. Backrest will launch on startup and run on port ':9898` by default.
 
-
-
 #### Manually using the install script (Recommended)
 
 Download a Darwin release from the [releases page](https://github.com/garethgeorge/backrest/releases) and install it to `/usr/local/bin`.
@@ -205,9 +203,9 @@ cd backrest && ./install.sh
 
 The install script will:
 
- * Move the backrest binary to `/usr/local/bin`
- * Create a launch agent file at `~/Library/LaunchAgents/com.backrest.plist`
- * Load the launch agent
+- Move the backrest binary to `/usr/local/bin`
+- Create a launch agent file at `~/Library/LaunchAgents/com.backrest.plist`
+- Load the launch agent
 
 Read the script before running it to make sure you are comfortable with these operations.
 
@@ -229,8 +227,8 @@ warning: Backrest is not tested on Windows to the same bar as Linux and MacOS. S
 
 ## Environment Variables
 
- * `BACKREST_PORT` - the port to bind to. Defaults to 9898.
- * `BACKREST_CONFIG` - the path to the config file. Defaults to `$HOME/.config/backrest/config.json` or if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/backrest/config.json`.
- * `BACKREST_DATA` - the path to the data directory. Defaults to `$HOME/.local/share/backrest` or if `$XDG_DATA_HOME` is set, `$XDG_DATA_HOME/backrest`.
- * `BACKREST_RESTIC_COMMAND` - the path to the restic binary. Defaults managed version of restic which will be downloaded and installed in the data directory.
- * `XDG_CACHE_HOME` -- the path to the cache directory. This is propagated to restic.
+- `BACKREST_PORT` - the port to bind to. Defaults to 9898.
+- `BACKREST_CONFIG` - the path to the config file. Defaults to `$HOME/.config/backrest/config.json` or if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/backrest/config.json`.
+- `BACKREST_DATA` - the path to the data directory. Defaults to `$HOME/.local/share/backrest` or if `$XDG_DATA_HOME` is set, `$XDG_DATA_HOME/backrest`.
+- `BACKREST_RESTIC_COMMAND` - the path to the restic binary. Defaults managed version of restic which will be downloaded and installed in the data directory.
+- `XDG_CACHE_HOME` -- the path to the cache directory. This is propagated to restic.

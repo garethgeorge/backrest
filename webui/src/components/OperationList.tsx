@@ -4,10 +4,7 @@ import {
   OperationEvent,
   OperationEventType,
 } from "../../gen/ts/v1/operations_pb";
-import {
-  Empty,
-  List,
-} from "antd";
+import { Empty, List } from "antd";
 import {
   BackupInfo,
   BackupInfoCollector,
@@ -30,8 +27,8 @@ export const OperationList = ({
 }: React.PropsWithoutRef<{
   req?: GetOperationsRequest;
   useBackups?: BackupInfo[];
-  showPlan?: boolean,
-  filter?: (op: Operation) => boolean, // if provided, only operations that pass this filter will be displayed.
+  showPlan?: boolean;
+  filter?: (op: Operation) => boolean; // if provided, only operations that pass this filter will be displayed.
 }>) => {
   const alertApi = useAlertApi();
 
@@ -62,13 +59,15 @@ export const OperationList = ({
       };
       subscribeToOperations(lis);
 
-      backupCollector.subscribe(_.debounce(() => {
-        let backups = backupCollector.getAll();
-        backups.sort((a, b) => {
-          return b.startTimeMs - a.startTimeMs;
-        });
-        setBackups(backups);
-      }, 50));
+      backupCollector.subscribe(
+        _.debounce(() => {
+          let backups = backupCollector.getAll();
+          backups.sort((a, b) => {
+            return b.startTimeMs - a.startTimeMs;
+          });
+          setBackups(backups);
+        }, 50),
+      );
 
       getOperations(req)
         .then((ops) => {
@@ -94,9 +93,9 @@ export const OperationList = ({
     );
   }
 
-  let operations = backups.flatMap((b) => b.operations)
+  let operations = backups.flatMap((b) => b.operations);
   operations.sort((a, b) => {
-    return Number(b.unixTimeStartMs - a.unixTimeStartMs)
+    return Number(b.unixTimeStartMs - a.unixTimeStartMs);
   });
   return (
     <List
@@ -104,7 +103,14 @@ export const OperationList = ({
       size="small"
       dataSource={operations}
       renderItem={(op) => {
-        return <OperationRow alertApi={alertApi!} key={op.id} operation={op} showPlan={showPlan || false} />
+        return (
+          <OperationRow
+            alertApi={alertApi!}
+            key={op.id}
+            operation={op}
+            showPlan={showPlan || false}
+          />
+        );
       }}
       pagination={
         operations.length > 25
@@ -114,4 +120,3 @@ export const OperationList = ({
     />
   );
 };
-

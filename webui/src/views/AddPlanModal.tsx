@@ -23,16 +23,15 @@ import { URIAutocomplete } from "../components/URIAutocomplete";
 import { useAlertApi } from "../components/Alerts";
 import { Cron } from "react-js-cron";
 import { namePattern, validateForm } from "../lib/formutil";
-import { HooksFormList, hooksListTooltipText } from "../components/HooksFormList";
+import {
+  HooksFormList,
+  hooksListTooltipText,
+} from "../components/HooksFormList";
 import { ConfirmButton, SpinButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import { backrestService } from "../api";
 
-export const AddPlanModal = ({
-  template,
-}: {
-  template: Plan | null;
-}) => {
+export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
@@ -40,7 +39,7 @@ export const AddPlanModal = ({
   const [form] = Form.useForm();
   useEffect(() => {
     form.setFieldsValue(template ? JSON.parse(template.toJsonString()) : {});
-  }, [template])
+  }, [template]);
 
   if (!config) {
     return null;
@@ -68,7 +67,7 @@ export const AddPlanModal = ({
 
       alertsApi.success(
         "Plan deleted from config, but not from restic repo. Snapshots will remain in storage and operations will be tracked until manually deleted. Reusing a deleted plan ID is not recommended if backups have already been performed.",
-        30
+        30,
       );
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);
@@ -82,7 +81,9 @@ export const AddPlanModal = ({
 
     try {
       let planFormData = await validateForm(form);
-      const plan = new Plan().fromJsonString(JSON.stringify(planFormData), { ignoreUnknownFields: false });
+      const plan = new Plan().fromJsonString(JSON.stringify(planFormData), {
+        ignoreUnknownFields: false,
+      });
 
       if (plan.retention && plan.retention.equals(new RetentionPolicy())) {
         delete plan.retention;
@@ -138,11 +139,7 @@ export const AddPlanModal = ({
               Delete
             </ConfirmButton>
           ) : null,
-          <SpinButton
-            key="submit"
-            type="primary"
-            onClickAsync={handleOk}
-          >
+          <SpinButton key="submit" type="primary" onClickAsync={handleOk}>
             Submit
           </SpinButton>,
         ]}
@@ -177,8 +174,9 @@ export const AddPlanModal = ({
               },
               {
                 pattern: namePattern,
-                message: "Name must be alphanumeric with dashes or underscores as separators",
-              }
+                message:
+                  "Name must be alphanumeric with dashes or underscores as separators",
+              },
             ]}
           >
             <Input
@@ -219,9 +217,7 @@ export const AddPlanModal = ({
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
-                    <Form.Item
-                      key={field.key}
-                    >
+                    <Form.Item key={field.key}>
                       <Form.Item
                         {...field}
                         validateTrigger={["onChange", "onBlur"]}
@@ -271,10 +267,7 @@ export const AddPlanModal = ({
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
-                    <Form.Item
-                      required={false}
-                      key={field.key}
-                    >
+                    <Form.Item required={false} key={field.key}>
                       <Form.Item
                         {...field}
                         validateTrigger={["onChange", "onBlur"]}
@@ -325,10 +318,7 @@ export const AddPlanModal = ({
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
-                    <Form.Item
-                      required={false}
-                      key={field.key}
-                    >
+                    <Form.Item required={false} key={field.key}>
                       <Form.Item
                         {...field}
                         validateTrigger={["onChange", "onBlur"]}
@@ -394,10 +384,14 @@ export const AddPlanModal = ({
           </Tooltip>
 
           {/* Plan.backup_flags */}
-          <Form.Item label={<Tooltip title="Extra flags to add to the 'restic backup' command">Backup Flags</Tooltip>}>
-            <Form.List
-              name="backup_flags"
-            >
+          <Form.Item
+            label={
+              <Tooltip title="Extra flags to add to the 'restic backup' command">
+                Backup Flags
+              </Tooltip>
+            }
+          >
+            <Form.List name="backup_flags">
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
@@ -451,11 +445,20 @@ export const AddPlanModal = ({
             <HooksFormList />
           </Form.Item>
 
-
           {/* Disabled? toggles whether the plan will be scheduled. */}
-          <Form.Item label={<Tooltip title={"Toggles whether the plan's scheduling is enabled. If disabled no scheduled operations will be run."}>
-            Disable Scheduling
-          </Tooltip>} name="disabled" valuePropName="checked">
+          <Form.Item
+            label={
+              <Tooltip
+                title={
+                  "Toggles whether the plan's scheduling is enabled. If disabled no scheduled operations will be run."
+                }
+              >
+                Disable Scheduling
+              </Tooltip>
+            }
+            name="disabled"
+            valuePropName="checked"
+          >
             <Checkbox />
           </Form.Item>
 
@@ -469,7 +472,9 @@ export const AddPlanModal = ({
                     label: "Plan Config as JSON",
                     children: (
                       <Typography>
-                        <pre>{JSON.stringify(form.getFieldsValue(), null, 2)}</pre>
+                        <pre>
+                          {JSON.stringify(form.getFieldsValue(), null, 2)}
+                        </pre>
                       </Typography>
                     ),
                   },
@@ -478,46 +483,60 @@ export const AddPlanModal = ({
             )}
           </Form.Item>
         </Form>
-      </Modal >
+      </Modal>
     </>
   );
 };
 
 const RetentionPolicyView = () => {
   const form = Form.useFormInstance();
-  const retention = Form.useWatch('retention', { form, preserve: true }) as any;
+  const retention = Form.useWatch("retention", { form, preserve: true }) as any;
 
   if (!retention) {
-    form.setFieldValue("retention", { policyTimeBucketed: { yearly: 0, monthly: 3, weekly: 4, daily: 7, hourly: 24 } });
+    form.setFieldValue("retention", {
+      policyTimeBucketed: {
+        yearly: 0,
+        monthly: 3,
+        weekly: 4,
+        daily: 7,
+        hourly: 24,
+      },
+    });
   }
 
   const determineMode = () => {
     if (!retention) {
       return "policyTimeBucketed";
     } else if (retention.policyKeepLastN) {
-      return "policyKeepLastN"
+      return "policyKeepLastN";
     } else if (retention.policyKeepAll) {
-      return "policyKeepAll"
+      return "policyKeepAll";
     } else if (retention.policyTimeBucketed) {
-      return "policyTimeBucketed"
+      return "policyTimeBucketed";
     }
-  }
+  };
 
   const mode = determineMode();
 
   let elem: React.ReactNode = null;
   if (mode === "policyKeepAll") {
-    elem = <>
-      <p>All backups are retained e.g. for append-only repos. Ensure that you manually forget / prune backups elsewhere. Backrest will register forgets performed externally on the next backup.</p>
-      <Form.Item
-        name={["retention", "policyKeepAll"]}
-        valuePropName="checked"
-        initialValue={true}
-        hidden={true}
-      >
-        <Checkbox />
-      </Form.Item>
-    </>
+    elem = (
+      <>
+        <p>
+          All backups are retained e.g. for append-only repos. Ensure that you
+          manually forget / prune backups elsewhere. Backrest will register
+          forgets performed externally on the next backup.
+        </p>
+        <Form.Item
+          name={["retention", "policyKeepAll"]}
+          valuePropName="checked"
+          initialValue={true}
+          hidden={true}
+        >
+          <Checkbox />
+        </Form.Item>
+      </>
+    );
   } else if (mode === "policyKeepLastN") {
     elem = (
       <Form.Item
@@ -531,7 +550,10 @@ const RetentionPolicyView = () => {
           },
         ]}
       >
-        <InputNumber addonBefore={<div style={{ width: "5em" }}>Count</div>} type="number" />
+        <InputNumber
+          addonBefore={<div style={{ width: "5em" }}>Count</div>}
+          type="number"
+        />
       </Form.Item>
     );
   } else if (mode === "policyTimeBucketed") {
@@ -604,23 +626,34 @@ const RetentionPolicyView = () => {
     <>
       <Form.Item label="Retention Policy">
         <Row>
-          <Radio.Group value={mode} onChange={e => {
-            const selected = e.target.value;
-            if (selected === "policyKeepLastN") {
-              form.setFieldValue("retention", { policyKeepLastN: 30 });
-            } else if (selected === "policyTimeBucketed") {
-              form.setFieldValue("retention", { policyTimeBucketed: { yearly: 0, monthly: 3, weekly: 4, daily: 7, hourly: 24 } });
-            } else {
-              form.setFieldValue("retention", { policyKeepAll: true });
-            }
-          }}>
+          <Radio.Group
+            value={mode}
+            onChange={(e) => {
+              const selected = e.target.value;
+              if (selected === "policyKeepLastN") {
+                form.setFieldValue("retention", { policyKeepLastN: 30 });
+              } else if (selected === "policyTimeBucketed") {
+                form.setFieldValue("retention", {
+                  policyTimeBucketed: {
+                    yearly: 0,
+                    monthly: 3,
+                    weekly: 4,
+                    daily: 7,
+                    hourly: 24,
+                  },
+                });
+              } else {
+                form.setFieldValue("retention", { policyKeepAll: true });
+              }
+            }}
+          >
             <Radio.Button value={"policyKeepLastN"}>
               <Tooltip title="The last N snapshots will be kept by restic. Retention policy is applied to drop older snapshots after each backup run.">
                 By Count
               </Tooltip>
             </Radio.Button>
             <Radio.Button value={"policyTimeBucketed"}>
-              <Tooltip title="Snapshots older than the specified time period will be dropped by restic. Retention policy is applied to drop older snapshots after each backup run." >
+              <Tooltip title="Snapshots older than the specified time period will be dropped by restic. Retention policy is applied to drop older snapshots after each backup run.">
                 By Time Period
               </Tooltip>
             </Radio.Button>
@@ -633,11 +666,9 @@ const RetentionPolicyView = () => {
         </Row>
         <br />
         <Row>
-          <Form.Item>
-            {elem}
-          </Form.Item>
+          <Form.Item>{elem}</Form.Item>
         </Row>
-      </Form.Item >
+      </Form.Item>
     </>
   );
 };

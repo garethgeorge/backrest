@@ -16,7 +16,13 @@ import { useShowModal } from "../components/ModalManager";
 import { uiBuildVersion } from "../state/buildcfg";
 import { ActivityBar } from "../components/ActivityBar";
 import { OperationEvent, OperationStatus } from "../../gen/ts/v1/operations_pb";
-import { colorForStatus, getStatusForPlan, getStatusForRepo, subscribeToOperations, unsubscribeFromOperations } from "../state/oplog";
+import {
+  colorForStatus,
+  getStatusForPlan,
+  getStatusForRepo,
+  subscribeToOperations,
+  unsubscribeFromOperations,
+} from "../state/oplog";
 import LogoSvg from "url:../../assets/logo.svg";
 import _ from "lodash";
 import { Code } from "@connectrpc/connect";
@@ -41,7 +47,8 @@ export const App: React.FC = () => {
   useEffect(() => {
     showModal(<Spin spinning={true} fullscreen />);
 
-    backrestService.getConfig({})
+    backrestService
+      .getConfig({})
       .then((config) => {
         setConfig(config);
         if (shouldShowSettings(config)) {
@@ -56,12 +63,15 @@ export const App: React.FC = () => {
         if (err.code) {
           const code = err.code;
           if (code === Code.Unauthenticated) {
-            showModal(<LoginModal />)
+            showModal(<LoginModal />);
             return;
-          } else if (code === Code.Unavailable || code === Code.DeadlineExceeded) {
+          } else if (
+            code === Code.Unavailable ||
+            code === Code.DeadlineExceeded
+          ) {
             alertApi.error(
               "Failed to fetch initial config, typically this means the UI could not connect to the backend",
-              0
+              0,
             );
             return;
           }
@@ -70,16 +80,18 @@ export const App: React.FC = () => {
         alertApi.error(err.message, 0);
         alertApi.error(
           "Failed to fetch initial config, typically this means the UI could not connect to the backend",
-          0
+          0,
         );
       });
   }, []);
 
   const showGettingStarted = () => {
-    setContent(<GettingStartedGuide />, [{
-      title: "Getting Started",
-    }]);
-  }
+    setContent(<GettingStartedGuide />, [
+      {
+        title: "Getting Started",
+      },
+    ]);
+  };
 
   useEffect(() => {
     if (config === null) {
@@ -88,7 +100,6 @@ export const App: React.FC = () => {
       showGettingStarted();
     }
   }, [config === null]);
-
 
   const items = getSidenavItems(config);
 
@@ -103,15 +114,22 @@ export const App: React.FC = () => {
           backgroundColor: "#1b232c",
         }}
       >
-        <a
-          style={{ color: colorTextLightSolid }}
-          onClick={showGettingStarted}
-        >
-          <img src={LogoSvg} style={{ height: "30px", color: "white", marginBottom: "-8px", paddingRight: "10px", }} />
+        <a style={{ color: colorTextLightSolid }} onClick={showGettingStarted}>
+          <img
+            src={LogoSvg}
+            style={{
+              height: "30px",
+              color: "white",
+              marginBottom: "-8px",
+              paddingRight: "10px",
+            }}
+          />
         </a>
         <h1>
           <a href="https://github.com/garethgeorge/backrest" target="_blank">
-            <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
+            <small
+              style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}
+            >
               {uiBuildVersion}
             </small>
           </a>
@@ -125,7 +143,11 @@ export const App: React.FC = () => {
           </small>
           <Button
             type="text"
-            style={{ marginLeft: "10px", color: "white", visibility: config?.auth?.disabled ? "hidden" : "visible" }}
+            style={{
+              marginLeft: "10px",
+              color: "white",
+              visibility: config?.auth?.disabled ? "hidden" : "visible",
+            }}
             onClick={() => {
               setAuthToken("");
               window.location.reload();
@@ -232,7 +254,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
                 showModal(<AddRepoModal template={repo} />);
               }}
             />
-          </div >
+          </div>
         ),
         onClick: async () => {
           const { RepoView } = await import("./RepoView");
@@ -266,12 +288,18 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
       onClick: async () => {
         const { SettingsModal } = await import("./SettingsModal");
         showModal(<SettingsModal />);
-      }
+      },
     },
   ];
 };
 
-const IconForResource = ({ planId, repoId }: { planId?: string, repoId?: string }) => {
+const IconForResource = ({
+  planId,
+  repoId,
+}: {
+  planId?: string;
+  repoId?: string;
+}) => {
   const [status, setStatus] = useState(OperationStatus.STATUS_UNKNOWN);
   useEffect(() => {
     const load = async () => {
@@ -288,15 +316,15 @@ const IconForResource = ({ planId, repoId }: { planId?: string, repoId?: string 
       if (operation.planId === planId || operation.repoId === repoId) {
         refresh();
       }
-    }
+    };
 
     subscribeToOperations(callback);
     return () => {
       unsubscribeFromOperations(callback);
-    }
+    };
   }, [planId, repoId]);
   return iconForStatus(status);
-}
+};
 
 const iconForStatus = (status: OperationStatus) => {
   const color = colorForStatus(status);
@@ -306,10 +334,10 @@ const iconForStatus = (status: OperationStatus) => {
     case OperationStatus.STATUS_WARNING:
       return <ExclamationOutlined style={{ color }} />;
     case OperationStatus.STATUS_INPROGRESS:
-      return <LoadingOutlined style={{ color }} />
+      return <LoadingOutlined style={{ color }} />;
     case OperationStatus.STATUS_UNKNOWN:
       return <LoadingOutlined style={{ color }} />;
     default:
       return <CheckCircleOutlined style={{ color }} />;
   }
-}
+};

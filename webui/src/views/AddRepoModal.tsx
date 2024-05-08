@@ -30,11 +30,7 @@ import {
 import { ConfirmButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 
-export const AddRepoModal = ({
-  template,
-}: {
-  template: Repo | null;
-}) => {
+export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
@@ -42,7 +38,7 @@ export const AddRepoModal = ({
   const [form] = Form.useForm();
   useEffect(() => {
     form.setFieldsValue(template ? JSON.parse(template.toJsonString()) : {});
-  }, [template])
+  }, [template]);
 
   if (!config) {
     return null;
@@ -78,9 +74,9 @@ export const AddRepoModal = ({
       showModal(null);
       alertsApi.success(
         "Deleted repo " +
-        template.id +
-        " from config but files remain. To release storage delete the files manually. URI: " +
-        template.uri
+          template.id +
+          " from config but files remain. To release storage delete the files manually. URI: " +
+          template.uri,
       );
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);
@@ -94,7 +90,9 @@ export const AddRepoModal = ({
 
     try {
       let repoFormData = await validateForm(form);
-      const repo = new Repo().fromJsonString(JSON.stringify(repoFormData), { ignoreUnknownFields: false });
+      const repo = new Repo().fromJsonString(JSON.stringify(repoFormData), {
+        ignoreUnknownFields: false,
+      });
 
       if (template !== null) {
         // We are in the edit repo flow, update the repo in the config
@@ -168,7 +166,11 @@ export const AddRepoModal = ({
           disabled={confirmLoading}
         >
           {/* Repo.id */}
-          <Tooltip title={"Unique ID that identifies this repo in the backrest UI (e.g. s3-mybucket). This cannot be changed after creation."}>
+          <Tooltip
+            title={
+              "Unique ID that identifies this repo in the backrest UI (e.g. s3-mybucket). This cannot be changed after creation."
+            }
+          >
             <Form.Item<Repo>
               hasFeedback
               name="id"
@@ -190,8 +192,9 @@ export const AddRepoModal = ({
                 },
                 {
                   pattern: namePattern,
-                  message: "Name must be alphanumeric with dashes or underscores as separators",
-                }
+                  message:
+                    "Name must be alphanumeric with dashes or underscores as separators",
+                },
               ]}
             >
               <Input
@@ -213,7 +216,10 @@ export const AddRepoModal = ({
                   <li>SFTP e.g. sftp:user@host:/repo-path</li>
                   <li>
                     See{" "}
-                    <a href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository" target="_blank">
+                    <a
+                      href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository"
+                      target="_blank"
+                    >
                       restic docs
                     </a>{" "}
                     for more info.
@@ -240,14 +246,26 @@ export const AddRepoModal = ({
 
           {/* Repo.password */}
           <Tooltip
-            title={<>
-              This password that encrypts data in your repository.
-              <ul>
-                <li>Recommended to pick a value that is 128 bits of entropy (20 chars or longer)</li>
-                <li>You may alternatively provide env variable credentials e.g. RESTIC_PASSWORD, RESTIC_PASSWORD_FILE, or RESTIC_PASSWORD_COMMAND.</li>
-                <li>Click [Generate] to seed a random password from your browser's crypto random API.</li>
-              </ul>
-            </>}
+            title={
+              <>
+                This password that encrypts data in your repository.
+                <ul>
+                  <li>
+                    Recommended to pick a value that is 128 bits of entropy (20
+                    chars or longer)
+                  </li>
+                  <li>
+                    You may alternatively provide env variable credentials e.g.
+                    RESTIC_PASSWORD, RESTIC_PASSWORD_FILE, or
+                    RESTIC_PASSWORD_COMMAND.
+                  </li>
+                  <li>
+                    Click [Generate] to seed a random password from your
+                    browser's crypto random API.
+                  </li>
+                </ul>
+              </>
+            }
           >
             <Form.Item label="Password">
               <Row>
@@ -282,7 +300,11 @@ export const AddRepoModal = ({
           </Tooltip>
 
           {/* Repo.env */}
-          <Tooltip title={"Environment variables that are passed to restic (e.g. to provide S3 or B2 credentials). References to parent-process env variables are supported as FOO=${MY_FOO_VAR}."}>
+          <Tooltip
+            title={
+              "Environment variables that are passed to restic (e.g. to provide S3 or B2 credentials). References to parent-process env variables are supported as FOO=${MY_FOO_VAR}."
+            }
+          >
             <Form.Item label="Env Vars">
               <Form.List
                 name="env"
@@ -344,9 +366,7 @@ export const AddRepoModal = ({
 
           {/* Repo.flags */}
           <Form.Item label="Flags">
-            <Form.List
-              name="flags"
-            >
+            <Form.List name="flags">
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
@@ -399,7 +419,10 @@ export const AddRepoModal = ({
                   <span>
                     The schedule on which prune operations are run for this
                     repository. Read{" "}
-                    <a href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning" target="_blank">
+                    <a
+                      href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
+                      target="_blank"
+                    >
                       the restic docs on customizing prune operations
                     </a>{" "}
                     for more details.
@@ -436,10 +459,20 @@ export const AddRepoModal = ({
             </Form.Item>
           </Form.Item>
 
-          <Form.Item label={<Tooltip title={"Auto-unlock will remove lockfiles at the start of forget and prune operations. "
-            + "This is potentially unsafe if the repo is shared by multiple client devices. Opt-in (and disabled) by default."}>
-            Auto Unlock
-          </Tooltip>} name="autoUnlock" valuePropName="checked">
+          <Form.Item
+            label={
+              <Tooltip
+                title={
+                  "Auto-unlock will remove lockfiles at the start of forget and prune operations. " +
+                  "This is potentially unsafe if the repo is shared by multiple client devices. Opt-in (and disabled) by default."
+                }
+              >
+                Auto Unlock
+              </Tooltip>
+            }
+            name="autoUnlock"
+            valuePropName="checked"
+          >
             <Checkbox />
           </Form.Item>
 
@@ -459,7 +492,9 @@ export const AddRepoModal = ({
                     label: "Repo Config as JSON",
                     children: (
                       <Typography>
-                        <pre>{JSON.stringify(form.getFieldsValue(), undefined, 2)}</pre>
+                        <pre>
+                          {JSON.stringify(form.getFieldsValue(), undefined, 2)}
+                        </pre>
                       </Typography>
                     ),
                   },
@@ -468,7 +503,7 @@ export const AddRepoModal = ({
             )}
           </Form.Item>
         </Form>
-      </Modal >
+      </Modal>
     </>
   );
 };
@@ -476,11 +511,20 @@ export const AddRepoModal = ({
 const expectedEnvVars: { [scheme: string]: string[][] } = {
   s3: [["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]],
   b2: [["B2_ACCOUNT_ID", "B2_ACCOUNT_KEY"]],
-  azure: [["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_KEY"], ["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_SAS"]],
-  gs: [["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"], ["GOOGLE_ACCESS_TOKEN"]],
+  azure: [
+    ["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_KEY"],
+    ["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_SAS"],
+  ],
+  gs: [
+    ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"],
+    ["GOOGLE_ACCESS_TOKEN"],
+  ],
 };
 
-const envVarSetValidator = (form: FormInstance<FormData>, envVars: string[]) => {
+const envVarSetValidator = (
+  form: FormInstance<FormData>,
+  envVars: string[],
+) => {
   if (!envVars) {
     return Promise.resolve();
   }
@@ -511,8 +555,8 @@ const envVarSetValidator = (form: FormInstance<FormData>, envVars: string[]) => 
   ) {
     return Promise.reject(
       new Error(
-        "Missing repo password. Either provide a password or set one of the env variables RESTIC_PASSWORD, RESTIC_PASSWORD_COMMAND, RESTIC_PASSWORD_FILE."
-      )
+        "Missing repo password. Either provide a password or set one of the env variables RESTIC_PASSWORD, RESTIC_PASSWORD_COMMAND, RESTIC_PASSWORD_FILE.",
+      ),
     );
   }
 
@@ -533,7 +577,10 @@ const cryptoRandomPassword = (): string => {
   return btoa(String.fromCharCode(...vals)).slice(0, 48);
 };
 
-const checkSchemeEnvVars = (scheme: string, envVarNames: string[]): Promise<void> => {
+const checkSchemeEnvVars = (
+  scheme: string,
+  envVarNames: string[],
+): Promise<void> => {
   let expected = expectedEnvVars[scheme];
   if (!expected) {
     return Promise.resolve();
@@ -542,7 +589,9 @@ const checkSchemeEnvVars = (scheme: string, envVarNames: string[]): Promise<void
   const missingVarsCollection: string[][] = [];
 
   for (let possibility of expected) {
-    const missingVars = possibility.filter(envVar => !envVarNames.includes(envVar));
+    const missingVars = possibility.filter(
+      (envVar) => !envVarNames.includes(envVar),
+    );
 
     // If no env vars are missing, we have a full match and are good
     if (missingVars.length === 0) {
@@ -562,16 +611,21 @@ const checkSchemeEnvVars = (scheme: string, envVarNames: string[]): Promise<void
 
   return Promise.reject(
     new Error(
-      "Missing env vars " + formatMissingEnvVars(missingVarsCollection) + " for scheme " + scheme
-    )
+      "Missing env vars " +
+        formatMissingEnvVars(missingVarsCollection) +
+        " for scheme " +
+        scheme,
+    ),
   );
-}
+};
 
 const formatMissingEnvVars = (partialMatches: string[][]): string => {
-  return partialMatches.map(x => {
-    if (x.length > 1) {
-      return `[ ${x.join(", ")} ]`;
-    }
-    return x[0];
-  }).join(" or ");
-}
+  return partialMatches
+    .map((x) => {
+      if (x.length > 1) {
+        return `[ ${x.join(", ")} ]`;
+      }
+      return x[0];
+    })
+    .join(" or ");
+};

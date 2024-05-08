@@ -1,36 +1,33 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Debug Go backend",
-            "type": "go",
-            "request": "launch",
-            "mode": "debug",
-            "program": "${workspaceFolder}/backrest.go",
-            "output": "__debug_bin",
-            "preLaunchTask": "Build Webui",
-        },
-        {
-            "type": "chrome",
-            "request": "launch",
-            "preLaunchTask": "Parcel",
-            "postDebugTask": "Terminate Parcel",
-            "name": "Debug TS frontend",
-            "url": "http://localhost:1234",
-            "webRoot": "${workspaceFolder}/webui/src/",
-            "sourceMapPathOverrides": {
-                "../*": "${webRoot}/*"
-            }
-        }
-    ],
-    "compounds": [
-        {
-            "name": "Debug Backrest (backend+frontend)",
-            "configurations": [
-                "Debug Go backend",
-                "Debug TS frontend"
-            ],
-            "stopAll": true
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Go backend",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/backrest.go",
+      "output": "__debug_bin",
+      "preLaunchTask": "Build Webui"
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "preLaunchTask": "Parcel",
+      "postDebugTask": "Terminate Parcel",
+      "name": "Debug TS frontend",
+      "url": "http://localhost:1234",
+      "webRoot": "${workspaceFolder}/webui/src/",
+      "sourceMapPathOverrides": {
+        "../*": "${webRoot}/*"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Backrest (backend+frontend)",
+      "configurations": ["Debug Go backend", "Debug TS frontend"],
+      "stopAll": true
+    }
+  ]
 }

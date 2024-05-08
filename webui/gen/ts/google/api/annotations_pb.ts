@@ -26,8 +26,7 @@ import { HttpRule } from "./http_pb.js";
  * @generated from extension: google.api.HttpRule http = 72295728;
  */
 export const http = proto3.makeExtension<MethodOptions, HttpRule>(
-  "google.api.http", 
-  MethodOptions, 
+  "google.api.http",
+  MethodOptions,
   () => ({ no: 72295728, kind: "message", T: HttpRule }),
 );
-

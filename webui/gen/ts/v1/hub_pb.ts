@@ -3,7 +3,14 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
+import type {
+  BinaryReadOptions,
+  FieldList,
+  JsonReadOptions,
+  JsonValue,
+  PartialMessage,
+  PlainMessage,
+} from "@bufbuild/protobuf";
 import { Message, proto3 } from "@bufbuild/protobuf";
 
 /**
@@ -26,19 +33,31 @@ export class GetInstancesResponse extends Message<GetInstancesResponse> {
     { no: 1, name: "instances", kind: "message", T: Instance, repeated: true },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetInstancesResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): GetInstancesResponse {
     return new GetInstancesResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetInstancesResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): GetInstancesResponse {
     return new GetInstancesResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetInstancesResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): GetInstancesResponse {
     return new GetInstancesResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetInstancesResponse | PlainMessage<GetInstancesResponse> | undefined, b: GetInstancesResponse | PlainMessage<GetInstancesResponse> | undefined): boolean {
+  static equals(
+    a: GetInstancesResponse | PlainMessage<GetInstancesResponse> | undefined,
+    b: GetInstancesResponse | PlainMessage<GetInstancesResponse> | undefined,
+  ): boolean {
     return proto3.util.equals(GetInstancesResponse, a, b);
   }
 }
@@ -63,20 +82,31 @@ export class Instance extends Message<Instance> {
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Instance {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Instance {
     return new Instance().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Instance {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Instance {
     return new Instance().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Instance {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Instance {
     return new Instance().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Instance | PlainMessage<Instance> | undefined, b: Instance | PlainMessage<Instance> | undefined): boolean {
+  static equals(
+    a: Instance | PlainMessage<Instance> | undefined,
+    b: Instance | PlainMessage<Instance> | undefined,
+  ): boolean {
     return proto3.util.equals(Instance, a, b);
   }
 }
-

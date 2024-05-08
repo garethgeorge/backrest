@@ -51,14 +51,12 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
     } catch (e: any) {
       alertsApi.error("Failed to clear error history: " + e.message);
     }
-  }
+  };
 
   return (
     <>
       <Flex gap="small" align="center" wrap="wrap">
-        <Typography.Title>
-          {plan.id}
-        </Typography.Title>
+        <Typography.Title>{plan.id}</Typography.Title>
       </Flex>
       <Flex gap="small" align="center" wrap="wrap">
         <SpinButton type="primary" onClickAsync={handleBackupNow}>
@@ -80,10 +78,13 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           </SpinButton>
         </Tooltip>
         <Tooltip title="Open a restic shell to run commands on the repository.">
-          <Button type="default" onClick={async () => {
-            const { RunCommandModal } = await import("./RunCommandModal");
-            showModal(<RunCommandModal repoId={plan.repo!} />);
-          }}>
+          <Button
+            type="default"
+            onClick={async () => {
+              const { RunCommandModal } = await import("./RunCommandModal");
+              showModal(<RunCommandModal repoId={plan.repo!} />);
+            }}
+          >
             Run Command
           </Button>
         </Tooltip>
@@ -97,7 +98,12 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             children: (
               <>
                 <OperationTree
-                  req={new GetOperationsRequest({ planId: plan.id!, lastN: BigInt(MAX_OPERATION_HISTORY) })}
+                  req={
+                    new GetOperationsRequest({
+                      planId: plan.id!,
+                      lastN: BigInt(MAX_OPERATION_HISTORY),
+                    })
+                  }
                 />
               </>
             ),
@@ -110,7 +116,12 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
               <>
                 <h2>Backup Action History</h2>
                 <OperationList
-                  req={new GetOperationsRequest({ planId: plan.id!, lastN: BigInt(MAX_OPERATION_HISTORY) })}
+                  req={
+                    new GetOperationsRequest({
+                      planId: plan.id!,
+                      lastN: BigInt(MAX_OPERATION_HISTORY),
+                    })
+                  }
                   filter={(op) => !shouldHideStatus(op.status)}
                 />
               </>

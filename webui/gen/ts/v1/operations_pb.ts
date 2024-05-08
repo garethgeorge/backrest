@@ -3,9 +3,22 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
+import type {
+  BinaryReadOptions,
+  FieldList,
+  JsonReadOptions,
+  JsonValue,
+  PartialMessage,
+  PlainMessage,
+} from "@bufbuild/protobuf";
 import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
-import { BackupProgressEntry, BackupProgressError, RepoStats, ResticSnapshot, RestoreProgressEntry } from "./restic_pb.js";
+import {
+  BackupProgressEntry,
+  BackupProgressError,
+  RepoStats,
+  ResticSnapshot,
+  RestoreProgressEntry,
+} from "./restic_pb.js";
 import { Hook_Condition, RetentionPolicy } from "./config_pb.js";
 
 /**
@@ -131,22 +144,40 @@ export class OperationList extends Message<OperationList> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.OperationList";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "operations", kind: "message", T: Operation, repeated: true },
+    {
+      no: 1,
+      name: "operations",
+      kind: "message",
+      T: Operation,
+      repeated: true,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationList {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): OperationList {
     return new OperationList().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationList {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): OperationList {
     return new OperationList().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationList {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): OperationList {
     return new OperationList().fromJsonString(jsonString, options);
   }
 
-  static equals(a: OperationList | PlainMessage<OperationList> | undefined, b: OperationList | PlainMessage<OperationList> | undefined): boolean {
+  static equals(
+    a: OperationList | PlainMessage<OperationList> | undefined,
+    b: OperationList | PlainMessage<OperationList> | undefined,
+  ): boolean {
     return proto3.util.equals(OperationList, a, b);
   }
 }
@@ -229,49 +260,57 @@ export class Operation extends Message<Operation> {
   /**
    * @generated from oneof v1.Operation.op
    */
-  op: {
-    /**
-     * @generated from field: v1.OperationBackup operation_backup = 100;
-     */
-    value: OperationBackup;
-    case: "operationBackup";
-  } | {
-    /**
-     * @generated from field: v1.OperationIndexSnapshot operation_index_snapshot = 101;
-     */
-    value: OperationIndexSnapshot;
-    case: "operationIndexSnapshot";
-  } | {
-    /**
-     * @generated from field: v1.OperationForget operation_forget = 102;
-     */
-    value: OperationForget;
-    case: "operationForget";
-  } | {
-    /**
-     * @generated from field: v1.OperationPrune operation_prune = 103;
-     */
-    value: OperationPrune;
-    case: "operationPrune";
-  } | {
-    /**
-     * @generated from field: v1.OperationRestore operation_restore = 104;
-     */
-    value: OperationRestore;
-    case: "operationRestore";
-  } | {
-    /**
-     * @generated from field: v1.OperationStats operation_stats = 105;
-     */
-    value: OperationStats;
-    case: "operationStats";
-  } | {
-    /**
-     * @generated from field: v1.OperationRunHook operation_run_hook = 106;
-     */
-    value: OperationRunHook;
-    case: "operationRunHook";
-  } | { case: undefined; value?: undefined } = { case: undefined };
+  op:
+    | {
+        /**
+         * @generated from field: v1.OperationBackup operation_backup = 100;
+         */
+        value: OperationBackup;
+        case: "operationBackup";
+      }
+    | {
+        /**
+         * @generated from field: v1.OperationIndexSnapshot operation_index_snapshot = 101;
+         */
+        value: OperationIndexSnapshot;
+        case: "operationIndexSnapshot";
+      }
+    | {
+        /**
+         * @generated from field: v1.OperationForget operation_forget = 102;
+         */
+        value: OperationForget;
+        case: "operationForget";
+      }
+    | {
+        /**
+         * @generated from field: v1.OperationPrune operation_prune = 103;
+         */
+        value: OperationPrune;
+        case: "operationPrune";
+      }
+    | {
+        /**
+         * @generated from field: v1.OperationRestore operation_restore = 104;
+         */
+        value: OperationRestore;
+        case: "operationRestore";
+      }
+    | {
+        /**
+         * @generated from field: v1.OperationStats operation_stats = 105;
+         */
+        value: OperationStats;
+        case: "operationStats";
+      }
+    | {
+        /**
+         * @generated from field: v1.OperationRunHook operation_run_hook = 106;
+         */
+        value: OperationRunHook;
+        case: "operationRunHook";
+      }
+    | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Operation>) {
     super();
@@ -285,35 +324,119 @@ export class Operation extends Message<Operation> {
     { no: 10, name: "flow_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 2, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 11, name: "instance_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 8, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "status", kind: "enum", T: proto3.getEnumType(OperationStatus) },
-    { no: 5, name: "unix_time_start_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 6, name: "unix_time_end_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 7, name: "display_message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    {
+      no: 11,
+      name: "instance_id",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
+    {
+      no: 8,
+      name: "snapshot_id",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
+    {
+      no: 4,
+      name: "status",
+      kind: "enum",
+      T: proto3.getEnumType(OperationStatus),
+    },
+    {
+      no: 5,
+      name: "unix_time_start_ms",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
+    {
+      no: 6,
+      name: "unix_time_end_ms",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
+    {
+      no: 7,
+      name: "display_message",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
     { no: 9, name: "logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 100, name: "operation_backup", kind: "message", T: OperationBackup, oneof: "op" },
-    { no: 101, name: "operation_index_snapshot", kind: "message", T: OperationIndexSnapshot, oneof: "op" },
-    { no: 102, name: "operation_forget", kind: "message", T: OperationForget, oneof: "op" },
-    { no: 103, name: "operation_prune", kind: "message", T: OperationPrune, oneof: "op" },
-    { no: 104, name: "operation_restore", kind: "message", T: OperationRestore, oneof: "op" },
-    { no: 105, name: "operation_stats", kind: "message", T: OperationStats, oneof: "op" },
-    { no: 106, name: "operation_run_hook", kind: "message", T: OperationRunHook, oneof: "op" },
+    {
+      no: 100,
+      name: "operation_backup",
+      kind: "message",
+      T: OperationBackup,
+      oneof: "op",
+    },
+    {
+      no: 101,
+      name: "operation_index_snapshot",
+      kind: "message",
+      T: OperationIndexSnapshot,
+      oneof: "op",
+    },
+    {
+      no: 102,
+      name: "operation_forget",
+      kind: "message",
+      T: OperationForget,
+      oneof: "op",
+    },
+    {
+      no: 103,
+      name: "operation_prune",
+      kind: "message",
+      T: OperationPrune,
+      oneof: "op",
+    },
+    {
+      no: 104,
+      name: "operation_restore",
+      kind: "message",
+      T: OperationRestore,
+      oneof: "op",
+    },
+    {
+      no: 105,
+      name: "operation_stats",
+      kind: "message",
+      T: OperationStats,
+      oneof: "op",
+    },
+    {
+      no: 106,
+      name: "operation_run_hook",
+      kind: "message",
+      T: OperationRunHook,
+      oneof: "op",
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Operation {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Operation {
     return new Operation().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Operation {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Operation {
     return new Operation().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Operation {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Operation {
     return new Operation().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Operation | PlainMessage<Operation> | undefined, b: Operation | PlainMessage<Operation> | undefined): boolean {
+  static equals(
+    a: Operation | PlainMessage<Operation> | undefined,
+    b: Operation | PlainMessage<Operation> | undefined,
+  ): boolean {
     return proto3.util.equals(Operation, a, b);
   }
 }
@@ -342,23 +465,40 @@ export class OperationEvent extends Message<OperationEvent> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.OperationEvent";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "type", kind: "enum", T: proto3.getEnumType(OperationEventType) },
+    {
+      no: 1,
+      name: "type",
+      kind: "enum",
+      T: proto3.getEnumType(OperationEventType),
+    },
     { no: 2, name: "operation", kind: "message", T: Operation },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationEvent {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): OperationEvent {
     return new OperationEvent().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationEvent {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): OperationEvent {
     return new OperationEvent().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationEvent {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): OperationEvent {
     return new OperationEvent().fromJsonString(jsonString, options);
   }
 
-  static equals(a: OperationEvent | PlainMessage<OperationEvent> | undefined, b: OperationEvent | PlainMessage<OperationEvent> | undefined): boolean {
+  static equals(
+    a: OperationEvent | PlainMessage<OperationEvent> | undefined,
+    b: OperationEvent | PlainMessage<OperationEvent> | undefined,
+  ): boolean {
     return proto3.util.equals(OperationEvent, a, b);
   }
 }
@@ -386,28 +526,46 @@ export class OperationBackup extends Message<OperationBackup> {
   static readonly typeName = "v1.OperationBackup";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 3, name: "last_status", kind: "message", T: BackupProgressEntry },
-    { no: 4, name: "errors", kind: "message", T: BackupProgressError, repeated: true },
+    {
+      no: 4,
+      name: "errors",
+      kind: "message",
+      T: BackupProgressError,
+      repeated: true,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationBackup {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): OperationBackup {
     return new OperationBackup().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationBackup {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): OperationBackup {
     return new OperationBackup().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationBackup {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): OperationBackup {
     return new OperationBackup().fromJsonString(jsonString, options);
   }
 
-  static equals(a: OperationBackup | PlainMessage<OperationBackup> | undefined, b: OperationBackup | PlainMessage<OperationBackup> | undefined): boolean {
+  static equals(
+    a: OperationBackup | PlainMessage<OperationBackup> | undefined,
+    b: OperationBackup | PlainMessage<OperationBackup> | undefined,
+  ): boolean {
     return proto3.util.equals(OperationBackup, a, b);
   }
 }
 
 /**
- * OperationIndexSnapshot tracks that a snapshot was detected by backrest. 
+ * OperationIndexSnapshot tracks that a snapshot was detected by backrest.
  *
  * @generated from message v1.OperationIndexSnapshot
  */
@@ -443,22 +601,45 @@ export class OperationIndexSnapshot extends Message<OperationIndexSnapshot> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 2, name: "snapshot", kind: "message", T: ResticSnapshot },
     { no: 3, name: "forgot", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 4, name: "forgot_by_op", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    {
+      no: 4,
+      name: "forgot_by_op",
+      kind: "scalar",
+      T: 3 /* ScalarType.INT64 */,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationIndexSnapshot {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): OperationIndexSnapshot {
     return new OperationIndexSnapshot().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationIndexSnapshot {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): OperationIndexSnapshot {
     return new OperationIndexSnapshot().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationIndexSnapshot {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): OperationIndexSnapshot {
     return new OperationIndexSnapshot().fromJsonString(jsonString, options);
   }
 
-  static equals(a: OperationIndexSnapshot | PlainMessage<OperationIndexSnapshot> | undefined, b: OperationIndexSnapshot | PlainMessage<OperationIndexSnapshot> | undefined): boolean {
+  static equals(
+    a:
+      | OperationIndexSnapshot
+      | PlainMessage<OperationIndexSnapshot>
+      | undefined,
+    b:
+      | OperationIndexSnapshot
+      | PlainMessage<OperationIndexSnapshot>
+      | undefined,
+  ): boolean {
     return proto3.util.equals(OperationIndexSnapshot, a, b);
   }
 }
@@ -487,23 +668,41 @@ export class OperationForget extends Message<OperationForget> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.OperationForget";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "forget", kind: "message", T: ResticSnapshot, repeated: true },
+    {
+      no: 1,
+      name: "forget",
+      kind: "message",
+      T: ResticSnapshot,
+      repeated: true,
+    },
     { no: 2, name: "policy", kind: "message", T: RetentionPolicy },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationForget {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): OperationForget {
     return new OperationForget().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationForget {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): OperationForget {
     return new OperationForget().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationForget {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): OperationForget {
     return new OperationForget().fromJsonString(jsonString, options);
   }
 
-  static equals(a: OperationForget | PlainMessage<OperationForget> | undefined, b: OperationForget | PlainMessage<OperationForget> | undefined): boolean {
+  static equals(
+    a: OperationForget | PlainMessage<OperationForget> | undefined,
+    b: OperationForget | PlainMessage<OperationForget> | undefined,
+  ): boolean {
     return proto3.util.equals(OperationForget, a, b);
   }
 }
@@ -532,19 +731,31 @@ export class OperationPrune extends Message<OperationPrune> {
     { no: 1, name: "output", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationPrune {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): OperationPrune {
     return new OperationPrune().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationPrune {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): OperationPrune {
     return new OperationPrune().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationPrune {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): OperationPrune {
     return new OperationPrune().fromJsonString(jsonString, options);
   }
 
-  static equals(a: OperationPrune | PlainMessage<OperationPrune> | undefined, b: OperationPrune | PlainMessage<OperationPrune> | undefined): boolean {
+  static equals(
+    a: OperationPrune | PlainMessage<OperationPrune> | undefined,
+    b: OperationPrune | PlainMessage<OperationPrune> | undefined,
+  ): boolean {
     return proto3.util.equals(OperationPrune, a, b);
   }
 }
@@ -587,19 +798,31 @@ export class OperationRestore extends Message<OperationRestore> {
     { no: 3, name: "status", kind: "message", T: RestoreProgressEntry },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationRestore {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): OperationRestore {
     return new OperationRestore().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationRestore {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): OperationRestore {
     return new OperationRestore().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationRestore {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): OperationRestore {
     return new OperationRestore().fromJsonString(jsonString, options);
   }
 
-  static equals(a: OperationRestore | PlainMessage<OperationRestore> | undefined, b: OperationRestore | PlainMessage<OperationRestore> | undefined): boolean {
+  static equals(
+    a: OperationRestore | PlainMessage<OperationRestore> | undefined,
+    b: OperationRestore | PlainMessage<OperationRestore> | undefined,
+  ): boolean {
     return proto3.util.equals(OperationRestore, a, b);
   }
 }
@@ -624,19 +847,31 @@ export class OperationStats extends Message<OperationStats> {
     { no: 1, name: "stats", kind: "message", T: RepoStats },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationStats {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): OperationStats {
     return new OperationStats().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationStats {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): OperationStats {
     return new OperationStats().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationStats {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): OperationStats {
     return new OperationStats().fromJsonString(jsonString, options);
   }
 
-  static equals(a: OperationStats | PlainMessage<OperationStats> | undefined, b: OperationStats | PlainMessage<OperationStats> | undefined): boolean {
+  static equals(
+    a: OperationStats | PlainMessage<OperationStats> | undefined,
+    b: OperationStats | PlainMessage<OperationStats> | undefined,
+  ): boolean {
     return proto3.util.equals(OperationStats, a, b);
   }
 }
@@ -675,24 +910,45 @@ export class OperationRunHook extends Message<OperationRunHook> {
   static readonly typeName = "v1.OperationRunHook";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "condition", kind: "enum", T: proto3.getEnumType(Hook_Condition) },
+    {
+      no: 2,
+      name: "output_logref",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
+    {
+      no: 3,
+      name: "condition",
+      kind: "enum",
+      T: proto3.getEnumType(Hook_Condition),
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationRunHook {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): OperationRunHook {
     return new OperationRunHook().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationRunHook {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): OperationRunHook {
     return new OperationRunHook().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationRunHook {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): OperationRunHook {
     return new OperationRunHook().fromJsonString(jsonString, options);
   }
 
-  static equals(a: OperationRunHook | PlainMessage<OperationRunHook> | undefined, b: OperationRunHook | PlainMessage<OperationRunHook> | undefined): boolean {
+  static equals(
+    a: OperationRunHook | PlainMessage<OperationRunHook> | undefined,
+    b: OperationRunHook | PlainMessage<OperationRunHook> | undefined,
+  ): boolean {
     return proto3.util.equals(OperationRunHook, a, b);
   }
 }
-

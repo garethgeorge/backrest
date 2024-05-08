@@ -24,7 +24,8 @@ export const URIAutocomplete = (props: React.PropsWithChildren<any>) => {
       value = value.substring(0, lastSlash);
     }
 
-    backrestService.pathAutocomplete({ value: value + sep })
+    backrestService
+      .pathAutocomplete({ value: value + sep })
       .then((res: StringList) => {
         if (!res.values) {
           return;
@@ -54,13 +55,13 @@ export const URIAutocomplete = (props: React.PropsWithChildren<any>) => {
             if (isWindows) {
               if (value.match(/^[a-zA-Z]:\\$/)) {
                 return Promise.reject(
-                  new Error("Path must start with a drive letter e.g. C:\\")
+                  new Error("Path must start with a drive letter e.g. C:\\"),
                 );
               } else if (value.includes("/")) {
                 return Promise.reject(
                   new Error(
-                    "Path must use backslashes e.g. C:\\Users\\MyUsers\\Documents"
-                  )
+                    "Path must use backslashes e.g. C:\\Users\\MyUsers\\Documents",
+                  ),
                 );
               }
             }
