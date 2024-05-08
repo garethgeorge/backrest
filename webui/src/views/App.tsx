@@ -71,7 +71,7 @@ export const App: React.FC = () => {
           ) {
             alertApi.error(
               "Failed to fetch initial config, typically this means the UI could not connect to the backend",
-              0,
+              0
             );
             return;
           }
@@ -80,7 +80,7 @@ export const App: React.FC = () => {
         alertApi.error(err.message, 0);
         alertApi.error(
           "Failed to fetch initial config, typically this means the UI could not connect to the backend",
-          0,
+          0
         );
       });
   }, []);
