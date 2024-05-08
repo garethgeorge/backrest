@@ -18,6 +18,9 @@ export const formatBytes = (bytes?: number | string) => {
 const fmtHourMinute = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
   minute: "2-digit",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
 });
 
 const timezoneOffsetMs = new Date().getTimezoneOffset() * 60 * 1000;
@@ -28,9 +31,8 @@ export const formatTime = (time: number | string | Date) => {
   } else if (time instanceof Date) {
     time = time.getTime();
   }
-  const d = new Date();
-  d.setTime(time - timezoneOffsetMs);
-  return d.toISOString().substring(0, 10) + " at " + fmtHourMinute.format(d);
+  const d = new Date(time);
+  return fmtHourMinute.format(d);
 };
 
 export const localISOTime = (time: number | string | Date) => {
