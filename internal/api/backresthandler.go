@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -477,9 +476,7 @@ func (s *BackrestHandler) GetDownloadURL(ctx context.Context, req *connect.Reque
 	if !ok {
 		return nil, fmt.Errorf("operation %v is not a restore operation", req.Msg.Value)
 	}
-	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, uint64(op.Id))
-	signature, err := generateSignature(b)
+	signature, err := signInt64(op.Id) // the signature authenticates the download URL. Note that the shared URL will be valid for any downloader.
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate signature: %w", err)
 	}
