@@ -15,6 +15,11 @@ export const formatBytes = (bytes?: number | string) => {
   return `${Math.round(bytes * 100) / 100} ${units[unit]}`;
 };
 
+const fmtHourMinute = new Intl.DateTimeFormat(undefined, {
+  hour: "2-digit",
+  minute: "2-digit",
+})
+
 const timezoneOffsetMs = new Date().getTimezoneOffset() * 60 * 1000;
 // formatTime formats a time as YYYY-MM-DD at HH:MM AM/PM
 export const formatTime = (time: number | string | Date) => {
@@ -25,14 +30,7 @@ export const formatTime = (time: number | string | Date) => {
   }
   const d = new Date();
   d.setTime(time - timezoneOffsetMs);
-  const isoStr = d.toISOString();
-  const hours = d.getUTCHours() % 12 == 0 ? 12 : d.getUTCHours() % 12;
-  const minutes =
-    d.getUTCMinutes() < 10 ? "0" + d.getUTCMinutes() : d.getUTCMinutes();
-  const seconds =
-    d.getUTCSeconds() < 10 ? "0" + d.getUTCSeconds() : d.getUTCSeconds();
-  return `${isoStr.substring(0, 10)} at ${hours}:${minutes}:${seconds} ${d.getUTCHours() >= 12 ? "PM" : "AM"
-    }`;
+  return d.toISOString().substring(0, 10) + " at " + fmtHourMinute.format(d);
 };
 
 export const localISOTime = (time: number | string | Date) => {
