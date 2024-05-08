@@ -32,8 +32,6 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Check Formatting
-
       - name: Generate
         run: go generate ./...
 

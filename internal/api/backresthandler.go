@@ -351,7 +351,7 @@ func (s *BackrestHandler) Prune(ctx context.Context, req *connect.Request[types.
 
 	at := time.Now()
 	wait := make(chan struct{})
-	s.orchestrator.ScheduleTask(tasks.NewOneoffPruneTask(plan.Repo, plan.Id, 0, at, true), tasks.TaskPriorityInteractive+tasks.TaskPriorityPrune, func(e error) {
+	s.orchestrator.ScheduleTask(tasks.NewOneoffPruneTask(plan.Repo, plan.Id, at, true), tasks.TaskPriorityInteractive+tasks.TaskPriorityPrune, func(e error) {
 		err = e
 		close(wait)
 	})

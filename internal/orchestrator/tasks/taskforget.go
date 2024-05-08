@@ -116,7 +116,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 	}
 
 	if len(forgot) > 0 {
-		if err := taskRunner.ScheduleTask(NewOneoffPruneTask(t.RepoID(), t.PlanID(), st.Op.FlowId, time.Now(), false), TaskPriorityPrune); err != nil {
+		if err := taskRunner.ScheduleTask(NewOneoffPruneTask(t.RepoID(), t.PlanID(), time.Now(), false), TaskPriorityPrune); err != nil {
 			return fmt.Errorf("schedule prune task: %w", err)
 		}
 	}
