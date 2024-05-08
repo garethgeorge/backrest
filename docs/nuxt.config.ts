@@ -1,8 +1,8 @@
 export default defineNuxtConfig({
-  extends: ['@nuxt-themes/docus'],
+  extends: ["@nuxt-themes/docus"],
   devtools: { enabled: true },
   ssr: true,
   app: {
-    baseURL: '/backrest/',
-  }
-})
+    baseURL: "/backrest/",
+  },
+});

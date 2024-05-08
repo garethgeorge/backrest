@@ -12,12 +12,18 @@ interface ContentAreaState {
   breadcrumbs: Breadcrumb[];
 }
 
-type ContentAreaCtx = [ContentAreaState, (content: React.ReactNode, breadcrumbs: Breadcrumb[]) => void];
+type ContentAreaCtx = [
+  ContentAreaState,
+  (content: React.ReactNode, breadcrumbs: Breadcrumb[]) => void,
+];
 
-const ContentAreaContext = React.createContext<ContentAreaCtx>([{
-  content: null,
-  breadcrumbs: [],
-}, (content, breadcrumbs) => { }]);
+const ContentAreaContext = React.createContext<ContentAreaCtx>([
+  {
+    content: null,
+    breadcrumbs: [],
+  },
+  (content, breadcrumbs) => {},
+]);
 
 export const MainContentProvider = ({
   children,
@@ -31,11 +37,16 @@ export const MainContentProvider = ({
 
   return (
     <>
-      <ContentAreaContext.Provider value={[state, (content, breadcrumbs) => {
-        setState({ content, breadcrumbs });
-      }]}>
+      <ContentAreaContext.Provider
+        value={[
+          state,
+          (content, breadcrumbs) => {
+            setState({ content, breadcrumbs });
+          },
+        ]}
+      >
         {children}
-      </ContentAreaContext.Provider >
+      </ContentAreaContext.Provider>
     </>
   );
 };
@@ -43,7 +54,7 @@ export const MainContentProvider = ({
 export const useSetContent = () => {
   const context = React.useContext(ContentAreaContext);
   return context[1];
-}
+};
 
 export const MainContentArea = () => {
   const { breadcrumbs, content } = React.useContext(ContentAreaContext)[0];
@@ -53,7 +64,10 @@ export const MainContentArea = () => {
 
   return (
     <Layout style={{ padding: "0 24px 24px" }}>
-      <Breadcrumb style={{ margin: "16px 0" }} items={[...(breadcrumbs || [])]}></Breadcrumb>
+      <Breadcrumb
+        style={{ margin: "16px 0" }}
+        items={[...(breadcrumbs || [])]}
+      ></Breadcrumb>
       <Content
         style={{
           padding: 24,
@@ -66,4 +80,4 @@ export const MainContentArea = () => {
       </Content>
     </Layout>
   );
-}
+};

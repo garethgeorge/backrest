@@ -18,7 +18,7 @@ export const formatBytes = (bytes?: number | string) => {
 const fmtHourMinute = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
   minute: "2-digit",
-})
+});
 
 const timezoneOffsetMs = new Date().getTimezoneOffset() * 60 * 1000;
 // formatTime formats a time as YYYY-MM-DD at HH:MM AM/PM
@@ -43,7 +43,7 @@ export const localISOTime = (time: number | string | Date) => {
   const d = new Date();
   d.setTime(time - timezoneOffsetMs);
   return d.toISOString();
-}
+};
 
 // formatDate formats a time as YYYY-MM-DD
 export const formatDate = (time: number | string | Date) => {

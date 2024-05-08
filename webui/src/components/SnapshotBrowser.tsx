@@ -30,7 +30,7 @@ const SnapshotBrowserContext = React.createContext<{
 const replaceKeyInTree = (
   curNode: DataNode,
   setKey: string,
-  setValue: DataNode
+  setValue: DataNode,
 ): DataNode | null => {
   if (curNode.key === setKey) {
     return setValue;
@@ -167,7 +167,7 @@ const respToNodes = (resp: ListSnapshotFilesResponse): DataNode[] => {
 const FileNode = ({ entry }: { entry: LsEntry }) => {
   const [dropdown, setDropdown] = useState<React.ReactNode>(null);
   const { snapshotId, repoId, planId, showModal } = React.useContext(
-    SnapshotBrowserContext
+    SnapshotBrowserContext,
   )!;
 
   const showDropdown = () => {
@@ -188,7 +188,7 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
                     onOk={() => showModal(null)}
                   >
                     <pre>{JSON.stringify(entry, null, 2)}</pre>
-                  </Modal>
+                  </Modal>,
                 );
               },
             },
@@ -202,7 +202,7 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
                     repoId={repoId}
                     planId={planId}
                     snapshotId={snapshotId}
-                  />
+                  />,
                 );
               },
             },
@@ -210,7 +210,7 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
         }}
       >
         <DownloadOutlined />
-      </Dropdown>
+      </Dropdown>,
     );
   };
 

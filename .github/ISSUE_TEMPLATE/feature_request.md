@@ -1,10 +1,9 @@
 ---
 name: Feature request
 about: Suggest an idea for this project
-title: ''
+title: ""
 labels: enhancement
-assignees: ''
-
+assignees: ""
 ---
 
 Note: if you have a question or want discussion please post in the [discussions area](https://github.com/garethgeorge/backrest/discussions).

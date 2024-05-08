@@ -12,7 +12,7 @@ export const setAuthToken = (token: string) => {
 
 const fetch = (
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<Response> => {
   const headers = new Headers(init?.headers);
   let token = localStorage.getItem(tokenKey);
@@ -31,6 +31,6 @@ const transport = createConnectTransport({
 
 export const authenticationService = createPromiseClient(
   Authentication,
-  transport
+  transport,
 );
 export const backrestService = createPromiseClient(Backrest, transport);

@@ -2,9 +2,11 @@ import React from "react";
 import { Button, ButtonProps } from "antd";
 import { useState } from "react";
 
-export const SpinButton: React.FC<ButtonProps & {
-  onClickAsync: () => Promise<void>;
-}> = ({ onClickAsync, ...props }) => {
+export const SpinButton: React.FC<
+  ButtonProps & {
+    onClickAsync: () => Promise<void>;
+  }
+> = ({ onClickAsync, ...props }) => {
   const [loading, setLoading] = useState(false);
 
   const onClick = async () => {
@@ -19,20 +21,16 @@ export const SpinButton: React.FC<ButtonProps & {
     }
   };
 
-  return (
-    <Button
-      {...props}
-      loading={loading}
-      onClick={onClick}
-    />
-  );
-}
+  return <Button {...props} loading={loading} onClick={onClick} />;
+};
 
-export const ConfirmButton: React.FC<ButtonProps & {
-  onClickAsync: () => Promise<void>;
-  confirmTitle: React.ReactNode;
-  confirmTimeout?: number; // milliseconds
-}> = ({ onClickAsync, confirmTimeout, confirmTitle, children, ...props }) => {
+export const ConfirmButton: React.FC<
+  ButtonProps & {
+    onClickAsync: () => Promise<void>;
+    confirmTitle: React.ReactNode;
+    confirmTimeout?: number; // milliseconds
+  }
+> = ({ onClickAsync, confirmTimeout, confirmTitle, children, ...props }) => {
   const [clicked, setClicked] = useState(false);
 
   if (confirmTimeout === undefined) {
@@ -53,11 +51,8 @@ export const ConfirmButton: React.FC<ButtonProps & {
   };
 
   return (
-    <SpinButton
-      {...props}
-      onClickAsync={onClick}
-    >
+    <SpinButton {...props} onClickAsync={onClick}>
       {clicked ? confirmTitle : children}
     </SpinButton>
   );
-}
+};

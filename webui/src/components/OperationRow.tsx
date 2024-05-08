@@ -47,12 +47,15 @@ import { useShowModal } from "./ModalManager";
 import { proto3 } from "@bufbuild/protobuf";
 import { Hook_Condition } from "../../gen/ts/v1/config_pb";
 
-
 export const OperationRow = ({
   operation,
   alertApi,
   showPlan,
-}: React.PropsWithoutRef<{ operation: Operation, alertApi?: MessageInstance, showPlan: boolean }>) => {
+}: React.PropsWithoutRef<{
+  operation: Operation;
+  alertApi?: MessageInstance;
+  showPlan: boolean;
+}>) => {
   const showModal = useShowModal();
   const details = detailsForOperation(operation);
   const displayType = getTypeForDisplay(operation);
@@ -94,38 +97,75 @@ export const OperationRow = ({
   const opName = displayTypeToString(getTypeForDisplay(operation));
   let title = (
     <>
-      {showPlan ? operation.planId + " - " : undefined} {formatTime(Number(operation.unixTimeStartMs))} - {opName}{" "}
+      {showPlan ? operation.planId + " - " : undefined}{" "}
+      {formatTime(Number(operation.unixTimeStartMs))} - {opName}{" "}
       <span className="backrest operation-details">{details.displayState}</span>
     </>
   );
 
-  if (operation.status === OperationStatus.STATUS_PENDING || operation.status == OperationStatus.STATUS_INPROGRESS) {
-    title = <>
-      {title}
-      <Button type="link" size="small" className="backrest operation-details" onClick={() => {
-        backrestService.cancel({ value: operation.id! }).then(() => {
-          alertApi?.success("Requested to cancel operation");
-        }).catch((e) => {
-          alertApi?.error("Failed to cancel operation: " + e.message);
-        });
-      }}>[Cancel Operation]</Button>
-    </>
+  if (
+    operation.status === OperationStatus.STATUS_PENDING ||
+    operation.status == OperationStatus.STATUS_INPROGRESS
+  ) {
+    title = (
+      <>
+        {title}
+        <Button
+          type="link"
+          size="small"
+          className="backrest operation-details"
+          onClick={() => {
+            backrestService
+              .cancel({ value: operation.id! })
+              .then(() => {
+                alertApi?.success("Requested to cancel operation");
+              })
+              .catch((e) => {
+                alertApi?.error("Failed to cancel operation: " + e.message);
+              });
+          }}
+        >
+          [Cancel Operation]
+        </Button>
+      </>
+    );
   }
 
   if (operation.logref) {
-    title = <>
-      {title}
-      <small>
-        <Button type="link" size="middle" className="backrest operation-details" onClick={() => {
-          showModal(<Modal
-            width="50%"
-            title={"Logs for operation " + opName + " at " + formatTime(Number(operation.unixTimeStartMs))}
-            visible={true} footer={null} onCancel={() => { showModal(null); }}>
-            <BigOperationDataVerbatim logref={operation.logref!} />
-          </Modal>);
-        }}>[View Logs]</Button>
-      </small >
-    </>
+    title = (
+      <>
+        {title}
+        <small>
+          <Button
+            type="link"
+            size="middle"
+            className="backrest operation-details"
+            onClick={() => {
+              showModal(
+                <Modal
+                  width="50%"
+                  title={
+                    "Logs for operation " +
+                    opName +
+                    " at " +
+                    formatTime(Number(operation.unixTimeStartMs))
+                  }
+                  visible={true}
+                  footer={null}
+                  onCancel={() => {
+                    showModal(null);
+                  }}
+                >
+                  <BigOperationDataVerbatim logref={operation.logref!} />
+                </Modal>,
+              );
+            }}
+          >
+            [View Logs]
+          </Button>
+        </small>
+      </>
+    );
   }
 
   let body: React.ReactNode | undefined;
@@ -133,7 +173,7 @@ export const OperationRow = ({
 
   if (operation.op.case === "operationBackup") {
     const backupOp = operation.op.value;
-    const items: { key: number, label: string, children: React.ReactNode }[] = [
+    const items: { key: number; label: string; children: React.ReactNode }[] = [
       {
         key: 1,
         label: "Backup Details",
@@ -145,7 +185,11 @@ export const OperationRow = ({
       items.splice(0, 0, {
         key: 2,
         label: "Item Errors",
-        children: <pre>{backupOp.errors.map(e => "Error on item: " + e.item).join("\n")}</pre>,
+        children: (
+          <pre>
+            {backupOp.errors.map((e) => "Error on item: " + e.item).join("\n")}
+          </pre>
+        ),
       });
     }
 
@@ -170,7 +214,7 @@ export const OperationRow = ({
     );
   } else if (operation.op.case === "operationForget") {
     const forgetOp = operation.op.value;
-    body = <ForgetOperationDetails forgetOp={forgetOp} />
+    body = <ForgetOperationDetails forgetOp={forgetOp} />;
   } else if (operation.op.case === "operationPrune") {
     const prune = operation.op.value;
     body = (
@@ -194,21 +238,35 @@ export const OperationRow = ({
         {details.percentage !== undefined ? (
           <Progress percent={details.percentage || 0} status="active" />
         ) : null}
-        {operation.status == OperationStatus.STATUS_SUCCESS ? (<>
-          <br />
-          <Button type="link" onClick={() => {
-            backrestService.getDownloadURL({ value: operation.id }).then((resp) => {
-              window.open(resp.value, "_blank");
-            }).catch((e) => {
-              alertApi?.error("Failed to fetch download URL: " + e.message);
-            });
-          }}>Download File(s)</Button>
-        </>) : null}
+        {operation.status == OperationStatus.STATUS_SUCCESS ? (
+          <>
+            <br />
+            <Button
+              type="link"
+              onClick={() => {
+                backrestService
+                  .getDownloadURL({ value: operation.id })
+                  .then((resp) => {
+                    window.open(resp.value, "_blank");
+                  })
+                  .catch((e) => {
+                    alertApi?.error(
+                      "Failed to fetch download URL: " + e.message,
+                    );
+                  });
+              }}
+            >
+              Download File(s)
+            </Button>
+          </>
+        ) : null}
       </>
     );
   } else if (operation.op.case === "operationRunHook") {
     const hook = operation.op.value;
-    const triggeringCondition = proto3.getEnumType(Hook_Condition).findNumber(hook.condition);
+    const triggeringCondition = proto3
+      .getEnumType(Hook_Condition)
+      .findNumber(hook.condition);
     if (triggeringCondition !== undefined) {
       displayMessage += "\ntriggered by condition: " + triggeringCondition.name;
     }
@@ -217,9 +275,14 @@ export const OperationRow = ({
   const children = [];
 
   if (operation.displayMessage) {
-    children.push(<>
-      <pre>{details.state ? details.state + ": " : null}{displayMessage}</pre>
-    </>);
+    children.push(
+      <>
+        <pre>
+          {details.state ? details.state + ": " : null}
+          {displayMessage}
+        </pre>
+      </>,
+    );
   }
 
   children.push(body);
@@ -303,7 +366,7 @@ const BackupOperationStatus = ({
     const st = status.entry.value;
     const progress =
       Math.round(
-        (Number(st.bytesDone) / Math.max(Number(st.totalBytes), 1)) * 1000
+        (Number(st.bytesDone) / Math.max(Number(st.totalBytes), 1)) * 1000,
       ) / 10;
     return (
       <>
@@ -313,7 +376,8 @@ const BackupOperationStatus = ({
           <Col span={12}>
             <Typography.Text strong>Bytes Done/Total</Typography.Text>
             <br />
-            {formatBytes(Number(st.bytesDone))}/{formatBytes(Number(st.totalBytes))}
+            {formatBytes(Number(st.bytesDone))}/
+            {formatBytes(Number(st.totalBytes))}
           </Col>
           <Col span={12}>
             <Typography.Text strong>Files Done/Total</Typography.Text>
@@ -376,7 +440,11 @@ const BackupOperationStatus = ({
   }
 };
 
-const ForgetOperationDetails = ({ forgetOp }: { forgetOp: OperationForget }) => {
+const ForgetOperationDetails = ({
+  forgetOp,
+}: {
+  forgetOp: OperationForget;
+}) => {
   const policy = forgetOp.policy! || {};
   const policyDesc = [];
   if (policy.keepLastN) {
@@ -406,25 +474,33 @@ const ForgetOperationDetails = ({ forgetOp }: { forgetOp: OperationForget }) => 
         {
           key: 1,
           label: "Removed " + forgetOp.forget?.length + " Snapshots",
-          children: <>
-            Removed snapshots:
-            <pre>{forgetOp.forget?.map((f) => (
-              <div key={f.id}>
-                {"removed snapshot " + normalizeSnapshotId(f.id!) + " taken at " + formatTime(Number(f.unixTimeMs))} <br />
-              </div>
-            ))}</pre>
-            {/* Policy:
+          children: (
+            <>
+              Removed snapshots:
+              <pre>
+                {forgetOp.forget?.map((f) => (
+                  <div key={f.id}>
+                    {"removed snapshot " +
+                      normalizeSnapshotId(f.id!) +
+                      " taken at " +
+                      formatTime(Number(f.unixTimeMs))}{" "}
+                    <br />
+                  </div>
+                ))}
+              </pre>
+              {/* Policy:
             <ul>
               {policyDesc.map((desc, idx) => (
                 <li key={idx}>{desc}</li>
               ))}
             </ul> */}
-          </>,
+            </>
+          ),
         },
       ]}
     />
   );
-}
+};
 
 // TODO: refactor this to use the provider pattern
 const BigOperationDataVerbatim = ({ logref }: { logref: string }) => {
@@ -434,14 +510,19 @@ const BigOperationDataVerbatim = ({ logref }: { logref: string }) => {
     if (!logref) {
       return;
     }
-    backrestService.getLogs(new LogDataRequest({
-      ref: logref,
-    })).then((resp) => {
-      setOutput(new TextDecoder("utf-8").decode(resp.value));
-    }).catch((e) => {
-      console.error("Failed to fetch hook output: ", e);
-    });
+    backrestService
+      .getLogs(
+        new LogDataRequest({
+          ref: logref,
+        }),
+      )
+      .then((resp) => {
+        setOutput(new TextDecoder("utf-8").decode(resp.value));
+      })
+      .catch((e) => {
+        console.error("Failed to fetch hook output: ", e);
+      });
   }, [logref]);
 
   return <pre>{output}</pre>;
-}
+};

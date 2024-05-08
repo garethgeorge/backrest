@@ -8,11 +8,12 @@ This repo uses [Conventional Commits](https://www.conventionalcommits.org/en/v1.
 
 **Build Dependencies**
 
- * Node.JS for UI development
- * Go 1.21 or greater for server development
- * goreleaser `go install github.com/goreleaser/goreleaser@latest`
+- Node.JS for UI development
+- Go 1.21 or greater for server development
+- goreleaser `go install github.com/goreleaser/goreleaser@latest`
 
 **To Edit Protobuffers**
+
 ```sh
 apt install -y protobuf-compiler
 go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
@@ -22,6 +23,7 @@ go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install connectrpc.com/connect/cmd/protoc-gen-connect-go@latest
 npm install -g @bufbuild/protoc-gen-es @connectrpc/protoc-gen-connect-es
 ```
+
 ## Building
 
 ```sh

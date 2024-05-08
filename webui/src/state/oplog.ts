@@ -9,7 +9,10 @@ import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic_pb";
 import _ from "lodash";
 import { formatDuration, formatTime } from "../lib/formatting";
 import { backrestService } from "../api";
-import { STATS_OPERATION_HISTORY, STATUS_OPERATION_HISTORY } from "../constants";
+import {
+  STATS_OPERATION_HISTORY,
+  STATUS_OPERATION_HISTORY,
+} from "../constants";
 
 const subscribers: ((event: OperationEvent) => void)[] = [];
 
@@ -26,26 +29,26 @@ const subscribers: ((event: OperationEvent) => void)[] = [];
       console.error("operations stream died with exception: ", e);
     }
     await new Promise((accept, _) =>
-      setTimeout(accept, nextConnWaitUntil - new Date().getTime())
+      setTimeout(accept, nextConnWaitUntil - new Date().getTime()),
     );
   }
 })();
 
 export const getOperations = async (
-  req: GetOperationsRequest
+  req: GetOperationsRequest,
 ): Promise<Operation[]> => {
   const opList = await backrestService.getOperations(req);
   return opList.operations || [];
 };
 
 export const subscribeToOperations = (
-  callback: (event: OperationEvent) => void
+  callback: (event: OperationEvent) => void,
 ) => {
   subscribers.push(callback);
 };
 
 export const unsubscribeFromOperations = (
-  callback: (event: OperationEvent) => void
+  callback: (event: OperationEvent) => void,
 ) => {
   const index = subscribers.indexOf(callback);
   if (index > -1) {
@@ -130,7 +133,7 @@ export interface BackupInfo {
 export class BackupInfoCollector {
   private listeners: ((
     event: OperationEventType,
-    info: BackupInfo[]
+    info: BackupInfo[],
   ) => void)[] = [];
 
   // backups maps a flow ID to a backup info object.
@@ -138,10 +141,13 @@ export class BackupInfoCollector {
   private backupsByFlowId: Map<bigint, BackupInfo> = new Map();
 
   /**
-   * 
+   *
    * @param filter a function that returns true if an operation should be displayed, false otherwise.
    */
-  constructor(private filter: (op: Operation) => boolean = (op) => !shouldHideOperation(op)) { }
+  constructor(
+    private filter: (op: Operation) => boolean = (op) =>
+      !shouldHideOperation(op),
+  ) {}
 
   private createBackup(operations: Operation[]): BackupInfo {
     // deduplicate and sort operations.
@@ -241,7 +247,10 @@ export class BackupInfoCollector {
     return existing;
   }
 
-  public addOperation(event: OperationEventType, op: Operation): BackupInfo | null {
+  public addOperation(
+    event: OperationEventType,
+    op: Operation,
+  ): BackupInfo | null {
     if (!this.filter(op)) {
       this.removeOperation(op);
       return null;
@@ -269,7 +278,7 @@ export class BackupInfoCollector {
     this.backupsByFlowId.delete(op.flowId); // delete the cache for lazy recomputation.
 
     this.listeners.forEach((l) =>
-      l(OperationEventType.EVENT_DELETED, this.getAll())
+      l(OperationEventType.EVENT_DELETED, this.getAll()),
     );
   }
 
@@ -288,7 +297,7 @@ export class BackupInfoCollector {
   }
 
   public getAll(): BackupInfo[] {
-    const arr = []
+    const arr = [];
     for (const key of this.operationsByFlowId.keys()) {
       arr.push(this.getBackupInfo(key)!);
     }
@@ -296,13 +305,13 @@ export class BackupInfoCollector {
   }
 
   public subscribe(
-    listener: (event: OperationEventType, info: BackupInfo[]) => void
+    listener: (event: OperationEventType, info: BackupInfo[]) => void,
   ) {
     this.listeners.push(listener);
   }
 
   public unsubscribe(
-    listener: (event: OperationEventType, info: BackupInfo[]) => void
+    listener: (event: OperationEventType, info: BackupInfo[]) => void,
   ) {
     const index = this.listeners.indexOf(listener);
     if (index > -1) {
@@ -315,7 +324,8 @@ export class BackupInfoCollector {
 export const shouldHideOperation = (operation: Operation) => {
   return (
     operation.op.case === "operationStats" ||
-    (operation.op.case === "operationRunHook" && operation.status === OperationStatus.STATUS_SUCCESS) ||
+    (operation.op.case === "operationRunHook" &&
+      operation.status === OperationStatus.STATUS_SUCCESS) ||
     shouldHideStatus(operation.status)
   );
 };
@@ -386,7 +396,7 @@ export const colorForStatus = (status: OperationStatus) => {
 
 // detailsForOperation returns derived display information for a given operation.
 export const detailsForOperation = (
-  op: Operation
+  op: Operation,
 ): {
   state: string;
   displayState: string;

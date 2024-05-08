@@ -3,7 +3,14 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
+import type {
+  BinaryReadOptions,
+  FieldList,
+  JsonReadOptions,
+  JsonValue,
+  PartialMessage,
+  PlainMessage,
+} from "@bufbuild/protobuf";
 import { Message, proto3 } from "@bufbuild/protobuf";
 
 /**
@@ -23,22 +30,40 @@ export class HubConfig extends Message<HubConfig> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.HubConfig";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "instances", kind: "message", T: HubConfig_InstanceInfo, repeated: true },
+    {
+      no: 1,
+      name: "instances",
+      kind: "message",
+      T: HubConfig_InstanceInfo,
+      repeated: true,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HubConfig {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): HubConfig {
     return new HubConfig().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HubConfig {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): HubConfig {
     return new HubConfig().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HubConfig {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): HubConfig {
     return new HubConfig().fromJsonString(jsonString, options);
   }
 
-  static equals(a: HubConfig | PlainMessage<HubConfig> | undefined, b: HubConfig | PlainMessage<HubConfig> | undefined): boolean {
+  static equals(
+    a: HubConfig | PlainMessage<HubConfig> | undefined,
+    b: HubConfig | PlainMessage<HubConfig> | undefined,
+  ): boolean {
     return proto3.util.equals(HubConfig, a, b);
   }
 }
@@ -71,19 +96,37 @@ export class HubConfig_InstanceInfo extends Message<HubConfig_InstanceInfo> {
     { no: 2, name: "secret", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HubConfig_InstanceInfo {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): HubConfig_InstanceInfo {
     return new HubConfig_InstanceInfo().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HubConfig_InstanceInfo {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): HubConfig_InstanceInfo {
     return new HubConfig_InstanceInfo().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HubConfig_InstanceInfo {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): HubConfig_InstanceInfo {
     return new HubConfig_InstanceInfo().fromJsonString(jsonString, options);
   }
 
-  static equals(a: HubConfig_InstanceInfo | PlainMessage<HubConfig_InstanceInfo> | undefined, b: HubConfig_InstanceInfo | PlainMessage<HubConfig_InstanceInfo> | undefined): boolean {
+  static equals(
+    a:
+      | HubConfig_InstanceInfo
+      | PlainMessage<HubConfig_InstanceInfo>
+      | undefined,
+    b:
+      | HubConfig_InstanceInfo
+      | PlainMessage<HubConfig_InstanceInfo>
+      | undefined,
+  ): boolean {
     return proto3.util.equals(HubConfig_InstanceInfo, a, b);
   }
 }
@@ -109,8 +152,8 @@ export class Config extends Message<Config> {
   version = 0;
 
   /**
-   * The instance name for the Backrest installation. 
-   * This identifies backups created by this instance and is displayed in the UI. 
+   * The instance name for the Backrest installation.
+   * This identifies backups created by this instance and is displayed in the UI.
    *
    * @generated from field: string instance = 2;
    */
@@ -147,19 +190,31 @@ export class Config extends Message<Config> {
     { no: 5, name: "auth", kind: "message", T: Auth },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Config {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Config {
     return new Config().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Config {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Config {
     return new Config().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Config {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Config {
     return new Config().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Config | PlainMessage<Config> | undefined, b: Config | PlainMessage<Config> | undefined): boolean {
+  static equals(
+    a: Config | PlainMessage<Config> | undefined,
+    b: Config | PlainMessage<Config> | undefined,
+  ): boolean {
     return proto3.util.equals(Config, a, b);
   }
 }
@@ -235,26 +290,50 @@ export class Repo extends Message<Repo> {
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "uri", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "env", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 5, name: "flags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    {
+      no: 4,
+      name: "env",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+      repeated: true,
+    },
+    {
+      no: 5,
+      name: "flags",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+      repeated: true,
+    },
     { no: 6, name: "prune_policy", kind: "message", T: PrunePolicy },
     { no: 7, name: "hooks", kind: "message", T: Hook, repeated: true },
     { no: 8, name: "auto_unlock", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Repo {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Repo {
     return new Repo().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Repo {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Repo {
     return new Repo().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Repo {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Repo {
     return new Repo().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Repo | PlainMessage<Repo> | undefined, b: Repo | PlainMessage<Repo> | undefined): boolean {
+  static equals(
+    a: Repo | PlainMessage<Repo> | undefined,
+    b: Repo | PlainMessage<Repo> | undefined,
+  ): boolean {
     return proto3.util.equals(Repo, a, b);
   }
 }
@@ -342,28 +421,65 @@ export class Plan extends Message<Plan> {
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "repo", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 11, name: "disabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 4, name: "paths", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 5, name: "excludes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 9, name: "iexcludes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    {
+      no: 4,
+      name: "paths",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+      repeated: true,
+    },
+    {
+      no: 5,
+      name: "excludes",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+      repeated: true,
+    },
+    {
+      no: 9,
+      name: "iexcludes",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+      repeated: true,
+    },
     { no: 6, name: "cron", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "retention", kind: "message", T: RetentionPolicy },
     { no: 8, name: "hooks", kind: "message", T: Hook, repeated: true },
-    { no: 10, name: "backup_flags", jsonName: "backup_flags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    {
+      no: 10,
+      name: "backup_flags",
+      jsonName: "backup_flags",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+      repeated: true,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Plan {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Plan {
     return new Plan().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Plan {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Plan {
     return new Plan().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Plan {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Plan {
     return new Plan().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Plan | PlainMessage<Plan> | undefined, b: Plan | PlainMessage<Plan> | undefined): boolean {
+  static equals(
+    a: Plan | PlainMessage<Plan> | undefined,
+    b: Plan | PlainMessage<Plan> | undefined,
+  ): boolean {
     return proto3.util.equals(Plan, a, b);
   }
 }
@@ -425,25 +541,29 @@ export class RetentionPolicy extends Message<RetentionPolicy> {
   /**
    * @generated from oneof v1.RetentionPolicy.policy
    */
-  policy: {
-    /**
-     * @generated from field: int32 policy_keep_last_n = 10;
-     */
-    value: number;
-    case: "policyKeepLastN";
-  } | {
-    /**
-     * @generated from field: v1.RetentionPolicy.TimeBucketedCounts policy_time_bucketed = 11;
-     */
-    value: RetentionPolicy_TimeBucketedCounts;
-    case: "policyTimeBucketed";
-  } | {
-    /**
-     * @generated from field: bool policy_keep_all = 12;
-     */
-    value: boolean;
-    case: "policyKeepAll";
-  } | { case: undefined; value?: undefined } = { case: undefined };
+  policy:
+    | {
+        /**
+         * @generated from field: int32 policy_keep_last_n = 10;
+         */
+        value: number;
+        case: "policyKeepLastN";
+      }
+    | {
+        /**
+         * @generated from field: v1.RetentionPolicy.TimeBucketedCounts policy_time_bucketed = 11;
+         */
+        value: RetentionPolicy_TimeBucketedCounts;
+        case: "policyTimeBucketed";
+      }
+    | {
+        /**
+         * @generated from field: bool policy_keep_all = 12;
+         */
+        value: boolean;
+        case: "policyKeepAll";
+      }
+    | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<RetentionPolicy>) {
     super();
@@ -453,32 +573,77 @@ export class RetentionPolicy extends Message<RetentionPolicy> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.RetentionPolicy";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "max_unused_limit", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    {
+      no: 1,
+      name: "max_unused_limit",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
     { no: 2, name: "keep_last_n", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 3, name: "keep_hourly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "keep_daily", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 5, name: "keep_weekly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 6, name: "keep_monthly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    {
+      no: 6,
+      name: "keep_monthly",
+      kind: "scalar",
+      T: 5 /* ScalarType.INT32 */,
+    },
     { no: 7, name: "keep_yearly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 8, name: "keep_within_duration", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 10, name: "policy_keep_last_n", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "policy" },
-    { no: 11, name: "policy_time_bucketed", kind: "message", T: RetentionPolicy_TimeBucketedCounts, oneof: "policy" },
-    { no: 12, name: "policy_keep_all", kind: "scalar", T: 8 /* ScalarType.BOOL */, oneof: "policy" },
+    {
+      no: 8,
+      name: "keep_within_duration",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
+    {
+      no: 10,
+      name: "policy_keep_last_n",
+      kind: "scalar",
+      T: 5 /* ScalarType.INT32 */,
+      oneof: "policy",
+    },
+    {
+      no: 11,
+      name: "policy_time_bucketed",
+      kind: "message",
+      T: RetentionPolicy_TimeBucketedCounts,
+      oneof: "policy",
+    },
+    {
+      no: 12,
+      name: "policy_keep_all",
+      kind: "scalar",
+      T: 8 /* ScalarType.BOOL */,
+      oneof: "policy",
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RetentionPolicy {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): RetentionPolicy {
     return new RetentionPolicy().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RetentionPolicy {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): RetentionPolicy {
     return new RetentionPolicy().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RetentionPolicy {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): RetentionPolicy {
     return new RetentionPolicy().fromJsonString(jsonString, options);
   }
 
-  static equals(a: RetentionPolicy | PlainMessage<RetentionPolicy> | undefined, b: RetentionPolicy | PlainMessage<RetentionPolicy> | undefined): boolean {
+  static equals(
+    a: RetentionPolicy | PlainMessage<RetentionPolicy> | undefined,
+    b: RetentionPolicy | PlainMessage<RetentionPolicy> | undefined,
+  ): boolean {
     return proto3.util.equals(RetentionPolicy, a, b);
   }
 }
@@ -537,19 +702,43 @@ export class RetentionPolicy_TimeBucketedCounts extends Message<RetentionPolicy_
     { no: 5, name: "yearly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RetentionPolicy_TimeBucketedCounts {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): RetentionPolicy_TimeBucketedCounts {
     return new RetentionPolicy_TimeBucketedCounts().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RetentionPolicy_TimeBucketedCounts {
-    return new RetentionPolicy_TimeBucketedCounts().fromJson(jsonValue, options);
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): RetentionPolicy_TimeBucketedCounts {
+    return new RetentionPolicy_TimeBucketedCounts().fromJson(
+      jsonValue,
+      options,
+    );
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RetentionPolicy_TimeBucketedCounts {
-    return new RetentionPolicy_TimeBucketedCounts().fromJsonString(jsonString, options);
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): RetentionPolicy_TimeBucketedCounts {
+    return new RetentionPolicy_TimeBucketedCounts().fromJsonString(
+      jsonString,
+      options,
+    );
   }
 
-  static equals(a: RetentionPolicy_TimeBucketedCounts | PlainMessage<RetentionPolicy_TimeBucketedCounts> | undefined, b: RetentionPolicy_TimeBucketedCounts | PlainMessage<RetentionPolicy_TimeBucketedCounts> | undefined): boolean {
+  static equals(
+    a:
+      | RetentionPolicy_TimeBucketedCounts
+      | PlainMessage<RetentionPolicy_TimeBucketedCounts>
+      | undefined,
+    b:
+      | RetentionPolicy_TimeBucketedCounts
+      | PlainMessage<RetentionPolicy_TimeBucketedCounts>
+      | undefined,
+  ): boolean {
     return proto3.util.equals(RetentionPolicy_TimeBucketedCounts, a, b);
   }
 }
@@ -587,24 +776,51 @@ export class PrunePolicy extends Message<PrunePolicy> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.PrunePolicy";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "max_frequency_days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 100, name: "max_unused_percent", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 101, name: "max_unused_bytes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    {
+      no: 1,
+      name: "max_frequency_days",
+      kind: "scalar",
+      T: 5 /* ScalarType.INT32 */,
+    },
+    {
+      no: 100,
+      name: "max_unused_percent",
+      kind: "scalar",
+      T: 5 /* ScalarType.INT32 */,
+    },
+    {
+      no: 101,
+      name: "max_unused_bytes",
+      kind: "scalar",
+      T: 5 /* ScalarType.INT32 */,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PrunePolicy {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): PrunePolicy {
     return new PrunePolicy().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PrunePolicy {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): PrunePolicy {
     return new PrunePolicy().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PrunePolicy {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): PrunePolicy {
     return new PrunePolicy().fromJsonString(jsonString, options);
   }
 
-  static equals(a: PrunePolicy | PlainMessage<PrunePolicy> | undefined, b: PrunePolicy | PlainMessage<PrunePolicy> | undefined): boolean {
+  static equals(
+    a: PrunePolicy | PlainMessage<PrunePolicy> | undefined,
+    b: PrunePolicy | PlainMessage<PrunePolicy> | undefined,
+  ): boolean {
     return proto3.util.equals(PrunePolicy, a, b);
   }
 }
@@ -626,43 +842,50 @@ export class Hook extends Message<Hook> {
   /**
    * @generated from oneof v1.Hook.action
    */
-  action: {
-    /**
-     * @generated from field: v1.Hook.Command action_command = 100;
-     */
-    value: Hook_Command;
-    case: "actionCommand";
-  } | {
-    /**
-     * @generated from field: v1.Hook.Webhook action_webhook = 101;
-     */
-    value: Hook_Webhook;
-    case: "actionWebhook";
-  } | {
-    /**
-     * @generated from field: v1.Hook.Discord action_discord = 102;
-     */
-    value: Hook_Discord;
-    case: "actionDiscord";
-  } | {
-    /**
-     * @generated from field: v1.Hook.Gotify action_gotify = 103;
-     */
-    value: Hook_Gotify;
-    case: "actionGotify";
-  } | {
-    /**
-     * @generated from field: v1.Hook.Slack action_slack = 104;
-     */
-    value: Hook_Slack;
-    case: "actionSlack";
-  } | {
-    /**
-     * @generated from field: v1.Hook.Shoutrrr action_shoutrrr = 105;
-     */
-    value: Hook_Shoutrrr;
-    case: "actionShoutrrr";
-  } | { case: undefined; value?: undefined } = { case: undefined };
+  action:
+    | {
+        /**
+         * @generated from field: v1.Hook.Command action_command = 100;
+         */
+        value: Hook_Command;
+        case: "actionCommand";
+      }
+    | {
+        /**
+         * @generated from field: v1.Hook.Webhook action_webhook = 101;
+         */
+        value: Hook_Webhook;
+        case: "actionWebhook";
+      }
+    | {
+        /**
+         * @generated from field: v1.Hook.Discord action_discord = 102;
+         */
+        value: Hook_Discord;
+        case: "actionDiscord";
+      }
+    | {
+        /**
+         * @generated from field: v1.Hook.Gotify action_gotify = 103;
+         */
+        value: Hook_Gotify;
+        case: "actionGotify";
+      }
+    | {
+        /**
+         * @generated from field: v1.Hook.Slack action_slack = 104;
+         */
+        value: Hook_Slack;
+        case: "actionSlack";
+      }
+    | {
+        /**
+         * @generated from field: v1.Hook.Shoutrrr action_shoutrrr = 105;
+         */
+        value: Hook_Shoutrrr;
+        case: "actionShoutrrr";
+      }
+    | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Hook>) {
     super();
@@ -672,29 +895,88 @@ export class Hook extends Message<Hook> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.Hook";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "conditions", kind: "enum", T: proto3.getEnumType(Hook_Condition), repeated: true },
-    { no: 2, name: "on_error", kind: "enum", T: proto3.getEnumType(Hook_OnError) },
-    { no: 100, name: "action_command", kind: "message", T: Hook_Command, oneof: "action" },
-    { no: 101, name: "action_webhook", kind: "message", T: Hook_Webhook, oneof: "action" },
-    { no: 102, name: "action_discord", kind: "message", T: Hook_Discord, oneof: "action" },
-    { no: 103, name: "action_gotify", kind: "message", T: Hook_Gotify, oneof: "action" },
-    { no: 104, name: "action_slack", kind: "message", T: Hook_Slack, oneof: "action" },
-    { no: 105, name: "action_shoutrrr", kind: "message", T: Hook_Shoutrrr, oneof: "action" },
+    {
+      no: 1,
+      name: "conditions",
+      kind: "enum",
+      T: proto3.getEnumType(Hook_Condition),
+      repeated: true,
+    },
+    {
+      no: 2,
+      name: "on_error",
+      kind: "enum",
+      T: proto3.getEnumType(Hook_OnError),
+    },
+    {
+      no: 100,
+      name: "action_command",
+      kind: "message",
+      T: Hook_Command,
+      oneof: "action",
+    },
+    {
+      no: 101,
+      name: "action_webhook",
+      kind: "message",
+      T: Hook_Webhook,
+      oneof: "action",
+    },
+    {
+      no: 102,
+      name: "action_discord",
+      kind: "message",
+      T: Hook_Discord,
+      oneof: "action",
+    },
+    {
+      no: 103,
+      name: "action_gotify",
+      kind: "message",
+      T: Hook_Gotify,
+      oneof: "action",
+    },
+    {
+      no: 104,
+      name: "action_slack",
+      kind: "message",
+      T: Hook_Slack,
+      oneof: "action",
+    },
+    {
+      no: 105,
+      name: "action_shoutrrr",
+      kind: "message",
+      T: Hook_Shoutrrr,
+      oneof: "action",
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Hook {
     return new Hook().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Hook {
     return new Hook().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Hook {
     return new Hook().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Hook | PlainMessage<Hook> | undefined, b: Hook | PlainMessage<Hook> | undefined): boolean {
+  static equals(
+    a: Hook | PlainMessage<Hook> | undefined,
+    b: Hook | PlainMessage<Hook> | undefined,
+  ): boolean {
     return proto3.util.equals(Hook, a, b);
   }
 }
@@ -803,19 +1085,31 @@ export class Hook_Command extends Message<Hook_Command> {
     { no: 1, name: "command", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Command {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Hook_Command {
     return new Hook_Command().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Command {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Hook_Command {
     return new Hook_Command().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Command {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Hook_Command {
     return new Hook_Command().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Hook_Command | PlainMessage<Hook_Command> | undefined, b: Hook_Command | PlainMessage<Hook_Command> | undefined): boolean {
+  static equals(
+    a: Hook_Command | PlainMessage<Hook_Command> | undefined,
+    b: Hook_Command | PlainMessage<Hook_Command> | undefined,
+  ): boolean {
     return proto3.util.equals(Hook_Command, a, b);
   }
 }
@@ -847,24 +1141,46 @@ export class Hook_Webhook extends Message<Hook_Webhook> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.Hook.Webhook";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "webhook_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "method", kind: "enum", T: proto3.getEnumType(Hook_Webhook_Method) },
+    {
+      no: 1,
+      name: "webhook_url",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
+    {
+      no: 2,
+      name: "method",
+      kind: "enum",
+      T: proto3.getEnumType(Hook_Webhook_Method),
+    },
     { no: 100, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Webhook {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Hook_Webhook {
     return new Hook_Webhook().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Webhook {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Hook_Webhook {
     return new Hook_Webhook().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Webhook {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Hook_Webhook {
     return new Hook_Webhook().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Hook_Webhook | PlainMessage<Hook_Webhook> | undefined, b: Hook_Webhook | PlainMessage<Hook_Webhook> | undefined): boolean {
+  static equals(
+    a: Hook_Webhook | PlainMessage<Hook_Webhook> | undefined,
+    b: Hook_Webhook | PlainMessage<Hook_Webhook> | undefined,
+  ): boolean {
     return proto3.util.equals(Hook_Webhook, a, b);
   }
 }
@@ -919,23 +1235,40 @@ export class Hook_Discord extends Message<Hook_Discord> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.Hook.Discord";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "webhook_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    {
+      no: 1,
+      name: "webhook_url",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
     { no: 2, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Discord {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Hook_Discord {
     return new Hook_Discord().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Discord {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Hook_Discord {
     return new Hook_Discord().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Discord {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Hook_Discord {
     return new Hook_Discord().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Hook_Discord | PlainMessage<Hook_Discord> | undefined, b: Hook_Discord | PlainMessage<Hook_Discord> | undefined): boolean {
+  static equals(
+    a: Hook_Discord | PlainMessage<Hook_Discord> | undefined,
+    b: Hook_Discord | PlainMessage<Hook_Discord> | undefined,
+  ): boolean {
     return proto3.util.equals(Hook_Discord, a, b);
   }
 }
@@ -979,22 +1312,39 @@ export class Hook_Gotify extends Message<Hook_Gotify> {
     { no: 1, name: "base_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 100, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 101, name: "title_template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    {
+      no: 101,
+      name: "title_template",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Gotify {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Hook_Gotify {
     return new Hook_Gotify().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Gotify {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Hook_Gotify {
     return new Hook_Gotify().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Gotify {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Hook_Gotify {
     return new Hook_Gotify().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Hook_Gotify | PlainMessage<Hook_Gotify> | undefined, b: Hook_Gotify | PlainMessage<Hook_Gotify> | undefined): boolean {
+  static equals(
+    a: Hook_Gotify | PlainMessage<Hook_Gotify> | undefined,
+    b: Hook_Gotify | PlainMessage<Hook_Gotify> | undefined,
+  ): boolean {
     return proto3.util.equals(Hook_Gotify, a, b);
   }
 }
@@ -1023,23 +1373,40 @@ export class Hook_Slack extends Message<Hook_Slack> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.Hook.Slack";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "webhook_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    {
+      no: 1,
+      name: "webhook_url",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
     { no: 2, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Slack {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Hook_Slack {
     return new Hook_Slack().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Slack {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Hook_Slack {
     return new Hook_Slack().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Slack {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Hook_Slack {
     return new Hook_Slack().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Hook_Slack | PlainMessage<Hook_Slack> | undefined, b: Hook_Slack | PlainMessage<Hook_Slack> | undefined): boolean {
+  static equals(
+    a: Hook_Slack | PlainMessage<Hook_Slack> | undefined,
+    b: Hook_Slack | PlainMessage<Hook_Slack> | undefined,
+  ): boolean {
     return proto3.util.equals(Hook_Slack, a, b);
   }
 }
@@ -1066,23 +1433,40 @@ export class Hook_Shoutrrr extends Message<Hook_Shoutrrr> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.Hook.Shoutrrr";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "shoutrrr_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    {
+      no: 1,
+      name: "shoutrrr_url",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+    },
     { no: 2, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Shoutrrr {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Hook_Shoutrrr {
     return new Hook_Shoutrrr().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Shoutrrr {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Hook_Shoutrrr {
     return new Hook_Shoutrrr().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Shoutrrr {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Hook_Shoutrrr {
     return new Hook_Shoutrrr().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Hook_Shoutrrr | PlainMessage<Hook_Shoutrrr> | undefined, b: Hook_Shoutrrr | PlainMessage<Hook_Shoutrrr> | undefined): boolean {
+  static equals(
+    a: Hook_Shoutrrr | PlainMessage<Hook_Shoutrrr> | undefined,
+    b: Hook_Shoutrrr | PlainMessage<Hook_Shoutrrr> | undefined,
+  ): boolean {
     return proto3.util.equals(Hook_Shoutrrr, a, b);
   }
 }
@@ -1117,19 +1501,31 @@ export class Auth extends Message<Auth> {
     { no: 2, name: "users", kind: "message", T: User, repeated: true },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Auth {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): Auth {
     return new Auth().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Auth {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): Auth {
     return new Auth().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Auth {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): Auth {
     return new Auth().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Auth | PlainMessage<Auth> | undefined, b: Auth | PlainMessage<Auth> | undefined): boolean {
+  static equals(
+    a: Auth | PlainMessage<Auth> | undefined,
+    b: Auth | PlainMessage<Auth> | undefined,
+  ): boolean {
     return proto3.util.equals(Auth, a, b);
   }
 }
@@ -1146,13 +1542,15 @@ export class User extends Message<User> {
   /**
    * @generated from oneof v1.User.password
    */
-  password: {
-    /**
-     * @generated from field: string password_bcrypt = 2;
-     */
-    value: string;
-    case: "passwordBcrypt";
-  } | { case: undefined; value?: undefined } = { case: undefined };
+  password:
+    | {
+        /**
+         * @generated from field: string password_bcrypt = 2;
+         */
+        value: string;
+        case: "passwordBcrypt";
+      }
+    | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<User>) {
     super();
@@ -1163,23 +1561,40 @@ export class User extends Message<User> {
   static readonly typeName = "v1.User";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "password_bcrypt", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "password" },
+    {
+      no: 2,
+      name: "password_bcrypt",
+      kind: "scalar",
+      T: 9 /* ScalarType.STRING */,
+      oneof: "password",
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): User {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): User {
     return new User().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): User {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): User {
     return new User().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): User {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): User {
     return new User().fromJsonString(jsonString, options);
   }
 
-  static equals(a: User | PlainMessage<User> | undefined, b: User | PlainMessage<User> | undefined): boolean {
+  static equals(
+    a: User | PlainMessage<User> | undefined,
+    b: User | PlainMessage<User> | undefined,
+  ): boolean {
     return proto3.util.equals(User, a, b);
   }
 }
-

@@ -12,7 +12,11 @@ export const GettingStartedGuide = () => {
       <Typography.Text>
         <h1>Getting Started</h1>
         {/* open link in new tab */}
-        <p><a href="https://github.com/garethgeorge/backrest" target="_blank">Check for new Backrest releases on GitHub</a></p>
+        <p>
+          <a href="https://github.com/garethgeorge/backrest" target="_blank">
+            Check for new Backrest releases on GitHub
+          </a>
+        </p>
         <Divider orientation="left">Overview</Divider>
         <ul>
           <li>
@@ -25,22 +29,31 @@ export const GettingStartedGuide = () => {
           </li>
           <li>
             See{" "}
-            <a href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html" target="_blank">
+            <a
+              href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html"
+              target="_blank"
+            >
               the restic docs on preparing a new repository
             </a>{" "}
             for details about available repository types and how they can be
             configured.
           </li>
-          <li>See <a href="https://garethgeorge.github.io/backrest" target="_blank">the Backrest wiki</a> for instructions on how to configure Backrest.</li>
+          <li>
+            See{" "}
+            <a href="https://garethgeorge.github.io/backrest" target="_blank">
+              the Backrest wiki
+            </a>{" "}
+            for instructions on how to configure Backrest.
+          </li>
         </ul>
         <Divider orientation="left">Tips</Divider>
         <ul>
           <li>
-            Backup your Backrest configuration: your Backrest config holds all of
-            your repos, plans, and the passwords to decrypt them. When you have
-            Backrest configured to your liking make sure to store a copy of your
-            config (or minimally a copy of your passwords) in a safe location
-            e.g. a secure note in your password manager.
+            Backup your Backrest configuration: your Backrest config holds all
+            of your repos, plans, and the passwords to decrypt them. When you
+            have Backrest configured to your liking make sure to store a copy of
+            your config (or minimally a copy of your passwords) in a safe
+            location e.g. a secure note in your password manager.
           </li>
         </ul>
         <Divider orientation="left">Config View</Divider>
@@ -50,11 +63,17 @@ export const GettingStartedGuide = () => {
             {
               key: "1",
               label: "Config JSON hidden for security",
-              children: config ? <Typography>
-                <pre>{config.toJsonString({
-                  prettySpaces: 2,
-                })}</pre>
-              </Typography> : <Spin />,
+              children: config ? (
+                <Typography>
+                  <pre>
+                    {config.toJsonString({
+                      prettySpaces: 2,
+                    })}
+                  </pre>
+                </Typography>
+              ) : (
+                <Spin />
+              ),
             },
           ]}
         />
