@@ -88,14 +88,16 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 // Scan checks the log for incomplete operations. Should only be called at startup.
 func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
 	zap.L().Debug("scanning oplog for incomplete operations")
+	t := time.Now()
 	err := o.db.Update(func(tx *bolt.Tx) error {
 		sysBucket := tx.Bucket(SystemBucket)
 		opLogBucket := tx.Bucket(OpLogBucket)
 		c := opLogBucket.Cursor()
+		var k, v []byte
 		if lastValidated := sysBucket.Get([]byte("last_validated")); lastValidated != nil {
-			c.Seek(lastValidated)
+			k, v = c.Seek(lastValidated)
 		}
-		for k, v := c.Prev(); k != nil; k, v = c.Next() {
+		for ; k != nil; k, v = c.Next() {
 			op := &v1.Operation{}
 			if err := proto.Unmarshal(v, op); err != nil {
 				zap.L().Error("error unmarshalling operation, there may be corruption in the oplog", zap.Error(err))
@@ -124,7 +126,7 @@ func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
 	if err != nil {
 		return fmt.Errorf("scanning log: %v", err)
 	}
-	zap.L().Debug("scan complete")
+	zap.L().Debug("scan complete", zap.Duration("duration", time.Since(t)))
 	return nil
 }
 
