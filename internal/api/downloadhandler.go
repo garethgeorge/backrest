@@ -55,8 +55,8 @@ func NewDownloadHandler(oplog *oplog.OpLog) http.Handler {
 		w.Header().Set("Content-Type", "application/gzip")
 		w.Header().Set("Content-Transfer-Encoding", "binary")
 
-		gzw := gzip.NewWriter(w)
-		if err := tarDirectory(w, fullPath); err != nil {
+		gzw, _ := gzip.NewWriterLevel(w, gzip.BestSpeed)
+		if err := tarDirectory(gzw, fullPath); err != nil {
 			zap.S().Errorf("error creating tar archive: %v", err)
 			http.Error(w, "error creating tar archive", http.StatusInternalServerError)
 			return
