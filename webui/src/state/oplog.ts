@@ -147,7 +147,7 @@ export class BackupInfoCollector {
   constructor(
     private filter: (op: Operation) => boolean = (op) =>
       !shouldHideOperation(op),
-  ) {}
+  ) { }
 
   private createBackup(operations: Operation[]): BackupInfo {
     // deduplicate and sort operations.
@@ -414,7 +414,7 @@ export const detailsForOperation = (
       color = "grey";
       break;
     case OperationStatus.STATUS_INPROGRESS:
-      state = "runnning";
+      state = "running";
       duration = new Date().getTime() - Number(op.unixTimeStartMs);
       color = "blue";
       break;

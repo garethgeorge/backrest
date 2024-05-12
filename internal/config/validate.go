@@ -10,6 +10,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/config/validationutil"
 	"github.com/gitploy-io/cronexpr"
 	"github.com/hashicorp/go-multierror"
+	"google.golang.org/protobuf/proto"
 )
 
 func ValidateConfig(c *v1.Config) error {
@@ -107,6 +108,10 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 
 	if plan.Retention != nil && plan.Retention.Policy == nil {
 		err = multierror.Append(err, errors.New("retention policy must be nil or must specify a policy"))
+	} else if policyTimeBucketed, ok := plan.Retention.Policy.(*v1.RetentionPolicy_PolicyTimeBucketed); ok {
+		if proto.Equal(policyTimeBucketed.PolicyTimeBucketed, &v1.RetentionPolicy_TimeBucketedCounts{}) {
+			err = multierror.Append(err, errors.New("time bucketed policy must specify a non-empty bucket"))
+		}
 	}
 
 	slices.Sort(plan.Paths)

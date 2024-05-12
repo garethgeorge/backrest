@@ -67,7 +67,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
       alertsApi.success(
         "Plan deleted from config, but not from restic repo. Snapshots will remain in storage and operations will be tracked until manually deleted. Reusing a deleted plan ID is not recommended if backups have already been performed.",
-        30,
+        30
       );
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);
@@ -491,18 +491,6 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 const RetentionPolicyView = () => {
   const form = Form.useFormInstance();
   const retention = Form.useWatch("retention", { form, preserve: true }) as any;
-
-  if (!retention) {
-    form.setFieldValue("retention", {
-      policyTimeBucketed: {
-        yearly: 0,
-        monthly: 3,
-        weekly: 4,
-        daily: 7,
-        hourly: 24,
-      },
-    });
-  }
 
   const determineMode = () => {
     if (!retention) {
