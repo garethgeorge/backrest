@@ -388,7 +388,7 @@ export const colorForStatus = (status: OperationStatus) => {
     case OperationStatus.STATUS_SUCCESS:
       return "green";
     case OperationStatus.STATUS_USER_CANCELLED:
-      return "orange";
+      return "yellow";
     default:
       return "grey";
   }
@@ -432,7 +432,7 @@ export const detailsForOperation = (
       break;
     case OperationStatus.STATUS_USER_CANCELLED:
       state = "cancelled";
-      color = "orange";
+      color = "yellow";
       break;
     default:
       state = "";

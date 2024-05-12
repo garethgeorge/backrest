@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -419,14 +420,16 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 
 	ctx, cancel := context.WithCancel(ctx)
 
-	errChan := make(chan error, 1)
 	outputs := make(chan []byte, 100)
+	errChan := make(chan error, 1)
 	go func() {
+		start := time.Now()
 		if err := repo.RunCommand(ctx, req.Msg.Command, func(output []byte) {
-			outputs <- output
+			outputs <- bytes.Clone(output)
 		}); err != nil {
 			errChan <- err
 		}
+		outputs <- []byte("took " + time.Since(start).String())
 		cancel()
 	}()
 
