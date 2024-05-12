@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package v1hub;
+
+option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
+
+message HubConfig {
+  repeated Instance instances = 1;
+  string secret = 2;
+}
+
+message Instance {
+  string id = 1;
+}

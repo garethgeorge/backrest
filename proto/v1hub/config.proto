@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package v1hub;
+
+option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
+
+import "google/protobuf/empty.proto";
+import "types/value.proto";
+import "v1hub/config.proto";
+
+
+service Hub {
+  rpc GetInstances(google.protobuf.Empty) returns (GetInstancesResponse);
+  rpc AddInstance(Instance) returns (Instance);
+  rpc UpdateInstance(Instance) returns (GetInstancesResponse);
+  
+  // CreateConnectionSecret creates a new connection secret for the given instance ID.
+  rpc CreateConnectionSecret(types.StringValue) returns (types.StringValue);
+}
+
+message GetInstancesResponse {
+  repeated Instance instances = 1;
+}
