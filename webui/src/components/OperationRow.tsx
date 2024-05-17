@@ -157,7 +157,7 @@ export const OperationRow = ({
                   }}
                 >
                   <BigOperationDataVerbatim logref={operation.logref!} />
-                </Modal>,
+                </Modal>
               );
             }}
           >
@@ -232,15 +232,17 @@ export const OperationRow = ({
     );
   } else if (operation.op.case === "operationRestore") {
     const restore = operation.op.value;
+    const progress = Math.round((details.percentage || 0) * 1000) / 10;
+    const st = restore.status! || {};
+
     body = (
       <>
         Restore {restore.path} to {restore.target}
         {details.percentage !== undefined ? (
-          <Progress percent={details.percentage || 0} status="active" />
+          <Progress percent={progress} status="active" />
         ) : null}
         {operation.status == OperationStatus.STATUS_SUCCESS ? (
           <>
-            <br />
             <Button
               type="link"
               onClick={() => {
@@ -251,7 +253,7 @@ export const OperationRow = ({
                   })
                   .catch((e) => {
                     alertApi?.error(
-                      "Failed to fetch download URL: " + e.message,
+                      "Failed to fetch download URL: " + e.message
                     );
                   });
               }}
@@ -260,6 +262,19 @@ export const OperationRow = ({
             </Button>
           </>
         ) : null}
+        <Row gutter={16}>
+          <Col span={12}>
+            <Typography.Text strong>Bytes Done/Total</Typography.Text>
+            <br />
+            {formatBytes(Number(st.bytesRestored))}/
+            {formatBytes(Number(st.totalBytes))}
+          </Col>
+          <Col span={12}>
+            <Typography.Text strong>Files Done/Total</Typography.Text>
+            <br />
+            {Number(st.filesRestored)}/{Number(st.totalFiles)}
+          </Col>
+        </Row>
       </>
     );
   } else if (operation.op.case === "operationRunHook") {
@@ -281,7 +296,7 @@ export const OperationRow = ({
           {details.state ? details.state + ": " : null}
           {displayMessage}
         </pre>
-      </>,
+      </>
     );
   }
 
@@ -366,7 +381,7 @@ const BackupOperationStatus = ({
     const st = status.entry.value;
     const progress =
       Math.round(
-        (Number(st.bytesDone) / Math.max(Number(st.totalBytes), 1)) * 1000,
+        (Number(st.bytesDone) / Math.max(Number(st.totalBytes), 1)) * 1000
       ) / 10;
     return (
       <>
@@ -514,7 +529,7 @@ const BigOperationDataVerbatim = ({ logref }: { logref: string }) => {
       .getLogs(
         new LogDataRequest({
           ref: logref,
-        }),
+        })
       )
       .then((resp) => {
         setOutput(new TextDecoder("utf-8").decode(resp.value));
