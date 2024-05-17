@@ -151,11 +151,10 @@ func TestEnvVarPropagation(t *testing.T) {
 
 	// create a new repo with cache disabled for testing
 	r := &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-		Flags:    []string{"--no-cache"},
-		Env:      []string{"RESTIC_PASSWORD=${MY_FOO}"},
+		Id:    "test",
+		Uri:   repo,
+		Flags: []string{"--no-cache"},
+		Env:   []string{"RESTIC_PASSWORD=${MY_FOO}"},
 	}
 
 	plan := &v1.Plan{
