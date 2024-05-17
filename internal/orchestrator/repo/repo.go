@@ -98,7 +98,11 @@ func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) 
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
 
-	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--tag", TagForPlan(plan.Id)+","+TagForInstance(r.config.Instance)))
+	tags := []string{TagForPlan(plan.Id)}
+	if r.config.Instance != "" {
+		tags = append(tags, TagForInstance(r.config.Instance))
+	}
+	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--tag", strings.Join(tags, ",")))
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for plan %q: %w", plan.Id, err)
 	}
@@ -132,8 +136,13 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 	opts = append(opts, restic.WithFlags(
 		"--exclude-caches",
 		"--tag", TagForPlan(plan.Id),
-		"--tag", TagForInstance(r.config.Instance)),
-	)
+	))
+
+	if r.config.Instance != "" {
+		opts = append(opts, restic.WithFlags("--tag", TagForInstance(r.config.Instance)))
+	} else {
+		zap.L().Warn("Creating a backup without an 'instance' tag as no value is set in the config. In a future backrest release this will be an error.")
+	}
 
 	for _, exclude := range plan.Excludes {
 		opts = append(opts, restic.WithFlags("--exclude", exclude))
@@ -191,10 +200,6 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan, tags []str
 	policy := plan.Retention
 	if policy == nil {
 		return nil, fmt.Errorf("plan %q has no retention policy", plan.Id)
-	}
-
-	if r.config.Instance == "" {
-		return nil, errors.New("instance is a required field in the backrest config")
 	}
 
 	result, err := r.repo.Forget(
