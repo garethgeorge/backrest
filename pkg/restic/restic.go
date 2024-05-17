@@ -99,7 +99,7 @@ func (r *Repo) init(ctx context.Context, opts ...GenericOption) error {
 		if strings.Contains(output.String(), "config file already exists") || strings.Contains(output.String(), "already initialized") {
 			return errAlreadyInitialized
 		}
-		return newCmdError(ctx, cmd, err)
+		return newCmdError(ctx, cmd, fmt.Errorf("%w: %v", err, output.String()))
 	}
 
 	r.initialized = true
