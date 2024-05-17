@@ -70,7 +70,7 @@ export const SettingsModal = () => {
 
       if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
         throw new Error(
-          "At least one user must be configured or authentication must be disabled",
+          "At least one user must be configured or authentication must be disabled"
         );
       }
 
@@ -127,7 +127,7 @@ export const SettingsModal = () => {
               </p>
             </>
           )}
-          <Tooltip title="The instance name will be used to identify this backrest install. It will be used to tag snapshots (as `bkrst-inst:instancename`) and will identify backups created by this instance if using multiple backrest installations.">
+          <Tooltip title="The instance name will be used to identify this backrest install. Pick a value carefully as it cannot be changed later.">
             <Form.Item
               hasFeedback
               name="instance"
@@ -199,11 +199,11 @@ export const SettingsModal = () => {
                               onFocus={() => {
                                 form.setFieldValue(
                                   ["auth", "users", index, "needsBcrypt"],
-                                  true,
+                                  true
                                 );
                                 form.setFieldValue(
                                   ["auth", "users", index, "passwordBcrypt"],
-                                  "",
+                                  ""
                                 );
                               }}
                             />
