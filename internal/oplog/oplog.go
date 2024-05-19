@@ -390,10 +390,13 @@ func (o *OpLog) ForEach(query Query, collector indexutil.Collector, do func(op *
 		if query.InstanceId != "" {
 			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(InstanceIndexBucket), []byte(query.InstanceId)))
 		}
-		if len(iterators) == 0 {
+
+		var ids []int64
+		if len(iterators) == 0 && len(query.Ids) == 0 {
 			return errors.New("no query parameters provided")
+		} else if len(iterators) > 0 {
+			ids = collector(indexutil.NewJoinIterator(iterators...))
 		}
-		ids := collector(indexutil.NewJoinIterator(iterators...))
 		if len(query.Ids) > 0 {
 			ids = append(ids, query.Ids...)
 		}

@@ -86,6 +86,8 @@ message RetentionPolicy {
 message PrunePolicy {
   int32 max_frequency_days = 1 [json_name="maxFrequencyDays", deprecated = true]; // max frequency of prune runs in days.
   Schedule schedule = 2 [json_name="schedule"];
+  int32 max_unused_bytes = 3 [json_name="maxUnusedBytes"]; // max unused bytes before running prune.
+  int32 max_unused_percent = 4 [json_name="maxUnusedPercent"]; // max unused percent before running prune.
 }
 
 message CheckPolicy {

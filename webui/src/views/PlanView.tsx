@@ -24,15 +24,6 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
     }
   };
 
-  const handlePruneNow = async () => {
-    try {
-      await backrestService.prune({ value: plan.id });
-      alertsApi.success("Prune scheduled.");
-    } catch (e: any) {
-      alertsApi.error("Failed to schedule prune: " + e.message);
-    }
-  };
-
   const handleUnlockNow = async () => {
     try {
       alertsApi.info("Unlocking repo...");
@@ -75,11 +66,6 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           >
             Run Command
           </Button>
-        </Tooltip>
-        <Tooltip title="Runs a prune operation on the repository that will remove old snapshots and free up space">
-          <SpinButton type="default" onClickAsync={handlePruneNow}>
-            Prune Now
-          </SpinButton>
         </Tooltip>
         <Tooltip title="Removes lockfiles and checks the repository for errors. Only run if you are sure the repo is not being accessed by another system">
           <SpinButton type="default" onClickAsync={handleUnlockNow}>

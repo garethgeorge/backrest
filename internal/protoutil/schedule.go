@@ -28,7 +28,7 @@ func ResolveSchedule(sched *v1.Schedule, lastRan time.Time) (time.Time, error) {
 		}
 		return cron.Next(lastRan), nil
 	default:
-		return time.Time{}, errors.New("unknown schedule type")
+		return time.Time{}, fmt.Errorf("unknown schedule type: %T", s)
 	}
 }
 
@@ -55,6 +55,7 @@ func ValidateSchedule(sched *v1.Schedule) error {
 			return errors.New("disabled boolean must be set to true")
 		}
 	default:
+		return fmt.Errorf("unknown schedule type: %T", s)
 	}
-	return errors.New("unknown schedule type")
+	return nil
 }

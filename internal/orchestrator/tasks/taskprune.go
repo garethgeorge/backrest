@@ -23,10 +23,10 @@ type PruneTask struct {
 	didRun bool
 }
 
-func NewOneoffPruneTask(repoID, planID string, at time.Time, force bool) Task {
+func NewPruneTask(repoID, planID string, force bool) Task {
 	return &PruneTask{
 		BaseTask: BaseTask{
-			TaskName:   fmt.Sprintf("prune for plan %q in repo %q", planID, repoID),
+			TaskName:   fmt.Sprintf("prune repo %q", repoID),
 			TaskRepoID: repoID,
 			TaskPlanID: planID,
 		},
@@ -59,8 +59,8 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	}
 
 	var lastRan time.Time
-	if err := runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID(), PlanId: t.PlanID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
-		if _, ok := op.Op.(*v1.Operation_OperationBackup); ok {
+	if err := runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
+		if _, ok := op.Op.(*v1.Operation_OperationPrune); ok {
 			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration
 		}
@@ -68,6 +68,8 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	}); err != nil {
 		return NeverScheduledTask, fmt.Errorf("finding last backup run time: %w", err)
 	}
+
+	zap.L().Debug("last prune time", zap.Time("time", lastRan), zap.String("repo", t.RepoID()))
 
 	runAt, err := protoutil.ResolveSchedule(repo.PrunePolicy.GetSchedule(), lastRan)
 	if errors.Is(err, protoutil.ErrScheduleDisabled) {

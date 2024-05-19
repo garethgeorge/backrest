@@ -591,6 +591,20 @@ export class PrunePolicy extends Message<PrunePolicy> {
    */
   schedule?: Schedule;
 
+  /**
+   * max unused bytes before running prune.
+   *
+   * @generated from field: int32 max_unused_bytes = 3;
+   */
+  maxUnusedBytes = 0;
+
+  /**
+   * max unused percent before running prune.
+   *
+   * @generated from field: int32 max_unused_percent = 4;
+   */
+  maxUnusedPercent = 0;
+
   constructor(data?: PartialMessage<PrunePolicy>) {
     super();
     proto3.util.initPartial(data, this);
@@ -601,6 +615,8 @@ export class PrunePolicy extends Message<PrunePolicy> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "max_frequency_days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 2, name: "schedule", kind: "message", T: Schedule },
+    { no: 3, name: "max_unused_bytes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "max_unused_percent", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PrunePolicy {

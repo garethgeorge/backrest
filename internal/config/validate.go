@@ -29,7 +29,7 @@ func ValidateConfig(c *v1.Config) error {
 	if c.Repos != nil {
 		for _, repo := range c.Repos {
 			if e := validateRepo(repo); e != nil {
-				err = multierror.Append(e, fmt.Errorf("repo %s: %w", repo.GetId(), err))
+				err = multierror.Append(err, fmt.Errorf("repo %s: %w", repo.GetId(), e))
 			}
 			if _, ok := repos[repo.Id]; ok {
 				err = multierror.Append(err, fmt.Errorf("repo %s: duplicate id", repo.GetId()))

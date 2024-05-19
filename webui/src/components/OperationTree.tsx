@@ -38,6 +38,7 @@ import {
   ClearHistoryRequest,
   ForgetRequest,
   GetOperationsRequest,
+  OpSelector,
 } from "../../gen/ts/v1/service_pb";
 import { isMobile } from "../lib/browserutil";
 import { useShowModal } from "./ModalManager";
@@ -342,7 +343,9 @@ const BackupView = ({ backup }: { backup?: BackupInfo }) => {
         onClickAsync={async () => {
           backrestService.clearHistory(
             new ClearHistoryRequest({
-              ops: backup.operations.map((op) => op.id),
+              selector: new OpSelector({
+                ids: backup.operations.map((op) => op.id),
+              }),
             })
           );
         }}

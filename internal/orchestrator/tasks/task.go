@@ -15,6 +15,7 @@ var NeverScheduledTask = ScheduledTask{}
 
 const (
 	PlanForUnassociatedOperations = "_unassociated_"
+	PlanForSystemTasks            = "_system_" // plan for system tasks e.g. garbage collection, prune, stats, etc.
 
 	TaskPriorityStats          = -1
 	TaskPriorityDefault        = 0
