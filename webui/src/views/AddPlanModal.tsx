@@ -152,60 +152,64 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           disabled={confirmLoading}
         >
           {/* Plan.id */}
-          <Form.Item<Plan>
-            hasFeedback
-            name="id"
-            label="Plan Name"
-            initialValue={template ? template.id : ""}
-            validateTrigger={["onChange", "onBlur"]}
-            rules={[
-              {
-                required: true,
-                message: "Please input plan name",
-              },
-              {
-                validator: async (_, value) => {
-                  if (template) return;
-                  if (config?.plans?.find((r) => r.id === value)) {
-                    throw new Error("Plan with name already exists");
-                  }
+          <Tooltip title="Unique ID that identifies this plan in the backrest UI (e.g. s3-myplan). This cannot be changed after creation.">
+            <Form.Item<Plan>
+              hasFeedback
+              name="id"
+              label="Plan Name"
+              initialValue={template ? template.id : ""}
+              validateTrigger={["onChange", "onBlur"]}
+              rules={[
+                {
+                  required: true,
+                  message: "Please input plan name",
                 },
-                message: "Plan with name already exists",
-              },
-              {
-                pattern: namePattern,
-                message:
-                  "Name must be alphanumeric with dashes or underscores as separators",
-              },
-            ]}
-          >
-            <Input
-              placeholder={"plan" + ((config?.plans?.length || 0) + 1)}
-              disabled={!!template}
-            />
-          </Form.Item>
+                {
+                  validator: async (_, value) => {
+                    if (template) return;
+                    if (config?.plans?.find((r) => r.id === value)) {
+                      throw new Error("Plan with name already exists");
+                    }
+                  },
+                  message: "Plan with name already exists",
+                },
+                {
+                  pattern: namePattern,
+                  message:
+                    "Name must be alphanumeric with dashes or underscores as separators",
+                },
+              ]}
+            >
+              <Input
+                placeholder={"plan" + ((config?.plans?.length || 0) + 1)}
+                disabled={!!template}
+              />
+            </Form.Item>
+          </Tooltip>
 
           {/* Plan.repo */}
-          <Form.Item<Plan>
-            name="repo"
-            label="Repository"
-            validateTrigger={["onChange", "onBlur"]}
-            initialValue={template ? template.repo : ""}
-            rules={[
-              {
-                required: true,
-                message: "Please select repository",
-              },
-            ]}
-          >
-            <Select
-              // defaultValue={repos.length > 0 ? repos[0].id : undefined}
-              options={repos.map((repo) => ({
-                value: repo.id,
-              }))}
-              disabled={!!template}
-            />
-          </Form.Item>
+          <Tooltip title="The repo that backrest will store your snapshots in.">
+            <Form.Item<Plan>
+              name="repo"
+              label="Repository"
+              validateTrigger={["onChange", "onBlur"]}
+              initialValue={template ? template.repo : ""}
+              rules={[
+                {
+                  required: true,
+                  message: "Please select repository",
+                },
+              ]}
+            >
+              <Select
+                // defaultValue={repos.length > 0 ? repos[0].id : undefined}
+                options={repos.map((repo) => ({
+                  value: repo.id,
+                }))}
+                disabled={!!template}
+              />
+            </Form.Item>
+          </Tooltip>
 
           {/* Plan.paths */}
           <Form.Item label="Paths" required={true}>
@@ -258,106 +262,136 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           </Form.Item>
 
           {/* Plan.excludes */}
-          <Form.Item label="Excludes" required={false}>
-            <Form.List
-              name="excludes"
-              rules={[]}
-              initialValue={template ? template.excludes : []}
-            >
-              {(fields, { add, remove }, { errors }) => (
-                <>
-                  {fields.map((field, index) => (
-                    <Form.Item required={false} key={field.key}>
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        initialValue={""}
-                        rules={[
-                          {
-                            required: true,
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <URIAutocomplete
-                          style={{ width: "90%" }}
-                          onBlur={() => form.validateFields()}
-                          globAllowed={true}
+          <Tooltip
+            title={
+              <>
+                Paths to exclude from your backups. See the{" "}
+                <a
+                  href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
+                  target="_blank"
+                >
+                  restic docs
+                </a>{" "}
+                for more info.
+              </>
+            }
+          >
+            <Form.Item label="Excludes" required={false}>
+              <Form.List
+                name="excludes"
+                rules={[]}
+                initialValue={template ? template.excludes : []}
+              >
+                {(fields, { add, remove }, { errors }) => (
+                  <>
+                    {fields.map((field, index) => (
+                      <Form.Item required={false} key={field.key}>
+                        <Form.Item
+                          {...field}
+                          validateTrigger={["onChange", "onBlur"]}
+                          initialValue={""}
+                          rules={[
+                            {
+                              required: true,
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <URIAutocomplete
+                            style={{ width: "90%" }}
+                            onBlur={() => form.validateFields()}
+                            globAllowed={true}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(field.name)}
+                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(field.name)}
-                        style={{ paddingLeft: "5px" }}
-                      />
+                    ))}
+                    <Form.Item>
+                      <Button
+                        type="dashed"
+                        onClick={() => add()}
+                        style={{ width: "90%" }}
+                        icon={<PlusOutlined />}
+                      >
+                        Add Exclusion Glob
+                      </Button>
+                      <Form.ErrorList errors={errors} />
                     </Form.Item>
-                  ))}
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => add()}
-                      style={{ width: "90%" }}
-                      icon={<PlusOutlined />}
-                    >
-                      Add Exclusion Glob
-                    </Button>
-                    <Form.ErrorList errors={errors} />
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
-          </Form.Item>
+                  </>
+                )}
+              </Form.List>
+            </Form.Item>
+          </Tooltip>
 
-          {/* Plan.excludes */}
-          <Form.Item label="Excludes (Case Insensitive)" required={false}>
-            <Form.List
-              name="iexcludes"
-              rules={[]}
-              initialValue={template ? template.iexcludes : []}
-            >
-              {(fields, { add, remove }, { errors }) => (
-                <>
-                  {fields.map((field, index) => (
-                    <Form.Item required={false} key={field.key}>
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        initialValue={""}
-                        rules={[
-                          {
-                            required: true,
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <URIAutocomplete
-                          style={{ width: "90%" }}
-                          onBlur={() => form.validateFields()}
-                          globAllowed={true}
+          {/* Plan.iexcludes */}
+          <Tooltip
+            title={
+              <>
+                Case insensitive paths to exclude from your backups. See the{" "}
+                <a
+                  href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
+                  target="_blank"
+                >
+                  restic docs
+                </a>{" "}
+                for more info.
+              </>
+            }
+          >
+            <Form.Item label="Excludes (Case Insensitive)" required={false}>
+              <Form.List
+                name="iexcludes"
+                rules={[]}
+                initialValue={template ? template.iexcludes : []}
+              >
+                {(fields, { add, remove }, { errors }) => (
+                  <>
+                    {fields.map((field, index) => (
+                      <Form.Item required={false} key={field.key}>
+                        <Form.Item
+                          {...field}
+                          validateTrigger={["onChange", "onBlur"]}
+                          initialValue={""}
+                          rules={[
+                            {
+                              required: true,
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <URIAutocomplete
+                            style={{ width: "90%" }}
+                            onBlur={() => form.validateFields()}
+                            globAllowed={true}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(field.name)}
+                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(field.name)}
-                        style={{ paddingLeft: "5px" }}
-                      />
+                    ))}
+                    <Form.Item>
+                      <Button
+                        type="dashed"
+                        onClick={() => add()}
+                        style={{ width: "90%" }}
+                        icon={<PlusOutlined />}
+                      >
+                        Add Case Insensitive Exclusion Glob
+                      </Button>
+                      <Form.ErrorList errors={errors} />
                     </Form.Item>
-                  ))}
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => add()}
-                      style={{ width: "90%" }}
-                      icon={<PlusOutlined />}
-                    >
-                      Add Case Insensitive Exclusion Glob
-                    </Button>
-                    <Form.ErrorList errors={errors} />
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
-          </Form.Item>
+                  </>
+                )}
+              </Form.List>
+            </Form.Item>
+          </Tooltip>
 
           {/* Plan.cron */}
           <Tooltip title="Cron expression to schedule the plan in 24 hour time">
