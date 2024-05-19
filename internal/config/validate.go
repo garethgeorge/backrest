@@ -10,6 +10,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/config/validationutil"
 	"github.com/gitploy-io/cronexpr"
 	"github.com/hashicorp/go-multierror"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -17,7 +18,11 @@ func ValidateConfig(c *v1.Config) error {
 	var err error
 
 	if e := validationutil.ValidateID(c.Instance, validationutil.IDMaxLen); e != nil {
-		err = multierror.Append(err, fmt.Errorf("instance ID %q invalid: %w", c.Instance, e))
+		if errors.Is(e, validationutil.ErrEmpty) {
+			zap.L().Warn("ACTION REQUIRED: instance ID is empty, will be required in a future update. Please open the backrest UI to set a unique instance ID. Until fixed this warning (and related errors) will print periodically.")
+		} else {
+			err = multierror.Append(err, fmt.Errorf("instance ID %q invalid: %w", c.Instance, e))
+		}
 	}
 
 	repos := make(map[string]*v1.Repo)
