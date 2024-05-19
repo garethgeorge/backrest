@@ -112,14 +112,14 @@ func (w *OutputCapturer) Bytes() []byte {
 }
 
 type SynchronizedWriter struct {
-	mu sync.Mutex
+	Mu sync.Mutex
 	W  io.Writer
 }
 
 var _ io.Writer = &SynchronizedWriter{}
 
 func (w *SynchronizedWriter) Write(p []byte) (n int, err error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
+	w.Mu.Lock()
+	defer w.Mu.Unlock()
 	return w.W.Write(p)
 }

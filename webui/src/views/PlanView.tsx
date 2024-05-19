@@ -46,7 +46,10 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const handleClearErrorHistory = async () => {
     try {
       alertsApi.info("Clearing error history...");
-      await backrestService.clearHistory({ planId: plan.id, onlyFailed: true });
+      await backrestService.clearHistory({
+        selector: new OpSelector({ planId: plan.id, repoId: plan.repo }),
+        onlyFailed: true,
+      });
       alertsApi.success("Error history cleared.");
     } catch (e: any) {
       alertsApi.error("Failed to clear error history: " + e.message);
@@ -62,6 +65,17 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         <SpinButton type="primary" onClickAsync={handleBackupNow}>
           Backup Now
         </SpinButton>
+        <Tooltip title="Advanced users: open a restic shell to run commands on the repository. Re-index snapshots to reflect any changes in Backrest.">
+          <Button
+            type="default"
+            onClick={async () => {
+              const { RunCommandModal } = await import("./RunCommandModal");
+              showModal(<RunCommandModal repoId={plan.repo!} />);
+            }}
+          >
+            Run Command
+          </Button>
+        </Tooltip>
         <Tooltip title="Runs a prune operation on the repository that will remove old snapshots and free up space">
           <SpinButton type="default" onClickAsync={handlePruneNow}>
             Prune Now
@@ -76,17 +90,6 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           <SpinButton type="default" onClickAsync={handleClearErrorHistory}>
             Clear Error History
           </SpinButton>
-        </Tooltip>
-        <Tooltip title="Open a restic shell to run commands on the repository.">
-          <Button
-            type="default"
-            onClick={async () => {
-              const { RunCommandModal } = await import("./RunCommandModal");
-              showModal(<RunCommandModal repoId={plan.repo!} />);
-            }}
-          >
-            Run Command
-          </Button>
         </Tooltip>
       </Flex>
       <Tabs

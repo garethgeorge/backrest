@@ -481,3 +481,17 @@ export const detailsForOperation = (
     color,
   };
 };
+
+export const matchSelector = (selector: OpSelector, op: Operation) => {
+  if (selector.planId && selector.planId !== op.planId) {
+    return false;
+  }
+  if (selector.repoId && selector.repoId !== op.repoId) {
+    return false;
+  }
+  if (selector.flowId && selector.flowId !== op.flowId) {
+    return false;
+  }
+  return true;
+}
+

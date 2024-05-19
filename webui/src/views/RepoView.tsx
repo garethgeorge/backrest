@@ -121,6 +121,18 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
         <Typography.Title>{repo.id}</Typography.Title>
       </Flex>
       <Flex gap="small" align="center" wrap="wrap">
+        <Tooltip title="Advanced users: open a restic shell to run commands on the repository. Re-index snapshots to reflect any changes in Backrest.">
+          <Button
+            type="default"
+            onClick={async () => {
+              const { RunCommandModal } = await import("./RunCommandModal");
+              showModal(<RunCommandModal repoId={repo.id!} />);
+            }}
+          >
+            Run Command
+          </Button>
+        </Tooltip>
+
         <Tooltip title="Indexes the snapshots in the repository. Snapshots are also indexed automatically after each backup.">
           <SpinButton type="default" onClickAsync={handleIndexNow}>
             Index Snapshots
@@ -131,17 +143,6 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           <SpinButton type="default" onClickAsync={handleStatsNow}>
             Compute Stats
           </SpinButton>
-        </Tooltip>
-        <Tooltip title="Open a restic shell to run commands on the repository.">
-          <Button
-            type="default"
-            onClick={async () => {
-              const { RunCommandModal } = await import("./RunCommandModal");
-              showModal(<RunCommandModal repoId={repo.id!} />);
-            }}
-          >
-            Run Command
-          </Button>
         </Tooltip>
       </Flex>
       <Tabs defaultActiveKey={items[0].key} items={items} />

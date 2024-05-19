@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { backrestService } from "../api";
 import { useConfig } from "../components/ConfigProvider";
 import { Config } from "../../gen/ts/v1/config_pb";
+import { isDevBuild } from "../state/buildcfg";
 
 export const GettingStartedGuide = () => {
   const config = useConfig()[0];
@@ -55,28 +56,37 @@ export const GettingStartedGuide = () => {
             your config (or minimally a copy of your passwords) in a safe
             location e.g. a secure note in your password manager.
           </li>
+          <li>
+            Configure hooks: Backrest can deliver notifications about backup
+            events. It's strongly recommended that you configure an on error
+            hook that will notify you in the event that backups start failing
+            (e.g. an issue with storage or network connectivity). Hooks can be
+            configured either at the plan or repo level.
+          </li>
         </ul>
         <Divider orientation="left">Config View</Divider>
-        <Collapse
-          size="small"
-          items={[
-            {
-              key: "1",
-              label: "Config JSON hidden for security",
-              children: config ? (
-                <Typography>
-                  <pre>
-                    {config.toJsonString({
-                      prettySpaces: 2,
-                    })}
-                  </pre>
-                </Typography>
-              ) : (
-                <Spin />
-              ),
-            },
-          ]}
-        />
+        {isDevBuild && (
+          <Collapse
+            size="small"
+            items={[
+              {
+                key: "1",
+                label: "Config JSON hidden for security",
+                children: config ? (
+                  <Typography>
+                    <pre>
+                      {config.toJsonString({
+                        prettySpaces: 2,
+                      })}
+                    </pre>
+                  </Typography>
+                ) : (
+                  <Spin />
+                ),
+              },
+            ]}
+          />
+        )}
       </Typography.Text>
     </>
   );

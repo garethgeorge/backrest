@@ -123,6 +123,8 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 	args := []string{"backup", "--json", "--exclude-caches"}
 	args = append(args, paths...)
 
+	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
+
 	cmd := r.commandWithContext(ctx, args, opts...)
 	outputForErr := ioutil.NewOutputCapturer(outputBufferLimit)
 	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
@@ -234,6 +236,7 @@ func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...Generic
 }
 
 func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
+	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
 	cmd := r.commandWithContext(ctx, []string{"restore", "--json", snapshot}, opts...)
 	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
 	reader, writer := nio.Pipe(buf)

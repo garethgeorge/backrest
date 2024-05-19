@@ -232,7 +232,7 @@ export const OperationRow = ({
     );
   } else if (operation.op.case === "operationRestore") {
     const restore = operation.op.value;
-    const progress = Math.round((details.percentage || 0) * 1000) / 10;
+    const progress = Math.round((details.percentage || 0) * 10) / 10;
     const st = restore.status! || {};
 
     body = (
