@@ -152,12 +152,22 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 		if plan.Disabled {
 			continue
 		}
+
+		// Schedule a backup task for the plan
 		t, err := tasks.NewScheduledBackupTask(plan)
 		if err != nil {
 			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
 		}
 		if err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {
 			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
+		}
+	}
+
+	for _, repo := range config.Repos {
+		// Schedule a prune task for the repo
+		t := tasks.NewPruneTask(repo.GetId(), tasks.PlanForSystemTasks, false)
+		if err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {
+			return fmt.Errorf("schedule prune task for repo %q: %w", repo.GetId(), err)
 		}
 	}
 
@@ -346,13 +356,14 @@ func (o *Orchestrator) Run(ctx context.Context) {
 		}
 
 		o.mu.Lock()
-		if t.configModno == o.config.Modno {
+		curCfgModno := o.config.Modno
+		o.mu.Unlock()
+		if t.configModno == curCfgModno {
 			// Only reschedule tasks if the config hasn't changed since the task was scheduled.
 			if err := o.ScheduleTask(t.Task, tasks.TaskPriorityDefault); err != nil {
 				zap.L().Error("reschedule task", zap.String("task", t.Task.Name()), zap.Error(err))
 			}
 		}
-		o.mu.Unlock()
 		cancelTaskCtx()
 
 		go func() {
@@ -370,7 +381,10 @@ func (o *Orchestrator) ScheduleTask(t tasks.Task, priority int, callbacks ...fun
 }
 
 func (o *Orchestrator) scheduleTaskHelper(t tasks.Task, priority int, curTime time.Time, callbacks ...func(error)) error {
-	nextRun := t.Next(curTime, newTaskRunnerImpl(o, t, nil))
+	nextRun, err := t.Next(curTime, newTaskRunnerImpl(o, t, nil))
+	if err != nil {
+		return fmt.Errorf("finding run time for task %q: %w", t.Name(), err)
+	}
 	if nextRun.Eq(tasks.NeverScheduledTask) {
 		return nil
 	}

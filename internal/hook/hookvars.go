@@ -23,6 +23,7 @@ type HookVars struct {
 	SnapshotId    string                      // the snapshot ID that triggered the hook.
 	SnapshotStats *restic.BackupProgressEntry // the summary of the backup operation.
 	CurTime       time.Time                   // the current time as time.Time
+	Duration      time.Duration               // the duration of the operation that triggered the hook.
 	Error         string                      // the error that caused the hook to run as a string.
 }
 
@@ -43,6 +44,10 @@ func (v HookVars) EventName(cond v1.Hook_Condition) string {
 
 func (v HookVars) FormatTime(t time.Time) string {
 	return t.Format(time.RFC3339)
+}
+
+func (v HookVars) FormatDuration(d time.Duration) string {
+	return d.String()
 }
 
 func (v HookVars) number(n any) int {

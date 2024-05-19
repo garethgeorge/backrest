@@ -3,6 +3,7 @@ package tasks
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -12,78 +13,77 @@ import (
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
+	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
 )
 
 type PruneTask struct {
 	BaseTask
-	OneoffTask
-	force bool
+	force  bool
+	didRun bool
 }
 
-func NewOneoffPruneTask(repoID, planID string, at time.Time, force bool) Task {
+func NewPruneTask(repoID, planID string, force bool) Task {
 	return &PruneTask{
 		BaseTask: BaseTask{
-			TaskName:   fmt.Sprintf("prune for plan %q in repo %q", planID, repoID),
+			TaskName:   fmt.Sprintf("prune repo %q", repoID),
 			TaskRepoID: repoID,
 			TaskPlanID: planID,
-		},
-		OneoffTask: OneoffTask{
-			RunAt: at,
-			ProtoOp: &v1.Operation{
-				Op: &v1.Operation_OperationPrune{},
-			},
 		},
 		force: force,
 	}
 }
 
-func (t *PruneTask) Next(now time.Time, runner TaskRunner) ScheduledTask {
+func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error) {
 	if t.force {
-		return t.OneoffTask.Next(now, runner)
+		if t.didRun {
+			return NeverScheduledTask, nil
+		}
+		t.didRun = true
+		return ScheduledTask{
+			Task:  t,
+			RunAt: now,
+			Op: &v1.Operation{
+				Op: &v1.Operation_OperationPrune{},
+			},
+		}, nil
 	}
 
-	shouldRun, err := t.shouldRun(now, runner)
-	if err != nil {
-		zap.S().Errorf("task %v failed to check if it should run: %v", t.Name(), err)
-		return NeverScheduledTask
-	}
-	if !shouldRun {
-		return NeverScheduledTask
-	}
-
-	return t.OneoffTask.Next(now, runner)
-}
-
-func (t *PruneTask) shouldRun(now time.Time, runner TaskRunner) (bool, error) {
 	repo, err := runner.GetRepo(t.RepoID())
 	if err != nil {
-		return false, fmt.Errorf("get repo %v: %w", t.RepoID(), err)
+		return ScheduledTask{}, fmt.Errorf("get repo %v: %w", t.RepoID(), err)
 	}
 
-	nextPruneTime, err := t.getNextPruneTime(runner, repo.PrunePolicy)
-	if err != nil {
-		return false, fmt.Errorf("get next prune time: %w", err)
+	if repo.PrunePolicy.GetSchedule() == nil {
+		return NeverScheduledTask, nil
 	}
-
-	return nextPruneTime.Before(now), nil
-}
-
-func (t *PruneTask) getNextPruneTime(runner TaskRunner, policy *v1.PrunePolicy) (time.Time, error) {
-	var lastPruneTime time.Time
-	runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
+	var lastRan time.Time
+	if err := runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationPrune); ok {
-			lastPruneTime = time.Unix(0, op.UnixTimeStartMs*int64(time.Millisecond))
+			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration
 		}
 		return nil
-	})
-
-	if policy != nil {
-		return lastPruneTime.Add(time.Duration(policy.MaxFrequencyDays) * 24 * time.Hour), nil
-	} else {
-		return lastPruneTime.Add(7 * 24 * time.Hour), nil // default to 7 days.
+	}); err != nil {
+		return NeverScheduledTask, fmt.Errorf("finding last backup run time: %w", err)
 	}
+
+	zap.L().Debug("last prune time", zap.Time("time", lastRan), zap.String("repo", t.RepoID()))
+
+	runAt, err := protoutil.ResolveSchedule(repo.PrunePolicy.GetSchedule(), lastRan)
+	if errors.Is(err, protoutil.ErrScheduleDisabled) {
+		return NeverScheduledTask, nil
+	} else if err != nil {
+		return NeverScheduledTask, fmt.Errorf("resolve schedule: %w", err)
+	}
+
+	return ScheduledTask{
+		Task:  t,
+		RunAt: runAt,
+		Op: &v1.Operation{
+			Op: &v1.Operation_OperationPrune{},
+		},
+	}, nil
 }
 
 func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {

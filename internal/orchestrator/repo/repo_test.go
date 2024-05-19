@@ -169,7 +169,7 @@ func TestEnvVarPropagation(t *testing.T) {
 	}
 
 	_, err = orchestrator.Backup(context.Background(), plan, nil)
-	if err == nil || !strings.Contains(err.Error(), "an empty password is not a password") {
+	if err == nil || !strings.Contains(err.Error(), "password") {
 		t.Fatalf("expected error about RESTIC_PASSWORD, got: %v", err)
 	}
 

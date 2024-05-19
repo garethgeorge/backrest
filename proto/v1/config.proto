@@ -38,6 +38,7 @@ message Repo {
   repeated string env = 4 [json_name="env"]; // extra environment variables to set for restic.
   repeated string flags = 5 [json_name="flags"]; // extra flags set on the restic command.
   PrunePolicy prune_policy = 6 [json_name="prunePolicy"]; // policy for when to run prune.
+  CheckPolicy check_policy = 9 [json_name="checkPolicy"]; // policy for when to run check.
   repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on events for this repo.
   bool auto_unlock = 8 [json_name="autoUnlock"]; // automatically unlock the repo when needed.
 }
@@ -45,11 +46,12 @@ message Repo {
 message Plan {
   string id = 1 [json_name="id"]; // unique but human readable ID for this plan.
   string repo = 2 [json_name="repo"]; // ID of the repo to use.
-  bool disabled = 11 [json_name="disabled"];
+  bool disabled = 11 [json_name="disabled", deprecated=true]; // disable the plan.
   repeated string paths = 4 [json_name="paths"]; // paths to include in the backup.
   repeated string excludes = 5 [json_name="excludes"]; // glob patterns to exclude.
   repeated string iexcludes = 9 [json_name="iexcludes"]; // case insensitive glob patterns to exclude.
-  string cron = 6 [json_name="cron"]; // cron expression describing the backup schedule.
+  string cron = 6 [json_name="cron", deprecated=true]; // cron expression describing the backup schedule.
+  Schedule schedule = 12 [json_name="schedule"]; // schedule for the backup.
   RetentionPolicy retention = 7 [json_name="retention"]; // retention policy for snapshots.
   repeated Hook hooks = 8 [json_name="hooks"]; // hooks to run on events for this plan.
   repeated string backup_flags = 10 [json_name="backup_flags"]; // extra flags to set when running a backup command.
@@ -82,14 +84,26 @@ message RetentionPolicy {
 }
 
 message PrunePolicy {
-  int32 max_frequency_days = 1 [json_name="maxFrequencyDays"]; // max frequency of prune runs in days. If 0, prune will be run on every backup.
-  int32 max_unused_percent = 100 [json_name="maxUnusedPercent"]; // max percentage of repo size that can be unused before prune is run.
-  int32 max_unused_bytes = 101 [json_name="maxUnusedBytes"]; // max number of bytes that can be unused before prune is run.
+  int32 max_frequency_days = 1 [json_name="maxFrequencyDays", deprecated = true]; // max frequency of prune runs in days.
+  Schedule schedule = 2 [json_name="schedule"];
+  int32 max_unused_bytes = 3 [json_name="maxUnusedBytes"]; // max unused bytes before running prune.
+  int32 max_unused_percent = 4 [json_name="maxUnusedPercent"]; // max unused percent before running prune.
 }
 
 message CheckPolicy {
-  oneof policy {
-    int32 max_frequency_days = 1 [json_name="maxFrequencyDays"];
+  Schedule schedule = 1 [json_name="schedule"];
+  
+  oneof read_policy {
+    int32 read_percent = 11 [json_name="readPercent"]; // check a percentage of snapshots.
+  }
+}
+
+message Schedule {
+  oneof schedule {
+    bool disabled = 1 [json_name="disabled"]; // disable the schedule.
+    string cron = 2 [json_name="cron"]; // cron expression describing the schedule.
+    int32 maxFrequencyDays = 3 [json_name="maxFrequencyDays"]; // max frequency of runs in days.
+    int32 maxFrequencyHours = 4 [json_name="maxFrequencyHours"]; // max frequency of runs in hours.
   }
 }
 

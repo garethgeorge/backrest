@@ -39,14 +39,33 @@ import { useShowModal } from "../components/ModalManager";
 export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   const [config, setConfig] = useConfig();
   const showModal = useShowModal();
+  const alertsApi = useAlertApi()!;
 
   // Task handlers
   const handleIndexNow = async () => {
-    await backrestService.indexSnapshots(new StringValue({ value: repo.id! }));
+    try {
+      await backrestService.indexSnapshots(
+        new StringValue({ value: repo.id! })
+      );
+    } catch (e: any) {
+      alertsApi.error("Failed to index snapshots: " + e.message);
+    }
   };
 
   const handleStatsNow = async () => {
-    await backrestService.stats(new StringValue({ value: repo.id! }));
+    try {
+      await backrestService.stats(new StringValue({ value: repo.id! }));
+    } catch (e: any) {
+      alertsApi.error("Failed to compute stats: " + e.message);
+    }
+  };
+
+  const handlePruneNow = async () => {
+    try {
+      await backrestService.prune({ value: repo.id });
+    } catch (e: any) {
+      alertsApi.error("Failed to prune: " + e.message);
+    }
   };
 
   // Gracefully handle deletions by checking if the plan is still in the config.
@@ -136,6 +155,12 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
         <Tooltip title="Indexes the snapshots in the repository. Snapshots are also indexed automatically after each backup.">
           <SpinButton type="default" onClickAsync={handleIndexNow}>
             Index Snapshots
+          </SpinButton>
+        </Tooltip>
+
+        <Tooltip title="Runs a prune operation on the repository that will remove old snapshots and free up space">
+          <SpinButton type="default" onClickAsync={handlePruneNow}>
+            Prune Now
           </SpinButton>
         </Tooltip>
 
