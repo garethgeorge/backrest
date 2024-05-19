@@ -370,7 +370,10 @@ func (o *Orchestrator) ScheduleTask(t tasks.Task, priority int, callbacks ...fun
 }
 
 func (o *Orchestrator) scheduleTaskHelper(t tasks.Task, priority int, curTime time.Time, callbacks ...func(error)) error {
-	nextRun := t.Next(curTime, newTaskRunnerImpl(o, t, nil))
+	nextRun, err := t.Next(curTime, newTaskRunnerImpl(o, t, nil))
+	if err != nil {
+		return fmt.Errorf("finding run time for task %q: %w", t.Name(), err)
+	}
 	if nextRun.Eq(tasks.NeverScheduledTask) {
 		return nil
 	}

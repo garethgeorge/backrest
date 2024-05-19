@@ -12,7 +12,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
-	"github.com/gitploy-io/cronexpr"
 	"go.uber.org/zap"
 )
 
@@ -21,65 +20,67 @@ var maxBackupErrorHistoryLength = 20 // arbitrary limit on the number of file re
 // BackupTask is a scheduled backup operation.
 type BackupTask struct {
 	BaseTask
-	scheduler func(curTime time.Time) *time.Time
+	force  bool
+	didRun bool
 }
 
 var _ Task = &BackupTask{}
 
 func NewScheduledBackupTask(plan *v1.Plan) (*BackupTask, error) {
-	sched, err := cronexpr.ParseInLocation(plan.Cron, time.Now().Location().String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse schedule %q: %w", plan.Cron, err)
-	}
-
 	return &BackupTask{
 		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("backup for plan %q", plan.Id),
 			TaskRepoID: plan.Repo,
 			TaskPlanID: plan.Id,
-		},
-		scheduler: func(curTime time.Time) *time.Time {
-			next := sched.Next(curTime)
-			return &next
 		},
 	}, nil
 }
 
 func NewOneoffBackupTask(plan *v1.Plan, at time.Time) *BackupTask {
-	didOnce := false
 	return &BackupTask{
 		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("backup for plan %q", plan.Id),
 			TaskRepoID: plan.Repo,
 			TaskPlanID: plan.Id,
 		},
-		scheduler: func(curTime time.Time) *time.Time {
-			if didOnce {
-				return nil
-			}
-			didOnce = true
-			return &at
-		},
+		force: true,
 	}
 }
 
-func (t *BackupTask) Next(now time.Time, runner TaskRunner) ScheduledTask {
-	next := t.scheduler(now)
-	if next == nil {
-		return NeverScheduledTask
+func (t *BackupTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error) {
+	if t.force {
+		if t.didRun {
+			return NeverScheduledTask, nil
+		}
+		t.didRun = true
+		return ScheduledTask{
+			Task:  t,
+			RunAt: now,
+			Op: &v1.Operation{
+				Op: &v1.Operation_OperationBackup{},
+			},
+		}, nil
+	}
+
+	plan, err := runner.GetPlan(t.PlanID())
+	if err != nil {
+		return NeverScheduledTask, err
+	}
+
+	nextRun, err := protoutil.ResolveSchedule(plan.Schedule, now)
+	if errors.Is(err, protoutil.ErrScheduleDisabled) {
+		return NeverScheduledTask, nil
+	} else if err != nil {
+		return NeverScheduledTask, fmt.Errorf("resolving schedule: %w", err)
 	}
 
 	return ScheduledTask{
 		Task:  t,
-		RunAt: *next,
+		RunAt: nextRun,
 		Op: &v1.Operation{
-			PlanId:          t.PlanID(),
-			RepoId:          t.RepoID(),
-			UnixTimeStartMs: (*next).UnixMilli(),
-			Status:          v1.OperationStatus_STATUS_PENDING,
-			Op:              &v1.Operation_OperationBackup{},
+			Op: &v1.Operation_OperationBackup{},
 		},
-	}
+	}, nil
 }
 
 func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {

@@ -65,6 +65,8 @@ func (t *taskRunnerImpl) OpLog() *oplog.OpLog {
 }
 
 func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.HookVars) error {
+	vars.Task = t.t.Name()
+
 	repoID := t.t.RepoID()
 	planID := t.t.PlanID()
 	var repo *v1.Repo

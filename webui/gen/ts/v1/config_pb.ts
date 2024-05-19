@@ -211,6 +211,13 @@ export class Repo extends Message<Repo> {
   prunePolicy?: PrunePolicy;
 
   /**
+   * policy for when to run check.
+   *
+   * @generated from field: v1.CheckPolicy check_policy = 9;
+   */
+  checkPolicy?: CheckPolicy;
+
+  /**
    * hooks to run on events for this repo.
    *
    * @generated from field: repeated v1.Hook hooks = 7;
@@ -238,6 +245,7 @@ export class Repo extends Message<Repo> {
     { no: 4, name: "env", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 5, name: "flags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 6, name: "prune_policy", kind: "message", T: PrunePolicy },
+    { no: 9, name: "check_policy", kind: "message", T: CheckPolicy },
     { no: 7, name: "hooks", kind: "message", T: Hook, repeated: true },
     { no: 8, name: "auto_unlock", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
@@ -278,7 +286,10 @@ export class Plan extends Message<Plan> {
   repo = "";
 
   /**
-   * @generated from field: bool disabled = 11;
+   * disable the plan.
+   *
+   * @generated from field: bool disabled = 11 [deprecated = true];
+   * @deprecated
    */
   disabled = false;
 
@@ -306,9 +317,17 @@ export class Plan extends Message<Plan> {
   /**
    * cron expression describing the backup schedule.
    *
-   * @generated from field: string cron = 6;
+   * @generated from field: string cron = 6 [deprecated = true];
+   * @deprecated
    */
   cron = "";
+
+  /**
+   * schedule for the backup.
+   *
+   * @generated from field: v1.Schedule schedule = 12;
+   */
+  schedule?: Schedule;
 
   /**
    * retention policy for snapshots.
@@ -346,6 +365,7 @@ export class Plan extends Message<Plan> {
     { no: 5, name: "excludes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 9, name: "iexcludes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 6, name: "cron", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 12, name: "schedule", kind: "message", T: Schedule },
     { no: 7, name: "retention", kind: "message", T: RetentionPolicy },
     { no: 8, name: "hooks", kind: "message", T: Hook, repeated: true },
     { no: 10, name: "backup_flags", jsonName: "backup_flags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
@@ -559,25 +579,17 @@ export class RetentionPolicy_TimeBucketedCounts extends Message<RetentionPolicy_
  */
 export class PrunePolicy extends Message<PrunePolicy> {
   /**
-   * max frequency of prune runs in days. If 0, prune will be run on every backup.
+   * max frequency of prune runs in days.
    *
-   * @generated from field: int32 max_frequency_days = 1;
+   * @generated from field: int32 max_frequency_days = 1 [deprecated = true];
+   * @deprecated
    */
   maxFrequencyDays = 0;
 
   /**
-   * max percentage of repo size that can be unused before prune is run.
-   *
-   * @generated from field: int32 max_unused_percent = 100;
+   * @generated from field: v1.Schedule schedule = 2;
    */
-  maxUnusedPercent = 0;
-
-  /**
-   * max number of bytes that can be unused before prune is run.
-   *
-   * @generated from field: int32 max_unused_bytes = 101;
-   */
-  maxUnusedBytes = 0;
+  schedule?: Schedule;
 
   constructor(data?: PartialMessage<PrunePolicy>) {
     super();
@@ -588,8 +600,7 @@ export class PrunePolicy extends Message<PrunePolicy> {
   static readonly typeName = "v1.PrunePolicy";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "max_frequency_days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 100, name: "max_unused_percent", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 101, name: "max_unused_bytes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "schedule", kind: "message", T: Schedule },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PrunePolicy {
@@ -614,14 +625,21 @@ export class PrunePolicy extends Message<PrunePolicy> {
  */
 export class CheckPolicy extends Message<CheckPolicy> {
   /**
-   * @generated from oneof v1.CheckPolicy.policy
+   * @generated from field: v1.Schedule schedule = 1;
    */
-  policy: {
+  schedule?: Schedule;
+
+  /**
+   * @generated from oneof v1.CheckPolicy.read_policy
+   */
+  readPolicy: {
     /**
-     * @generated from field: int32 max_frequency_days = 1;
+     * check a percentage of snapshots.
+     *
+     * @generated from field: int32 read_percent = 11;
      */
     value: number;
-    case: "maxFrequencyDays";
+    case: "readPercent";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<CheckPolicy>) {
@@ -632,7 +650,8 @@ export class CheckPolicy extends Message<CheckPolicy> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.CheckPolicy";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "max_frequency_days", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "policy" },
+    { no: 1, name: "schedule", kind: "message", T: Schedule },
+    { no: 11, name: "read_percent", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "read_policy" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CheckPolicy {
@@ -649,6 +668,78 @@ export class CheckPolicy extends Message<CheckPolicy> {
 
   static equals(a: CheckPolicy | PlainMessage<CheckPolicy> | undefined, b: CheckPolicy | PlainMessage<CheckPolicy> | undefined): boolean {
     return proto3.util.equals(CheckPolicy, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.Schedule
+ */
+export class Schedule extends Message<Schedule> {
+  /**
+   * @generated from oneof v1.Schedule.schedule
+   */
+  schedule: {
+    /**
+     * disable the schedule.
+     *
+     * @generated from field: bool disabled = 1;
+     */
+    value: boolean;
+    case: "disabled";
+  } | {
+    /**
+     * cron expression describing the schedule.
+     *
+     * @generated from field: string cron = 2;
+     */
+    value: string;
+    case: "cron";
+  } | {
+    /**
+     * max frequency of runs in days.
+     *
+     * @generated from field: int32 maxFrequencyDays = 3;
+     */
+    value: number;
+    case: "maxFrequencyDays";
+  } | {
+    /**
+     * max frequency of runs in hours.
+     *
+     * @generated from field: int32 maxFrequencyHours = 4;
+     */
+    value: number;
+    case: "maxFrequencyHours";
+  } | { case: undefined; value?: undefined } = { case: undefined };
+
+  constructor(data?: PartialMessage<Schedule>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.Schedule";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "disabled", kind: "scalar", T: 8 /* ScalarType.BOOL */, oneof: "schedule" },
+    { no: 2, name: "cron", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "schedule" },
+    { no: 3, name: "maxFrequencyDays", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "schedule" },
+    { no: 4, name: "maxFrequencyHours", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "schedule" },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Schedule {
+    return new Schedule().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Schedule {
+    return new Schedule().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Schedule {
+    return new Schedule().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Schedule | PlainMessage<Schedule> | undefined, b: Schedule | PlainMessage<Schedule> | undefined): boolean {
+    return proto3.util.equals(Schedule, a, b);
   }
 }
 

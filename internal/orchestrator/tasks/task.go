@@ -67,7 +67,7 @@ func (s ScheduledTask) Less(other ScheduledTask) bool {
 // Task is a task that can be scheduled to run at a specific time.
 type Task interface {
 	Name() string                                                       // human readable name for this task.
-	Next(now time.Time, runner TaskRunner) ScheduledTask                // returns the next scheduled task.
+	Next(now time.Time, runner TaskRunner) (ScheduledTask, error)       // returns the next scheduled task.
 	Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error // run the task.
 	PlanID() string                                                     // the ID of the plan this task is associated with.
 	RepoID() string                                                     // the ID of the repo this task is associated with.
@@ -99,9 +99,9 @@ type OneoffTask struct {
 	ProtoOp     *v1.Operation // the prototype operation for this class of task.
 }
 
-func (o *OneoffTask) Next(now time.Time, runner TaskRunner) ScheduledTask {
+func (o *OneoffTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error) {
 	if o.DidSchedule {
-		return NeverScheduledTask
+		return NeverScheduledTask, nil
 	}
 	o.DidSchedule = true
 
@@ -118,7 +118,7 @@ func (o *OneoffTask) Next(now time.Time, runner TaskRunner) ScheduledTask {
 	return ScheduledTask{
 		RunAt: o.RunAt,
 		Op:    op,
-	}
+	}, nil
 }
 
 type GenericOneoffTask struct {

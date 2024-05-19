@@ -8,7 +8,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config/validationutil"
-	"github.com/gitploy-io/cronexpr"
+	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -76,6 +76,18 @@ func validateRepo(repo *v1.Repo) error {
 		err = multierror.Append(err, errors.New("uri is required"))
 	}
 
+	if repo.PrunePolicy.GetSchedule() != nil {
+		if e := protoutil.ValidateSchedule(repo.PrunePolicy.GetSchedule()); e != nil {
+			err = multierror.Append(err, fmt.Errorf("prune policy schedule: %w", e))
+		}
+	}
+
+	if repo.CheckPolicy.GetSchedule() != nil {
+		if e := protoutil.ValidateSchedule(repo.CheckPolicy.GetSchedule()); e != nil {
+			err = multierror.Append(err, fmt.Errorf("check policy schedule: %w", e))
+		}
+	}
+
 	for _, env := range repo.Env {
 		if !strings.Contains(env, "=") {
 			err = multierror.Append(err, fmt.Errorf("invalid env var %s, must take format KEY=VALUE", env))
@@ -93,6 +105,10 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 		err = multierror.Append(err, fmt.Errorf("id %q invalid: %w", plan.Id, e))
 	}
 
+	if e := protoutil.ValidateSchedule(plan.Schedule); e != nil {
+		err = multierror.Append(err, fmt.Errorf("schedule: %w", e))
+	}
+
 	for idx, p := range plan.Paths {
 		if p == "" {
 			err = multierror.Append(err, fmt.Errorf("path[%d] cannot be empty", idx))
@@ -105,10 +121,6 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 
 	if _, ok := repos[plan.Repo]; !ok {
 		err = multierror.Append(err, fmt.Errorf("repo %q not found", plan.Repo))
-	}
-
-	if _, e := cronexpr.Parse(plan.Cron); e != nil {
-		err = multierror.Append(err, fmt.Errorf("invalid cron %q: %w", plan.Cron, e))
 	}
 
 	if plan.Retention != nil && plan.Retention.Policy == nil {
