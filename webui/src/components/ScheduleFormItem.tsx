@@ -136,7 +136,7 @@ export const ScheduleFormItem = ({ name }: { name: string[] }) => {
             </Tooltip>
           </Radio.Button>
           <Radio.Button value={"maxFrequencyHours"}>
-            <Tooltip title="Schedule will run at the specified interval in days (e.g. N hours after the last run).">
+            <Tooltip title="Schedule will run at the specified interval in hours (e.g. N hours after the last run).">
               Max Frequency Hours
             </Tooltip>
           </Radio.Button>

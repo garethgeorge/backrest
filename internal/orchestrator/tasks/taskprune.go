@@ -57,7 +57,6 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	if repo.PrunePolicy.GetSchedule() == nil {
 		return NeverScheduledTask, nil
 	}
-
 	var lastRan time.Time
 	if err := runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationPrune); ok {

@@ -67,6 +67,9 @@ func (t *BackupTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 		return NeverScheduledTask, err
 	}
 
+	if plan.Schedule == nil {
+		return NeverScheduledTask, nil
+	}
 	nextRun, err := protoutil.ResolveSchedule(plan.Schedule, now)
 	if errors.Is(err, protoutil.ErrScheduleDisabled) {
 		return NeverScheduledTask, nil
