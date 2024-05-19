@@ -51,7 +51,7 @@ func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) Task
 
 func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 	t := st.Task
-	oplog := taskRunner.OpLog()
+	log := taskRunner.OpLog()
 
 	r, err := taskRunner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
@@ -69,7 +69,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 	}
 
 	tags := []string{repo.TagForPlan(t.PlanID())}
-	if compat, err := useLegacyCompatMode(oplog, t.PlanID()); err != nil {
+	if compat, err := useLegacyCompatMode(log, t.RepoID(), t.PlanID()); err != nil {
 		return fmt.Errorf("check legacy compat mode: %w", err)
 	} else if !compat {
 		tags = append(tags, repo.TagForInstance(taskRunner.Config().Instance))
@@ -95,7 +95,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 
 	var ops []*v1.Operation
 	for _, forgot := range forgot {
-		if e := taskRunner.OpLog().ForEachBySnapshotId(forgot.Id, indexutil.CollectAll(), func(op *v1.Operation) error {
+		if e := taskRunner.OpLog().ForEach(oplog.Query{SnapshotId: forgot.Id}, indexutil.CollectAll(), func(op *v1.Operation) error {
 			ops = append(ops, op)
 			return nil
 		}); e != nil {
@@ -126,9 +126,9 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 
 // useLegacyCompatMode checks if there are any snapshots that were created without a `created-by` tag still exist in the repo.
 // The property is overridden if mixed `created-by` tag values are found.
-func useLegacyCompatMode(oplog *oplog.OpLog, planID string) (bool, error) {
+func useLegacyCompatMode(log *oplog.OpLog, repoID, planID string) (bool, error) {
 	instanceIDs := make(map[string]struct{})
-	if err := oplog.ForEachByPlan(planID, indexutil.CollectAll(), func(op *v1.Operation) error {
+	if err := log.ForEach(oplog.Query{RepoId: repoID, PlanId: planID}, indexutil.CollectAll(), func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok && !snapshotOp.OperationIndexSnapshot.GetForgot() {
 			tags := snapshotOp.OperationIndexSnapshot.GetSnapshot().GetTags()
 			instanceIDs[repo.InstanceIDFromTags(tags)] = struct{}{}

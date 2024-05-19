@@ -164,7 +164,7 @@ func indexCurrentSnapshotIdsForRepo(log *oplog.OpLog, repoId string) (map[string
 	knownIds := make(map[string]int64)
 
 	startTime := time.Now()
-	if err := log.ForEachByRepo(repoId, indexutil.CollectAll(), func(op *v1.Operation) error {
+	if err := log.ForEach(oplog.Query{RepoId: repoId}, indexutil.CollectAll(), func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
 			if snapshotOp.OperationIndexSnapshot == nil {
 				return fmt.Errorf("operation %q has nil OperationIndexSnapshot, this shouldn't be possible", op.Id)

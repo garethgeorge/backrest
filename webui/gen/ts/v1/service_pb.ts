@@ -3,39 +3,85 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type {
-  BinaryReadOptions,
-  FieldList,
-  JsonReadOptions,
-  JsonValue,
-  PartialMessage,
-  PlainMessage,
-} from "@bufbuild/protobuf";
+import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
+
+/**
+ * OpSelector is a message that can be used to select operations e.g. by query.
+ *
+ * @generated from message v1.OpSelector
+ */
+export class OpSelector extends Message<OpSelector> {
+  /**
+   * @generated from field: repeated int64 ids = 1;
+   */
+  ids: bigint[] = [];
+
+  /**
+   * @generated from field: string repo_id = 2;
+   */
+  repoId = "";
+
+  /**
+   * @generated from field: string plan_id = 3;
+   */
+  planId = "";
+
+  /**
+   * @generated from field: string snapshot_id = 4;
+   */
+  snapshotId = "";
+
+  /**
+   * @generated from field: int64 flow_id = 5;
+   */
+  flowId = protoInt64.zero;
+
+  constructor(data?: PartialMessage<OpSelector>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.OpSelector";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ids", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
+    { no: 2, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "flow_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OpSelector {
+    return new OpSelector().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OpSelector {
+    return new OpSelector().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OpSelector {
+    return new OpSelector().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: OpSelector | PlainMessage<OpSelector> | undefined, b: OpSelector | PlainMessage<OpSelector> | undefined): boolean {
+    return proto3.util.equals(OpSelector, a, b);
+  }
+}
 
 /**
  * @generated from message v1.ClearHistoryRequest
  */
 export class ClearHistoryRequest extends Message<ClearHistoryRequest> {
   /**
-   * @generated from field: string repo_id = 1;
+   * @generated from field: v1.OpSelector selector = 1;
    */
-  repoId = "";
+  selector?: OpSelector;
 
   /**
-   * @generated from field: string plan_id = 2;
-   */
-  planId = "";
-
-  /**
-   * @generated from field: bool only_failed = 3;
+   * @generated from field: bool only_failed = 2;
    */
   onlyFailed = false;
-
-  /**
-   * @generated from field: repeated int64 ops = 4;
-   */
-  ops: bigint[] = [];
 
   constructor(data?: PartialMessage<ClearHistoryRequest>) {
     super();
@@ -45,43 +91,23 @@ export class ClearHistoryRequest extends Message<ClearHistoryRequest> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.ClearHistoryRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "only_failed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    {
-      no: 4,
-      name: "ops",
-      kind: "scalar",
-      T: 3 /* ScalarType.INT64 */,
-      repeated: true,
-    },
+    { no: 1, name: "selector", kind: "message", T: OpSelector },
+    { no: 2, name: "only_failed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): ClearHistoryRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ClearHistoryRequest {
     return new ClearHistoryRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): ClearHistoryRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ClearHistoryRequest {
     return new ClearHistoryRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): ClearHistoryRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ClearHistoryRequest {
     return new ClearHistoryRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: ClearHistoryRequest | PlainMessage<ClearHistoryRequest> | undefined,
-    b: ClearHistoryRequest | PlainMessage<ClearHistoryRequest> | undefined,
-  ): boolean {
+  static equals(a: ClearHistoryRequest | PlainMessage<ClearHistoryRequest> | undefined, b: ClearHistoryRequest | PlainMessage<ClearHistoryRequest> | undefined): boolean {
     return proto3.util.equals(ClearHistoryRequest, a, b);
   }
 }
@@ -115,39 +141,22 @@ export class ForgetRequest extends Message<ForgetRequest> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    {
-      no: 3,
-      name: "snapshot_id",
-      kind: "scalar",
-      T: 9 /* ScalarType.STRING */,
-    },
+    { no: 3, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): ForgetRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ForgetRequest {
     return new ForgetRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): ForgetRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ForgetRequest {
     return new ForgetRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): ForgetRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ForgetRequest {
     return new ForgetRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: ForgetRequest | PlainMessage<ForgetRequest> | undefined,
-    b: ForgetRequest | PlainMessage<ForgetRequest> | undefined,
-  ): boolean {
+  static equals(a: ForgetRequest | PlainMessage<ForgetRequest> | undefined, b: ForgetRequest | PlainMessage<ForgetRequest> | undefined): boolean {
     return proto3.util.equals(ForgetRequest, a, b);
   }
 }
@@ -178,31 +187,19 @@ export class ListSnapshotsRequest extends Message<ListSnapshotsRequest> {
     { no: 2, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): ListSnapshotsRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSnapshotsRequest {
     return new ListSnapshotsRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): ListSnapshotsRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListSnapshotsRequest {
     return new ListSnapshotsRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): ListSnapshotsRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListSnapshotsRequest {
     return new ListSnapshotsRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: ListSnapshotsRequest | PlainMessage<ListSnapshotsRequest> | undefined,
-    b: ListSnapshotsRequest | PlainMessage<ListSnapshotsRequest> | undefined,
-  ): boolean {
+  static equals(a: ListSnapshotsRequest | PlainMessage<ListSnapshotsRequest> | undefined, b: ListSnapshotsRequest | PlainMessage<ListSnapshotsRequest> | undefined): boolean {
     return proto3.util.equals(ListSnapshotsRequest, a, b);
   }
 }
@@ -212,34 +209,14 @@ export class ListSnapshotsRequest extends Message<ListSnapshotsRequest> {
  */
 export class GetOperationsRequest extends Message<GetOperationsRequest> {
   /**
-   * @generated from field: string repo_id = 1;
+   * @generated from field: v1.OpSelector selector = 1;
    */
-  repoId = "";
-
-  /**
-   * @generated from field: string plan_id = 2;
-   */
-  planId = "";
-
-  /**
-   * @generated from field: string snapshot_id = 4;
-   */
-  snapshotId = "";
-
-  /**
-   * @generated from field: int64 flow_id = 6;
-   */
-  flowId = protoInt64.zero;
-
-  /**
-   * @generated from field: repeated int64 ids = 5;
-   */
-  ids: bigint[] = [];
+  selector?: OpSelector;
 
   /**
    * limit to the last n operations
    *
-   * @generated from field: int64 last_n = 3;
+   * @generated from field: int64 last_n = 2;
    */
   lastN = protoInt64.zero;
 
@@ -251,50 +228,23 @@ export class GetOperationsRequest extends Message<GetOperationsRequest> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.GetOperationsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    {
-      no: 4,
-      name: "snapshot_id",
-      kind: "scalar",
-      T: 9 /* ScalarType.STRING */,
-    },
-    { no: 6, name: "flow_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    {
-      no: 5,
-      name: "ids",
-      kind: "scalar",
-      T: 3 /* ScalarType.INT64 */,
-      repeated: true,
-    },
-    { no: 3, name: "last_n", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 1, name: "selector", kind: "message", T: OpSelector },
+    { no: 2, name: "last_n", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): GetOperationsRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetOperationsRequest {
     return new GetOperationsRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): GetOperationsRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetOperationsRequest {
     return new GetOperationsRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): GetOperationsRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetOperationsRequest {
     return new GetOperationsRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: GetOperationsRequest | PlainMessage<GetOperationsRequest> | undefined,
-    b: GetOperationsRequest | PlainMessage<GetOperationsRequest> | undefined,
-  ): boolean {
+  static equals(a: GetOperationsRequest | PlainMessage<GetOperationsRequest> | undefined, b: GetOperationsRequest | PlainMessage<GetOperationsRequest> | undefined): boolean {
     return proto3.util.equals(GetOperationsRequest, a, b);
   }
 }
@@ -338,47 +288,24 @@ export class RestoreSnapshotRequest extends Message<RestoreSnapshotRequest> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    {
-      no: 2,
-      name: "snapshot_id",
-      kind: "scalar",
-      T: 9 /* ScalarType.STRING */,
-    },
+    { no: 2, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "target", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): RestoreSnapshotRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RestoreSnapshotRequest {
     return new RestoreSnapshotRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): RestoreSnapshotRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RestoreSnapshotRequest {
     return new RestoreSnapshotRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): RestoreSnapshotRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RestoreSnapshotRequest {
     return new RestoreSnapshotRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | RestoreSnapshotRequest
-      | PlainMessage<RestoreSnapshotRequest>
-      | undefined,
-    b:
-      | RestoreSnapshotRequest
-      | PlainMessage<RestoreSnapshotRequest>
-      | undefined,
-  ): boolean {
+  static equals(a: RestoreSnapshotRequest | PlainMessage<RestoreSnapshotRequest> | undefined, b: RestoreSnapshotRequest | PlainMessage<RestoreSnapshotRequest> | undefined): boolean {
     return proto3.util.equals(RestoreSnapshotRequest, a, b);
   }
 }
@@ -411,46 +338,23 @@ export class ListSnapshotFilesRequest extends Message<ListSnapshotFilesRequest> 
   static readonly typeName = "v1.ListSnapshotFilesRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    {
-      no: 2,
-      name: "snapshot_id",
-      kind: "scalar",
-      T: 9 /* ScalarType.STRING */,
-    },
+    { no: 2, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): ListSnapshotFilesRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSnapshotFilesRequest {
     return new ListSnapshotFilesRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): ListSnapshotFilesRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListSnapshotFilesRequest {
     return new ListSnapshotFilesRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): ListSnapshotFilesRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListSnapshotFilesRequest {
     return new ListSnapshotFilesRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | ListSnapshotFilesRequest
-      | PlainMessage<ListSnapshotFilesRequest>
-      | undefined,
-    b:
-      | ListSnapshotFilesRequest
-      | PlainMessage<ListSnapshotFilesRequest>
-      | undefined,
-  ): boolean {
+  static equals(a: ListSnapshotFilesRequest | PlainMessage<ListSnapshotFilesRequest> | undefined, b: ListSnapshotFilesRequest | PlainMessage<ListSnapshotFilesRequest> | undefined): boolean {
     return proto3.util.equals(ListSnapshotFilesRequest, a, b);
   }
 }
@@ -481,37 +385,19 @@ export class ListSnapshotFilesResponse extends Message<ListSnapshotFilesResponse
     { no: 2, name: "entries", kind: "message", T: LsEntry, repeated: true },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): ListSnapshotFilesResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSnapshotFilesResponse {
     return new ListSnapshotFilesResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): ListSnapshotFilesResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListSnapshotFilesResponse {
     return new ListSnapshotFilesResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): ListSnapshotFilesResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListSnapshotFilesResponse {
     return new ListSnapshotFilesResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | ListSnapshotFilesResponse
-      | PlainMessage<ListSnapshotFilesResponse>
-      | undefined,
-    b:
-      | ListSnapshotFilesResponse
-      | PlainMessage<ListSnapshotFilesResponse>
-      | undefined,
-  ): boolean {
+  static equals(a: ListSnapshotFilesResponse | PlainMessage<ListSnapshotFilesResponse> | undefined, b: ListSnapshotFilesResponse | PlainMessage<ListSnapshotFilesResponse> | undefined): boolean {
     return proto3.util.equals(ListSnapshotFilesResponse, a, b);
   }
 }
@@ -536,31 +422,19 @@ export class LogDataRequest extends Message<LogDataRequest> {
     { no: 1, name: "ref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): LogDataRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LogDataRequest {
     return new LogDataRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): LogDataRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LogDataRequest {
     return new LogDataRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): LogDataRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LogDataRequest {
     return new LogDataRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: LogDataRequest | PlainMessage<LogDataRequest> | undefined,
-    b: LogDataRequest | PlainMessage<LogDataRequest> | undefined,
-  ): boolean {
+  static equals(a: LogDataRequest | PlainMessage<LogDataRequest> | undefined, b: LogDataRequest | PlainMessage<LogDataRequest> | undefined): boolean {
     return proto3.util.equals(LogDataRequest, a, b);
   }
 }
@@ -639,31 +513,19 @@ export class LsEntry extends Message<LsEntry> {
     { no: 10, name: "ctime", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): LsEntry {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LsEntry {
     return new LsEntry().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): LsEntry {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LsEntry {
     return new LsEntry().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): LsEntry {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LsEntry {
     return new LsEntry().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: LsEntry | PlainMessage<LsEntry> | undefined,
-    b: LsEntry | PlainMessage<LsEntry> | undefined,
-  ): boolean {
+  static equals(a: LsEntry | PlainMessage<LsEntry> | undefined, b: LsEntry | PlainMessage<LsEntry> | undefined): boolean {
     return proto3.util.equals(LsEntry, a, b);
   }
 }
@@ -694,31 +556,20 @@ export class RunCommandRequest extends Message<RunCommandRequest> {
     { no: 2, name: "command", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): RunCommandRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RunCommandRequest {
     return new RunCommandRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): RunCommandRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RunCommandRequest {
     return new RunCommandRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): RunCommandRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RunCommandRequest {
     return new RunCommandRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: RunCommandRequest | PlainMessage<RunCommandRequest> | undefined,
-    b: RunCommandRequest | PlainMessage<RunCommandRequest> | undefined,
-  ): boolean {
+  static equals(a: RunCommandRequest | PlainMessage<RunCommandRequest> | undefined, b: RunCommandRequest | PlainMessage<RunCommandRequest> | undefined): boolean {
     return proto3.util.equals(RunCommandRequest, a, b);
   }
 }
+

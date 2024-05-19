@@ -3,14 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type {
-  BinaryReadOptions,
-  FieldList,
-  JsonReadOptions,
-  JsonValue,
-  PartialMessage,
-  PlainMessage,
-} from "@bufbuild/protobuf";
+import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3 } from "@bufbuild/protobuf";
 
 /**
@@ -39,31 +32,19 @@ export class LoginRequest extends Message<LoginRequest> {
     { no: 2, name: "password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): LoginRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LoginRequest {
     return new LoginRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): LoginRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LoginRequest {
     return new LoginRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): LoginRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LoginRequest {
     return new LoginRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: LoginRequest | PlainMessage<LoginRequest> | undefined,
-    b: LoginRequest | PlainMessage<LoginRequest> | undefined,
-  ): boolean {
+  static equals(a: LoginRequest | PlainMessage<LoginRequest> | undefined, b: LoginRequest | PlainMessage<LoginRequest> | undefined): boolean {
     return proto3.util.equals(LoginRequest, a, b);
   }
 }
@@ -90,31 +71,20 @@ export class LoginResponse extends Message<LoginResponse> {
     { no: 1, name: "token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): LoginResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LoginResponse {
     return new LoginResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): LoginResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LoginResponse {
     return new LoginResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): LoginResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LoginResponse {
     return new LoginResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: LoginResponse | PlainMessage<LoginResponse> | undefined,
-    b: LoginResponse | PlainMessage<LoginResponse> | undefined,
-  ): boolean {
+  static equals(a: LoginResponse | PlainMessage<LoginResponse> | undefined, b: LoginResponse | PlainMessage<LoginResponse> | undefined): boolean {
     return proto3.util.equals(LoginResponse, a, b);
   }
 }
+
