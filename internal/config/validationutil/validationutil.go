@@ -12,6 +12,12 @@ var (
 	idRegex         = regexp.MustCompile(`[a-zA-Z0-9_\-\.]*`)  // matches a valid ID (including empty string)
 )
 
+var (
+	ErrEmpty        = errors.New("empty")
+	ErrTooLong      = errors.New("too long")
+	ErrInvalidChars = errors.New("contains invalid characters")
+)
+
 func SanitizeID(id string) string {
 	return sanitizeIDRegex.ReplaceAllString(id, "_")
 }
@@ -21,13 +27,13 @@ func SanitizeID(id string) string {
 // The maxLen parameter is the maximum length of the ID. If maxLen is 0, the ID length is not checked.
 func ValidateID(id string, maxLen int) error {
 	if !idRegex.MatchString(id) {
-		return errors.New("contains invalid characters")
+		return ErrInvalidChars
 	}
 	if len(id) == 0 {
-		return errors.New("empty")
+		return ErrEmpty
 	}
 	if maxLen > 0 && len(id) > maxLen {
-		return fmt.Errorf("too long (> %d chars)", maxLen)
+		return fmt.Errorf("(> %d chars): %w", maxLen, ErrTooLong)
 	}
 	return nil
 }
