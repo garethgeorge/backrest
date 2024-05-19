@@ -14,6 +14,7 @@ import (
 var migrations = []func(*OpLog, *bbolt.Tx) error{
 	migration001FlowID,
 	migration002InstanceID,
+	migration003ResetLastValidated,
 }
 
 var CurrentVersion = int64(len(migrations))
@@ -116,7 +117,11 @@ func migration002InstanceID(oplog *OpLog, tx *bbolt.Tx) error {
 			return nil
 		}
 
-		op.InstanceId = "__unassociated__"
+		op.InstanceId = "_unassociated_"
 		return nil
 	})
+}
+
+func migration003ResetLastValidated(oplog *OpLog, tx *bbolt.Tx) error {
+	return tx.Bucket(SystemBucket).Delete([]byte("last_validated"))
 }

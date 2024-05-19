@@ -9,6 +9,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"go.uber.org/zap"
@@ -106,16 +107,18 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	ctx, cancel := context.WithCancel(ctx)
 	interval := time.NewTicker(1 * time.Second)
 	defer interval.Stop()
-	var buf synchronizedBuffer
+	var buf bytes.Buffer
+	bufWriter := ioutil.SynchronizedWriter{W: &buf}
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-
 		defer wg.Done()
 		for {
 			select {
 			case <-interval.C:
+				bufWriter.Mu.Lock()
 				output := buf.String()
+				bufWriter.Mu.Unlock()
 				if len(output) > 8*1024 { // only provide live status upto the first 8K of output.
 					output = output[:len(output)-8*1024]
 				}
@@ -133,7 +136,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		}
 	}()
 
-	if err := repo.Prune(ctx, &buf); err != nil {
+	if err := repo.Prune(ctx, &bufWriter); err != nil {
 		cancel()
 
 		runner.ExecuteHooks([]v1.Hook_Condition{
@@ -147,7 +150,6 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	cancel()
 	wg.Wait()
 
-	// TODO: it would be best to store the output in separate storage for large status data.
 	output := buf.String()
 	if len(output) > 8*1024 { // only save the first 4K of output.
 		output = output[:len(output)-8*1024]
@@ -156,24 +158,4 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	opPrune.OperationPrune.Output = output
 
 	return nil
-}
-
-// synchronizedBuffer is used for collecting prune command's output
-type synchronizedBuffer struct {
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (w *synchronizedBuffer) Write(p []byte) (n int, err error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	return w.buf.Write(p)
-}
-
-func (w *synchronizedBuffer) String() string {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	return w.buf.String()
 }

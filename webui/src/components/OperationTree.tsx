@@ -6,6 +6,7 @@ import {
   displayTypeToString,
   getOperations,
   getTypeForDisplay,
+  matchSelector,
   shouldHideOperation,
   subscribeToOperations,
   unsubscribeFromOperations,
@@ -61,10 +62,11 @@ export const OperationTree = ({
     setSelectedBackupId(null);
     const backupCollector = new BackupInfoCollector();
     const lis = (opEvent: OperationEvent) => {
-      if (!!req.planId && opEvent.operation!.planId !== req.planId) {
-        return;
-      }
-      if (!!req.repoId && opEvent.operation!.repoId !== req.repoId) {
+      if (
+        !req.selector ||
+        !opEvent.operation ||
+        !matchSelector(req.selector, opEvent.operation)
+      ) {
         return;
       }
       if (opEvent.type !== OperationEventType.EVENT_DELETED) {
@@ -82,7 +84,7 @@ export const OperationTree = ({
           return b.startTimeMs - a.startTimeMs;
         });
         setBackups(backups);
-      }, 50),
+      }, 50)
     );
 
     getOperations(req)
@@ -141,7 +143,7 @@ export const OperationTree = ({
               }}
             >
               <BackupView backup={backup} />
-            </Modal>,
+            </Modal>
           );
         }
       }}
@@ -170,19 +172,21 @@ export const OperationTree = ({
             if (b.backupLastStatus.entry.case === "summary") {
               const s = b.backupLastStatus.entry.value;
               details.push(
-                `${formatBytes(Number(s.totalBytesProcessed))} in ${formatDuration(
-                  s.totalDuration! * 1000.0, // convert to ms
-                )}`,
+                `${formatBytes(
+                  Number(s.totalBytesProcessed)
+                )} in ${formatDuration(
+                  s.totalDuration! * 1000.0 // convert to ms
+                )}`
               );
             } else if (b.backupLastStatus.entry.case === "status") {
               const s = b.backupLastStatus.entry.value;
               const percent = Math.floor(
-                (Number(s.bytesDone) / Number(s.totalBytes)) * 100,
+                (Number(s.bytesDone) / Number(s.totalBytes)) * 100
               );
               details.push(
                 `${percent}% processed ${formatBytes(
-                  Number(s.bytesDone),
-                )} / ${formatBytes(Number(s.totalBytes))}`,
+                  Number(s.bytesDone)
+                )} / ${formatBytes(Number(s.totalBytes))}`
               );
             }
           }
@@ -251,7 +255,7 @@ const buildTreePlan = (operations: BackupInfo[]): OpTreeNode[] => {
 
 const buildTreeDay = (
   keyPrefix: string,
-  operations: BackupInfo[],
+  operations: BackupInfo[]
 ): OpTreeNode[] => {
   const grouped = _.groupBy(operations, (op) => {
     return localISOTime(op.displayTime).substring(0, 10);
@@ -312,7 +316,7 @@ const BackupView = ({ backup }: { backup?: BackupInfo }) => {
             planId: backup.planId!,
             repoId: backup.repoId!,
             snapshotId: backup.snapshotId!,
-          }),
+          })
         );
         alertApi!.success("Snapshot forgotten.");
       } catch (e) {
@@ -339,7 +343,7 @@ const BackupView = ({ backup }: { backup?: BackupInfo }) => {
           backrestService.clearHistory(
             new ClearHistoryRequest({
               ops: backup.operations.map((op) => op.id),
-            }),
+            })
           );
         }}
       >

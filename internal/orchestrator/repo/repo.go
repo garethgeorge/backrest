@@ -42,7 +42,6 @@ func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath stri
 	}
 
 	opts = append(opts, restic.WithEnviron())
-	opts = append(opts, restic.WithEnv("RESTIC_PROGRESS_FPS=2"))
 
 	if env := repoConfig.GetEnv(); len(env) != 0 {
 		for _, e := range env {

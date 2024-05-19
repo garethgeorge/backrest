@@ -95,6 +95,8 @@ func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
 		var k, v []byte
 		if lastValidated := sysBucket.Get([]byte("last_validated")); lastValidated != nil {
 			k, v = c.Seek(lastValidated)
+		} else {
+			k, v = c.First()
 		}
 		for ; k != nil; k, v = c.Next() {
 			op := &v1.Operation{}
