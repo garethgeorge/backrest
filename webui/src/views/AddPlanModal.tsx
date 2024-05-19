@@ -30,6 +30,7 @@ import {
 import { ConfirmButton, SpinButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import { backrestService } from "../api";
+import { ScheduleFormItem } from "../components/ScheduleFormItem";
 
 export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -123,7 +124,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         open={true}
         onCancel={handleCancel}
         title={template ? "Update Plan" : "Add Plan"}
-        width="40vw"
+        width="60vw"
         footer={[
           <Button loading={confirmLoading} key="back" onClick={handleCancel}>
             Cancel
@@ -394,28 +395,9 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           </Tooltip>
 
           {/* Plan.cron */}
-          <Tooltip title="Cron expression to schedule the plan in 24 hour time">
-            <Form.Item<Plan>
-              name="cron"
-              label="Schedule"
-              initialValue={template ? template.cron : "0 0 * * *"}
-              validateTrigger={["onChange", "onBlur"]}
-              rules={[
-                {
-                  required: true,
-                  message: "Please input schedule",
-                },
-              ]}
-            >
-              <Cron
-                value={form.getFieldValue("cron")}
-                setValue={(val: string) => {
-                  form.setFieldValue("cron", val);
-                }}
-                clearButton={false}
-              />
-            </Form.Item>
-          </Tooltip>
+          <Form.Item label="Backup Schedule">
+            <ScheduleFormItem name={["schedule"]} />
+          </Form.Item>
 
           {/* Plan.backup_flags */}
           <Form.Item
@@ -477,23 +459,6 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>}
           >
             <HooksFormList />
-          </Form.Item>
-
-          {/* Disabled? toggles whether the plan will be scheduled. */}
-          <Form.Item
-            label={
-              <Tooltip
-                title={
-                  "Toggles whether the plan's scheduling is enabled. If disabled no scheduled operations will be run."
-                }
-              >
-                Disable Scheduling
-              </Tooltip>
-            }
-            name="disabled"
-            valuePropName="checked"
-          >
-            <Checkbox />
           </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">

@@ -29,6 +29,8 @@ import {
 } from "../components/HooksFormList";
 import { ConfirmButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
+import Cron from "react-js-cron";
+import { ScheduleFormItem } from "../components/ScheduleFormItem";
 
 export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -76,7 +78,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         "Deleted repo " +
           template.id +
           " from config but files remain. To release storage delete the files manually. URI: " +
-          template.uri,
+          template.uri
       );
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);
@@ -132,7 +134,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         open={true}
         onCancel={handleCancel}
         title={template ? "Edit Restic Repository" : "Add Restic Repository"}
-        width="40vw"
+        width="60vw"
         footer={[
           <Button loading={confirmLoading} key="back" onClick={handleCancel}>
             Cancel
@@ -161,8 +163,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         <Form
           autoComplete="off"
           form={form}
-          labelCol={{ span: 6 }}
-          wrapperCol={{ span: 16 }}
+          labelCol={{ span: 4 }}
+          wrapperCol={{ span: 18 }}
           disabled={confirmLoading}
         >
           {/* Repo.id */}
@@ -412,7 +414,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
 
           {/* Repo.prunePolicy */}
           <Form.Item
-            required={false}
             label={
               <Tooltip
                 title={
@@ -434,17 +435,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             }
           >
             <Form.Item
-              name={["prunePolicy", "maxFrequencyDays"]}
-              initialValue={7}
-              required={false}
-            >
-              <InputNumber
-                addonBefore={
-                  <div style={{ width: "12em" }}>Max Frequency Days</div>
-                }
-              />
-            </Form.Item>
-            <Form.Item
               name={["prunePolicy", "maxUnusedPercent"]}
               initialValue={25}
               required={false}
@@ -452,11 +442,12 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               <InputNumber
                 addonBefore={
                   <Tooltip title="The maximum percentage of the repo size that may be unused after a prune operation completes. High values reduce copying at the expense of storage.">
-                    <div style={{ width: "12em" }}>Max Unused Percent</div>
+                    <div style={{ width: "12" }}>Max Unused % After Prune</div>
                   </Tooltip>
                 }
               />
             </Form.Item>
+            <ScheduleFormItem name={["prunePolicy", "schedule"]} />
           </Form.Item>
 
           <Form.Item
@@ -523,7 +514,7 @@ const expectedEnvVars: { [scheme: string]: string[][] } = {
 
 const envVarSetValidator = (
   form: FormInstance<FormData>,
-  envVars: string[],
+  envVars: string[]
 ) => {
   if (!envVars) {
     return Promise.resolve();
@@ -555,8 +546,8 @@ const envVarSetValidator = (
   ) {
     return Promise.reject(
       new Error(
-        "Missing repo password. Either provide a password or set one of the env variables RESTIC_PASSWORD, RESTIC_PASSWORD_COMMAND, RESTIC_PASSWORD_FILE.",
-      ),
+        "Missing repo password. Either provide a password or set one of the env variables RESTIC_PASSWORD, RESTIC_PASSWORD_COMMAND, RESTIC_PASSWORD_FILE."
+      )
     );
   }
 
@@ -579,7 +570,7 @@ const cryptoRandomPassword = (): string => {
 
 const checkSchemeEnvVars = (
   scheme: string,
-  envVarNames: string[],
+  envVarNames: string[]
 ): Promise<void> => {
   let expected = expectedEnvVars[scheme];
   if (!expected) {
@@ -590,7 +581,7 @@ const checkSchemeEnvVars = (
 
   for (let possibility of expected) {
     const missingVars = possibility.filter(
-      (envVar) => !envVarNames.includes(envVar),
+      (envVar) => !envVarNames.includes(envVar)
     );
 
     // If no env vars are missing, we have a full match and are good
@@ -614,8 +605,8 @@ const checkSchemeEnvVars = (
       "Missing env vars " +
         formatMissingEnvVars(missingVarsCollection) +
         " for scheme " +
-        scheme,
-    ),
+        scheme
+    )
   );
 };
 

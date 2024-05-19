@@ -332,19 +332,16 @@ func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.Fo
 }
 
 func (s *BackrestHandler) Prune(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.Value, err)
-	}
-
-	at := time.Now()
+	var err error
 	wait := make(chan struct{})
-	s.orchestrator.ScheduleTask(tasks.NewOneoffPruneTask(plan.Repo, plan.Id, at, true), tasks.TaskPriorityInteractive+tasks.TaskPriorityPrune, func(e error) {
+	s.orchestrator.ScheduleTask(tasks.NewPruneTask(req.Msg.Value, tasks.PlanForSystemTasks, true), tasks.TaskPriorityInteractive+tasks.TaskPriorityPrune, func(e error) {
 		err = e
 		close(wait)
 	})
 	<-wait
-
+	if err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
@@ -561,7 +558,7 @@ func opSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
 		SnapshotId: sel.SnapshotId,
 		FlowId:     sel.FlowId,
 	}
-	if len(sel.Ids) > 0 && reflect.DeepEqual(q, oplog.Query{}) {
+	if len(sel.Ids) > 0 && !reflect.DeepEqual(q, oplog.Query{}) {
 		return oplog.Query{}, errors.New("cannot specify both query and ids")
 	}
 	q.Ids = sel.Ids

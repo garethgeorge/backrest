@@ -15,13 +15,24 @@ func TestConfig(t *testing.T) {
 		Id:       "test-repo",
 		Uri:      "/tmp/test",
 		Password: "test",
+		PrunePolicy: &v1.PrunePolicy{
+			Schedule: &v1.Schedule{
+				Schedule: &v1.Schedule_MaxFrequencyDays{
+					MaxFrequencyDays: 14,
+				},
+			},
+		},
 	}
 
 	testPlan := &v1.Plan{
 		Id:    "test-plan",
 		Repo:  "test-repo",
 		Paths: []string{"/tmp/foo"},
-		Cron:  "* * * * *",
+		Schedule: &v1.Schedule{
+			Schedule: &v1.Schedule_Cron{
+				Cron: "0 0 * * *",
+			},
+		},
 	}
 
 	tests := []struct {
@@ -76,13 +87,40 @@ func TestConfig(t *testing.T) {
 						Id:    "test-plan",
 						Repo:  "test-repo",
 						Paths: []string{"/tmp/foo"},
-						Cron:  "bad cron",
+						Schedule: &v1.Schedule{
+							Schedule: &v1.Schedule_Cron{
+								Cron: "bad cron",
+							},
+						},
 					},
 				},
 			},
 			store:           &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/invalid-config3.json"}},
 			wantErr:         true,
 			wantErrContains: "invalid cron \"bad cron\"",
+		},
+		{
+			name: "plan with bad interval days",
+			config: &v1.Config{
+				Repos: []*v1.Repo{
+					testRepo,
+				},
+				Plans: []*v1.Plan{
+					{
+						Id:    "test-plan",
+						Repo:  "test-repo",
+						Paths: []string{"/tmp/foo"},
+						Schedule: &v1.Schedule{
+							Schedule: &v1.Schedule_MaxFrequencyDays{
+								MaxFrequencyDays: 0,
+							},
+						},
+					},
+				},
+			},
+			store:           &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/invalid-config3.json"}},
+			wantErr:         true,
+			wantErrContains: "invalid max frequency days",
 		},
 	}
 

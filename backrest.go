@@ -19,6 +19,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/api"
 	"github.com/garethgeorge/backrest/internal/auth"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
@@ -64,7 +65,7 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Create / load the operation log
-	oplogFile := path.Join(config.DataDir(), "oplog.boltdb")
+	oplogFile := path.Join(env.DataDir(), "oplog.boltdb")
 	oplog, err := oplog.NewOpLog(oplogFile)
 	if err != nil {
 		if !errors.Is(err, bbolt.ErrTimeout) {
@@ -76,7 +77,7 @@ func main() {
 	defer oplog.Close()
 
 	// Create rotating log storage
-	logStore := rotatinglog.NewRotatingLog(path.Join(config.DataDir(), "rotatinglogs"), 14) // 14 days of logs
+	logStore := rotatinglog.NewRotatingLog(path.Join(env.DataDir(), "rotatinglogs"), 14) // 14 days of logs
 	if err != nil {
 		zap.S().Fatalf("error creating rotating log storage: %v", err)
 	}
@@ -112,7 +113,7 @@ func main() {
 
 	// Serve the HTTP gateway
 	server := &http.Server{
-		Addr:    config.BindAddress(),
+		Addr:    env.BindAddress(),
 		Handler: h2c.NewHandler(mux, &http2.Server{}), // h2c is HTTP/2 without TLS for grpc-connect support.
 	}
 
@@ -146,7 +147,7 @@ func init() {
 
 func createConfigProvider() config.ConfigStore {
 	return &config.CachingValidatingStore{
-		ConfigStore: &config.JsonFileStore{Path: config.ConfigFilePath()},
+		ConfigStore: &config.JsonFileStore{Path: env.ConfigFilePath()},
 	}
 }
 
@@ -160,7 +161,7 @@ func onterm(s os.Signal, callback func()) {
 }
 
 func getSecret() []byte {
-	secretFile := path.Join(config.DataDir(), "jwt-secret")
+	secretFile := path.Join(env.DataDir(), "jwt-secret")
 	data, err := os.ReadFile(secretFile)
 	if err == nil {
 		zap.L().Debug("loading auth secret from file")
@@ -172,7 +173,7 @@ func getSecret() []byte {
 	if n, err := rand.Read(secret); err != nil || n != 64 {
 		zap.S().Fatalf("error generating secret: %v", err)
 	}
-	if err := os.MkdirAll(config.DataDir(), 0700); err != nil {
+	if err := os.MkdirAll(env.DataDir(), 0700); err != nil {
 		zap.S().Fatalf("error creating data directory: %v", err)
 	}
 	if err := os.WriteFile(secretFile, secret, 0600); err != nil {

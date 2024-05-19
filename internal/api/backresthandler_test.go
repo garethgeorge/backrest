@@ -109,7 +109,9 @@ func TestBackup(t *testing.T) {
 					Paths: []string{
 						t.TempDir(),
 					},
-					Cron: "0 0 1 1 *",
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
 					Retention: &v1.RetentionPolicy{
 						KeepHourly: 1,
 					},
@@ -197,7 +199,9 @@ func TestMultipleBackup(t *testing.T) {
 					Paths: []string{
 						t.TempDir(),
 					},
-					Cron: "0 0 1 1 *",
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
 					Retention: &v1.RetentionPolicy{
 						Policy: &v1.RetentionPolicy_PolicyKeepLastN{
 							PolicyKeepLastN: 1,
@@ -266,7 +270,9 @@ func TestHookExecution(t *testing.T) {
 					Paths: []string{
 						t.TempDir(),
 					},
-					Cron: "0 0 1 1 *",
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
 					Hooks: []*v1.Hook{
 						{
 							Conditions: []v1.Hook_Condition{
@@ -351,9 +357,13 @@ func TestCancelBackup(t *testing.T) {
 					Paths: []string{
 						t.TempDir(),
 					},
-					Cron: "0 0 1 1 *",
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
 					Retention: &v1.RetentionPolicy{
-						KeepHourly: 1,
+						Policy: &v1.RetentionPolicy_PolicyKeepLastN{
+							PolicyKeepLastN: 1,
+						},
 					},
 				},
 			},
@@ -370,10 +380,7 @@ func TestCancelBackup(t *testing.T) {
 	var errgroup errgroup.Group
 	errgroup.Go(func() error {
 		backupReq := connect.NewRequest(&types.StringValue{Value: "test"})
-		_, err := sut.handler.Backup(context.Background(), backupReq)
-		if err != nil {
-			return fmt.Errorf("Backup() error = %v", err)
-		}
+		sut.handler.Backup(context.Background(), backupReq)
 		return nil
 	})
 
@@ -438,7 +445,9 @@ func TestRestore(t *testing.T) {
 					Paths: []string{
 						backupDataDir,
 					},
-					Cron: "0 0 1 1 *",
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
 					Retention: &v1.RetentionPolicy{
 						KeepHourly: 1,
 					},

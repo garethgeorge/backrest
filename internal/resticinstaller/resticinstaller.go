@@ -17,7 +17,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/env"
 	"go.uber.org/zap"
 )
 
@@ -168,7 +168,7 @@ func downloadFile(url string, downloadPath string) (string, error) {
 
 func installResticIfNotExists(resticInstallPath string) error {
 	// withFlock is used to ensure tests pass; when running on CI multiple tests may try to install restic at the same time.
-	return withFlock(path.Join(config.DataDir(), "install.lock"), func() error {
+	return withFlock(path.Join(env.DataDir(), "install.lock"), func() error {
 		if _, err := os.Stat(resticInstallPath); err == nil {
 			// file is now installed, probably by another process. We can return.
 			return nil
@@ -224,7 +224,7 @@ func FindOrInstallResticBinary() (string, error) {
 	defer findResticMu.Unlock()
 
 	// Check if restic is provided.
-	resticBin := config.ResticBinPath()
+	resticBin := env.ResticBinPath()
 	if resticBin != "" {
 		if _, err := os.Stat(resticBin); err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
@@ -245,7 +245,7 @@ func FindOrInstallResticBinary() (string, error) {
 	}
 
 	// Check for restic installation in data directory.
-	resticInstallPath := path.Join(config.DataDir(), resticBinName)
+	resticInstallPath := path.Join(env.DataDir(), resticBinName)
 	if runtime.GOOS == "windows" {
 		programFiles := os.Getenv("programfiles")
 		resticInstallPath = path.Join(programFiles, "backrest", resticBinName)

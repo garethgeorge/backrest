@@ -38,21 +38,21 @@ func NewCollectGarbageTask() *CollectGarbageTask {
 
 var _ Task = &CollectGarbageTask{}
 
-func (t *CollectGarbageTask) Next(now time.Time, runner TaskRunner) ScheduledTask {
+func (t *CollectGarbageTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error) {
 	if !t.firstRun {
 		t.firstRun = true
 		runAt := now.Add(gcStartupDelay)
 		return ScheduledTask{
 			Task:  t,
 			RunAt: runAt,
-		}
+		}, nil
 	}
 
 	runAt := now.Add(gcInterval)
 	return ScheduledTask{
 		Task:  t,
 		RunAt: runAt,
-	}
+	}, nil
 }
 
 func (t *CollectGarbageTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {

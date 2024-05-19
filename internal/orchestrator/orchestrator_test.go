@@ -29,15 +29,15 @@ func newTestTask(onRun func() error, onNext func(curTime time.Time) *time.Time) 
 		onNext: onNext,
 	}
 }
-func (t *testTask) Next(curTime time.Time, runner tasks.TaskRunner) tasks.ScheduledTask {
+func (t *testTask) Next(curTime time.Time, runner tasks.TaskRunner) (tasks.ScheduledTask, error) {
 	at := t.onNext(curTime)
 	if at == nil {
-		return tasks.NeverScheduledTask
+		return tasks.NeverScheduledTask, nil
 	}
 	return tasks.ScheduledTask{
 		Task:  t,
 		RunAt: *at,
-	}
+	}, nil
 }
 
 func (t *testTask) Run(ctx context.Context, st tasks.ScheduledTask, runner tasks.TaskRunner) error {

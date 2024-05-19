@@ -1,6 +1,8 @@
 package orchestrator
 
 import (
+	"time"
+
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -65,6 +67,11 @@ func (t *taskRunnerImpl) OpLog() *oplog.OpLog {
 }
 
 func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.HookVars) error {
+	vars.Task = t.t.Name()
+	if t.op != nil {
+		vars.Duration = time.Since(time.UnixMilli(t.op.UnixTimeStartMs))
+	}
+
 	repoID := t.t.RepoID()
 	planID := t.t.PlanID()
 	var repo *v1.Repo
