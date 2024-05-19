@@ -15,7 +15,7 @@ import {
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY, STATS_OPERATION_HISTORY } from "../constants";
-import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
+import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
 import {
   BackupInfo,
   BackupInfoCollector,
@@ -71,7 +71,9 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           <OperationTree
             req={
               new GetOperationsRequest({
-                repoId: repo.id!,
+                selector: new OpSelector({
+                  repoId: repo.id!,
+                }),
                 lastN: BigInt(MAX_OPERATION_HISTORY),
               })
             }
@@ -89,7 +91,9 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           <OperationList
             req={
               new GetOperationsRequest({
-                repoId: repo.id!,
+                selector: new OpSelector({
+                  repoId: repo.id!,
+                }),
                 lastN: BigInt(MAX_OPERATION_HISTORY),
               })
             }
@@ -166,7 +170,7 @@ const StatsPanel = ({ repoId }: { repoId: string }) => {
       new GetOperationsRequest({
         repoId: repoId,
         lastN: BigInt(MAX_OPERATION_HISTORY),
-      }),
+      })
     )
       .then((ops) => {
         backupCollector.bulkAddOperations(ops);

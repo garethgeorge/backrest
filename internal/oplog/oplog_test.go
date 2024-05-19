@@ -198,9 +198,9 @@ func TestListOperation(t *testing.T) {
 				return nil
 			}
 			if tc.byPlan {
-				err = log.ForEachByPlan(tc.id, indexutil.CollectAll(), collect)
+				err = log.ForEach(Query{PlanId: tc.id}, indexutil.CollectAll(), collect)
 			} else if tc.byRepo {
-				err = log.ForEachByRepo(tc.id, indexutil.CollectAll(), collect)
+				err = log.ForEach(Query{RepoId: tc.id}, indexutil.CollectAll(), collect)
 			} else {
 				t.Fatalf("must specify byPlan or byRepo")
 			}
@@ -237,7 +237,7 @@ func TestListByFlowId(t *testing.T) {
 	}
 
 	var ops []*v1.Operation
-	if err := log.ForEachByFlowId(1, indexutil.CollectAll(), func(op *v1.Operation) error {
+	if err := log.ForEach(Query{FlowId: 1}, indexutil.CollectAll(), func(op *v1.Operation) error {
 		ops = append(ops, op)
 		return nil
 	}); err != nil {
@@ -297,7 +297,7 @@ func TestIndexSnapshot(t *testing.T) {
 	}
 
 	var ops []*v1.Operation
-	if err := log.ForEachBySnapshotId(snapshotId, indexutil.CollectAll(), func(op *v1.Operation) error {
+	if err := log.ForEach(Query{SnapshotId: snapshotId}, indexutil.CollectAll(), func(op *v1.Operation) error {
 		ops = append(ops, op)
 		return nil
 	}); err != nil {
@@ -370,7 +370,7 @@ func collectMessages(ops []*v1.Operation) []string {
 func countByRepoHelper(t *testing.T, log *OpLog, repo string, expected int) {
 	t.Helper()
 	count := 0
-	if err := log.ForEachByRepo(repo, indexutil.CollectAll(), func(op *v1.Operation) error {
+	if err := log.ForEach(Query{RepoId: repo}, indexutil.CollectAll(), func(op *v1.Operation) error {
 		count += 1
 		return nil
 	}); err != nil {
@@ -384,7 +384,7 @@ func countByRepoHelper(t *testing.T, log *OpLog, repo string, expected int) {
 func countByPlanHelper(t *testing.T, log *OpLog, plan string, expected int) {
 	t.Helper()
 	count := 0
-	if err := log.ForEachByPlan(plan, indexutil.CollectAll(), func(op *v1.Operation) error {
+	if err := log.ForEach(Query{PlanId: plan}, indexutil.CollectAll(), func(op *v1.Operation) error {
 		count += 1
 		return nil
 	}); err != nil {
@@ -398,7 +398,7 @@ func countByPlanHelper(t *testing.T, log *OpLog, plan string, expected int) {
 func countBySnapshotIdHelper(t *testing.T, log *OpLog, snapshotId string, expected int) {
 	t.Helper()
 	count := 0
-	if err := log.ForEachBySnapshotId(snapshotId, indexutil.CollectAll(), func(op *v1.Operation) error {
+	if err := log.ForEach(Query{SnapshotId: snapshotId}, indexutil.CollectAll(), func(op *v1.Operation) error {
 		count += 1
 		return nil
 	}); err != nil {

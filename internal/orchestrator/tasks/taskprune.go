@@ -70,7 +70,7 @@ func (t *PruneTask) shouldRun(now time.Time, runner TaskRunner) (bool, error) {
 
 func (t *PruneTask) getNextPruneTime(runner TaskRunner, policy *v1.PrunePolicy) (time.Time, error) {
 	var lastPruneTime time.Time
-	runner.OpLog().ForEachByRepo(t.RepoID(), indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
+	runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationPrune); ok {
 			lastPruneTime = time.Unix(0, op.UnixTimeStartMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration

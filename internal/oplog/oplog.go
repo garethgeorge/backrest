@@ -13,7 +13,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/oplog/serializationutil"
 	"github.com/garethgeorge/backrest/internal/protoutil"
-	"github.com/garethgeorge/backrest/pkg/restic"
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -361,33 +360,41 @@ func (o *OpLog) Get(id int64) (*v1.Operation, error) {
 	return op, nil
 }
 
-func (o *OpLog) ForEachByRepo(repoId string, collector indexutil.Collector, do func(op *v1.Operation) error) error {
-	return o.db.View(func(tx *bolt.Tx) error {
-		ids := collector(indexutil.IndexSearchByteValue(tx.Bucket(RepoIndexBucket), []byte(repoId)))
-		return o.forOpsByIds(tx, ids, do)
-	})
+// Query represents a query to the operation log.
+type Query struct {
+	RepoId     string
+	PlanId     string
+	SnapshotId string
+	FlowId     int64
+	InstanceId string
+	Ids        []int64
 }
 
-func (o *OpLog) ForEachByPlan(planId string, collector indexutil.Collector, do func(op *v1.Operation) error) error {
+func (o *OpLog) ForEach(query Query, collector indexutil.Collector, do func(op *v1.Operation) error) error {
 	return o.db.View(func(tx *bolt.Tx) error {
-		ids := collector(indexutil.IndexSearchByteValue(tx.Bucket(PlanIndexBucket), []byte(planId)))
-		return o.forOpsByIds(tx, ids, do)
-	})
-}
-
-func (o *OpLog) ForEachBySnapshotId(snapshotId string, collector indexutil.Collector, do func(op *v1.Operation) error) error {
-	if err := restic.ValidateSnapshotId(snapshotId); err != nil {
-		return nil
-	}
-	return o.db.View(func(tx *bolt.Tx) error {
-		ids := collector(indexutil.IndexSearchByteValue(tx.Bucket(SnapshotIndexBucket), []byte(snapshotId)))
-		return o.forOpsByIds(tx, ids, do)
-	})
-}
-
-func (o *OpLog) ForEachByFlowId(flowId int64, collector indexutil.Collector, do func(op *v1.Operation) error) error {
-	return o.db.View(func(tx *bolt.Tx) error {
-		ids := collector(indexutil.IndexSearchByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(flowId)))
+		iterators := make([]indexutil.IndexIterator, 0, 5)
+		if query.RepoId != "" {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(RepoIndexBucket), []byte(query.RepoId)))
+		}
+		if query.PlanId != "" {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(PlanIndexBucket), []byte(query.PlanId)))
+		}
+		if query.SnapshotId != "" {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(SnapshotIndexBucket), []byte(query.SnapshotId)))
+		}
+		if query.FlowId != 0 {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(query.FlowId)))
+		}
+		if query.InstanceId != "" {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(InstanceIndexBucket), []byte(query.InstanceId)))
+		}
+		if len(iterators) == 0 {
+			return errors.New("no query parameters provided")
+		}
+		ids := collector(indexutil.NewJoinIterator(iterators...))
+		if len(query.Ids) > 0 {
+			ids = append(ids, query.Ids...)
+		}
 		return o.forOpsByIds(tx, ids, do)
 	})
 }

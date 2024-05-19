@@ -23,5 +23,6 @@ export const Hub = {
       O: GetInstancesResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+

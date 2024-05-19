@@ -66,11 +66,18 @@ service Backrest {
   rpc PathAutocomplete (types.StringValue) returns (types.StringList) {}
 }
 
+// OpSelector is a message that can be used to select operations e.g. by query.
+message OpSelector {
+  repeated int64 ids = 1;
+  string repo_id = 2;
+  string plan_id = 3;
+  string snapshot_id = 4;
+  int64 flow_id = 5;
+}
+
 message ClearHistoryRequest {
-  string repo_id = 1;
-  string plan_id = 2;
-  bool only_failed = 3;
-  repeated int64 ops = 4;
+  OpSelector selector = 1;
+  bool only_failed = 2;
 }
 
 message ForgetRequest {
@@ -85,12 +92,8 @@ message ListSnapshotsRequest {
 }
 
 message GetOperationsRequest {
-  string repo_id = 1;
-  string plan_id = 2;
-  string snapshot_id = 4;
-  int64 flow_id = 6;
-  repeated int64 ids = 5;
-  int64 last_n = 3; // limit to the last n operations
+  OpSelector selector = 1;
+  int64 last_n = 2; // limit to the last n operations
 }
 
 message RestoreSnapshotRequest {

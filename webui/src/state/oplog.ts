@@ -4,7 +4,7 @@ import {
   OperationEventType,
   OperationStatus,
 } from "../../gen/ts/v1/operations_pb";
-import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
+import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic_pb";
 import _ from "lodash";
 import { formatDuration, formatTime } from "../lib/formatting";
@@ -57,17 +57,9 @@ export const unsubscribeFromOperations = (
   }
 };
 
-export const getStatusForPlan = async (plan: string) => {
+export const getStatusForSelector = async (sel: OpSelector) => {
   const req = new GetOperationsRequest({
-    planId: plan,
-    lastN: BigInt(STATUS_OPERATION_HISTORY),
-  });
-  return await getStatus(req);
-};
-
-export const getStatusForRepo = async (repo: string) => {
-  const req = new GetOperationsRequest({
-    repoId: repo,
+    selector: sel,
     lastN: BigInt(STATUS_OPERATION_HISTORY),
   });
   return await getStatus(req);

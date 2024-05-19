@@ -20,6 +20,7 @@ import {
   colorForStatus,
   getStatusForPlan,
   getStatusForRepo,
+  getStatusForSelector,
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
@@ -32,6 +33,7 @@ import { MainContentArea, useSetContent } from "./MainContentArea";
 import { GettingStartedGuide } from "./GettingStartedGuide";
 import { useConfig } from "../components/ConfigProvider";
 import { shouldShowSettings } from "../state/configutil";
+import { OpSelector } from "../../gen/ts/v1/service_pb";
 
 const { Header, Sider } = Layout;
 
@@ -195,7 +197,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     ...configPlans.map((plan) => {
       return {
         key: "p-" + plan.id,
-        icon: <IconForResource planId={plan.id} />,
+        icon: <IconForResource planId={plan.id} repoId={plan.repo} />,
         label: (
           <div className="backrest visible-on-hover">
             {plan.id}{" "}
@@ -303,11 +305,7 @@ const IconForResource = ({
   const [status, setStatus] = useState(OperationStatus.STATUS_UNKNOWN);
   useEffect(() => {
     const load = async () => {
-      if (planId) {
-        setStatus(await getStatusForPlan(planId));
-      } else if (repoId) {
-        setStatus(await getStatusForRepo(repoId));
-      }
+      setStatus(await getStatusForSelector(new OpSelector({ planId, repoId })));
     };
     load();
     const refresh = _.debounce(load, 1000, { maxWait: 5000, trailing: true });

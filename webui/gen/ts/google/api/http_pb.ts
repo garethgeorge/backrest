@@ -17,14 +17,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type {
-  BinaryReadOptions,
-  FieldList,
-  JsonReadOptions,
-  JsonValue,
-  PartialMessage,
-  PlainMessage,
-} from "@bufbuild/protobuf";
+import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3 } from "@bufbuild/protobuf";
 
 /**
@@ -65,39 +58,22 @@ export class Http extends Message<Http> {
   static readonly typeName = "google.api.Http";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "rules", kind: "message", T: HttpRule, repeated: true },
-    {
-      no: 2,
-      name: "fully_decode_reserved_expansion",
-      kind: "scalar",
-      T: 8 /* ScalarType.BOOL */,
-    },
+    { no: 2, name: "fully_decode_reserved_expansion", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): Http {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Http {
     return new Http().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): Http {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Http {
     return new Http().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): Http {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Http {
     return new Http().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: Http | PlainMessage<Http> | undefined,
-    b: Http | PlainMessage<Http> | undefined,
-  ): boolean {
+  static equals(a: Http | PlainMessage<Http> | undefined, b: Http | PlainMessage<Http> | undefined): boolean {
     return proto3.util.equals(Http, a, b);
   }
 }
@@ -396,66 +372,59 @@ export class HttpRule extends Message<HttpRule> {
    *
    * @generated from oneof google.api.HttpRule.pattern
    */
-  pattern:
-    | {
-        /**
-         * Maps to HTTP GET. Used for listing and getting information about
-         * resources.
-         *
-         * @generated from field: string get = 2;
-         */
-        value: string;
-        case: "get";
-      }
-    | {
-        /**
-         * Maps to HTTP PUT. Used for replacing a resource.
-         *
-         * @generated from field: string put = 3;
-         */
-        value: string;
-        case: "put";
-      }
-    | {
-        /**
-         * Maps to HTTP POST. Used for creating a resource or performing an action.
-         *
-         * @generated from field: string post = 4;
-         */
-        value: string;
-        case: "post";
-      }
-    | {
-        /**
-         * Maps to HTTP DELETE. Used for deleting a resource.
-         *
-         * @generated from field: string delete = 5;
-         */
-        value: string;
-        case: "delete";
-      }
-    | {
-        /**
-         * Maps to HTTP PATCH. Used for updating a resource.
-         *
-         * @generated from field: string patch = 6;
-         */
-        value: string;
-        case: "patch";
-      }
-    | {
-        /**
-         * The custom pattern is used for specifying an HTTP method that is not
-         * included in the `pattern` field, such as HEAD, or "*" to leave the
-         * HTTP method unspecified for this rule. The wild-card rule is useful
-         * for services that provide content to Web (HTML) clients.
-         *
-         * @generated from field: google.api.CustomHttpPattern custom = 8;
-         */
-        value: CustomHttpPattern;
-        case: "custom";
-      }
-    | { case: undefined; value?: undefined } = { case: undefined };
+  pattern: {
+    /**
+     * Maps to HTTP GET. Used for listing and getting information about
+     * resources.
+     *
+     * @generated from field: string get = 2;
+     */
+    value: string;
+    case: "get";
+  } | {
+    /**
+     * Maps to HTTP PUT. Used for replacing a resource.
+     *
+     * @generated from field: string put = 3;
+     */
+    value: string;
+    case: "put";
+  } | {
+    /**
+     * Maps to HTTP POST. Used for creating a resource or performing an action.
+     *
+     * @generated from field: string post = 4;
+     */
+    value: string;
+    case: "post";
+  } | {
+    /**
+     * Maps to HTTP DELETE. Used for deleting a resource.
+     *
+     * @generated from field: string delete = 5;
+     */
+    value: string;
+    case: "delete";
+  } | {
+    /**
+     * Maps to HTTP PATCH. Used for updating a resource.
+     *
+     * @generated from field: string patch = 6;
+     */
+    value: string;
+    case: "patch";
+  } | {
+    /**
+     * The custom pattern is used for specifying an HTTP method that is not
+     * included in the `pattern` field, such as HEAD, or "*" to leave the
+     * HTTP method unspecified for this rule. The wild-card rule is useful
+     * for services that provide content to Web (HTML) clients.
+     *
+     * @generated from field: google.api.CustomHttpPattern custom = 8;
+     */
+    value: CustomHttpPattern;
+    case: "custom";
+  } | { case: undefined; value?: undefined } = { case: undefined };
 
   /**
    * The name of the request field whose value is mapped to the HTTP request
@@ -499,89 +468,30 @@ export class HttpRule extends Message<HttpRule> {
   static readonly typeName = "google.api.HttpRule";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "selector", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    {
-      no: 2,
-      name: "get",
-      kind: "scalar",
-      T: 9 /* ScalarType.STRING */,
-      oneof: "pattern",
-    },
-    {
-      no: 3,
-      name: "put",
-      kind: "scalar",
-      T: 9 /* ScalarType.STRING */,
-      oneof: "pattern",
-    },
-    {
-      no: 4,
-      name: "post",
-      kind: "scalar",
-      T: 9 /* ScalarType.STRING */,
-      oneof: "pattern",
-    },
-    {
-      no: 5,
-      name: "delete",
-      kind: "scalar",
-      T: 9 /* ScalarType.STRING */,
-      oneof: "pattern",
-    },
-    {
-      no: 6,
-      name: "patch",
-      kind: "scalar",
-      T: 9 /* ScalarType.STRING */,
-      oneof: "pattern",
-    },
-    {
-      no: 8,
-      name: "custom",
-      kind: "message",
-      T: CustomHttpPattern,
-      oneof: "pattern",
-    },
+    { no: 2, name: "get", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "pattern" },
+    { no: 3, name: "put", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "pattern" },
+    { no: 4, name: "post", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "pattern" },
+    { no: 5, name: "delete", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "pattern" },
+    { no: 6, name: "patch", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "pattern" },
+    { no: 8, name: "custom", kind: "message", T: CustomHttpPattern, oneof: "pattern" },
     { no: 7, name: "body", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    {
-      no: 12,
-      name: "response_body",
-      kind: "scalar",
-      T: 9 /* ScalarType.STRING */,
-    },
-    {
-      no: 11,
-      name: "additional_bindings",
-      kind: "message",
-      T: HttpRule,
-      repeated: true,
-    },
+    { no: 12, name: "response_body", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "additional_bindings", kind: "message", T: HttpRule, repeated: true },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): HttpRule {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HttpRule {
     return new HttpRule().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): HttpRule {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HttpRule {
     return new HttpRule().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): HttpRule {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HttpRule {
     return new HttpRule().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: HttpRule | PlainMessage<HttpRule> | undefined,
-    b: HttpRule | PlainMessage<HttpRule> | undefined,
-  ): boolean {
+  static equals(a: HttpRule | PlainMessage<HttpRule> | undefined, b: HttpRule | PlainMessage<HttpRule> | undefined): boolean {
     return proto3.util.equals(HttpRule, a, b);
   }
 }
@@ -618,31 +528,20 @@ export class CustomHttpPattern extends Message<CustomHttpPattern> {
     { no: 2, name: "path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>,
-  ): CustomHttpPattern {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CustomHttpPattern {
     return new CustomHttpPattern().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>,
-  ): CustomHttpPattern {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CustomHttpPattern {
     return new CustomHttpPattern().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>,
-  ): CustomHttpPattern {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CustomHttpPattern {
     return new CustomHttpPattern().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: CustomHttpPattern | PlainMessage<CustomHttpPattern> | undefined,
-    b: CustomHttpPattern | PlainMessage<CustomHttpPattern> | undefined,
-  ): boolean {
+  static equals(a: CustomHttpPattern | PlainMessage<CustomHttpPattern> | undefined, b: CustomHttpPattern | PlainMessage<CustomHttpPattern> | undefined): boolean {
     return proto3.util.equals(CustomHttpPattern, a, b);
   }
 }
+

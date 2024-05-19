@@ -6,7 +6,7 @@ import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY } from "../constants";
 import { backrestService } from "../api";
-import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
+import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
 import { SpinButton } from "../components/SpinButton";
 import { shouldHideStatus } from "../state/oplog";
 import { useShowModal } from "../components/ModalManager";
@@ -100,7 +100,10 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                 <OperationTree
                   req={
                     new GetOperationsRequest({
-                      planId: plan.id!,
+                      selector: new OpSelector({
+                        repoId: plan.repo!,
+                        planId: plan.id!,
+                      }),
                       lastN: BigInt(MAX_OPERATION_HISTORY),
                     })
                   }
@@ -118,7 +121,10 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                 <OperationList
                   req={
                     new GetOperationsRequest({
-                      planId: plan.id!,
+                      selector: new OpSelector({
+                        repoId: plan.repo!,
+                        planId: plan.id!,
+                      }),
                       lastN: BigInt(MAX_OPERATION_HISTORY),
                     })
                   }

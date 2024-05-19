@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"reflect"
 	"time"
 
 	"connectrpc.com/connect"
@@ -246,32 +247,18 @@ func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Reques
 	if req.Msg.LastN != 0 {
 		idCollector = indexutil.CollectLastN(int(req.Msg.LastN))
 	}
+	q, err := opSelectorToQuery(req.Msg.Selector)
+	if err != nil {
+		return nil, err
+	}
 
-	var err error
 	var ops []*v1.Operation
 	opCollector := func(op *v1.Operation) error {
 		ops = append(ops, op)
 		return nil
 	}
-	if req.Msg.RepoId != "" && req.Msg.PlanId != "" {
-		return nil, errors.New("cannot specify both repoId and planId")
-	} else if req.Msg.PlanId != "" {
-		err = s.oplog.ForEachByPlan(req.Msg.PlanId, idCollector, opCollector)
-	} else if req.Msg.RepoId != "" {
-		err = s.oplog.ForEachByRepo(req.Msg.RepoId, idCollector, opCollector)
-	} else if req.Msg.SnapshotId != "" {
-		err = s.oplog.ForEachBySnapshotId(req.Msg.SnapshotId, idCollector, opCollector)
-	} else if req.Msg.FlowId != 0 {
-		err = s.oplog.ForEachByFlowId(req.Msg.FlowId, idCollector, opCollector)
-	} else if len(req.Msg.Ids) > 0 {
-		ops = make([]*v1.Operation, 0, len(req.Msg.Ids))
-		for i, id := range req.Msg.Ids {
-			op, err := s.oplog.Get(id)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get operation %d: %w", i, err)
-			}
-			ops = append(ops, op)
-		}
+	if !reflect.DeepEqual(q, oplog.Query{}) {
+		err = s.oplog.ForEach(q, idCollector, opCollector)
 	} else {
 		err = s.oplog.ForAll(opCollector)
 	}
@@ -489,10 +476,6 @@ func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request
 	var err error
 	var ids []int64
 
-	if len(req.Msg.Ops) != 0 {
-		ids = append(ids, req.Msg.Ops...)
-	}
-
 	opCollector := func(op *v1.Operation) error {
 		if !req.Msg.OnlyFailed || op.Status == v1.OperationStatus_STATUS_ERROR {
 			ids = append(ids, op.Id)
@@ -500,14 +483,15 @@ func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request
 		return nil
 	}
 
-	if req.Msg.RepoId != "" && req.Msg.PlanId != "" {
-		return nil, errors.New("cannot specify both repoId and planId")
-	} else if req.Msg.PlanId != "" {
-		err = s.oplog.ForEachByPlan(req.Msg.PlanId, indexutil.CollectAll(), opCollector)
-	} else if req.Msg.RepoId != "" {
-		err = s.oplog.ForEachByRepo(req.Msg.RepoId, indexutil.CollectAll(), opCollector)
+	q, err := opSelectorToQuery(req.Msg.Selector)
+	if err != nil {
+		return nil, err
 	}
-
+	if !reflect.DeepEqual(q, oplog.Query{}) {
+		err = s.oplog.ForEach(q, indexutil.CollectAll(), opCollector)
+	} else {
+		err = s.oplog.ForAll(opCollector)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get operations to delete: %w", err)
 	}
@@ -565,4 +549,21 @@ func (s *BackrestHandler) PathAutocomplete(ctx context.Context, path *connect.Re
 	}
 
 	return connect.NewResponse(&types.StringList{Values: paths}), nil
+}
+
+func opSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
+	if sel == nil {
+		return oplog.Query{}, errors.New("empty selector")
+	}
+	q := oplog.Query{
+		RepoId:     sel.RepoId,
+		PlanId:     sel.PlanId,
+		SnapshotId: sel.SnapshotId,
+		FlowId:     sel.FlowId,
+	}
+	if len(sel.Ids) > 0 && reflect.DeepEqual(q, oplog.Query{}) {
+		return oplog.Query{}, errors.New("cannot specify both query and ids")
+	}
+	q.Ids = sel.Ids
+	return q, nil
 }

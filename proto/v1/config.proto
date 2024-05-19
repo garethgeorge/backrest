@@ -87,6 +87,12 @@ message PrunePolicy {
   int32 max_unused_bytes = 101 [json_name="maxUnusedBytes"]; // max number of bytes that can be unused before prune is run.
 }
 
+message CheckPolicy {
+  oneof policy {
+    int32 max_frequency_days = 1 [json_name="maxFrequencyDays"];
+  }
+}
+
 message Hook {
   enum Condition {
     CONDITION_UNKNOWN = 0;

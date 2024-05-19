@@ -6,24 +6,9 @@
 import { Empty, MethodKind } from "@bufbuild/protobuf";
 import { Config, Repo } from "./config_pb.js";
 import { OperationEvent, OperationList } from "./operations_pb.js";
-import {
-  ClearHistoryRequest,
-  ForgetRequest,
-  GetOperationsRequest,
-  ListSnapshotFilesRequest,
-  ListSnapshotFilesResponse,
-  ListSnapshotsRequest,
-  LogDataRequest,
-  RestoreSnapshotRequest,
-  RunCommandRequest,
-} from "./service_pb.js";
+import { ClearHistoryRequest, ForgetRequest, GetOperationsRequest, ListSnapshotFilesRequest, ListSnapshotFilesResponse, ListSnapshotsRequest, LogDataRequest, RestoreSnapshotRequest, RunCommandRequest } from "./service_pb.js";
 import { ResticSnapshotList } from "./restic_pb.js";
-import {
-  BytesValue,
-  Int64Value,
-  StringList,
-  StringValue,
-} from "../types/value_pb.js";
+import { BytesValue, Int64Value, StringList, StringValue } from "../types/value_pb.js";
 
 /**
  * @generated from service v1.Backrest
@@ -237,5 +222,6 @@ export const Backrest = {
       O: StringList,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+

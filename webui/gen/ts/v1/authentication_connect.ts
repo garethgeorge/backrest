@@ -31,5 +31,6 @@ export const Authentication = {
       O: StringValue,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+
