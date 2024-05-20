@@ -123,7 +123,7 @@ export const OperationTree = ({
       treeData={treeData}
       showIcon
       defaultExpandedKeys={backups
-        .slice(0, Math.min(5, backups.length))
+        .slice(0, Math.min(10, backups.length))
         .map((b) => b.id!)}
       onSelect={(keys, info) => {
         if (info.selectedNodes.length === 0) return;
@@ -250,7 +250,7 @@ const buildTreePlan = (operations: BackupInfo[]): OpTreeNode[] => {
   if (entries.length === 1) {
     return entries[0].children!;
   }
-  entries.sort(sortByKey);
+  entries.sort(sortByKeyReverse);
   return entries;
 };
 
@@ -303,6 +303,10 @@ const sortByKey = (a: OpTreeNode, b: OpTreeNode) => {
     return -1;
   }
   return 0;
+};
+
+const sortByKeyReverse = (a: OpTreeNode, b: OpTreeNode) => {
+  return -sortByKey(a, b);
 };
 
 const BackupView = ({ backup }: { backup?: BackupInfo }) => {

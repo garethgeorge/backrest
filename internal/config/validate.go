@@ -105,8 +105,10 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 		err = multierror.Append(err, fmt.Errorf("id %q invalid: %w", plan.Id, e))
 	}
 
-	if e := protoutil.ValidateSchedule(plan.Schedule); e != nil {
-		err = multierror.Append(err, fmt.Errorf("schedule: %w", e))
+	if plan.Schedule != nil {
+		if e := protoutil.ValidateSchedule(plan.Schedule); e != nil {
+			err = multierror.Append(err, fmt.Errorf("schedule: %w", e))
+		}
 	}
 
 	for idx, p := range plan.Paths {

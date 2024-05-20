@@ -17,7 +17,9 @@ export const ScheduleFormItem = ({ name }: { name: string[] }) => {
   const retention = Form.useWatch(name, { form, preserve: true }) as any;
 
   const determineMode = () => {
-    if (!retention || retention.disabled) {
+    if (!retention) {
+      return "";
+    } else if (retention.disabled) {
       return "disabled";
     } else if (retention.maxFrequencyDays) {
       return "maxFrequencyDays";
