@@ -17,9 +17,6 @@
     "@bufbuild/protobuf": "^1.6.0",
     "@connectrpc/connect": "^1.2.0",
     "@connectrpc/connect-web": "^1.2.0",
-    "@emotion/styled": "^11.11.0",
-    "@mui/material": "^5.15.11",
-    "@mui/x-charts": "^6.19.5",
     "@types/lodash": "^4.14.202",
     "@types/node": "^20.9.0",
     "@types/react": "^18.2.37",
@@ -32,13 +29,13 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-js-cron": "^5.0.1",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "recharts": "^2.12.7"
   },
   "devDependencies": {
     "@parcel/transformer-sass": "^2.10.3",
     "cross-env": "^7.0.3",
     "events": "^3.3.0",
-    "rimraf": "^5.0.5",
-    "stream-browserify": "^3.0.0"
+    "rimraf": "^5.0.5"
   }
 }
