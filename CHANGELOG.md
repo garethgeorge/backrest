@@ -1,5 +1,58 @@
 # Changelog
 
+## [1.0.0](https://github.com/garethgeorge/backrest/compare/v0.17.2...v1.0.0) (2024-05-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* redefine hostname as a required property that maps to --host ([#256](https://github.com/garethgeorge/backrest/issues/256))
+
+### Features
+
+* add CONDITION_SNAPSHOT_WARNING hook triggered by any warning status at the completion of a snapshot ([f0ee20f](https://github.com/garethgeorge/backrest/commit/f0ee20f53de58e0a0a0a63137e203161d8acce4d))
+* add download link to create a zip archive of restored files ([a75a5c2](https://github.com/garethgeorge/backrest/commit/a75a5c2297df4eb89235a54efd38d9539b7c15e5))
+* add force kill signal handler that dumps stacks ([386f46a](https://github.com/garethgeorge/backrest/commit/386f46a090e6df28f28cbca15d992ce4ad6d5dd5))
+* add seek support to join iterator for better performance ([802146a](https://github.com/garethgeorge/backrest/commit/802146a6c023779d6e5e0879994ec7dc5479e304))
+* ensure instance ID is set for all operations ([65d4a1d](https://github.com/garethgeorge/backrest/commit/65d4a1df0e9e717f5f88d7c5bec37f18d877b876))
+* implement 'run command' button to execute arbitrary restic commands in a repo ([fbad981](https://github.com/garethgeorge/backrest/commit/fbad981a1d3ae75c1eeebf9fd3bf4cef4f72b4c4))
+* improve support for instance ID tag ([be0cdd5](https://github.com/garethgeorge/backrest/commit/be0cdd59be270e0393dc4d587bfa708c610ac0a5))
+* keep a rolling backup of the last 10 config versions ([1a053f2](https://github.com/garethgeorge/backrest/commit/1a053f274846e822ecfd3c76e0d1b4860fada58a))
+* overhaul task interface and introduce 'flow ID' for simpler grouping of operations ([#253](https://github.com/garethgeorge/backrest/issues/253)) ([7a10bdc](https://github.com/garethgeorge/backrest/commit/7a10bdca7b00f337a2c85780861e479b7aa35cb5))
+* redefine hostname as a required property that maps to --host ([#256](https://github.com/garethgeorge/backrest/issues/256)) ([4847010](https://github.com/garethgeorge/backrest/commit/484701007ff2f7f80fff308827b1af456a78cbb9))
+* support env variable substitution e.g. FOO=${MY_FOO_VAR} ([8448f4c](https://github.com/garethgeorge/backrest/commit/8448f4cc3aebd1b481fc695c2aa0d02e18689a20))
+* unified scheduling model ([#282](https://github.com/garethgeorge/backrest/issues/282)) ([531cd28](https://github.com/garethgeorge/backrest/commit/531cd286d87c8004b95bfd9b4512dffccc6d500d))
+* update snapshot management to track and filter on instance ID, migrate existing snapshots ([5a996d7](https://github.com/garethgeorge/backrest/commit/5a996d74b06dcf6c1439cac9134ec51ba7167c15))
+* validate plan ID and repo ID ([f314c7c](https://github.com/garethgeorge/backrest/commit/f314c7cced2db23a4008622c97a27697c832c664))
+
+
+### Bug Fixes
+
+* add virtual root node to snapshot browser ([6045c87](https://github.com/garethgeorge/backrest/commit/6045c87cdf5a68afd81203602ee5827eda5af8e7))
+* additional tooltips for add plan modal ([fcdf07d](https://github.com/garethgeorge/backrest/commit/fcdf07da6c330aed7fea017835cbbf56679b3749))
+* adjust task priorities ([756e64a](https://github.com/garethgeorge/backrest/commit/756e64a2002aead213d67c8d37d851688af51168))
+* center-right align settings icons for plans/repos ([982e2fb](https://github.com/garethgeorge/backrest/commit/982e2fb2cd84fe193a4b37bda8c21f75c8eb3382))
+* concurrency issues in run command handler ([411a4fb](https://github.com/garethgeorge/backrest/commit/411a4fb6f00fd46f1fbdb0b8e3a971d016a6e0f8))
+* date formatting ([b341146](https://github.com/garethgeorge/backrest/commit/b341146fce40ee8bdaf771c4c5269160198b6386))
+* downgrade omission of 'instance' field from an error to a warning ([6ae82f7](https://github.com/garethgeorge/backrest/commit/6ae82f70d456c05b3ad0ab01e901be8bd01bb9eb))
+* error formatting for repo init ([1a3ace9](https://github.com/garethgeorge/backrest/commit/1a3ace90141a48e949c6c796fa8445de134baa98))
+* hide successful hook executions in the backup view ([65bb8ef](https://github.com/garethgeorge/backrest/commit/65bb8ef14b77cfe07c2db26e0fcc8e0bbc1a9287))
+* improve cmd error formatting now that logs are available for all operations ([6eb704f](https://github.com/garethgeorge/backrest/commit/6eb704f07bfae1cfc25208bc1a20908d229f344e))
+* improve concurrency handling in RunCommand ([07b0950](https://github.com/garethgeorge/backrest/commit/07b09502b9554386afa7bd4c5487f9b8da3a59bb))
+* improve download speeds for restored files ([eb07931](https://github.com/garethgeorge/backrest/commit/eb079317c05946fb74a74e59592940ada9eef4ea))
+* install.sh was calling systemctl on Darwin ([#260](https://github.com/garethgeorge/backrest/issues/260)) ([f6d5837](https://github.com/garethgeorge/backrest/commit/f6d58376b76707de36d851808812d6b3384e2ca9))
+* minor bugs and tweak log rotation history to 14 days ([ad9a770](https://github.com/garethgeorge/backrest/commit/ad9a77029ce07a5bb7da2738b108d0f93cb57440))
+* miscellaneous bug fixes ([df4be0f](https://github.com/garethgeorge/backrest/commit/df4be0f7bc014a3862f14fcf79cffc53f45c6ea0))
+* prompt for user action to set an instance ID on upgrade ([294864f](https://github.com/garethgeorge/backrest/commit/294864fe433302571ba9ff9eb7c2dd475fa1c560))
+* rebase stats panel onto a better chart library ([b22028e](https://github.com/garethgeorge/backrest/commit/b22028eb4f185be96ff4407fccafa2d1cdf491a1))
+* reserve IDs starting and ending with '__' for internal use ([711064f](https://github.com/garethgeorge/backrest/commit/711064fb0017830bc148643617ca8da5aa0add41))
+* retention policy display may show default values for some fields ([9d6c1ba](https://github.com/garethgeorge/backrest/commit/9d6c1baf87c31b7a2cfb633fdd228d58021f7b0f))
+* run stats after every prune operation ([7fce593](https://github.com/garethgeorge/backrest/commit/7fce59311d531cb9058965cde780f8930cd98a9b))
+* schedule view bug ([0764804](https://github.com/garethgeorge/backrest/commit/0764804ea558df6edd5e65ca1ea9c843a75fc147))
+* secure download URLs when downloading tar archive of exported files ([a30d5ef](https://github.com/garethgeorge/backrest/commit/a30d5efe1c354dd6f6c91d3b1465a244077e1e47))
+* UI fixes for restore row and settings modal ([e9d6cbe](https://github.com/garethgeorge/backrest/commit/e9d6cbeaff03675928e036461a999cb4bde64e54))
+* use int64 for large values in structs for compatibility with 32bit devices ([#250](https://github.com/garethgeorge/backrest/issues/250)) ([84b4b68](https://github.com/garethgeorge/backrest/commit/84b4b68760ded53d9bda2fbc992646f309094f52))
+* use locale to properly format time ([89a49c1](https://github.com/garethgeorge/backrest/commit/89a49c1fa7c6cafedef30bdf695e76920e2c690c))
+
 ## [0.17.2](https://github.com/garethgeorge/backrest/compare/v0.17.1...v0.17.2) (2024-04-18)
 
 ### Bug Fixes
