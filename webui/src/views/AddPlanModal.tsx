@@ -54,16 +54,17 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         throw new Error("template not found");
       }
 
+      const configCopy = config.clone();
+
       // Remove the plan from the config
-      const idx = config.plans.findIndex((r) => r.id === template.id);
+      const idx = configCopy.plans.findIndex((r) => r.id === template.id);
       if (idx === -1) {
         throw new Error("failed to update config, plan to delete not found");
       }
-
-      config.plans.splice(idx, 1);
+      configCopy.plans.splice(idx, 1);
 
       // Update config and notify success.
-      setConfig(await backrestService.setConfig(config));
+      setConfig(await backrestService.setConfig(configCopy));
       showModal(null);
 
       alertsApi.success(
@@ -90,19 +91,21 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         delete plan.retention;
       }
 
+      const configCopy = config.clone();
+
       // Merge the new plan (or update) into the config
       if (template) {
-        const idx = config.plans.findIndex((r) => r.id === template.id);
+        const idx = configCopy.plans.findIndex((r) => r.id === template.id);
         if (idx === -1) {
           throw new Error("failed to update plan, not found");
         }
-        config.plans[idx] = plan;
+        configCopy.plans[idx] = plan;
       } else {
-        config.plans.push(plan);
+        configCopy.plans.push(plan);
       }
 
       // Update config and notify success.
-      setConfig(await backrestService.setConfig(config));
+      setConfig(await backrestService.setConfig(configCopy));
       showModal(null);
     } catch (e: any) {
       alertsApi.error("Operation failed: " + e.message, 15);

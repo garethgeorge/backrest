@@ -1,40 +1,19 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { Suspense, useContext, useEffect, useState } from "react";
 import { Repo } from "../../gen/ts/v1/config_pb";
-import {
-  Col,
-  Empty,
-  Flex,
-  Row,
-  Spin,
-  TabsProps,
-  Tabs,
-  Tooltip,
-  Typography,
-  Button,
-} from "antd";
+import { Flex, Tabs, Tooltip, Typography, Button } from "antd";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY, STATS_OPERATION_HISTORY } from "../constants";
 import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
-import {
-  BackupInfo,
-  BackupInfoCollector,
-  getOperations,
-  shouldHideStatus,
-} from "../state/oplog";
-import { formatBytes, formatDate, formatTime } from "../lib/formatting";
-import {
-  Operation,
-  OperationStats,
-  OperationStatus,
-} from "../../gen/ts/v1/operations_pb";
+import { shouldHideStatus } from "../state/oplog";
 import { backrestService } from "../api";
 import { StringValue } from "@bufbuild/protobuf";
 import { SpinButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import { useAlertApi } from "../components/Alerts";
-import { LineChart } from "@mui/x-charts";
 import { useShowModal } from "../components/ModalManager";
+
+const StatsPanel = React.lazy(() => import("../components/StatsPanel"));
 
 export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   const [config, setConfig] = useConfig();
@@ -127,9 +106,9 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
       key: "3",
       label: "Stats",
       children: (
-        <>
+        <Suspense fallback={<div>Loading...</div>}>
           <StatsPanel repoId={repo.id!} />
-        </>
+        </Suspense>
       ),
       destroyInactiveTabPane: true,
     },
@@ -171,159 +150,6 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
         </Tooltip>
       </Flex>
       <Tabs defaultActiveKey={items[0].key} items={items} />
-    </>
-  );
-};
-
-const StatsPanel = ({ repoId }: { repoId: string }) => {
-  const [operations, setOperations] = useState<Operation[]>([]);
-  const alertApi = useAlertApi();
-
-  useEffect(() => {
-    if (!repoId) {
-      return;
-    }
-
-    const backupCollector = new BackupInfoCollector((op) => {
-      return (
-        op.status === OperationStatus.STATUS_SUCCESS &&
-        op.op.case === "operationStats" &&
-        !!op.op.value.stats
-      );
-    });
-
-    getOperations(
-      new GetOperationsRequest({
-        repoId: repoId,
-        lastN: BigInt(MAX_OPERATION_HISTORY),
-      })
-    )
-      .then((ops) => {
-        backupCollector.bulkAddOperations(ops);
-
-        const operations = backupCollector
-          .getAll()
-          .flatMap((b) => b.operations);
-        operations.sort((a, b) => {
-          return Number(b.unixTimeEndMs - a.unixTimeEndMs);
-        });
-        setOperations(operations);
-      })
-      .catch((e) => {
-        alertApi!.error("Failed to fetch operations: " + e.message);
-      });
-  }, [repoId]);
-
-  if (operations.length === 0) {
-    return (
-      <Empty description="No stats available. Have you run a prune operation yet?" />
-    );
-  }
-
-  const dataset: {
-    time: number;
-    totalSizeMb: number;
-    compressionRatio: number;
-    snapshotCount: number;
-    totalBlobCount: number;
-  }[] = operations.map((op) => {
-    const stats = (op.op.value! as OperationStats).stats!;
-    return {
-      time: Number(op.unixTimeEndMs!),
-      totalSizeMb: Number(stats.totalSize) / 1000000,
-      compressionRatio: Number(stats.compressionRatio),
-      snapshotCount: Number(stats.snapshotCount),
-      totalBlobCount: Number(stats.totalBlobCount),
-    };
-  });
-
-  const minTime = Math.min(...dataset.map((d) => d.time));
-  const maxTime = Math.max(...dataset.map((d) => d.time));
-
-  return (
-    <>
-      <Row>
-        <Col span={12}>
-          <LineChart
-            xAxis={[
-              {
-                dataKey: "time",
-                valueFormatter: (v) => formatDate(v as number),
-                min: minTime,
-                max: maxTime,
-              },
-            ]}
-            series={[
-              {
-                dataKey: "totalSizeMb",
-                label: "Total Size",
-                valueFormatter: (v: any) =>
-                  formatBytes((v * 1000000) as number),
-              },
-            ]}
-            height={300}
-            dataset={dataset}
-          />
-
-          <LineChart
-            xAxis={[
-              {
-                dataKey: "time",
-                valueFormatter: (v) => formatDate(v as number),
-                min: minTime,
-                max: maxTime,
-              },
-            ]}
-            series={[
-              {
-                dataKey: "compressionRatio",
-                label: "Compression Ratio",
-              },
-            ]}
-            height={300}
-            dataset={dataset}
-          />
-        </Col>
-        <Col span={12}>
-          <LineChart
-            xAxis={[
-              {
-                dataKey: "time",
-                valueFormatter: (v) => formatDate(v as number),
-                min: minTime,
-                max: maxTime,
-              },
-            ]}
-            series={[
-              {
-                dataKey: "snapshotCount",
-                label: "Snapshot Count",
-              },
-            ]}
-            height={300}
-            dataset={dataset}
-          />
-
-          <LineChart
-            xAxis={[
-              {
-                dataKey: "time",
-                valueFormatter: (v) => formatDate(v as number),
-                min: minTime,
-                max: maxTime,
-              },
-            ]}
-            series={[
-              {
-                dataKey: "totalBlobCount",
-                label: "Blob Count",
-              },
-            ]}
-            height={300}
-            dataset={dataset}
-          />
-        </Col>
-      </Row>
     </>
   );
 };
