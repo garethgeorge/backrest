@@ -57,6 +57,7 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	if repo.PrunePolicy.GetSchedule() == nil {
 		return NeverScheduledTask, nil
 	}
+
 	var lastRan time.Time
 	if err := runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationPrune); ok {
@@ -156,6 +157,11 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	}
 
 	opPrune.OperationPrune.Output = output
+
+	// Run a stats task after a successful prune
+	if err := runner.ScheduleTask(NewStatsTask(t.RepoID(), PlanForSystemTasks, false), TaskPriorityStats); err != nil {
+		zap.L().Error("schedule stats task", zap.Error(err))
+	}
 
 	return nil
 }

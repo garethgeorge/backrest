@@ -7,34 +7,79 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 )
 
-func NewOneoffStatsTask(repoID, planID string, at time.Time) Task {
-	return &GenericOneoffTask{
+type StatsTask struct {
+	BaseTask
+	force  bool
+	didRun bool
+}
+
+func NewStatsTask(repoID, planID string, force bool) Task {
+	return &StatsTask{
 		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("stats for repo %q", repoID),
 			TaskRepoID: repoID,
 			TaskPlanID: planID,
 		},
-		OneoffTask: OneoffTask{
-			RunAt: at,
-			ProtoOp: &v1.Operation{
+		force: force,
+	}
+}
+
+func (t *StatsTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error) {
+	if t.force {
+		if t.didRun {
+			return NeverScheduledTask, nil
+		}
+		t.didRun = true
+		return ScheduledTask{
+			Task:  t,
+			RunAt: now,
+			Op: &v1.Operation{
 				Op: &v1.Operation_OperationStats{},
 			},
-		},
-		Do: func(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
-			if err := statsHelper(ctx, st, taskRunner); err != nil {
-				taskRunner.ExecuteHooks([]v1.Hook_Condition{
-					v1.Hook_CONDITION_ANY_ERROR,
-				}, hook.HookVars{
-					Task:  st.Task.Name(),
-					Error: err.Error(),
-				})
-				return err
-			}
-			return nil
-		},
+		}, nil
 	}
+
+	// TODO: make the "stats" schedule configurable.
+	var lastRan time.Time
+	if err := runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
+		if _, ok := op.Op.(*v1.Operation_OperationStats); ok {
+			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
+			return oplog.ErrStopIteration
+		}
+		return nil
+	}); err != nil {
+		return NeverScheduledTask, fmt.Errorf("finding last backup run time: %w", err)
+	}
+
+	// Runs every 30 days
+	if now.Sub(lastRan) < 30*24*time.Hour {
+		return ScheduledTask{}, nil
+	}
+	return ScheduledTask{
+		Task:  t,
+		RunAt: now,
+		Op: &v1.Operation{
+			Op: &v1.Operation_OperationStats{},
+		},
+	}, nil
+}
+
+func (t *StatsTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
+	if err := statsHelper(ctx, st, runner); err != nil {
+		runner.ExecuteHooks([]v1.Hook_Condition{
+			v1.Hook_CONDITION_ANY_ERROR,
+		}, hook.HookVars{
+			Task:  st.Task.Name(),
+			Error: err.Error(),
+		})
+		return err
+	}
+
+	return nil
 }
 
 func statsHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {

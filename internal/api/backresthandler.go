@@ -384,16 +384,16 @@ func (s *BackrestHandler) Unlock(ctx context.Context, req *connect.Request[types
 }
 
 func (s *BackrestHandler) Stats(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	at := time.Now()
 	var err error
 	wait := make(chan struct{})
-	s.orchestrator.ScheduleTask(tasks.NewOneoffStatsTask(req.Msg.Value, tasks.PlanForUnassociatedOperations, at), tasks.TaskPriorityInteractive+tasks.TaskPriorityStats, func(e error) {
+	if err := s.orchestrator.ScheduleTask(tasks.NewStatsTask(req.Msg.Value, tasks.PlanForSystemTasks, true), tasks.TaskPriorityInteractive+tasks.TaskPriorityStats, func(e error) {
 		err = e
 		close(wait)
-	})
+	}); err != nil {
+		return nil, err
+	}
 	<-wait
 	return connect.NewResponse(&emptypb.Empty{}), err
-
 }
 
 func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest], resp *connect.ServerStream[types.BytesValue]) error {
