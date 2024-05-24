@@ -30,6 +30,18 @@ builds:
     goarch:
       - amd64
       - arm64
+  - id: windowstray
+    main: ./cmd/backresttray
+    binary: backresttray
+    env:
+      - CGO_ENABLED=1
+      - GO111MODULE=on
+    ldflags: -H=windowsgui
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
   - id: linux
     main: ./cmd/backrest
     env:
@@ -59,6 +71,7 @@ archives:
       - LICENSE
       - README.md
       - CHANGELOG.md
+    allow_different_binary_count: true
 
 dockers:
   - image_templates:
