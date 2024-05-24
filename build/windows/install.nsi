@@ -1,12 +1,12 @@
 !define BUILD_DIR "."
-!define OUT_DIR ".\dist\"
+!define OUT_DIR "."
 !define APP_NAME "Backrest"
 !define COMP_NAME "garethgeorge"
 !define WEB_SITE "https://github.com/garethgeorge/backrest"
 !define VERSION "00.00.00.00"
 !define COPYRIGHT "garethgeorge   2024"
 !define DESCRIPTION "Application"
-!define LICENSE_TXT "${BUILD_DIR}\LICENSE.txt"
+!define LICENSE_TXT "${BUILD_DIR}\LICENSE"
 !define INSTALLER_NAME "${OUT_DIR}\Backrest-setup.exe"
 !define MAIN_APP_EXE "backrest.exe"
 !define INSTALL_TYPE "SetShellVarContext current"
@@ -81,7 +81,7 @@ ${INSTALL_TYPE}
 SetOverwrite ifnewer
 SetOutPath "$INSTDIR"
 File "${BUILD_DIR}\backrest.exe"
-File "${BUILD_DIR}\LICENSE.txt"
+File "${BUILD_DIR}\LICENSE"
 SectionEnd
 
 ######################################################################
@@ -139,7 +139,7 @@ SectionEnd
 Section Uninstall
 ${INSTALL_TYPE}
 Delete "$INSTDIR\backrest.exe"
-Delete "$INSTDIR\LICENSE.txt"
+Delete "$INSTDIR\LICENSE"
 Delete "$INSTDIR\uninstall.exe"
 Delete "$SMSTARTUP\$(^Name).lnk"
 !ifdef WEB_SITE

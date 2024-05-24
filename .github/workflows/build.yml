@@ -44,3 +44,14 @@ jobs:
           path: |
             dist/*.tar.gz
             dist/*.zip
+
+      - name: Generate Installers
+        run: |
+          ./scripts/generate-installers.sh ./dist-installers
+          zip -r installer-.zip ./dist-installers
+
+      - name: Upload Installers
+        uses: actions/upload-artifact@v3
+        with:
+          name: backrest-snapshot-installers
+          path: dist-installers/*.exe
