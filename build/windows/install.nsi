@@ -36,7 +36,7 @@ OutFile "${INSTALLER_NAME}"
 BrandingText "${APP_NAME}"
 XPStyle on
 InstallDirRegKey "${REG_ROOT}" "${REG_APP_PATH}" ""
-InstallDir "$PROGRAMFILES\Backrest"
+InstallDir "$PROGRAMFILES64\Backrest"
 
 ######################################################################
 
@@ -81,9 +81,7 @@ ${INSTALL_TYPE}
 SetOverwrite ifnewer
 SetOutPath "$INSTDIR"
 File "${BUILD_DIR}\backrest.exe"
-File "${BUILD_DIR}\CHANGELOG.md"
 File "${BUILD_DIR}\LICENSE.txt"
-File "${BUILD_DIR}\README.md"
 SectionEnd
 
 ######################################################################
@@ -141,11 +139,7 @@ SectionEnd
 Section Uninstall
 ${INSTALL_TYPE}
 Delete "$INSTDIR\backrest.exe"
-Delete "$INSTDIR\CHANGELOG.md"
-Delete "$INSTDIR\install.sh"
 Delete "$INSTDIR\LICENSE.txt"
-Delete "$INSTDIR\README.md"
-Delete "$INSTDIR\uninstall.sh"
 Delete "$INSTDIR\uninstall.exe"
 Delete "$SMSTARTUP\$(^Name).lnk"
 !ifdef WEB_SITE
