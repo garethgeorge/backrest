@@ -1,13 +1,12 @@
 #! /bin/bash
 
-outdir=$(realpath $1)
-srcdir=$(realpath $(dirname $0)/..)
+outdir=$(realpath $1) # output directory for the installer binaries 
+srcdir=$(realpath $(dirname $0)/..) # source directory
 
 # for each supported windows architecture
 for arch in x86_64 arm64; do
   cd $(mktemp -d)
-  wget https://github.com/garethgeorge/backrest/releases/latest/download/backrest_Windows_${arch}.zip
-  unzip backrest_Windows_${arch}.zip
+  unzip $srcdir/dist/backrest_Windows_${arch}.zip
 
   cp -rl $srcdir/build/windows/* .
 

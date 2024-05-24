@@ -42,7 +42,7 @@ builds:
       - arm
   - id: backrestmon
     main: ./cmd/backrestmon
-    binary: backrest-windows-tray.exe
+    binary: backrest-windows-tray
     env:
       - CGO_ENABLED=1
       - GO111MODULE=on
@@ -68,15 +68,6 @@ archives:
     files:
       - install.sh
       - uninstall.sh
-      - LICENSE
-      - README.md
-      - CHANGELOG.md
-    allow_different_binary_count: true
-  - format: zip
-    binary: backrest-windows-tray.exe
-    files:
-      - install.bat
-      - uninstall.bat
       - LICENSE
       - README.md
       - CHANGELOG.md

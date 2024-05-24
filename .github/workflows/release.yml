@@ -71,8 +71,8 @@ jobs:
 
       - name: Generate Installers
         run: |
+          mkdir -p dist-installers
           ./scripts/generate-installers.sh ./dist-installers
-          zip -r installer-.zip ./dist-installers
 
       - name: Upload Release Asset x86_64
         id: upload-release-asset
