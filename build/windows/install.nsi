@@ -8,7 +8,7 @@
 !define DESCRIPTION "Application"
 !define LICENSE_TXT "${BUILD_DIR}\LICENSE"
 !define INSTALLER_NAME "${OUT_DIR}\Backrest-setup.exe"
-!define MAIN_APP_EXE "backrest.exe"
+!define MAIN_APP_EXE "backrest-windows-tray.exe"
 !define INSTALL_TYPE "SetShellVarContext current"
 !define REG_ROOT "HKCU"
 !define REG_APP_PATH "Software\Microsoft\Windows\CurrentVersion\App Paths\${MAIN_APP_EXE}"
@@ -81,6 +81,7 @@ ${INSTALL_TYPE}
 SetOverwrite ifnewer
 SetOutPath "$INSTDIR"
 File "${BUILD_DIR}\backrest.exe"
+File "${BUILD_DIR}\backrest-windows-tray.exe"
 File "${BUILD_DIR}\LICENSE"
 SectionEnd
 
@@ -139,6 +140,7 @@ SectionEnd
 Section Uninstall
 ${INSTALL_TYPE}
 Delete "$INSTDIR\backrest.exe"
+Delete "$INSTDIR\backrest-windows-tray.exe"
 Delete "$INSTDIR\LICENSE"
 Delete "$INSTDIR\uninstall.exe"
 Delete "$SMSTARTUP\$(^Name).lnk"
