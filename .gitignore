@@ -1,5 +1,5 @@
-backrest
 backrest-*
 dist
-backrest.exe
 __debug_bin
+cmd/backrest/backrest
+*.exe

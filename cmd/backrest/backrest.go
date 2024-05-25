@@ -131,7 +131,6 @@ func main() {
 }
 
 func init() {
-	zap.ReplaceGlobals(zap.Must(zap.NewProduction()))
 	if !strings.HasPrefix(os.Getenv("ENV"), "prod") {
 		c := zap.NewDevelopmentEncoderConfig()
 		c.EncodeLevel = zapcore.CapitalColorLevelEncoder
@@ -142,6 +141,12 @@ func init() {
 			zapcore.DebugLevel,
 		))
 		zap.ReplaceGlobals(l)
+	} else {
+		zap.ReplaceGlobals(zap.New(zapcore.NewCore(
+			zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+			zapcore.AddSync(os.Stdout),
+			zapcore.DebugLevel,
+		)))
 	}
 }
 
