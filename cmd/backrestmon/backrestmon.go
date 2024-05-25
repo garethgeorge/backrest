@@ -42,7 +42,8 @@ func main() {
 
 	cmd := exec.CommandContext(ctx, backrest)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	cmd.Env = append(os.Environ(), "ENV=prod")
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "ENV=production")
 
 	pro, pwo := io.Pipe()
 	pre, pwe := io.Pipe()
