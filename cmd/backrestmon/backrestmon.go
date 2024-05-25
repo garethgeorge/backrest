@@ -42,19 +42,22 @@ func main() {
 
 	cmd := exec.CommandContext(ctx, backrest)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmd.Env = append(os.Environ(), "ENV=prod")
+
+	pro, pwo := io.Pipe()
+	pre, pwe := io.Pipe()
+	cmd.Stdout = pwo
+	cmd.Stderr = pwe
+
+	go func() {
+		io.Copy(l, io.MultiReader(pro, pre))
+	}()
+
 	if err := cmd.Start(); err != nil {
 		reportError(err)
 		cancel()
 		return
 	}
-
-	go func() {
-		pro, pwo := io.Pipe()
-		pre, pwe := io.Pipe()
-		cmd.Stdout = pwo
-		cmd.Stderr = pwe
-		io.Copy(l, io.MultiReader(pro, pre))
-	}()
 
 	systray.Run(func() {
 		systray.SetTitle("Backrest Tray")
@@ -73,7 +76,7 @@ func main() {
 		}()
 
 		// Second item: open the log file in the file explorer
-		mOpenLog := systray.AddMenuItem("Open Log", "Open the Backrest log directory")
+		mOpenLog := systray.AddMenuItem("Open Log Dir", "Open the Backrest log directory")
 		mOpenLog.ClickedCh = make(chan struct{})
 		go func() {
 			for range mOpenLog.ClickedCh {
@@ -84,7 +87,7 @@ func main() {
 		}()
 
 		// Last item: quit button to stop the backrest process.
-		mQuit := systray.AddMenuItem("Quit", "Quit the whole app")
+		mQuit := systray.AddMenuItem("Quit", "Kills the backrest process and exits the tray app")
 		mQuit.ClickedCh = make(chan struct{})
 		go func() {
 			<-mQuit.ClickedCh
@@ -97,7 +100,9 @@ func main() {
 
 	if err := cmd.Wait(); err != nil {
 		systray.Quit()
-		reportError(fmt.Errorf("backrest process exited unexpectedly with error: %w", err))
+		if ctx.Err() != context.Canceled {
+			reportError(fmt.Errorf("backrest process exited unexpectedly with error: %w", err))
+		}
 		return
 	}
 }
@@ -145,6 +150,7 @@ func reportError(err error) {
 
 func createLogWriter() (io.WriteCloser, error) {
 	logsDir := logsPath()
+	fmt.Printf("Logging to %s\n", logsDir)
 	if err := os.MkdirAll(logsDir, 0755); err != nil {
 		return nil, err
 	}
