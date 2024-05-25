@@ -9,6 +9,11 @@ on:
     paths-ignore:
       - "docs/**"
       - "*.md"
+  pull_request:
+    branches: ["main"]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
   workflow_dispatch:
 
 jobs:
@@ -44,3 +49,14 @@ jobs:
           path: |
             dist/*.tar.gz
             dist/*.zip
+
+      - name: Generate Installers
+        run: |
+          mkdir -p dist-installers
+          ./scripts/generate-installers.sh ./dist-installers
+
+      - name: Upload Installers
+        uses: actions/upload-artifact@v3
+        with:
+          name: backrest-snapshot-installers
+          path: dist-installers/*.exe
