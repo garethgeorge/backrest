@@ -27,14 +27,14 @@ Backrest itself is built in Golang (matching restic's implementation) and is shi
 
 - [Docker](https://hub.docker.com/r/garethgeorge/backrest)
 - Linux
-- MacOS
+- macOS
 - Windows
 - FreeBSD
 
 **Features**
 
 - WebUI supports local and remote access (e.g. run on a NAS and access from your desktop)
-- Multi-platform support (Linux, MacOS, Windows, FreeBSD, [Docker](https://hub.docker.com/r/garethgeorge/backrest))
+- Multi-platform support (Linux, macOS, Windows, FreeBSD, [Docker](https://hub.docker.com/r/garethgeorge/backrest))
 - Import your existing restic repositories
 - Cron scheduled backups and health operations (e.g. prune and forget)
 - UI for browing and restoring files from snapshots
@@ -51,7 +51,7 @@ Backrest itself is built in Golang (matching restic's implementation) and is shi
 
 # Installation
 
-Backrest is packaged as a single executable. It can be run directly on Linux, MacOS, and Windows. [restic](https://github.com/restic/restic) will be downloaded and installed in the data directory on first run.
+Backrest is packaged as a single executable. It can be run directly on Linux, macOS, and Windows. [restic](https://github.com/restic/restic) will be downloaded and installed in the data directory on first run.
 
 Download options
 
@@ -175,7 +175,7 @@ sudo systemctl start backrest
 
 Note: you can set the linux user and group to your primary user (e.g. `whoami` when logged in).
 
-## Running on MacOS
+## Running on macOS
 
 #### Using Brew (Recommended)
 
@@ -221,7 +221,7 @@ To run the binary on login, create a shortcut to the binary and place it in the 
 
 warning: If you get filesystem errors you may need to run Backrest as administrator for full filesystem access.
 
-warning: Backrest is not tested on Windows to the same bar as Linux and MacOS. Some features may not work as expected.
+warning: Backrest is not tested on Windows to the same bar as Linux and macOS. Some features may not work as expected.
 
 # Configuration
 
