@@ -101,8 +101,13 @@ export const SnapshotBrowser = ({
       return;
     }
 
+    let path = key as string;
+    if (!path.endsWith("/")) {
+      path += "/";
+    }
+
     const resp = await backrestService.listSnapshotFiles({
-      path: (key + "/") as string,
+      path,
       repoId,
       snapshotId,
     });
