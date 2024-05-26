@@ -226,6 +226,7 @@ To run the binary on login, create a shortcut to the binary and place it in the 
 > * If you receive filesystem errors, you may need to run Backrest as an administrator for full filesystem access.
 > * Backrest is **not** tested on Windows to the same extent as Linux and macOS. Some features may not work as expected.
 
+
 # Configuration
 
 ## Environment Variables
