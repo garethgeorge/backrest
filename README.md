@@ -27,14 +27,14 @@ Backrest itself is built in Golang (matching restic's implementation) and is shi
 
 - [Docker](https://hub.docker.com/r/garethgeorge/backrest)
 - Linux
-- MacOS
+- macOS
 - Windows
 - FreeBSD
 
 **Features**
 
 - WebUI supports local and remote access (e.g. run on a NAS and access from your desktop)
-- Multi-platform support (Linux, MacOS, Windows, FreeBSD, [Docker](https://hub.docker.com/r/garethgeorge/backrest))
+- Multi-platform support (Linux, macOS, Windows, FreeBSD, [Docker](https://hub.docker.com/r/garethgeorge/backrest))
 - Import your existing restic repositories
 - Cron scheduled backups and health operations (e.g. prune and forget)
 - UI for browing and restoring files from snapshots
@@ -47,11 +47,11 @@ Backrest itself is built in Golang (matching restic's implementation) and is shi
 
 # User Guide
 
-[See the backrest docs](https://garethgeorge.github.io/backrest/introduction/getting-started).
+[See the Backrest docs](https://garethgeorge.github.io/backrest/introduction/getting-started).
 
 # Installation
 
-Backrest is packaged as a single executable. It can be run directly on Linux, MacOS, and Windows. [restic](https://github.com/restic/restic) will be downloaded and installed in the data directory on first run.
+Backrest is packaged as a single executable. It can be run directly on Linux, macOS, and Windows. [restic](https://github.com/restic/restic) will be downloaded and installed in the data directory on first run.
 
 Download options
 
@@ -61,7 +61,8 @@ Download options
 
 Backrest is accessible from a web browser. By default it binds to `0.0.0.0:9898` and can be accessed at `http://localhost:9898`. Change the port with the `BACKREST_PORT` environment variable e.g. `BACKREST_PORT=127.0.0.1 backrest` to listen only on local interfaces. On first startup backrest will prompt you to create a default username and password, this can be changed later in the settings page.
 
-Note: backrest installs a specific restic version to ensure that the version of restic matches the version backrest is tested against. This provides the best guarantees for stability. If you wish to use a different version of restic OR if you would prefer to install restic manually you may do so by setting the `BACKREST_RESTIC_COMMAND` environment variable to the path of the restic binary you wish to use.
+> [!Note]
+> Backrest installs a specific restic version to ensure that the version of restic matches the version Backrest is tested against. This provides the best guarantees for stability. If you wish to use a different version of restic OR if you would prefer to install restic manually you may do so by setting the `BACKREST_RESTIC_COMMAND` environment variable to the path of the restic binary you wish to use.
 
 ## Running with Docker Compose
 
@@ -75,7 +76,7 @@ services:
   backrest:
     image: garethgeorge/backrest
     container_name: backrest
-    hostname: backrest #Use this to set the hostname instead of container ID to the config.json and WebUI.
+    hostname: backrest # Use this to set the hostname instead of container ID to the config.json and WebUI.
     volumes:
       - ./backrest/data:/data
       - ./backrest/config:/config
@@ -95,13 +96,14 @@ services:
 
 ### Arch Linux
 
-> Note: [Backrest on AUR](https://aur.archlinux.org/packages/backrest) is not maintained by the backrest official and has made minor adjustments to the recommended services. Please refer to [here](https://aur.archlinux.org/cgit/aur.git/tree/backrest@.service?h=backrest) for details. In [backrest@.service](https://aur.archlinux.org/cgit/aur.git/tree/backrest@.service?h=backrest), use `restic` from the Arch Linux official repository by setting `BACKREST_RESTIC_COMMAND`. And for information on enable/starting/stopping services, please refer to [Systemd#Using_units](https://wiki.archlinux.org/title/Systemd#Using_units).
+> [!Note]
+> [Backrest on AUR](https://aur.archlinux.org/packages/backrest) is not maintained by the Backrest official and has made minor adjustments to the recommended services. Please refer to [here](https://aur.archlinux.org/cgit/aur.git/tree/backrest@.service?h=backrest) for details. In [backrest@.service](https://aur.archlinux.org/cgit/aur.git/tree/backrest@.service?h=backrest), use `restic` from the Arch Linux official repository by setting `BACKREST_RESTIC_COMMAND`. And for information on enable/starting/stopping services, please refer to [Systemd#Using_units](https://wiki.archlinux.org/title/Systemd#Using_units).
 
 ```shell
-## install backrest from AUR
+## Install Backrest from AUR
 paru -Sy backrest  # or: yay -Sy backrest
 
-## enable backrest service for current user
+## Enable Backrest service for current user
 sudo systemctl enable --now backrest@$USER.service
 ```
 
@@ -114,15 +116,15 @@ Download a release from the [releases page](https://github.com/garethgeorge/back
 Extract the release you downloaded and run the install script:
 
 ```
-# extract the release to a subfolder of the current directory
+# Extract the release to a subfolder of the current directory
 mkdir backrest && tar -xzvf backrest_Linux_x86_64.tar.gz -C backrest
-# run the install script
+# Run the install script
 cd backrest && ./install.sh
 ```
 
 The install script will:
 
-- Move the backrest binary to `/usr/local/bin`
+- Move the Backrest binary to `/usr/local/bin`
 - Create a systemd service file at `/etc/systemd/system/backrest.service`
 - Enable and start the service
 
@@ -130,7 +132,7 @@ Read the script before running it to make sure you are comfortable with these op
 
 #### Run on startup with cron (Basic)
 
-Move the backrest binary to `/usr/local/bin`:
+Move the Backrest binary to `/usr/local/bin`:
 
 ```sh
 sudo mv backrest /usr/local/bin/backrest
@@ -173,9 +175,10 @@ sudo systemctl enable backrest
 sudo systemctl start backrest
 ```
 
-Note: you can set the linux user and group to your primary user (e.g. `whoami` when logged in).
+> [!NOTE]
+> You can set the Linux user and group to your primary user (e.g. `whoami` when logged in).
 
-## Running on MacOS
+## Running on macOS
 
 #### Using Brew (Recommended)
 
@@ -203,7 +206,7 @@ cd backrest && ./install.sh
 
 The install script will:
 
-- Move the backrest binary to `/usr/local/bin`
+- Move the Backrest binary to `/usr/local/bin`
 - Create a launch agent file at `~/Library/LaunchAgents/com.backrest.plist`
 - Load the launch agent
 
@@ -211,7 +214,7 @@ Read the script before running it to make sure you are comfortable with these op
 
 #### Manually
 
-If setting up backrest manually it's recommended to install the binary to `/usr/local/bin` and run it manually. You can also create a launch agent to run it on startup or may run it manually when needed.
+If setting up Backrest manually, it is recommended to install the binary to `/usr/local/bin` and run it manually. You can also create a launch agent to run it on startup or may run it manually when needed.
 
 ## Running on Windows
 
@@ -219,16 +222,18 @@ Download a Windows release from the [releases page](https://github.com/garethgeo
 
 To run the binary on login, create a shortcut to the binary and place it in the `shell:startup` folder. See [this windows support article](https://support.microsoft.com/en-us/windows/add-an-app-to-run-automatically-at-startup-in-windows-10-150da165-dcd9-7230-517b-cf3c295d89dd) for more details.
 
-warning: If you get filesystem errors you may need to run Backrest as administrator for full filesystem access.
-
-warning: Backrest is not tested on Windows to the same bar as Linux and MacOS. Some features may not work as expected.
+> [!WARNING]
+> * If you receive filesystem errors, you may need to run Backrest as an administrator for full filesystem access.
+> * Backrest is **not** tested on Windows to the same extent as Linux and macOS. Some features may not work as expected.
 
 # Configuration
 
 ## Environment Variables
 
-- `BACKREST_PORT` - the port to bind to. Defaults to 9898.
-- `BACKREST_CONFIG` - the path to the config file. Defaults to `$HOME/.config/backrest/config.json` or if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/backrest/config.json`.
-- `BACKREST_DATA` - the path to the data directory. Defaults to `$HOME/.local/share/backrest` or if `$XDG_DATA_HOME` is set, `$XDG_DATA_HOME/backrest`.
-- `BACKREST_RESTIC_COMMAND` - the path to the restic binary. Defaults managed version of restic which will be downloaded and installed in the data directory.
-- `XDG_CACHE_HOME` -- the path to the cache directory. This is propagated to restic.
+| Variable | Description | Default |
+| - | - | - |
+| `BACKREST_PORT` | Port to bind to | 9898 |
+| `BACKREST_CONFIG` | Path to config file | `$HOME/.config/backrest/config.json`<br>(or, if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/backrest/config.json`) |
+| `BACKREST_DATA` | Path to the data directory | `$HOME/.local/share/backrest`<br>(or, if `$XDG_DATA_HOME` is set, `$XDG_DATA_HOME/backrest`) |
+| `BACKREST_RESTIC_COMMAND` | Path to restic binary | Defaults to a Backrest managed version of restic |
+| `XDG_CACHE_HOME` | Path to the cache directory | |
