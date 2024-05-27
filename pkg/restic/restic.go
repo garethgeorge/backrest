@@ -23,12 +23,16 @@ var ErrPartialBackup = errors.New("incomplete backup")
 var ErrBackupFailed = errors.New("backup failed")
 
 type Repo struct {
-	cmd         string
-	uri         string
-	initialized bool
+	cmd string
+	uri string
 
 	extraArgs []string
 	extraEnv  []string
+
+	exists           error
+	checkExists      sync.Once
+	initialized      error // nil or errAlreadyInitialized if initialized, error if initialization failed.
+	shouldInitialize sync.Once
 }
 
 // NewRepo instantiates a new repository.
@@ -41,11 +45,10 @@ func NewRepo(resticBin string, uri string, opts ...GenericOption) *Repo {
 	opt.extraEnv = append(opt.extraEnv, "RESTIC_REPOSITORY="+uri)
 
 	return &Repo{
-		cmd:         resticBin, // TODO: configurable binary path
-		uri:         uri,
-		initialized: false,
-		extraArgs:   opt.extraArgs,
-		extraEnv:    opt.extraEnv,
+		cmd:       resticBin, // TODO: configurable binary path
+		uri:       uri,
+		extraArgs: opt.extraArgs,
+		extraEnv:  opt.extraEnv,
 	}
 }
 
@@ -59,7 +62,12 @@ func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...Ge
 	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
-	addLoggingToCommand(ctx, cmd)
+	logger := LoggerFromContext(ctx)
+	if logger != nil {
+		sw := &ioutil.SynchronizedWriter{W: logger}
+		cmd.Stderr = sw
+		cmd.Stdout = sw
+	}
 
 	if logger := LoggerFromContext(ctx); logger != nil {
 		fmt.Fprintf(logger, "\ncommand: %v %v\n", r.cmd, strings.Join(args, " "))
@@ -85,25 +93,40 @@ func (r *Repo) pipeCmdOutputToWriter(cmd *exec.Cmd, handlers ...io.Writer) {
 	cmd.Stderr = mw
 }
 
+// Exists checks if the repository exists.
+// Returns true if exists, false if it does not exist OR an access error occurred.
+func (r *Repo) Exists(ctx context.Context, opts ...GenericOption) error {
+	r.checkExists.Do(func() {
+		cmd := r.commandWithContext(ctx, []string{"cat", "config"}, opts...)
+		if err := cmd.Run(); err != nil {
+			r.exists = newCmdError(ctx, cmd, err)
+		}
+		r.exists = nil
+	})
+	return r.exists
+}
+
 // init initializes the repo, the command will be cancelled with the context.
 func (r *Repo) init(ctx context.Context, opts ...GenericOption) error {
-	if r.initialized {
+	if r.Exists(ctx, opts...) == nil {
 		return nil
 	}
 
-	cmd := r.commandWithContext(ctx, []string{"init", "--json"}, opts...)
-	output := bytes.NewBuffer(nil)
-	r.pipeCmdOutputToWriter(cmd, output)
+	r.shouldInitialize.Do(func() {
+		cmd := r.commandWithContext(ctx, []string{"init", "--json"}, opts...)
+		output := bytes.NewBuffer(nil)
+		r.pipeCmdOutputToWriter(cmd, output)
 
-	if err := cmd.Run(); err != nil {
-		if strings.Contains(output.String(), "config file already exists") || strings.Contains(output.String(), "already initialized") {
-			return errAlreadyInitialized
+		if err := cmd.Run(); err != nil {
+			if strings.Contains(output.String(), "config file already exists") || strings.Contains(output.String(), "already initialized") {
+				r.initialized = errAlreadyInitialized
+			} else {
+				r.initialized = newCmdError(ctx, cmd, fmt.Errorf("%w: %v", err, output.String()))
+			}
 		}
-		return newCmdError(ctx, cmd, fmt.Errorf("%w: %v", err, output.String()))
-	}
+	})
 
-	r.initialized = true
-	return nil
+	return r.initialized
 }
 
 func (r *Repo) Init(ctx context.Context, opts ...GenericOption) error {
@@ -160,7 +183,7 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 				}
 			}
 		}
-		return summary, newCmdErrorPreformatted(ctx, cmd, errors.Join(cmdErr, readErr))
+		return summary, newCmdError(ctx, cmd, errors.Join(cmdErr, readErr))
 	}
 	return summary, nil
 }
@@ -235,6 +258,18 @@ func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...Generic
 	return nil
 }
 
+func (r *Repo) Check(ctx context.Context, checkOutput io.Writer, opts ...GenericOption) error {
+	args := []string{"check"}
+	cmd := r.commandWithContext(ctx, args, opts...)
+	if checkOutput != nil {
+		r.pipeCmdOutputToWriter(cmd, checkOutput)
+	}
+	if err := cmd.Run(); err != nil {
+		return newCmdError(ctx, cmd, err)
+	}
+	return nil
+}
+
 func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
 	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
 	cmd := r.commandWithContext(ctx, []string{"restore", "--json", snapshot}, opts...)
@@ -271,7 +306,7 @@ func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*Rest
 			}
 		}
 
-		return summary, newCmdErrorPreformatted(ctx, cmd, errors.Join(cmdErr, readErr))
+		return summary, newCmdError(ctx, cmd, errors.Join(cmdErr, readErr))
 	}
 	return summary, nil
 }

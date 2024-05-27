@@ -263,6 +263,25 @@ func (r *RepoOrchestrator) Prune(ctx context.Context, output io.Writer) error {
 	return nil
 }
 
+func (r *RepoOrchestrator) Check(ctx context.Context, output io.Writer) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
+
+	var opts []restic.GenericOption
+	if r.repoConfig.CheckOptions != nil {
+		opts = append(opts, restic.WithFlags(r.repoConfig.CheckOptions...))
+	}
+
+	r.l.Debug("checking repo")
+	err := r.repo.Check(ctx, output)
+	if err != nil {
+		return fmt.Errorf("check repo %v: %w", r.repoConfig.Id, err)
+	}
+	return nil
+}
+
 func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, path string, target string, progressCallback func(event *v1.RestoreProgressEntry)) (*v1.RestoreProgressEntry, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

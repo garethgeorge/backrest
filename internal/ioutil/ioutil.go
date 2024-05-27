@@ -33,14 +33,11 @@ func (w *HeadWriter) Write(p []byte) (n int, err error) {
 }
 
 func (w *HeadWriter) Bytes() []byte {
-	w.mu.Lock()
-	defer w.mu.Unlock()
 	return slices.Clone(w.Buf)
 }
 
 // tailWriter keeps the last 'Limit' bytes in memory.
 type TailWriter struct {
-	mu    sync.Mutex
 	Buf   []byte
 	Limit int
 }
@@ -48,8 +45,6 @@ type TailWriter struct {
 var _ io.Writer = &TailWriter{}
 
 func (w *TailWriter) Write(p []byte) (n int, err error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
 	w.Buf = append(w.Buf, p...)
 	if len(w.Buf) > w.Limit {
 		w.Buf = w.Buf[len(w.Buf)-w.Limit:]
@@ -58,11 +53,12 @@ func (w *TailWriter) Write(p []byte) (n int, err error) {
 }
 
 func (w *TailWriter) Bytes() []byte {
-	w.mu.Lock()
-	defer w.mu.Unlock()
 	return slices.Clone(w.Buf)
 }
 
+// OutputCapturer keeps the first 'Limit' bytes and the last 'Limit' bytes in memory.
+// If the total number of bytes written exceeds 'Limit', the middle is truncated.
+// The writer is thread-safe.
 type OutputCapturer struct {
 	mu sync.Mutex
 	HeadWriter

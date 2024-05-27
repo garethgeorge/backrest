@@ -99,15 +99,15 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		return fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err)
 	}
 
-	opPrune := &v1.Operation_OperationPrune{
-		OperationPrune: &v1.OperationPrune{},
+	opCheck := &v1.Operation_OperationCheck{
+		OperationCheck: &v1.OperationCheck{},
 	}
-	op.Op = opPrune
+	op.Op = opCheck
 
 	ctx, cancel := context.WithCancel(ctx)
 	interval := time.NewTicker(1 * time.Second)
 	defer interval.Stop()
-	buf := ioutil.HeadWriter{Limit: 8 * 1024}
+	buf := ioutil.HeadWriter{Limit: 16 * 1024}
 	bufWriter := ioutil.SynchronizedWriter{W: &buf}
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -119,12 +119,9 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 				bufWriter.Mu.Lock()
 				output := string(buf.Bytes())
 				bufWriter.Mu.Unlock()
-				if len(output) > 8*1024 { // only provide live status upto the first 8K of output.
-					output = output[:len(output)-8*1024]
-				}
 
-				if opPrune.OperationPrune.Output != string(output) {
-					opPrune.OperationPrune.Output = string(output)
+				if opCheck.OperationCheck.Output != string(output) {
+					opCheck.OperationCheck.Output = string(output)
 
 					if err := runner.OpLog().Update(op); err != nil {
 						zap.L().Error("update prune operation with status output", zap.Error(err))
@@ -136,7 +133,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		}
 	}()
 
-	if err := repo.Prune(ctx, &bufWriter); err != nil {
+	if err := repo.Check(ctx, &bufWriter); err != nil {
 		cancel()
 
 		runner.ExecuteHooks([]v1.Hook_Condition{
@@ -150,12 +147,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	cancel()
 	wg.Wait()
 
-	output := buf.String()
-	if len(output) > 8*1024 { // only save the first 4K of output.
-		output = output[:len(output)-8*1024]
-	}
-
-	opPrune.OperationPrune.Output = output
+	opCheck.OperationCheck.Output = string(buf.Bytes())
 
 	// Run a stats task after a successful prune
 	if err := runner.ScheduleTask(NewStatsTask(t.RepoID(), PlanForSystemTasks, false), TaskPriorityStats); err != nil {

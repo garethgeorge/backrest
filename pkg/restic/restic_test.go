@@ -467,6 +467,59 @@ func TestResticStats(t *testing.T) {
 	}
 }
 
+func TestResticCheck(t *testing.T) {
+	t.Parallel()
+
+	repo := t.TempDir()
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	testData := helpers.CreateTestData(t)
+
+	_, err := r.Backup(context.Background(), []string{testData}, nil)
+	if err != nil {
+		t.Fatalf("failed to backup and create new snapshot: %v", err)
+	}
+
+	// check repo
+	output := bytes.NewBuffer(nil)
+	if err := r.Check(context.Background(), output, WithFlags("--read-data")); err != nil {
+		t.Fatalf("failed to check repo: %v", err)
+	}
+
+	wantStr := "no errors were found"
+	if !bytes.Contains(output.Bytes(), []byte(wantStr)) {
+		t.Errorf("wanted output to contain 'no errors were found', got: %s", output.String())
+	}
+
+	// corrupt the repo
+	filepath.WalkDir(repo, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, "snapshot") {
+			return nil
+		}
+		if err := os.WriteFile(path, []byte("corrupted"), 0644); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// check repo
+	output.Reset()
+	if err := r.Check(context.Background(), output); err == nil {
+		t.Errorf("wanted error, got: nil")
+	}
+
+	wantStr = "error: repository contains errors"
+	if !bytes.Contains(output.Bytes(), []byte(wantStr)) {
+		t.Errorf("wanted output to contain 'repository contains errors', got: %s", output.String())
+	}
+}
+
 func toRepoPath(path string) string {
 	if runtime.GOOS != "windows" {
 		return path

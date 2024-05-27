@@ -94,7 +94,8 @@ message CheckPolicy {
   Schedule schedule = 1 [json_name="schedule"];
   
   oneof read_policy {
-    int32 read_percent = 11 [json_name="readPercent"]; // check a percentage of snapshots.
+    bool disabled = 100 [json_name="disabled"]; // disable the check.
+    int32 read_percent = 101 [json_name="readPercent"]; // check a percentage of snapshots.
   }
 }
 
