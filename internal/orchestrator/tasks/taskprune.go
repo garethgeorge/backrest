@@ -71,7 +71,7 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	}); err != nil {
 		return NeverScheduledTask, fmt.Errorf("finding last prune run time: %w", err)
 	} else if !foundBackup {
-		return NeverScheduledTask, nil
+		lastRan = time.Now()
 	}
 
 	zap.L().Debug("last prune time", zap.Time("time", lastRan), zap.String("repo", t.RepoID()))
