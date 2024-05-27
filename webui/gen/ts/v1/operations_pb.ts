@@ -271,6 +271,12 @@ export class Operation extends Message<Operation> {
      */
     value: OperationRunHook;
     case: "operationRunHook";
+  } | {
+    /**
+     * @generated from field: v1.OperationCheck operation_check = 107;
+     */
+    value: OperationCheck;
+    case: "operationCheck";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Operation>) {
@@ -299,6 +305,7 @@ export class Operation extends Message<Operation> {
     { no: 104, name: "operation_restore", kind: "message", T: OperationRestore, oneof: "op" },
     { no: 105, name: "operation_stats", kind: "message", T: OperationStats, oneof: "op" },
     { no: 106, name: "operation_run_hook", kind: "message", T: OperationRunHook, oneof: "op" },
+    { no: 107, name: "operation_check", kind: "message", T: OperationCheck, oneof: "op" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Operation {
@@ -550,6 +557,49 @@ export class OperationPrune extends Message<OperationPrune> {
 }
 
 /**
+ * OperationCheck tracks a check operation.
+ *
+ * @generated from message v1.OperationCheck
+ */
+export class OperationCheck extends Message<OperationCheck> {
+  /**
+   * output of the check operation.
+   *
+   * @generated from field: string output = 1;
+   */
+  output = "";
+
+  constructor(data?: PartialMessage<OperationCheck>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.OperationCheck";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "output", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationCheck {
+    return new OperationCheck().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationCheck {
+    return new OperationCheck().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationCheck {
+    return new OperationCheck().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: OperationCheck | PlainMessage<OperationCheck> | undefined, b: OperationCheck | PlainMessage<OperationCheck> | undefined): boolean {
+    return proto3.util.equals(OperationCheck, a, b);
+  }
+}
+
+/**
+ * OperationRestore tracks a restore operation.
+ *
  * @generated from message v1.OperationRestore
  */
 export class OperationRestore extends Message<OperationRestore> {
@@ -605,6 +655,8 @@ export class OperationRestore extends Message<OperationRestore> {
 }
 
 /**
+ * OperationStats tracks a stats operation.
+ *
  * @generated from message v1.OperationStats
  */
 export class OperationStats extends Message<OperationStats> {
@@ -642,6 +694,8 @@ export class OperationStats extends Message<OperationStats> {
 }
 
 /**
+ * OperationRunHook tracks a hook that was run.
+ *
  * @generated from message v1.OperationRunHook
  */
 export class OperationRunHook extends Message<OperationRunHook> {

@@ -650,9 +650,17 @@ export class CheckPolicy extends Message<CheckPolicy> {
    */
   readPolicy: {
     /**
+     * disable the check.
+     *
+     * @generated from field: bool disabled = 100;
+     */
+    value: boolean;
+    case: "disabled";
+  } | {
+    /**
      * check a percentage of snapshots.
      *
-     * @generated from field: int32 read_percent = 11;
+     * @generated from field: int32 read_percent = 101;
      */
     value: number;
     case: "readPercent";
@@ -667,7 +675,8 @@ export class CheckPolicy extends Message<CheckPolicy> {
   static readonly typeName = "v1.CheckPolicy";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "schedule", kind: "message", T: Schedule },
-    { no: 11, name: "read_percent", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "read_policy" },
+    { no: 100, name: "disabled", kind: "scalar", T: 8 /* ScalarType.BOOL */, oneof: "read_policy" },
+    { no: 101, name: "read_percent", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "read_policy" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CheckPolicy {
