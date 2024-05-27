@@ -39,6 +39,7 @@ message Operation {
     OperationRestore operation_restore = 104;
     OperationStats operation_stats = 105;
     OperationRunHook operation_run_hook = 106;
+    OperationCheck operation_check = 107;
   }
 }
 
@@ -90,16 +91,24 @@ message OperationPrune {
   string output = 1; // output of the prune.
 }
 
+// OperationCheck tracks a check operation.
+message OperationCheck {
+  string output = 1; // output of the check operation.
+}
+
+// OperationRestore tracks a restore operation.
 message OperationRestore {
   string path = 1; // path in the snapshot to restore.
   string target = 2; // location to restore it to.
   RestoreProgressEntry status = 3; // status of the restore.
 }
 
+// OperationStats tracks a stats operation.
 message OperationStats {
   RepoStats stats = 1;
 }
 
+// OperationRunHook tracks a hook that was run.
 message OperationRunHook {
   string name = 1; // description of the hook that was run. typically repo/hook_idx or plan/hook_idx.
   string output_logref = 2; // logref of the hook's output. DEPRECATED.

@@ -47,7 +47,7 @@ func (v HookVars) FormatTime(t time.Time) string {
 }
 
 func (v HookVars) FormatDuration(d time.Duration) string {
-	return d.String()
+	return d.Truncate(time.Millisecond).String()
 }
 
 func (v HookVars) number(n any) int {

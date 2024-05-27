@@ -99,6 +99,7 @@ export enum DisplayType {
   SNAPSHOT,
   FORGET,
   PRUNE,
+  CHECK,
   RESTORE,
   STATS,
   RUNHOOK,
@@ -335,6 +336,8 @@ export const getTypeForDisplay = (op: Operation) => {
       return DisplayType.FORGET;
     case "operationPrune":
       return DisplayType.PRUNE;
+    case "operationCheck":
+      return DisplayType.CHECK;
     case "operationRestore":
       return DisplayType.RESTORE;
     case "operationStats":
@@ -356,6 +359,8 @@ export const displayTypeToString = (type: DisplayType) => {
       return "Forget";
     case DisplayType.PRUNE:
       return "Prune";
+    case DisplayType.CHECK:
+      return "Check";
     case DisplayType.RESTORE:
       return "Restore";
     case DisplayType.STATS:

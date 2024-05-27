@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	gcStartupDelay = 5 * time.Second
+	gcStartupDelay = 60 * time.Second
 	gcInterval     = 24 * time.Hour
 	// keep operations that are eligible for gc for 30 days OR up to a limit of 100 for any one plan.
 	// an operation is eligible for gc if:

@@ -6,7 +6,12 @@ import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY } from "../constants";
 import { backrestService } from "../api";
-import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
+import {
+  DoRepoTaskRequest,
+  DoRepoTaskRequest_Task,
+  GetOperationsRequest,
+  OpSelector,
+} from "../../gen/ts/v1/service_pb";
 import { SpinButton } from "../components/SpinButton";
 import { shouldHideStatus } from "../state/oplog";
 import { useShowModal } from "../components/ModalManager";
@@ -27,7 +32,12 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const handleUnlockNow = async () => {
     try {
       alertsApi.info("Unlocking repo...");
-      await backrestService.unlock({ value: plan.repo! });
+      await backrestService.doRepoTask(
+        new DoRepoTaskRequest({
+          repoId: plan.repo!,
+          task: DoRepoTaskRequest_Task.UNLOCK,
+        })
+      );
       alertsApi.success("Repo unlocked.");
     } catch (e: any) {
       alertsApi.error("Failed to unlock repo: " + e.message);

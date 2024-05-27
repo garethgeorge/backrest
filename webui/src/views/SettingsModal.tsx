@@ -18,7 +18,7 @@ import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import { Auth, Config, User } from "../../gen/ts/v1/config_pb";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import { useAlertApi } from "../components/Alerts";
+import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
 import { useConfig } from "../components/ConfigProvider";
 import { authenticationService, backrestService } from "../api";
@@ -80,7 +80,7 @@ export const SettingsModal = () => {
         window.location.reload();
       }, 500);
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
       console.error(e);
     }
   };

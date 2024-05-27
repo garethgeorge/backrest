@@ -93,8 +93,9 @@ message PrunePolicy {
 message CheckPolicy {
   Schedule schedule = 1 [json_name="schedule"];
   
-  oneof read_policy {
-    int32 read_percent = 11 [json_name="readPercent"]; // check a percentage of snapshots.
+  oneof mode {
+    bool structure_only = 100 [json_name="structureOnly"]; // only check the structure of the repo. No pack data is read.
+    int32 read_data_subset_percent = 101 [json_name="readDataSubsetPercent"]; // check a percentage of pack data.
   }
 }
 
@@ -115,6 +116,17 @@ message Hook {
     CONDITION_SNAPSHOT_END = 3; // backup completed (success or fail).
     CONDITION_SNAPSHOT_ERROR = 4; // snapshot failed.
     CONDITION_SNAPSHOT_WARNING = 5; // snapshot completed with warnings.
+    CONDITION_SNAPSHOT_SUCCESS = 6; // snapshot succeeded.
+    
+    // prune conditions
+    CONDITION_PRUNE_START = 100; // prune started.
+    CONDITION_PRUNE_ERROR = 101; // prune failed.
+    CONDITION_PRUNE_SUCCESS = 102; // prune succeeded.
+
+    // check conditions
+    CONDITION_CHECK_START = 200; // check started.
+    CONDITION_CHECK_ERROR = 201; // check failed.
+    CONDITION_CHECK_SUCCESS = 202; // check succeeded.
   }
 
   enum OnError {

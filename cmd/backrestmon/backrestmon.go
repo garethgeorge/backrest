@@ -45,13 +45,12 @@ func main() {
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "ENV=production")
 
-	pro, pwo := io.Pipe()
-	pre, pwe := io.Pipe()
-	cmd.Stdout = pwo
-	cmd.Stderr = pwe
+	pr, pw := io.Pipe()
+	cmd.Stdout = pw
+	cmd.Stderr = pw
 
 	go func() {
-		io.Copy(l, io.MultiReader(pro, pre))
+		io.Copy(l, pr)
 	}()
 
 	if err := cmd.Start(); err != nil {
