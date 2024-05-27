@@ -38,9 +38,14 @@ func NewHookExecutor(config *v1.Config, oplog *oplog.OpLog, bigOutputStore *rota
 // ExecuteHooks schedules tasks for the hooks subscribed to the given event. The vars map is used to substitute variables
 // Hooks are pulled both from the provided plan and from the repo config.
 func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, events []v1.Hook_Condition, vars HookVars) error {
+	planId := plan.GetId()
+	if planId == "" {
+		planId = "_system_" // TODO: clean this up when refactoring hook execution
+	}
+
 	operationBase := v1.Operation{
 		Status:     v1.OperationStatus_STATUS_INPROGRESS,
-		PlanId:     plan.GetId(),
+		PlanId:     planId,
 		RepoId:     repo.GetId(),
 		InstanceId: e.config.Instance,
 		FlowId:     flowID,

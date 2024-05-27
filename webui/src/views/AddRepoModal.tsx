@@ -19,7 +19,7 @@ import { useShowModal } from "../components/ModalManager";
 import { Hook, Repo } from "../../gen/ts/v1/config_pb";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import { useAlertApi } from "../components/Alerts";
+import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
 import {
@@ -81,7 +81,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           template.uri
       );
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
     } finally {
       setConfirmLoading(false);
     }
@@ -118,7 +118,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         alertsApi.success("Added repo " + repo.uri);
       }
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
     } finally {
       setConfirmLoading(false);
     }
@@ -448,6 +448,42 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               />
             </Form.Item>
             <ScheduleFormItem name={["prunePolicy", "schedule"]} />
+          </Form.Item>
+
+          {/* Repo.checkPolicy */}
+          <Form.Item
+            label={
+              <Tooltip
+                title={
+                  <span>
+                    The schedule on which check operations are run for this
+                    repository. Restic check operations verify the integrity of
+                    your repository by scanning the on-disk structures that make
+                    up your backup data. Check can optionally be configured to
+                    re-read and re-hash data, this is slow and can be bandwidth
+                    expensive but will catch any bitrot or silent corruption in
+                    the storage medium.
+                  </span>
+                }
+              >
+                Check Policy
+              </Tooltip>
+            }
+          >
+            <Form.Item
+              name={["checkPolicy", "readDataSubsetPercent"]}
+              initialValue={0}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={
+                  <Tooltip title="The percentage of pack data in this repository that will be read and verified. Higher values will use more bandwidth (e.g. 100% will re-read the entire repository on each check).">
+                    <div style={{ width: "12" }}>Read Pack Data %</div>
+                  </Tooltip>
+                }
+              />
+            </Form.Item>
+            <ScheduleFormItem name={["checkPolicy", "schedule"]} />
           </Form.Item>
 
           <Form.Item

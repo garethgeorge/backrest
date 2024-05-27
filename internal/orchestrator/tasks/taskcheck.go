@@ -16,14 +16,14 @@ import (
 	"go.uber.org/zap"
 )
 
-type PruneTask struct {
+type CheckTask struct {
 	BaseTask
 	force  bool
 	didRun bool
 }
 
-func NewPruneTask(repoID, planID string, force bool) Task {
-	return &PruneTask{
+func NewCheckTask(repoID, planID string, force bool) Task {
+	return &CheckTask{
 		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("prune repo %q", repoID),
 			TaskRepoID: repoID,
@@ -33,7 +33,7 @@ func NewPruneTask(repoID, planID string, force bool) Task {
 	}
 }
 
-func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error) {
+func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error) {
 	if t.force {
 		if t.didRun {
 			return NeverScheduledTask, nil
@@ -43,7 +43,7 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 			Task:  t,
 			RunAt: now,
 			Op: &v1.Operation{
-				Op: &v1.Operation_OperationPrune{},
+				Op: &v1.Operation_OperationCheck{},
 			},
 		}, nil
 	}
@@ -53,14 +53,14 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 		return ScheduledTask{}, fmt.Errorf("get repo %v: %w", t.RepoID(), err)
 	}
 
-	if repo.PrunePolicy.GetSchedule() == nil {
+	if repo.CheckPolicy.GetSchedule() == nil {
 		return NeverScheduledTask, nil
 	}
 
 	var lastRan time.Time
 	var foundBackup bool
 	if err := runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
-		if _, ok := op.Op.(*v1.Operation_OperationPrune); ok {
+		if _, ok := op.Op.(*v1.Operation_OperationCheck); ok {
 			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration
 		}
@@ -69,14 +69,14 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 		}
 		return nil
 	}); err != nil {
-		return NeverScheduledTask, fmt.Errorf("finding last prune run time: %w", err)
+		return NeverScheduledTask, fmt.Errorf("finding last check run time: %w", err)
 	} else if !foundBackup {
 		return NeverScheduledTask, nil
 	}
 
 	zap.L().Debug("last prune time", zap.Time("time", lastRan), zap.String("repo", t.RepoID()))
 
-	runAt, err := protoutil.ResolveSchedule(repo.PrunePolicy.GetSchedule(), lastRan)
+	runAt, err := protoutil.ResolveSchedule(repo.CheckPolicy.GetSchedule(), lastRan)
 	if errors.Is(err, protoutil.ErrScheduleDisabled) {
 		return NeverScheduledTask, nil
 	} else if err != nil {
@@ -87,12 +87,12 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 		Task:  t,
 		RunAt: runAt,
 		Op: &v1.Operation{
-			Op: &v1.Operation_OperationPrune{},
+			Op: &v1.Operation_OperationCheck{},
 		},
 	}, nil
 }
 
-func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
+func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
 	op := st.Op
 
 	repo, err := runner.GetRepoOrchestrator(t.RepoID())
@@ -101,17 +101,17 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	}
 
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
-		v1.Hook_CONDITION_PRUNE_START,
+		v1.Hook_CONDITION_CHECK_START,
 	}, hook.HookVars{}); err != nil {
-		op.DisplayMessage = err.Error()
 		// TODO: generalize this logic
+		op.DisplayMessage = err.Error()
 		var cancelErr *hook.HookErrorRequestCancel
 		if errors.As(err, &cancelErr) {
 			op.Status = v1.OperationStatus_STATUS_USER_CANCELLED // user visible cancelled status
 			return nil
 		}
 		op.Status = v1.OperationStatus_STATUS_ERROR
-		return fmt.Errorf("execute prune start hooks: %w", err)
+		return fmt.Errorf("execute check start hooks: %w", err)
 	}
 
 	err = repo.UnlockIfAutoEnabled(ctx)
@@ -119,10 +119,10 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		return fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err)
 	}
 
-	opPrune := &v1.Operation_OperationPrune{
-		OperationPrune: &v1.OperationPrune{},
+	opCheck := &v1.Operation_OperationCheck{
+		OperationCheck: &v1.OperationCheck{},
 	}
-	op.Op = opPrune
+	op.Op = opCheck
 
 	ctx, cancel := context.WithCancel(ctx)
 	interval := time.NewTicker(1 * time.Second)
@@ -140,8 +140,8 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 				output := string(buf.Bytes())
 				bufWriter.Mu.Unlock()
 
-				if opPrune.OperationPrune.Output != string(output) {
-					opPrune.OperationPrune.Output = string(output)
+				if opCheck.OperationCheck.Output != string(output) {
+					opCheck.OperationCheck.Output = string(output)
 
 					if err := runner.OpLog().Update(op); err != nil {
 						zap.L().Error("update prune operation with status output", zap.Error(err))
@@ -153,10 +153,11 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		}
 	}()
 
-	if err := repo.Prune(ctx, &bufWriter); err != nil {
+	if err := repo.Check(ctx, &bufWriter); err != nil {
 		cancel()
 
 		runner.ExecuteHooks([]v1.Hook_Condition{
+			v1.Hook_CONDITION_CHECK_ERROR,
 			v1.Hook_CONDITION_ANY_ERROR,
 		}, hook.HookVars{
 			Error: err.Error(),
@@ -167,7 +168,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	cancel()
 	wg.Wait()
 
-	opPrune.OperationPrune.Output = string(buf.Bytes())
+	opCheck.OperationCheck.Output = string(buf.Bytes())
 
 	// Run a stats task after a successful prune
 	if err := runner.ScheduleTask(NewStatsTask(t.RepoID(), PlanForSystemTasks, false), TaskPriorityStats); err != nil {
@@ -175,9 +176,9 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	}
 
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
-		v1.Hook_CONDITION_PRUNE_SUCCESS,
+		v1.Hook_CONDITION_CHECK_SUCCESS,
 	}, hook.HookVars{}); err != nil {
-		return fmt.Errorf("execute prune end hooks: %w", err)
+		return fmt.Errorf("execute prune success hooks: %w", err)
 	}
 
 	return nil

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
 )
 
 const outputBufferLimit = 1000
@@ -40,13 +41,37 @@ func newCmdError(ctx context.Context, cmd *exec.Cmd, err error) *CmdError {
 	return cerr
 }
 
-func newCmdErrorPreformatted(ctx context.Context, cmd *exec.Cmd, err error) *CmdError {
-	cerr := &CmdError{
-		Command: cmd.String(),
-		Err:     err,
+type ErrorWithOutput struct {
+	Err    error
+	Output string
+}
+
+func (e *ErrorWithOutput) Error() string {
+	return fmt.Sprintf("%v\nOutput:\n%s", e.Err, e.Output)
+}
+
+func (e *ErrorWithOutput) Unwrap() error {
+	return e.Err
+}
+
+func (e *ErrorWithOutput) Is(target error) bool {
+	_, ok := target.(*ErrorWithOutput)
+	return ok
+}
+
+// newErrorWithOutput creates a new error with the given output.
+func newErrorWithOutput(err error, output string) error {
+	firstNewLine := strings.Index(output, "\n")
+	if firstNewLine > 0 {
+		output = output[:firstNewLine]
 	}
-	if logger := LoggerFromContext(ctx); logger != nil {
-		logger.Write([]byte(cerr.Error()))
+
+	if len(output) == 0 {
+		return err
 	}
-	return cerr
+
+	return &ErrorWithOutput{
+		Err:    err,
+		Output: output,
+	}
 }

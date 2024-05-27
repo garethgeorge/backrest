@@ -331,13 +331,42 @@ func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.Fo
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func (s *BackrestHandler) Prune(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error) {
+	var task tasks.Task
+	priority := tasks.TaskPriorityInteractive
+	switch req.Msg.Task {
+	case v1.DoRepoTaskRequest_TASK_CHECK:
+		task = tasks.NewCheckTask(req.Msg.RepoId, tasks.PlanForSystemTasks, true)
+	case v1.DoRepoTaskRequest_TASK_PRUNE:
+		task = tasks.NewPruneTask(req.Msg.RepoId, tasks.PlanForSystemTasks, true)
+		priority |= tasks.TaskPriorityPrune
+	case v1.DoRepoTaskRequest_TASK_STATS:
+		task = tasks.NewStatsTask(req.Msg.RepoId, tasks.PlanForSystemTasks, true)
+		priority |= tasks.TaskPriorityStats
+	case v1.DoRepoTaskRequest_TASK_INDEX_SNAPSHOTS:
+		task = tasks.NewOneoffIndexSnapshotsTask(req.Msg.RepoId, time.Now())
+		priority |= tasks.TaskPriorityIndexSnapshots
+	case v1.DoRepoTaskRequest_TASK_UNLOCK:
+		repo, err := s.orchestrator.GetRepoOrchestrator(req.Msg.RepoId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.RepoId, err)
+		}
+		if err := repo.Unlock(ctx); err != nil {
+			return nil, fmt.Errorf("failed to unlock repo %q: %w", req.Msg.RepoId, err)
+		}
+		return connect.NewResponse(&emptypb.Empty{}), nil
+	default:
+		return nil, fmt.Errorf("unknown task %v", req.Msg.Task.String())
+	}
+
 	var err error
 	wait := make(chan struct{})
-	s.orchestrator.ScheduleTask(tasks.NewPruneTask(req.Msg.Value, tasks.PlanForSystemTasks, true), tasks.TaskPriorityInteractive+tasks.TaskPriorityPrune, func(e error) {
+	if err := s.orchestrator.ScheduleTask(task, priority, func(e error) {
 		err = e
 		close(wait)
-	})
+	}); err != nil {
+		return nil, err
+	}
 	<-wait
 	if err != nil {
 		return nil, err
@@ -368,32 +397,6 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 	s.orchestrator.ScheduleTask(tasks.NewOneoffRestoreTask(req.Msg.RepoId, req.Msg.PlanId, flowID, at, req.Msg.SnapshotId, req.Msg.Path, target), tasks.TaskPriorityInteractive+tasks.TaskPriorityDefault)
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
-}
-
-func (s *BackrestHandler) Unlock(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	repo, err := s.orchestrator.GetRepoOrchestrator(req.Msg.Value)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.Value, err)
-	}
-
-	if err := repo.Unlock(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed to unlock repo %q: %w", req.Msg.Value, err)
-	}
-
-	return connect.NewResponse(&emptypb.Empty{}), nil
-}
-
-func (s *BackrestHandler) Stats(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	var err error
-	wait := make(chan struct{})
-	if err := s.orchestrator.ScheduleTask(tasks.NewStatsTask(req.Msg.Value, tasks.PlanForSystemTasks, true), tasks.TaskPriorityInteractive+tasks.TaskPriorityStats, func(e error) {
-		err = e
-		close(wait)
-	}); err != nil {
-		return nil, err
-	}
-	<-wait
-	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
 func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest], resp *connect.ServerStream[types.BytesValue]) error {

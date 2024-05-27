@@ -20,7 +20,11 @@ import { useShowModal } from "../components/ModalManager";
 import { Plan, RetentionPolicy } from "../../gen/ts/v1/config_pb";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
-import { useAlertApi } from "../components/Alerts";
+import {
+  formatError,
+  formatErrorAlert,
+  useAlertApi,
+} from "../components/Alerts";
 import { Cron } from "react-js-cron";
 import { namePattern, validateForm } from "../lib/formutil";
 import {
@@ -30,7 +34,10 @@ import {
 import { ConfirmButton, SpinButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import { backrestService } from "../api";
-import { ScheduleFormItem } from "../components/ScheduleFormItem";
+import {
+  ScheduleDefaultsDaily,
+  ScheduleFormItem,
+} from "../components/ScheduleFormItem";
 
 export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -72,7 +79,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         30
       );
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Destroy error:"), 15);
     } finally {
       setConfirmLoading(false);
     }
@@ -108,7 +115,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       setConfig(await backrestService.setConfig(configCopy));
       showModal(null);
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
       console.error(e);
     } finally {
       setConfirmLoading(false);
@@ -399,7 +406,10 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
           {/* Plan.cron */}
           <Form.Item label="Backup Schedule">
-            <ScheduleFormItem name={["schedule"]} />
+            <ScheduleFormItem
+              name={["schedule"]}
+              defaults={ScheduleDefaultsDaily}
+            />
           </Form.Item>
 
           {/* Plan.backup_flags */}

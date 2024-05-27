@@ -166,8 +166,14 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 	for _, repo := range config.Repos {
 		// Schedule a prune task for the repo
 		t := tasks.NewPruneTask(repo.GetId(), tasks.PlanForSystemTasks, false)
-		if err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {
+		if err := o.ScheduleTask(t, tasks.TaskPriorityPrune); err != nil {
 			return fmt.Errorf("schedule prune task for repo %q: %w", repo.GetId(), err)
+		}
+
+		// Schedule a check task for the repo
+		t = tasks.NewCheckTask(repo.GetId(), tasks.PlanForSystemTasks, false)
+		if err := o.ScheduleTask(t, tasks.TaskPriorityCheck); err != nil {
+			return fmt.Errorf("schedule check task for repo %q: %w", repo.GetId(), err)
 		}
 	}
 

@@ -51,20 +51,14 @@ const (
 	// BackrestListSnapshotFilesProcedure is the fully-qualified name of the Backrest's
 	// ListSnapshotFiles RPC.
 	BackrestListSnapshotFilesProcedure = "/v1.Backrest/ListSnapshotFiles"
-	// BackrestIndexSnapshotsProcedure is the fully-qualified name of the Backrest's IndexSnapshots RPC.
-	BackrestIndexSnapshotsProcedure = "/v1.Backrest/IndexSnapshots"
 	// BackrestBackupProcedure is the fully-qualified name of the Backrest's Backup RPC.
 	BackrestBackupProcedure = "/v1.Backrest/Backup"
-	// BackrestPruneProcedure is the fully-qualified name of the Backrest's Prune RPC.
-	BackrestPruneProcedure = "/v1.Backrest/Prune"
+	// BackrestDoRepoTaskProcedure is the fully-qualified name of the Backrest's DoRepoTask RPC.
+	BackrestDoRepoTaskProcedure = "/v1.Backrest/DoRepoTask"
 	// BackrestForgetProcedure is the fully-qualified name of the Backrest's Forget RPC.
 	BackrestForgetProcedure = "/v1.Backrest/Forget"
 	// BackrestRestoreProcedure is the fully-qualified name of the Backrest's Restore RPC.
 	BackrestRestoreProcedure = "/v1.Backrest/Restore"
-	// BackrestUnlockProcedure is the fully-qualified name of the Backrest's Unlock RPC.
-	BackrestUnlockProcedure = "/v1.Backrest/Unlock"
-	// BackrestStatsProcedure is the fully-qualified name of the Backrest's Stats RPC.
-	BackrestStatsProcedure = "/v1.Backrest/Stats"
 	// BackrestCancelProcedure is the fully-qualified name of the Backrest's Cancel RPC.
 	BackrestCancelProcedure = "/v1.Backrest/Cancel"
 	// BackrestGetLogsProcedure is the fully-qualified name of the Backrest's GetLogs RPC.
@@ -90,13 +84,10 @@ var (
 	backrestGetOperationsMethodDescriptor      = backrestServiceDescriptor.Methods().ByName("GetOperations")
 	backrestListSnapshotsMethodDescriptor      = backrestServiceDescriptor.Methods().ByName("ListSnapshots")
 	backrestListSnapshotFilesMethodDescriptor  = backrestServiceDescriptor.Methods().ByName("ListSnapshotFiles")
-	backrestIndexSnapshotsMethodDescriptor     = backrestServiceDescriptor.Methods().ByName("IndexSnapshots")
 	backrestBackupMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Backup")
-	backrestPruneMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Prune")
+	backrestDoRepoTaskMethodDescriptor         = backrestServiceDescriptor.Methods().ByName("DoRepoTask")
 	backrestForgetMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Forget")
 	backrestRestoreMethodDescriptor            = backrestServiceDescriptor.Methods().ByName("Restore")
-	backrestUnlockMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Unlock")
-	backrestStatsMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Stats")
 	backrestCancelMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Cancel")
 	backrestGetLogsMethodDescriptor            = backrestServiceDescriptor.Methods().ByName("GetLogs")
 	backrestRunCommandMethodDescriptor         = backrestServiceDescriptor.Methods().ByName("RunCommand")
@@ -114,20 +105,14 @@ type BackrestClient interface {
 	GetOperations(context.Context, *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error)
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error)
 	ListSnapshotFiles(context.Context, *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error)
-	// IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.
-	IndexSnapshots(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
-	// Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
-	Prune(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
+	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
+	DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
 	Forget(context.Context, *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error)
 	// Restore schedules a restore operation.
 	Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error)
-	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
-	Unlock(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
-	// Stats runs 'restic stats` on the repository and appends the results to the operations log.
-	Stats(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error)
 	// GetLogs returns the keyed large data for the given operation.
@@ -194,22 +179,16 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestListSnapshotFilesMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		indexSnapshots: connect.NewClient[types.StringValue, emptypb.Empty](
-			httpClient,
-			baseURL+BackrestIndexSnapshotsProcedure,
-			connect.WithSchema(backrestIndexSnapshotsMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
 		backup: connect.NewClient[types.StringValue, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestBackupProcedure,
 			connect.WithSchema(backrestBackupMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		prune: connect.NewClient[types.StringValue, emptypb.Empty](
+		doRepoTask: connect.NewClient[v1.DoRepoTaskRequest, emptypb.Empty](
 			httpClient,
-			baseURL+BackrestPruneProcedure,
-			connect.WithSchema(backrestPruneMethodDescriptor),
+			baseURL+BackrestDoRepoTaskProcedure,
+			connect.WithSchema(backrestDoRepoTaskMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		forget: connect.NewClient[v1.ForgetRequest, emptypb.Empty](
@@ -222,18 +201,6 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			httpClient,
 			baseURL+BackrestRestoreProcedure,
 			connect.WithSchema(backrestRestoreMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		unlock: connect.NewClient[types.StringValue, emptypb.Empty](
-			httpClient,
-			baseURL+BackrestUnlockProcedure,
-			connect.WithSchema(backrestUnlockMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		stats: connect.NewClient[types.StringValue, emptypb.Empty](
-			httpClient,
-			baseURL+BackrestStatsProcedure,
-			connect.WithSchema(backrestStatsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		cancel: connect.NewClient[types.Int64Value, emptypb.Empty](
@@ -284,13 +251,10 @@ type backrestClient struct {
 	getOperations      *connect.Client[v1.GetOperationsRequest, v1.OperationList]
 	listSnapshots      *connect.Client[v1.ListSnapshotsRequest, v1.ResticSnapshotList]
 	listSnapshotFiles  *connect.Client[v1.ListSnapshotFilesRequest, v1.ListSnapshotFilesResponse]
-	indexSnapshots     *connect.Client[types.StringValue, emptypb.Empty]
 	backup             *connect.Client[types.StringValue, emptypb.Empty]
-	prune              *connect.Client[types.StringValue, emptypb.Empty]
+	doRepoTask         *connect.Client[v1.DoRepoTaskRequest, emptypb.Empty]
 	forget             *connect.Client[v1.ForgetRequest, emptypb.Empty]
 	restore            *connect.Client[v1.RestoreSnapshotRequest, emptypb.Empty]
-	unlock             *connect.Client[types.StringValue, emptypb.Empty]
-	stats              *connect.Client[types.StringValue, emptypb.Empty]
 	cancel             *connect.Client[types.Int64Value, emptypb.Empty]
 	getLogs            *connect.Client[v1.LogDataRequest, types.BytesValue]
 	runCommand         *connect.Client[v1.RunCommandRequest, types.BytesValue]
@@ -334,19 +298,14 @@ func (c *backrestClient) ListSnapshotFiles(ctx context.Context, req *connect.Req
 	return c.listSnapshotFiles.CallUnary(ctx, req)
 }
 
-// IndexSnapshots calls v1.Backrest.IndexSnapshots.
-func (c *backrestClient) IndexSnapshots(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	return c.indexSnapshots.CallUnary(ctx, req)
-}
-
 // Backup calls v1.Backrest.Backup.
 func (c *backrestClient) Backup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
 	return c.backup.CallUnary(ctx, req)
 }
 
-// Prune calls v1.Backrest.Prune.
-func (c *backrestClient) Prune(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	return c.prune.CallUnary(ctx, req)
+// DoRepoTask calls v1.Backrest.DoRepoTask.
+func (c *backrestClient) DoRepoTask(ctx context.Context, req *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error) {
+	return c.doRepoTask.CallUnary(ctx, req)
 }
 
 // Forget calls v1.Backrest.Forget.
@@ -357,16 +316,6 @@ func (c *backrestClient) Forget(ctx context.Context, req *connect.Request[v1.For
 // Restore calls v1.Backrest.Restore.
 func (c *backrestClient) Restore(ctx context.Context, req *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.restore.CallUnary(ctx, req)
-}
-
-// Unlock calls v1.Backrest.Unlock.
-func (c *backrestClient) Unlock(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	return c.unlock.CallUnary(ctx, req)
-}
-
-// Stats calls v1.Backrest.Stats.
-func (c *backrestClient) Stats(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	return c.stats.CallUnary(ctx, req)
 }
 
 // Cancel calls v1.Backrest.Cancel.
@@ -408,20 +357,14 @@ type BackrestHandler interface {
 	GetOperations(context.Context, *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error)
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error)
 	ListSnapshotFiles(context.Context, *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error)
-	// IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.
-	IndexSnapshots(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
-	// Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
-	Prune(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
+	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
+	DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
 	Forget(context.Context, *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error)
 	// Restore schedules a restore operation.
 	Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error)
-	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
-	Unlock(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
-	// Stats runs 'restic stats` on the repository and appends the results to the operations log.
-	Stats(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error)
 	// GetLogs returns the keyed large data for the given operation.
@@ -484,22 +427,16 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		connect.WithSchema(backrestListSnapshotFilesMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	backrestIndexSnapshotsHandler := connect.NewUnaryHandler(
-		BackrestIndexSnapshotsProcedure,
-		svc.IndexSnapshots,
-		connect.WithSchema(backrestIndexSnapshotsMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
 	backrestBackupHandler := connect.NewUnaryHandler(
 		BackrestBackupProcedure,
 		svc.Backup,
 		connect.WithSchema(backrestBackupMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	backrestPruneHandler := connect.NewUnaryHandler(
-		BackrestPruneProcedure,
-		svc.Prune,
-		connect.WithSchema(backrestPruneMethodDescriptor),
+	backrestDoRepoTaskHandler := connect.NewUnaryHandler(
+		BackrestDoRepoTaskProcedure,
+		svc.DoRepoTask,
+		connect.WithSchema(backrestDoRepoTaskMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestForgetHandler := connect.NewUnaryHandler(
@@ -512,18 +449,6 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		BackrestRestoreProcedure,
 		svc.Restore,
 		connect.WithSchema(backrestRestoreMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
-	backrestUnlockHandler := connect.NewUnaryHandler(
-		BackrestUnlockProcedure,
-		svc.Unlock,
-		connect.WithSchema(backrestUnlockMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
-	backrestStatsHandler := connect.NewUnaryHandler(
-		BackrestStatsProcedure,
-		svc.Stats,
-		connect.WithSchema(backrestStatsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestCancelHandler := connect.NewUnaryHandler(
@@ -578,20 +503,14 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 			backrestListSnapshotsHandler.ServeHTTP(w, r)
 		case BackrestListSnapshotFilesProcedure:
 			backrestListSnapshotFilesHandler.ServeHTTP(w, r)
-		case BackrestIndexSnapshotsProcedure:
-			backrestIndexSnapshotsHandler.ServeHTTP(w, r)
 		case BackrestBackupProcedure:
 			backrestBackupHandler.ServeHTTP(w, r)
-		case BackrestPruneProcedure:
-			backrestPruneHandler.ServeHTTP(w, r)
+		case BackrestDoRepoTaskProcedure:
+			backrestDoRepoTaskHandler.ServeHTTP(w, r)
 		case BackrestForgetProcedure:
 			backrestForgetHandler.ServeHTTP(w, r)
 		case BackrestRestoreProcedure:
 			backrestRestoreHandler.ServeHTTP(w, r)
-		case BackrestUnlockProcedure:
-			backrestUnlockHandler.ServeHTTP(w, r)
-		case BackrestStatsProcedure:
-			backrestStatsHandler.ServeHTTP(w, r)
 		case BackrestCancelProcedure:
 			backrestCancelHandler.ServeHTTP(w, r)
 		case BackrestGetLogsProcedure:
@@ -641,16 +560,12 @@ func (UnimplementedBackrestHandler) ListSnapshotFiles(context.Context, *connect.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.ListSnapshotFiles is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) IndexSnapshots(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.IndexSnapshots is not implemented"))
-}
-
 func (UnimplementedBackrestHandler) Backup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Backup is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) Prune(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Prune is not implemented"))
+func (UnimplementedBackrestHandler) DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.DoRepoTask is not implemented"))
 }
 
 func (UnimplementedBackrestHandler) Forget(context.Context, *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {
@@ -659,14 +574,6 @@ func (UnimplementedBackrestHandler) Forget(context.Context, *connect.Request[v1.
 
 func (UnimplementedBackrestHandler) Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Restore is not implemented"))
-}
-
-func (UnimplementedBackrestHandler) Unlock(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Unlock is not implemented"))
-}
-
-func (UnimplementedBackrestHandler) Stats(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Stats is not implemented"))
 }
 
 func (UnimplementedBackrestHandler) Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {

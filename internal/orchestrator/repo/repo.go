@@ -263,6 +263,32 @@ func (r *RepoOrchestrator) Prune(ctx context.Context, output io.Writer) error {
 	return nil
 }
 
+func (r *RepoOrchestrator) Check(ctx context.Context, output io.Writer) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
+
+	var opts []restic.GenericOption
+	if r.repoConfig.CheckPolicy != nil {
+		switch m := r.repoConfig.CheckPolicy.Mode.(type) {
+		case *v1.CheckPolicy_ReadDataSubsetPercent:
+			if m.ReadDataSubsetPercent > 0 {
+				opts = append(opts, restic.WithFlags(fmt.Sprintf("--read-data-subset=%v%%", m.ReadDataSubsetPercent)))
+			}
+		case *v1.CheckPolicy_StructureOnly:
+		default:
+		}
+	}
+
+	r.l.Debug("checking repo")
+	err := r.repo.Check(ctx, output, opts...)
+	if err != nil {
+		return fmt.Errorf("check repo %v: %w", r.repoConfig.Id, err)
+	}
+	return nil
+}
+
 func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, path string, target string, progressCallback func(event *v1.RestoreProgressEntry)) (*v1.RestoreProgressEntry, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

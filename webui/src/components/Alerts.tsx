@@ -25,3 +25,19 @@ export const AlertContextProvider = ({
 export const useAlertApi = () => {
   return useContext(MessageContext);
 };
+
+export const formatErrorAlert = (error: any, prefix?: string) => {
+  prefix = prefix ? prefix.trim() + " " : "Error: ";
+  const contents = (error.message || "" + error) as string;
+  if (contents.includes("\n")) {
+    return (
+      <>
+        {prefix}
+        <pre style={{ alignContent: "normal", textAlign: "left" }}>
+          {contents}
+        </pre>
+      </>
+    );
+  }
+  return `${prefix}: ${contents}`;
+};
