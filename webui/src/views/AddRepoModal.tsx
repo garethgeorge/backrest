@@ -450,6 +450,42 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             <ScheduleFormItem name={["prunePolicy", "schedule"]} />
           </Form.Item>
 
+          {/* Repo.checkPolicy */}
+          <Form.Item
+            label={
+              <Tooltip
+                title={
+                  <span>
+                    The schedule on which check operations are run for this
+                    repository. Restic check operations verify the integrity of
+                    your repository by scanning the on-disk structures that make
+                    up your backup data. Check can optionally be configured to
+                    re-read and re-hash data, this is slow and can be bandwidth
+                    expensive but will catch any bitrot or silent corruption in
+                    the storage medium.
+                  </span>
+                }
+              >
+                Check Policy
+              </Tooltip>
+            }
+          >
+            <Form.Item
+              name={["checkPolicy", "readDataSubsetPercent"]}
+              initialValue={0}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={
+                  <Tooltip title="The percentage of pack data in this repository that will be read and verified. Higher values will use more bandwidth (e.g. 100% will re-read the entire repository on each check).">
+                    <div style={{ width: "12" }}>Read Pack Data %</div>
+                  </Tooltip>
+                }
+              />
+            </Form.Item>
+            <ScheduleFormItem name={["checkPolicy", "schedule"]} />
+          </Form.Item>
+
           <Form.Item
             label={
               <Tooltip

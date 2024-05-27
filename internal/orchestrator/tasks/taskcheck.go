@@ -43,7 +43,7 @@ func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 			Task:  t,
 			RunAt: now,
 			Op: &v1.Operation{
-				Op: &v1.Operation_OperationPrune{},
+				Op: &v1.Operation_OperationCheck{},
 			},
 		}, nil
 	}
@@ -53,13 +53,13 @@ func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 		return ScheduledTask{}, fmt.Errorf("get repo %v: %w", t.RepoID(), err)
 	}
 
-	if repo.PrunePolicy.GetSchedule() == nil {
+	if repo.CheckPolicy.GetSchedule() == nil {
 		return NeverScheduledTask, nil
 	}
 
 	var lastRan time.Time
 	if err := runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
-		if _, ok := op.Op.(*v1.Operation_OperationPrune); ok {
+		if _, ok := op.Op.(*v1.Operation_OperationCheck); ok {
 			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration
 		}
@@ -70,7 +70,7 @@ func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 
 	zap.L().Debug("last prune time", zap.Time("time", lastRan), zap.String("repo", t.RepoID()))
 
-	runAt, err := protoutil.ResolveSchedule(repo.PrunePolicy.GetSchedule(), lastRan)
+	runAt, err := protoutil.ResolveSchedule(repo.CheckPolicy.GetSchedule(), lastRan)
 	if errors.Is(err, protoutil.ErrScheduleDisabled) {
 		return NeverScheduledTask, nil
 	} else if err != nil {

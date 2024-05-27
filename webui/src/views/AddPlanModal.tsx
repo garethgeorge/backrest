@@ -30,7 +30,10 @@ import {
 import { ConfirmButton, SpinButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import { backrestService } from "../api";
-import { ScheduleFormItem } from "../components/ScheduleFormItem";
+import {
+  ScheduleDefaultsDaily,
+  ScheduleFormItem,
+} from "../components/ScheduleFormItem";
 
 export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -399,7 +402,10 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
           {/* Plan.cron */}
           <Form.Item label="Backup Schedule">
-            <ScheduleFormItem name={["schedule"]} />
+            <ScheduleFormItem
+              name={["schedule"]}
+              defaults={ScheduleDefaultsDaily}
+            />
           </Form.Item>
 
           {/* Plan.backup_flags */}

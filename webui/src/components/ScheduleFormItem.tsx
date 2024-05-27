@@ -12,9 +12,37 @@ import { NamePath } from "antd/es/form/interface";
 import React from "react";
 import Cron from "react-js-cron";
 
-export const ScheduleFormItem = ({ name }: { name: string[] }) => {
+interface ScheduleDefaults {
+  maxFrequencyDays: number;
+  maxFrequencyHours: number;
+  cron: string;
+}
+
+export const ScheduleDefaultsInfrequent: ScheduleDefaults = {
+  maxFrequencyDays: 30,
+  maxFrequencyHours: 30 * 24,
+  // midnight on the first day of the month
+  cron: "0 0 1 * *",
+};
+
+export const ScheduleDefaultsDaily: ScheduleDefaults = {
+  maxFrequencyDays: 1,
+  maxFrequencyHours: 24,
+  // midnight every day
+  cron: "0 0 * * *",
+};
+
+export const ScheduleFormItem = ({
+  name,
+  defaults,
+}: {
+  name: string[];
+  defaults?: ScheduleDefaults;
+}) => {
   const form = Form.useFormInstance();
   const retention = Form.useWatch(name, { form, preserve: true }) as any;
+
+  defaults = defaults || ScheduleDefaultsInfrequent;
 
   const determineMode = () => {
     if (!retention) {
@@ -37,7 +65,7 @@ export const ScheduleFormItem = ({ name }: { name: string[] }) => {
     elem = (
       <Form.Item
         name={name.concat(["cron"])}
-        initialValue={"0 * * * *"}
+        initialValue={defaults.cron}
         validateTrigger={["onChange", "onBlur"]}
         rules={[
           {
@@ -67,7 +95,7 @@ export const ScheduleFormItem = ({ name }: { name: string[] }) => {
     elem = (
       <Form.Item
         name={name.concat(["maxFrequencyDays"])}
-        initialValue={0}
+        initialValue={defaults.maxFrequencyDays}
         validateTrigger={["onChange", "onBlur"]}
         rules={[
           {
@@ -86,7 +114,7 @@ export const ScheduleFormItem = ({ name }: { name: string[] }) => {
     elem = (
       <Form.Item
         name={name.concat(["maxFrequencyHours"])}
-        initialValue={0}
+        initialValue={defaults.maxFrequencyHours}
         validateTrigger={["onChange", "onBlur"]}
         rules={[
           {
@@ -122,11 +150,15 @@ export const ScheduleFormItem = ({ name }: { name: string[] }) => {
           onChange={(e) => {
             const selected = e.target.value;
             if (selected === "maxFrequencyDays") {
-              form.setFieldValue(name, { maxFrequencyDays: 1 });
+              form.setFieldValue(name, {
+                maxFrequencyDays: defaults!.maxFrequencyDays,
+              });
             } else if (selected === "maxFrequencyHours") {
-              form.setFieldValue(name, { maxFrequencyHours: 1 });
+              form.setFieldValue(name, {
+                maxFrequencyHours: defaults!.maxFrequencyHours,
+              });
             } else if (selected === "cron") {
-              form.setFieldValue(name, { cron: "0 * * * *" });
+              form.setFieldValue(name, { cron: defaults!.cron });
             } else {
               form.setFieldValue(name, { disabled: true });
             }
