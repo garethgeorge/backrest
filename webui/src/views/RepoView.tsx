@@ -15,7 +15,7 @@ import { backrestService } from "../api";
 import { StringValue } from "@bufbuild/protobuf";
 import { SpinButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
-import { useAlertApi } from "../components/Alerts";
+import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 
 const StatsPanel = React.lazy(() => import("../components/StatsPanel"));
@@ -35,7 +35,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
         })
       );
     } catch (e: any) {
-      alertsApi.error("Failed to index snapshots: " + e.message);
+      alertsApi.error(formatErrorAlert(e, "Failed to index snapshots: "));
     }
   };
 
@@ -48,7 +48,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
         })
       );
     } catch (e: any) {
-      alertsApi.error("Failed to compute stats: " + e.message);
+      alertsApi.error(formatErrorAlert(e, "Failed to compute stats: "));
     }
   };
 
@@ -61,7 +61,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
         })
       );
     } catch (e: any) {
-      alertsApi.error("Failed to prune: " + e.message);
+      alertsApi.error(formatErrorAlert(e, "Failed to prune: "));
     }
   };
 
@@ -74,7 +74,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
         })
       );
     } catch (e: any) {
-      alertsApi.error("Failed to check: " + e.message);
+      alertsApi.error(formatErrorAlert(e, "Failed to check: "));
     }
   };
 
