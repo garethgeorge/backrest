@@ -60,10 +60,14 @@ func (e *ErrorWithOutput) Is(target error) bool {
 }
 
 // newErrorWithOutput creates a new error with the given output.
-func newErrorWithOutput(err error, output string) *ErrorWithOutput {
+func newErrorWithOutput(err error, output string) error {
 	firstNewLine := strings.Index(output, "\n")
 	if firstNewLine > 0 {
 		output = output[:firstNewLine]
+	}
+
+	if len(output) == 0 {
+		return err
 	}
 
 	return &ErrorWithOutput{

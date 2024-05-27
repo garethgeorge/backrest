@@ -21,8 +21,8 @@ const (
 	TaskPriorityDefault        = 1 << 1 // default priority
 	TaskPriorityForget         = 1 << 2
 	TaskPriorityIndexSnapshots = 1 << 3
-	TaskPriorityPrune          = 1 << 4
-	TaskPriorityCheck          = 1 << 4
+	TaskPriorityCheck          = 1 << 4 // check should always run after prune.
+	TaskPriorityPrune          = 1 << 5
 	TaskPriorityInteractive    = 1 << 6 // highest priority
 )
 

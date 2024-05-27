@@ -124,7 +124,7 @@ func (r *Repo) init(ctx context.Context, opts ...GenericOption) error {
 			if strings.Contains(output.String(), "config file already exists") || strings.Contains(output.String(), "already initialized") {
 				r.initialized = errAlreadyInitialized
 			} else {
-				r.initialized = newCmdError(ctx, cmd, fmt.Errorf("%w: %v", err, output.String()))
+				r.initialized = newCmdError(ctx, cmd, newCmdError(ctx, cmd, newErrorWithOutput(err, output.String())))
 			}
 		}
 	})
@@ -202,7 +202,7 @@ func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapsho
 
 	var snapshots []*Snapshot
 	if err := json.Unmarshal(output.Bytes(), &snapshots); err != nil {
-		return nil, newCmdError(ctx, cmd, fmt.Errorf("command output is not valid JSON: %w", err))
+		return nil, newCmdError(ctx, cmd, newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", err), output.String()))
 	}
 
 	for _, snapshot := range snapshots {
@@ -226,7 +226,7 @@ func (r *Repo) Forget(ctx context.Context, policy *RetentionPolicy, opts ...Gene
 
 	var result []ForgetResult
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
-		return nil, newCmdError(ctx, cmd, fmt.Errorf("command output is not valid JSON: %w", err))
+		return nil, newCmdError(ctx, cmd, newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", err), output.String()))
 	}
 	if len(result) != 1 {
 		return nil, fmt.Errorf("expected 1 output from forget, got %v", len(result))
@@ -241,9 +241,11 @@ func (r *Repo) Forget(ctx context.Context, policy *RetentionPolicy, opts ...Gene
 func (r *Repo) ForgetSnapshot(ctx context.Context, snapshotId string, opts ...GenericOption) error {
 	args := []string{"forget", "--json", snapshotId}
 
+	output := bytes.NewBuffer(nil)
 	cmd := r.commandWithContext(ctx, args, opts...)
+	r.pipeCmdOutputToWriter(cmd, output)
 	if err := cmd.Run(); err != nil {
-		return newCmdError(ctx, cmd, err)
+		return newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
 	}
 
 	return nil
@@ -331,16 +333,17 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 
 	snapshots, entries, err := readLs(output)
 	if err != nil {
-		return nil, nil, newCmdError(ctx, cmd, err)
+		return nil, nil, newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
 	}
 
 	return snapshots, entries, nil
 }
 
 func (r *Repo) Unlock(ctx context.Context, opts ...GenericOption) error {
+	output := bytes.NewBuffer(nil)
 	cmd := r.commandWithContext(ctx, []string{"unlock"}, opts...)
 	if err := cmd.Run(); err != nil {
-		return newCmdError(ctx, cmd, err)
+		return newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
 	}
 	return nil
 }
@@ -356,7 +359,7 @@ func (r *Repo) Stats(ctx context.Context, opts ...GenericOption) (*RepoStats, er
 
 	var stats RepoStats
 	if err := json.Unmarshal(output.Bytes(), &stats); err != nil {
-		return nil, newCmdError(ctx, cmd, fmt.Errorf("command output is not valid JSON: %w", err))
+		return nil, newCmdError(ctx, cmd, newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", err), output.String()))
 	}
 
 	return &stats, nil
