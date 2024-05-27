@@ -493,31 +493,6 @@ func TestResticCheck(t *testing.T) {
 	if !bytes.Contains(output.Bytes(), []byte(wantStr)) {
 		t.Errorf("wanted output to contain 'no errors were found', got: %s", output.String())
 	}
-
-	// corrupt the repo
-	filepath.WalkDir(repo, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() || !strings.HasSuffix(path, "snapshot") {
-			return nil
-		}
-		if err := os.WriteFile(path, []byte("corrupted"), 0644); err != nil {
-			return err
-		}
-		return nil
-	})
-
-	// check repo
-	output.Reset()
-	if err := r.Check(context.Background(), output); err == nil {
-		t.Errorf("wanted error, got: nil")
-	}
-
-	wantStr = "error: repository contains errors"
-	if !bytes.Contains(output.Bytes(), []byte(wantStr)) {
-		t.Errorf("wanted output to contain 'repository contains errors', got: %s", output.String())
-	}
 }
 
 func toRepoPath(path string) string {

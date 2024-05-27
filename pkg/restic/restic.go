@@ -97,11 +97,14 @@ func (r *Repo) pipeCmdOutputToWriter(cmd *exec.Cmd, handlers ...io.Writer) {
 // Returns true if exists, false if it does not exist OR an access error occurred.
 func (r *Repo) Exists(ctx context.Context, opts ...GenericOption) error {
 	r.checkExists.Do(func() {
+		output := bytes.NewBuffer(nil)
 		cmd := r.commandWithContext(ctx, []string{"cat", "config"}, opts...)
+		r.pipeCmdOutputToWriter(cmd, output)
 		if err := cmd.Run(); err != nil {
-			r.exists = newCmdError(ctx, cmd, err)
+			r.exists = newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
+		} else {
+			r.exists = nil
 		}
-		r.exists = nil
 	})
 	return r.exists
 }
@@ -183,7 +186,7 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 				}
 			}
 		}
-		return summary, newCmdError(ctx, cmd, errors.Join(cmdErr, readErr))
+		return summary, newCmdError(ctx, cmd, newErrorWithOutput(errors.Join(cmdErr, readErr), outputForErr.String()))
 	}
 	return summary, nil
 }
@@ -261,6 +264,7 @@ func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...Generic
 func (r *Repo) Check(ctx context.Context, checkOutput io.Writer, opts ...GenericOption) error {
 	args := []string{"check"}
 	cmd := r.commandWithContext(ctx, args, opts...)
+	cmd.Stdin = bytes.NewBuffer(nil)
 	if checkOutput != nil {
 		r.pipeCmdOutputToWriter(cmd, checkOutput)
 	}

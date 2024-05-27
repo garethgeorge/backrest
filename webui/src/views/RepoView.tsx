@@ -4,7 +4,12 @@ import { Flex, Tabs, Tooltip, Typography, Button } from "antd";
 import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY, STATS_OPERATION_HISTORY } from "../constants";
-import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
+import {
+  DoRepoTaskRequest,
+  DoRepoTaskRequest_Task,
+  GetOperationsRequest,
+  OpSelector,
+} from "../../gen/ts/v1/service_pb";
 import { shouldHideStatus } from "../state/oplog";
 import { backrestService } from "../api";
 import { StringValue } from "@bufbuild/protobuf";
@@ -23,8 +28,11 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   // Task handlers
   const handleIndexNow = async () => {
     try {
-      await backrestService.indexSnapshots(
-        new StringValue({ value: repo.id! })
+      await backrestService.doRepoTask(
+        new DoRepoTaskRequest({
+          repoId: repo.id!,
+          task: DoRepoTaskRequest_Task.INDEX_SNAPSHOTS,
+        })
       );
     } catch (e: any) {
       alertsApi.error("Failed to index snapshots: " + e.message);
@@ -33,7 +41,12 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
 
   const handleStatsNow = async () => {
     try {
-      await backrestService.stats(new StringValue({ value: repo.id! }));
+      await backrestService.doRepoTask(
+        new DoRepoTaskRequest({
+          repoId: repo.id!,
+          task: DoRepoTaskRequest_Task.STATS,
+        })
+      );
     } catch (e: any) {
       alertsApi.error("Failed to compute stats: " + e.message);
     }
@@ -41,9 +54,27 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
 
   const handlePruneNow = async () => {
     try {
-      await backrestService.prune({ value: repo.id });
+      await backrestService.doRepoTask(
+        new DoRepoTaskRequest({
+          repoId: repo.id!,
+          task: DoRepoTaskRequest_Task.PRUNE,
+        })
+      );
     } catch (e: any) {
       alertsApi.error("Failed to prune: " + e.message);
+    }
+  };
+
+  const handleCheckNow = async () => {
+    try {
+      await backrestService.doRepoTask(
+        new DoRepoTaskRequest({
+          repoId: repo.id!,
+          task: DoRepoTaskRequest_Task.CHECK,
+        })
+      );
+    } catch (e: any) {
+      alertsApi.error("Failed to check: " + e.message);
     }
   };
 
@@ -140,6 +171,12 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
         <Tooltip title="Runs a prune operation on the repository that will remove old snapshots and free up space">
           <SpinButton type="default" onClickAsync={handlePruneNow}>
             Prune Now
+          </SpinButton>
+        </Tooltip>
+
+        <Tooltip title="Runs a check operation on the repository that will verify the integrity of the repository">
+          <SpinButton type="default" onClickAsync={handleCheckNow}>
+            Check Now
           </SpinButton>
         </Tooltip>
 

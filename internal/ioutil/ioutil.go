@@ -107,6 +107,10 @@ func (w *OutputCapturer) Bytes() []byte {
 	return buf.Bytes()
 }
 
+func (w *OutputCapturer) String() string {
+	return string(w.Bytes())
+}
+
 type SynchronizedWriter struct {
 	Mu sync.Mutex
 	W  io.Writer

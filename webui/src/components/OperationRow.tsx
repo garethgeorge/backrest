@@ -25,6 +25,7 @@ import {
   DownloadOutlined,
   RobotOutlined,
   InfoCircleOutlined,
+  FileSearchOutlined,
 } from "@ant-design/icons";
 import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic_pb";
 import {
@@ -97,6 +98,8 @@ export const OperationRow = ({
     case DisplayType.PRUNE:
       avatar = <DeleteOutlined style={{ color: details.color }} />;
       break;
+    case DisplayType.CHECK:
+      avatar = <FileSearchOutlined style={{ color: details.color }} />;
     case DisplayType.RUNHOOK:
       avatar = <RobotOutlined style={{ color: details.color }} />;
       break;
@@ -237,6 +240,21 @@ export const OperationRow = ({
             key: 1,
             label: "Prune Output",
             children: <pre>{prune.output}</pre>,
+          },
+        ]}
+      />
+    );
+  } else if (operation.op.case === "operationCheck") {
+    const check = operation.op.value;
+    body = (
+      <Collapse
+        size="small"
+        destroyInactivePanel
+        items={[
+          {
+            key: 1,
+            label: "Check Output",
+            children: <pre>{check.output}</pre>,
           },
         ]}
       />

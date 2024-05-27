@@ -28,13 +28,10 @@ const (
 	Backrest_GetOperations_FullMethodName      = "/v1.Backrest/GetOperations"
 	Backrest_ListSnapshots_FullMethodName      = "/v1.Backrest/ListSnapshots"
 	Backrest_ListSnapshotFiles_FullMethodName  = "/v1.Backrest/ListSnapshotFiles"
-	Backrest_IndexSnapshots_FullMethodName     = "/v1.Backrest/IndexSnapshots"
 	Backrest_Backup_FullMethodName             = "/v1.Backrest/Backup"
-	Backrest_Prune_FullMethodName              = "/v1.Backrest/Prune"
+	Backrest_DoRepoTask_FullMethodName         = "/v1.Backrest/DoRepoTask"
 	Backrest_Forget_FullMethodName             = "/v1.Backrest/Forget"
 	Backrest_Restore_FullMethodName            = "/v1.Backrest/Restore"
-	Backrest_Unlock_FullMethodName             = "/v1.Backrest/Unlock"
-	Backrest_Stats_FullMethodName              = "/v1.Backrest/Stats"
 	Backrest_Cancel_FullMethodName             = "/v1.Backrest/Cancel"
 	Backrest_GetLogs_FullMethodName            = "/v1.Backrest/GetLogs"
 	Backrest_RunCommand_FullMethodName         = "/v1.Backrest/RunCommand"
@@ -54,20 +51,14 @@ type BackrestClient interface {
 	GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error)
 	ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error)
 	ListSnapshotFiles(ctx context.Context, in *ListSnapshotFilesRequest, opts ...grpc.CallOption) (*ListSnapshotFilesResponse, error)
-	// IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.
-	IndexSnapshots(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
-	Prune(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
+	DoRepoTask(ctx context.Context, in *DoRepoTaskRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
 	Forget(ctx context.Context, in *ForgetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Restore schedules a restore operation.
 	Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
-	Unlock(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Stats runs 'restic stats` on the repository and appends the results to the operations log.
-	Stats(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetLogs returns the keyed large data for the given operation.
@@ -176,15 +167,6 @@ func (c *backrestClient) ListSnapshotFiles(ctx context.Context, in *ListSnapshot
 	return out, nil
 }
 
-func (c *backrestClient) IndexSnapshots(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Backrest_IndexSnapshots_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *backrestClient) Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Backrest_Backup_FullMethodName, in, out, opts...)
@@ -194,9 +176,9 @@ func (c *backrestClient) Backup(ctx context.Context, in *types.StringValue, opts
 	return out, nil
 }
 
-func (c *backrestClient) Prune(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) DoRepoTask(ctx context.Context, in *DoRepoTaskRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Backrest_Prune_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Backrest_DoRepoTask_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -215,24 +197,6 @@ func (c *backrestClient) Forget(ctx context.Context, in *ForgetRequest, opts ...
 func (c *backrestClient) Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Backrest_Restore_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *backrestClient) Unlock(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Backrest_Unlock_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *backrestClient) Stats(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Backrest_Stats_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -327,20 +291,14 @@ type BackrestServer interface {
 	GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error)
 	ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error)
 	ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error)
-	// IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.
-	IndexSnapshots(context.Context, *types.StringValue) (*emptypb.Empty, error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(context.Context, *types.StringValue) (*emptypb.Empty, error)
-	// Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
-	Prune(context.Context, *types.StringValue) (*emptypb.Empty, error)
+	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
+	DoRepoTask(context.Context, *DoRepoTaskRequest) (*emptypb.Empty, error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
 	Forget(context.Context, *ForgetRequest) (*emptypb.Empty, error)
 	// Restore schedules a restore operation.
 	Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error)
-	// Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
-	Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error)
-	// Stats runs 'restic stats` on the repository and appends the results to the operations log.
-	Stats(context.Context, *types.StringValue) (*emptypb.Empty, error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error)
 	// GetLogs returns the keyed large data for the given operation.
@@ -381,26 +339,17 @@ func (UnimplementedBackrestServer) ListSnapshots(context.Context, *ListSnapshots
 func (UnimplementedBackrestServer) ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshotFiles not implemented")
 }
-func (UnimplementedBackrestServer) IndexSnapshots(context.Context, *types.StringValue) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method IndexSnapshots not implemented")
-}
 func (UnimplementedBackrestServer) Backup(context.Context, *types.StringValue) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Backup not implemented")
 }
-func (UnimplementedBackrestServer) Prune(context.Context, *types.StringValue) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Prune not implemented")
+func (UnimplementedBackrestServer) DoRepoTask(context.Context, *DoRepoTaskRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DoRepoTask not implemented")
 }
 func (UnimplementedBackrestServer) Forget(context.Context, *ForgetRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Forget not implemented")
 }
 func (UnimplementedBackrestServer) Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Restore not implemented")
-}
-func (UnimplementedBackrestServer) Unlock(context.Context, *types.StringValue) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Unlock not implemented")
-}
-func (UnimplementedBackrestServer) Stats(context.Context, *types.StringValue) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Stats not implemented")
 }
 func (UnimplementedBackrestServer) Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
@@ -562,24 +511,6 @@ func _Backrest_ListSnapshotFiles_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Backrest_IndexSnapshots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(types.StringValue)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BackrestServer).IndexSnapshots(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Backrest_IndexSnapshots_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).IndexSnapshots(ctx, req.(*types.StringValue))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Backrest_Backup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.StringValue)
 	if err := dec(in); err != nil {
@@ -598,20 +529,20 @@ func _Backrest_Backup_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Backrest_Prune_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(types.StringValue)
+func _Backrest_DoRepoTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DoRepoTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(BackrestServer).Prune(ctx, in)
+		return srv.(BackrestServer).DoRepoTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Backrest_Prune_FullMethodName,
+		FullMethod: Backrest_DoRepoTask_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).Prune(ctx, req.(*types.StringValue))
+		return srv.(BackrestServer).DoRepoTask(ctx, req.(*DoRepoTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -648,42 +579,6 @@ func _Backrest_Restore_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BackrestServer).Restore(ctx, req.(*RestoreSnapshotRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Backrest_Unlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(types.StringValue)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BackrestServer).Unlock(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Backrest_Unlock_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).Unlock(ctx, req.(*types.StringValue))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Backrest_Stats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(types.StringValue)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BackrestServer).Stats(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Backrest_Stats_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).Stats(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -831,16 +726,12 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Backrest_ListSnapshotFiles_Handler,
 		},
 		{
-			MethodName: "IndexSnapshots",
-			Handler:    _Backrest_IndexSnapshots_Handler,
-		},
-		{
 			MethodName: "Backup",
 			Handler:    _Backrest_Backup_Handler,
 		},
 		{
-			MethodName: "Prune",
-			Handler:    _Backrest_Prune_Handler,
+			MethodName: "DoRepoTask",
+			Handler:    _Backrest_DoRepoTask_Handler,
 		},
 		{
 			MethodName: "Forget",
@@ -849,14 +740,6 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Restore",
 			Handler:    _Backrest_Restore_Handler,
-		},
-		{
-			MethodName: "Unlock",
-			Handler:    _Backrest_Unlock_Handler,
-		},
-		{
-			MethodName: "Stats",
-			Handler:    _Backrest_Stats_Handler,
 		},
 		{
 			MethodName: "Cancel",

@@ -646,24 +646,24 @@ export class CheckPolicy extends Message<CheckPolicy> {
   schedule?: Schedule;
 
   /**
-   * @generated from oneof v1.CheckPolicy.read_policy
+   * @generated from oneof v1.CheckPolicy.mode
    */
-  readPolicy: {
+  mode: {
     /**
-     * disable the check.
+     * only check the structure of the repo. No pack data is read.
      *
-     * @generated from field: bool disabled = 100;
+     * @generated from field: bool structure_only = 100;
      */
     value: boolean;
-    case: "disabled";
+    case: "structureOnly";
   } | {
     /**
-     * check a percentage of snapshots.
+     * check a percentage of pack data.
      *
-     * @generated from field: int32 read_percent = 101;
+     * @generated from field: int32 read_data_subset_percent = 101;
      */
     value: number;
-    case: "readPercent";
+    case: "readDataSubsetPercent";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<CheckPolicy>) {
@@ -675,8 +675,8 @@ export class CheckPolicy extends Message<CheckPolicy> {
   static readonly typeName = "v1.CheckPolicy";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "schedule", kind: "message", T: Schedule },
-    { no: 100, name: "disabled", kind: "scalar", T: 8 /* ScalarType.BOOL */, oneof: "read_policy" },
-    { no: 101, name: "read_percent", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "read_policy" },
+    { no: 100, name: "structure_only", kind: "scalar", T: 8 /* ScalarType.BOOL */, oneof: "mode" },
+    { no: 101, name: "read_data_subset_percent", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "mode" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CheckPolicy {

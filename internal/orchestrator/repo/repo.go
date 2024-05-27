@@ -270,12 +270,17 @@ func (r *RepoOrchestrator) Check(ctx context.Context, output io.Writer) error {
 	defer flush()
 
 	var opts []restic.GenericOption
-	if r.repoConfig.CheckOptions != nil {
-		opts = append(opts, restic.WithFlags(r.repoConfig.CheckOptions...))
+	if r.repoConfig.CheckPolicy != nil {
+		switch m := r.repoConfig.CheckPolicy.Mode.(type) {
+		case *v1.CheckPolicy_ReadDataSubsetPercent:
+			opts = append(opts, restic.WithFlags(fmt.Sprintf("--read-data-subset=%v%%", m.ReadDataSubsetPercent)))
+		case *v1.CheckPolicy_StructureOnly:
+		default:
+		}
 	}
 
 	r.l.Debug("checking repo")
-	err := r.repo.Check(ctx, output)
+	err := r.repo.Check(ctx, output, opts...)
 	if err != nil {
 		return fmt.Errorf("check repo %v: %w", r.repoConfig.Id, err)
 	}

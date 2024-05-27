@@ -9,6 +9,7 @@ import {
   BackupInfo,
   BackupInfoCollector,
   getOperations,
+  matchSelector,
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
@@ -45,10 +46,11 @@ export const OperationList = ({
 
       const backupCollector = new BackupInfoCollector(filter);
       const lis = (opEvent: OperationEvent) => {
-        if (!!req.planId && opEvent.operation!.planId !== req.planId) {
-          return;
-        }
-        if (!!req.repoId && opEvent.operation!.repoId !== req.repoId) {
+        if (
+          !req.selector ||
+          !opEvent.operation ||
+          !matchSelector(req.selector, opEvent.operation)
+        ) {
           return;
         }
         if (opEvent.type !== OperationEventType.EVENT_DELETED) {
@@ -66,7 +68,7 @@ export const OperationList = ({
             return b.startTimeMs - a.startTimeMs;
           });
           setBackups(backups);
-        }, 50),
+        }, 50)
       );
 
       getOperations(req)

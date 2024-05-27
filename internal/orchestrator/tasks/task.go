@@ -17,12 +17,13 @@ const (
 	PlanForUnassociatedOperations = "_unassociated_"
 	PlanForSystemTasks            = "_system_" // plan for system tasks e.g. garbage collection, prune, stats, etc.
 
-	TaskPriorityStats          = -1
-	TaskPriorityDefault        = 0
-	TaskPriorityInteractive    = 1 << 1
+	TaskPriorityStats          = 0
+	TaskPriorityDefault        = 1 << 1 // default priority
 	TaskPriorityForget         = 1 << 2
 	TaskPriorityIndexSnapshots = 1 << 3
 	TaskPriorityPrune          = 1 << 4
+	TaskPriorityCheck          = 1 << 4
+	TaskPriorityInteractive    = 1 << 6 // highest priority
 )
 
 // TaskRunner is an interface for running tasks. It is used by tasks to create operations and write logs.

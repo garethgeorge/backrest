@@ -70,6 +70,93 @@ export class OpSelector extends Message<OpSelector> {
 }
 
 /**
+ * @generated from message v1.DoRepoTaskRequest
+ */
+export class DoRepoTaskRequest extends Message<DoRepoTaskRequest> {
+  /**
+   * @generated from field: string repo_id = 1;
+   */
+  repoId = "";
+
+  /**
+   * @generated from field: v1.DoRepoTaskRequest.Task task = 2;
+   */
+  task = DoRepoTaskRequest_Task.NONE;
+
+  constructor(data?: PartialMessage<DoRepoTaskRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.DoRepoTaskRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "task", kind: "enum", T: proto3.getEnumType(DoRepoTaskRequest_Task) },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DoRepoTaskRequest {
+    return new DoRepoTaskRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DoRepoTaskRequest {
+    return new DoRepoTaskRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DoRepoTaskRequest {
+    return new DoRepoTaskRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DoRepoTaskRequest | PlainMessage<DoRepoTaskRequest> | undefined, b: DoRepoTaskRequest | PlainMessage<DoRepoTaskRequest> | undefined): boolean {
+    return proto3.util.equals(DoRepoTaskRequest, a, b);
+  }
+}
+
+/**
+ * @generated from enum v1.DoRepoTaskRequest.Task
+ */
+export enum DoRepoTaskRequest_Task {
+  /**
+   * @generated from enum value: TASK_NONE = 0;
+   */
+  NONE = 0,
+
+  /**
+   * @generated from enum value: TASK_INDEX_SNAPSHOTS = 1;
+   */
+  INDEX_SNAPSHOTS = 1,
+
+  /**
+   * @generated from enum value: TASK_PRUNE = 2;
+   */
+  PRUNE = 2,
+
+  /**
+   * @generated from enum value: TASK_CHECK = 3;
+   */
+  CHECK = 3,
+
+  /**
+   * @generated from enum value: TASK_STATS = 4;
+   */
+  STATS = 4,
+
+  /**
+   * @generated from enum value: TASK_UNLOCK = 5;
+   */
+  UNLOCK = 5,
+}
+// Retrieve enum metadata with: proto3.getEnumType(DoRepoTaskRequest_Task)
+proto3.util.setEnumType(DoRepoTaskRequest_Task, "v1.DoRepoTaskRequest.Task", [
+  { no: 0, name: "TASK_NONE" },
+  { no: 1, name: "TASK_INDEX_SNAPSHOTS" },
+  { no: 2, name: "TASK_PRUNE" },
+  { no: 3, name: "TASK_CHECK" },
+  { no: 4, name: "TASK_STATS" },
+  { no: 5, name: "TASK_UNLOCK" },
+]);
+
+/**
  * @generated from message v1.ClearHistoryRequest
  */
 export class ClearHistoryRequest extends Message<ClearHistoryRequest> {
