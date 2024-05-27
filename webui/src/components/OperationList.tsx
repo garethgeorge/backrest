@@ -62,13 +62,17 @@ export const OperationList = ({
       subscribeToOperations(lis);
 
       backupCollector.subscribe(
-        _.debounce(() => {
-          let backups = backupCollector.getAll();
-          backups.sort((a, b) => {
-            return b.startTimeMs - a.startTimeMs;
-          });
-          setBackups(backups);
-        }, 50)
+        _.debounce(
+          () => {
+            let backups = backupCollector.getAll();
+            backups.sort((a, b) => {
+              return b.startTimeMs - a.startTimeMs;
+            });
+            setBackups(backups);
+          },
+          100,
+          { leading: true, trailing: true }
+        )
       );
 
       getOperations(req)
