@@ -22,6 +22,7 @@ import {
   BackupInfoCollector,
   getOperations,
   subscribeToOperations,
+  unsubscribeFromOperations,
 } from "../state/oplog";
 import { MAX_OPERATION_HISTORY } from "../constants";
 import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
@@ -36,38 +37,42 @@ const StatsPanel = ({ repoId }: { repoId: string }) => {
       return;
     }
 
-    const refreshOperations = _.debounce(() => {
-      const backupCollector = new BackupInfoCollector((op) => {
-        return (
-          op.status === OperationStatus.STATUS_SUCCESS &&
-          op.op.case === "operationStats" &&
-          !!op.op.value.stats
-        );
-      });
-
-      getOperations(
-        new GetOperationsRequest({
-          selector: new OpSelector({
-            repoId: repoId,
-          }),
-          lastN: BigInt(MAX_OPERATION_HISTORY),
-        })
-      )
-        .then((ops) => {
-          backupCollector.bulkAddOperations(ops);
-
-          const operations = backupCollector
-            .getAll()
-            .flatMap((b) => b.operations);
-          operations.sort((a, b) => {
-            return Number(b.unixTimeEndMs - a.unixTimeEndMs);
-          });
-          setOperations(operations);
-        })
-        .catch((e) => {
-          alertApi!.error("Failed to fetch operations: " + e.message);
+    const refreshOperations = _.debounce(
+      () => {
+        const backupCollector = new BackupInfoCollector((op) => {
+          return (
+            op.status === OperationStatus.STATUS_SUCCESS &&
+            op.op.case === "operationStats" &&
+            !!op.op.value.stats
+          );
         });
-    }, 1000);
+
+        getOperations(
+          new GetOperationsRequest({
+            selector: new OpSelector({
+              repoId: repoId,
+            }),
+            lastN: BigInt(MAX_OPERATION_HISTORY),
+          })
+        )
+          .then((ops) => {
+            backupCollector.bulkAddOperations(ops);
+
+            const operations = backupCollector
+              .getAll()
+              .flatMap((b) => b.operations);
+            operations.sort((a, b) => {
+              return Number(b.unixTimeEndMs - a.unixTimeEndMs);
+            });
+            setOperations(() => operations);
+          })
+          .catch((e) => {
+            alertApi!.error("Failed to fetch operations: " + e.message);
+          });
+      },
+      100,
+      { trailing: true }
+    );
 
     refreshOperations();
 
@@ -82,7 +87,9 @@ const StatsPanel = ({ repoId }: { repoId: string }) => {
 
     subscribeToOperations(handler);
 
-    return () => {}; // cleanup
+    return () => {
+      unsubscribeFromOperations(handler);
+    };
   }, [repoId]);
 
   if (operations.length === 0) {
@@ -107,9 +114,6 @@ const StatsPanel = ({ repoId }: { repoId: string }) => {
       totalBlobCount: Number(stats.totalBlobCount),
     };
   });
-
-  const minTime = Math.min(...dataset.map((d) => d.time));
-  const maxTime = Math.max(...dataset.map((d) => d.time));
 
   return (
     <>

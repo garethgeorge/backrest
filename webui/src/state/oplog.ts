@@ -45,6 +45,7 @@ export const subscribeToOperations = (
   callback: (event: OperationEvent) => void,
 ) => {
   subscribers.push(callback);
+  console.log("subscribed to operations, subscriber count: ", subscribers.length);
 };
 
 export const unsubscribeFromOperations = (
@@ -55,6 +56,7 @@ export const unsubscribeFromOperations = (
     subscribers[index] = subscribers[subscribers.length - 1];
     subscribers.pop();
   }
+  console.log("unsubscribed from operations, subscriber count: ", subscribers.length);
 };
 
 export const getStatusForSelector = async (sel: OpSelector) => {

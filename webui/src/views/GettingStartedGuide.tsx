@@ -64,28 +64,30 @@ export const GettingStartedGuide = () => {
             configured either at the plan or repo level.
           </li>
         </ul>
-        <Divider orientation="left">Config View</Divider>
         {isDevBuild && (
-          <Collapse
-            size="small"
-            items={[
-              {
-                key: "1",
-                label: "Config JSON hidden for security",
-                children: config ? (
-                  <Typography>
-                    <pre>
-                      {config.toJsonString({
-                        prettySpaces: 2,
-                      })}
-                    </pre>
-                  </Typography>
-                ) : (
-                  <Spin />
-                ),
-              },
-            ]}
-          />
+          <>
+            <Divider orientation="left">Config View</Divider>
+            <Collapse
+              size="small"
+              items={[
+                {
+                  key: "1",
+                  label: "Config JSON hidden for security",
+                  children: config ? (
+                    <Typography>
+                      <pre>
+                        {config.toJsonString({
+                          prettySpaces: 2,
+                        })}
+                      </pre>
+                    </Typography>
+                  ) : (
+                    <Spin />
+                  ),
+                },
+              ]}
+            />
+          </>
         )}
       </Typography.Text>
     </>
