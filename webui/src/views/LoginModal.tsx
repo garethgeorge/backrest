@@ -17,12 +17,12 @@ export const LoginModal = () => {
         new LoginRequest({
           username: "default",
           password: "password",
-        }),
+        })
       )
       .then((loginResponse) => {
         alertApi.success(
           "No users configured yet, logged in with default credentials",
-          5,
+          5
         );
         setAuthToken(loginResponse.token);
         setTimeout(() => {
@@ -30,7 +30,7 @@ export const LoginModal = () => {
         }, 500);
       })
       .catch((e) => {});
-  });
+  }, []);
 
   const onFinish = async (values: any) => {
     const loginReq = new LoginRequest({

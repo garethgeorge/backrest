@@ -40,7 +40,7 @@ export const ActivityBar = () => {
     return () => {
       unsubscribeFromOperations(callback);
     };
-  });
+  }, []);
 
   const details = activeOperations.map((op) => {
     return {

@@ -329,7 +329,7 @@ export const OperationRow = ({
   children.push(body);
 
   return (
-    <List.Item>
+    <List.Item key={operation.id}>
       <List.Item.Meta title={title} avatar={avatar} description={children} />
     </List.Item>
   );

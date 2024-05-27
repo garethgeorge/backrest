@@ -71,7 +71,7 @@ export const OperationList = ({
             setBackups(backups);
           },
           100,
-          { leading: true, trailing: true }
+          { trailing: true }
         )
       );
 
@@ -108,11 +108,11 @@ export const OperationList = ({
       itemLayout="horizontal"
       size="small"
       dataSource={operations}
-      renderItem={(op) => {
+      renderItem={(op, index) => {
         return (
           <OperationRow
             alertApi={alertApi!}
-            key={op.id}
+            key={op.id + "-" + index}
             operation={op}
             showPlan={showPlan || false}
           />
