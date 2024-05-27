@@ -58,14 +58,20 @@ func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	}
 
 	var lastRan time.Time
+	var foundBackup bool
 	if err := runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationCheck); ok {
 			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration
 		}
+		if _, ok := op.Op.(*v1.Operation_OperationBackup); ok {
+			foundBackup = true
+		}
 		return nil
 	}); err != nil {
-		return NeverScheduledTask, fmt.Errorf("finding last backup run time: %w", err)
+		return NeverScheduledTask, fmt.Errorf("finding last check run time: %w", err)
+	} else if !foundBackup {
+		return NeverScheduledTask, nil
 	}
 
 	zap.L().Debug("last prune time", zap.Time("time", lastRan), zap.String("repo", t.RepoID()))
