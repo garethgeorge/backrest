@@ -603,7 +603,7 @@ func retry(t *testing.T, times int, backoff time.Duration, f func() error) error
 }
 
 func getOperations(t *testing.T, oplog *oplog.OpLog) []*v1.Operation {
-	t.Logf("Reading oplog")
+	t.Logf("Reading oplog at time %v", time.Now())
 	operations := []*v1.Operation{}
 	if err := oplog.ForAll(func(op *v1.Operation) error {
 		operations = append(operations, op)

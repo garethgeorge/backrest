@@ -45,7 +45,7 @@ func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, 
 
 	operationBase := v1.Operation{
 		Status:     v1.OperationStatus_STATUS_INPROGRESS,
-		PlanId:     plan.GetId(),
+		PlanId:     planId,
 		RepoId:     repo.GetId(),
 		InstanceId: e.config.Instance,
 		FlowId:     flowID,
