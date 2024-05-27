@@ -15,6 +15,7 @@ import {
 
 export const ActivityBar = () => {
   const [activeOperations, setActiveOperations] = useState<Operation[]>([]);
+  const setRefresh = useState<number>(0)[1];
 
   useEffect(() => {
     const callback = ({ operation, type }: OperationEvent) => {
@@ -31,6 +32,10 @@ export const ActivityBar = () => {
     };
 
     subscribeToOperations(callback);
+
+    setInterval(() => {
+      setRefresh((r) => r + 1);
+    }, 500);
 
     return () => {
       unsubscribeFromOperations(callback);

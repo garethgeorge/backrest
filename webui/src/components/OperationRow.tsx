@@ -59,6 +59,17 @@ export const OperationRow = ({
   const showModal = useShowModal();
   const details = detailsForOperation(operation);
   const displayType = getTypeForDisplay(operation);
+  const setRefresh = useState(0)[1];
+
+  useEffect(() => {
+    if (operation.status === OperationStatus.STATUS_INPROGRESS) {
+      const interval = setInterval(() => {
+        setRefresh((x) => x + 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [operation.status]);
+
   let avatar: React.ReactNode;
   switch (displayType) {
     case DisplayType.BACKUP:
