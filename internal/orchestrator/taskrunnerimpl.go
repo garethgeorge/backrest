@@ -84,11 +84,7 @@ func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.Hook
 		}
 	}
 	if planID != "" {
-		var err error
-		plan, err = t.FindPlan()
-		if err != nil {
-			return err
-		}
+		plan, _ = t.FindPlan()
 	}
 	var flowID int64
 	if t.op != nil {

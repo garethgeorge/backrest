@@ -19,7 +19,7 @@ import { useShowModal } from "../components/ModalManager";
 import { Hook, Repo } from "../../gen/ts/v1/config_pb";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import { useAlertApi } from "../components/Alerts";
+import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
 import {
@@ -81,7 +81,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           template.uri
       );
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
     } finally {
       setConfirmLoading(false);
     }
@@ -118,7 +118,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         alertsApi.success("Added repo " + repo.uri);
       }
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
     } finally {
       setConfirmLoading(false);
     }

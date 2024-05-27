@@ -97,13 +97,14 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_PRUNE_START,
 	}, hook.HookVars{}); err != nil {
+		op.DisplayMessage = err.Error()
 		// TODO: generalize this logic
 		var cancelErr *hook.HookErrorRequestCancel
 		if errors.As(err, &cancelErr) {
 			op.Status = v1.OperationStatus_STATUS_USER_CANCELLED // user visible cancelled status
-			op.DisplayMessage = err.Error()
 			return nil
 		}
+		op.Status = v1.OperationStatus_STATUS_ERROR
 		return fmt.Errorf("execute prune start hooks: %w", err)
 	}
 

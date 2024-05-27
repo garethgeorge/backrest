@@ -20,7 +20,11 @@ import { useShowModal } from "../components/ModalManager";
 import { Plan, RetentionPolicy } from "../../gen/ts/v1/config_pb";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
-import { useAlertApi } from "../components/Alerts";
+import {
+  formatError,
+  formatErrorAlert,
+  useAlertApi,
+} from "../components/Alerts";
 import { Cron } from "react-js-cron";
 import { namePattern, validateForm } from "../lib/formutil";
 import {
@@ -75,7 +79,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         30
       );
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Destroy error:"), 15);
     } finally {
       setConfirmLoading(false);
     }
@@ -111,7 +115,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       setConfig(await backrestService.setConfig(configCopy));
       showModal(null);
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
       console.error(e);
     } finally {
       setConfirmLoading(false);

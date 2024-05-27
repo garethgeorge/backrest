@@ -98,13 +98,14 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		v1.Hook_CONDITION_CHECK_START,
 	}, hook.HookVars{}); err != nil {
 		// TODO: generalize this logic
+		op.DisplayMessage = err.Error()
 		var cancelErr *hook.HookErrorRequestCancel
 		if errors.As(err, &cancelErr) {
 			op.Status = v1.OperationStatus_STATUS_USER_CANCELLED // user visible cancelled status
-			op.DisplayMessage = err.Error()
 			return nil
 		}
-		return fmt.Errorf("execute prune start hooks: %w", err)
+		op.Status = v1.OperationStatus_STATUS_ERROR
+		return fmt.Errorf("execute check start hooks: %w", err)
 	}
 
 	err = repo.UnlockIfAutoEnabled(ctx)
