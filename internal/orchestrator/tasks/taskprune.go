@@ -94,6 +94,19 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		return fmt.Errorf("couldn't get repo %q: %w", t.RepoID(), err)
 	}
 
+	if err := runner.ExecuteHooks([]v1.Hook_Condition{
+		v1.Hook_CONDITION_PRUNE_START,
+	}, hook.HookVars{}); err != nil {
+		// TODO: generalize this logic
+		var cancelErr *hook.HookErrorRequestCancel
+		if errors.As(err, &cancelErr) {
+			op.Status = v1.OperationStatus_STATUS_USER_CANCELLED // user visible cancelled status
+			op.DisplayMessage = err.Error()
+			return nil
+		}
+		return fmt.Errorf("execute prune start hooks: %w", err)
+	}
+
 	err = repo.UnlockIfAutoEnabled(ctx)
 	if err != nil {
 		return fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err)
@@ -152,6 +165,12 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	// Run a stats task after a successful prune
 	if err := runner.ScheduleTask(NewStatsTask(t.RepoID(), PlanForSystemTasks, false), TaskPriorityStats); err != nil {
 		zap.L().Error("schedule stats task", zap.Error(err))
+	}
+
+	if err := runner.ExecuteHooks([]v1.Hook_Condition{
+		v1.Hook_CONDITION_PRUNE_SUCCESS,
+	}, hook.HookVars{}); err != nil {
+		return fmt.Errorf("execute prune end hooks: %w", err)
 	}
 
 	return nil

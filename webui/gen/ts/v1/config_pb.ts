@@ -901,6 +901,59 @@ export enum Hook_Condition {
    * @generated from enum value: CONDITION_SNAPSHOT_WARNING = 5;
    */
   SNAPSHOT_WARNING = 5,
+
+  /**
+   * snapshot succeeded.
+   *
+   * @generated from enum value: CONDITION_SNAPSHOT_SUCCESS = 6;
+   */
+  SNAPSHOT_SUCCESS = 6,
+
+  /**
+   * prune conditions
+   *
+   * prune started.
+   *
+   * @generated from enum value: CONDITION_PRUNE_START = 100;
+   */
+  PRUNE_START = 100,
+
+  /**
+   * prune failed.
+   *
+   * @generated from enum value: CONDITION_PRUNE_ERROR = 101;
+   */
+  PRUNE_ERROR = 101,
+
+  /**
+   * prune succeeded.
+   *
+   * @generated from enum value: CONDITION_PRUNE_SUCCESS = 102;
+   */
+  PRUNE_SUCCESS = 102,
+
+  /**
+   * check conditions
+   *
+   * check started.
+   *
+   * @generated from enum value: CONDITION_CHECK_START = 200;
+   */
+  CHECK_START = 200,
+
+  /**
+   * check failed.
+   *
+   * @generated from enum value: CONDITION_CHECK_ERROR = 201;
+   */
+  CHECK_ERROR = 201,
+
+  /**
+   * check succeeded.
+   *
+   * @generated from enum value: CONDITION_CHECK_SUCCESS = 202;
+   */
+  CHECK_SUCCESS = 202,
 }
 // Retrieve enum metadata with: proto3.getEnumType(Hook_Condition)
 proto3.util.setEnumType(Hook_Condition, "v1.Hook.Condition", [
@@ -910,6 +963,13 @@ proto3.util.setEnumType(Hook_Condition, "v1.Hook.Condition", [
   { no: 3, name: "CONDITION_SNAPSHOT_END" },
   { no: 4, name: "CONDITION_SNAPSHOT_ERROR" },
   { no: 5, name: "CONDITION_SNAPSHOT_WARNING" },
+  { no: 6, name: "CONDITION_SNAPSHOT_SUCCESS" },
+  { no: 100, name: "CONDITION_PRUNE_START" },
+  { no: 101, name: "CONDITION_PRUNE_ERROR" },
+  { no: 102, name: "CONDITION_PRUNE_SUCCESS" },
+  { no: 200, name: "CONDITION_CHECK_START" },
+  { no: 201, name: "CONDITION_CHECK_ERROR" },
+  { no: 202, name: "CONDITION_CHECK_SUCCESS" },
 ]);
 
 /**

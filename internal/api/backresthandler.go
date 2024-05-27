@@ -354,6 +354,7 @@ func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1
 		if err := repo.Unlock(ctx); err != nil {
 			return nil, fmt.Errorf("failed to unlock repo %q: %w", req.Msg.RepoId, err)
 		}
+		return connect.NewResponse(&emptypb.Empty{}), nil
 	default:
 		return nil, fmt.Errorf("unknown task %v", req.Msg.Task.String())
 	}
