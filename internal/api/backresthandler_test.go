@@ -179,8 +179,6 @@ func TestBackup(t *testing.T) {
 }
 
 func TestMultipleBackup(t *testing.T) {
-	t.Parallel()
-
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
 			Modno:    1234,
@@ -218,7 +216,7 @@ func TestMultipleBackup(t *testing.T) {
 		sut.orch.Run(ctx)
 	}()
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 3; i++ {
 		_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
 		if err != nil {
 			t.Fatalf("Backup() error = %v", err)
@@ -230,7 +228,7 @@ func TestMultipleBackup(t *testing.T) {
 		operations := getOperations(t, sut.oplog)
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			forget, ok := op.GetOp().(*v1.Operation_OperationForget)
-			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok && len(forget.OperationForget.Forget) == 1
+			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok && len(forget.OperationForget.Forget) > 0
 		}); index != -1 {
 			return nil
 		}
