@@ -34,6 +34,13 @@ jobs:
             echo "::warning title=Invalid file permissions automatically fixed::$line"
           done
 
+      - name: Check for broken links
+        uses: ruzickap/action-my-broken-link-checker@v2
+        with:
+          url: https://garethgeorge.github.io/backrest/
+          pages_path: ./docs/.output/public
+          cmd_params: '-v --max-connections=3 --timeout=20 --buffer-size=8192 --color=always --exclude="(/_nuxt/|discord.com)"'
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v2
         with:
