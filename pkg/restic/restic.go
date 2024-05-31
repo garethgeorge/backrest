@@ -55,10 +55,16 @@ func NewRepo(resticBin string, uri string, opts ...GenericOption) *Repo {
 func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...GenericOption) *exec.Cmd {
 	opt := resolveOpts(opts)
 
-	args = append(args, r.extraArgs...)
-	args = append(args, opt.extraArgs...)
+	fullCmd := append([]string{r.cmd}, args...)
 
-	cmd := exec.CommandContext(ctx, r.cmd, args...)
+	if len(opt.prefixCmd) > 0 {
+		fullCmd = append(slices.Clone(opt.prefixCmd), fullCmd...)
+	}
+
+	fullCmd = append(fullCmd, r.extraArgs...)
+	fullCmd = append(fullCmd, opt.extraArgs...)
+
+	cmd := exec.CommandContext(ctx, fullCmd[0], fullCmd[1:]...)
 	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
@@ -146,12 +152,12 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 		}
 	}
 
-	args := []string{"backup", "--json", "--exclude-caches"}
+	args := []string{"backup", "--json"}
 	args = append(args, paths...)
-
 	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
 
-	cmd := r.commandWithContext(ctx, args, opts...)
+	cmdCtx, cancel := context.WithCancel(ctx)
+	cmd := r.commandWithContext(cmdCtx, args, opts...)
 	outputForErr := ioutil.NewOutputCapturer(outputBufferLimit)
 	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
 	reader, writer := nio.Pipe(buf)
@@ -163,11 +169,11 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer cancel()
 		var err error
 		summary, err = readBackupProgressEntries(reader, progressCallback)
 		if err != nil {
 			readErr = fmt.Errorf("processing command output: %w", err)
-			_ = cmd.Cancel() // cancel the command to prevent it from hanging now that we're not reading from it.
 		}
 	}()
 
@@ -425,6 +431,7 @@ func (r *RetentionPolicy) toForgetFlags() []string {
 type GenericOpts struct {
 	extraArgs []string
 	extraEnv  []string
+	prefixCmd []string
 }
 
 func resolveOpts(opts []GenericOption) *GenericOpts {
@@ -478,4 +485,10 @@ func WithPropagatedEnvVars(extras ...string) GenericOption {
 
 func WithEnviron() GenericOption {
 	return WithEnv(os.Environ()...)
+}
+
+func WithPrefixCommand(proc string, args ...string) GenericOption {
+	return func(opts *GenericOpts) {
+		opts.prefixCmd = append([]string{proc}, args...)
+	}
 }

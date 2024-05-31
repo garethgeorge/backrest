@@ -52,6 +52,7 @@ func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) Task
 func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 	t := st.Task
 	log := taskRunner.OpLog()
+	l := taskRunner.Logger(ctx)
 
 	r, err := taskRunner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
@@ -69,13 +70,13 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 	}
 
 	tags := []string{repo.TagForPlan(t.PlanID())}
-	if compat, err := useLegacyCompatMode(log, t.RepoID(), t.PlanID()); err != nil {
+	if compat, err := useLegacyCompatMode(l, log, t.RepoID(), t.PlanID()); err != nil {
 		return fmt.Errorf("check legacy compat mode: %w", err)
 	} else if !compat {
 		tags = append(tags, repo.TagForInstance(taskRunner.Config().Instance))
 	} else {
-		zap.L().Warn("forgetting snapshots without instance ID, using legacy behavior (e.g. --tags not including instance ID)")
-		zap.S().Warnf("to avoid this warning, tag all snapshots with the instance ID e.g. by running: \r\n"+
+		l.Warn("forgetting snapshots without instance ID, using legacy behavior (e.g. --tags not including instance ID)")
+		l.Sugar().Warnf("to avoid this warning, tag all snapshots with the instance ID e.g. by running: \r\n"+
 			"restic tag --set '%s' --set '%s' --tag '%s'", repo.TagForPlan(t.PlanID()), repo.TagForInstance(taskRunner.Config().Instance), repo.TagForPlan(t.PlanID()))
 	}
 
@@ -103,7 +104,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 		}
 	}
 
-	zap.S().Debugf("found %v snapshots were forgotten, marking this in oplog", len(ops))
+	l.Sugar().Debugf("found %v snapshots were forgotten, marking this in oplog", len(ops))
 
 	for _, op := range ops {
 		if indexOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
@@ -120,7 +121,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 
 // useLegacyCompatMode checks if there are any snapshots that were created without a `created-by` tag still exist in the repo.
 // The property is overridden if mixed `created-by` tag values are found.
-func useLegacyCompatMode(log *oplog.OpLog, repoID, planID string) (bool, error) {
+func useLegacyCompatMode(l *zap.Logger, log *oplog.OpLog, repoID, planID string) (bool, error) {
 	instanceIDs := make(map[string]struct{})
 	if err := log.ForEach(oplog.Query{RepoId: repoID, PlanId: planID}, indexutil.CollectAll(), func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok && !snapshotOp.OperationIndexSnapshot.GetForgot() {
@@ -136,9 +137,9 @@ func useLegacyCompatMode(log *oplog.OpLog, repoID, planID string) (bool, error) 
 	}
 	delete(instanceIDs, "")
 	if len(instanceIDs) > 1 {
-		zap.L().Warn("found mixed instance IDs in indexed snapshots, overriding legacy forget behavior to include instance ID tags. This may result in unexpected behavior -- please inspect the tags on your snapshots.")
+		l.Sugar().Warn("found mixed instance IDs in indexed snapshots, overriding legacy forget behavior to include instance ID tags. This may result in unexpected behavior -- please inspect the tags on your snapshots.")
 		return false, nil
 	}
-	zap.L().Warn("found legacy snapshots without instance ID, recommending legacy forget behavior.")
+	l.Sugar().Warn("found legacy snapshots without instance ID, recommending legacy forget behavior.")
 	return true, nil
 }
