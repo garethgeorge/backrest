@@ -13,10 +13,16 @@ import {
   FormInstance,
   Collapse,
   Checkbox,
+  Select,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
-import { Hook, Repo } from "../../gen/ts/v1/config_pb";
+import {
+  CommandPrefix_CPUNiceLevel,
+  CommandPrefix_IONiceLevel,
+  Hook,
+  Repo,
+} from "../../gen/ts/v1/config_pb";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
@@ -31,6 +37,7 @@ import { ConfirmButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import Cron from "react-js-cron";
 import { ScheduleFormItem } from "../components/ScheduleFormItem";
+import { proto3 } from "@bufbuild/protobuf";
 
 export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -97,14 +104,15 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
       });
 
       if (template !== null) {
+        const configCopy = config.clone();
         // We are in the edit repo flow, update the repo in the config
-        const idx = config.repos!.findIndex((r) => r.id === template!.id);
+        const idx = configCopy.repos!.findIndex((r) => r.id === template!.id);
         if (idx === -1) {
           alertsApi.error("Can't update repo, not found");
           return;
         }
-        config.repos![idx] = repo;
-        setConfig(await backrestService.setConfig(config));
+        configCopy.repos![idx] = repo;
+        setConfig(await backrestService.setConfig(configCopy));
         showModal(null);
         alertsApi.success("Updated repo " + repo.uri);
 
@@ -484,6 +492,50 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               />
             </Form.Item>
             <ScheduleFormItem name={["checkPolicy", "schedule"]} />
+          </Form.Item>
+
+          {/* Repo.commandPrefix */}
+          <Form.Item
+            label={
+              <Tooltip
+                title={
+                  <span>
+                    Modifiers for the backup operation e.g. set the CPU or IO
+                    priority. Currently only available on unix systems.
+                  </span>
+                }
+              >
+                Command Modifiers
+              </Tooltip>
+            }
+          >
+            <Row>
+              <Col span={12}>
+                <Form.Item name={["commandPrefix", "ioNice"]} required={false}>
+                  <Select
+                    allowClear
+                    style={{ width: "100%" }}
+                    placeholder="Select an IO priority"
+                    options={proto3
+                      .getEnumType(CommandPrefix_IONiceLevel)
+                      .values.map((v) => ({ label: v.name, value: v.name }))}
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col span={12}>
+                <Form.Item name={["commandPrefix", "cpuNice"]} required={false}>
+                  <Select
+                    allowClear
+                    style={{ width: "100%" }}
+                    placeholder="Select a CPU priority"
+                    options={proto3
+                      .getEnumType(CommandPrefix_CPUNiceLevel)
+                      .values.map((v) => ({ label: v.name, value: v.name }))}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
           </Form.Item>
 
           <Form.Item
