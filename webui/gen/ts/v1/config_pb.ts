@@ -231,6 +231,13 @@ export class Repo extends Message<Repo> {
    */
   autoUnlock = false;
 
+  /**
+   * modifiers for the restic commands
+   *
+   * @generated from field: v1.CommandPrefix command_prefix = 10;
+   */
+  commandPrefix?: CommandPrefix;
+
   constructor(data?: PartialMessage<Repo>) {
     super();
     proto3.util.initPartial(data, this);
@@ -248,6 +255,7 @@ export class Repo extends Message<Repo> {
     { no: 9, name: "check_policy", kind: "message", T: CheckPolicy },
     { no: 7, name: "hooks", kind: "message", T: Hook, repeated: true },
     { no: 8, name: "auto_unlock", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "command_prefix", kind: "message", T: CommandPrefix },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Repo {
@@ -387,6 +395,111 @@ export class Plan extends Message<Plan> {
     return proto3.util.equals(Plan, a, b);
   }
 }
+
+/**
+ * @generated from message v1.CommandPrefix
+ */
+export class CommandPrefix extends Message<CommandPrefix> {
+  /**
+   * ionice level to set.
+   *
+   * @generated from field: v1.CommandPrefix.IONiceLevel io_nice = 1;
+   */
+  ioNice = CommandPrefix_IONiceLevel.IO_DEFAULT;
+
+  /**
+   * nice level to set.
+   *
+   * @generated from field: v1.CommandPrefix.CPUNiceLevel cpu_nice = 2;
+   */
+  cpuNice = CommandPrefix_CPUNiceLevel.CPU_DEFAULT;
+
+  constructor(data?: PartialMessage<CommandPrefix>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.CommandPrefix";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "io_nice", kind: "enum", T: proto3.getEnumType(CommandPrefix_IONiceLevel) },
+    { no: 2, name: "cpu_nice", kind: "enum", T: proto3.getEnumType(CommandPrefix_CPUNiceLevel) },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CommandPrefix {
+    return new CommandPrefix().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CommandPrefix {
+    return new CommandPrefix().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CommandPrefix {
+    return new CommandPrefix().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CommandPrefix | PlainMessage<CommandPrefix> | undefined, b: CommandPrefix | PlainMessage<CommandPrefix> | undefined): boolean {
+    return proto3.util.equals(CommandPrefix, a, b);
+  }
+}
+
+/**
+ * @generated from enum v1.CommandPrefix.IONiceLevel
+ */
+export enum CommandPrefix_IONiceLevel {
+  /**
+   * @generated from enum value: IO_DEFAULT = 0;
+   */
+  IO_DEFAULT = 0,
+
+  /**
+   * @generated from enum value: IO_BEST_EFFORT_LOW = 1;
+   */
+  IO_BEST_EFFORT_LOW = 1,
+
+  /**
+   * @generated from enum value: IO_BEST_EFFORT_HIGH = 2;
+   */
+  IO_BEST_EFFORT_HIGH = 2,
+
+  /**
+   * @generated from enum value: IO_IDLE = 3;
+   */
+  IO_IDLE = 3,
+}
+// Retrieve enum metadata with: proto3.getEnumType(CommandPrefix_IONiceLevel)
+proto3.util.setEnumType(CommandPrefix_IONiceLevel, "v1.CommandPrefix.IONiceLevel", [
+  { no: 0, name: "IO_DEFAULT" },
+  { no: 1, name: "IO_BEST_EFFORT_LOW" },
+  { no: 2, name: "IO_BEST_EFFORT_HIGH" },
+  { no: 3, name: "IO_IDLE" },
+]);
+
+/**
+ * @generated from enum v1.CommandPrefix.CPUNiceLevel
+ */
+export enum CommandPrefix_CPUNiceLevel {
+  /**
+   * @generated from enum value: CPU_DEFAULT = 0;
+   */
+  CPU_DEFAULT = 0,
+
+  /**
+   * @generated from enum value: CPU_HIGH = 1;
+   */
+  CPU_HIGH = 1,
+
+  /**
+   * @generated from enum value: CPU_LOW = 2;
+   */
+  CPU_LOW = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(CommandPrefix_CPUNiceLevel)
+proto3.util.setEnumType(CommandPrefix_CPUNiceLevel, "v1.CommandPrefix.CPUNiceLevel", [
+  { no: 0, name: "CPU_DEFAULT" },
+  { no: 1, name: "CPU_HIGH" },
+  { no: 2, name: "CPU_LOW" },
+]);
 
 /**
  * @generated from message v1.RetentionPolicy

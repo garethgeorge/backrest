@@ -1,13 +1,16 @@
 package orchestrator
 
 import (
+	"context"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/orchestrator/logging"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
+	"go.uber.org/zap"
 )
 
 // taskRunnerImpl is an implementation of TaskRunner for the default orchestrator.
@@ -116,4 +119,8 @@ func (t *taskRunnerImpl) Config() *v1.Config {
 	}
 	t.config = t.orchestrator.Config()
 	return t.config
+}
+
+func (t *taskRunnerImpl) Logger(ctx context.Context) *zap.Logger {
+	return logging.Logger(ctx).Named(t.t.Name())
 }

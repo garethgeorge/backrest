@@ -49,6 +49,7 @@ func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) Task {
 func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 	t := st.Task
 	oplog := taskRunner.OpLog()
+	l := taskRunner.Logger(ctx)
 
 	repo, err := taskRunner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
@@ -148,7 +149,7 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 	}
 
 	// Print stats at the end of indexing.
-	zap.L().Debug("indexed snapshots",
+	l.Debug("indexed snapshots",
 		zap.String("repo", t.RepoID()),
 		zap.Duration("duration", time.Since(startTime)),
 		zap.Int("alreadyIndexed", len(foundIds)),

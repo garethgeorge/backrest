@@ -13,10 +13,17 @@ import {
   FormInstance,
   Collapse,
   Checkbox,
+  Select,
+  Space,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
-import { Hook, Repo } from "../../gen/ts/v1/config_pb";
+import {
+  CommandPrefix_CPUNiceLevel,
+  CommandPrefix_IONiceLevel,
+  Hook,
+  Repo,
+} from "../../gen/ts/v1/config_pb";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
@@ -31,6 +38,8 @@ import { ConfirmButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import Cron from "react-js-cron";
 import { ScheduleFormItem } from "../components/ScheduleFormItem";
+import { proto3 } from "@bufbuild/protobuf";
+import { isWindows } from "../state/buildcfg";
 
 export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -97,14 +106,15 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
       });
 
       if (template !== null) {
+        const configCopy = config.clone();
         // We are in the edit repo flow, update the repo in the config
-        const idx = config.repos!.findIndex((r) => r.id === template!.id);
+        const idx = configCopy.repos!.findIndex((r) => r.id === template!.id);
         if (idx === -1) {
           alertsApi.error("Can't update repo, not found");
           return;
         }
-        config.repos![idx] = repo;
-        setConfig(await backrestService.setConfig(config));
+        configCopy.repos![idx] = repo;
+        setConfig(await backrestService.setConfig(configCopy));
         showModal(null);
         alertsApi.success("Updated repo " + repo.uri);
 
@@ -486,12 +496,112 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             <ScheduleFormItem name={["checkPolicy", "schedule"]} />
           </Form.Item>
 
+          {/* Repo.commandPrefix */}
+          {!isWindows && (
+            <Form.Item
+              label={
+                <Tooltip
+                  title={
+                    <span>
+                      Modifiers for the backup operation e.g. set the CPU or IO
+                      priority.
+                    </span>
+                  }
+                >
+                  Command Modifiers
+                </Tooltip>
+              }
+              colon={false}
+            >
+              <Row>
+                <Col span={12} style={{ paddingLeft: "5px" }}>
+                  <Tooltip
+                    title={
+                      <>
+                        Available IO priority modes
+                        <ul>
+                          <li>
+                            IO_BEST_EFFORT_LOW - runs at lower than default disk
+                            priority (will prioritize other processes)
+                          </li>
+                          <li>
+                            IO_BEST_EFFORT_HIGH - runs at higher than default
+                            disk priority (top of disk IO queue)
+                          </li>
+                          <li>
+                            IO_IDLE - only runs when disk bandwidth is idle
+                            (e.g. no other operations are queued)
+                          </li>
+                        </ul>
+                      </>
+                    }
+                  >
+                    IO Priority:
+                    <br />
+                    <Form.Item
+                      name={["commandPrefix", "ioNice"]}
+                      required={false}
+                    >
+                      <Select
+                        allowClear
+                        style={{ width: "100%" }}
+                        placeholder="Select an IO priority"
+                        options={proto3
+                          .getEnumType(CommandPrefix_IONiceLevel)
+                          .values.map((v) => ({
+                            label: v.name,
+                            value: v.name,
+                          }))}
+                      />
+                    </Form.Item>
+                  </Tooltip>
+                </Col>
+                <Col span={12} style={{ paddingLeft: "5px" }}>
+                  <Tooltip
+                    title={
+                      <>
+                        Available CPU priority modes:
+                        <ul>
+                          <li>CPU_DEFAULT - no change in priority</li>
+                          <li>
+                            CPU_HIGH - higher than default priority (backrest
+                            must be running as root)
+                          </li>
+                          <li>CPU_LOW - lower than default priority</li>
+                        </ul>
+                      </>
+                    }
+                  >
+                    CPU Priority:
+                    <br />
+                    <Form.Item
+                      name={["commandPrefix", "cpuNice"]}
+                      required={false}
+                    >
+                      <Select
+                        allowClear
+                        style={{ width: "100%" }}
+                        placeholder="Select a CPU priority"
+                        options={proto3
+                          .getEnumType(CommandPrefix_CPUNiceLevel)
+                          .values.map((v) => ({
+                            label: v.name,
+                            value: v.name,
+                          }))}
+                      />
+                    </Form.Item>
+                  </Tooltip>
+                </Col>
+              </Row>
+            </Form.Item>
+          )}
+
           <Form.Item
             label={
               <Tooltip
                 title={
                   "Auto-unlock will remove lockfiles at the start of forget and prune operations. " +
-                  "This is potentially unsafe if the repo is shared by multiple client devices. Opt-in (and disabled) by default."
+                  "This is potentially unsafe if the repo is shared by multiple client devices. Disabled by default."
                 }
               >
                 Auto Unlock

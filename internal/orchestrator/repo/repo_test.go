@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -20,39 +21,71 @@ var configForTest = &v1.Config{
 func TestBackup(t *testing.T) {
 	t.Parallel()
 
-	repo := t.TempDir()
 	testData := test.CreateTestData(t)
 
-	// create a new repo with cache disabled for testing
-	r := &v1.Repo{
-		Id:       "test",
-		Uri:      repo,
-		Password: "test",
-		Flags:    []string{"--no-cache"},
+	tcs := []struct {
+		name     string
+		repo     *v1.Repo
+		plan     *v1.Plan
+		unixOnly bool
+	}{
+		{
+			name: "backup",
+			repo: &v1.Repo{
+				Id:       "test",
+				Uri:      t.TempDir(),
+				Password: "test",
+			},
+			plan: &v1.Plan{
+				Id:    "test",
+				Repo:  "test",
+				Paths: []string{testData},
+			},
+		},
+		{
+			name: "backup with ionice",
+			repo: &v1.Repo{
+				Id:       "test",
+				Uri:      t.TempDir(),
+				Password: "test",
+				CommandPrefix: &v1.CommandPrefix{
+					IoNice:  v1.CommandPrefix_IO_BEST_EFFORT_LOW,
+					CpuNice: v1.CommandPrefix_CPU_LOW,
+				},
+			},
+			plan: &v1.Plan{
+				Id:    "test",
+				Repo:  "test",
+				Paths: []string{testData},
+			},
+			unixOnly: true,
+		},
 	}
 
-	plan := &v1.Plan{
-		Id:    "test",
-		Repo:  "test",
-		Paths: []string{testData},
-	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.unixOnly && runtime.GOOS == "windows" {
+				t.Skip("skipping on windows")
+			}
 
-	orchestrator, err := NewRepoOrchestrator(configForTest, r, helpers.ResticBinary(t))
-	if err != nil {
-		t.Fatalf("failed to create repo orchestrator: %v", err)
-	}
+			orchestrator, err := NewRepoOrchestrator(configForTest, tc.repo, helpers.ResticBinary(t))
+			if err != nil {
+				t.Fatalf("failed to create repo orchestrator: %v", err)
+			}
 
-	summary, err := orchestrator.Backup(context.Background(), plan, nil)
-	if err != nil {
-		t.Fatalf("backup error: %v", err)
-	}
+			summary, err := orchestrator.Backup(context.Background(), tc.plan, nil)
+			if err != nil {
+				t.Fatalf("backup error: %v", err)
+			}
 
-	if summary.SnapshotId == "" {
-		t.Fatal("expected snapshot id")
-	}
+			if summary.SnapshotId == "" {
+				t.Fatal("expected snapshot id")
+			}
 
-	if summary.FilesNew != 100 {
-		t.Fatalf("expected 100 new files, got %d", summary.FilesNew)
+			if summary.FilesNew != 100 {
+				t.Fatalf("expected 100 new files, got %d", summary.FilesNew)
+			}
+		})
 	}
 }
 

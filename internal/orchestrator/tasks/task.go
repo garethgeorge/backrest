@@ -8,6 +8,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -46,6 +47,8 @@ type TaskRunner interface {
 	ScheduleTask(task Task, priority int) error
 	// Config returns the current config.
 	Config() *v1.Config
+	// Logger returns the logger.
+	Logger(ctx context.Context) *zap.Logger
 }
 
 // ScheduledTask is a task that is scheduled to run at a specific time.

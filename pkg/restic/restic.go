@@ -26,8 +26,7 @@ type Repo struct {
 	cmd string
 	uri string
 
-	extraArgs []string
-	extraEnv  []string
+	opts []GenericOption
 
 	exists           error
 	checkExists      sync.Once
@@ -37,29 +36,29 @@ type Repo struct {
 
 // NewRepo instantiates a new repository.
 func NewRepo(resticBin string, uri string, opts ...GenericOption) *Repo {
-	opt := &GenericOpts{}
-	for _, o := range opts {
-		o(opt)
-	}
-
-	opt.extraEnv = append(opt.extraEnv, "RESTIC_REPOSITORY="+uri)
+	opts = append(opts, WithEnv("RESTIC_REPOSITORY="+uri))
 
 	return &Repo{
-		cmd:       resticBin, // TODO: configurable binary path
-		uri:       uri,
-		extraArgs: opt.extraArgs,
-		extraEnv:  opt.extraEnv,
+		cmd:  resticBin,
+		uri:  uri,
+		opts: opts,
 	}
 }
 
 func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...GenericOption) *exec.Cmd {
-	opt := resolveOpts(opts)
+	opt := &GenericOpts{}
+	resolveOpts(opt, r.opts)
+	resolveOpts(opt, opts)
 
-	args = append(args, r.extraArgs...)
-	args = append(args, opt.extraArgs...)
+	fullCmd := append([]string{r.cmd}, args...)
 
-	cmd := exec.CommandContext(ctx, r.cmd, args...)
-	cmd.Env = append(cmd.Env, r.extraEnv...)
+	if len(opt.prefixCmd) > 0 {
+		fullCmd = append(slices.Clone(opt.prefixCmd), fullCmd...)
+	}
+
+	fullCmd = append(fullCmd, opt.extraArgs...)
+
+	cmd := exec.CommandContext(ctx, fullCmd[0], fullCmd[1:]...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	logger := LoggerFromContext(ctx)
@@ -70,7 +69,7 @@ func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...Ge
 	}
 
 	if logger := LoggerFromContext(ctx); logger != nil {
-		fmt.Fprintf(logger, "\ncommand: %v %v\n", r.cmd, strings.Join(args, " "))
+		fmt.Fprintf(logger, "\ncommand: %v %v\n", fullCmd[0], strings.Join(fullCmd[1:], " "))
 	}
 
 	return cmd
@@ -146,12 +145,12 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 		}
 	}
 
-	args := []string{"backup", "--json", "--exclude-caches"}
+	args := []string{"backup", "--json"}
 	args = append(args, paths...)
-
 	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
 
-	cmd := r.commandWithContext(ctx, args, opts...)
+	cmdCtx, cancel := context.WithCancel(ctx)
+	cmd := r.commandWithContext(cmdCtx, args, opts...)
 	outputForErr := ioutil.NewOutputCapturer(outputBufferLimit)
 	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
 	reader, writer := nio.Pipe(buf)
@@ -163,11 +162,11 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer cancel()
 		var err error
 		summary, err = readBackupProgressEntries(reader, progressCallback)
 		if err != nil {
 			readErr = fmt.Errorf("processing command output: %w", err)
-			_ = cmd.Cancel() // cancel the command to prevent it from hanging now that we're not reading from it.
 		}
 	}()
 
@@ -278,7 +277,8 @@ func (r *Repo) Check(ctx context.Context, checkOutput io.Writer, opts ...Generic
 
 func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
 	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
-	cmd := r.commandWithContext(ctx, []string{"restore", "--json", snapshot}, opts...)
+	cmdCtx, cancel := context.WithCancel(ctx)
+	cmd := r.commandWithContext(cmdCtx, []string{"restore", "--json", snapshot}, opts...)
 	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
 	reader, writer := nio.Pipe(buf)
 	r.pipeCmdOutputToWriter(cmd, writer)
@@ -289,11 +289,11 @@ func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*Rest
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer cancel()
 		var err error
 		summary, err = readRestoreProgressEntries(reader, callback)
 		if err != nil {
 			readErr = fmt.Errorf("processing command output: %w", err)
-			_ = cmd.Cancel() // cancel the command to prevent it from hanging now that we're not reading from it.
 		}
 	}()
 
@@ -342,6 +342,7 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 func (r *Repo) Unlock(ctx context.Context, opts ...GenericOption) error {
 	output := bytes.NewBuffer(nil)
 	cmd := r.commandWithContext(ctx, []string{"unlock"}, opts...)
+	r.pipeCmdOutputToWriter(cmd, output)
 	if err := cmd.Run(); err != nil {
 		return newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
 	}
@@ -425,14 +426,13 @@ func (r *RetentionPolicy) toForgetFlags() []string {
 type GenericOpts struct {
 	extraArgs []string
 	extraEnv  []string
+	prefixCmd []string
 }
 
-func resolveOpts(opts []GenericOption) *GenericOpts {
-	opt := &GenericOpts{}
+func resolveOpts(opt *GenericOpts, opts []GenericOption) {
 	for _, o := range opts {
 		o(opt)
 	}
-	return opt
 }
 
 type GenericOption func(opts *GenericOpts)
@@ -478,4 +478,10 @@ func WithPropagatedEnvVars(extras ...string) GenericOption {
 
 func WithEnviron() GenericOption {
 	return WithEnv(os.Environ()...)
+}
+
+func WithPrefixCommand(args ...string) GenericOption {
+	return func(opts *GenericOpts) {
+		opts.prefixCmd = append(opts.prefixCmd, args...)
+	}
 }
