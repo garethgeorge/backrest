@@ -277,7 +277,8 @@ func (r *Repo) Check(ctx context.Context, checkOutput io.Writer, opts ...Generic
 
 func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
 	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
-	cmd := r.commandWithContext(ctx, []string{"restore", "--json", snapshot}, opts...)
+	cmdCtx, cancel := context.WithCancel(ctx)
+	cmd := r.commandWithContext(cmdCtx, []string{"restore", "--json", snapshot}, opts...)
 	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
 	reader, writer := nio.Pipe(buf)
 	r.pipeCmdOutputToWriter(cmd, writer)
@@ -288,11 +289,11 @@ func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*Rest
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer cancel()
 		var err error
 		summary, err = readRestoreProgressEntries(reader, callback)
 		if err != nil {
 			readErr = fmt.Errorf("processing command output: %w", err)
-			_ = cmd.Cancel() // cancel the command to prevent it from hanging now that we're not reading from it.
 		}
 	}()
 
@@ -341,6 +342,7 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 func (r *Repo) Unlock(ctx context.Context, opts ...GenericOption) error {
 	output := bytes.NewBuffer(nil)
 	cmd := r.commandWithContext(ctx, []string{"unlock"}, opts...)
+	r.pipeCmdOutputToWriter(cmd, output)
 	if err := cmd.Run(); err != nil {
 		return newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
 	}
