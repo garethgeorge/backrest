@@ -44,11 +44,12 @@ func TestResticBackup(t *testing.T) {
 	helpers.CreateUnreadable(t, testDataUnreadable+"/unreadable")
 
 	var tests = []struct {
-		name    string
-		opts    []GenericOption
-		paths   []string
-		files   int64 // expected files at the end of the backup
-		wantErr bool
+		name     string
+		opts     []GenericOption
+		paths    []string
+		files    int64 // expected files at the end of the backup
+		wantErr  bool
+		unixOnly bool
 	}{
 		{
 			name:  "no options",
@@ -86,10 +87,32 @@ func TestResticBackup(t *testing.T) {
 			opts:    []GenericOption{},
 			wantErr: true,
 		},
+		{
+			name:  "with wrapper process",
+			paths: []string{testData},
+			opts: []GenericOption{
+				WithPrefixCommand("nice", "-n", "19"),
+			},
+			files:    100,
+			unixOnly: true,
+		},
+		{
+			name:  "with invalid wrapper process",
+			paths: []string{testData},
+			opts: []GenericOption{
+				WithPrefixCommand("invalid-wrapper"),
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if runtime.GOOS == "windows" && tc.unixOnly {
+				t.Skip("test is unix only")
+			}
+
 			gotEvent := false
 			summary, err := r.Backup(context.Background(), tc.paths, func(event *BackupProgressEntry) {
 				t.Logf("backup event: %v", event)

@@ -52,9 +52,16 @@ func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath stri
 	for _, f := range repoConfig.GetFlags() {
 		args, err := shlex.Split(f)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse flag %q for repo %q: %w", f, repoConfig.Id, err)
+			return nil, fmt.Errorf("parse flag %q for repo %q: %w", f, repoConfig.Id, err)
 		}
 		opts = append(opts, restic.WithFlags(args...))
+	}
+
+	// Resolve command prefix
+	if extraOpts, err := resolveCommandPrefix(repoConfig.GetCommandPrefix()); err != nil {
+		return nil, fmt.Errorf("resolve command prefix: %w", err)
+	} else {
+		opts = append(opts, extraOpts...)
 	}
 
 	// Add BatchMode=yes to sftp.args if it's not already set.

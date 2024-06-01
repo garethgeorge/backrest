@@ -41,6 +41,7 @@ message Repo {
   CheckPolicy check_policy = 9 [json_name="checkPolicy"]; // policy for when to run check.
   repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on events for this repo.
   bool auto_unlock = 8 [json_name="autoUnlock"]; // automatically unlock the repo when needed.
+  CommandPrefix command_prefix = 10 [json_name="commandPrefix"]; // modifiers for the restic commands
 }
 
 message Plan {
@@ -55,6 +56,24 @@ message Plan {
   RetentionPolicy retention = 7 [json_name="retention"]; // retention policy for snapshots.
   repeated Hook hooks = 8 [json_name="hooks"]; // hooks to run on events for this plan.
   repeated string backup_flags = 10 [json_name="backup_flags"]; // extra flags to set when running a backup command.
+}
+
+message CommandPrefix {
+  enum IONiceLevel {
+    IO_DEFAULT = 0;
+    IO_BEST_EFFORT_LOW = 1;
+    IO_BEST_EFFORT_HIGH = 2;
+    IO_IDLE = 3;
+  }
+
+  enum CPUNiceLevel {
+    CPU_DEFAULT = 0;
+    CPU_HIGH = 1;
+    CPU_LOW = 2;
+  }
+
+  IONiceLevel io_nice = 1 [json_name="ioNice"]; // ionice level to set.
+  CPUNiceLevel cpu_nice = 2 [json_name="cpuNice"]; // nice level to set.
 }
 
 message RetentionPolicy {

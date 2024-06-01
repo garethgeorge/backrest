@@ -87,7 +87,7 @@ func (t *BackupTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 }
 
 func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
-	l := Logger(ctx, st.Task)
+	l := runner.Logger(ctx)
 
 	startTime := time.Now()
 	op := st.Op
@@ -133,10 +133,10 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 
 			backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(entry)
 		} else if entry.MessageType == "error" {
-			zap.S().Warnf("an unknown error was encountered in processing item: %v", entry.Item)
+			l.Sugar().Warnf("an unknown error was encountered in processing item: %v", entry.Item)
 			backupError, err := protoutil.BackupProgressEntryToBackupError(entry)
 			if err != nil {
-				zap.S().Errorf("failed to convert backup progress entry to backup error: %v", err)
+				l.Sugar().Errorf("failed to convert backup progress entry to backup error: %v", err)
 				return
 			}
 			if len(backupOp.OperationBackup.Errors) > maxBackupErrorHistoryLength ||
@@ -158,7 +158,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		sendWg.Add(1)
 		go func() {
 			if err := runner.UpdateOperation(op); err != nil {
-				zap.S().Errorf("failed to update oplog with progress for backup: %v", err)
+				l.Sugar().Errorf("failed to update oplog with progress for backup: %v", err)
 			}
 			sendWg.Done()
 		}()
