@@ -48,7 +48,7 @@ func TestBackup(t *testing.T) {
 				Password: "test",
 				CommandPrefix: &v1.CommandPrefix{
 					IoNice:  v1.CommandPrefix_IO_BEST_EFFORT_LOW,
-					CpuNice: v1.CommandPrefix_CPU_HIGH,
+					CpuNice: v1.CommandPrefix_CPU_LOW,
 				},
 			},
 			plan: &v1.Plan{

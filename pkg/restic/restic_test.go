@@ -91,7 +91,7 @@ func TestResticBackup(t *testing.T) {
 			name:  "with wrapper process",
 			paths: []string{testData},
 			opts: []GenericOption{
-				WithWrapperProcess("nice", "-n", "19"),
+				WithPrefixCommand("nice", "-n", "19"),
 			},
 			files:    100,
 			unixOnly: true,
@@ -100,7 +100,7 @@ func TestResticBackup(t *testing.T) {
 			name:  "with invalid wrapper process",
 			paths: []string{testData},
 			opts: []GenericOption{
-				WithWrapperProcess("invalid-wrapper"),
+				WithPrefixCommand("invalid-wrapper"),
 			},
 			wantErr: true,
 		},
