@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -23,9 +24,10 @@ func TestBackup(t *testing.T) {
 	testData := test.CreateTestData(t)
 
 	tcs := []struct {
-		name string
-		repo *v1.Repo
-		plan *v1.Plan
+		name     string
+		repo     *v1.Repo
+		plan     *v1.Plan
+		unixOnly bool
 	}{
 		{
 			name: "backup",
@@ -56,11 +58,16 @@ func TestBackup(t *testing.T) {
 				Repo:  "test",
 				Paths: []string{testData},
 			},
+			unixOnly: true,
 		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.unixOnly && runtime.GOOS == "windows" {
+				t.Skip("skipping on windows")
+			}
+
 			orchestrator, err := NewRepoOrchestrator(configForTest, tc.repo, helpers.ResticBinary(t))
 			if err != nil {
 				t.Fatalf("failed to create repo orchestrator: %v", err)
