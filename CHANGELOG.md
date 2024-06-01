@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.0](https://github.com/garethgeorge/backrest/compare/v1.0.0...v1.1.0) (2024-06-01)
+
+
+### Features
+
+* add windows installer and tray app ([#294](https://github.com/garethgeorge/backrest/issues/294)) ([8a7543c](https://github.com/garethgeorge/backrest/commit/8a7543c7bf7f245d87fa079c477c50b333dfba37))
+* support nice/ionice as a repo setting ([#309](https://github.com/garethgeorge/backrest/issues/309)) ([0c9f366](https://github.com/garethgeorge/backrest/commit/0c9f366e439b57007259a2ca305ac00733638566))
+* support restic check operation ([#303](https://github.com/garethgeorge/backrest/issues/303)) ([ce42f68](https://github.com/garethgeorge/backrest/commit/ce42f68d0d563defabbaafce63313fcf3835d2dd))
+
+
+### Bug Fixes
+
+* collection of ui refresh timing bugs ([b218bc9](https://github.com/garethgeorge/backrest/commit/b218bc9409bf4a6c70da06e1f98760ff520afc37))
+* improve prune and check scheduling in new repos ([c58055e](https://github.com/garethgeorge/backrest/commit/c58055ec91ccc9a8afc5d3ff402f68da00a04e66))
+* release workflow ([290d018](https://github.com/garethgeorge/backrest/commit/290d018c7585a4032b5f5d7a26f06e4d74f8b5cb))
+* snapshot browser on Windows ([19ed611](https://github.com/garethgeorge/backrest/commit/19ed611477186af2702fb7ba403b0bac45ccc4aa))
+* UI refresh timing bugs ([ba005ae](https://github.com/garethgeorge/backrest/commit/ba005aee0beb0105948901330e9ab7f7290eec92))
+
 ## [1.0.0](https://github.com/garethgeorge/backrest/compare/v0.17.2...v1.0.0) (2024-05-20)
 
 
