@@ -26,7 +26,7 @@ func ContextWithWriter(ctx context.Context, logger io.Writer) context.Context {
 	return context.WithValue(ctx, contextKeyLogWriter, logger)
 }
 
-// LoggerFromContext returns a logger from the context, or the global logger if none is found.
+// Logger returns a logger from the context, or the global logger if none is found.
 // this is somewhat expensive, it should be called once per task.
 func Logger(ctx context.Context) *zap.Logger {
 	writer := WriterFromContext(ctx)

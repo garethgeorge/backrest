@@ -26,8 +26,7 @@ type Repo struct {
 	cmd string
 	uri string
 
-	extraArgs []string
-	extraEnv  []string
+	opts []GenericOption
 
 	exists           error
 	checkExists      sync.Once
@@ -37,23 +36,19 @@ type Repo struct {
 
 // NewRepo instantiates a new repository.
 func NewRepo(resticBin string, uri string, opts ...GenericOption) *Repo {
-	opt := &GenericOpts{}
-	for _, o := range opts {
-		o(opt)
-	}
-
-	opt.extraEnv = append(opt.extraEnv, "RESTIC_REPOSITORY="+uri)
+	opts = append(opts, WithEnv("RESTIC_REPOSITORY="+uri))
 
 	return &Repo{
-		cmd:       resticBin, // TODO: configurable binary path
-		uri:       uri,
-		extraArgs: opt.extraArgs,
-		extraEnv:  opt.extraEnv,
+		cmd:  resticBin,
+		uri:  uri,
+		opts: opts,
 	}
 }
 
 func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...GenericOption) *exec.Cmd {
-	opt := resolveOpts(opts)
+	opt := &GenericOpts{}
+	resolveOpts(opt, r.opts)
+	resolveOpts(opt, opts)
 
 	fullCmd := append([]string{r.cmd}, args...)
 
@@ -61,11 +56,9 @@ func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...Ge
 		fullCmd = append(slices.Clone(opt.prefixCmd), fullCmd...)
 	}
 
-	fullCmd = append(fullCmd, r.extraArgs...)
 	fullCmd = append(fullCmd, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, fullCmd[0], fullCmd[1:]...)
-	cmd.Env = append(cmd.Env, r.extraEnv...)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	logger := LoggerFromContext(ctx)
@@ -76,7 +69,7 @@ func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...Ge
 	}
 
 	if logger := LoggerFromContext(ctx); logger != nil {
-		fmt.Fprintf(logger, "\ncommand: %v %v\n", r.cmd, strings.Join(args, " "))
+		fmt.Fprintf(logger, "\ncommand: %v %v\n", fullCmd[0], strings.Join(fullCmd[1:], " "))
 	}
 
 	return cmd
@@ -434,12 +427,10 @@ type GenericOpts struct {
 	prefixCmd []string
 }
 
-func resolveOpts(opts []GenericOption) *GenericOpts {
-	opt := &GenericOpts{}
+func resolveOpts(opt *GenericOpts, opts []GenericOption) {
 	for _, o := range opts {
 		o(opt)
 	}
-	return opt
 }
 
 type GenericOption func(opts *GenericOpts)
@@ -487,8 +478,8 @@ func WithEnviron() GenericOption {
 	return WithEnv(os.Environ()...)
 }
 
-func WithPrefixCommand(proc string, args ...string) GenericOption {
+func WithPrefixCommand(args ...string) GenericOption {
 	return func(opts *GenericOpts) {
-		opts.prefixCmd = append([]string{proc}, args...)
+		opts.prefixCmd = append(opts.prefixCmd, args...)
 	}
 }

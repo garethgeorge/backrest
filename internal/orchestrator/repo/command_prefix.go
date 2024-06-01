@@ -25,13 +25,12 @@ func resolveCommandPrefix(prefix *v1.CommandPrefix) ([]restic.GenericOption, err
 	if prefix.GetCpuNice() != v1.CommandPrefix_CPU_DEFAULT {
 		if !niceAvailable() {
 			return nil, errors.New("nice not available, cpu_nice cannot be used")
-		} else {
-			switch prefix.GetCpuNice() {
-			case v1.CommandPrefix_CPU_HIGH:
-				opts = append(opts, restic.WithPrefixCommand("nice", "-n", "10"))
-			case v1.CommandPrefix_CPU_LOW:
-				opts = append(opts, restic.WithPrefixCommand("nice", "-n", "-10"))
-			}
+		}
+		switch prefix.GetCpuNice() {
+		case v1.CommandPrefix_CPU_HIGH:
+			opts = append(opts, restic.WithPrefixCommand("nice", "-n", "-10"))
+		case v1.CommandPrefix_CPU_LOW:
+			opts = append(opts, restic.WithPrefixCommand("nice", "-n", "10"))
 		}
 	}
 

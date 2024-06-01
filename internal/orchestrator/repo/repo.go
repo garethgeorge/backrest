@@ -59,7 +59,7 @@ func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath stri
 
 	// Resolve command prefix
 	if extraOpts, err := resolveCommandPrefix(repoConfig.GetCommandPrefix()); err != nil {
-		return nil, fmt.Errorf(" resolve command prefix: %w", err)
+		return nil, fmt.Errorf("resolve command prefix: %w", err)
 	} else {
 		opts = append(opts, extraOpts...)
 	}
