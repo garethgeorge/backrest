@@ -1,6 +1,7 @@
 package api
 
 import (
+	"atomic"
 	"bytes"
 	"context"
 	"encoding/hex"
@@ -233,7 +234,7 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 		for {
 			select {
 			case <-ctx.Done():
-				return nil
+				return
 			case event := <-events:
 				if err := resp.Send(event); err != nil {
 					select {
