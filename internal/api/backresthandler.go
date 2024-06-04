@@ -192,7 +192,6 @@ func (s *BackrestHandler) ListSnapshotFiles(ctx context.Context, req *connect.Re
 
 // GetOperationEvents implements GET /v1/events/operations
 func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.Request[emptypb.Empty], resp *connect.ServerStream[v1.OperationEvent]) error {
-
 	errChan := make(chan error, 1)
 	events := make(chan *v1.OperationEvent, 100)
 
@@ -221,23 +220,36 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 		select {
 		case events <- event:
 		default:
-			errChan <- errors.New("event buffer overflow, closing stream for client retry and catchup")
+			select {
+			case errChan <- errors.New("event buffer overflow, closing stream for client retry and catchup")
+			default:
+			}
 		}
 	}
 	s.oplog.Subscribe(&callback)
 	defer s.oplog.Unsubscribe(&callback)
 
-	for {
-		select {
-		case err := <-errChan:
-			return err
-		case <-ctx.Done():
-			return nil
-		case event := <-events:
-			if err := resp.Send(event); err != nil {
-				return fmt.Errorf("failed to write event: %w", err)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case event := <-events:
+				if err := resp.Send(event); err != nil {
+					select {
+					case errChan <- errors.New("failed to send event")
+					default:
+					}
+				}
 			}
 		}
+	}()
+
+	select {
+	case err := <-errChan:
+		return err
+	case <-ctx.Done():
+		return nil
 	}
 }
 
