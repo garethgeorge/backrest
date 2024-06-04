@@ -1,7 +1,6 @@
 package api
 
 import (
-	"atomic"
 	"bytes"
 	"context"
 	"encoding/hex"
