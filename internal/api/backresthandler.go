@@ -221,7 +221,7 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 		case events <- event:
 		default:
 			select {
-			case errChan <- errors.New("event buffer overflow, closing stream for client retry and catchup")
+			case errChan <- errors.New("event buffer overflow, closing stream for client retry and catchup"):
 			default:
 			}
 		}
@@ -237,7 +237,7 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 			case event := <-events:
 				if err := resp.Send(event); err != nil {
 					select {
-					case errChan <- errors.New("failed to send event")
+					case errChan <- errors.New("failed to send event"):
 					default:
 					}
 				}
