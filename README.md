@@ -36,7 +36,7 @@ Backrest itself is built in Golang (matching restic's implementation) and is shi
 - WebUI supports local and remote access (e.g. run on a NAS and access from your desktop)
 - Multi-platform support (Linux, macOS, Windows, FreeBSD, [Docker](https://hub.docker.com/r/garethgeorge/backrest))
 - Import your existing restic repositories
-- Cron scheduled backups and health operations (e.g. prune and forget)
+- Cron scheduled backups and health operations (e.g. prune, check, forget)
 - UI for browing and restoring files from snapshots
 - Configurable backup notifications (e.g. Discord, Slack, Shoutrrr, Gotify)
 - Add shell command hooks to run before and after backup operations.
@@ -76,13 +76,13 @@ services:
   backrest:
     image: garethgeorge/backrest
     container_name: backrest
-    hostname: backrest # Use this to set the hostname instead of container ID to the config.json and WebUI.
+    hostname: backrest
     volumes:
       - ./backrest/data:/data
       - ./backrest/config:/config
       - ./backrest/cache:/cache
-      - /MY-BACKUP-DATA:/userdata # mount your directories to backup somewhere in the filesystem
-      - /MY-REPOS:/repos # (optional) mount your restic repositories somewhere in the filesystem.
+      - /MY-BACKUP-DATA:/userdata # [optional] mount local paths to backup here.
+      - /MY-REPOS:/repos # [optional] mount repos if using local storage, not necessary for remotes e.g. B2, S3, etc.
     environment:
       - BACKREST_DATA=/data # path for backrest data. restic binary and the database are placed here.
       - BACKREST_CONFIG=/config/config.json # path for the backrest config file.
@@ -94,20 +94,7 @@ services:
 
 ## Running on Linux
 
-### Arch Linux
-
-> [!Note]
-> [Backrest on AUR](https://aur.archlinux.org/packages/backrest) is not maintained by the Backrest official and has made minor adjustments to the recommended services. Please refer to [here](https://aur.archlinux.org/cgit/aur.git/tree/backrest@.service?h=backrest) for details. In [backrest@.service](https://aur.archlinux.org/cgit/aur.git/tree/backrest@.service?h=backrest), use `restic` from the Arch Linux official repository by setting `BACKREST_RESTIC_COMMAND`. And for information on enable/starting/stopping services, please refer to [Systemd#Using_units](https://wiki.archlinux.org/title/Systemd#Using_units).
-
-```shell
-## Install Backrest from AUR
-paru -Sy backrest  # or: yay -Sy backrest
-
-## Enable Backrest service for current user
-sudo systemctl enable --now backrest@$USER.service
-```
-
-### Download release
+### All Linux Platforms
 
 Download a release from the [releases page](https://github.com/garethgeorge/backrest/releases)
 
@@ -178,20 +165,37 @@ sudo systemctl start backrest
 > [!NOTE]
 > You can set the Linux user and group to your primary user (e.g. `whoami` when logged in).
 
+### Arch Linux
+
+> [!Note]
+> [Backrest on AUR](https://aur.archlinux.org/packages/backrest) is not maintained by the Backrest official and has made minor adjustments to the recommended services. Please refer to [here](https://aur.archlinux.org/cgit/aur.git/tree/backrest@.service?h=backrest) for details. In [backrest@.service](https://aur.archlinux.org/cgit/aur.git/tree/backrest@.service?h=backrest), use `restic` from the Arch Linux official repository by setting `BACKREST_RESTIC_COMMAND`. And for information on enable/starting/stopping services, please refer to [Systemd#Using_units](https://wiki.archlinux.org/title/Systemd#Using_units).
+
+```shell
+## Install Backrest from AUR
+paru -Sy backrest  # or: yay -Sy backrest
+
+## Enable Backrest service for current user
+sudo systemctl enable --now backrest@$USER.service
+```
+
 ## Running on macOS
 
-#### Using Brew (Recommended)
+#### Using Homebrew
 
-Backrest is provided as a [homebrew](https://brew.sh/) tap. To install with brew run:
+Backrest is provided as a [homebrew tap](https://github.com/garethgeorge/homebrew-backrest-tap). To install with brew run:
 
 ```sh
 brew tap garethgeorge/homebrew-backrest-tap
 brew install backrest
+brew services start backrest
 ```
 
 This tap uses [Brew services](https://github.com/Homebrew/homebrew-services) to launch and manage Backrest's lifecycle. Backrest will launch on startup and run on port ':9898` by default.
 
-#### Manually using the install script (Recommended)
+> [!NOTE]
+> You may need to enable full disk access on MacOS for backrest to read all files on your computer when running backup operations. Not necessary for browsing.
+
+#### Manually using the install script
 
 Download a Darwin release from the [releases page](https://github.com/garethgeorge/backrest/releases) and install it to `/usr/local/bin`.
 
