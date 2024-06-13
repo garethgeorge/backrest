@@ -112,10 +112,8 @@ func (v HookVars) Summary() (string, error) {
 		return v.renderTemplate(templateForSnapshotStart)
 	case v1.Hook_CONDITION_SNAPSHOT_END, v1.Hook_CONDITION_SNAPSHOT_WARNING, v1.Hook_CONDITION_SNAPSHOT_SUCCESS:
 		return v.renderTemplate(templateForSnapshotEnd)
-	case v1.Hook_CONDITION_ANY_ERROR, v1.Hook_CONDITION_SNAPSHOT_ERROR, v1.Hook_CONDITION_CHECK_ERROR, v1.Hook_CONDITION_PRUNE_ERROR:
-		return v.renderTemplate(templateForError)
 	default:
-		return "unknown event", nil
+		return v.renderTemplate(templateDefault)
 	}
 }
 
@@ -133,12 +131,18 @@ func (v HookVars) renderTemplate(templ string) (string, error) {
 	return buf.String(), nil
 }
 
-var defaultTemplate = `
+var templateDefault = `
 {{ if .Error -}}
-Backrest Notification for Error
-Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
+Backrest Error
+Task: {{ .Task }} at {{ .FormatTime .CurTime }}
 Event: {{ .EventName .Event }}
 Repo: {{ .Repo.Id }}
+Error: {{ .Error }}
+{{ else -}}
+Backrest Notification
+Task: {{ .Task }} at {{ .FormatTime .CurTime }}
+Event: {{ .EventName .Event }}
+{{ end }}
 `
 
 var templateForSnapshotEnd = `
@@ -168,12 +172,6 @@ Backup Statistics:
 - Total duration: {{ .SnapshotStats.TotalDuration }}s
 {{ end }}
 {{ end }}`
-
-var templateForError = `
-{{ if .Error -}}
-Error: {{ .Error }}
-{{ end }}
-`
 
 var templateForSnapshotStart = `
 Backrest Notification for Snapshot Start
