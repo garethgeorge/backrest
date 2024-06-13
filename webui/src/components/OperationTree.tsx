@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   BackupInfo,
   BackupInfoCollector,
@@ -231,9 +231,13 @@ export const OperationTree = ({
     <Row>
       <Col span={12}>{backupTree}</Col>
       <Col span={12}>
-        {selectedBackupId ? (
-          <BackupView backup={backups.find((b) => b.id === selectedBackupId)} />
-        ) : null}
+        <BackupViewContainer>
+          {selectedBackupId ? (
+            <BackupView
+              backup={backups.find((b) => b.id === selectedBackupId)}
+            />
+          ) : null}
+        </BackupViewContainer>
       </Col>
     </Row>
   );
@@ -311,6 +315,98 @@ const sortByKey = (a: OpTreeNode, b: OpTreeNode) => {
 
 const sortByKeyReverse = (a: OpTreeNode, b: OpTreeNode) => {
   return -sortByKey(a, b);
+};
+
+const BackupViewContainer = ({ children }: { children: React.ReactNode }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const refresh = useState(0)[1];
+  const [offset, setOffset] = useState(0);
+
+  // THE RULES
+  // the top can not be more than windowHeight - divHeight pixels beyond the top
+  // the bottom can not poke more than windowHeight - divHeight pixels beyond the bottom
+
+  useEffect(() => {
+    let offset = 0;
+
+    // handle scroll events to keep the fixed container in view.
+    const handleScroll = () => {
+      const rect = ref.current?.getBoundingClientRect();
+      const innerRect = innerRef.current?.getBoundingClientRect();
+
+      if (!rect || !innerRect) {
+        return;
+      }
+
+      if (innerRect.height <= window.innerHeight) {
+        if (rect.top <= 0) {
+          console.log("top overflow", rect.top, offset);
+          offset = -rect.top;
+          setOffset(offset);
+          return;
+        }
+        console.log("just do the default stuff");
+        setOffset(0);
+        refresh(Math.random());
+        return;
+      }
+
+      const maxOverflow = innerRect.height - window.innerHeight;
+
+      if (rect.top + offset < -maxOverflow) {
+        offset = -maxOverflow - rect.top;
+        setOffset(offset);
+        return;
+      }
+
+      if (rect.top + offset > 0) {
+        console.log("bottom overflow", rect.top + offset, maxOverflow);
+        offset = -rect.top;
+        setOffset(offset);
+        return;
+      }
+      refresh(Math.random());
+    };
+    window.addEventListener("scroll", handleScroll);
+
+    // attach resize observer to ref to update the width of the fixed container.
+    const resizeObserver = new ResizeObserver(() => {
+      refresh(Math.random());
+    });
+    if (ref.current) {
+      resizeObserver.observe(ref.current);
+      resizeObserver.observe(innerRef.current!);
+    }
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      resizeObserver.disconnect();
+    };
+  }, [ref.current, innerRef.current]);
+
+  const rect = ref.current?.getBoundingClientRect();
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        width: "100%",
+        height: innerRef.current?.clientHeight,
+      }}
+    >
+      <div
+        ref={innerRef}
+        style={{
+          position: "fixed",
+          top: (rect?.top || 0) + offset,
+          left: rect?.left,
+          width: ref.current?.clientWidth,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
 };
 
 const BackupView = ({ backup }: { backup?: BackupInfo }) => {
