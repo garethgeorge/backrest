@@ -64,6 +64,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      # download dist artifacts from previous job
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: release-artifacts
+          path: dist
+
       - name: Get Release Artifact URL # used to append installer executables to the release after GoReleaser runs
         id: geturl
         run: |

@@ -120,15 +120,17 @@ export const HooksFormList = () => {
                 style={{ marginBottom: "5px" }}
               >
                 <Form.Item name={[field.name, "conditions"]}>
-                  <Select
-                    mode="multiple"
-                    allowClear
-                    style={{ width: "100%" }}
-                    placeholder="Runs when..."
-                    options={proto3
-                      .getEnumType(Hook_Condition)
-                      .values.map((v) => ({ label: v.name, value: v.name }))}
-                  />
+                  <HookConditionsTooltip>
+                    <Select
+                      mode="multiple"
+                      allowClear
+                      style={{ width: "100%" }}
+                      placeholder="Runs when..."
+                      options={proto3
+                        .getEnumType(Hook_Condition)
+                        .values.map((v) => ({ label: v.name, value: v.name }))}
+                    />
+                  </HookConditionsTooltip>
                 </Form.Item>
                 <Form.Item
                   shouldUpdate={(prevValues, curValues) => {
@@ -410,8 +412,8 @@ const ItemOnErrorSelector = ({ field }: { field: FormListFieldData }) => {
       <Tooltip
         title={
           <>
-            What happens when the hook fails (currently only has effect on
-            backup start hooks)
+            What happens when the hook fails (only effective on start hooks e.g.
+            backup start, prune start, check start)
             <ul>
               <li>
                 IGNORE - the failure is ignored, subsequent hooks and the backup
@@ -449,3 +451,43 @@ const requiredField = (message: string, extra?: Rule) => ({
   required: true,
   message: message,
 });
+
+const HookConditionsTooltip = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <Tooltip
+      title={
+        <div>
+          Available conditions
+          <ul>
+            <li>CONDITION_ANY_ERROR - error executing any task</li>
+            <li>CONDITION_SNAPSHOT_START - start of a backup operation</li>
+            <li>
+              CONDITION_SNAPSHOT_END - end of backup operation (success or
+              failure)
+            </li>
+            <li>
+              CONDITION_SNAPSHOT_SUCCESS - end of successful backup operation
+            </li>
+            <li>CONDITION_SNAPSHOT_ERROR - end of failed backup</li>
+            <li>CONDITION_SNAPSHOT_WARNING - end of partial backup</li>
+            <li>CONDITION_PRUNE_START - start of prune operation</li>
+            <li>CONDITION_PRUNE_SUCCESS - end of successful prune</li>
+            <li>CONDITION_PRUNE_ERROR - end of failed prune</li>
+            <li>CONDITION_CHECK_START - start of check operation</li>
+            <li>CONDITION_CHECK_SUCCESS - end of successful check</li>
+            <li>CONDITION_CHECK_ERROR - end of failed check</li>
+          </ul>
+          for more info see the{" "}
+          <a
+            href="https://garethgeorge.github.io/backrest/docs/hooks"
+            target="_blank"
+          >
+            documentation
+          </a>
+        </div>
+      }
+    >
+      {children}
+    </Tooltip>
+  );
+};

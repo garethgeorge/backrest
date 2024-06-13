@@ -190,11 +190,16 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		}
 		op.Status = v1.OperationStatus_STATUS_WARNING
 		op.DisplayMessage = "Partial backup, some files may not have been read completely."
-	}
 
-	runner.ExecuteHooks([]v1.Hook_Condition{
-		v1.Hook_CONDITION_SNAPSHOT_END,
-	}, vars)
+		runner.ExecuteHooks([]v1.Hook_Condition{
+			v1.Hook_CONDITION_SNAPSHOT_END,
+		}, vars)
+	} else {
+		runner.ExecuteHooks([]v1.Hook_Condition{
+			v1.Hook_CONDITION_SNAPSHOT_SUCCESS,
+			v1.Hook_CONDITION_SNAPSHOT_END,
+		}, vars)
+	}
 
 	op.SnapshotId = summary.SnapshotId
 	backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(summary)
