@@ -25,7 +25,7 @@ type CheckTask struct {
 func NewCheckTask(repoID, planID string, force bool) Task {
 	return &CheckTask{
 		BaseTask: BaseTask{
-			TaskName:   fmt.Sprintf("prune repo %q", repoID),
+			TaskName:   fmt.Sprintf("check for repo %q", repoID),
 			TaskRepoID: repoID,
 			TaskPlanID: planID,
 		},
