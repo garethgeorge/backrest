@@ -18,7 +18,7 @@ var (
 
 var flagDataDir = flag.String("data-dir", "", "path to data directory, defaults to XDG_DATA_HOME/.local/backrest. Overrides BACKREST_DATA environment variable.")
 var flagConfigPath = flag.String("config-file", "", "path to config file, defaults to XDG_CONFIG_HOME/backrest/config.json. Overrides BACKREST_CONFIG environment variable.")
-var flagBindAddress = flag.String("bind-address", "", "address to bind to, defaults to :9898. Use 127.0.0.1:9898 to listen only on localhost. Overrides BACKREST_PORT environment variable.")
+var flagBindAddress = flag.String("bind-address", "", "address to bind to, defaults to 127.0.0.1:9898. Use :9898 to listen on all interfaces. Overrides BACKREST_PORT environment variable.")
 var flagResticBinPath = flag.String("restic-cmd", "", "path to restic binary, defaults to a backrest managed version of restic. Overrides BACKREST_RESTIC_COMMAND environment variable.")
 
 // ConfigFilePath
@@ -61,7 +61,7 @@ func BindAddress() string {
 	if val := os.Getenv(EnvVarBindAddress); val != "" {
 		return formatBindAddress(val)
 	}
-	return ":9898"
+	return "127.0.0.1:9898"
 }
 
 func ResticBinPath() string {

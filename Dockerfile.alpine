@@ -6,4 +6,4 @@ RUN /backrest --install-deps-only
 RUN mkdir -p /bin && mv /root/.local/share/backrest/* /bin
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["/backrest"]
+CMD ["/backrest", "--bind-address", ":9898"]

@@ -13,4 +13,4 @@ COPY --from=alpine /sbin/tini-static /tini
 COPY backrest /backrest
 
 ENTRYPOINT ["/tini", "--"]
-CMD ["/backrest"]
+CMD ["/backrest", "--bind-address", ":9898"]
