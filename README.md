@@ -87,6 +87,7 @@ services:
       - BACKREST_DATA=/data # path for backrest data. restic binary and the database are placed here.
       - BACKREST_CONFIG=/config/config.json # path for the backrest config file.
       - XDG_CACHE_HOME=/cache # path for the restic cache which greatly improves performance.
+      - TZ=America/Los_Angeles # set the timezone for the container, used as the timezone for cron jobs.
     restart: unless-stopped
     ports:
       - 9898:9898
@@ -235,10 +236,10 @@ To run the binary on login, create a shortcut to the binary and place it in the 
 
 ## Environment Variables
 
-| Variable | Description | Default |
-| - | - | - |
-| `BACKREST_PORT` | Port to bind to | 9898 |
-| `BACKREST_CONFIG` | Path to config file | `$HOME/.config/backrest/config.json`<br>(or, if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/backrest/config.json`) |
-| `BACKREST_DATA` | Path to the data directory | `$HOME/.local/share/backrest`<br>(or, if `$XDG_DATA_HOME` is set, `$XDG_DATA_HOME/backrest`) |
-| `BACKREST_RESTIC_COMMAND` | Path to restic binary | Defaults to a Backrest managed version of restic |
-| `XDG_CACHE_HOME` | Path to the cache directory | |
+| Variable                  | Description                 | Default                                                                                                             |
+| ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `BACKREST_PORT`           | Port to bind to             | 9898                                                                                                                |
+| `BACKREST_CONFIG`         | Path to config file         | `$HOME/.config/backrest/config.json`<br>(or, if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/backrest/config.json`) |
+| `BACKREST_DATA`           | Path to the data directory  | `$HOME/.local/share/backrest`<br>(or, if `$XDG_DATA_HOME` is set, `$XDG_DATA_HOME/backrest`)                        |
+| `BACKREST_RESTIC_COMMAND` | Path to restic binary       | Defaults to a Backrest managed version of restic                                                                    |
+| `XDG_CACHE_HOME`          | Path to the cache directory |                                                                                                                     |
