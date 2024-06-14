@@ -59,7 +59,7 @@ Download options
 - Build from source ([see below](#building)).
 - Run with docker: `garethgeorge/backrest:latest` ([see on dockerhub](https://hub.docker.com/r/garethgeorge/backrest)) or `garethgeorge/backrest:latest-alpine` for an image that includes rclone and common unix utilities.
 
-Backrest is accessible from a web browser. By default it binds to `0.0.0.0:9898` and can be accessed at `http://localhost:9898`. Change the port with the `BACKREST_PORT` environment variable e.g. `BACKREST_PORT=127.0.0.1 backrest` to listen only on local interfaces. On first startup backrest will prompt you to create a default username and password, this can be changed later in the settings page.
+Backrest is accessible from a web browser. By default it binds to `127.0.0.1:9898` and can be accessed at `http://localhost:9898`. Change the port with the `BACKREST_PORT` environment variable e.g. `BACKREST_PORT=0.0.0.0:9898 backrest` to listen on all network interfaces. On first startup backrest will prompt you to create a default username and password, this can be changed later in the settings page.
 
 > [!Note]
 > Backrest installs a specific restic version to ensure that the version of restic matches the version Backrest is tested against. This provides the best guarantees for stability. If you wish to use a different version of restic OR if you would prefer to install restic manually you may do so by setting the `BACKREST_RESTIC_COMMAND` environment variable to the path of the restic binary you wish to use.
