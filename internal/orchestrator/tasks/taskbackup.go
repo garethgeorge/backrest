@@ -174,24 +174,24 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		SnapshotStats: summary,
 		SnapshotId:    summary.SnapshotId,
 	}
+
 	if err != nil {
 		vars.Error = err.Error()
 		if !errors.Is(err, restic.ErrPartialBackup) {
 			runner.ExecuteHooks([]v1.Hook_Condition{
 				v1.Hook_CONDITION_SNAPSHOT_ERROR,
 				v1.Hook_CONDITION_ANY_ERROR,
+				v1.Hook_CONDITION_SNAPSHOT_END,
 			}, vars)
 			return err
 		} else {
 			vars.Error = fmt.Sprintf("partial backup, %d files may not have been read completely.", len(backupOp.OperationBackup.Errors))
-			runner.ExecuteHooks([]v1.Hook_Condition{
-				v1.Hook_CONDITION_SNAPSHOT_WARNING,
-			}, vars)
 		}
 		op.Status = v1.OperationStatus_STATUS_WARNING
 		op.DisplayMessage = "Partial backup, some files may not have been read completely."
 
 		runner.ExecuteHooks([]v1.Hook_Condition{
+			v1.Hook_CONDITION_SNAPSHOT_WARNING,
 			v1.Hook_CONDITION_SNAPSHOT_END,
 		}, vars)
 	} else {
