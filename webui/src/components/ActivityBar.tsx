@@ -18,8 +18,9 @@ export const ActivityBar = () => {
   const setRefresh = useState<number>(0)[1];
 
   useEffect(() => {
-    const callback = ({ operation, type }: OperationEvent) => {
-      if (!operation || !type) return;
+    const callback = (event?: OperationEvent, err?: Error) => {
+      if (!event || !event.operation) return;
+      const operation = event.operation;
 
       setActiveOperations((ops) => {
         ops = ops.filter((op) => op.id !== operation.id);

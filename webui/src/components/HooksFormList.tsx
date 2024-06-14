@@ -119,8 +119,8 @@ export const HooksFormList = () => {
                 size="small"
                 style={{ marginBottom: "5px" }}
               >
-                <Form.Item name={[field.name, "conditions"]}>
-                  <HookConditionsTooltip>
+                <HookConditionsTooltip>
+                  <Form.Item name={[field.name, "conditions"]}>
                     <Select
                       mode="multiple"
                       allowClear
@@ -130,8 +130,8 @@ export const HooksFormList = () => {
                         .getEnumType(Hook_Condition)
                         .values.map((v) => ({ label: v.name, value: v.name }))}
                     />
-                  </HookConditionsTooltip>
-                </Form.Item>
+                  </Form.Item>
+                </HookConditionsTooltip>
                 <Form.Item
                   shouldUpdate={(prevValues, curValues) => {
                     return prevValues.hooks[index] !== curValues.hooks[index];

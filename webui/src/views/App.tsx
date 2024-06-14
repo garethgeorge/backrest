@@ -18,8 +18,6 @@ import { ActivityBar } from "../components/ActivityBar";
 import { OperationEvent, OperationStatus } from "../../gen/ts/v1/operations_pb";
 import {
   colorForStatus,
-  getStatusForPlan,
-  getStatusForRepo,
   getStatusForSelector,
   subscribeToOperations,
   unsubscribeFromOperations,
@@ -309,8 +307,9 @@ const IconForResource = ({
     };
     load();
     const refresh = _.debounce(load, 1000, { maxWait: 5000, trailing: true });
-    const callback = ({ operation }: OperationEvent) => {
-      if (!operation) return;
+    const callback = (event?: OperationEvent, err?: Error) => {
+      if (!event || !event.operation) return;
+      const operation = event.operation;
       if (operation.planId === planId || operation.repoId === repoId) {
         refresh();
       }

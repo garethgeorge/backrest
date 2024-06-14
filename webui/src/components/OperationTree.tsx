@@ -54,30 +54,14 @@ export const OperationTree = ({
 }: React.PropsWithoutRef<{ req: GetOperationsRequest }>) => {
   const alertApi = useAlertApi();
   const showModal = useShowModal();
-  const [loading, setLoading] = useState(true);
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [selectedBackupId, setSelectedBackupId] = useState<string | null>(null);
 
   // track backups for this operation tree view.
   useEffect(() => {
     setSelectedBackupId(null);
-    const backupCollector = new BackupInfoCollector();
-    const lis = (opEvent: OperationEvent) => {
-      if (
-        !req.selector ||
-        !opEvent.operation ||
-        !matchSelector(req.selector, opEvent.operation)
-      ) {
-        return;
-      }
-      if (opEvent.type !== OperationEventType.EVENT_DELETED) {
-        backupCollector.addOperation(opEvent.type!, opEvent.operation!);
-      } else {
-        backupCollector.removeOperation(opEvent.operation!);
-      }
-    };
-    subscribeToOperations(lis);
 
+    const backupCollector = new BackupInfoCollector();
     backupCollector.subscribe(
       _.debounce(
         () => {
@@ -92,19 +76,9 @@ export const OperationTree = ({
       )
     );
 
-    getOperations(req)
-      .then((ops) => {
-        backupCollector.bulkAddOperations(ops);
-      })
-      .catch((e) => {
-        alertApi!.error("Failed to fetch operations: " + e.messag);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-    return () => {
-      unsubscribeFromOperations(lis);
-    };
+    return backupCollector.collectFromRequest(req, (err) => {
+      alertApi!.error("API error: " + err.message);
+    });
   }, [JSON.stringify(req)]);
 
   const treeData = useMemo(() => {
@@ -113,10 +87,7 @@ export const OperationTree = ({
 
   if (backups.length === 0) {
     return (
-      <Empty
-        description={loading ? "Loading..." : "No backups yet."}
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-      ></Empty>
+      <Empty description={""} image={Empty.PRESENTED_IMAGE_SIMPLE}></Empty>
     );
   }
 
@@ -322,57 +293,41 @@ const BackupViewContainer = ({ children }: { children: React.ReactNode }) => {
   const innerRef = useRef<HTMLDivElement>(null);
   const refresh = useState(0)[1];
   const [offset, setOffset] = useState(0);
-
-  // THE RULES
-  // the top can not be more than windowHeight - divHeight pixels beyond the top
-  // the bottom can not poke more than windowHeight - divHeight pixels beyond the bottom
+  const [topY, setTopY] = useState(0);
+  const [bottomY, setBottomY] = useState(0);
 
   useEffect(() => {
+    if (!ref.current || !innerRef.current) {
+      return;
+    }
+
     let offset = 0;
 
     // handle scroll events to keep the fixed container in view.
     const handleScroll = () => {
-      const rect = ref.current?.getBoundingClientRect();
-      const innerRect = innerRef.current?.getBoundingClientRect();
+      const refRect = ref.current!.getBoundingClientRect();
+      const innerRect = innerRef.current!.getBoundingClientRect();
 
-      if (!rect || !innerRect) {
-        return;
+      let wiggle = Math.max(refRect.height - window.innerHeight, 0);
+      let topY = Math.max(ref.current!.getBoundingClientRect().top, 0);
+      let bottomY = topY;
+      if (topY == 0) {
+        // wiggle only if the top is actually the top edge of the screen.
+        topY -= wiggle;
+        bottomY += wiggle;
       }
 
-      if (innerRect.height <= window.innerHeight) {
-        if (rect.top <= 0) {
-          console.log("top overflow", rect.top, offset);
-          offset = -rect.top;
-          setOffset(offset);
-          return;
-        }
-        console.log("just do the default stuff");
-        setOffset(0);
-        refresh(Math.random());
-        return;
-      }
+      setTopY(topY);
+      setBottomY(bottomY);
 
-      const maxOverflow = innerRect.height - window.innerHeight;
-
-      if (rect.top + offset < -maxOverflow) {
-        offset = -maxOverflow - rect.top;
-        setOffset(offset);
-        return;
-      }
-
-      if (rect.top + offset > 0) {
-        console.log("bottom overflow", rect.top + offset, maxOverflow);
-        offset = -rect.top;
-        setOffset(offset);
-        return;
-      }
       refresh(Math.random());
     };
+
     window.addEventListener("scroll", handleScroll);
 
     // attach resize observer to ref to update the width of the fixed container.
     const resizeObserver = new ResizeObserver(() => {
-      refresh(Math.random());
+      handleScroll();
     });
     if (ref.current) {
       resizeObserver.observe(ref.current);
@@ -398,7 +353,7 @@ const BackupViewContainer = ({ children }: { children: React.ReactNode }) => {
         ref={innerRef}
         style={{
           position: "fixed",
-          top: (rect?.top || 0) + offset,
+          top: Math.max(Math.min(rect?.top || 0, bottomY), topY),
           left: rect?.left,
           width: ref.current?.clientWidth,
         }}
