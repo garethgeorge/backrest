@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"strings"
 )
 
 const outputBufferLimit = 1000
@@ -61,13 +60,12 @@ func (e *ErrorWithOutput) Is(target error) bool {
 
 // newErrorWithOutput creates a new error with the given output.
 func newErrorWithOutput(err error, output string) error {
-	firstNewLine := strings.Index(output, "\n")
-	if firstNewLine > 0 {
-		output = output[:firstNewLine]
+	if output == "" {
+		return err
 	}
 
-	if len(output) == 0 {
-		return err
+	if len(output) > outputBufferLimit {
+		output = output[:outputBufferLimit] + fmt.Sprintf("\n... %d bytes truncated ...\n", len(output)-outputBufferLimit)
 	}
 
 	return &ErrorWithOutput{
