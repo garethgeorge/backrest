@@ -9,10 +9,8 @@ import {
   Radio,
   InputNumber,
   Row,
-  Card,
   Col,
   Collapse,
-  FormInstance,
   Checkbox,
 } from "antd";
 import React, { useEffect, useState } from "react";
@@ -20,12 +18,7 @@ import { useShowModal } from "../components/ModalManager";
 import { Plan, RetentionPolicy } from "../../gen/ts/v1/config_pb";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
-import {
-  formatError,
-  formatErrorAlert,
-  useAlertApi,
-} from "../components/Alerts";
-import { Cron } from "react-js-cron";
+import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
 import {
   HooksFormList,

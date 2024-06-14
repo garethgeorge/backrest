@@ -39,6 +39,21 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
     }
   };
 
+  const handleUnlockNow = async () => {
+    try {
+      alertsApi.info("Unlocking repo...");
+      await backrestService.doRepoTask(
+        new DoRepoTaskRequest({
+          repoId: repo.id!,
+          task: DoRepoTaskRequest_Task.UNLOCK,
+        })
+      );
+      alertsApi.success("Repo unlocked.");
+    } catch (e: any) {
+      alertsApi.error("Failed to unlock repo: " + e.message);
+    }
+  };
+
   const handleStatsNow = async () => {
     try {
       await backrestService.doRepoTask(
@@ -96,7 +111,6 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
       label: "Tree View",
       children: (
         <>
-          <h3>Browse Backups</h3>
           <OperationTree
             req={
               new GetOperationsRequest({
@@ -165,6 +179,12 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
         <Tooltip title="Indexes the snapshots in the repository. Snapshots are also indexed automatically after each backup.">
           <SpinButton type="default" onClickAsync={handleIndexNow}>
             Index Snapshots
+          </SpinButton>
+        </Tooltip>
+
+        <Tooltip title="Removes lockfiles and checks the repository for errors. Only run if you are sure the repo is not being accessed by another system">
+          <SpinButton type="default" onClickAsync={handleUnlockNow}>
+            Unlock Repo
           </SpinButton>
         </Tooltip>
 

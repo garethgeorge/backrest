@@ -14,7 +14,7 @@ import {
   STATUS_OPERATION_HISTORY,
 } from "../constants";
 
-const subscribers: ((event: OperationEvent) => void)[] = [];
+const subscribers: ((event?: OperationEvent, err?: Error) => void)[] = [];
 
 // Start fetching and emitting operations.
 (async () => {
@@ -23,7 +23,7 @@ const subscribers: ((event: OperationEvent) => void)[] = [];
     try {
       for await (const event of backrestService.getOperationEvents({})) {
         console.log("operation event", event);
-        subscribers.forEach((subscriber) => subscriber(event));
+        subscribers.forEach((subscriber) => subscriber(event, undefined));
       }
     } catch (e: any) {
       console.error("operations stream died with exception: ", e);
@@ -31,6 +31,7 @@ const subscribers: ((event: OperationEvent) => void)[] = [];
     await new Promise((accept, _) =>
       setTimeout(accept, nextConnWaitUntil - new Date().getTime()),
     );
+    subscribers.forEach((subscriber) => subscriber(undefined, new Error("reconnecting")));
   }
 })();
 
@@ -42,14 +43,14 @@ export const getOperations = async (
 };
 
 export const subscribeToOperations = (
-  callback: (event: OperationEvent) => void,
+  callback: (event?: OperationEvent, err?: Error) => void,
 ) => {
   subscribers.push(callback);
   console.log("subscribed to operations, subscriber count: ", subscribers.length);
 };
 
 export const unsubscribeFromOperations = (
-  callback: (event: OperationEvent) => void,
+  callback: (event?: OperationEvent, err?: Error) => void,
 ) => {
   const index = subscribers.indexOf(callback);
   if (index > -1) {
@@ -144,6 +145,46 @@ export class BackupInfoCollector {
       !shouldHideOperation(op),
   ) { }
 
+  public reset() {
+    this.operationsByFlowId = new Map();
+    this.backupsByFlowId = new Map();
+  }
+
+  public collectFromRequest(request: GetOperationsRequest, onError?: (cb: Error) => void): () => void {
+    getOperations(request).then((ops) => {
+      this.bulkAddOperations(ops);
+    }).catch(onError);
+
+    const cb = (event?: OperationEvent, err?: Error) => {
+      if (event) {
+        if (
+          !request.selector ||
+          !event.operation ||
+          !matchSelector(request.selector, event.operation)
+        ) {
+          return;
+        }
+        if (event.type !== OperationEventType.EVENT_DELETED) {
+          this.addOperation(event.type!, event.operation!);
+        } else {
+          this.removeOperation(event.operation!);
+        }
+      } else if (err) {
+        if (onError) onError(err);
+        console.error("error in operations stream: ", err);
+        getOperations(request).then((ops) => {
+          this.reset();
+          this.bulkAddOperations(ops);
+        }).catch(onError);
+      }
+    }
+    subscribeToOperations(cb);
+
+    return () => {
+      unsubscribeFromOperations(cb);
+    };
+  }
+
   private createBackup(operations: Operation[]): BackupInfo {
     // deduplicate and sort operations.
     operations.sort((a, b) => {
@@ -204,13 +245,13 @@ export class BackupInfoCollector {
       displayTime,
       displayType,
       status,
-      operations,
       backupLastStatus,
       snapshotInfo,
       forgotten,
       snapshotId: snapshotId,
       planId: operations[0].planId,
       repoId: operations[0].repoId,
+      operations: [...operations], // defensive copy.
     };
   }
 

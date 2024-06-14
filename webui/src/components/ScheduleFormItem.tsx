@@ -85,8 +85,9 @@ export const ScheduleFormItem = ({
             "month-days",
             "hours",
             "minutes",
+            "week-days",
           ]}
-          allowedPeriods={["day", "hour", "month"]}
+          allowedPeriods={["day", "hour", "month", "week"]}
           clearButton={false}
         />
       </Form.Item>

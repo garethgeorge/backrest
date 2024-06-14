@@ -40,27 +40,7 @@ export const OperationList = ({
 
     // track backups for this operation tree view.
     useEffect(() => {
-      if (!req) {
-        return;
-      }
-
-      const backupCollector = new BackupInfoCollector(filter);
-      const lis = (opEvent: OperationEvent) => {
-        if (
-          !req.selector ||
-          !opEvent.operation ||
-          !matchSelector(req.selector, opEvent.operation)
-        ) {
-          return;
-        }
-        if (opEvent.type !== OperationEventType.EVENT_DELETED) {
-          backupCollector.addOperation(opEvent.type!, opEvent.operation!);
-        } else {
-          backupCollector.removeOperation(opEvent.operation!);
-        }
-      };
-      subscribeToOperations(lis);
-
+      const backupCollector = new BackupInfoCollector();
       backupCollector.subscribe(
         _.debounce(
           () => {
@@ -71,20 +51,13 @@ export const OperationList = ({
             setBackups(backups);
           },
           100,
-          { trailing: true }
+          { leading: true, trailing: true }
         )
       );
 
-      getOperations(req)
-        .then((ops) => {
-          backupCollector.bulkAddOperations(ops);
-        })
-        .catch((e) => {
-          alertApi!.error("Failed to fetch operations: " + e.message);
-        });
-      return () => {
-        unsubscribeFromOperations(lis);
-      };
+      return backupCollector.collectFromRequest(req, (err) => {
+        alertApi!.error("API error: " + err.message);
+      });
     }, [JSON.stringify(req)]);
   } else {
     backups = [...(useBackups || [])];

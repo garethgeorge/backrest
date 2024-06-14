@@ -76,10 +76,11 @@ const StatsPanel = ({ repoId }: { repoId: string }) => {
 
     refreshOperations();
 
-    const handler = (event: OperationEvent) => {
+    const handler = (event?: OperationEvent, err?: Error) => {
+      if (!event || !event.operation) return;
       if (
-        event.operation?.repoId == repoId &&
-        event.operation?.op?.case === "operationStats"
+        event.operation.repoId == repoId &&
+        event.operation.op?.case === "operationStats"
       ) {
         refreshOperations();
       }
