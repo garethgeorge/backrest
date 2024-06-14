@@ -2,6 +2,7 @@ package restic
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -96,34 +97,19 @@ func readBackupProgressEntries(output io.Reader, callback func(event *BackupProg
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
-	var summary *BackupProgressEntry
+	nonJSONOutput := bytes.NewBuffer(nil)
 
-	// first event is handled specially to detect non-JSON output and fast-path out.
-	if scanner.Scan() {
-		var event BackupProgressEntry
-		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			return nil, fmt.Errorf("command output was not JSON: %w", err)
-		}
-		if err := event.Validate(); err != nil {
-			return nil, err
-		}
-		if callback != nil {
-			callback(&event)
-		}
-		if event.MessageType == "summary" {
-			summary = &event
-		}
-	}
+	var summary *BackupProgressEntry
 
 	// remaining events are parsed as JSON
 	for scanner.Scan() {
 		var event BackupProgressEntry
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			// skip it. This is a best-effort attempt to parse the output.
+			nonJSONOutput.Write(scanner.Bytes())
 			continue
 		}
 		if err := event.Validate(); err != nil {
-			// skip it. This is a best-effort attempt to parse the output.
+			nonJSONOutput.Write(scanner.Bytes())
 			continue
 		}
 		if callback != nil {
@@ -134,10 +120,10 @@ func readBackupProgressEntries(output io.Reader, callback func(event *BackupProg
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return summary, fmt.Errorf("scanner encountered error: %w", err)
+		return summary, newErrorWithOutput(err, nonJSONOutput.String())
 	}
 	if summary == nil {
-		return nil, fmt.Errorf("no summary event found")
+		return nil, newErrorWithOutput(errors.New("no summary event found"), nonJSONOutput.String())
 	}
 	return summary, nil
 }
@@ -235,35 +221,20 @@ func readRestoreProgressEntries(output io.Reader, callback func(event *RestorePr
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
+	nonJSONOutput := bytes.NewBuffer(nil)
+
 	var summary *RestoreProgressEntry
-
-	// first event is handled specially to detect non-JSON output and fast-path out.
-	if scanner.Scan() {
-		var event RestoreProgressEntry
-
-		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			return nil, fmt.Errorf("command output was not JSON: %w", err)
-		}
-		if err := event.Validate(); err != nil {
-			return nil, err
-		}
-		if callback != nil {
-			callback(&event)
-		}
-		if event.MessageType == "summary" {
-			summary = &event
-		}
-	}
 
 	// remaining events are parsed as JSON
 	for scanner.Scan() {
 		var event RestoreProgressEntry
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			// skip it. Best effort parsing, restic will return with a non-zero exit code if it fails.
+			nonJSONOutput.Write(scanner.Bytes())
 			continue
 		}
 		if err := event.Validate(); err != nil {
 			// skip it. Best effort parsing, restic will return with a non-zero exit code if it fails.
+			nonJSONOutput.Write(scanner.Bytes())
 			continue
 		}
 
@@ -276,11 +247,11 @@ func readRestoreProgressEntries(output io.Reader, callback func(event *RestorePr
 	}
 
 	if err := scanner.Err(); err != nil {
-		return summary, fmt.Errorf("scanner encountered error: %w", err)
+		return summary, newErrorWithOutput(err, nonJSONOutput.String())
 	}
 
 	if summary == nil {
-		return nil, fmt.Errorf("no summary event found")
+		return nil, newErrorWithOutput(errors.New("no summary event found"), nonJSONOutput.String())
 	}
 
 	return summary, nil
