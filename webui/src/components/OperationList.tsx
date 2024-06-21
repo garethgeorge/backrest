@@ -85,7 +85,7 @@ export const OperationList = ({
         return (
           <OperationRow
             alertApi={alertApi!}
-            key={op.id + "-" + index}
+            key={op.id}
             operation={op}
             showPlan={showPlan || false}
           />

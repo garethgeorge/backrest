@@ -388,16 +388,15 @@ func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1
 
 func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error) {
 	if req.Msg.Target == "" {
-		req.Msg.Target = path.Join(os.Getenv("HOME"), "Downloads")
+		req.Msg.Target = path.Join(os.Getenv("HOME"), "Downloads", fmt.Sprintf("restic-restore-%v", time.Now().Format("2006-01-02T15-04-05")))
 	}
 	if req.Msg.Path == "" {
 		req.Msg.Path = "/"
 	}
 
-	target := path.Join(req.Msg.Target, fmt.Sprintf("restic-restore-%v", time.Now().Format("2006-01-02T15-04-05")))
-	_, err := os.Stat(target)
-	if !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("restore target dir %q already exists", req.Msg.Target)
+	// prevent restoring to a directory that already exists
+	if _, err := os.Stat(req.Msg.Target); err == nil {
+		return nil, fmt.Errorf("target directory %q already exists", req.Msg.Target)
 	}
 
 	at := time.Now()
@@ -406,7 +405,7 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 	if err != nil {
 		return nil, fmt.Errorf("failed to get flow ID for snapshot %q: %w", req.Msg.SnapshotId, err)
 	}
-	s.orchestrator.ScheduleTask(tasks.NewOneoffRestoreTask(req.Msg.RepoId, req.Msg.PlanId, flowID, at, req.Msg.SnapshotId, req.Msg.Path, target), tasks.TaskPriorityInteractive+tasks.TaskPriorityDefault)
+	s.orchestrator.ScheduleTask(tasks.NewOneoffRestoreTask(req.Msg.RepoId, req.Msg.PlanId, flowID, at, req.Msg.SnapshotId, req.Msg.Path, req.Msg.Target), tasks.TaskPriorityInteractive+tasks.TaskPriorityDefault)
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }

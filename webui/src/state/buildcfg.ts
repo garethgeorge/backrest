@@ -4,3 +4,4 @@ export const uiBuildVersion = (
   process.env.BACKREST_BUILD_VERSION || "dev-snapshot-build"
 ).trim();
 export const isDevBuild = uiBuildVersion === "dev-snapshot-build";
+export const pathSeparator = isWindows ? "\\" : "/";
