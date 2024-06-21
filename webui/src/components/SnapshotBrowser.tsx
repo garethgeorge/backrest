@@ -13,11 +13,18 @@ import {
   FolderOutlined,
 } from "@ant-design/icons";
 import { useShowModal } from "./ModalManager";
-import { formatBytes, normalizeSnapshotId } from "../lib/formatting";
+import {
+  formatBytes,
+  formatDate,
+  formatTime,
+  normalizeSnapshotId,
+} from "../lib/formatting";
 import { URIAutocomplete } from "./URIAutocomplete";
 import { validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
 import { ConfirmButton } from "./SpinButton";
+import { StringValue } from "@bufbuild/protobuf";
+import { pathSeparator } from "../state/buildcfg";
 
 const SnapshotBrowserContext = React.createContext<{
   snapshotId: string;
@@ -261,6 +268,59 @@ const RestoreModal = ({
     }
   };
 
+  const defaultPath = useMemo(() => {
+    if (path === pathSeparator) {
+      return "";
+    }
+    return path + "-backrest-restore-" + normalizeSnapshotId(snapshotId);
+  }, [path]);
+
+  let targetPath = Form.useWatch("target", form);
+  useEffect(() => {
+    if (!targetPath) {
+      return;
+    }
+    (async () => {
+      try {
+        if (targetPath.endsWith(pathSeparator)) {
+          targetPath = targetPath.slice(0, -1);
+        }
+
+        const dirname = basename(targetPath);
+        const files = await backrestService.pathAutocomplete(
+          new StringValue({ value: dirname })
+        );
+
+        for (const file of files.values) {
+          if (dirname + file === targetPath) {
+            form.setFields([
+              {
+                name: "target",
+                errors: [
+                  "target path already exists, you must pick an empty path.",
+                ],
+              },
+            ]);
+            return;
+          }
+        }
+        form.setFields([
+          {
+            name: "target",
+            errors: [],
+          },
+        ]);
+      } catch (e: any) {
+        form.setFields([
+          {
+            name: "target",
+            errors: [e.message],
+          },
+        ]);
+      }
+    })();
+  }, [targetPath]);
+
   return (
     <Modal
       open={true}
@@ -289,15 +349,30 @@ const RestoreModal = ({
         labelCol={{ span: 6 }}
         wrapperCol={{ span: 16 }}
       >
-        <Form.Item
-          label="Restore to path"
-          name="target"
-          required={true}
-          rules={[{ required: true, message: "Please enter a restore path" }]}
-        >
-          <URIAutocomplete onBlur={() => form.validateFields()} />
+        <p>
+          If restoring to a specific path, ensure that the path does not already
+          exist or that you are comfortable overwriting the data at that
+          location.
+        </p>
+        <p>
+          You may set the path to an empty string to restore to your Downloads
+          folder.
+        </p>
+        <Form.Item label="Restore to path" name="target" rules={[]}>
+          <URIAutocomplete
+            placeholder="Restoring to Downloads"
+            defaultValue={defaultPath}
+          />
         </Form.Item>
       </Form>
     </Modal>
   );
+};
+
+const basename = (path: string) => {
+  const idx = path.lastIndexOf(pathSeparator);
+  if (idx === -1) {
+    return path;
+  }
+  return path.slice(0, idx + 1);
 };

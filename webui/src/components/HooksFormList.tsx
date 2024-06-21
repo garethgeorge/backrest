@@ -311,7 +311,7 @@ const hookTypes: {
             name={[field.name, "actionGotify", "baseUrl"]}
             rules={[
               requiredField("gotify base URL is required"),
-              { type: "url" },
+              { type: "string" },
             ]}
           >
             <Input

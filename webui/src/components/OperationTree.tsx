@@ -81,8 +81,8 @@ export const OperationTree = ({
     });
   }, [JSON.stringify(req)]);
 
-  const treeData = useMemo(() => {
-    return buildTreePlan(backups);
+  const [treeData, defaultExpanded] = useMemo(() => {
+    return buildTreeInstanceID(backups);
   }, [backups]);
 
   if (backups.length === 0) {
@@ -97,9 +97,7 @@ export const OperationTree = ({
     <Tree<OpTreeNode>
       treeData={treeData}
       showIcon
-      defaultExpandedKeys={backups
-        .slice(0, Math.min(10, backups.length))
-        .map((b) => b.id!)}
+      defaultExpandedKeys={defaultExpanded}
       onSelect={(keys, info) => {
         if (info.selectedNodes.length === 0) return;
         const backup = info.selectedNodes[0].backup;
@@ -214,42 +212,80 @@ export const OperationTree = ({
   );
 };
 
-const buildTreePlan = (operations: BackupInfo[]): OpTreeNode[] => {
+const buildTreeInstanceID = (
+  operations: BackupInfo[]
+): [OpTreeNode[], React.Key[]] => {
   const grouped = _.groupBy(operations, (op) => {
-    return op.operations[0].planId!;
+    return op.operations[0].instanceId!;
   });
 
+  const expanded: React.Key[] = [];
   const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
+    const [children, childrenExpanded] = buildTreePlan(value);
+    expanded.push(...childrenExpanded);
     return {
       key: key,
       title: key,
-      children: buildTreeDay(key, value),
+      children: children,
     };
   });
   if (entries.length === 1) {
-    return entries[0].children!;
+    return [entries[0].children!, expanded];
   }
   entries.sort(sortByKeyReverse);
-  return entries;
+  return [entries, expanded];
+};
+
+const buildTreePlan = (
+  operations: BackupInfo[]
+): [OpTreeNode[], React.Key[]] => {
+  const grouped = _.groupBy(operations, (op) => {
+    return op.operations[0].planId!;
+  });
+  const expanded: React.Key[] = [];
+  const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
+    const [children, childrenExpanded] = buildTreeDay(key, value);
+    expanded.push(...childrenExpanded);
+    return {
+      key: key,
+      title: key,
+      children: children,
+    };
+  });
+  if (entries.length === 1) {
+    return [entries[0].children!, expanded];
+  }
+  entries.sort(sortByKeyReverse);
+  return [entries, expanded];
 };
 
 const buildTreeDay = (
   keyPrefix: string,
   operations: BackupInfo[]
-): OpTreeNode[] => {
+): [OpTreeNode[], React.Key[]] => {
   const grouped = _.groupBy(operations, (op) => {
     return localISOTime(op.displayTime).substring(0, 10);
   });
-
   const entries = _.map(grouped, (value, key) => {
+    const children = buildTreeLeaf(value);
     return {
       key: keyPrefix + key,
       title: formatDate(value[0].displayTime),
-      children: buildTreeLeaf(value),
+      children: children,
     };
   });
   entries.sort(sortByKey);
-  return entries;
+
+  const expanded: React.Key[] = [];
+  let visibleChildCount = 0;
+  for (const e of entries) {
+    expanded.push(e.key);
+    visibleChildCount += e.children!.length;
+    if (visibleChildCount > 5) {
+      break;
+    }
+  }
+  return [entries, expanded];
 };
 
 const buildTreeLeaf = (operations: BackupInfo[]): OpTreeNode[] => {
