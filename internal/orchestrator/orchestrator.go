@@ -325,6 +325,11 @@ func (o *Orchestrator) Run(ctx context.Context) {
 		}
 
 		err := t.Task.Run(taskCtx, t.ScheduledTask, runner)
+		if err != nil {
+			fmt.Fprintf(logs, "\ntask %q returned error: %v\n", t.Task.Name(), err)
+		} else {
+			fmt.Fprintf(logs, "\ntask %q completed successfully\n", t.Task.Name())
+		}
 
 		if op != nil {
 			// write logs to log storage for this task.

@@ -66,9 +66,6 @@ func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...Ge
 		sw := &ioutil.SynchronizedWriter{W: logger}
 		cmd.Stderr = sw
 		cmd.Stdout = sw
-	}
-
-	if logger := LoggerFromContext(ctx); logger != nil {
 		fmt.Fprintf(logger, "\ncommand: %v %v\n", fullCmd[0], strings.Join(fullCmd[1:], " "))
 	}
 
@@ -185,7 +182,49 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 				}
 			}
 		}
-		return summary, newCmdError(ctx, cmd, newErrorWithOutput(errors.Join(cmdErr, readErr), outputForErr.String()))
+		return summary, newCmdError(ctx, cmd, errors.Join(cmdErr, readErr))
+	}
+	return summary, nil
+}
+
+func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
+	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
+	cmdCtx, cancel := context.WithCancel(ctx)
+	cmd := r.commandWithContext(cmdCtx, []string{"restore", "--json", snapshot}, opts...)
+	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
+	reader, writer := nio.Pipe(buf)
+	r.pipeCmdOutputToWriter(cmd, writer)
+
+	var readErr error
+	var summary *RestoreProgressEntry
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer cancel()
+		var err error
+		summary, err = readRestoreProgressEntries(reader, callback)
+		if err != nil {
+			readErr = fmt.Errorf("processing command output: %w", err)
+		}
+	}()
+
+	cmdErr := cmd.Run()
+	writer.Close()
+	wg.Wait()
+	if cmdErr != nil || readErr != nil {
+		if cmdErr != nil {
+			var exitErr *exec.ExitError
+			if errors.As(cmdErr, &exitErr) {
+				if exitErr.ExitCode() == 3 {
+					cmdErr = ErrPartialBackup
+				} else {
+					cmdErr = fmt.Errorf("exit code %d: %w", exitErr.ExitCode(), ErrBackupFailed)
+				}
+			}
+		}
+
+		return summary, newCmdError(ctx, cmd, errors.Join(cmdErr, readErr))
 	}
 	return summary, nil
 }
@@ -273,48 +312,6 @@ func (r *Repo) Check(ctx context.Context, checkOutput io.Writer, opts ...Generic
 		return newCmdError(ctx, cmd, err)
 	}
 	return nil
-}
-
-func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
-	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
-	cmdCtx, cancel := context.WithCancel(ctx)
-	cmd := r.commandWithContext(cmdCtx, []string{"restore", "--json", snapshot}, opts...)
-	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
-	reader, writer := nio.Pipe(buf)
-	r.pipeCmdOutputToWriter(cmd, writer)
-
-	var readErr error
-	var summary *RestoreProgressEntry
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer cancel()
-		var err error
-		summary, err = readRestoreProgressEntries(reader, callback)
-		if err != nil {
-			readErr = fmt.Errorf("processing command output: %w", err)
-		}
-	}()
-
-	cmdErr := cmd.Run()
-	writer.Close()
-	wg.Wait()
-	if cmdErr != nil || readErr != nil {
-		if cmdErr != nil {
-			var exitErr *exec.ExitError
-			if errors.As(cmdErr, &exitErr) {
-				if exitErr.ExitCode() == 3 {
-					cmdErr = ErrPartialBackup
-				} else {
-					cmdErr = fmt.Errorf("exit code %d: %w", exitErr.ExitCode(), ErrBackupFailed)
-				}
-			}
-		}
-
-		return summary, newCmdError(ctx, cmd, errors.Join(cmdErr, readErr))
-	}
-	return summary, nil
 }
 
 func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, opts ...GenericOption) (*Snapshot, []*LsEntry, error) {
