@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.0](https://github.com/garethgeorge/backrest/compare/v1.1.0...v1.2.0) (2024-06-25)
+
+
+### Features
+
+* default non-docker packages to listen on localhost only ([5427d75](https://github.com/garethgeorge/backrest/commit/5427d75c3a3b1e26a88a3dd9a90ac06e5aa17e97))
+* improve log formatting ([232cd57](https://github.com/garethgeorge/backrest/commit/232cd57473a5760a216bbbcfb728384f719b452f))
+* misc ui improvements ([9067027](https://github.com/garethgeorge/backrest/commit/9067027eb45ab040db16de7414f72938033f38d9))
+
+
+### Bug Fixes
+
+* hook bug fixes ([2c7d85b](https://github.com/garethgeorge/backrest/commit/2c7d85b33ba2e514ae821418bb96958b2697c097))
+* improve robustness of .Summary template ([7940642](https://github.com/garethgeorge/backrest/commit/7940642c3f77ad2a647bad0858252340c3e2acf9))
+* make backup and restore operations more robust to non-JSON output events ([91e0fda](https://github.com/garethgeorge/backrest/commit/91e0fdaffecedbf39aea776c3448eb27586aaaa7))
+* minor hook and naming bugs in check and backup tasks ([e2ef66e](https://github.com/garethgeorge/backrest/commit/e2ef66ef929c3ab116b7a58527dacc8aa15b7f2a))
+* misc ui consistency and refresh errors ([793666c](https://github.com/garethgeorge/backrest/commit/793666cfbf315e6194007138cfe5e41d36c0eb7b))
+* rare deadlock in GetOperationEvents ([#319](https://github.com/garethgeorge/backrest/issues/319)) ([f42df20](https://github.com/garethgeorge/backrest/commit/f42df20cb3ae848b1a2f563411bdca7bf2f7ca46))
+* viewing backup details in very long tree view ([879e39c](https://github.com/garethgeorge/backrest/commit/879e39c984dd44f170d7785abdca05c7973cbde7))
+
 ## [1.1.0](https://github.com/garethgeorge/backrest/compare/v1.0.0...v1.1.0) (2024-06-01)
 
 
