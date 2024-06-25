@@ -29,13 +29,14 @@ func (e *CmdError) Is(target error) bool {
 
 // newCmdError creates a new error indicating that running a command failed.
 func newCmdError(ctx context.Context, cmd *exec.Cmd, err error) *CmdError {
-	cerr := &CmdError{
-		Command: cmd.String(),
-		Err:     err,
+	shortCmd := cmd.String()
+	if len(shortCmd) > 100 {
+		shortCmd = shortCmd[:100] + "..."
 	}
 
-	if logger := LoggerFromContext(ctx); logger != nil {
-		logger.Write([]byte(cerr.Error()))
+	cerr := &CmdError{
+		Command: shortCmd,
+		Err:     err,
 	}
 	return cerr
 }
