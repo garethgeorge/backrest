@@ -493,7 +493,7 @@ func TestRestore(t *testing.T) {
 		t.Fatalf("snapshotId must be set")
 	}
 
-	restoreTarget := t.TempDir()
+	restoreTarget := t.TempDir() + "/restore"
 
 	_, err = sut.handler.Restore(context.Background(), connect.NewRequest(&v1.RestoreSnapshotRequest{
 		SnapshotId: snapshotOp.SnapshotId,
