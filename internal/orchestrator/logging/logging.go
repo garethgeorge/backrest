@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/garethgeorge/backrest/internal/ioutil"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -38,7 +39,7 @@ func Logger(ctx context.Context) *zap.Logger {
 	fe := zapcore.NewConsoleEncoder(p)
 	l := zap.New(zapcore.NewTee(
 		zap.L().Core(),
-		zapcore.NewCore(fe, zapcore.AddSync(writer), zapcore.DebugLevel),
+		zapcore.NewCore(fe, zapcore.AddSync(&ioutil.LinePrefixer{W: writer, Prefix: []byte("[tasklog]")}), zapcore.DebugLevel),
 	))
 	return l
 }
