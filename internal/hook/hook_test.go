@@ -20,7 +20,7 @@ func TestHookCommandInDefaultShell(t *testing.T) {
 		},
 	})
 
-	err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, HookVars{}, &bytes.Buffer{})
+	err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, struct{}{}, &bytes.Buffer{})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -49,7 +49,7 @@ exit $counter`,
 		},
 	})
 
-	err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, HookVars{}, &bytes.Buffer{})
+	err := hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, struct{}{}, &bytes.Buffer{})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -75,7 +75,7 @@ func TestCommandHookErrorHandling(t *testing.T) {
 		OnError: v1.Hook_ON_ERROR_CANCEL,
 	})
 
-	err := applyHookErrorPolicy(hook.OnError, hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, HookVars{}, &bytes.Buffer{}))
+	err := applyHookErrorPolicy(hook.OnError, hook.Do(v1.Hook_CONDITION_SNAPSHOT_START, struct{}{}, &bytes.Buffer{}))
 	if err == nil {
 		t.Fatal("expected error")
 	}

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
@@ -38,7 +37,7 @@ func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) Task
 			if err := forgetHelper(ctx, st, taskRunner); err != nil {
 				taskRunner.ExecuteHooks([]v1.Hook_Condition{
 					v1.Hook_CONDITION_ANY_ERROR,
-				}, hook.HookVars{
+				}, HookVars{
 					Error: err.Error(),
 				})
 				return err

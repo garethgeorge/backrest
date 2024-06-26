@@ -8,7 +8,6 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
 	"go.uber.org/zap"
 )
 
@@ -36,7 +35,7 @@ func NewOneoffRestoreTask(repoID, planID string, flowID int64, at time.Time, sna
 			if err := restoreHelper(ctx, st, taskRunner, snapshotID, path, target); err != nil {
 				taskRunner.ExecuteHooks([]v1.Hook_Condition{
 					v1.Hook_CONDITION_ANY_ERROR,
-				}, hook.HookVars{
+				}, HookVars{
 					Task:  st.Task.Name(),
 					Error: err.Error(),
 				})

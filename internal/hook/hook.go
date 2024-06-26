@@ -37,7 +37,7 @@ func NewHookExecutor(config *v1.Config, oplog *oplog.OpLog, bigOutputStore *rota
 
 // ExecuteHooks schedules tasks for the hooks subscribed to the given event. The vars map is used to substitute variables
 // Hooks are pulled both from the provided plan and from the repo config.
-func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, events []v1.Hook_Condition, vars HookVars) error {
+func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, events []v1.Hook_Condition, vars interface{}) error {
 	planId := plan.GetId()
 	if planId == "" {
 		planId = "_system_" // TODO: clean this up when refactoring hook execution
@@ -50,10 +50,6 @@ func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, 
 		InstanceId: e.config.Instance,
 		FlowId:     flowID,
 	}
-
-	vars.Repo = repo
-	vars.Plan = plan
-	vars.CurTime = time.Now()
 
 	for idx, hook := range repo.GetHooks() {
 		h := (*Hook)(hook)
@@ -119,7 +115,7 @@ func firstMatchingCondition(hook *Hook, events []v1.Hook_Condition) v1.Hook_Cond
 	return v1.Hook_CONDITION_UNKNOWN
 }
 
-func (e *HookExecutor) executeHook(op *v1.Operation, hook *Hook, event v1.Hook_Condition, vars HookVars) error {
+func (e *HookExecutor) executeHook(op *v1.Operation, hook *Hook, event v1.Hook_Condition, vars interface{}) error {
 	if err := e.oplog.Add(op); err != nil {
 		zap.S().Errorf("execute hook: add operation: %v", err)
 		return errors.New("couldn't create operation")
@@ -164,12 +160,12 @@ func curTimeMs() int64 {
 
 type Hook v1.Hook
 
-func (h *Hook) Do(event v1.Hook_Condition, vars HookVars, output io.Writer) error {
+func (h *Hook) Do(event v1.Hook_Condition, vars interface{}, output io.Writer) error {
 	if !slices.Contains(h.Conditions, event) {
 		return nil
 	}
 
-	vars.Event = event
+	vars.Event = event // TODO: add .Event to HookVars
 
 	switch action := h.Action.(type) {
 	case *v1.Hook_ActionCommand:
