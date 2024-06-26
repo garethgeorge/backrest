@@ -147,6 +147,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             Submit
           </SpinButton>,
         ]}
+        maskClosable={false}
       >
         <Form
           autoComplete="off"

@@ -128,7 +128,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         alertsApi.success("Added repo " + repo.uri);
       }
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 10);
     } finally {
       setConfirmLoading(false);
     }
@@ -169,6 +169,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             Submit
           </Button>,
         ]}
+        maskClosable={false}
       >
         <Form
           autoComplete="off"
