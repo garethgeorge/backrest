@@ -69,11 +69,13 @@ func (t *taskRunnerImpl) OpLog() *oplog.OpLog {
 	return t.orchestrator.OpLog
 }
 
-func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.HookVars) error {
+func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars tasks.HookVars) error {
 	vars.Task = t.t.Name()
 	if t.op != nil {
 		vars.Duration = time.Since(time.UnixMilli(t.op.UnixTimeStartMs))
 	}
+
+	vars.CurTime = time.Now()
 
 	repoID := t.t.RepoID()
 	planID := t.t.PlanID()
@@ -85,9 +87,11 @@ func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.Hook
 		if err != nil {
 			return err
 		}
+		vars.Repo = repo
 	}
 	if planID != "" {
 		plan, _ = t.FindPlan()
+		vars.Plan = plan
 	}
 	var flowID int64
 	if t.op != nil {

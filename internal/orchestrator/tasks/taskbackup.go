@@ -108,7 +108,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_START,
-	}, hook.HookVars{}); err != nil {
+	}, HookVars{}); err != nil {
 		var cancelErr *hook.HookErrorRequestCancel
 		if errors.As(err, &cancelErr) {
 			op.Status = v1.OperationStatus_STATUS_USER_CANCELLED // user visible cancelled status
@@ -169,7 +169,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		summary = &restic.BackupProgressEntry{}
 	}
 
-	vars := hook.HookVars{
+	vars := HookVars{
 		Task:          t.Name(),
 		SnapshotStats: summary,
 		SnapshotId:    summary.SnapshotId,

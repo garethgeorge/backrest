@@ -103,7 +103,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_PRUNE_START,
-	}, hook.HookVars{}); err != nil {
+	}, HookVars{}); err != nil {
 		op.DisplayMessage = err.Error()
 		// TODO: generalize this logic
 		var cancelErr *hook.HookErrorRequestCancel
@@ -159,7 +159,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 
 		runner.ExecuteHooks([]v1.Hook_Condition{
 			v1.Hook_CONDITION_ANY_ERROR,
-		}, hook.HookVars{
+		}, HookVars{
 			Error: err.Error(),
 		})
 
@@ -177,7 +177,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_PRUNE_SUCCESS,
-	}, hook.HookVars{}); err != nil {
+	}, HookVars{}); err != nil {
 		return fmt.Errorf("execute prune end hooks: %w", err)
 	}
 

@@ -103,7 +103,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_CHECK_START,
-	}, hook.HookVars{}); err != nil {
+	}, HookVars{}); err != nil {
 		// TODO: generalize this logic
 		op.DisplayMessage = err.Error()
 		var cancelErr *hook.HookErrorRequestCancel
@@ -160,7 +160,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		runner.ExecuteHooks([]v1.Hook_Condition{
 			v1.Hook_CONDITION_CHECK_ERROR,
 			v1.Hook_CONDITION_ANY_ERROR,
-		}, hook.HookVars{
+		}, HookVars{
 			Error: err.Error(),
 		})
 
@@ -178,7 +178,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_CHECK_SUCCESS,
-	}, hook.HookVars{}); err != nil {
+	}, HookVars{}); err != nil {
 		return fmt.Errorf("execute prune success hooks: %w", err)
 	}
 
