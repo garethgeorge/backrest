@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -127,8 +128,8 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	ctx, cancel := context.WithCancel(ctx)
 	interval := time.NewTicker(1 * time.Second)
 	defer interval.Stop()
-	buf := ioutil.HeadWriter{Limit: 16 * 1024}
-	bufWriter := ioutil.SynchronizedWriter{W: &buf}
+	buf := bytes.NewBuffer(nil)
+	bufWriter := &ioutil.SynchronizedWriter{W: &ioutil.LimitWriter{W: buf, N: 16 * 1024}}
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -137,7 +138,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 			select {
 			case <-interval.C:
 				bufWriter.Mu.Lock()
-				output := string(buf.Bytes())
+				output := buf.String()
 				bufWriter.Mu.Unlock()
 
 				if opPrune.OperationPrune.Output != string(output) {
@@ -153,7 +154,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		}
 	}()
 
-	if err := repo.Prune(ctx, &bufWriter); err != nil {
+	if err := repo.Prune(ctx, bufWriter); err != nil {
 		cancel()
 
 		runner.ExecuteHooks([]v1.Hook_Condition{

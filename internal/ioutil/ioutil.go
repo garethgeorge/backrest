@@ -2,113 +2,73 @@ package ioutil
 
 import (
 	"bytes"
-	"fmt"
 	"io"
-	"slices"
 	"sync"
 )
 
-type Capturer interface {
-	Bytes() []byte
+// LimitWriter is a writer that limits the number of bytes written to it.
+type LimitWriter struct {
+	W io.Writer
+	N int // bytes remaining that can be written
+	D int // bytes dropped so far
 }
 
-// HeadWriter keeps the first 'Limit' bytes in memory.
-type HeadWriter struct {
-	mu    sync.Mutex
-	Buf   []byte
-	Limit int
-}
-
-var _ io.Writer = &HeadWriter{}
-
-func (w *HeadWriter) Write(p []byte) (n int, err error) {
-	if len(w.Buf) >= w.Limit {
-		return len(p), nil
+func (l *LimitWriter) Write(p []byte) (rnw int, err error) {
+	rnw = len(p)
+	if l.N <= 0 {
+		l.D += len(p)
+		return 0, nil
 	}
-	w.Buf = append(w.Buf, p...)
-	if len(w.Buf) > w.Limit {
-		w.Buf = w.Buf[:w.Limit]
+	if len(p) > l.N {
+		l.D += len(p) - l.N
+		p = p[:l.N]
 	}
-	return len(p), nil
+	_, err = l.W.Write(p)
+	l.N -= len(p)
+	return
 }
 
-func (w *HeadWriter) Bytes() []byte {
-	return slices.Clone(w.Buf)
+// LinePrefixer is a writer that prefixes each line written to it with a prefix.
+type LinePrefixer struct {
+	W      io.Writer
+	buf    []byte
+	Prefix []byte
 }
 
-// tailWriter keeps the last 'Limit' bytes in memory.
-type TailWriter struct {
-	Buf   []byte
-	Limit int
-}
-
-var _ io.Writer = &TailWriter{}
-
-func (w *TailWriter) Write(p []byte) (n int, err error) {
-	w.Buf = append(w.Buf, p...)
-	if len(w.Buf) > w.Limit {
-		w.Buf = w.Buf[len(w.Buf)-w.Limit:]
+func (l *LinePrefixer) Write(p []byte) (n int, err error) {
+	n = len(p)
+	l.buf = append(l.buf, p...)
+	if !bytes.Contains(p, []byte{'\n'}) { // no newlines in p, short-circuit out
+		return
 	}
-	return len(p), nil
-}
-
-func (w *TailWriter) Bytes() []byte {
-	return slices.Clone(w.Buf)
-}
-
-// OutputCapturer keeps the first 'Limit' bytes and the last 'Limit' bytes in memory.
-// If the total number of bytes written exceeds 'Limit', the middle is truncated.
-// The writer is thread-safe.
-type OutputCapturer struct {
-	mu sync.Mutex
-	HeadWriter
-	TailWriter
-	Limit      int
-	totalBytes int
-}
-
-var _ io.Writer = &OutputCapturer{}
-
-func NewOutputCapturer(limit int) *OutputCapturer {
-	return &OutputCapturer{
-		HeadWriter: HeadWriter{Limit: limit},
-		TailWriter: TailWriter{Limit: limit},
-		Limit:      limit,
+	bufOrig := l.buf
+	for {
+		i := bytes.IndexByte(l.buf, '\n')
+		if i < 0 {
+			break
+		}
+		if _, err := l.W.Write(l.Prefix); err != nil {
+			return 0, err
+		}
+		if _, err := l.W.Write(l.buf[:i+1]); err != nil {
+			return 0, err
+		}
+		l.buf = l.buf[i+1:]
 	}
+	l.buf = append(bufOrig[:0], l.buf...)
+	return
 }
 
-func (w *OutputCapturer) Write(p []byte) (n int, err error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.HeadWriter.Write(p)
-	w.TailWriter.Write(p)
-	w.totalBytes += len(p)
-	return len(p), nil
-}
-
-func (w *OutputCapturer) Bytes() []byte {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	head := w.HeadWriter.Bytes()
-	tail := w.TailWriter.Bytes()
-	if w.totalBytes <= w.Limit {
-		return head
+func (l *LinePrefixer) Close() error {
+	if len(l.buf) > 0 {
+		if _, err := l.W.Write(l.Prefix); err != nil {
+			return err
+		}
+		if _, err := l.W.Write(l.buf); err != nil {
+			return err
+		}
 	}
-
-	head = head[:w.Limit/2]
-	tail = tail[len(tail)-w.Limit/2:]
-
-	buf := bytes.NewBuffer(make([]byte, 0, len(head)+len(tail)+100))
-
-	buf.Write(head)
-	buf.WriteString(fmt.Sprintf("...[%v bytes dropped]...", w.totalBytes-len(head)-len(tail)))
-	buf.Write(tail)
-
-	return buf.Bytes()
-}
-
-func (w *OutputCapturer) String() string {
-	return string(w.Bytes())
+	return nil
 }
 
 type SynchronizedWriter struct {

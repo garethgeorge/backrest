@@ -565,5 +565,5 @@ const BigOperationDataVerbatim = ({ logref }: { logref: string }) => {
       });
   }, [logref]);
 
-  return <pre>{output}</pre>;
+  return <pre style={{ whiteSpace: "pre" }}>{output}</pre>;
 };

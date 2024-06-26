@@ -148,10 +148,9 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 
 	cmdCtx, cancel := context.WithCancel(ctx)
 	cmd := r.commandWithContext(cmdCtx, args, opts...)
-	outputForErr := ioutil.NewOutputCapturer(outputBufferLimit)
 	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
 	reader, writer := nio.Pipe(buf)
-	r.pipeCmdOutputToWriter(cmd, outputForErr, writer)
+	r.pipeCmdOutputToWriter(cmd, writer)
 
 	var readErr error
 	var summary *BackupProgressEntry
