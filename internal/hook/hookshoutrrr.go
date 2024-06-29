@@ -8,7 +8,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
 
-func (h *Hook) doShoutrrr(cmd *v1.Hook_ActionShoutrrr, vars HookVars, output io.Writer) error {
+func (h *Hook) doShoutrrr(cmd *v1.Hook_ActionShoutrrr, vars interface{}, output io.Writer) error {
 	payload, err := h.renderTemplateOrDefault(cmd.ActionShoutrrr.GetTemplate(), defaultTemplate, vars)
 	if err != nil {
 		return fmt.Errorf("template rendering: %w", err)

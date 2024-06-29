@@ -11,7 +11,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
 
-func (h *Hook) doGotify(cmd *v1.Hook_ActionGotify, vars HookVars, output io.Writer) error {
+func (h *Hook) doGotify(cmd *v1.Hook_ActionGotify, vars interface{}, output io.Writer) error {
 	payload, err := h.renderTemplateOrDefault(cmd.ActionGotify.GetTemplate(), defaultTemplate, vars)
 	if err != nil {
 		return fmt.Errorf("template rendering: %w", err)

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
@@ -104,15 +103,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_CHECK_START,
 	}, HookVars{}); err != nil {
-		// TODO: generalize this logic
-		op.DisplayMessage = err.Error()
-		var cancelErr *hook.HookErrorRequestCancel
-		if errors.As(err, &cancelErr) {
-			op.Status = v1.OperationStatus_STATUS_USER_CANCELLED // user visible cancelled status
-			return nil
-		}
-		op.Status = v1.OperationStatus_STATUS_ERROR
-		return fmt.Errorf("execute check start hooks: %w", err)
+		return fmt.Errorf("check start hook: %w", err)
 	}
 
 	err = repo.UnlockIfAutoEnabled(ctx)

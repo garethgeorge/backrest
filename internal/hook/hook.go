@@ -188,7 +188,7 @@ func (h *Hook) Do(event v1.Hook_Condition, vars interface{}, output io.Writer) e
 	}
 }
 
-func (h *Hook) renderTemplate(text string, vars HookVars) (string, error) {
+func (h *Hook) renderTemplate(text string, vars interface{}) (string, error) {
 	template, err := template.New("template").Parse(text)
 	if err != nil {
 		return "", fmt.Errorf("parse template: %w", err)
@@ -202,7 +202,7 @@ func (h *Hook) renderTemplate(text string, vars HookVars) (string, error) {
 	return buf.String(), nil
 }
 
-func (h *Hook) renderTemplateOrDefault(template string, defaultTmpl string, vars HookVars) (string, error) {
+func (h *Hook) renderTemplateOrDefault(template string, defaultTmpl string, vars interface{}) (string, error) {
 	if strings.Trim(template, " ") == "" {
 		return h.renderTemplate(defaultTmpl, vars)
 	}

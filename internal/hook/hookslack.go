@@ -9,7 +9,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
 
-func (h *Hook) doSlack(cmd *v1.Hook_ActionSlack, vars HookVars, output io.Writer) error {
+func (h *Hook) doSlack(cmd *v1.Hook_ActionSlack, vars interface{}, output io.Writer) error {
 	payload, err := h.renderTemplateOrDefault(cmd.ActionSlack.GetTemplate(), defaultTemplate, vars)
 	if err != nil {
 		return fmt.Errorf("template rendering: %w", err)

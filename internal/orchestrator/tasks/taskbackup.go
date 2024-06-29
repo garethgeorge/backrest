@@ -108,7 +108,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_START,
 	}, HookVars{}); err != nil {
-		return fmt.Errorf("snapshot start hook failed: %w", err)
+		return fmt.Errorf("snapshot start hook: %w", err)
 	}
 
 	var sendWg sync.WaitGroup
