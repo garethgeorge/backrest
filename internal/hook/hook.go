@@ -7,8 +7,6 @@ import (
 	"io"
 	"reflect"
 	"slices"
-	"strings"
-	"text/template"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -19,7 +17,7 @@ import (
 )
 
 var (
-	defaultTemplate = `{{ .Summary }}`
+	DefaultTemplate = `{{ .Summary }}`
 )
 
 type HookExecutor struct {
@@ -172,41 +170,6 @@ func (h *Hook) Do(event v1.Hook_Condition, vars interface{}, output io.Writer) e
 		eventField.Set(reflect.ValueOf(event))
 	}
 
-	switch action := h.Action.(type) {
-	case *v1.Hook_ActionCommand:
-		return h.doCommand(action, vars, output)
-	case *v1.Hook_ActionDiscord:
-		return h.doDiscord(action, vars, output)
-	case *v1.Hook_ActionGotify:
-		return h.doGotify(action, vars, output)
-	case *v1.Hook_ActionSlack:
-		return h.doSlack(action, vars, output)
-	case *v1.Hook_ActionShoutrrr:
-		return h.doShoutrrr(action, vars, output)
-	default:
-		return fmt.Errorf("unknown hook action: %v", action)
-	}
-}
-
-func (h *Hook) renderTemplate(text string, vars interface{}) (string, error) {
-	template, err := template.New("template").Parse(text)
-	if err != nil {
-		return "", fmt.Errorf("parse template: %w", err)
-	}
-
-	buf := &bytes.Buffer{}
-	if err := template.Execute(buf, vars); err != nil {
-		return "", fmt.Errorf("execute template: %w", err)
-	}
-
-	return buf.String(), nil
-}
-
-func (h *Hook) renderTemplateOrDefault(template string, defaultTmpl string, vars interface{}) (string, error) {
-	if strings.Trim(template, " ") == "" {
-		return h.renderTemplate(defaultTmpl, vars)
-	}
-	return h.renderTemplate(template, vars)
 }
 
 func applyHookErrorPolicy(onError v1.Hook_OnError, err error) error {
