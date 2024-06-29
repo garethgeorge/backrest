@@ -9,7 +9,6 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
@@ -109,13 +108,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_START,
 	}, HookVars{}); err != nil {
-		var cancelErr *hook.HookErrorRequestCancel
-		if errors.As(err, &cancelErr) {
-			op.Status = v1.OperationStatus_STATUS_USER_CANCELLED // user visible cancelled status
-			op.DisplayMessage = err.Error()
-			return nil
-		}
-		return fmt.Errorf("hook failed: %w", err)
+		return fmt.Errorf("snapshot start hook failed: %w", err)
 	}
 
 	var sendWg sync.WaitGroup

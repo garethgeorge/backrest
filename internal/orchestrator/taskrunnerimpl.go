@@ -2,6 +2,8 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -97,8 +99,14 @@ func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars tasks.Hoo
 	if t.op != nil {
 		flowID = t.op.FlowId
 	}
+
 	executor := hook.NewHookExecutor(t.Config(), t.orchestrator.OpLog, t.orchestrator.logStore)
-	return executor.ExecuteHooks(flowID, repo, plan, events, vars)
+	err := executor.ExecuteHooks(flowID, repo, plan, events, vars)
+	var cancelErr *hook.HookErrorRequestCancel
+	if errors.As(err, &cancelErr) {
+		return fmt.Errorf("%w: %w", tasks.ErrTaskCancelled, err)
+	}
+	return err
 }
 
 func (t *taskRunnerImpl) GetRepo(repoID string) (*v1.Repo, error) {

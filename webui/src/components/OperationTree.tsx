@@ -128,10 +128,10 @@ export const OperationTree = ({
         }
       }}
       titleRender={(node: OpTreeNode): React.ReactNode => {
-        if (node.title) {
+        if (node.title !== undefined) {
           return <>{node.title}</>;
         }
-        if (node.backup) {
+        if (node.backup !== undefined) {
           const b = node.backup;
           const details: string[] = [];
 

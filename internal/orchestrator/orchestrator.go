@@ -341,12 +341,11 @@ func (o *Orchestrator) Run(ctx context.Context) {
 					op.Logref = ref
 				}
 			}
-
 			if err != nil {
-				if taskCtx.Err() != nil {
+				if taskCtx.Err() != nil || errors.Is(err, tasks.ErrTaskCancelled) {
 					// task was cancelled
 					op.Status = v1.OperationStatus_STATUS_USER_CANCELLED
-				} else {
+				} else if errors.Is(err, tasks.ErrTaskFailed) {
 					op.Status = v1.OperationStatus_STATUS_ERROR
 				}
 				op.DisplayMessage = err.Error()
