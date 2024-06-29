@@ -345,7 +345,7 @@ func (o *Orchestrator) Run(ctx context.Context) {
 				if taskCtx.Err() != nil || errors.Is(err, tasks.ErrTaskCancelled) {
 					// task was cancelled
 					op.Status = v1.OperationStatus_STATUS_USER_CANCELLED
-				} else if errors.Is(err, tasks.ErrTaskFailed) {
+				} else if err != nil {
 					op.Status = v1.OperationStatus_STATUS_ERROR
 				}
 				op.DisplayMessage = err.Error()

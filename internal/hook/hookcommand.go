@@ -9,7 +9,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
 
-func (h *Hook) doCommand(cmd *v1.Hook_ActionCommand, vars HookVars, output io.Writer) error {
+func (h *Hook) doCommand(cmd *v1.Hook_ActionCommand, vars interface{}, output io.Writer) error {
 	command, err := h.renderTemplate(cmd.ActionCommand.Command, vars)
 	if err != nil {
 		return fmt.Errorf("template rendering: %w", err)
