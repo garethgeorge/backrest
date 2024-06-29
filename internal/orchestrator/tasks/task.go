@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"io"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -49,6 +50,8 @@ type TaskRunner interface {
 	Config() *v1.Config
 	// Logger returns the logger.
 	Logger(ctx context.Context) *zap.Logger
+	// RawLogWriter returns a writer for raw logs.
+	RawLogWriter(ctx context.Context) io.Writer
 }
 
 // ScheduledTask is a task that is scheduled to run at a specific time.
