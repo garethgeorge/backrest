@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"slices"
 	"strings"
 	"text/template"
@@ -165,7 +166,11 @@ func (h *Hook) Do(event v1.Hook_Condition, vars interface{}, output io.Writer) e
 		return nil
 	}
 
-	vars.Event = event // TODO: add .Event to HookVars
+	// if vars has a .Event key set it to the event
+	// this is a bit of a hack to allow the event to be used in the template
+	if eventField := reflect.ValueOf(vars).FieldByName("Event"); eventField.IsValid() {
+		eventField.Set(reflect.ValueOf(event))
+	}
 
 	switch action := h.Action.(type) {
 	case *v1.Hook_ActionCommand:
