@@ -51,10 +51,18 @@ type OpTreeNode = DataNode & {
 
 export const OperationTree = ({
   req,
-}: React.PropsWithoutRef<{ req: GetOperationsRequest }>) => {
+  isPlanView,
+}: React.PropsWithoutRef<{
+  req: GetOperationsRequest;
+  isPlanView?: boolean;
+}>) => {
   const alertApi = useAlertApi();
   const showModal = useShowModal();
   const [backups, setBackups] = useState<BackupInfo[]>([]);
+  const [treeData, setTreeData] = useState<{
+    tree: OpTreeNode[];
+    expanded: React.Key[];
+  }>({ tree: [], expanded: [] });
   const [selectedBackupId, setSelectedBackupId] = useState<string | null>(null);
 
   // track backups for this operation tree view.
@@ -70,6 +78,7 @@ export const OperationTree = ({
             return b.startTimeMs - a.startTimeMs;
           });
           setBackups(backups);
+          setTreeData(() => buildTree(backups, isPlanView || false));
         },
         100,
         { leading: true, trailing: true }
@@ -81,11 +90,7 @@ export const OperationTree = ({
     });
   }, [JSON.stringify(req)]);
 
-  const [treeData, defaultExpanded] = useMemo(() => {
-    return buildTreeInstanceID(backups);
-  }, [backups]);
-
-  if (backups.length === 0) {
+  if (treeData.tree.length === 0) {
     return (
       <Empty description={""} image={Empty.PRESENTED_IMAGE_SIMPLE}></Empty>
     );
@@ -95,9 +100,9 @@ export const OperationTree = ({
 
   const backupTree = (
     <Tree<OpTreeNode>
-      treeData={treeData}
+      treeData={treeData.tree}
       showIcon
-      defaultExpandedKeys={defaultExpanded}
+      defaultExpandedKeys={treeData.expanded}
       onSelect={(keys, info) => {
         if (info.selectedNodes.length === 0) return;
         const backup = info.selectedNodes[0].backup;
@@ -212,103 +217,169 @@ export const OperationTree = ({
   );
 };
 
-const buildTreeInstanceID = (
-  operations: BackupInfo[]
-): [OpTreeNode[], React.Key[]] => {
-  const grouped = _.groupBy(operations, (op) => {
-    return op.operations[0].instanceId!;
-  });
+const treeLeafCache = new WeakMap<BackupInfo, OpTreeNode>();
+const buildTree = (
+  operations: BackupInfo[],
+  isForPlanView: boolean
+): { tree: OpTreeNode[]; expanded: React.Key[] } => {
+  const buildTreeInstanceID = (operations: BackupInfo[]): OpTreeNode[] => {
+    const grouped = _.groupBy(operations, (op) => {
+      return op.operations[0].instanceId!;
+    });
 
-  const expanded: React.Key[] = [];
-  const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
-    const [children, childrenExpanded] = buildTreePlan(value);
-    expanded.push(...childrenExpanded);
-    return {
-      key: key,
-      title: key,
-      children: children,
+    const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
+      let title: React.ReactNode = key;
+      if (title === "_unassociated_") {
+        title = (
+          <Tooltip title="_unassociated_ instance ID collects operations that do not specify a `created-by:` tag denoting the backrest install that created them.">
+            _unassociated_
+          </Tooltip>
+        );
+      }
+
+      return {
+        title,
+        key,
+        children: buildTreePlan(value),
+      };
+    });
+    entries.sort(sortByKeyReverse);
+    return entries;
+  };
+
+  const buildTreePlan = (operations: BackupInfo[]): OpTreeNode[] => {
+    const grouped = _.groupBy(operations, (op) => {
+      return op.operations[0].planId!;
+    });
+    const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
+      let title: React.ReactNode = key;
+      if (title === "_unassociated_") {
+        title = (
+          <Tooltip title="_unassociated_ plan ID collects operations that do not specify a `plan:` tag denoting the backup plan that created them.">
+            _unassociated_
+          </Tooltip>
+        );
+      } else if (title === "_system_") {
+        title = (
+          <Tooltip title="_system_ plan ID collects health operations not associated with any single plan e.g. repo level check or prune runs.">
+            _system_
+          </Tooltip>
+        );
+      }
+      return {
+        key,
+        title,
+        children: buildTreeDay(key, value),
+      };
+    });
+    entries.sort(sortByKeyReverse);
+    return entries;
+  };
+
+  const buildTreeDay = (
+    keyPrefix: string,
+    operations: BackupInfo[]
+  ): OpTreeNode[] => {
+    const grouped = _.groupBy(operations, (op) => {
+      return localISOTime(op.displayTime).substring(0, 10);
+    });
+    const entries = _.map(grouped, (value, key) => {
+      const children = buildTreeLeaf(value);
+      return {
+        key: keyPrefix + key,
+        title: formatDate(value[0].displayTime),
+        children: children,
+      };
+    });
+    entries.sort(sortByKey);
+    return entries;
+  };
+
+  const buildTreeLeaf = (operations: BackupInfo[]): OpTreeNode[] => {
+    const entries = _.map(operations, (b): OpTreeNode => {
+      let cached = treeLeafCache.get(b);
+      if (cached) {
+        return cached;
+      }
+      let iconColor = colorForStatus(b.status);
+      let icon: React.ReactNode | null = <QuestionOutlined />;
+
+      if (b.status === OperationStatus.STATUS_ERROR) {
+        icon = <ExclamationOutlined style={{ color: iconColor }} />;
+      } else {
+        icon = <SaveOutlined style={{ color: iconColor }} />;
+      }
+
+      let newLeaf = {
+        key: b.id,
+        backup: b,
+        icon: icon,
+      };
+      treeLeafCache.set(b, newLeaf);
+      return newLeaf;
+    });
+    entries.sort((a, b) => {
+      return b.backup!.startTimeMs - a.backup!.startTimeMs;
+    });
+    return entries;
+  };
+
+  const expandTree = (
+    entries: OpTreeNode[],
+    budget: number,
+    d1: number,
+    d2: number
+  ) => {
+    let expanded: React.Key[] = [];
+    const h2 = (
+      entries: OpTreeNode[],
+      curDepth: number,
+      budget: number
+    ): number => {
+      if (curDepth >= d2) {
+        for (const entry of entries) {
+          expanded.push(entry.key);
+          budget--;
+          if (budget <= 0) {
+            break;
+          }
+        }
+        return budget;
+      }
+      for (const entry of entries) {
+        if (!entry.children) continue;
+        budget = h2(entry.children, curDepth + 1, budget);
+        if (budget <= 0) {
+          break;
+        }
+      }
+      return budget;
     };
-  });
-  if (entries.length === 1) {
-    return [entries[0].children!, expanded];
+    const h1 = (entries: OpTreeNode[], curDepth: number) => {
+      if (curDepth >= d1) {
+        h2(entries, curDepth + 1, budget);
+        return;
+      }
+
+      for (const entry of entries) {
+        if (!entry.children) continue;
+        h1(entry.children, curDepth + 1);
+      }
+    };
+    h1(entries, 0);
+    return expanded;
+  };
+
+  let tree: OpTreeNode[];
+  let expanded: React.Key[];
+  if (isForPlanView) {
+    tree = buildTreeDay("", operations);
+    expanded = expandTree(tree, 5, 0, 2);
+  } else {
+    tree = buildTreeInstanceID(operations);
+    expanded = expandTree(tree, 5, 2, 4);
   }
-  entries.sort(sortByKeyReverse);
-  return [entries, expanded];
-};
-
-const buildTreePlan = (
-  operations: BackupInfo[]
-): [OpTreeNode[], React.Key[]] => {
-  const grouped = _.groupBy(operations, (op) => {
-    return op.operations[0].planId!;
-  });
-  const expanded: React.Key[] = [];
-  const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
-    const [children, childrenExpanded] = buildTreeDay(key, value);
-    expanded.push(...childrenExpanded);
-    return {
-      key: key,
-      title: key,
-      children: children,
-    };
-  });
-  if (entries.length === 1) {
-    return [entries[0].children!, expanded];
-  }
-  entries.sort(sortByKeyReverse);
-  return [entries, expanded];
-};
-
-const buildTreeDay = (
-  keyPrefix: string,
-  operations: BackupInfo[]
-): [OpTreeNode[], React.Key[]] => {
-  const grouped = _.groupBy(operations, (op) => {
-    return localISOTime(op.displayTime).substring(0, 10);
-  });
-  const entries = _.map(grouped, (value, key) => {
-    const children = buildTreeLeaf(value);
-    return {
-      key: keyPrefix + key,
-      title: formatDate(value[0].displayTime),
-      children: children,
-    };
-  });
-  entries.sort(sortByKey);
-
-  const expanded: React.Key[] = [];
-  let visibleChildCount = 0;
-  for (const e of entries) {
-    expanded.push(e.key);
-    visibleChildCount += e.children!.length;
-    if (visibleChildCount > 5) {
-      break;
-    }
-  }
-  return [entries, expanded];
-};
-
-const buildTreeLeaf = (operations: BackupInfo[]): OpTreeNode[] => {
-  const entries = _.map(operations, (b): OpTreeNode => {
-    let iconColor = colorForStatus(b.status);
-    let icon: React.ReactNode | null = <QuestionOutlined />;
-
-    if (b.status === OperationStatus.STATUS_ERROR) {
-      icon = <ExclamationOutlined style={{ color: iconColor }} />;
-    } else {
-      icon = <SaveOutlined style={{ color: iconColor }} />;
-    }
-
-    return {
-      key: b.id,
-      backup: b,
-      icon: icon,
-    };
-  });
-  entries.sort((a, b) => {
-    return b.backup!.startTimeMs - a.backup!.startTimeMs;
-  });
-  return entries;
+  return { tree, expanded };
 };
 
 const sortByKey = (a: OpTreeNode, b: OpTreeNode) => {
