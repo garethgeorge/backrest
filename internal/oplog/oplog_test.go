@@ -50,6 +50,7 @@ func TestAddOperation(t *testing.T) {
 				UnixTimeStartMs: 1234,
 				RepoId:          "testrepo",
 				PlanId:          "testplan",
+				InstanceId:      "testinstance",
 				Op:              &v1.Operation_OperationBackup{},
 			},
 			wantErr: false,
@@ -60,6 +61,7 @@ func TestAddOperation(t *testing.T) {
 				UnixTimeStartMs: 1234,
 				RepoId:          "testrepo",
 				PlanId:          "testplan",
+				InstanceId:      "testinstance",
 				Op: &v1.Operation_OperationIndexSnapshot{
 					OperationIndexSnapshot: &v1.OperationIndexSnapshot{
 						Snapshot: &v1.ResticSnapshot{
@@ -76,6 +78,7 @@ func TestAddOperation(t *testing.T) {
 				Id:              1,
 				RepoId:          "testrepo",
 				PlanId:          "testplan",
+				InstanceId:      "testinstance",
 				UnixTimeStartMs: 1234,
 				Op:              &v1.Operation_OperationBackup{},
 			},
@@ -95,6 +98,15 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				UnixTimeStartMs: 1234,
 				PlanId:          "testplan",
+				Op:              &v1.Operation_OperationBackup{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "operation with instance only",
+			op: &v1.Operation{
+				UnixTimeStartMs: 1234,
+				InstanceId:      "testinstance",
 				Op:              &v1.Operation_OperationBackup{},
 			},
 			wantErr: true,
@@ -129,6 +141,7 @@ func TestListOperation(t *testing.T) {
 			UnixTimeStartMs: 1234,
 			PlanId:          "plan1",
 			RepoId:          "repo1",
+			InstanceId:      "instance1",
 			DisplayMessage:  "op1",
 			Op:              &v1.Operation_OperationBackup{},
 		},
@@ -136,6 +149,7 @@ func TestListOperation(t *testing.T) {
 			UnixTimeStartMs: 1234,
 			PlanId:          "plan1",
 			RepoId:          "repo2",
+			InstanceId:      "instance2",
 			DisplayMessage:  "op2",
 			Op:              &v1.Operation_OperationBackup{},
 		},
@@ -143,7 +157,9 @@ func TestListOperation(t *testing.T) {
 			UnixTimeStartMs: 1234,
 			PlanId:          "plan2",
 			RepoId:          "repo2",
+			InstanceId:      "instance3",
 			DisplayMessage:  "op3",
+			FlowId:          943,
 			Op:              &v1.Operation_OperationBackup{},
 		},
 	}
@@ -156,34 +172,35 @@ func TestListOperation(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		byPlan   bool
-		byRepo   bool
-		id       string
+		query    Query
 		expected []string
 	}{
 		{
 			name:     "list plan1",
-			byPlan:   true,
-			id:       "plan1",
+			query:    Query{PlanId: "plan1"},
 			expected: []string{"op1", "op2"},
 		},
 		{
 			name:     "list plan2",
-			byPlan:   true,
-			id:       "plan2",
+			query:    Query{PlanId: "plan2"},
 			expected: []string{"op3"},
 		},
 		{
 			name:     "list repo1",
-			byRepo:   true,
-			id:       "repo1",
+			query:    Query{RepoId: "repo1"},
 			expected: []string{"op1"},
 		},
 		{
 			name:     "list repo2",
-			byRepo:   true,
-			id:       "repo2",
+			query:    Query{RepoId: "repo2"},
 			expected: []string{"op2", "op3"},
+		},
+		{
+			name:  "list flow 943",
+			query: Query{FlowId: 943},
+			expected: []string{
+				"op3",
+			},
 		},
 	}
 
@@ -197,13 +214,7 @@ func TestListOperation(t *testing.T) {
 				ops = append(ops, op)
 				return nil
 			}
-			if tc.byPlan {
-				err = log.ForEach(Query{PlanId: tc.id}, indexutil.CollectAll(), collect)
-			} else if tc.byRepo {
-				err = log.ForEach(Query{RepoId: tc.id}, indexutil.CollectAll(), collect)
-			} else {
-				t.Fatalf("must specify byPlan or byRepo")
-			}
+			err = log.ForEach(tc.query, indexutil.CollectAll(), collect)
 			if err != nil {
 				t.Fatalf("error listing operations: %s", err)
 			}
@@ -212,42 +223,6 @@ func TestListOperation(t *testing.T) {
 				t.Errorf("want operations: %v, got unexpected operations: %v", tc.expected, got)
 			}
 		})
-	}
-}
-
-func TestListByFlowId(t *testing.T) {
-	t.Parallel()
-
-	log, err := NewOpLog(t.TempDir() + "/test.boltdb")
-	if err != nil {
-		t.Fatalf("error creating oplog: %s", err)
-	}
-	t.Cleanup(func() { log.Close() })
-
-	op := &v1.Operation{
-		UnixTimeStartMs: 1234,
-		PlanId:          "plan1",
-		RepoId:          "repo1",
-		FlowId:          1,
-		Op:              &v1.Operation_OperationBackup{},
-	}
-
-	if err := log.Add(op); err != nil {
-		t.Fatalf("error adding operation: %s", err)
-	}
-
-	var ops []*v1.Operation
-	if err := log.ForEach(Query{FlowId: 1}, indexutil.CollectAll(), func(op *v1.Operation) error {
-		ops = append(ops, op)
-		return nil
-	}); err != nil {
-		t.Fatalf("error listing operations: %s", err)
-	}
-	if len(ops) != 1 {
-		t.Fatalf("want 1 operation, got %d", len(ops))
-	}
-	if ops[0].Id != op.Id {
-		t.Errorf("want operation ID %d, got %d", op.Id, ops[0].Id)
 	}
 }
 
@@ -267,6 +242,7 @@ func TestBigIO(t *testing.T) {
 			UnixTimeStartMs: 1234,
 			PlanId:          "plan1",
 			RepoId:          "repo1",
+			InstanceId:      "instance1",
 			Op:              &v1.Operation_OperationBackup{},
 		}); err != nil {
 			t.Fatalf("error adding operation: %s", err)
@@ -289,6 +265,7 @@ func TestIndexSnapshot(t *testing.T) {
 		UnixTimeStartMs: 1234,
 		PlanId:          "plan1",
 		RepoId:          "repo1",
+		InstanceId:      "instance1",
 		SnapshotId:      snapshotId,
 		Op:              &v1.Operation_OperationIndexSnapshot{},
 	}
@@ -324,6 +301,7 @@ func TestUpdateOperation(t *testing.T) {
 		UnixTimeStartMs: 1234,
 		PlanId:          "oldplan",
 		RepoId:          "oldrepo",
+		InstanceId:      "instance1",
 		SnapshotId:      snapshotId,
 	}
 	if err := log.Add(op); err != nil {

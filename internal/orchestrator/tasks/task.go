@@ -15,8 +15,9 @@ import (
 var NeverScheduledTask = ScheduledTask{}
 
 const (
-	PlanForUnassociatedOperations = "_unassociated_"
-	PlanForSystemTasks            = "_system_" // plan for system tasks e.g. garbage collection, prune, stats, etc.
+	PlanForUnassociatedOperations       = "_unassociated_"
+	InstanceIDForUnassociatedOperations = "_unassociated_"
+	PlanForSystemTasks                  = "_system_" // plan for system tasks e.g. garbage collection, prune, stats, etc.
 
 	TaskPriorityStats          = 0
 	TaskPriorityDefault        = 1 << 1 // default priority
