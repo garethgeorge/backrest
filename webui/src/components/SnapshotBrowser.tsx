@@ -13,12 +13,7 @@ import {
   FolderOutlined,
 } from "@ant-design/icons";
 import { useShowModal } from "./ModalManager";
-import {
-  formatBytes,
-  formatDate,
-  formatTime,
-  normalizeSnapshotId,
-} from "../lib/formatting";
+import { formatBytes, normalizeSnapshotId } from "../lib/formatting";
 import { URIAutocomplete } from "./URIAutocomplete";
 import { validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
@@ -254,13 +249,15 @@ const RestoreModal = ({
   const handleOk = async () => {
     try {
       const values = await validateForm(form);
-      await backrestService.restore({
-        repoId,
-        planId,
-        snapshotId,
-        path,
-        target: values.target,
-      });
+      await backrestService.restore(
+        new RestoreSnapshotRequest({
+          repoId,
+          planId,
+          snapshotId,
+          path,
+          target: values.target,
+        })
+      );
     } catch (e: any) {
       alert("Failed to restore snapshot: " + e.message);
     } finally {
@@ -307,6 +304,7 @@ const RestoreModal = ({
         form.setFields([
           {
             name: "target",
+            value: targetPath,
             errors: [],
           },
         ]);
