@@ -51,8 +51,7 @@ func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, 
 	}
 
 	for idx, hook := range repo.GetHooks() {
-		h := (*Hook)(hook)
-		event := firstMatchingCondition(h, events)
+		event := firstMatchingCondition(hook, events)
 		if event == v1.Hook_CONDITION_UNKNOWN {
 			continue
 		}
@@ -68,7 +67,7 @@ func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, 
 			},
 		}
 		zap.L().Info("running hook", zap.String("plan", repo.Id), zap.Int64("opId", operation.Id), zap.String("hook", name))
-		if err := e.executeHook(operation, h, event, vars); err != nil {
+		if err := executeHook(operation, hook, event, vars); err != nil {
 			zap.S().Errorf("error on repo hook %v on condition %v: %v", idx, event.String(), err)
 			if isHaltingError(err) {
 				return fmt.Errorf("repo hook %v on condition %v: %w", idx, event.String(), err)
@@ -77,8 +76,7 @@ func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, 
 	}
 
 	for idx, hook := range plan.GetHooks() {
-		h := (*Hook)(hook)
-		event := firstMatchingCondition(h, events)
+		event := firstMatchingCondition(hook, events)
 		if event == v1.Hook_CONDITION_UNKNOWN {
 			continue
 		}
@@ -105,7 +103,7 @@ func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, 
 	return nil
 }
 
-func firstMatchingCondition(hook *Hook, events []v1.Hook_Condition) v1.Hook_Condition {
+func firstMatchingCondition(hook *v1.Hook, events []v1.Hook_Condition) v1.Hook_Condition {
 	for _, event := range events {
 		if slices.Contains(hook.Conditions, event) {
 			return event
@@ -114,11 +112,13 @@ func firstMatchingCondition(hook *Hook, events []v1.Hook_Condition) v1.Hook_Cond
 	return v1.Hook_CONDITION_UNKNOWN
 }
 
-func (e *HookExecutor) executeHook(op *v1.Operation, hook *Hook, event v1.Hook_Condition, vars interface{}) error {
+func (e *HookExecutor) executeHook(op *v1.Operation, hook *v1.Hook, event v1.Hook_Condition, vars interface{}) error {
 	if err := e.oplog.Add(op); err != nil {
 		zap.S().Errorf("execute hook: add operation: %v", err)
 		return errors.New("couldn't create operation")
 	}
+
+	// TODO: implement a task runner here
 
 	output := &bytes.Buffer{}
 	fmt.Fprintf(output, "triggering condition: %v\n", event.String())

@@ -73,3 +73,7 @@ func (gotifyHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, 
 func (gotifyHandler) ActionType() reflect.Type {
 	return reflect.TypeOf(&v1.Hook_ActionGotify{})
 }
+
+func init() {
+	hook.DefaultRegistry().RegisterHandler(&gotifyHandler{})
+}
