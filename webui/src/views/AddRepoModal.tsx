@@ -171,6 +171,21 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         ]}
         maskClosable={false}
       >
+        <p>
+          See{" "}
+          <a
+            href="https://garethgeorge.github.io/backrest/introduction/getting-started"
+            target="_blank"
+          >
+            backrest getting started guide
+          </a>{" "}
+          for repository configuration instructions or check the{" "}
+          <a href="https://restic.readthedocs.io/" target="_blank">
+            restic documentation
+          </a>{" "}
+          for more details about repositories.
+        </p>
+        <br />
         <Form
           autoComplete="off"
           form={form}

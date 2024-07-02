@@ -149,6 +149,17 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         ]}
         maskClosable={false}
       >
+        <p>
+          See{" "}
+          <a
+            href="https://garethgeorge.github.io/backrest/introduction/getting-started"
+            target="_blank"
+          >
+            backrest getting started guide
+          </a>{" "}
+          for plan configuration instructions.
+        </p>
+        <br />
         <Form
           autoComplete="off"
           form={form}

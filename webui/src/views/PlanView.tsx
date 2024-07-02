@@ -106,6 +106,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                       lastN: BigInt(MAX_OPERATION_HISTORY),
                     })
                   }
+                  isPlanView={true}
                 />
               </>
             ),

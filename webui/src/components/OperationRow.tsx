@@ -317,16 +317,16 @@ export const OperationRow = ({
 
   if (operation.displayMessage) {
     children.push(
-      <>
+      <div key="message">
         <pre>
           {details.state ? details.state + ": " : null}
           {displayMessage}
         </pre>
-      </>
+      </div>
     );
   }
 
-  children.push(body);
+  children.push(<div key="body">{body}</div>);
 
   return (
     <List.Item key={operation.id}>
