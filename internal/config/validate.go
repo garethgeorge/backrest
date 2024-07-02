@@ -134,8 +134,6 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 	}
 
 	slices.Sort(plan.Paths)
-	slices.Sort(plan.Excludes)
-	slices.Sort(plan.Iexcludes)
 
 	return err
 }
