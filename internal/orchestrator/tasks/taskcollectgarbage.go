@@ -17,8 +17,7 @@ const (
 	// an operation is eligible for gc if:
 	// - it has no snapshot associated with it
 	// - it has a forgotten snapshot associated with it
-	gcHistoryAge      = 30 * 24 * time.Hour
-	gcHistoryMaxCount = 1000
+	gcHistoryAge = 60 * 24 * time.Hour
 	// keep stats operations for 1 year (they're small and useful for long term trends)
 	gcHistoryStatsAge = 365 * 24 * time.Hour
 )

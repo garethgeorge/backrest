@@ -9,7 +9,6 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
@@ -103,16 +102,8 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_PRUNE_START,
-	}, hook.HookVars{}); err != nil {
-		op.DisplayMessage = err.Error()
-		// TODO: generalize this logic
-		var cancelErr *hook.HookErrorRequestCancel
-		if errors.As(err, &cancelErr) {
-			op.Status = v1.OperationStatus_STATUS_USER_CANCELLED // user visible cancelled status
-			return nil
-		}
-		op.Status = v1.OperationStatus_STATUS_ERROR
-		return fmt.Errorf("execute prune start hooks: %w", err)
+	}, HookVars{}); err != nil {
+		return fmt.Errorf("prune start hook: %w", err)
 	}
 
 	err = repo.UnlockIfAutoEnabled(ctx)
@@ -159,7 +150,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 
 		runner.ExecuteHooks([]v1.Hook_Condition{
 			v1.Hook_CONDITION_ANY_ERROR,
-		}, hook.HookVars{
+		}, HookVars{
 			Error: err.Error(),
 		})
 
@@ -177,7 +168,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 
 	if err := runner.ExecuteHooks([]v1.Hook_Condition{
 		v1.Hook_CONDITION_PRUNE_SUCCESS,
-	}, hook.HookVars{}); err != nil {
+	}, HookVars{}); err != nil {
 		return fmt.Errorf("execute prune end hooks: %w", err)
 	}
 

@@ -5,9 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"slices"
-	"strings"
-	"text/template"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -18,7 +17,7 @@ import (
 )
 
 var (
-	defaultTemplate = `{{ .Summary }}`
+	DefaultTemplate = `{{ .Summary }}`
 )
 
 type HookExecutor struct {
@@ -37,7 +36,7 @@ func NewHookExecutor(config *v1.Config, oplog *oplog.OpLog, bigOutputStore *rota
 
 // ExecuteHooks schedules tasks for the hooks subscribed to the given event. The vars map is used to substitute variables
 // Hooks are pulled both from the provided plan and from the repo config.
-func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, events []v1.Hook_Condition, vars HookVars) error {
+func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, events []v1.Hook_Condition, vars interface{}) error {
 	planId := plan.GetId()
 	if planId == "" {
 		planId = "_system_" // TODO: clean this up when refactoring hook execution
@@ -50,10 +49,6 @@ func (e *HookExecutor) ExecuteHooks(flowID int64, repo *v1.Repo, plan *v1.Plan, 
 		InstanceId: e.config.Instance,
 		FlowId:     flowID,
 	}
-
-	vars.Repo = repo
-	vars.Plan = plan
-	vars.CurTime = time.Now()
 
 	for idx, hook := range repo.GetHooks() {
 		h := (*Hook)(hook)
@@ -119,7 +114,7 @@ func firstMatchingCondition(hook *Hook, events []v1.Hook_Condition) v1.Hook_Cond
 	return v1.Hook_CONDITION_UNKNOWN
 }
 
-func (e *HookExecutor) executeHook(op *v1.Operation, hook *Hook, event v1.Hook_Condition, vars HookVars) error {
+func (e *HookExecutor) executeHook(op *v1.Operation, hook *Hook, event v1.Hook_Condition, vars interface{}) error {
 	if err := e.oplog.Add(op); err != nil {
 		zap.S().Errorf("execute hook: add operation: %v", err)
 		return errors.New("couldn't create operation")
@@ -164,48 +159,17 @@ func curTimeMs() int64 {
 
 type Hook v1.Hook
 
-func (h *Hook) Do(event v1.Hook_Condition, vars HookVars, output io.Writer) error {
+func (h *Hook) Do(event v1.Hook_Condition, vars interface{}, output io.Writer) error {
 	if !slices.Contains(h.Conditions, event) {
 		return nil
 	}
 
-	vars.Event = event
-
-	switch action := h.Action.(type) {
-	case *v1.Hook_ActionCommand:
-		return h.doCommand(action, vars, output)
-	case *v1.Hook_ActionDiscord:
-		return h.doDiscord(action, vars, output)
-	case *v1.Hook_ActionGotify:
-		return h.doGotify(action, vars, output)
-	case *v1.Hook_ActionSlack:
-		return h.doSlack(action, vars, output)
-	case *v1.Hook_ActionShoutrrr:
-		return h.doShoutrrr(action, vars, output)
-	default:
-		return fmt.Errorf("unknown hook action: %v", action)
-	}
-}
-
-func (h *Hook) renderTemplate(text string, vars HookVars) (string, error) {
-	template, err := template.New("template").Parse(text)
-	if err != nil {
-		return "", fmt.Errorf("parse template: %w", err)
+	// if vars has a .Event key set it to the event
+	// this is a bit of a hack to allow the event to be used in the template
+	if eventField := reflect.ValueOf(vars).FieldByName("Event"); eventField.IsValid() {
+		eventField.Set(reflect.ValueOf(event))
 	}
 
-	buf := &bytes.Buffer{}
-	if err := template.Execute(buf, vars); err != nil {
-		return "", fmt.Errorf("execute template: %w", err)
-	}
-
-	return buf.String(), nil
-}
-
-func (h *Hook) renderTemplateOrDefault(template string, defaultTmpl string, vars HookVars) (string, error) {
-	if strings.Trim(template, " ") == "" {
-		return h.renderTemplate(defaultTmpl, vars)
-	}
-	return h.renderTemplate(template, vars)
 }
 
 func applyHookErrorPolicy(onError v1.Hook_OnError, err error) error {

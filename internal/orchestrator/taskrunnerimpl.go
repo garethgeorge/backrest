@@ -2,6 +2,9 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -69,11 +72,13 @@ func (t *taskRunnerImpl) OpLog() *oplog.OpLog {
 	return t.orchestrator.OpLog
 }
 
-func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.HookVars) error {
+func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars tasks.HookVars) error {
 	vars.Task = t.t.Name()
 	if t.op != nil {
 		vars.Duration = time.Since(time.UnixMilli(t.op.UnixTimeStartMs))
 	}
+
+	vars.CurTime = time.Now()
 
 	repoID := t.t.RepoID()
 	planID := t.t.PlanID()
@@ -85,16 +90,24 @@ func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.Hook
 		if err != nil {
 			return err
 		}
+		vars.Repo = repo
 	}
 	if planID != "" {
 		plan, _ = t.FindPlan()
+		vars.Plan = plan
 	}
 	var flowID int64
 	if t.op != nil {
 		flowID = t.op.FlowId
 	}
+
 	executor := hook.NewHookExecutor(t.Config(), t.orchestrator.OpLog, t.orchestrator.logStore)
-	return executor.ExecuteHooks(flowID, repo, plan, events, vars)
+	err := executor.ExecuteHooks(flowID, repo, plan, events, vars)
+	var cancelErr *hook.HookErrorRequestCancel
+	if errors.As(err, &cancelErr) {
+		return fmt.Errorf("%w: %w", tasks.ErrTaskCancelled, err)
+	}
+	return err
 }
 
 func (t *taskRunnerImpl) GetRepo(repoID string) (*v1.Repo, error) {
@@ -123,4 +136,8 @@ func (t *taskRunnerImpl) Config() *v1.Config {
 
 func (t *taskRunnerImpl) Logger(ctx context.Context) *zap.Logger {
 	return logging.Logger(ctx).Named(t.t.Name())
+}
+
+func (t *taskRunnerImpl) RawLogWriter(ctx context.Context) io.Writer {
+	return logging.WriterFromContext(ctx)
 }
