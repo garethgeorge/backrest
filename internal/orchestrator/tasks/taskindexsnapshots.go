@@ -191,7 +191,11 @@ func planForSnapshot(snapshot *v1.ResticSnapshot) string {
 }
 
 func instanceIDForSnapshot(snapshot *v1.ResticSnapshot) string {
-	return repo.InstanceIDFromTags(snapshot.Tags)
+	id := repo.InstanceIDFromTags(snapshot.Tags)
+	if id != "" {
+		return id
+	}
+	return InstanceIDForUnassociatedOperations
 }
 
 // tryMigrate checks if the snapshots use the latest backrest tag set and migrates them if necessary.

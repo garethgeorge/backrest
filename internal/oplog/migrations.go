@@ -15,6 +15,7 @@ var migrations = []func(*OpLog, *bbolt.Tx) error{
 	migration001FlowID,
 	migration002InstanceID,
 	migration003ResetLastValidated,
+	migration002InstanceID, // re-run migration002InstanceID to fix improperly set instance IDs
 }
 
 var CurrentVersion = int64(len(migrations))
