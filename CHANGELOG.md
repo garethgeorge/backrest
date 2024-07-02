@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.1](https://github.com/garethgeorge/backrest/compare/v1.2.0...v1.2.1) (2024-07-02)
+
+
+### Bug Fixes
+
+* AddPlanModal and AddRepoModal should only be closeable explicitly ([15f92fc](https://github.com/garethgeorge/backrest/commit/15f92fcd901da8c06ebd94576b09879e68bf5bc5))
+* disable sorting for excludes and iexcludes ([d7425b5](https://github.com/garethgeorge/backrest/commit/d7425b589376595999d3e3f401bb7ef77ffde991))
+* github actions release flow for windows installers ([90e0656](https://github.com/garethgeorge/backrest/commit/90e0656fc41a2b90ee24d598023ccc6996a64b9c))
+* make instance ID required field ([7c8ded2](https://github.com/garethgeorge/backrest/commit/7c8ded2fcc4b597e21c24f451e02cc14ba9a015c))
+* operation tree UI bugs ([76ce3c1](https://github.com/garethgeorge/backrest/commit/76ce3c177b6a92c105c874e459bd57e1122b5ce8))
+* restore always uses ~/Downloads path ([955771e](https://github.com/garethgeorge/backrest/commit/955771e1cc6bb7b143ef5c51ef9e1e09509f76b1))
+
 ## [1.1.0](https://github.com/garethgeorge/backrest/compare/v1.0.0...v1.1.0) (2024-06-01)
 
 
