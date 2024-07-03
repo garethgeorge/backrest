@@ -77,7 +77,7 @@ func restoreHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner,
 
 		zap.S().Infof("restore progress: %v", entry)
 
-		restoreOp.Status = entry
+		restoreOp.LastStatus = entry
 
 		sendWg.Add(1)
 		go func() {
@@ -91,7 +91,7 @@ func restoreHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner,
 	if err != nil {
 		return fmt.Errorf("restore failed: %w", err)
 	}
-	restoreOp.Status = summary
+	restoreOp.LastStatus = summary
 
 	return nil
 }

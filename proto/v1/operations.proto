@@ -100,7 +100,7 @@ message OperationCheck {
 message OperationRestore {
   string path = 1; // path in the snapshot to restore.
   string target = 2; // location to restore it to.
-  RestoreProgressEntry status = 3; // status of the restore.
+  RestoreProgressEntry last_status = 3; // status of the restore.
 }
 
 // OperationStats tracks a stats operation.

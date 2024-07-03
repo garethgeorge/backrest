@@ -3,6 +3,7 @@ import {
   BackupInfo,
   BackupInfoCollector,
   colorForStatus,
+  detailsForOperation,
   displayTypeToString,
   getOperations,
   getTypeForDisplay,
@@ -159,14 +160,25 @@ export const OperationTree = ({
               );
             } else if (b.backupLastStatus.entry.case === "status") {
               const s = b.backupLastStatus.entry.value;
-              const percent = Math.floor(
-                (Number(s.bytesDone) / Number(s.totalBytes)) * 100
-              );
+              const percent = Number(s.bytesDone / s.totalBytes) * 100;
               details.push(
-                `${percent}% processed ${formatBytes(
+                `${percent.toFixed(1)}% processed ${formatBytes(
                   Number(s.bytesDone)
                 )} / ${formatBytes(Number(s.totalBytes))}`
               );
+            }
+          } else if (b.operations.length === 1) {
+            const op = b.operations[0];
+            const opDetails = detailsForOperation(op);
+            if (
+              opDetails.percentage &&
+              opDetails.percentage > 0.1 &&
+              opDetails.percentage < 99.9
+            ) {
+              details.push(opDetails.displayState);
+            }
+            if (op.snapshotId) {
+              details.push(`ID: ${normalizeSnapshotId(op.snapshotId)}`);
             }
           }
           if (b.snapshotInfo) {
