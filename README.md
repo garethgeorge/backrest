@@ -51,7 +51,7 @@ Backrest itself is built in Golang (matching restic's implementation) and is shi
 
 # Installation
 
-Backrest is packaged as a single executable. It can be run directly on Linux, macOS, and Windows. [restic](https://github.com/restic/restic) will be downloaded and installed in the data directory on first run.
+Backrest is packaged as a single executable. It can be run directly on Linux, macOS, and Windows. [restic](https://github.com/restic/restic) will be downloaded and installed on first run.
 
 Download options
 
@@ -62,7 +62,7 @@ Download options
 Backrest is accessible from a web browser. By default it binds to `127.0.0.1:9898` and can be accessed at `http://localhost:9898`. Change the port with the `BACKREST_PORT` environment variable e.g. `BACKREST_PORT=0.0.0.0:9898 backrest` to listen on all network interfaces. On first startup backrest will prompt you to create a default username and password, this can be changed later in the settings page.
 
 > [!Note]
-> Backrest installs a specific restic version to ensure that the version of restic matches the version Backrest is tested against. This provides the best guarantees for stability. If you wish to use a different version of restic OR if you would prefer to install restic manually you may do so by setting the `BACKREST_RESTIC_COMMAND` environment variable to the path of the restic binary you wish to use.
+> Backrest installs a specific restic version to ensure that the restic dependency matches backrest. This provides the best guarantees for stability. If you wish to use a different version of restic OR if you would prefer to install restic manually you may do so by setting the `BACKREST_RESTIC_COMMAND` environment variable to the path of the restic binary you wish to use.
 
 ## Running with Docker Compose
 
@@ -234,12 +234,24 @@ To run the binary on login, create a shortcut to the binary and place it in the 
 
 # Configuration
 
-## Environment Variables
+## Environment Variables (Unix)
 
 | Variable                  | Description                 | Default                                                                                                             |
 | ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `BACKREST_PORT`           | Port to bind to             | 9898                                                                                                                |
+| `BACKREST_PORT`           | Port to bind to             | 127.0.0.1:9898 (or 0.0.0.0:9898 for the docker images)                                                              |
 | `BACKREST_CONFIG`         | Path to config file         | `$HOME/.config/backrest/config.json`<br>(or, if `$XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/backrest/config.json`) |
 | `BACKREST_DATA`           | Path to the data directory  | `$HOME/.local/share/backrest`<br>(or, if `$XDG_DATA_HOME` is set, `$XDG_DATA_HOME/backrest`)                        |
-| `BACKREST_RESTIC_COMMAND` | Path to restic binary       | Defaults to a Backrest managed version of restic                                                                    |
+| `BACKREST_RESTIC_COMMAND` | Path to restic binary       | Defaults to a Backrest managed version of restic at `$XDG_DATA_HOME/backrest/restic-x.x.x`                          |
 | `XDG_CACHE_HOME`          | Path to the cache directory |                                                                                                                     |
+
+## Environment Variables (Windows)
+
+## Environment Variables (Linux)
+
+| Variable                  | Description                 | Default                                                                                    |
+| ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------ |
+| `BACKREST_PORT`           | Port to bind to             | 127.0.0.1:9898                                                                             |
+| `BACKREST_CONFIG`         | Path to config file         | `%appdata%\backrest`                                                                       |
+| `BACKREST_DATA`           | Path to the data directory  | `%appdata%\backrest\data`                                                                  |
+| `BACKREST_RESTIC_COMMAND` | Path to restic binary       | Defaults to a Backrest managed version of restic in `C:\Program Files\restic\restic-x.x.x` |
+| `XDG_CACHE_HOME`          | Path to the cache directory |                                                                                            |

@@ -242,6 +242,17 @@ const RestoreModal = ({
   const [form] = Form.useForm<RestoreSnapshotRequest>();
   const showModal = useShowModal();
 
+  const defaultPath = useMemo(() => {
+    if (path === pathSeparator) {
+      return "";
+    }
+    return path + "-backrest-restore-" + normalizeSnapshotId(snapshotId);
+  }, [path]);
+
+  useEffect(() => {
+    form.setFieldsValue({ target: defaultPath });
+  }, [defaultPath]);
+
   const handleCancel = () => {
     showModal(null);
   };
@@ -265,13 +276,6 @@ const RestoreModal = ({
     }
   };
 
-  const defaultPath = useMemo(() => {
-    if (path === pathSeparator) {
-      return "";
-    }
-    return path + "-backrest-restore-" + normalizeSnapshotId(snapshotId);
-  }, [path]);
-
   let targetPath = Form.useWatch("target", form);
   useEffect(() => {
     if (!targetPath) {
@@ -279,17 +283,18 @@ const RestoreModal = ({
     }
     (async () => {
       try {
-        if (targetPath.endsWith(pathSeparator)) {
-          targetPath = targetPath.slice(0, -1);
+        let p = targetPath;
+        if (p.endsWith(pathSeparator)) {
+          p = p.slice(0, -1);
         }
 
-        const dirname = basename(targetPath);
+        const dirname = basename(p);
         const files = await backrestService.pathAutocomplete(
           new StringValue({ value: dirname })
         );
 
         for (const file of files.values) {
-          if (dirname + file === targetPath) {
+          if (dirname + file === p) {
             form.setFields([
               {
                 name: "target",

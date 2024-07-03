@@ -5,7 +5,7 @@ import {
   OperationStatus,
 } from "../../gen/ts/v1/operations_pb";
 import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
-import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic_pb";
+import { BackupProgressEntry, ResticSnapshot, RestoreProgressEntry } from "../../gen/ts/v1/restic_pb";
 import _ from "lodash";
 import { formatDuration, formatTime } from "../lib/formatting";
 import { backrestService } from "../api";
@@ -71,13 +71,16 @@ export const getStatusForSelector = async (sel: OpSelector) => {
 // getStatus returns the status of the last N operations that belong to a single snapshot.
 const getStatus = async (req: GetOperationsRequest) => {
   let ops = await getOperations(req);
-  ops = ops
-    .reverse()
-    .filter((op) => op.status !== OperationStatus.STATUS_PENDING);
+  ops.sort((a, b) => {
+    return Number(b.unixTimeStartMs - a.unixTimeStartMs);
+  });
   if (ops.length === 0) {
     return OperationStatus.STATUS_SUCCESS;
   }
-  const flowId = ops[0].flowId;
+  const flowId = ops.find((op) => op.status !== OperationStatus.STATUS_PENDING)?.flowId;
+  if (!flowId) {
+    return OperationStatus.STATUS_SUCCESS;
+  }
   for (const op of ops) {
     if (op.status === OperationStatus.STATUS_PENDING) {
       continue;
@@ -120,6 +123,7 @@ export interface BackupInfo {
   planId?: string;
   snapshotId?: string;
   backupLastStatus?: BackupProgressEntry;
+  restoreLastStatus?: RestoreProgressEntry;
   snapshotInfo?: ResticSnapshot;
   forgotten: boolean;
 }
@@ -224,17 +228,22 @@ export class BackupInfoCollector {
       statusIdx--;
     }
 
-    let backupLastStatus = undefined;
-    let snapshotInfo = undefined;
-    let forgotten = false;
-    let snapshotId = "";
+    let backupLastStatus: BackupProgressEntry | undefined = undefined;
+    let snapshotInfo: ResticSnapshot | undefined = undefined;
+    let forgotten: boolean = false;
+    let snapshotId: string = "";
     for (const op of operations) {
-      if (op.op.case === "operationBackup") {
-        backupLastStatus = op.op.value.lastStatus;
-      } else if (op.op.case === "operationIndexSnapshot") {
-        snapshotInfo = op.op.value.snapshot;
-        forgotten = op.op.value.forgot || false;
-        snapshotId = op.op.value.snapshot?.id || "";
+      switch (op.op.case) {
+        case "operationBackup":
+          backupLastStatus = op.op.value.lastStatus;
+          break;
+        case "operationIndexSnapshot":
+          snapshotInfo = op.op.value.snapshot;
+          forgotten = op.op.value.forgot || false;
+          snapshotId = op.op.value.snapshot?.id || "";
+          break;
+        default:
+          break;
       }
     }
 
@@ -498,9 +507,7 @@ export const detailsForOperation = (
         }
       } else if (op.op.case === "operationRestore") {
         const restore = op.op.value;
-        if (restore.status) {
-          percentage = (restore.status.percentDone || 1) * 100;
-        }
+        percentage = (restore.lastStatus?.percentDone || 0) * 100;
       }
       break;
     default:

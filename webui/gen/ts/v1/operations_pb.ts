@@ -620,9 +620,9 @@ export class OperationRestore extends Message<OperationRestore> {
   /**
    * status of the restore.
    *
-   * @generated from field: v1.RestoreProgressEntry status = 3;
+   * @generated from field: v1.RestoreProgressEntry last_status = 3;
    */
-  status?: RestoreProgressEntry;
+  lastStatus?: RestoreProgressEntry;
 
   constructor(data?: PartialMessage<OperationRestore>) {
     super();
@@ -634,7 +634,7 @@ export class OperationRestore extends Message<OperationRestore> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "target", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "status", kind: "message", T: RestoreProgressEntry },
+    { no: 3, name: "last_status", kind: "message", T: RestoreProgressEntry },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationRestore {

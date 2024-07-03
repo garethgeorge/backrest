@@ -259,7 +259,7 @@ export const OperationRow = ({
   } else if (operation.op.case === "operationRestore") {
     const restore = operation.op.value;
     const progress = Math.round((details.percentage || 0) * 10) / 10;
-    const st = restore.status! || {};
+    const st = restore.lastStatus! || {};
 
     body = (
       <>
@@ -288,6 +288,8 @@ export const OperationRow = ({
             </Button>
           </>
         ) : null}
+        <br />
+        Snapshot ID: {normalizeSnapshotId(operation.snapshotId!)}
         <Row gutter={16}>
           <Col span={12}>
             <Typography.Text strong>Bytes Done/Total</Typography.Text>

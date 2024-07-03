@@ -13,15 +13,19 @@ import (
 const (
 	gcStartupDelay = 60 * time.Second
 	gcInterval     = 24 * time.Hour
-	// keep operations that are eligible for gc for 30 days OR up to a limit of 100 for any one plan.
-	// an operation is eligible for gc if:
-	// - it has no snapshot associated with it
-	// - it has a forgotten snapshot associated with it
-	gcHistoryAge      = 30 * 24 * time.Hour
-	gcHistoryMaxCount = 1000
-	// keep stats operations for 1 year (they're small and useful for long term trends)
-	gcHistoryStatsAge = 365 * 24 * time.Hour
 )
+
+// gcAgeForOperation returns the age at which an operation is eligible for garbage collection.
+func gcAgeForOperation(op *v1.Operation) time.Duration {
+	switch op.Op.(type) {
+	// stats, check, and prune operations are kept for a year
+	case *v1.Operation_OperationStats, *v1.Operation_OperationCheck, *v1.Operation_OperationPrune:
+		return 365 * 24 * time.Hour
+	// all other operations are kept for 30 days
+	default:
+		return 30 * 24 * time.Hour
+	}
+}
 
 type CollectGarbageTask struct {
 	BaseTask
@@ -83,11 +87,8 @@ func (t *CollectGarbageTask) gcOperations(oplog *oplog.OpLog) error {
 		forgot, ok := snapshotForgottenForFlow[op.FlowId]
 		if !ok {
 			// no snapshot associated with this flow; check if it's old enough to be gc'd
-			maxAgeForType := gcHistoryAge.Milliseconds()
-			if _, isStats := op.Op.(*v1.Operation_OperationStats); isStats {
-				maxAgeForType = gcHistoryStatsAge.Milliseconds()
-			}
-			if curTime-op.UnixTimeStartMs > maxAgeForType {
+			maxAgeForOperation := gcAgeForOperation(op)
+			if curTime-op.UnixTimeStartMs > maxAgeForOperation.Milliseconds() {
 				forgetIDs = append(forgetIDs, op.Id)
 			}
 		} else if forgot {
@@ -106,18 +107,4 @@ func (t *CollectGarbageTask) gcOperations(oplog *oplog.OpLog) error {
 	zap.L().Info("collecting garbage",
 		zap.Any("operations_removed", len(forgetIDs)))
 	return nil
-}
-
-func (t *CollectGarbageTask) Cancel(withStatus v1.OperationStatus) error {
-	return nil
-}
-
-func (t *CollectGarbageTask) OperationId() int64 {
-	return 0
-}
-
-type gcOpInfo struct {
-	id        int64 // operation ID
-	timestamp int64 // unix time milliseconds
-	isStats   bool  // true if this is a stats operation
 }
