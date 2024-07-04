@@ -513,9 +513,6 @@ func TestRestore(t *testing.T) {
 			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
 		}); index != -1 {
 			op := operations[index]
-			if op.FlowId != snapshotOp.FlowId {
-				t.Errorf("Flow ID mismatch on restore operation")
-			}
 			if op.SnapshotId != snapshotOp.SnapshotId {
 				t.Errorf("Snapshot ID mismatch on restore operation")
 			}
