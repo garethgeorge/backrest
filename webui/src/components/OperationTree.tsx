@@ -251,7 +251,7 @@ const buildTree = (
 
       return {
         title,
-        key,
+        key: "i-" + key,
         children: buildTreePlan(value),
       };
     });
@@ -279,7 +279,7 @@ const buildTree = (
         );
       }
       return {
-        key,
+        key: "p-" + key,
         title,
         children: buildTreeDay(key, value),
       };
@@ -411,7 +411,6 @@ const BackupViewContainer = ({ children }: { children: React.ReactNode }) => {
   const ref = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const refresh = useState(0)[1];
-  const [offset, setOffset] = useState(0);
   const [topY, setTopY] = useState(0);
   const [bottomY, setBottomY] = useState(0);
 
@@ -425,8 +424,6 @@ const BackupViewContainer = ({ children }: { children: React.ReactNode }) => {
     // handle scroll events to keep the fixed container in view.
     const handleScroll = () => {
       const refRect = ref.current!.getBoundingClientRect();
-      const innerRect = innerRef.current!.getBoundingClientRect();
-
       let wiggle = Math.max(refRect.height - window.innerHeight, 0);
       let topY = Math.max(ref.current!.getBoundingClientRect().top, 0);
       let bottomY = topY;
