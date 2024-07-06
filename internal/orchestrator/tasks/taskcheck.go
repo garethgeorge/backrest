@@ -100,7 +100,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		return fmt.Errorf("couldn't get repo %q: %w", t.RepoID(), err)
 	}
 
-	if err := runner.ExecuteHooks([]v1.Hook_Condition{
+	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_CHECK_START,
 	}, HookVars{}); err != nil {
 		return fmt.Errorf("check start hook: %w", err)
@@ -148,7 +148,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	if err := repo.Check(ctx, bufWriter); err != nil {
 		cancel()
 
-		runner.ExecuteHooks([]v1.Hook_Condition{
+		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 			v1.Hook_CONDITION_CHECK_ERROR,
 			v1.Hook_CONDITION_ANY_ERROR,
 		}, HookVars{
@@ -167,7 +167,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		zap.L().Error("schedule stats task", zap.Error(err))
 	}
 
-	if err := runner.ExecuteHooks([]v1.Hook_Condition{
+	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_CHECK_SUCCESS,
 	}, HookVars{}); err != nil {
 		return fmt.Errorf("execute prune success hooks: %w", err)

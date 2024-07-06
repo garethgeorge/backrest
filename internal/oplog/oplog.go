@@ -222,7 +222,7 @@ func (o *OpLog) notifyHelper(old *v1.Operation, new *v1.Operation) {
 	o.subscribersMu.RUnlock()
 
 	for _, sub := range subscribers {
-		(*sub)(old, new)
+		go (*sub)(old, new)
 	}
 }
 

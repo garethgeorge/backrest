@@ -3,6 +3,7 @@ package hook
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -32,7 +33,7 @@ func (r *HandlerRegistry) RegisterHandler(handler Handler) {
 func (r *HandlerRegistry) GetHandler(hook *v1.Hook) (Handler, error) {
 	handler, ok := r.actionHandlers[reflect.TypeOf(hook.Action)]
 	if !ok {
-		return nil, ErrHandlerNotFound
+		return nil, fmt.Errorf("hook type %T: %w", hook.Action, ErrHandlerNotFound)
 	}
 	return handler, nil
 }

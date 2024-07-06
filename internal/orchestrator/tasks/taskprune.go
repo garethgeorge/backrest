@@ -100,7 +100,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		return fmt.Errorf("couldn't get repo %q: %w", t.RepoID(), err)
 	}
 
-	if err := runner.ExecuteHooks([]v1.Hook_Condition{
+	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_PRUNE_START,
 	}, HookVars{}); err != nil {
 		return fmt.Errorf("prune start hook: %w", err)
@@ -148,7 +148,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	if err := repo.Prune(ctx, bufWriter); err != nil {
 		cancel()
 
-		runner.ExecuteHooks([]v1.Hook_Condition{
+		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 			v1.Hook_CONDITION_ANY_ERROR,
 		}, HookVars{
 			Error: err.Error(),
@@ -166,7 +166,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		zap.L().Error("schedule stats task", zap.Error(err))
 	}
 
-	if err := runner.ExecuteHooks([]v1.Hook_Condition{
+	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_PRUNE_SUCCESS,
 	}, HookVars{}); err != nil {
 		return fmt.Errorf("execute prune end hooks: %w", err)

@@ -33,7 +33,7 @@ func NewOneoffRestoreTask(repoID, planID string, flowID int64, at time.Time, sna
 		},
 		Do: func(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 			if err := restoreHelper(ctx, st, taskRunner, snapshotID, path, target); err != nil {
-				taskRunner.ExecuteHooks([]v1.Hook_Condition{
+				taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 					v1.Hook_CONDITION_ANY_ERROR,
 				}, HookVars{
 					Task:  st.Task.Name(),

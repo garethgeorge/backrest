@@ -28,7 +28,7 @@ func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) Task {
 		},
 		Do: func(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 			if err := indexSnapshotsHelper(ctx, st, taskRunner); err != nil {
-				taskRunner.ExecuteHooks([]v1.Hook_Condition{
+				taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 					v1.Hook_CONDITION_ANY_ERROR,
 				}, HookVars{
 					Task:  st.Task.Name(),

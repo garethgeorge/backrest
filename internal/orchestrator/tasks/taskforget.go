@@ -35,7 +35,7 @@ func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) Task
 			}
 
 			if err := forgetHelper(ctx, st, taskRunner); err != nil {
-				taskRunner.ExecuteHooks([]v1.Hook_Condition{
+				taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 					v1.Hook_CONDITION_ANY_ERROR,
 				}, HookVars{
 					Error: err.Error(),

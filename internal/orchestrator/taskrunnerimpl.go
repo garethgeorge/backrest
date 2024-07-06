@@ -72,7 +72,7 @@ func (t *taskRunnerImpl) OpLog() *oplog.OpLog {
 	return t.orchestrator.OpLog
 }
 
-func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars tasks.HookVars) error {
+func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars tasks.HookVars) error {
 	vars.Task = t.t.Name()
 	if t.op != nil {
 		vars.Duration = time.Since(time.UnixMilli(t.op.UnixTimeStartMs))
@@ -101,13 +101,19 @@ func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars tasks.Hoo
 		flowID = t.op.FlowId
 	}
 
-	executor := hook.NewHookExecutor(t.Config(), t.orchestrator.OpLog, t.orchestrator.logStore)
-	err := executor.ExecuteHooks(flowID, repo, plan, events, vars)
-	var cancelErr *hook.HookErrorRequestCancel
-	if errors.As(err, &cancelErr) {
-		return fmt.Errorf("%w: %w", tasks.ErrTaskCancelled, err)
+	hookTasks, err := hook.TasksTriggeredByEvent(t.Config(), flowID, planID, repoID, events, vars)
+	if err != nil {
+		return err
 	}
-	return err
+
+	if err := hook.ExecuteHookTasks(ctx, t.orchestrator, hookTasks); err != nil {
+		var cancelErr hook.HookErrorRequestCancel
+		if errors.As(err, &cancelErr) {
+			return fmt.Errorf("%w: %w", tasks.ErrTaskCancelled, err)
+		}
+		return err
+	}
+	return nil
 }
 
 func (t *taskRunnerImpl) GetRepo(repoID string) (*v1.Repo, error) {

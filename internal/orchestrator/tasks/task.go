@@ -35,7 +35,7 @@ type TaskRunner interface {
 	// UpdateOperation updates the operation in storage. It must be called after CreateOperation.
 	UpdateOperation(*v1.Operation) error
 	// ExecuteHooks
-	ExecuteHooks(events []v1.Hook_Condition, vars HookVars) error
+	ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars HookVars) error
 	// OpLog returns the oplog for the operations.
 	OpLog() *oplog.OpLog
 	// GetRepo returns the repo with the given ID.
@@ -52,6 +52,10 @@ type TaskRunner interface {
 	Logger(ctx context.Context) *zap.Logger
 	// RawLogWriter returns a writer for raw logs.
 	RawLogWriter(ctx context.Context) io.Writer
+}
+
+type ScheduledTaskExecutor interface {
+	RunTask(ctx context.Context, st ScheduledTask) error
 }
 
 // ScheduledTask is a task that is scheduled to run at a specific time.
