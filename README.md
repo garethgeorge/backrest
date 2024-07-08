@@ -246,8 +246,6 @@ To run the binary on login, create a shortcut to the binary and place it in the 
 
 ## Environment Variables (Windows)
 
-## Environment Variables (Linux)
-
 | Variable                  | Description                 | Default                                                                                    |
 | ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------ |
 | `BACKREST_PORT`           | Port to bind to             | 127.0.0.1:9898                                                                             |
