@@ -12,10 +12,9 @@ import (
 	cfg "github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/hook/types"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
-	"google.golang.org/protobuf/proto"
 )
 
-func TasksTriggeredByEvent(config *v1.Config, flowID int64, planID string, repoID string, events []v1.Hook_Condition, vars interface{}) ([]tasks.Task, error) {
+func TasksTriggeredByEvent(config *v1.Config, repoID string, planID string, flowID int64, events []v1.Hook_Condition, vars interface{}) ([]tasks.Task, error) {
 	var taskSet []tasks.Task
 
 	repo := cfg.FindRepo(config, repoID)
@@ -27,15 +26,6 @@ func TasksTriggeredByEvent(config *v1.Config, flowID int64, planID string, repoI
 		return nil, fmt.Errorf("plan %v not found", planID)
 	}
 
-	baseOp := v1.Operation{
-		Status:          v1.OperationStatus_STATUS_PENDING,
-		InstanceId:      config.Instance,
-		PlanId:          planID,
-		RepoId:          repoID,
-		FlowId:          flowID,
-		UnixTimeStartMs: curTimeMs(),
-	}
-
 	for idx, hook := range repo.GetHooks() {
 		event := firstMatchingCondition(hook, events)
 		if event == v1.Hook_CONDITION_UNKNOWN {
@@ -43,16 +33,7 @@ func TasksTriggeredByEvent(config *v1.Config, flowID int64, planID string, repoI
 		}
 
 		name := fmt.Sprintf("repo/%v/hook/%v", repo.Id, idx)
-		op := proto.Clone(&baseOp).(*v1.Operation)
-		op.DisplayMessage = "running " + name
-		op.Op = &v1.Operation_OperationRunHook{
-			OperationRunHook: &v1.OperationRunHook{
-				Name:      name,
-				Condition: event,
-			},
-		}
-
-		taskSet = append(taskSet, newOneoffRunHookTask(name, repoID, planID, flowID, time.Now(), hook, event, vars))
+		taskSet = append(taskSet, newOneoffRunHookTask(name, config.Instance, repoID, planID, flowID, time.Now(), hook, event, vars))
 	}
 
 	for idx, hook := range plan.GetHooks() {
@@ -62,22 +43,13 @@ func TasksTriggeredByEvent(config *v1.Config, flowID int64, planID string, repoI
 		}
 
 		name := fmt.Sprintf("plan/%v/hook/%v", plan.Id, idx)
-		op := proto.Clone(&baseOp).(*v1.Operation)
-		op.DisplayMessage = fmt.Sprintf("running %v triggered by %v", name, event.String())
-		op.Op = &v1.Operation_OperationRunHook{
-			OperationRunHook: &v1.OperationRunHook{
-				Name:      name,
-				Condition: event,
-			},
-		}
-
-		taskSet = append(taskSet, newOneoffRunHookTask(name, repoID, planID, flowID, time.Now(), hook, event, vars))
+		taskSet = append(taskSet, newOneoffRunHookTask(name, config.Instance, repoID, planID, flowID, time.Now(), hook, event, vars))
 	}
 
 	return taskSet, nil
 }
 
-func newOneoffRunHookTask(title, repoID, planID string, flowID int64, at time.Time, hook *v1.Hook, event v1.Hook_Condition, vars interface{}) tasks.Task {
+func newOneoffRunHookTask(title, instanceID, repoID, planID string, flowID int64, at time.Time, hook *v1.Hook, event v1.Hook_Condition, vars interface{}) tasks.Task {
 	return &tasks.GenericOneoffTask{
 		OneoffTask: tasks.OneoffTask{
 			BaseTask: tasks.BaseTask{
@@ -88,7 +60,17 @@ func newOneoffRunHookTask(title, repoID, planID string, flowID int64, at time.Ti
 			FlowID: flowID,
 			RunAt:  at,
 			ProtoOp: &v1.Operation{
-				Op: &v1.Operation_OperationRunHook{},
+				InstanceId: instanceID,
+				RepoId:     repoID,
+				PlanId:     planID,
+
+				DisplayMessage: fmt.Sprintf("running %v triggered by %v", title, event.String()),
+				Op: &v1.Operation_OperationRunHook{
+					OperationRunHook: &v1.OperationRunHook{
+						Name:      title,
+						Condition: event,
+					},
+				},
 			},
 		},
 		Do: func(ctx context.Context, st tasks.ScheduledTask, taskRunner tasks.TaskRunner) error {
@@ -97,6 +79,7 @@ func newOneoffRunHookTask(title, repoID, planID string, flowID int64, at time.Ti
 				return err
 			}
 
+			// TODO: this is a hack to get around the fact that vars is an interface{} .
 			v := reflect.ValueOf(&vars).Elem()
 			clone := reflect.New(v.Elem().Type()).Elem()
 			clone.Set(v.Elem()) // copy vars to clone

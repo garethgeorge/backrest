@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
@@ -370,11 +369,12 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 				op.Status = v1.OperationStatus_STATUS_ERROR
 			}
 
-			// append the error to the display message
-			if op.DisplayMessage != "" && !strings.HasSuffix(op.DisplayMessage, "\n") {
-				op.DisplayMessage += "\n"
+			// prepend the error to the display message
+			if op.DisplayMessage != "" {
+				op.DisplayMessage = err.Error() + "\n\n" + op.DisplayMessage
+			} else {
+				op.DisplayMessage = err.Error()
 			}
-			op.DisplayMessage += err.Error()
 		}
 		op.UnixTimeEndMs = time.Now().UnixMilli()
 		if op.Status == v1.OperationStatus_STATUS_INPROGRESS {

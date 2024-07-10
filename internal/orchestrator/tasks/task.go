@@ -134,7 +134,6 @@ func (o *OneoffTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 }
 
 type GenericOneoffTask struct {
-	BaseTask
 	OneoffTask
 	Do func(ctx context.Context, st ScheduledTask, runner TaskRunner) error
 }
