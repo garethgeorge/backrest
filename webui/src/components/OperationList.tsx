@@ -10,6 +10,7 @@ import {
   BackupInfoCollector,
   getOperations,
   matchSelector,
+  shouldHideStatus,
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
@@ -38,7 +39,9 @@ export const OperationList = ({
 
     // track backups for this operation tree view.
     useEffect(() => {
-      const backupCollector = new BackupInfoCollector();
+      const backupCollector = new BackupInfoCollector(
+        (op) => !shouldHideStatus(op.status)
+      );
       backupCollector.subscribe(
         _.debounce(
           () => {

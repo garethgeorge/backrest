@@ -109,7 +109,6 @@ func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 	}
 
 	for _, task := range hookTasks {
-		zap.L().Debug("running task", zap.Any("task", fmt.Sprintf("%+v", task)))
 		st, _ := task.Next(time.Now(), t)
 		st.Task = task
 		if err := t.OpLog().Add(st.Op); err != nil {
