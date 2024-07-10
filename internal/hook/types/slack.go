@@ -8,14 +8,14 @@ import (
 	"reflect"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/hook/hookutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 )
 
 type slackHandler struct{}
 
 func (slackHandler) Execute(ctx context.Context, cmd *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
-	payload, err := hook.RenderTemplateOrDefault(cmd.GetActionSlack().GetTemplate(), hook.DefaultTemplate, vars)
+	payload, err := hookutil.RenderTemplateOrDefault(cmd.GetActionSlack().GetTemplate(), hookutil.DefaultTemplate, vars)
 	if err != nil {
 		return fmt.Errorf("template rendering: %w", err)
 	}
@@ -34,7 +34,7 @@ func (slackHandler) Execute(ctx context.Context, cmd *v1.Hook, vars interface{},
 
 	requestBytes, _ := json.Marshal(request)
 
-	_, err = hook.PostRequest(cmd.GetActionSlack().GetWebhookUrl(), "application/json", bytes.NewReader(requestBytes))
+	_, err = hookutil.PostRequest(cmd.GetActionSlack().GetWebhookUrl(), "application/json", bytes.NewReader(requestBytes))
 	return err
 }
 
@@ -43,5 +43,5 @@ func (slackHandler) ActionType() reflect.Type {
 }
 
 func init() {
-	hook.DefaultRegistry().RegisterHandler(&slackHandler{})
+	DefaultRegistry().RegisterHandler(&slackHandler{})
 }

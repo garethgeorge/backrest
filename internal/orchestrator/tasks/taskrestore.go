@@ -13,12 +13,12 @@ import (
 
 func NewOneoffRestoreTask(repoID, planID string, flowID int64, at time.Time, snapshotID, path, target string) Task {
 	return &GenericOneoffTask{
-		BaseTask: BaseTask{
-			TaskName:   fmt.Sprintf("restore snapshot %q in repo %q", snapshotID, repoID),
-			TaskRepoID: repoID,
-			TaskPlanID: planID,
-		},
 		OneoffTask: OneoffTask{
+			BaseTask: BaseTask{
+				TaskName:   fmt.Sprintf("restore snapshot %q in repo %q", snapshotID, repoID),
+				TaskRepoID: repoID,
+				TaskPlanID: planID,
+			},
 			FlowID: flowID,
 			RunAt:  at,
 			ProtoOp: &v1.Operation{

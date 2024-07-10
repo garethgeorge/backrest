@@ -54,7 +54,7 @@ type TaskRunner interface {
 	RawLogWriter(ctx context.Context) io.Writer
 }
 
-type ScheduledTaskExecutor interface {
+type TaskExecutor interface {
 	RunTask(ctx context.Context, st ScheduledTask) error
 }
 
@@ -120,8 +120,8 @@ func (o *OneoffTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 	var op *v1.Operation
 	if o.ProtoOp != nil {
 		op = proto.Clone(o.ProtoOp).(*v1.Operation)
-		op.PlanId = o.PlanID()
 		op.RepoId = o.RepoID()
+		op.PlanId = o.PlanID()
 		op.FlowId = o.FlowID
 		op.UnixTimeStartMs = timeToUnixMillis(o.RunAt) // TODO: this should be updated before Run is called.
 		op.Status = v1.OperationStatus_STATUS_PENDING

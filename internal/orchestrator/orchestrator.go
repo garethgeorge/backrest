@@ -11,6 +11,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator/logging"
@@ -43,7 +44,7 @@ type Orchestrator struct {
 	now func() time.Time
 }
 
-var _ tasks.ScheduledTaskExecutor = &Orchestrator{}
+var _ tasks.TaskExecutor = &Orchestrator{}
 
 type stContainer struct {
 	tasks.ScheduledTask
@@ -193,30 +194,26 @@ func (o *Orchestrator) GetRepoOrchestrator(repoId string) (repo *repo.RepoOrches
 	return r, nil
 }
 
-func (o *Orchestrator) GetRepo(repoId string) (*v1.Repo, error) {
+func (o *Orchestrator) GetRepo(repoID string) (*v1.Repo, error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	for _, r := range o.config.Repos {
-		if r.GetId() == repoId {
-			return r, nil
-		}
+	repo := config.FindRepo(o.config, repoID)
+	if repo == nil {
+		return nil, fmt.Errorf("get repo %q: %w", repoID, ErrRepoNotFound)
 	}
-
-	return nil, fmt.Errorf("get repo %q: %w", repoId, ErrRepoNotFound)
+	return repo, nil
 }
 
-func (o *Orchestrator) GetPlan(planId string) (*v1.Plan, error) {
+func (o *Orchestrator) GetPlan(planID string) (*v1.Plan, error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	for _, p := range o.config.Plans {
-		if p.Id == planId {
-			return p, nil
-		}
+	plan := config.FindPlan(o.config, planID)
+	if plan == nil {
+		return nil, fmt.Errorf("get plan %q: %w", planID, ErrPlanNotFound)
 	}
-
-	return nil, fmt.Errorf("get plan %q: %w", planId, ErrPlanNotFound)
+	return plan, nil
 }
 
 func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationStatus) error {
@@ -300,15 +297,8 @@ func (o *Orchestrator) Run(ctx context.Context) {
 				}
 			}
 		}()
-		start := time.Now()
 
-		zap.L().Info("running task", zap.String("task", t.Task.Name()))
 		err := o.RunTask(taskCtx, t.ScheduledTask)
-		if err != nil {
-			zap.L().Error("task failed", zap.String("task", t.Task.Name()), zap.Error(err), zap.Duration("duration", time.Since(start)))
-		} else {
-			zap.L().Info("task finished", zap.String("task", t.Task.Name()), zap.Duration("duration", time.Since(start)))
-		}
 
 		o.mu.Lock()
 		curCfgModno := o.config.Modno
@@ -333,6 +323,8 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 
 	runner := newTaskRunnerImpl(o, st.Task, st.Op)
 
+	zap.L().Info("running task", zap.String("task", st.Task.Name()), zap.String("runAt", st.RunAt.Format(time.RFC3339)))
+
 	op := st.Op
 	if op != nil {
 		op.UnixTimeStartMs = time.Now().UnixMilli()
@@ -350,10 +342,13 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 		}
 	}
 
+	start := time.Now()
 	err := st.Task.Run(ctx, st, runner)
 	if err != nil {
+		zap.L().Error("task failed", zap.String("task", st.Task.Name()), zap.Error(err), zap.Duration("duration", time.Since(start)))
 		fmt.Fprintf(logs, "\ntask %q returned error: %v\n", st.Task.Name(), err)
 	} else {
+		zap.L().Info("task finished", zap.String("task", st.Task.Name()), zap.Duration("duration", time.Since(start)))
 		fmt.Fprintf(logs, "\ntask %q completed successfully\n", st.Task.Name())
 	}
 
@@ -389,6 +384,7 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 			zap.S().Errorf("failed to update operation in oplog: %v", e)
 		}
 	}
+
 	return err
 }
 
@@ -425,8 +421,8 @@ func (o *Orchestrator) scheduleTaskHelper(t tasks.Task, priority int, curTime ti
 		}
 	}
 
-	zap.L().Info("scheduling task", zap.String("task", t.Name()), zap.String("runAt", nextRun.RunAt.Format(time.RFC3339)))
 	o.taskQueue.Enqueue(nextRun.RunAt, priority, stc)
+	zap.L().Info("scheduled task", zap.String("task", t.Name()), zap.String("runAt", nextRun.RunAt.Format(time.RFC3339)))
 	return nil
 }
 

@@ -8,14 +8,14 @@ import (
 	"reflect"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/hook/hookutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 )
 
 type discordHandler struct{}
 
 func (discordHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
-	payload, err := hook.RenderTemplateOrDefault(h.GetActionDiscord().GetTemplate(), hook.DefaultTemplate, vars)
+	payload, err := hookutil.RenderTemplateOrDefault(h.GetActionDiscord().GetTemplate(), hookutil.DefaultTemplate, vars)
 	if err != nil {
 		return fmt.Errorf("template rendering: %w", err)
 	}
@@ -33,7 +33,7 @@ func (discordHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{},
 	}
 
 	requestBytes, _ := json.Marshal(request)
-	_, err = hook.PostRequest(h.GetActionDiscord().GetWebhookUrl(), "application/json", bytes.NewReader(requestBytes))
+	_, err = hookutil.PostRequest(h.GetActionDiscord().GetWebhookUrl(), "application/json", bytes.NewReader(requestBytes))
 	return err
 }
 
@@ -42,5 +42,5 @@ func (discordHandler) ActionType() reflect.Type {
 }
 
 func init() {
-	hook.DefaultRegistry().RegisterHandler(&discordHandler{})
+	DefaultRegistry().RegisterHandler(&discordHandler{})
 }

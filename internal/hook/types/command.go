@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/hook/hookutil"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/logging"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
@@ -17,7 +17,7 @@ import (
 type commandHandler struct{}
 
 func (commandHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
-	command, err := hook.RenderTemplate(h.GetActionCommand().GetCommand(), vars)
+	command, err := hookutil.RenderTemplate(h.GetActionCommand().GetCommand(), vars)
 	if err != nil {
 		return fmt.Errorf("template rendering: %w", err)
 	}
@@ -57,5 +57,5 @@ func (commandHandler) ActionType() reflect.Type {
 }
 
 func init() {
-	hook.DefaultRegistry().RegisterHandler(&commandHandler{})
+	DefaultRegistry().RegisterHandler(&commandHandler{})
 }

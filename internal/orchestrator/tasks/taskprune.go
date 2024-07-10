@@ -74,8 +74,6 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 		lastRan = time.Now()
 	}
 
-	zap.L().Debug("last prune time", zap.Time("time", lastRan), zap.String("repo", t.RepoID()))
-
 	runAt, err := protoutil.ResolveSchedule(repo.PrunePolicy.GetSchedule(), lastRan)
 	if errors.Is(err, protoutil.ErrScheduleDisabled) {
 		return NeverScheduledTask, nil

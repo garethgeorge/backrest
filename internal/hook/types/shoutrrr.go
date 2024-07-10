@@ -7,14 +7,14 @@ import (
 
 	"github.com/containrrr/shoutrrr"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/hook/hookutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 )
 
 type shoutrrrHandler struct{}
 
 func (shoutrrrHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
-	payload, err := hook.RenderTemplateOrDefault(h.GetActionShoutrrr().GetTemplate(), hook.DefaultTemplate, vars)
+	payload, err := hookutil.RenderTemplateOrDefault(h.GetActionShoutrrr().GetTemplate(), hookutil.DefaultTemplate, vars)
 	if err != nil {
 		return fmt.Errorf("template rendering: %w", err)
 	}
@@ -35,5 +35,5 @@ func (shoutrrrHandler) ActionType() reflect.Type {
 }
 
 func init() {
-	hook.DefaultRegistry().RegisterHandler(&shoutrrrHandler{})
+	DefaultRegistry().RegisterHandler(&shoutrrrHandler{})
 }

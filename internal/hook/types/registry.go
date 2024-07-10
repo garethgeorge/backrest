@@ -1,4 +1,4 @@
-package hook
+package types
 
 import (
 	"context"

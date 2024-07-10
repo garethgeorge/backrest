@@ -18,11 +18,11 @@ import (
 
 func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) Task {
 	return &GenericOneoffTask{
-		BaseTask: BaseTask{
-			TaskName:   fmt.Sprintf("index snapshots for repo %q", repoID),
-			TaskRepoID: repoID,
-		},
 		OneoffTask: OneoffTask{
+			BaseTask: BaseTask{
+				TaskName:   fmt.Sprintf("index snapshots for repo %q", repoID),
+				TaskRepoID: repoID,
+			},
 			RunAt:   at,
 			ProtoOp: nil,
 		},

@@ -1,10 +1,14 @@
-package hook
+package hookutil
 
 import (
 	"bytes"
 	"fmt"
 	"strings"
 	"text/template"
+)
+
+var (
+	DefaultTemplate = `{{ .Summary }}`
 )
 
 func RenderTemplate(text string, vars interface{}) (string, error) {

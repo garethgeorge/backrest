@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/hook/hookutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 )
 
@@ -19,12 +19,12 @@ type gotifyHandler struct{}
 func (gotifyHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
 	g := h.GetActionGotify()
 
-	payload, err := hook.RenderTemplateOrDefault(g.GetTemplate(), hook.DefaultTemplate, vars)
+	payload, err := hookutil.RenderTemplateOrDefault(g.GetTemplate(), hookutil.DefaultTemplate, vars)
 	if err != nil {
 		return fmt.Errorf("template rendering: %w", err)
 	}
 
-	title, err := hook.RenderTemplateOrDefault(g.GetTitleTemplate(), "Backrest Event", vars)
+	title, err := hookutil.RenderTemplateOrDefault(g.GetTitleTemplate(), "Backrest Event", vars)
 	if err != nil {
 		return fmt.Errorf("title template rendering: %w", err)
 	}
@@ -57,7 +57,7 @@ func (gotifyHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, 
 	fmt.Fprintf(output, "---- payload ----\n")
 	output.Write(b)
 
-	body, err := hook.PostRequest(postUrl, "application/json", bytes.NewReader(b))
+	body, err := hookutil.PostRequest(postUrl, "application/json", bytes.NewReader(b))
 
 	if err != nil {
 		return fmt.Errorf("send gotify message: %w", err)
@@ -75,5 +75,5 @@ func (gotifyHandler) ActionType() reflect.Type {
 }
 
 func init() {
-	hook.DefaultRegistry().RegisterHandler(&gotifyHandler{})
+	DefaultRegistry().RegisterHandler(&gotifyHandler{})
 }

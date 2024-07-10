@@ -15,12 +15,12 @@ import (
 
 func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) Task {
 	return &GenericOneoffTask{
-		BaseTask: BaseTask{
-			TaskName:   fmt.Sprintf("forget for plan %q in repo %q", repoID, planID),
-			TaskRepoID: repoID,
-			TaskPlanID: planID,
-		},
 		OneoffTask: OneoffTask{
+			BaseTask: BaseTask{
+				TaskName:   fmt.Sprintf("forget for plan %q in repo %q", repoID, planID),
+				TaskRepoID: repoID,
+				TaskPlanID: planID,
+			},
 			FlowID: flowID,
 			RunAt:  at,
 			ProtoOp: &v1.Operation{
