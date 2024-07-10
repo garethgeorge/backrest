@@ -310,9 +310,6 @@ export const OperationRow = ({
     const triggeringCondition = proto3
       .getEnumType(Hook_Condition)
       .findNumber(hook.condition);
-    if (triggeringCondition !== undefined) {
-      displayMessage += "\ntriggered by condition: " + triggeringCondition.name;
-    }
   }
 
   const children = [];

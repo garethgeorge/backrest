@@ -24,12 +24,10 @@ export const OperationList = ({
   req,
   useBackups,
   showPlan,
-  filter,
 }: React.PropsWithoutRef<{
   req?: GetOperationsRequest;
   useBackups?: BackupInfo[];
   showPlan?: boolean;
-  filter?: (op: Operation) => boolean; // if provided, only operations that pass this filter will be displayed.
 }>) => {
   const alertApi = useAlertApi();
 

@@ -6,7 +6,7 @@ import {
 } from "../../gen/ts/v1/operations_pb";
 import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
 import { BackupProgressEntry, ResticSnapshot, RestoreProgressEntry } from "../../gen/ts/v1/restic_pb";
-import _ from "lodash";
+import _, { flow } from "lodash";
 import { formatDuration, formatTime } from "../lib/formatting";
 import { backrestService } from "../api";
 import {
@@ -63,7 +63,7 @@ export const unsubscribeFromOperations = (
 export const getStatusForSelector = async (sel: OpSelector) => {
   const req = new GetOperationsRequest({
     selector: sel,
-    lastN: BigInt(STATUS_OPERATION_HISTORY),
+    lastN: BigInt(20),
   });
   return await getStatus(req);
 };
@@ -74,25 +74,21 @@ const getStatus = async (req: GetOperationsRequest) => {
   ops.sort((a, b) => {
     return Number(b.unixTimeStartMs - a.unixTimeStartMs);
   });
-  if (ops.length === 0) {
-    return OperationStatus.STATUS_SUCCESS;
-  }
-  const flowId = ops.find((op) => op.status !== OperationStatus.STATUS_PENDING)?.flowId;
-  if (!flowId) {
-    return OperationStatus.STATUS_SUCCESS;
-  }
+
+  let flowID: BigInt | undefined = undefined;
   for (const op of ops) {
-    if (op.status === OperationStatus.STATUS_PENDING) {
+    if (op.status === OperationStatus.STATUS_PENDING || op.status === OperationStatus.STATUS_SYSTEM_CANCELLED) {
       continue;
     }
-    if (op.flowId !== flowId) {
+    if (op.status !== OperationStatus.STATUS_SUCCESS) {
+      return op.status;
+    }
+    if (!flowID) {
+      flowID = op.flowId;
+    } else if (flowID !== op.flowId) {
       break;
     }
-    if (
-      op.status !== OperationStatus.STATUS_SUCCESS &&
-      op.status !== OperationStatus.STATUS_USER_CANCELLED &&
-      op.status !== OperationStatus.STATUS_SYSTEM_CANCELLED
-    ) {
+    if (op.status !== OperationStatus.STATUS_SUCCESS) {
       return op.status;
     }
   }
@@ -437,7 +433,7 @@ export const colorForStatus = (status: OperationStatus) => {
     case OperationStatus.STATUS_SUCCESS:
       return "green";
     case OperationStatus.STATUS_USER_CANCELLED:
-      return "yellow";
+      return "orange";
     default:
       return "grey";
   }
@@ -481,7 +477,7 @@ export const detailsForOperation = (
       break;
     case OperationStatus.STATUS_USER_CANCELLED:
       state = "cancelled";
-      color = "yellow";
+      color = "orange";
       break;
     default:
       state = "";
