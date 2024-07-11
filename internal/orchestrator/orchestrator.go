@@ -369,7 +369,7 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 				op.Status = v1.OperationStatus_STATUS_ERROR
 			}
 
-			// prepend the error to the display message
+			// prepend the error to the display
 			if op.DisplayMessage != "" {
 				op.DisplayMessage = err.Error() + "\n\n" + op.DisplayMessage
 			} else {

@@ -109,7 +109,7 @@ func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 			return fmt.Errorf("%v: %w", task.Name(), err)
 		}
 		if err := t.orchestrator.RunTask(ctx, st); hook.IsHaltingError(err) {
-			var cancelErr hook.HookErrorRequestCancel
+			var cancelErr *hook.HookErrorRequestCancel
 			if errors.As(err, &cancelErr) {
 				return fmt.Errorf("%w: %w", tasks.ErrTaskCancelled, err)
 			}
