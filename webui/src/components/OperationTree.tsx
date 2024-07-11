@@ -1,18 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   BackupInfo,
   BackupInfoCollector,
   colorForStatus,
   detailsForOperation,
   displayTypeToString,
-  getOperations,
   getTypeForDisplay,
-  matchSelector,
-  shouldHideOperation,
-  subscribeToOperations,
-  unsubscribeFromOperations,
 } from "../state/oplog";
-import { Button, Col, Divider, Empty, Modal, Row, Tooltip, Tree } from "antd";
+import { Col, Empty, Modal, Row, Tooltip, Tree } from "antd";
 import _ from "lodash";
 import { DataNode } from "antd/es/tree";
 import {
@@ -28,11 +23,7 @@ import {
   QuestionOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
-import {
-  OperationEvent,
-  OperationEventType,
-  OperationStatus,
-} from "../../gen/ts/v1/operations_pb";
+import { OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { useAlertApi } from "./Alerts";
 import { OperationList } from "./OperationList";
 import {
@@ -128,10 +119,10 @@ export const OperationTree = ({
         }
       }}
       titleRender={(node: OpTreeNode): React.ReactNode => {
-        if (node.title) {
+        if (node.title !== undefined) {
           return <>{node.title}</>;
         }
-        if (node.backup) {
+        if (node.backup !== undefined) {
           const b = node.backup;
           const details: string[] = [];
 
@@ -160,7 +151,7 @@ export const OperationTree = ({
               );
             } else if (b.backupLastStatus.entry.case === "status") {
               const s = b.backupLastStatus.entry.value;
-              const percent = Number(s.bytesDone / s.totalBytes) * 100;
+              const percent = Number(s.percentDone) * 100;
               details.push(
                 `${percent.toFixed(1)}% processed ${formatBytes(
                   Number(s.bytesDone)

@@ -1,23 +1,21 @@
 import React, { useEffect, useState } from "react";
 import {
   Operation,
-  OperationEvent,
-  OperationEventType,
   OperationForget,
-  OperationRunHook,
+  OperationRestore,
   OperationStatus,
 } from "../../gen/ts/v1/operations_pb";
 import {
   Button,
   Col,
   Collapse,
-  Empty,
   List,
   Modal,
   Progress,
   Row,
   Typography,
 } from "antd";
+import type { ItemType } from "rc-collapse/es/interface";
 import {
   PaperClipOutlined,
   SaveOutlined,
@@ -47,15 +45,19 @@ import { backrestService } from "../api";
 import { useShowModal } from "./ModalManager";
 import { proto3 } from "@bufbuild/protobuf";
 import { Hook_Condition } from "../../gen/ts/v1/config_pb";
+import { useAlertApi } from "./Alerts";
+import { OperationList } from "./OperationList";
 
 export const OperationRow = ({
   operation,
   alertApi,
   showPlan,
+  hookOperations,
 }: React.PropsWithoutRef<{
   operation: Operation;
   alertApi?: MessageInstance;
-  showPlan: boolean;
+  showPlan?: boolean;
+  hookOperations?: Operation[];
 }>) => {
   const showModal = useShowModal();
   const details = detailsForOperation(operation);
@@ -108,6 +110,38 @@ export const OperationRow = ({
       break;
   }
 
+  const doCancel = () => {
+    backrestService
+      .cancel({ value: operation.id! })
+      .then(() => {
+        alertApi?.success("Requested to cancel operation");
+      })
+      .catch((e) => {
+        alertApi?.error("Failed to cancel operation: " + e.message);
+      });
+  };
+
+  const doShowLogs = () => {
+    showModal(
+      <Modal
+        width="70%"
+        title={
+          "Logs for operation " +
+          opName +
+          " at " +
+          formatTime(Number(operation.unixTimeStartMs))
+        }
+        open={true}
+        footer={null}
+        onCancel={() => {
+          showModal(null);
+        }}
+      >
+        <BigOperationDataVerbatim logref={operation.logref!} />
+      </Modal>
+    );
+  };
+
   const opName = displayTypeToString(getTypeForDisplay(operation));
   let title = (
     <>
@@ -125,16 +159,7 @@ export const OperationRow = ({
           type="link"
           size="small"
           className="backrest operation-details"
-          onClick={() => {
-            backrestService
-              .cancel({ value: operation.id! })
-              .then(() => {
-                alertApi?.success("Requested to cancel operation");
-              })
-              .catch((e) => {
-                alertApi?.error("Failed to cancel operation: " + e.message);
-              });
-          }}
+          onClick={doCancel}
         >
           [Cancel Operation]
         </Button>
@@ -151,26 +176,7 @@ export const OperationRow = ({
             type="link"
             size="middle"
             className="backrest operation-details"
-            onClick={() => {
-              showModal(
-                <Modal
-                  width="50%"
-                  title={
-                    "Logs for operation " +
-                    opName +
-                    " at " +
-                    formatTime(Number(operation.unixTimeStartMs))
-                  }
-                  visible={true}
-                  footer={null}
-                  onCancel={() => {
-                    showModal(null);
-                  }}
-                >
-                  <BigOperationDataVerbatim logref={operation.logref!} />
-                </Modal>
-              );
-            }}
+            onClick={doShowLogs}
           >
             [View Logs]
           </Button>
@@ -179,22 +185,23 @@ export const OperationRow = ({
     );
   }
 
-  let body: React.ReactNode | undefined;
   let displayMessage = operation.displayMessage;
 
+  const bodyItems: ItemType[] = [];
+  const expandedBodyItems: string[] = [];
+
   if (operation.op.case === "operationBackup") {
+    expandedBodyItems.push("details");
     const backupOp = operation.op.value;
-    const items: { key: number; label: string; children: React.ReactNode }[] = [
-      {
-        key: 1,
-        label: "Backup Details",
-        children: <BackupOperationStatus status={backupOp.lastStatus} />,
-      },
-    ];
+    bodyItems.push({
+      key: "details",
+      label: "Backup Details",
+      children: <BackupOperationStatus status={backupOp.lastStatus} />,
+    });
 
     if (backupOp.errors.length > 0) {
-      items.splice(0, 0, {
-        key: 2,
+      bodyItems.push({
+        key: "errors",
         label: "Item Errors",
         children: (
           <pre>
@@ -203,196 +210,188 @@ export const OperationRow = ({
         ),
       });
     }
-
-    body = (
-      <>
-        <Collapse
-          size="small"
-          destroyInactivePanel
-          defaultActiveKey={[1]}
-          items={items}
-        />
-      </>
-    );
   } else if (operation.op.case === "operationIndexSnapshot") {
+    expandedBodyItems.push("details");
     const snapshotOp = operation.op.value;
-    body = (
-      <SnapshotInfo
-        snapshot={snapshotOp.snapshot!}
-        repoId={operation.repoId!}
-        planId={operation.planId}
-      />
-    );
+    bodyItems.push({
+      key: "details",
+      label: "Details",
+      children: <SnapshotDetails snapshot={snapshotOp.snapshot!} />,
+    });
+    bodyItems.push({
+      key: "browser",
+      label: "Snapshot Browser",
+      children: (
+        <SnapshotBrowser
+          snapshotId={snapshotOp.snapshot!.id}
+          repoId={operation.repoId}
+          planId={operation.planId}
+        />
+      ),
+    });
   } else if (operation.op.case === "operationForget") {
     const forgetOp = operation.op.value;
-    body = <ForgetOperationDetails forgetOp={forgetOp} />;
+    bodyItems.push({
+      key: "forgot",
+      label: "Removed " + forgetOp.forget?.length + " Snapshots",
+      children: <ForgetOperationDetails forgetOp={forgetOp} />,
+    });
   } else if (operation.op.case === "operationPrune") {
     const prune = operation.op.value;
-    body = (
-      <Collapse
-        size="small"
-        destroyInactivePanel
-        items={[
-          {
-            key: 1,
-            label: "Prune Output",
-            children: <pre>{prune.output}</pre>,
-          },
-        ]}
-      />
-    );
+    bodyItems.push({
+      key: "prune",
+      label: "Prune Output",
+      children: <pre>{prune.output}</pre>,
+    });
   } else if (operation.op.case === "operationCheck") {
     const check = operation.op.value;
-    body = (
-      <Collapse
-        size="small"
-        destroyInactivePanel
-        items={[
-          {
-            key: 1,
-            label: "Check Output",
-            children: <pre>{check.output}</pre>,
-          },
-        ]}
-      />
-    );
+    bodyItems.push({
+      key: "check",
+      label: "Check Output",
+      children: <pre>{check.output}</pre>,
+    });
   } else if (operation.op.case === "operationRestore") {
-    const restore = operation.op.value;
-    const progress = Math.round((details.percentage || 0) * 10) / 10;
-    const st = restore.lastStatus! || {};
-
-    body = (
-      <>
-        Restore {restore.path} to {restore.target}
-        {details.percentage !== undefined ? (
-          <Progress percent={progress} status="active" />
-        ) : null}
-        {operation.status == OperationStatus.STATUS_SUCCESS ? (
-          <>
-            <Button
-              type="link"
-              onClick={() => {
-                backrestService
-                  .getDownloadURL({ value: operation.id })
-                  .then((resp) => {
-                    window.open(resp.value, "_blank");
-                  })
-                  .catch((e) => {
-                    alertApi?.error(
-                      "Failed to fetch download URL: " + e.message
-                    );
-                  });
-              }}
-            >
-              Download File(s)
-            </Button>
-          </>
-        ) : null}
-        <br />
-        Snapshot ID: {normalizeSnapshotId(operation.snapshotId!)}
-        <Row gutter={16}>
-          <Col span={12}>
-            <Typography.Text strong>Bytes Done/Total</Typography.Text>
-            <br />
-            {formatBytes(Number(st.bytesRestored))}/
-            {formatBytes(Number(st.totalBytes))}
-          </Col>
-          <Col span={12}>
-            <Typography.Text strong>Files Done/Total</Typography.Text>
-            <br />
-            {Number(st.filesRestored)}/{Number(st.totalFiles)}
-          </Col>
-        </Row>
-      </>
-    );
+    expandedBodyItems.push("restore");
+    bodyItems.push({
+      key: "restore",
+      label: "Restore Details",
+      children: <RestoreOperationStatus operation={operation} />,
+    });
   } else if (operation.op.case === "operationRunHook") {
     const hook = operation.op.value;
-    const triggeringCondition = proto3
-      .getEnumType(Hook_Condition)
-      .findNumber(hook.condition);
-    if (triggeringCondition !== undefined) {
-      displayMessage += "\ntriggered by condition: " + triggeringCondition.name;
+    if (operation.logref) {
+      bodyItems.push({
+        key: "logref",
+        label: "Hook Output",
+        children: <BigOperationDataVerbatim logref={operation.logref} />,
+      });
     }
   }
 
-  const children = [];
+  if (hookOperations) {
+    bodyItems.push({
+      key: "hookOperations",
+      label: "Hooks Triggered",
+      children: <OperationList useOperations={hookOperations} />,
+    });
 
-  if (operation.displayMessage) {
-    children.push(
-      <div key="message">
-        <pre>
-          {details.state ? details.state + ": " : null}
-          {displayMessage}
-        </pre>
-      </div>
-    );
+    for (const op of hookOperations) {
+      if (op.status !== OperationStatus.STATUS_SUCCESS) {
+        expandedBodyItems.push("hookOperations");
+        break;
+      }
+    }
   }
-
-  children.push(<div key="body">{body}</div>);
 
   return (
     <List.Item key={operation.id}>
-      <List.Item.Meta title={title} avatar={avatar} description={children} />
+      <List.Item.Meta
+        title={title}
+        avatar={avatar}
+        description={
+          <>
+            {operation.displayMessage && (
+              <div key="message">
+                <pre>
+                  {details.state ? details.state + ": " : null}
+                  {displayMessage}
+                </pre>
+              </div>
+            )}
+            <Collapse
+              size="small"
+              destroyInactivePanel={true}
+              items={bodyItems}
+              defaultActiveKey={expandedBodyItems}
+            />
+          </>
+        }
+      />
     </List.Item>
   );
 };
 
-const SnapshotInfo = ({
-  snapshot,
-  repoId,
-  planId,
-}: {
-  snapshot: ResticSnapshot;
-  repoId: string;
-  planId?: string;
-}) => {
+const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
   return (
-    <Collapse
-      size="small"
-      defaultActiveKey={[1]}
-      items={[
-        {
-          key: 1,
-          label: "Snapshot Details",
-          children: (
-            <>
-              <Typography.Text>
-                <Typography.Text strong>Snapshot ID: </Typography.Text>
-                {normalizeSnapshotId(snapshot.id!)}
-              </Typography.Text>
-              <Row gutter={16}>
-                <Col span={8}>
-                  <Typography.Text strong>Host</Typography.Text>
-                  <br />
-                  {snapshot.hostname}
-                </Col>
-                <Col span={8}>
-                  <Typography.Text strong>Username</Typography.Text>
-                  <br />
-                  {snapshot.hostname}
-                </Col>
-                <Col span={8}>
-                  <Typography.Text strong>Tags</Typography.Text>
-                  <br />
-                  {snapshot.tags?.join(", ")}
-                </Col>
-              </Row>
-            </>
-          ),
-        },
-        {
-          key: 2,
-          label: "Browse and Restore Files in Backup",
-          children: (
-            <SnapshotBrowser
-              snapshotId={snapshot.id!}
-              repoId={repoId}
-              planId={planId}
-            />
-          ),
-        },
-      ]}
-    />
+    <>
+      <Typography.Text>
+        <Typography.Text strong>Snapshot ID: </Typography.Text>
+        {normalizeSnapshotId(snapshot.id!)}
+      </Typography.Text>
+      <Row gutter={16}>
+        <Col span={8}>
+          <Typography.Text strong>Host</Typography.Text>
+          <br />
+          {snapshot.hostname}
+        </Col>
+        <Col span={8}>
+          <Typography.Text strong>Username</Typography.Text>
+          <br />
+          {snapshot.hostname}
+        </Col>
+        <Col span={8}>
+          <Typography.Text strong>Tags</Typography.Text>
+          <br />
+          {snapshot.tags?.join(", ")}
+        </Col>
+      </Row>
+    </>
+  );
+};
+
+const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
+  const restoreOp = operation.op.value as OperationRestore;
+  const isDone = restoreOp.lastStatus?.messageType === "summary";
+  const progress = restoreOp.lastStatus?.percentDone || 0;
+  const alertApi = useAlertApi();
+  const lastStatus = restoreOp.lastStatus;
+
+  return (
+    <>
+      Restore {restoreOp.path} to {restoreOp.target}
+      {!isDone ? (
+        <Progress
+          percent={Math.round(progress * 1000) / 1000}
+          status="active"
+        />
+      ) : null}
+      {operation.status == OperationStatus.STATUS_SUCCESS ? (
+        <>
+          <Button
+            type="link"
+            onClick={() => {
+              backrestService
+                .getDownloadURL({ value: operation.id })
+                .then((resp) => {
+                  window.open(resp.value, "_blank");
+                })
+                .catch((e) => {
+                  alertApi?.error("Failed to fetch download URL: " + e.message);
+                });
+            }}
+          >
+            Download File(s)
+          </Button>
+        </>
+      ) : null}
+      <br />
+      Restored Snapshot ID: {normalizeSnapshotId(operation.snapshotId!)}
+      {lastStatus && (
+        <Row gutter={16}>
+          <Col span={12}>
+            <Typography.Text strong>Bytes Done/Total</Typography.Text>
+            <br />
+            {formatBytes(Number(lastStatus.bytesRestored))}/
+            {formatBytes(Number(lastStatus.totalBytes))}
+          </Col>
+          <Col span={12}>
+            <Typography.Text strong>Files Done/Total</Typography.Text>
+            <br />
+            {Number(lastStatus.filesRestored)}/{Number(lastStatus.totalFiles)}
+          </Col>
+        </Row>
+      )}
+    </>
   );
 };
 
@@ -510,38 +509,26 @@ const ForgetOperationDetails = ({
   }
 
   return (
-    <Collapse
-      size="small"
-      destroyInactivePanel
-      items={[
-        {
-          key: 1,
-          label: "Removed " + forgetOp.forget?.length + " Snapshots",
-          children: (
-            <>
-              Removed snapshots:
-              <pre>
-                {forgetOp.forget?.map((f) => (
-                  <div key={f.id}>
-                    {"removed snapshot " +
-                      normalizeSnapshotId(f.id!) +
-                      " taken at " +
-                      formatTime(Number(f.unixTimeMs))}{" "}
-                    <br />
-                  </div>
-                ))}
-              </pre>
-              {/* Policy:
+    <>
+      Removed snapshots:
+      <pre>
+        {forgetOp.forget?.map((f) => (
+          <div key={f.id}>
+            {"removed snapshot " +
+              normalizeSnapshotId(f.id!) +
+              " taken at " +
+              formatTime(Number(f.unixTimeMs))}{" "}
+            <br />
+          </div>
+        ))}
+      </pre>
+      {/* Policy:
             <ul>
               {policyDesc.map((desc, idx) => (
                 <li key={idx}>{desc}</li>
               ))}
             </ul> */}
-            </>
-          ),
-        },
-      ]}
-    />
+    </>
   );
 };
 

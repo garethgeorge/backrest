@@ -1,4 +1,4 @@
-package hook
+package hookutil
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func post(url string, contentType string, body io.Reader) (string, error) {
+func PostRequest(url string, contentType string, body io.Reader) (string, error) {
 	r, err := http.Post(url, contentType, body)
 	if err != nil {
 		return "", fmt.Errorf("send request %v: %w", url, err)

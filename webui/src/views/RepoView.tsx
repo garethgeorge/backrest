@@ -141,7 +141,6 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
               })
             }
             showPlan={true}
-            filter={(op) => !shouldHideStatus(op.status)}
           />
         </>
       ),

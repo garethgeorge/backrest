@@ -6,7 +6,6 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
@@ -16,12 +15,12 @@ import (
 
 func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) Task {
 	return &GenericOneoffTask{
-		BaseTask: BaseTask{
-			TaskName:   fmt.Sprintf("forget for plan %q in repo %q", repoID, planID),
-			TaskRepoID: repoID,
-			TaskPlanID: planID,
-		},
 		OneoffTask: OneoffTask{
+			BaseTask: BaseTask{
+				TaskName:   fmt.Sprintf("forget for plan %q in repo %q", repoID, planID),
+				TaskRepoID: repoID,
+				TaskPlanID: planID,
+			},
 			FlowID: flowID,
 			RunAt:  at,
 			ProtoOp: &v1.Operation{
@@ -36,9 +35,9 @@ func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) Task
 			}
 
 			if err := forgetHelper(ctx, st, taskRunner); err != nil {
-				taskRunner.ExecuteHooks([]v1.Hook_Condition{
+				taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 					v1.Hook_CONDITION_ANY_ERROR,
-				}, hook.HookVars{
+				}, HookVars{
 					Error: err.Error(),
 				})
 				return err

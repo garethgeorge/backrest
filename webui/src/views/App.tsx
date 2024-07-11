@@ -306,11 +306,14 @@ const IconForResource = ({
       setStatus(await getStatusForSelector(new OpSelector({ planId, repoId })));
     };
     load();
-    const refresh = _.debounce(load, 1000, { maxWait: 5000, trailing: true });
+    const refresh = _.debounce(load, 1000, { maxWait: 10000, trailing: true });
     const callback = (event?: OperationEvent, err?: Error) => {
       if (!event || !event.operation) return;
       const operation = event.operation;
-      if (operation.planId === planId || operation.repoId === repoId) {
+      if (
+        (planId && operation.planId === planId) ||
+        (repoId && operation.repoId === repoId)
+      ) {
         refresh();
       }
     };
