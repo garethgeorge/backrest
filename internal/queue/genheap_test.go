@@ -19,7 +19,7 @@ func (v val) Eq(other val) bool {
 
 func TestGenericHeapInit(t *testing.T) {
 	t.Parallel()
-	genHeap := genericHeap[val]{{v: 3}, {v: 2}, {v: 1}}
+	genHeap := GenericHeap[val]{{v: 3}, {v: 2}, {v: 1}}
 	heap.Init(&genHeap)
 
 	if genHeap.Len() != 3 {
@@ -36,7 +36,7 @@ func TestGenericHeapInit(t *testing.T) {
 
 func TestGenericHeapPushPop(t *testing.T) {
 	t.Parallel()
-	genHeap := genericHeap[val]{} // empty heap
+	genHeap := GenericHeap[val]{} // empty heap
 	heap.Push(&genHeap, val{v: 3})
 	heap.Push(&genHeap, val{v: 2})
 	heap.Push(&genHeap, val{v: 1})

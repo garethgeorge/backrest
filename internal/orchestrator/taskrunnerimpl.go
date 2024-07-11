@@ -2,6 +2,9 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -25,7 +28,15 @@ type taskRunnerImpl struct {
 
 var _ tasks.TaskRunner = &taskRunnerImpl{}
 
-func (t *taskRunnerImpl) FindRepo() (*v1.Repo, error) {
+func newTaskRunnerImpl(orchestrator *Orchestrator, task tasks.Task, op *v1.Operation) *taskRunnerImpl {
+	return &taskRunnerImpl{
+		orchestrator: orchestrator,
+		t:            task,
+		op:           op,
+	}
+}
+
+func (t *taskRunnerImpl) findRepo() (*v1.Repo, error) {
 	if t.repo != nil {
 		return t.repo, nil
 	}
@@ -34,21 +45,13 @@ func (t *taskRunnerImpl) FindRepo() (*v1.Repo, error) {
 	return t.repo, err
 }
 
-func (t *taskRunnerImpl) FindPlan() (*v1.Plan, error) {
+func (t *taskRunnerImpl) findPlan() (*v1.Plan, error) {
 	if t.plan != nil {
 		return t.plan, nil
 	}
 	var err error
 	t.plan, err = t.orchestrator.GetPlan(t.t.PlanID())
 	return t.plan, err
-}
-
-func newTaskRunnerImpl(orchestrator *Orchestrator, task tasks.Task, op *v1.Operation) *taskRunnerImpl {
-	return &taskRunnerImpl{
-		orchestrator: orchestrator,
-		t:            task,
-		op:           op,
-	}
 }
 
 func (t *taskRunnerImpl) CreateOperation(op *v1.Operation) error {
@@ -69,11 +72,13 @@ func (t *taskRunnerImpl) OpLog() *oplog.OpLog {
 	return t.orchestrator.OpLog
 }
 
-func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.HookVars) error {
+func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars tasks.HookVars) error {
 	vars.Task = t.t.Name()
 	if t.op != nil {
 		vars.Duration = time.Since(time.UnixMilli(t.op.UnixTimeStartMs))
 	}
+
+	vars.CurTime = time.Now()
 
 	repoID := t.t.RepoID()
 	planID := t.t.PlanID()
@@ -81,27 +86,50 @@ func (t *taskRunnerImpl) ExecuteHooks(events []v1.Hook_Condition, vars hook.Hook
 	var plan *v1.Plan
 	if repoID != "" {
 		var err error
-		repo, err = t.FindRepo()
+		repo, err = t.findRepo()
 		if err != nil {
 			return err
 		}
+		vars.Repo = repo
 	}
 	if planID != "" {
-		plan, _ = t.FindPlan()
+		plan, _ = t.findPlan()
+		vars.Plan = plan
 	}
-	var flowID int64
-	if t.op != nil {
-		flowID = t.op.FlowId
+
+	hookTasks, err := hook.TasksTriggeredByEvent(t.Config(), repoID, planID, t.op, events, vars)
+	if err != nil {
+		return err
 	}
-	executor := hook.NewHookExecutor(t.Config(), t.orchestrator.OpLog, t.orchestrator.logStore)
-	return executor.ExecuteHooks(flowID, repo, plan, events, vars)
+
+	for _, task := range hookTasks {
+		st, _ := task.Next(time.Now(), t)
+		st.Task = task
+		if err := t.OpLog().Add(st.Op); err != nil {
+			return fmt.Errorf("%v: %w", task.Name(), err)
+		}
+		if err := t.orchestrator.RunTask(ctx, st); hook.IsHaltingError(err) {
+			var cancelErr *hook.HookErrorRequestCancel
+			if errors.As(err, &cancelErr) {
+				return fmt.Errorf("%w: %w", tasks.ErrTaskCancelled, err)
+			}
+			return fmt.Errorf("%v: %w", task.Name(), err)
+		}
+	}
+	return nil
 }
 
 func (t *taskRunnerImpl) GetRepo(repoID string) (*v1.Repo, error) {
+	if repoID == t.t.RepoID() {
+		return t.findRepo() // optimization for the common case of the current repo
+	}
 	return t.orchestrator.GetRepo(repoID)
 }
 
 func (t *taskRunnerImpl) GetPlan(planID string) (*v1.Plan, error) {
+	if planID == t.t.PlanID() {
+		return t.findPlan() // optimization for the common case of the current plan
+	}
 	return t.orchestrator.GetPlan(planID)
 }
 
@@ -123,4 +151,8 @@ func (t *taskRunnerImpl) Config() *v1.Config {
 
 func (t *taskRunnerImpl) Logger(ctx context.Context) *zap.Logger {
 	return logging.Logger(ctx).Named(t.t.Name())
+}
+
+func (t *taskRunnerImpl) RawLogWriter(ctx context.Context) io.Writer {
+	return logging.WriterFromContext(ctx)
 }

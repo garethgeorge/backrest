@@ -9,13 +9,13 @@ import (
 // TimePriorityQueue is a priority queue that dequeues elements at (or after) a specified time, and prioritizes elements based on a priority value. It is safe for concurrent use.
 type TimePriorityQueue[T equals[T]] struct {
 	tqueue TimeQueue[priorityEntry[T]]
-	ready  genericHeap[priorityEntry[T]]
+	ready  GenericHeap[priorityEntry[T]]
 }
 
 func NewTimePriorityQueue[T equals[T]]() *TimePriorityQueue[T] {
 	return &TimePriorityQueue[T]{
 		tqueue: TimeQueue[priorityEntry[T]]{},
-		ready:  genericHeap[priorityEntry[T]]{},
+		ready:  GenericHeap[priorityEntry[T]]{},
 	}
 }
 

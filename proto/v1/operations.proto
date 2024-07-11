@@ -24,7 +24,7 @@ message Operation {
   OperationStatus status = 4;
   // required, unix time in milliseconds of the operation's creation (ID is derived from this)
   int64 unix_time_start_ms = 5; 
-  // optional, unix time in milliseconds of the operation's completion
+  // ptional, unix time in milliseconds of the operation's completion
   int64 unix_time_end_ms = 6;
   // optional, human readable context message, typically an error message.
   string display_message = 7;
@@ -40,7 +40,7 @@ message Operation {
     OperationStats operation_stats = 105;
     OperationRunHook operation_run_hook = 106;
     OperationCheck operation_check = 107;
-  }
+  } 
 }
 
 // OperationEvent is used in the wireformat to stream operation changes to clients
@@ -110,6 +110,7 @@ message OperationStats {
 
 // OperationRunHook tracks a hook that was run.
 message OperationRunHook {
+  int64 parent_op = 4; // ID of the operation that ran the hook.
   string name = 1; // description of the hook that was run. typically repo/hook_idx or plan/hook_idx.
   string output_logref = 2; // logref of the hook's output. DEPRECATED.
   Hook.Condition condition = 3; // triggering condition of the hook.

@@ -6,17 +6,16 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
 )
 
 func NewOneoffForgetSnapshotTask(repoID, planID string, flowID int64, at time.Time, snapshotID string) Task {
 	return &GenericOneoffTask{
-		BaseTask: BaseTask{
-			TaskName:   fmt.Sprintf("forget snapshot %q for plan %q in repo %q", snapshotID, planID, repoID),
-			TaskRepoID: repoID,
-			TaskPlanID: planID,
-		},
 		OneoffTask: OneoffTask{
+			BaseTask: BaseTask{
+				TaskName:   fmt.Sprintf("forget snapshot %q for plan %q in repo %q", snapshotID, planID, repoID),
+				TaskRepoID: repoID,
+				TaskPlanID: planID,
+			},
 			FlowID: flowID,
 			RunAt:  at,
 			ProtoOp: &v1.Operation{
@@ -31,9 +30,9 @@ func NewOneoffForgetSnapshotTask(repoID, planID string, flowID int64, at time.Ti
 			}
 
 			if err := forgetSnapshotHelper(ctx, st, taskRunner, snapshotID); err != nil {
-				taskRunner.ExecuteHooks([]v1.Hook_Condition{
+				taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 					v1.Hook_CONDITION_ANY_ERROR,
-				}, hook.HookVars{
+				}, HookVars{
 					Error: err.Error(),
 				})
 				return err

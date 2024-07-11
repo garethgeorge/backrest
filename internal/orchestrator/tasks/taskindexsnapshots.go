@@ -8,7 +8,6 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
@@ -19,19 +18,19 @@ import (
 
 func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) Task {
 	return &GenericOneoffTask{
-		BaseTask: BaseTask{
-			TaskName:   fmt.Sprintf("index snapshots for repo %q", repoID),
-			TaskRepoID: repoID,
-		},
 		OneoffTask: OneoffTask{
+			BaseTask: BaseTask{
+				TaskName:   fmt.Sprintf("index snapshots for repo %q", repoID),
+				TaskRepoID: repoID,
+			},
 			RunAt:   at,
 			ProtoOp: nil,
 		},
 		Do: func(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 			if err := indexSnapshotsHelper(ctx, st, taskRunner); err != nil {
-				taskRunner.ExecuteHooks([]v1.Hook_Condition{
+				taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 					v1.Hook_CONDITION_ANY_ERROR,
-				}, hook.HookVars{
+				}, HookVars{
 					Task:  st.Task.Name(),
 					Error: err.Error(),
 				})

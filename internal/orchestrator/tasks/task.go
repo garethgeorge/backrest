@@ -2,10 +2,10 @@ package tasks
 
 import (
 	"context"
+	"io"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"go.uber.org/zap"
@@ -35,7 +35,7 @@ type TaskRunner interface {
 	// UpdateOperation updates the operation in storage. It must be called after CreateOperation.
 	UpdateOperation(*v1.Operation) error
 	// ExecuteHooks
-	ExecuteHooks(events []v1.Hook_Condition, vars hook.HookVars) error
+	ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars HookVars) error
 	// OpLog returns the oplog for the operations.
 	OpLog() *oplog.OpLog
 	// GetRepo returns the repo with the given ID.
@@ -50,6 +50,12 @@ type TaskRunner interface {
 	Config() *v1.Config
 	// Logger returns the logger.
 	Logger(ctx context.Context) *zap.Logger
+	// RawLogWriter returns a writer for raw logs.
+	RawLogWriter(ctx context.Context) io.Writer
+}
+
+type TaskExecutor interface {
+	RunTask(ctx context.Context, st ScheduledTask) error
 }
 
 // ScheduledTask is a task that is scheduled to run at a specific time.
@@ -114,8 +120,8 @@ func (o *OneoffTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 	var op *v1.Operation
 	if o.ProtoOp != nil {
 		op = proto.Clone(o.ProtoOp).(*v1.Operation)
-		op.PlanId = o.PlanID()
 		op.RepoId = o.RepoID()
+		op.PlanId = o.PlanID()
 		op.FlowId = o.FlowID
 		op.UnixTimeStartMs = timeToUnixMillis(o.RunAt) // TODO: this should be updated before Run is called.
 		op.Status = v1.OperationStatus_STATUS_PENDING
@@ -128,7 +134,6 @@ func (o *OneoffTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 }
 
 type GenericOneoffTask struct {
-	BaseTask
 	OneoffTask
 	Do func(ctx context.Context, st ScheduledTask, runner TaskRunner) error
 }

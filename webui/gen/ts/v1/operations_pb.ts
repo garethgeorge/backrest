@@ -206,7 +206,7 @@ export class Operation extends Message<Operation> {
   unixTimeStartMs = protoInt64.zero;
 
   /**
-   * optional, unix time in milliseconds of the operation's completion
+   * ptional, unix time in milliseconds of the operation's completion
    *
    * @generated from field: int64 unix_time_end_ms = 6;
    */
@@ -700,6 +700,13 @@ export class OperationStats extends Message<OperationStats> {
  */
 export class OperationRunHook extends Message<OperationRunHook> {
   /**
+   * ID of the operation that ran the hook.
+   *
+   * @generated from field: int64 parent_op = 4;
+   */
+  parentOp = protoInt64.zero;
+
+  /**
    * description of the hook that was run. typically repo/hook_idx or plan/hook_idx.
    *
    * @generated from field: string name = 1;
@@ -728,6 +735,7 @@ export class OperationRunHook extends Message<OperationRunHook> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.OperationRunHook";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 4, name: "parent_op", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "condition", kind: "enum", T: proto3.getEnumType(Hook_Condition) },

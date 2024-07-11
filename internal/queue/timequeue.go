@@ -10,7 +10,7 @@ import (
 
 // TimeQueue is a priority queue that dequeues elements at (or after) a specified time. It is safe for concurrent use.
 type TimeQueue[T equals[T]] struct {
-	heap genericHeap[timeQueueEntry[T]]
+	heap GenericHeap[timeQueueEntry[T]]
 
 	dequeueMu sync.Mutex
 	mu        sync.Mutex
@@ -19,7 +19,7 @@ type TimeQueue[T equals[T]] struct {
 
 func NewTimeQueue[T equals[T]]() *TimeQueue[T] {
 	return &TimeQueue[T]{
-		heap: genericHeap[timeQueueEntry[T]]{},
+		heap: GenericHeap[timeQueueEntry[T]]{},
 	}
 }
 
