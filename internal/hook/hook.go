@@ -33,7 +33,11 @@ func TasksTriggeredByEvent(config *v1.Config, repoID string, planID string, pare
 		}
 
 		name := fmt.Sprintf("repo/%v/hook/%v", repo.Id, idx)
-		taskSet = append(taskSet, newOneoffRunHookTask(name, config.Instance, repoID, planID, parentOp, time.Now(), hook, event, vars))
+		task, err := newOneoffRunHookTask(name, config.Instance, repoID, planID, parentOp, time.Now(), hook, event, vars)
+		if err != nil {
+			return nil, err
+		}
+		taskSet = append(taskSet, task)
 	}
 
 	for idx, hook := range plan.GetHooks() {
@@ -43,13 +47,24 @@ func TasksTriggeredByEvent(config *v1.Config, repoID string, planID string, pare
 		}
 
 		name := fmt.Sprintf("plan/%v/hook/%v", plan.Id, idx)
-		taskSet = append(taskSet, newOneoffRunHookTask(name, config.Instance, repoID, planID, parentOp, time.Now(), hook, event, vars))
+		task, err := newOneoffRunHookTask(name, config.Instance, repoID, planID, parentOp, time.Now(), hook, event, vars)
+		if err != nil {
+			return nil, err
+		}
+		taskSet = append(taskSet, task)
 	}
 
 	return taskSet, nil
 }
 
-func newOneoffRunHookTask(title, instanceID, repoID, planID string, parentOp *v1.Operation, at time.Time, hook *v1.Hook, event v1.Hook_Condition, vars interface{}) tasks.Task {
+func newOneoffRunHookTask(title, instanceID, repoID, planID string, parentOp *v1.Operation, at time.Time, hook *v1.Hook, event v1.Hook_Condition, vars interface{}) (tasks.Task, error) {
+	h, err := types.DefaultRegistry().GetHandler(hook)
+	if err != nil {
+		return nil, fmt.Errorf("no handler for hook type %T", hook.Action)
+	}
+
+	title = h.Name() + " hook " + title
+
 	return &tasks.GenericOneoffTask{
 		OneoffTask: tasks.OneoffTask{
 			BaseTask: tasks.BaseTask{
@@ -76,11 +91,6 @@ func newOneoffRunHookTask(title, instanceID, repoID, planID string, parentOp *v1
 			},
 		},
 		Do: func(ctx context.Context, st tasks.ScheduledTask, taskRunner tasks.TaskRunner) error {
-			h, err := types.DefaultRegistry().GetHandler(hook)
-			if err != nil {
-				return err
-			}
-
 			// TODO: this is a hack to get around the fact that vars is an interface{} .
 			v := reflect.ValueOf(&vars).Elem()
 			clone := reflect.New(v.Elem().Type()).Elem()
@@ -95,7 +105,7 @@ func newOneoffRunHookTask(title, instanceID, repoID, planID string, parentOp *v1
 			}
 			return nil
 		},
-	}
+	}, nil
 }
 
 func firstMatchingCondition(hook *v1.Hook, events []v1.Hook_Condition) v1.Hook_Condition {

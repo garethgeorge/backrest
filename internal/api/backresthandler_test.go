@@ -20,6 +20,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
+	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"golang.org/x/sync/errgroup"
@@ -387,8 +388,8 @@ func TestHookCancellation(t *testing.T) {
 	}()
 
 	_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
-	if err != nil {
-		t.Fatalf("Backup() error = %v", err)
+	if !errors.Is(err, tasks.ErrTaskCancelled) {
+		t.Fatalf("Backup() error = %v, want errors.Is(err, tasks.ErrTaskCancelled)", err)
 	}
 
 	// Wait for a hook operation to appear in the oplog

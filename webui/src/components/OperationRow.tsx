@@ -259,7 +259,13 @@ export const OperationRow = ({
     });
   } else if (operation.op.case === "operationRunHook") {
     const hook = operation.op.value;
-    // TODO: customized view of hook execution info
+    if (operation.logref) {
+      bodyItems.push({
+        key: "logref",
+        label: "Hook Output",
+        children: <BigOperationDataVerbatim logref={operation.logref} />,
+      });
+    }
   }
 
   if (hookOperations) {
