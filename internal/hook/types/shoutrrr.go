@@ -13,6 +13,10 @@ import (
 
 type shoutrrrHandler struct{}
 
+func (shoutrrrHandler) Name() string {
+	return "shoutrrr"
+}
+
 func (shoutrrrHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
 	payload, err := hookutil.RenderTemplateOrDefault(h.GetActionShoutrrr().GetTemplate(), hookutil.DefaultTemplate, vars)
 	if err != nil {

@@ -19,6 +19,10 @@ import (
 
 type commandHandler struct{}
 
+func (commandHandler) Name() string {
+	return "command"
+}
+
 func (commandHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
 	command, err := hookutil.RenderTemplate(h.GetActionCommand().GetCommand(), vars)
 	if err != nil {

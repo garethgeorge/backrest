@@ -14,6 +14,10 @@ import (
 
 type discordHandler struct{}
 
+func (discordHandler) Name() string {
+	return "discord"
+}
+
 func (discordHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
 	payload, err := hookutil.RenderTemplateOrDefault(h.GetActionDiscord().GetTemplate(), hookutil.DefaultTemplate, vars)
 	if err != nil {

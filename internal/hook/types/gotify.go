@@ -16,6 +16,10 @@ import (
 
 type gotifyHandler struct{}
 
+func (gotifyHandler) Name() string {
+	return "gotify"
+}
+
 func (gotifyHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
 	g := h.GetActionGotify()
 

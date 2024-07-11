@@ -14,6 +14,10 @@ import (
 
 type slackHandler struct{}
 
+func (slackHandler) Name() string {
+	return "slack"
+}
+
 func (slackHandler) Execute(ctx context.Context, cmd *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
 	payload, err := hookutil.RenderTemplateOrDefault(cmd.GetActionSlack().GetTemplate(), hookutil.DefaultTemplate, vars)
 	if err != nil {

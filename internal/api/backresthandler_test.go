@@ -334,6 +334,98 @@ func TestHookExecution(t *testing.T) {
 	}
 }
 
+func TestHookCancellation(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping test on windows")
+	}
+
+	sut := createSystemUnderTest(t, &config.MemoryStore{
+		Config: &v1.Config{
+			Modno:    1234,
+			Instance: "test",
+			Repos: []*v1.Repo{
+				{
+					Id:       "local",
+					Uri:      t.TempDir(),
+					Password: "test",
+				},
+			},
+			Plans: []*v1.Plan{
+				{
+					Id:   "test",
+					Repo: "local",
+					Paths: []string{
+						t.TempDir(),
+					},
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
+					Hooks: []*v1.Hook{
+						{
+							Conditions: []v1.Hook_Condition{
+								v1.Hook_CONDITION_SNAPSHOT_START,
+							},
+							Action: &v1.Hook_ActionCommand{
+								ActionCommand: &v1.Hook_Command{
+									Command: "exit 123",
+								},
+							},
+							OnError: v1.Hook_ON_ERROR_CANCEL,
+						},
+					},
+				},
+			},
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		sut.orch.Run(ctx)
+	}()
+
+	_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
+	if err != nil {
+		t.Fatalf("Backup() error = %v", err)
+	}
+
+	// Wait for a hook operation to appear in the oplog
+	if err := retry(t, 10, 2*time.Second, func() error {
+		hookOps := slices.DeleteFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+			_, ok := op.GetOp().(*v1.Operation_OperationRunHook)
+			return !ok
+		})
+		if len(hookOps) != 1 {
+			return fmt.Errorf("expected 1 hook operations, got %d", len(hookOps))
+		}
+		if hookOps[0].Status != v1.OperationStatus_STATUS_ERROR {
+			return fmt.Errorf("expected hook operation error status, got %v", hookOps[0].Status)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("Couldn't find hooks in oplog: %v", err)
+	}
+
+	// assert that the backup operation is in the log and is cancelled
+	if err := retry(t, 10, 2*time.Second, func() error {
+		backupOps := slices.DeleteFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
+			return !ok
+		})
+		if len(backupOps) != 1 {
+			return fmt.Errorf("expected 1 backup operation, got %d", len(backupOps))
+		}
+		if backupOps[0].Status != v1.OperationStatus_STATUS_USER_CANCELLED {
+			return fmt.Errorf("expected backup operation cancelled status, got %v", backupOps[0].Status)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("Couldn't find hooks in oplog: %v", err)
+	}
+}
+
 func TestCancelBackup(t *testing.T) {
 	t.Parallel()
 
