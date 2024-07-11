@@ -151,7 +151,7 @@ export const OperationTree = ({
               );
             } else if (b.backupLastStatus.entry.case === "status") {
               const s = b.backupLastStatus.entry.value;
-              const percent = Number(s.bytesDone / s.totalBytes) * 100;
+              const percent = Number(s.percentDone) * 100;
               details.push(
                 `${percent.toFixed(1)}% processed ${formatBytes(
                   Number(s.bytesDone)

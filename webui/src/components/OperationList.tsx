@@ -24,10 +24,12 @@ import { OperationRow } from "./OperationRow";
 export const OperationList = ({
   req,
   useBackups,
+  useOperations,
   showPlan,
 }: React.PropsWithoutRef<{
   req?: GetOperationsRequest;
-  useBackups?: BackupInfo[];
+  useBackups?: BackupInfo[]; // a backup to display; some operations will be filtered out e.g. hook executions.
+  useOperations?: Operation[]; // exact set of operations to display; no filtering will be applied.
   showPlan?: boolean;
 }>) => {
   const alertApi = useAlertApi();
@@ -64,7 +66,7 @@ export const OperationList = ({
     backups = [...(useBackups || [])];
   }
 
-  if (backups.length === 0) {
+  if (backups.length === 0 && !useOperations) {
     return (
       <Empty
         description="No operations yet."
@@ -73,7 +75,25 @@ export const OperationList = ({
     );
   }
 
-  let operations = backups.flatMap((b) => b.operations);
+  const hookExecutionsForOperation: Map<BigInt, Operation[]> = new Map();
+  let operations: Operation[] = [];
+  if (useOperations) {
+    operations = useOperations;
+  } else {
+    operations = backups
+      .flatMap((b) => b.operations)
+      .filter((op) => {
+        if (op.op.case === "operationRunHook") {
+          const parentOp = op.op.value.parentOp;
+          if (!hookExecutionsForOperation.has(parentOp)) {
+            hookExecutionsForOperation.set(parentOp, []);
+          }
+          hookExecutionsForOperation.get(parentOp)!.push(op);
+          return false;
+        }
+        return true;
+      });
+  }
   operations.sort((a, b) => {
     return Number(b.unixTimeStartMs - a.unixTimeStartMs);
   });
@@ -82,13 +102,14 @@ export const OperationList = ({
       itemLayout="horizontal"
       size="small"
       dataSource={operations}
-      renderItem={(op, index) => {
+      renderItem={(op) => {
         return (
           <OperationRow
             alertApi={alertApi!}
             key={op.id}
             operation={op}
             showPlan={showPlan || false}
+            hookOperations={hookExecutionsForOperation.get(op.id)}
           />
         );
       }}

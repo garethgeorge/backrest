@@ -192,17 +192,10 @@ export class BackupInfoCollector {
     });
 
     // use the lowest ID of all operations as the ID of the backup, this will be the first created operation.
-    const id = operations.reduce((prev, curr) => {
-      return prev < curr.id ? prev : curr.id;
-    }, operations[0].id!);
-
     const startTimeMs = Number(operations[0].unixTimeStartMs);
     const endTimeMs = Number(operations[operations.length - 1].unixTimeEndMs!);
     const displayTime = new Date(startTimeMs);
-    let displayType = DisplayType.SNAPSHOT;
-    if (operations.length === 1) {
-      displayType = getTypeForDisplay(operations[0]);
-    }
+    const displayType = getTypeForDisplay(operations[0]);
 
     // use the latest status that is not a hidden status
     let statusIdx = operations.length - 1;
@@ -365,8 +358,6 @@ export class BackupInfoCollector {
 export const shouldHideOperation = (operation: Operation) => {
   return (
     operation.op.case === "operationStats" ||
-    (operation.op.case === "operationRunHook" &&
-      operation.status === OperationStatus.STATUS_SUCCESS) ||
     shouldHideStatus(operation.status)
   );
 };

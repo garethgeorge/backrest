@@ -96,14 +96,8 @@ func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 		plan, _ = t.findPlan()
 		vars.Plan = plan
 	}
-	var flowID int64
-	if t.op != nil {
-		// a hook always belongs to a flow associated with the ID of the triggering task.
-		// this forms a tree.
-		flowID = t.op.Id
-	}
 
-	hookTasks, err := hook.TasksTriggeredByEvent(t.Config(), repoID, planID, flowID, events, vars)
+	hookTasks, err := hook.TasksTriggeredByEvent(t.Config(), repoID, planID, t.op, events, vars)
 	if err != nil {
 		return err
 	}

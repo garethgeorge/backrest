@@ -14,7 +14,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 )
 
-func TasksTriggeredByEvent(config *v1.Config, repoID string, planID string, flowID int64, events []v1.Hook_Condition, vars interface{}) ([]tasks.Task, error) {
+func TasksTriggeredByEvent(config *v1.Config, repoID string, planID string, parentOp *v1.Operation, events []v1.Hook_Condition, vars interface{}) ([]tasks.Task, error) {
 	var taskSet []tasks.Task
 
 	repo := cfg.FindRepo(config, repoID)
@@ -33,7 +33,7 @@ func TasksTriggeredByEvent(config *v1.Config, repoID string, planID string, flow
 		}
 
 		name := fmt.Sprintf("repo/%v/hook/%v", repo.Id, idx)
-		taskSet = append(taskSet, newOneoffRunHookTask(name, config.Instance, repoID, planID, flowID, time.Now(), hook, event, vars))
+		taskSet = append(taskSet, newOneoffRunHookTask(name, config.Instance, repoID, planID, parentOp, time.Now(), hook, event, vars))
 	}
 
 	for idx, hook := range plan.GetHooks() {
@@ -43,13 +43,13 @@ func TasksTriggeredByEvent(config *v1.Config, repoID string, planID string, flow
 		}
 
 		name := fmt.Sprintf("plan/%v/hook/%v", plan.Id, idx)
-		taskSet = append(taskSet, newOneoffRunHookTask(name, config.Instance, repoID, planID, flowID, time.Now(), hook, event, vars))
+		taskSet = append(taskSet, newOneoffRunHookTask(name, config.Instance, repoID, planID, parentOp, time.Now(), hook, event, vars))
 	}
 
 	return taskSet, nil
 }
 
-func newOneoffRunHookTask(title, instanceID, repoID, planID string, flowID int64, at time.Time, hook *v1.Hook, event v1.Hook_Condition, vars interface{}) tasks.Task {
+func newOneoffRunHookTask(title, instanceID, repoID, planID string, parentOp *v1.Operation, at time.Time, hook *v1.Hook, event v1.Hook_Condition, vars interface{}) tasks.Task {
 	return &tasks.GenericOneoffTask{
 		OneoffTask: tasks.OneoffTask{
 			BaseTask: tasks.BaseTask{
@@ -57,18 +57,20 @@ func newOneoffRunHookTask(title, instanceID, repoID, planID string, flowID int64
 				TaskRepoID: repoID,
 				TaskPlanID: planID,
 			},
-			FlowID: flowID,
+			FlowID: parentOp.GetFlowId(),
 			RunAt:  at,
 			ProtoOp: &v1.Operation{
 				InstanceId: instanceID,
 				RepoId:     repoID,
 				PlanId:     planID,
+				FlowId:     parentOp.GetFlowId(),
 
 				DisplayMessage: fmt.Sprintf("running %v triggered by %v", title, event.String()),
 				Op: &v1.Operation_OperationRunHook{
 					OperationRunHook: &v1.OperationRunHook{
 						Name:      title,
 						Condition: event,
+						ParentOp:  parentOp.GetId(),
 					},
 				},
 			},
