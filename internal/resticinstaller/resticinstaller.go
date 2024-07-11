@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"runtime"
 	"strings"
@@ -237,11 +238,8 @@ func FindOrInstallResticBinary() (string, error) {
 
 	// Search the PATH for the specific restic version.
 	resticBinName := resticBinName()
-	for _, dir := range strings.Split(os.Getenv("PATH"), string(os.PathListSeparator)) {
-		candidatePath := path.Join(dir, resticBinName)
-		if _, err := os.Stat(candidatePath); err == nil {
-			return candidatePath, nil
-		}
+	if binPath, err := exec.LookPath(resticBinName); err == nil {
+		return binPath, nil
 	}
 
 	// Check for restic installation in data directory.
