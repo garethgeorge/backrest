@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.3.1](https://github.com/garethgeorge/backrest/compare/v1.3.0...v1.3.1) (2024-07-12)
+
+
+### Bug Fixes
+
+* add docker-cli to alpine backrest image ([b6f9129](https://github.com/garethgeorge/backrest/commit/b6f9129d3042a3785106ecd24801a55b80b38146))
+* add major and major.minor semantic versioned docker releases ([8db2578](https://github.com/garethgeorge/backrest/commit/8db2578b95d50dcd4abaac851c8a1a5b6e9bf15c))
+* plan _system_ not found bug when running health operations ([c19665a](https://github.com/garethgeorge/backrest/commit/c19665ab063a32e2cb0ca73a4e0eaa4cee793601))
+
 ## [1.3.0](https://github.com/garethgeorge/backrest/compare/v1.2.1...v1.3.0) (2024-07-11)
 
 
