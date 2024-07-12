@@ -1,5 +1,5 @@
 FROM alpine:latest
-RUN apk --no-cache add tini ca-certificates curl bash rclone openssh tzdata
+RUN apk --no-cache add tini ca-certificates curl bash rclone openssh tzdata docker-cli
 RUN mkdir -p /tmp
 COPY backrest /backrest
 RUN /backrest --install-deps-only
