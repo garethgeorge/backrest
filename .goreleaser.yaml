@@ -129,6 +129,14 @@ docker_manifests:
     image_templates:
       - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
       - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
+  - name_template: "garethgeorge/backrest:v{{ .Major }}"
+    image_templates:
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
+  - name_template: "garethgeorge/backrest:v{{ .Major }}.{{ .Minor }}"
+    image_templates:
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
   - name_template: "garethgeorge/backrest:{{ .Tag }}"
     image_templates:
       - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
@@ -138,6 +146,18 @@ docker_manifests:
       - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
       - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
   - name_template: "garethgeorge/backrest:scratch"
+    image_templates:
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv7"
+  - name_template: "garethgeorge/backrest:v{{ .Major }}-scratch"
+    image_templates:
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv7"
+  - name_template: "garethgeorge/backrest:v{{ .Major }}.{{ .Minor }}-scratch"
     image_templates:
       - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
       - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
