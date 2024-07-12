@@ -22,9 +22,6 @@ func TasksTriggeredByEvent(config *v1.Config, repoID string, planID string, pare
 		return nil, fmt.Errorf("repo %v not found", repoID)
 	}
 	plan := cfg.FindPlan(config, planID)
-	if plan == nil && planID != "" {
-		return nil, fmt.Errorf("plan %v not found", planID)
-	}
 
 	for idx, hook := range repo.GetHooks() {
 		event := firstMatchingCondition(hook, events)
