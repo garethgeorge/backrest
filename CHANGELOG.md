@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.0](https://github.com/garethgeorge/backrest/compare/v1.2.1...v1.3.0) (2024-07-11)
+
+
+### Features
+
+* improve hook UX and execution model ([#357](https://github.com/garethgeorge/backrest/issues/357)) ([4d0d13e](https://github.com/garethgeorge/backrest/commit/4d0d13e39802fcf18186723372608d96b9bd58b0))
+
+
+### Bug Fixes
+
+* cannot run path relative executable errors on Windows ([c3ec9ee](https://github.com/garethgeorge/backrest/commit/c3ec9eeb4b5aa37e66ad115528b6708d438e9459))
+* improve handling of restore operations ([620caed](https://github.com/garethgeorge/backrest/commit/620caed7e3570aa7f7cb5f7279c8b6bb277d95fc))
+* operation tree key conflicts ([2dc5595](https://github.com/garethgeorge/backrest/commit/2dc55951d7047e395c0b770bc8e4d1a80ffd32d7))
+
 ## [1.2.1](https://github.com/garethgeorge/backrest/compare/v1.2.0...v1.2.1) (2024-07-02)
 
 
