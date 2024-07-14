@@ -287,6 +287,13 @@ export class Plan extends Message<Plan> {
   id = "";
 
   /**
+   * (optional) instance ID for the plan, used only with the hub.
+   *
+   * @generated from field: string instance = 13;
+   */
+  instance = "";
+
+  /**
    * ID of the repo to use.
    *
    * @generated from field: string repo = 2;
@@ -367,6 +374,7 @@ export class Plan extends Message<Plan> {
   static readonly typeName = "v1.Plan";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 13, name: "instance", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "repo", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 11, name: "disabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 4, name: "paths", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
