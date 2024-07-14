@@ -89,38 +89,14 @@ func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, oplog *oplo
 		cfgMgr.Unsubscribe(onConfigChange)
 	}
 
-	// verify the operation log and mark any incomplete operations as failed.
-	if oplog != nil { // oplog may be nil for testing.
-		var incompleteOpRepos []string
-		if err := oplog.Scan(func(incomplete *v1.Operation) {
-			incomplete.Status = v1.OperationStatus_STATUS_ERROR
-			incomplete.DisplayMessage = "Failed, orchestrator killed while operation was in progress."
-
-			if incomplete.RepoId != "" && !slices.Contains(incompleteOpRepos, incomplete.RepoId) {
-				incompleteOpRepos = append(incompleteOpRepos, incomplete.RepoId)
-			}
-		}); err != nil {
-			return nil, fmt.Errorf("scan oplog: %w", err)
-		}
-
-		for _, repoId := range incompleteOpRepos {
-			repo, err := o.GetRepoOrchestrator(repoId)
-			if err != nil {
-				if errors.Is(err, ErrRepoNotFound) {
-					zap.L().Warn("repo not found for incomplete operation. Possibly just deleted.", zap.String("repo", repoId))
-				}
-				return nil, fmt.Errorf("get repo %q: %w", repoId, err)
-			}
-
-			if err := repo.Unlock(context.Background()); err != nil {
-				zap.L().Error("failed to unlock repo", zap.String("repo", repoId), zap.Error(err))
-			}
-		}
-	}
-
 	// apply starting configuration which also queues initial tasks.
 	if err := o.ApplyConfig(cfg); err != nil {
 		return nil, fmt.Errorf("apply initial config: %w", err)
+	}
+
+	// Schedule additional initialization tasks
+	if err := o.ScheduleTask(&tasks.ScanLogTask{}, tasks.TaskPriorityHighest); err != nil {
+		return nil, fmt.Errorf("schedule scan log task: %w", err)
 	}
 
 	zap.L().Info("orchestrator created")

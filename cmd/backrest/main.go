@@ -2,21 +2,15 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"flag"
 	"net/http"
 	"os"
-	"os/signal"
 	"path"
-	"runtime"
 	"strings"
 	"sync"
-	"sync/atomic"
-	"syscall"
 
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
-	"github.com/garethgeorge/backrest/internal/api"
 	"github.com/garethgeorge/backrest/internal/auth"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/env"
@@ -24,6 +18,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"github.com/garethgeorge/backrest/internal/rotatinglog"
+	"github.com/garethgeorge/backrest/internal/server/api"
 	"github.com/garethgeorge/backrest/webui"
 	"github.com/mattn/go-colorable"
 	"go.etcd.io/bbolt"
@@ -53,15 +48,10 @@ func main() {
 	go onterm(os.Interrupt, newForceKillHandler())
 
 	// Load the configuration
-	configStore := createConfigProvider()
-	cfg, err := configStore.Get()
-	if err != nil {
-		zap.S().Fatalf("error loading config: %v", err)
-	}
-	configManager := &config.ConfigManager{ConfigStore: configStore}
+	configManager := createConfigProvider()
 
 	// Create the authenticator
-	authenticator := auth.NewAuthenticator(getSecret(), configStore)
+	authenticator := auth.NewAuthenticator(getSecret(), configManager)
 
 	var wg sync.WaitGroup
 
@@ -98,7 +88,7 @@ func main() {
 
 	// Create and serve the HTTP gateway
 	apiBackrestHandler := api.NewBackrestHandler(
-		configStore,
+		configManager,
 		orchestrator,
 		oplog,
 		logStore,
@@ -153,53 +143,9 @@ func init() {
 	}
 }
 
-func createConfigProvider() config.ConfigStore {
-	return &config.CachingValidatingStore{
+func createConfigProvider() *config.ConfigManager {
+	cfgStore := &config.CachingValidatingStore{
 		ConfigStore: &config.JsonFileStore{Path: env.ConfigFilePath()},
 	}
-}
-
-func onterm(s os.Signal, callback func()) {
-	sigchan := make(chan os.Signal, 1)
-	signal.Notify(sigchan, s, syscall.SIGTERM)
-	for {
-		<-sigchan
-		callback()
-	}
-}
-
-func getSecret() []byte {
-	secretFile := path.Join(env.DataDir(), "jwt-secret")
-	data, err := os.ReadFile(secretFile)
-	if err == nil {
-		zap.L().Debug("loading auth secret from file")
-		return data
-	}
-
-	zap.L().Info("generating new auth secret")
-	secret := make([]byte, 64)
-	if n, err := rand.Read(secret); err != nil || n != 64 {
-		zap.S().Fatalf("error generating secret: %v", err)
-	}
-	if err := os.MkdirAll(env.DataDir(), 0700); err != nil {
-		zap.S().Fatalf("error creating data directory: %v", err)
-	}
-	if err := os.WriteFile(secretFile, secret, 0600); err != nil {
-		zap.S().Fatalf("error writing secret to file: %v", err)
-	}
-	return secret
-}
-
-func newForceKillHandler() func() {
-	var times atomic.Int32
-	return func() {
-		if times.Load() > 0 {
-			buf := make([]byte, 1<<16)
-			runtime.Stack(buf, true)
-			os.Stderr.Write(buf)
-			zap.S().Fatal("dumped all running coroutine stack traces, forcing termination")
-		}
-		times.Add(1)
-		zap.S().Warn("attempting graceful shutdown, to force termination press Ctrl+C again")
-	}
+	return &config.ConfigManager{ConfigStore: cfgStore}
 }
