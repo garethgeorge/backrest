@@ -46,7 +46,7 @@ func ValidateEnvironment() {
 func ConfigFilePath() string {
 	if IsHubClient() {
 		sum := sha256.Sum256([]byte(HubConnectAddr()))
-		return path.Join(DataDir(), "daemon-config-cache", fmt.Sprintf("%v-config.json", hex.EncodeToString(sum[:])))
+		return path.Join(DataDir(), "remote-config-cache", fmt.Sprintf("%v-config.json", hex.EncodeToString(sum[:])))
 	}
 	if *flagConfigPath != "" {
 		return *flagConfigPath

@@ -25,7 +25,8 @@ const (
 	TaskPriorityIndexSnapshots = 1 << 3
 	TaskPriorityCheck          = 1 << 4 // check should always run after prune.
 	TaskPriorityPrune          = 1 << 5
-	TaskPriorityInteractive    = 1 << 6 // highest priority
+	TaskPriorityInteractive    = 1 << 6 // user initiated tasks
+	TaskPriorityHighest        = 1 << 7 // highest priority
 )
 
 // TaskRunner is an interface for running tasks. It is used by tasks to create operations and write logs.

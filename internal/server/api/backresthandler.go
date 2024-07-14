@@ -86,14 +86,7 @@ func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
 
-	newConfig, err := s.config.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get newly set config: %w", err)
-	}
-	if err := s.orchestrator.ApplyConfig(newConfig); err != nil {
-		return nil, fmt.Errorf("failed to apply config: %w", err)
-	}
-	return connect.NewResponse(newConfig), nil
+	return connect.NewResponse(req.Msg), nil
 }
 
 // AddRepo implements POST /v1/config/repo, it includes validation that the repo can be initialized.
@@ -136,9 +129,6 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 	if err := s.config.Update(c); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
-
-	zap.L().Debug("applying config", zap.Int32("version", c.Version))
-	s.orchestrator.ApplyConfig(c)
 
 	// index snapshots for the newly added repository.
 	zap.L().Debug("scheduling index snapshots task")
