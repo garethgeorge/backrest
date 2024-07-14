@@ -62,6 +62,7 @@ type HubClient interface {
 	// If the server's major version breaks compaibility with the client's an error is returned.
 	CheckVersionCompatible(context.Context, *connect.Request[v1hub.ProtocolVersion]) (*connect.Response[emptypb.Empty], error)
 	// GetHighestModno returns the highest modno for any operation matching the selector.
+	// Can be used to avoid re-fetching operations that have already been sent.
 	GetHighestModno(context.Context, *connect.Request[v1.OpSelector]) (*connect.Response[types.Int64Value], error)
 	// SyncOperations is a bidirectional stream of operations.
 	// The client pushes id, modno to the server and may optionally push the operation update itself.
@@ -143,6 +144,7 @@ type HubHandler interface {
 	// If the server's major version breaks compaibility with the client's an error is returned.
 	CheckVersionCompatible(context.Context, *connect.Request[v1hub.ProtocolVersion]) (*connect.Response[emptypb.Empty], error)
 	// GetHighestModno returns the highest modno for any operation matching the selector.
+	// Can be used to avoid re-fetching operations that have already been sent.
 	GetHighestModno(context.Context, *connect.Request[v1.OpSelector]) (*connect.Response[types.Int64Value], error)
 	// SyncOperations is a bidirectional stream of operations.
 	// The client pushes id, modno to the server and may optionally push the operation update itself.

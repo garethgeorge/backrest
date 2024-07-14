@@ -58,6 +58,7 @@ func main() {
 	if err != nil {
 		zap.S().Fatalf("error loading config: %v", err)
 	}
+	configManager := &config.ConfigManager{ConfigStore: configStore}
 
 	// Create the authenticator
 	authenticator := auth.NewAuthenticator(getSecret(), configStore)
@@ -83,10 +84,11 @@ func main() {
 	}
 
 	// Create orchestrator and start task loop.
-	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, oplog, logStore)
+	orchestrator, err := orchestrator.NewOrchestrator(resticPath, configManager, oplog, logStore)
 	if err != nil {
 		zap.S().Fatalf("error creating orchestrator: %v", err)
 	}
+	defer orchestrator.Shutdown()
 
 	wg.Add(1)
 	go func() {
@@ -100,6 +102,7 @@ func main() {
 		orchestrator,
 		oplog,
 		logStore,
+		env.IsHubServer(),
 	)
 
 	apiAuthenticationHandler := api.NewAuthenticationHandler(authenticator)

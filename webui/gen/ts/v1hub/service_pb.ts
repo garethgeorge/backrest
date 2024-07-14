@@ -139,11 +139,6 @@ export class OpSyncMetadata extends Message<OpSyncMetadata> {
  * @generated from message v1hub.GetConfigRequest
  */
 export class GetConfigRequest extends Message<GetConfigRequest> {
-  /**
-   * @generated from field: string instance_id = 1;
-   */
-  instanceId = "";
-
   constructor(data?: PartialMessage<GetConfigRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -152,7 +147,6 @@ export class GetConfigRequest extends Message<GetConfigRequest> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1hub.GetConfigRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "instance_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetConfigRequest {

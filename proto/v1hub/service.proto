@@ -17,6 +17,7 @@ service Hub {
   rpc CheckVersionCompatible (ProtocolVersion) returns (google.protobuf.Empty) {}
 
   // GetHighestModno returns the highest modno for any operation matching the selector.
+  // Can be used to avoid re-fetching operations that have already been sent.
   rpc GetHighestModno (v1.OpSelector) returns (types.Int64Value) {}
 
   // SyncOperations is a bidirectional stream of operations. 
@@ -44,5 +45,4 @@ message OpSyncMetadata {
 }
 
 message GetConfigRequest {
-  string instance_id = 1;
 }
