@@ -46,6 +46,7 @@ message Repo {
 
 message Plan {
   string id = 1 [json_name="id"]; // unique but human readable ID for this plan.
+  string instance = 13 [json_name="instance"]; // (optional) instance ID for the plan, used only with the hub.
   string repo = 2 [json_name="repo"]; // ID of the repo to use.
   bool disabled = 11 [json_name="disabled", deprecated=true]; // disable the plan.
   repeated string paths = 4 [json_name="paths"]; // paths to include in the backup.

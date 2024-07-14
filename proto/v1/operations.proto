@@ -14,6 +14,7 @@ message OperationList {
 message Operation {
   // required, primary ID of the operation. ID is sequential based on creation time of the operation.
   int64 id = 1;
+  int64 modno = 12; // modification number, incremented on each update.
   // flow id groups operations together, e.g. by an execution of a plan.
   int64 flow_id = 10; // optional, flow id if associated with a flow
   string repo_id = 2; 

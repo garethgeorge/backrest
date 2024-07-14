@@ -163,6 +163,13 @@ export class Operation extends Message<Operation> {
   id = protoInt64.zero;
 
   /**
+   * modification number, incremented on each update.
+   *
+   * @generated from field: int64 modno = 12;
+   */
+  modno = protoInt64.zero;
+
+  /**
    * flow id groups operations together, e.g. by an execution of a plan.
    *
    * optional, flow id if associated with a flow
@@ -288,6 +295,7 @@ export class Operation extends Message<Operation> {
   static readonly typeName = "v1.Operation";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 12, name: "modno", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 10, name: "flow_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 2, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },

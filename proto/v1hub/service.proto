@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package v1hub;
+
+option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
+
+import "v1/operations.proto";
+import "v1/config.proto";
+import "types/value.proto";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
+
+service Hub {
+  // SyncOperations is a bidirectional stream of operations. 
+  // The client pushes id, modno to the server and may optionally push the operation update itself.
+  // The server responds with the id, modno of the latest operation data it has or -1 if it has no data.
+  // The client pushes operations it detects to be missing or out of date on the server.
+  rpc SyncOperations (stream OpSyncMetadata) returns (stream OpSyncMetadata) {}
+
+  // GetConfig returns a stream of config updates related to the instance_id.
+  rpc GetConfig (GetConfigRequest) returns (stream v1.Config) {}
+}
+
+
+message OpSyncMetadata {
+  int64 id = 1;
+  int64 modno = 2;
+  v1.Operation operation = 3; // optionally push the operation itself
+}
+
+message GetConfigRequest {
+  string instance_id = 1;
+}
