@@ -3,8 +3,10 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { GetConfigRequest, OpSyncMetadata } from "./service_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
+import { GetConfigRequest, OpSyncMetadata, ProtocolVersion } from "./service_pb.js";
+import { Empty, MethodKind } from "@bufbuild/protobuf";
+import { OpSelector } from "../v1/service_pb.js";
+import { Int64Value } from "../types/value_pb.js";
 import { Config } from "../v1/config_pb.js";
 
 /**
@@ -13,6 +15,29 @@ import { Config } from "../v1/config_pb.js";
 export const Hub = {
   typeName: "v1hub.Hub",
   methods: {
+    /**
+     * CheckVersionCompatible checks if the client's protocol version is compatible with the server's.
+     * If the server's major version breaks compaibility with the client's an error is returned.
+     *
+     * @generated from rpc v1hub.Hub.CheckVersionCompatible
+     */
+    checkVersionCompatible: {
+      name: "CheckVersionCompatible",
+      I: ProtocolVersion,
+      O: Empty,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetHighestModno returns the highest modno for any operation matching the selector.
+     *
+     * @generated from rpc v1hub.Hub.GetHighestModno
+     */
+    getHighestModno: {
+      name: "GetHighestModno",
+      I: OpSelector,
+      O: Int64Value,
+      kind: MethodKind.Unary,
+    },
     /**
      * SyncOperations is a bidirectional stream of operations. 
      * The client pushes id, modno to the server and may optionally push the operation update itself.
