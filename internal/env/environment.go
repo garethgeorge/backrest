@@ -1,12 +1,16 @@
 package env
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"os"
 	"path"
 	"runtime"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 var (
@@ -23,10 +27,27 @@ var flagResticBinPath = flag.String("restic-cmd", "", "path to restic binary, de
 var hubConnectAddr = flag.String("connect-to-hub", "", "hub address to connect to")
 var hubServeAddr = flag.String("serve-hub-address", "", "address to serve the hub on")
 
+func ValidateEnvironment() {
+	if IsHubServer() && IsHubClient() {
+		zap.L().Error("hub server and client cannot be enabled at the same time")
+		os.Exit(1)
+	}
+
+	if IsHubClient() && (*flagConfigPath != "" || os.Getenv(EnvVarConfigPath) != "") {
+		zap.L().Error("cannot customize config path when in daemon mode, config is cached in data directory.")
+		os.Exit(1)
+	}
+}
+
 // ConfigFilePath
 // - *nix systems use $XDG_CONFIG_HOME/backrest/config.json
 // - windows uses %APPDATA%/backrest/config.json
+// - hub clients use a path in the data directory
 func ConfigFilePath() string {
+	if IsHubClient() {
+		sum := sha256.Sum256([]byte(HubConnectAddr()))
+		return path.Join(DataDir(), "daemon-config-cache", fmt.Sprintf("%v-config.json", hex.EncodeToString(sum[:])))
+	}
 	if *flagConfigPath != "" {
 		return *flagConfigPath
 	}
@@ -86,6 +107,10 @@ func HubServeAddr() string {
 
 func IsHubClient() bool {
 	return *hubConnectAddr != ""
+}
+
+func HubConnectAddr() string {
+	return *hubConnectAddr
 }
 
 func getHomeDir() string {

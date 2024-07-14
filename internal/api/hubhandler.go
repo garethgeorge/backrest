@@ -84,3 +84,12 @@ func (s *HubHandler) SyncOperations(ctx context.Context, req *connect.ClientStre
 
 	return nil
 }
+
+func (s *HubHandler) GetConfigRequest(ctx context.Context, req *connect.Request[v1hub.GetConfigRequest]) (*connect.Response[emptypb.Empty], error) {
+	cfg, err := s.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("get config: %w", err)
+	}
+
+	return connect.NewResponse(cfg), nil
+}

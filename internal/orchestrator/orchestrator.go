@@ -28,13 +28,14 @@ var ErrPlanNotFound = errors.New("plan not found")
 
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
-	mu              sync.Mutex
-	config          *v1.Config
-	OpLog           *oplog.OpLog
-	repoPool        *resticRepoPool
-	taskQueue       *queue.TimePriorityQueue[stContainer]
-	readyTaskQueues map[string]chan tasks.Task
-	logStore        *rotatinglog.RotatingLog
+	mu        sync.Mutex
+	config    *v1.Config
+	OpLog     *oplog.OpLog
+	repoPool  *resticRepoPool
+	taskQueue *queue.TimePriorityQueue[stContainer]
+	logStore  *rotatinglog.RotatingLog
+
+	cleanup func()
 
 	// cancelNotify is a list of channels that are notified when a task should be cancelled.
 	cancelNotify []chan int64
@@ -59,18 +60,33 @@ func (st stContainer) Less(other stContainer) bool {
 	return st.ScheduledTask.Less(other.ScheduledTask)
 }
 
-func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) (*Orchestrator, error) {
+func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) (*Orchestrator, error) {
+	// get initial config
+	cfg, err := cfgMgr.Get()
+	if err != nil {
+		return nil, fmt.Errorf("get config: %w", err)
+	}
 	cfg = proto.Clone(cfg).(*v1.Config)
 
 	// create the orchestrator.
-	var o *Orchestrator
-	o = &Orchestrator{
+	o := &Orchestrator{
 		OpLog:  oplog,
 		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
 		repoPool:  newResticRepoPool(resticBin, cfg),
 		taskQueue: queue.NewTimePriorityQueue[stContainer](),
 		logStore:  logStore,
+	}
+
+	// subscribe to config changes from the config manager
+	onConfigChange := func(cfg *v1.Config) {
+		if err := o.ApplyConfig(cfg); err != nil {
+			zap.L().Error("failed to apply config to orchestrator", zap.Error(err))
+		}
+	}
+	cfgMgr.Subscribe(onConfigChange)
+	o.cleanup = func() {
+		cfgMgr.Unsubscribe(onConfigChange)
 	}
 
 	// verify the operation log and mark any incomplete operations as failed.
@@ -110,6 +126,15 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 	zap.L().Info("orchestrator created")
 
 	return o, nil
+}
+
+func (o *Orchestrator) Shutdown() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	if o.cleanup != nil {
+		o.cleanup()
+	}
 }
 
 func (o *Orchestrator) curTime() time.Time {

@@ -29,6 +29,7 @@ export const Hub = {
     },
     /**
      * GetHighestModno returns the highest modno for any operation matching the selector.
+     * Can be used to avoid re-fetching operations that have already been sent.
      *
      * @generated from rpc v1hub.Hub.GetHighestModno
      */
