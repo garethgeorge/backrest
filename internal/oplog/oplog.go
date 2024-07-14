@@ -1,6 +1,8 @@
 package oplog
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
@@ -10,6 +12,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/gen/go/v1hub"
 	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/oplog/serializationutil"
 	"github.com/garethgeorge/backrest/internal/protoutil"
@@ -80,7 +83,6 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 	}); err != nil {
 		return nil, err
 	}
-
 	return o, nil
 }
 
@@ -142,16 +144,18 @@ func (o *OpLog) Add(op *v1.Operation) error {
 	}
 
 	err := o.db.Update(func(tx *bolt.Tx) error {
-		err := o.addOperationHelper(tx, op)
+		nextModno, err := tx.Bucket(OpLogBucket).NextSequence()
 		if err != nil {
-			return err
+			return fmt.Errorf("getting next modno: %w", err)
 		}
-		return nil
+		op.Modno = int64(nextModno)
+		return o.addOperationHelper(tx, op)
 	})
-	if err == nil {
-		o.notifyHelper(nil, op)
+	if err != nil {
+		return fmt.Errorf("add op %v: %w", op.Id, err)
 	}
-	return err
+	o.notifyHelper(nil, op)
+	return nil
 }
 
 func (o *OpLog) BulkAdd(ops []*v1.Operation) error {
@@ -180,20 +184,48 @@ func (o *OpLog) Update(op *v1.Operation) error {
 	}
 	var oldOp *v1.Operation
 	err := o.db.Update(func(tx *bolt.Tx) error {
-		var err error
+		nextModno, err := tx.Bucket(OpLogBucket).NextSequence()
+		if err != nil {
+			return fmt.Errorf("getting next modno: %w", err)
+		}
 		oldOp, err = o.deleteOperationHelper(tx, op.Id)
 		if err != nil {
 			return fmt.Errorf("deleting existing value prior to update: %w", err)
 		}
+		op.Modno = int64(nextModno)
 		if err := o.addOperationHelper(tx, op); err != nil {
 			return fmt.Errorf("adding updated value: %w", err)
 		}
 		return nil
 	})
-	if err == nil {
-		o.notifyHelper(oldOp, op)
+	if err != nil {
+		return fmt.Errorf("update op %v: %w", op.Id, err)
 	}
-	return err
+	o.notifyHelper(oldOp, op)
+	return nil
+}
+
+func (o *OpLog) ApplySyncMetadata(opMeta *v1hub.OpSyncMetadata) error {
+	if opMeta.Operation == nil {
+		return errors.New("opMeta.Operation is nil")
+	}
+	var oldOp *v1.Operation
+	err := o.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		oldOp, err = o.deleteOperationHelper(tx, opMeta.Id)
+		if err != nil && !errors.Is(err, ErrNotExist) {
+			return fmt.Errorf("deleting existing value prior to update: %w", err)
+		}
+		if err := o.addOperationHelper(tx, opMeta.Operation); err != nil {
+			return fmt.Errorf("adding updated value: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("apply sync metadata %v: %w", opMeta.Id, err)
+	}
+	o.notifyHelper(oldOp, opMeta.Operation)
+	return nil
 }
 
 func (o *OpLog) Delete(ids ...int64) error {
@@ -208,12 +240,13 @@ func (o *OpLog) Delete(ids ...int64) error {
 		}
 		return nil
 	})
-	if err == nil {
-		for _, op := range removedOps {
-			o.notifyHelper(op, nil)
-		}
+	if err != nil {
+		return fmt.Errorf("delete ops: %w", err)
 	}
-	return err
+	for _, op := range removedOps {
+		o.notifyHelper(op, nil)
+	}
+	return nil
 }
 
 func (o *OpLog) notifyHelper(old *v1.Operation, new *v1.Operation) {
@@ -241,11 +274,20 @@ func (o *OpLog) getOperationHelper(b *bolt.Bucket, id int64) (*v1.Operation, err
 }
 
 func (o *OpLog) nextID(b *bolt.Bucket, unixTimeMs int64) (int64, error) {
-	seq, err := b.NextSequence()
-	if err != nil {
-		return 0, fmt.Errorf("next sequence: %w", err)
+	for {
+		// Generate an ID composed of the current time and a random suffix to avoid collisions
+		randBytes := make([]byte, 4)
+		if _, err := rand.Read(randBytes); err != nil {
+			return 0, fmt.Errorf("read random bytes: %w", err)
+		}
+		randSuffix := binary.BigEndian.Uint32(randBytes)
+		id := int64(unixTimeMs<<20) | int64(randSuffix&((1<<20)-1))
+
+		// Check if the ID is already in use
+		if b.Get(serializationutil.Itob(id)) == nil {
+			return id, nil
+		}
 	}
-	return int64(unixTimeMs<<20) | int64(seq&((1<<20)-1)), nil
 }
 
 func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
@@ -272,7 +314,7 @@ func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 	}
 
 	if err := b.Put(serializationutil.Itob(op.Id), bytes); err != nil {
-		return fmt.Errorf("error putting operation into bucket: %w", err)
+		return fmt.Errorf("storing serialized operation: %w", err)
 	}
 
 	// Update always universal indices

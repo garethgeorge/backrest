@@ -4,13 +4,16 @@
 // - protoc             (unknown)
 // source: v1hub/service.proto
 
-package v1
+package v1hub
 
 import (
 	context "context"
+	types "github.com/garethgeorge/backrest/gen/go/types"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -19,14 +22,21 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Hub_SyncOperations_FullMethodName = "/v1hub.Hub/SyncOperations"
-	Hub_GetConfig_FullMethodName      = "/v1hub.Hub/GetConfig"
+	Hub_CheckVersionCompatible_FullMethodName = "/v1hub.Hub/CheckVersionCompatible"
+	Hub_GetHighestModno_FullMethodName        = "/v1hub.Hub/GetHighestModno"
+	Hub_SyncOperations_FullMethodName         = "/v1hub.Hub/SyncOperations"
+	Hub_GetConfig_FullMethodName              = "/v1hub.Hub/GetConfig"
 )
 
 // HubClient is the client API for Hub service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HubClient interface {
+	// CheckVersionCompatible checks if the client's protocol version is compatible with the server's.
+	// If the server's major version breaks compaibility with the client's an error is returned.
+	CheckVersionCompatible(ctx context.Context, in *ProtocolVersion, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// GetHighestModno returns the highest modno for any operation matching the selector.
+	GetHighestModno(ctx context.Context, in *v1.OpSelector, opts ...grpc.CallOption) (*types.Int64Value, error)
 	// SyncOperations is a bidirectional stream of operations.
 	// The client pushes id, modno to the server and may optionally push the operation update itself.
 	// The server responds with the id, modno of the latest operation data it has or -1 if it has no data.
@@ -42,6 +52,24 @@ type hubClient struct {
 
 func NewHubClient(cc grpc.ClientConnInterface) HubClient {
 	return &hubClient{cc}
+}
+
+func (c *hubClient) CheckVersionCompatible(ctx context.Context, in *ProtocolVersion, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Hub_CheckVersionCompatible_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hubClient) GetHighestModno(ctx context.Context, in *v1.OpSelector, opts ...grpc.CallOption) (*types.Int64Value, error) {
+	out := new(types.Int64Value)
+	err := c.cc.Invoke(ctx, Hub_GetHighestModno_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *hubClient) SyncOperations(ctx context.Context, opts ...grpc.CallOption) (Hub_SyncOperationsClient, error) {
@@ -91,7 +119,7 @@ func (c *hubClient) GetConfig(ctx context.Context, in *GetConfigRequest, opts ..
 }
 
 type Hub_GetConfigClient interface {
-	Recv() (*Config, error)
+	Recv() (*v1.Config, error)
 	grpc.ClientStream
 }
 
@@ -99,8 +127,8 @@ type hubGetConfigClient struct {
 	grpc.ClientStream
 }
 
-func (x *hubGetConfigClient) Recv() (*Config, error) {
-	m := new(Config)
+func (x *hubGetConfigClient) Recv() (*v1.Config, error) {
+	m := new(v1.Config)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -111,6 +139,11 @@ func (x *hubGetConfigClient) Recv() (*Config, error) {
 // All implementations must embed UnimplementedHubServer
 // for forward compatibility
 type HubServer interface {
+	// CheckVersionCompatible checks if the client's protocol version is compatible with the server's.
+	// If the server's major version breaks compaibility with the client's an error is returned.
+	CheckVersionCompatible(context.Context, *ProtocolVersion) (*emptypb.Empty, error)
+	// GetHighestModno returns the highest modno for any operation matching the selector.
+	GetHighestModno(context.Context, *v1.OpSelector) (*types.Int64Value, error)
 	// SyncOperations is a bidirectional stream of operations.
 	// The client pushes id, modno to the server and may optionally push the operation update itself.
 	// The server responds with the id, modno of the latest operation data it has or -1 if it has no data.
@@ -125,6 +158,12 @@ type HubServer interface {
 type UnimplementedHubServer struct {
 }
 
+func (UnimplementedHubServer) CheckVersionCompatible(context.Context, *ProtocolVersion) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckVersionCompatible not implemented")
+}
+func (UnimplementedHubServer) GetHighestModno(context.Context, *v1.OpSelector) (*types.Int64Value, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetHighestModno not implemented")
+}
 func (UnimplementedHubServer) SyncOperations(Hub_SyncOperationsServer) error {
 	return status.Errorf(codes.Unimplemented, "method SyncOperations not implemented")
 }
@@ -142,6 +181,42 @@ type UnsafeHubServer interface {
 
 func RegisterHubServer(s grpc.ServiceRegistrar, srv HubServer) {
 	s.RegisterService(&Hub_ServiceDesc, srv)
+}
+
+func _Hub_CheckVersionCompatible_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProtocolVersion)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HubServer).CheckVersionCompatible(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Hub_CheckVersionCompatible_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HubServer).CheckVersionCompatible(ctx, req.(*ProtocolVersion))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Hub_GetHighestModno_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.OpSelector)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HubServer).GetHighestModno(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Hub_GetHighestModno_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HubServer).GetHighestModno(ctx, req.(*v1.OpSelector))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Hub_SyncOperations_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -179,7 +254,7 @@ func _Hub_GetConfig_Handler(srv interface{}, stream grpc.ServerStream) error {
 }
 
 type Hub_GetConfigServer interface {
-	Send(*Config) error
+	Send(*v1.Config) error
 	grpc.ServerStream
 }
 
@@ -187,7 +262,7 @@ type hubGetConfigServer struct {
 	grpc.ServerStream
 }
 
-func (x *hubGetConfigServer) Send(m *Config) error {
+func (x *hubGetConfigServer) Send(m *v1.Config) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -197,7 +272,16 @@ func (x *hubGetConfigServer) Send(m *Config) error {
 var Hub_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "v1hub.Hub",
 	HandlerType: (*HubServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CheckVersionCompatible",
+			Handler:    _Hub_CheckVersionCompatible_Handler,
+		},
+		{
+			MethodName: "GetHighestModno",
+			Handler:    _Hub_GetHighestModno_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "SyncOperations",

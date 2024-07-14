@@ -2,15 +2,23 @@ syntax = "proto3";
 
 package v1hub;
 
-option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
+option go_package = "github.com/garethgeorge/backrest/gen/go/v1hub";
 
 import "v1/operations.proto";
 import "v1/config.proto";
+import "v1/service.proto";
 import "types/value.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
 
 service Hub {
+  // CheckVersionCompatible checks if the client's protocol version is compatible with the server's.
+  // If the server's major version breaks compaibility with the client's an error is returned.
+  rpc CheckVersionCompatible (ProtocolVersion) returns (google.protobuf.Empty) {}
+
+  // GetHighestModno returns the highest modno for any operation matching the selector.
+  rpc GetHighestModno (v1.OpSelector) returns (types.Int64Value) {}
+
   // SyncOperations is a bidirectional stream of operations. 
   // The client pushes id, modno to the server and may optionally push the operation update itself.
   // The server responds with the id, modno of the latest operation data it has or -1 if it has no data.
@@ -21,6 +29,13 @@ service Hub {
   rpc GetConfig (GetConfigRequest) returns (stream v1.Config) {}
 }
 
+message ProtocolVersion {
+  int64 major = 1; // major protocol version
+}
+
+message GetHighestModnoRequest {
+  v1.OpSelector selector = 1;
+}
 
 message OpSyncMetadata {
   int64 id = 1;

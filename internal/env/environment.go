@@ -20,6 +20,8 @@ var flagDataDir = flag.String("data-dir", "", "path to data directory, defaults 
 var flagConfigPath = flag.String("config-file", "", "path to config file, defaults to XDG_CONFIG_HOME/backrest/config.json. Overrides BACKREST_CONFIG environment variable.")
 var flagBindAddress = flag.String("bind-address", "", "address to bind to, defaults to 127.0.0.1:9898. Use :9898 to listen on all interfaces. Overrides BACKREST_PORT environment variable.")
 var flagResticBinPath = flag.String("restic-cmd", "", "path to restic binary, defaults to a backrest managed version of restic. Overrides BACKREST_RESTIC_COMMAND environment variable.")
+var hubConnectAddr = flag.String("connect-to-hub", "", "hub address to connect to")
+var hubServeAddr = flag.String("serve-hub-address", "", "address to serve the hub on")
 
 // ConfigFilePath
 // - *nix systems use $XDG_CONFIG_HOME/backrest/config.json
@@ -72,6 +74,18 @@ func ResticBinPath() string {
 		return val
 	}
 	return ""
+}
+
+func IsHubServer() bool {
+	return *hubServeAddr != ""
+}
+
+func HubServeAddr() string {
+	return *hubServeAddr
+}
+
+func IsHubClient() bool {
+	return *hubConnectAddr != ""
 }
 
 func getHomeDir() string {

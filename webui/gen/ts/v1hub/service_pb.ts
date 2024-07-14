@@ -5,7 +5,84 @@
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
+import { OpSelector } from "../v1/service_pb.js";
 import { Operation } from "../v1/operations_pb.js";
+
+/**
+ * @generated from message v1hub.ProtocolVersion
+ */
+export class ProtocolVersion extends Message<ProtocolVersion> {
+  /**
+   * major protocol version
+   *
+   * @generated from field: int64 major = 1;
+   */
+  major = protoInt64.zero;
+
+  constructor(data?: PartialMessage<ProtocolVersion>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1hub.ProtocolVersion";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "major", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ProtocolVersion {
+    return new ProtocolVersion().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ProtocolVersion {
+    return new ProtocolVersion().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ProtocolVersion {
+    return new ProtocolVersion().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ProtocolVersion | PlainMessage<ProtocolVersion> | undefined, b: ProtocolVersion | PlainMessage<ProtocolVersion> | undefined): boolean {
+    return proto3.util.equals(ProtocolVersion, a, b);
+  }
+}
+
+/**
+ * @generated from message v1hub.GetHighestModnoRequest
+ */
+export class GetHighestModnoRequest extends Message<GetHighestModnoRequest> {
+  /**
+   * @generated from field: v1.OpSelector selector = 1;
+   */
+  selector?: OpSelector;
+
+  constructor(data?: PartialMessage<GetHighestModnoRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1hub.GetHighestModnoRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "selector", kind: "message", T: OpSelector },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetHighestModnoRequest {
+    return new GetHighestModnoRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetHighestModnoRequest {
+    return new GetHighestModnoRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetHighestModnoRequest {
+    return new GetHighestModnoRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetHighestModnoRequest | PlainMessage<GetHighestModnoRequest> | undefined, b: GetHighestModnoRequest | PlainMessage<GetHighestModnoRequest> | undefined): boolean {
+    return proto3.util.equals(GetHighestModnoRequest, a, b);
+  }
+}
 
 /**
  * @generated from message v1hub.OpSyncMetadata
