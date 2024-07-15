@@ -16,28 +16,17 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var HubInstanceID = "_hub_" // instance ID for the hub server
-
 // remoteUriRegex matches URIs that are not local paths.
 var remoteUriRegex = regexp.MustCompile(`^[a-zA-Z0-9]+:.*$`)
 
 func ValidateConfig(c *v1.Config) error {
 	var err error
 
-	if env.IsHubServer() {
-		// The hub server must have the instance ID set to _hub_ to differentiate it from a daemon.
-		if c.Instance == "" {
-			c.Instance = HubInstanceID
-		} else if c.Instance != HubInstanceID {
-			err = multierror.Append(err, fmt.Errorf("hub server instance ID must be %q, is this backrest install already initialized as a daemon?", HubInstanceID))
-		}
-	} else {
-		if e := validationutil.ValidateID(c.Instance, validationutil.IDMaxLen); e != nil {
-			if errors.Is(e, validationutil.ErrEmpty) {
-				zap.L().Warn("ACTION REQUIRED: instance ID is empty, will be required in a future update. Please open the backrest UI to set a unique instance ID. Until fixed this warning (and related errors) will print periodically.")
-			} else {
-				err = multierror.Append(err, fmt.Errorf("instance ID %q invalid: %w", c.Instance, e))
-			}
+	if e := validationutil.ValidateID(c.Instance, validationutil.IDMaxLen); e != nil {
+		if errors.Is(e, validationutil.ErrEmpty) {
+			zap.L().Warn("ACTION REQUIRED: instance ID is empty, will be required in a future update. Please open the backrest UI to set a unique instance ID. Until fixed this warning (and related errors) will print periodically.")
+		} else {
+			err = multierror.Append(err, fmt.Errorf("instance ID %q invalid: %w", c.Instance, e))
 		}
 	}
 

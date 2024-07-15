@@ -7,88 +7,6 @@ import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialM
 import { Message, proto3 } from "@bufbuild/protobuf";
 
 /**
- * @generated from message v1.HubConfig
- */
-export class HubConfig extends Message<HubConfig> {
-  /**
-   * @generated from field: repeated v1.HubConfig.InstanceInfo instances = 1;
-   */
-  instances: HubConfig_InstanceInfo[] = [];
-
-  constructor(data?: PartialMessage<HubConfig>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "v1.HubConfig";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "instances", kind: "message", T: HubConfig_InstanceInfo, repeated: true },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HubConfig {
-    return new HubConfig().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HubConfig {
-    return new HubConfig().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HubConfig {
-    return new HubConfig().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: HubConfig | PlainMessage<HubConfig> | undefined, b: HubConfig | PlainMessage<HubConfig> | undefined): boolean {
-    return proto3.util.equals(HubConfig, a, b);
-  }
-}
-
-/**
- * @generated from message v1.HubConfig.InstanceInfo
- */
-export class HubConfig_InstanceInfo extends Message<HubConfig_InstanceInfo> {
-  /**
-   * @generated from field: string id = 1;
-   */
-  id = "";
-
-  /**
-   * secret used to authenticate with the hub.
-   *
-   * @generated from field: string secret = 2;
-   */
-  secret = "";
-
-  constructor(data?: PartialMessage<HubConfig_InstanceInfo>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "v1.HubConfig.InstanceInfo";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "secret", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HubConfig_InstanceInfo {
-    return new HubConfig_InstanceInfo().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HubConfig_InstanceInfo {
-    return new HubConfig_InstanceInfo().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HubConfig_InstanceInfo {
-    return new HubConfig_InstanceInfo().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: HubConfig_InstanceInfo | PlainMessage<HubConfig_InstanceInfo> | undefined, b: HubConfig_InstanceInfo | PlainMessage<HubConfig_InstanceInfo> | undefined): boolean {
-    return proto3.util.equals(HubConfig_InstanceInfo, a, b);
-  }
-}
-
-/**
  * Config is the top level config object for restic UI.
  *
  * @generated from message v1.Config
@@ -131,6 +49,11 @@ export class Config extends Message<Config> {
    */
   auth?: Auth;
 
+  /**
+   * @generated from field: v1.HubOptions hub_options = 7;
+   */
+  hubOptions?: HubOptions;
+
   constructor(data?: PartialMessage<Config>) {
     super();
     proto3.util.initPartial(data, this);
@@ -145,6 +68,7 @@ export class Config extends Message<Config> {
     { no: 3, name: "repos", kind: "message", T: Repo, repeated: true },
     { no: 4, name: "plans", kind: "message", T: Plan, repeated: true },
     { no: 5, name: "auth", kind: "message", T: Auth },
+    { no: 7, name: "hub_options", kind: "message", T: HubOptions },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Config {
@@ -161,6 +85,187 @@ export class Config extends Message<Config> {
 
   static equals(a: Config | PlainMessage<Config> | undefined, b: Config | PlainMessage<Config> | undefined): boolean {
     return proto3.util.equals(Config, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.HubOptions
+ */
+export class HubOptions extends Message<HubOptions> {
+  /**
+   * @generated from oneof v1.HubOptions.hub
+   */
+  hub: {
+    /**
+     * @generated from field: v1.HubOptions.Client client = 1;
+     */
+    value: HubOptions_Client;
+    case: "client";
+  } | {
+    /**
+     * @generated from field: v1.HubOptions.Server server = 2;
+     */
+    value: HubOptions_Server;
+    case: "server";
+  } | { case: undefined; value?: undefined } = { case: undefined };
+
+  constructor(data?: PartialMessage<HubOptions>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.HubOptions";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "client", kind: "message", T: HubOptions_Client, oneof: "hub" },
+    { no: 2, name: "server", kind: "message", T: HubOptions_Server, oneof: "hub" },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HubOptions {
+    return new HubOptions().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HubOptions {
+    return new HubOptions().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HubOptions {
+    return new HubOptions().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: HubOptions | PlainMessage<HubOptions> | undefined, b: HubOptions | PlainMessage<HubOptions> | undefined): boolean {
+    return proto3.util.equals(HubOptions, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.HubOptions.Client
+ */
+export class HubOptions_Client extends Message<HubOptions_Client> {
+  /**
+   * address of the hub.
+   *
+   * @generated from field: string address = 1;
+   */
+  address = "";
+
+  /**
+   * shared secret for the client.
+   *
+   * @generated from field: string shared_secret = 2;
+   */
+  sharedSecret = "";
+
+  constructor(data?: PartialMessage<HubOptions_Client>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.HubOptions.Client";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "address", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "shared_secret", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HubOptions_Client {
+    return new HubOptions_Client().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HubOptions_Client {
+    return new HubOptions_Client().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HubOptions_Client {
+    return new HubOptions_Client().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: HubOptions_Client | PlainMessage<HubOptions_Client> | undefined, b: HubOptions_Client | PlainMessage<HubOptions_Client> | undefined): boolean {
+    return proto3.util.equals(HubOptions_Client, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.HubOptions.Server
+ */
+export class HubOptions_Server extends Message<HubOptions_Server> {
+  /**
+   * @generated from field: repeated v1.PeerOptions peers = 1;
+   */
+  peers: PeerOptions[] = [];
+
+  constructor(data?: PartialMessage<HubOptions_Server>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.HubOptions.Server";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "peers", kind: "message", T: PeerOptions, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HubOptions_Server {
+    return new HubOptions_Server().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HubOptions_Server {
+    return new HubOptions_Server().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HubOptions_Server {
+    return new HubOptions_Server().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: HubOptions_Server | PlainMessage<HubOptions_Server> | undefined, b: HubOptions_Server | PlainMessage<HubOptions_Server> | undefined): boolean {
+    return proto3.util.equals(HubOptions_Server, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.PeerOptions
+ */
+export class PeerOptions extends Message<PeerOptions> {
+  /**
+   * instance ID for the peer.
+   *
+   * @generated from field: string instance = 1;
+   */
+  instance = "";
+
+  /**
+   * shared secret for the peer.
+   *
+   * @generated from field: string shared_secret = 2;
+   */
+  sharedSecret = "";
+
+  constructor(data?: PartialMessage<PeerOptions>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.PeerOptions";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "instance", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "shared_secret", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PeerOptions {
+    return new PeerOptions().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PeerOptions {
+    return new PeerOptions().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PeerOptions {
+    return new PeerOptions().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PeerOptions | PlainMessage<PeerOptions> | undefined, b: PeerOptions | PlainMessage<PeerOptions> | undefined): boolean {
+    return proto3.util.equals(PeerOptions, a, b);
   }
 }
 
