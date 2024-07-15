@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
-	"github.com/garethgeorge/backrest/internal/auth"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -19,6 +18,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"github.com/garethgeorge/backrest/internal/server/api"
+	"github.com/garethgeorge/backrest/internal/server/auth"
 	"github.com/garethgeorge/backrest/webui"
 	"github.com/mattn/go-colorable"
 	"go.etcd.io/bbolt"

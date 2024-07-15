@@ -7,7 +7,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
-	"github.com/garethgeorge/backrest/internal/auth"
+	"github.com/garethgeorge/backrest/internal/server/auth"
 	"go.uber.org/zap"
 )
 

@@ -38,7 +38,6 @@ type BackrestHandler struct {
 	oplog        *oplog.OpLog
 	logStore     *rotatinglog.RotatingLog
 	isHub        bool
-	isDaemon     bool
 }
 
 var _ v1connect.BackrestHandler = &BackrestHandler{}

@@ -70,6 +70,10 @@ func TestBackup(t *testing.T) {
 
 			orchestrator := initRepoHelper(t, configForTest, tc.repo)
 
+			if err := orchestrator.Init(context.Background()); err != nil {
+				t.Fatalf("failed to init repo: %v", err)
+			}
+
 			summary, err := orchestrator.Backup(context.Background(), tc.plan, nil)
 			if err != nil {
 				t.Fatalf("backup error: %v", err)
@@ -117,6 +121,10 @@ func TestSnapshotParenting(t *testing.T) {
 
 	for i := 0; i < 4; i++ {
 		for _, plan := range plans {
+			if err := orchestrator.Init(context.Background()); err != nil {
+				t.Fatalf("failed to init repo: %v", err)
+			}
+
 			summary, err := orchestrator.Backup(context.Background(), plan, nil)
 			if err != nil {
 				t.Fatalf("failed to backup plan %s: %v", plan.Id, err)
@@ -203,7 +211,7 @@ func TestEnvVarPropagation(t *testing.T) {
 
 	err = orchestrator.Init(context.Background())
 	if err != nil {
-		t.Fatalf("backup error: %v", err)
+		t.Fatalf("failed to init repo: %v", err)
 	}
 }
 
