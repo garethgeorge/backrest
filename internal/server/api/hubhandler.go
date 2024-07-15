@@ -16,6 +16,10 @@ import (
 	"github.com/garethgeorge/backrest/internal/rotatinglog"
 )
 
+func HubRequestInterceptor(ctx context.Context, req interface{}) (context.Context, error) {
+	return ctx, nil
+}
+
 type HubHandler struct {
 	v1hub.UnimplementedHubServer
 

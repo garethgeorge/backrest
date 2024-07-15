@@ -95,8 +95,10 @@ func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, oplog *oplo
 	}
 
 	// Schedule additional initialization tasks
-	if err := o.ScheduleTask(&tasks.ScanLogTask{}, tasks.TaskPriorityHighest); err != nil {
-		return nil, fmt.Errorf("schedule scan log task: %w", err)
+	if o.OpLog != nil { // oplog is nil in tests
+		if err := o.ScheduleTask(&tasks.ScanLogTask{}, tasks.TaskPriorityHighest); err != nil {
+			return nil, fmt.Errorf("schedule scan log task: %w", err)
+		}
 	}
 
 	zap.L().Info("orchestrator created")
