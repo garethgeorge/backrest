@@ -229,27 +229,17 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 	s.oplog.Subscribe(&callback)
 	defer s.oplog.Unsubscribe(&callback)
 
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case event := <-events:
-				if err := resp.Send(event); err != nil {
-					select {
-					case errChan <- errors.New("failed to send event"):
-					default:
-					}
-				}
+	for {
+		select {
+		case err := <-errChan:
+			return err
+		case <-ctx.Done():
+			return nil
+		case event := <-events:
+			if err := resp.Send(event); err != nil {
+				return err
 			}
 		}
-	}()
-
-	select {
-	case err := <-errChan:
-		return err
-	case <-ctx.Done():
-		return nil
 	}
 }
 
