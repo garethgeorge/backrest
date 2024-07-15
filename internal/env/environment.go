@@ -1,12 +1,16 @@
 package env
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"os"
 	"path"
 	"runtime"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 var (
@@ -20,11 +24,30 @@ var flagDataDir = flag.String("data-dir", "", "path to data directory, defaults 
 var flagConfigPath = flag.String("config-file", "", "path to config file, defaults to XDG_CONFIG_HOME/backrest/config.json. Overrides BACKREST_CONFIG environment variable.")
 var flagBindAddress = flag.String("bind-address", "", "address to bind to, defaults to 127.0.0.1:9898. Use :9898 to listen on all interfaces. Overrides BACKREST_PORT environment variable.")
 var flagResticBinPath = flag.String("restic-cmd", "", "path to restic binary, defaults to a backrest managed version of restic. Overrides BACKREST_RESTIC_COMMAND environment variable.")
+var setupAsHub = flag.Bool("setup-as-hub", false, "enable hub server, for use with multihost setups")
+var setupHubConnectAddr = flag.String("hub-connect-addr", "", "hub server address to connect to, for use with multihost setups")
+
+func ValidateEnvironment() {
+	if IsHubServer() && IsHubClient() {
+		zap.L().Error("hub server and client cannot be enabled at the same time")
+		os.Exit(1)
+	}
+
+	if IsHubClient() && (*flagConfigPath != "" || os.Getenv(EnvVarConfigPath) != "") {
+		zap.L().Error("cannot customize config path when in daemon mode, config is cached in data directory.")
+		os.Exit(1)
+	}
+}
 
 // ConfigFilePath
 // - *nix systems use $XDG_CONFIG_HOME/backrest/config.json
 // - windows uses %APPDATA%/backrest/config.json
+// - hub clients use a path in the data directory
 func ConfigFilePath() string {
+	if IsHubClient() {
+		sum := sha256.Sum256([]byte(HubConnectAddr()))
+		return path.Join(DataDir(), "remote-config-cache", fmt.Sprintf("%v-config.json", hex.EncodeToString(sum[:])))
+	}
 	if *flagConfigPath != "" {
 		return *flagConfigPath
 	}
@@ -72,6 +95,18 @@ func ResticBinPath() string {
 		return val
 	}
 	return ""
+}
+
+func IsHubServer() bool {
+	return *enableHub
+}
+
+func IsHubClient() bool {
+	return *hubConnectAddr != ""
+}
+
+func HubConnectAddr() string {
+	return *hubConnectAddr
 }
 
 func getHomeDir() string {

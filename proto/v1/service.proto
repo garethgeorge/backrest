@@ -62,6 +62,7 @@ message OpSelector {
   repeated int64 ids = 1;
   string repo_id = 2;
   string plan_id = 3;
+  string instance_id = 6;
   string snapshot_id = 4;
   int64 flow_id = 5;
 }

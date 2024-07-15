@@ -73,6 +73,10 @@ func TestBackup(t *testing.T) {
 				t.Fatalf("failed to create repo orchestrator: %v", err)
 			}
 
+			if err := orchestrator.Init(context.Background()); err != nil {
+				t.Fatalf("failed to init repo: %v", err)
+			}
+
 			summary, err := orchestrator.Backup(context.Background(), tc.plan, nil)
 			if err != nil {
 				t.Fatalf("backup error: %v", err)
@@ -123,6 +127,10 @@ func TestSnapshotParenting(t *testing.T) {
 
 	for i := 0; i < 4; i++ {
 		for _, plan := range plans {
+			if err := orchestrator.Init(context.Background()); err != nil {
+				t.Fatalf("failed to init repo: %v", err)
+			}
+
 			summary, err := orchestrator.Backup(context.Background(), plan, nil)
 			if err != nil {
 				t.Fatalf("failed to backup plan %s: %v", plan.Id, err)
@@ -163,7 +171,7 @@ func TestSnapshotParenting(t *testing.T) {
 			}
 
 			if !slices.Contains(curr.Tags, TagForPlan(plan.Id)) {
-				t.Errorf("expected snapshot %s to have tag %s", curr.Id, TagForPlan(plan.Id))
+				t.Errorf("expected snapshot %s to haveTestEnvVar tag %s", curr.Id, TagForPlan(plan.Id))
 			}
 		}
 	}
@@ -202,7 +210,7 @@ func TestEnvVarPropagation(t *testing.T) {
 		t.Fatalf("failed to create repo orchestrator: %v", err)
 	}
 
-	_, err = orchestrator.Backup(context.Background(), plan, nil)
+	err = orchestrator.Init(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "password") {
 		t.Fatalf("expected error about RESTIC_PASSWORD, got: %v", err)
 	}
@@ -214,13 +222,9 @@ func TestEnvVarPropagation(t *testing.T) {
 		t.Fatalf("failed to create repo orchestrator: %v", err)
 	}
 
-	summary, err := orchestrator.Backup(context.Background(), plan, nil)
+	err = orchestrator.Init(context.Background())
 	if err != nil {
-		t.Fatalf("backup error: %v", err)
-	}
-
-	if summary.SnapshotId == "" {
-		t.Fatal("expected snapshot id")
+		t.Fatalf("failed to init repo: %v", err)
 	}
 }
 

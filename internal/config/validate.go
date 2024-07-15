@@ -3,16 +3,21 @@ package config
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config/validationutil"
+	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
+
+// remoteUriRegex matches URIs that are not local paths.
+var remoteUriRegex = regexp.MustCompile(`^[a-zA-Z0-9]+:.*$`)
 
 func ValidateConfig(c *v1.Config) error {
 	var err error
@@ -74,6 +79,8 @@ func validateRepo(repo *v1.Repo) error {
 
 	if repo.Uri == "" {
 		err = multierror.Append(err, errors.New("uri is required"))
+	} else if env.IsHubServer() && !remoteUriRegex.MatchString(repo.Uri) {
+		err = multierror.Append(err, fmt.Errorf("uri %q must be a remote repo, local storage is not supported for hubs", repo.Uri))
 	}
 
 	if repo.PrunePolicy.GetSchedule() != nil {

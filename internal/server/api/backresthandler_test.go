@@ -96,13 +96,6 @@ func TestBackup(t *testing.T) {
 		Config: &v1.Config{
 			Modno:    1234,
 			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Uri:      t.TempDir(),
-					Password: "test",
-				},
-			},
 			Plans: []*v1.Plan{
 				{
 					Id:   "test",
@@ -114,7 +107,9 @@ func TestBackup(t *testing.T) {
 						Schedule: &v1.Schedule_Disabled{Disabled: true},
 					},
 					Retention: &v1.RetentionPolicy{
-						KeepHourly: 1,
+						Policy: &v1.RetentionPolicy_PolicyKeepLastN{
+							PolicyKeepLastN: 30,
+						},
 					},
 				},
 			},
@@ -126,6 +121,14 @@ func TestBackup(t *testing.T) {
 	go func() {
 		sut.orch.Run(ctx)
 	}()
+
+	if _, err := sut.handler.AddRepo(context.Background(), connect.NewRequest(&v1.Repo{
+		Id:       "local",
+		Uri:      t.TempDir(),
+		Password: "test",
+	})); err != nil {
+		t.Fatalf("AddRepo() error = %v", err)
+	}
 
 	_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
 	if err != nil {
@@ -184,13 +187,6 @@ func TestMultipleBackup(t *testing.T) {
 		Config: &v1.Config{
 			Modno:    1234,
 			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Uri:      t.TempDir(),
-					Password: "test",
-				},
-			},
 			Plans: []*v1.Plan{
 				{
 					Id:   "test",
@@ -216,6 +212,14 @@ func TestMultipleBackup(t *testing.T) {
 	go func() {
 		sut.orch.Run(ctx)
 	}()
+
+	if _, err := sut.handler.AddRepo(context.Background(), connect.NewRequest(&v1.Repo{
+		Id:       "local",
+		Uri:      t.TempDir(),
+		Password: "test",
+	})); err != nil {
+		t.Fatalf("AddRepo() error = %v", err)
+	}
 
 	for i := 0; i < 3; i++ {
 		_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
@@ -255,13 +259,6 @@ func TestHookExecution(t *testing.T) {
 		Config: &v1.Config{
 			Modno:    1234,
 			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Uri:      t.TempDir(),
-					Password: "test",
-				},
-			},
 			Plans: []*v1.Plan{
 				{
 					Id:   "test",
@@ -305,6 +302,14 @@ func TestHookExecution(t *testing.T) {
 		sut.orch.Run(ctx)
 	}()
 
+	if _, err := sut.handler.AddRepo(context.Background(), connect.NewRequest(&v1.Repo{
+		Id:       "local",
+		Uri:      t.TempDir(),
+		Password: "test",
+	})); err != nil {
+		t.Fatalf("AddRepo() error = %v", err)
+	}
+
 	_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
 	if err != nil {
 		t.Fatalf("Backup() error = %v", err)
@@ -346,13 +351,6 @@ func TestHookCancellation(t *testing.T) {
 		Config: &v1.Config{
 			Modno:    1234,
 			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Uri:      t.TempDir(),
-					Password: "test",
-				},
-			},
 			Plans: []*v1.Plan{
 				{
 					Id:   "test",
@@ -386,6 +384,14 @@ func TestHookCancellation(t *testing.T) {
 	go func() {
 		sut.orch.Run(ctx)
 	}()
+
+	if _, err := sut.handler.AddRepo(context.Background(), connect.NewRequest(&v1.Repo{
+		Id:       "local",
+		Uri:      t.TempDir(),
+		Password: "test",
+	})); err != nil {
+		t.Fatalf("AddRepo() error = %v", err)
+	}
 
 	_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
 	if !errors.Is(err, tasks.ErrTaskCancelled) {
@@ -434,13 +440,6 @@ func TestCancelBackup(t *testing.T) {
 		Config: &v1.Config{
 			Modno:    1234,
 			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Uri:      t.TempDir(),
-					Password: "test",
-				},
-			},
 			Plans: []*v1.Plan{
 				{
 					Id:   "test",
@@ -466,6 +465,14 @@ func TestCancelBackup(t *testing.T) {
 	go func() {
 		sut.orch.Run(ctx)
 	}()
+
+	if _, err := sut.handler.AddRepo(context.Background(), connect.NewRequest(&v1.Repo{
+		Id:       "local",
+		Uri:      t.TempDir(),
+		Password: "test",
+	})); err != nil {
+		t.Fatalf("AddRepo() error = %v", err)
+	}
 
 	// Start a backup
 	var errgroup errgroup.Group
@@ -522,13 +529,6 @@ func TestRestore(t *testing.T) {
 		Config: &v1.Config{
 			Modno:    1234,
 			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Uri:      t.TempDir(),
-					Password: "test",
-				},
-			},
 			Plans: []*v1.Plan{
 				{
 					Id:   "test",
@@ -552,6 +552,14 @@ func TestRestore(t *testing.T) {
 	go func() {
 		sut.orch.Run(ctx)
 	}()
+
+	if _, err := sut.handler.AddRepo(context.Background(), connect.NewRequest(&v1.Repo{
+		Id:       "local",
+		Uri:      t.TempDir(),
+		Password: "test",
+	})); err != nil {
+		t.Fatalf("AddRepo() error = %v", err)
+	}
 
 	_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
 	if err != nil {
@@ -638,16 +646,13 @@ type systemUnderTest struct {
 	oplog    *oplog.OpLog
 	orch     *orchestrator.Orchestrator
 	logStore *rotatinglog.RotatingLog
-	config   *v1.Config
+	cfgMgr   *config.ConfigManager
 }
 
-func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderTest {
+func createSystemUnderTest(t *testing.T, cfgStore config.ConfigStore) systemUnderTest {
 	dir := t.TempDir()
 
-	cfg, err := config.Get()
-	if err != nil {
-		t.Fatalf("Failed to get config: %v", err)
-	}
+	cfgMgr := &config.ConfigManager{ConfigStore: cfgStore}
 
 	resticBin, err := resticinstaller.FindOrInstallResticBinary()
 	if err != nil {
@@ -662,20 +667,20 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 	})
 	logStore := rotatinglog.NewRotatingLog(dir+"/log", 10)
 	orch, err := orchestrator.NewOrchestrator(
-		resticBin, cfg, oplog, logStore,
+		resticBin, cfgMgr, oplog, logStore,
 	)
 	if err != nil {
 		t.Fatalf("Failed to create orchestrator: %v", err)
 	}
 
-	h := NewBackrestHandler(config, orch, oplog, logStore)
+	h := NewBackrestHandler(cfgMgr, orch, oplog, logStore, false)
 
 	return systemUnderTest{
 		handler:  h,
 		oplog:    oplog,
 		orch:     orch,
 		logStore: logStore,
-		config:   cfg,
+		cfgMgr:   cfgMgr,
 	}
 }
 
