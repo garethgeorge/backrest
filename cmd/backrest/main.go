@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/env"
@@ -145,7 +146,7 @@ func init() {
 
 func createConfigProvider() *config.ConfigManager {
 	cfgStore := &config.CachingValidatingStore{
-		ConfigStore: &config.JsonFileStore{Path: env.ConfigFilePath()},
+		ConfigStore: &config.JsonFileStore[*v1.Config]{Path: env.ConfigFilePath()},
 	}
 	return &config.ConfigManager{ConfigStore: cfgStore}
 }

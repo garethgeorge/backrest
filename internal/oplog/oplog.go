@@ -164,6 +164,11 @@ func (o *OpLog) BulkAdd(ops []*v1.Operation) error {
 			if op.Id != 0 {
 				return errors.New("operation already has an ID, OpLog.BulkAdd is expected to set the ID")
 			}
+			nextModno, err := tx.Bucket(OpLogBucket).NextSequence()
+			if err != nil {
+				return fmt.Errorf("getting next modno: %w", err)
+			}
+			op.Modno = int64(nextModno)
 			if err := o.addOperationHelper(tx, op); err != nil {
 				return err
 			}

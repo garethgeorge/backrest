@@ -165,7 +165,7 @@ func TestSnapshotParenting(t *testing.T) {
 			}
 
 			if !slices.Contains(curr.Tags, TagForPlan(plan.Id)) {
-				t.Errorf("expected snapshot %s to have tag %s", curr.Id, TagForPlan(plan.Id))
+				t.Errorf("expected snapshot %s to haveTestEnvVar tag %s", curr.Id, TagForPlan(plan.Id))
 			}
 		}
 	}

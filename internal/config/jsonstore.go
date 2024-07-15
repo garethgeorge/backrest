@@ -11,6 +11,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/natefinch/atomic"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -18,14 +19,14 @@ var (
 	configKeepVersions = 10
 )
 
-type JsonFileStore struct {
+type JsonFileStore[T any] struct {
 	Path string
 	mu   sync.Mutex
 }
 
-var _ ConfigStore = &JsonFileStore{}
+var _ ConfigStore = &JsonFileStore[any]{}
 
-func (f *JsonFileStore) Get() (*v1.Config, error) {
+func (f *JsonFileStore[T]) Get() (*v1.Config, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -38,14 +39,18 @@ func (f *JsonFileStore) Get() (*v1.Config, error) {
 	}
 
 	var config v1.Config
-	if err = (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	if strictErr := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(data, &config); strictErr != nil {
+		if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, &config); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+		} else {
+			zap.L().Warn("unknown fields in config file, ignoring", zap.Error(strictErr))
+		}
 	}
 
 	return &config, nil
 }
 
-func (f *JsonFileStore) Update(config *v1.Config) error {
+func (f *JsonFileStore[T]) Update(config *v1.Config) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -80,7 +85,7 @@ func (f *JsonFileStore) Update(config *v1.Config) error {
 	return nil
 }
 
-func (f *JsonFileStore) makeBackup() error {
+func (f *JsonFileStore[T]) makeBackup() error {
 	curConfig, err := os.ReadFile(f.Path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

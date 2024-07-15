@@ -153,18 +153,20 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 		return fmt.Errorf("schedule collect garbage task: %w", err)
 	}
 
-	for _, plan := range config.Plans {
-		if plan.Disabled {
-			continue
-		}
+	if !config.GetHubOptions().GetEnabled() {
+		for _, plan := range config.Plans {
+			if plan.Disabled {
+				continue
+			}
 
-		// Schedule a backup task for the plan
-		t, err := tasks.NewScheduledBackupTask(plan)
-		if err != nil {
-			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
-		}
-		if err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {
-			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
+			// Schedule a backup task for the plan
+			t, err := tasks.NewScheduledBackupTask(plan)
+			if err != nil {
+				return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
+			}
+			if err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {
+				return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
+			}
 		}
 	}
 

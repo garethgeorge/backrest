@@ -6,16 +6,6 @@ option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
 
 import "google/protobuf/empty.proto";
 
-message HubConfig {
-  repeated InstanceInfo instances = 1 [json_name="instances"];
-  
-  message InstanceInfo {
-    string id = 1 [json_name="id"];
-    string secret = 2 [json_name="secret"]; // secret used to authenticate with the hub.
-  }
-}
-
-
 // Config is the top level config object for restic UI.
 message Config {
   // modification number, used for read-modify-write consistency in the UI. Incremented on every write.
@@ -29,6 +19,29 @@ message Config {
   repeated Repo repos = 3 [json_name="repos"];
   repeated Plan plans = 4 [json_name="plans"];
   Auth auth = 5 [json_name="auth"];
+
+  HubOptions hub_options = 7 [json_name="hubOptions"];
+}
+
+message HubOptions {
+  message Client {
+    string address = 1 [json_name="address"]; // address of the hub.
+    string shared_secret = 2 [json_name="sharedSecret"]; // shared secret for the client.
+  }
+
+  message Server {
+    repeated PeerOptions peers = 1 [json_name="peers"];
+  }
+
+  oneof hub {
+    Client client = 1 [json_name="client"];
+    Server server = 2 [json_name="server"];
+  }
+}
+
+message PeerOptions {
+  string instance = 1 [json_name="instance"]; // instance ID for the peer.
+  string shared_secret = 2 [json_name="sharedSecret"]; // shared secret for the peer.
 }
 
 message Repo {
