@@ -300,11 +300,7 @@ func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types
 
 func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {
 	at := time.Now()
-	_, err := s.orchestrator.GetPlan(req.Msg.PlanId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.PlanId, err)
-	}
-
+	var err error
 	if req.Msg.SnapshotId != "" && req.Msg.PlanId != "" && req.Msg.RepoId != "" {
 		wait := make(chan struct{})
 		s.orchestrator.ScheduleTask(
@@ -326,7 +322,6 @@ func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.Fo
 	} else {
 		return nil, errors.New("must specify repoId and planId and (optionally) snapshotId")
 	}
-
 	if err != nil {
 		return nil, err
 	}
