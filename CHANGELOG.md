@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.3.2](https://github.com/garethgeorge/backrest/compare/v1.3.1...v1.3.2) (2024-08-06)
+
+
+### Bug Fixes
+
+* add condition_snapshot_success to .EventName ([#410](https://github.com/garethgeorge/backrest/issues/410)) ([c45f0f3](https://github.com/garethgeorge/backrest/commit/c45f0f3c668df44ba82e0d6faf73cfd8f39f0c2a))
+* forget snapshot by ID should not require a plan ([49e46b0](https://github.com/garethgeorge/backrest/commit/49e46b04a06eb75829df2f97726d850749e29b74))
+* possible race condition leading to rare panic in GetOperationEvents ([f250adf](https://github.com/garethgeorge/backrest/commit/f250adf4a025dcb64cb569a8cb26fa0443b56fae))
+
 ## [1.3.1](https://github.com/garethgeorge/backrest/compare/v1.3.0...v1.3.1) (2024-07-12)
 
 
