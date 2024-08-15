@@ -114,7 +114,7 @@ message CheckPolicy {
   
   oneof mode {
     bool structure_only = 100 [json_name="structureOnly"]; // only check the structure of the repo. No pack data is read.
-    int32 read_data_subset_percent = 101 [json_name="readDataSubsetPercent"]; // check a percentage of pack data.
+    double read_data_subset_percent = 101 [json_name="readDataSubsetPercent"]; // check a percentage of pack data.
   }
 }
 

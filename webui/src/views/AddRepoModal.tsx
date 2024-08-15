@@ -465,13 +465,13 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           >
             <Form.Item
               name={["prunePolicy", "maxUnusedPercent"]}
-              initialValue={25}
+              initialValue={10}
               required={false}
             >
-              <InputNumber
+              <InputPercent
                 addonBefore={
                   <Tooltip title="The maximum percentage of the repo size that may be unused after a prune operation completes. High values reduce copying at the expense of storage.">
-                    <div style={{ width: "12" }}>Max Unused % After Prune</div>
+                    <div style={{ width: "12" }}>Max Unused After Prune</div>
                   </Tooltip>
                 }
               />
@@ -504,10 +504,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               initialValue={0}
               required={false}
             >
-              <InputNumber
+              <InputPercent
                 addonBefore={
                   <Tooltip title="The percentage of pack data in this repository that will be read and verified. Higher values will use more bandwidth (e.g. 100% will re-read the entire repository on each check).">
-                    <div style={{ width: "12" }}>Read Pack Data %</div>
+                    <div style={{ width: "12" }}>Read Data %</div>
                   </Tooltip>
                 }
               />
@@ -784,4 +784,18 @@ const formatMissingEnvVars = (partialMatches: string[][]): string => {
       return x[0];
     })
     .join(" or ");
+};
+
+const InputPercent = ({ ...props }) => {
+  return (
+    <InputNumber
+      step={1}
+      min={0}
+      max={100}
+      precision={2}
+      controls={false}
+      suffix="%"
+      {...props}
+    />
+  );
 };

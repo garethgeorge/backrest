@@ -773,7 +773,7 @@ export class CheckPolicy extends Message<CheckPolicy> {
     /**
      * check a percentage of pack data.
      *
-     * @generated from field: int32 read_data_subset_percent = 101;
+     * @generated from field: double read_data_subset_percent = 101;
      */
     value: number;
     case: "readDataSubsetPercent";
@@ -789,7 +789,7 @@ export class CheckPolicy extends Message<CheckPolicy> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "schedule", kind: "message", T: Schedule },
     { no: 100, name: "structure_only", kind: "scalar", T: 8 /* ScalarType.BOOL */, oneof: "mode" },
-    { no: 101, name: "read_data_subset_percent", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "mode" },
+    { no: 101, name: "read_data_subset_percent", kind: "scalar", T: 1 /* ScalarType.DOUBLE */, oneof: "mode" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CheckPolicy {

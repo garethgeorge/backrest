@@ -273,7 +273,7 @@ func (r *RepoOrchestrator) Check(ctx context.Context, output io.Writer) error {
 		switch m := r.repoConfig.CheckPolicy.Mode.(type) {
 		case *v1.CheckPolicy_ReadDataSubsetPercent:
 			if m.ReadDataSubsetPercent > 0 {
-				opts = append(opts, restic.WithFlags(fmt.Sprintf("--read-data-subset=%v%%", m.ReadDataSubsetPercent)))
+				opts = append(opts, restic.WithFlags(fmt.Sprintf("--read-data-subset=%.4f%%", m.ReadDataSubsetPercent)))
 			}
 		case *v1.CheckPolicy_StructureOnly:
 		default:
