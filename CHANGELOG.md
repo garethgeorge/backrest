@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.4.0](https://github.com/garethgeorge/backrest/compare/v1.3.1...v1.4.0) (2024-08-15)
+
+
+### Features
+
+* accept up to 2 decimals of precision for check % and prune % policies ([5374273](https://github.com/garethgeorge/backrest/commit/53742736f9dec217527ad50caed9a488da39ad45))
+* add UI support for new summary details introduced in restic 0.17.0 ([4859e52](https://github.com/garethgeorge/backrest/commit/4859e528c73853d4597c5ef54d3054406a5c7e44))
+* start tracking snapshot summary fields introduced in restic 0.17.0 ([505765d](https://github.com/garethgeorge/backrest/commit/505765dff978c5ecabe1986907b4c4c0c5112daf))
+* update to restic 0.17.0 ([#416](https://github.com/garethgeorge/backrest/issues/416)) ([500f2ee](https://github.com/garethgeorge/backrest/commit/500f2ee6c0d8bcf65a37462d3d03452cd9dff817))
+
+
+### Bug Fixes
+
+* activitybar does not reset correctly when an in-progress operation is deleted ([244fe7e](https://github.com/garethgeorge/backrest/commit/244fe7edd203b566709dc7f14091865bc9ed6700))
+* add condition_snapshot_success to .EventName ([#410](https://github.com/garethgeorge/backrest/issues/410)) ([c45f0f3](https://github.com/garethgeorge/backrest/commit/c45f0f3c668df44ba82e0d6faf73cfd8f39f0c2a))
+* backrest should only initialize repos explicitly added through WebUI ([62a97a3](https://github.com/garethgeorge/backrest/commit/62a97a335df3858a53eba34e7b7c0f69e3875d88))
+* forget snapshot by ID should not require a plan ([49e46b0](https://github.com/garethgeorge/backrest/commit/49e46b04a06eb75829df2f97726d850749e29b74))
+* hide cron options for hours/minutes/days of week for infrequent schedules ([7c091e0](https://github.com/garethgeorge/backrest/commit/7c091e05973addaa35850774320f5e49fe016437))
+* improve debug output when trying to configure a new repo ([11b3e99](https://github.com/garethgeorge/backrest/commit/11b3e9915211c8c4a06f9f6f0c30f07f005a0036))
+* possible race condition leading to rare panic in GetOperationEvents ([f250adf](https://github.com/garethgeorge/backrest/commit/f250adf4a025dcb64cb569a8cb26fa0443b56fae))
+* run list snapshots after updating repo config or adding new repo ([48626b9](https://github.com/garethgeorge/backrest/commit/48626b923ea5022d9c4f2075d5c2c1ec19089499))
+* use addrepo RPC to apply validations when updating repo config ([a67c29b](https://github.com/garethgeorge/backrest/commit/a67c29b57ac7154bda87a7a460af26adacf6d11b))
+
 ## [1.3.1](https://github.com/garethgeorge/backrest/compare/v1.3.0...v1.3.1) (2024-07-12)
 
 
