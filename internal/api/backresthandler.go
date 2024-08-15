@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"slices"
 	"time"
 
 	"connectrpc.com/connect"
@@ -99,8 +100,15 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
+	// Deep copy the configuration
 	c = proto.Clone(c).(*v1.Config)
-	c.Repos = append(c.Repos, req.Msg)
+
+	// Add or implicit update the repo
+	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == req.Msg.Id }); idx != -1 {
+		c.Repos[idx] = req.Msg
+	} else {
+		c.Repos = append(c.Repos, req.Msg)
+	}
 
 	if err := config.ValidateConfig(c); err != nil {
 		return nil, fmt.Errorf("validation error: %w", err)
