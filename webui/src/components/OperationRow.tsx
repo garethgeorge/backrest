@@ -25,7 +25,11 @@ import {
   InfoCircleOutlined,
   FileSearchOutlined,
 } from "@ant-design/icons";
-import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic_pb";
+import {
+  BackupProgressEntry,
+  ResticSnapshot,
+  SnapshotSummary,
+} from "../../gen/ts/v1/restic_pb";
 import {
   DisplayType,
   detailsForOperation,
@@ -35,6 +39,7 @@ import {
 import { SnapshotBrowser } from "./SnapshotBrowser";
 import {
   formatBytes,
+  formatDuration,
   formatTime,
   normalizeSnapshotId,
 } from "../lib/formatting";
@@ -191,7 +196,9 @@ export const OperationRow = ({
   const expandedBodyItems: string[] = [];
 
   if (operation.op.case === "operationBackup") {
-    expandedBodyItems.push("details");
+    if (operation.status === OperationStatus.STATUS_INPROGRESS) {
+      expandedBodyItems.push("details");
+    }
     const backupOp = operation.op.value;
     bodyItems.push({
       key: "details",
@@ -312,29 +319,82 @@ export const OperationRow = ({
 };
 
 const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
+  const summary: Partial<SnapshotSummary> = snapshot.summary || {};
+
+  const rows: React.ReactNode[] = [
+    <Row gutter={16} key={1}>
+      <Col span={8}>
+        <Typography.Text strong>Host</Typography.Text>
+        <br />
+        {snapshot.hostname}
+      </Col>
+      <Col span={8}>
+        <Typography.Text strong>Username</Typography.Text>
+        <br />
+        {snapshot.hostname}
+      </Col>
+      <Col span={8}>
+        <Typography.Text strong>Tags</Typography.Text>
+        <br />
+        {snapshot.tags?.join(", ")}
+      </Col>
+    </Row>,
+  ];
+
+  if (
+    summary.filesNew ||
+    summary.filesChanged ||
+    summary.filesUnmodified ||
+    summary.dataAdded ||
+    summary.totalFilesProcessed ||
+    summary.totalBytesProcessed
+  ) {
+    rows.push(
+      <Row gutter={16} key={2}>
+        <Col span={8}>
+          <Typography.Text strong>Files Added</Typography.Text>
+          <br />
+          {"" + summary.filesNew}
+        </Col>
+        <Col span={8}>
+          <Typography.Text strong>Files Changed</Typography.Text>
+          <br />
+          {"" + summary.filesChanged}
+        </Col>
+        <Col span={8}>
+          <Typography.Text strong>Files Unmodified</Typography.Text>
+          <br />
+          {"" + summary.filesUnmodified}
+        </Col>
+      </Row>
+    );
+    rows.push(
+      <Row gutter={16} key={3}>
+        <Col span={8}>
+          <Typography.Text strong>Bytes Added</Typography.Text>
+          <br />
+          {formatBytes(Number(summary.dataAdded))}
+        </Col>
+        <Col span={8}>
+          <Typography.Text strong>Bytes Processed</Typography.Text>
+          <br />
+          {formatBytes(Number(summary.totalBytesProcessed))}
+        </Col>
+        <Col span={8}>
+          <Typography.Text strong>Files Processed</Typography.Text>
+          <br />
+          {"" + summary.totalFilesProcessed}
+        </Col>
+      </Row>
+    );
+  }
+
   return (
     <>
       <Typography.Text>
         <Typography.Text strong>Snapshot ID: </Typography.Text>
-        {normalizeSnapshotId(snapshot.id!)}
+        {normalizeSnapshotId(snapshot.id!)} {rows}
       </Typography.Text>
-      <Row gutter={16}>
-        <Col span={8}>
-          <Typography.Text strong>Host</Typography.Text>
-          <br />
-          {snapshot.hostname}
-        </Col>
-        <Col span={8}>
-          <Typography.Text strong>Username</Typography.Text>
-          <br />
-          {snapshot.hostname}
-        </Col>
-        <Col span={8}>
-          <Typography.Text strong>Tags</Typography.Text>
-          <br />
-          {snapshot.tags?.join(", ")}
-        </Col>
-      </Row>
     </>
   );
 };

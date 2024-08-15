@@ -107,7 +107,7 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 			FlowId:          flowID,
 			InstanceId:      instanceID,
 			UnixTimeStartMs: snapshotProto.UnixTimeMs,
-			UnixTimeEndMs:   snapshotProto.UnixTimeMs,
+			UnixTimeEndMs:   snapshotProto.UnixTimeMs + snapshot.SnapshotSummary.DurationMs(),
 			Status:          v1.OperationStatus_STATUS_SUCCESS,
 			SnapshotId:      snapshotProto.Id,
 			Op: &v1.Operation_OperationIndexSnapshot{

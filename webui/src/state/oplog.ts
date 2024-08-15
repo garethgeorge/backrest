@@ -507,7 +507,11 @@ export const detailsForOperation = (
     if (op.status === OperationStatus.STATUS_INPROGRESS) {
       displayState += " for " + formatDuration(duration);
     } else {
-      displayState += " in " + formatDuration(duration);
+      if (op.op.case === "operationIndexSnapshot") {
+        displayState += " created in " + formatDuration(duration);
+      } else {
+        displayState += " took " + formatDuration(duration);
+      }
     }
   }
 
