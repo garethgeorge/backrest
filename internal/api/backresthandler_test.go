@@ -668,6 +668,17 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 		t.Fatalf("Failed to create orchestrator: %v", err)
 	}
 
+	for _, repo := range cfg.Repos {
+		rorch, err := orch.GetRepoOrchestrator(repo.Id)
+		if err != nil {
+			t.Fatalf("Failed to get repo %s: %v", repo.Id, err)
+		}
+
+		if err := rorch.Init(context.Background()); err != nil {
+			t.Fatalf("Failed to init repo %s: %v", repo.Id, err)
+		}
+	}
+
 	h := NewBackrestHandler(config, orch, oplog, logStore)
 
 	return systemUnderTest{

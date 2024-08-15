@@ -68,10 +68,7 @@ func TestBackup(t *testing.T) {
 				t.Skip("skipping on windows")
 			}
 
-			orchestrator, err := NewRepoOrchestrator(configForTest, tc.repo, helpers.ResticBinary(t))
-			if err != nil {
-				t.Fatalf("failed to create repo orchestrator: %v", err)
-			}
+			orchestrator := initRepoHelper(t, configForTest, tc.repo)
 
 			summary, err := orchestrator.Backup(context.Background(), tc.plan, nil)
 			if err != nil {
@@ -116,10 +113,7 @@ func TestSnapshotParenting(t *testing.T) {
 		},
 	}
 
-	orchestrator, err := NewRepoOrchestrator(configForTest, r, helpers.ResticBinary(t))
-	if err != nil {
-		t.Fatalf("failed to create repo orchestrator: %v", err)
-	}
+	orchestrator := initRepoHelper(t, configForTest, r)
 
 	for i := 0; i < 4; i++ {
 		for _, plan := range plans {
@@ -181,7 +175,6 @@ func TestEnvVarPropagation(t *testing.T) {
 	t.Parallel()
 
 	repo := t.TempDir()
-	testData := test.CreateTestData(t)
 
 	// create a new repo with cache disabled for testing
 	r := &v1.Repo{
@@ -191,18 +184,12 @@ func TestEnvVarPropagation(t *testing.T) {
 		Env:   []string{"RESTIC_PASSWORD=${MY_FOO}"},
 	}
 
-	plan := &v1.Plan{
-		Id:    "test",
-		Repo:  "test",
-		Paths: []string{testData},
-	}
-
 	orchestrator, err := NewRepoOrchestrator(configForTest, r, helpers.ResticBinary(t))
 	if err != nil {
 		t.Fatalf("failed to create repo orchestrator: %v", err)
 	}
 
-	_, err = orchestrator.Backup(context.Background(), plan, nil)
+	err = orchestrator.Init(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "password") {
 		t.Fatalf("expected error about RESTIC_PASSWORD, got: %v", err)
 	}
@@ -214,13 +201,9 @@ func TestEnvVarPropagation(t *testing.T) {
 		t.Fatalf("failed to create repo orchestrator: %v", err)
 	}
 
-	summary, err := orchestrator.Backup(context.Background(), plan, nil)
+	err = orchestrator.Init(context.Background())
 	if err != nil {
 		t.Fatalf("backup error: %v", err)
-	}
-
-	if summary.SnapshotId == "" {
-		t.Fatal("expected snapshot id")
 	}
 }
 
@@ -259,14 +242,10 @@ func TestCheck(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			orchestrator, err := NewRepoOrchestrator(configForTest, tc.repo, helpers.ResticBinary(t))
-			if err != nil {
-				t.Fatalf("failed to create repo orchestrator: %v", err)
-			}
-
+			orchestrator := initRepoHelper(t, configForTest, tc.repo)
 			buf := bytes.NewBuffer(nil)
 
-			err = orchestrator.Init(context.Background())
+			err := orchestrator.Init(context.Background())
 			if err != nil {
 				t.Fatalf("init error: %v", err)
 			}
@@ -278,4 +257,18 @@ func TestCheck(t *testing.T) {
 			t.Logf("check output: %s", buf.String())
 		})
 	}
+}
+
+func initRepoHelper(t *testing.T, config *v1.Config, repo *v1.Repo) *RepoOrchestrator {
+	orchestrator, err := NewRepoOrchestrator(config, repo, helpers.ResticBinary(t))
+	if err != nil {
+		t.Fatalf("failed to create repo orchestrator: %v", err)
+	}
+
+	err = orchestrator.Init(context.Background())
+	if err != nil {
+		t.Fatalf("init error: %v", err)
+	}
+
+	return orchestrator
 }
