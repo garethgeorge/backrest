@@ -1,21 +1,13 @@
-import {
-  Checkbox,
-  Col,
-  Form,
-  InputNumber,
-  Radio,
-  Row,
-  Segmented,
-  Tooltip,
-} from "antd";
-import { NamePath } from "antd/es/form/interface";
+import { Checkbox, Form, InputNumber, Radio, Row, Tooltip } from "antd";
 import React from "react";
-import Cron from "react-js-cron";
+import Cron, { CronType, PeriodType } from "react-js-cron";
 
 interface ScheduleDefaults {
   maxFrequencyDays: number;
   maxFrequencyHours: number;
   cron: string;
+  cronPeriods?: PeriodType[];
+  cronDropdowns?: CronType[];
 }
 
 export const ScheduleDefaultsInfrequent: ScheduleDefaults = {
@@ -23,6 +15,8 @@ export const ScheduleDefaultsInfrequent: ScheduleDefaults = {
   maxFrequencyHours: 30 * 24,
   // midnight on the first day of the month
   cron: "0 0 1 * *",
+  cronDropdowns: ["period", "months", "month-days"],
+  cronPeriods: ["month"],
 };
 
 export const ScheduleDefaultsDaily: ScheduleDefaults = {
@@ -30,6 +24,15 @@ export const ScheduleDefaultsDaily: ScheduleDefaults = {
   maxFrequencyHours: 24,
   // midnight every day
   cron: "0 0 * * *",
+  cronDropdowns: [
+    "period",
+    "months",
+    "month-days",
+    "hours",
+    "minutes",
+    "week-days",
+  ],
+  cronPeriods: ["day", "hour", "month", "week"],
 };
 
 export const ScheduleFormItem = ({
@@ -79,15 +82,8 @@ export const ScheduleFormItem = ({
           setValue={(val: string) => {
             form.setFieldValue(name.concat(["cron"]), val);
           }}
-          allowedDropdowns={[
-            "period",
-            "months",
-            "month-days",
-            "hours",
-            "minutes",
-            "week-days",
-          ]}
-          allowedPeriods={["day", "hour", "month", "week"]}
+          allowedDropdowns={defaults.cronDropdowns}
+          allowedPeriods={defaults.cronPeriods}
           clearButton={false}
         />
       </Form.Item>
