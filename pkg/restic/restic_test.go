@@ -227,9 +227,10 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	var tests = []struct {
-		name  string
-		opts  []GenericOption
-		count int
+		name                string
+		opts                []GenericOption
+		count               int
+		checkSnapshotFields bool
 	}{
 		{
 			name:  "no options",
@@ -237,9 +238,10 @@ func TestSnapshot(t *testing.T) {
 			count: 10,
 		},
 		{
-			name:  "with tag",
-			opts:  []GenericOption{WithTags("tag1")},
-			count: 1,
+			name:                "with tag",
+			opts:                []GenericOption{WithTags("tag1")},
+			count:               1,
+			checkSnapshotFields: true,
 		},
 	}
 
@@ -259,8 +261,53 @@ func TestSnapshot(t *testing.T) {
 				if snapshot.UnixTimeMs() == 0 {
 					t.Errorf("wanted snapshot time to be non-zero, got: %v", snapshot.UnixTimeMs())
 				}
+				if snapshot.SnapshotSummary.DurationMs() == 0 {
+					t.Errorf("wanted snapshot duration to be non-zero, got: %v", snapshot.SnapshotSummary.DurationMs())
+				}
+				if tc.checkSnapshotFields {
+					checkSnapshotFieldsHelper(t, snapshot)
+				}
 			}
 		})
+	}
+}
+
+func checkSnapshotFieldsHelper(t *testing.T, snapshot *Snapshot) {
+	if snapshot.Id == "" {
+		t.Errorf("wanted snapshot ID to be non-empty, got: %v", snapshot.Id)
+	}
+	if snapshot.Tree == "" {
+		t.Errorf("wanted snapshot tree to be non-empty, got: %v", snapshot.Tree)
+	}
+	if snapshot.Hostname == "" {
+		t.Errorf("wanted snapshot hostname to be non-empty, got: %v", snapshot.Hostname)
+	}
+	if snapshot.Username == "" {
+		t.Errorf("wanted snapshot username to be non-empty, got: %v", snapshot.Username)
+	}
+	if len(snapshot.Paths) == 0 {
+		t.Errorf("wanted snapshot paths to be non-empty, got: %v", snapshot.Paths)
+	}
+	if len(snapshot.Tags) == 0 {
+		t.Errorf("wanted snapshot tags to be non-empty, got: %v", snapshot.Tags)
+	}
+	if snapshot.UnixTimeMs() == 0 {
+		t.Errorf("wanted snapshot time to be non-zero, got: %v", snapshot.UnixTimeMs())
+	}
+	if snapshot.SnapshotSummary.TreeBlobs == 0 {
+		t.Errorf("wanted snapshot tree blobs to be non-zero, got: %v", snapshot.SnapshotSummary.TreeBlobs)
+	}
+	if snapshot.SnapshotSummary.DataAdded == 0 {
+		t.Errorf("wanted snapshot data added to be non-zero, got: %v", snapshot.SnapshotSummary.DataAdded)
+	}
+	if snapshot.SnapshotSummary.TotalFilesProcessed == 0 {
+		t.Errorf("wanted snapshot total files processed to be non-zero, got: %v", snapshot.SnapshotSummary.TotalFilesProcessed)
+	}
+	if snapshot.SnapshotSummary.TotalBytesProcessed == 0 {
+		t.Errorf("wanted snapshot total bytes processed to be non-zero, got: %v", snapshot.SnapshotSummary.TotalBytesProcessed)
+	}
+	if snapshot.SnapshotSummary.DurationMs() == 0 {
+		t.Errorf("wanted snapshot duration to be non-zero, got: %v", snapshot.SnapshotSummary.DurationMs())
 	}
 }
 

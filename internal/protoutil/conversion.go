@@ -17,6 +17,20 @@ func SnapshotToProto(s *restic.Snapshot) *v1.ResticSnapshot {
 		Username:   s.Username,
 		Tags:       s.Tags,
 		Parent:     s.Parent,
+		Summary: &v1.SnapshotSummary{
+			FilesNew:            int64(s.SnapshotSummary.FilesNew),
+			FilesChanged:        int64(s.SnapshotSummary.FilesChanged),
+			FilesUnmodified:     int64(s.SnapshotSummary.FilesUnmodified),
+			DirsNew:             int64(s.SnapshotSummary.DirsNew),
+			DirsChanged:         int64(s.SnapshotSummary.DirsChanged),
+			DirsUnmodified:      int64(s.SnapshotSummary.DirsUnmodified),
+			DataBlobs:           int64(s.SnapshotSummary.DataBlobs),
+			TreeBlobs:           int64(s.SnapshotSummary.TreeBlobs),
+			DataAdded:           int64(s.SnapshotSummary.DataAdded),
+			TotalFilesProcessed: int64(s.SnapshotSummary.TotalFilesProcessed),
+			TotalBytesProcessed: int64(s.SnapshotSummary.TotalBytesProcessed),
+			TotalDuration:       float64(s.SnapshotSummary.DurationMs()) / 1000.0,
+		},
 	}
 }
 
