@@ -106,15 +106,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
       });
 
       if (template !== null) {
-        const configCopy = config.clone();
-        // We are in the edit repo flow, update the repo in the config
-        const idx = configCopy.repos!.findIndex((r) => r.id === template!.id);
-        if (idx === -1) {
-          alertsApi.error("Can't update repo, not found");
-          return;
-        }
-        configCopy.repos![idx] = repo;
-        setConfig(await backrestService.setConfig(configCopy));
+        // We are in the update repo flow, update the repo via the service
+        setConfig(await backrestService.addRepo(repo));
         showModal(null);
         alertsApi.success("Updated repo configuration " + repo.uri);
       } else {
