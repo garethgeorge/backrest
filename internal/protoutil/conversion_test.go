@@ -18,6 +18,21 @@ func TestSnapshotToProto(t *testing.T) {
 		Username: "dontpanic",
 		Tags:     []string{},
 		Parent:   "",
+		SnapshotSummary: restic.SnapshotSummary{
+			FilesNew:            1,
+			FilesChanged:        2,
+			FilesUnmodified:     3,
+			DirsNew:             4,
+			DirsChanged:         5,
+			DirsUnmodified:      6,
+			DataBlobs:           7,
+			TreeBlobs:           8,
+			DataAdded:           9,
+			TotalFilesProcessed: 10,
+			TotalBytesProcessed: 11,
+			BackupStart:         "2023-11-10T19:14:17.053824063-08:00",
+			BackupEnd:           "2023-11-10T19:15:17.053824063-08:00",
+		},
 	}
 
 	want := &v1.ResticSnapshot{
@@ -29,6 +44,20 @@ func TestSnapshotToProto(t *testing.T) {
 		Username:   "dontpanic",
 		Tags:       []string{},
 		Parent:     "",
+		Summary: &v1.SnapshotSummary{
+			FilesNew:            1,
+			FilesChanged:        2,
+			FilesUnmodified:     3,
+			DirsNew:             4,
+			DirsChanged:         5,
+			DirsUnmodified:      6,
+			DataBlobs:           7,
+			TreeBlobs:           8,
+			DataAdded:           9,
+			TotalFilesProcessed: 10,
+			TotalBytesProcessed: 11,
+			TotalDuration:       60.0,
+		},
 	}
 
 	got := SnapshotToProto(snapshot)
