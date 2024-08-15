@@ -234,7 +234,7 @@ func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapsho
 	r.pipeCmdOutputToWriter(cmd, output)
 
 	if err := cmd.Run(); err != nil {
-		return nil, newCmdError(ctx, cmd, err)
+		return nil, newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
 	}
 
 	var snapshots []*Snapshot
@@ -258,7 +258,7 @@ func (r *Repo) Forget(ctx context.Context, policy *RetentionPolicy, opts ...Gene
 	output := bytes.NewBuffer(nil)
 	r.pipeCmdOutputToWriter(cmd, output)
 	if err := cmd.Run(); err != nil {
-		return nil, newCmdError(ctx, cmd, err)
+		return nil, newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
 	}
 
 	var result []ForgetResult
@@ -324,7 +324,7 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 	r.pipeCmdOutputToWriter(cmd, output)
 
 	if err := cmd.Run(); err != nil {
-		return nil, nil, newCmdError(ctx, cmd, err)
+		return nil, nil, newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
 	}
 
 	snapshots, entries, err := readLs(output)
