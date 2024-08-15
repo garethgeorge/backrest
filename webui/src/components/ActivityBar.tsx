@@ -10,6 +10,7 @@ import { formatDuration } from "../lib/formatting";
 import {
   Operation,
   OperationEvent,
+  OperationEventType,
   OperationStatus,
 } from "../../gen/ts/v1/operations_pb";
 
@@ -20,11 +21,15 @@ export const ActivityBar = () => {
   useEffect(() => {
     const callback = (event?: OperationEvent, err?: Error) => {
       if (!event || !event.operation) return;
+
       const operation = event.operation;
 
       setActiveOperations((ops) => {
         ops = ops.filter((op) => op.id !== operation.id);
-        if (operation.status === OperationStatus.STATUS_INPROGRESS) {
+        if (
+          event.type !== OperationEventType.EVENT_DELETED &&
+          operation.status === OperationStatus.STATUS_INPROGRESS
+        ) {
           ops.push(operation);
         }
         ops.sort((a, b) => Number(b.unixTimeStartMs - a.unixTimeStartMs));
