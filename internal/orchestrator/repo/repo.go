@@ -23,11 +23,10 @@ import (
 type RepoOrchestrator struct {
 	mu sync.Mutex
 
-	l           *zap.Logger
-	config      *v1.Config
-	repoConfig  *v1.Repo
-	repo        *restic.Repo
-	initialized bool
+	l          *zap.Logger
+	config     *v1.Config
+	repoConfig *v1.Repo
+	repo       *restic.Repo
 }
 
 // NewRepoOrchestrator accepts a config and a repo that is configured with the properties of that config object.
@@ -122,13 +121,6 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
-
-	if !r.initialized {
-		if err := r.repo.Init(ctx); err != nil {
-			return nil, fmt.Errorf("failed to initialize repo: %w", err)
-		}
-		r.initialized = true
-	}
 
 	snapshots, err := r.SnapshotsForPlan(ctx, plan)
 	if err != nil {
