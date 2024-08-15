@@ -116,16 +116,26 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         configCopy.repos![idx] = repo;
         setConfig(await backrestService.setConfig(configCopy));
         showModal(null);
-        alertsApi.success("Updated repo " + repo.uri);
-
-        // Update the snapshots for the repo to confirm the config works.
-        // TODO: this operation is only used here, find a different RPC for this purpose.
-        await backrestService.listSnapshots({ repoId: repo.id });
+        alertsApi.success("Updated repo configuration " + repo.uri);
       } else {
         // We are in the create repo flow, create the new repo via the service
         setConfig(await backrestService.addRepo(repo));
         showModal(null);
         alertsApi.success("Added repo " + repo.uri);
+      }
+
+      try {
+        // Update the snapshots for the repo to confirm the config works.
+        // TODO: this operation is only used here, find a different RPC for this purpose.
+        await backrestService.listSnapshots({ repoId: repo.id });
+      } catch (e: any) {
+        alertsApi.error(
+          formatErrorAlert(
+            e,
+            "Failed to list snapshots for updated/added repo: "
+          ),
+          10
+        );
       }
     } catch (e: any) {
       alertsApi.error(formatErrorAlert(e, "Operation error: "), 10);
