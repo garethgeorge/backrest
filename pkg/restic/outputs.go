@@ -13,15 +13,16 @@ import (
 )
 
 type Snapshot struct {
-	Id         string   `json:"id"`
-	Time       string   `json:"time"`
-	Tree       string   `json:"tree"`
-	Paths      []string `json:"paths"`
-	Hostname   string   `json:"hostname"`
-	Username   string   `json:"username"`
-	Tags       []string `json:"tags"`
-	Parent     string   `json:"parent"`
-	unixTimeMs int64    `json:"-"`
+	Id              string          `json:"id"`
+	Time            string          `json:"time"`
+	Tree            string          `json:"tree"`
+	Paths           []string        `json:"paths"`
+	Hostname        string          `json:"hostname"`
+	Username        string          `json:"username"`
+	Tags            []string        `json:"tags"`
+	Parent          string          `json:"parent"`
+	SnapshotSummary SnapshotSummary `json:"summary"`
+	unixTimeMs      int64           `json:"-"`
 }
 
 func (s *Snapshot) UnixTimeMs() int64 {
@@ -34,6 +35,41 @@ func (s *Snapshot) UnixTimeMs() int64 {
 	}
 	s.unixTimeMs = t.UnixMilli()
 	return s.unixTimeMs
+}
+
+type SnapshotSummary struct {
+	BackupStart         string `json:"backup_start"`
+	BackupEnd           string `json:"backup_end"`
+	FilesNew            int64  `json:"files_new"`
+	FilesChanged        int64  `json:"files_changed"`
+	FilesUnmodified     int64  `json:"files_unmodified"`
+	DirsNew             int64  `json:"dirs_new"`
+	DirsChanged         int64  `json:"dirs_changed"`
+	DirsUnmodified      int64  `json:"dirs_unmodified"`
+	DataBlobs           int64  `json:"data_blobs"`
+	TreeBlobs           int64  `json:"tree_blobs"`
+	DataAdded           int64  `json:"data_added"`
+	DataAddedPacked     int64  `json:"data_added_packed"`
+	TotalFilesProcessed int64  `json:"total_files_processed"`
+	TotalBytesProcessed int64  `json:"total_bytes_processed"`
+	unixDurationMs      int64  `json:"-"`
+}
+
+// Duration returns the duration of the snapshot in milliseconds.
+func (s *SnapshotSummary) DurationMs() int64 {
+	if s.unixDurationMs != 0 {
+		return s.unixDurationMs
+	}
+	start, err := time.Parse(time.RFC3339Nano, s.BackupStart)
+	if err != nil {
+		return 0
+	}
+	end, err := time.Parse(time.RFC3339Nano, s.BackupEnd)
+	if err != nil {
+		return 0
+	}
+	s.unixDurationMs = end.Sub(start).Milliseconds()
+	return s.unixDurationMs
 }
 
 func (s *Snapshot) Validate() error {

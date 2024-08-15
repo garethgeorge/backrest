@@ -56,6 +56,13 @@ export class ResticSnapshot extends Message<ResticSnapshot> {
    */
   tags: string[] = [];
 
+  /**
+   * added in 0.17.0 restic outputs the summary in the snapshot
+   *
+   * @generated from field: v1.SnapshotSummary summary = 9;
+   */
+  summary?: SnapshotSummary;
+
   constructor(data?: PartialMessage<ResticSnapshot>) {
     super();
     proto3.util.initPartial(data, this);
@@ -72,6 +79,7 @@ export class ResticSnapshot extends Message<ResticSnapshot> {
     { no: 6, name: "parent", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "paths", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 8, name: "tags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 9, name: "summary", kind: "message", T: SnapshotSummary },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResticSnapshot {
@@ -88,6 +96,109 @@ export class ResticSnapshot extends Message<ResticSnapshot> {
 
   static equals(a: ResticSnapshot | PlainMessage<ResticSnapshot> | undefined, b: ResticSnapshot | PlainMessage<ResticSnapshot> | undefined): boolean {
     return proto3.util.equals(ResticSnapshot, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.SnapshotSummary
+ */
+export class SnapshotSummary extends Message<SnapshotSummary> {
+  /**
+   * @generated from field: int64 files_new = 1;
+   */
+  filesNew = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 files_changed = 2;
+   */
+  filesChanged = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 files_unmodified = 3;
+   */
+  filesUnmodified = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 dirs_new = 4;
+   */
+  dirsNew = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 dirs_changed = 5;
+   */
+  dirsChanged = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 dirs_unmodified = 6;
+   */
+  dirsUnmodified = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 data_blobs = 7;
+   */
+  dataBlobs = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 tree_blobs = 8;
+   */
+  treeBlobs = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 data_added = 9;
+   */
+  dataAdded = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 total_files_processed = 10;
+   */
+  totalFilesProcessed = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 total_bytes_processed = 11;
+   */
+  totalBytesProcessed = protoInt64.zero;
+
+  /**
+   * @generated from field: double total_duration = 12;
+   */
+  totalDuration = 0;
+
+  constructor(data?: PartialMessage<SnapshotSummary>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.SnapshotSummary";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "files_new", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "files_changed", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "files_unmodified", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "dirs_new", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 5, name: "dirs_changed", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 6, name: "dirs_unmodified", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 7, name: "data_blobs", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 8, name: "tree_blobs", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 9, name: "data_added", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 10, name: "total_files_processed", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 11, name: "total_bytes_processed", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 12, name: "total_duration", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SnapshotSummary {
+    return new SnapshotSummary().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SnapshotSummary {
+    return new SnapshotSummary().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SnapshotSummary {
+    return new SnapshotSummary().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SnapshotSummary | PlainMessage<SnapshotSummary> | undefined, b: SnapshotSummary | PlainMessage<SnapshotSummary> | undefined): boolean {
+    return proto3.util.equals(SnapshotSummary, a, b);
   }
 }
 
