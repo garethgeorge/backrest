@@ -168,12 +168,16 @@ export const OperationTree = ({
             ) {
               details.push(opDetails.displayState);
             }
+          }
+          let snapshotId: string | null = null;
+          for (const op of b.operations) {
             if (op.snapshotId) {
-              details.push(`ID: ${normalizeSnapshotId(op.snapshotId)}`);
+              snapshotId = op.snapshotId;
+              break;
             }
           }
-          if (b.snapshotInfo) {
-            details.push(`ID: ${normalizeSnapshotId(b.snapshotInfo.id)}`);
+          if (snapshotId) {
+            details.push(`ID: ${normalizeSnapshotId(snapshotId)}`);
           }
 
           let detailsElem: React.ReactNode | null = null;
