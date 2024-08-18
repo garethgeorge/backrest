@@ -323,20 +323,15 @@ const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
 
   const rows: React.ReactNode[] = [
     <Row gutter={16} key={1}>
-      <Col span={8}>
+      <Col span={12}>
         <Typography.Text strong>Host</Typography.Text>
         <br />
         {snapshot.hostname}
       </Col>
-      <Col span={8}>
+      <Col span={12}>
         <Typography.Text strong>Username</Typography.Text>
         <br />
         {snapshot.hostname}
-      </Col>
-      <Col span={8}>
-        <Typography.Text strong>Tags</Typography.Text>
-        <br />
-        {snapshot.tags?.join(", ")}
       </Col>
     </Row>,
   ];
@@ -393,7 +388,10 @@ const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
     <>
       <Typography.Text>
         <Typography.Text strong>Snapshot ID: </Typography.Text>
-        {normalizeSnapshotId(snapshot.id!)} {rows}
+        {normalizeSnapshotId(snapshot.id!)} <br />
+        <Typography.Text strong>Tags: </Typography.Text>
+        {snapshot.tags?.join(", ")}
+        {rows}
       </Typography.Text>
     </>
   );
