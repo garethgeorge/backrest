@@ -6,6 +6,7 @@ option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
 
 import "v1/restic.proto";
 import "v1/config.proto";
+import "types/value.proto";
 
 message OperationList {
   repeated Operation operations = 1;
@@ -45,8 +46,11 @@ message Operation {
 
 // OperationEvent is used in the wireformat to stream operation changes to clients
 message OperationEvent {
-  OperationEventType type = 1;
-  Operation operation = 2;
+  oneof event {
+    OperationList created_operations = 1;
+    OperationList updated_operations = 2;
+    types.Int64List deleted_operations = 3;
+  }
 }
 
 // OperationEventType indicates whether the operation was created or updated

@@ -5,6 +5,7 @@
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
+import { Int64List } from "../types/value_pb.js";
 import { BackupProgressEntry, BackupProgressError, RepoStats, ResticSnapshot, RestoreProgressEntry } from "./restic_pb.js";
 import { Hook_Condition, RetentionPolicy } from "./config_pb.js";
 
@@ -332,14 +333,27 @@ export class Operation extends Message<Operation> {
  */
 export class OperationEvent extends Message<OperationEvent> {
   /**
-   * @generated from field: v1.OperationEventType type = 1;
+   * @generated from oneof v1.OperationEvent.event
    */
-  type = OperationEventType.EVENT_UNKNOWN;
-
-  /**
-   * @generated from field: v1.Operation operation = 2;
-   */
-  operation?: Operation;
+  event: {
+    /**
+     * @generated from field: v1.OperationList created_operations = 1;
+     */
+    value: OperationList;
+    case: "createdOperations";
+  } | {
+    /**
+     * @generated from field: v1.OperationList updated_operations = 2;
+     */
+    value: OperationList;
+    case: "updatedOperations";
+  } | {
+    /**
+     * @generated from field: types.Int64List deleted_operations = 3;
+     */
+    value: Int64List;
+    case: "deletedOperations";
+  } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<OperationEvent>) {
     super();
@@ -349,8 +363,9 @@ export class OperationEvent extends Message<OperationEvent> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.OperationEvent";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "type", kind: "enum", T: proto3.getEnumType(OperationEventType) },
-    { no: 2, name: "operation", kind: "message", T: Operation },
+    { no: 1, name: "created_operations", kind: "message", T: OperationList, oneof: "event" },
+    { no: 2, name: "updated_operations", kind: "message", T: OperationList, oneof: "event" },
+    { no: 3, name: "deleted_operations", kind: "message", T: Int64List, oneof: "event" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationEvent {

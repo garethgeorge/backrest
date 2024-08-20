@@ -155,6 +155,43 @@ export class Int64Value extends Message<Int64Value> {
 }
 
 /**
+ * @generated from message types.Int64List
+ */
+export class Int64List extends Message<Int64List> {
+  /**
+   * @generated from field: repeated int64 values = 1;
+   */
+  values: bigint[] = [];
+
+  constructor(data?: PartialMessage<Int64List>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "types.Int64List";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "values", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Int64List {
+    return new Int64List().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Int64List {
+    return new Int64List().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Int64List {
+    return new Int64List().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Int64List | PlainMessage<Int64List> | undefined, b: Int64List | PlainMessage<Int64List> | undefined): boolean {
+    return proto3.util.equals(Int64List, a, b);
+  }
+}
+
+/**
  * @generated from message types.Empty
  */
 export class Empty extends Message<Empty> {
