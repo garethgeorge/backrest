@@ -18,22 +18,16 @@ func (e TaskCancelledError) Is(err error) bool {
 	return ok
 }
 
+type RetryBackoffPolicy = func(attempt int) time.Duration
+
 // TaskRetryError is returned when a task should be retried after a specified backoff duration.
 type TaskRetryError struct {
 	Err     error
-	Backoff time.Duration
+	Backoff RetryBackoffPolicy
 }
 
 func (e TaskRetryError) Error() string {
-	return fmt.Sprintf("retry after %v: %v", e.Backoff, e.Err.Error())
-}
-
-func (e TaskRetryError) Is(err error) bool {
-	other, ok := err.(TaskRetryError)
-	if !ok {
-		return false
-	}
-	return e.Backoff == other.Backoff && e.Err == other.Err
+	return fmt.Sprintf("retry: %v", e.Err.Error())
 }
 
 func (e TaskRetryError) Unwrap() error {

@@ -389,7 +389,7 @@ func TestHookCancellation(t *testing.T) {
 	}()
 
 	_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
-	if !errors.Is(err, tasks.ErrTaskCancelled) {
+	if !errors.Is(err, tasks.TaskCancelledError{}) {
 		t.Fatalf("Backup() error = %v, want errors.Is(err, tasks.ErrTaskCancelled)", err)
 	}
 

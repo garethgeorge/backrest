@@ -112,12 +112,12 @@ func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 			var cancelErr *hook.HookErrorRequestCancel
 			var retryErr *hook.HookErrorRetry
 			if errors.As(err, &cancelErr) {
-				return fmt.Errorf("%v: %w: %w", task.Name(), tasks.TaskCancelledError{}, errors.Unwrap(err))
+				return fmt.Errorf("%v: %w: %w", task.Name(), tasks.TaskCancelledError{}, cancelErr.Err)
 			} else if errors.As(err, &retryErr) {
-				return fmt.Errorf("%v: %w: %w", task.Name(), tasks.TaskRetryError{
-					Err:     errors.Unwrap(err),
+				return fmt.Errorf("%v: %w", task.Name(), tasks.TaskRetryError{
+					Err:     retryErr.Err,
 					Backoff: retryErr.Backoff,
-				}, err)
+				})
 			}
 			return fmt.Errorf("%v: %w", task.Name(), err)
 		}

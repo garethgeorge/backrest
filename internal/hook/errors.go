@@ -31,12 +31,14 @@ func (e HookErrorFatal) Unwrap() error {
 	return e.Err
 }
 
+type RetryBackoffPolicy = func(attempt int) time.Duration
+
 // HookErrorRetry requests that the calling operation retry after a specified backoff duration
 type HookErrorRetry struct {
 	Err     error
-	Backoff time.Duration
+	Backoff RetryBackoffPolicy
 }
 
 func (e HookErrorRetry) Error() string {
-	return fmt.Sprintf("retry after %v: %v", e.Backoff, e.Err.Error())
+	return fmt.Sprintf("retry: %v", e.Err.Error())
 }

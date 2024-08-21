@@ -13,6 +13,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/logging"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
@@ -47,6 +48,7 @@ var _ tasks.TaskExecutor = &Orchestrator{}
 
 type stContainer struct {
 	tasks.ScheduledTask
+	retryCount  int // number of times this task has been retried.
 	configModno int32
 	callbacks   []func(error)
 }
@@ -325,18 +327,59 @@ func (o *Orchestrator) Run(ctx context.Context) {
 			}
 		}()
 
+		// Clone the operation incase we need to reset changes and reschedule the task for a retry
+		originalOp := proto.Clone(t.Op).(*v1.Operation)
+		if t.Op != nil {
+			// Delete any previous hook executions for this operation incase this is a retry.
+			prevHookExecutionIDs := []int64{}
+			if err := o.OpLog.ForEach(oplog.Query{FlowId: t.Op.FlowId}, indexutil.CollectAll(), func(op *v1.Operation) error {
+				if hookOp, ok := op.Op.(*v1.Operation_OperationRunHook); ok && hookOp.OperationRunHook.GetParentOp() == t.Op.Id {
+					prevHookExecutionIDs = append(prevHookExecutionIDs, op.Id)
+				}
+				return nil
+			}); err != nil {
+				zap.L().Error("failed to collect previous hook execution IDs", zap.Error(err))
+			}
+			zap.S().Debugf("deleting previous hook execution IDs: %v", prevHookExecutionIDs)
+			if err := o.OpLog.Delete(prevHookExecutionIDs...); err != nil {
+				zap.L().Error("failed to delete previous hook execution IDs", zap.Error(err))
+			}
+		}
+
 		err := o.RunTask(taskCtx, t.ScheduledTask)
+		cancelTaskCtx()
 
 		o.mu.Lock()
 		curCfgModno := o.config.Modno
 		o.mu.Unlock()
 		if t.configModno == curCfgModno {
 			// Only reschedule tasks if the config hasn't changed since the task was scheduled.
-			if err := o.ScheduleTask(t.Task, tasks.TaskPriorityDefault); err != nil {
-				zap.L().Error("reschedule task", zap.String("task", t.Task.Name()), zap.Error(err))
+			var retryErr tasks.TaskRetryError
+			if errors.As(err, &retryErr) {
+				// If the task returned a retry error, schedule for a retry reusing the same task and operation data.
+				t.retryCount += 1
+				delay := retryErr.Backoff(t.retryCount)
+				if t.Op != nil {
+					t.Op = originalOp
+					t.Op.DisplayMessage = fmt.Sprintf("waiting for retry, current backoff delay: %v", delay)
+					t.Op.UnixTimeStartMs = t.RunAt.UnixMilli()
+					if err := o.OpLog.Update(t.Op); err != nil {
+						zap.S().Errorf("failed to update operation in oplog: %v", err)
+					}
+				}
+				t.RunAt = time.Now().Add(delay)
+				o.taskQueue.Enqueue(t.RunAt, tasks.TaskPriorityDefault, t)
+				zap.L().Info("retrying task",
+					zap.String("task", t.Task.Name()),
+					zap.String("runAt", t.RunAt.Format(time.RFC3339)),
+					zap.Duration("delay", delay))
+				continue // skip executing the task's callbacks.
+			} else if e := o.ScheduleTask(t.Task, tasks.TaskPriorityDefault); e != nil {
+				// Schedule the next execution of the task
+				zap.L().Error("reschedule task", zap.String("task", t.Task.Name()), zap.Error(e))
 			}
 		}
-		cancelTaskCtx()
+
 		for _, cb := range t.callbacks {
 			go cb(err)
 		}
@@ -348,7 +391,6 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 	ctx = logging.ContextWithWriter(ctx, &ioutil.SynchronizedWriter{W: logs})
 
 	op := st.Op
-	originalOp := proto.Clone(op).(*v1.Operation)
 	runner := newTaskRunnerImpl(o, st.Task, st.Op)
 
 	zap.L().Info("running task", zap.String("task", st.Task.Name()), zap.String("runAt", st.RunAt.Format(time.RFC3339)))
@@ -393,11 +435,7 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 			if errors.As(err, &taskCancelledError) {
 				op.Status = v1.OperationStatus_STATUS_USER_CANCELLED
 			} else if errors.As(err, &taskRetryError) {
-				st.Op = originalOp
-				op = originalOp
-				st.RunAt = time.Now().Add(taskRetryError.Backoff)
 				op.Status = v1.OperationStatus_STATUS_PENDING
-				o.taskQueue.Enqueue(st.RunAt, tasks.TaskPriorityDefault, stContainer{})
 			}
 
 			// prepend the error to the display

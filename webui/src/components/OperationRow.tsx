@@ -119,7 +119,10 @@ export const OperationRow = ({
     </>
   );
 
-  if (operation.status == OperationStatus.STATUS_INPROGRESS) {
+  if (
+    operation.status === OperationStatus.STATUS_INPROGRESS ||
+    operation.status === OperationStatus.STATUS_PENDING
+  ) {
     title = (
       <>
         {title}
