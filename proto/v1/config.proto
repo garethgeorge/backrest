@@ -152,6 +152,8 @@ message Hook {
     ON_ERROR_IGNORE = 0;
     ON_ERROR_CANCEL = 1; // cancels the operation and skips subsequent hooks
     ON_ERROR_FATAL = 2; // fails the operation and subsequent hooks
+    ON_ERROR_RETRY_10MINUTES = 101; // retry the operation every 10 minutes
+    ON_ERROR_RETRY_1HOUR = 102; // retry the operation every hour
   }
 
   repeated Condition conditions = 1 [json_name="conditions"];

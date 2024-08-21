@@ -1107,12 +1107,28 @@ export enum Hook_OnError {
    * @generated from enum value: ON_ERROR_FATAL = 2;
    */
   FATAL = 2,
+
+  /**
+   * retry the operation every 10 minutes
+   *
+   * @generated from enum value: ON_ERROR_RETRY_10MINUTES = 101;
+   */
+  RETRY_10MINUTES = 101,
+
+  /**
+   * retry the operation every hour
+   *
+   * @generated from enum value: ON_ERROR_RETRY_1HOUR = 102;
+   */
+  RETRY_1HOUR = 102,
 }
 // Retrieve enum metadata with: proto3.getEnumType(Hook_OnError)
 proto3.util.setEnumType(Hook_OnError, "v1.Hook.OnError", [
   { no: 0, name: "ON_ERROR_IGNORE" },
   { no: 1, name: "ON_ERROR_CANCEL" },
   { no: 2, name: "ON_ERROR_FATAL" },
+  { no: 101, name: "ON_ERROR_RETRY_10MINUTES" },
+  { no: 102, name: "ON_ERROR_RETRY_1HOUR" },
 ]);
 
 /**

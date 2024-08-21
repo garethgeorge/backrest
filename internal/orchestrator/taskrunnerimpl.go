@@ -110,8 +110,14 @@ func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 		}
 		if err := t.orchestrator.RunTask(ctx, st); hook.IsHaltingError(err) {
 			var cancelErr *hook.HookErrorRequestCancel
+			var retryErr *hook.HookErrorRetry
 			if errors.As(err, &cancelErr) {
-				return fmt.Errorf("%w: %w", tasks.ErrTaskCancelled, err)
+				return fmt.Errorf("%v: %w: %w", task.Name(), tasks.TaskCancelledError{}, errors.Unwrap(err))
+			} else if errors.As(err, &retryErr) {
+				return fmt.Errorf("%v: %w: %w", task.Name(), tasks.TaskRetryError{
+					Err:     errors.Unwrap(err),
+					Backoff: retryErr.Backoff,
+				}, err)
 			}
 			return fmt.Errorf("%v: %w", task.Name(), err)
 		}

@@ -337,7 +337,6 @@ func (o *Orchestrator) Run(ctx context.Context) {
 			}
 		}
 		cancelTaskCtx()
-
 		for _, cb := range t.callbacks {
 			go cb(err)
 		}
@@ -348,11 +347,12 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 	logs := bytes.NewBuffer(nil)
 	ctx = logging.ContextWithWriter(ctx, &ioutil.SynchronizedWriter{W: logs})
 
+	op := st.Op
+	originalOp := proto.Clone(op).(*v1.Operation)
 	runner := newTaskRunnerImpl(o, st.Task, st.Op)
 
 	zap.L().Info("running task", zap.String("task", st.Task.Name()), zap.String("runAt", st.RunAt.Format(time.RFC3339)))
 
-	op := st.Op
 	if op != nil {
 		op.UnixTimeStartMs = time.Now().UnixMilli()
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
@@ -388,11 +388,16 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 			}
 		}
 		if err != nil {
-			if ctx.Err() != nil || errors.Is(err, tasks.ErrTaskCancelled) {
-				// task was cancelled
+			var taskCancelledError tasks.TaskCancelledError
+			var taskRetryError tasks.TaskRetryError
+			if errors.As(err, &taskCancelledError) {
 				op.Status = v1.OperationStatus_STATUS_USER_CANCELLED
-			} else if err != nil {
-				op.Status = v1.OperationStatus_STATUS_ERROR
+			} else if errors.As(err, &taskRetryError) {
+				st.Op = originalOp
+				op = originalOp
+				st.RunAt = time.Now().Add(taskRetryError.Backoff)
+				op.Status = v1.OperationStatus_STATUS_PENDING
+				o.taskQueue.Enqueue(st.RunAt, tasks.TaskPriorityDefault, stContainer{})
 			}
 
 			// prepend the error to the display
