@@ -7,7 +7,6 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
@@ -95,7 +94,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 
 	var ops []*v1.Operation
 	for _, forgot := range forgot {
-		if e := taskRunner.OpLog().ForEach(oplog.Query{SnapshotId: forgot.Id}, indexutil.CollectAll(), func(op *v1.Operation) error {
+		if e := taskRunner.OpLog().Query(oplog.Query{SnapshotID: forgot.Id}, func(op *v1.Operation) error {
 			ops = append(ops, op)
 			return nil
 		}); e != nil {
@@ -122,7 +121,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 // The property is overridden if mixed `created-by` tag values are found.
 func useLegacyCompatMode(l *zap.Logger, log *oplog.OpLog, repoID, planID string) (bool, error) {
 	instanceIDs := make(map[string]struct{})
-	if err := log.ForEach(oplog.Query{RepoId: repoID, PlanId: planID}, indexutil.CollectAll(), func(op *v1.Operation) error {
+	if err := log.Query(oplog.Query{RepoID: repoID, PlanID: planID}, func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok && !snapshotOp.OperationIndexSnapshot.GetForgot() {
 			tags := snapshotOp.OperationIndexSnapshot.GetSnapshot().GetTags()
 			instanceIDs[repo.InstanceIDFromTags(tags)] = struct{}{}

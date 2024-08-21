@@ -203,26 +203,40 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 	errChan := make(chan error, 1)
 	events := make(chan *v1.OperationEvent, 100)
 
-	callback := func(oldOp *v1.Operation, newOp *v1.Operation) {
+	callback := func(ops []*v1.Operation, eventType oplog.OperationEvent) {
 		var event *v1.OperationEvent
-		if oldOp == nil && newOp != nil {
+		switch eventType {
+		case oplog.OPERATION_ADDED:
 			event = &v1.OperationEvent{
-				Type:      v1.OperationEventType_EVENT_CREATED,
-				Operation: newOp,
+				Event: &v1.OperationEvent_CreatedOperations{
+					CreatedOperations: &v1.OperationList{
+						Operations: ops,
+					},
+				},
 			}
-		} else if oldOp != nil && newOp != nil {
+		case oplog.OPERATION_UPDATED:
 			event = &v1.OperationEvent{
-				Type:      v1.OperationEventType_EVENT_UPDATED,
-				Operation: newOp,
+				Event: &v1.OperationEvent_UpdatedOperations{
+					UpdatedOperations: &v1.OperationList{
+						Operations: ops,
+					},
+				},
 			}
-		} else if oldOp != nil && newOp == nil {
+		case oplog.OPERATION_DELETED:
+			ids := make([]int64, len(ops))
+			for i, o := range ops {
+				ids[i] = o.Id
+			}
+
 			event = &v1.OperationEvent{
-				Type:      v1.OperationEventType_EVENT_DELETED,
-				Operation: oldOp,
+				Event: &v1.OperationEvent_DeletedOperations{
+					DeletedOperations: &types.Int64List{
+						Values: ids,
+					},
+				},
 			}
-		} else {
+		default:
 			zap.L().Error("Unknown event type")
-			return
 		}
 
 		select {
@@ -234,8 +248,13 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 			}
 		}
 	}
-	s.oplog.Subscribe(&callback)
-	defer s.oplog.Unsubscribe(&callback)
+
+	s.oplog.Subscribe(oplog.SelectAll, callback)
+	defer func() {
+		if err := s.oplog.Unsubscribe(callback); err != nil {
+			zap.L().Error("failed to unsubscribe from oplog", zap.Error(err))
+		}
+	}()
 
 	for {
 		select {

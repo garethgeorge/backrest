@@ -14,6 +14,10 @@ const (
 	OPERATION_DELETED
 )
 
+var (
+	ErrStopIteration = errors.New("stop iteration")
+)
+
 type Subscription func(ops []*v1.Operation, event OperationEvent)
 
 type OpLog struct {
@@ -32,7 +36,7 @@ func (o *OpLog) Query(q Query, f func(*v1.Operation) error) error {
 	return o.store.Query(q, f)
 }
 
-func (o *OpLog) Subscribe(q Query, f Subscription) error {
+func (o *OpLog) Subscribe(q Query, f Subscription) {
 	o.subscribers = append(o.subscribers, &f)
 }
 
@@ -44,6 +48,10 @@ func (o *OpLog) Unsubscribe(f Subscription) error {
 		}
 	}
 	return errors.New("subscription not found")
+}
+
+func (o *OpLog) Get(opID int64) (*v1.Operation, error) {
+	return o.store.Get(opID)
 }
 
 func (o *OpLog) Add(op ...*v1.Operation) error {
@@ -77,10 +85,13 @@ func (o *OpLog) Delete(opID ...int64) error {
 	for _, sub := range o.subscribers {
 		(*sub)(removedOps, OPERATION_DELETED)
 	}
+
+	return nil
 }
 
 type OpStore interface {
 	Query(q Query, f func(*v1.Operation) error) error
+	Get(opID int64) (*v1.Operation, error)
 	Add(op ...*v1.Operation) error
 	Update(op ...*v1.Operation) error              // returns the previous values of the updated operations OR an error
 	Delete(opID ...int64) ([]*v1.Operation, error) // returns the deleted operations OR an error
@@ -101,6 +112,8 @@ type Query struct {
 
 	opIDmap map[int64]struct{}
 }
+
+var SelectAll = Query{}
 
 func (q *Query) buildOpIDMap() {
 	if len(q.OpIDs) != len(q.opIDmap) {

@@ -344,11 +344,9 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 	start := time.Now()
 	err := st.Task.Run(ctx, st, runner)
 	if err != nil {
-		zap.L().Error("task failed", zap.String("task", st.Task.Name()), zap.Error(err), zap.Duration("duration", time.Since(start)))
-		fmt.Fprintf(logs, "\ntask %q returned error: %v\n", st.Task.Name(), err)
+		runner.Logger(ctx).Error("task failed", zap.Error(err), zap.Duration("duration", time.Since(start)))
 	} else {
-		zap.L().Info("task finished", zap.String("task", st.Task.Name()), zap.Duration("duration", time.Since(start)))
-		fmt.Fprintf(logs, "\ntask %q completed successfully\n", st.Task.Name())
+		runner.Logger(ctx).Info("task finished", zap.Duration("duration", time.Since(start)))
 	}
 
 	if op != nil {
@@ -456,17 +454,15 @@ func (rp *resticRepoPool) GetRepo(repoId string) (*repo.RepoOrchestrator, error)
 		return nil, ErrRepoNotFound
 	}
 
-	var repoProto *v1.Repo
-	for _, r := range rp.config.Repos {
-		if r.GetId() == repoId {
-			repoProto = r
-		}
-	}
-
 	// Check if we already have a repo for this id, if we do return it.
 	r, ok := rp.repos[repoId]
 	if ok {
 		return r, nil
+	}
+
+	repoProto := config.FindRepo(rp.config, repoId)
+	if repoProto == nil {
+		return nil, ErrRepoNotFound
 	}
 
 	// Otherwise create a new repo.

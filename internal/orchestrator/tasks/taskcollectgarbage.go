@@ -69,10 +69,10 @@ func (t *CollectGarbageTask) Run(ctx context.Context, st ScheduledTask, runner T
 	return nil
 }
 
-func (t *CollectGarbageTask) gcOperations(oplog *oplog.OpLog) error {
+func (t *CollectGarbageTask) gcOperations(log *oplog.OpLog) error {
 	// snapshotForgottenForFlow returns whether the snapshot associated with the flow is forgotten
 	snapshotForgottenForFlow := make(map[int64]bool)
-	if err := oplog.ForAll(func(op *v1.Operation) error {
+	if err := log.Query(oplog.SelectAll, func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
 			snapshotForgottenForFlow[op.FlowId] = snapshotOp.OperationIndexSnapshot.Forgot
 		}
@@ -83,7 +83,7 @@ func (t *CollectGarbageTask) gcOperations(oplog *oplog.OpLog) error {
 
 	forgetIDs := []int64{}
 	curTime := curTimeMillis()
-	if err := oplog.ForAll(func(op *v1.Operation) error {
+	if err := log.Query(oplog.SelectAll, func(op *v1.Operation) error {
 		forgot, ok := snapshotForgottenForFlow[op.FlowId]
 		if !ok {
 			// no snapshot associated with this flow; check if it's old enough to be gc'd
@@ -100,7 +100,7 @@ func (t *CollectGarbageTask) gcOperations(oplog *oplog.OpLog) error {
 		return fmt.Errorf("identifying gc eligible operations: %w", err)
 	}
 
-	if err := oplog.Delete(forgetIDs...); err != nil {
+	if err := log.Delete(forgetIDs...); err != nil {
 		return fmt.Errorf("removing gc eligible operations: %w", err)
 	}
 
