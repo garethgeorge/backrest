@@ -10,6 +10,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook/hookutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
+	"go.uber.org/zap"
 )
 
 type discordHandler struct{}
@@ -24,9 +25,9 @@ func (discordHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{},
 		return fmt.Errorf("template rendering: %w", err)
 	}
 
-	writer := runner.RawLogWriter(ctx)
-	fmt.Fprintf(writer, "Sending discord message to %s\n", h.GetActionDiscord().GetWebhookUrl())
-	fmt.Fprintf(writer, "---- payload ----\n%s\n", payload)
+	l := runner.Logger(ctx)
+	l.Sugar().Infof("Sending discord message to %s", h.GetActionDiscord().GetWebhookUrl())
+	l.Debug("Sending discord message", zap.String("payload", payload))
 
 	type Message struct {
 		Content string `json:"content"`
@@ -37,8 +38,12 @@ func (discordHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{},
 	}
 
 	requestBytes, _ := json.Marshal(request)
-	_, err = hookutil.PostRequest(h.GetActionDiscord().GetWebhookUrl(), "application/json", bytes.NewReader(requestBytes))
-	return err
+	body, err := hookutil.PostRequest(h.GetActionDiscord().GetWebhookUrl(), "application/json", bytes.NewReader(requestBytes))
+	if err != nil {
+		return fmt.Errorf("sending discord message to %q: %w", h.GetActionDiscord().GetWebhookUrl(), err)
+	}
+	zap.S().Debug("Discord response", zap.String("body", body))
+	return nil
 }
 
 func (discordHandler) ActionType() reflect.Type {
