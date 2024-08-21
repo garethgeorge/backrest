@@ -18,7 +18,6 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
@@ -271,12 +270,11 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 }
 
 func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error) {
-	idCollector := indexutil.CollectAll()
-
-	if req.Msg.LastN != 0 {
-		idCollector = indexutil.CollectLastN(int(req.Msg.LastN))
-	}
 	q, err := opSelectorToQuery(req.Msg.Selector)
+	if req.Msg.LastN != 0 {
+		q.Reversed = true
+		q.Limit = int(req.Msg.LastN)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -286,14 +284,17 @@ func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Reques
 		ops = append(ops, op)
 		return nil
 	}
-	if !reflect.DeepEqual(q, oplog.Query{}) {
-		err = s.oplog.ForEach(q, idCollector, opCollector)
-	} else {
-		err = s.oplog.ForAll(opCollector)
-	}
+	err = s.oplog.Query(q, opCollector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get operations: %w", err)
 	}
+
+	slices.SortFunc(ops, func(i, j *v1.Operation) int {
+		if i.Id < j.Id {
+			return -1
+		}
+		return 1
+	})
 
 	return connect.NewResponse(&v1.OperationList{
 		Operations: ops,
@@ -505,12 +506,7 @@ func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, err
 	}
-	if !reflect.DeepEqual(q, oplog.Query{}) {
-		err = s.oplog.ForEach(q, indexutil.CollectAll(), opCollector)
-	} else {
-		err = s.oplog.ForAll(opCollector)
-	}
-	if err != nil {
+	if err := s.oplog.Query(q, opCollector); err != nil {
 		return nil, fmt.Errorf("failed to get operations to delete: %w", err)
 	}
 
@@ -574,14 +570,14 @@ func opSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
 		return oplog.Query{}, errors.New("empty selector")
 	}
 	q := oplog.Query{
-		RepoId:     sel.RepoId,
-		PlanId:     sel.PlanId,
-		SnapshotId: sel.SnapshotId,
-		FlowId:     sel.FlowId,
+		RepoID:     sel.RepoId,
+		PlanID:     sel.PlanId,
+		SnapshotID: sel.SnapshotId,
+		FlowID:     sel.FlowId,
 	}
 	if len(sel.Ids) > 0 && !reflect.DeepEqual(q, oplog.Query{}) {
 		return oplog.Query{}, errors.New("cannot specify both query and ids")
 	}
-	q.Ids = sel.Ids
+	q.OpIDs = sel.Ids
 	return q, nil
 }

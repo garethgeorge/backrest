@@ -66,7 +66,7 @@ func main() {
 
 	// Create / load the operation log
 	oplogFile := path.Join(env.DataDir(), "oplog.boltdb")
-	oplog, err := oplog.NewOpLog(oplogFile)
+	oplog := oplog.NewOpLog(oplogFile)
 	if err != nil {
 		if !errors.Is(err, bbolt.ErrTimeout) {
 			zap.S().Fatalf("timeout while waiting to open database, is the database open elsewhere?")

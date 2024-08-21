@@ -10,8 +10,8 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
-	"github.com/garethgeorge/backrest/internal/oplog/serializationutil"
+	"github.com/garethgeorge/backrest/internal/oplog/bboltstore/indexutil"
+	"github.com/garethgeorge/backrest/internal/oplog/bboltstore/serializationutil"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"

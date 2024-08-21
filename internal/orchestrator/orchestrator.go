@@ -59,13 +59,13 @@ func (st stContainer) Less(other stContainer) bool {
 	return st.ScheduledTask.Less(other.ScheduledTask)
 }
 
-func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) (*Orchestrator, error) {
+func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStore *rotatinglog.RotatingLog) (*Orchestrator, error) {
 	cfg = proto.Clone(cfg).(*v1.Config)
 
 	// create the orchestrator.
 	var o *Orchestrator
 	o = &Orchestrator{
-		OpLog:  oplog,
+		OpLog:  log,
 		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
 		repoPool:  newResticRepoPool(resticBin, cfg),
@@ -74,20 +74,24 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 	}
 
 	// verify the operation log and mark any incomplete operations as failed.
-	if oplog != nil { // oplog may be nil for testing.
-		var incompleteOpRepos []string
-		if err := oplog.Scan(func(incomplete *v1.Operation) {
-			incomplete.Status = v1.OperationStatus_STATUS_ERROR
-			incomplete.DisplayMessage = "Failed, orchestrator killed while operation was in progress."
-
-			if incomplete.RepoId != "" && !slices.Contains(incompleteOpRepos, incomplete.RepoId) {
-				incompleteOpRepos = append(incompleteOpRepos, incomplete.RepoId)
+	if log != nil { // oplog may be nil for testing.
+		incompleteRepos := []string{}
+		incompleteOps := []*v1.Operation{}
+		// TODO: it would be better to only scan since the last time the orchestrator was running (or similar).
+		if err := log.Query(oplog.SelectAll, func(op *v1.Operation) error {
+			if op.Status != v1.OperationStatus_STATUS_PENDING && op.Status == v1.OperationStatus_STATUS_UNKNOWN {
+				return nil
 			}
+			incompleteOps = append(incompleteOps, op)
+			if !slices.Contains(incompleteRepos, op.RepoId) {
+				incompleteRepos = append(incompleteRepos, op.RepoId)
+			}
+			return nil
 		}); err != nil {
 			return nil, fmt.Errorf("scan oplog: %w", err)
 		}
 
-		for _, repoId := range incompleteOpRepos {
+		for _, repoId := range incompleteRepos {
 			repo, err := o.GetRepoOrchestrator(repoId)
 			if err != nil {
 				if errors.Is(err, ErrRepoNotFound) {
