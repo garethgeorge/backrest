@@ -51,7 +51,7 @@ func TestTaskScheduling(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	orch, err := NewOrchestrator("", config.NewDefaultConfig(), nil, nil)
+	orch, err := NewOrchestrator("", &config.ConfigManager{ConfigStore: &config.MemoryStore{Config: config.NewDefaultConfig()}}, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to create orchestrator: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestTaskRescheduling(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	orch, err := NewOrchestrator("", config.NewDefaultConfig(), nil, nil)
+	orch, err := NewOrchestrator("", &config.ConfigManager{ConfigStore: &config.MemoryStore{Config: config.NewDefaultConfig()}}, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to create orchestrator: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestGracefulShutdown(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	orch, err := NewOrchestrator("", config.NewDefaultConfig(), nil, nil)
+	orch, err := NewOrchestrator("", &config.ConfigManager{ConfigStore: &config.MemoryStore{Config: config.NewDefaultConfig()}}, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to create orchestrator: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestSchedulerWait(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	orch, err := NewOrchestrator("", config.NewDefaultConfig(), nil, nil)
+	orch, err := NewOrchestrator("", &config.ConfigManager{ConfigStore: &config.MemoryStore{Config: config.NewDefaultConfig()}}, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to create orchestrator: %v", err)
 	}

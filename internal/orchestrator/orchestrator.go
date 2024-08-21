@@ -28,13 +28,14 @@ var ErrPlanNotFound = errors.New("plan not found")
 
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
-	mu              sync.Mutex
-	config          *v1.Config
-	OpLog           *oplog.OpLog
-	repoPool        *resticRepoPool
-	taskQueue       *queue.TimePriorityQueue[stContainer]
-	readyTaskQueues map[string]chan tasks.Task
-	logStore        *rotatinglog.RotatingLog
+	mu        sync.Mutex
+	config    *v1.Config
+	OpLog     *oplog.OpLog
+	repoPool  *resticRepoPool
+	taskQueue *queue.TimePriorityQueue[stContainer]
+	logStore  *rotatinglog.RotatingLog
+
+	cleanup func()
 
 	// cancelNotify is a list of channels that are notified when a task should be cancelled.
 	cancelNotify []chan int64
@@ -59,12 +60,16 @@ func (st stContainer) Less(other stContainer) bool {
 	return st.ScheduledTask.Less(other.ScheduledTask)
 }
 
-func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) (*Orchestrator, error) {
+func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) (*Orchestrator, error) {
+	// get initial config
+	cfg, err := cfgMgr.Get()
+	if err != nil {
+		return nil, fmt.Errorf("get config: %w", err)
+	}
 	cfg = proto.Clone(cfg).(*v1.Config)
 
 	// create the orchestrator.
-	var o *Orchestrator
-	o = &Orchestrator{
+	o := &Orchestrator{
 		OpLog:  oplog,
 		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
@@ -73,33 +78,15 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 		logStore:  logStore,
 	}
 
-	// verify the operation log and mark any incomplete operations as failed.
-	if oplog != nil { // oplog may be nil for testing.
-		var incompleteOpRepos []string
-		if err := oplog.Scan(func(incomplete *v1.Operation) {
-			incomplete.Status = v1.OperationStatus_STATUS_ERROR
-			incomplete.DisplayMessage = "Failed, orchestrator killed while operation was in progress."
-
-			if incomplete.RepoId != "" && !slices.Contains(incompleteOpRepos, incomplete.RepoId) {
-				incompleteOpRepos = append(incompleteOpRepos, incomplete.RepoId)
-			}
-		}); err != nil {
-			return nil, fmt.Errorf("scan oplog: %w", err)
+	// subscribe to config changes from the config manager
+	onConfigChange := func(cfg *v1.Config) {
+		if err := o.ApplyConfig(cfg); err != nil {
+			zap.L().Error("failed to apply config to orchestrator", zap.Error(err))
 		}
-
-		for _, repoId := range incompleteOpRepos {
-			repo, err := o.GetRepoOrchestrator(repoId)
-			if err != nil {
-				if errors.Is(err, ErrRepoNotFound) {
-					zap.L().Warn("repo not found for incomplete operation. Possibly just deleted.", zap.String("repo", repoId))
-				}
-				return nil, fmt.Errorf("get repo %q: %w", repoId, err)
-			}
-
-			if err := repo.Unlock(context.Background()); err != nil {
-				zap.L().Error("failed to unlock repo", zap.String("repo", repoId), zap.Error(err))
-			}
-		}
+	}
+	cfgMgr.Subscribe(onConfigChange)
+	o.cleanup = func() {
+		cfgMgr.Unsubscribe(onConfigChange)
 	}
 
 	// apply starting configuration which also queues initial tasks.
@@ -107,9 +94,25 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 		return nil, fmt.Errorf("apply initial config: %w", err)
 	}
 
+	// Schedule additional initialization tasks
+	if o.OpLog != nil { // oplog is nil in tests
+		if err := o.ScheduleTask(&tasks.ScanLogTask{}, tasks.TaskPriorityHighest); err != nil {
+			return nil, fmt.Errorf("schedule scan log task: %w", err)
+		}
+	}
+
 	zap.L().Info("orchestrator created")
 
 	return o, nil
+}
+
+func (o *Orchestrator) Shutdown() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	if o.cleanup != nil {
+		o.cleanup()
+	}
 }
 
 func (o *Orchestrator) curTime() time.Time {
@@ -150,18 +153,20 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 		return fmt.Errorf("schedule collect garbage task: %w", err)
 	}
 
-	for _, plan := range config.Plans {
-		if plan.Disabled {
-			continue
-		}
+	if !config.GetHubOptions().GetEnabled() {
+		for _, plan := range config.Plans {
+			if plan.Disabled {
+				continue
+			}
 
-		// Schedule a backup task for the plan
-		t, err := tasks.NewScheduledBackupTask(plan)
-		if err != nil {
-			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
-		}
-		if err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {
-			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
+			// Schedule a backup task for the plan
+			t, err := tasks.NewScheduledBackupTask(plan)
+			if err != nil {
+				return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
+			}
+			if err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {
+				return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
+			}
 		}
 	}
 

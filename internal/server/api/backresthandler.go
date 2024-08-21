@@ -37,16 +37,18 @@ type BackrestHandler struct {
 	orchestrator *orchestrator.Orchestrator
 	oplog        *oplog.OpLog
 	logStore     *rotatinglog.RotatingLog
+	isHub        bool
 }
 
 var _ v1connect.BackrestHandler = &BackrestHandler{}
 
-func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) *BackrestHandler {
+func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog, isHub bool) *BackrestHandler {
 	s := &BackrestHandler{
 		config:       config,
 		orchestrator: orchestrator,
 		oplog:        oplog,
 		logStore:     logStore,
+		isHub:        isHub,
 	}
 
 	return s
@@ -83,14 +85,7 @@ func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
 
-	newConfig, err := s.config.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get newly set config: %w", err)
-	}
-	if err := s.orchestrator.ApplyConfig(newConfig); err != nil {
-		return nil, fmt.Errorf("failed to apply config: %w", err)
-	}
-	return connect.NewResponse(newConfig), nil
+	return connect.NewResponse(req.Msg), nil
 }
 
 // AddRepo implements POST /v1/config/repo, it includes validation that the repo can be initialized.
@@ -133,9 +128,6 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 	if err := s.config.Update(c); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
-
-	zap.L().Debug("applying config", zap.Int32("version", c.Version))
-	s.orchestrator.ApplyConfig(c)
 
 	// index snapshots for the newly added repository.
 	zap.L().Debug("scheduling index snapshots task")
@@ -293,6 +285,10 @@ func (s *BackrestHandler) IndexSnapshots(ctx context.Context, req *connect.Reque
 }
 
 func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+	if s.isHub {
+		return nil, errors.New("backup is not supported on the hub server")
+	}
+
 	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.Value, err)
@@ -307,6 +303,10 @@ func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types
 }
 
 func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {
+	if s.isHub {
+		return nil, errors.New("forget is not supported on the hub server")
+	}
+
 	at := time.Now()
 	var err error
 	if req.Msg.SnapshotId != "" && req.Msg.PlanId != "" && req.Msg.RepoId != "" {
@@ -559,6 +559,7 @@ func opSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
 		PlanId:     sel.PlanId,
 		SnapshotId: sel.SnapshotId,
 		FlowId:     sel.FlowId,
+		InstanceId: sel.InstanceId,
 	}
 	if len(sel.Ids) > 0 && !reflect.DeepEqual(q, oplog.Query{}) {
 		return oplog.Query{}, errors.New("cannot specify both query and ids")
