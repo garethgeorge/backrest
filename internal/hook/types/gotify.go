@@ -12,6 +12,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook/hookutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
+	"go.uber.org/zap"
 )
 
 type gotifyHandler struct{}
@@ -33,7 +34,7 @@ func (gotifyHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, 
 		return fmt.Errorf("title template rendering: %w", err)
 	}
 
-	output := runner.RawLogWriter(ctx)
+	l := runner.Logger(ctx)
 
 	message := struct {
 		Message  string `json:"message"`
@@ -44,6 +45,9 @@ func (gotifyHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, 
 		Priority: 5,
 		Message:  payload,
 	}
+
+	l.Sugar().Infof("Sending gotify message to %s", g.GetBaseUrl())
+	l.Debug("Sending gotify message", zap.Any("message", message))
 
 	b, err := json.Marshal(message)
 	if err != nil {
@@ -57,19 +61,13 @@ func (gotifyHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, 
 		baseUrl,
 		url.QueryEscape(g.GetToken()))
 
-	fmt.Fprintf(output, "Sending gotify message to %s\n", postUrl)
-	fmt.Fprintf(output, "---- payload ----\n")
-	output.Write(b)
-
 	body, err := hookutil.PostRequest(postUrl, "application/json", bytes.NewReader(b))
 
 	if err != nil {
 		return fmt.Errorf("send gotify message: %w", err)
 	}
 
-	if body != "" {
-		output.Write([]byte(body))
-	}
+	l.Sugar().Debugf("Gotify response: %s", body)
 
 	return nil
 }
