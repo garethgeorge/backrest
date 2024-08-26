@@ -66,10 +66,6 @@ create_launchd_plist() {
     </array>
     <key>KeepAlive</key>
     <true/>
-    <key>StandardOutPath</key>
-    <string>/tmp/backrest.log</string>
-    <key>StandardErrorPath</key>
-    <string>/tmp/backrest.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>

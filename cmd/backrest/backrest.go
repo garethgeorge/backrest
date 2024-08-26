@@ -9,8 +9,8 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -32,12 +32,14 @@ import (
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var InstallDepsOnly = flag.Bool("install-deps-only", false, "install dependencies and exit")
 
 func main() {
 	flag.Parse()
+	installLoggers()
 
 	resticPath, err := resticinstaller.FindOrInstallResticBinary()
 	if err != nil {
@@ -133,26 +135,6 @@ func main() {
 	wg.Wait()
 }
 
-func init() {
-	if !strings.HasPrefix(os.Getenv("ENV"), "prod") {
-		c := zap.NewDevelopmentEncoderConfig()
-		c.EncodeLevel = zapcore.CapitalColorLevelEncoder
-		c.EncodeTime = zapcore.ISO8601TimeEncoder
-		l := zap.New(zapcore.NewCore(
-			zapcore.NewConsoleEncoder(c),
-			zapcore.AddSync(colorable.NewColorableStdout()),
-			zapcore.DebugLevel,
-		))
-		zap.ReplaceGlobals(l)
-	} else {
-		zap.ReplaceGlobals(zap.New(zapcore.NewCore(
-			zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
-			zapcore.AddSync(os.Stdout),
-			zapcore.DebugLevel,
-		)))
-	}
-}
-
 func createConfigProvider() config.ConfigStore {
 	return &config.CachingValidatingStore{
 		ConfigStore: &config.JsonFileStore{Path: env.ConfigFilePath()},
@@ -202,4 +184,41 @@ func newForceKillHandler() func() {
 		times.Add(1)
 		zap.S().Warn("attempting graceful shutdown, to force termination press Ctrl+C again")
 	}
+}
+
+func installLoggers() {
+	// Pretty logging for console
+	c := zap.NewDevelopmentEncoderConfig()
+	c.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	c.EncodeTime = zapcore.ISO8601TimeEncoder
+	pretty := zapcore.NewCore(
+		zapcore.NewConsoleEncoder(c),
+		zapcore.AddSync(colorable.NewColorableStdout()),
+		zapcore.InfoLevel,
+	)
+
+	// JSON logging to log directory
+	logsDir := env.LogsPath()
+	if err := os.MkdirAll(logsDir, 0755); err != nil {
+		zap.ReplaceGlobals(zap.New(pretty))
+		zap.S().Errorf("error creating logs directory %q, will only log to console for now: %v", err)
+		return
+	}
+
+	writer := &lumberjack.Logger{
+		Filename:   filepath.Join(logsDir, "backrest.log"),
+		MaxSize:    5, // megabytes
+		MaxBackups: 3,
+		MaxAge:     14,
+		Compress:   true,
+	}
+
+	ugly := zapcore.NewCore(
+		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		zapcore.AddSync(writer),
+		zapcore.DebugLevel,
+	)
+
+	zap.ReplaceGlobals(zap.New(zapcore.NewTee(pretty, ugly)))
+	zap.S().Infof("writing logs to: %v", logsDir)
 }

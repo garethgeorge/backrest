@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,7 +15,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/getlantern/systray"
 	"github.com/ncruces/zenity"
-	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 
 	_ "embed"
 )
@@ -25,13 +23,6 @@ import (
 var icon []byte
 
 func main() {
-	l, err := createLogWriter()
-	if err != nil {
-		reportError(err)
-		return
-	}
-	defer l.Close()
-
 	backrest, err := findBackrest()
 	if err != nil {
 		reportError(err)
@@ -44,14 +35,6 @@ func main() {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "ENV=production")
-
-	pr, pw := io.Pipe()
-	cmd.Stdout = pw
-	cmd.Stderr = pw
-
-	go func() {
-		io.Copy(l, pr)
-	}()
 
 	if err := cmd.Start(); err != nil {
 		reportError(err)
@@ -80,7 +63,7 @@ func main() {
 		mOpenLog.ClickedCh = make(chan struct{})
 		go func() {
 			for range mOpenLog.ClickedCh {
-				cmd := exec.Command(`explorer`, `/select,`, logsPath())
+				cmd := exec.Command(`explorer`, `/select,`, env.LogsPath())
 				cmd.Start()
 				go cmd.Wait()
 			}
@@ -146,27 +129,4 @@ func openBrowser(url string) error {
 
 func reportError(err error) {
 	zenity.Error(err.Error(), zenity.Title("Backrest Error"))
-}
-
-func createLogWriter() (io.WriteCloser, error) {
-	logsDir := logsPath()
-	fmt.Printf("Logging to %s\n", logsDir)
-	if err := os.MkdirAll(logsDir, 0755); err != nil {
-		return nil, err
-	}
-
-	l := &lumberjack.Logger{
-		Filename:   filepath.Join(logsDir, "backrest.log"),
-		MaxSize:    5, // megabytes
-		MaxBackups: 3,
-		MaxAge:     14,
-		Compress:   true,
-	}
-
-	return l, nil
-}
-
-func logsPath() string {
-	dataDir := env.DataDir()
-	return filepath.Join(dataDir, "processlogs")
 }
