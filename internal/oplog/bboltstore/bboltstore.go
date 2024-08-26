@@ -1,4 +1,4 @@
-package oplog
+package bboltstore
 
 import (
 	"errors"
@@ -13,6 +13,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore/indexutil"
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore/serializationutil"
 	"github.com/garethgeorge/backrest/internal/protoutil"
+	"go.etcd.io/bbolt"
 	bolt "go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
@@ -40,13 +41,13 @@ var (
 
 // OpLog represents a log of operations performed.
 // Operations are indexed by repo and plan.
-type OpLog struct {
+type BboltStore struct {
 	db *bolt.DB
 }
 
-var _ oplog.OpStore = &OpLog{}
+var _ oplog.OpStore = &BboltStore{}
 
-func NewOpLog(databasePath string) (*OpLog, error) {
+func NewBboltStore(databasePath string) (*BboltStore, error) {
 	if err := os.MkdirAll(path.Dir(databasePath), 0700); err != nil {
 		return nil, fmt.Errorf("error creating database directory: %s", err)
 	}
@@ -78,11 +79,11 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 	return o, nil
 }
 
-func (o *OpLog) Close() error {
+func (o *BboltStore) Close() error {
 	return o.db.Close()
 }
 
-func (o *OpLog) Version() (int64, error) {
+func (o *BboltStore) Version() (int64, error) {
 	var version int64
 	err := o.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(SystemBucket)
@@ -96,7 +97,7 @@ func (o *OpLog) Version() (int64, error) {
 	return version, err
 }
 
-func (o *OpLog) SetVersion(version int64) error {
+func (o *BboltStore) SetVersion(version int64) error {
 	return o.db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(SystemBucket)
 		if err != nil {
@@ -107,7 +108,7 @@ func (o *OpLog) SetVersion(version int64) error {
 }
 
 // Add adds a generic operation to the operation log.
-func (o *OpLog) Add(op ...*v1.Operation) error {
+func (o *BboltStore) Add(op ...*v1.Operation) error {
 	for _, op := range op {
 		if op.Id != 0 {
 			return errors.New("operation already has an ID, OpLog.Add is expected to set the ID")
@@ -125,7 +126,7 @@ func (o *OpLog) Add(op ...*v1.Operation) error {
 	})
 }
 
-func (o *OpLog) Update(op ...*v1.Operation) error {
+func (o *BboltStore) Update(op ...*v1.Operation) error {
 	for _, op := range op {
 		if op.Id == 0 {
 			return errors.New("operation does not have an ID, OpLog.Update expects operation with an ID")
@@ -146,7 +147,7 @@ func (o *OpLog) Update(op ...*v1.Operation) error {
 	})
 }
 
-func (o *OpLog) Delete(ids ...int64) ([]*v1.Operation, error) {
+func (o *BboltStore) Delete(ids ...int64) ([]*v1.Operation, error) {
 	removedOps := make([]*v1.Operation, 0, len(ids))
 	err := o.db.Update(func(tx *bolt.Tx) error {
 		for _, id := range ids {
@@ -161,7 +162,7 @@ func (o *OpLog) Delete(ids ...int64) ([]*v1.Operation, error) {
 	return removedOps, err
 }
 
-func (o *OpLog) getOperationHelper(b *bolt.Bucket, id int64) (*v1.Operation, error) {
+func (o *BboltStore) getOperationHelper(b *bolt.Bucket, id int64) (*v1.Operation, error) {
 	bytes := b.Get(serializationutil.Itob(id))
 	if bytes == nil {
 		return nil, fmt.Errorf("opid %v: %w", id, ErrNotExist)
@@ -175,7 +176,7 @@ func (o *OpLog) getOperationHelper(b *bolt.Bucket, id int64) (*v1.Operation, err
 	return &op, nil
 }
 
-func (o *OpLog) nextID(b *bolt.Bucket, unixTimeMs int64) (int64, error) {
+func (o *BboltStore) nextID(b *bolt.Bucket, unixTimeMs int64) (int64, error) {
 	seq, err := b.NextSequence()
 	if err != nil {
 		return 0, fmt.Errorf("next sequence: %w", err)
@@ -183,7 +184,7 @@ func (o *OpLog) nextID(b *bolt.Bucket, unixTimeMs int64) (int64, error) {
 	return int64(unixTimeMs<<20) | int64(seq&((1<<20)-1)), nil
 }
 
-func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
+func (o *BboltStore) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 	b := tx.Bucket(OpLogBucket)
 	if op.Id == 0 {
 		var err error
@@ -244,7 +245,7 @@ func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 	return nil
 }
 
-func (o *OpLog) deleteOperationHelper(tx *bolt.Tx, id int64) (*v1.Operation, error) {
+func (o *BboltStore) deleteOperationHelper(tx *bolt.Tx, id int64) (*v1.Operation, error) {
 	b := tx.Bucket(OpLogBucket)
 
 	prevValue, err := o.getOperationHelper(b, id)
@@ -289,7 +290,7 @@ func (o *OpLog) deleteOperationHelper(tx *bolt.Tx, id int64) (*v1.Operation, err
 	return prevValue, nil
 }
 
-func (o *OpLog) Get(id int64) (*v1.Operation, error) {
+func (o *BboltStore) Get(id int64) (*v1.Operation, error) {
 	var op *v1.Operation
 	if err := o.db.View(func(tx *bolt.Tx) error {
 		var err error
@@ -311,8 +312,34 @@ type Query struct {
 	Ids        []int64
 }
 
-func (o *OpLog) Query(query oplog.Query, do func(op *v1.Operation) error) error {
-	return o.db.View(func(tx *bolt.Tx) error {
+func (o *BboltStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
+	return o.queryHelper(q, func(tx *bbolt.Tx, op *v1.Operation) error {
+		return f(op)
+	}, true)
+}
+
+func (o *BboltStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation, error)) error {
+	return o.queryHelper(q, func(tx *bbolt.Tx, op *v1.Operation) error {
+		origId := op.Id
+		transformed, err := f(op)
+		if err != nil {
+			return err
+		}
+		if transformed == nil {
+			return nil
+		}
+		if _, err := o.deleteOperationHelper(tx, origId); err != nil {
+			return fmt.Errorf("deleting old operation: %w", err)
+		}
+		if err := o.addOperationHelper(tx, transformed); err != nil {
+			return fmt.Errorf("adding updated operation: %w", err)
+		}
+		return nil
+	}, false)
+}
+
+func (o *BboltStore) queryHelper(query oplog.Query, do func(tx *bbolt.Tx, op *v1.Operation) error, isReadOnly bool) error {
+	helper := func(tx *bolt.Tx) error {
 		iterators := make([]indexutil.IndexIterator, 0, 5)
 		if query.RepoID != "" {
 			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(RepoIndexBucket), []byte(query.RepoID)))
@@ -337,7 +364,7 @@ func (o *OpLog) Query(query oplog.Query, do func(op *v1.Operation) error) error 
 			} else {
 				b := tx.Bucket(OpLogBucket)
 				c := b.Cursor()
-				for k, _ := c.First(); k != nil; k, v = c.Next() {
+				for k, _ := c.First(); k != nil; k, _ = c.Next() {
 					if id, err := serializationutil.Btoi(k); err != nil {
 						continue // skip corrupt keys
 					} else {
@@ -361,10 +388,15 @@ func (o *OpLog) Query(query oplog.Query, do func(op *v1.Operation) error) error 
 		}
 
 		return o.forOpsByIds(tx, ids, do)
-	})
+	}
+	if isReadOnly {
+		return o.db.View(helper)
+	} else {
+		return o.db.Update(helper)
+	}
 }
 
-func (o *OpLog) forOpsByIds(tx *bolt.Tx, ids []int64, do func(*v1.Operation) error) error {
+func (o *BboltStore) forOpsByIds(tx *bolt.Tx, ids []int64, do func(*v1.Operation) error) error {
 	b := tx.Bucket(OpLogBucket)
 	for _, id := range ids {
 		op, err := o.getOperationHelper(b, id)
@@ -381,7 +413,7 @@ func (o *OpLog) forOpsByIds(tx *bolt.Tx, ids []int64, do func(*v1.Operation) err
 	return nil
 }
 
-func (o *OpLog) forAll(tx *bolt.Tx, do func(*v1.Operation) error) error {
+func (o *BboltStore) forAll(tx *bolt.Tx, do func(*v1.Operation) error) error {
 	b := tx.Bucket(OpLogBucket)
 	c := b.Cursor()
 	for k, v := c.First(); k != nil; k, v = c.Next() {

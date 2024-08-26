@@ -23,14 +23,14 @@ func ApplyMigrations(oplog *OpLog) error {
 		startMigration = 0
 	}
 
-	for idx := startMigration; idx < len(migrations); idx += 1 {
-		zap.L().Info("applying oplog migration", zap.Int("migration_no", idx))
+	for idx := startMigration; idx < int64(len(migrations)); idx += 1 {
+		zap.L().Info("applying oplog migration", zap.Int64("migration_no", idx))
 		if err := migrations[idx](oplog); err != nil {
-			zap.L().Error("failed to apply migration", zap.Int("migration_no", idx), zap.Error(err))
+			zap.L().Error("failed to apply migration", zap.Int64("migration_no", idx), zap.Error(err))
 			return fmt.Errorf("couldn't apply migration %d: %w", idx, err)
 		}
 		if err := oplog.store.SetVersion(idx + 1); err != nil {
-			zap.L().Error("failed to set migration version, database may be corrupt", zap.Int("migration_no", idx), zap.Error(err))
+			zap.L().Error("failed to set migration version, database may be corrupt", zap.Int64("migration_no", idx), zap.Error(err))
 			return fmt.Errorf("couldn't set migration version %d: %w", idx, err)
 		}
 	}

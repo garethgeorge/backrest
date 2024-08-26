@@ -109,8 +109,8 @@ type OpStore interface {
 	Update(op ...*v1.Operation) error              // returns the previous values of the updated operations OR an error
 	Delete(opID ...int64) ([]*v1.Operation, error) // returns the deleted operations OR an error
 	Transform(q Query, f func(*v1.Operation) (*v1.Operation, error)) error
-	Version() int
-	SetVersion(version int) error
+	Version() int64
+	SetVersion(version int64) error
 }
 
 type Query struct {

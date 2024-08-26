@@ -21,6 +21,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"github.com/garethgeorge/backrest/internal/rotatinglog"
@@ -66,7 +67,7 @@ func main() {
 
 	// Create / load the operation log
 	oplogFile := path.Join(env.DataDir(), "oplog.boltdb")
-	oplog := oplog.NewOpLog(oplogFile)
+	opstore, err := bboltstore.NewBboltStore(oplogFile)
 	if err != nil {
 		if !errors.Is(err, bbolt.ErrTimeout) {
 			zap.S().Fatalf("timeout while waiting to open database, is the database open elsewhere?")
@@ -74,7 +75,9 @@ func main() {
 		zap.S().Warnf("operation log may be corrupted, if errors recur delete the file %q and restart. Your backups stored in your repos are safe.", oplogFile)
 		zap.S().Fatalf("error creating oplog : %v", err)
 	}
-	defer oplog.Close()
+	defer opstore.Close()
+
+	oplog := oplog.NewOpLog(opstore)
 
 	// Create rotating log storage
 	logStore := rotatinglog.NewRotatingLog(path.Join(env.DataDir(), "rotatinglogs"), 14) // 14 days of logs
