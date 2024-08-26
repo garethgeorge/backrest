@@ -47,9 +47,10 @@ message Operation {
 // OperationEvent is used in the wireformat to stream operation changes to clients
 message OperationEvent {
   oneof event {
-    OperationList created_operations = 1;
-    OperationList updated_operations = 2;
-    types.Int64List deleted_operations = 3;
+    types.Empty keep_alive = 1;
+    OperationList created_operations = 2;
+    OperationList updated_operations = 3;
+    types.Int64List deleted_operations = 4;
   }
 }
 
@@ -81,7 +82,6 @@ message OperationBackup {
 message OperationIndexSnapshot {
   ResticSnapshot snapshot = 2; // the snapshot that was indexed.
   bool forgot = 3; // tracks whether this snapshot is forgotten yet.
-  int64 forgot_by_op = 4; // ID of a forget operation that removed this snapshot.
 }
 
 // OperationForget tracks a forget operation.

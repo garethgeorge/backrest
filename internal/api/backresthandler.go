@@ -202,6 +202,9 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 	errChan := make(chan error, 1)
 	events := make(chan *v1.OperationEvent, 100)
 
+	timer := time.NewTicker(60 * time.Second)
+	defer timer.Stop()
+
 	callback := func(ops []*v1.Operation, eventType oplog.OperationEvent) {
 		var event *v1.OperationEvent
 		switch eventType {
@@ -257,6 +260,12 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 
 	for {
 		select {
+		case <-timer.C:
+			if err := resp.Send(&v1.OperationEvent{
+				Event: &v1.OperationEvent_KeepAlive{},
+			}); err != nil {
+				return err
+			}
 		case err := <-errChan:
 			return err
 		case <-ctx.Done():
