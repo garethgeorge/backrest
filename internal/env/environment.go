@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -72,6 +73,11 @@ func ResticBinPath() string {
 		return val
 	}
 	return ""
+}
+
+func LogsPath() string {
+	dataDir := DataDir()
+	return filepath.Join(dataDir, "processlogs")
 }
 
 func getHomeDir() string {

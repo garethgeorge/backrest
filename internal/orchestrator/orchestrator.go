@@ -123,7 +123,7 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStor
 			}
 		}
 
-		zap.S().Info("scrubbed operation log for incomplete operations",
+		zap.L().Info("scrubbed operation log for incomplete operations",
 			zap.Duration("duration", time.Since(startTime)),
 			zap.Int("incomplete_ops", len(incompleteOps)),
 			zap.Int("incomplete_repos", len(incompleteRepos)),
