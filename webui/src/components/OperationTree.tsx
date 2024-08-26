@@ -466,7 +466,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
           backrestService.clearHistory(
             new ClearHistoryRequest({
               selector: new OpSelector({
-                ids: backup.ids,
+                ids: backup.operations.map((op) => op.id),
               }),
             })
           );
@@ -495,16 +495,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
               : null}
           </div>
         </div>
-        <OperationList
-          key={backup.flowID}
-          req={
-            new GetOperationsRequest({
-              selector: new OpSelector({
-                ids: backup.ids,
-              }),
-            })
-          }
-        />
+        <OperationList key={backup.flowID} useOperations={backup.operations} />
       </div>
     );
   }

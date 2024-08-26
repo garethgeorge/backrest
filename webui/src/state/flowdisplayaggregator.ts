@@ -24,7 +24,7 @@ export interface FlowDisplayInfo {
   type: DisplayType;
   subtitleComponents: string[];
   hidden: boolean;
-  ids: bigint[];
+  operations: Operation[];
 }
 
 export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
@@ -42,7 +42,7 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
     displayTime: Number(firstOp.unixTimeStartMs),
     subtitleComponents: [],
     hidden: false,
-    ids: ops.map((op) => op.id),
+    operations: [...ops], // defensive copy
   };
 
   const duration = Number(firstOp.unixTimeEndMs - firstOp.unixTimeStartMs);

@@ -102,7 +102,7 @@ export const OperationRow = ({
   if (operation.status !== OperationStatus.STATUS_SUCCESS) {
     details = nameForStatus(operation.status);
   }
-  if (operation.unixTimeEndMs - operation.unixTimeStartMs > 1000) {
+  if (operation.unixTimeEndMs - operation.unixTimeStartMs > 100) {
     details +=
       " in " +
       formatDuration(
@@ -242,7 +242,12 @@ export const OperationRow = ({
     bodyItems.push({
       key: "hookOperations",
       label: "Hooks Triggered",
-      children: <OperationList useOperations={hookOperations} />,
+      children: (
+        <OperationList
+          useOperations={hookOperations}
+          displayHooksInline={true}
+        />
+      ),
     });
 
     for (const op of hookOperations) {

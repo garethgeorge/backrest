@@ -190,7 +190,12 @@ export class OplogState {
       ops = [];
       this.byFlowID.set(op.flowId, ops);
     }
-    ops.push(op);
+    let index = ops.findIndex((o) => o.id === op.id);
+    if (index !== -1) {
+      ops[index] = op;
+    } else {
+      ops.push(op);
+    }
   }
 
   private removeHelper(op: Operation) {

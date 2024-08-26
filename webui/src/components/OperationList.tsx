@@ -13,14 +13,16 @@ export const OperationList = ({
   req,
   useOperations,
   showPlan,
+  displayHooksInline,
 }: React.PropsWithoutRef<{
   req?: GetOperationsRequest;
   useOperations?: Operation[]; // exact set of operations to display; no filtering will be applied.
   showPlan?: boolean;
+  displayHooksInline?: boolean;
 }>) => {
   const alertApi = useAlertApi();
 
-  const [operations, setOperations] = useState<Operation[]>([]);
+  let [operations, setOperations] = useState<Operation[]>([]);
 
   if (req) {
     // track backups for this operation tree view.
@@ -48,8 +50,9 @@ export const OperationList = ({
   const hookExecutionsForOperation: Map<BigInt, Operation[]> = new Map();
   let operationsForDisplay: Operation[] = [];
   if (useOperations) {
-    operationsForDisplay = useOperations;
-  } else {
+    operations = [...useOperations];
+  }
+  if (!displayHooksInline) {
     operationsForDisplay = operations.filter((op) => {
       if (op.op.case === "operationRunHook") {
         const parentOp = op.op.value.parentOp;
@@ -61,6 +64,8 @@ export const OperationList = ({
       }
       return true;
     });
+  } else {
+    operationsForDisplay = operations;
   }
   operationsForDisplay.sort((a, b) => {
     return Number(b.unixTimeStartMs - a.unixTimeStartMs);
