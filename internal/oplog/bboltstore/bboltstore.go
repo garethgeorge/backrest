@@ -6,15 +6,14 @@ import (
 	"os"
 	"path"
 	"slices"
-	"sync"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore/indexutil"
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore/serializationutil"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	bolt "go.etcd.io/bbolt"
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -43,10 +42,9 @@ var (
 // Operations are indexed by repo and plan.
 type OpLog struct {
 	db *bolt.DB
-
-	subscribersMu sync.RWMutex
-	subscribers   []*func(*v1.Operation, *v1.Operation)
 }
+
+var _ oplog.OpStore = &OpLog{}
 
 func NewOpLog(databasePath string) (*OpLog, error) {
 	if err := os.MkdirAll(path.Dir(databasePath), 0700); err != nil {
@@ -72,10 +70,6 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 			}
 		}
 
-		if err := ApplyMigrations(o, tx); err != nil {
-			return fmt.Errorf("applying migrations: %w", err)
-		}
-
 		return nil
 	}); err != nil {
 		return nil, err
@@ -84,119 +78,75 @@ func NewOpLog(databasePath string) (*OpLog, error) {
 	return o, nil
 }
 
-// Scan checks the log for incomplete operations. Should only be called at startup.
-func (o *OpLog) Scan(onIncomplete func(op *v1.Operation)) error {
-	zap.L().Debug("scanning oplog for incomplete operations")
-	t := time.Now()
-	err := o.db.Update(func(tx *bolt.Tx) error {
-		sysBucket := tx.Bucket(SystemBucket)
-		opLogBucket := tx.Bucket(OpLogBucket)
-		c := opLogBucket.Cursor()
-		var k, v []byte
-		if lastValidated := sysBucket.Get([]byte("last_validated")); lastValidated != nil {
-			k, v = c.Seek(lastValidated)
-		} else {
-			k, v = c.First()
-		}
-		for ; k != nil; k, v = c.Next() {
-			op := &v1.Operation{}
-			if err := proto.Unmarshal(v, op); err != nil {
-				zap.L().Error("error unmarshalling operation, there may be corruption in the oplog", zap.Error(err))
-				continue
-			}
-
-			if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED || op.Status == v1.OperationStatus_STATUS_USER_CANCELLED || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
-				o.deleteOperationHelper(tx, op.Id)
-				continue
-			} else if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
-				onIncomplete(op)
-			}
-
-			if err := o.addOperationHelper(tx, op); err != nil {
-				zap.L().Error("error re-adding operation, there may be corruption in the oplog", zap.Error(err))
-			}
-		}
-		if lastValidated, _ := c.Last(); lastValidated != nil {
-			zap.L().Debug("checkpointing last_validated key")
-			if err := sysBucket.Put([]byte("last_validated"), lastValidated); err != nil {
-				return fmt.Errorf("checkpointing last_validated key: %w", err)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("scanning log: %v", err)
-	}
-	zap.L().Debug("scan complete", zap.Duration("duration", time.Since(t)))
-	return nil
-}
-
 func (o *OpLog) Close() error {
 	return o.db.Close()
 }
 
-// Add adds a generic operation to the operation log.
-func (o *OpLog) Add(op *v1.Operation) error {
-	if op.Id != 0 {
-		return errors.New("operation already has an ID, OpLog.Add is expected to set the ID")
-	}
-
-	err := o.db.Update(func(tx *bolt.Tx) error {
-		err := o.addOperationHelper(tx, op)
-		if err != nil {
-			return err
+func (o *OpLog) Version() (int64, error) {
+	var version int64
+	err := o.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(SystemBucket)
+		if b == nil {
+			return nil
 		}
-		return nil
+		var err error
+		version, err = serializationutil.Btoi(b.Get([]byte("version")))
+		return err
 	})
-	if err == nil {
-		o.notifyHelper(nil, op)
-	}
-	return err
+	return version, err
 }
 
-func (o *OpLog) BulkAdd(ops []*v1.Operation) error {
-	err := o.db.Update(func(tx *bolt.Tx) error {
-		for _, op := range ops {
-			if op.Id != 0 {
-				return errors.New("operation already has an ID, OpLog.BulkAdd is expected to set the ID")
-			}
-			if err := o.addOperationHelper(tx, op); err != nil {
+func (o *OpLog) SetVersion(version int64) error {
+	return o.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(SystemBucket)
+		if err != nil {
+			return fmt.Errorf("creating system bucket: %w", err)
+		}
+		return b.Put([]byte("version"), serializationutil.Itob(version))
+	})
+}
+
+// Add adds a generic operation to the operation log.
+func (o *OpLog) Add(op ...*v1.Operation) error {
+	for _, op := range op {
+		if op.Id != 0 {
+			return errors.New("operation already has an ID, OpLog.Add is expected to set the ID")
+		}
+	}
+
+	return o.db.Update(func(tx *bolt.Tx) error {
+		for _, op := range op {
+			err := o.addOperationHelper(tx, op)
+			if err != nil {
 				return err
 			}
 		}
 		return nil
 	})
-	if err == nil {
-		for _, op := range ops {
-			o.notifyHelper(nil, op)
-		}
-	}
-	return err
 }
 
-func (o *OpLog) Update(op *v1.Operation) error {
-	if op.Id == 0 {
-		return errors.New("operation does not have an ID, OpLog.Update expects operation with an ID")
-	}
-	var oldOp *v1.Operation
-	err := o.db.Update(func(tx *bolt.Tx) error {
-		var err error
-		oldOp, err = o.deleteOperationHelper(tx, op.Id)
-		if err != nil {
-			return fmt.Errorf("deleting existing value prior to update: %w", err)
+func (o *OpLog) Update(op ...*v1.Operation) error {
+	for _, op := range op {
+		if op.Id == 0 {
+			return errors.New("operation does not have an ID, OpLog.Update expects operation with an ID")
 		}
-		if err := o.addOperationHelper(tx, op); err != nil {
-			return fmt.Errorf("adding updated value: %w", err)
+	}
+	return o.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		for _, op := range op {
+			_, err = o.deleteOperationHelper(tx, op.Id)
+			if err != nil {
+				return fmt.Errorf("deleting existing value prior to update: %w", err)
+			}
+			if err := o.addOperationHelper(tx, op); err != nil {
+				return fmt.Errorf("adding updated value: %w", err)
+			}
 		}
 		return nil
 	})
-	if err == nil {
-		o.notifyHelper(oldOp, op)
-	}
-	return err
 }
 
-func (o *OpLog) Delete(ids ...int64) error {
+func (o *OpLog) Delete(ids ...int64) ([]*v1.Operation, error) {
 	removedOps := make([]*v1.Operation, 0, len(ids))
 	err := o.db.Update(func(tx *bolt.Tx) error {
 		for _, id := range ids {
@@ -208,22 +158,7 @@ func (o *OpLog) Delete(ids ...int64) error {
 		}
 		return nil
 	})
-	if err == nil {
-		for _, op := range removedOps {
-			o.notifyHelper(op, nil)
-		}
-	}
-	return err
-}
-
-func (o *OpLog) notifyHelper(old *v1.Operation, new *v1.Operation) {
-	o.subscribersMu.RLock()
-	subscribers := slices.Clone(o.subscribers)
-	o.subscribersMu.RUnlock()
-
-	for _, sub := range subscribers {
-		go (*sub)(old, new)
-	}
+	return removedOps, err
 }
 
 func (o *OpLog) getOperationHelper(b *bolt.Bucket, id int64) (*v1.Operation, error) {
@@ -281,21 +216,25 @@ func (o *OpLog) addOperationHelper(tx *bolt.Tx, op *v1.Operation) error {
 			return fmt.Errorf("error adding operation to repo index: %w", err)
 		}
 	}
+
 	if op.PlanId != "" {
 		if err := indexutil.IndexByteValue(tx.Bucket(PlanIndexBucket), []byte(op.PlanId), op.Id); err != nil {
 			return fmt.Errorf("error adding operation to repo index: %w", err)
 		}
 	}
+
 	if op.SnapshotId != "" {
 		if err := indexutil.IndexByteValue(tx.Bucket(SnapshotIndexBucket), []byte(op.SnapshotId), op.Id); err != nil {
 			return fmt.Errorf("error adding operation to snapshot index: %w", err)
 		}
 	}
+
 	if op.FlowId != 0 {
 		if err := indexutil.IndexByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(op.FlowId), op.Id); err != nil {
 			return fmt.Errorf("error adding operation to flow index: %w", err)
 		}
 	}
+
 	if op.InstanceId != "" {
 		if err := indexutil.IndexByteValue(tx.Bucket(InstanceIndexBucket), []byte(op.InstanceId), op.Id); err != nil {
 			return fmt.Errorf("error adding operation to instance index: %w", err)
@@ -372,34 +311,55 @@ type Query struct {
 	Ids        []int64
 }
 
-func (o *OpLog) ForEach(query Query, collector indexutil.Collector, do func(op *v1.Operation) error) error {
+func (o *OpLog) Query(query oplog.Query, do func(op *v1.Operation) error) error {
 	return o.db.View(func(tx *bolt.Tx) error {
 		iterators := make([]indexutil.IndexIterator, 0, 5)
-		if query.RepoId != "" {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(RepoIndexBucket), []byte(query.RepoId)))
+		if query.RepoID != "" {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(RepoIndexBucket), []byte(query.RepoID)))
 		}
-		if query.PlanId != "" {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(PlanIndexBucket), []byte(query.PlanId)))
+		if query.PlanID != "" {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(PlanIndexBucket), []byte(query.PlanID)))
 		}
-		if query.SnapshotId != "" {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(SnapshotIndexBucket), []byte(query.SnapshotId)))
+		if query.SnapshotID != "" {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(SnapshotIndexBucket), []byte(query.SnapshotID)))
 		}
-		if query.FlowId != 0 {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(query.FlowId)))
+		if query.FlowID != 0 {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(query.FlowID)))
 		}
-		if query.InstanceId != "" {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(InstanceIndexBucket), []byte(query.InstanceId)))
+		if query.InstanceID != "" {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(InstanceIndexBucket), []byte(query.InstanceID)))
 		}
 
 		var ids []int64
-		if len(iterators) == 0 && len(query.Ids) == 0 {
-			return errors.New("no query parameters provided")
+		if len(iterators) == 0 && len(query.OpIDs) == 0 {
+			if query.Limit == 0 && query.Offset == 0 && !query.Reversed {
+				return o.forAll(tx, do)
+			} else {
+				b := tx.Bucket(OpLogBucket)
+				c := b.Cursor()
+				for k, _ := c.First(); k != nil; k, v = c.Next() {
+					if id, err := serializationutil.Btoi(k); err != nil {
+						continue // skip corrupt keys
+					} else {
+						ids = append(ids, id)
+					}
+				}
+			}
 		} else if len(iterators) > 0 {
-			ids = collector(indexutil.NewJoinIterator(iterators...))
+			ids = indexutil.CollectAll()(indexutil.NewJoinIterator(iterators...))
 		}
-		if len(query.Ids) > 0 {
-			ids = append(ids, query.Ids...)
+		ids = append(ids, query.OpIDs...)
+
+		if query.Reversed {
+			slices.Reverse(ids)
 		}
+		if query.Offset > 0 {
+			ids = ids[query.Offset:]
+		}
+		if query.Limit > 0 {
+			ids = ids[:query.Limit]
+		}
+
 		return o.forOpsByIds(tx, ids, do)
 	})
 }
@@ -421,39 +381,20 @@ func (o *OpLog) forOpsByIds(tx *bolt.Tx, ids []int64, do func(*v1.Operation) err
 	return nil
 }
 
-func (o *OpLog) ForAll(do func(op *v1.Operation) error) error {
-	if err := o.db.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(OpLogBucket).Cursor()
-		for k, v := c.First(); k != nil; k, v = c.Next() {
-			op := &v1.Operation{}
-			if err := proto.Unmarshal(v, op); err != nil {
-				return fmt.Errorf("error unmarshalling operation: %w", err)
-			}
-			if err := do(op); err != nil {
-				return err
-			}
+func (o *OpLog) forAll(tx *bolt.Tx, do func(*v1.Operation) error) error {
+	b := tx.Bucket(OpLogBucket)
+	c := b.Cursor()
+	for k, v := c.First(); k != nil; k, v = c.Next() {
+		var op v1.Operation
+		if err := proto.Unmarshal(v, &op); err != nil {
+			return fmt.Errorf("error unmarshalling operation: %w", err)
 		}
-		return nil
-	}); err != nil {
-		return nil
+		if err := do(&op); err != nil {
+			if err == ErrStopIteration {
+				break
+			}
+			return err
+		}
 	}
 	return nil
-}
-
-func (o *OpLog) Subscribe(callback *func(*v1.Operation, *v1.Operation)) {
-	o.subscribersMu.Lock()
-	defer o.subscribersMu.Unlock()
-	o.subscribers = append(o.subscribers, callback)
-}
-
-func (o *OpLog) Unsubscribe(callback *func(*v1.Operation, *v1.Operation)) {
-	o.subscribersMu.Lock()
-	defer o.subscribersMu.Unlock()
-	subs := o.subscribers
-	for i, c := range subs {
-		if c == callback {
-			subs[i] = subs[len(subs)-1]
-			o.subscribers = subs[:len(o.subscribers)-1]
-		}
-	}
 }

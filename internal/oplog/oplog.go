@@ -2,6 +2,8 @@ package oplog
 
 import (
 	"errors"
+	"slices"
+	"sync"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
@@ -23,13 +25,20 @@ type Subscription func(ops []*v1.Operation, event OperationEvent)
 type OpLog struct {
 	store OpStore
 
-	subscribers []*Subscription
+	subscribersMu sync.Mutex
+	subscribers   []*Subscription
 }
 
 func NewOpLog(store OpStore) *OpLog {
 	return &OpLog{
 		store: store,
 	}
+}
+
+func (o *OpLog) curSubscribers() []*Subscription {
+	o.subscribersMu.Lock()
+	defer o.subscribersMu.Unlock()
+	return slices.Clone(o.subscribers)
 }
 
 func (o *OpLog) Query(q Query, f func(*v1.Operation) error) error {
@@ -59,7 +68,7 @@ func (o *OpLog) Add(op ...*v1.Operation) error {
 		return err
 	}
 
-	for _, sub := range o.subscribers {
+	for _, sub := range o.curSubscribers() {
 		(*sub)(op, OPERATION_ADDED)
 	}
 	return nil
@@ -70,7 +79,7 @@ func (o *OpLog) Update(op ...*v1.Operation) error {
 		return err
 	}
 
-	for _, sub := range o.subscribers {
+	for _, sub := range o.curSubscribers() {
 		(*sub)(op, OPERATION_UPDATED)
 	}
 	return nil
@@ -82,11 +91,15 @@ func (o *OpLog) Delete(opID ...int64) error {
 		return err
 	}
 
-	for _, sub := range o.subscribers {
+	for _, sub := range o.curSubscribers() {
 		(*sub)(removedOps, OPERATION_DELETED)
 	}
 
 	return nil
+}
+
+func (o *OpLog) Transform(q Query, f func(*v1.Operation) (*v1.Operation, error)) error {
+	return o.store.Transform(q, f)
 }
 
 type OpStore interface {
@@ -95,6 +108,9 @@ type OpStore interface {
 	Add(op ...*v1.Operation) error
 	Update(op ...*v1.Operation) error              // returns the previous values of the updated operations OR an error
 	Delete(opID ...int64) ([]*v1.Operation, error) // returns the deleted operations OR an error
+	Transform(q Query, f func(*v1.Operation) (*v1.Operation, error)) error
+	Version() int
+	SetVersion(version int) error
 }
 
 type Query struct {
@@ -104,6 +120,7 @@ type Query struct {
 	RepoID     string
 	SnapshotID string
 	FlowID     int64
+	InstanceID string
 
 	// Pagination
 	Limit    int

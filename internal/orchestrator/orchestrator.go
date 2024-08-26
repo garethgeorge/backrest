@@ -77,18 +77,36 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStor
 	if log != nil { // oplog may be nil for testing.
 		incompleteRepos := []string{}
 		incompleteOps := []*v1.Operation{}
-		// TODO: it would be better to only scan since the last time the orchestrator was running (or similar).
+		toDelete := []int64{}
+
+		startTime := time.Now()
+		zap.S().Info("scrubbing operation log for incomplete operations")
+
 		if err := log.Query(oplog.SelectAll, func(op *v1.Operation) error {
-			if op.Status != v1.OperationStatus_STATUS_PENDING && op.Status == v1.OperationStatus_STATUS_UNKNOWN {
-				return nil
-			}
-			incompleteOps = append(incompleteOps, op)
-			if !slices.Contains(incompleteRepos, op.RepoId) {
-				incompleteRepos = append(incompleteRepos, op.RepoId)
+			if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED || op.Status == v1.OperationStatus_STATUS_USER_CANCELLED || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
+				toDelete = append(toDelete, op.Id)
+			} else if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
+				incompleteOps = append(incompleteOps, op)
+				if !slices.Contains(incompleteRepos, op.RepoId) {
+					incompleteRepos = append(incompleteRepos, op.RepoId)
+				}
 			}
 			return nil
 		}); err != nil {
 			return nil, fmt.Errorf("scan oplog: %w", err)
+		}
+
+		for _, op := range incompleteOps {
+			op.Status = v1.OperationStatus_STATUS_ERROR
+			op.DisplayMessage = "Operation was incomplete when orchestrator was restarted."
+			op.UnixTimeEndMs = op.UnixTimeStartMs
+			if err := log.Update(op); err != nil {
+				return nil, fmt.Errorf("update incomplete operation: %w", err)
+			}
+		}
+
+		if err := log.Delete(toDelete...); err != nil {
+			return nil, fmt.Errorf("delete incomplete operations: %w", err)
 		}
 
 		for _, repoId := range incompleteRepos {
@@ -104,6 +122,12 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStor
 				zap.L().Error("failed to unlock repo", zap.String("repo", repoId), zap.Error(err))
 			}
 		}
+
+		zap.S().Info("scrubbed operation log for incomplete operations",
+			zap.Duration("duration", time.Since(startTime)),
+			zap.Int("incomplete_ops", len(incompleteOps)),
+			zap.Int("incomplete_repos", len(incompleteRepos)),
+			zap.Int("deleted_ops", len(toDelete)))
 	}
 
 	// apply starting configuration which also queues initial tasks.
