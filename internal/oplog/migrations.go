@@ -18,7 +18,11 @@ var migrations = []func(*OpLog) error{
 var CurrentVersion = int64(len(migrations))
 
 func ApplyMigrations(oplog *OpLog) error {
-	startMigration := oplog.store.Version()
+	startMigration, err := oplog.store.Version()
+	if err != nil {
+		zap.L().Error("failed to get migration version", zap.Error(err))
+		return fmt.Errorf("couldn't get migration version: %w", err)
+	}
 	if startMigration < 0 {
 		startMigration = 0
 	}

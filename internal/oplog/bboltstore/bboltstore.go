@@ -26,9 +26,6 @@ const (
 	EventTypeOpUpdated = EventType(iota)
 )
 
-var ErrNotExist = errors.New("operation does not exist")
-var ErrStopIteration = errors.New("stop iteration")
-
 var (
 	SystemBucket        = []byte("oplog.system")       // system stores metadata
 	OpLogBucket         = []byte("oplog.log")          // oplog stores existant operations.
@@ -57,7 +54,7 @@ func NewBboltStore(databasePath string) (*BboltStore, error) {
 		return nil, fmt.Errorf("error opening database: %s", err)
 	}
 
-	o := &OpLog{
+	o := &BboltStore{
 		db: db,
 	}
 
@@ -108,15 +105,15 @@ func (o *BboltStore) SetVersion(version int64) error {
 }
 
 // Add adds a generic operation to the operation log.
-func (o *BboltStore) Add(op ...*v1.Operation) error {
-	for _, op := range op {
+func (o *BboltStore) Add(ops ...*v1.Operation) error {
+	for _, op := range ops {
 		if op.Id != 0 {
 			return errors.New("operation already has an ID, OpLog.Add is expected to set the ID")
 		}
 	}
 
 	return o.db.Update(func(tx *bolt.Tx) error {
-		for _, op := range op {
+		for _, op := range ops {
 			err := o.addOperationHelper(tx, op)
 			if err != nil {
 				return err
@@ -126,15 +123,15 @@ func (o *BboltStore) Add(op ...*v1.Operation) error {
 	})
 }
 
-func (o *BboltStore) Update(op ...*v1.Operation) error {
-	for _, op := range op {
+func (o *BboltStore) Update(ops ...*v1.Operation) error {
+	for _, op := range ops {
 		if op.Id == 0 {
 			return errors.New("operation does not have an ID, OpLog.Update expects operation with an ID")
 		}
 	}
 	return o.db.Update(func(tx *bolt.Tx) error {
 		var err error
-		for _, op := range op {
+		for _, op := range ops {
 			_, err = o.deleteOperationHelper(tx, op.Id)
 			if err != nil {
 				return fmt.Errorf("deleting existing value prior to update: %w", err)
@@ -165,7 +162,7 @@ func (o *BboltStore) Delete(ids ...int64) ([]*v1.Operation, error) {
 func (o *BboltStore) getOperationHelper(b *bolt.Bucket, id int64) (*v1.Operation, error) {
 	bytes := b.Get(serializationutil.Itob(id))
 	if bytes == nil {
-		return nil, fmt.Errorf("opid %v: %w", id, ErrNotExist)
+		return nil, fmt.Errorf("opid %v: %w", id, oplog.ErrNotExist)
 	}
 
 	var op v1.Operation
@@ -360,7 +357,7 @@ func (o *BboltStore) queryHelper(query oplog.Query, do func(tx *bbolt.Tx, op *v1
 		var ids []int64
 		if len(iterators) == 0 && len(query.OpIDs) == 0 {
 			if query.Limit == 0 && query.Offset == 0 && !query.Reversed {
-				return o.forAll(tx, do)
+				return o.forAll(tx, func(op *v1.Operation) error { return do(tx, op) })
 			} else {
 				b := tx.Bucket(OpLogBucket)
 				c := b.Cursor()
@@ -381,13 +378,18 @@ func (o *BboltStore) queryHelper(query oplog.Query, do func(tx *bbolt.Tx, op *v1
 			slices.Reverse(ids)
 		}
 		if query.Offset > 0 {
+			if len(ids) <= query.Offset {
+				return nil
+			}
 			ids = ids[query.Offset:]
 		}
-		if query.Limit > 0 {
+		if query.Limit > 0 && len(ids) > query.Limit {
 			ids = ids[:query.Limit]
 		}
 
-		return o.forOpsByIds(tx, ids, do)
+		return o.forOpsByIds(tx, ids, func(op *v1.Operation) error {
+			return do(tx, op)
+		})
 	}
 	if isReadOnly {
 		return o.db.View(helper)
@@ -404,7 +406,7 @@ func (o *BboltStore) forOpsByIds(tx *bolt.Tx, ids []int64, do func(*v1.Operation
 			return err
 		}
 		if err := do(op); err != nil {
-			if err == ErrStopIteration {
+			if err == oplog.ErrStopIteration {
 				break
 			}
 			return err
@@ -422,7 +424,7 @@ func (o *BboltStore) forAll(tx *bolt.Tx, do func(*v1.Operation) error) error {
 			return fmt.Errorf("error unmarshalling operation: %w", err)
 		}
 		if err := do(&op); err != nil {
-			if err == ErrStopIteration {
+			if err == oplog.ErrStopIteration {
 				break
 			}
 			return err

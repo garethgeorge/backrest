@@ -85,7 +85,6 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 	foundIds := make(map[string]struct{})
 
 	// Index newly found operations
-	startTime := time.Now()
 	var indexOps []*v1.Operation
 	for _, snapshot := range snapshots {
 		if _, ok := currentIds[snapshot.Id]; ok {
@@ -150,7 +149,7 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 	}
 
 	l.Sugar().Debugf("marked %v snapshots as forgotten", len(currentIds)-len(foundIds))
-	l.Sugar().Infof("done indexing %v for repo %v, took %v", len(foundIds), t.RepoID(), time.Since(startTime))
+	l.Sugar().Debugf("done indexing %v for repo %v, took %v", len(foundIds), t.RepoID())
 
 	return err
 }

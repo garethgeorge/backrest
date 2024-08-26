@@ -248,9 +248,9 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 		}
 	}
 
-	s.oplog.Subscribe(oplog.SelectAll, callback)
+	s.oplog.Subscribe(oplog.SelectAll, &callback)
 	defer func() {
-		if err := s.oplog.Unsubscribe(callback); err != nil {
+		if err := s.oplog.Unsubscribe(&callback); err != nil {
 			zap.L().Error("failed to unsubscribe from oplog", zap.Error(err))
 		}
 	}()

@@ -18,9 +18,10 @@ const (
 
 var (
 	ErrStopIteration = errors.New("stop iteration")
+	ErrNotExist      = errors.New("operation does not exist")
 )
 
-type Subscription func(ops []*v1.Operation, event OperationEvent)
+type Subscription = func(ops []*v1.Operation, event OperationEvent)
 
 type OpLog struct {
 	store OpStore
@@ -45,13 +46,13 @@ func (o *OpLog) Query(q Query, f func(*v1.Operation) error) error {
 	return o.store.Query(q, f)
 }
 
-func (o *OpLog) Subscribe(q Query, f Subscription) {
-	o.subscribers = append(o.subscribers, &f)
+func (o *OpLog) Subscribe(q Query, f *Subscription) {
+	o.subscribers = append(o.subscribers, f)
 }
 
-func (o *OpLog) Unsubscribe(f Subscription) error {
+func (o *OpLog) Unsubscribe(f *Subscription) error {
 	for i, sub := range o.subscribers {
-		if sub == &f {
+		if sub == f {
 			o.subscribers = append(o.subscribers[:i], o.subscribers[i+1:]...)
 			return nil
 		}
@@ -109,7 +110,7 @@ type OpStore interface {
 	Update(op ...*v1.Operation) error              // returns the previous values of the updated operations OR an error
 	Delete(opID ...int64) ([]*v1.Operation, error) // returns the deleted operations OR an error
 	Transform(q Query, f func(*v1.Operation) (*v1.Operation, error)) error
-	Version() int64
+	Version() (int64, error)
 	SetVersion(version int64) error
 }
 
