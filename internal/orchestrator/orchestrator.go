@@ -13,7 +13,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/logging"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
@@ -29,13 +28,12 @@ var ErrPlanNotFound = errors.New("plan not found")
 
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
-	mu              sync.Mutex
-	config          *v1.Config
-	OpLog           *oplog.OpLog
-	repoPool        *resticRepoPool
-	taskQueue       *queue.TimePriorityQueue[stContainer]
-	readyTaskQueues map[string]chan tasks.Task
-	logStore        *rotatinglog.RotatingLog
+	mu        sync.Mutex
+	config    *v1.Config
+	OpLog     *oplog.OpLog
+	repoPool  *resticRepoPool
+	taskQueue *queue.TimePriorityQueue[stContainer]
+	logStore  *rotatinglog.RotatingLog
 
 	// cancelNotify is a list of channels that are notified when a task should be cancelled.
 	cancelNotify []chan int64
@@ -332,7 +330,7 @@ func (o *Orchestrator) Run(ctx context.Context) {
 		if t.Op != nil {
 			// Delete any previous hook executions for this operation incase this is a retry.
 			prevHookExecutionIDs := []int64{}
-			if err := o.OpLog.ForEach(oplog.Query{FlowId: t.Op.FlowId}, indexutil.CollectAll(), func(op *v1.Operation) error {
+			if err := o.OpLog.Query(oplog.Query{FlowID: t.Op.FlowId}, func(op *v1.Operation) error {
 				if hookOp, ok := op.Op.(*v1.Operation_OperationRunHook); ok && hookOp.OperationRunHook.GetParentOp() == t.Op.Id {
 					prevHookExecutionIDs = append(prevHookExecutionIDs, op.Id)
 				}
@@ -347,14 +345,13 @@ func (o *Orchestrator) Run(ctx context.Context) {
 		}
 
 		err := o.RunTask(taskCtx, t.ScheduledTask)
-		cancelTaskCtx()
 
 		o.mu.Lock()
 		curCfgModno := o.config.Modno
 		o.mu.Unlock()
 		if t.configModno == curCfgModno {
 			// Only reschedule tasks if the config hasn't changed since the task was scheduled.
-			var retryErr tasks.TaskRetryError
+			var retryErr *tasks.TaskRetryError
 			if errors.As(err, &retryErr) {
 				// If the task returned a retry error, schedule for a retry reusing the same task and operation data.
 				t.retryCount += 1
@@ -379,6 +376,7 @@ func (o *Orchestrator) Run(ctx context.Context) {
 				zap.L().Error("reschedule task", zap.String("task", t.Task.Name()), zap.Error(e))
 			}
 		}
+		cancelTaskCtx()
 
 		for _, cb := range t.callbacks {
 			go cb(err)
@@ -430,12 +428,14 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 			}
 		}
 		if err != nil {
-			var taskCancelledError tasks.TaskCancelledError
-			var taskRetryError tasks.TaskRetryError
+			var taskCancelledError *tasks.TaskCancelledError
+			var taskRetryError *tasks.TaskRetryError
 			if errors.As(err, &taskCancelledError) {
 				op.Status = v1.OperationStatus_STATUS_USER_CANCELLED
 			} else if errors.As(err, &taskRetryError) {
 				op.Status = v1.OperationStatus_STATUS_PENDING
+			} else {
+				op.Status = v1.OperationStatus_STATUS_ERROR
 			}
 
 			// prepend the error to the display

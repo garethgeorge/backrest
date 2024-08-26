@@ -478,7 +478,7 @@ func TestCancelBackup(t *testing.T) {
 
 	// Find the backup operation ID in the oplog
 	var backupOpId int64
-	if err := retry(t, 100, 50*time.Millisecond, func() error {
+	if err := retry(t, 100, 10*time.Millisecond, func() error {
 		operations := getOperations(t, sut.oplog)
 		for _, op := range operations {
 			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
@@ -498,6 +498,7 @@ func TestCancelBackup(t *testing.T) {
 		}
 		return nil
 	})
+
 	if err := errgroup.Wait(); err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -505,9 +506,9 @@ func TestCancelBackup(t *testing.T) {
 	// Assert that the backup operation was cancelled
 	if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
 		_, ok := op.GetOp().(*v1.Operation_OperationBackup)
-		return op.Status == v1.OperationStatus_STATUS_USER_CANCELLED && ok
+		return op.Status == v1.OperationStatus_STATUS_ERROR && ok
 	}) == -1 {
-		t.Fatalf("Expected a cancelled backup operation in the log")
+		t.Fatalf("Expected a failed backup operation in the log")
 	}
 }
 

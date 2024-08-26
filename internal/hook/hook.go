@@ -135,7 +135,11 @@ func applyHookErrorPolicy(onError v1.Hook_OnError, err error) error {
 		}}
 	case v1.Hook_ON_ERROR_RETRY_EXPONENTIAL_BACKOFF:
 		return &HookErrorRetry{Err: err, Backoff: func(attempt int) time.Duration {
-			return time.Duration(math.Pow(2, float64(attempt-1))) * 10 * time.Second
+			d := time.Duration(math.Pow(2, float64(attempt-1))) * 10 * time.Second
+			if d > 1*time.Hour {
+				return 1 * time.Hour
+			}
+			return d
 		}}
 	case v1.Hook_ON_ERROR_IGNORE:
 		return err

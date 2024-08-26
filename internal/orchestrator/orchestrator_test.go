@@ -166,7 +166,7 @@ func TestTaskRetry(t *testing.T) {
 			if ranTimes == 10 {
 				cancel()
 			}
-			return tasks.TaskRetryError{
+			return &tasks.TaskRetryError{
 				Err:     errors.New("retry please"),
 				Backoff: func(attempt int) time.Duration { return 0 },
 			}
