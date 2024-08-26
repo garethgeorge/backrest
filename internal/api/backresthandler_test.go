@@ -19,6 +19,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
@@ -653,13 +654,12 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 	if err != nil {
 		t.Fatalf("Failed to find or install restic binary: %v", err)
 	}
-	oplog, err := oplog.NewOpLog(dir + "/oplog.boltdb")
+	opstore, err := bboltstore.NewBboltStore(dir + "/oplog.boltdb")
 	if err != nil {
-		t.Fatalf("Failed to create oplog: %v", err)
+		t.Fatalf("Failed to create oplog store: %v", err)
 	}
-	t.Cleanup(func() {
-		oplog.Close()
-	})
+	t.Cleanup(func() { opstore.Close() })
+	oplog := oplog.NewOpLog(opstore)
 	logStore := rotatinglog.NewRotatingLog(dir+"/log", 10)
 	orch, err := orchestrator.NewOrchestrator(
 		resticBin, cfg, oplog, logStore,
@@ -703,10 +703,10 @@ func retry(t *testing.T, times int, backoff time.Duration, f func() error) error
 	return err
 }
 
-func getOperations(t *testing.T, oplog *oplog.OpLog) []*v1.Operation {
+func getOperations(t *testing.T, log *oplog.OpLog) []*v1.Operation {
 	t.Logf("Reading oplog at time %v", time.Now())
 	operations := []*v1.Operation{}
-	if err := oplog.ForAll(func(op *v1.Operation) error {
+	if err := log.Query(oplog.SelectAll, func(op *v1.Operation) error {
 		operations = append(operations, op)
 		t.Logf("operation %t status %s", op.GetOp(), op.Status)
 		return nil

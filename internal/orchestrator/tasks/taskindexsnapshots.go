@@ -9,7 +9,6 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
@@ -86,7 +85,6 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 	foundIds := make(map[string]struct{})
 
 	// Index newly found operations
-	startTime := time.Now()
 	var indexOps []*v1.Operation
 	for _, snapshot := range snapshots {
 		if _, ok := currentIds[snapshot.Id]; ok {
@@ -118,7 +116,10 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 		})
 	}
 
-	if err := taskRunner.OpLog().BulkAdd(indexOps); err != nil {
+	l.Sugar().Debugf("adding %v new snapshots to the oplog", len(indexOps))
+	l.Sugar().Debugf("found %v snapshots already indexed", len(foundIds))
+
+	if err := taskRunner.OpLog().Add(indexOps...); err != nil {
 		return fmt.Errorf("BulkAdd snapshot operations: %w", err)
 	}
 
@@ -147,14 +148,8 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 		}
 	}
 
-	// Print stats at the end of indexing.
-	l.Debug("indexed snapshots",
-		zap.String("repo", t.RepoID()),
-		zap.Duration("duration", time.Since(startTime)),
-		zap.Int("alreadyIndexed", len(foundIds)),
-		zap.Int("newlyAdded", len(indexOps)),
-		zap.Int("markedForgotten", len(currentIds)-len(foundIds)),
-	)
+	l.Sugar().Debugf("marked %v snapshots as forgotten", len(currentIds)-len(foundIds))
+	l.Sugar().Debugf("done indexing %v for repo %v, took %v", len(foundIds), t.RepoID())
 
 	return err
 }
@@ -164,11 +159,8 @@ func indexCurrentSnapshotIdsForRepo(log *oplog.OpLog, repoId string) (map[string
 	knownIds := make(map[string]int64)
 
 	startTime := time.Now()
-	if err := log.ForEach(oplog.Query{RepoId: repoId}, indexutil.CollectAll(), func(op *v1.Operation) error {
+	if err := log.Query(oplog.Query{RepoID: repoId}, func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
-			if snapshotOp.OperationIndexSnapshot == nil {
-				return fmt.Errorf("operation %q has nil OperationIndexSnapshot, this shouldn't be possible", op.Id)
-			}
 			if !snapshotOp.OperationIndexSnapshot.Forgot {
 				knownIds[snapshotOp.OperationIndexSnapshot.Snapshot.Id] = op.Id
 			}
@@ -177,7 +169,7 @@ func indexCurrentSnapshotIdsForRepo(log *oplog.OpLog, repoId string) (map[string
 	}); err != nil {
 		return nil, err
 	}
-	zap.S().Debugf("indexed known snapshot IDs for repo %v in %v", repoId, time.Since(startTime))
+	zap.S().Debugf("found %v known snapshot IDs for repo %v in %v", len(knownIds), repoId, time.Since(startTime))
 	return knownIds, nil
 }
 

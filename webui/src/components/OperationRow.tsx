@@ -17,25 +17,10 @@ import {
 } from "antd";
 import type { ItemType } from "rc-collapse/es/interface";
 import {
-  PaperClipOutlined,
-  SaveOutlined,
-  DeleteOutlined,
-  DownloadOutlined,
-  RobotOutlined,
-  InfoCircleOutlined,
-  FileSearchOutlined,
-} from "@ant-design/icons";
-import {
   BackupProgressEntry,
   ResticSnapshot,
   SnapshotSummary,
 } from "../../gen/ts/v1/restic_pb";
-import {
-  DisplayType,
-  detailsForOperation,
-  displayTypeToString,
-  getTypeForDisplay,
-} from "../state/oplog";
 import { SnapshotBrowser } from "./SnapshotBrowser";
 import {
   formatBytes,
@@ -48,10 +33,14 @@ import { LogDataRequest } from "../../gen/ts/v1/service_pb";
 import { MessageInstance } from "antd/es/message/interface";
 import { backrestService } from "../api";
 import { useShowModal } from "./ModalManager";
-import { proto3 } from "@bufbuild/protobuf";
-import { Hook_Condition } from "../../gen/ts/v1/config_pb";
 import { useAlertApi } from "./Alerts";
 import { OperationList } from "./OperationList";
+import {
+  displayTypeToString,
+  getTypeForDisplay,
+  nameForStatus,
+} from "../state/flowdisplayaggregator";
+import { OperationIcon } from "./OperationIcon";
 
 export const OperationRow = ({
   operation,
@@ -65,7 +54,6 @@ export const OperationRow = ({
   hookOperations?: Operation[];
 }>) => {
   const showModal = useShowModal();
-  const details = detailsForOperation(operation);
   const displayType = getTypeForDisplay(operation);
   const setRefresh = useState(0)[1];
 
@@ -77,43 +65,6 @@ export const OperationRow = ({
       return () => clearInterval(interval);
     }
   }, [operation.status]);
-
-  let avatar: React.ReactNode;
-  switch (displayType) {
-    case DisplayType.BACKUP:
-      avatar = (
-        <SaveOutlined
-          style={{ color: details.color }}
-          spin={operation.status === OperationStatus.STATUS_INPROGRESS}
-        />
-      );
-      break;
-    case DisplayType.FORGET:
-      avatar = (
-        <DeleteOutlined
-          style={{ color: details.color }}
-          spin={operation.status === OperationStatus.STATUS_INPROGRESS}
-        />
-      );
-      break;
-    case DisplayType.SNAPSHOT:
-      avatar = <PaperClipOutlined style={{ color: details.color }} />;
-      break;
-    case DisplayType.RESTORE:
-      avatar = <DownloadOutlined style={{ color: details.color }} />;
-      break;
-    case DisplayType.PRUNE:
-      avatar = <DeleteOutlined style={{ color: details.color }} />;
-      break;
-    case DisplayType.CHECK:
-      avatar = <FileSearchOutlined style={{ color: details.color }} />;
-    case DisplayType.RUNHOOK:
-      avatar = <RobotOutlined style={{ color: details.color }} />;
-      break;
-    case DisplayType.STATS:
-      avatar = <InfoCircleOutlined style={{ color: details.color }} />;
-      break;
-  }
 
   const doCancel = () => {
     backrestService
@@ -147,12 +98,24 @@ export const OperationRow = ({
     );
   };
 
+  let details: string = "";
+  if (operation.status !== OperationStatus.STATUS_SUCCESS) {
+    details = nameForStatus(operation.status);
+  }
+  if (operation.unixTimeEndMs - operation.unixTimeStartMs > 100) {
+    details +=
+      " in " +
+      formatDuration(
+        Number(operation.unixTimeEndMs - operation.unixTimeStartMs)
+      );
+  }
+
   const opName = displayTypeToString(getTypeForDisplay(operation));
   let title = (
     <>
       {showPlan ? operation.planId + " - " : undefined}{" "}
       {formatTime(Number(operation.unixTimeStartMs))} - {opName}{" "}
-      <span className="backrest operation-details">{details.displayState}</span>
+      <span className="backrest operation-details">{details}</span>
     </>
   );
 
@@ -279,7 +242,12 @@ export const OperationRow = ({
     bodyItems.push({
       key: "hookOperations",
       label: "Hooks Triggered",
-      children: <OperationList useOperations={hookOperations} />,
+      children: (
+        <OperationList
+          useOperations={hookOperations}
+          displayHooksInline={true}
+        />
+      ),
     });
 
     for (const op of hookOperations) {
@@ -294,13 +262,14 @@ export const OperationRow = ({
     <List.Item key={operation.id}>
       <List.Item.Meta
         title={title}
-        avatar={avatar}
+        avatar={<OperationIcon type={displayType} status={operation.status} />}
         description={
           <>
             {operation.displayMessage && (
               <div key="message">
                 <pre>
-                  {details.state ? details.state + ": " : null}
+                  {operation.status !== OperationStatus.STATUS_SUCCESS &&
+                    nameForStatus(operation.status) + ": "}
                   {displayMessage}
                 </pre>
               </div>

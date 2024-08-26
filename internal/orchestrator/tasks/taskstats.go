@@ -7,7 +7,6 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 )
 
 type StatsTask struct {
@@ -44,7 +43,7 @@ func (t *StatsTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 
 	// TODO: make the "stats" schedule configurable.
 	var lastRan time.Time
-	if err := runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
+	if err := runner.OpLog().Query(oplog.Query{RepoID: t.RepoID(), Reversed: true}, func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationStats); ok {
 			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration
@@ -55,8 +54,8 @@ func (t *StatsTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	}
 
 	// Runs every 30 days
-	if now.Sub(lastRan) < 30*24*time.Hour {
-		return ScheduledTask{}, nil
+	if time.Since(lastRan) < 30*24*time.Hour {
+		return NeverScheduledTask, nil
 	}
 	return ScheduledTask{
 		Task:  t,

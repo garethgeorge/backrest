@@ -2,9 +2,8 @@ package indexutil
 
 import (
 	"bytes"
-	"sort"
 
-	"github.com/garethgeorge/backrest/internal/oplog/serializationutil"
+	"github.com/garethgeorge/backrest/internal/oplog/bboltstore/serializationutil"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -159,47 +158,6 @@ func CollectAll() Collector {
 		ids := make([]int64, 0, 100)
 		for id, ok := iter.Next(); ok; id, ok = iter.Next() {
 			ids = append(ids, id)
-		}
-		return ids
-	}
-}
-
-func CollectFirstN(firstN int) Collector {
-	return func(iter IndexIterator) []int64 {
-		ids := make([]int64, 0, firstN)
-		for id, ok := iter.Next(); ok && len(ids) < firstN; id, ok = iter.Next() {
-			ids = append(ids, id)
-		}
-		sort.Slice(ids, func(i, j int) bool {
-			return ids[i] < ids[j]
-		})
-		return ids
-	}
-}
-
-func CollectLastN(lastN int) Collector {
-	return func(iter IndexIterator) []int64 {
-		ids := make([]int64, lastN)
-		count := 0
-		for id, ok := iter.Next(); ok; id, ok = iter.Next() {
-			ids[count%lastN] = id
-			count += 1
-		}
-		if count < lastN {
-			ids = ids[:count]
-		}
-		sort.Slice(ids, func(i, j int) bool {
-			return ids[i] < ids[j]
-		})
-		return ids
-	}
-}
-
-func Reversed(collector Collector) Collector {
-	return func(iter IndexIterator) []int64 {
-		ids := collector(iter)
-		for i, j := 0, len(ids)-1; i < j; i, j = i+1, j-1 {
-			ids[i], ids[j] = ids[j], ids[i]
 		}
 		return ids
 	}

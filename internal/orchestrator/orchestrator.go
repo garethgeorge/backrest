@@ -59,13 +59,13 @@ func (st stContainer) Less(other stContainer) bool {
 	return st.ScheduledTask.Less(other.ScheduledTask)
 }
 
-func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) (*Orchestrator, error) {
+func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStore *rotatinglog.RotatingLog) (*Orchestrator, error) {
 	cfg = proto.Clone(cfg).(*v1.Config)
 
 	// create the orchestrator.
 	var o *Orchestrator
 	o = &Orchestrator{
-		OpLog:  oplog,
+		OpLog:  log,
 		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
 		repoPool:  newResticRepoPool(resticBin, cfg),
@@ -74,20 +74,42 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 	}
 
 	// verify the operation log and mark any incomplete operations as failed.
-	if oplog != nil { // oplog may be nil for testing.
-		var incompleteOpRepos []string
-		if err := oplog.Scan(func(incomplete *v1.Operation) {
-			incomplete.Status = v1.OperationStatus_STATUS_ERROR
-			incomplete.DisplayMessage = "Failed, orchestrator killed while operation was in progress."
+	if log != nil { // oplog may be nil for testing.
+		incompleteRepos := []string{}
+		incompleteOps := []*v1.Operation{}
+		toDelete := []int64{}
 
-			if incomplete.RepoId != "" && !slices.Contains(incompleteOpRepos, incomplete.RepoId) {
-				incompleteOpRepos = append(incompleteOpRepos, incomplete.RepoId)
+		startTime := time.Now()
+		zap.S().Info("scrubbing operation log for incomplete operations")
+
+		if err := log.Query(oplog.SelectAll, func(op *v1.Operation) error {
+			if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED || op.Status == v1.OperationStatus_STATUS_USER_CANCELLED || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
+				toDelete = append(toDelete, op.Id)
+			} else if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
+				incompleteOps = append(incompleteOps, op)
+				if !slices.Contains(incompleteRepos, op.RepoId) {
+					incompleteRepos = append(incompleteRepos, op.RepoId)
+				}
 			}
+			return nil
 		}); err != nil {
 			return nil, fmt.Errorf("scan oplog: %w", err)
 		}
 
-		for _, repoId := range incompleteOpRepos {
+		for _, op := range incompleteOps {
+			op.Status = v1.OperationStatus_STATUS_ERROR
+			op.DisplayMessage = "Operation was incomplete when orchestrator was restarted."
+			op.UnixTimeEndMs = op.UnixTimeStartMs
+			if err := log.Update(op); err != nil {
+				return nil, fmt.Errorf("update incomplete operation: %w", err)
+			}
+		}
+
+		if err := log.Delete(toDelete...); err != nil {
+			return nil, fmt.Errorf("delete incomplete operations: %w", err)
+		}
+
+		for _, repoId := range incompleteRepos {
 			repo, err := o.GetRepoOrchestrator(repoId)
 			if err != nil {
 				if errors.Is(err, ErrRepoNotFound) {
@@ -100,6 +122,12 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, oplog *oplog.OpLog, logSt
 				zap.L().Error("failed to unlock repo", zap.String("repo", repoId), zap.Error(err))
 			}
 		}
+
+		zap.S().Info("scrubbed operation log for incomplete operations",
+			zap.Duration("duration", time.Since(startTime)),
+			zap.Int("incomplete_ops", len(incompleteOps)),
+			zap.Int("incomplete_repos", len(incompleteRepos)),
+			zap.Int("deleted_ops", len(toDelete)))
 	}
 
 	// apply starting configuration which also queues initial tasks.
@@ -344,11 +372,9 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 	start := time.Now()
 	err := st.Task.Run(ctx, st, runner)
 	if err != nil {
-		zap.L().Error("task failed", zap.String("task", st.Task.Name()), zap.Error(err), zap.Duration("duration", time.Since(start)))
-		fmt.Fprintf(logs, "\ntask %q returned error: %v\n", st.Task.Name(), err)
+		runner.Logger(ctx).Error("task failed", zap.Error(err), zap.Duration("duration", time.Since(start)))
 	} else {
-		zap.L().Info("task finished", zap.String("task", st.Task.Name()), zap.Duration("duration", time.Since(start)))
-		fmt.Fprintf(logs, "\ntask %q completed successfully\n", st.Task.Name())
+		runner.Logger(ctx).Info("task finished", zap.Duration("duration", time.Since(start)))
 	}
 
 	if op != nil {
@@ -456,17 +482,15 @@ func (rp *resticRepoPool) GetRepo(repoId string) (*repo.RepoOrchestrator, error)
 		return nil, ErrRepoNotFound
 	}
 
-	var repoProto *v1.Repo
-	for _, r := range rp.config.Repos {
-		if r.GetId() == repoId {
-			repoProto = r
-		}
-	}
-
 	// Check if we already have a repo for this id, if we do return it.
 	r, ok := rp.repos[repoId]
 	if ok {
 		return r, nil
+	}
+
+	repoProto := config.FindRepo(rp.config, repoId)
+	if repoProto == nil {
+		return nil, ErrRepoNotFound
 	}
 
 	// Otherwise create a new repo.

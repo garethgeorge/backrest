@@ -11,7 +11,6 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
 )
@@ -59,7 +58,8 @@ func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 
 	var lastRan time.Time
 	var foundBackup bool
-	if err := runner.OpLog().ForEach(oplog.Query{RepoId: t.RepoID()}, indexutil.Reversed(indexutil.CollectAll()), func(op *v1.Operation) error {
+
+	if err := runner.OpLog().Query(oplog.Query{RepoID: t.RepoID(), Reversed: true}, func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationCheck); ok {
 			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration
@@ -114,7 +114,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	}
 	op.Op = opCheck
 
-	ctx, cancel := context.WithCancel(ctx)
+	checkCtx, cancelCheckCtx := context.WithCancel(ctx)
 	interval := time.NewTicker(1 * time.Second)
 	defer interval.Stop()
 	buf := bytes.NewBuffer(nil)
@@ -134,18 +134,19 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 					opCheck.OperationCheck.Output = string(output)
 
 					if err := runner.OpLog().Update(op); err != nil {
-						zap.L().Error("update prune operation with status output", zap.Error(err))
+						zap.L().Error("update check operation with status output", zap.Error(err))
 					}
 				}
-			case <-ctx.Done():
+			case <-checkCtx.Done():
 				return
 			}
 		}
 	}()
 
-	if err := repo.Check(ctx, bufWriter); err != nil {
-		cancel()
-
+	err = repo.Check(checkCtx, bufWriter)
+	cancelCheckCtx()
+	wg.Wait()
+	if err != nil {
 		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 			v1.Hook_CONDITION_CHECK_ERROR,
 			v1.Hook_CONDITION_ANY_ERROR,
@@ -153,22 +154,15 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 			Error: err.Error(),
 		})
 
-		return fmt.Errorf("prune: %w", err)
+		return fmt.Errorf("check: %w", err)
 	}
-	cancel()
-	wg.Wait()
 
 	opCheck.OperationCheck.Output = string(buf.Bytes())
-
-	// Run a stats task after a successful prune
-	if err := runner.ScheduleTask(NewStatsTask(t.RepoID(), PlanForSystemTasks, false), TaskPriorityStats); err != nil {
-		zap.L().Error("schedule stats task", zap.Error(err))
-	}
 
 	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_CHECK_SUCCESS,
 	}, HookVars{}); err != nil {
-		return fmt.Errorf("execute prune success hooks: %w", err)
+		return fmt.Errorf("execute check success hooks: %w", err)
 	}
 
 	return nil
