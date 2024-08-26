@@ -17,8 +17,6 @@ import { uiBuildVersion } from "../state/buildcfg";
 import { ActivityBar } from "../components/ActivityBar";
 import { OperationEvent, OperationStatus } from "../../gen/ts/v1/operations_pb";
 import {
-  colorForStatus,
-  getStatusForSelector,
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
@@ -32,6 +30,8 @@ import { GettingStartedGuide } from "./GettingStartedGuide";
 import { useConfig } from "../components/ConfigProvider";
 import { shouldShowSettings } from "../state/configutil";
 import { OpSelector } from "../../gen/ts/v1/service_pb";
+import { colorForStatus } from "../state/flowdisplayaggregator";
+import { getStatusForSelector } from "../state/logstate";
 
 const { Header, Sider } = Layout;
 
@@ -308,13 +308,18 @@ const IconForResource = ({
     load();
     const refresh = _.debounce(load, 1000, { maxWait: 10000, trailing: true });
     const callback = (event?: OperationEvent, err?: Error) => {
-      if (!event || !event.operation) return;
-      const operation = event.operation;
-      if (
-        (planId && operation.planId === planId) ||
-        (repoId && operation.repoId === repoId)
-      ) {
-        refresh();
+      if (!event || !event.event) return;
+      switch (event.event.case) {
+        case "createdOperations":
+        case "updatedOperations":
+          const ops = event.event.value.operations;
+          if (ops.find((op) => op.planId === planId && op.repoId === repoId)) {
+            refresh();
+          }
+          break;
+        case "deletedOperations":
+          refresh();
+          break;
       }
     };
 

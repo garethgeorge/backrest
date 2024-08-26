@@ -11,20 +11,9 @@ import {
 } from "recharts";
 import { formatBytes, formatDate } from "../lib/formatting";
 import { Col, Empty, Row } from "antd";
-import {
-  Operation,
-  OperationEvent,
-  OperationStats,
-  OperationStatus,
-} from "../../gen/ts/v1/operations_pb";
+import { Operation, OperationStats } from "../../gen/ts/v1/operations_pb";
 import { useAlertApi } from "./Alerts";
-import {
-  BackupInfoCollector,
-  getOperations,
-  subscribeToOperations,
-  unsubscribeFromOperations,
-} from "../state/oplog";
-import { MAX_OPERATION_HISTORY } from "../constants";
+import { getOperations } from "../state/oplog";
 import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
 import _ from "lodash";
 
@@ -37,60 +26,22 @@ const StatsPanel = ({ repoId }: { repoId: string }) => {
       return;
     }
 
-    const refreshOperations = _.debounce(
-      () => {
-        const backupCollector = new BackupInfoCollector((op) => {
-          return (
-            op.status === OperationStatus.STATUS_SUCCESS &&
-            op.op.case === "operationStats" &&
-            !!op.op.value.stats
-          );
+    const req = new GetOperationsRequest({
+      selector: new OpSelector({
+        repoId: repoId,
+      }),
+    });
+
+    getOperations(req)
+      .then((res) => {
+        const ops = res.filter((op) => {
+          return op.op.case === "operationStats";
         });
-
-        getOperations(
-          new GetOperationsRequest({
-            selector: new OpSelector({
-              repoId: repoId,
-            }),
-            lastN: BigInt(MAX_OPERATION_HISTORY),
-          })
-        )
-          .then((ops) => {
-            backupCollector.bulkAddOperations(ops);
-
-            const operations = backupCollector
-              .getAll()
-              .flatMap((b) => b.operations);
-            operations.sort((a, b) => {
-              return Number(b.unixTimeEndMs - a.unixTimeEndMs);
-            });
-            setOperations(() => operations);
-          })
-          .catch((e) => {
-            alertApi!.error("Failed to fetch operations: " + e.message);
-          });
-      },
-      100,
-      { trailing: true }
-    );
-
-    refreshOperations();
-
-    const handler = (event?: OperationEvent, err?: Error) => {
-      if (!event || !event.operation) return;
-      if (
-        event.operation.repoId == repoId &&
-        event.operation.op?.case === "operationStats"
-      ) {
-        refreshOperations();
-      }
-    };
-
-    subscribeToOperations(handler);
-
-    return () => {
-      unsubscribeFromOperations(handler);
-    };
+        setOperations(ops);
+      })
+      .catch((e) => {
+        alertApi!.error("Failed to fetch operations: " + e.message);
+      });
   }, [repoId]);
 
   if (operations.length === 0) {

@@ -18,7 +18,6 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/indexutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
@@ -203,26 +202,43 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 	errChan := make(chan error, 1)
 	events := make(chan *v1.OperationEvent, 100)
 
-	callback := func(oldOp *v1.Operation, newOp *v1.Operation) {
+	timer := time.NewTicker(60 * time.Second)
+	defer timer.Stop()
+
+	callback := func(ops []*v1.Operation, eventType oplog.OperationEvent) {
 		var event *v1.OperationEvent
-		if oldOp == nil && newOp != nil {
+		switch eventType {
+		case oplog.OPERATION_ADDED:
 			event = &v1.OperationEvent{
-				Type:      v1.OperationEventType_EVENT_CREATED,
-				Operation: newOp,
+				Event: &v1.OperationEvent_CreatedOperations{
+					CreatedOperations: &v1.OperationList{
+						Operations: ops,
+					},
+				},
 			}
-		} else if oldOp != nil && newOp != nil {
+		case oplog.OPERATION_UPDATED:
 			event = &v1.OperationEvent{
-				Type:      v1.OperationEventType_EVENT_UPDATED,
-				Operation: newOp,
+				Event: &v1.OperationEvent_UpdatedOperations{
+					UpdatedOperations: &v1.OperationList{
+						Operations: ops,
+					},
+				},
 			}
-		} else if oldOp != nil && newOp == nil {
+		case oplog.OPERATION_DELETED:
+			ids := make([]int64, len(ops))
+			for i, o := range ops {
+				ids[i] = o.Id
+			}
+
 			event = &v1.OperationEvent{
-				Type:      v1.OperationEventType_EVENT_DELETED,
-				Operation: oldOp,
+				Event: &v1.OperationEvent_DeletedOperations{
+					DeletedOperations: &types.Int64List{
+						Values: ids,
+					},
+				},
 			}
-		} else {
+		default:
 			zap.L().Error("Unknown event type")
-			return
 		}
 
 		select {
@@ -234,11 +250,22 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 			}
 		}
 	}
-	s.oplog.Subscribe(&callback)
-	defer s.oplog.Unsubscribe(&callback)
+
+	s.oplog.Subscribe(oplog.SelectAll, &callback)
+	defer func() {
+		if err := s.oplog.Unsubscribe(&callback); err != nil {
+			zap.L().Error("failed to unsubscribe from oplog", zap.Error(err))
+		}
+	}()
 
 	for {
 		select {
+		case <-timer.C:
+			if err := resp.Send(&v1.OperationEvent{
+				Event: &v1.OperationEvent_KeepAlive{},
+			}); err != nil {
+				return err
+			}
 		case err := <-errChan:
 			return err
 		case <-ctx.Done():
@@ -252,12 +279,11 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 }
 
 func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error) {
-	idCollector := indexutil.CollectAll()
-
-	if req.Msg.LastN != 0 {
-		idCollector = indexutil.CollectLastN(int(req.Msg.LastN))
-	}
 	q, err := opSelectorToQuery(req.Msg.Selector)
+	if req.Msg.LastN != 0 {
+		q.Reversed = true
+		q.Limit = int(req.Msg.LastN)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -267,14 +293,17 @@ func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Reques
 		ops = append(ops, op)
 		return nil
 	}
-	if !reflect.DeepEqual(q, oplog.Query{}) {
-		err = s.oplog.ForEach(q, idCollector, opCollector)
-	} else {
-		err = s.oplog.ForAll(opCollector)
-	}
+	err = s.oplog.Query(q, opCollector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get operations: %w", err)
 	}
+
+	slices.SortFunc(ops, func(i, j *v1.Operation) int {
+		if i.Id < j.Id {
+			return -1
+		}
+		return 1
+	})
 
 	return connect.NewResponse(&v1.OperationList{
 		Operations: ops,
@@ -486,12 +515,7 @@ func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, err
 	}
-	if !reflect.DeepEqual(q, oplog.Query{}) {
-		err = s.oplog.ForEach(q, indexutil.CollectAll(), opCollector)
-	} else {
-		err = s.oplog.ForAll(opCollector)
-	}
-	if err != nil {
+	if err := s.oplog.Query(q, opCollector); err != nil {
 		return nil, fmt.Errorf("failed to get operations to delete: %w", err)
 	}
 
@@ -555,14 +579,14 @@ func opSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
 		return oplog.Query{}, errors.New("empty selector")
 	}
 	q := oplog.Query{
-		RepoId:     sel.RepoId,
-		PlanId:     sel.PlanId,
-		SnapshotId: sel.SnapshotId,
-		FlowId:     sel.FlowId,
+		RepoID:     sel.RepoId,
+		PlanID:     sel.PlanId,
+		SnapshotID: sel.SnapshotId,
+		FlowID:     sel.FlowId,
 	}
 	if len(sel.Ids) > 0 && !reflect.DeepEqual(q, oplog.Query{}) {
 		return oplog.Query{}, errors.New("cannot specify both query and ids")
 	}
-	q.Ids = sel.Ids
+	q.OpIDs = sel.Ids
 	return q, nil
 }
