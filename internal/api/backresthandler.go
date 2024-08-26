@@ -439,10 +439,14 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 	errChan := make(chan error, 1)
 	go func() {
 		start := time.Now()
+		zap.S().Infof("running command for webui: %v", req.Msg.Command)
 		if err := repo.RunCommand(ctx, req.Msg.Command, func(output []byte) {
 			outputs <- bytes.Clone(output)
-		}); err != nil {
+		}); err != nil && ctx.Err() == nil {
+			zap.S().Errorf("error running command for webui: %v", err)
 			errChan <- err
+		} else {
+			zap.S().Infof("command completed for webui: %v", time.Since(start))
 		}
 		outputs <- []byte("took " + time.Since(start).String())
 		cancel()

@@ -4,6 +4,7 @@ import { useShowModal } from "../components/ModalManager";
 import { backrestService } from "../api";
 import { SpinButton } from "../components/SpinButton";
 import { ConnectError } from "@connectrpc/connect";
+import { useAlertApi } from "../components/Alerts";
 
 interface Invocation {
   command: string;
@@ -13,11 +14,19 @@ interface Invocation {
 
 export const RunCommandModal = ({ repoId }: { repoId: string }) => {
   const showModal = useShowModal();
+  const alertApi = useAlertApi()!;
   const [command, setCommand] = React.useState("");
   const [running, setRunning] = React.useState(false);
   const [invocations, setInvocations] = React.useState<Invocation[]>([]);
+  const [abortController, setAbortController] = React.useState<
+    AbortController | undefined
+  >();
 
   const handleCancel = () => {
+    if (abortController) {
+      alertApi.warning("In-progress restic command was aborted");
+      abortController.abort();
+    }
     showModal(null);
   };
 
@@ -31,10 +40,18 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
     let segments: string[] = [];
 
     try {
-      for await (const bytes of backrestService.runCommand({
-        repoId,
-        command,
-      })) {
+      const abortController = new AbortController();
+      setAbortController(abortController);
+
+      for await (const bytes of backrestService.runCommand(
+        {
+          repoId,
+          command,
+        },
+        {
+          signal: abortController.signal,
+        }
+      )) {
         const output = new TextDecoder("utf-8").decode(bytes.value);
         segments.push(output);
         setInvocations((invocations) => {
@@ -57,6 +74,7 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
       });
     } finally {
       setRunning(false);
+      setAbortController(undefined);
     }
   };
 
