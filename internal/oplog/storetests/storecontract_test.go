@@ -8,6 +8,8 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
+	"github.com/garethgeorge/backrest/internal/oplog/memstore"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -24,7 +26,8 @@ func StoresForTest(t testing.TB) map[string]oplog.OpStore {
 	t.Cleanup(func() { bboltstore.Close() })
 
 	return map[string]oplog.OpStore{
-		"bbolt": bboltstore,
+		"bbolt":  bboltstore,
+		"memory": memstore.NewMemStore(),
 	}
 }
 
@@ -123,11 +126,12 @@ func TestAddOperation(t *testing.T) {
 			for _, tc := range tests {
 				t.Run(tc.name, func(t *testing.T) {
 					log := oplog.NewOpLog(store)
-					if err := log.Add(tc.op); (err != nil) != tc.wantErr {
+					op := proto.Clone(tc.op).(*v1.Operation)
+					if err := log.Add(op); (err != nil) != tc.wantErr {
 						t.Errorf("Add() error = %v, wantErr %v", err, tc.wantErr)
 					}
 					if !tc.wantErr {
-						if tc.op.Id == 0 {
+						if op.Id == 0 {
 							t.Errorf("Add() did not set op ID")
 						}
 					}
@@ -222,7 +226,7 @@ func TestListOperation(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			log := oplog.NewOpLog(store)
 			for _, op := range ops {
-				if err := log.Add(op); err != nil {
+				if err := log.Add(proto.Clone(op).(*v1.Operation)); err != nil {
 					t.Fatalf("error adding operation: %s", err)
 				}
 			}
@@ -290,6 +294,7 @@ func TestIndexSnapshot(t *testing.T) {
 	for name, store := range StoresForTest(t) {
 		t.Run(name, func(t *testing.T) {
 			log := oplog.NewOpLog(store)
+			op := proto.Clone(op).(*v1.Operation)
 
 			if err := log.Add(op); err != nil {
 				t.Fatalf("error adding operation: %s", err)
@@ -327,6 +332,7 @@ func TestUpdateOperation(t *testing.T) {
 	for name, store := range StoresForTest(t) {
 		t.Run(name, func(t *testing.T) {
 			log := oplog.NewOpLog(store)
+			op := proto.Clone(op).(*v1.Operation)
 
 			if err := log.Add(op); err != nil {
 				t.Fatalf("error adding operation: %s", err)
@@ -462,5 +468,4 @@ func BenchmarkList(b *testing.B) {
 			}
 		})
 	}
-
 }

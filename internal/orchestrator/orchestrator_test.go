@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -128,6 +129,58 @@ func TestTaskRescheduling(t *testing.T) {
 
 	if count != 10 {
 		t.Errorf("expected 10 Next calls, got %d", count)
+	}
+
+	if ranTimes != 10 {
+		t.Errorf("expected 10 Run calls, got %d", ranTimes)
+	}
+}
+
+func TestTaskRetry(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	orch, err := NewOrchestrator("", config.NewDefaultConfig(), nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create orchestrator: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		orch.Run(ctx)
+	}()
+
+	// Act
+	count := 0
+	ranTimes := 0
+
+	orch.ScheduleTask(newTestTask(
+		func() error {
+			ranTimes += 1
+			if ranTimes == 10 {
+				cancel()
+			}
+			return &tasks.TaskRetryError{
+				Err:     errors.New("retry please"),
+				Backoff: func(attempt int) time.Duration { return 0 },
+			}
+		},
+		func(t time.Time) *time.Time {
+			count += 1
+			return &t
+		},
+	), tasks.TaskPriorityDefault)
+
+	wg.Wait()
+
+	if count != 1 {
+		t.Errorf("expected 1 Next calls because this test covers retries, got %d", count)
 	}
 
 	if ranTimes != 10 {
