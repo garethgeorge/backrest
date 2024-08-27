@@ -2,10 +2,12 @@ package tasks
 
 import (
 	"context"
-	"io"
+	"errors"
+	"testing"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"go.uber.org/zap"
@@ -50,8 +52,6 @@ type TaskRunner interface {
 	Config() *v1.Config
 	// Logger returns the logger.
 	Logger(ctx context.Context) *zap.Logger
-	// RawLogWriter returns a writer for raw logs.
-	RawLogWriter(ctx context.Context) io.Writer
 }
 
 type TaskExecutor interface {
@@ -148,4 +148,66 @@ func timeToUnixMillis(t time.Time) int64 {
 
 func curTimeMillis() int64 {
 	return timeToUnixMillis(time.Now())
+}
+
+type testTaskRunner struct {
+	config *v1.Config // the config to use for the task runner.
+	oplog  *oplog.OpLog
+}
+
+var _ TaskRunner = &testTaskRunner{}
+
+func newTestTaskRunner(t testing.TB, config *v1.Config, oplog *oplog.OpLog) *testTaskRunner {
+	return &testTaskRunner{
+		config: config,
+		oplog:  oplog,
+	}
+}
+
+func (t *testTaskRunner) CreateOperation(op *v1.Operation) error {
+	panic("not implemented")
+}
+
+func (t *testTaskRunner) UpdateOperation(op *v1.Operation) error {
+	panic("not implemented")
+}
+
+func (t *testTaskRunner) ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars HookVars) error {
+	panic("not implemented")
+}
+
+func (t *testTaskRunner) OpLog() *oplog.OpLog {
+	return t.oplog
+}
+
+func (t *testTaskRunner) GetRepo(repoID string) (*v1.Repo, error) {
+	cfg := config.FindRepo(t.config, repoID)
+	if cfg == nil {
+		return nil, errors.New("repo not found")
+	}
+	return cfg, nil
+}
+
+func (t *testTaskRunner) GetPlan(planID string) (*v1.Plan, error) {
+	cfg := config.FindPlan(t.config, planID)
+	if cfg == nil {
+		return nil, errors.New("plan not found")
+	}
+	return cfg, nil
+}
+
+func (t *testTaskRunner) GetRepoOrchestrator(repoID string) (*repo.RepoOrchestrator, error) {
+	panic("not implemented")
+}
+
+func (t *testTaskRunner) ScheduleTask(task Task, priority int) error {
+	panic("not implemented")
+}
+
+func (t *testTaskRunner) Config() *v1.Config {
+	return t.config
+}
+
+func (t *testTaskRunner) Logger(ctx context.Context) *zap.Logger {
+	return zap.L()
 }

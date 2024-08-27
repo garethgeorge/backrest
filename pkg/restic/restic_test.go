@@ -107,6 +107,7 @@ func TestResticBackup(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			if runtime.GOOS == "windows" && tc.unixOnly {
@@ -246,7 +247,9 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			snapshots, err := r.Snapshots(context.Background(), tc.opts...)
 			if err != nil {
 				t.Fatalf("failed to list snapshots: %v", err)

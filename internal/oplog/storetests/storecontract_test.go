@@ -124,7 +124,9 @@ func TestAddOperation(t *testing.T) {
 	for name, store := range StoresForTest(t) {
 		t.Run(name, func(t *testing.T) {
 			for _, tc := range tests {
+				tc := tc
 				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
 					log := oplog.NewOpLog(store)
 					op := proto.Clone(tc.op).(*v1.Operation)
 					if err := log.Add(op); (err != nil) != tc.wantErr {
@@ -232,7 +234,9 @@ func TestListOperation(t *testing.T) {
 			}
 
 			for _, tc := range tests {
+				tc := tc
 				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
 					var ops []*v1.Operation
 					var err error
 					collect := func(op *v1.Operation) error {
@@ -259,7 +263,9 @@ func TestBigIO(t *testing.T) {
 	count := 10
 
 	for name, store := range StoresForTest(t) {
+		store := store
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			log := oplog.NewOpLog(store)
 			for i := 0; i < count; i++ {
 				if err := log.Add(&v1.Operation{
@@ -292,7 +298,9 @@ func TestIndexSnapshot(t *testing.T) {
 	}
 
 	for name, store := range StoresForTest(t) {
+		store := store
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			log := oplog.NewOpLog(store)
 			op := proto.Clone(op).(*v1.Operation)
 
@@ -330,7 +338,9 @@ func TestUpdateOperation(t *testing.T) {
 	}
 
 	for name, store := range StoresForTest(t) {
+		store := store
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			log := oplog.NewOpLog(store)
 			op := proto.Clone(op).(*v1.Operation)
 
