@@ -184,10 +184,7 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 		}
 
 		// Schedule a backup task for the plan
-		t, err := tasks.NewScheduledBackupTask(plan)
-		if err != nil {
-			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
-		}
+		t := tasks.NewScheduledBackupTask(plan)
 		if err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {
 			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
 		}

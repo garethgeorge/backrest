@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
@@ -25,14 +26,14 @@ type BackupTask struct {
 
 var _ Task = &BackupTask{}
 
-func NewScheduledBackupTask(plan *v1.Plan) (*BackupTask, error) {
+func NewScheduledBackupTask(plan *v1.Plan) *BackupTask {
 	return &BackupTask{
 		BaseTask: BaseTask{
 			TaskName:   fmt.Sprintf("backup for plan %q", plan.Id),
 			TaskRepoID: plan.Repo,
 			TaskPlanID: plan.Id,
 		},
-	}, nil
+	}
 }
 
 func NewOneoffBackupTask(plan *v1.Plan, at time.Time) *BackupTask {
@@ -69,7 +70,21 @@ func (t *BackupTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 	if plan.Schedule == nil {
 		return NeverScheduledTask, nil
 	}
-	nextRun, err := protoutil.ResolveSchedule(plan.Schedule, now)
+
+	var lastRan time.Time
+	if err := runner.OpLog().Query(oplog.Query{RepoID: t.RepoID(), PlanID: t.PlanID(), Reversed: true}, func(op *v1.Operation) error {
+		if _, ok := op.Op.(*v1.Operation_OperationBackup); ok {
+			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
+			return oplog.ErrStopIteration
+		}
+		return nil
+	}); err != nil {
+		return NeverScheduledTask, fmt.Errorf("finding last backup run time: %w", err)
+	} else if lastRan.IsZero() {
+		lastRan = time.Now()
+	}
+
+	nextRun, err := protoutil.ResolveSchedule(plan.Schedule, lastRan, now)
 	if errors.Is(err, protoutil.ErrScheduleDisabled) {
 		return NeverScheduledTask, nil
 	} else if err != nil {

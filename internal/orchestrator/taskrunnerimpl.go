@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -157,8 +156,4 @@ func (t *taskRunnerImpl) Config() *v1.Config {
 
 func (t *taskRunnerImpl) Logger(ctx context.Context) *zap.Logger {
 	return logging.Logger(ctx).Named(t.t.Name())
-}
-
-func (t *taskRunnerImpl) RawLogWriter(ctx context.Context) io.Writer {
-	return logging.WriterFromContext(ctx)
 }

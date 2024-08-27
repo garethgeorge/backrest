@@ -289,7 +289,7 @@ export const ScheduleFormItem = ({
           {(!allowedModes || allowedModes.includes("minDaysSinceLastRun")) && (
             <Radio.Button value={"minDaysSinceLastRun"}>
               <Tooltip title="Schedule will run at or after the specified number of days since the last run.">
-                Hours After Last Run
+                Days After Last Run
               </Tooltip>
             </Radio.Button>
           )}

@@ -70,10 +70,10 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	}); err != nil {
 		return NeverScheduledTask, fmt.Errorf("finding last prune run time: %w", err)
 	} else if !foundBackup {
-		lastRan = time.Now()
+		lastRan = now
 	}
 
-	runAt, err := protoutil.ResolveSchedule(repo.PrunePolicy.GetSchedule(), lastRan)
+	runAt, err := protoutil.ResolveSchedule(repo.PrunePolicy.GetSchedule(), lastRan, now)
 	if errors.Is(err, protoutil.ErrScheduleDisabled) {
 		return NeverScheduledTask, nil
 	} else if err != nil {

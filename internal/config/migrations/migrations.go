@@ -8,6 +8,7 @@ import (
 var migrations = []func(*v1.Config){
 	migration001PrunePolicy,
 	migration002Schedules,
+	migration003RelativeScheduling,
 }
 
 var CurrentVersion = int32(len(migrations))

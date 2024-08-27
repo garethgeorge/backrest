@@ -71,10 +71,10 @@ func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	}); err != nil {
 		return NeverScheduledTask, fmt.Errorf("finding last check run time: %w", err)
 	} else if !foundBackup {
-		lastRan = time.Now()
+		lastRan = now
 	}
 
-	runAt, err := protoutil.ResolveSchedule(repo.CheckPolicy.GetSchedule(), lastRan)
+	runAt, err := protoutil.ResolveSchedule(repo.CheckPolicy.GetSchedule(), lastRan, now)
 	if errors.Is(err, protoutil.ErrScheduleDisabled) {
 		return NeverScheduledTask, nil
 	} else if err != nil {
