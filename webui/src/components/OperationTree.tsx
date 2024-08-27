@@ -74,10 +74,14 @@ export const OperationTree = ({
         event === OperationEventType.EVENT_UPDATED
       ) {
         for (const flowID of flowIDs) {
-          backupInfoByFlowID.set(
-            flowID,
-            displayInfoForFlow(logState.getByFlowID(flowID) || [])
+          const displayInfo = displayInfoForFlow(
+            logState.getByFlowID(flowID) || []
           );
+          if (!displayInfo.hidden) {
+            backupInfoByFlowID.set(flowID, displayInfo);
+          } else {
+            backupInfoByFlowID.delete(flowID);
+          }
         }
       } else if (event === OperationEventType.EVENT_DELETED) {
         for (const flowID of flowIDs) {

@@ -13,7 +13,6 @@ import {
   OpSelector,
 } from "../../gen/ts/v1/service_pb";
 import { SpinButton } from "../components/SpinButton";
-import { shouldHideStatus } from "../state/oplog";
 import { useShowModal } from "../components/ModalManager";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
