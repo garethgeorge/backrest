@@ -327,7 +327,8 @@ func (o *Orchestrator) Run(ctx context.Context) {
 
 		// Clone the operation incase we need to reset changes and reschedule the task for a retry
 		originalOp := proto.Clone(t.Op).(*v1.Operation)
-		if t.Op != nil {
+		if t.Op != nil && t.retryCount != 0 {
+			t.Op.DisplayMessage = fmt.Sprintf("running after %d retries", t.retryCount)
 			// Delete any previous hook executions for this operation incase this is a retry.
 			prevHookExecutionIDs := []int64{}
 			if err := o.OpLog.Query(oplog.Query{FlowID: t.Op.FlowId}, func(op *v1.Operation) error {

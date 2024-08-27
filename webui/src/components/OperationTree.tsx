@@ -491,7 +491,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
             height: "60px",
           }}
         >
-          <h3>Backup on {formatTime(backup.displayTime)}</h3>
+          <h3>{formatTime(backup.displayTime)}</h3>
           <div style={{ position: "absolute", right: "20px" }}>
             {backup.status !== OperationStatus.STATUS_PENDING &&
             backup.status !== OperationStatus.STATUS_INPROGRESS

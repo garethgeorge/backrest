@@ -15,8 +15,8 @@ export const ScheduleDefaultsInfrequent: ScheduleDefaults = {
   maxFrequencyHours: 30 * 24,
   // midnight on the first day of the month
   cron: "0 0 1 * *",
-  cronDropdowns: ["period", "months", "month-days"],
-  cronPeriods: ["month"],
+  cronDropdowns: ["period", "months", "month-days", "week-days", "hours"],
+  cronPeriods: ["month", "week"],
 };
 
 export const ScheduleDefaultsDaily: ScheduleDefaults = {

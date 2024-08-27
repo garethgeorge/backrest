@@ -1,3 +1,4 @@
+const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
 export const formatBytes = (bytes?: number | string) => {
   if (!bytes) {
     return "0B";
@@ -6,7 +7,6 @@ export const formatBytes = (bytes?: number | string) => {
     bytes = parseInt(bytes);
   }
 
-  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
   let unit = 0;
   while (bytes > 1024) {
     bytes /= 1024;
