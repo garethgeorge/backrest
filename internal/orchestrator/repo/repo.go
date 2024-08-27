@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -305,13 +306,17 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, snaps
 	opts = append(opts, restic.WithFlags("--target", target))
 
 	if snapshotPath != "" {
-		dir := path.Dir(snapshotPath)
-		base := path.Base(snapshotPath)
-		if dir != "" {
-			snapshotId = snapshotId + ":" + dir
-		}
-		if base != "" {
-			opts = append(opts, restic.WithFlags("--include", base))
+		if runtime.GOOS == "windows" {
+			opts = append(opts, restic.WithFlags("--include", snapshotPath))
+		} else {
+			dir := path.Dir(snapshotPath)
+			base := path.Base(snapshotPath)
+			if dir != "" {
+				snapshotId = snapshotId + ":" + dir
+			}
+			if base != "" {
+				opts = append(opts, restic.WithFlags("--include", base))
+			}
 		}
 	}
 
