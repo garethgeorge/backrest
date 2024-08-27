@@ -57,12 +57,12 @@ Download options
 
 - Download and run a release from the [releases page](https://github.com/garethgeorge/backrest/releases).
 - Build from source ([see below](#building)).
-- Run with docker: `garethgeorge/backrest:latest` ([see on dockerhub](https://hub.docker.com/r/garethgeorge/backrest)) or `garethgeorge/backrest:latest-alpine` for an image that includes rclone and common unix utilities.
+- Run with docker: `garethgeorge/backrest:latest` ([see on dockerhub](https://hub.docker.com/r/garethgeorge/backrest)) for an image that includes rclone and common unix utilities or `garethgeorge/backrest:scratch` for a minimal image.
 
 Backrest is accessible from a web browser. By default it binds to `127.0.0.1:9898` and can be accessed at `http://localhost:9898`. Change the port with the `BACKREST_PORT` environment variable e.g. `BACKREST_PORT=0.0.0.0:9898 backrest` to listen on all network interfaces. On first startup backrest will prompt you to create a default username and password, this can be changed later in the settings page.
 
 > [!Note]
-> Backrest installs a specific restic version to ensure that the restic dependency matches backrest. This provides the best guarantees for stability. If you wish to use a different version of restic OR if you would prefer to install restic manually you may do so by setting the `BACKREST_RESTIC_COMMAND` environment variable to the path of the restic binary you wish to use.
+> Backrest installs a specific restic version to ensure that it is compatible. If you wish to use a different version of restic OR if you would prefer to install restic manually, use the `BACKREST_RESTIC_COMMAND` environment variable to specify the path of your restic install.
 
 ## Running with Docker Compose
 
@@ -74,12 +74,12 @@ Example compose file:
 version: "3.2"
 services:
   backrest:
-    image: garethgeorge/backrest
+    image: garethgeorge/backrest:latest
     container_name: backrest
     hostname: backrest
     volumes:
       - ./backrest/data:/data
-      - ./backrest/config:/config
+      - ./backrest/config:/configq
       - ./backrest/cache:/cache
       - /MY-BACKUP-DATA:/userdata # [optional] mount local paths to backup here.
       - /MY-REPOS:/repos # [optional] mount repos if using local storage, not necessary for remotes e.g. B2, S3, etc.
