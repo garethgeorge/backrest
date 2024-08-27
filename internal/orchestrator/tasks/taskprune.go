@@ -59,7 +59,10 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	var lastRan time.Time
 	var foundBackup bool
 	if err := runner.OpLog().Query(oplog.Query{RepoID: t.RepoID(), Reversed: true}, func(op *v1.Operation) error {
-		if _, ok := op.Op.(*v1.Operation_OperationPrune); ok {
+		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
+			return nil
+		}
+		if _, ok := op.Op.(*v1.Operation_OperationPrune); ok && op.UnixTimeEndMs != 0 {
 			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration
 		}
@@ -70,10 +73,10 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	}); err != nil {
 		return NeverScheduledTask, fmt.Errorf("finding last prune run time: %w", err)
 	} else if !foundBackup {
-		lastRan = time.Now()
+		lastRan = now
 	}
 
-	runAt, err := protoutil.ResolveSchedule(repo.PrunePolicy.GetSchedule(), lastRan)
+	runAt, err := protoutil.ResolveSchedule(repo.PrunePolicy.GetSchedule(), lastRan, now)
 	if errors.Is(err, protoutil.ErrScheduleDisabled) {
 		return NeverScheduledTask, nil
 	} else if err != nil {

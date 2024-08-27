@@ -65,7 +65,9 @@ func TestBackup(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if tc.unixOnly && runtime.GOOS == "windows" {
 				t.Skip("skipping on windows")
 			}
@@ -312,7 +314,9 @@ func TestCheck(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			orchestrator := initRepoHelper(t, configForTest, tc.repo)
 			buf := bytes.NewBuffer(nil)
 

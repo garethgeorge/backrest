@@ -455,13 +455,6 @@ export class OperationIndexSnapshot extends Message<OperationIndexSnapshot> {
    */
   forgot = false;
 
-  /**
-   * ID of a forget operation that removed this snapshot.
-   *
-   * @generated from field: int64 forgot_by_op = 4;
-   */
-  forgotByOp = protoInt64.zero;
-
   constructor(data?: PartialMessage<OperationIndexSnapshot>) {
     super();
     proto3.util.initPartial(data, this);
@@ -472,7 +465,6 @@ export class OperationIndexSnapshot extends Message<OperationIndexSnapshot> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 2, name: "snapshot", kind: "message", T: ResticSnapshot },
     { no: 3, name: "forgot", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 4, name: "forgot_by_op", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationIndexSnapshot {

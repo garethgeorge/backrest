@@ -476,7 +476,15 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 }
               />
             </Form.Item>
-            <ScheduleFormItem name={["prunePolicy", "schedule"]} />
+            <ScheduleFormItem
+              name={["prunePolicy", "schedule"]}
+              allowedModes={[
+                "disabled",
+                "cronSinceLastRun",
+                "minHoursSinceLastRun",
+                "minDaysSinceLastRun",
+              ]}
+            />
           </Form.Item>
 
           {/* Repo.checkPolicy */}
@@ -512,7 +520,15 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 }
               />
             </Form.Item>
-            <ScheduleFormItem name={["checkPolicy", "schedule"]} />
+            <ScheduleFormItem
+              name={["checkPolicy", "schedule"]}
+              allowedModes={[
+                "disabled",
+                "cronSinceLastRun",
+                "minHoursSinceLastRun",
+                "minDaysSinceLastRun",
+              ]}
+            />
           </Form.Item>
 
           {/* Repo.commandPrefix */}

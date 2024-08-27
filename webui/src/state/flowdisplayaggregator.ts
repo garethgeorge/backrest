@@ -47,6 +47,10 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
 
   const duration = Number(firstOp.unixTimeEndMs - firstOp.unixTimeStartMs);
 
+  if (firstOp.status === OperationStatus.STATUS_PENDING) {
+    info.subtitleComponents.push("scheduled, waiting");
+  }
+
   switch (firstOp.op.case) {
     case "operationBackup":
       {
@@ -93,9 +97,6 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
       info.subtitleComponents.push(`ID: ${normalizeSnapshotId(snapshot.id)}`);
     default:
       switch (firstOp.status) {
-        case OperationStatus.STATUS_PENDING:
-          info.subtitleComponents.push("scheduled, waiting");
-          break;
         case OperationStatus.STATUS_INPROGRESS:
           info.subtitleComponents.push("running");
           break;

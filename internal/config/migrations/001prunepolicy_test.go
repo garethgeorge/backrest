@@ -94,6 +94,7 @@ func Test001Migration(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			config := v1.Config{}
 			err := protojson.Unmarshal([]byte(tc.config), &config)
