@@ -3,6 +3,7 @@ package repo
 import (
 	"bytes"
 	"context"
+	"io/ioutil"
 	"os"
 	"runtime"
 	"slices"
@@ -83,6 +84,68 @@ func TestBackup(t *testing.T) {
 				t.Fatalf("expected 100 new files, got %d", summary.FilesNew)
 			}
 		})
+	}
+}
+
+func TestRestore(t *testing.T) {
+	t.Parallel()
+
+	testFile := t.TempDir() + "/test.txt"
+	if err := ioutil.WriteFile(testFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	r := &v1.Repo{
+		Id:       "test",
+		Uri:      t.TempDir(),
+		Password: "test",
+		Flags:    []string{"--no-cache"},
+	}
+
+	plan := &v1.Plan{
+		Id:    "test",
+		Repo:  "test",
+		Paths: []string{testFile},
+	}
+
+	orchestrator := initRepoHelper(t, configForTest, r)
+
+	// Create a backup of the single file
+	summary, err := orchestrator.Backup(context.Background(), plan, nil)
+	if err != nil {
+		t.Fatalf("backup error: %v", err)
+	}
+	if summary.SnapshotId == "" {
+		t.Fatal("expected snapshot id")
+	}
+	if summary.FilesNew != 1 {
+		t.Fatalf("expected 1 new file, got %d", summary.FilesNew)
+	}
+
+	// Restore the file
+	restoreDir := t.TempDir()
+	restoreSummary, err := orchestrator.Restore(context.Background(), summary.SnapshotId, testFile, restoreDir, nil)
+	if err != nil {
+		t.Fatalf("restore error: %v", err)
+	}
+	if restoreSummary.FilesRestored != 1 {
+		t.Fatalf("expected 1 new file, got %d", restoreSummary.FilesRestored)
+	}
+	if restoreSummary.TotalFiles != 1 {
+		t.Fatalf("expected 1 total file, got %d", restoreSummary.TotalFiles)
+	}
+
+	// Check the restored file
+	restoredFile := restoreDir + "/test.txt"
+	if _, err := os.Stat(restoredFile); err != nil {
+		t.Fatalf("failed to stat restored file: %v", err)
+	}
+	restoredData, err := ioutil.ReadFile(restoredFile)
+	if err != nil {
+		t.Fatalf("failed to read restored file: %v", err)
+	}
+	if string(restoredData) != "test" {
+		t.Fatalf("expected 'test', got '%s'", restoredData)
 	}
 }
 

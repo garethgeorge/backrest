@@ -21,6 +21,7 @@ import (
 var errAlreadyInitialized = errors.New("repo already initialized")
 var ErrPartialBackup = errors.New("incomplete backup")
 var ErrBackupFailed = errors.New("backup failed")
+var ErrRestoreFailed = errors.New("restore failed")
 
 type Repo struct {
 	cmd string
@@ -218,7 +219,7 @@ func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*Rest
 				if exitErr.ExitCode() == 3 {
 					cmdErr = ErrPartialBackup
 				} else {
-					cmdErr = fmt.Errorf("exit code %d: %w", exitErr.ExitCode(), ErrBackupFailed)
+					cmdErr = fmt.Errorf("exit code %d: %w", exitErr.ExitCode(), ErrRestoreFailed)
 				}
 			}
 		}
