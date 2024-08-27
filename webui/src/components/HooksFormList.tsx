@@ -44,42 +44,22 @@ export interface HookFields {
 
 export const hooksListTooltipText = (
   <>
-    Hooks are actions that can execute on backup lifecycle events. Available
-    events are:
-    <ul>
-      <li>On Finish Snapshot: Runs after a snapshot is finished.</li>
-      <li>On Start Snapshot: Runs when a snapshot is started.</li>
-      <li>On Snapshot Error: Runs when a snapshot fails.</li>
-      <li>On Any Error: Runs when any error occurs.</li>
-    </ul>
-    Arguments are available to hooks as{" "}
+    Hooks let you configure actions e.g. notifications and scripts that run in
+    response to the backup lifecycle. See{" "}
     <a
+      href="https://garethgeorge.github.io/backrest/docs/hooks"
       target="_blank"
-      rel="noopener noreferrer"
-      href="https://pkg.go.dev/text/template"
     >
-      Go template variables
+      the hook documentation
+    </a>{" "}
+    for available options, or
+    <a
+      href="https://garethgeorge.github.io/backrest/cookbooks/command-hook-examples"
+      target="_blank"
+    >
+      the cookbook
     </a>
-    <ul>
-      <li>.Task - the name of the task that triggered the hook.</li>
-      <li>.Event - the event that triggered the hook.</li>
-      <li>.Repo - the name of the repo the event applies to.</li>
-      <li>.Plan - the name of the plan the event applies to.</li>
-      <li>.Error - the error if any is available.</li>
-      <li>.CurTime - the time of the event.</li>
-      <li>
-        .SnapshotId - the restic snapshot structure if this is finish snapshot
-        operation and it completed successfully.
-      </li>
-    </ul>
-    Functions
-    <ul>
-      <li>.ShellEscape - escapes a string to be used in a shell command.</li>
-      <li>.JsonMarshal - serializes a value to be used in a json string.</li>
-      <li>.Summary - prints a formatted summary of the event.</li>
-      <li>.FormatTime - prints time formatted as RFC3339.</li>
-      <li>.FormatSizeBytes - prints a formatted size in bytes.</li>
-    </ul>
+    for scripting examples.
   </>
 );
 
@@ -197,9 +177,7 @@ const hookTypes: {
     component: ({ field }: { field: FormListFieldData }) => {
       return (
         <>
-          <Tooltip title="Script to execute. Commands will not work in the docker build of Backrest.">
-            Script:
-          </Tooltip>
+          <Tooltip title="Script to execute.">Script:</Tooltip>
           <Form.Item
             name={[field.name, "actionCommand", "command"]}
             rules={[requiredField("command is required")]}
