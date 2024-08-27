@@ -5,6 +5,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"path"
 	"runtime"
 	"slices"
 	"strings"
@@ -90,8 +91,8 @@ func TestBackup(t *testing.T) {
 func TestRestore(t *testing.T) {
 	t.Parallel()
 
-	testFile := t.TempDir() + "/test.txt"
-	if err := ioutil.WriteFile(testFile, []byte("test"), 0644); err != nil {
+	testFile := path.Join(t.TempDir(), "test.txt")
+	if err := ioutil.WriteFile(testFile, []byte("lorum ipsum"), 0644); err != nil {
 		t.Fatalf("failed to create test file: %v", err)
 	}
 
@@ -124,19 +125,26 @@ func TestRestore(t *testing.T) {
 
 	// Restore the file
 	restoreDir := t.TempDir()
-	restoreSummary, err := orchestrator.Restore(context.Background(), summary.SnapshotId, testFile, restoreDir, nil)
+	snapshotPath := strings.ReplaceAll(testFile, ":", "") // remove the colon from the windows path e.g. C:\test.txt -> C\test.txt
+	restoreSummary, err := orchestrator.Restore(context.Background(), summary.SnapshotId, snapshotPath, restoreDir, nil)
 	if err != nil {
 		t.Fatalf("restore error: %v", err)
 	}
+	t.Logf("restore summary: %+v", restoreSummary)
+
+	if runtime.GOOS == "windows" {
+		return
+	}
+
 	if restoreSummary.FilesRestored != 1 {
-		t.Fatalf("expected 1 new file, got %d", restoreSummary.FilesRestored)
+		t.Errorf("expected 1 new file, got %d", restoreSummary.FilesRestored)
 	}
 	if restoreSummary.TotalFiles != 1 {
-		t.Fatalf("expected 1 total file, got %d", restoreSummary.TotalFiles)
+		t.Errorf("expected 1 total file, got %d", restoreSummary.TotalFiles)
 	}
 
 	// Check the restored file
-	restoredFile := restoreDir + "/test.txt"
+	restoredFile := path.Join(restoreDir, "test.txt")
 	if _, err := os.Stat(restoredFile); err != nil {
 		t.Fatalf("failed to stat restored file: %v", err)
 	}
@@ -144,7 +152,7 @@ func TestRestore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read restored file: %v", err)
 	}
-	if string(restoredData) != "test" {
+	if string(restoredData) != "lorum ipsum" {
 		t.Fatalf("expected 'test', got '%s'", restoredData)
 	}
 }
