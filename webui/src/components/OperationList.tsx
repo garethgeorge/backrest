@@ -6,6 +6,7 @@ import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
 import { useAlertApi } from "./Alerts";
 import { OperationRow } from "./OperationRow";
 import { OplogState, syncStateFromRequest } from "../state/logstate";
+import { shouldHideStatus } from "../state/oplog";
 
 // OperationList displays a list of operations that are either fetched based on 'req' or passed in via 'useBackups'.
 // If showPlan is provided the planId will be displayed next to each operation in the operation list.
@@ -25,9 +26,8 @@ export const OperationList = ({
   let [operations, setOperations] = useState<Operation[]>([]);
 
   if (req) {
-    // track backups for this operation tree view.
     useEffect(() => {
-      const logState = new OplogState();
+      const logState = new OplogState((op) => !shouldHideStatus(op.status));
 
       logState.subscribe((ids, flowIDs, event) => {
         setOperations(logState.getAll());

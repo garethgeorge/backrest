@@ -10,9 +10,7 @@ import {
   GetOperationsRequest,
   OpSelector,
 } from "../../gen/ts/v1/service_pb";
-import { shouldHideStatus } from "../state/oplog";
 import { backrestService } from "../api";
-import { StringValue } from "@bufbuild/protobuf";
 import { SpinButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
@@ -21,7 +19,7 @@ import { useShowModal } from "../components/ModalManager";
 const StatsPanel = React.lazy(() => import("../components/StatsPanel"));
 
 export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
-  const [config, setConfig] = useConfig();
+  const [config, _] = useConfig();
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
 
