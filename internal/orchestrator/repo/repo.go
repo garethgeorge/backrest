@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path"
 	"slices"
 	"sort"
 	"strings"
@@ -292,7 +293,7 @@ func (r *RepoOrchestrator) Check(ctx context.Context, output io.Writer) error {
 	return nil
 }
 
-func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, path string, target string, progressCallback func(event *v1.RestoreProgressEntry)) (*v1.RestoreProgressEntry, error) {
+func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, snapshotPath string, target string, progressCallback func(event *v1.RestoreProgressEntry)) (*v1.RestoreProgressEntry, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	ctx, flush := forwardResticLogs(ctx)
@@ -302,8 +303,16 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, path 
 
 	var opts []restic.GenericOption
 	opts = append(opts, restic.WithFlags("--target", target))
-	if path != "" {
-		opts = append(opts, restic.WithFlags("--include", path))
+
+	if snapshotPath != "" {
+		dir := path.Dir(snapshotPath)
+		base := path.Base(snapshotPath)
+		if dir != "" {
+			snapshotId = snapshotId + ":" + dir
+		}
+		if base != "" {
+			opts = append(opts, restic.WithFlags("--include", base))
+		}
 	}
 
 	summary, err := r.repo.Restore(ctx, snapshotId, func(event *restic.RestoreProgressEntry) {
