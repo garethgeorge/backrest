@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"slices"
+	"testing"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -431,4 +432,22 @@ func (o *BboltStore) forAll(tx *bolt.Tx, do func(*v1.Operation) error) error {
 		}
 	}
 	return nil
+}
+
+func (o *BboltStore) ResetForTest(t *testing.T) {
+	if err := o.db.Update(func(tx *bolt.Tx) error {
+		for _, bucket := range [][]byte{
+			SystemBucket, OpLogBucket, RepoIndexBucket, PlanIndexBucket, SnapshotIndexBucket, FlowIdIndexBucket, InstanceIndexBucket,
+		} {
+			if err := tx.DeleteBucket(bucket); err != nil {
+				return fmt.Errorf("deleting bucket %s: %w", string(bucket), err)
+			}
+			if _, err := tx.CreateBucketIfNotExists(bucket); err != nil {
+				return fmt.Errorf("creating bucket %s: %w", string(bucket), err)
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("error resetting database: %s", err)
+	}
 }

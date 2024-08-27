@@ -151,7 +151,10 @@ message Hook {
   enum OnError {
     ON_ERROR_IGNORE = 0;
     ON_ERROR_CANCEL = 1; // cancels the operation and skips subsequent hooks
-    ON_ERROR_FATAL = 2; // fails the operation and subsequent hooks
+    ON_ERROR_FATAL = 2; // fails the operation and subsequent hooks.
+    ON_ERROR_RETRY_1MINUTE = 100; // retry the operation every minute 
+    ON_ERROR_RETRY_10MINUTES = 101; // retry the operation every 10 minutes
+    ON_ERROR_RETRY_EXPONENTIAL_BACKOFF = 103; // retry the operation with exponential backoff up to 1h max.
   }
 
   repeated Condition conditions = 1 [json_name="conditions"];

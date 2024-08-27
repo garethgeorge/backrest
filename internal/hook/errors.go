@@ -1,6 +1,9 @@
 package hook
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // HookErrorCancel requests that the calling operation cancel itself. It must be handled explicitly caller. Subsequent hooks will be skipped.
 type HookErrorRequestCancel struct {
@@ -26,4 +29,16 @@ func (e HookErrorFatal) Error() string {
 
 func (e HookErrorFatal) Unwrap() error {
 	return e.Err
+}
+
+type RetryBackoffPolicy = func(attempt int) time.Duration
+
+// HookErrorRetry requests that the calling operation retry after a specified backoff duration
+type HookErrorRetry struct {
+	Err     error
+	Backoff RetryBackoffPolicy
+}
+
+func (e HookErrorRetry) Error() string {
+	return fmt.Sprintf("retry: %v", e.Err.Error())
 }

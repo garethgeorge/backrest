@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"slices"
 	"time"
@@ -114,28 +115,43 @@ func firstMatchingCondition(hook *v1.Hook, events []v1.Hook_Condition) v1.Hook_C
 	return v1.Hook_CONDITION_UNKNOWN
 }
 
-func curTimeMs() int64 {
-	return time.Now().UnixNano() / 1000000
-}
-
-type Hook v1.Hook
-
 func applyHookErrorPolicy(onError v1.Hook_OnError, err error) error {
 	if err == nil || errors.As(err, &HookErrorFatal{}) || errors.As(err, &HookErrorRequestCancel{}) {
 		return err
 	}
 
-	if onError == v1.Hook_ON_ERROR_CANCEL {
+	switch onError {
+	case v1.Hook_ON_ERROR_CANCEL:
 		return &HookErrorRequestCancel{Err: err}
-	} else if onError == v1.Hook_ON_ERROR_FATAL {
+	case v1.Hook_ON_ERROR_FATAL:
 		return &HookErrorFatal{Err: err}
+	case v1.Hook_ON_ERROR_RETRY_1MINUTE:
+		return &HookErrorRetry{Err: err, Backoff: func(attempt int) time.Duration {
+			return 1 * time.Minute
+		}}
+	case v1.Hook_ON_ERROR_RETRY_10MINUTES:
+		return &HookErrorRetry{Err: err, Backoff: func(attempt int) time.Duration {
+			return 10 * time.Minute
+		}}
+	case v1.Hook_ON_ERROR_RETRY_EXPONENTIAL_BACKOFF:
+		return &HookErrorRetry{Err: err, Backoff: func(attempt int) time.Duration {
+			d := time.Duration(math.Pow(2, float64(attempt-1))) * 10 * time.Second
+			if d > 1*time.Hour {
+				return 1 * time.Hour
+			}
+			return d
+		}}
+	case v1.Hook_ON_ERROR_IGNORE:
+		return err
+	default:
+		panic(fmt.Sprintf("unknown on_error policy %v", onError))
 	}
-	return err
 }
 
 // IsHaltingError returns true if the error is a fatal error or a request to cancel the operation
 func IsHaltingError(err error) bool {
 	var fatalErr *HookErrorFatal
 	var cancelErr *HookErrorRequestCancel
-	return errors.As(err, &fatalErr) || errors.As(err, &cancelErr)
+	var retryErr *HookErrorRetry
+	return errors.As(err, &fatalErr) || errors.As(err, &cancelErr) || errors.As(err, &retryErr)
 }
