@@ -63,7 +63,7 @@ func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
 			return nil
 		}
-		if _, ok := op.Op.(*v1.Operation_OperationCheck); ok {
+		if _, ok := op.Op.(*v1.Operation_OperationCheck); ok && op.UnixTimeEndMs != 0 {
 			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration
 		}
