@@ -35,30 +35,48 @@ export const ScheduleDefaultsDaily: ScheduleDefaults = {
   cronPeriods: ["day", "hour", "month", "week"],
 };
 
+type SchedulingMode =
+  | ""
+  | "disabled"
+  | "maxFrequencyDays"
+  | "maxFrequencyHours"
+  | "cron"
+  | "cronSinceLastRun"
+  | "minHoursSinceLastRun"
+  | "minDaysSinceLastRun";
 export const ScheduleFormItem = ({
   name,
   defaults,
+  allowedModes,
 }: {
   name: string[];
   defaults?: ScheduleDefaults;
+  allowedModes?: SchedulingMode[];
 }) => {
   const form = Form.useFormInstance();
-  const retention = Form.useWatch(name, { form, preserve: true }) as any;
+  const schedule = Form.useWatch(name, { form, preserve: true }) as any;
 
   defaults = defaults || ScheduleDefaultsInfrequent;
 
-  const determineMode = () => {
-    if (!retention) {
+  const determineMode = (): SchedulingMode => {
+    if (!schedule) {
       return "";
-    } else if (retention.disabled) {
+    } else if (schedule.disabled) {
       return "disabled";
-    } else if (retention.maxFrequencyDays) {
+    } else if (schedule.maxFrequencyDays) {
       return "maxFrequencyDays";
-    } else if (retention.maxFrequencyHours) {
+    } else if (schedule.maxFrequencyHours) {
       return "maxFrequencyHours";
-    } else if (retention.cron) {
+    } else if (schedule.cron) {
       return "cron";
+    } else if (schedule.cronSinceLastRun) {
+      return "cronSinceLastRun";
+    } else if (schedule.minHoursSinceLastRun) {
+      return "minHoursSinceLastRun";
+    } else if (schedule.minDaysSinceLastRun) {
+      return "minDaysSinceLastRun";
     }
+    return "";
   };
 
   const mode = determineMode();
@@ -104,6 +122,7 @@ export const ScheduleFormItem = ({
         <InputNumber
           addonBefore={<div style={{ width: "10em" }}>Interval in Days</div>}
           type="number"
+          min={1}
         />
       </Form.Item>
     );
@@ -123,6 +142,71 @@ export const ScheduleFormItem = ({
         <InputNumber
           addonBefore={<div style={{ width: "10em" }}>Interval in Hours</div>}
           type="number"
+          min={1}
+        />
+      </Form.Item>
+    );
+  } else if (mode === "cronSinceLastRun") {
+    elem = (
+      <Form.Item
+        name={name.concat(["cronSinceLastRun"])}
+        initialValue={defaults.cron}
+        validateTrigger={["onChange", "onBlur"]}
+        rules={[
+          {
+            required: true,
+            message: "Please provide a valid cron schedule.",
+          },
+        ]}
+      >
+        <Cron
+          value={form.getFieldValue(name.concat(["cronSinceLastRun"]))}
+          setValue={(val: string) => {
+            form.setFieldValue(name.concat(["cronSinceLastRun"]), val);
+          }}
+          allowedDropdowns={defaults.cronDropdowns}
+          allowedPeriods={defaults.cronPeriods}
+          clearButton={false}
+        />
+      </Form.Item>
+    );
+  } else if (mode === "minHoursSinceLastRun") {
+    elem = (
+      <Form.Item
+        name={name.concat(["minHoursSinceLastRun"])}
+        initialValue={defaults.maxFrequencyHours}
+        validateTrigger={["onChange", "onBlur"]}
+        rules={[
+          {
+            required: true,
+            message: "Please input an interval in hours",
+          },
+        ]}
+      >
+        <InputNumber
+          addonBefore={<div style={{ width: "10em" }}>Interval in Hours</div>}
+          type="number"
+          min={1}
+        />
+      </Form.Item>
+    );
+  } else if (mode === "minDaysSinceLastRun") {
+    elem = (
+      <Form.Item
+        name={name.concat(["minDaysSinceLastRun"])}
+        initialValue={defaults.maxFrequencyDays}
+        validateTrigger={["onChange", "onBlur"]}
+        rules={[
+          {
+            required: true,
+            message: "Please input an interval in days",
+          },
+        ]}
+      >
+        <InputNumber
+          addonBefore={<div style={{ width: "10em" }}>Interval in Days</div>}
+          type="number"
+          min={1}
         />
       </Form.Item>
     );
@@ -156,31 +240,66 @@ export const ScheduleFormItem = ({
               });
             } else if (selected === "cron") {
               form.setFieldValue(name, { cron: defaults!.cron });
+            } else if (selected === "minHoursSinceLastRun") {
+              form.setFieldValue(name, { minHoursSinceLastRun: 1 });
+            } else if (selected === "minDaysSinceLastRun") {
+              form.setFieldValue(name, { minDaysSinceLastRun: 1 });
+            } else if (selected === "cronSinceLastRun") {
+              form.setFieldValue(name, { cronSinceLastRun: defaults!.cron });
             } else {
               form.setFieldValue(name, { disabled: true });
             }
           }}
         >
-          <Radio.Button value={"disabled"}>
-            <Tooltip title="Schedule is disabled, will never run.">
-              Disabled
-            </Tooltip>
-          </Radio.Button>
-          <Radio.Button value={"maxFrequencyHours"}>
-            <Tooltip title="Schedule will run at the specified interval in hours (e.g. N hours after the last run).">
-              Max Frequency Hours
-            </Tooltip>
-          </Radio.Button>
-          <Radio.Button value={"maxFrequencyDays"}>
-            <Tooltip title="Schedule will run at the specified interval in days (e.g. N days after the last run).">
-              Max Frequency Days
-            </Tooltip>
-          </Radio.Button>
-          <Radio.Button value={"cron"}>
-            <Tooltip title="Schedule will run based on a cron schedule.">
-              Cron
-            </Tooltip>
-          </Radio.Button>
+          {(!allowedModes || allowedModes.includes("disabled")) && (
+            <Radio.Button value={"disabled"}>
+              <Tooltip title="Schedule is disabled, will never run.">
+                Disabled
+              </Tooltip>
+            </Radio.Button>
+          )}
+          {(!allowedModes || allowedModes.includes("maxFrequencyHours")) && (
+            <Radio.Button value={"maxFrequencyHours"}>
+              <Tooltip title="Schedule will run at the specified interval in hours relative to Backrest's start time.">
+                Interval Hours
+              </Tooltip>
+            </Radio.Button>
+          )}
+          {(!allowedModes || allowedModes.includes("maxFrequencyDays")) && (
+            <Radio.Button value={"maxFrequencyDays"}>
+              <Tooltip title="Schedule will run at the specified interval in days relative to Backrest's start time.">
+                Interval Days
+              </Tooltip>
+            </Radio.Button>
+          )}
+          {(!allowedModes || allowedModes.includes("cron")) && (
+            <Radio.Button value={"cron"}>
+              <Tooltip title="Schedule will run based on a cron schedule evaluated relative to Backrest's start time.">
+                Startup Relative Cron
+              </Tooltip>
+            </Radio.Button>
+          )}
+          {(!allowedModes || allowedModes.includes("minHoursSinceLastRun")) && (
+            <Radio.Button value={"minHoursSinceLastRun"}>
+              <Tooltip title="Schedule will run at or after the specified number of hours since the last run.">
+                Hours After Last Run
+              </Tooltip>
+            </Radio.Button>
+          )}
+          {(!allowedModes || allowedModes.includes("minDaysSinceLastRun")) && (
+            <Radio.Button value={"minDaysSinceLastRun"}>
+              <Tooltip title="Schedule will run at or after the specified number of days since the last run.">
+                Hours After Last Run
+              </Tooltip>
+            </Radio.Button>
+          )}
+          {(!allowedModes || allowedModes.includes("cronSinceLastRun")) && (
+            <Radio.Button value={"cronSinceLastRun"}>
+              <Tooltip title="Schedule will run based on a cron schedule evaluated relative to the last run. If the cron time is missed (e.g. computer is powered off) the task will run at backrest's next startup.">
+                Last Run Relative Cron
+              </Tooltip>
+            </Radio.Button>
+          )}
         </Radio.Group>
       </Row>
       <div style={{ height: "0.5em" }} />

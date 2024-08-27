@@ -848,6 +848,30 @@ export class Schedule extends Message<Schedule> {
      */
     value: number;
     case: "maxFrequencyHours";
+  } | {
+    /**
+     * cron expression to run since the last run.
+     *
+     * @generated from field: string cronSinceLastRun = 100;
+     */
+    value: string;
+    case: "cronSinceLastRun";
+  } | {
+    /**
+     * max hours since the last run.
+     *
+     * @generated from field: int32 minHoursSinceLastRun = 101;
+     */
+    value: number;
+    case: "minHoursSinceLastRun";
+  } | {
+    /**
+     * max days since the last run.
+     *
+     * @generated from field: int32 minDaysSinceLastRun = 102;
+     */
+    value: number;
+    case: "minDaysSinceLastRun";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Schedule>) {
@@ -862,6 +886,9 @@ export class Schedule extends Message<Schedule> {
     { no: 2, name: "cron", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "schedule" },
     { no: 3, name: "maxFrequencyDays", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "schedule" },
     { no: 4, name: "maxFrequencyHours", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "schedule" },
+    { no: 100, name: "cronSinceLastRun", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "schedule" },
+    { no: 101, name: "minHoursSinceLastRun", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "schedule" },
+    { no: 102, name: "minDaysSinceLastRun", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "schedule" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Schedule {
