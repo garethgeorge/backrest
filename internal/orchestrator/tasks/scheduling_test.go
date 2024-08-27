@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -12,6 +13,10 @@ import (
 )
 
 func TestScheduling(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping test on windows")
+	}
+
 	os.Setenv("TZ", "America/Los_Angeles")
 	defer os.Unsetenv("TZ")
 
