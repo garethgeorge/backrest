@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -11,6 +12,9 @@ import (
 )
 
 func TestScheduling(t *testing.T) {
+	os.Setenv("TZ", "America/Los_Angeles")
+	defer os.Unsetenv("TZ")
+
 	cfg := &v1.Config{
 		Repos: []*v1.Repo{
 			{
