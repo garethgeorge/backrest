@@ -60,6 +60,9 @@ func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	var foundBackup bool
 
 	if err := runner.OpLog().Query(oplog.Query{RepoID: t.RepoID(), Reversed: true}, func(op *v1.Operation) error {
+		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
+			return nil
+		}
 		if _, ok := op.Op.(*v1.Operation_OperationCheck); ok {
 			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration

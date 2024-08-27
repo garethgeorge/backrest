@@ -73,6 +73,9 @@ func (t *BackupTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 
 	var lastRan time.Time
 	if err := runner.OpLog().Query(oplog.Query{RepoID: t.RepoID(), PlanID: t.PlanID(), Reversed: true}, func(op *v1.Operation) error {
+		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
+			return nil
+		}
 		if _, ok := op.Op.(*v1.Operation_OperationBackup); ok {
 			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration
