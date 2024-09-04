@@ -294,14 +294,6 @@ export class Plan extends Message<Plan> {
   repo = "";
 
   /**
-   * disable the plan.
-   *
-   * @generated from field: bool disabled = 11 [deprecated = true];
-   * @deprecated
-   */
-  disabled = false;
-
-  /**
    * paths to include in the backup.
    *
    * @generated from field: repeated string paths = 4;
@@ -321,14 +313,6 @@ export class Plan extends Message<Plan> {
    * @generated from field: repeated string iexcludes = 9;
    */
   iexcludes: string[] = [];
-
-  /**
-   * cron expression describing the backup schedule.
-   *
-   * @generated from field: string cron = 6 [deprecated = true];
-   * @deprecated
-   */
-  cron = "";
 
   /**
    * schedule for the backup.
@@ -368,11 +352,9 @@ export class Plan extends Message<Plan> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "repo", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 11, name: "disabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 4, name: "paths", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 5, name: "excludes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 9, name: "iexcludes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 6, name: "cron", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 12, name: "schedule", kind: "message", T: Schedule },
     { no: 7, name: "retention", kind: "message", T: RetentionPolicy },
     { no: 8, name: "hooks", kind: "message", T: Hook, repeated: true },
@@ -506,56 +488,6 @@ proto3.util.setEnumType(CommandPrefix_CPUNiceLevel, "v1.CommandPrefix.CPUNiceLev
  */
 export class RetentionPolicy extends Message<RetentionPolicy> {
   /**
-   * @generated from field: string max_unused_limit = 1 [deprecated = true];
-   * @deprecated
-   */
-  maxUnusedLimit = "";
-
-  /**
-   * @generated from field: int32 keep_last_n = 2 [deprecated = true];
-   * @deprecated
-   */
-  keepLastN = 0;
-
-  /**
-   * @generated from field: int32 keep_hourly = 3 [deprecated = true];
-   * @deprecated
-   */
-  keepHourly = 0;
-
-  /**
-   * @generated from field: int32 keep_daily = 4 [deprecated = true];
-   * @deprecated
-   */
-  keepDaily = 0;
-
-  /**
-   * @generated from field: int32 keep_weekly = 5 [deprecated = true];
-   * @deprecated
-   */
-  keepWeekly = 0;
-
-  /**
-   * @generated from field: int32 keep_monthly = 6 [deprecated = true];
-   * @deprecated
-   */
-  keepMonthly = 0;
-
-  /**
-   * @generated from field: int32 keep_yearly = 7 [deprecated = true];
-   * @deprecated
-   */
-  keepYearly = 0;
-
-  /**
-   * keep snapshots within a duration e.g. 1y2m3d4h5m6s
-   *
-   * @generated from field: string keep_within_duration = 8 [deprecated = true];
-   * @deprecated
-   */
-  keepWithinDuration = "";
-
-  /**
    * @generated from oneof v1.RetentionPolicy.policy
    */
   policy: {
@@ -586,14 +518,6 @@ export class RetentionPolicy extends Message<RetentionPolicy> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.RetentionPolicy";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "max_unused_limit", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "keep_last_n", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 3, name: "keep_hourly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 4, name: "keep_daily", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 5, name: "keep_weekly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 6, name: "keep_monthly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 7, name: "keep_yearly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 8, name: "keep_within_duration", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 10, name: "policy_keep_last_n", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "policy" },
     { no: 11, name: "policy_time_bucketed", kind: "message", T: RetentionPolicy_TimeBucketedCounts, oneof: "policy" },
     { no: 12, name: "policy_keep_all", kind: "scalar", T: 8 /* ScalarType.BOOL */, oneof: "policy" },
@@ -692,14 +616,6 @@ export class RetentionPolicy_TimeBucketedCounts extends Message<RetentionPolicy_
  */
 export class PrunePolicy extends Message<PrunePolicy> {
   /**
-   * max frequency of prune runs in days.
-   *
-   * @generated from field: int32 max_frequency_days = 1 [deprecated = true];
-   * @deprecated
-   */
-  maxFrequencyDays = 0;
-
-  /**
    * @generated from field: v1.Schedule schedule = 2;
    */
   schedule?: Schedule;
@@ -726,7 +642,6 @@ export class PrunePolicy extends Message<PrunePolicy> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.PrunePolicy";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "max_frequency_days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 2, name: "schedule", kind: "message", T: Schedule },
     { no: 3, name: "max_unused_bytes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "max_unused_percent", kind: "scalar", T: 5 /* ScalarType.INT32 */ },

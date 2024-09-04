@@ -178,10 +178,6 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 	}
 
 	for _, plan := range config.Plans {
-		if plan.Disabled {
-			continue
-		}
-
 		// Schedule a backup task for the plan
 		t := tasks.NewScheduledBackupTask(plan)
 		if err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {

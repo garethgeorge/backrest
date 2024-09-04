@@ -19,6 +19,7 @@ type ConfigStore interface {
 
 func NewDefaultConfig() *v1.Config {
 	return &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: "",
 		Repos:    []*v1.Repo{},
 		Plans:    []*v1.Plan{},
@@ -53,10 +54,6 @@ func (c *CachingValidatingStore) Get() (*v1.Config, error) {
 		zap.S().Infof("migrating config from version %d to %d", config.Version, migrations.CurrentVersion)
 		if err := migrations.ApplyMigrations(config); err != nil {
 			return nil, err
-		}
-
-		if config.Version != migrations.CurrentVersion {
-			return nil, fmt.Errorf("migration failed to update config to version %d", migrations.CurrentVersion)
 		}
 
 		// Write back the migrated config.

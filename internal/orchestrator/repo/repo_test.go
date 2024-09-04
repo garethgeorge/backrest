@@ -150,7 +150,7 @@ func TestRestore(t *testing.T) {
 	if _, err := os.Stat(restoredFile); err != nil {
 		t.Fatalf("failed to stat restored file: %v", err)
 	}
-	restoredData, err := ioutil.ReadFile(restoredFile)
+	restoredData, err := os.ReadFile(restoredFile)
 	if err != nil {
 		t.Fatalf("failed to read restored file: %v", err)
 	}
