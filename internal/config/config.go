@@ -19,6 +19,7 @@ type ConfigStore interface {
 
 func NewDefaultConfig() *v1.Config {
 	return &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: "",
 		Repos:    []*v1.Repo{},
 		Plans:    []*v1.Plan{},
