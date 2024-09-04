@@ -115,7 +115,7 @@ func TestBackup(t *testing.T) {
 						Schedule: &v1.Schedule_Disabled{Disabled: true},
 					},
 					Retention: &v1.RetentionPolicy{
-						Policy: &v1.RetentionPolicy_PolicyKeepAll{PolicyKeepAll: true},
+						Policy: &v1.RetentionPolicy_PolicyKeepLastN{PolicyKeepLastN: 100},
 					},
 				},
 			},
@@ -221,7 +221,7 @@ func TestMultipleBackup(t *testing.T) {
 		sut.orch.Run(ctx)
 	}()
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 2; i++ {
 		_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
 		if err != nil {
 			t.Fatalf("Backup() error = %v", err)
@@ -234,10 +234,12 @@ func TestMultipleBackup(t *testing.T) {
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			forget, ok := op.GetOp().(*v1.Operation_OperationForget)
 			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok && len(forget.OperationForget.Forget) > 0
-		}); index != -1 {
-			return nil
+		}); index == -1 {
+			return errors.New("forget not indexed")
+		} else if len(operations[index].GetOp().(*v1.Operation_OperationForget).OperationForget.Forget) != 1 {
+			return fmt.Errorf("expected 1 item removed in the forget operation, got %d", len(operations[index].GetOp().(*v1.Operation_OperationForget).OperationForget.Forget))
 		}
-		return errors.New("forget not indexed")
+		return nil
 	}); err != nil {
 		t.Fatalf("Couldn't find forget with 1 item removed in the operation log")
 	}
