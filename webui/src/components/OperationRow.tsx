@@ -380,10 +380,7 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
     <>
       Restore {restoreOp.path} to {restoreOp.target}
       {!isDone ? (
-        <Progress
-          percent={Math.round(progress * 1000) / 1000}
-          status="active"
-        />
+        <Progress percent={Math.round(progress * 1000) / 10} status="active" />
       ) : null}
       {operation.status == OperationStatus.STATUS_SUCCESS ? (
         <>
