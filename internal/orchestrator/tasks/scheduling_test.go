@@ -70,6 +70,15 @@ func TestScheduling(t *testing.T) {
 				},
 			},
 			{
+				Id: "plan-cron-utc",
+				Schedule: &v1.Schedule{
+					Schedule: &v1.Schedule_Cron{
+						Cron: "0 0 * * *", // every day at midnight
+					},
+					Clock: v1.Schedule_CLOCK_UTC,
+				},
+			},
+			{
 				Id: "plan-cron-since-last-run",
 				Schedule: &v1.Schedule{
 					Schedule: &v1.Schedule_Cron{
@@ -85,7 +94,7 @@ func TestScheduling(t *testing.T) {
 					Schedule: &v1.Schedule_MaxFrequencyDays{
 						MaxFrequencyDays: 1,
 					},
-					Clock: v1.Schedule_CLOCK_LAST_RUN_TIME,
+					Clock: v1.Schedule_CLOCK_LOCAL,
 				},
 			},
 			{
@@ -208,6 +217,22 @@ func TestScheduling(t *testing.T) {
 				},
 			},
 			wantTime: mustParseTime(t, "1970-01-02T00:00:00-08:00"),
+		},
+		{
+			name: "backup schedule cron utc",
+			task: NewScheduledBackupTask(config.FindPlan(cfg, "plan-cron-utc")),
+			ops: []*v1.Operation{
+				{
+					InstanceId: "instance1",
+					RepoId:     "repo1",
+					PlanId:     "plan-cron-utc",
+					Op: &v1.Operation_OperationBackup{
+						OperationBackup: &v1.OperationBackup{},
+					},
+					UnixTimeEndMs: farFuture.UnixMilli(),
+				},
+			},
+			wantTime: mustParseTime(t, "1970-01-02T08:00:00Z"),
 		},
 		{
 			name: "backup schedule cron since last run",

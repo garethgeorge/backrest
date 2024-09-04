@@ -1,7 +1,16 @@
-import { Checkbox, Form, InputNumber, Radio, Row, Tooltip } from "antd";
+import {
+  Checkbox,
+  Form,
+  InputNumber,
+  Radio,
+  Row,
+  Tooltip,
+  Typography,
+} from "antd";
 import React from "react";
 import Cron, { CronType, PeriodType } from "react-js-cron";
 import { Schedule_Clock } from "../../gen/ts/v1/config_pb";
+import { proto3 } from "@bufbuild/protobuf";
 
 interface ScheduleDefaults {
   maxFrequencyDays: number;
@@ -55,7 +64,12 @@ export const ScheduleFormItem = ({
   const form = Form.useFormInstance();
   const schedule = Form.useWatch(name, { form, preserve: true }) as any;
 
-  defaults = defaults || ScheduleDefaultsInfrequent;
+  if (schedule !== undefined && schedule.clock === undefined) {
+    form.setFieldValue(
+      name.concat("clock"),
+      clockEnumValueToString(defaults.clock)
+    );
+  }
 
   const determineMode = (): SchedulingMode => {
     if (!schedule) {
@@ -180,35 +194,64 @@ export const ScheduleFormItem = ({
             }
           }}
         >
-          {(!allowedModes || allowedModes.includes("disabled")) && (
-            <Radio.Button value={"disabled"}>
-              <Tooltip title="Schedule is disabled, will never run.">
-                Disabled
-              </Tooltip>
-            </Radio.Button>
-          )}
-          {(!allowedModes || allowedModes.includes("maxFrequencyHours")) && (
-            <Radio.Button value={"maxFrequencyHours"}>
-              <Tooltip title="Schedule will run at the specified interval in hours relative to Backrest's start time.">
-                Interval Hours
-              </Tooltip>
-            </Radio.Button>
-          )}
-          {(!allowedModes || allowedModes.includes("maxFrequencyDays")) && (
-            <Radio.Button value={"maxFrequencyDays"}>
-              <Tooltip title="Schedule will run at the specified interval in days relative to Backrest's start time.">
-                Interval Days
-              </Tooltip>
-            </Radio.Button>
-          )}
-          {(!allowedModes || allowedModes.includes("cron")) && (
-            <Radio.Button value={"cron"}>
-              <Tooltip title="Schedule will run based on a cron schedule evaluated relative to Backrest's start time.">
-                Startup Relative Cron
-              </Tooltip>
-            </Radio.Button>
-          )}
+          <Radio.Button value={"disabled"}>
+            <Tooltip title="Schedule is disabled, will never run.">
+              Disabled
+            </Tooltip>
+          </Radio.Button>
+          <Radio.Button value={"maxFrequencyHours"}>
+            <Tooltip title="Schedule will run at the specified interval in hours relative to Backrest's start time.">
+              Interval Hours
+            </Tooltip>
+          </Radio.Button>
+          <Radio.Button value={"maxFrequencyDays"}>
+            <Tooltip title="Schedule will run at the specified interval in days relative to Backrest's start time.">
+              Interval Days
+            </Tooltip>
+          </Radio.Button>
+          <Radio.Button value={"cron"}>
+            <Tooltip title="Schedule will run based on a cron schedule evaluated relative to Backrest's start time.">
+              Cron
+            </Tooltip>
+          </Radio.Button>
         </Radio.Group>
+        <Typography.Text style={{ marginLeft: "1em", marginRight: "1em" }}>
+          Clock for schedule:{" "}
+        </Typography.Text>
+        <Tooltip
+          title={
+            <>
+              Clock provides the time that the schedule is evaluated relative
+              to.
+              <ul>
+                <li>Local - current time in the local timezone.</li>
+                <li>UTC - current time in the UTC timezone.</li>
+                <li>
+                  Last Run Time - relative to the last time the task ran. Good
+                  for devices that aren't always powered on e.g. laptops.
+                </li>
+              </ul>
+            </>
+          }
+        >
+          <Form.Item name={name.concat("clock")}>
+            <Radio.Group>
+              <Radio.Button
+                value={clockEnumValueToString(Schedule_Clock.LOCAL)}
+              >
+                Local
+              </Radio.Button>
+              <Radio.Button value={clockEnumValueToString(Schedule_Clock.UTC)}>
+                UTC
+              </Radio.Button>
+              <Radio.Button
+                value={clockEnumValueToString(Schedule_Clock.LAST_RUN_TIME)}
+              >
+                Last Run Time
+              </Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+        </Tooltip>
       </Row>
       <div style={{ height: "0.5em" }} />
       <Row>
@@ -217,3 +260,6 @@ export const ScheduleFormItem = ({
     </>
   );
 };
+
+const clockEnumValueToString = (clock: Schedule_Clock) =>
+  proto3.getEnumType(Schedule_Clock).findNumber(clock)!.name;

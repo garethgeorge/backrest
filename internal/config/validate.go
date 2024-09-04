@@ -107,7 +107,7 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 
 	if plan.Schedule != nil {
 		if e := protoutil.ValidateSchedule(plan.Schedule); e != nil {
-			err = multierror.Append(err, fmt.Errorf("schedule: %w", e))
+			err = multierror.Append(err, fmt.Errorf("backup schedule: %w", e))
 		}
 	}
 

@@ -127,9 +127,10 @@ message Schedule {
   }
 
   enum Clock {
-    CLOCK_LOCAL = 0;
-    CLOCK_UTC = 1;
-    CLOCK_LAST_RUN_TIME = 2;
+    CLOCK_DEFAULT = 0; // same as CLOCK_LOCAL
+    CLOCK_LOCAL = 1;
+    CLOCK_UTC = 2;
+    CLOCK_LAST_RUN_TIME = 3;
   }
 
   Clock clock = 5 [json_name="clock"]; // clock to use for scheduling.

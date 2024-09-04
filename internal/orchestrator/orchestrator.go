@@ -63,8 +63,7 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStor
 	cfg = proto.Clone(cfg).(*v1.Config)
 
 	// create the orchestrator.
-	var o *Orchestrator
-	o = &Orchestrator{
+	o := &Orchestrator{
 		OpLog:  log,
 		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.

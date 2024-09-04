@@ -855,7 +855,7 @@ export class Schedule extends Message<Schedule> {
    *
    * @generated from field: v1.Schedule.Clock clock = 5;
    */
-  clock = Schedule_Clock.LOCAL;
+  clock = Schedule_Clock.DEFAULT;
 
   constructor(data?: PartialMessage<Schedule>) {
     super();
@@ -894,25 +894,33 @@ export class Schedule extends Message<Schedule> {
  */
 export enum Schedule_Clock {
   /**
-   * @generated from enum value: CLOCK_LOCAL = 0;
+   * same as CLOCK_LOCAL
+   *
+   * @generated from enum value: CLOCK_DEFAULT = 0;
    */
-  LOCAL = 0,
+  DEFAULT = 0,
 
   /**
-   * @generated from enum value: CLOCK_UTC = 1;
+   * @generated from enum value: CLOCK_LOCAL = 1;
    */
-  UTC = 1,
+  LOCAL = 1,
 
   /**
-   * @generated from enum value: CLOCK_LAST_RUN_TIME = 2;
+   * @generated from enum value: CLOCK_UTC = 2;
    */
-  LAST_RUN_TIME = 2,
+  UTC = 2,
+
+  /**
+   * @generated from enum value: CLOCK_LAST_RUN_TIME = 3;
+   */
+  LAST_RUN_TIME = 3,
 }
 // Retrieve enum metadata with: proto3.getEnumType(Schedule_Clock)
 proto3.util.setEnumType(Schedule_Clock, "v1.Schedule.Clock", [
-  { no: 0, name: "CLOCK_LOCAL" },
-  { no: 1, name: "CLOCK_UTC" },
-  { no: 2, name: "CLOCK_LAST_RUN_TIME" },
+  { no: 0, name: "CLOCK_DEFAULT" },
+  { no: 1, name: "CLOCK_LOCAL" },
+  { no: 2, name: "CLOCK_UTC" },
+  { no: 3, name: "CLOCK_LAST_RUN_TIME" },
 ]);
 
 /**
