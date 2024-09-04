@@ -1,6 +1,16 @@
-import { Checkbox, Form, InputNumber, Radio, Row, Tooltip } from "antd";
+import {
+  Checkbox,
+  Form,
+  InputNumber,
+  Radio,
+  Row,
+  Tooltip,
+  Typography,
+} from "antd";
 import React from "react";
 import Cron, { CronType, PeriodType } from "react-js-cron";
+import { Schedule_Clock } from "../../gen/ts/v1/config_pb";
+import { proto3 } from "@bufbuild/protobuf";
 
 interface ScheduleDefaults {
   maxFrequencyDays: number;
@@ -8,6 +18,7 @@ interface ScheduleDefaults {
   cron: string;
   cronPeriods?: PeriodType[];
   cronDropdowns?: CronType[];
+  clock: Schedule_Clock;
 }
 
 export const ScheduleDefaultsInfrequent: ScheduleDefaults = {
@@ -17,6 +28,7 @@ export const ScheduleDefaultsInfrequent: ScheduleDefaults = {
   cron: "0 0 1 * *",
   cronDropdowns: ["period", "months", "month-days", "week-days", "hours"],
   cronPeriods: ["month", "week"],
+  clock: Schedule_Clock.LAST_RUN_TIME,
 };
 
 export const ScheduleDefaultsDaily: ScheduleDefaults = {
@@ -33,6 +45,7 @@ export const ScheduleDefaultsDaily: ScheduleDefaults = {
     "week-days",
   ],
   cronPeriods: ["day", "hour", "month", "week"],
+  clock: Schedule_Clock.LOCAL,
 };
 
 type SchedulingMode =
@@ -40,23 +53,23 @@ type SchedulingMode =
   | "disabled"
   | "maxFrequencyDays"
   | "maxFrequencyHours"
-  | "cron"
-  | "cronSinceLastRun"
-  | "minHoursSinceLastRun"
-  | "minDaysSinceLastRun";
+  | "cron";
 export const ScheduleFormItem = ({
   name,
   defaults,
-  allowedModes,
 }: {
   name: string[];
-  defaults?: ScheduleDefaults;
-  allowedModes?: SchedulingMode[];
+  defaults: ScheduleDefaults;
 }) => {
   const form = Form.useFormInstance();
   const schedule = Form.useWatch(name, { form, preserve: true }) as any;
 
-  defaults = defaults || ScheduleDefaultsInfrequent;
+  if (schedule !== undefined && schedule.clock === undefined) {
+    form.setFieldValue(
+      name.concat("clock"),
+      clockEnumValueToString(defaults.clock)
+    );
+  }
 
   const determineMode = (): SchedulingMode => {
     if (!schedule) {
@@ -69,12 +82,6 @@ export const ScheduleFormItem = ({
       return "maxFrequencyHours";
     } else if (schedule.cron) {
       return "cron";
-    } else if (schedule.cronSinceLastRun) {
-      return "cronSinceLastRun";
-    } else if (schedule.minHoursSinceLastRun) {
-      return "minHoursSinceLastRun";
-    } else if (schedule.minDaysSinceLastRun) {
-      return "minDaysSinceLastRun";
     }
     return "";
   };
@@ -146,70 +153,6 @@ export const ScheduleFormItem = ({
         />
       </Form.Item>
     );
-  } else if (mode === "cronSinceLastRun") {
-    elem = (
-      <Form.Item
-        name={name.concat(["cronSinceLastRun"])}
-        initialValue={defaults.cron}
-        validateTrigger={["onChange", "onBlur"]}
-        rules={[
-          {
-            required: true,
-            message: "Please provide a valid cron schedule.",
-          },
-        ]}
-      >
-        <Cron
-          value={form.getFieldValue(name.concat(["cronSinceLastRun"]))}
-          setValue={(val: string) => {
-            form.setFieldValue(name.concat(["cronSinceLastRun"]), val);
-          }}
-          allowedDropdowns={defaults.cronDropdowns}
-          allowedPeriods={defaults.cronPeriods}
-          clearButton={false}
-        />
-      </Form.Item>
-    );
-  } else if (mode === "minHoursSinceLastRun") {
-    elem = (
-      <Form.Item
-        name={name.concat(["minHoursSinceLastRun"])}
-        initialValue={defaults.maxFrequencyHours}
-        validateTrigger={["onChange", "onBlur"]}
-        rules={[
-          {
-            required: true,
-            message: "Please input an interval in hours",
-          },
-        ]}
-      >
-        <InputNumber
-          addonBefore={<div style={{ width: "10em" }}>Interval in Hours</div>}
-          type="number"
-          min={1}
-        />
-      </Form.Item>
-    );
-  } else if (mode === "minDaysSinceLastRun") {
-    elem = (
-      <Form.Item
-        name={name.concat(["minDaysSinceLastRun"])}
-        initialValue={defaults.maxFrequencyDays}
-        validateTrigger={["onChange", "onBlur"]}
-        rules={[
-          {
-            required: true,
-            message: "Please input an interval in days",
-          },
-        ]}
-      >
-        <InputNumber
-          addonBefore={<div style={{ width: "10em" }}>Interval in Days</div>}
-          type="number"
-          min={1}
-        />
-      </Form.Item>
-    );
   } else if (mode === "disabled") {
     elem = (
       <Form.Item
@@ -251,56 +194,64 @@ export const ScheduleFormItem = ({
             }
           }}
         >
-          {(!allowedModes || allowedModes.includes("disabled")) && (
-            <Radio.Button value={"disabled"}>
-              <Tooltip title="Schedule is disabled, will never run.">
-                Disabled
-              </Tooltip>
-            </Radio.Button>
-          )}
-          {(!allowedModes || allowedModes.includes("maxFrequencyHours")) && (
-            <Radio.Button value={"maxFrequencyHours"}>
-              <Tooltip title="Schedule will run at the specified interval in hours relative to Backrest's start time.">
-                Interval Hours
-              </Tooltip>
-            </Radio.Button>
-          )}
-          {(!allowedModes || allowedModes.includes("maxFrequencyDays")) && (
-            <Radio.Button value={"maxFrequencyDays"}>
-              <Tooltip title="Schedule will run at the specified interval in days relative to Backrest's start time.">
-                Interval Days
-              </Tooltip>
-            </Radio.Button>
-          )}
-          {(!allowedModes || allowedModes.includes("cron")) && (
-            <Radio.Button value={"cron"}>
-              <Tooltip title="Schedule will run based on a cron schedule evaluated relative to Backrest's start time.">
-                Startup Relative Cron
-              </Tooltip>
-            </Radio.Button>
-          )}
-          {(!allowedModes || allowedModes.includes("minHoursSinceLastRun")) && (
-            <Radio.Button value={"minHoursSinceLastRun"}>
-              <Tooltip title="Schedule will run at or after the specified number of hours since the last run.">
-                Hours After Last Run
-              </Tooltip>
-            </Radio.Button>
-          )}
-          {(!allowedModes || allowedModes.includes("minDaysSinceLastRun")) && (
-            <Radio.Button value={"minDaysSinceLastRun"}>
-              <Tooltip title="Schedule will run at or after the specified number of days since the last run.">
-                Days After Last Run
-              </Tooltip>
-            </Radio.Button>
-          )}
-          {(!allowedModes || allowedModes.includes("cronSinceLastRun")) && (
-            <Radio.Button value={"cronSinceLastRun"}>
-              <Tooltip title="Schedule will run based on a cron schedule evaluated relative to the last run. If the cron time is missed (e.g. computer is powered off) the task will run at backrest's next startup.">
-                Last Run Relative Cron
-              </Tooltip>
-            </Radio.Button>
-          )}
+          <Radio.Button value={"disabled"}>
+            <Tooltip title="Schedule is disabled, will never run.">
+              Disabled
+            </Tooltip>
+          </Radio.Button>
+          <Radio.Button value={"maxFrequencyHours"}>
+            <Tooltip title="Schedule will run at the specified interval in hours relative to Backrest's start time.">
+              Interval Hours
+            </Tooltip>
+          </Radio.Button>
+          <Radio.Button value={"maxFrequencyDays"}>
+            <Tooltip title="Schedule will run at the specified interval in days relative to Backrest's start time.">
+              Interval Days
+            </Tooltip>
+          </Radio.Button>
+          <Radio.Button value={"cron"}>
+            <Tooltip title="Schedule will run based on a cron schedule evaluated relative to Backrest's start time.">
+              Cron
+            </Tooltip>
+          </Radio.Button>
         </Radio.Group>
+        <Typography.Text style={{ marginLeft: "1em", marginRight: "1em" }}>
+          Clock for schedule:{" "}
+        </Typography.Text>
+        <Tooltip
+          title={
+            <>
+              Clock provides the time that the schedule is evaluated relative
+              to.
+              <ul>
+                <li>Local - current time in the local timezone.</li>
+                <li>UTC - current time in the UTC timezone.</li>
+                <li>
+                  Last Run Time - relative to the last time the task ran. Good
+                  for devices that aren't always powered on e.g. laptops.
+                </li>
+              </ul>
+            </>
+          }
+        >
+          <Form.Item name={name.concat("clock")}>
+            <Radio.Group>
+              <Radio.Button
+                value={clockEnumValueToString(Schedule_Clock.LOCAL)}
+              >
+                Local
+              </Radio.Button>
+              <Radio.Button value={clockEnumValueToString(Schedule_Clock.UTC)}>
+                UTC
+              </Radio.Button>
+              <Radio.Button
+                value={clockEnumValueToString(Schedule_Clock.LAST_RUN_TIME)}
+              >
+                Last Run Time
+              </Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+        </Tooltip>
       </Row>
       <div style={{ height: "0.5em" }} />
       <Row>
@@ -309,3 +260,6 @@ export const ScheduleFormItem = ({
     </>
   );
 };
+
+const clockEnumValueToString = (clock: Schedule_Clock) =>
+  proto3.getEnumType(Schedule_Clock).findNumber(clock)!.name;
