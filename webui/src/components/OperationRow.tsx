@@ -519,23 +519,29 @@ const ForgetOperationDetails = ({
 }) => {
   const policy = forgetOp.policy! || {};
   const policyDesc = [];
-  if (policy.keepLastN) {
-    policyDesc.push(`Keep Last ${policy.keepLastN} Snapshots`);
-  }
-  if (policy.keepHourly) {
-    policyDesc.push(`Keep Hourly for ${policy.keepHourly} Hours`);
-  }
-  if (policy.keepDaily) {
-    policyDesc.push(`Keep Daily for ${policy.keepDaily} Days`);
-  }
-  if (policy.keepWeekly) {
-    policyDesc.push(`Keep Weekly for ${policy.keepWeekly} Weeks`);
-  }
-  if (policy.keepMonthly) {
-    policyDesc.push(`Keep Monthly for ${policy.keepMonthly} Months`);
-  }
-  if (policy.keepYearly) {
-    policyDesc.push(`Keep Yearly for ${policy.keepYearly} Years`);
+  if (policy.policy) {
+    if (policy.policy.case === "policyKeepAll") {
+      policyDesc.push("Keep all.");
+    } else if (policy.policy.case === "policyKeepLastN") {
+      policyDesc.push(`Keep last ${policy.policy.value} snapshots`);
+    } else if (policy.policy.case == "policyTimeBucketed") {
+      const val = policy.policy.value;
+      if (val.hourly) {
+        policyDesc.push(`Keep hourly for ${val.hourly} hours`);
+      }
+      if (val.daily) {
+        policyDesc.push(`Keep daily for ${val.daily} days`);
+      }
+      if (val.weekly) {
+        policyDesc.push(`Keep weekly for ${val.weekly} weeks`);
+      }
+      if (val.monthly) {
+        policyDesc.push(`Keep monthly for ${val.monthly} months`);
+      }
+      if (val.yearly) {
+        policyDesc.push(`Keep yearly for ${val.yearly} years`);
+      }
+    }
   }
 
   return (
@@ -552,12 +558,12 @@ const ForgetOperationDetails = ({
           </div>
         ))}
       </pre>
-      {/* Policy:
-            <ul>
-              {policyDesc.map((desc, idx) => (
-                <li key={idx}>{desc}</li>
-              ))}
-            </ul> */}
+      Policy:
+      <ul>
+        {policyDesc.map((desc, idx) => (
+          <li key={idx}>{desc}</li>
+        ))}
+      </ul>
     </>
   );
 };

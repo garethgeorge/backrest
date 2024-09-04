@@ -102,45 +102,23 @@ func BackupProgressEntryToBackupError(b *restic.BackupProgressEntry) (*v1.Backup
 }
 
 func RetentionPolicyFromProto(p *v1.RetentionPolicy) *restic.RetentionPolicy {
-	if p.Policy != nil {
-		switch p := p.Policy.(type) {
-		case *v1.RetentionPolicy_PolicyKeepAll:
-			return nil
-		case *v1.RetentionPolicy_PolicyTimeBucketed:
-			return &restic.RetentionPolicy{
-				KeepDaily:   int(p.PolicyTimeBucketed.Daily),
-				KeepHourly:  int(p.PolicyTimeBucketed.Hourly),
-				KeepWeekly:  int(p.PolicyTimeBucketed.Weekly),
-				KeepMonthly: int(p.PolicyTimeBucketed.Monthly),
-				KeepYearly:  int(p.PolicyTimeBucketed.Yearly),
-			}
-		case *v1.RetentionPolicy_PolicyKeepLastN:
-			return &restic.RetentionPolicy{
-				KeepLastN: int(p.PolicyKeepLastN),
-			}
+	switch p := p.GetPolicy().(type) {
+	case *v1.RetentionPolicy_PolicyKeepAll:
+		return nil
+	case *v1.RetentionPolicy_PolicyTimeBucketed:
+		return &restic.RetentionPolicy{
+			KeepDaily:   int(p.PolicyTimeBucketed.Daily),
+			KeepHourly:  int(p.PolicyTimeBucketed.Hourly),
+			KeepWeekly:  int(p.PolicyTimeBucketed.Weekly),
+			KeepMonthly: int(p.PolicyTimeBucketed.Monthly),
+			KeepYearly:  int(p.PolicyTimeBucketed.Yearly),
 		}
-	}
-
-	return &restic.RetentionPolicy{
-		KeepLastN:          int(p.KeepLastN),
-		KeepHourly:         int(p.KeepHourly),
-		KeepDaily:          int(p.KeepDaily),
-		KeepWeekly:         int(p.KeepWeekly),
-		KeepMonthly:        int(p.KeepMonthly),
-		KeepYearly:         int(p.KeepYearly),
-		KeepWithinDuration: p.KeepWithinDuration,
-	}
-}
-
-func RetentionPolicyToProto(p *restic.RetentionPolicy) *v1.RetentionPolicy {
-	return &v1.RetentionPolicy{
-		KeepLastN:          int32(p.KeepLastN),
-		KeepHourly:         int32(p.KeepHourly),
-		KeepDaily:          int32(p.KeepDaily),
-		KeepWeekly:         int32(p.KeepWeekly),
-		KeepMonthly:        int32(p.KeepMonthly),
-		KeepYearly:         int32(p.KeepYearly),
-		KeepWithinDuration: p.KeepWithinDuration,
+	case *v1.RetentionPolicy_PolicyKeepLastN:
+		return &restic.RetentionPolicy{
+			KeepLastN: int(p.PolicyKeepLastN),
+		}
+	default:
+		return nil
 	}
 }
 

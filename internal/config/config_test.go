@@ -5,8 +5,22 @@ import (
 	"testing"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/config/migrations"
 	"google.golang.org/protobuf/proto"
 )
+
+func TestMigrationsOnDefaultConfig(t *testing.T) {
+	config := NewDefaultConfig()
+	t.Logf("config: %v", config)
+	err := migrations.ApplyMigrations(config)
+	if err != nil {
+		t.Errorf("ApplyMigrations() error = %v, want nil", err)
+	}
+
+	if config.Version != migrations.CurrentVersion {
+		t.Errorf("ApplyMigrations() config.Version = %v, want %v", config.Version, migrations.CurrentVersion)
+	}
+}
 
 func TestConfig(t *testing.T) {
 	dir := t.TempDir()
