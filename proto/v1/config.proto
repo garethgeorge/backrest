@@ -47,11 +47,9 @@ message Repo {
 message Plan {
   string id = 1 [json_name="id"]; // unique but human readable ID for this plan.
   string repo = 2 [json_name="repo"]; // ID of the repo to use.
-  bool disabled = 11 [json_name="disabled", deprecated=true]; // disable the plan.
   repeated string paths = 4 [json_name="paths"]; // paths to include in the backup.
   repeated string excludes = 5 [json_name="excludes"]; // glob patterns to exclude.
   repeated string iexcludes = 9 [json_name="iexcludes"]; // case insensitive glob patterns to exclude.
-  string cron = 6 [json_name="cron", deprecated=true]; // cron expression describing the backup schedule.
   Schedule schedule = 12 [json_name="schedule"]; // schedule for the backup.
   RetentionPolicy retention = 7 [json_name="retention"]; // retention policy for snapshots.
   repeated Hook hooks = 8 [json_name="hooks"]; // hooks to run on events for this plan.
@@ -77,16 +75,6 @@ message CommandPrefix {
 }
 
 message RetentionPolicy {
-  string max_unused_limit = 1 [json_name="maxUnusedLimit", deprecated = true]; 
-
-  int32 keep_last_n = 2 [json_name="keepLastN", deprecated = true];
-  int32 keep_hourly = 3 [json_name="keepHourly", deprecated = true];
-  int32 keep_daily = 4 [json_name="keepDaily", deprecated = true];
-  int32 keep_weekly = 5 [json_name="keepWeekly", deprecated = true];
-  int32 keep_monthly = 6 [json_name="keepMonthly", deprecated = true];
-  int32 keep_yearly = 7 [json_name="keepYearly", deprecated = true];
-  string keep_within_duration = 8 [json_name="keepWithinDuration", deprecated = true]; // keep snapshots within a duration e.g. 1y2m3d4h5m6s
-
   oneof policy {
     int32 policy_keep_last_n = 10 [json_name="policyKeepLastN"];
     TimeBucketedCounts policy_time_bucketed = 11 [json_name="policyTimeBucketed"];
@@ -103,7 +91,6 @@ message RetentionPolicy {
 }
 
 message PrunePolicy {
-  int32 max_frequency_days = 1 [json_name="maxFrequencyDays", deprecated = true]; // max frequency of prune runs in days.
   Schedule schedule = 2 [json_name="schedule"];
   int32 max_unused_bytes = 3 [json_name="maxUnusedBytes"]; // max unused bytes before running prune.
   int32 max_unused_percent = 4 [json_name="maxUnusedPercent"]; // max unused percent before running prune.

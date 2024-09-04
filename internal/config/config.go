@@ -55,10 +55,6 @@ func (c *CachingValidatingStore) Get() (*v1.Config, error) {
 			return nil, err
 		}
 
-		if config.Version != migrations.CurrentVersion {
-			return nil, fmt.Errorf("migration failed to update config to version %d", migrations.CurrentVersion)
-		}
-
 		// Write back the migrated config.
 		if err := c.ConfigStore.Update(config); err != nil {
 			return nil, err
