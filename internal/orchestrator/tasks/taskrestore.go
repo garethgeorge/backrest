@@ -74,8 +74,6 @@ func restoreHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner,
 		}
 		lastSent = time.Now()
 
-		zap.S().Infof("restore progress: %v", entry)
-
 		restoreOp.LastStatus = entry
 
 		sendWg.Add(1)

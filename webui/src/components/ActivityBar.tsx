@@ -67,7 +67,7 @@ export const ActivityBar = () => {
         return (
           <span key={idx}>
             {displayName} in progress for plan {op.planId} to {op.repoId} for{" "}
-            {formatDuration(Number(op.unixTimeEndMs - op.unixTimeStartMs))}
+            {formatDuration(Date.now() - Number(op.unixTimeStartMs))}
           </span>
         );
       })}
