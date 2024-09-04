@@ -11,7 +11,7 @@ func Test003Migration(t *testing.T) {
 	config := &v1.Config{
 		Repos: []*v1.Repo{
 			{
-				Id: "prune daily",
+				Id: "prune",
 				PrunePolicy: &v1.PrunePolicy{
 					Schedule: &v1.Schedule{
 						Schedule: &v1.Schedule_MaxFrequencyDays{
@@ -23,40 +23,6 @@ func Test003Migration(t *testing.T) {
 					Schedule: &v1.Schedule{
 						Schedule: &v1.Schedule_MaxFrequencyDays{
 							MaxFrequencyDays: 1,
-						},
-					},
-				},
-			},
-			{
-				Id: "prune hourly",
-				PrunePolicy: &v1.PrunePolicy{
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_MaxFrequencyHours{
-							MaxFrequencyHours: 1,
-						},
-					},
-				},
-				CheckPolicy: &v1.CheckPolicy{
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_MaxFrequencyHours{
-							MaxFrequencyHours: 1,
-						},
-					},
-				},
-			},
-			{
-				Id: "prune cron",
-				PrunePolicy: &v1.PrunePolicy{
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_Cron{
-							Cron: "0 0 * * *",
-						},
-					},
-				},
-				CheckPolicy: &v1.CheckPolicy{
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_Cron{
-							Cron: "0 0 * * *",
 						},
 					},
 				},
@@ -64,61 +30,9 @@ func Test003Migration(t *testing.T) {
 		},
 	}
 
-	want := &v1.Config{
-		Repos: []*v1.Repo{
-			{
-				Id: "prune daily",
-				PrunePolicy: &v1.PrunePolicy{
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_MinDaysSinceLastRun{
-							MinDaysSinceLastRun: 1,
-						},
-					},
-				},
-				CheckPolicy: &v1.CheckPolicy{
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_MinDaysSinceLastRun{
-							MinDaysSinceLastRun: 1,
-						},
-					},
-				},
-			},
-			{
-				Id: "prune hourly",
-				PrunePolicy: &v1.PrunePolicy{
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_MinHoursSinceLastRun{
-							MinHoursSinceLastRun: 1,
-						},
-					},
-				},
-				CheckPolicy: &v1.CheckPolicy{
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_MinHoursSinceLastRun{
-							MinHoursSinceLastRun: 1,
-						},
-					},
-				},
-			},
-			{
-				Id: "prune cron",
-				PrunePolicy: &v1.PrunePolicy{
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_CronSinceLastRun{
-							CronSinceLastRun: "0 0 * * *",
-						},
-					},
-				},
-				CheckPolicy: &v1.CheckPolicy{
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_CronSinceLastRun{
-							CronSinceLastRun: "0 0 * * *",
-						},
-					},
-				},
-			},
-		},
-	}
+	want := proto.Clone(config).(*v1.Config)
+	want.Repos[0].PrunePolicy.Schedule.Clock = v1.Schedule_CLOCK_LAST_RUN_TIME
+	want.Repos[0].CheckPolicy.Schedule.Clock = v1.Schedule_CLOCK_LAST_RUN_TIME
 
 	migration003RelativeScheduling(config)
 

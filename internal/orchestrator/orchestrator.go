@@ -63,8 +63,7 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStor
 	cfg = proto.Clone(cfg).(*v1.Config)
 
 	// create the orchestrator.
-	var o *Orchestrator
-	o = &Orchestrator{
+	o := &Orchestrator{
 		OpLog:  log,
 		config: cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
@@ -171,7 +170,7 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 		}
 	}
 
-	zap.L().Info("reset task queue, scheduling new task set.")
+	zap.L().Info("reset task queue, scheduling new task set", zap.String("timezone", time.Now().Location().String()))
 
 	// Requeue tasks that are affected by the config change.
 	if err := o.ScheduleTask(tasks.NewCollectGarbageTask(), tasks.TaskPriorityDefault); err != nil {

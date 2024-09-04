@@ -37,7 +37,11 @@ import {
 import { ConfirmButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import Cron from "react-js-cron";
-import { ScheduleFormItem } from "../components/ScheduleFormItem";
+import {
+  ScheduleDefaultsDaily,
+  ScheduleDefaultsInfrequent,
+  ScheduleFormItem,
+} from "../components/ScheduleFormItem";
 import { proto3 } from "@bufbuild/protobuf";
 import { isWindows } from "../state/buildcfg";
 
@@ -478,12 +482,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             </Form.Item>
             <ScheduleFormItem
               name={["prunePolicy", "schedule"]}
-              allowedModes={[
-                "disabled",
-                "cronSinceLastRun",
-                "minHoursSinceLastRun",
-                "minDaysSinceLastRun",
-              ]}
+              defaults={ScheduleDefaultsInfrequent}
             />
           </Form.Item>
 
@@ -522,12 +521,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             </Form.Item>
             <ScheduleFormItem
               name={["checkPolicy", "schedule"]}
-              allowedModes={[
-                "disabled",
-                "cronSinceLastRun",
-                "minHoursSinceLastRun",
-                "minDaysSinceLastRun",
-              ]}
+              defaults={ScheduleDefaultsInfrequent}
             />
           </Form.Item>
 
