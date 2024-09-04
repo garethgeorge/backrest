@@ -96,3 +96,70 @@ func TestLogRotate(t *testing.T) {
 func genstr(size int) string {
 	return strings.Repeat("a", size)
 }
+
+func TestRotatingLogWriter(t *testing.T) {
+	log := NewRotatingLog(t.TempDir()+"/rotatinglog", 10)
+	writer := log.CreateWriter()
+	writer.Write([]byte("test"))
+
+	data, err := log.Read(writer.ID())
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+	if string(data) != "test" {
+		t.Fatalf("Read failed: expected test, got %s", string(data))
+	}
+
+	finalID, err := writer.Finalize()
+	if err != nil {
+		t.Fatalf("Finalize failed: %v", err)
+	}
+	if finalID == writer.ID() {
+		t.Fatalf("Finalize failed: expected %s != %s", writer.ID(), finalID)
+	}
+
+	if _, err = log.Read(writer.ID()); err == nil {
+		t.Fatalf("Expected read using old ID to fail")
+	}
+	data, err = log.Read(finalID)
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+	if string(data) != "test" {
+		t.Fatalf("Read failed: expected test, got %s", string(data))
+	}
+}
+
+func TestRotatingLogWriterSubscribers(t *testing.T) {
+	log := NewRotatingLog(t.TempDir()+"/rotatinglog", 10)
+	writer := log.CreateWriter()
+
+	writer.Write([]byte("test"))
+
+	outchan := make(chan []byte, 1000)
+	writer.Subscribe(outchan)
+
+	for i := 0; i < 10; i++ {
+		writer.Write([]byte(fmt.Sprintf("%d", i)))
+	}
+
+	writer.Finalize()
+
+	data, err := log.Read(writer.ID())
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+	if string(data) != "test" {
+		t.Fatalf("Read failed: expected test, got %s", string(data))
+	}
+
+	writer.Finalize()
+
+	data, err = log.Read(writer.ID())
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+	if string(data) != "test" {
+		t.Fatalf("Read failed: expected test, got %s", string(data))
+	}
+}

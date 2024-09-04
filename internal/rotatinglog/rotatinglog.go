@@ -25,15 +25,17 @@ var ErrNotFound = errors.New("entry not found")
 var ErrBadName = errors.New("bad name")
 
 type RotatingLog struct {
-	mu          sync.Mutex
-	dir         string
-	lastFile    string
-	maxLogFiles int
-	now         func() time.Time
+	mu           sync.Mutex
+	dir          string
+	lastFile     string
+	maxLogFiles  int
+	now          func() time.Time
+	writers      map[string]*LogWriter
+	nextWriterID int64
 }
 
 func NewRotatingLog(dir string, maxLogFiles int) *RotatingLog {
-	return &RotatingLog{dir: dir, maxLogFiles: maxLogFiles}
+	return &RotatingLog{dir: dir, maxLogFiles: maxLogFiles, writers: make(map[string]*LogWriter)}
 }
 
 func (r *RotatingLog) curfile() string {
@@ -60,6 +62,21 @@ func (r *RotatingLog) removeExpiredFiles() error {
 		}
 	}
 	return nil
+}
+
+func (r *RotatingLog) CreateWriter() *LogWriter {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	randID := fmt.Sprintf(".inprogress-%d-%d", time.Now().UnixNano(), r.nextWriterID)
+	r.nextWriterID++
+
+	lw := &LogWriter{
+		id: randID,
+		rl: r,
+	}
+	r.writers[randID] = lw
+	return lw
 }
 
 func (r *RotatingLog) Write(data []byte) (string, error) {
@@ -117,9 +134,35 @@ func (r *RotatingLog) Write(data []byte) (string, error) {
 	return fmt.Sprintf("%s/%d", path.Base(file), pos), nil
 }
 
+// Subscribe accepts a channel and sends the current log data and any updates to it.
+func (r *RotatingLog) Subscribe(name string, ch chan []byte) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if lw, ok := r.writers[name]; ok {
+		lw.Subscribe(ch)
+		return nil
+	}
+
+	data, err := r.Read(name)
+	if err != nil {
+		return err
+	}
+
+	ch <- data
+	close(ch)
+	return nil
+}
+
+// Read
 func (r *RotatingLog) Read(name string) ([]byte, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	// check for a log writer with the name
+	if lw, ok := r.writers[name]; ok {
+		return lw.buffer.Bytes(), nil
+	}
 
 	// parse name e.g. of the form "2006-01-02-15-04-05.tar/1234"
 	splitAt := strings.Index(name, "/")
@@ -215,4 +258,44 @@ func decompress(compressedData []byte) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+type LogWriter struct {
+	id          string
+	mu          sync.Mutex
+	buffer      bytes.Buffer
+	subscribers []chan []byte // subscribers to the log
+	rl          *RotatingLog
+}
+
+func (lw *LogWriter) ID() string {
+	return lw.id
+}
+
+func (lw *LogWriter) Subscribe(ch chan []byte) {
+	lw.mu.Lock()
+	lw.subscribers = append(lw.subscribers, ch)
+	ch <- bytes.Clone(lw.buffer.Bytes())
+}
+
+func (lw *LogWriter) Unsubscribe(ch chan []byte) {
+	lw.mu.Lock()
+	slices.DeleteFunc(lw.subscribers, func(c chan []byte) bool {
+		return c == ch
+	})
+	lw.mu.Unlock()
+}
+
+func (lw *LogWriter) Write(p []byte) (n int, err error) {
+	n, err = lw.buffer.Write(p)
+	if err != nil {
+		return
+	}
+	return n, nil
+}
+
+func (lw *LogWriter) Finalize() (string, error) {
+	id, err := lw.rl.Write(lw.buffer.Bytes())
+	delete(lw.rl.writers, lw.id)
+	return id, err
 }
