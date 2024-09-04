@@ -124,10 +124,15 @@ message Schedule {
     string cron = 2 [json_name="cron"]; // cron expression describing the schedule.
     int32 maxFrequencyDays = 3 [json_name="maxFrequencyDays"]; // max frequency of runs in days.
     int32 maxFrequencyHours = 4 [json_name="maxFrequencyHours"]; // max frequency of runs in hours.
-    string cronSinceLastRun = 100 [json_name="cronSinceLastRun"]; // cron expression to run since the last run.
-    int32 minHoursSinceLastRun = 101 [json_name="minHoursSinceLastRun"]; // max hours since the last run.
-    int32 minDaysSinceLastRun = 102 [json_name="minDaysSinceLastRun"]; // max days since the last run.
   }
+
+  enum Clock {
+    CLOCK_LOCAL = 0;
+    CLOCK_UTC = 1;
+    CLOCK_LAST_RUN_TIME = 2;
+  }
+
+  Clock clock = 5 [json_name="clock"]; // clock to use for scheduling.
 }
 
 message Hook {

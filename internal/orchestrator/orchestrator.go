@@ -171,7 +171,7 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 		}
 	}
 
-	zap.L().Info("reset task queue, scheduling new task set.")
+	zap.L().Info("reset task queue, scheduling new task set", zap.String("timezone", time.Now().Location().String()))
 
 	// Requeue tasks that are affected by the config change.
 	if err := o.ScheduleTask(tasks.NewCollectGarbageTask(), tasks.TaskPriorityDefault); err != nil {

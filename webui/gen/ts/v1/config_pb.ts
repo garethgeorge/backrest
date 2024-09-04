@@ -848,31 +848,14 @@ export class Schedule extends Message<Schedule> {
      */
     value: number;
     case: "maxFrequencyHours";
-  } | {
-    /**
-     * cron expression to run since the last run.
-     *
-     * @generated from field: string cronSinceLastRun = 100;
-     */
-    value: string;
-    case: "cronSinceLastRun";
-  } | {
-    /**
-     * max hours since the last run.
-     *
-     * @generated from field: int32 minHoursSinceLastRun = 101;
-     */
-    value: number;
-    case: "minHoursSinceLastRun";
-  } | {
-    /**
-     * max days since the last run.
-     *
-     * @generated from field: int32 minDaysSinceLastRun = 102;
-     */
-    value: number;
-    case: "minDaysSinceLastRun";
   } | { case: undefined; value?: undefined } = { case: undefined };
+
+  /**
+   * clock to use for scheduling.
+   *
+   * @generated from field: v1.Schedule.Clock clock = 5;
+   */
+  clock = Schedule_Clock.LOCAL;
 
   constructor(data?: PartialMessage<Schedule>) {
     super();
@@ -886,9 +869,7 @@ export class Schedule extends Message<Schedule> {
     { no: 2, name: "cron", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "schedule" },
     { no: 3, name: "maxFrequencyDays", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "schedule" },
     { no: 4, name: "maxFrequencyHours", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "schedule" },
-    { no: 100, name: "cronSinceLastRun", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "schedule" },
-    { no: 101, name: "minHoursSinceLastRun", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "schedule" },
-    { no: 102, name: "minDaysSinceLastRun", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "schedule" },
+    { no: 5, name: "clock", kind: "enum", T: proto3.getEnumType(Schedule_Clock) },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Schedule {
@@ -907,6 +888,32 @@ export class Schedule extends Message<Schedule> {
     return proto3.util.equals(Schedule, a, b);
   }
 }
+
+/**
+ * @generated from enum v1.Schedule.Clock
+ */
+export enum Schedule_Clock {
+  /**
+   * @generated from enum value: CLOCK_LOCAL = 0;
+   */
+  LOCAL = 0,
+
+  /**
+   * @generated from enum value: CLOCK_UTC = 1;
+   */
+  UTC = 1,
+
+  /**
+   * @generated from enum value: CLOCK_LAST_RUN_TIME = 2;
+   */
+  LAST_RUN_TIME = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(Schedule_Clock)
+proto3.util.setEnumType(Schedule_Clock, "v1.Schedule.Clock", [
+  { no: 0, name: "CLOCK_LOCAL" },
+  { no: 1, name: "CLOCK_UTC" },
+  { no: 2, name: "CLOCK_LAST_RUN_TIME" },
+]);
 
 /**
  * @generated from message v1.Hook

@@ -43,16 +43,18 @@ func TestScheduling(t *testing.T) {
 				Id: "repo-relative",
 				CheckPolicy: &v1.CheckPolicy{
 					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_MinHoursSinceLastRun{
-							MinHoursSinceLastRun: 1,
+						Schedule: &v1.Schedule_MaxFrequencyHours{
+							MaxFrequencyHours: 1,
 						},
+						Clock: v1.Schedule_CLOCK_LAST_RUN_TIME,
 					},
 				},
 				PrunePolicy: &v1.PrunePolicy{
 					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_MinHoursSinceLastRun{
-							MinHoursSinceLastRun: 1,
+						Schedule: &v1.Schedule_MaxFrequencyHours{
+							MaxFrequencyHours: 1,
 						},
+						Clock: v1.Schedule_CLOCK_LAST_RUN_TIME,
 					},
 				},
 			},
@@ -64,14 +66,16 @@ func TestScheduling(t *testing.T) {
 					Schedule: &v1.Schedule_Cron{
 						Cron: "0 0 * * *", // every day at midnight
 					},
+					Clock: v1.Schedule_CLOCK_LOCAL,
 				},
 			},
 			{
 				Id: "plan-cron-since-last-run",
 				Schedule: &v1.Schedule{
-					Schedule: &v1.Schedule_CronSinceLastRun{
-						CronSinceLastRun: "0 0 * * *", // every day at midnight
+					Schedule: &v1.Schedule_Cron{
+						Cron: "0 0 * * *", // every day at midnight
 					},
+					Clock: v1.Schedule_CLOCK_LAST_RUN_TIME,
 				},
 			},
 			{
@@ -81,15 +85,17 @@ func TestScheduling(t *testing.T) {
 					Schedule: &v1.Schedule_MaxFrequencyDays{
 						MaxFrequencyDays: 1,
 					},
+					Clock: v1.Schedule_CLOCK_LAST_RUN_TIME,
 				},
 			},
 			{
 				Id:   "plan-min-days-since-last-run",
 				Repo: "repo1",
 				Schedule: &v1.Schedule{
-					Schedule: &v1.Schedule_MinDaysSinceLastRun{
-						MinDaysSinceLastRun: 1,
+					Schedule: &v1.Schedule_MaxFrequencyDays{
+						MaxFrequencyDays: 1,
 					},
+					Clock: v1.Schedule_CLOCK_LAST_RUN_TIME,
 				},
 			},
 			{
@@ -105,9 +111,10 @@ func TestScheduling(t *testing.T) {
 				Id:   "plan-min-hours-since-last-run",
 				Repo: "repo1",
 				Schedule: &v1.Schedule{
-					Schedule: &v1.Schedule_MinHoursSinceLastRun{
-						MinHoursSinceLastRun: 1,
+					Schedule: &v1.Schedule_MaxFrequencyHours{
+						MaxFrequencyHours: 1,
 					},
+					Clock: v1.Schedule_CLOCK_LAST_RUN_TIME,
 				},
 			},
 		},

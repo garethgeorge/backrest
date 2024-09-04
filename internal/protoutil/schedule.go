@@ -14,29 +14,32 @@ var ErrScheduleDisabled = errors.New("never")
 // ResolveSchedule resolves a schedule to the next time it should run based on last execution.
 // note that this is different from backup behavior which is always relative to the current time.
 func ResolveSchedule(sched *v1.Schedule, lastRan time.Time, curTime time.Time) (time.Time, error) {
+
+	var t time.Time
+	switch sched.GetClock() {
+	case v1.Schedule_CLOCK_LOCAL:
+		t = curTime.Local()
+	case v1.Schedule_CLOCK_UTC:
+		t = curTime.UTC()
+	case v1.Schedule_CLOCK_LAST_RUN_TIME:
+		t = lastRan
+	default:
+		return time.Time{}, fmt.Errorf("unknown clock type: %T", s)
+	}
+
 	switch s := sched.GetSchedule().(type) {
 	case *v1.Schedule_Disabled:
 		return time.Time{}, ErrScheduleDisabled
 	case *v1.Schedule_MaxFrequencyDays:
-		return curTime.Add(time.Duration(s.MaxFrequencyDays) * 24 * time.Hour), nil
+		return t.Add(time.Duration(s.MaxFrequencyDays) * 24 * time.Hour), nil
 	case *v1.Schedule_MaxFrequencyHours:
-		return curTime.Add(time.Duration(s.MaxFrequencyHours) * time.Hour), nil
+		return t.Add(time.Duration(s.MaxFrequencyHours) * time.Hour), nil
 	case *v1.Schedule_Cron:
 		cron, err := cronexpr.ParseInLocation(s.Cron, time.Now().Location().String())
 		if err != nil {
 			return time.Time{}, fmt.Errorf("parse cron %q: %w", s.Cron, err)
 		}
-		return cron.Next(curTime), nil
-	case *v1.Schedule_MinHoursSinceLastRun:
-		return lastRan.Add(time.Duration(s.MinHoursSinceLastRun) * time.Hour), nil
-	case *v1.Schedule_MinDaysSinceLastRun:
-		return lastRan.Add(time.Duration(s.MinDaysSinceLastRun) * 24 * time.Hour), nil
-	case *v1.Schedule_CronSinceLastRun:
-		cron, err := cronexpr.ParseInLocation(s.CronSinceLastRun, time.Now().Location().String())
-		if err != nil {
-			return time.Time{}, fmt.Errorf("parse cron %q: %w", s.CronSinceLastRun, err)
-		}
-		return cron.Next(lastRan), nil
+		return cron.Next(t), nil
 	default:
 		return time.Time{}, fmt.Errorf("unknown schedule type: %T", s)
 	}
@@ -59,22 +62,6 @@ func ValidateSchedule(sched *v1.Schedule) error {
 		_, err := cronexpr.ParseInLocation(s.Cron, time.Now().Location().String())
 		if err != nil {
 			return fmt.Errorf("invalid cron %q: %w", s.Cron, err)
-		}
-	case *v1.Schedule_MinHoursSinceLastRun:
-		if s.MinHoursSinceLastRun < 1 {
-			return errors.New("invalid min hours since last run")
-		}
-	case *v1.Schedule_MinDaysSinceLastRun:
-		if s.MinDaysSinceLastRun < 1 {
-			return errors.New("invalid min days since last run")
-		}
-	case *v1.Schedule_CronSinceLastRun:
-		if s.CronSinceLastRun == "" {
-			return errors.New("empty cron expression")
-		}
-		_, err := cronexpr.ParseInLocation(s.CronSinceLastRun, time.Now().Location().String())
-		if err != nil {
-			return fmt.Errorf("invalid cron %q: %w", s.CronSinceLastRun, err)
 		}
 	case *v1.Schedule_Disabled:
 		if !s.Disabled {
