@@ -115,7 +115,7 @@ func TestBackup(t *testing.T) {
 						Schedule: &v1.Schedule_Disabled{Disabled: true},
 					},
 					Retention: &v1.RetentionPolicy{
-						KeepHourly: 1,
+						Policy: &v1.RetentionPolicy_PolicyKeepAll{PolicyKeepAll: true},
 					},
 				},
 			},
@@ -669,7 +669,7 @@ func TestRestore(t *testing.T) {
 						Schedule: &v1.Schedule_Disabled{Disabled: true},
 					},
 					Retention: &v1.RetentionPolicy{
-						KeepHourly: 1,
+						Policy: &v1.RetentionPolicy_PolicyKeepAll{PolicyKeepAll: true},
 					},
 				},
 			},
