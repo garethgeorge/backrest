@@ -1,18 +1,14 @@
 package tasks
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
-	"go.uber.org/zap"
 )
 
 type CheckTask struct {
@@ -117,38 +113,17 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	}
 	op.Op = opCheck
 
-	checkCtx, cancelCheckCtx := context.WithCancel(ctx)
-	interval := time.NewTicker(1 * time.Second)
-	defer interval.Stop()
-	buf := bytes.NewBuffer(nil)
-	bufWriter := &ioutil.SynchronizedWriter{W: &ioutil.LimitWriter{W: buf, N: 16 * 1024}}
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case <-interval.C:
-				bufWriter.Mu.Lock()
-				output := buf.String()
-				bufWriter.Mu.Unlock()
+	liveID, writer, err := runner.LogrefWriter()
+	if err != nil {
+		return fmt.Errorf("create logref writer: %w", err)
+	}
+	opCheck.OperationCheck.OutputLogref = liveID
 
-				if opCheck.OperationCheck.Output != string(output) {
-					opCheck.OperationCheck.Output = string(output)
+	if err := runner.UpdateOperation(op); err != nil {
+		return fmt.Errorf("update operation: %w", err)
+	}
 
-					if err := runner.OpLog().Update(op); err != nil {
-						zap.L().Error("update check operation with status output", zap.Error(err))
-					}
-				}
-			case <-checkCtx.Done():
-				return
-			}
-		}
-	}()
-
-	err = repo.Check(checkCtx, bufWriter)
-	cancelCheckCtx()
-	wg.Wait()
+	err = repo.Check(ctx, writer)
 	if err != nil {
 		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 			v1.Hook_CONDITION_CHECK_ERROR,
@@ -160,7 +135,11 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		return fmt.Errorf("check: %w", err)
 	}
 
-	opCheck.OperationCheck.Output = string(buf.Bytes())
+	frozenID, err := writer.Close()
+	if err != nil {
+		return fmt.Errorf("close logref writer: %w", err)
+	}
+	opCheck.OperationCheck.OutputLogref = frozenID
 
 	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_CHECK_SUCCESS,

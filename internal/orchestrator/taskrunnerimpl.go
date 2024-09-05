@@ -2,12 +2,16 @@ package orchestrator
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/hook"
+	"github.com/garethgeorge/backrest/internal/logwriter"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator/logging"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
@@ -155,5 +159,41 @@ func (t *taskRunnerImpl) Config() *v1.Config {
 }
 
 func (t *taskRunnerImpl) Logger(ctx context.Context) *zap.Logger {
-	return logging.Logger(ctx).Named(t.t.Name())
+	return logging.Logger(ctx, "[tasklog] ").Named(t.t.Name())
+}
+
+func (t *taskRunnerImpl) LogrefWriter() (string, tasks.LogrefWriter, error) {
+	id := make([]byte, 16)
+	if _, err := rand.Read(id); err != nil {
+		return "", nil, fmt.Errorf("read random: %w", err)
+	}
+	idStr := hex.EncodeToString(id)
+	liveID, writer, err := t.orchestrator.logStore.NewLiveWriter(idStr)
+	if err != nil {
+		return "", nil, fmt.Errorf("new log writer: %w", err)
+	}
+	return liveID, &logrefWriter{
+		logmgr: t.orchestrator.logStore,
+		id:     liveID,
+		writer: writer,
+	}, nil
+}
+
+type logrefWriter struct {
+	logmgr *logwriter.LogManager
+	id     string
+	writer io.WriteCloser
+}
+
+var _ tasks.LogrefWriter = &logrefWriter{}
+
+func (l *logrefWriter) Write(p []byte) (n int, err error) {
+	return l.writer.Write(p)
+}
+
+func (l *logrefWriter) Close() (string, error) {
+	if err := l.writer.Close(); err != nil {
+		return "", err
+	}
+	return l.logmgr.Finalize(l.id)
 }

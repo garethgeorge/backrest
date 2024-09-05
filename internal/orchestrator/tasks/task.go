@@ -52,6 +52,13 @@ type TaskRunner interface {
 	Config() *v1.Config
 	// Logger returns the logger.
 	Logger(ctx context.Context) *zap.Logger
+	// LogrefWriter returns a writer that can be used to track streaming operation output.
+	LogrefWriter() (liveID string, w LogrefWriter, err error)
+}
+
+type LogrefWriter interface {
+	Write(data []byte) (int, error)
+	Close() (frozenID string, err error)
 }
 
 type TaskExecutor interface {
@@ -210,4 +217,8 @@ func (t *testTaskRunner) Config() *v1.Config {
 
 func (t *testTaskRunner) Logger(ctx context.Context) *zap.Logger {
 	return zap.L()
+}
+
+func (t *testTaskRunner) LogrefWriter() (liveID string, w LogrefWriter, err error) {
+	panic("not implemented")
 }

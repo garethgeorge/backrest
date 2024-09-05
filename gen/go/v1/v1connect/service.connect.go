@@ -116,7 +116,7 @@ type BackrestClient interface {
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error)
 	// GetLogs returns the keyed large data for the given operation.
-	GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error)
+	GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.ServerStreamForClient[types.BytesValue], error)
 	// RunCommand executes a generic restic command on the repository.
 	RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.ServerStreamForClient[types.BytesValue], error)
 	// GetDownloadURL returns a signed download URL given a forget operation ID.
@@ -324,8 +324,8 @@ func (c *backrestClient) Cancel(ctx context.Context, req *connect.Request[types.
 }
 
 // GetLogs calls v1.Backrest.GetLogs.
-func (c *backrestClient) GetLogs(ctx context.Context, req *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error) {
-	return c.getLogs.CallUnary(ctx, req)
+func (c *backrestClient) GetLogs(ctx context.Context, req *connect.Request[v1.LogDataRequest]) (*connect.ServerStreamForClient[types.BytesValue], error) {
+	return c.getLogs.CallServerStream(ctx, req)
 }
 
 // RunCommand calls v1.Backrest.RunCommand.
@@ -368,7 +368,7 @@ type BackrestHandler interface {
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error)
 	// GetLogs returns the keyed large data for the given operation.
-	GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error)
+	GetLogs(context.Context, *connect.Request[v1.LogDataRequest], *connect.ServerStream[types.BytesValue]) error
 	// RunCommand executes a generic restic command on the repository.
 	RunCommand(context.Context, *connect.Request[v1.RunCommandRequest], *connect.ServerStream[types.BytesValue]) error
 	// GetDownloadURL returns a signed download URL given a forget operation ID.
@@ -457,7 +457,7 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		connect.WithSchema(backrestCancelMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	backrestGetLogsHandler := connect.NewUnaryHandler(
+	backrestGetLogsHandler := connect.NewServerStreamHandler(
 		BackrestGetLogsProcedure,
 		svc.GetLogs,
 		connect.WithSchema(backrestGetLogsMethodDescriptor),
@@ -580,8 +580,8 @@ func (UnimplementedBackrestHandler) Cancel(context.Context, *connect.Request[typ
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Cancel is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetLogs is not implemented"))
+func (UnimplementedBackrestHandler) GetLogs(context.Context, *connect.Request[v1.LogDataRequest], *connect.ServerStream[types.BytesValue]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetLogs is not implemented"))
 }
 
 func (UnimplementedBackrestHandler) RunCommand(context.Context, *connect.Request[v1.RunCommandRequest], *connect.ServerStream[types.BytesValue]) error {

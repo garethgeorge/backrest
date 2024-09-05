@@ -20,11 +20,11 @@ import (
 	"github.com/garethgeorge/backrest/internal/auth"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/env"
+	"github.com/garethgeorge/backrest/internal/logwriter"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
-	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"github.com/garethgeorge/backrest/webui"
 	"github.com/mattn/go-colorable"
 	"go.etcd.io/bbolt"
@@ -82,7 +82,7 @@ func main() {
 	oplog := oplog.NewOpLog(opstore)
 
 	// Create rotating log storage
-	logStore := rotatinglog.NewRotatingLog(path.Join(env.DataDir(), "rotatinglogs"), 14) // 14 days of logs
+	logStore, err := logwriter.NewLogManager(path.Join(env.DataDir(), "rotatinglogs"), 14) // 14 days of logs
 	if err != nil {
 		zap.S().Fatalf("error creating rotating log storage: %v", err)
 	}

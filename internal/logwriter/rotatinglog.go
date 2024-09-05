@@ -1,10 +1,9 @@
-package rotatinglog
+package logwriter
 
 import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -19,10 +18,6 @@ import (
 
 	"go.uber.org/zap"
 )
-
-var ErrFileNotFound = errors.New("file not found")
-var ErrNotFound = errors.New("entry not found")
-var ErrBadName = errors.New("bad name")
 
 type RotatingLog struct {
 	mu          sync.Mutex

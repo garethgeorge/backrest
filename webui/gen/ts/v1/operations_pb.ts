@@ -538,9 +538,17 @@ export class OperationPrune extends Message<OperationPrune> {
   /**
    * output of the prune.
    *
-   * @generated from field: string output = 1;
+   * @generated from field: string output = 1 [deprecated = true];
+   * @deprecated
    */
   output = "";
+
+  /**
+   * logref of the prune output.
+   *
+   * @generated from field: string output_logref = 2;
+   */
+  outputLogref = "";
 
   constructor(data?: PartialMessage<OperationPrune>) {
     super();
@@ -551,6 +559,7 @@ export class OperationPrune extends Message<OperationPrune> {
   static readonly typeName = "v1.OperationPrune";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "output", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationPrune {
@@ -579,9 +588,17 @@ export class OperationCheck extends Message<OperationCheck> {
   /**
    * output of the check operation.
    *
-   * @generated from field: string output = 1;
+   * @generated from field: string output = 1 [deprecated = true];
+   * @deprecated
    */
   output = "";
+
+  /**
+   * logref of the check output.
+   *
+   * @generated from field: string output_logref = 2;
+   */
+  outputLogref = "";
 
   constructor(data?: PartialMessage<OperationCheck>) {
     super();
@@ -592,6 +609,7 @@ export class OperationCheck extends Message<OperationCheck> {
   static readonly typeName = "v1.OperationCheck";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "output", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationCheck {

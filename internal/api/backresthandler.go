@@ -10,6 +10,7 @@ import (
 	"path"
 	"reflect"
 	"slices"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -17,13 +18,13 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/logwriter"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
-	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -35,12 +36,12 @@ type BackrestHandler struct {
 	config       config.ConfigStore
 	orchestrator *orchestrator.Orchestrator
 	oplog        *oplog.OpLog
-	logStore     *rotatinglog.RotatingLog
+	logStore     *logwriter.LogManager
 }
 
 var _ v1connect.BackrestHandler = &BackrestHandler{}
 
-func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) *BackrestHandler {
+func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *logwriter.LogManager) *BackrestHandler {
 	s := &BackrestHandler{
 		config:       config,
 		orchestrator: orchestrator,
@@ -530,18 +531,65 @@ func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request
 	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
-func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error) {
-	data, err := s.logStore.Read(req.Msg.GetRef())
+func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.LogDataRequest], resp *connect.ServerStream[types.BytesValue]) error {
+	ch, err := s.logStore.Subscribe(req.Msg.Ref)
 	if err != nil {
-		if errors.Is(err, rotatinglog.ErrFileNotFound) {
-			return connect.NewResponse(&types.BytesValue{
+		if errors.Is(err, logwriter.ErrFileNotFound) {
+			resp.Send(&types.BytesValue{
 				Value: []byte(fmt.Sprintf("file associated with log %v not found, it may have rotated out of the log history", req.Msg.GetRef())),
-			}), nil
+			})
 		}
-
-		return nil, fmt.Errorf("get log data %v: %w", req.Msg.GetRef(), err)
+		return fmt.Errorf("get log data %v: %w", req.Msg.GetRef(), err)
 	}
-	return connect.NewResponse(&types.BytesValue{Value: data}), nil
+
+	doneCh := make(chan struct{})
+
+	var mu sync.Mutex
+	var buf bytes.Buffer
+	interval := time.NewTicker(250 * time.Millisecond)
+	defer interval.Stop()
+
+	go func() {
+		for {
+			select {
+			case data, ok := <-ch:
+				if !ok {
+					close(doneCh)
+					return
+				}
+				mu.Lock()
+				buf.Write(data)
+				mu.Unlock()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	flushHelper := func() error {
+		mu.Lock()
+		defer mu.Unlock()
+		if buf.Len() > 0 {
+			if err := resp.Send(&types.BytesValue{Value: buf.Bytes()}); err != nil {
+				return err
+			}
+			buf.Reset()
+		}
+		return nil
+	}
+
+	for {
+		select {
+		case <-interval.C:
+			if err := flushHelper(); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-doneCh:
+			return flushHelper()
+		}
+	}
 }
 
 func (s *BackrestHandler) GetDownloadURL(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error) {

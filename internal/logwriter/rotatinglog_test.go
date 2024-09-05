@@ -1,4 +1,4 @@
-package rotatinglog
+package logwriter
 
 import (
 	"fmt"

@@ -92,12 +92,14 @@ message OperationForget {
 
 // OperationPrune tracks a prune operation.
 message OperationPrune {
-  string output = 1; // output of the prune.
+  string output = 1 [deprecated = true]; // output of the prune.
+  string output_logref = 2; // logref of the prune output.
 }
 
 // OperationCheck tracks a check operation.
 message OperationCheck {
-  string output = 1; // output of the check operation.
+  string output = 1 [deprecated = true]; // output of the check operation.
+  string output_logref = 2; // logref of the check output.
 }
 
 // OperationRestore tracks a restore operation.

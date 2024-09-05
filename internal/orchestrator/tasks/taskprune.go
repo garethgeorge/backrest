@@ -1,15 +1,12 @@
 package tasks
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
@@ -116,40 +113,20 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	}
 	op.Op = opPrune
 
-	pruneCtx, cancelPruneCtx := context.WithCancel(ctx)
-	interval := time.NewTicker(1 * time.Second)
-	defer interval.Stop()
-	buf := bytes.NewBuffer(nil)
-	bufWriter := &ioutil.SynchronizedWriter{W: &ioutil.LimitWriter{W: buf, N: 16 * 1024}}
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case <-interval.C:
-				bufWriter.Mu.Lock()
-				output := buf.String()
-				bufWriter.Mu.Unlock()
+	liveID, writer, err := runner.LogrefWriter()
+	if err != nil {
+		return fmt.Errorf("create logref writer: %w", err)
+	}
+	opPrune.OperationPrune.OutputLogref = liveID
 
-				if opPrune.OperationPrune.Output != string(output) {
-					opPrune.OperationPrune.Output = string(output)
+	if err := runner.UpdateOperation(op); err != nil {
+		return fmt.Errorf("update operation: %w", err)
+	}
 
-					if err := runner.OpLog().Update(op); err != nil {
-						zap.L().Error("update prune operation with status output", zap.Error(err))
-					}
-				}
-			case <-pruneCtx.Done():
-				return
-			}
-		}
-	}()
-
-	err = repo.Prune(pruneCtx, bufWriter)
-	cancelPruneCtx()
-	wg.Wait()
+	err = repo.Prune(ctx, writer)
 	if err != nil {
 		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
+			v1.Hook_CONDITION_PRUNE_ERROR,
 			v1.Hook_CONDITION_ANY_ERROR,
 		}, HookVars{
 			Error: err.Error(),
@@ -158,7 +135,11 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		return fmt.Errorf("prune: %w", err)
 	}
 
-	opPrune.OperationPrune.Output = string(buf.Bytes())
+	frozenID, err := writer.Close()
+	if err != nil {
+		return fmt.Errorf("close logref writer: %w", err)
+	}
+	opPrune.OperationPrune.OutputLogref = frozenID
 
 	// Run a stats task after a successful prune
 	if err := runner.ScheduleTask(NewStatsTask(t.RepoID(), PlanForSystemTasks, false), TaskPriorityStats); err != nil {

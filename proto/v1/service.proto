@@ -42,7 +42,7 @@ service Backrest {
   rpc Cancel(types.Int64Value) returns (google.protobuf.Empty) {}
 
   // GetLogs returns the keyed large data for the given operation.
-  rpc GetLogs(LogDataRequest) returns (types.BytesValue) {}
+  rpc GetLogs(LogDataRequest) returns (stream types.BytesValue) {}
 
   // RunCommand executes a generic restic command on the repository.
   rpc RunCommand(RunCommandRequest) returns (stream types.BytesValue) {}

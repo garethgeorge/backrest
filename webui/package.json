@@ -29,11 +29,13 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-js-cron": "^5.0.1",
-    "typescript": "^5.2.2",
-    "recharts": "^2.12.7"
+    "react-virtualized": "^9.22.5",
+    "recharts": "^2.12.7",
+    "typescript": "^5.2.2"
   },
   "devDependencies": {
     "@parcel/transformer-sass": "^2.10.3",
+    "@types/react-virtualized": "^9.21.30",
     "cross-env": "^7.0.3",
     "events": "^3.3.0",
     "rimraf": "^5.0.5"
