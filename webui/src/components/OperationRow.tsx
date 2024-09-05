@@ -212,6 +212,7 @@ export const OperationRow = ({
     });
   } else if (operation.op.case === "operationPrune") {
     const prune = operation.op.value;
+    expandedBodyItems.push("prune");
     bodyItems.push({
       key: "prune",
       label: "Prune Output",
@@ -223,6 +224,7 @@ export const OperationRow = ({
     });
   } else if (operation.op.case === "operationCheck") {
     const check = operation.op.value;
+    expandedBodyItems.push("check");
     bodyItems.push({
       key: "check",
       label: "Check Output",
@@ -242,6 +244,9 @@ export const OperationRow = ({
   } else if (operation.op.case === "operationRunHook") {
     const hook = operation.op.value;
     if (operation.logref) {
+      if (operation.status === OperationStatus.STATUS_INPROGRESS) {
+        expandedBodyItems.push("logref");
+      }
       bodyItems.push({
         key: "logref",
         label: "Hook Output",

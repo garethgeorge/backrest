@@ -57,7 +57,10 @@ export const LogView = ({ logref }: { logref: string }) => {
       }}
     >
       {lines.map((line, i) => (
-        <pre style={{ margin: "0px" }} key={i}>
+        <pre
+          style={{ margin: "0px", whiteSpace: "pre", overflow: "visible" }}
+          key={i}
+        >
           {line}
         </pre>
       ))}

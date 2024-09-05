@@ -541,6 +541,7 @@ func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.L
 		}
 		return fmt.Errorf("get log data %v: %w", req.Msg.GetRef(), err)
 	}
+	defer s.logStore.Unsubscribe(req.Msg.Ref, ch)
 
 	doneCh := make(chan struct{})
 
@@ -550,20 +551,12 @@ func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.L
 	defer interval.Stop()
 
 	go func() {
-		for {
-			select {
-			case data, ok := <-ch:
-				if !ok {
-					close(doneCh)
-					return
-				}
-				mu.Lock()
-				buf.Write(data)
-				mu.Unlock()
-			case <-ctx.Done():
-				return
-			}
+		for data := range ch {
+			mu.Lock()
+			buf.Write(data)
+			mu.Unlock()
 		}
+		close(doneCh)
 	}()
 
 	flushHelper := func() error {
