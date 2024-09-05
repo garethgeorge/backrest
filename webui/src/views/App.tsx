@@ -313,7 +313,11 @@ const IconForResource = ({
         case "createdOperations":
         case "updatedOperations":
           const ops = event.event.value.operations;
-          if (ops.find((op) => op.planId === planId && op.repoId === repoId)) {
+          if (
+            ops.find(
+              (op) => (!planId || op.planId === planId) && op.repoId === repoId
+            )
+          ) {
             refresh();
           }
           break;

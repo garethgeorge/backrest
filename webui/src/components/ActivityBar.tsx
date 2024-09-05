@@ -65,7 +65,7 @@ export const ActivityBar = () => {
         const displayName = displayTypeToString(getTypeForDisplay(op));
 
         return (
-          <span key={idx}>
+          <span key={idx} style={{ marginRight: "2em" }}>
             {displayName} in progress for plan {op.planId} to {op.repoId} for{" "}
             {formatDuration(Date.now() - Number(op.unixTimeStartMs))}
           </span>
