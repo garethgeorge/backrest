@@ -123,10 +123,12 @@ func (t *LiveLog) Subscribe(id string) (chan []byte, error) {
 			}
 			if err != nil {
 				close(ch)
+				fh.Close()
 				return
 			}
 			ch <- bytes.Clone(buf[:n])
 		}
+		fh.Close()
 
 		// Install subscription in the writer OR close the channel if the writer is gone
 		t.mu.Lock()
