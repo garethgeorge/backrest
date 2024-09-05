@@ -143,7 +143,7 @@ export const Backrest = {
       name: "GetLogs",
       I: LogDataRequest,
       O: BytesValue,
-      kind: MethodKind.Unary,
+      kind: MethodKind.ServerStreaming,
     },
     /**
      * RunCommand executes a generic restic command on the repository.

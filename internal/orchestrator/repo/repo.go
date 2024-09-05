@@ -82,7 +82,7 @@ func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath stri
 }
 
 func (r *RepoOrchestrator) logger(ctx context.Context) *zap.Logger {
-	return logging.Logger(ctx).With(zap.String("repo", r.repoConfig.Id))
+	return logging.Logger(ctx, "[repo-manager] ").With(zap.String("repo", r.repoConfig.Id))
 }
 
 func (r *RepoOrchestrator) Init(ctx context.Context) error {

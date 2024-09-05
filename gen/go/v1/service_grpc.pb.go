@@ -62,7 +62,7 @@ type BackrestClient interface {
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetLogs returns the keyed large data for the given operation.
-	GetLogs(ctx context.Context, in *LogDataRequest, opts ...grpc.CallOption) (*types.BytesValue, error)
+	GetLogs(ctx context.Context, in *LogDataRequest, opts ...grpc.CallOption) (Backrest_GetLogsClient, error)
 	// RunCommand executes a generic restic command on the repository.
 	RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (Backrest_RunCommandClient, error)
 	// GetDownloadURL returns a signed download URL given a forget operation ID.
@@ -212,17 +212,40 @@ func (c *backrestClient) Cancel(ctx context.Context, in *types.Int64Value, opts 
 	return out, nil
 }
 
-func (c *backrestClient) GetLogs(ctx context.Context, in *LogDataRequest, opts ...grpc.CallOption) (*types.BytesValue, error) {
-	out := new(types.BytesValue)
-	err := c.cc.Invoke(ctx, Backrest_GetLogs_FullMethodName, in, out, opts...)
+func (c *backrestClient) GetLogs(ctx context.Context, in *LogDataRequest, opts ...grpc.CallOption) (Backrest_GetLogsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Backrest_ServiceDesc.Streams[1], Backrest_GetLogs_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &backrestGetLogsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Backrest_GetLogsClient interface {
+	Recv() (*types.BytesValue, error)
+	grpc.ClientStream
+}
+
+type backrestGetLogsClient struct {
+	grpc.ClientStream
+}
+
+func (x *backrestGetLogsClient) Recv() (*types.BytesValue, error) {
+	m := new(types.BytesValue)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *backrestClient) RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (Backrest_RunCommandClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Backrest_ServiceDesc.Streams[1], Backrest_RunCommand_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &Backrest_ServiceDesc.Streams[2], Backrest_RunCommand_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +325,7 @@ type BackrestServer interface {
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
 	Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error)
 	// GetLogs returns the keyed large data for the given operation.
-	GetLogs(context.Context, *LogDataRequest) (*types.BytesValue, error)
+	GetLogs(*LogDataRequest, Backrest_GetLogsServer) error
 	// RunCommand executes a generic restic command on the repository.
 	RunCommand(*RunCommandRequest, Backrest_RunCommandServer) error
 	// GetDownloadURL returns a signed download URL given a forget operation ID.
@@ -354,8 +377,8 @@ func (UnimplementedBackrestServer) Restore(context.Context, *RestoreSnapshotRequ
 func (UnimplementedBackrestServer) Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
-func (UnimplementedBackrestServer) GetLogs(context.Context, *LogDataRequest) (*types.BytesValue, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetLogs not implemented")
+func (UnimplementedBackrestServer) GetLogs(*LogDataRequest, Backrest_GetLogsServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetLogs not implemented")
 }
 func (UnimplementedBackrestServer) RunCommand(*RunCommandRequest, Backrest_RunCommandServer) error {
 	return status.Errorf(codes.Unimplemented, "method RunCommand not implemented")
@@ -601,22 +624,25 @@ func _Backrest_Cancel_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Backrest_GetLogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LogDataRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _Backrest_GetLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(LogDataRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(BackrestServer).GetLogs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Backrest_GetLogs_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).GetLogs(ctx, req.(*LogDataRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(BackrestServer).GetLogs(m, &backrestGetLogsServer{stream})
+}
+
+type Backrest_GetLogsServer interface {
+	Send(*types.BytesValue) error
+	grpc.ServerStream
+}
+
+type backrestGetLogsServer struct {
+	grpc.ServerStream
+}
+
+func (x *backrestGetLogsServer) Send(m *types.BytesValue) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _Backrest_RunCommand_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -746,10 +772,6 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Backrest_Cancel_Handler,
 		},
 		{
-			MethodName: "GetLogs",
-			Handler:    _Backrest_GetLogs_Handler,
-		},
-		{
 			MethodName: "GetDownloadURL",
 			Handler:    _Backrest_GetDownloadURL_Handler,
 		},
@@ -766,6 +788,11 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "GetOperationEvents",
 			Handler:       _Backrest_GetOperationEvents_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "GetLogs",
+			Handler:       _Backrest_GetLogs_Handler,
 			ServerStreams: true,
 		},
 		{
