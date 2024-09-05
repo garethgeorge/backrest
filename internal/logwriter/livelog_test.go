@@ -22,6 +22,7 @@ func TestWriteThenRead(t *testing.T) {
 	if _, err := writer.Write(data); err != nil {
 		t.Fatalf("Write failed: %v", err)
 	}
+	writer.Close()
 
 	ch, err := logger.Subscribe("test")
 	if err != nil {
