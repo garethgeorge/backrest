@@ -55,8 +55,7 @@ jobs:
 
       - name: Create Fake WebUI Sources
         run: |
-          mkdir webui\dist
-          echo. 2> webui\dist\index.html
+          New-Item -Path .\webui\dist\index.html -ItemType File -Force
 
       - name: Build
         run: go build ./...

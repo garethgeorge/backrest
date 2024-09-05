@@ -215,14 +215,22 @@ export const OperationRow = ({
     bodyItems.push({
       key: "prune",
       label: "Prune Output",
-      children: <pre>{prune.output}</pre>,
+      children: prune.outputLogref ? (
+        <LogView logref={prune.outputLogref} />
+      ) : (
+        <pre>{prune.output}</pre>
+      ),
     });
   } else if (operation.op.case === "operationCheck") {
     const check = operation.op.value;
     bodyItems.push({
       key: "check",
       label: "Check Output",
-      children: <pre>{check.output}</pre>,
+      children: check.outputLogref ? (
+        <LogView logref={check.outputLogref} />
+      ) : (
+        <pre>{check.output}</pre>
+      ),
     });
   } else if (operation.op.case === "operationRestore") {
     expandedBodyItems.push("restore");
