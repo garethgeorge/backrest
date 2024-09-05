@@ -17,13 +17,13 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/logwriter"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
-	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -35,7 +35,7 @@ type BackrestHandler struct {
 	config       config.ConfigStore
 	orchestrator *orchestrator.Orchestrator
 	oplog        *oplog.OpLog
-	logStore     *rotatinglog.RotatingLog
+	logStore     *logwriter.LogManager
 }
 
 var _ v1connect.BackrestHandler = &BackrestHandler{}
@@ -530,18 +530,52 @@ func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request
 	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
-func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.LogDataRequest]) (*connect.Response[types.BytesValue], error) {
-	data, err := s.logStore.Read(req.Msg.GetRef())
+func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.LogDataRequest], resp *connect.ServerStream[types.BytesValue]) error {
+	ch, err := s.logStore.Subscribe(req.Msg.Ref)
 	if err != nil {
-		if errors.Is(err, rotatinglog.ErrFileNotFound) {
-			return connect.NewResponse(&types.BytesValue{
+		if errors.Is(err, logwriter.ErrFileNotFound) {
+			resp.Send(&types.BytesValue{
 				Value: []byte(fmt.Sprintf("file associated with log %v not found, it may have rotated out of the log history", req.Msg.GetRef())),
-			}), nil
+			})
 		}
-
-		return nil, fmt.Errorf("get log data %v: %w", req.Msg.GetRef(), err)
+		return fmt.Errorf("get log data %v: %w", req.Msg.GetRef(), err)
 	}
-	return connect.NewResponse(&types.BytesValue{Value: data}), nil
+
+	ctx, cancel := context.WithCancelCause(ctx)
+	bufferCh := make(chan []byte, 10)
+
+	go func() {
+		for {
+			select {
+			case data, ok := <-ch:
+				if !ok {
+					close(bufferCh)
+				}
+				select {
+				case bufferCh <- data:
+				default:
+					// buffer full, drop data
+					cancel(errors.New("log buffer full, dropping data"))
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	for {
+		select {
+		case data, ok := <-bufferCh:
+			if !ok {
+				return nil
+			}
+			if err := resp.Send(&types.BytesValue{Value: data}); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }
 
 func (s *BackrestHandler) GetDownloadURL(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error) {

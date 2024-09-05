@@ -18,11 +18,11 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/logwriter"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
-	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 )
@@ -769,7 +769,7 @@ type systemUnderTest struct {
 	oplog    *oplog.OpLog
 	opstore  *bboltstore.BboltStore
 	orch     *orchestrator.Orchestrator
-	logStore *rotatinglog.RotatingLog
+	logStore *logwriter.RotatingLog
 	config   *v1.Config
 }
 
@@ -791,7 +791,7 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 	}
 	t.Cleanup(func() { opstore.Close() })
 	oplog := oplog.NewOpLog(opstore)
-	logStore := rotatinglog.NewRotatingLog(dir+"/log", 10)
+	logStore := logwriter.NewRotatingLog(dir+"/log", 10)
 	orch, err := orchestrator.NewOrchestrator(
 		resticBin, cfg, oplog, logStore,
 	)
