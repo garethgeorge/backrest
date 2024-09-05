@@ -48,14 +48,9 @@ jobs:
         with:
           go-version: "1.21"
 
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
       - name: Create Fake WebUI Sources
         run: |
-          New-Item -Path .\webui\dist\index.html -ItemType File -Force
+          New-Item -Path .\webui\dist-windows\index.html -ItemType File -Force
 
       - name: Build
         run: go build ./...
