@@ -566,30 +566,28 @@ func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.L
 		}
 	}()
 
+	flushHelper := func() error {
+		mu.Lock()
+		defer mu.Unlock()
+		if buf.Len() > 0 {
+			if err := resp.Send(&types.BytesValue{Value: buf.Bytes()}); err != nil {
+				return err
+			}
+			buf.Reset()
+		}
+		return nil
+	}
+
 	for {
 		select {
 		case <-interval.C:
-			mu.Lock()
-			if buf.Len() > 0 {
-				if err := resp.Send(&types.BytesValue{Value: buf.Bytes()}); err != nil {
-					mu.Unlock()
-					return err
-				}
-				buf.Reset()
+			if err := flushHelper(); err != nil {
+				return err
 			}
-			mu.Unlock()
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-doneCh:
-			mu.Lock()
-			if buf.Len() > 0 {
-				if err := resp.Send(&types.BytesValue{Value: buf.Bytes()}); err != nil {
-					mu.Unlock()
-					return err
-				}
-			}
-			mu.Unlock()
-			return nil
+			return flushHelper()
 		}
 	}
 }
