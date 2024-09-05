@@ -200,17 +200,17 @@ export const ScheduleFormItem = ({
             </Tooltip>
           </Radio.Button>
           <Radio.Button value={"maxFrequencyHours"}>
-            <Tooltip title="Schedule will run at the specified interval in hours relative to Backrest's start time.">
+            <Tooltip title="Schedule will run at the specified interval in hours.">
               Interval Hours
             </Tooltip>
           </Radio.Button>
           <Radio.Button value={"maxFrequencyDays"}>
-            <Tooltip title="Schedule will run at the specified interval in days relative to Backrest's start time.">
+            <Tooltip title="Schedule will run at the specified interval in days.">
               Interval Days
             </Tooltip>
           </Radio.Button>
           <Radio.Button value={"cron"}>
-            <Tooltip title="Schedule will run based on a cron schedule evaluated relative to Backrest's start time.">
+            <Tooltip title="Schedule will run based on a cron schedule.">
               Cron
             </Tooltip>
           </Radio.Button>
