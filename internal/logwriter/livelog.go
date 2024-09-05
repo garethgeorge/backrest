@@ -70,9 +70,14 @@ func (t *LiveLog) Unsubscribe(id string, ch chan []byte) {
 	if w, ok := t.writers[id]; ok {
 		w.mu.Lock()
 		defer w.mu.Unlock()
-		w.subscribers = slices.DeleteFunc(w.subscribers, func(c chan []byte) bool {
+
+		idx := slices.IndexFunc(w.subscribers, func(c chan []byte) bool {
 			return c == ch
 		})
+		if idx >= 0 {
+			close(ch)
+			w.subscribers = append(w.subscribers[:idx], w.subscribers[idx+1:]...)
+		}
 	}
 }
 
@@ -194,6 +199,7 @@ func (t *LiveLogWriter) Close() error {
 	for _, ch := range t.subscribers {
 		close(ch)
 	}
+	t.subscribers = nil
 
 	return t.fh.Close()
 }
