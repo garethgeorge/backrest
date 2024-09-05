@@ -41,6 +41,7 @@ import {
   nameForStatus,
 } from "../state/flowdisplayaggregator";
 import { OperationIcon } from "./OperationIcon";
+import { LogView } from "./LogView";
 
 export const OperationRow = ({
   operation,
@@ -93,7 +94,7 @@ export const OperationRow = ({
           showModal(null);
         }}
       >
-        <BigOperationDataVerbatim logref={operation.logref!} />
+        <LogView logref={operation.logref!} />
       </Modal>
     );
   };
@@ -236,7 +237,7 @@ export const OperationRow = ({
       bodyItems.push({
         key: "logref",
         label: "Hook Output",
-        children: <BigOperationDataVerbatim logref={operation.logref} />,
+        children: <LogView logref={operation.logref} />,
       });
     }
   }
@@ -563,29 +564,4 @@ const ForgetOperationDetails = ({
       </ul>
     </>
   );
-};
-
-// TODO: refactor this to use the provider pattern
-const BigOperationDataVerbatim = ({ logref }: { logref: string }) => {
-  const [output, setOutput] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (!logref) {
-      return;
-    }
-    backrestService
-      .getLogs(
-        new LogDataRequest({
-          ref: logref,
-        })
-      )
-      .then((resp) => {
-        setOutput(new TextDecoder("utf-8").decode(resp.value));
-      })
-      .catch((e) => {
-        console.error("Failed to fetch hook output: ", e);
-      });
-  }, [logref]);
-
-  return <pre style={{ whiteSpace: "pre" }}>{output}</pre>;
 };

@@ -8,7 +8,7 @@ func TestLogLifecycle(t *testing.T) {
 		t.Fatalf("NewLogManager failed: %v", err)
 	}
 
-	id, w, err := mgr.NewLiveWriter(1)
+	id, w, err := mgr.NewLiveWriter("test")
 	if err != nil {
 		t.Fatalf("NewLiveWriter failed: %v", err)
 	}

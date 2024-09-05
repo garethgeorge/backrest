@@ -10,6 +10,7 @@ import (
 	"path"
 	"reflect"
 	"slices"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -40,7 +41,7 @@ type BackrestHandler struct {
 
 var _ v1connect.BackrestHandler = &BackrestHandler{}
 
-func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *rotatinglog.RotatingLog) *BackrestHandler {
+func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *logwriter.LogManager) *BackrestHandler {
 	s := &BackrestHandler{
 		config:       config,
 		orchestrator: orchestrator,
@@ -541,22 +542,24 @@ func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.L
 		return fmt.Errorf("get log data %v: %w", req.Msg.GetRef(), err)
 	}
 
-	ctx, cancel := context.WithCancelCause(ctx)
-	bufferCh := make(chan []byte, 10)
+	doneCh := make(chan struct{})
+
+	var mu sync.Mutex
+	var buf bytes.Buffer
+	interval := time.NewTicker(250 * time.Millisecond)
+	defer interval.Stop()
 
 	go func() {
 		for {
 			select {
 			case data, ok := <-ch:
 				if !ok {
-					close(bufferCh)
+					close(doneCh)
+					return
 				}
-				select {
-				case bufferCh <- data:
-				default:
-					// buffer full, drop data
-					cancel(errors.New("log buffer full, dropping data"))
-				}
+				mu.Lock()
+				buf.Write(data)
+				mu.Unlock()
 			case <-ctx.Done():
 				return
 			}
@@ -565,15 +568,28 @@ func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.L
 
 	for {
 		select {
-		case data, ok := <-bufferCh:
-			if !ok {
-				return nil
+		case <-interval.C:
+			mu.Lock()
+			if buf.Len() > 0 {
+				if err := resp.Send(&types.BytesValue{Value: buf.Bytes()}); err != nil {
+					mu.Unlock()
+					return err
+				}
+				buf.Reset()
 			}
-			if err := resp.Send(&types.BytesValue{Value: data}); err != nil {
-				return err
-			}
+			mu.Unlock()
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-doneCh:
+			mu.Lock()
+			if buf.Len() > 0 {
+				if err := resp.Send(&types.BytesValue{Value: buf.Bytes()}); err != nil {
+					mu.Unlock()
+					return err
+				}
+			}
+			mu.Unlock()
+			return nil
 		}
 	}
 }

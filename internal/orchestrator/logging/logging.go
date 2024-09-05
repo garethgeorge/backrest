@@ -29,7 +29,7 @@ func ContextWithWriter(ctx context.Context, logger io.Writer) context.Context {
 
 // Logger returns a logger from the context, or the global logger if none is found.
 // this is somewhat expensive, it should be called once per task.
-func Logger(ctx context.Context) *zap.Logger {
+func Logger(ctx context.Context, prefix string) *zap.Logger {
 	writer := WriterFromContext(ctx)
 	if writer == nil {
 		return zap.L()
@@ -39,7 +39,7 @@ func Logger(ctx context.Context) *zap.Logger {
 	fe := zapcore.NewConsoleEncoder(p)
 	l := zap.New(zapcore.NewTee(
 		zap.L().Core(),
-		zapcore.NewCore(fe, zapcore.AddSync(&ioutil.LinePrefixer{W: writer, Prefix: []byte("[tasklog] ")}), zapcore.DebugLevel),
+		zapcore.NewCore(fe, zapcore.AddSync(&ioutil.LinePrefixer{W: writer, Prefix: []byte(prefix)}), zapcore.DebugLevel),
 	))
 	return l
 }

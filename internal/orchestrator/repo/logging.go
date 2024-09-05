@@ -20,7 +20,7 @@ func forwardResticLogs(ctx context.Context) (context.Context, func()) {
 	prefixWriter := &ioutil.LinePrefixer{W: limitWriter, Prefix: []byte("[restic] ")}
 	return restic.ContextWithLogger(ctx, prefixWriter), func() {
 		if limitWriter.D > 0 {
-			fmt.Fprintf(writer, "Output truncated, %d bytes dropped\n", limitWriter.D)
+			fmt.Fprintf(prefixWriter, "... Output truncated, %d bytes dropped\n", limitWriter.D)
 		}
 		prefixWriter.Close()
 	}

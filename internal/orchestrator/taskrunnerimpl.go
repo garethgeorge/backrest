@@ -155,5 +155,5 @@ func (t *taskRunnerImpl) Config() *v1.Config {
 }
 
 func (t *taskRunnerImpl) Logger(ctx context.Context) *zap.Logger {
-	return logging.Logger(ctx).Named(t.t.Name())
+	return logging.Logger(ctx, "[tasklog] ").Named(t.t.Name())
 }

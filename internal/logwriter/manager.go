@@ -30,8 +30,9 @@ func NewLogManager(dir string, maxLogFiles int) (*LogManager, error) {
 	}, nil
 }
 
-func (lm *LogManager) NewLiveWriter(opID int64) (string, io.WriteCloser, error) {
-	id := fmt.Sprintf("%d.livelog", opID)
+// NewLiveWriter creates a new live log writer. The ID is the base name of the log file, a transformed ID is returned.
+func (lm *LogManager) NewLiveWriter(idbase string) (string, io.WriteCloser, error) {
+	id := fmt.Sprintf("%s.livelog", idbase)
 	w, err := lm.llm.NewWriter(id)
 	return id, w, err
 }
@@ -74,6 +75,10 @@ func (lm *LogManager) Finalize(id string) (frozenID string, err error) {
 	bytes := make([]byte, 0)
 	for data := range ch {
 		bytes = append(bytes, data...)
+	}
+
+	if err := lm.llm.Remove(id); err != nil {
+		return "", err
 	}
 
 	return lm.rlm.Write(bytes)

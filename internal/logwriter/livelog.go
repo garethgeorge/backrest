@@ -141,6 +141,13 @@ func (t *LiveLog) Subscribe(id string) (chan []byte, error) {
 	return ch, nil
 }
 
+func (t *LiveLog) Remove(id string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	delete(t.writers, id)
+	return os.Remove(path.Join(t.dir, id))
+}
+
 func (t *LiveLog) IsAlive(id string) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()

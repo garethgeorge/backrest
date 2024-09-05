@@ -769,7 +769,7 @@ type systemUnderTest struct {
 	oplog    *oplog.OpLog
 	opstore  *bboltstore.BboltStore
 	orch     *orchestrator.Orchestrator
-	logStore *logwriter.RotatingLog
+	logStore *logwriter.LogManager
 	config   *v1.Config
 }
 
@@ -791,7 +791,10 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 	}
 	t.Cleanup(func() { opstore.Close() })
 	oplog := oplog.NewOpLog(opstore)
-	logStore := logwriter.NewRotatingLog(dir+"/log", 10)
+	logStore, err := logwriter.NewLogManager(dir+"/log", 10)
+	if err != nil {
+		t.Fatalf("Failed to create log store: %v", err)
+	}
 	orch, err := orchestrator.NewOrchestrator(
 		resticBin, cfg, oplog, logStore,
 	)
