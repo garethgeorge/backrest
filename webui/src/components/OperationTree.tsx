@@ -463,34 +463,39 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
       }
     };
 
-    const deleteButton = backup.snapshotID ? (
-      <Tooltip title="This will remove the snapshot from the repository. This is irreversible.">
+    const snapshotInFlow = backup?.operations.find(
+      (op) => op.op.case === "operationIndexSnapshot",
+    );
+
+    const deleteButton =
+      snapshotInFlow && snapshotInFlow.snapshotId ? (
+        <Tooltip title="This will remove the snapshot from the repository. This is irreversible.">
+          <ConfirmButton
+            type="text"
+            confirmTitle="Confirm forget?"
+            confirmTimeout={2000}
+            onClickAsync={doDeleteSnapshot}
+          >
+            Forget (Destructive)
+          </ConfirmButton>
+        </Tooltip>
+      ) : (
         <ConfirmButton
           type="text"
-          confirmTitle="Confirm forget?"
-          confirmTimeout={2000}
-          onClickAsync={doDeleteSnapshot}
-        >
-          Forget (Destructive)
-        </ConfirmButton>
-      </Tooltip>
-    ) : (
-      <ConfirmButton
-        type="text"
-        confirmTitle="Confirm clear?"
-        onClickAsync={async () => {
-          backrestService.clearHistory(
-            new ClearHistoryRequest({
-              selector: new OpSelector({
-                ids: backup.operations.map((op) => op.id),
+          confirmTitle="Confirm clear?"
+          onClickAsync={async () => {
+            backrestService.clearHistory(
+              new ClearHistoryRequest({
+                selector: new OpSelector({
+                  ids: backup.operations.map((op) => op.id),
+                }),
               }),
-            }),
-          );
-        }}
-      >
-        Delete Event
-      </ConfirmButton>
-    );
+            );
+          }}
+        >
+          Delete Event
+        </ConfirmButton>
+      );
 
     return (
       <div style={{ width: "100%" }}>
