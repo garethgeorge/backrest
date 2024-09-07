@@ -21,6 +21,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/logwriter"
+	"github.com/garethgeorge/backrest/internal/metric"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
@@ -116,6 +117,7 @@ func main() {
 	mux.Handle(backrestHandlerPath, auth.RequireAuthentication(backrestHandler, authenticator))
 	mux.Handle("/", webui.Handler())
 	mux.Handle("/download/", http.StripPrefix("/download", api.NewDownloadHandler(oplog)))
+	mux.Handle("/metrics", metric.GetRegistry().Handler())
 
 	// Serve the HTTP gateway
 	server := &http.Server{

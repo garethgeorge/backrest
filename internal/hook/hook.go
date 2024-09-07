@@ -66,6 +66,7 @@ func newOneoffRunHookTask(title, instanceID, repoID, planID string, parentOp *v1
 	return &tasks.GenericOneoffTask{
 		OneoffTask: tasks.OneoffTask{
 			BaseTask: tasks.BaseTask{
+				TaskType:   "hook",
 				TaskName:   fmt.Sprintf("run hook %v", title),
 				TaskRepoID: repoID,
 				TaskPlanID: planID,

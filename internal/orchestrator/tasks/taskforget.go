@@ -16,6 +16,7 @@ func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) Task
 	return &GenericOneoffTask{
 		OneoffTask: OneoffTask{
 			BaseTask: BaseTask{
+				TaskType:   "forget",
 				TaskName:   fmt.Sprintf("forget for plan %q in repo %q", repoID, planID),
 				TaskRepoID: repoID,
 				TaskPlanID: planID,
