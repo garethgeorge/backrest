@@ -42,13 +42,24 @@ export const OperationTree = ({
   isPlanView?: boolean;
 }>) => {
   const alertApi = useAlertApi();
-  const showModal = useShowModal();
+  const setScreenWidth = useState(window.innerWidth)[1];
   const [backups, setBackups] = useState<FlowDisplayInfo[]>([]);
   const [treeData, setTreeData] = useState<{
     tree: OpTreeNode[];
     expanded: React.Key[];
   }>({ tree: [], expanded: [] });
   const [selectedBackupId, setSelectedBackupId] = useState<bigint | null>(null);
+
+  // track the screen width so we can switch between mobile and desktop layouts.
+  useEffect(() => {
+    const handleResize = () => {
+      setScreenWidth(window.innerWidth);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   // track backups for this operation tree view.
   useEffect(() => {
@@ -65,7 +76,7 @@ export const OperationTree = ({
         setBackups(flows);
       },
       100,
-      { leading: true, trailing: true }
+      { leading: true, trailing: true },
     );
 
     logState.subscribe((ids, flowIDs, event) => {
@@ -75,7 +86,7 @@ export const OperationTree = ({
       ) {
         for (const flowID of flowIDs) {
           const displayInfo = displayInfoForFlow(
-            logState.getByFlowID(flowID) || []
+            logState.getByFlowID(flowID) || [],
           );
           if (!displayInfo.hidden) {
             backupInfoByFlowID.set(flowID, displayInfo);
@@ -117,20 +128,6 @@ export const OperationTree = ({
           return;
         }
         setSelectedBackupId(backup!.flowID);
-
-        if (useMobileLayout) {
-          showModal(
-            <Modal
-              visible={true}
-              footer={null}
-              onCancel={() => {
-                showModal(null);
-              }}
-            >
-              <BackupView backup={backup} />
-            </Modal>
-          );
-        }
       }}
       titleRender={(node: OpTreeNode): React.ReactNode => {
         if (node.title !== undefined) {
@@ -158,7 +155,22 @@ export const OperationTree = ({
   );
 
   if (useMobileLayout) {
-    return backupTree;
+    const backup = backups.find((b) => b.flowID === selectedBackupId);
+    return (
+      <>
+        <Modal
+          open={!!backup}
+          footer={null}
+          onCancel={() => {
+            setSelectedBackupId(null);
+          }}
+          width="60vw"
+        >
+          <BackupView backup={backup} />
+        </Modal>
+        ,{backupTree}
+      </>
+    );
   }
 
   return (
@@ -180,7 +192,7 @@ export const OperationTree = ({
 const treeLeafCache = new WeakMap<FlowDisplayInfo, OpTreeNode>();
 const buildTree = (
   operations: FlowDisplayInfo[],
-  isForPlanView: boolean
+  isForPlanView: boolean,
 ): { tree: OpTreeNode[]; expanded: React.Key[] } => {
   const buildTreeInstanceID = (operations: FlowDisplayInfo[]): OpTreeNode[] => {
     const grouped = _.groupBy(operations, (op) => {
@@ -238,7 +250,7 @@ const buildTree = (
 
   const buildTreeDay = (
     keyPrefix: string,
-    operations: FlowDisplayInfo[]
+    operations: FlowDisplayInfo[],
   ): OpTreeNode[] => {
     const grouped = _.groupBy(operations, (op) => {
       return localISOTime(op.displayTime).substring(0, 10);
@@ -291,13 +303,13 @@ const buildTree = (
     entries: OpTreeNode[],
     budget: number,
     d1: number,
-    d2: number
+    d2: number,
   ) => {
     let expanded: React.Key[] = [];
     const h2 = (
       entries: OpTreeNode[],
       curDepth: number,
-      budget: number
+      budget: number,
     ): number => {
       if (curDepth >= d2) {
         for (const entry of entries) {
@@ -443,7 +455,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
             planId: backup.planID!,
             repoId: backup.repoID!,
             snapshotId: backup.snapshotID!,
-          })
+          }),
         );
         alertApi!.success("Snapshot forgotten.");
       } catch (e) {
@@ -472,7 +484,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
               selector: new OpSelector({
                 ids: backup.operations.map((op) => op.id),
               }),
-            })
+            }),
           );
         }}
       >
