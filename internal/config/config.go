@@ -23,6 +23,9 @@ func NewDefaultConfig() *v1.Config {
 		Instance: "",
 		Repos:    []*v1.Repo{},
 		Plans:    []*v1.Plan{},
+		Auth: &v1.Auth{
+			Disabled: true,
+		},
 	}
 }
 
