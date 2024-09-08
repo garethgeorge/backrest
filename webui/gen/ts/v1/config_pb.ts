@@ -109,7 +109,7 @@ export class Config extends Message<Config> {
   version = 0;
 
   /**
-   * The instance name for the Backrest installation. 
+   * The instance name for the Backrest installation.
    * This identifies backups created by this instance and is displayed in the UI. 
    *
    * @generated from field: string instance = 2;

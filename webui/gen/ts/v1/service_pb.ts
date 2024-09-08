@@ -7,6 +7,106 @@ import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialM
 import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
 
 /**
+ * @generated from message v1.FeatureList
+ */
+export class FeatureList extends Message<FeatureList> {
+  /**
+   * @generated from field: repeated v1.FeatureInfo features = 1;
+   */
+  features: FeatureInfo[] = [];
+
+  constructor(data?: PartialMessage<FeatureList>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.FeatureList";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "features", kind: "message", T: FeatureInfo, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): FeatureList {
+    return new FeatureList().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): FeatureList {
+    return new FeatureList().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): FeatureList {
+    return new FeatureList().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: FeatureList | PlainMessage<FeatureList> | undefined, b: FeatureList | PlainMessage<FeatureList> | undefined): boolean {
+    return proto3.util.equals(FeatureList, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.FeatureInfo
+ */
+export class FeatureInfo extends Message<FeatureInfo> {
+  /**
+   * @generated from oneof v1.FeatureInfo.feature
+   */
+  feature: {
+    /**
+     * @generated from field: v1.FeatureInfo.SimpleFeature simple = 1;
+     */
+    value: FeatureInfo_SimpleFeature;
+    case: "simple";
+  } | { case: undefined; value?: undefined } = { case: undefined };
+
+  constructor(data?: PartialMessage<FeatureInfo>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.FeatureInfo";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "simple", kind: "enum", T: proto3.getEnumType(FeatureInfo_SimpleFeature), oneof: "feature" },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): FeatureInfo {
+    return new FeatureInfo().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): FeatureInfo {
+    return new FeatureInfo().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): FeatureInfo {
+    return new FeatureInfo().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: FeatureInfo | PlainMessage<FeatureInfo> | undefined, b: FeatureInfo | PlainMessage<FeatureInfo> | undefined): boolean {
+    return proto3.util.equals(FeatureInfo, a, b);
+  }
+}
+
+/**
+ * @generated from enum v1.FeatureInfo.SimpleFeature
+ */
+export enum FeatureInfo_SimpleFeature {
+  /**
+   * @generated from enum value: FEATURE_UNKNOWN = 0;
+   */
+  FEATURE_UNKNOWN = 0,
+
+  /**
+   * @generated from enum value: FEATURE_RUSTIC = 1;
+   */
+  FEATURE_RUSTIC = 1,
+}
+// Retrieve enum metadata with: proto3.getEnumType(FeatureInfo_SimpleFeature)
+proto3.util.setEnumType(FeatureInfo_SimpleFeature, "v1.FeatureInfo.SimpleFeature", [
+  { no: 0, name: "FEATURE_UNKNOWN" },
+  { no: 1, name: "FEATURE_RUSTIC" },
+]);
+
+/**
  * OpSelector is a message that can be used to select operations e.g. by query.
  *
  * @generated from message v1.OpSelector

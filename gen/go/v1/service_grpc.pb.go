@@ -21,6 +21,7 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
+	Backrest_GetFeatures_FullMethodName        = "/v1.Backrest/GetFeatures"
 	Backrest_GetConfig_FullMethodName          = "/v1.Backrest/GetConfig"
 	Backrest_SetConfig_FullMethodName          = "/v1.Backrest/SetConfig"
 	Backrest_AddRepo_FullMethodName            = "/v1.Backrest/AddRepo"
@@ -44,6 +45,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type BackrestClient interface {
+	// GetFeatures returns a list of features supported by the server.
+	GetFeatures(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*FeatureList, error)
 	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error)
 	SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error)
 	AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error)
@@ -79,6 +82,15 @@ type backrestClient struct {
 
 func NewBackrestClient(cc grpc.ClientConnInterface) BackrestClient {
 	return &backrestClient{cc}
+}
+
+func (c *backrestClient) GetFeatures(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*FeatureList, error) {
+	out := new(FeatureList)
+	err := c.cc.Invoke(ctx, Backrest_GetFeatures_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *backrestClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error) {
@@ -307,6 +319,8 @@ func (c *backrestClient) PathAutocomplete(ctx context.Context, in *types.StringV
 // All implementations must embed UnimplementedBackrestServer
 // for forward compatibility
 type BackrestServer interface {
+	// GetFeatures returns a list of features supported by the server.
+	GetFeatures(context.Context, *emptypb.Empty) (*FeatureList, error)
 	GetConfig(context.Context, *emptypb.Empty) (*Config, error)
 	SetConfig(context.Context, *Config) (*Config, error)
 	AddRepo(context.Context, *Repo) (*Config, error)
@@ -341,6 +355,9 @@ type BackrestServer interface {
 type UnimplementedBackrestServer struct {
 }
 
+func (UnimplementedBackrestServer) GetFeatures(context.Context, *emptypb.Empty) (*FeatureList, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFeatures not implemented")
+}
 func (UnimplementedBackrestServer) GetConfig(context.Context, *emptypb.Empty) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetConfig not implemented")
 }
@@ -403,6 +420,24 @@ type UnsafeBackrestServer interface {
 
 func RegisterBackrestServer(s grpc.ServiceRegistrar, srv BackrestServer) {
 	s.RegisterService(&Backrest_ServiceDesc, srv)
+}
+
+func _Backrest_GetFeatures_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackrestServer).GetFeatures(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Backrest_GetFeatures_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackrestServer).GetFeatures(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Backrest_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -727,6 +762,10 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "v1.Backrest",
 	HandlerType: (*BackrestServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetFeatures",
+			Handler:    _Backrest_GetFeatures_Handler,
+		},
 		{
 			MethodName: "GetConfig",
 			Handler:    _Backrest_GetConfig_Handler,

@@ -1,0 +1,18 @@
+[package]
+name = "rusticdaemon"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+prost = "0.13.2"
+rustic_backend = "0.2.0"
+rustic_core = "0.3.0"
+simplelog = "0.12.2"
+tokio = { version = "1.40.0", features = ["net"] }
+toml = "0.8.19"
+tonic = "0.12.2"
+
+[build-dependencies]
+tonic-build = "0.12.2"

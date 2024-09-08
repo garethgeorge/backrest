@@ -4,9 +4,9 @@
 // @ts-nocheck
 
 import { Empty, MethodKind } from "@bufbuild/protobuf";
+import { ClearHistoryRequest, DoRepoTaskRequest, FeatureList, ForgetRequest, GetOperationsRequest, ListSnapshotFilesRequest, ListSnapshotFilesResponse, ListSnapshotsRequest, LogDataRequest, RestoreSnapshotRequest, RunCommandRequest } from "./service_pb.js";
 import { Config, Repo } from "./config_pb.js";
 import { OperationEvent, OperationList } from "./operations_pb.js";
-import { ClearHistoryRequest, DoRepoTaskRequest, ForgetRequest, GetOperationsRequest, ListSnapshotFilesRequest, ListSnapshotFilesResponse, ListSnapshotsRequest, LogDataRequest, RestoreSnapshotRequest, RunCommandRequest } from "./service_pb.js";
 import { ResticSnapshotList } from "./restic_pb.js";
 import { BytesValue, Int64Value, StringList, StringValue } from "../types/value_pb.js";
 
@@ -16,6 +16,17 @@ import { BytesValue, Int64Value, StringList, StringValue } from "../types/value_
 export const Backrest = {
   typeName: "v1.Backrest",
   methods: {
+    /**
+     * GetFeatures returns a list of features supported by the server.
+     *
+     * @generated from rpc v1.Backrest.GetFeatures
+     */
+    getFeatures: {
+      name: "GetFeatures",
+      I: Empty,
+      O: FeatureList,
+      kind: MethodKind.Unary,
+    },
     /**
      * @generated from rpc v1.Backrest.GetConfig
      */

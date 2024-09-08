@@ -35,6 +35,8 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// BackrestGetFeaturesProcedure is the fully-qualified name of the Backrest's GetFeatures RPC.
+	BackrestGetFeaturesProcedure = "/v1.Backrest/GetFeatures"
 	// BackrestGetConfigProcedure is the fully-qualified name of the Backrest's GetConfig RPC.
 	BackrestGetConfigProcedure = "/v1.Backrest/GetConfig"
 	// BackrestSetConfigProcedure is the fully-qualified name of the Backrest's SetConfig RPC.
@@ -77,6 +79,7 @@ const (
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
 	backrestServiceDescriptor                  = v1.File_v1_service_proto.Services().ByName("Backrest")
+	backrestGetFeaturesMethodDescriptor        = backrestServiceDescriptor.Methods().ByName("GetFeatures")
 	backrestGetConfigMethodDescriptor          = backrestServiceDescriptor.Methods().ByName("GetConfig")
 	backrestSetConfigMethodDescriptor          = backrestServiceDescriptor.Methods().ByName("SetConfig")
 	backrestAddRepoMethodDescriptor            = backrestServiceDescriptor.Methods().ByName("AddRepo")
@@ -98,6 +101,8 @@ var (
 
 // BackrestClient is a client for the v1.Backrest service.
 type BackrestClient interface {
+	// GetFeatures returns a list of features supported by the server.
+	GetFeatures(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.FeatureList], error)
 	GetConfig(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.Config], error)
 	SetConfig(context.Context, *connect.Request[v1.Config]) (*connect.Response[v1.Config], error)
 	AddRepo(context.Context, *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error)
@@ -137,6 +142,12 @@ type BackrestClient interface {
 func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) BackrestClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &backrestClient{
+		getFeatures: connect.NewClient[emptypb.Empty, v1.FeatureList](
+			httpClient,
+			baseURL+BackrestGetFeaturesProcedure,
+			connect.WithSchema(backrestGetFeaturesMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		getConfig: connect.NewClient[emptypb.Empty, v1.Config](
 			httpClient,
 			baseURL+BackrestGetConfigProcedure,
@@ -244,6 +255,7 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 
 // backrestClient implements BackrestClient.
 type backrestClient struct {
+	getFeatures        *connect.Client[emptypb.Empty, v1.FeatureList]
 	getConfig          *connect.Client[emptypb.Empty, v1.Config]
 	setConfig          *connect.Client[v1.Config, v1.Config]
 	addRepo            *connect.Client[v1.Repo, v1.Config]
@@ -261,6 +273,11 @@ type backrestClient struct {
 	getDownloadURL     *connect.Client[types.Int64Value, types.StringValue]
 	clearHistory       *connect.Client[v1.ClearHistoryRequest, emptypb.Empty]
 	pathAutocomplete   *connect.Client[types.StringValue, types.StringList]
+}
+
+// GetFeatures calls v1.Backrest.GetFeatures.
+func (c *backrestClient) GetFeatures(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.FeatureList], error) {
+	return c.getFeatures.CallUnary(ctx, req)
 }
 
 // GetConfig calls v1.Backrest.GetConfig.
@@ -350,6 +367,8 @@ func (c *backrestClient) PathAutocomplete(ctx context.Context, req *connect.Requ
 
 // BackrestHandler is an implementation of the v1.Backrest service.
 type BackrestHandler interface {
+	// GetFeatures returns a list of features supported by the server.
+	GetFeatures(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.FeatureList], error)
 	GetConfig(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.Config], error)
 	SetConfig(context.Context, *connect.Request[v1.Config]) (*connect.Response[v1.Config], error)
 	AddRepo(context.Context, *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error)
@@ -385,6 +404,12 @@ type BackrestHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	backrestGetFeaturesHandler := connect.NewUnaryHandler(
+		BackrestGetFeaturesProcedure,
+		svc.GetFeatures,
+		connect.WithSchema(backrestGetFeaturesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	backrestGetConfigHandler := connect.NewUnaryHandler(
 		BackrestGetConfigProcedure,
 		svc.GetConfig,
@@ -489,6 +514,8 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 	)
 	return "/v1.Backrest/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case BackrestGetFeaturesProcedure:
+			backrestGetFeaturesHandler.ServeHTTP(w, r)
 		case BackrestGetConfigProcedure:
 			backrestGetConfigHandler.ServeHTTP(w, r)
 		case BackrestSetConfigProcedure:
@@ -531,6 +558,10 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 
 // UnimplementedBackrestHandler returns CodeUnimplemented from all methods.
 type UnimplementedBackrestHandler struct{}
+
+func (UnimplementedBackrestHandler) GetFeatures(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.FeatureList], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetFeatures is not implemented"))
+}
 
 func (UnimplementedBackrestHandler) GetConfig(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.Config], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetConfig is not implemented"))

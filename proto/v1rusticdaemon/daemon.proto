@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package v1rusticdaemon;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/garethgeorge/backrest/gen/go/v1rusticdaemon";
+
+service RusticDaemon {
+  // rpc Version(google.protobuf.Empty) returns (VersionResponse) {}
+
+  rpc ValidateRepoOpts(RepoOpts) returns (ValidateResponse) {}
+
+  rpc Exists(RepoOpts) returns (google.protobuf.Empty) {}
+
+  // rpc Init(InitRequest) returns (CommandResponse) {}
+
+  // rpc Backup(BackupRequest) returns (stream CommandResponse) {}
+}
+
+message VersionResponse {
+  int64 daemon_version = 1;
+}
+
+message ValidateResponse {
+  repeated string errors = 1;
+  repeated string warnings = 2;
+}
+
+message CommandResponse {
+  string output = 1;
+  string error = 2;
+  string logs = 3;
+  double progress = 4;
+}
+
+message RepoOpts {
+  string backend_opts_toml = 1 [json_name = "backend_opts_toml"];
+  string repo_opts_toml = 2 [json_name = "repo_opts_toml"];
+}
+
+message InitRequest {
+  RepoOpts repo_opts = 1 [json_name = "repo_opts"];
+}
+
+message BackupRequest {
+  RepoOpts repo_opts = 1 [json_name = "repo_opts"];
+}
+
+message BackupResponse {
+  CommandResponse resp = 1;
+  string snapshot_id = 2; // populated at the end ... todo: other values
+}

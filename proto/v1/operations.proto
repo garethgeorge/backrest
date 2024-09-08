@@ -121,3 +121,9 @@ message OperationRunHook {
   string output_logref = 2; // logref of the hook's output. DEPRECATED.
   Hook.Condition condition = 3; // triggering condition of the hook.
 }
+
+// OperationRunCommand is a simple text operation.
+message OperationRunCommand {
+  string command = 2; // the command to run.
+  string output_logref = 3; // logref of the command's output.
+}

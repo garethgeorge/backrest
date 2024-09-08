@@ -76,7 +76,7 @@ export const OperationTree = ({
         setBackups(flows);
       },
       100,
-      { leading: true, trailing: true },
+      { leading: true, trailing: true }
     );
 
     logState.subscribe((ids, flowIDs, event) => {
@@ -86,7 +86,7 @@ export const OperationTree = ({
       ) {
         for (const flowID of flowIDs) {
           const displayInfo = displayInfoForFlow(
-            logState.getByFlowID(flowID) || [],
+            logState.getByFlowID(flowID) || []
           );
           if (!displayInfo.hidden) {
             backupInfoByFlowID.set(flowID, displayInfo);
@@ -168,7 +168,7 @@ export const OperationTree = ({
         >
           <BackupView backup={backup} />
         </Modal>
-        ,{backupTree}
+        {backupTree}
       </>
     );
   }
@@ -192,7 +192,7 @@ export const OperationTree = ({
 const treeLeafCache = new WeakMap<FlowDisplayInfo, OpTreeNode>();
 const buildTree = (
   operations: FlowDisplayInfo[],
-  isForPlanView: boolean,
+  isForPlanView: boolean
 ): { tree: OpTreeNode[]; expanded: React.Key[] } => {
   const buildTreeInstanceID = (operations: FlowDisplayInfo[]): OpTreeNode[] => {
     const grouped = _.groupBy(operations, (op) => {
@@ -250,7 +250,7 @@ const buildTree = (
 
   const buildTreeDay = (
     keyPrefix: string,
-    operations: FlowDisplayInfo[],
+    operations: FlowDisplayInfo[]
   ): OpTreeNode[] => {
     const grouped = _.groupBy(operations, (op) => {
       return localISOTime(op.displayTime).substring(0, 10);
@@ -303,13 +303,13 @@ const buildTree = (
     entries: OpTreeNode[],
     budget: number,
     d1: number,
-    d2: number,
+    d2: number
   ) => {
     let expanded: React.Key[] = [];
     const h2 = (
       entries: OpTreeNode[],
       curDepth: number,
-      budget: number,
+      budget: number
     ): number => {
       if (curDepth >= d2) {
         for (const entry of entries) {
@@ -455,7 +455,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
             planId: backup.planID!,
             repoId: backup.repoID!,
             snapshotId: backup.snapshotID!,
-          }),
+          })
         );
         alertApi!.success("Snapshot forgotten.");
       } catch (e) {
@@ -464,7 +464,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
     };
 
     const snapshotInFlow = backup?.operations.find(
-      (op) => op.op.case === "operationIndexSnapshot",
+      (op) => op.op.case === "operationIndexSnapshot"
     );
 
     const deleteButton =
@@ -489,7 +489,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
                 selector: new OpSelector({
                   ids: backup.operations.map((op) => op.id),
                 }),
-              }),
+              })
             );
           }}
         >

@@ -790,3 +790,52 @@ export class OperationRunHook extends Message<OperationRunHook> {
   }
 }
 
+/**
+ * OperationRunCommand is a simple text operation.
+ *
+ * @generated from message v1.OperationRunCommand
+ */
+export class OperationRunCommand extends Message<OperationRunCommand> {
+  /**
+   * the command to run.
+   *
+   * @generated from field: string command = 2;
+   */
+  command = "";
+
+  /**
+   * logref of the command's output.
+   *
+   * @generated from field: string output_logref = 3;
+   */
+  outputLogref = "";
+
+  constructor(data?: PartialMessage<OperationRunCommand>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.OperationRunCommand";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 2, name: "command", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationRunCommand {
+    return new OperationRunCommand().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationRunCommand {
+    return new OperationRunCommand().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationRunCommand {
+    return new OperationRunCommand().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: OperationRunCommand | PlainMessage<OperationRunCommand> | undefined, b: OperationRunCommand | PlainMessage<OperationRunCommand> | undefined): boolean {
+    return proto3.util.equals(OperationRunCommand, a, b);
+  }
+}
+

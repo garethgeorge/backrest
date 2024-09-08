@@ -12,6 +12,9 @@ import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
 
 service Backrest {
+  // GetFeatures returns a list of features supported by the server.
+  rpc GetFeatures (google.protobuf.Empty) returns (FeatureList) {}
+
   rpc GetConfig (google.protobuf.Empty) returns (Config) {}
 
   rpc SetConfig (Config) returns (Config) {}
@@ -55,6 +58,21 @@ service Backrest {
 
   // PathAutocomplete provides path autocompletion options for a given filesystem path.
   rpc PathAutocomplete (types.StringValue) returns (types.StringList) {}
+}
+
+message FeatureList {
+  repeated FeatureInfo features = 1;
+}
+
+message FeatureInfo {
+  enum SimpleFeature {
+    FEATURE_UNKNOWN = 0;
+    FEATURE_RUSTIC = 1;
+  }
+
+  oneof feature {
+    SimpleFeature simple = 1;
+  }
 }
 
 // OpSelector is a message that can be used to select operations e.g. by query.
