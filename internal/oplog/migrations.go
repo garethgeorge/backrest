@@ -11,7 +11,7 @@ import (
 var migrations = []func(*OpLog) error{
 	migration001FlowID,
 	migration002InstanceID,
-	migrationNoop,          // migration003Reset	Validated,
+	migrationNoop,
 	migration002InstanceID, // re-run migration002InstanceID to fix improperly set instance IDs
 }
 

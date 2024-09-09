@@ -83,7 +83,7 @@ func (o *BboltStore) Close() error {
 
 func (o *BboltStore) Version() (int64, error) {
 	var version int64
-	err := o.db.View(func(tx *bolt.Tx) error {
+	o.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(SystemBucket)
 		if b == nil {
 			return nil
@@ -92,7 +92,7 @@ func (o *BboltStore) Version() (int64, error) {
 		version, err = serializationutil.Btoi(b.Get([]byte("version")))
 		return err
 	})
-	return version, err
+	return version, nil
 }
 
 func (o *BboltStore) SetVersion(version int64) error {
@@ -107,11 +107,6 @@ func (o *BboltStore) SetVersion(version int64) error {
 
 // Add adds a generic operation to the operation log.
 func (o *BboltStore) Add(ops ...*v1.Operation) error {
-	for _, op := range ops {
-		if op.Id != 0 {
-			return errors.New("operation already has an ID, OpLog.Add is expected to set the ID")
-		}
-	}
 
 	return o.db.Update(func(tx *bolt.Tx) error {
 		for _, op := range ops {
