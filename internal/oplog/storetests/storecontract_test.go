@@ -35,7 +35,10 @@ func TestCreate(t *testing.T) {
 	// t.Parallel()
 	for name, store := range StoresForTest(t) {
 		t.Run(name, func(t *testing.T) {
-			_ = oplog.NewOpLog(store)
+			_, err := oplog.NewOpLog(store)
+			if err != nil {
+				t.Fatalf("error creating oplog: %v", err)
+			}
 		})
 	}
 }
@@ -127,7 +130,10 @@ func TestAddOperation(t *testing.T) {
 				tc := tc
 				t.Run(tc.name, func(t *testing.T) {
 					t.Parallel()
-					log := oplog.NewOpLog(store)
+					log, err := oplog.NewOpLog(store)
+					if err != nil {
+						t.Fatalf("error creating oplog: %v", err)
+					}
 					op := proto.Clone(tc.op).(*v1.Operation)
 					if err := log.Add(op); (err != nil) != tc.wantErr {
 						t.Errorf("Add() error = %v, wantErr %v", err, tc.wantErr)
@@ -226,7 +232,10 @@ func TestListOperation(t *testing.T) {
 
 	for name, store := range StoresForTest(t) {
 		t.Run(name, func(t *testing.T) {
-			log := oplog.NewOpLog(store)
+			log, err := oplog.NewOpLog(store)
+			if err != nil {
+				t.Fatalf("error creating oplog: %v", err)
+			}
 			for _, op := range ops {
 				if err := log.Add(proto.Clone(op).(*v1.Operation)); err != nil {
 					t.Fatalf("error adding operation: %s", err)
@@ -266,7 +275,10 @@ func TestBigIO(t *testing.T) {
 		store := store
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			log := oplog.NewOpLog(store)
+			log, err := oplog.NewOpLog(store)
+			if err != nil {
+				t.Fatalf("error creating oplog: %v", err)
+			}
 			for i := 0; i < count; i++ {
 				if err := log.Add(&v1.Operation{
 					UnixTimeStartMs: 1234,
@@ -301,7 +313,10 @@ func TestIndexSnapshot(t *testing.T) {
 		store := store
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			log := oplog.NewOpLog(store)
+			log, err := oplog.NewOpLog(store)
+			if err != nil {
+				t.Fatalf("error creating oplog: %v", err)
+			}
 			op := proto.Clone(op).(*v1.Operation)
 
 			if err := log.Add(op); err != nil {
@@ -341,7 +356,10 @@ func TestUpdateOperation(t *testing.T) {
 		store := store
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			log := oplog.NewOpLog(store)
+			log, err := oplog.NewOpLog(store)
+			if err != nil {
+				t.Fatalf("error creating oplog: %v", err)
+			}
 			op := proto.Clone(op).(*v1.Operation)
 
 			if err := log.Add(op); err != nil {
@@ -432,7 +450,10 @@ func countBySnapshotIdHelper(t *testing.T, log *oplog.OpLog, snapshotId string, 
 func BenchmarkAdd(b *testing.B) {
 	for name, store := range StoresForTest(b) {
 		b.Run(name, func(b *testing.B) {
-			log := oplog.NewOpLog(store)
+			log, err := oplog.NewOpLog(store)
+			if err != nil {
+				b.Fatalf("error creating oplog: %v", err)
+			}
 			for i := 0; i < b.N; i++ {
 				_ = log.Add(&v1.Operation{
 					UnixTimeStartMs: 1234,
@@ -450,7 +471,10 @@ func BenchmarkList(b *testing.B) {
 	for _, count := range []int{100, 1000, 10000} {
 		b.Run(fmt.Sprintf("%d", count), func(b *testing.B) {
 			for name, store := range StoresForTest(b) {
-				log := oplog.NewOpLog(store)
+				log, err := oplog.NewOpLog(store)
+				if err != nil {
+					b.Fatalf("error creating oplog: %v", err)
+				}
 				for i := 0; i < count; i++ {
 					_ = log.Add(&v1.Operation{
 						UnixTimeStartMs: 1234,

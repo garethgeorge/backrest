@@ -378,7 +378,10 @@ func TestScheduling(t *testing.T) {
 				}
 			}
 
-			log := oplog.NewOpLog(opstore)
+			log, err := oplog.NewOpLog(opstore)
+			if err != nil {
+				t.Fatalf("failed to create oplog: %v", err)
+			}
 
 			runner := newTestTaskRunner(t, cfg, log)
 

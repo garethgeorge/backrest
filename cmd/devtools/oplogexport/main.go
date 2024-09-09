@@ -3,8 +3,8 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
-	"errors"
 	"flag"
+	"log"
 	"os"
 	"path"
 
@@ -12,8 +12,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
-	"go.etcd.io/bbolt"
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
@@ -32,34 +30,34 @@ func main() {
 	oplogFile := path.Join(env.DataDir(), "oplog.boltdb")
 	opstore, err := bboltstore.NewBboltStore(oplogFile)
 	if err != nil {
-		if !errors.Is(err, bbolt.ErrTimeout) {
-			zap.S().Fatalf("timeout while waiting to open database, is the database open elsewhere?")
-		}
-		zap.S().Warnf("operation log may be corrupted, if errors recur delete the file %q and restart. Your backups stored in your repos are safe.", oplogFile)
-		zap.S().Fatalf("error creating oplog : %v", err)
+		log.Fatalf("error creating oplog : %v", err)
 	}
 	defer opstore.Close()
 
 	output := &v1.OperationList{}
 
-	log := oplog.NewOpLog(opstore)
-	log.Query(oplog.Query{}, func(op *v1.Operation) error {
+	l, err := oplog.NewOpLog(opstore)
+	if err != nil {
+		log.Fatalf("error creating oplog: %v", err)
+	}
+	l.Query(oplog.Query{}, func(op *v1.Operation) error {
 		output.Operations = append(output.Operations, op)
 		return nil
 	})
+	log.Printf("exporting %d operations", len(output.Operations))
 
 	bytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(output)
 	if err != nil {
-		zap.S().Fatalf("error marshalling operations: %v", err)
+		log.Fatalf("error marshalling operations: %v", err)
 	}
 
 	bytes, err = compress(bytes)
 	if err != nil {
-		zap.S().Fatalf("error compressing operations: %v", err)
+		log.Fatalf("error compressing operations: %v", err)
 	}
 
 	if err := os.WriteFile(*outpath, bytes, 0644); err != nil {
-		zap.S().Fatalf("error writing to file: %v", err)
+		log.Fatalf("error writing to file: %v", err)
 	}
 }
 

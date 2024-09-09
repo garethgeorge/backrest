@@ -790,7 +790,10 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 		t.Fatalf("Failed to create oplog store: %v", err)
 	}
 	t.Cleanup(func() { opstore.Close() })
-	oplog := oplog.NewOpLog(opstore)
+	oplog, err := oplog.NewOpLog(opstore)
+	if err != nil {
+		t.Fatalf("Failed to create oplog: %v", err)
+	}
 	logStore, err := logwriter.NewLogManager(dir+"/log", 10)
 	if err != nil {
 		t.Fatalf("Failed to create log store: %v", err)
