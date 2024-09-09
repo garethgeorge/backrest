@@ -11,27 +11,6 @@ export const LoginModal = () => {
   const [form] = Form.useForm();
   const alertApi = useAlertApi()!;
 
-  useEffect(() => {
-    authenticationService
-      .login(
-        new LoginRequest({
-          username: "default",
-          password: "password",
-        })
-      )
-      .then((loginResponse) => {
-        alertApi.success(
-          "No users configured yet, logged in with default credentials",
-          5
-        );
-        setAuthToken(loginResponse.token);
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
-      })
-      .catch((e) => {});
-  }, []);
-
   const onFinish = async (values: any) => {
     const loginReq = new LoginRequest({
       username: values.username,

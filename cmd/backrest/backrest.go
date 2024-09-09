@@ -62,9 +62,6 @@ func main() {
 		zap.S().Fatalf("error loading config: %v", err)
 	}
 
-	// Create the authenticator
-	authenticator := auth.NewAuthenticator(getSecret(), configStore)
-
 	var wg sync.WaitGroup
 
 	// Create / load the operation log
@@ -110,6 +107,7 @@ func main() {
 		logStore,
 	)
 
+	authenticator := auth.NewAuthenticator(getSecret(), configStore)
 	apiAuthenticationHandler := api.NewAuthenticationHandler(authenticator)
 
 	mux := http.NewServeMux()

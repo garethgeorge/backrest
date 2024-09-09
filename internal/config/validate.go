@@ -143,7 +143,7 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 }
 
 func validateAuth(auth *v1.Auth) error {
-	if auth.Disabled {
+	if auth == nil || auth.Disabled {
 		return nil
 	}
 
