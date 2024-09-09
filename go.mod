@@ -1,6 +1,8 @@
 module github.com/garethgeorge/backrest
 
-go 1.21
+go 1.22
+
+toolchain go1.23.1
 
 require (
 	connectrpc.com/connect v1.16.2
@@ -17,14 +19,14 @@ require (
 	github.com/mattn/go-colorable v0.1.13
 	github.com/natefinch/atomic v1.0.1
 	github.com/ncruces/zenity v0.10.12
-	go.etcd.io/bbolt v1.3.10
+	go.etcd.io/bbolt v1.3.11
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.23.0
-	golang.org/x/net v0.25.0
-	golang.org/x/sync v0.7.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20240521202816-d264139d666e
-	google.golang.org/grpc v1.64.0
-	google.golang.org/protobuf v1.34.1
+	golang.org/x/crypto v0.27.0
+	golang.org/x/net v0.29.0
+	golang.org/x/sync v0.8.0
+	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1
+	google.golang.org/grpc v1.66.0
+	google.golang.org/protobuf v1.34.2
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
@@ -51,8 +53,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.27.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/image v0.16.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
-	golang.org/x/tools v0.20.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240521202816-d264139d666e // indirect
+	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/text v0.18.0 // indirect
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
 )
