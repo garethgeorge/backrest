@@ -79,7 +79,10 @@ func main() {
 	}
 	defer opstore.Close()
 
-	oplog := oplog.NewOpLog(opstore)
+	oplog, err := oplog.NewOpLog(opstore)
+	if err != nil {
+		zap.S().Fatalf("error creating oplog: %v", err)
+	}
 
 	// Create rotating log storage
 	logStore, err := logwriter.NewLogManager(path.Join(env.DataDir(), "rotatinglogs"), 14) // 14 days of logs

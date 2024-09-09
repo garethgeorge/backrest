@@ -1,7 +1,6 @@
 package memstore
 
 import (
-	"errors"
 	"slices"
 	"sync"
 
@@ -113,9 +112,6 @@ func (m *MemStore) Add(op ...*v1.Operation) error {
 	defer m.mu.Unlock()
 
 	for _, o := range op {
-		if o.Id != 0 {
-			return errors.New("operation already has an ID, OpLog.Add is expected to set the ID")
-		}
 		m.nextID++
 		o.Id = m.nextID
 		if o.FlowId == 0 {

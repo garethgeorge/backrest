@@ -30,10 +30,16 @@ type OpLog struct {
 	subscribers   []*Subscription
 }
 
-func NewOpLog(store OpStore) *OpLog {
-	return &OpLog{
+func NewOpLog(store OpStore) (*OpLog, error) {
+	o := &OpLog{
 		store: store,
 	}
+
+	if err := ApplyMigrations(o); err != nil {
+		return nil, err
+	}
+
+	return o, nil
 }
 
 func (o *OpLog) curSubscribers() []*Subscription {
@@ -64,24 +70,36 @@ func (o *OpLog) Get(opID int64) (*v1.Operation, error) {
 	return o.store.Get(opID)
 }
 
-func (o *OpLog) Add(op ...*v1.Operation) error {
-	if err := o.store.Add(op...); err != nil {
+func (o *OpLog) Add(ops ...*v1.Operation) error {
+	for _, o := range ops {
+		if o.Id != 0 {
+			return errors.New("operation already has an ID, OpLog.Add is expected to set the ID")
+		}
+	}
+
+	if err := o.store.Add(ops...); err != nil {
 		return err
 	}
 
 	for _, sub := range o.curSubscribers() {
-		(*sub)(op, OPERATION_ADDED)
+		(*sub)(ops, OPERATION_ADDED)
 	}
 	return nil
 }
 
-func (o *OpLog) Update(op ...*v1.Operation) error {
-	if err := o.store.Update(op...); err != nil {
+func (o *OpLog) Update(ops ...*v1.Operation) error {
+	for _, o := range ops {
+		if o.Id == 0 {
+			return errors.New("operation does not have an ID, OpLog.Update is expected to have an ID")
+		}
+	}
+
+	if err := o.store.Update(ops...); err != nil {
 		return err
 	}
 
 	for _, sub := range o.curSubscribers() {
-		(*sub)(op, OPERATION_UPDATED)
+		(*sub)(ops, OPERATION_UPDATED)
 	}
 	return nil
 }

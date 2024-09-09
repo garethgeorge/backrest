@@ -21,7 +21,7 @@ func Btoi(b []byte) (int64, error) {
 }
 
 func Stob(v string) []byte {
-	var b []byte
+	b := make([]byte, 0, len(v)+8)
 	b = append(b, Itob(int64(len(v)))...)
 	b = append(b, []byte(v)...)
 	return b
@@ -39,7 +39,7 @@ func Btos(b []byte) (string, int64, error) {
 }
 
 func BytesToKey(b []byte) []byte {
-	var key []byte
+	key := make([]byte, 0, 8+len(b))
 	key = append(key, Itob(int64(len(b)))...)
 	key = append(key, b...)
 	return key
