@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/metric"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
@@ -29,6 +30,7 @@ var _ Task = &BackupTask{}
 func NewScheduledBackupTask(plan *v1.Plan) *BackupTask {
 	return &BackupTask{
 		BaseTask: BaseTask{
+			TaskType:   "backup",
 			TaskName:   fmt.Sprintf("backup for plan %q", plan.Id),
 			TaskRepoID: plan.Repo,
 			TaskPlanID: plan.Id,
@@ -39,6 +41,7 @@ func NewScheduledBackupTask(plan *v1.Plan) *BackupTask {
 func NewOneoffBackupTask(plan *v1.Plan, at time.Time) *BackupTask {
 	return &BackupTask{
 		BaseTask: BaseTask{
+			TaskType:   "backup",
 			TaskName:   fmt.Sprintf("backup for plan %q", plan.Id),
 			TaskRepoID: plan.Repo,
 			TaskPlanID: plan.Id,
@@ -132,6 +135,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 	var sendWg sync.WaitGroup
 	lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
 	var lastFiles []string
+	fileErrorCount := 0
 	summary, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
 		sendWg.Wait()
 		if entry.MessageType == "status" {
@@ -145,6 +149,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 			backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(entry)
 		} else if entry.MessageType == "error" {
 			l.Sugar().Warnf("an unknown error was encountered in processing item: %v", entry.Item)
+			fileErrorCount++
 			backupError, err := protoutil.BackupProgressEntryToBackupError(entry)
 			if err != nil {
 				l.Sugar().Errorf("failed to convert backup progress entry to backup error: %v", err)
@@ -179,6 +184,8 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 	if summary == nil {
 		summary = &restic.BackupProgressEntry{}
 	}
+
+	metric.GetRegistry().RecordBackupSummary(t.RepoID(), t.PlanID(), summary.TotalBytesProcessed, summary.DataAdded, int64(fileErrorCount))
 
 	vars := HookVars{
 		Task:          t.Name(),

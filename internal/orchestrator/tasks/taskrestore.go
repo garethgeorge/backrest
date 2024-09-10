@@ -15,6 +15,7 @@ func NewOneoffRestoreTask(repoID, planID string, flowID int64, at time.Time, sna
 	return &GenericOneoffTask{
 		OneoffTask: OneoffTask{
 			BaseTask: BaseTask{
+				TaskType:   "restore",
 				TaskName:   fmt.Sprintf("restore snapshot %q in repo %q", snapshotID, repoID),
 				TaskRepoID: repoID,
 				TaskPlanID: planID,

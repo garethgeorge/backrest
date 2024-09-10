@@ -19,6 +19,7 @@ func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) Task {
 	return &GenericOneoffTask{
 		OneoffTask: OneoffTask{
 			BaseTask: BaseTask{
+				TaskType:   "index_snapshots",
 				TaskName:   fmt.Sprintf("index snapshots for repo %q", repoID),
 				TaskRepoID: repoID,
 			},
