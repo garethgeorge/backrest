@@ -117,7 +117,7 @@ func main() {
 	mux.Handle(backrestHandlerPath, auth.RequireAuthentication(backrestHandler, authenticator))
 	mux.Handle("/", webui.Handler())
 	mux.Handle("/download/", http.StripPrefix("/download", api.NewDownloadHandler(oplog)))
-	mux.Handle("/metrics", metric.GetRegistry().Handler())
+	mux.Handle("/metrics", auth.RequireAuthentication(metric.GetRegistry().Handler(), authenticator))
 
 	// Serve the HTTP gateway
 	server := &http.Server{
