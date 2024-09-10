@@ -79,7 +79,7 @@ services:
     hostname: backrest
     volumes:
       - ./backrest/data:/data
-      - ./backrest/config:/configq
+      - ./backrest/config:/config
       - ./backrest/cache:/cache
       - /MY-BACKUP-DATA:/userdata # [optional] mount local paths to backup here.
       - /MY-REPOS:/repos # [optional] mount repos if using local storage, not necessary for remotes e.g. B2, S3, etc.
