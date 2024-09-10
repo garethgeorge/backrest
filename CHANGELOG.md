@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.5.0](https://github.com/garethgeorge/backrest/compare/v1.4.0...v1.5.0) (2024-09-10)
+
+
+### Features
+
+* add prometheus metrics ([#459](https://github.com/garethgeorge/backrest/issues/459)) ([daacf28](https://github.com/garethgeorge/backrest/commit/daacf28699c18b27256cb4bf2eb3d9caf94a5ce8))
+* compact the scheduling UI and use an enum for clock configuration ([#452](https://github.com/garethgeorge/backrest/issues/452)) ([9205da1](https://github.com/garethgeorge/backrest/commit/9205da1d2380410d1ccc4507008f28d4fa60dd32))
+* implement 'on error retry' policy ([#428](https://github.com/garethgeorge/backrest/issues/428)) ([038bc87](https://github.com/garethgeorge/backrest/commit/038bc87070361ff3b7d9a90c075787e9ff3948f7))
+* implement scheduling relative to last task execution ([#439](https://github.com/garethgeorge/backrest/issues/439)) ([6ed1280](https://github.com/garethgeorge/backrest/commit/6ed1280869bf42d1901ca09a5cc6b316a1cd8394))
+* support live logrefs for in-progress operations ([#456](https://github.com/garethgeorge/backrest/issues/456)) ([bfaad8b](https://github.com/garethgeorge/backrest/commit/bfaad8b69e95e13006d3f64e6daa956dc060833c))
+
+
+### Bug Fixes
+
+* apply oplog migrations correctly using new storage interface ([491a6a6](https://github.com/garethgeorge/backrest/commit/491a6a67254e40167b6937f6844123de704d5182))
+* backrest can erroneously show 'forget snapshot' button for restore entries ([bfde425](https://github.com/garethgeorge/backrest/commit/bfde425c2d03b0e4dc7c19381cb604dcba9d36e3))
+* broken refresh and sizing for mobile view in operation tree ([0d01c5c](https://github.com/garethgeorge/backrest/commit/0d01c5c31773de996465574e77bc90fa64586e59))
+* bugs in displaying repo / plan / activity status ([cceda4f](https://github.com/garethgeorge/backrest/commit/cceda4fdea5f6c2072e8641d33fffe160613dcf7))
+* double display of snapshot ID for 'Snapshots' in operation tree ([80dbe91](https://github.com/garethgeorge/backrest/commit/80dbe91729efebe88d4ad8e9c4160d48254d0fc1))
+* hide system operations in tree view ([8c1cf79](https://github.com/garethgeorge/backrest/commit/8c1cf791bbc2a5fc0ff279f9ba52d372c123f2d2))
+* misc bugs in restore operation view and activity bar view ([656ac9e](https://github.com/garethgeorge/backrest/commit/656ac9e1b2f2ce82f5afd4a20a729b710d19c541))
+* misc bugs related to new logref support ([97e3f03](https://github.com/garethgeorge/backrest/commit/97e3f03b78d9af644aaa9f4b2e4882514c85025a))
+* misc logging improvements ([1879ddf](https://github.com/garethgeorge/backrest/commit/1879ddfa7991f44bd54d3de9d14d7b7c03472c78))
+* new config validations make it harder to lock yourself out of backrest ([c419861](https://github.com/garethgeorge/backrest/commit/c4198619aa93fa216b9b2744cb7e4214e23c6ac6))
+* reformat tags row in operation list ([0eb560d](https://github.com/garethgeorge/backrest/commit/0eb560ddfb46f33d8404d0e7ac200d7574f64797))
+* remove migrations for fields that have been since backrest 1.0.0 ([#453](https://github.com/garethgeorge/backrest/issues/453)) ([546482f](https://github.com/garethgeorge/backrest/commit/546482f11533668b58d5f5eead581a053b19c28d))
+* restic cli commands through 'run command' are cancelled when closing dialogue ([bb00afa](https://github.com/garethgeorge/backrest/commit/bb00afa899b17c23f6375a5ee23d3c5354f5df4d))
+* simplify auth handling ([6894128](https://github.com/garethgeorge/backrest/commit/6894128d90c1d50c9da53276e4dd6b37c5357402))
+* test fixes for windows file restore ([44585ed](https://github.com/garethgeorge/backrest/commit/44585ede613b87189c38f5cd456a109e653cdf64))
+* UI quality of life improvements ([cc173aa](https://github.com/garethgeorge/backrest/commit/cc173aa7b1b9dda10cfb14ca179c9701d15f22f5))
+* use 'restic restore &lt;snapshot id&gt;:<path>' for restore operations ([af09e47](https://github.com/garethgeorge/backrest/commit/af09e47cdda921eb11cab970939740adb1612af4))
+* write debug-level logs to data dir on all platforms ([a9eb786](https://github.com/garethgeorge/backrest/commit/a9eb786db90f977984b13c3bda7f764d6dadbbef))
+
 ## [1.4.0](https://github.com/garethgeorge/backrest/compare/v1.3.1...v1.4.0) (2024-08-15)
 
 
