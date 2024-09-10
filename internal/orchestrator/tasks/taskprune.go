@@ -21,6 +21,7 @@ type PruneTask struct {
 func NewPruneTask(repoID, planID string, force bool) Task {
 	return &PruneTask{
 		BaseTask: BaseTask{
+			TaskType:   "prune",
 			TaskName:   fmt.Sprintf("prune repo %q", repoID),
 			TaskRepoID: repoID,
 			TaskPlanID: planID,

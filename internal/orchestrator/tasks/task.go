@@ -86,6 +86,7 @@ func (s ScheduledTask) Less(other ScheduledTask) bool {
 // Task is a task that can be scheduled to run at a specific time.
 type Task interface {
 	Name() string                                                       // human readable name for this task.
+	Type() string                                                       // simple string 'type' for this task.
 	Next(now time.Time, runner TaskRunner) (ScheduledTask, error)       // returns the next scheduled task.
 	Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error // run the task.
 	PlanID() string                                                     // the ID of the plan this task is associated with.
@@ -93,9 +94,14 @@ type Task interface {
 }
 
 type BaseTask struct {
+	TaskType   string
 	TaskName   string
 	TaskPlanID string
 	TaskRepoID string
+}
+
+func (b BaseTask) Type() string {
+	return b.TaskType
 }
 
 func (b BaseTask) Name() string {
@@ -164,7 +170,7 @@ type testTaskRunner struct {
 
 var _ TaskRunner = &testTaskRunner{}
 
-func newTestTaskRunner(t testing.TB, config *v1.Config, oplog *oplog.OpLog) *testTaskRunner {
+func newTestTaskRunner(_ testing.TB, config *v1.Config, oplog *oplog.OpLog) *testTaskRunner {
 	return &testTaskRunner{
 		config: config,
 		oplog:  oplog,

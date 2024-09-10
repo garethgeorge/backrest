@@ -18,6 +18,7 @@ type StatsTask struct {
 func NewStatsTask(repoID, planID string, force bool) Task {
 	return &StatsTask{
 		BaseTask: BaseTask{
+			TaskType:   "stats",
 			TaskName:   fmt.Sprintf("stats for repo %q", repoID),
 			TaskRepoID: repoID,
 			TaskPlanID: planID,

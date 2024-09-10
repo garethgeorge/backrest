@@ -35,6 +35,7 @@ type CollectGarbageTask struct {
 func NewCollectGarbageTask() *CollectGarbageTask {
 	return &CollectGarbageTask{
 		BaseTask: BaseTask{
+			TaskType: "collect_garbage",
 			TaskName: "collect garbage",
 		},
 	}
