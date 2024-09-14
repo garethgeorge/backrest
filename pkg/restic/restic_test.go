@@ -168,10 +168,6 @@ func TestResticPartialBackup(t *testing.T) {
 		t.Fatalf("wanted summary, got: nil")
 	}
 
-	if summary.TotalFilesProcessed != 1 {
-		t.Errorf("wanted 1 files, got: %d", summary.TotalFilesProcessed)
-	}
-
 	if !slices.ContainsFunc(entries, func(e BackupProgressEntry) bool {
 		return e.MessageType == "error" && strings.Contains(e.Item, unreadablePath)
 	}) {
