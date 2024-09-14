@@ -54,8 +54,8 @@ func (t *StatsTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 		return NeverScheduledTask, fmt.Errorf("finding last backup run time: %w", err)
 	}
 
-	// Runs every 30 days
-	if time.Since(lastRan) < 30*24*time.Hour {
+	// Runs if it has been at least 1 day since the last run
+	if time.Since(lastRan) < 1*24*time.Hour {
 		return NeverScheduledTask, nil
 	}
 	return ScheduledTask{

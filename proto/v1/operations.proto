@@ -30,7 +30,8 @@ message Operation {
   // optional, human readable context message, typically an error message.
   string display_message = 7;
   // logref can point to arbitrary logs associated with the operation.
-  string logref = 9; 
+  string logref = 9;
+  repeated string extra_logrefs = 12; // optional, additional logrefs associated with the operation.
 
   oneof op {
     OperationBackup operation_backup = 100;

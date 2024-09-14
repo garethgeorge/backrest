@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -245,8 +246,8 @@ func FindOrInstallResticBinary() (string, error) {
 	// Check for restic installation in data directory.
 	resticInstallPath := path.Join(env.DataDir(), resticBinName)
 	if runtime.GOOS == "windows" {
-		programFiles := os.Getenv("programfiles")
-		resticInstallPath = path.Join(programFiles, "backrest", resticBinName)
+		// on windows use a path relative to the executable.
+		resticInstallPath, _ = filepath.Abs(path.Join(path.Dir(os.Args[0]), resticBinName))
 	}
 
 	// Install restic if not found.

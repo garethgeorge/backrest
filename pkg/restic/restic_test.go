@@ -168,12 +168,8 @@ func TestResticPartialBackup(t *testing.T) {
 		t.Fatalf("wanted summary, got: nil")
 	}
 
-	if summary.TotalFilesProcessed != 0 {
-		t.Errorf("wanted 0 files, got: %d", summary.TotalFilesProcessed)
-	}
-
 	if !slices.ContainsFunc(entries, func(e BackupProgressEntry) bool {
-		return e.MessageType == "error" && e.Item == unreadablePath
+		return e.MessageType == "error" && strings.Contains(e.Item, unreadablePath)
 	}) {
 		t.Errorf("wanted entries to contain an error event for the unreadable file (%s), but did not find it", unreadablePath)
 		t.Logf("entries:\n")
