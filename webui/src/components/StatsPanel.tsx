@@ -50,13 +50,17 @@ const StatsPanel = ({ repoId }: { repoId: string }) => {
     );
   }
 
+  const statsOperations = operations.filter((v) => {
+    return v.op.case === "operationStats" && v.op.value.stats;
+  });
+
   const dataset: {
     time: number;
     totalSizeBytes: number;
     compressionRatio: number;
     snapshotCount: number;
     totalBlobCount: number;
-  }[] = operations.map((op) => {
+  }[] = statsOperations.map((op) => {
     const stats = (op.op.value! as OperationStats).stats!;
     return {
       time: Number(op.unixTimeEndMs!),
