@@ -4,7 +4,7 @@
 // @ts-nocheck
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
-import { Message, proto3 } from "@bufbuild/protobuf";
+import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
 
 /**
  * @generated from message v1.HubConfig
@@ -623,14 +623,14 @@ export class PrunePolicy extends Message<PrunePolicy> {
   /**
    * max unused bytes before running prune.
    *
-   * @generated from field: int32 max_unused_bytes = 3;
+   * @generated from field: int64 max_unused_bytes = 3;
    */
-  maxUnusedBytes = 0;
+  maxUnusedBytes = protoInt64.zero;
 
   /**
    * max unused percent before running prune.
    *
-   * @generated from field: int32 max_unused_percent = 4;
+   * @generated from field: double max_unused_percent = 4;
    */
   maxUnusedPercent = 0;
 
@@ -643,8 +643,8 @@ export class PrunePolicy extends Message<PrunePolicy> {
   static readonly typeName = "v1.PrunePolicy";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 2, name: "schedule", kind: "message", T: Schedule },
-    { no: 3, name: "max_unused_bytes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 4, name: "max_unused_percent", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "max_unused_bytes", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "max_unused_percent", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PrunePolicy {

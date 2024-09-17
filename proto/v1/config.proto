@@ -92,8 +92,8 @@ message RetentionPolicy {
 
 message PrunePolicy {
   Schedule schedule = 2 [json_name="schedule"];
-  int32 max_unused_bytes = 3 [json_name="maxUnusedBytes"]; // max unused bytes before running prune.
-  int32 max_unused_percent = 4 [json_name="maxUnusedPercent"]; // max unused percent before running prune.
+  int64 max_unused_bytes = 3 [json_name="maxUnusedBytes"]; // max unused bytes before running prune.
+  double max_unused_percent = 4 [json_name="maxUnusedPercent"]; // max unused percent before running prune.
 }
 
 message CheckPolicy {
