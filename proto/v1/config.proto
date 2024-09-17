@@ -163,6 +163,7 @@ message Hook {
     Gotify action_gotify = 103 [json_name="actionGotify"];
     Slack action_slack = 104 [json_name="actionSlack"];
     Shoutrrr action_shoutrrr = 105 [json_name="actionShoutrrr"];
+    Healthchecks action_healthchecks = 106 [json_name="actionHealthchecks"];
   }
 
   message Command {
@@ -199,6 +200,11 @@ message Hook {
 
   message Shoutrrr {
     string shoutrrr_url = 1 [json_name="shoutrrrUrl"];
+    string template = 2 [json_name="template"];
+  }
+
+  message Healthchecks {
+    string webhook_url = 1 [json_name="webhookUrl"];
     string template = 2 [json_name="template"];
   }
 }

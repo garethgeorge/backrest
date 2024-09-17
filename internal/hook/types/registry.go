@@ -40,6 +40,6 @@ func (r *HandlerRegistry) GetHandler(hook *v1.Hook) (Handler, error) {
 
 type Handler interface {
 	Name() string
-	Execute(ctx context.Context, hook *v1.Hook, vars interface{}, runner tasks.TaskRunner) error
+	Execute(ctx context.Context, hook *v1.Hook, vars interface{}, runner tasks.TaskRunner, event v1.Hook_Condition) error
 	ActionType() reflect.Type
 }
