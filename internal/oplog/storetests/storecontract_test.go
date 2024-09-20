@@ -9,6 +9,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/oplog/memstore"
+	"github.com/garethgeorge/backrest/internal/oplog/sqlitestore"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -22,12 +23,18 @@ func StoresForTest(t testing.TB) map[string]oplog.OpStore {
 	if err != nil {
 		t.Fatalf("error creating bbolt store: %s", err)
 	}
-
 	t.Cleanup(func() { bboltstore.Close() })
+
+	sqlitestore, err := sqlitestore.NewSqliteStore(t.TempDir() + "/test.db")
+	if err != nil {
+		t.Fatalf("error creating sqlite store: %s", err)
+	}
+	t.Cleanup(func() { sqlitestore.Close() })
 
 	return map[string]oplog.OpStore{
 		"bbolt":  bboltstore,
 		"memory": memstore.NewMemStore(),
+		"sqlite": sqlitestore,
 	}
 }
 

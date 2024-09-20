@@ -2,7 +2,6 @@ package textstore
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"math/rand/v2"
@@ -208,18 +207,4 @@ func TestRandomReadWriteSizes(t *testing.T) {
 			}
 		})
 	}
-
-}
-
-func newInmemoryURI() string {
-	return fmt.Sprintf("file:%s?mode=memory&cache=shared", randString(6))
-}
-
-func randString(n int) string {
-	buf := make([]byte, n)
-	_, err := crand.Read(buf)
-	if err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(buf)
 }
