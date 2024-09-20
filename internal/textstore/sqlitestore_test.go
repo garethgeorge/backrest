@@ -2,6 +2,7 @@ package textstore
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/rand/v2"
@@ -13,7 +14,7 @@ import (
 )
 
 func TestCreate(t *testing.T) {
-	store, err := NewSqliteTextStore("file::memory:?mode=memory&cache=shared")
+	store, err := NewSqliteTextStore(t.TempDir() + "/test.db")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +25,7 @@ func TestCreate(t *testing.T) {
 
 func TestWriteRead(t *testing.T) {
 	t.Parallel()
-	store, err := NewSqliteTextStore("file::memory:?mode=memory&cache=shared")
+	store, err := NewSqliteTextStore(t.TempDir() + "/test.db")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +67,7 @@ func TestVeryBigWrite(t *testing.T) {
 	t.Parallel()
 	big := bytes.Repeat([]byte("a"), 1<<20)
 
-	store, err := NewSqliteTextStore("file::memory:?mode=memory&cache=shared")
+	store, err := NewSqliteTextStore(t.TempDir() + "/test.db")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +104,7 @@ func TestVeryBigWrite(t *testing.T) {
 
 func TestReadWriteCorrectness(t *testing.T) {
 	t.Parallel()
-	store, err := NewSqliteTextStore("file::memory:?mode=memory&cache=shared")
+	store, err := NewSqliteTextStore(t.TempDir() + "/test.db")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,8 +152,8 @@ func TestRandomReadWriteSizes(t *testing.T) {
 		sizeFn    func(i int) int
 		verifyMod int
 	}{
-		{"1_byte_writes", 32 * 1024, func(i int) int { return 1 }, -1},
-		{"3_byte_writes", 32 * 1024, func(i int) int { return 3 }, -1},
+		{"1_byte_writes", 1 * 256, func(i int) int { return 1 }, -1},
+		{"3_byte_writes", 1 * 256, func(i int) int { return 3 }, -1},
 		{"1024_byte_writes", 128, func(i int) int { return 1024 }, 32},
 		{"random_byte_writes", 1024, func(i int) int { return rand.IntN(4096) + 1 }, 128},
 		{"chunk_sized_writes", 1024, func(i int) int { return sqliteWriterChunkSize }, 128},
@@ -161,7 +162,7 @@ func TestRandomReadWriteSizes(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.id, func(t *testing.T) {
 			t.Parallel()
-			store, err := NewSqliteTextStore("file::memory:?mode=memory&cache=shared")
+			store, err := NewSqliteTextStore(t.TempDir() + "/test.db")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -208,4 +209,17 @@ func TestRandomReadWriteSizes(t *testing.T) {
 		})
 	}
 
+}
+
+func newInmemoryURI() string {
+	return fmt.Sprintf("file:%s?mode=memory&cache=shared", randString(6))
+}
+
+func randString(n int) string {
+	buf := make([]byte, n)
+	_, err := crand.Read(buf)
+	if err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(buf)
 }

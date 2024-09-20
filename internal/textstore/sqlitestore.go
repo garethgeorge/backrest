@@ -21,7 +21,10 @@ type SqliteTextStore struct {
 }
 
 func NewSqliteTextStore(uri string) (*SqliteTextStore, error) {
-	dbpool, err := sqlitex.NewPool(uri, sqlitex.PoolOptions{PoolSize: 16})
+	dbpool, err := sqlitex.NewPool(uri, sqlitex.PoolOptions{
+		PoolSize: 16,
+		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenWAL | sqlite.OpenSharedCache,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
 	}
@@ -33,6 +36,9 @@ func NewSqliteTextStore(uri string) (*SqliteTextStore, error) {
 }
 
 func (s *SqliteTextStore) init() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	conn, err := s.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("take connection: %v", err)
@@ -40,7 +46,9 @@ func (s *SqliteTextStore) init() error {
 	defer s.dbpool.Put(conn)
 
 	statements := []string{
-		`PRAGMA auto_vacuum = 1;`, // enable shrinking the database on DELETE
+		`PRAGMA auto_vacuum = 1;`,  // enable shrinking the database on DELETE
+		`PRAGMA page_size = 8192;`, // set page size to 8KB
+		`PRAGMA journal_mode=WAL;`, // use WAL journal
 		`CREATE TABLE IF NOT EXISTS files (
 			storage_id INTEGER PRIMARY KEY, -- unique identifier
 			id TEXT NOT NULL UNIQUE -- external identifier
