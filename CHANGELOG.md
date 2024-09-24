@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.5.1](https://github.com/garethgeorge/backrest/compare/v1.5.0...v1.5.1) (2024-09-18)
+
+
+### Bug Fixes
+
+* **docs:** correct minor spelling and grammar errors ([#479](https://github.com/garethgeorge/backrest/issues/479)) ([df55681](https://github.com/garethgeorge/backrest/commit/df5568132b56d38f0ce155e546ff110a943ad87a))
+* prunepolicy.max_unused_percent should allow decimal values ([3056203](https://github.com/garethgeorge/backrest/commit/3056203127b4ced26e69da2a7540d4b139dcd8e9))
+* stats panel can fail to load when an incomplete operation is in the log ([d59c6fc](https://github.com/garethgeorge/backrest/commit/d59c6fc1bed06718c49fc87bfc5bf143a10ac5ed))
+* update to newest restic bugfix release 0.17.1 ([d2650fd](https://github.com/garethgeorge/backrest/commit/d2650fdd591f2bdb08dce8fe55afaba0a5659e31))
+* windows installation for restic 0.17.1 ([#474](https://github.com/garethgeorge/backrest/issues/474)) ([4da9d89](https://github.com/garethgeorge/backrest/commit/4da9d89749fd1bdfd9701c8efb83b69a7eef3395))
+
 ## [1.5.0](https://github.com/garethgeorge/backrest/compare/v1.4.0...v1.5.0) (2024-09-10)
 
 
