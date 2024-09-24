@@ -40,6 +40,7 @@ export interface HookFields {
   actionWebhook?: any;
   actionSlack?: any;
   actionShoutrrr?: any;
+  actionHealthchecks?: any;
 }
 
 export const hooksListTooltipText = (
@@ -345,6 +346,37 @@ const hookTypes: {
           </Form.Item>
           Text Template:
           <Form.Item name={[field.name, "actionSlack", "template"]}>
+            <Input.TextArea
+              style={{ width: "100%", fontFamily: "monospace" }}
+            />
+          </Form.Item>
+        </>
+      );
+    },
+  },
+  {
+    name: "Healthchecks",
+    template: {
+      actionHealthchecks: {
+        webhookUrl: "",
+        template: "{{ .Summary }}",
+      },
+      conditions: [],
+    },
+    oneofKey: "actionHealthchecks",
+    component: ({ field }: { field: FormListFieldData }) => {
+      return (
+        <>
+          <Form.Item
+            name={[field.name, "actionHealthchecks", "webhookUrl"]}
+            rules={[requiredField("Ping URL is required"), { type: "url" }]}
+          >
+            <Input
+              addonBefore={<div style={{ width: "8em" }}>Ping URL</div>}
+            />
+          </Form.Item>
+          Text Template:
+          <Form.Item name={[field.name, "actionHealthchecks", "template"]}>
             <Input.TextArea
               style={{ width: "100%", fontFamily: "monospace" }}
             />

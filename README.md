@@ -14,7 +14,7 @@ Backrest is a web-accessible backup solution built on top of [restic](https://re
 
 By building on restic, Backrest leverages restic's mature feature set. Restic provides fast, reliable, and secure backup operations.
 
-Backrest itself is built in Golang (matching restic's implementation) and is shipped as a self-contained and light weight binary with no dependecies other than restic. This project aims to be the easiest way to setup and get started with backups on any system. You can expect to be able to perform all operations from the web interface but should you ever need more control, you are free to browse your repo and perform operations using the [restic cli](https://restic.readthedocs.io/en/latest/manual_rest.html). Additionally, Backrest can safely detect and import your existing snapshots (or externally created snapshots on an ongoing basis).
+Backrest itself is built in Golang (matching restic's implementation) and is shipped as a self-contained and light weight binary with no dependencies other than restic. This project aims to be the easiest way to setup and get started with backups on any system. You can expect to be able to perform all operations from the web interface but should you ever need more control, you are free to browse your repo and perform operations using the [restic cli](https://restic.readthedocs.io/en/latest/manual_rest.html). Additionally, Backrest can safely detect and import your existing snapshots (or externally created snapshots on an ongoing basis).
 
 **Preview**
 
@@ -37,8 +37,8 @@ Backrest itself is built in Golang (matching restic's implementation) and is shi
 - Multi-platform support (Linux, macOS, Windows, FreeBSD, [Docker](https://hub.docker.com/r/garethgeorge/backrest))
 - Import your existing restic repositories
 - Cron scheduled backups and health operations (e.g. prune, check, forget)
-- UI for browing and restoring files from snapshots
-- Configurable backup notifications (e.g. Discord, Slack, Shoutrrr, Gotify)
+- UI for browsing and restoring files from snapshots
+- Configurable backup notifications (e.g. Discord, Slack, Shoutrrr, Gotify, Healthchecks)
 - Add shell command hooks to run before and after backup operations.
 - Compatible with rclone remotes
 - Backup to any restic supported storage (e.g. S3, B2, Azure, GCS, local, SFTP, and all [rclone remotes](https://rclone.org/))

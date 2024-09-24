@@ -19,7 +19,7 @@ func (discordHandler) Name() string {
 	return "discord"
 }
 
-func (discordHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
+func (discordHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner, event v1.Hook_Condition) error {
 	payload, err := hookutil.RenderTemplateOrDefault(h.GetActionDiscord().GetTemplate(), hookutil.DefaultTemplate, vars)
 	if err != nil {
 		return fmt.Errorf("template rendering: %w", err)

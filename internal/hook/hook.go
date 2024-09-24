@@ -98,7 +98,7 @@ func newOneoffRunHookTask(title, instanceID, repoID, planID string, parentOp *v1
 				clone.FieldByName("Event").Set(reflect.ValueOf(event))
 			}
 
-			if err := h.Execute(ctx, hook, clone, taskRunner); err != nil {
+			if err := h.Execute(ctx, hook, clone, taskRunner, event); err != nil {
 				err = applyHookErrorPolicy(hook.OnError, err)
 				return err
 			}
