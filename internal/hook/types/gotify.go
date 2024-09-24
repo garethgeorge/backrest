@@ -21,7 +21,7 @@ func (gotifyHandler) Name() string {
 	return "gotify"
 }
 
-func (gotifyHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
+func (gotifyHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner, event v1.Hook_Condition) error {
 	g := h.GetActionGotify()
 
 	payload, err := hookutil.RenderTemplateOrDefault(g.GetTemplate(), hookutil.DefaultTemplate, vars)

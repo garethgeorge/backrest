@@ -23,7 +23,7 @@ func (commandHandler) Name() string {
 	return "command"
 }
 
-func (commandHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner) error {
+func (commandHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, runner tasks.TaskRunner, event v1.Hook_Condition) error {
 	command, err := hookutil.RenderTemplate(h.GetActionCommand().GetCommand(), vars)
 	if err != nil {
 		return fmt.Errorf("template rendering: %w", err)

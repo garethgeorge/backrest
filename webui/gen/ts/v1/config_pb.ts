@@ -891,6 +891,12 @@ export class Hook extends Message<Hook> {
      */
     value: Hook_Shoutrrr;
     case: "actionShoutrrr";
+  } | {
+    /**
+     * @generated from field: v1.Hook.Healthchecks action_healthchecks = 106;
+     */
+    value: Hook_Healthchecks;
+    case: "actionHealthchecks";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Hook>) {
@@ -909,6 +915,7 @@ export class Hook extends Message<Hook> {
     { no: 103, name: "action_gotify", kind: "message", T: Hook_Gotify, oneof: "action" },
     { no: 104, name: "action_slack", kind: "message", T: Hook_Slack, oneof: "action" },
     { no: 105, name: "action_shoutrrr", kind: "message", T: Hook_Shoutrrr, oneof: "action" },
+    { no: 106, name: "action_healthchecks", kind: "message", T: Hook_Healthchecks, oneof: "action" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook {
@@ -1397,6 +1404,49 @@ export class Hook_Shoutrrr extends Message<Hook_Shoutrrr> {
 
   static equals(a: Hook_Shoutrrr | PlainMessage<Hook_Shoutrrr> | undefined, b: Hook_Shoutrrr | PlainMessage<Hook_Shoutrrr> | undefined): boolean {
     return proto3.util.equals(Hook_Shoutrrr, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.Hook.Healthchecks
+ */
+export class Hook_Healthchecks extends Message<Hook_Healthchecks> {
+  /**
+   * @generated from field: string webhook_url = 1;
+   */
+  webhookUrl = "";
+
+  /**
+   * @generated from field: string template = 2;
+   */
+  template = "";
+
+  constructor(data?: PartialMessage<Hook_Healthchecks>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.Hook.Healthchecks";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "webhook_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Healthchecks {
+    return new Hook_Healthchecks().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Healthchecks {
+    return new Hook_Healthchecks().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Healthchecks {
+    return new Hook_Healthchecks().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Hook_Healthchecks | PlainMessage<Hook_Healthchecks> | undefined, b: Hook_Healthchecks | PlainMessage<Hook_Healthchecks> | undefined): boolean {
+    return proto3.util.equals(Hook_Healthchecks, a, b);
   }
 }
 
