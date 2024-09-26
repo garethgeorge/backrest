@@ -2,6 +2,7 @@ package sqlitestore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
@@ -190,7 +191,7 @@ func (m *SqliteStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 
 	query, args := m.buildQuery(q, true)
 
-	return sqlitex.ExecuteTransient(conn, query, &sqlitex.ExecOptions{
+	if err := sqlitex.ExecuteTransient(conn, query, &sqlitex.ExecOptions{
 		Args: args,
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			opBytes := make([]byte, stmt.ColumnLen(0))
@@ -203,7 +204,10 @@ func (m *SqliteStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 			}
 			return f(&op)
 		},
-	})
+	}); err != nil && !errors.Is(err, oplog.ErrStopIteration) {
+		return err
+	}
+	return nil
 }
 
 func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation, error)) error {

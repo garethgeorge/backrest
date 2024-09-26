@@ -9,6 +9,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/oplog/memstore"
+	"github.com/garethgeorge/backrest/internal/oplog/sqlitestore"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -22,12 +23,18 @@ func StoresForTest(t testing.TB) map[string]oplog.OpStore {
 	if err != nil {
 		t.Fatalf("error creating bbolt store: %s", err)
 	}
-
 	t.Cleanup(func() { bboltstore.Close() })
+
+	sqlitestore, err := sqlitestore.NewSqliteStore(t.TempDir() + "/test.sqlite")
+	if err != nil {
+		t.Fatalf("error creating sqlite store: %s", err)
+	}
+	t.Cleanup(func() { sqlitestore.Close() })
 
 	return map[string]oplog.OpStore{
 		"bbolt":  bboltstore,
 		"memory": memstore.NewMemStore(),
+		"sqlite": sqlitestore,
 	}
 }
 
@@ -496,6 +503,43 @@ func BenchmarkList(b *testing.B) {
 						}
 						if c != count {
 							b.Fatalf("want %d operations, got %d", count, c)
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
+func BenchmarkGetLastItem(b *testing.B) {
+	for _, count := range []int{100, 1000, 10000} {
+		b.Run(fmt.Sprintf("%d", count), func(b *testing.B) {
+			for name, store := range StoresForTest(b) {
+				log, err := oplog.NewOpLog(store)
+				if err != nil {
+					b.Fatalf("error creating oplog: %v", err)
+				}
+				for i := 0; i < count; i++ {
+					_ = log.Add(&v1.Operation{
+						UnixTimeStartMs: 1234,
+						PlanId:          "plan1",
+						RepoId:          "repo1",
+						InstanceId:      "instance1",
+						Op:              &v1.Operation_OperationBackup{},
+					})
+				}
+
+				b.Run(name, func(b *testing.B) {
+					for i := 0; i < b.N; i++ {
+						c := 0
+						if err := log.Query(oplog.Query{PlanID: "plan1", Reversed: true}, func(op *v1.Operation) error {
+							c += 1
+							return oplog.ErrStopIteration
+						}); err != nil {
+							b.Fatalf("error listing operations: %s", err)
+						}
+						if c != 1 {
+							b.Fatalf("want 1 operation, got %d", c)
 						}
 					}
 				})
