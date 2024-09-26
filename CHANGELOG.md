@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/garethgeorge/backrest/compare/v1.5.1...v1.6.0) (2024-09-26)
+
+
+### Features
+
+* initial support for healthchecks.io notifications ([#480](https://github.com/garethgeorge/backrest/issues/480)) ([f6ee51f](https://github.com/garethgeorge/backrest/commit/f6ee51fce509808d8dde3d2af21d10994db381ca))
+
 ## [1.5.1](https://github.com/garethgeorge/backrest/compare/v1.5.0...v1.5.1) (2024-09-18)
 
 
