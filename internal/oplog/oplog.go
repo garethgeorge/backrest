@@ -19,6 +19,7 @@ const (
 var (
 	ErrStopIteration = errors.New("stop iteration")
 	ErrNotExist      = errors.New("operation does not exist")
+	ErrExist         = errors.New("operation already exists")
 )
 
 type Subscription = func(ops []*v1.Operation, event OperationEvent)
