@@ -26,7 +26,7 @@ var _ oplog.OpStore = (*SqliteStore)(nil)
 func NewSqliteStore(db string) (*SqliteStore, error) {
 	dbpool, err := sqlitex.NewPool(db, sqlitex.PoolOptions{
 		PoolSize: 16,
-		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenWAL | sqlite.OpenSharedCache,
+		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenWAL,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
