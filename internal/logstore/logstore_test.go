@@ -1,4 +1,4 @@
-package logwriter2
+package logstore
 
 import (
 	"bytes"
@@ -14,13 +14,13 @@ import (
 func TestReadWrite(t *testing.T) {
 	t.Parallel()
 
-	lw, err := NewLogWriter(t.TempDir())
+	ls, err := NewLogStore(t.TempDir())
 	if err != nil {
 		t.Fatalf("new log writer failed: %v", err)
 	}
-	defer lw.Close()
+	defer ls.Close()
 
-	w, err := lw.Create("test", 0)
+	w, err := ls.Create("test", 0)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
@@ -29,7 +29,7 @@ func TestReadWrite(t *testing.T) {
 	}
 
 	// assert that the file is on disk at this point
-	entries := getInprogressEntries(t, lw)
+	entries := getInprogressEntries(t, ls)
 	if len(entries) != 1 {
 		t.Fatalf("unexpected number of inprogress entries: %d", len(entries))
 	}
@@ -38,7 +38,7 @@ func TestReadWrite(t *testing.T) {
 		t.Fatalf("close writer failed: %v", err)
 	}
 
-	r, err := lw.Open("test")
+	r, err := ls.Open("test")
 	if err != nil {
 		t.Fatalf("open failed: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestReadWrite(t *testing.T) {
 		t.Fatalf("unexpected content: %s", data)
 	}
 
-	entries = getInprogressEntries(t, lw)
+	entries = getInprogressEntries(t, ls)
 	if len(entries) != 0 {
 		t.Fatalf("unexpected number of inprogress entries: %d", len(entries))
 	}
@@ -60,13 +60,13 @@ func TestReadWrite(t *testing.T) {
 func TestHugeReadWrite(t *testing.T) {
 	t.Parallel()
 
-	lw, err := NewLogWriter(t.TempDir())
+	ls, err := NewLogStore(t.TempDir())
 	if err != nil {
 		t.Fatalf("new log writer failed: %v", err)
 	}
-	defer lw.Close()
+	defer ls.Close()
 
-	w, err := lw.Create("test", 0)
+	w, err := ls.Create("test", 0)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestHugeReadWrite(t *testing.T) {
 		t.Fatalf("close writer failed: %v", err)
 	}
 
-	r, err := lw.Open("test")
+	r, err := ls.Open("test")
 	if err != nil {
 		t.Fatalf("open failed: %v", err)
 	}
@@ -100,17 +100,17 @@ func TestHugeReadWrite(t *testing.T) {
 func TestReadWhileWrite(t *testing.T) {
 	t.Parallel()
 
-	lw, err := NewLogWriter(t.TempDir())
+	ls, err := NewLogStore(t.TempDir())
 	if err != nil {
 		t.Fatalf("new log writer failed: %v", err)
 	}
-	defer lw.Close()
+	defer ls.Close()
 
-	w, err := lw.Create("test", 0)
+	w, err := ls.Create("test", 0)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
-	r, err := lw.Open("test")
+	r, err := ls.Open("test")
 	if err != nil {
 		t.Fatalf("open failed: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestReadWhileWrite(t *testing.T) {
 
 	// check that the finalized data matches expectations
 	var finalizedData bytes.Buffer
-	r2, err := lw.Open("test")
+	r2, err := ls.Open("test")
 	if err != nil {
 		t.Fatalf("open failed: %v", err)
 	}
@@ -176,8 +176,8 @@ func TestReadWhileWrite(t *testing.T) {
 	}
 }
 
-func getInprogressEntries(t *testing.T, lw *LogWriter) []os.DirEntry {
-	entries, err := os.ReadDir(lw.inprogressDir)
+func getInprogressEntries(t *testing.T, ls *LogStore) []os.DirEntry {
+	entries, err := os.ReadDir(ls.inprogressDir)
 	if err != nil {
 		t.Fatalf("read dir failed: %v", err)
 	}

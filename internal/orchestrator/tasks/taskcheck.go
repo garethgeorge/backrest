@@ -136,11 +136,9 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		return fmt.Errorf("check: %w", err)
 	}
 
-	frozenID, err := writer.Close()
-	if err != nil {
+	if err := writer.Close(); err != nil {
 		return fmt.Errorf("close logref writer: %w", err)
 	}
-	opCheck.OperationCheck.OutputLogref = frozenID
 
 	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_CHECK_SUCCESS,

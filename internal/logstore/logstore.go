@@ -1,4 +1,4 @@
-package logwriter2
+package logstore
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
@@ -22,7 +23,7 @@ var (
 	ErrLogNotFound = fmt.Errorf("log not found")
 )
 
-type LogWriter struct {
+type LogStore struct {
 	dir           string
 	inprogressDir string
 	mu            shardedRWMutex
@@ -33,7 +34,11 @@ type LogWriter struct {
 	subscribers map[string][]chan struct{}
 }
 
-func NewLogWriter(dir string) (*LogWriter, error) {
+func NewLogStore(dir string) (*LogStore, error) {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, fmt.Errorf("create dir: %v", err)
+	}
+
 	dbpath := filepath.Join(dir, "logs.sqlite")
 	dbpool, err := sqlitex.NewPool(dbpath, sqlitex.PoolOptions{
 		PoolSize: 16,
@@ -43,7 +48,7 @@ func NewLogWriter(dir string) (*LogWriter, error) {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
 	}
 
-	lw := &LogWriter{
+	ls := &LogStore{
 		dir:           dir,
 		inprogressDir: filepath.Join(dir, ".inprogress"),
 		mu:            newShardedRWMutex(64), // 64 shards should be enough to avoid much contention
@@ -51,20 +56,23 @@ func NewLogWriter(dir string) (*LogWriter, error) {
 		subscribers:   make(map[string][]chan struct{}),
 		refcount:      make(map[string]int),
 	}
+	if err := ls.init(); err != nil {
+		return nil, fmt.Errorf("init log store: %v", err)
+	}
 
-	return lw, lw.init()
+	return ls, nil
 }
 
-func (lw *LogWriter) init() error {
-	if err := os.MkdirAll(lw.inprogressDir, 0755); err != nil {
+func (ls *LogStore) init() error {
+	if err := os.MkdirAll(ls.inprogressDir, 0755); err != nil {
 		return fmt.Errorf("create inprogress dir: %v", err)
 	}
 
-	conn, err := lw.dbpool.Take(context.Background())
+	conn, err := ls.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("take connection: %v", err)
 	}
-	defer lw.dbpool.Put(conn)
+	defer ls.dbpool.Put(conn)
 
 	if err := sqlitex.ExecuteScript(conn, `
 		PRAGMA auto_vacuum = 1;
@@ -72,13 +80,14 @@ func (lw *LogWriter) init() error {
 
 		CREATE TABLE IF NOT EXISTS logs (
 			id TEXT PRIMARY KEY,
-			ttl INTEGER, -- time-to-live in seconds
-			owner_opid INTEGER, -- id of the operation that owns this log; will be used for cleanup.
+			expiration_ts_unix INTEGER DEFAULT 0, -- unix timestamp of when the log will expire
+			owner_opid INTEGER DEFAULT 0, -- id of the operation that owns this log; will be used for cleanup.
 			data_fname TEXT, -- relative path to the file containing the log data
 			data_gz BLOB -- compressed log data as an alternative to data_fname
 		);
 		
 		CREATE INDEX IF NOT EXISTS logs_data_fname_idx ON logs (data_fname);
+		CREATE INDEX IF NOT EXISTS logs_expiration_ts_unix_idx ON logs (expiration_ts_unix);
 
 		CREATE TABLE IF NOT EXISTS system_info (
 			version INTEGER NOT NULL
@@ -92,7 +101,7 @@ func (lw *LogWriter) init() error {
 	}
 
 	// loop through all inprogress files and finalize them if they are in the database
-	files, err := os.ReadDir(lw.inprogressDir)
+	files, err := os.ReadDir(ls.inprogressDir)
 	if err != nil {
 		return fmt.Errorf("read inprogress dir: %v", err)
 	}
@@ -115,13 +124,13 @@ func (lw *LogWriter) init() error {
 		}
 
 		if id != "" {
-			err := lw.finalizeLogFile(id, fname)
+			err := ls.finalizeLogFile(id, fname)
 			if err != nil {
 				zap.S().Warnf("sqlite log writer couldn't finalize dangling inprogress log file %v: %v", fname, err)
 				continue
 			}
 		}
-		if err := os.Remove(filepath.Join(lw.inprogressDir, fname)); err != nil {
+		if err := os.Remove(filepath.Join(ls.inprogressDir, fname)); err != nil {
 			zap.S().Warnf("sqlite log writer couldn't remove dangling inprogress log file %v: %v", fname, err)
 		}
 	}
@@ -129,56 +138,67 @@ func (lw *LogWriter) init() error {
 	return nil
 }
 
-func (lw *LogWriter) Close() error {
-	return lw.dbpool.Close()
+func (ls *LogStore) Close() error {
+	return ls.dbpool.Close()
 }
 
-func (lw *LogWriter) Create(id string, parentOpID int64) (io.WriteCloser, error) {
-	lw.mu.Lock(id)
-	defer lw.mu.Unlock(id)
+func (ls *LogStore) Create(id string, parentOpID int64, ttl time.Duration) (io.WriteCloser, error) {
+	ls.mu.Lock(id)
+	defer ls.mu.Unlock(id)
 
-	conn, err := lw.dbpool.Take(context.Background())
+	conn, err := ls.dbpool.Take(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("take connection: %v", err)
 	}
-	defer lw.dbpool.Put(conn)
+	defer ls.dbpool.Put(conn)
+
+	// potentially prune any expired logs
+	if err := sqlitex.ExecuteTransient(conn, "DELETE FROM logs WHERE expiration_ts_unix < ? AND expiration_ts_unix != 0", &sqlitex.ExecOptions{
+		Args: []any{time.Now().Unix()},
+	}); err != nil {
+		return nil, fmt.Errorf("prune expired logs: %v", err)
+	}
 
 	// create a random file for the log while it's being written
 	fname := uuid.New().String()
-	f, err := os.Create(filepath.Join(lw.inprogressDir, fname))
+	f, err := os.Create(filepath.Join(ls.inprogressDir, fname))
 	if err != nil {
 		return nil, fmt.Errorf("create temp file: %v", err)
 	}
 
-	if err := sqlitex.ExecuteTransient(conn, "INSERT INTO logs (id, owner_opid, data_fname) VALUES (?, ?, ?)", &sqlitex.ExecOptions{
-		Args: []any{id, parentOpID, fname},
+	expire_ts_unix := time.Time{}
+	if ttl != 0 {
+		expire_ts_unix = time.Now().Add(ttl)
+	}
+
+	if err := sqlitex.ExecuteTransient(conn, "INSERT INTO logs (id, expiration_ts_unix, owner_opid, data_fname) VALUES (?, ?, ?, ?)", &sqlitex.ExecOptions{
+		Args: []any{id, expire_ts_unix.Unix(), parentOpID, fname},
 	}); err != nil {
 		return nil, fmt.Errorf("insert log: %v", err)
 	}
 
-	lw.trackingMu.Lock()
-	fmt.Printf("creating subscriber list for %v\n", id)
-	lw.subscribers[id] = make([]chan struct{}, 0)
-	lw.refcount[id] = 1
-	lw.trackingMu.Unlock()
+	ls.trackingMu.Lock()
+	ls.subscribers[id] = make([]chan struct{}, 0)
+	ls.refcount[id] = 1
+	ls.trackingMu.Unlock()
 
 	return &writer{
-		lw:    lw,
+		ls:    ls,
 		f:     f,
 		fname: fname,
 		id:    id,
 	}, nil
 }
 
-func (lw *LogWriter) Open(id string) (io.ReadCloser, error) {
-	lw.mu.Lock(id)
-	defer lw.mu.Unlock(id)
+func (ls *LogStore) Open(id string) (io.ReadCloser, error) {
+	ls.mu.Lock(id)
+	defer ls.mu.Unlock(id)
 
-	conn, err := lw.dbpool.Take(context.Background())
+	conn, err := ls.dbpool.Take(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("take connection: %v", err)
 	}
-	defer lw.dbpool.Put(conn)
+	defer ls.dbpool.Put(conn)
 
 	var found bool
 	var fname string
@@ -204,16 +224,16 @@ func (lw *LogWriter) Open(id string) (io.ReadCloser, error) {
 
 	if fname != "" {
 		fmt.Printf("fname: %v\n", fname)
-		f, err := os.Open(filepath.Join(lw.inprogressDir, fname))
+		f, err := os.Open(filepath.Join(ls.inprogressDir, fname))
 		if err != nil {
 			return nil, fmt.Errorf("open data file: %v", err)
 		}
-		lw.trackingMu.Lock()
-		lw.refcount[id]++
-		lw.trackingMu.Unlock()
+		ls.trackingMu.Lock()
+		ls.refcount[id]++
+		ls.trackingMu.Unlock()
 
 		return &reader{
-			lw:     lw,
+			ls:     ls,
 			f:      f,
 			id:     id,
 			fname:  fname,
@@ -233,42 +253,64 @@ func (lw *LogWriter) Open(id string) (io.ReadCloser, error) {
 	}
 }
 
-func (lw *LogWriter) subscribe(id string) chan struct{} {
-	lw.trackingMu.Lock()
-	defer lw.trackingMu.Unlock()
+func (ls *LogStore) Delete(id string) error {
+	ls.mu.Lock(id)
+	defer ls.mu.Unlock(id)
 
-	subs, ok := lw.subscribers[id]
+	conn, err := ls.dbpool.Take(context.Background())
+	if err != nil {
+		return fmt.Errorf("take connection: %v", err)
+	}
+	defer ls.dbpool.Put(conn)
+
+	if err := sqlitex.ExecuteTransient(conn, "DELETE FROM logs WHERE id = ?", &sqlitex.ExecOptions{
+		Args: []any{id},
+	}); err != nil {
+		return fmt.Errorf("delete log: %v", err)
+	}
+
+	if conn.Changes() == 0 {
+		return ErrLogNotFound
+	}
+	return nil
+}
+
+func (ls *LogStore) subscribe(id string) chan struct{} {
+	ls.trackingMu.Lock()
+	defer ls.trackingMu.Unlock()
+
+	subs, ok := ls.subscribers[id]
 	if !ok {
 		fmt.Printf("nothing to subscribe to for %v\n", id)
 		return nil
 	}
 
 	ch := make(chan struct{})
-	lw.subscribers[id] = append(subs, ch)
+	ls.subscribers[id] = append(subs, ch)
 	return ch
 }
 
-func (lw *LogWriter) notify(id string) {
-	lw.trackingMu.Lock()
-	defer lw.trackingMu.Unlock()
-	subs, ok := lw.subscribers[id]
+func (ls *LogStore) notify(id string) {
+	ls.trackingMu.Lock()
+	defer ls.trackingMu.Unlock()
+	subs, ok := ls.subscribers[id]
 	if !ok {
 		return
 	}
 	for _, ch := range subs {
 		close(ch)
 	}
-	lw.subscribers[id] = subs[:0]
+	ls.subscribers[id] = subs[:0]
 }
 
-func (lw *LogWriter) finalizeLogFile(id string, fname string) error {
-	conn, err := lw.dbpool.Take(context.Background())
+func (ls *LogStore) finalizeLogFile(id string, fname string) error {
+	conn, err := ls.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("take connection: %v", err)
 	}
-	defer lw.dbpool.Put(conn)
+	defer ls.dbpool.Put(conn)
 
-	f, err := os.Open(filepath.Join(lw.inprogressDir, fname))
+	f, err := os.Open(filepath.Join(ls.inprogressDir, fname))
 	if err != nil {
 		return err
 	}
@@ -294,19 +336,19 @@ func (lw *LogWriter) finalizeLogFile(id string, fname string) error {
 	return nil
 }
 
-func (lw *LogWriter) maybeReleaseTempFile(fname string) error {
-	lw.trackingMu.Lock()
-	defer lw.trackingMu.Unlock()
+func (ls *LogStore) maybeReleaseTempFile(fname string) error {
+	ls.trackingMu.Lock()
+	defer ls.trackingMu.Unlock()
 
-	_, ok := lw.refcount[fname]
+	_, ok := ls.refcount[fname]
 	if ok {
 		return nil
 	}
-	return os.Remove(filepath.Join(lw.inprogressDir, fname))
+	return os.Remove(filepath.Join(ls.inprogressDir, fname))
 }
 
 type writer struct {
-	lw      *LogWriter
+	ls      *LogStore
 	id      string
 	fname   string
 	f       *os.File
@@ -316,11 +358,11 @@ type writer struct {
 var _ io.WriteCloser = (*writer)(nil)
 
 func (w *writer) Write(p []byte) (n int, err error) {
-	w.lw.mu.Lock(w.id)
-	defer w.lw.mu.Unlock(w.id)
+	w.ls.mu.Lock(w.id)
+	defer w.ls.mu.Unlock(w.id)
 	n, err = w.f.Write(p)
 	if n != 0 {
-		w.lw.notify(w.id)
+		w.ls.notify(w.id)
 	}
 	return
 }
@@ -329,38 +371,38 @@ func (w *writer) Close() error {
 	err := w.f.Close()
 
 	w.onClose.Do(func() {
-		w.lw.mu.Lock(w.id)
-		defer w.lw.mu.Unlock(w.id)
-		defer w.lw.notify(w.id)
+		w.ls.mu.Lock(w.id)
+		defer w.ls.mu.Unlock(w.id)
+		defer w.ls.notify(w.id)
 
 		// manually close all subscribers and delete the subscriber entry from the map; there are no more writes coming.
-		w.lw.trackingMu.Lock()
-		subs := w.lw.subscribers[w.id]
+		w.ls.trackingMu.Lock()
+		subs := w.ls.subscribers[w.id]
 		for _, ch := range subs {
 			close(ch)
 		}
-		delete(w.lw.subscribers, w.id)
+		delete(w.ls.subscribers, w.id)
 
 		// try to finalize the log file
-		if e := w.lw.finalizeLogFile(w.id, w.fname); e != nil {
+		if e := w.ls.finalizeLogFile(w.id, w.fname); e != nil {
 			err = multierror.Append(err, fmt.Errorf("finalize %v: %w", w.fname, e))
 			return // if we fail to finalize, we return early so that we dangle the temp file; maybe we can try again later.
 		}
 
-		w.lw.refcount[w.id]--
-		if w.lw.refcount[w.id] == 0 {
-			delete(w.lw.refcount, w.id)
+		w.ls.refcount[w.id]--
+		if w.ls.refcount[w.id] == 0 {
+			delete(w.ls.refcount, w.id)
 		}
-		w.lw.trackingMu.Unlock()
+		w.ls.trackingMu.Unlock()
 
-		w.lw.maybeReleaseTempFile(w.fname)
+		w.ls.maybeReleaseTempFile(w.fname)
 	})
 
 	return err
 }
 
 type reader struct {
-	lw      *LogWriter
+	ls      *LogStore
 	id      string
 	fname   string
 	f       *os.File
@@ -371,11 +413,11 @@ type reader struct {
 var _ io.ReadCloser = (*reader)(nil)
 
 func (r *reader) Read(p []byte) (n int, err error) {
-	r.lw.mu.RLock(r.id)
+	r.ls.mu.RLock(r.id)
 	n, err = r.f.Read(p)
 	if err == io.EOF {
-		waiter := r.lw.subscribe(r.id)
-		r.lw.mu.RUnlock(r.id)
+		waiter := r.ls.subscribe(r.id)
+		r.ls.mu.RUnlock(r.id)
 		if waiter != nil {
 			select {
 			case <-waiter:
@@ -383,28 +425,28 @@ func (r *reader) Read(p []byte) (n int, err error) {
 				return 0, io.EOF
 			}
 		}
-		r.lw.mu.RLock(r.id)
+		r.ls.mu.RLock(r.id)
 		n, err = r.f.Read(p)
 	}
-	r.lw.mu.RUnlock(r.id)
+	r.ls.mu.RUnlock(r.id)
 
 	return
 }
 
 func (r *reader) Close() error {
-	r.lw.mu.Lock(r.id)
-	defer r.lw.mu.Unlock(r.id)
+	r.ls.mu.Lock(r.id)
+	defer r.ls.mu.Unlock(r.id)
 
 	err := r.f.Close()
 
 	r.onClose.Do(func() {
-		r.lw.trackingMu.Lock()
-		r.lw.refcount[r.id]--
-		if r.lw.refcount[r.id] == 0 {
-			delete(r.lw.refcount, r.id)
+		r.ls.trackingMu.Lock()
+		r.ls.refcount[r.id]--
+		if r.ls.refcount[r.id] == 0 {
+			delete(r.ls.refcount, r.id)
 		}
-		r.lw.trackingMu.Unlock()
-		r.lw.maybeReleaseTempFile(r.fname)
+		r.ls.trackingMu.Unlock()
+		r.ls.maybeReleaseTempFile(r.fname)
 		close(r.closed)
 	})
 

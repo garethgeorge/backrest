@@ -11,13 +11,14 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
-	"github.com/garethgeorge/backrest/internal/logwriter"
+	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/metric"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator/logging"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 	"github.com/garethgeorge/backrest/internal/queue"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
@@ -26,6 +27,8 @@ var ErrRepoNotFound = errors.New("repo not found")
 var ErrRepoInitializationFailed = errors.New("repo initialization failed")
 var ErrPlanNotFound = errors.New("plan not found")
 
+const defaultTaskLogDuration = 14 * 24 * time.Hour
+
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
 	mu        sync.Mutex
@@ -33,7 +36,7 @@ type Orchestrator struct {
 	OpLog     *oplog.OpLog
 	repoPool  *resticRepoPool
 	taskQueue *queue.TimePriorityQueue[stContainer]
-	logStore  *logwriter.LogManager
+	logStore  *logstore.LogStore
 
 	// cancelNotify is a list of channels that are notified when a task should be cancelled.
 	cancelNotify []chan int64
@@ -59,7 +62,7 @@ func (st stContainer) Less(other stContainer) bool {
 	return st.ScheduledTask.Less(other.ScheduledTask)
 }
 
-func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStore *logwriter.LogManager) (*Orchestrator, error) {
+func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStore *logstore.LogStore) (*Orchestrator, error) {
 	cfg = proto.Clone(cfg).(*v1.Config)
 
 	// create the orchestrator.
@@ -96,14 +99,6 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStor
 		}
 
 		for _, op := range incompleteOps {
-			// check for logs to finalize
-			if op.Logref != "" {
-				if frozenID, err := logStore.Finalize(op.Logref); err != nil {
-					zap.L().Warn("failed to finalize livelog ref for incomplete operation", zap.String("logref", op.Logref), zap.Error(err))
-				} else {
-					op.Logref = frozenID
-				}
-			}
 			op.Status = v1.OperationStatus_STATUS_ERROR
 			op.DisplayMessage = "Operation was incomplete when orchestrator was restarted."
 			op.UnixTimeEndMs = op.UnixTimeStartMs
@@ -127,12 +122,6 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStor
 
 			if err := repo.Unlock(context.Background()); err != nil {
 				zap.L().Error("failed to unlock repo", zap.String("repo", repoId), zap.Error(err))
-			}
-		}
-
-		for _, id := range logStore.LiveLogIDs() {
-			if _, err := logStore.Finalize(id); err != nil {
-				zap.L().Warn("failed to finalize unassociated live log", zap.String("id", id), zap.Error(err))
 			}
 		}
 
@@ -393,18 +382,18 @@ func (o *Orchestrator) Run(ctx context.Context) {
 
 func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) error {
 	zap.L().Info("running task", zap.String("task", st.Task.Name()), zap.String("runAt", st.RunAt.Format(time.RFC3339)))
-	var liveLogID string
 	var logWriter io.WriteCloser
 	op := st.Op
 	if op != nil {
 		var err error
-		liveLogID, logWriter, err = o.logStore.NewLiveWriter(fmt.Sprintf("%x", op.GetId()))
+		logID := fmt.Sprintf("op%d-tasklog-%s", op.Id, uuid.New().String())
+		logWriter, err = o.logStore.Create(logID, op.Id, defaultTaskLogDuration)
 		if err != nil {
 			zap.S().Errorf("failed to create live log writer: %v", err)
 		}
 		ctx = logging.ContextWithWriter(ctx, logWriter)
 
-		op.Logref = liveLogID // set the logref to the live log.
+		op.Logref = logID
 		op.UnixTimeStartMs = time.Now().UnixMilli()
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
 			op.Status = v1.OperationStatus_STATUS_INPROGRESS
@@ -430,19 +419,14 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 		metric.GetRegistry().RecordTaskRun(st.Task.RepoID(), st.Task.PlanID(), st.Task.Type(), time.Since(start).Seconds(), "success")
 	}
 
-	if op != nil {
-		// write logs to log storage for this task.
-		if logWriter != nil {
-			if err := logWriter.Close(); err != nil {
-				zap.S().Errorf("failed to close live log writer: %v", err)
-			}
-			if finalID, err := o.logStore.Finalize(liveLogID); err != nil {
-				zap.S().Errorf("failed to finalize live log: %v", err)
-			} else {
-				op.Logref = finalID
-			}
+	// write logs to log storage for this task.
+	if logWriter != nil {
+		if err := logWriter.Close(); err != nil {
+			zap.S().Warnf("failed to close log writer for %q, logs may be partial: %v", st.Task.Name(), err)
 		}
+	}
 
+	if op != nil {
 		if err != nil {
 			var taskCancelledError *tasks.TaskCancelledError
 			var taskRetryError *tasks.TaskRetryError

@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 	"time"
 
@@ -53,12 +54,7 @@ type TaskRunner interface {
 	// Logger returns the logger.
 	Logger(ctx context.Context) *zap.Logger
 	// LogrefWriter returns a writer that can be used to track streaming operation output.
-	LogrefWriter() (liveID string, w LogrefWriter, err error)
-}
-
-type LogrefWriter interface {
-	Write(data []byte) (int, error)
-	Close() (frozenID string, err error)
+	LogrefWriter() (id string, w io.WriteCloser, err error)
 }
 
 type TaskExecutor interface {
@@ -225,6 +221,6 @@ func (t *testTaskRunner) Logger(ctx context.Context) *zap.Logger {
 	return zap.L()
 }
 
-func (t *testTaskRunner) LogrefWriter() (liveID string, w LogrefWriter, err error) {
+func (t *testTaskRunner) LogrefWriter() (id string, w io.WriteCloser, err error) {
 	panic("not implemented")
 }

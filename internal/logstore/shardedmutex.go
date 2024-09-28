@@ -1,4 +1,4 @@
-package logwriter2
+package logstore
 
 import (
 	"hash/fnv"
