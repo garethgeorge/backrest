@@ -798,6 +798,7 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 	if err != nil {
 		t.Fatalf("Failed to create log store: %v", err)
 	}
+	t.Cleanup(func() { logStore.Close() })
 	orch, err := orchestrator.NewOrchestrator(
 		resticBin, cfg, oplog, logStore,
 	)
