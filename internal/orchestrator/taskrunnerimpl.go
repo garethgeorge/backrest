@@ -104,10 +104,9 @@ func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 	}
 
 	for _, task := range hookTasks {
-		st, _ := task.Next(time.Now(), t)
-		st.Task = task
-		if err := t.OpLog().Add(st.Op); err != nil {
-			return fmt.Errorf("%v: %w", task.Name(), err)
+		st, err := t.orchestrator.CreateUnscheduledTask(task, tasks.TaskPriorityDefault, time.Now())
+		if err != nil {
+			return fmt.Errorf("creating task for hook: %w", err)
 		}
 		if err := t.orchestrator.RunTask(ctx, st); hook.IsHaltingError(err) {
 			var cancelErr *hook.HookErrorRequestCancel

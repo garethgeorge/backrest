@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -431,12 +430,6 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 }
 
 func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error) {
-	instance := s.orchestrator.Config().Instance
-	repo, err := s.orchestrator.GetRepoOrchestrator(req.Msg.RepoId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.RepoId, err)
-	}
-
 	// group commands within the last 24 hours (or 256 operations) into the same flow ID
 	var flowID int64
 	if s.oplog.Query(oplog.Query{RepoID: req.Msg.RepoId, Limit: 256, Reversed: true}, func(op *v1.Operation) error {
@@ -448,59 +441,16 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 		return nil, fmt.Errorf("failed to query operations")
 	}
 
-	randID := make([]byte, 16)
-	if _, err := rand.Read(randID); err != nil {
-		return nil, fmt.Errorf("failed to generate random ID: %w", err)
-	}
-	logref := fmt.Sprintf("cmd-%x", randID)
-	op := &v1.Operation{
-		RepoId:     req.Msg.RepoId,
-		PlanId:     tasks.PlanForSystemTasks,
-		FlowId:     flowID,
-		InstanceId: instance,
-		Status:     v1.OperationStatus_STATUS_INPROGRESS,
-		Op: &v1.Operation_OperationRunCommand{
-			OperationRunCommand: &v1.OperationRunCommand{
-				Command:      req.Msg.Command,
-				OutputLogref: logref,
-			},
-		},
-		UnixTimeStartMs: time.Now().UnixMilli(),
-		Logref:          logref,
-	}
-
-	// add the operation to the log
-	if err := s.oplog.Add(op); err != nil {
-		return nil, fmt.Errorf("failed to add operation: %w", err)
-	}
-
-	writer, err := s.logStore.Create(logref, op.Id, 0)
+	task := tasks.NewOneoffRunCommandTask(req.Msg.RepoId, tasks.PlanForSystemTasks, flowID, time.Now(), req.Msg.Command)
+	st, err := s.orchestrator.CreateUnscheduledTask(task, tasks.TaskPriorityInteractive, time.Now())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create log: %w", err)
+		return nil, fmt.Errorf("failed to create task: %w", err)
+	}
+	if err := s.orchestrator.RunTask(context.Background(), st); err != nil {
+		return nil, fmt.Errorf("failed to run command: %w", err)
 	}
 
-	helper := func() error {
-		if err := repo.RunCommand(ctx, req.Msg.Command, writer); err != nil {
-			return err
-		}
-		if err := writer.Close(); err != nil {
-			return fmt.Errorf("failed to close log: %w", err)
-		}
-		return nil
-	}
-
-	err = helper()
-	if err != nil {
-		op.Status = v1.OperationStatus_STATUS_ERROR
-	} else {
-		op.Status = v1.OperationStatus_STATUS_SUCCESS
-	}
-	op.UnixTimeEndMs = time.Now().UnixMilli()
-	if err := s.oplog.Update(op); err != nil {
-		zap.L().Error("failed to update operation", zap.Error(err))
-	}
-
-	return connect.NewResponse(&types.Int64Value{Value: op.Id}), nil
+	return connect.NewResponse(&types.Int64Value{Value: st.Op.GetId()}), nil
 }
 
 func (s *BackrestHandler) Cancel(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {

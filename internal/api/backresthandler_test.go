@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -761,6 +762,67 @@ func TestRestore(t *testing.T) {
 		return strings.HasSuffix(s, "findme.txt")
 	}) {
 		t.Fatalf("Expected file not found in restore target")
+	}
+}
+
+func TestRunCommand(t *testing.T) {
+	sut := createSystemUnderTest(t, &config.MemoryStore{
+		Config: &v1.Config{
+			Modno:    1234,
+			Instance: "test",
+			Repos: []*v1.Repo{
+				{
+					Id:       "local",
+					Uri:      t.TempDir(),
+					Password: "test",
+					Flags:    []string{"--no-cache"},
+				},
+			},
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	res, err := sut.handler.RunCommand(ctx, connect.NewRequest(&v1.RunCommandRequest{
+		RepoId:  "local",
+		Command: "help",
+	}))
+	if err != nil {
+		t.Fatalf("RunCommand() error = %v", err)
+	}
+	op, err := sut.oplog.Get(res.Msg.Value)
+	if err != nil {
+		t.Fatalf("Failed to find runcommand operation: %v", err)
+	}
+
+	if op.Status != v1.OperationStatus_STATUS_SUCCESS {
+		t.Fatalf("Expected runcommand operation to succeed")
+	}
+
+	cmdOp := op.GetOperationRunCommand()
+	if cmdOp == nil {
+		t.Fatalf("Expected runcommand operation to be of type OperationRunCommand")
+	}
+	if cmdOp.Command != "help" {
+		t.Fatalf("Expected runcommand operation to have correct command")
+	}
+	if cmdOp.OutputLogref == "" {
+		t.Fatalf("Expected runcommand operation to have output logref")
+	}
+
+	log, err := sut.logStore.Open(cmdOp.OutputLogref)
+	if err != nil {
+		t.Fatalf("Failed to open log: %v", err)
+	}
+	defer log.Close()
+
+	data, err := io.ReadAll(log)
+	if err != nil {
+		t.Fatalf("Failed to read log: %v", err)
+	}
+	if !strings.Contains(string(data), "Usage") {
+		t.Fatalf("Expected log output to contain help text")
 	}
 }
 
