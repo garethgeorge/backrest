@@ -276,6 +276,13 @@ func TestReopenStore(t *testing.T) {
 		if string(data) != "hello, world" {
 			t.Fatalf("unexpected content: %s", data)
 		}
+		if err := r.Close(); err != nil {
+			t.Fatalf("close reader failed: %v", err)
+		}
+
+		if err := ls.Close(); err != nil {
+			t.Fatalf("close log store failed: %v", err)
+		}
 	}
 }
 
