@@ -20,7 +20,7 @@ func TestReadWrite(t *testing.T) {
 	}
 	defer ls.Close()
 
-	w, err := ls.Create("test", 0)
+	w, err := ls.Create("test", 0, 0)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestHugeReadWrite(t *testing.T) {
 	}
 	defer ls.Close()
 
-	w, err := ls.Create("test", 0)
+	w, err := ls.Create("test", 0, 0)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestReadWhileWrite(t *testing.T) {
 	}
 	defer ls.Close()
 
-	w, err := ls.Create("test", 0)
+	w, err := ls.Create("test", 0, 0)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
@@ -173,6 +173,109 @@ func TestReadWhileWrite(t *testing.T) {
 
 	if err := r2.Close(); err != nil {
 		t.Fatalf("close reader failed: %v", err)
+	}
+}
+
+func TestCreateMany(t *testing.T) {
+	t.Parallel()
+
+	ls, err := NewLogStore(t.TempDir())
+	if err != nil {
+		t.Fatalf("new log writer failed: %v", err)
+	}
+	defer ls.Close()
+
+	const n = 10
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("test%d", i)
+		w, err := ls.Create(name, 0, 0)
+		if err != nil {
+			t.Fatalf("create %q failed: %v", name, err)
+		}
+		if _, err := w.Write([]byte(fmt.Sprintf("hello, world %d", i))); err != nil {
+			t.Fatalf("write failed: %v", err)
+		}
+		if err := w.Close(); err != nil {
+			t.Fatalf("close writer failed: %v", err)
+		}
+	}
+
+	entries := getInprogressEntries(t, ls)
+	if len(entries) != 0 {
+		t.Fatalf("unexpected number of inprogress entries: %d", len(entries))
+	}
+
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("test%d", i)
+		r, err := ls.Open(name)
+		if err != nil {
+			t.Fatalf("open %q failed: %v", name, err)
+		}
+		data, err := io.ReadAll(r)
+		if err != nil {
+			t.Fatalf("read failed: %v", err)
+		}
+		if string(data) != fmt.Sprintf("hello, world %d", i) {
+			t.Fatalf("unexpected content: %s", data)
+		}
+		if err := r.Close(); err != nil {
+			t.Fatalf("close reader failed: %v", err)
+		}
+	}
+}
+
+func TestReopenStore(t *testing.T) {
+	d := t.TempDir()
+	{
+		ls, err := NewLogStore(d)
+		if err != nil {
+			t.Fatalf("new log writer failed: %v", err)
+		}
+
+		w, err := ls.Create("test", 0, 0)
+		if err != nil {
+			t.Fatalf("create failed: %v", err)
+		}
+
+		if _, err := w.Write([]byte("hello, world")); err != nil {
+			t.Fatalf("write failed: %v", err)
+		}
+
+		if err := w.Close(); err != nil {
+			t.Fatalf("close writer failed: %v", err)
+		}
+
+		// confirm that the file is on disk
+		r, err := ls.Open("test")
+		if err != nil {
+			t.Fatalf("open first store failed: %v", err)
+		}
+		r.Close()
+
+		if err := ls.Close(); err != nil {
+			t.Fatalf("close log store failed: %v", err)
+		}
+
+	}
+
+	{
+		ls, err := NewLogStore(d)
+		if err != nil {
+			t.Fatalf("new log writer failed: %v", err)
+		}
+
+		r, err := ls.Open("test")
+		if err != nil {
+			t.Fatalf("open failed: %v", err)
+		}
+
+		data, err := io.ReadAll(r)
+		if err != nil {
+			t.Fatalf("read failed: %v", err)
+		}
+		if string(data) != "hello, world" {
+			t.Fatalf("unexpected content: %s", data)
+		}
 	}
 }
 

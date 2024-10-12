@@ -20,6 +20,8 @@ var (
 	ErrStopIteration = errors.New("stop iteration")
 	ErrNotExist      = errors.New("operation does not exist")
 	ErrExist         = errors.New("operation already exists")
+
+	NullOPID = int64(0)
 )
 
 type Subscription = func(ops []*v1.Operation, event OperationEvent)
@@ -54,7 +56,15 @@ func (o *OpLog) Query(q Query, f func(*v1.Operation) error) error {
 }
 
 func (o *OpLog) Subscribe(q Query, f *Subscription) {
-	o.subscribers = append(o.subscribers, f)
+	wrapped := func(ops []*v1.Operation, event OperationEvent) {
+		ops = slices.DeleteFunc(ops, func(op *v1.Operation) bool {
+			return !q.Match(op)
+		})
+		if len(ops) > 0 {
+			(*f)(ops, event)
+		}
+	}
+	o.subscribers = append(o.subscribers, &wrapped)
 }
 
 func (o *OpLog) Unsubscribe(f *Subscription) error {

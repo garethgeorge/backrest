@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -12,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 	"zombiezen.com/go/sqlite"
@@ -89,13 +90,13 @@ func (ls *LogStore) init() error {
 		CREATE INDEX IF NOT EXISTS logs_data_fname_idx ON logs (data_fname);
 		CREATE INDEX IF NOT EXISTS logs_expiration_ts_unix_idx ON logs (expiration_ts_unix);
 
-		CREATE TABLE IF NOT EXISTS system_info (
+		CREATE TABLE IF NOT EXISTS version_info (
 			version INTEGER NOT NULL
 		);
 		
 		-- Create a table to store the schema version, will be used for migrations in the future
-		INSERT INTO system_info (version)
-		SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM system_info);
+		INSERT INTO version_info (version)
+		SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM version_info);
 	`, nil); err != nil {
 		return fmt.Errorf("execute init script: %v", err)
 	}
@@ -160,16 +161,22 @@ func (ls *LogStore) Create(id string, parentOpID int64, ttl time.Duration) (io.W
 	}
 
 	// create a random file for the log while it's being written
-	fname := uuid.New().String()
+	randBytes := make([]byte, 16)
+	if _, err := rand.Read(randBytes); err != nil {
+		return nil, fmt.Errorf("generate random bytes: %v", err)
+	}
+	fname := hex.EncodeToString(randBytes) + ".log"
 	f, err := os.Create(filepath.Join(ls.inprogressDir, fname))
 	if err != nil {
 		return nil, fmt.Errorf("create temp file: %v", err)
 	}
 
-	expire_ts_unix := time.Time{}
+	expire_ts_unix := time.Unix(0, 0)
 	if ttl != 0 {
 		expire_ts_unix = time.Now().Add(ttl)
 	}
+
+	// fmt.Printf("INSERT INTO logs (id, expiration_ts_unix, owner_opid, data_fname) VALUES (%v, %v, %v, %v)\n", id, expire_ts_unix.Unix(), parentOpID, fname)
 
 	if err := sqlitex.ExecuteTransient(conn, "INSERT INTO logs (id, expiration_ts_unix, owner_opid, data_fname) VALUES (?, ?, ?, ?)", &sqlitex.ExecOptions{
 		Args: []any{id, expire_ts_unix.Unix(), parentOpID, fname},
@@ -223,7 +230,6 @@ func (ls *LogStore) Open(id string) (io.ReadCloser, error) {
 	}
 
 	if fname != "" {
-		fmt.Printf("fname: %v\n", fname)
 		f, err := os.Open(filepath.Join(ls.inprogressDir, fname))
 		if err != nil {
 			return nil, fmt.Errorf("open data file: %v", err)
@@ -240,8 +246,6 @@ func (ls *LogStore) Open(id string) (io.ReadCloser, error) {
 			closed: make(chan struct{}),
 		}, nil
 	} else if dataGz != nil {
-		fmt.Printf("dataGz: %v\n", dataGz)
-
 		gzr, err := gzip.NewReader(bytes.NewReader(dataGz))
 		if err != nil {
 			return nil, fmt.Errorf("create gzip reader: %v", err)
@@ -275,13 +279,43 @@ func (ls *LogStore) Delete(id string) error {
 	return nil
 }
 
+func (ls *LogStore) DeleteWithParent(parentOpID int64) error {
+	conn, err := ls.dbpool.Take(context.Background())
+	if err != nil {
+		return fmt.Errorf("take connection: %v", err)
+	}
+	defer ls.dbpool.Put(conn)
+
+	if err := sqlitex.ExecuteTransient(conn, "DELETE FROM logs WHERE owner_opid = ?", &sqlitex.ExecOptions{
+		Args: []any{parentOpID},
+	}); err != nil {
+		return fmt.Errorf("delete log: %v", err)
+	}
+
+	return nil
+}
+
+func (ls *LogStore) SelectAll(f func(id string, parentID int64)) error {
+	conn, err := ls.dbpool.Take(context.Background())
+	if err != nil {
+		return fmt.Errorf("take connection: %v", err)
+	}
+	defer ls.dbpool.Put(conn)
+
+	return sqlitex.ExecuteTransient(conn, "SELECT id, owner_opid FROM logs ORDER BY owner_opid", &sqlitex.ExecOptions{
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			f(stmt.ColumnText(0), stmt.ColumnInt64(1))
+			return nil
+		},
+	})
+}
+
 func (ls *LogStore) subscribe(id string) chan struct{} {
 	ls.trackingMu.Lock()
 	defer ls.trackingMu.Unlock()
 
 	subs, ok := ls.subscribers[id]
 	if !ok {
-		fmt.Printf("nothing to subscribe to for %v\n", id)
 		return nil
 	}
 
