@@ -424,12 +424,3 @@ func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
 	}
 	return append(chunks, items)
 }
-
-type callbackWriter struct {
-	callback func([]byte) // note: callback must not retain the byte slice
-}
-
-func (w *callbackWriter) Write(p []byte) (n int, err error) {
-	w.callback(p)
-	return len(p), nil
-}

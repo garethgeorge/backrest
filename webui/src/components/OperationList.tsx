@@ -15,11 +15,13 @@ export const OperationList = ({
   useOperations,
   showPlan,
   displayHooksInline,
+  filter,
 }: React.PropsWithoutRef<{
   req?: GetOperationsRequest;
   useOperations?: Operation[]; // exact set of operations to display; no filtering will be applied.
   showPlan?: boolean;
   displayHooksInline?: boolean;
+  filter?: (op: Operation) => boolean;
 }>) => {
   const alertApi = useAlertApi();
 
@@ -27,7 +29,9 @@ export const OperationList = ({
 
   if (req) {
     useEffect(() => {
-      const logState = new OplogState((op) => !shouldHideStatus(op.status));
+      const logState = new OplogState(
+        (op) => !shouldHideStatus(op.status) && (!filter || filter(op))
+      );
 
       logState.subscribe((ids, flowIDs, event) => {
         setOperations(logState.getAll());

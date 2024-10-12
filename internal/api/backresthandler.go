@@ -430,11 +430,11 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest], resp *connect.ServerStream[types.BytesValue]) error {
+func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error) {
 	instance := s.orchestrator.Config().Instance
 	repo, err := s.orchestrator.GetRepoOrchestrator(req.Msg.RepoId)
 	if err != nil {
-		return fmt.Errorf("failed to get repo %q: %w", req.Msg.RepoId, err)
+		return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.RepoId, err)
 	}
 
 	// group commands within the last 24 hours (or 256 operations) into the same flow ID
@@ -445,12 +445,12 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 		}
 		return nil
 	}) != nil {
-		return fmt.Errorf("failed to query operations")
+		return nil, fmt.Errorf("failed to query operations")
 	}
 
 	randID := make([]byte, 16)
 	if _, err := rand.Read(randID); err != nil {
-		return fmt.Errorf("failed to generate random ID: %w", err)
+		return nil, fmt.Errorf("failed to generate random ID: %w", err)
 	}
 	logref := fmt.Sprintf("cmd-%x", randID)
 	op := &v1.Operation{
@@ -471,15 +471,36 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 
 	// add the operation to the log
 	if err := s.oplog.Add(op); err != nil {
-		return fmt.Errorf("failed to add operation: %w", err)
+		return nil, fmt.Errorf("failed to add operation: %w", err)
 	}
 
 	writer, err := s.logStore.Create(logref, op.Id, 0)
 	if err != nil {
-		return fmt.Errorf("failed to create log: %w", err)
+		return nil, fmt.Errorf("failed to create log: %w", err)
 	}
 
-	defer writer.Close()
+	helper := func() error {
+		if err := repo.RunCommand(ctx, req.Msg.Command, writer); err != nil {
+			return err
+		}
+		if err := writer.Close(); err != nil {
+			return fmt.Errorf("failed to close log: %w", err)
+		}
+		return nil
+	}
+
+	err = helper()
+	if err != nil {
+		op.Status = v1.OperationStatus_STATUS_ERROR
+	} else {
+		op.Status = v1.OperationStatus_STATUS_SUCCESS
+	}
+	op.UnixTimeEndMs = time.Now().UnixMilli()
+	if err := s.oplog.Update(op); err != nil {
+		zap.L().Error("failed to update operation", zap.Error(err))
+	}
+
+	return connect.NewResponse(&types.Int64Value{Value: op.Id}), nil
 }
 
 func (s *BackrestHandler) Cancel(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {
