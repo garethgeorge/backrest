@@ -427,7 +427,6 @@ func (w *writer) Close() error {
 			}
 		}
 		w.ls.trackingMu.Unlock()
-
 		w.ls.maybeReleaseTempFile(w.fname)
 	})
 
