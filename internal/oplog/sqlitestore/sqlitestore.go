@@ -2,10 +2,13 @@ package sqlitestore
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -26,7 +29,7 @@ var _ oplog.OpStore = (*SqliteStore)(nil)
 func NewSqliteStore(db string) (*SqliteStore, error) {
 	dbpool, err := sqlitex.NewPool(db, sqlitex.PoolOptions{
 		PoolSize: 16,
-		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenWAL | sqlite.OpenSharedCache,
+		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenWAL,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
@@ -72,20 +75,16 @@ SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM system_info);
 		return fmt.Errorf("init sqlite: %v", err)
 	}
 
-	// find the next id value
-	if err := sqlitex.ExecuteTransient(conn, "SELECT MAX(id) FROM operations", &sqlitex.ExecOptions{
-		ResultFunc: func(stmt *sqlite.Stmt) error {
-			m.nextIDVal.Store(stmt.GetInt64("MAX(id)") + 1)
-			return nil
-		},
-	}); err != nil {
-		return fmt.Errorf("get max ID: %v", err)
-	}
-	if m.nextIDVal.Load() == 0 {
-		m.nextIDVal.Store(1)
-	}
+	// rand init value
+	n, _ := rand.Int(rand.Reader, big.NewInt(1<<20))
+	m.nextIDVal.Store(n.Int64())
 
 	return nil
+}
+
+func (o *SqliteStore) nextID(unixTimeMs int64) (int64, error) {
+	seq := o.nextIDVal.Add(1)
+	return int64(unixTimeMs<<20) | int64(seq&((1<<20)-1)), nil
 }
 
 func (m *SqliteStore) Version() (int64, error) {
@@ -262,7 +261,10 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 
 	return withSqliteTransaction(conn, func() error {
 		for _, o := range op {
-			o.Id = m.nextIDVal.Add(1)
+			o.Id, err = m.nextID(time.Now().UnixMilli())
+			if err != nil {
+				return fmt.Errorf("generate operation id: %v", err)
+			}
 			if o.FlowId == 0 {
 				o.FlowId = o.Id
 			}
@@ -281,7 +283,7 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 				Args: []any{o.Id, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, bytes},
 			}); err != nil {
 				if sqlite.ErrCode(err) == sqlite.ResultConstraintUnique {
-					return fmt.Errorf("operation already exists: %w", oplog.ErrExist)
+					return fmt.Errorf("operation already exists %v: %w", o.Id, oplog.ErrExist)
 				}
 				return fmt.Errorf("add operation: %v", err)
 			}
