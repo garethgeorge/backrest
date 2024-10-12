@@ -20,7 +20,11 @@ func NewOneoffRunCommandTask(repoID string, planID string, flowID int64, at time
 			FlowID: flowID,
 			RunAt:  at,
 			ProtoOp: &v1.Operation{
-				Op: &v1.Operation_OperationRunCommand{},
+				Op: &v1.Operation_OperationRunCommand{
+					OperationRunCommand: &v1.OperationRunCommand{
+						Command: command,
+					},
+				},
 			},
 		},
 		Do: func(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
