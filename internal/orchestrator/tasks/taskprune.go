@@ -136,11 +136,9 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		return fmt.Errorf("prune: %w", err)
 	}
 
-	frozenID, err := writer.Close()
-	if err != nil {
+	if err := writer.Close(); err != nil {
 		return fmt.Errorf("close logref writer: %w", err)
 	}
-	opPrune.OperationPrune.OutputLogref = frozenID
 
 	// Run a stats task after a successful prune
 	if err := runner.ScheduleTask(NewStatsTask(t.RepoID(), PlanForSystemTasks, false), TaskPriorityStats); err != nil {

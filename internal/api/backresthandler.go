@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"reflect"
@@ -18,7 +19,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
-	"github.com/garethgeorge/backrest/internal/logwriter"
+	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
@@ -36,12 +37,12 @@ type BackrestHandler struct {
 	config       config.ConfigStore
 	orchestrator *orchestrator.Orchestrator
 	oplog        *oplog.OpLog
-	logStore     *logwriter.LogManager
+	logStore     *logstore.LogStore
 }
 
 var _ v1connect.BackrestHandler = &BackrestHandler{}
 
-func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *logwriter.LogManager) *BackrestHandler {
+func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *logstore.LogStore) *BackrestHandler {
 	s := &BackrestHandler{
 		config:       config,
 		orchestrator: orchestrator,
@@ -532,57 +533,72 @@ func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request
 }
 
 func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.LogDataRequest], resp *connect.ServerStream[types.BytesValue]) error {
-	ch, err := s.logStore.Subscribe(req.Msg.Ref)
+	r, err := s.logStore.Open(req.Msg.Ref)
 	if err != nil {
-		if errors.Is(err, logwriter.ErrFileNotFound) {
+		if errors.Is(err, logstore.ErrLogNotFound) {
 			resp.Send(&types.BytesValue{
-				Value: []byte(fmt.Sprintf("file associated with log %v not found, it may have rotated out of the log history", req.Msg.GetRef())),
+				Value: []byte(fmt.Sprintf("file associated with log %v not found, it may have expired.", req.Msg.GetRef())),
 			})
+			return nil
 		}
 		return fmt.Errorf("get log data %v: %w", req.Msg.GetRef(), err)
 	}
-	defer s.logStore.Unsubscribe(req.Msg.Ref, ch)
-
-	doneCh := make(chan struct{})
-
-	var mu sync.Mutex
-	var buf bytes.Buffer
-	interval := time.NewTicker(250 * time.Millisecond)
-	defer interval.Stop()
-
 	go func() {
-		for data := range ch {
-			mu.Lock()
-			buf.Write(data)
-			mu.Unlock()
-		}
-		close(doneCh)
+		<-ctx.Done()
+		r.Close()
 	}()
 
-	flushHelper := func() error {
-		mu.Lock()
-		defer mu.Unlock()
-		if buf.Len() > 0 {
-			if err := resp.Send(&types.BytesValue{Value: buf.Bytes()}); err != nil {
-				return err
+	var bufferMu sync.Mutex
+	var buffer bytes.Buffer
+	var errChan = make(chan error, 1)
+	go func() {
+		data := make([]byte, 4*1024)
+		for {
+			n, err := r.Read(data)
+			if n == 0 {
+				close(errChan)
+				break
+			} else if err != nil && err != io.EOF {
+				errChan <- fmt.Errorf("failed to read log data: %w", err)
+				close(errChan)
+				return
 			}
-			buf.Reset()
+			bufferMu.Lock()
+			buffer.Write(data[:n])
+			bufferMu.Unlock()
 		}
+	}()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	flush := func() error {
+		bufferMu.Lock()
+		if buffer.Len() > 0 {
+			if err := resp.Send(&types.BytesValue{Value: buffer.Bytes()}); err != nil {
+				bufferMu.Unlock()
+				return fmt.Errorf("failed to send log data: %w", err)
+			}
+			buffer.Reset()
+		}
+		bufferMu.Unlock()
 		return nil
 	}
 
 	for {
 		select {
-		case <-interval.C:
-			if err := flushHelper(); err != nil {
+		case <-ctx.Done():
+			return flush()
+		case err := <-errChan:
+			_ = flush()
+			return err
+		case <-ticker.C:
+			if err := flush(); err != nil {
 				return err
 			}
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-doneCh:
-			return flushHelper()
 		}
 	}
+
 }
 
 func (s *BackrestHandler) GetDownloadURL(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error) {

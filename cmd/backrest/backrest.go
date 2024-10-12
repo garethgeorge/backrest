@@ -21,7 +21,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/auth"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/env"
-	"github.com/garethgeorge/backrest/internal/logwriter"
+	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/metric"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
@@ -82,10 +82,11 @@ func main() {
 	migrateBboltOplog(opstore)
 
 	// Create rotating log storage
-	logStore, err := logwriter.NewLogManager(path.Join(env.DataDir(), "rotatinglogs"), 14) // 14 days of logs
+	logStore, err := logstore.NewLogStore(filepath.Join(env.DataDir(), "tasklogs"))
 	if err != nil {
-		zap.S().Fatalf("error creating rotating log storage: %v", err)
+		zap.S().Fatalf("error creating task log store: %v", err)
 	}
+	logstore.MigrateTarLogsInDir(logStore, filepath.Join(env.DataDir(), "rotatinglogs"))
 
 	// Create orchestrator and start task loop.
 	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, log, logStore)
