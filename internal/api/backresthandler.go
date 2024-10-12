@@ -435,6 +435,29 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 		return fmt.Errorf("failed to get repo %q: %w", req.Msg.RepoId, err)
 	}
 
+	// group commands within the last hour into the same flow ID
+	var flowID int64
+	if s.oplog.Query(oplog.Query{RepoID: req.Msg.RepoId, Limit: 100, Reversed: true}, func(op *v1.Operation) error {
+		if op.GetOperationRunCommand() != nil && time.Since(time.UnixMilli(op.UnixTimeStartMs)) < 1*time.Hour {
+			flowID = op.FlowId
+		}
+		return nil
+	}) != nil {
+		return fmt.Errorf("failed to query operations")
+	}
+
+	// logref := s.logStore
+
+	op := &v1.Operation{
+		RepoId: req.Msg.RepoId,
+		FlowId: flowID,
+		Op: &v1.Operation_OperationRunCommand{
+			OperationRunCommand: &v1.OperationRunCommand{
+				Command: req.Msg.Command,
+			},
+		},
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 
 	outputs := make(chan []byte, 100)

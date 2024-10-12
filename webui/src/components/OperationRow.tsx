@@ -240,10 +240,11 @@ export const OperationRow = ({
     bodyItems.push({
       key: "run",
       label: "Command Output",
-      children: run.outputLogref ? (
-        <LogView logref={run.outputLogref} />
-      ) : (
-        <pre>{run.output}</pre>
+      children: (
+        <>
+          <pre>command: ${run.command}</pre> <br />
+          <LogView logref={run.outputLogref} />
+        </>
       ),
     });
   } else if (operation.op.case === "operationRestore") {
