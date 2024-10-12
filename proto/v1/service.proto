@@ -45,7 +45,7 @@ service Backrest {
   rpc GetLogs(LogDataRequest) returns (stream types.BytesValue) {}
 
   // RunCommand executes a generic restic command on the repository.
-  rpc RunCommand(RunCommandRequest) returns (stream types.BytesValue) {}
+  rpc RunCommand(RunCommandRequest) returns (types.Int64Value) {}
 
   // GetDownloadURL returns a signed download URL given a forget operation ID.
   rpc GetDownloadURL(types.Int64Value) returns (types.StringValue) {}

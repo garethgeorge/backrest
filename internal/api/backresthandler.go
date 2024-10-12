@@ -429,73 +429,28 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest], resp *connect.ServerStream[types.BytesValue]) error {
-	repo, err := s.orchestrator.GetRepoOrchestrator(req.Msg.RepoId)
-	if err != nil {
-		return fmt.Errorf("failed to get repo %q: %w", req.Msg.RepoId, err)
-	}
-
-	ctx, cancel := context.WithCancel(ctx)
-
-	outputs := make(chan []byte, 100)
-	errChan := make(chan error, 1)
-	go func() {
-		start := time.Now()
-		zap.S().Infof("running command for webui: %v", req.Msg.Command)
-		if err := repo.RunCommand(ctx, req.Msg.Command, func(output []byte) {
-			outputs <- bytes.Clone(output)
-		}); err != nil && ctx.Err() == nil {
-			zap.S().Errorf("error running command for webui: %v", err)
-			errChan <- err
-		} else {
-			zap.S().Infof("command completed for webui: %v", time.Since(start))
-		}
-		outputs <- []byte("took " + time.Since(start).String())
-		cancel()
-	}()
-
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
-	bufSize := 32 * 1024
-	buf := make([]byte, 0, bufSize)
-
-	flush := func() error {
-		if len(buf) > 0 {
-			if err := resp.Send(&types.BytesValue{Value: buf}); err != nil {
-				return fmt.Errorf("failed to write output: %w", err)
-			}
-			buf = buf[:0]
+func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error) {
+	// group commands within the last 24 hours (or 256 operations) into the same flow ID
+	var flowID int64
+	if s.oplog.Query(oplog.Query{RepoID: req.Msg.RepoId, Limit: 256, Reversed: true}, func(op *v1.Operation) error {
+		if op.GetOperationRunCommand() != nil && time.Since(time.UnixMilli(op.UnixTimeStartMs)) < 30*time.Minute {
+			flowID = op.FlowId
 		}
 		return nil
+	}) != nil {
+		return nil, fmt.Errorf("failed to query operations")
 	}
 
-	for {
-		select {
-		case err := <-errChan:
-			if err := flush(); err != nil {
-				return err
-			}
-			return err
-		case <-ctx.Done():
-			return flush()
-		case output := <-outputs:
-			if len(output)+len(buf) > bufSize {
-				flush()
-			}
-			if len(output) > bufSize {
-				if err := resp.Send(&types.BytesValue{Value: output}); err != nil {
-					return fmt.Errorf("failed to write output: %w", err)
-				}
-				continue
-			}
-			buf = append(buf, output...)
-		case <-ticker.C:
-			if len(buf) > 0 {
-				flush()
-			}
-		}
+	task := tasks.NewOneoffRunCommandTask(req.Msg.RepoId, tasks.PlanForSystemTasks, flowID, time.Now(), req.Msg.Command)
+	st, err := s.orchestrator.CreateUnscheduledTask(task, tasks.TaskPriorityInteractive, time.Now())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
+	if err := s.orchestrator.RunTask(context.Background(), st); err != nil {
+		return nil, fmt.Errorf("failed to run command: %w", err)
+	}
+
+	return connect.NewResponse(&types.Int64Value{Value: st.Op.GetId()}), nil
 }
 
 func (s *BackrestHandler) Cancel(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {

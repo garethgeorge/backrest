@@ -389,7 +389,7 @@ func (r *RepoOrchestrator) AddTags(ctx context.Context, snapshotIDs []string, ta
 }
 
 // RunCommand runs a command in the repo's environment. Output is buffered and sent to the onProgress callback in batches.
-func (r *RepoOrchestrator) RunCommand(ctx context.Context, command string, onProgress func([]byte)) error {
+func (r *RepoOrchestrator) RunCommand(ctx context.Context, command string, writer io.Writer) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	ctx, flush := forwardResticLogs(ctx)
@@ -401,8 +401,7 @@ func (r *RepoOrchestrator) RunCommand(ctx context.Context, command string, onPro
 		return fmt.Errorf("parse command: %w", err)
 	}
 
-	ctx = restic.ContextWithLogger(ctx, &callbackWriter{callback: onProgress})
-
+	ctx = restic.ContextWithLogger(ctx, writer)
 	return r.repo.GenericCommand(ctx, args)
 }
 
@@ -424,13 +423,4 @@ func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
 		items, chunks = items[chunkSize:], append(chunks, items[0:chunkSize:chunkSize])
 	}
 	return append(chunks, items)
-}
-
-type callbackWriter struct {
-	callback func([]byte) // note: callback must not retain the byte slice
-}
-
-func (w *callbackWriter) Write(p []byte) (n int, err error) {
-	w.callback(p)
-	return len(p), nil
 }
