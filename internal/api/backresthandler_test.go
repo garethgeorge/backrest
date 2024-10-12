@@ -18,7 +18,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
-	"github.com/garethgeorge/backrest/internal/logwriter"
+	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
@@ -769,7 +769,7 @@ type systemUnderTest struct {
 	oplog    *oplog.OpLog
 	opstore  *bboltstore.BboltStore
 	orch     *orchestrator.Orchestrator
-	logStore *logwriter.LogManager
+	logStore *logstore.LogStore
 	config   *v1.Config
 }
 
@@ -785,7 +785,7 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 	if err != nil {
 		t.Fatalf("Failed to find or install restic binary: %v", err)
 	}
-	opstore, err := bboltstore.NewBboltStore(dir + "/oplog.boltdb")
+	opstore, err := bboltstore.NewBboltStore(filepath.Join(dir, "oplog.bbolt"))
 	if err != nil {
 		t.Fatalf("Failed to create oplog store: %v", err)
 	}
@@ -794,10 +794,11 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 	if err != nil {
 		t.Fatalf("Failed to create oplog: %v", err)
 	}
-	logStore, err := logwriter.NewLogManager(dir+"/log", 10)
+	logStore, err := logstore.NewLogStore(filepath.Join(dir, "tasklogs"))
 	if err != nil {
 		t.Fatalf("Failed to create log store: %v", err)
 	}
+	t.Cleanup(func() { logStore.Close() })
 	orch, err := orchestrator.NewOrchestrator(
 		resticBin, cfg, oplog, logStore,
 	)

@@ -20,15 +20,22 @@ var (
 	ErrStopIteration = errors.New("stop iteration")
 	ErrNotExist      = errors.New("operation does not exist")
 	ErrExist         = errors.New("operation already exists")
+
+	NullOPID = int64(0)
 )
 
 type Subscription = func(ops []*v1.Operation, event OperationEvent)
+
+type subAndQuery struct {
+	f *Subscription
+	q Query
+}
 
 type OpLog struct {
 	store OpStore
 
 	subscribersMu sync.Mutex
-	subscribers   []*Subscription
+	subscribers   []subAndQuery
 }
 
 func NewOpLog(store OpStore) (*OpLog, error) {
@@ -43,10 +50,24 @@ func NewOpLog(store OpStore) (*OpLog, error) {
 	return o, nil
 }
 
-func (o *OpLog) curSubscribers() []*Subscription {
+func (o *OpLog) curSubscribers() []subAndQuery {
 	o.subscribersMu.Lock()
 	defer o.subscribersMu.Unlock()
 	return slices.Clone(o.subscribers)
+}
+
+func (o *OpLog) notify(ops []*v1.Operation, event OperationEvent) {
+	for _, sub := range o.curSubscribers() {
+		notifyOps := make([]*v1.Operation, 0, len(ops))
+		for _, op := range ops {
+			if sub.q.Match(op) {
+				notifyOps = append(notifyOps, op)
+			}
+		}
+		if len(notifyOps) > 0 {
+			(*sub.f)(notifyOps, event)
+		}
+	}
 }
 
 func (o *OpLog) Query(q Query, f func(*v1.Operation) error) error {
@@ -54,12 +75,12 @@ func (o *OpLog) Query(q Query, f func(*v1.Operation) error) error {
 }
 
 func (o *OpLog) Subscribe(q Query, f *Subscription) {
-	o.subscribers = append(o.subscribers, f)
+	o.subscribers = append(o.subscribers, subAndQuery{f: f, q: q})
 }
 
 func (o *OpLog) Unsubscribe(f *Subscription) error {
 	for i, sub := range o.subscribers {
-		if sub == f {
+		if sub.f == f {
 			o.subscribers = append(o.subscribers[:i], o.subscribers[i+1:]...)
 			return nil
 		}
@@ -82,9 +103,7 @@ func (o *OpLog) Add(ops ...*v1.Operation) error {
 		return err
 	}
 
-	for _, sub := range o.curSubscribers() {
-		(*sub)(ops, OPERATION_ADDED)
-	}
+	o.notify(ops, OPERATION_ADDED)
 	return nil
 }
 
@@ -99,9 +118,7 @@ func (o *OpLog) Update(ops ...*v1.Operation) error {
 		return err
 	}
 
-	for _, sub := range o.curSubscribers() {
-		(*sub)(ops, OPERATION_UPDATED)
-	}
+	o.notify(ops, OPERATION_UPDATED)
 	return nil
 }
 
@@ -111,10 +128,7 @@ func (o *OpLog) Delete(opID ...int64) error {
 		return err
 	}
 
-	for _, sub := range o.curSubscribers() {
-		(*sub)(removedOps, OPERATION_DELETED)
-	}
-
+	o.notify(removedOps, OPERATION_DELETED)
 	return nil
 }
 
