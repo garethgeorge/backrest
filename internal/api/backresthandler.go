@@ -440,7 +440,7 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 	// group commands within the last 24 hours (or 256 operations) into the same flow ID
 	var flowID int64
 	if s.oplog.Query(oplog.Query{RepoID: req.Msg.RepoId, Limit: 256, Reversed: true}, func(op *v1.Operation) error {
-		if op.GetOperationRunCommand() != nil && time.Since(time.UnixMilli(op.UnixTimeStartMs)) < 24*time.Hour {
+		if op.GetOperationRunCommand() != nil && time.Since(time.UnixMilli(op.UnixTimeStartMs)) < 30*time.Minute {
 			flowID = op.FlowId
 		}
 		return nil

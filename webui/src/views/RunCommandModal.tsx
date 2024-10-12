@@ -28,14 +28,17 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
   };
 
   const doExecute = async () => {
-    if (running) return;
+    if (!command) return;
     setRunning(true);
+
+    const toRun = command.trim();
+    setCommand("");
 
     try {
       const opID = await backrestService.runCommand(
         new RunCommandRequest({
           repoId,
-          command: command,
+          command: toRun,
         })
       );
     } catch (e: any) {
@@ -56,18 +59,24 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
       <Space.Compact style={{ width: "100%" }}>
         <Input
           placeholder="Run a restic comamnd e.g. 'help' to print help text"
+          value={command}
           onChange={(e) => setCommand(e.target.value)}
           onKeyUp={(e) => {
             if (e.key === "Enter") {
               doExecute();
             }
           }}
-          disabled={running}
         />
         <SpinButton type="primary" onClickAsync={doExecute}>
           Execute
         </SpinButton>
       </Space.Compact>
+      {running && command ? (
+        <em style={{ color: "gray" }}>
+          Warning: another command is already running. Wait for it to finish
+          before running another operation that requires the repo lock.
+        </em>
+      ) : null}
       <OperationList
         req={
           new GetOperationsRequest({
