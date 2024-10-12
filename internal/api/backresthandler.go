@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -430,15 +431,16 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 }
 
 func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest], resp *connect.ServerStream[types.BytesValue]) error {
+	instance := s.orchestrator.Config().Instance
 	repo, err := s.orchestrator.GetRepoOrchestrator(req.Msg.RepoId)
 	if err != nil {
 		return fmt.Errorf("failed to get repo %q: %w", req.Msg.RepoId, err)
 	}
 
-	// group commands within the last hour into the same flow ID
+	// group commands within the last 24 hours (or 256 operations) into the same flow ID
 	var flowID int64
-	if s.oplog.Query(oplog.Query{RepoID: req.Msg.RepoId, Limit: 100, Reversed: true}, func(op *v1.Operation) error {
-		if op.GetOperationRunCommand() != nil && time.Since(time.UnixMilli(op.UnixTimeStartMs)) < 1*time.Hour {
+	if s.oplog.Query(oplog.Query{RepoID: req.Msg.RepoId, Limit: 256, Reversed: true}, func(op *v1.Operation) error {
+		if op.GetOperationRunCommand() != nil && time.Since(time.UnixMilli(op.UnixTimeStartMs)) < 24*time.Hour {
 			flowID = op.FlowId
 		}
 		return nil
@@ -446,79 +448,38 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 		return fmt.Errorf("failed to query operations")
 	}
 
-	// logref := s.logStore
-
+	randID := make([]byte, 16)
+	if _, err := rand.Read(randID); err != nil {
+		return fmt.Errorf("failed to generate random ID: %w", err)
+	}
+	logref := fmt.Sprintf("cmd-%x", randID)
 	op := &v1.Operation{
-		RepoId: req.Msg.RepoId,
-		FlowId: flowID,
+		RepoId:     req.Msg.RepoId,
+		PlanId:     tasks.PlanForSystemTasks,
+		FlowId:     flowID,
+		InstanceId: instance,
+		Status:     v1.OperationStatus_STATUS_INPROGRESS,
 		Op: &v1.Operation_OperationRunCommand{
 			OperationRunCommand: &v1.OperationRunCommand{
-				Command: req.Msg.Command,
+				Command:      req.Msg.Command,
+				OutputLogref: logref,
 			},
 		},
+		UnixTimeStartMs: time.Now().UnixMilli(),
+		Logref:          logref,
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-
-	outputs := make(chan []byte, 100)
-	errChan := make(chan error, 1)
-	go func() {
-		start := time.Now()
-		zap.S().Infof("running command for webui: %v", req.Msg.Command)
-		if err := repo.RunCommand(ctx, req.Msg.Command, func(output []byte) {
-			outputs <- bytes.Clone(output)
-		}); err != nil && ctx.Err() == nil {
-			zap.S().Errorf("error running command for webui: %v", err)
-			errChan <- err
-		} else {
-			zap.S().Infof("command completed for webui: %v", time.Since(start))
-		}
-		outputs <- []byte("took " + time.Since(start).String())
-		cancel()
-	}()
-
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
-	bufSize := 32 * 1024
-	buf := make([]byte, 0, bufSize)
-
-	flush := func() error {
-		if len(buf) > 0 {
-			if err := resp.Send(&types.BytesValue{Value: buf}); err != nil {
-				return fmt.Errorf("failed to write output: %w", err)
-			}
-			buf = buf[:0]
-		}
-		return nil
+	// add the operation to the log
+	if err := s.oplog.Add(op); err != nil {
+		return fmt.Errorf("failed to add operation: %w", err)
 	}
 
-	for {
-		select {
-		case err := <-errChan:
-			if err := flush(); err != nil {
-				return err
-			}
-			return err
-		case <-ctx.Done():
-			return flush()
-		case output := <-outputs:
-			if len(output)+len(buf) > bufSize {
-				flush()
-			}
-			if len(output) > bufSize {
-				if err := resp.Send(&types.BytesValue{Value: output}); err != nil {
-					return fmt.Errorf("failed to write output: %w", err)
-				}
-				continue
-			}
-			buf = append(buf, output...)
-		case <-ticker.C:
-			if len(buf) > 0 {
-				flush()
-			}
-		}
+	writer, err := s.logStore.Create(logref, op.Id, 0)
+	if err != nil {
+		return fmt.Errorf("failed to create log: %w", err)
 	}
+
+	defer writer.Close()
 }
 
 func (s *BackrestHandler) Cancel(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {

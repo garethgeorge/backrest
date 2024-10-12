@@ -242,7 +242,6 @@ export const OperationRow = ({
       label: "Command Output",
       children: (
         <>
-          <pre>command: ${run.command}</pre> <br />
           <LogView logref={run.outputLogref} />
         </>
       ),

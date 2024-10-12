@@ -389,7 +389,7 @@ func (r *RepoOrchestrator) AddTags(ctx context.Context, snapshotIDs []string, ta
 }
 
 // RunCommand runs a command in the repo's environment. Output is buffered and sent to the onProgress callback in batches.
-func (r *RepoOrchestrator) RunCommand(ctx context.Context, command string, onProgress func([]byte)) error {
+func (r *RepoOrchestrator) RunCommand(ctx context.Context, command string, writer io.Writer) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	ctx, flush := forwardResticLogs(ctx)
@@ -401,8 +401,7 @@ func (r *RepoOrchestrator) RunCommand(ctx context.Context, command string, onPro
 		return fmt.Errorf("parse command: %w", err)
 	}
 
-	ctx = restic.ContextWithLogger(ctx, &callbackWriter{callback: onProgress})
-
+	ctx = restic.ContextWithLogger(ctx, writer)
 	return r.repo.GenericCommand(ctx, args)
 }
 
