@@ -234,6 +234,18 @@ export const OperationRow = ({
         <pre>{check.output}</pre>
       ),
     });
+  } else if (operation.op.case === "operationRunCommand") {
+    const run = operation.op.value;
+    expandedBodyItems.push("run");
+    bodyItems.push({
+      key: "run",
+      label: "Command Output",
+      children: run.outputLogref ? (
+        <LogView logref={run.outputLogref} />
+      ) : (
+        <pre>{run.output}</pre>
+      ),
+    });
   } else if (operation.op.case === "operationRestore") {
     expandedBodyItems.push("restore");
     bodyItems.push({

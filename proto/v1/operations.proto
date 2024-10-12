@@ -41,6 +41,7 @@ message Operation {
     OperationStats operation_stats = 105;
     OperationRunHook operation_run_hook = 106;
     OperationCheck operation_check = 107;
+    OperationRunCommand operation_run_command = 108;
   } 
 }
 
