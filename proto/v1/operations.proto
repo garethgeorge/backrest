@@ -102,6 +102,12 @@ message OperationCheck {
   string output_logref = 2; // logref of the check output.
 }
 
+// OperationRunCommand tracks a long running command. Commands are grouped into a flow ID for each session.
+message OperationRunCommand {
+  string command = 1;
+  string output_logref = 2;
+}
+
 // OperationRestore tracks a restore operation.
 message OperationRestore {
   string path = 1; // path in the snapshot to restore.

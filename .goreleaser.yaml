@@ -112,8 +112,6 @@ dockers:
       - garethgeorge/backrest:{{ .Tag }}-scratch-armv6
     dockerfile: Dockerfile.scratch
     use: buildx
-    goarch: arm
-    goarm: 6
     build_flag_templates:
       - "--pull"
       - "--platform=linux/arm/v6"
