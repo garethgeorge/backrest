@@ -3,3 +3,5 @@ dist
 __debug_bin
 cmd/backrest/backrest
 *.exe
+.idea
+.history
