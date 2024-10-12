@@ -487,7 +487,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
             backrestService.clearHistory(
               new ClearHistoryRequest({
                 selector: new OpSelector({
-                  ids: backup.operations.map((op) => op.id),
+                  flowId: backup.flowID,
                 }),
               })
             );

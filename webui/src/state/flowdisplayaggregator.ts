@@ -11,6 +11,7 @@ export enum DisplayType {
   RESTORE,
   STATS,
   RUNHOOK,
+  RUNCOMMAND,
 }
 
 export interface FlowDisplayInfo {
@@ -156,6 +157,8 @@ export const getTypeForDisplay = (op: Operation) => {
       return DisplayType.STATS;
     case "operationRunHook":
       return DisplayType.RUNHOOK;
+    case "operationRunCommand":
+      return DisplayType.RUNCOMMAND;
     default:
       return DisplayType.UNKNOWN;
   }
@@ -179,6 +182,8 @@ export const displayTypeToString = (type: DisplayType) => {
       return "Stats";
     case DisplayType.RUNHOOK:
       return "Run Hook";
+    case DisplayType.RUNCOMMAND:
+      return "Run Command";
     default:
       return "Unknown";
   }

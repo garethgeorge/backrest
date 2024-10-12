@@ -5,6 +5,11 @@ import { backrestService } from "../api";
 import { SpinButton } from "../components/SpinButton";
 import { ConnectError } from "@connectrpc/connect";
 import { useAlertApi } from "../components/Alerts";
+import {
+  GetOperationsRequest,
+  RunCommandRequest,
+} from "../../gen/ts/v1/service_pb";
+import { OperationList } from "../components/OperationList";
 
 interface Invocation {
   command: string;
@@ -17,64 +22,29 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
   const alertApi = useAlertApi()!;
   const [command, setCommand] = React.useState("");
   const [running, setRunning] = React.useState(false);
-  const [invocations, setInvocations] = React.useState<Invocation[]>([]);
-  const [abortController, setAbortController] = React.useState<
-    AbortController | undefined
-  >();
 
   const handleCancel = () => {
-    if (abortController) {
-      alertApi.warning("In-progress restic command was aborted");
-      abortController.abort();
-    }
     showModal(null);
   };
 
   const doExecute = async () => {
-    if (running) return;
+    if (!command) return;
     setRunning(true);
 
-    const newInvocation = { command, output: "", error: "" };
-    setInvocations((invocations) => [newInvocation, ...invocations]);
-
-    let segments: string[] = [];
+    const toRun = command.trim();
+    setCommand("");
 
     try {
-      const abortController = new AbortController();
-      setAbortController(abortController);
-
-      for await (const bytes of backrestService.runCommand(
-        {
+      const opID = await backrestService.runCommand(
+        new RunCommandRequest({
           repoId,
-          command,
-        },
-        {
-          signal: abortController.signal,
-        }
-      )) {
-        const output = new TextDecoder("utf-8").decode(bytes.value);
-        segments.push(output);
-        setInvocations((invocations) => {
-          const copy = [...invocations];
-          copy[0] = {
-            ...copy[0],
-            output: segments.join(""),
-          };
-          return copy;
-        });
-      }
+          command: toRun,
+        })
+      );
     } catch (e: any) {
-      setInvocations((invocations) => {
-        const copy = [...invocations];
-        copy[0] = {
-          ...copy[0],
-          error: (e as Error).message,
-        };
-        return copy;
-      });
+      alertApi.error("Command failed: " + e.message);
     } finally {
       setRunning(false);
-      setAbortController(undefined);
     }
   };
 
@@ -89,6 +59,7 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
       <Space.Compact style={{ width: "100%" }}>
         <Input
           placeholder="Run a restic comamnd e.g. 'help' to print help text"
+          value={command}
           onChange={(e) => setCommand(e.target.value)}
           onKeyUp={(e) => {
             if (e.key === "Enter") {
@@ -100,14 +71,23 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
           Execute
         </SpinButton>
       </Space.Compact>
-      {invocations.map((invocation, i) => (
-        <div key={i}>
-          {invocation.output ? <pre>{invocation.output}</pre> : null}
-          {invocation.error ? (
-            <pre style={{ color: "red" }}>{invocation.error}</pre>
-          ) : null}
-        </div>
-      ))}
+      {running && command ? (
+        <em style={{ color: "gray" }}>
+          Warning: another command is already running. Wait for it to finish
+          before running another operation that requires the repo lock.
+        </em>
+      ) : null}
+      <OperationList
+        req={
+          new GetOperationsRequest({
+            selector: {
+              repoId: repoId,
+              planId: "_system_", // run commands are not associated with a plan
+            },
+          })
+        }
+        filter={(op) => op.op.case === "operationRunCommand"}
+      />
     </Modal>
   );
 };

@@ -118,7 +118,7 @@ type BackrestClient interface {
 	// GetLogs returns the keyed large data for the given operation.
 	GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.ServerStreamForClient[types.BytesValue], error)
 	// RunCommand executes a generic restic command on the repository.
-	RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.ServerStreamForClient[types.BytesValue], error)
+	RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error)
 	// GetDownloadURL returns a signed download URL given a forget operation ID.
 	GetDownloadURL(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error)
 	// Clears the history of operations
@@ -215,7 +215,7 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestGetLogsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		runCommand: connect.NewClient[v1.RunCommandRequest, types.BytesValue](
+		runCommand: connect.NewClient[v1.RunCommandRequest, types.Int64Value](
 			httpClient,
 			baseURL+BackrestRunCommandProcedure,
 			connect.WithSchema(backrestRunCommandMethodDescriptor),
@@ -257,7 +257,7 @@ type backrestClient struct {
 	restore            *connect.Client[v1.RestoreSnapshotRequest, emptypb.Empty]
 	cancel             *connect.Client[types.Int64Value, emptypb.Empty]
 	getLogs            *connect.Client[v1.LogDataRequest, types.BytesValue]
-	runCommand         *connect.Client[v1.RunCommandRequest, types.BytesValue]
+	runCommand         *connect.Client[v1.RunCommandRequest, types.Int64Value]
 	getDownloadURL     *connect.Client[types.Int64Value, types.StringValue]
 	clearHistory       *connect.Client[v1.ClearHistoryRequest, emptypb.Empty]
 	pathAutocomplete   *connect.Client[types.StringValue, types.StringList]
@@ -329,8 +329,8 @@ func (c *backrestClient) GetLogs(ctx context.Context, req *connect.Request[v1.Lo
 }
 
 // RunCommand calls v1.Backrest.RunCommand.
-func (c *backrestClient) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.ServerStreamForClient[types.BytesValue], error) {
-	return c.runCommand.CallServerStream(ctx, req)
+func (c *backrestClient) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error) {
+	return c.runCommand.CallUnary(ctx, req)
 }
 
 // GetDownloadURL calls v1.Backrest.GetDownloadURL.
@@ -370,7 +370,7 @@ type BackrestHandler interface {
 	// GetLogs returns the keyed large data for the given operation.
 	GetLogs(context.Context, *connect.Request[v1.LogDataRequest], *connect.ServerStream[types.BytesValue]) error
 	// RunCommand executes a generic restic command on the repository.
-	RunCommand(context.Context, *connect.Request[v1.RunCommandRequest], *connect.ServerStream[types.BytesValue]) error
+	RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error)
 	// GetDownloadURL returns a signed download URL given a forget operation ID.
 	GetDownloadURL(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error)
 	// Clears the history of operations
@@ -463,7 +463,7 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		connect.WithSchema(backrestGetLogsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	backrestRunCommandHandler := connect.NewServerStreamHandler(
+	backrestRunCommandHandler := connect.NewUnaryHandler(
 		BackrestRunCommandProcedure,
 		svc.RunCommand,
 		connect.WithSchema(backrestRunCommandMethodDescriptor),
@@ -584,8 +584,8 @@ func (UnimplementedBackrestHandler) GetLogs(context.Context, *connect.Request[v1
 	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetLogs is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) RunCommand(context.Context, *connect.Request[v1.RunCommandRequest], *connect.ServerStream[types.BytesValue]) error {
-	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.RunCommand is not implemented"))
+func (UnimplementedBackrestHandler) RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.RunCommand is not implemented"))
 }
 
 func (UnimplementedBackrestHandler) GetDownloadURL(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error) {

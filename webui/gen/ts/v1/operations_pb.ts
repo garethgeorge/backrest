@@ -278,6 +278,12 @@ export class Operation extends Message<Operation> {
      */
     value: OperationCheck;
     case: "operationCheck";
+  } | {
+    /**
+     * @generated from field: v1.OperationRunCommand operation_run_command = 108;
+     */
+    value: OperationRunCommand;
+    case: "operationRunCommand";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Operation>) {
@@ -307,6 +313,7 @@ export class Operation extends Message<Operation> {
     { no: 105, name: "operation_stats", kind: "message", T: OperationStats, oneof: "op" },
     { no: 106, name: "operation_run_hook", kind: "message", T: OperationRunHook, oneof: "op" },
     { no: 107, name: "operation_check", kind: "message", T: OperationCheck, oneof: "op" },
+    { no: 108, name: "operation_run_command", kind: "message", T: OperationRunCommand, oneof: "op" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Operation {
@@ -626,6 +633,51 @@ export class OperationCheck extends Message<OperationCheck> {
 
   static equals(a: OperationCheck | PlainMessage<OperationCheck> | undefined, b: OperationCheck | PlainMessage<OperationCheck> | undefined): boolean {
     return proto3.util.equals(OperationCheck, a, b);
+  }
+}
+
+/**
+ * OperationRunCommand tracks a long running command. Commands are grouped into a flow ID for each session.
+ *
+ * @generated from message v1.OperationRunCommand
+ */
+export class OperationRunCommand extends Message<OperationRunCommand> {
+  /**
+   * @generated from field: string command = 1;
+   */
+  command = "";
+
+  /**
+   * @generated from field: string output_logref = 2;
+   */
+  outputLogref = "";
+
+  constructor(data?: PartialMessage<OperationRunCommand>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.OperationRunCommand";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "command", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationRunCommand {
+    return new OperationRunCommand().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationRunCommand {
+    return new OperationRunCommand().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationRunCommand {
+    return new OperationRunCommand().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: OperationRunCommand | PlainMessage<OperationRunCommand> | undefined, b: OperationRunCommand | PlainMessage<OperationRunCommand> | undefined): boolean {
+    return proto3.util.equals(OperationRunCommand, a, b);
   }
 }
 

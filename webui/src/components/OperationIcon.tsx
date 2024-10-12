@@ -1,6 +1,7 @@
 import React from "react";
 import { DisplayType, colorForStatus } from "../state/flowdisplayaggregator";
 import {
+  CodeOutlined,
   DeleteOutlined,
   DownloadOutlined,
   FileSearchOutlined,
@@ -23,20 +24,10 @@ export const OperationIcon = ({
   let avatar: React.ReactNode;
   switch (type) {
     case DisplayType.BACKUP:
-      avatar = (
-        <SaveOutlined
-          style={{ color: color }}
-          spin={status === OperationStatus.STATUS_INPROGRESS}
-        />
-      );
+      avatar = <SaveOutlined style={{ color: color }} />;
       break;
     case DisplayType.FORGET:
-      avatar = (
-        <DeleteOutlined
-          style={{ color: color }}
-          spin={status === OperationStatus.STATUS_INPROGRESS}
-        />
-      );
+      avatar = <DeleteOutlined style={{ color: color }} />;
       break;
     case DisplayType.SNAPSHOT:
       avatar = <PaperClipOutlined style={{ color: color }} />;
@@ -54,6 +45,9 @@ export const OperationIcon = ({
       break;
     case DisplayType.STATS:
       avatar = <InfoCircleOutlined style={{ color: color }} />;
+      break;
+    case DisplayType.RUNCOMMAND:
+      avatar = <CodeOutlined style={{ color: color }} />;
       break;
   }
 

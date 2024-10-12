@@ -153,8 +153,8 @@ export const Backrest = {
     runCommand: {
       name: "RunCommand",
       I: RunCommandRequest,
-      O: BytesValue,
-      kind: MethodKind.ServerStreaming,
+      O: Int64Value,
+      kind: MethodKind.Unary,
     },
     /**
      * GetDownloadURL returns a signed download URL given a forget operation ID.

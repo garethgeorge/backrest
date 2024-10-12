@@ -1,16 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { LogDataRequest } from "../../gen/ts/v1/service_pb";
 import { backrestService } from "../api";
-
-import AutoSizer from "react-virtualized/dist/commonjs/AutoSizer";
-import List from "react-virtualized/dist/commonjs/List";
-import { set } from "lodash";
+import { Button } from "antd";
 
 // TODO: refactor this to use the provider pattern
 export const LogView = ({ logref }: { logref: string }) => {
   const [lines, setLines] = useState<string[]>([""]);
-
-  console.log("LogView", logref);
+  const [limit, setLimit] = useState(100);
 
   useEffect(() => {
     if (!logref) {
@@ -47,7 +43,10 @@ export const LogView = ({ logref }: { logref: string }) => {
     };
   }, [logref]);
 
-  console.log("LogView", lines);
+  let displayLines = lines;
+  if (lines.length > limit) {
+    displayLines = lines.slice(0, limit);
+  }
 
   return (
     <div
@@ -56,7 +55,7 @@ export const LogView = ({ logref }: { logref: string }) => {
         width: "100%",
       }}
     >
-      {lines.map((line, i) => (
+      {displayLines.map((line, i) => (
         <pre
           style={{ margin: "0px", whiteSpace: "pre", overflow: "visible" }}
           key={i}
@@ -64,6 +63,18 @@ export const LogView = ({ logref }: { logref: string }) => {
           {line}
         </pre>
       ))}
+      {lines.length > limit ? (
+        <>
+          <Button
+            color="default"
+            type="link"
+            onClick={() => setLimit(limit * 10)}
+          >
+            Show {Math.min(limit * 9, lines.length - limit)} more lines out of{" "}
+            {lines.length} available...
+          </Button>
+        </>
+      ) : null}
     </div>
   );
 };

@@ -41,6 +41,7 @@ message Operation {
     OperationStats operation_stats = 105;
     OperationRunHook operation_run_hook = 106;
     OperationCheck operation_check = 107;
+    OperationRunCommand operation_run_command = 108;
   } 
 }
 
@@ -100,6 +101,12 @@ message OperationPrune {
 message OperationCheck {
   string output = 1 [deprecated = true]; // output of the check operation.
   string output_logref = 2; // logref of the check output.
+}
+
+// OperationRunCommand tracks a long running command. Commands are grouped into a flow ID for each session.
+message OperationRunCommand {
+  string command = 1;
+  string output_logref = 2;
 }
 
 // OperationRestore tracks a restore operation.
