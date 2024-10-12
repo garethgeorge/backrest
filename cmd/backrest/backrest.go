@@ -23,7 +23,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/metric"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/sqlitestore"
+	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"github.com/garethgeorge/backrest/webui"
@@ -66,8 +66,8 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Create / load the operation log
-	oplogFile := path.Join(env.DataDir(), "oplog.sqlite")
-	opstore, err := sqlitestore.NewSqliteStore(oplogFile)
+	oplogFile := path.Join(env.DataDir(), "oplog.boltdb")
+	opstore, err := bboltstore.NewBboltStore(oplogFile)
 	if err != nil {
 		if !errors.Is(err, bbolt.ErrTimeout) {
 			zap.S().Fatalf("timeout while waiting to open database, is the database open elsewhere?")
