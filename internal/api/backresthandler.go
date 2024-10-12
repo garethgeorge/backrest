@@ -555,9 +555,10 @@ func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.L
 		data := make([]byte, 4*1024)
 		for {
 			n, err := r.Read(data)
-			if n == 0 || errors.Is(err, io.EOF) {
+			if n == 0 {
+				close(errChan)
 				break
-			} else if err != nil {
+			} else if err != nil && err != io.EOF {
 				errChan <- fmt.Errorf("failed to read log data: %w", err)
 				close(errChan)
 				return
@@ -571,22 +572,30 @@ func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.L
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
+	flush := func() error {
+		bufferMu.Lock()
+		if buffer.Len() > 0 {
+			if err := resp.Send(&types.BytesValue{Value: buffer.Bytes()}); err != nil {
+				bufferMu.Unlock()
+				return fmt.Errorf("failed to send log data: %w", err)
+			}
+			buffer.Reset()
+		}
+		bufferMu.Unlock()
+		return nil
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return flush()
 		case err := <-errChan:
+			_ = flush()
 			return err
 		case <-ticker.C:
-			bufferMu.Lock()
-			if buffer.Len() > 0 {
-				if err := resp.Send(&types.BytesValue{Value: buffer.Bytes()}); err != nil {
-					bufferMu.Unlock()
-					return fmt.Errorf("failed to send log data: %w", err)
-				}
-				buffer.Reset()
+			if err := flush(); err != nil {
+				return err
 			}
-			bufferMu.Unlock()
 		}
 	}
 

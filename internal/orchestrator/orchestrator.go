@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -18,7 +19,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 	"github.com/garethgeorge/backrest/internal/queue"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
@@ -386,7 +386,12 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 	op := st.Op
 	if op != nil {
 		var err error
-		logID := fmt.Sprintf("op%d-tasklog-%s", op.Id, uuid.New().String())
+
+		randBytes := make([]byte, 8)
+		if _, err := rand.Read(randBytes); err != nil {
+			panic(err)
+		}
+		logID := fmt.Sprintf("op%d-tasklog-%x", op.Id, randBytes)
 		logWriter, err = o.logStore.Create(logID, op.Id, defaultTaskLogDuration)
 		if err != nil {
 			zap.S().Errorf("failed to create live log writer: %v", err)

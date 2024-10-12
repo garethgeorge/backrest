@@ -420,12 +420,11 @@ func (w *writer) Close() error {
 		// try to finalize the log file
 		if e := w.ls.finalizeLogFile(w.id, w.fname); e != nil {
 			err = multierror.Append(err, fmt.Errorf("finalize %v: %w", w.fname, e))
-			return // if we fail to finalize, we return early so that we dangle the temp file; maybe we can try again later.
-		}
-
-		w.ls.refcount[w.id]--
-		if w.ls.refcount[w.id] == 0 {
-			delete(w.ls.refcount, w.id)
+		} else {
+			w.ls.refcount[w.id]--
+			if w.ls.refcount[w.id] == 0 {
+				delete(w.ls.refcount, w.id)
+			}
 		}
 		w.ls.trackingMu.Unlock()
 

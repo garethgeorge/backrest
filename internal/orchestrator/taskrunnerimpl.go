@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -13,7 +14,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/orchestrator/logging"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -161,7 +161,11 @@ func (t *taskRunnerImpl) Logger(ctx context.Context) *zap.Logger {
 }
 
 func (t *taskRunnerImpl) LogrefWriter() (string, io.WriteCloser, error) {
-	id := fmt.Sprintf("op%d-logref-%s", t.op.Id, uuid.New().String())
+	randBytes := make([]byte, 8)
+	if _, err := rand.Read(randBytes); err != nil {
+		return "", nil, err
+	}
+	id := fmt.Sprintf("op%d-logref-%x", t.op.Id, randBytes)
 	writer, err := t.orchestrator.logStore.Create(id, t.op.GetId(), time.Duration(0))
 	return id, writer, err
 }
