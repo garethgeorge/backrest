@@ -12,7 +12,7 @@ func NewOneoffRunCommandTask(repoID string, planID string, flowID int64, at time
 	return &GenericOneoffTask{
 		OneoffTask: OneoffTask{
 			BaseTask: BaseTask{
-				TaskType:   "forget_snapshot",
+				TaskType:   "run_command",
 				TaskName:   fmt.Sprintf("run command in repo %q", repoID),
 				TaskRepoID: repoID,
 				TaskPlanID: planID,
@@ -31,7 +31,7 @@ func NewOneoffRunCommandTask(repoID string, planID string, flowID int64, at time
 			op := st.Op
 			rc := op.GetOperationRunCommand()
 			if rc == nil {
-				panic("forget task with non-forget operation")
+				panic("run command task with non-forget operation")
 			}
 
 			return runCommandHelper(ctx, st, taskRunner, command)

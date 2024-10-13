@@ -243,7 +243,6 @@ func migrateBboltOplog(logstore oplog.OpStore) {
 		batch := make([]*v1.Operation, 0, 32)
 
 		var errs []error
-
 		if err := oldOplog.Query(oplog.Query{}, func(op *v1.Operation) error {
 			batch = append(batch, op)
 			if len(batch) == 256 {

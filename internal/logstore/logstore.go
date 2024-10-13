@@ -370,11 +370,11 @@ func (ls *LogStore) finalizeLogFile(id string, fname string) error {
 	return nil
 }
 
-func (ls *LogStore) maybeReleaseTempFile(fname string) error {
+func (ls *LogStore) maybeReleaseTempFile(id, fname string) error {
 	ls.trackingMu.Lock()
 	defer ls.trackingMu.Unlock()
 
-	_, ok := ls.refcount[fname]
+	_, ok := ls.refcount[id]
 	if ok {
 		return nil
 	}
@@ -427,7 +427,7 @@ func (w *writer) Close() error {
 			}
 		}
 		w.ls.trackingMu.Unlock()
-		w.ls.maybeReleaseTempFile(w.fname)
+		w.ls.maybeReleaseTempFile(w.id, w.fname)
 	})
 
 	return err
@@ -478,7 +478,7 @@ func (r *reader) Close() error {
 			delete(r.ls.refcount, r.id)
 		}
 		r.ls.trackingMu.Unlock()
-		r.ls.maybeReleaseTempFile(r.fname)
+		r.ls.maybeReleaseTempFile(r.id, r.fname)
 		close(r.closed)
 	})
 
