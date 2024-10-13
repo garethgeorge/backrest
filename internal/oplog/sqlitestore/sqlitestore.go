@@ -78,10 +78,9 @@ CREATE TABLE IF NOT EXISTS operations (
 CREATE TABLE IF NOT EXISTS system_info (
 	version INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS operations_instance_id ON operations (instance_id);
-CREATE INDEX IF NOT EXISTS operations_plan_id ON operations (plan_id);
-CREATE INDEX IF NOT EXISTS operations_repo_id ON operations (repo_id);
+CREATE INDEX IF NOT EXISTS operations_repo_id_plan_id_instance_id ON operations (repo_id, plan_id, instance_id);
 CREATE INDEX IF NOT EXISTS operations_snapshot_id ON operations (snapshot_id);
+CREATE INDEX IF NOT EXISTS operations_flow_id ON operations (flow_id);
 
 INSERT INTO system_info (version)
 SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM system_info);
