@@ -238,17 +238,16 @@ func (o *Orchestrator) GetPlan(planID string) (*v1.Plan, error) {
 }
 
 func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationStatus) error {
-	o.taskCancelMu.Lock()
-	if cancel, ok := o.taskCancel[operationId]; ok {
-		cancel()
-	}
-	o.taskCancelMu.Unlock()
-
 	allTasks := o.taskQueue.GetAll()
 	idx := slices.IndexFunc(allTasks, func(t stContainer) bool {
 		return t.Op != nil && t.Op.GetId() == operationId
 	})
 	if idx == -1 {
+		o.taskCancelMu.Lock()
+		if cancel, ok := o.taskCancel[operationId]; ok {
+			cancel()
+		}
+		o.taskCancelMu.Unlock()
 		return nil
 	}
 	t := allTasks[idx]
