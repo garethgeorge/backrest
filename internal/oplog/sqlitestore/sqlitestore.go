@@ -214,7 +214,7 @@ func (m *SqliteStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 		Args: args,
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			opBytes := make([]byte, stmt.ColumnLen(0))
-			n := stmt.GetBytes("operation", opBytes)
+			n := stmt.ColumnBytes(0, opBytes)
 			opBytes = opBytes[:n]
 
 			var op v1.Operation
@@ -236,14 +236,14 @@ func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operat
 	}
 	defer m.dbpool.Put(conn)
 
-	query, args := m.buildQuery(q, false)
+	query, args := m.buildQuery(q, true)
 
 	return withSqliteTransaction(conn, func() error {
 		return sqlitex.ExecuteTransient(conn, query, &sqlitex.ExecOptions{
 			Args: args,
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				opBytes := make([]byte, stmt.ColumnLen(0))
-				n := stmt.GetBytes("operation", opBytes)
+				n := stmt.ColumnBytes(0, opBytes)
 				opBytes = opBytes[:n]
 
 				var op v1.Operation
@@ -254,19 +254,11 @@ func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operat
 				newOp, err := f(&op)
 				if err != nil {
 					return err
+				} else if newOp == nil {
+					return nil
 				}
 
-				newOpBytes, err := proto.Marshal(newOp)
-				if err != nil {
-					return fmt.Errorf("marshal operation: %v", err)
-				}
-
-				if err := sqlitex.Execute(conn, "UPDATE operations SET operation = ? WHERE id = ?", &sqlitex.ExecOptions{
-					Args: []any{newOpBytes, stmt.GetInt64("id")},
-				}); err != nil {
-					return fmt.Errorf("update operation: %v", err)
-				}
-				return nil
+				return m.updateInternal(conn, newOp)
 			},
 		})
 	})
@@ -317,25 +309,29 @@ func (m *SqliteStore) Update(op ...*v1.Operation) error {
 	defer m.dbpool.Put(conn)
 
 	return withSqliteTransaction(conn, func() error {
-		for _, o := range op {
-			if err := protoutil.ValidateOperation(o); err != nil {
-				return err
-			}
-			bytes, err := proto.Marshal(o)
-			if err != nil {
-				return fmt.Errorf("marshal operation: %v", err)
-			}
-			if err := sqlitex.Execute(conn, "UPDATE operations SET operation = ?, flow_id = ?, instance_id = ?, plan_id = ?, repo_id = ?, snapshot_id = ? WHERE id = ?", &sqlitex.ExecOptions{
-				Args: []any{bytes, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, o.Id},
-			}); err != nil {
-				return fmt.Errorf("update operation: %v", err)
-			}
-			if conn.Changes() == 0 {
-				return fmt.Errorf("couldn't update %d: %w", o.Id, oplog.ErrNotExist)
-			}
-		}
-		return nil
+		return m.updateInternal(conn, op...)
 	})
+}
+
+func (m *SqliteStore) updateInternal(conn *sqlite.Conn, op ...*v1.Operation) error {
+	for _, o := range op {
+		if err := protoutil.ValidateOperation(o); err != nil {
+			return err
+		}
+		bytes, err := proto.Marshal(o)
+		if err != nil {
+			return fmt.Errorf("marshal operation: %v", err)
+		}
+		if err := sqlitex.Execute(conn, "UPDATE operations SET operation = ?, flow_id = ?, instance_id = ?, plan_id = ?, repo_id = ?, snapshot_id = ? WHERE id = ?", &sqlitex.ExecOptions{
+			Args: []any{bytes, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, o.Id},
+		}); err != nil {
+			return fmt.Errorf("update operation: %v", err)
+		}
+		if conn.Changes() == 0 {
+			return fmt.Errorf("couldn't update %d: %w", o.Id, oplog.ErrNotExist)
+		}
+	}
+	return nil
 }
 
 func (m *SqliteStore) Get(opID int64) (*v1.Operation, error) {

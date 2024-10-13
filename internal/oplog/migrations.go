@@ -25,6 +25,9 @@ func ApplyMigrations(oplog *OpLog) error {
 	}
 	if startMigration < 0 {
 		startMigration = 0
+	} else if startMigration > CurrentVersion {
+		zap.S().Warnf("oplog spec %d is greater than the latest known spec %d. Were you previously running a newer version of backrest? Ensure that your install is up to date.", startMigration, CurrentVersion)
+		return fmt.Errorf("oplog spec %d is greater than the latest known spec %d", startMigration, CurrentVersion)
 	}
 
 	for idx := startMigration; idx < int64(len(migrations)); idx += 1 {
