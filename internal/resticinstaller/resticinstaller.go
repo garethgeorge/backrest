@@ -170,7 +170,7 @@ func downloadFile(url string, downloadPath string) (string, error) {
 }
 
 func installResticIfNotExists(resticInstallPath string) error {
-	lock := flock.New(filepath.Join(env.DataDir(), "install.lock"))
+	lock := flock.New(filepath.Join(filepath.Dir(resticInstallPath), "install.lock"))
 	if err := lock.Lock(); err != nil {
 		return fmt.Errorf("lock %v: %w", lock.Path(), err)
 	}
@@ -252,6 +252,10 @@ func FindOrInstallResticBinary() (string, error) {
 	if runtime.GOOS == "windows" {
 		// on windows use a path relative to the executable.
 		resticInstallPath, _ = filepath.Abs(path.Join(path.Dir(os.Args[0]), resticBinName))
+	}
+
+	if err := os.MkdirAll(path.Dir(resticInstallPath), 0700); err != nil {
+		return "", fmt.Errorf("create restic install directory %v: %w", path.Dir(resticInstallPath), err)
 	}
 
 	// Install restic if not found.

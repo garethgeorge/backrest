@@ -409,23 +409,22 @@ func (w *writer) Close() error {
 		defer w.ls.mu.Unlock(w.id)
 		defer w.ls.notify(w.id)
 
+		if e := w.ls.finalizeLogFile(w.id, w.fname); e != nil {
+			err = multierror.Append(err, fmt.Errorf("finalize %v: %w", w.fname, e))
+		} else {
+			w.ls.refcount[w.id]--
+		}
+
 		// manually close all subscribers and delete the subscriber entry from the map; there are no more writes coming.
 		w.ls.trackingMu.Lock()
+		if w.ls.refcount[w.id] == 0 {
+			delete(w.ls.refcount, w.id)
+		}
 		subs := w.ls.subscribers[w.id]
 		for _, ch := range subs {
 			close(ch)
 		}
 		delete(w.ls.subscribers, w.id)
-
-		// try to finalize the log file
-		if e := w.ls.finalizeLogFile(w.id, w.fname); e != nil {
-			err = multierror.Append(err, fmt.Errorf("finalize %v: %w", w.fname, e))
-		} else {
-			w.ls.refcount[w.id]--
-			if w.ls.refcount[w.id] == 0 {
-				delete(w.ls.refcount, w.id)
-			}
-		}
 		w.ls.trackingMu.Unlock()
 		w.ls.maybeReleaseTempFile(w.id, w.fname)
 	})

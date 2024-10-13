@@ -90,11 +90,7 @@ export const OperationList = ({
           />
         );
       }}
-      pagination={
-        operationsForDisplay.length > 25
-          ? { position: "both", align: "center", defaultPageSize: 25 }
-          : undefined
-      }
+      pagination={{ position: "both", align: "center", defaultPageSize: 25 }}
     />
   );
 };

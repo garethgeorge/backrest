@@ -51,6 +51,8 @@ func runCommandHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunn
 	if err != nil {
 		return fmt.Errorf("get logref writer: %w", err)
 	}
+	defer writer.Close()
+
 	st.Op.GetOperationRunCommand().OutputLogref = id
 	if err := taskRunner.UpdateOperation(st.Op); err != nil {
 		return fmt.Errorf("update operation: %w", err)
