@@ -236,7 +236,9 @@ export const OperationRow = ({
     });
   } else if (operation.op.case === "operationRunCommand") {
     const run = operation.op.value;
-    expandedBodyItems.push("run");
+    if (run.outputSizeBytes < 64 * 1024) {
+      expandedBodyItems.push("run");
+    }
     bodyItems.push({
       key: "run",
       label: "Command Output",

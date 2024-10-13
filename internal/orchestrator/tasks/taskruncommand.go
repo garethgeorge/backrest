@@ -6,6 +6,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/ioutil"
 )
 
 func NewOneoffRunCommandTask(repoID string, planID string, flowID int64, at time.Time, command string) Task {
@@ -41,6 +42,7 @@ func NewOneoffRunCommandTask(repoID string, planID string, flowID int64, at time
 
 func runCommandHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner, command string) error {
 	t := st.Task
+	runCmdOp := st.Op.GetOperationRunCommand()
 
 	repo, err := taskRunner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
@@ -52,13 +54,17 @@ func runCommandHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunn
 		return fmt.Errorf("get logref writer: %w", err)
 	}
 	defer writer.Close()
+	sizeWriter := &ioutil.SizeTrackingWriter{Writer: writer}
+	defer func() {
+		runCmdOp.OutputSizeBytes = int64(sizeWriter.Size())
+	}()
 
-	st.Op.GetOperationRunCommand().OutputLogref = id
+	runCmdOp.OutputLogref = id
 	if err := taskRunner.UpdateOperation(st.Op); err != nil {
 		return fmt.Errorf("update operation: %w", err)
 	}
 
-	if err := repo.RunCommand(ctx, command, writer); err != nil {
+	if err := repo.RunCommand(ctx, command, sizeWriter); err != nil {
 		return fmt.Errorf("command %q: %w", command, err)
 	}
 
