@@ -241,7 +241,11 @@ export const OperationRow = ({
     }
     bodyItems.push({
       key: "run",
-      label: "Command Output",
+      label:
+        "Command Output" +
+        (run.outputSizeBytes > 0
+          ? ` (${formatBytes(Number(run.outputSizeBytes))})`
+          : ""),
       children: (
         <>
           <LogView logref={run.outputLogref} />

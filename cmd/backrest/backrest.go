@@ -89,6 +89,23 @@ func main() {
 		zap.S().Fatalf("error creating task log store: %v", err)
 	}
 	logstore.MigrateTarLogsInDir(logStore, filepath.Join(env.DataDir(), "rotatinglogs"))
+	deleteLogsForOp := func(ops []*v1.Operation, event oplog.OperationEvent) {
+		if event != oplog.OPERATION_DELETED {
+			return
+		}
+		for _, op := range ops {
+			if err := logStore.DeleteWithParent(op.Id); err != nil {
+				zap.S().Warnf("error deleting logs for operation %q: %v", op.Id, err)
+			}
+		}
+	}
+	log.Subscribe(oplog.Query{}, &deleteLogsForOp)
+	defer func() {
+		if err := logStore.Close(); err != nil {
+			zap.S().Warnf("error closing log store: %v", err)
+		}
+		log.Unsubscribe(&deleteLogsForOp)
+	}()
 
 	// Create orchestrator and start task loop.
 	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, log, logStore)
