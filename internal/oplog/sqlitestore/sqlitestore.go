@@ -2,31 +2,37 @@ package sqlitestore
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/big"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
-	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/gofrs/flock"
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 )
 
+var ErrLocked = errors.New("sqlite db is locked")
+
 type SqliteStore struct {
 	dbpool    *sqlitex.Pool
 	nextIDVal atomic.Int64
+	dblock    *flock.Flock
 }
 
 var _ oplog.OpStore = (*SqliteStore)(nil)
 
 func NewSqliteStore(db string) (*SqliteStore, error) {
+	if err := os.MkdirAll(filepath.Dir(db), 0700); err != nil {
+		return nil, fmt.Errorf("create sqlite db directory: %v", err)
+	}
 	dbpool, err := sqlitex.NewPool(db, sqlitex.PoolOptions{
 		PoolSize: 16,
 		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenWAL,
@@ -34,11 +40,25 @@ func NewSqliteStore(db string) (*SqliteStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
 	}
-	store := &SqliteStore{dbpool: dbpool}
-	return store, store.init()
+	store := &SqliteStore{
+		dbpool: dbpool,
+		dblock: flock.New(db + ".lock"),
+	}
+	if locked, err := store.dblock.TryLock(); err != nil {
+		return nil, fmt.Errorf("lock sqlite db: %v", err)
+	} else if !locked {
+		return nil, ErrLocked
+	}
+	if err := store.init(); err != nil {
+		return nil, err
+	}
+	return store, nil
 }
 
 func (m *SqliteStore) Close() error {
+	if err := m.dblock.Unlock(); err != nil {
+		return fmt.Errorf("unlock sqlite db: %v", err)
+	}
 	return m.dbpool.Close()
 }
 
@@ -76,15 +96,16 @@ SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM system_info);
 	}
 
 	// rand init value
-	n, _ := rand.Int(rand.Reader, big.NewInt(1<<20))
-	m.nextIDVal.Store(n.Int64())
-
+	if err := sqlitex.ExecuteTransient(conn, "SELECT id FROM operations ORDER BY id DESC LIMIT 1", &sqlitex.ExecOptions{
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			m.nextIDVal.Store(stmt.GetInt64("id"))
+			return nil
+		},
+	}); err != nil {
+		return fmt.Errorf("init sqlite: %v", err)
+	}
+	m.nextIDVal.CompareAndSwap(0, 1)
 	return nil
-}
-
-func (o *SqliteStore) nextID(unixTimeMs int64) (int64, error) {
-	seq := o.nextIDVal.Add(1)
-	return int64(unixTimeMs<<20) | int64(seq&((1<<20)-1)), nil
 }
 
 func (m *SqliteStore) Version() (int64, error) {
@@ -261,10 +282,7 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 
 	return withSqliteTransaction(conn, func() error {
 		for _, o := range op {
-			o.Id, err = m.nextID(time.Now().UnixMilli())
-			if err != nil {
-				return fmt.Errorf("generate operation id: %v", err)
-			}
+			o.Id = m.nextIDVal.Add(1)
 			if o.FlowId == 0 {
 				o.FlowId = o.Id
 			}
@@ -287,7 +305,6 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 				}
 				return fmt.Errorf("add operation: %v", err)
 			}
-
 		}
 		return nil
 	})

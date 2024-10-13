@@ -69,7 +69,9 @@ func main() {
 	// Create / load the operation log
 	oplogFile := path.Join(env.DataDir(), "oplog.sqlite")
 	opstore, err := sqlitestore.NewSqliteStore(oplogFile)
-	if err != nil {
+	if errors.Is(err, sqlitestore.ErrLocked) {
+		zap.S().Fatalf("oplog is locked by another instance of backrest that is using the same data directory %q, kill that instance before starting another one.", env.DataDir())
+	} else if err != nil {
 		zap.S().Warnf("operation log may be corrupted, if errors recur delete the file %q and restart. Your backups stored in your repos are safe.", oplogFile)
 		zap.S().Fatalf("error creating oplog: %v", err)
 	}
@@ -226,6 +228,9 @@ func installLoggers() {
 	zap.S().Infof("writing logs to: %v", logsDir)
 }
 
+// migrateBboltOplog migrates the old bbolt oplog to the new sqlite oplog.
+// It is careful to ensure that all migrations are applied before copying
+// operations directly to the sqlite logstore.
 func migrateBboltOplog(logstore oplog.OpStore) {
 	oldBboltOplogFile := path.Join(env.DataDir(), "oplog.boltdb")
 	if _, err := os.Stat(oldBboltOplogFile); err == nil {
@@ -277,7 +282,7 @@ func migrateBboltOplog(logstore oplog.OpStore) {
 		if err := oldOpstore.Close(); err != nil {
 			zap.S().Warnf("error closing old bbolt oplog: %v", err)
 		}
-		if err := os.Remove(oldBboltOplogFile); err != nil {
+		if err := os.Rename(oldBboltOplogFile, oldBboltOplogFile+".deprecated"); err != nil {
 			zap.S().Warnf("error removing old bbolt oplog: %v", err)
 		}
 
