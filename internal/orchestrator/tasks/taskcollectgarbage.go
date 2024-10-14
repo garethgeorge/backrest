@@ -115,7 +115,7 @@ func (t *CollectGarbageTask) gcOperations(log *oplog.OpLog) error {
 		}
 	}
 
-	zap.L().Info("collecting garbage",
+	zap.L().Info("collecting garbage operations",
 		zap.Any("operations_removed", len(forgetIDs)))
 
 	// cleaning up logstore

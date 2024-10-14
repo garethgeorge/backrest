@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +18,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 	"github.com/garethgeorge/backrest/internal/queue"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
@@ -238,17 +238,16 @@ func (o *Orchestrator) GetPlan(planID string) (*v1.Plan, error) {
 }
 
 func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationStatus) error {
-	o.taskCancelMu.Lock()
-	if cancel, ok := o.taskCancel[operationId]; ok {
-		cancel()
-	}
-	o.taskCancelMu.Unlock()
-
 	allTasks := o.taskQueue.GetAll()
 	idx := slices.IndexFunc(allTasks, func(t stContainer) bool {
 		return t.Op != nil && t.Op.GetId() == operationId
 	})
 	if idx == -1 {
+		o.taskCancelMu.Lock()
+		if cancel, ok := o.taskCancel[operationId]; ok {
+			cancel()
+		}
+		o.taskCancelMu.Unlock()
 		return nil
 	}
 	t := allTasks[idx]
@@ -370,11 +369,7 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 			o.taskCancelMu.Unlock()
 		}()
 
-		randBytes := make([]byte, 8)
-		if _, err := rand.Read(randBytes); err != nil {
-			panic(err)
-		}
-		logID := fmt.Sprintf("op%d-tasklog-%x", op.Id, randBytes)
+		logID := uuid.New().String()
 		logWriter, err = o.logStore.Create(logID, op.Id, defaultTaskLogDuration)
 		if err != nil {
 			zap.S().Errorf("failed to create live log writer: %v", err)

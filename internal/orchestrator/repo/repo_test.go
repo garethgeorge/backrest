@@ -245,8 +245,6 @@ func TestSnapshotParenting(t *testing.T) {
 }
 
 func TestEnvVarPropagation(t *testing.T) {
-	t.Parallel()
-
 	repo := t.TempDir()
 
 	// create a new repo with cache disabled for testing
@@ -269,6 +267,7 @@ func TestEnvVarPropagation(t *testing.T) {
 
 	// set the env var
 	os.Setenv("MY_FOO", "bar")
+	defer os.Unsetenv("MY_FOO")
 	orchestrator, err = NewRepoOrchestrator(configForTest, r, helpers.ResticBinary(t))
 	if err != nil {
 		t.Fatalf("failed to create repo orchestrator: %v", err)

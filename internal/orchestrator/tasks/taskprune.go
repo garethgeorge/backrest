@@ -118,6 +118,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	if err != nil {
 		return fmt.Errorf("create logref writer: %w", err)
 	}
+	defer writer.Close()
 	opPrune.OperationPrune.OutputLogref = liveID
 
 	if err := runner.UpdateOperation(op); err != nil {

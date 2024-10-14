@@ -69,7 +69,9 @@ func main() {
 	// Create / load the operation log
 	oplogFile := path.Join(env.DataDir(), "oplog.sqlite")
 	opstore, err := sqlitestore.NewSqliteStore(oplogFile)
-	if err != nil {
+	if errors.Is(err, sqlitestore.ErrLocked) {
+		zap.S().Fatalf("oplog is locked by another instance of backrest that is using the same data directory %q, kill that instance before starting another one.", env.DataDir())
+	} else if err != nil {
 		zap.S().Warnf("operation log may be corrupted, if errors recur delete the file %q and restart. Your backups stored in your repos are safe.", oplogFile)
 		zap.S().Fatalf("error creating oplog: %v", err)
 	}
@@ -87,6 +89,23 @@ func main() {
 		zap.S().Fatalf("error creating task log store: %v", err)
 	}
 	logstore.MigrateTarLogsInDir(logStore, filepath.Join(env.DataDir(), "rotatinglogs"))
+	deleteLogsForOp := func(ops []*v1.Operation, event oplog.OperationEvent) {
+		if event != oplog.OPERATION_DELETED {
+			return
+		}
+		for _, op := range ops {
+			if err := logStore.DeleteWithParent(op.Id); err != nil {
+				zap.S().Warnf("error deleting logs for operation %q: %v", op.Id, err)
+			}
+		}
+	}
+	log.Subscribe(oplog.Query{}, &deleteLogsForOp)
+	defer func() {
+		if err := logStore.Close(); err != nil {
+			zap.S().Warnf("error closing log store: %v", err)
+		}
+		log.Unsubscribe(&deleteLogsForOp)
+	}()
 
 	// Create orchestrator and start task loop.
 	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, log, logStore)
@@ -226,6 +245,9 @@ func installLoggers() {
 	zap.S().Infof("writing logs to: %v", logsDir)
 }
 
+// migrateBboltOplog migrates the old bbolt oplog to the new sqlite oplog.
+// It is careful to ensure that all migrations are applied before copying
+// operations directly to the sqlite logstore.
 func migrateBboltOplog(logstore oplog.OpStore) {
 	oldBboltOplogFile := path.Join(env.DataDir(), "oplog.boltdb")
 	if _, err := os.Stat(oldBboltOplogFile); err == nil {
@@ -243,7 +265,6 @@ func migrateBboltOplog(logstore oplog.OpStore) {
 		batch := make([]*v1.Operation, 0, 32)
 
 		var errs []error
-
 		if err := oldOplog.Query(oplog.Query{}, func(op *v1.Operation) error {
 			batch = append(batch, op)
 			if len(batch) == 256 {
@@ -278,7 +299,7 @@ func migrateBboltOplog(logstore oplog.OpStore) {
 		if err := oldOpstore.Close(); err != nil {
 			zap.S().Warnf("error closing old bbolt oplog: %v", err)
 		}
-		if err := os.Remove(oldBboltOplogFile); err != nil {
+		if err := os.Rename(oldBboltOplogFile, oldBboltOplogFile+".deprecated"); err != nil {
 			zap.S().Warnf("error removing old bbolt oplog: %v", err)
 		}
 

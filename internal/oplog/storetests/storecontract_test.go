@@ -404,6 +404,137 @@ func TestUpdateOperation(t *testing.T) {
 	}
 }
 
+func TestTransform(t *testing.T) {
+	ops := []*v1.Operation{
+		{
+			InstanceId:      "foo",
+			PlanId:          "plan1",
+			RepoId:          "repo1",
+			UnixTimeStartMs: 1234,
+			UnixTimeEndMs:   5678,
+		},
+		{
+			InstanceId:      "bar",
+			PlanId:          "plan1",
+			RepoId:          "repo1",
+			UnixTimeStartMs: 1234,
+			UnixTimeEndMs:   5678,
+		},
+	}
+
+	tcs := []struct {
+		name  string
+		f     func(*v1.Operation) (*v1.Operation, error)
+		ops   []*v1.Operation
+		want  []*v1.Operation
+		query oplog.Query
+	}{
+		{
+			name: "no change",
+			f: func(op *v1.Operation) (*v1.Operation, error) {
+				return nil, nil
+			},
+			ops:  ops,
+			want: ops,
+		},
+		{
+			name: "no change by copy",
+			f: func(op *v1.Operation) (*v1.Operation, error) {
+				return proto.Clone(op).(*v1.Operation), nil
+			},
+			ops:  ops,
+			want: ops,
+		},
+		{
+			name: "change plan",
+			f: func(op *v1.Operation) (*v1.Operation, error) {
+				op.PlanId = "newplan"
+				return op, nil
+			},
+			ops: []*v1.Operation{
+				{
+					InstanceId:      "foo",
+					PlanId:          "oldplan",
+					RepoId:          "repo1",
+					UnixTimeStartMs: 1234,
+					UnixTimeEndMs:   5678,
+				},
+			},
+			want: []*v1.Operation{
+				{
+					InstanceId:      "foo",
+					PlanId:          "newplan",
+					RepoId:          "repo1",
+					UnixTimeStartMs: 1234,
+					UnixTimeEndMs:   5678,
+				},
+			},
+		},
+		{
+			name: "change plan with query",
+			f: func(op *v1.Operation) (*v1.Operation, error) {
+				op.PlanId = "newplan"
+				return op, nil
+			},
+			ops: ops,
+			want: []*v1.Operation{
+				{
+					InstanceId:      "foo",
+					PlanId:          "newplan",
+					RepoId:          "repo1",
+					UnixTimeStartMs: 1234,
+					UnixTimeEndMs:   5678,
+				},
+				ops[1],
+			},
+			query: oplog.Query{InstanceID: "foo"},
+		},
+	}
+	for _, tc := range tcs {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			for name, store := range StoresForTest(t) {
+				store := store
+				t.Run(name, func(t *testing.T) {
+					log, err := oplog.NewOpLog(store)
+					if err != nil {
+						t.Fatalf("error creating oplog: %v", err)
+					}
+					for _, op := range tc.ops {
+						copy := proto.Clone(op).(*v1.Operation)
+						if err := log.Add(copy); err != nil {
+							t.Fatalf("error adding operation: %s", err)
+						}
+					}
+
+					if err := log.Transform(tc.query, tc.f); err != nil {
+						t.Fatalf("error transforming operations: %s", err)
+					}
+
+					var got []*v1.Operation
+					if err := log.Query(oplog.Query{}, func(op *v1.Operation) error {
+						op.Id = 0
+						op.FlowId = 0
+						got = append(got, op)
+						return nil
+					}); err != nil {
+						t.Fatalf("error listing operations: %s", err)
+					}
+
+					if slices.CompareFunc(got, tc.want, func(a, b *v1.Operation) int {
+						if proto.Equal(a, b) {
+							return 0
+						}
+						return 1
+					}) != 0 {
+						t.Errorf("want operations: %v, got unexpected operations: %v", tc.want, got)
+					}
+				})
+			}
+		})
+	}
+}
+
 func collectMessages(ops []*v1.Operation) []string {
 	var messages []string
 	for _, op := range ops {
