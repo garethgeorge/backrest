@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/garethgeorge/backrest/internal/env"
+	"github.com/gofrs/flock"
 	"go.uber.org/zap"
 )
 
@@ -169,37 +170,40 @@ func downloadFile(url string, downloadPath string) (string, error) {
 }
 
 func installResticIfNotExists(resticInstallPath string) error {
-	// withFlock is used to ensure tests pass; when running on CI multiple tests may try to install restic at the same time.
-	return withFlock(path.Join(env.DataDir(), "install.lock"), func() error {
-		if _, err := os.Stat(resticInstallPath); err == nil {
-			// file is now installed, probably by another process. We can return.
-			return nil
-		}
+	lock := flock.New(filepath.Join(filepath.Dir(resticInstallPath), "install.lock"))
+	if err := lock.Lock(); err != nil {
+		return fmt.Errorf("lock %v: %w", lock.Path(), err)
+	}
+	defer lock.Unlock()
 
-		if err := os.MkdirAll(path.Dir(resticInstallPath), 0755); err != nil {
-			return fmt.Errorf("create restic install directory %v: %w", path.Dir(resticInstallPath), err)
-		}
-
-		hash, err := downloadFile(resticDownloadURL(RequiredResticVersion), resticInstallPath+".tmp")
-		if err != nil {
-			return err
-		}
-
-		if err := verify(hash); err != nil {
-			os.Remove(resticInstallPath) // try to remove the bad binary.
-			return fmt.Errorf("failed to verify the authenticity of the downloaded restic binary: %v", err)
-		}
-
-		if err := os.Chmod(resticInstallPath+".tmp", 0755); err != nil {
-			return fmt.Errorf("chmod executable %v: %w", resticInstallPath, err)
-		}
-
-		if err := os.Rename(resticInstallPath+".tmp", resticInstallPath); err != nil {
-			return fmt.Errorf("rename %v.tmp to %v: %w", resticInstallPath, resticInstallPath, err)
-		}
-
+	if _, err := os.Stat(resticInstallPath); err == nil {
+		// file is now installed, probably by another process. We can return.
 		return nil
-	})
+	}
+
+	if err := os.MkdirAll(path.Dir(resticInstallPath), 0755); err != nil {
+		return fmt.Errorf("create restic install directory %v: %w", path.Dir(resticInstallPath), err)
+	}
+
+	hash, err := downloadFile(resticDownloadURL(RequiredResticVersion), resticInstallPath+".tmp")
+	if err != nil {
+		return err
+	}
+
+	if err := verify(hash); err != nil {
+		os.Remove(resticInstallPath) // try to remove the bad binary.
+		return fmt.Errorf("failed to verify the authenticity of the downloaded restic binary: %v", err)
+	}
+
+	if err := os.Chmod(resticInstallPath+".tmp", 0755); err != nil {
+		return fmt.Errorf("chmod executable %v: %w", resticInstallPath, err)
+	}
+
+	if err := os.Rename(resticInstallPath+".tmp", resticInstallPath); err != nil {
+		return fmt.Errorf("rename %v.tmp to %v: %w", resticInstallPath, resticInstallPath, err)
+	}
+
+	return nil
 }
 
 func removeOldVersions(installDir string) {
@@ -248,6 +252,10 @@ func FindOrInstallResticBinary() (string, error) {
 	if runtime.GOOS == "windows" {
 		// on windows use a path relative to the executable.
 		resticInstallPath, _ = filepath.Abs(path.Join(path.Dir(os.Args[0]), resticBinName))
+	}
+
+	if err := os.MkdirAll(path.Dir(resticInstallPath), 0700); err != nil {
+		return "", fmt.Errorf("create restic install directory %v: %w", path.Dir(resticInstallPath), err)
 	}
 
 	// Install restic if not found.

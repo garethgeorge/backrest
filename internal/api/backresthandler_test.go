@@ -559,6 +559,12 @@ func TestHookOnErrorHandling(t *testing.T) {
 func TestCancelBackup(t *testing.T) {
 	t.Parallel()
 
+	// a hook is used to make the backup operation wait long enough to be cancelled
+	hookCmd := "sleep 2"
+	if runtime.GOOS == "windows" {
+		hookCmd = "Start-Sleep -Seconds 2"
+	}
+
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
 			Modno:    1234,
@@ -584,6 +590,18 @@ func TestCancelBackup(t *testing.T) {
 					Retention: &v1.RetentionPolicy{
 						Policy: &v1.RetentionPolicy_PolicyKeepLastN{
 							PolicyKeepLastN: 1,
+						},
+					},
+					Hooks: []*v1.Hook{
+						{
+							Conditions: []v1.Hook_Condition{
+								v1.Hook_CONDITION_SNAPSHOT_START,
+							},
+							Action: &v1.Hook_ActionCommand{
+								ActionCommand: &v1.Hook_Command{
+									Command: hookCmd,
+								},
+							},
 						},
 					},
 				},
@@ -629,7 +647,7 @@ func TestCancelBackup(t *testing.T) {
 	})
 
 	if err := errgroup.Wait(); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	// Assert that the backup operation was cancelled

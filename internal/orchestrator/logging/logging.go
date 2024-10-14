@@ -35,7 +35,7 @@ func Logger(ctx context.Context, prefix string) *zap.Logger {
 		return zap.L()
 	}
 	p := zap.NewProductionEncoderConfig()
-	p.EncodeTime = zapcore.ISO8601TimeEncoder
+	p.EncodeTime = zapcore.TimeEncoderOfLayout("15:04:05.000Z")
 	fe := zapcore.NewConsoleEncoder(p)
 	l := zap.New(zapcore.NewTee(
 		zap.L().Core(),

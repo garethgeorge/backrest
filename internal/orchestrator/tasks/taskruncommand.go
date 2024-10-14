@@ -6,13 +6,14 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/ioutil"
 )
 
 func NewOneoffRunCommandTask(repoID string, planID string, flowID int64, at time.Time, command string) Task {
 	return &GenericOneoffTask{
 		OneoffTask: OneoffTask{
 			BaseTask: BaseTask{
-				TaskType:   "forget_snapshot",
+				TaskType:   "run_command",
 				TaskName:   fmt.Sprintf("run command in repo %q", repoID),
 				TaskRepoID: repoID,
 				TaskPlanID: planID,
@@ -31,7 +32,7 @@ func NewOneoffRunCommandTask(repoID string, planID string, flowID int64, at time
 			op := st.Op
 			rc := op.GetOperationRunCommand()
 			if rc == nil {
-				panic("forget task with non-forget operation")
+				panic("run command task with non-forget operation")
 			}
 
 			return runCommandHelper(ctx, st, taskRunner, command)
@@ -41,6 +42,7 @@ func NewOneoffRunCommandTask(repoID string, planID string, flowID int64, at time
 
 func runCommandHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner, command string) error {
 	t := st.Task
+	runCmdOp := st.Op.GetOperationRunCommand()
 
 	repo, err := taskRunner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
@@ -51,12 +53,18 @@ func runCommandHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunn
 	if err != nil {
 		return fmt.Errorf("get logref writer: %w", err)
 	}
-	st.Op.GetOperationRunCommand().OutputLogref = id
+	defer writer.Close()
+	sizeWriter := &ioutil.SizeTrackingWriter{Writer: writer}
+	defer func() {
+		runCmdOp.OutputSizeBytes = int64(sizeWriter.Size())
+	}()
+
+	runCmdOp.OutputLogref = id
 	if err := taskRunner.UpdateOperation(st.Op); err != nil {
 		return fmt.Errorf("update operation: %w", err)
 	}
 
-	if err := repo.RunCommand(ctx, command, writer); err != nil {
+	if err := repo.RunCommand(ctx, command, sizeWriter); err != nil {
 		return fmt.Errorf("command %q: %w", command, err)
 	}
 

@@ -652,6 +652,11 @@ export class OperationRunCommand extends Message<OperationRunCommand> {
    */
   outputLogref = "";
 
+  /**
+   * @generated from field: int64 output_size_bytes = 3;
+   */
+  outputSizeBytes = protoInt64.zero;
+
   constructor(data?: PartialMessage<OperationRunCommand>) {
     super();
     proto3.util.initPartial(data, this);
@@ -662,6 +667,7 @@ export class OperationRunCommand extends Message<OperationRunCommand> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "command", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "output_size_bytes", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationRunCommand {

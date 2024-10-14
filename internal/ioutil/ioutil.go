@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"sync"
+	"sync/atomic"
 )
 
 // LimitWriter is a writer that limits the number of bytes written to it.
@@ -82,4 +83,21 @@ func (w *SynchronizedWriter) Write(p []byte) (n int, err error) {
 	w.Mu.Lock()
 	defer w.Mu.Unlock()
 	return w.W.Write(p)
+}
+
+type SizeTrackingWriter struct {
+	size atomic.Uint64
+	io.Writer
+}
+
+func (w *SizeTrackingWriter) Write(p []byte) (n int, err error) {
+	n, err = w.Writer.Write(p)
+	w.size.Add(uint64(n))
+	return
+}
+
+// Size returns the number of bytes written to the writer.
+// The value is fundamentally racy only consistent if synchronized with the writer or closed.
+func (w *SizeTrackingWriter) Size() uint64 {
+	return w.size.Load()
 }

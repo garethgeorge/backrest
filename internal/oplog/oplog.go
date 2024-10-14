@@ -183,6 +183,10 @@ func (q *Query) Match(op *v1.Operation) bool {
 		}
 	}
 
+	if q.InstanceID != "" && op.InstanceId != q.InstanceID {
+		return false
+	}
+
 	if q.PlanID != "" && op.PlanId != q.PlanID {
 		return false
 	}

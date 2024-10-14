@@ -60,16 +60,18 @@ const StatsPanel = ({ repoId }: { repoId: string }) => {
     compressionRatio: number;
     snapshotCount: number;
     totalBlobCount: number;
-  }[] = statsOperations.map((op) => {
-    const stats = (op.op.value! as OperationStats).stats!;
-    return {
-      time: Number(op.unixTimeEndMs!),
-      totalSizeBytes: Number(stats.totalSize),
-      compressionRatio: Number(stats.compressionRatio),
-      snapshotCount: Number(stats.snapshotCount),
-      totalBlobCount: Number(stats.totalBlobCount),
-    };
-  });
+  }[] = statsOperations
+    .map((op) => {
+      const stats = (op.op.value! as OperationStats).stats!;
+      return {
+        time: Number(op.unixTimeEndMs!),
+        totalSizeBytes: Number(stats.totalSize),
+        compressionRatio: Number(stats.compressionRatio),
+        snapshotCount: Number(stats.snapshotCount),
+        totalBlobCount: Number(stats.totalBlobCount),
+      };
+    })
+    .sort((a, b) => a.time - b.time);
 
   return (
     <>

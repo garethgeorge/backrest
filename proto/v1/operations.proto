@@ -107,6 +107,7 @@ message OperationCheck {
 message OperationRunCommand {
   string command = 1;
   string output_logref = 2;
+  int64 output_size_bytes = 3; // not necessarily authoritative, tracked as an optimization to allow clients to avoid fetching very large outputs.
 }
 
 // OperationRestore tracks a restore operation.
