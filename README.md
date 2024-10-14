@@ -118,6 +118,12 @@ The install script will:
 
 Read the script before running it to make sure you are comfortable with these operations.
 
+#### One command install 
+```
+wget -O manage.sh --no-check-certificate https://raw.githubusercontent.com/garethgeorge/backrest/refs/heads/main/scripts/manage.sh && chmod +x manage.sh && ./manage.sh
+```
+Basiclly do samething as `Using systemd with the install script`, but it auto detect the os version and download the release pack match the system.
+
 #### Run on startup with cron (Basic)
 
 Move the Backrest binary to `/usr/local/bin`:
