@@ -6,7 +6,7 @@
 import { Empty, MethodKind } from "@bufbuild/protobuf";
 import { Config, Repo } from "./config_pb.js";
 import { OperationEvent, OperationList } from "./operations_pb.js";
-import { ClearHistoryRequest, ForgetRequest, GetOperationsRequest, ListSnapshotFilesRequest, ListSnapshotFilesResponse, ListSnapshotsRequest, LogDataRequest, RestoreSnapshotRequest } from "./service_pb.js";
+import { ClearHistoryRequest, DoRepoTaskRequest, ForgetRequest, GetOperationsRequest, ListSnapshotFilesRequest, ListSnapshotFilesResponse, ListSnapshotsRequest, LogDataRequest, RestoreSnapshotRequest, RunCommandRequest } from "./service_pb.js";
 import { ResticSnapshotList } from "./restic_pb.js";
 import { BytesValue, Int64Value, StringList, StringValue } from "../types/value_pb.js";
 
@@ -80,17 +80,6 @@ export const Backrest = {
       kind: MethodKind.Unary,
     },
     /**
-     * IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.
-     *
-     * @generated from rpc v1.Backrest.IndexSnapshots
-     */
-    indexSnapshots: {
-      name: "IndexSnapshots",
-      I: StringValue,
-      O: Empty,
-      kind: MethodKind.Unary,
-    },
-    /**
      * Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
      *
      * @generated from rpc v1.Backrest.Backup
@@ -102,13 +91,13 @@ export const Backrest = {
       kind: MethodKind.Unary,
     },
     /**
-     * Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
+     * DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
      *
-     * @generated from rpc v1.Backrest.Prune
+     * @generated from rpc v1.Backrest.DoRepoTask
      */
-    prune: {
-      name: "Prune",
-      I: StringValue,
+    doRepoTask: {
+      name: "DoRepoTask",
+      I: DoRepoTaskRequest,
       O: Empty,
       kind: MethodKind.Unary,
     },
@@ -135,28 +124,6 @@ export const Backrest = {
       kind: MethodKind.Unary,
     },
     /**
-     * Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
-     *
-     * @generated from rpc v1.Backrest.Unlock
-     */
-    unlock: {
-      name: "Unlock",
-      I: StringValue,
-      O: Empty,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * Stats runs 'restic stats` on the repository and appends the results to the operations log.
-     *
-     * @generated from rpc v1.Backrest.Stats
-     */
-    stats: {
-      name: "Stats",
-      I: StringValue,
-      O: Empty,
-      kind: MethodKind.Unary,
-    },
-    /**
      * Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
      *
      * @generated from rpc v1.Backrest.Cancel
@@ -168,7 +135,7 @@ export const Backrest = {
       kind: MethodKind.Unary,
     },
     /**
-     * GetBigOperationData returns the keyed large data for the given operation.
+     * GetLogs returns the keyed large data for the given operation.
      *
      * @generated from rpc v1.Backrest.GetLogs
      */
@@ -176,6 +143,28 @@ export const Backrest = {
       name: "GetLogs",
       I: LogDataRequest,
       O: BytesValue,
+      kind: MethodKind.ServerStreaming,
+    },
+    /**
+     * RunCommand executes a generic restic command on the repository.
+     *
+     * @generated from rpc v1.Backrest.RunCommand
+     */
+    runCommand: {
+      name: "RunCommand",
+      I: RunCommandRequest,
+      O: Int64Value,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetDownloadURL returns a signed download URL given a forget operation ID.
+     *
+     * @generated from rpc v1.Backrest.GetDownloadURL
+     */
+    getDownloadURL: {
+      name: "GetDownloadURL",
+      I: Int64Value,
+      O: StringValue,
       kind: MethodKind.Unary,
     },
     /**

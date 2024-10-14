@@ -2,28 +2,27 @@ package restic
 
 import (
 	"bufio"
-	"context"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"os/exec"
-	"slices"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
 
 type Snapshot struct {
-	Id         string   `json:"id"`
-	Time       string   `json:"time"`
-	Tree       string   `json:"tree"`
-	Paths      []string `json:"paths"`
-	Hostname   string   `json:"hostname"`
-	Username   string   `json:"username"`
-	Tags       []string `json:"tags"`
-	Parent     string   `json:"parent"`
-	unixTimeMs int64    `json:"-"`
+	Id              string          `json:"id"`
+	Time            string          `json:"time"`
+	Tree            string          `json:"tree"`
+	Paths           []string        `json:"paths"`
+	Hostname        string          `json:"hostname"`
+	Username        string          `json:"username"`
+	Tags            []string        `json:"tags"`
+	Parent          string          `json:"parent"`
+	SnapshotSummary SnapshotSummary `json:"summary"`
+	unixTimeMs      int64           `json:"-"`
 }
 
 func (s *Snapshot) UnixTimeMs() int64 {
@@ -36,6 +35,41 @@ func (s *Snapshot) UnixTimeMs() int64 {
 	}
 	s.unixTimeMs = t.UnixMilli()
 	return s.unixTimeMs
+}
+
+type SnapshotSummary struct {
+	BackupStart         string `json:"backup_start"`
+	BackupEnd           string `json:"backup_end"`
+	FilesNew            int64  `json:"files_new"`
+	FilesChanged        int64  `json:"files_changed"`
+	FilesUnmodified     int64  `json:"files_unmodified"`
+	DirsNew             int64  `json:"dirs_new"`
+	DirsChanged         int64  `json:"dirs_changed"`
+	DirsUnmodified      int64  `json:"dirs_unmodified"`
+	DataBlobs           int64  `json:"data_blobs"`
+	TreeBlobs           int64  `json:"tree_blobs"`
+	DataAdded           int64  `json:"data_added"`
+	DataAddedPacked     int64  `json:"data_added_packed"`
+	TotalFilesProcessed int64  `json:"total_files_processed"`
+	TotalBytesProcessed int64  `json:"total_bytes_processed"`
+	unixDurationMs      int64  `json:"-"`
+}
+
+// Duration returns the duration of the snapshot in milliseconds.
+func (s *SnapshotSummary) DurationMs() int64 {
+	if s.unixDurationMs != 0 {
+		return s.unixDurationMs
+	}
+	start, err := time.Parse(time.RFC3339Nano, s.BackupStart)
+	if err != nil {
+		return 0
+	}
+	end, err := time.Parse(time.RFC3339Nano, s.BackupEnd)
+	if err != nil {
+		return 0
+	}
+	s.unixDurationMs = end.Sub(start).Milliseconds()
+	return s.unixDurationMs
 }
 
 func (s *Snapshot) Validate() error {
@@ -58,26 +92,26 @@ type BackupProgressEntry struct {
 	Item   string `json:"item"`
 
 	// Summary fields
-	FilesNew            int     `json:"files_new"`
-	FilesChanged        int     `json:"files_changed"`
-	FilesUnmodified     int     `json:"files_unmodified"`
-	DirsNew             int     `json:"dirs_new"`
-	DirsChanged         int     `json:"dirs_changed"`
-	DirsUnmodified      int     `json:"dirs_unmodified"`
-	DataBlobs           int     `json:"data_blobs"`
-	TreeBlobs           int     `json:"tree_blobs"`
-	DataAdded           int     `json:"data_added"`
-	TotalFilesProcessed int     `json:"total_files_processed"`
-	TotalBytesProcessed int     `json:"total_bytes_processed"`
+	FilesNew            int64   `json:"files_new"`
+	FilesChanged        int64   `json:"files_changed"`
+	FilesUnmodified     int64   `json:"files_unmodified"`
+	DirsNew             int64   `json:"dirs_new"`
+	DirsChanged         int64   `json:"dirs_changed"`
+	DirsUnmodified      int64   `json:"dirs_unmodified"`
+	DataBlobs           int64   `json:"data_blobs"`
+	TreeBlobs           int64   `json:"tree_blobs"`
+	DataAdded           int64   `json:"data_added"`
+	TotalFilesProcessed int64   `json:"total_files_processed"`
+	TotalBytesProcessed int64   `json:"total_bytes_processed"`
 	TotalDuration       float64 `json:"total_duration"`
 	SnapshotId          string  `json:"snapshot_id"`
 
 	// Status fields
 	PercentDone  float64  `json:"percent_done"`
-	TotalFiles   int      `json:"total_files"`
-	FilesDone    int      `json:"files_done"`
-	TotalBytes   int      `json:"total_bytes"`
-	BytesDone    int      `json:"bytes_done"`
+	TotalFiles   int64    `json:"total_files"`
+	FilesDone    int64    `json:"files_done"`
+	TotalBytes   int64    `json:"total_bytes"`
+	BytesDone    int64    `json:"bytes_done"`
 	CurrentFiles []string `json:"current_files"`
 }
 
@@ -95,47 +129,25 @@ func (b *BackupProgressEntry) Validate() error {
 }
 
 // readBackupProgressEntries returns the summary event or an error if the command failed.
-func readBackupProgressEntries(ctx context.Context, cmd *exec.Cmd, output io.Reader, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
+func readBackupProgressEntries(output io.Reader, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
+	nonJSONOutput := bytes.NewBuffer(nil)
+
 	var summary *BackupProgressEntry
-
-	// first event is handled specially to detect non-JSON output and fast-path out.
-	if scanner.Scan() {
-		var event BackupProgressEntry
-
-		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			var bytes = slices.Clone(scanner.Bytes())
-			for scanner.Scan() {
-				bytes = append(bytes, scanner.Bytes()...)
-			}
-
-			return nil, newCmdError(ctx, cmd, string(bytes), fmt.Errorf("command output was not JSON: %w", err))
-		}
-		if err := event.Validate(); err != nil {
-			return nil, err
-		}
-		if callback != nil {
-			callback(&event)
-		}
-		if event.MessageType == "summary" {
-			summary = &event
-		}
-	}
 
 	// remaining events are parsed as JSON
 	for scanner.Scan() {
 		var event BackupProgressEntry
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			// skip it. This is a best-effort attempt to parse the output.
+			nonJSONOutput.Write(scanner.Bytes())
 			continue
 		}
 		if err := event.Validate(); err != nil {
-			// skip it. This is a best-effort attempt to parse the output.
+			nonJSONOutput.Write(scanner.Bytes())
 			continue
 		}
-
 		if callback != nil {
 			callback(&event)
 		}
@@ -143,15 +155,12 @@ func readBackupProgressEntries(ctx context.Context, cmd *exec.Cmd, output io.Rea
 			summary = &event
 		}
 	}
-
 	if err := scanner.Err(); err != nil {
-		return summary, fmt.Errorf("scanner encountered error: %w", err)
+		return summary, newErrorWithOutput(err, nonJSONOutput.String())
 	}
-
 	if summary == nil {
-		return nil, fmt.Errorf("no summary event found")
+		return nil, newErrorWithOutput(errors.New("no summary event found"), nonJSONOutput.String())
 	}
-
 	return summary, nil
 }
 
@@ -159,10 +168,10 @@ type LsEntry struct {
 	Name  string `json:"name"`
 	Type  string `json:"type"`
 	Path  string `json:"path"`
-	Uid   int    `json:"uid"`
-	Gid   int    `json:"gid"`
-	Size  int    `json:"size"`
-	Mode  int    `json:"mode"`
+	Uid   int64  `json:"uid"`
+	Gid   int64  `json:"gid"`
+	Size  int64  `json:"size"`
+	Mode  int64  `json:"mode"`
 	Mtime string `json:"mtime"`
 	Atime string `json:"atime"`
 	Ctime string `json:"ctime"`
@@ -244,44 +253,24 @@ func (e *RestoreProgressEntry) Validate() error {
 }
 
 // readRestoreProgressEntries returns the summary event or an error if the command failed.
-func readRestoreProgressEntries(ctx context.Context, cmd *exec.Cmd, output io.Reader, callback func(event *RestoreProgressEntry)) (*RestoreProgressEntry, error) {
+func readRestoreProgressEntries(output io.Reader, callback func(event *RestoreProgressEntry)) (*RestoreProgressEntry, error) {
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
+	nonJSONOutput := bytes.NewBuffer(nil)
+
 	var summary *RestoreProgressEntry
-
-	// first event is handled specially to detect non-JSON output and fast-path out.
-	if scanner.Scan() {
-		var event RestoreProgressEntry
-
-		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			var bytes = slices.Clone(scanner.Bytes())
-			for scanner.Scan() {
-				bytes = append(bytes, scanner.Bytes()...)
-			}
-
-			return nil, newCmdError(ctx, cmd, string(bytes), fmt.Errorf("command output was not JSON: %w", err))
-		}
-		if err := event.Validate(); err != nil {
-			return nil, err
-		}
-		if callback != nil {
-			callback(&event)
-		}
-		if event.MessageType == "summary" {
-			summary = &event
-		}
-	}
 
 	// remaining events are parsed as JSON
 	for scanner.Scan() {
 		var event RestoreProgressEntry
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			// skip it. Best effort parsing, restic will return with a non-zero exit code if it fails.
+			nonJSONOutput.Write(scanner.Bytes())
 			continue
 		}
 		if err := event.Validate(); err != nil {
 			// skip it. Best effort parsing, restic will return with a non-zero exit code if it fails.
+			nonJSONOutput.Write(scanner.Bytes())
 			continue
 		}
 
@@ -294,11 +283,11 @@ func readRestoreProgressEntries(ctx context.Context, cmd *exec.Cmd, output io.Re
 	}
 
 	if err := scanner.Err(); err != nil {
-		return summary, fmt.Errorf("scanner encountered error: %w", err)
+		return summary, newErrorWithOutput(err, nonJSONOutput.String())
 	}
 
 	if summary == nil {
-		return nil, fmt.Errorf("no summary event found")
+		return nil, newErrorWithOutput(errors.New("no summary event found"), nonJSONOutput.String())
 	}
 
 	return summary, nil

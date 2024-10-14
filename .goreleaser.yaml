@@ -13,7 +13,6 @@ env:
 
 before:
   hooks:
-    - bash -c "echo {{.Version}} > /tmp/version.txt"
     - go mod tidy
     - npm --prefix webui install
     - sh -c "GOOS=linux BACKREST_BUILD_VERSION={{.Version}} go generate ./..."
@@ -21,7 +20,7 @@ before:
 
 builds:
   - id: other
-    main: .
+    main: ./cmd/backrest
     env:
       - CGO_ENABLED=0
     goos:
@@ -32,7 +31,7 @@ builds:
       - amd64
       - arm64
   - id: linux
-    main: .
+    main: ./cmd/backrest
     env:
       - CGO_ENABLED=0
     goos:
@@ -41,6 +40,18 @@ builds:
       - amd64
       - arm64
       - arm
+  - id: backrestmon
+    main: ./cmd/backrestmon
+    binary: backrest-windows-tray
+    env:
+      - CGO_ENABLED=1
+      - GO111MODULE=on
+    ldflags: -H=windowsgui
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
 
 archives:
   - format: tar.gz
@@ -60,6 +71,7 @@ archives:
       - LICENSE
       - README.md
       - CHANGELOG.md
+    allow_different_binary_count: true
 
 dockers:
   - image_templates:
@@ -100,12 +112,22 @@ dockers:
       - garethgeorge/backrest:{{ .Tag }}-scratch-armv6
     dockerfile: Dockerfile.scratch
     use: buildx
+    goarch: arm
+    goarm: 6
     build_flag_templates:
       - "--pull"
       - "--platform=linux/arm/v6"
 
 docker_manifests:
   - name_template: "garethgeorge/backrest:latest"
+    image_templates:
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
+  - name_template: "garethgeorge/backrest:v{{ .Major }}"
+    image_templates:
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
+  - name_template: "garethgeorge/backrest:v{{ .Major }}.{{ .Minor }}"
     image_templates:
       - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
       - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
@@ -122,11 +144,43 @@ docker_manifests:
       - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
       - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
       - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
+  - name_template: "garethgeorge/backrest:v{{ .Major }}-scratch"
+    image_templates:
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
+  - name_template: "garethgeorge/backrest:v{{ .Major }}.{{ .Minor }}-scratch"
+    image_templates:
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
+      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
   - name_template: "garethgeorge/backrest:{{ .Tag }}-scratch"
     image_templates:
       - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
       - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
       - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
+
+brews:
+  - name: backrest
+    homepage: https://github.com/garethgeorge/backrest
+    description: "Backrest is a web UI and orchestrator for restic backup."
+
+    url_template: "https://github.com/garethgeorge/backrest/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+
+    repository:
+      owner: garethgeorge
+      name: homebrew-backrest-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_GITHUB_TOKEN }}"
+
+    service: |
+      run opt_bin/"backrest"
+      error_log_path var/"log/backrest.log"
+      log_path var/"log/backrest.log"
 
 changelog:
   sort: asc

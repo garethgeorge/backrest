@@ -1,41 +1,30 @@
 import React, { useEffect, useState } from "react";
 import {
   Operation,
-  OperationEvent,
-  OperationEventType,
   OperationForget,
-  OperationRunHook,
+  OperationRestore,
   OperationStatus,
 } from "../../gen/ts/v1/operations_pb";
 import {
   Button,
   Col,
   Collapse,
-  Empty,
   List,
   Modal,
   Progress,
   Row,
   Typography,
 } from "antd";
+import type { ItemType } from "rc-collapse/es/interface";
 import {
-  PaperClipOutlined,
-  SaveOutlined,
-  DeleteOutlined,
-  DownloadOutlined,
-  RobotOutlined,
-  InfoCircleOutlined,
-} from "@ant-design/icons";
-import { BackupProgressEntry, ResticSnapshot } from "../../gen/ts/v1/restic_pb";
-import {
-  DisplayType,
-  detailsForOperation,
-  displayTypeToString,
-  getTypeForDisplay,
-} from "../state/oplog";
+  BackupProgressEntry,
+  ResticSnapshot,
+  SnapshotSummary,
+} from "../../gen/ts/v1/restic_pb";
 import { SnapshotBrowser } from "./SnapshotBrowser";
 import {
   formatBytes,
+  formatDuration,
   formatTime,
   normalizeSnapshotId,
 } from "../lib/formatting";
@@ -44,233 +33,422 @@ import { LogDataRequest } from "../../gen/ts/v1/service_pb";
 import { MessageInstance } from "antd/es/message/interface";
 import { backrestService } from "../api";
 import { useShowModal } from "./ModalManager";
-
+import { useAlertApi } from "./Alerts";
+import { OperationList } from "./OperationList";
+import {
+  displayTypeToString,
+  getTypeForDisplay,
+  nameForStatus,
+} from "../state/flowdisplayaggregator";
+import { OperationIcon } from "./OperationIcon";
+import { LogView } from "./LogView";
 
 export const OperationRow = ({
   operation,
   alertApi,
   showPlan,
-}: React.PropsWithoutRef<{ operation: Operation, alertApi?: MessageInstance, showPlan: boolean }>) => {
+  hookOperations,
+}: React.PropsWithoutRef<{
+  operation: Operation;
+  alertApi?: MessageInstance;
+  showPlan?: boolean;
+  hookOperations?: Operation[];
+}>) => {
   const showModal = useShowModal();
-  const details = detailsForOperation(operation);
   const displayType = getTypeForDisplay(operation);
-  let avatar: React.ReactNode;
-  switch (displayType) {
-    case DisplayType.BACKUP:
-      avatar = (
-        <SaveOutlined
-          style={{ color: details.color }}
-          spin={operation.status === OperationStatus.STATUS_INPROGRESS}
-        />
+  const setRefresh = useState(0)[1];
+
+  useEffect(() => {
+    if (operation.status === OperationStatus.STATUS_INPROGRESS) {
+      const interval = setInterval(() => {
+        setRefresh((x) => x + 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [operation.status]);
+
+  const doCancel = () => {
+    backrestService
+      .cancel({ value: operation.id! })
+      .then(() => {
+        alertApi?.success("Requested to cancel operation");
+      })
+      .catch((e) => {
+        alertApi?.error("Failed to cancel operation: " + e.message);
+      });
+  };
+
+  const doShowLogs = () => {
+    showModal(
+      <Modal
+        width="70%"
+        title={
+          "Logs for operation " +
+          opName +
+          " at " +
+          formatTime(Number(operation.unixTimeStartMs))
+        }
+        open={true}
+        footer={null}
+        onCancel={() => {
+          showModal(null);
+        }}
+      >
+        <LogView logref={operation.logref!} />
+      </Modal>
+    );
+  };
+
+  let details: string = "";
+  if (operation.status !== OperationStatus.STATUS_SUCCESS) {
+    details = nameForStatus(operation.status);
+  }
+  if (operation.unixTimeEndMs - operation.unixTimeStartMs > 100) {
+    details +=
+      " in " +
+      formatDuration(
+        Number(operation.unixTimeEndMs - operation.unixTimeStartMs)
       );
-      break;
-    case DisplayType.FORGET:
-      avatar = (
-        <DeleteOutlined
-          style={{ color: details.color }}
-          spin={operation.status === OperationStatus.STATUS_INPROGRESS}
-        />
-      );
-      break;
-    case DisplayType.SNAPSHOT:
-      avatar = <PaperClipOutlined style={{ color: details.color }} />;
-      break;
-    case DisplayType.RESTORE:
-      avatar = <DownloadOutlined style={{ color: details.color }} />;
-      break;
-    case DisplayType.PRUNE:
-      avatar = <DeleteOutlined style={{ color: details.color }} />;
-      break;
-    case DisplayType.RUNHOOK:
-      avatar = <RobotOutlined style={{ color: details.color }} />;
-      break;
-    case DisplayType.STATS:
-      avatar = <InfoCircleOutlined style={{ color: details.color }} />;
-      break;
   }
 
   const opName = displayTypeToString(getTypeForDisplay(operation));
   let title = (
     <>
-      {showPlan ? operation.planId + " - " : undefined} {formatTime(Number(operation.unixTimeStartMs))} - {opName}{" "}
-      <span className="backrest operation-details">{details.displayState}</span>
+      {showPlan ? operation.planId + " - " : undefined}{" "}
+      {formatTime(Number(operation.unixTimeStartMs))} - {opName}{" "}
+      <span className="backrest operation-details">{details}</span>
     </>
   );
 
-  if (operation.status === OperationStatus.STATUS_PENDING || operation.status == OperationStatus.STATUS_INPROGRESS) {
-    title = <>
-      {title}
-      <Button type="link" size="small" className="backrest operation-details" onClick={() => {
-        backrestService.cancel({ value: operation.id! }).then(() => {
-          alertApi?.success("Requested to cancel operation");
-        }).catch((e) => {
-          alertApi?.error("Failed to cancel operation: " + e.message);
-        });
-      }}>[Cancel Operation]</Button>
-    </>
+  if (
+    operation.status === OperationStatus.STATUS_INPROGRESS ||
+    operation.status === OperationStatus.STATUS_PENDING
+  ) {
+    title = (
+      <>
+        {title}
+        <Button
+          type="link"
+          size="small"
+          className="backrest operation-details"
+          onClick={doCancel}
+        >
+          [Cancel Operation]
+        </Button>
+      </>
+    );
   }
 
   if (operation.logref) {
-    title = <>
-      {title}
-      <small>
-        <Button type="link" size="middle" className="backrest operation-details" onClick={() => {
-          showModal(<Modal
-            width="50%"
-            title={"Logs for operation " + opName + " at " + formatTime(Number(operation.unixTimeStartMs))}
-            visible={true} footer={null} onCancel={() => { showModal(null); }}>
-            <BigOperationDataVerbatim logref={operation.logref!} />
-          </Modal>);
-        }}>[View Restic Logs]</Button>
-      </small >
-    </>
+    title = (
+      <>
+        {title}
+        <small>
+          <Button
+            type="link"
+            size="middle"
+            className="backrest operation-details"
+            onClick={doShowLogs}
+          >
+            [View Logs]
+          </Button>
+        </small>
+      </>
+    );
   }
 
-  let body: React.ReactNode | undefined;
+  let displayMessage = operation.displayMessage;
+
+  const bodyItems: ItemType[] = [];
+  const expandedBodyItems: string[] = [];
 
   if (operation.op.case === "operationBackup") {
+    if (operation.status === OperationStatus.STATUS_INPROGRESS) {
+      expandedBodyItems.push("details");
+    }
     const backupOp = operation.op.value;
-    const items: { key: number, label: string, children: React.ReactNode }[] = [
-      {
-        key: 1,
-        label: "Backup Details",
-        children: <BackupOperationStatus status={backupOp.lastStatus} />,
-      },
-    ];
+    bodyItems.push({
+      key: "details",
+      label: "Backup Details",
+      children: <BackupOperationStatus status={backupOp.lastStatus} />,
+    });
 
     if (backupOp.errors.length > 0) {
-      items.splice(0, 0, {
-        key: 2,
+      bodyItems.push({
+        key: "errors",
         label: "Item Errors",
-        children: <pre>{backupOp.errors.map(e => "Error on item: " + e.item).join("\n")}</pre>,
+        children: (
+          <pre>
+            {backupOp.errors.map((e) => "Error on item: " + e.item).join("\n")}
+          </pre>
+        ),
       });
     }
-
-    body = (
-      <>
-        <Collapse
-          size="small"
-          destroyInactivePanel
-          defaultActiveKey={[1]}
-          items={items}
-        />
-      </>
-    );
   } else if (operation.op.case === "operationIndexSnapshot") {
+    expandedBodyItems.push("details");
     const snapshotOp = operation.op.value;
-    body = (
-      <SnapshotInfo
-        snapshot={snapshotOp.snapshot!}
-        repoId={operation.repoId!}
-        planId={operation.planId}
-      />
-    );
+    bodyItems.push({
+      key: "details",
+      label: "Details",
+      children: <SnapshotDetails snapshot={snapshotOp.snapshot!} />,
+    });
+    bodyItems.push({
+      key: "browser",
+      label: "Snapshot Browser",
+      children: (
+        <SnapshotBrowser
+          snapshotId={snapshotOp.snapshot!.id}
+          repoId={operation.repoId}
+          planId={operation.planId}
+        />
+      ),
+    });
   } else if (operation.op.case === "operationForget") {
     const forgetOp = operation.op.value;
-    body = <ForgetOperationDetails forgetOp={forgetOp} />
+    bodyItems.push({
+      key: "forgot",
+      label: "Removed " + forgetOp.forget?.length + " Snapshots",
+      children: <ForgetOperationDetails forgetOp={forgetOp} />,
+    });
   } else if (operation.op.case === "operationPrune") {
     const prune = operation.op.value;
-    body = (
-      <Collapse
-        size="small"
-        destroyInactivePanel
-        items={[
-          {
-            key: 1,
-            label: "Prune Output",
-            children: <pre>{prune.output}</pre>,
-          },
-        ]}
-      />
-    );
+    expandedBodyItems.push("prune");
+    bodyItems.push({
+      key: "prune",
+      label: "Prune Output",
+      children: prune.outputLogref ? (
+        <LogView logref={prune.outputLogref} />
+      ) : (
+        <pre>{prune.output}</pre>
+      ),
+    });
+  } else if (operation.op.case === "operationCheck") {
+    const check = operation.op.value;
+    expandedBodyItems.push("check");
+    bodyItems.push({
+      key: "check",
+      label: "Check Output",
+      children: check.outputLogref ? (
+        <LogView logref={check.outputLogref} />
+      ) : (
+        <pre>{check.output}</pre>
+      ),
+    });
+  } else if (operation.op.case === "operationRunCommand") {
+    const run = operation.op.value;
+    if (run.outputSizeBytes < 64 * 1024) {
+      expandedBodyItems.push("run");
+    }
+    bodyItems.push({
+      key: "run",
+      label:
+        "Command Output" +
+        (run.outputSizeBytes > 0
+          ? ` (${formatBytes(Number(run.outputSizeBytes))})`
+          : ""),
+      children: (
+        <>
+          <LogView logref={run.outputLogref} />
+        </>
+      ),
+    });
   } else if (operation.op.case === "operationRestore") {
-    const restore = operation.op.value;
-    body = (
-      <>
-        Restore {restore.path} to {restore.target}
-        {details.percentage !== undefined ? (
-          <Progress percent={details.percentage || 0} status="active" />
-        ) : null}
-      </>
-    );
+    expandedBodyItems.push("restore");
+    bodyItems.push({
+      key: "restore",
+      label: "Restore Details",
+      children: <RestoreOperationStatus operation={operation} />,
+    });
   } else if (operation.op.case === "operationRunHook") {
     const hook = operation.op.value;
-    body = <RunHookOperationStatus op={operation} />
+    if (operation.logref) {
+      if (operation.status === OperationStatus.STATUS_INPROGRESS) {
+        expandedBodyItems.push("logref");
+      }
+      bodyItems.push({
+        key: "logref",
+        label: "Hook Output",
+        children: <LogView logref={operation.logref} />,
+      });
+    }
   }
 
-  const children = [];
+  if (hookOperations) {
+    bodyItems.push({
+      key: "hookOperations",
+      label: "Hooks Triggered",
+      children: (
+        <OperationList
+          useOperations={hookOperations}
+          displayHooksInline={true}
+        />
+      ),
+    });
 
-  if (operation.displayMessage) {
-    children.push(<>
-      <pre>{details.state}: {operation.displayMessage}</pre>
-    </>);
+    for (const op of hookOperations) {
+      if (op.status !== OperationStatus.STATUS_SUCCESS) {
+        expandedBodyItems.push("hookOperations");
+        break;
+      }
+    }
   }
-
-  children.push(body);
 
   return (
-    <List.Item>
-      <List.Item.Meta title={title} avatar={avatar} description={children} />
+    <List.Item key={operation.id}>
+      <List.Item.Meta
+        title={title}
+        avatar={<OperationIcon type={displayType} status={operation.status} />}
+        description={
+          <>
+            {operation.displayMessage && (
+              <div key="message">
+                <pre>
+                  {operation.status !== OperationStatus.STATUS_SUCCESS &&
+                    nameForStatus(operation.status) + ": "}
+                  {displayMessage}
+                </pre>
+              </div>
+            )}
+            <Collapse
+              size="small"
+              destroyInactivePanel={true}
+              items={bodyItems}
+              defaultActiveKey={expandedBodyItems}
+            />
+          </>
+        }
+      />
     </List.Item>
   );
 };
 
-const SnapshotInfo = ({
-  snapshot,
-  repoId,
-  planId,
-}: {
-  snapshot: ResticSnapshot;
-  repoId: string;
-  planId?: string;
-}) => {
+const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
+  const summary: Partial<SnapshotSummary> = snapshot.summary || {};
+
+  const rows: React.ReactNode[] = [
+    <Row gutter={16} key={1}>
+      <Col span={8}>
+        <Typography.Text strong>User and Host</Typography.Text>
+        <br />
+        {snapshot.username}@{snapshot.hostname}
+      </Col>
+      <Col span={12}>
+        <Typography.Text strong>Tags</Typography.Text>
+        <br />
+        {snapshot.tags.join(", ")}
+      </Col>
+    </Row>,
+  ];
+
+  if (
+    summary.filesNew ||
+    summary.filesChanged ||
+    summary.filesUnmodified ||
+    summary.dataAdded ||
+    summary.totalFilesProcessed ||
+    summary.totalBytesProcessed
+  ) {
+    rows.push(
+      <Row gutter={16} key={2}>
+        <Col span={8}>
+          <Typography.Text strong>Files Added</Typography.Text>
+          <br />
+          {"" + summary.filesNew}
+        </Col>
+        <Col span={8}>
+          <Typography.Text strong>Files Changed</Typography.Text>
+          <br />
+          {"" + summary.filesChanged}
+        </Col>
+        <Col span={8}>
+          <Typography.Text strong>Files Unmodified</Typography.Text>
+          <br />
+          {"" + summary.filesUnmodified}
+        </Col>
+      </Row>
+    );
+    rows.push(
+      <Row gutter={16} key={3}>
+        <Col span={8}>
+          <Typography.Text strong>Bytes Added</Typography.Text>
+          <br />
+          {formatBytes(Number(summary.dataAdded))}
+        </Col>
+        <Col span={8}>
+          <Typography.Text strong>Bytes Processed</Typography.Text>
+          <br />
+          {formatBytes(Number(summary.totalBytesProcessed))}
+        </Col>
+        <Col span={8}>
+          <Typography.Text strong>Files Processed</Typography.Text>
+          <br />
+          {"" + summary.totalFilesProcessed}
+        </Col>
+      </Row>
+    );
+  }
+
   return (
-    <Collapse
-      size="small"
-      defaultActiveKey={[1]}
-      items={[
-        {
-          key: 1,
-          label: "Snapshot Details",
-          children: (
-            <>
-              <Typography.Text>
-                <Typography.Text strong>Snapshot ID: </Typography.Text>
-                {normalizeSnapshotId(snapshot.id!)}
-              </Typography.Text>
-              <Row gutter={16}>
-                <Col span={8}>
-                  <Typography.Text strong>Host</Typography.Text>
-                  <br />
-                  {snapshot.hostname}
-                </Col>
-                <Col span={8}>
-                  <Typography.Text strong>Username</Typography.Text>
-                  <br />
-                  {snapshot.hostname}
-                </Col>
-                <Col span={8}>
-                  <Typography.Text strong>Tags</Typography.Text>
-                  <br />
-                  {snapshot.tags?.join(", ")}
-                </Col>
-              </Row>
-            </>
-          ),
-        },
-        {
-          key: 2,
-          label: "Browse and Restore Files in Backup",
-          children: (
-            <SnapshotBrowser
-              snapshotId={snapshot.id!}
-              repoId={repoId}
-              planId={planId}
-            />
-          ),
-        },
-      ]}
-    />
+    <>
+      <Typography.Text>
+        <Typography.Text strong>Snapshot ID: </Typography.Text>
+        {normalizeSnapshotId(snapshot.id!)} <br />
+        {rows}
+      </Typography.Text>
+    </>
+  );
+};
+
+const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
+  const restoreOp = operation.op.value as OperationRestore;
+  const isDone = restoreOp.lastStatus?.messageType === "summary";
+  const progress = restoreOp.lastStatus?.percentDone || 0;
+  const alertApi = useAlertApi();
+  const lastStatus = restoreOp.lastStatus;
+
+  return (
+    <>
+      Restore {restoreOp.path} to {restoreOp.target}
+      {!isDone ? (
+        <Progress percent={Math.round(progress * 1000) / 10} status="active" />
+      ) : null}
+      {operation.status == OperationStatus.STATUS_SUCCESS ? (
+        <>
+          <Button
+            type="link"
+            onClick={() => {
+              backrestService
+                .getDownloadURL({ value: operation.id })
+                .then((resp) => {
+                  window.open(resp.value, "_blank");
+                })
+                .catch((e) => {
+                  alertApi?.error("Failed to fetch download URL: " + e.message);
+                });
+            }}
+          >
+            Download File(s)
+          </Button>
+        </>
+      ) : null}
+      <br />
+      Restored Snapshot ID: {normalizeSnapshotId(operation.snapshotId!)}
+      {lastStatus && (
+        <Row gutter={16}>
+          <Col span={12}>
+            <Typography.Text strong>Bytes Done/Total</Typography.Text>
+            <br />
+            {formatBytes(Number(lastStatus.bytesRestored))}/
+            {formatBytes(Number(lastStatus.totalBytes))}
+          </Col>
+          <Col span={12}>
+            <Typography.Text strong>Files Done/Total</Typography.Text>
+            <br />
+            {Number(lastStatus.filesRestored)}/{Number(lastStatus.totalFiles)}
+          </Col>
+        </Row>
+      )}
+    </>
   );
 };
 
@@ -297,7 +475,8 @@ const BackupOperationStatus = ({
           <Col span={12}>
             <Typography.Text strong>Bytes Done/Total</Typography.Text>
             <br />
-            {formatBytes(Number(st.bytesDone))}/{formatBytes(Number(st.totalBytes))}
+            {formatBytes(Number(st.bytesDone))}/
+            {formatBytes(Number(st.totalBytes))}
           </Col>
           <Col span={12}>
             <Typography.Text strong>Files Done/Total</Typography.Text>
@@ -360,92 +539,58 @@ const BackupOperationStatus = ({
   }
 };
 
-const ForgetOperationDetails = ({ forgetOp }: { forgetOp: OperationForget }) => {
+const ForgetOperationDetails = ({
+  forgetOp,
+}: {
+  forgetOp: OperationForget;
+}) => {
   const policy = forgetOp.policy! || {};
   const policyDesc = [];
-  if (policy.keepLastN) {
-    policyDesc.push(`Keep Last ${policy.keepLastN} Snapshots`);
-  }
-  if (policy.keepHourly) {
-    policyDesc.push(`Keep Hourly for ${policy.keepHourly} Hours`);
-  }
-  if (policy.keepDaily) {
-    policyDesc.push(`Keep Daily for ${policy.keepDaily} Days`);
-  }
-  if (policy.keepWeekly) {
-    policyDesc.push(`Keep Weekly for ${policy.keepWeekly} Weeks`);
-  }
-  if (policy.keepMonthly) {
-    policyDesc.push(`Keep Monthly for ${policy.keepMonthly} Months`);
-  }
-  if (policy.keepYearly) {
-    policyDesc.push(`Keep Yearly for ${policy.keepYearly} Years`);
+  if (policy.policy) {
+    if (policy.policy.case === "policyKeepAll") {
+      policyDesc.push("Keep all.");
+    } else if (policy.policy.case === "policyKeepLastN") {
+      policyDesc.push(`Keep last ${policy.policy.value} snapshots`);
+    } else if (policy.policy.case == "policyTimeBucketed") {
+      const val = policy.policy.value;
+      if (val.hourly) {
+        policyDesc.push(`Keep hourly for ${val.hourly} hours`);
+      }
+      if (val.daily) {
+        policyDesc.push(`Keep daily for ${val.daily} days`);
+      }
+      if (val.weekly) {
+        policyDesc.push(`Keep weekly for ${val.weekly} weeks`);
+      }
+      if (val.monthly) {
+        policyDesc.push(`Keep monthly for ${val.monthly} months`);
+      }
+      if (val.yearly) {
+        policyDesc.push(`Keep yearly for ${val.yearly} years`);
+      }
+    }
   }
 
   return (
-    <Collapse
-      size="small"
-      destroyInactivePanel
-      items={[
-        {
-          key: 1,
-          label: "Removed " + forgetOp.forget?.length + " Snapshots",
-          children: <>
-            Removed snapshots:
-            <pre>{forgetOp.forget?.map((f) => (
-              <div key={f.id}>
-                {"removed snapshot " + normalizeSnapshotId(f.id!) + " taken at " + formatTime(Number(f.unixTimeMs))} <br />
-              </div>
-            ))}</pre>
-            {/* Policy:
-            <ul>
-              {policyDesc.map((desc, idx) => (
-                <li key={idx}>{desc}</li>
-              ))}
-            </ul> */}
-          </>,
-        },
-      ]}
-    />
+    <>
+      Removed snapshots:
+      <pre>
+        {forgetOp.forget?.map((f) => (
+          <div key={f.id}>
+            {"removed snapshot " +
+              normalizeSnapshotId(f.id!) +
+              " taken at " +
+              formatTime(Number(f.unixTimeMs))}{" "}
+            <br />
+          </div>
+        ))}
+      </pre>
+      Policy:
+      <ul>
+        {policyDesc.map((desc, idx) => (
+          <li key={idx}>{desc}</li>
+        ))}
+      </ul>
+    </>
   );
-}
-
-const RunHookOperationStatus = ({ op }: { op: Operation }) => {
-  if (op.op.case !== "operationRunHook") {
-    return <>Wrong operation type</>;
-  }
-
-  const hook = op.op.value;
-
-  return <>
-    <Collapse size="small" destroyInactivePanel items={[
-      {
-        key: 1,
-        label: "Logs for hook " + hook.name,
-        children: <>
-          <BigOperationDataVerbatim logref={hook.outputLogref} />
-        </>
-      },
-    ]} />
-  </>
-}
-
-// TODO: refactor this to use the provider pattern
-const BigOperationDataVerbatim = ({ logref }: { logref: string }) => {
-  const [output, setOutput] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (!logref) {
-      return;
-    }
-    backrestService.getLogs(new LogDataRequest({
-      ref: logref,
-    })).then((resp) => {
-      setOutput(new TextDecoder("utf-8").decode(resp.value));
-    }).catch((e) => {
-      console.error("Failed to fetch hook output: ", e);
-    });
-  }, [logref]);
-
-  return <pre>{output}</pre>;
-}
+};

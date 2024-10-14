@@ -18,6 +18,8 @@ import { URIAutocomplete } from "./URIAutocomplete";
 import { validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
 import { ConfirmButton } from "./SpinButton";
+import { StringValue } from "@bufbuild/protobuf";
+import { pathSeparator } from "../state/buildcfg";
 
 const SnapshotBrowserContext = React.createContext<{
   snapshotId: string;
@@ -80,18 +82,20 @@ export const SnapshotBrowser = ({
   const [treeData, setTreeData] = useState<DataNode[]>([]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const resp = await backrestService.listSnapshotFiles({
+    setTreeData(
+      respToNodes(
+        new ListSnapshotFilesResponse({
+          entries: [
+            {
+              path: "/",
+              type: "directory",
+              name: "/",
+            },
+          ],
           path: "/",
-          repoId,
-          snapshotId,
-        });
-        setTreeData(respToNodes(resp));
-      } catch (e: any) {
-        alertApi?.error("Failed to list snapshot files: " + e.message);
-      }
-    })();
+        })
+      )
+    );
   }, [repoId, snapshotId]);
 
   const onLoadData = async ({ key, children }: EventDataNode<DataNode>) => {
@@ -99,8 +103,13 @@ export const SnapshotBrowser = ({
       return;
     }
 
+    let path = key as string;
+    if (!path.endsWith("/")) {
+      path += "/";
+    }
+
     const resp = await backrestService.listSnapshotFiles({
-      path: (key + "/") as string,
+      path,
       repoId,
       snapshotId,
     });
@@ -131,10 +140,6 @@ export const SnapshotBrowser = ({
     });
   };
 
-  if (treeData.length === 0) {
-    return <Spin />;
-  }
-
   return (
     <SnapshotBrowserContext.Provider
       value={{ snapshotId, repoId, planId, showModal }}
@@ -146,12 +151,8 @@ export const SnapshotBrowser = ({
 
 const respToNodes = (resp: ListSnapshotFilesResponse): DataNode[] => {
   const nodes = resp
-    .entries!.filter((entry) => entry.path!.length > resp.path!.length)
+    .entries!.filter((entry) => entry.path!.length >= resp.path!.length)
     .map((entry) => {
-      const lastSlash = entry.path!.lastIndexOf("/");
-      const title =
-        lastSlash === -1 ? entry.path : entry.path!.slice(lastSlash + 1);
-
       const node: DataNode = {
         key: entry.path!,
         title: <FileNode entry={entry} />,
@@ -222,7 +223,7 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
           ({formatBytes(Number(entry.size))})
         </span>
       ) : null}
-      {dropdown}
+      {dropdown || <div style={{ width: 16 }}></div>}
     </Space>
   );
 };
@@ -241,6 +242,17 @@ const RestoreModal = ({
   const [form] = Form.useForm<RestoreSnapshotRequest>();
   const showModal = useShowModal();
 
+  const defaultPath = useMemo(() => {
+    if (path === pathSeparator) {
+      return "";
+    }
+    return path + "-backrest-restore-" + normalizeSnapshotId(snapshotId);
+  }, [path]);
+
+  useEffect(() => {
+    form.setFieldsValue({ target: defaultPath });
+  }, [defaultPath]);
+
   const handleCancel = () => {
     showModal(null);
   };
@@ -248,19 +260,69 @@ const RestoreModal = ({
   const handleOk = async () => {
     try {
       const values = await validateForm(form);
-      await backrestService.restore({
-        repoId,
-        planId,
-        snapshotId,
-        path,
-        target: values.target,
-      });
+      await backrestService.restore(
+        new RestoreSnapshotRequest({
+          repoId,
+          planId,
+          snapshotId,
+          path,
+          target: values.target,
+        })
+      );
     } catch (e: any) {
       alert("Failed to restore snapshot: " + e.message);
     } finally {
       showModal(null); // close.
     }
   };
+
+  let targetPath = Form.useWatch("target", form);
+  useEffect(() => {
+    if (!targetPath) {
+      return;
+    }
+    (async () => {
+      try {
+        let p = targetPath;
+        if (p.endsWith(pathSeparator)) {
+          p = p.slice(0, -1);
+        }
+
+        const dirname = basename(p);
+        const files = await backrestService.pathAutocomplete(
+          new StringValue({ value: dirname })
+        );
+
+        for (const file of files.values) {
+          if (dirname + file === p) {
+            form.setFields([
+              {
+                name: "target",
+                errors: [
+                  "target path already exists, you must pick an empty path.",
+                ],
+              },
+            ]);
+            return;
+          }
+        }
+        form.setFields([
+          {
+            name: "target",
+            value: targetPath,
+            errors: [],
+          },
+        ]);
+      } catch (e: any) {
+        form.setFields([
+          {
+            name: "target",
+            errors: [e.message],
+          },
+        ]);
+      }
+    })();
+  }, [targetPath]);
 
   return (
     <Modal
@@ -290,15 +352,30 @@ const RestoreModal = ({
         labelCol={{ span: 6 }}
         wrapperCol={{ span: 16 }}
       >
-        <Form.Item
-          label="Restore to path"
-          name="target"
-          required={true}
-          rules={[{ required: true, message: "Please enter a restore path" }]}
-        >
-          <URIAutocomplete onBlur={() => form.validateFields()} />
+        <p>
+          If restoring to a specific path, ensure that the path does not already
+          exist or that you are comfortable overwriting the data at that
+          location.
+        </p>
+        <p>
+          You may set the path to an empty string to restore to your Downloads
+          folder.
+        </p>
+        <Form.Item label="Restore to path" name="target" rules={[]}>
+          <URIAutocomplete
+            placeholder="Restoring to Downloads"
+            defaultValue={defaultPath}
+          />
         </Form.Item>
       </Form>
     </Modal>
   );
+};
+
+const basename = (path: string) => {
+  const idx = path.lastIndexOf(pathSeparator);
+  if (idx === -1) {
+    return path;
+  }
+  return path.slice(0, idx + 1);
 };

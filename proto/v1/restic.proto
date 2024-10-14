@@ -14,6 +14,22 @@ message ResticSnapshot {
   string parent = 6; // parent snapshot's id
   repeated string paths = 7;
   repeated string tags = 8;
+  SnapshotSummary summary = 9; // added in 0.17.0 restic outputs the summary in the snapshot
+}
+
+message SnapshotSummary {
+  int64 files_new = 1;
+  int64 files_changed = 2;
+  int64 files_unmodified = 3;
+  int64 dirs_new = 4;
+  int64 dirs_changed = 5;
+  int64 dirs_unmodified = 6;
+  int64 data_blobs = 7;
+  int64 tree_blobs = 8;
+  int64 data_added = 9;
+  int64 total_files_processed = 10;
+  int64 total_bytes_processed = 11;
+  double total_duration = 12;
 }
 
 // ResticSnapshotList represents a list of restic snapshots.

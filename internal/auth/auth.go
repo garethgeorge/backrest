@@ -12,16 +12,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	anonymousUser = &v1.User{
-		Name:     "default",
-		Password: &v1.User_PasswordBcrypt{PasswordBcrypt: "JDJhJDEwJDNCdzJoNFlhaWFZQy9TSDN3ZGxSRHVPZHdzV2lsNmtBSHdFSmtIWHk1dS8wYjZuUWJrMGFx"}, // default password is "password"
-	}
-	defaultUsers = []*v1.User{
-		anonymousUser,
-	}
-)
-
 type Authenticator struct {
 	config config.ConfigStore
 	key    []byte
@@ -43,7 +33,7 @@ func (a *Authenticator) Login(username, password string) (*v1.User, error) {
 		return nil, fmt.Errorf("get config: %w", err)
 	}
 	auth := config.GetAuth()
-	if auth.GetDisabled() {
+	if auth == nil || auth.GetDisabled() {
 		return nil, errors.New("authentication is disabled")
 	}
 

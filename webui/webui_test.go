@@ -3,6 +3,7 @@ package webui
 import (
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 )
 
@@ -33,7 +34,9 @@ func TestServeIndex(t *testing.T) {
 			status, http.StatusOK)
 	}
 
-	if rr.Header().Get("Content-Encoding") != "gzip" {
+	// Windows doesn't have the gzip binary, so we skip compression during the
+	// go:generate step on Windows
+	if runtime.GOOS != "windows" && rr.Header().Get("Content-Encoding") != "gzip" {
 		t.Errorf("handler returned wrong content encoding: got %v want %v",
 			rr.Header().Get("Content-Encoding"), "gzip")
 	}

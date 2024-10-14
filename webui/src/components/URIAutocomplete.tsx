@@ -24,7 +24,8 @@ export const URIAutocomplete = (props: React.PropsWithChildren<any>) => {
       value = value.substring(0, lastSlash);
     }
 
-    backrestService.pathAutocomplete({ value: value + sep })
+    backrestService
+      .pathAutocomplete({ value: value + sep })
       .then((res: StringList) => {
         if (!res.values) {
           return;

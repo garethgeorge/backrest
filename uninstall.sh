@@ -35,13 +35,13 @@ if [ "$OS" = "Darwin" ]; then
   uninstall_unix
   remove_launchd_plist
 
-  echo "Done -- run `launchctl list | grep backrest` to check the service installation."
+  echo "Done -- run 'launchctl list | grep backrest' to check the service installation."
 elif [ "$OS" = "Linux" ]; then
   echo "Unnstalling on Linux"
   uninstall_unix
   remove_systemd_service
 
-  echo "Done -- run `systemctl status backrest` to check the status of the service."
+  echo "Done -- run 'systemctl status backrest' to check the status of the service."
 else
   echo "Unknown OS: $OS. This script only supports Darwin and Linux."
   exit 1

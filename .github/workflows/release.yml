@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -24,7 +25,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21"
+          go-version: "1.23"
 
       - name: Setup NodeJS
         uses: actions/setup-node@v4
@@ -45,9 +46,40 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_GITHUB_TOKEN: ${{ secrets.HOMEBREW_GITHUB_TOKEN }}
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: release-artifacts
           path: dist/*
+
+  tagged-release-installers:
+    name: "Tagged Release Installers"
+    runs-on: "ubuntu-latest"
+    needs: tagged-release
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # download dist artifacts from previous job
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: release-artifacts
+          path: dist
+
+      - name: Generate Installers
+        run: |
+          mkdir -p dist-installers
+          ./scripts/generate-installers.sh ./dist-installers
+
+      - name: Upload Assets
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ./dist-installers/Backrest-setup-x86_64.exe
+            ./dist-installers/Backrest-setup-arm64.exe

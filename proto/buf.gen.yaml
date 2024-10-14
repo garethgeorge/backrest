@@ -14,9 +14,9 @@ plugins:
       - paths=source_relative
   - plugin: es
     out: ../webui/gen/ts
-    opt: 
+    opt:
       - target=ts
   - plugin: connect-es
     out: ../webui/gen/ts
-    opt: 
+    opt:
       - target=ts

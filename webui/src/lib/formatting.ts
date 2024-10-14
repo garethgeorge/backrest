@@ -1,3 +1,4 @@
+const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
 export const formatBytes = (bytes?: number | string) => {
   if (!bytes) {
     return "0B";
@@ -6,7 +7,6 @@ export const formatBytes = (bytes?: number | string) => {
     bytes = parseInt(bytes);
   }
 
-  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
   let unit = 0;
   while (bytes > 1024) {
     bytes /= 1024;
@@ -14,6 +14,14 @@ export const formatBytes = (bytes?: number | string) => {
   }
   return `${Math.round(bytes * 100) / 100} ${units[unit]}`;
 };
+
+const fmtHourMinute = new Intl.DateTimeFormat(undefined, {
+  hour: "2-digit",
+  minute: "2-digit",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
 
 const timezoneOffsetMs = new Date().getTimezoneOffset() * 60 * 1000;
 // formatTime formats a time as YYYY-MM-DD at HH:MM AM/PM
@@ -23,16 +31,8 @@ export const formatTime = (time: number | string | Date) => {
   } else if (time instanceof Date) {
     time = time.getTime();
   }
-  const d = new Date();
-  d.setTime(time - timezoneOffsetMs);
-  const isoStr = d.toISOString();
-  const hours = d.getUTCHours() % 12 == 0 ? 12 : d.getUTCHours() % 12;
-  const minutes =
-    d.getUTCMinutes() < 10 ? "0" + d.getUTCMinutes() : d.getUTCMinutes();
-  const seconds =
-    d.getUTCSeconds() < 10 ? "0" + d.getUTCSeconds() : d.getUTCSeconds();
-  return `${isoStr.substring(0, 10)} at ${hours}:${minutes}:${seconds} ${d.getUTCHours() >= 12 ? "PM" : "AM"
-    }`;
+  const d = new Date(time);
+  return fmtHourMinute.format(d);
 };
 
 export const localISOTime = (time: number | string | Date) => {
@@ -45,7 +45,7 @@ export const localISOTime = (time: number | string | Date) => {
   const d = new Date();
   d.setTime(time - timezoneOffsetMs);
   return d.toISOString();
-}
+};
 
 // formatDate formats a time as YYYY-MM-DD
 export const formatDate = (time: number | string | Date) => {

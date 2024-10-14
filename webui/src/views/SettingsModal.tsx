@@ -18,20 +18,20 @@ import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import { Auth, Config, User } from "../../gen/ts/v1/config_pb";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import { useAlertApi } from "../components/Alerts";
+import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
 import { useConfig } from "../components/ConfigProvider";
 import { authenticationService, backrestService } from "../api";
 
 interface FormData {
   auth: {
-    users: ({
+    users: {
       name: string;
       passwordBcrypt: string;
       needsBcrypt?: boolean;
-    })[];
-  }
-  host: string;
+    }[];
+  };
+  instance: string;
 }
 
 export const SettingsModal = () => {
@@ -52,7 +52,9 @@ export const SettingsModal = () => {
       if (formData.auth?.users) {
         for (const user of formData.auth?.users) {
           if (user.needsBcrypt) {
-            const hash = await authenticationService.hashPassword({ value: user.passwordBcrypt });
+            const hash = await authenticationService.hashPassword({
+              value: user.passwordBcrypt,
+            });
             user.passwordBcrypt = hash.value;
             delete user.needsBcrypt;
           }
@@ -61,11 +63,15 @@ export const SettingsModal = () => {
 
       // Update configuration
       let newConfig = config!.clone();
-      newConfig.auth = new Auth().fromJson(formData.auth, { ignoreUnknownFields: false });
-      newConfig.host = formData.host;
+      newConfig.auth = new Auth().fromJson(formData.auth, {
+        ignoreUnknownFields: false,
+      });
+      newConfig.instance = formData.instance;
 
       if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
-        throw new Error("At least one user must be configured or authentication must be disabled");
+        throw new Error(
+          "At least one user must be configured or authentication must be disabled"
+        );
       }
 
       setConfig(await backrestService.setConfig(newConfig));
@@ -74,7 +80,7 @@ export const SettingsModal = () => {
         window.location.reload();
       }, 500);
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
       console.error(e);
     }
   };
@@ -96,11 +102,7 @@ export const SettingsModal = () => {
           <Button key="back" onClick={handleCancel}>
             Cancel
           </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            onClick={handleOk}
-          >
+          <Button key="submit" type="primary" onClick={handleOk}>
             Submit
           </Button>,
         ]}
@@ -111,28 +113,50 @@ export const SettingsModal = () => {
           labelCol={{ span: 6 }}
           wrapperCol={{ span: 16 }}
         >
-          {(users.length > 0 || config.auth?.disabled) ? null : (
+          {users.length > 0 || config.auth?.disabled ? null : (
             <>
               <strong>Initial backrest setup! </strong>
               <p>
-                Backrest has detected that you do not have any users configured, please add at least one user to secure the web interface.
+                Backrest has detected that you do not have any users configured,
+                please add at least one user to secure the web interface.
               </p>
               <p>
-                You can add more users later or, if you forget your password, reset users by editing the configuration file (typically in $HOME/.backrest/config.json)
+                You can add more users later or, if you forget your password,
+                reset users by editing the configuration file (typically in
+                $HOME/.backrest/config.json)
               </p>
             </>
           )}
+          <Tooltip title="The instance name will be used to identify this backrest install. Pick a value carefully as it cannot be changed later.">
+            <Form.Item
+              hasFeedback
+              name="instance"
+              label="Instance ID"
+              required
+              initialValue={config.instance || ""}
+              rules={[
+                { required: true, message: "Instance ID is required" },
+                {
+                  pattern: namePattern,
+                  message:
+                    "Instance ID must be alphanumeric with '_-.' allowed as separators",
+                },
+              ]}
+            >
+              <Input
+                placeholder={
+                  "Unique instance ID for this instance (e.g. my-backrest-server)"
+                }
+                disabled={!!config.instance}
+              />
+            </Form.Item>
+          </Tooltip>
           <Form.Item
-            hasFeedback
-            name="host"
-            label="Hostname"
-            initialValue={config.host || ""}
+            label="Disable Authentication"
+            name={["auth", "disabled"]}
+            valuePropName="checked"
+            initialValue={config.auth?.disabled || false}
           >
-            <Input
-              placeholder={"Set a hostname to identify this instance"}
-            />
-          </Form.Item>
-          <Form.Item label="Disable Authentication" name={["auth", "disabled"]} valuePropName="checked" initialValue={config.auth?.disabled || false}>
             <Checkbox />
           </Form.Item>
           <Form.Item label="Users" required={true}>
@@ -143,13 +167,19 @@ export const SettingsModal = () => {
               {(fields, { add, remove }) => (
                 <>
                   {fields.map((field, index) => {
-
                     return (
                       <Row key={field.key} gutter={16}>
                         <Col span={11}>
                           <Form.Item
                             name={[field.name, "name"]}
-                            rules={[{ required: true, message: "Name is required" }, { pattern: namePattern, message: "Name must be alphanumeric with dashes or underscores as separators" }]}
+                            rules={[
+                              { required: true, message: "Name is required" },
+                              {
+                                pattern: namePattern,
+                                message:
+                                  "Name must be alphanumeric with dashes or underscores as separators",
+                              },
+                            ]}
                           >
                             <Input placeholder="Username" />
                           </Form.Item>
@@ -157,12 +187,26 @@ export const SettingsModal = () => {
                         <Col span={11}>
                           <Form.Item
                             name={[field.name, "passwordBcrypt"]}
-                            rules={[{ required: true, message: "Password is required" }]}
+                            rules={[
+                              {
+                                required: true,
+                                message: "Password is required",
+                              },
+                            ]}
                           >
-                            <Input.Password placeholder="Password" onFocus={() => {
-                              form.setFieldValue(["auth", "users", index, "needsBcrypt"], true);
-                              form.setFieldValue(["auth", "users", index, "passwordBcrypt"], "");
-                            }} />
+                            <Input.Password
+                              placeholder="Password"
+                              onFocus={() => {
+                                form.setFieldValue(
+                                  ["auth", "users", index, "needsBcrypt"],
+                                  true
+                                );
+                                form.setFieldValue(
+                                  ["auth", "users", index, "passwordBcrypt"],
+                                  ""
+                                );
+                              }}
+                            />
                           </Form.Item>
                         </Col>
                         <Col span={2}>
@@ -173,7 +217,7 @@ export const SettingsModal = () => {
                           />
                         </Col>
                       </Row>
-                    )
+                    );
                   })}
                   <Form.Item>
                     <Button
@@ -201,7 +245,9 @@ export const SettingsModal = () => {
                     label: "Config as JSON",
                     children: (
                       <Typography>
-                        <pre>{JSON.stringify(form.getFieldsValue(), null, 2)}</pre>
+                        <pre>
+                          {JSON.stringify(form.getFieldsValue(), null, 2)}
+                        </pre>
                       </Typography>
                     ),
                   },
@@ -217,4 +263,4 @@ export const SettingsModal = () => {
 
 const protoToObj = (proto: any) => {
   return JSON.parse(proto.toJsonString());
-}
+};

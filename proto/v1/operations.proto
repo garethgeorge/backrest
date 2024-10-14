@@ -6,6 +6,7 @@ option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
 
 import "v1/restic.proto";
 import "v1/config.proto";
+import "types/value.proto";
 
 message OperationList {
   repeated Operation operations = 1;
@@ -14,16 +15,17 @@ message OperationList {
 message Operation {
   // required, primary ID of the operation. ID is sequential based on creation time of the operation.
   int64 id = 1;
-  // required, repo id if associated with a repo
+  // flow id groups operations together, e.g. by an execution of a plan.
+  int64 flow_id = 10; // optional, flow id if associated with a flow
   string repo_id = 2; 
-  // required, plan id if associated with a plan
   string plan_id = 3; 
+  string instance_id = 11;
   // optional snapshot id if associated with a snapshot.
   string snapshot_id = 8; 
   OperationStatus status = 4;
   // required, unix time in milliseconds of the operation's creation (ID is derived from this)
   int64 unix_time_start_ms = 5; 
-  // optional, unix time in milliseconds of the operation's completion
+  // ptional, unix time in milliseconds of the operation's completion
   int64 unix_time_end_ms = 6;
   // optional, human readable context message, typically an error message.
   string display_message = 7;
@@ -38,13 +40,19 @@ message Operation {
     OperationRestore operation_restore = 104;
     OperationStats operation_stats = 105;
     OperationRunHook operation_run_hook = 106;
-  }
+    OperationCheck operation_check = 107;
+    OperationRunCommand operation_run_command = 108;
+  } 
 }
 
 // OperationEvent is used in the wireformat to stream operation changes to clients
 message OperationEvent {
-  OperationEventType type = 1;
-  Operation operation = 2;
+  oneof event {
+    types.Empty keep_alive = 1;
+    OperationList created_operations = 2;
+    OperationList updated_operations = 3;
+    types.Int64List deleted_operations = 4;
+  }
 }
 
 // OperationEventType indicates whether the operation was created or updated
@@ -75,7 +83,6 @@ message OperationBackup {
 message OperationIndexSnapshot {
   ResticSnapshot snapshot = 2; // the snapshot that was indexed.
   bool forgot = 3; // tracks whether this snapshot is forgotten yet.
-  int64 forgot_by_op = 4; // ID of a forget operation that removed this snapshot.
 }
 
 // OperationForget tracks a forget operation.
@@ -86,20 +93,39 @@ message OperationForget {
 
 // OperationPrune tracks a prune operation.
 message OperationPrune {
-  string output = 1; // output of the prune.
+  string output = 1 [deprecated = true]; // output of the prune.
+  string output_logref = 2; // logref of the prune output.
 }
 
+// OperationCheck tracks a check operation.
+message OperationCheck {
+  string output = 1 [deprecated = true]; // output of the check operation.
+  string output_logref = 2; // logref of the check output.
+}
+
+// OperationRunCommand tracks a long running command. Commands are grouped into a flow ID for each session.
+message OperationRunCommand {
+  string command = 1;
+  string output_logref = 2;
+  int64 output_size_bytes = 3; // not necessarily authoritative, tracked as an optimization to allow clients to avoid fetching very large outputs.
+}
+
+// OperationRestore tracks a restore operation.
 message OperationRestore {
   string path = 1; // path in the snapshot to restore.
   string target = 2; // location to restore it to.
-  RestoreProgressEntry status = 3; // status of the restore.
+  RestoreProgressEntry last_status = 3; // status of the restore.
 }
 
+// OperationStats tracks a stats operation.
 message OperationStats {
   RepoStats stats = 1;
 }
 
+// OperationRunHook tracks a hook that was run.
 message OperationRunHook {
+  int64 parent_op = 4; // ID of the operation that ran the hook.
   string name = 1; // description of the hook that was run. typically repo/hook_idx or plan/hook_idx.
-  string output_logref = 2; // logref of the hook's output.
+  string output_logref = 2; // logref of the hook's output. DEPRECATED.
+  Hook.Condition condition = 3; // triggering condition of the hook.
 }

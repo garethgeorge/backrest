@@ -9,10 +9,8 @@ import {
   Radio,
   InputNumber,
   Row,
-  Card,
   Col,
   Collapse,
-  FormInstance,
   Checkbox,
 } from "antd";
 import React, { useEffect, useState } from "react";
@@ -20,19 +18,21 @@ import { useShowModal } from "../components/ModalManager";
 import { Plan, RetentionPolicy } from "../../gen/ts/v1/config_pb";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
-import { useAlertApi } from "../components/Alerts";
-import { Cron } from "react-js-cron";
+import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
-import { HooksFormList, hooksListTooltipText } from "../components/HooksFormList";
+import {
+  HooksFormList,
+  hooksListTooltipText,
+} from "../components/HooksFormList";
 import { ConfirmButton, SpinButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import { backrestService } from "../api";
+import {
+  ScheduleDefaultsDaily,
+  ScheduleFormItem,
+} from "../components/ScheduleFormItem";
 
-export const AddPlanModal = ({
-  template,
-}: {
-  template: Plan | null;
-}) => {
+export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
@@ -40,7 +40,7 @@ export const AddPlanModal = ({
   const [form] = Form.useForm();
   useEffect(() => {
     form.setFieldsValue(template ? JSON.parse(template.toJsonString()) : {});
-  }, [template])
+  }, [template]);
 
   if (!config) {
     return null;
@@ -54,16 +54,17 @@ export const AddPlanModal = ({
         throw new Error("template not found");
       }
 
+      const configCopy = config.clone();
+
       // Remove the plan from the config
-      const idx = config.plans.findIndex((r) => r.id === template.id);
+      const idx = configCopy.plans.findIndex((r) => r.id === template.id);
       if (idx === -1) {
         throw new Error("failed to update config, plan to delete not found");
       }
-
-      config.plans.splice(idx, 1);
+      configCopy.plans.splice(idx, 1);
 
       // Update config and notify success.
-      setConfig(await backrestService.setConfig(config));
+      setConfig(await backrestService.setConfig(configCopy));
       showModal(null);
 
       alertsApi.success(
@@ -71,7 +72,7 @@ export const AddPlanModal = ({
         30
       );
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Destroy error:"), 15);
     } finally {
       setConfirmLoading(false);
     }
@@ -82,28 +83,32 @@ export const AddPlanModal = ({
 
     try {
       let planFormData = await validateForm(form);
-      const plan = new Plan().fromJsonString(JSON.stringify(planFormData), { ignoreUnknownFields: false });
+      const plan = new Plan().fromJsonString(JSON.stringify(planFormData), {
+        ignoreUnknownFields: false,
+      });
 
       if (plan.retention && plan.retention.equals(new RetentionPolicy())) {
         delete plan.retention;
       }
 
+      const configCopy = config.clone();
+
       // Merge the new plan (or update) into the config
       if (template) {
-        const idx = config.plans.findIndex((r) => r.id === template.id);
+        const idx = configCopy.plans.findIndex((r) => r.id === template.id);
         if (idx === -1) {
           throw new Error("failed to update plan, not found");
         }
-        config.plans[idx] = plan;
+        configCopy.plans[idx] = plan;
       } else {
-        config.plans.push(plan);
+        configCopy.plans.push(plan);
       }
 
       // Update config and notify success.
-      setConfig(await backrestService.setConfig(config));
+      setConfig(await backrestService.setConfig(configCopy));
       showModal(null);
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
       console.error(e);
     } finally {
       setConfirmLoading(false);
@@ -122,7 +127,7 @@ export const AddPlanModal = ({
         open={true}
         onCancel={handleCancel}
         title={template ? "Update Plan" : "Add Plan"}
-        width="40vw"
+        width="60vw"
         footer={[
           <Button loading={confirmLoading} key="back" onClick={handleCancel}>
             Cancel
@@ -138,15 +143,23 @@ export const AddPlanModal = ({
               Delete
             </ConfirmButton>
           ) : null,
-          <SpinButton
-            key="submit"
-            type="primary"
-            onClickAsync={handleOk}
-          >
+          <SpinButton key="submit" type="primary" onClickAsync={handleOk}>
             Submit
           </SpinButton>,
         ]}
+        maskClosable={false}
       >
+        <p>
+          See{" "}
+          <a
+            href="https://garethgeorge.github.io/backrest/introduction/getting-started"
+            target="_blank"
+          >
+            backrest getting started guide
+          </a>{" "}
+          for plan configuration instructions.
+        </p>
+        <br />
         <Form
           autoComplete="off"
           form={form}
@@ -155,59 +168,64 @@ export const AddPlanModal = ({
           disabled={confirmLoading}
         >
           {/* Plan.id */}
-          <Form.Item<Plan>
-            hasFeedback
-            name="id"
-            label="Plan Name"
-            initialValue={template ? template.id : ""}
-            validateTrigger={["onChange", "onBlur"]}
-            rules={[
-              {
-                required: true,
-                message: "Please input plan name",
-              },
-              {
-                validator: async (_, value) => {
-                  if (template) return;
-                  if (config?.plans?.find((r) => r.id === value)) {
-                    throw new Error("Plan with name already exists");
-                  }
+          <Tooltip title="Unique ID that identifies this plan in the backrest UI (e.g. s3-myplan). This cannot be changed after creation.">
+            <Form.Item<Plan>
+              hasFeedback
+              name="id"
+              label="Plan Name"
+              initialValue={template ? template.id : ""}
+              validateTrigger={["onChange", "onBlur"]}
+              rules={[
+                {
+                  required: true,
+                  message: "Please input plan name",
                 },
-                message: "Plan with name already exists",
-              },
-              {
-                pattern: namePattern,
-                message: "Name must be alphanumeric with dashes or underscores as separators",
-              }
-            ]}
-          >
-            <Input
-              placeholder={"plan" + ((config?.plans?.length || 0) + 1)}
-              disabled={!!template}
-            />
-          </Form.Item>
+                {
+                  validator: async (_, value) => {
+                    if (template) return;
+                    if (config?.plans?.find((r) => r.id === value)) {
+                      throw new Error("Plan with name already exists");
+                    }
+                  },
+                  message: "Plan with name already exists",
+                },
+                {
+                  pattern: namePattern,
+                  message:
+                    "Name must be alphanumeric with dashes or underscores as separators",
+                },
+              ]}
+            >
+              <Input
+                placeholder={"plan" + ((config?.plans?.length || 0) + 1)}
+                disabled={!!template}
+              />
+            </Form.Item>
+          </Tooltip>
 
           {/* Plan.repo */}
-          <Form.Item<Plan>
-            name="repo"
-            label="Repository"
-            validateTrigger={["onChange", "onBlur"]}
-            initialValue={template ? template.repo : ""}
-            rules={[
-              {
-                required: true,
-                message: "Please select repository",
-              },
-            ]}
-          >
-            <Select
-              // defaultValue={repos.length > 0 ? repos[0].id : undefined}
-              options={repos.map((repo) => ({
-                value: repo.id,
-              }))}
-              disabled={!!template}
-            />
-          </Form.Item>
+          <Tooltip title="The repo that backrest will store your snapshots in.">
+            <Form.Item<Plan>
+              name="repo"
+              label="Repository"
+              validateTrigger={["onChange", "onBlur"]}
+              initialValue={template ? template.repo : ""}
+              rules={[
+                {
+                  required: true,
+                  message: "Please select repository",
+                },
+              ]}
+            >
+              <Select
+                // defaultValue={repos.length > 0 ? repos[0].id : undefined}
+                options={repos.map((repo) => ({
+                  value: repo.id,
+                }))}
+                disabled={!!template}
+              />
+            </Form.Item>
+          </Tooltip>
 
           {/* Plan.paths */}
           <Form.Item label="Paths" required={true}>
@@ -219,9 +237,7 @@ export const AddPlanModal = ({
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
-                    <Form.Item
-                      key={field.key}
-                    >
+                    <Form.Item key={field.key}>
                       <Form.Item
                         {...field}
                         validateTrigger={["onChange", "onBlur"]}
@@ -262,142 +278,154 @@ export const AddPlanModal = ({
           </Form.Item>
 
           {/* Plan.excludes */}
-          <Form.Item label="Excludes" required={false}>
-            <Form.List
-              name="excludes"
-              rules={[]}
-              initialValue={template ? template.excludes : []}
-            >
-              {(fields, { add, remove }, { errors }) => (
-                <>
-                  {fields.map((field, index) => (
-                    <Form.Item
-                      required={false}
-                      key={field.key}
-                    >
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        initialValue={""}
-                        rules={[
-                          {
-                            required: true,
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <URIAutocomplete
-                          style={{ width: "90%" }}
-                          onBlur={() => form.validateFields()}
-                          globAllowed={true}
+          <Tooltip
+            title={
+              <>
+                Paths to exclude from your backups. See the{" "}
+                <a
+                  href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
+                  target="_blank"
+                >
+                  restic docs
+                </a>{" "}
+                for more info.
+              </>
+            }
+          >
+            <Form.Item label="Excludes" required={false}>
+              <Form.List
+                name="excludes"
+                rules={[]}
+                initialValue={template ? template.excludes : []}
+              >
+                {(fields, { add, remove }, { errors }) => (
+                  <>
+                    {fields.map((field, index) => (
+                      <Form.Item required={false} key={field.key}>
+                        <Form.Item
+                          {...field}
+                          validateTrigger={["onChange", "onBlur"]}
+                          initialValue={""}
+                          rules={[
+                            {
+                              required: true,
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <URIAutocomplete
+                            style={{ width: "90%" }}
+                            onBlur={() => form.validateFields()}
+                            globAllowed={true}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(field.name)}
+                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(field.name)}
-                        style={{ paddingLeft: "5px" }}
-                      />
-                    </Form.Item>
-                  ))}
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => add()}
-                      style={{ width: "90%" }}
-                      icon={<PlusOutlined />}
-                    >
-                      Add Exclusion Glob
-                    </Button>
-                    <Form.ErrorList errors={errors} />
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
-          </Form.Item>
-
-          {/* Plan.excludes */}
-          <Form.Item label="Excludes (Case Insensitive)" required={false}>
-            <Form.List
-              name="iexcludes"
-              rules={[]}
-              initialValue={template ? template.iexcludes : []}
-            >
-              {(fields, { add, remove }, { errors }) => (
-                <>
-                  {fields.map((field, index) => (
-                    <Form.Item
-                      required={false}
-                      key={field.key}
-                    >
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        initialValue={""}
-                        rules={[
-                          {
-                            required: true,
-                          },
-                        ]}
-                        noStyle
+                    ))}
+                    <Form.Item>
+                      <Button
+                        type="dashed"
+                        onClick={() => add()}
+                        style={{ width: "90%" }}
+                        icon={<PlusOutlined />}
                       >
-                        <URIAutocomplete
-                          style={{ width: "90%" }}
-                          onBlur={() => form.validateFields()}
-                          globAllowed={true}
-                        />
-                      </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(field.name)}
-                        style={{ paddingLeft: "5px" }}
-                      />
+                        Add Exclusion Glob
+                      </Button>
+                      <Form.ErrorList errors={errors} />
                     </Form.Item>
-                  ))}
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => add()}
-                      style={{ width: "90%" }}
-                      icon={<PlusOutlined />}
-                    >
-                      Add Case Insensitive Exclusion Glob
-                    </Button>
-                    <Form.ErrorList errors={errors} />
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
-          </Form.Item>
-
-          {/* Plan.cron */}
-          <Tooltip title="Cron expression to schedule the plan in 24 hour time">
-            <Form.Item<Plan>
-              name="cron"
-              label="Schedule"
-              initialValue={template ? template.cron : "0 0 * * *"}
-              validateTrigger={["onChange", "onBlur"]}
-              rules={[
-                {
-                  required: true,
-                  message: "Please input schedule",
-                },
-              ]}
-            >
-              <Cron
-                value={form.getFieldValue("cron")}
-                setValue={(val: string) => {
-                  form.setFieldValue("cron", val);
-                }}
-                clearButton={false}
-              />
+                  </>
+                )}
+              </Form.List>
             </Form.Item>
           </Tooltip>
 
+          {/* Plan.iexcludes */}
+          <Tooltip
+            title={
+              <>
+                Case insensitive paths to exclude from your backups. See the{" "}
+                <a
+                  href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
+                  target="_blank"
+                >
+                  restic docs
+                </a>{" "}
+                for more info.
+              </>
+            }
+          >
+            <Form.Item label="Excludes (Case Insensitive)" required={false}>
+              <Form.List
+                name="iexcludes"
+                rules={[]}
+                initialValue={template ? template.iexcludes : []}
+              >
+                {(fields, { add, remove }, { errors }) => (
+                  <>
+                    {fields.map((field, index) => (
+                      <Form.Item required={false} key={field.key}>
+                        <Form.Item
+                          {...field}
+                          validateTrigger={["onChange", "onBlur"]}
+                          initialValue={""}
+                          rules={[
+                            {
+                              required: true,
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <URIAutocomplete
+                            style={{ width: "90%" }}
+                            onBlur={() => form.validateFields()}
+                            globAllowed={true}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(field.name)}
+                          style={{ paddingLeft: "5px" }}
+                        />
+                      </Form.Item>
+                    ))}
+                    <Form.Item>
+                      <Button
+                        type="dashed"
+                        onClick={() => add()}
+                        style={{ width: "90%" }}
+                        icon={<PlusOutlined />}
+                      >
+                        Add Case Insensitive Exclusion Glob
+                      </Button>
+                      <Form.ErrorList errors={errors} />
+                    </Form.Item>
+                  </>
+                )}
+              </Form.List>
+            </Form.Item>
+          </Tooltip>
+
+          {/* Plan.cron */}
+          <Form.Item label="Backup Schedule">
+            <ScheduleFormItem
+              name={["schedule"]}
+              defaults={ScheduleDefaultsDaily}
+            />
+          </Form.Item>
+
           {/* Plan.backup_flags */}
-          <Form.Item label={<Tooltip title="Extra flags to add to the 'restic backup' command">Backup Flags</Tooltip>}>
-            <Form.List
-              name="backup_flags"
-            >
+          <Form.Item
+            label={
+              <Tooltip title="Extra flags to add to the 'restic backup' command">
+                Backup Flags
+              </Tooltip>
+            }
+          >
+            <Form.List name="backup_flags">
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
@@ -451,14 +479,6 @@ export const AddPlanModal = ({
             <HooksFormList />
           </Form.Item>
 
-
-          {/* Disabled? toggles whether the plan will be scheduled. */}
-          <Form.Item label={<Tooltip title={"Toggles whether the plan's scheduling is enabled. If disabled no scheduled operations will be run."}>
-            Disable Scheduling
-          </Tooltip>} name="disabled" valuePropName="checked">
-            <Checkbox />
-          </Form.Item>
-
           <Form.Item shouldUpdate label="Preview">
             {() => (
               <Collapse
@@ -469,7 +489,9 @@ export const AddPlanModal = ({
                     label: "Plan Config as JSON",
                     children: (
                       <Typography>
-                        <pre>{JSON.stringify(form.getFieldsValue(), null, 2)}</pre>
+                        <pre>
+                          {JSON.stringify(form.getFieldsValue(), null, 2)}
+                        </pre>
                       </Typography>
                     ),
                   },
@@ -478,43 +500,49 @@ export const AddPlanModal = ({
             )}
           </Form.Item>
         </Form>
-      </Modal >
+      </Modal>
     </>
   );
 };
 
 const RetentionPolicyView = () => {
   const form = Form.useFormInstance();
-  const retention = Form.useWatch('retention', { form, preserve: true }) as any;
+  const retention = Form.useWatch("retention", { form, preserve: true }) as any;
 
   const determineMode = () => {
     if (!retention) {
-      return 2;
+      return "policyTimeBucketed";
     } else if (retention.policyKeepLastN) {
-      return 1;
+      return "policyKeepLastN";
     } else if (retention.policyKeepAll) {
-      return 0;
+      return "policyKeepAll";
     } else if (retention.policyTimeBucketed) {
-      return 2;
+      return "policyTimeBucketed";
     }
-  }
+  };
 
   const mode = determineMode();
 
   let elem: React.ReactNode = null;
-  if (mode === 0) {
-    elem = <>
-      <p>All backups are retained e.g. for append-only repos. Ensure that you manually forget / prune backups elsewhere. Backrest will register forgets performed externally on the next backup.</p>
-      <Form.Item
-        name={["retention", "policyKeepAll"]}
-        valuePropName="checked"
-        initialValue={true}
-        hidden={true}
-      >
-        <Checkbox />
-      </Form.Item>
-    </>
-  } else if (mode === 1) {
+  if (mode === "policyKeepAll") {
+    elem = (
+      <>
+        <p>
+          All backups are retained e.g. for append-only repos. Ensure that you
+          manually forget / prune backups elsewhere. Backrest will register
+          forgets performed externally on the next backup.
+        </p>
+        <Form.Item
+          name={["retention", "policyKeepAll"]}
+          valuePropName="checked"
+          initialValue={true}
+          hidden={true}
+        >
+          <Checkbox />
+        </Form.Item>
+      </>
+    );
+  } else if (mode === "policyKeepLastN") {
     elem = (
       <Form.Item
         name={["retention", "policyKeepLastN"]}
@@ -527,10 +555,13 @@ const RetentionPolicyView = () => {
           },
         ]}
       >
-        <InputNumber addonBefore={<div style={{ width: "5em" }}>Count</div>} type="number" />
+        <InputNumber
+          addonBefore={<div style={{ width: "5em" }}>Count</div>}
+          type="number"
+        />
       </Form.Item>
     );
-  } else if (mode === 2) {
+  } else if (mode === "policyTimeBucketed") {
     elem = (
       <Row>
         <Col span={11}>
@@ -600,27 +631,38 @@ const RetentionPolicyView = () => {
     <>
       <Form.Item label="Retention Policy">
         <Row>
-          <Radio.Group value={mode} onChange={e => {
-            const selected = e.target.value;
-            if (selected === 1) {
-              form.setFieldValue("retention", { policyKeepLastN: 30 });
-            } else if (selected === 2) {
-              form.setFieldValue("retention", { policyTimeBucketed: { keepYearly: 0, keepMonthly: 3, keepWeekly: 4, keepDaily: 7, keepHourly: 24 } });
-            } else {
-              form.setFieldValue("retention", { policyKeepAll: true });
-            }
-          }}>
-            <Radio.Button value={1}>
+          <Radio.Group
+            value={mode}
+            onChange={(e) => {
+              const selected = e.target.value;
+              if (selected === "policyKeepLastN") {
+                form.setFieldValue("retention", { policyKeepLastN: 30 });
+              } else if (selected === "policyTimeBucketed") {
+                form.setFieldValue("retention", {
+                  policyTimeBucketed: {
+                    yearly: 0,
+                    monthly: 3,
+                    weekly: 4,
+                    daily: 7,
+                    hourly: 24,
+                  },
+                });
+              } else {
+                form.setFieldValue("retention", { policyKeepAll: true });
+              }
+            }}
+          >
+            <Radio.Button value={"policyKeepLastN"}>
               <Tooltip title="The last N snapshots will be kept by restic. Retention policy is applied to drop older snapshots after each backup run.">
                 By Count
               </Tooltip>
             </Radio.Button>
-            <Radio.Button value={2}>
-              <Tooltip title="Snapshots older than the specified time period will be dropped by restic. Retention policy is applied to drop older snapshots after each backup run." >
+            <Radio.Button value={"policyTimeBucketed"}>
+              <Tooltip title="Snapshots older than the specified time period will be dropped by restic. Retention policy is applied to drop older snapshots after each backup run.">
                 By Time Period
               </Tooltip>
             </Radio.Button>
-            <Radio.Button value={0}>
+            <Radio.Button value={"policyKeepAll"}>
               <Tooltip title="All backups will be retained. Note that this may result in slow backups if the set of snapshots grows very large.">
                 None
               </Tooltip>
@@ -629,11 +671,9 @@ const RetentionPolicyView = () => {
         </Row>
         <br />
         <Row>
-          <Form.Item>
-            {elem}
-          </Form.Item>
+          <Form.Item>{elem}</Form.Item>
         </Row>
-      </Form.Item >
+      </Form.Item>
     </>
   );
 };

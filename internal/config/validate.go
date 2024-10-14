@@ -7,17 +7,33 @@ import (
 	"strings"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/gitploy-io/cronexpr"
+	"github.com/garethgeorge/backrest/internal/config/validationutil"
+	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/hashicorp/go-multierror"
+	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 func ValidateConfig(c *v1.Config) error {
 	var err error
+
+	if e := validateAuth(c.Auth); e != nil {
+		err = multierror.Append(err, fmt.Errorf("auth: %w", e))
+	}
+
+	if e := validationutil.ValidateID(c.Instance, validationutil.IDMaxLen); e != nil {
+		if errors.Is(e, validationutil.ErrEmpty) {
+			zap.L().Warn("ACTION REQUIRED: instance ID is empty, will be required in a future update. Please open the backrest UI to set a unique instance ID. Until fixed this warning (and related errors) will print periodically.")
+		} else {
+			err = multierror.Append(err, fmt.Errorf("instance ID %q invalid: %w", c.Instance, e))
+		}
+	}
+
 	repos := make(map[string]*v1.Repo)
 	if c.Repos != nil {
 		for _, repo := range c.Repos {
 			if e := validateRepo(repo); e != nil {
-				err = multierror.Append(e, fmt.Errorf("repo %s: %w", repo.GetId(), err))
+				err = multierror.Append(err, fmt.Errorf("repo %s: %w", repo.GetId(), e))
 			}
 			if _, ok := repos[repo.Id]; ok {
 				err = multierror.Append(err, fmt.Errorf("repo %s: duplicate id", repo.GetId()))
@@ -56,12 +72,24 @@ func ValidateConfig(c *v1.Config) error {
 
 func validateRepo(repo *v1.Repo) error {
 	var err error
-	if repo.Id == "" {
-		err = multierror.Append(err, errors.New("id is required"))
+	if e := validationutil.ValidateID(repo.Id, 0); e != nil {
+		err = multierror.Append(err, fmt.Errorf("id %q invalid: %w", repo.Id, e))
 	}
 
 	if repo.Uri == "" {
 		err = multierror.Append(err, errors.New("uri is required"))
+	}
+
+	if repo.PrunePolicy.GetSchedule() != nil {
+		if e := protoutil.ValidateSchedule(repo.PrunePolicy.GetSchedule()); e != nil {
+			err = multierror.Append(err, fmt.Errorf("prune policy schedule: %w", e))
+		}
+	}
+
+	if repo.CheckPolicy.GetSchedule() != nil {
+		if e := protoutil.ValidateSchedule(repo.CheckPolicy.GetSchedule()); e != nil {
+			err = multierror.Append(err, fmt.Errorf("check policy schedule: %w", e))
+		}
 	}
 
 	for _, env := range repo.Env {
@@ -77,8 +105,14 @@ func validateRepo(repo *v1.Repo) error {
 
 func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 	var err error
-	if plan.Paths == nil || len(plan.Paths) == 0 {
-		err = multierror.Append(err, fmt.Errorf("path is required"))
+	if e := validationutil.ValidateID(plan.Id, 0); e != nil {
+		err = multierror.Append(err, fmt.Errorf("id %q invalid: %w", plan.Id, e))
+	}
+
+	if plan.Schedule != nil {
+		if e := protoutil.ValidateSchedule(plan.Schedule); e != nil {
+			err = multierror.Append(err, fmt.Errorf("backup schedule: %w", e))
+		}
 	}
 
 	for idx, p := range plan.Paths {
@@ -95,17 +129,36 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 		err = multierror.Append(err, fmt.Errorf("repo %q not found", plan.Repo))
 	}
 
-	if _, e := cronexpr.Parse(plan.Cron); e != nil {
-		err = multierror.Append(err, fmt.Errorf("invalid cron %q: %w", plan.Cron, e))
-	}
-
 	if plan.Retention != nil && plan.Retention.Policy == nil {
 		err = multierror.Append(err, errors.New("retention policy must be nil or must specify a policy"))
+	} else if policyTimeBucketed, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyTimeBucketed); ok {
+		if proto.Equal(policyTimeBucketed.PolicyTimeBucketed, &v1.RetentionPolicy_TimeBucketedCounts{}) {
+			err = multierror.Append(err, errors.New("time bucketed policy must specify a non-empty bucket"))
+		}
 	}
 
 	slices.Sort(plan.Paths)
-	slices.Sort(plan.Excludes)
-	slices.Sort(plan.Iexcludes)
 
 	return err
+}
+
+func validateAuth(auth *v1.Auth) error {
+	if auth == nil || auth.Disabled {
+		return nil
+	}
+
+	if len(auth.Users) == 0 {
+		return errors.New("auth enabled but no users")
+	}
+
+	for _, user := range auth.Users {
+		if e := validationutil.ValidateID(user.Name, 0); e != nil {
+			return fmt.Errorf("user %q: %w", user.Name, e)
+		}
+		if user.GetPasswordBcrypt() == "" {
+			return fmt.Errorf("user %q: password is required", user.Name)
+		}
+	}
+
+	return nil
 }

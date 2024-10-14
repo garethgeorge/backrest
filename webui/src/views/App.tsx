@@ -16,7 +16,10 @@ import { useShowModal } from "../components/ModalManager";
 import { uiBuildVersion } from "../state/buildcfg";
 import { ActivityBar } from "../components/ActivityBar";
 import { OperationEvent, OperationStatus } from "../../gen/ts/v1/operations_pb";
-import { colorForStatus, getStatusForPlan, getStatusForRepo, subscribeToOperations, unsubscribeFromOperations } from "../state/oplog";
+import {
+  subscribeToOperations,
+  unsubscribeFromOperations,
+} from "../state/oplog";
 import LogoSvg from "url:../../assets/logo.svg";
 import _ from "lodash";
 import { Code } from "@connectrpc/connect";
@@ -25,6 +28,10 @@ import { backrestService, setAuthToken } from "../api";
 import { MainContentArea, useSetContent } from "./MainContentArea";
 import { GettingStartedGuide } from "./GettingStartedGuide";
 import { useConfig } from "../components/ConfigProvider";
+import { shouldShowSettings } from "../state/configutil";
+import { OpSelector } from "../../gen/ts/v1/service_pb";
+import { colorForStatus } from "../state/flowdisplayaggregator";
+import { getStatusForSelector } from "../state/logstate";
 
 const { Header, Sider } = Layout;
 
@@ -40,10 +47,11 @@ export const App: React.FC = () => {
   useEffect(() => {
     showModal(<Spin spinning={true} fullscreen />);
 
-    backrestService.getConfig({})
+    backrestService
+      .getConfig({})
       .then((config) => {
         setConfig(config);
-        if (!config.auth || (!config.auth.disabled && config.auth.users.length === 0)) {
+        if (shouldShowSettings(config)) {
           import("./SettingsModal").then(({ SettingsModal }) => {
             showModal(<SettingsModal />);
           });
@@ -55,9 +63,12 @@ export const App: React.FC = () => {
         if (err.code) {
           const code = err.code;
           if (code === Code.Unauthenticated) {
-            showModal(<LoginModal />)
+            showModal(<LoginModal />);
             return;
-          } else if (code === Code.Unavailable || code === Code.DeadlineExceeded) {
+          } else if (
+            code === Code.Unavailable ||
+            code === Code.DeadlineExceeded
+          ) {
             alertApi.error(
               "Failed to fetch initial config, typically this means the UI could not connect to the backend",
               0
@@ -75,10 +86,12 @@ export const App: React.FC = () => {
   }, []);
 
   const showGettingStarted = () => {
-    setContent(<GettingStartedGuide />, [{
-      title: "Getting Started",
-    }]);
-  }
+    setContent(<GettingStartedGuide />, [
+      {
+        title: "Getting Started",
+      },
+    ]);
+  };
 
   useEffect(() => {
     if (config === null) {
@@ -88,7 +101,6 @@ export const App: React.FC = () => {
     }
   }, [config === null]);
 
-
   const items = getSidenavItems(config);
 
   return (
@@ -97,20 +109,27 @@ export const App: React.FC = () => {
         style={{
           display: "flex",
           alignItems: "center",
-          width: "100vw",
+          width: "100%",
           height: "60px",
           backgroundColor: "#1b232c",
         }}
       >
-        <a
-          style={{ color: colorTextLightSolid }}
-          onClick={showGettingStarted}
-        >
-          <img src={LogoSvg} style={{ height: "30px", color: "white", marginBottom: "-8px", paddingRight: "10px", }} />
+        <a style={{ color: colorTextLightSolid }} onClick={showGettingStarted}>
+          <img
+            src={LogoSvg}
+            style={{
+              height: "30px",
+              color: "white",
+              marginBottom: "-8px",
+              paddingRight: "10px",
+            }}
+          />
         </a>
         <h1>
           <a href="https://github.com/garethgeorge/backrest" target="_blank">
-            <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
+            <small
+              style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}
+            >
               {uiBuildVersion}
             </small>
           </a>
@@ -120,11 +139,15 @@ export const App: React.FC = () => {
         </h1>
         <h1 style={{ position: "absolute", right: "20px" }}>
           <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
-            {config && config.host ? "Host: " + config.host : undefined}
+            {config && config.instance ? config.instance : undefined}
           </small>
           <Button
             type="text"
-            style={{ marginLeft: "10px", color: "white", visibility: config?.auth?.disabled ? "hidden" : "visible" }}
+            style={{
+              marginLeft: "10px",
+              color: "white",
+              visibility: config?.auth?.disabled ? "hidden" : "visible",
+            }}
             onClick={() => {
               setAuthToken("");
               window.location.reload();
@@ -172,15 +195,16 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     ...configPlans.map((plan) => {
       return {
         key: "p-" + plan.id,
-        icon: <IconForResource planId={plan.id} />,
+        icon: <IconForResource planId={plan.id} repoId={plan.repo} />,
         label: (
           <div className="backrest visible-on-hover">
             {plan.id}{" "}
             <Button
-              className="hidden-child"
+              className="hidden-child float-center-right"
               type="text"
               size="small"
               shape="circle"
+              style={{ width: "30px", height: "30px" }}
               icon={<SettingOutlined />}
               onClick={async () => {
                 const { AddPlanModal } = await import("./AddPlanModal");
@@ -219,10 +243,11 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
           <div className="backrest visible-on-hover">
             {repo.id}{" "}
             <Button
-              className="hidden-child"
               type="text"
               size="small"
               shape="circle"
+              className="hidden-child float-center-right"
+              style={{ width: "30px", height: "30px" }}
               icon={<SettingOutlined />}
               onClick={async () => {
                 const { AddRepoModal } = await import("./AddRepoModal");
@@ -263,37 +288,52 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
       onClick: async () => {
         const { SettingsModal } = await import("./SettingsModal");
         showModal(<SettingsModal />);
-      }
+      },
     },
   ];
 };
 
-const IconForResource = ({ planId, repoId }: { planId?: string, repoId?: string }) => {
+const IconForResource = ({
+  planId,
+  repoId,
+}: {
+  planId?: string;
+  repoId?: string;
+}) => {
   const [status, setStatus] = useState(OperationStatus.STATUS_UNKNOWN);
   useEffect(() => {
     const load = async () => {
-      if (planId) {
-        setStatus(await getStatusForPlan(planId));
-      } else if (repoId) {
-        setStatus(await getStatusForRepo(repoId));
-      }
+      setStatus(await getStatusForSelector(new OpSelector({ planId, repoId })));
     };
     load();
-    const refresh = _.debounce(load, 1000, { maxWait: 5000, trailing: true });
-    const callback = ({ operation }: OperationEvent) => {
-      if (!operation) return;
-      if (operation.planId === planId || operation.repoId === repoId) {
-        refresh();
+    const refresh = _.debounce(load, 1000, { maxWait: 10000, trailing: true });
+    const callback = (event?: OperationEvent, err?: Error) => {
+      if (!event || !event.event) return;
+      switch (event.event.case) {
+        case "createdOperations":
+        case "updatedOperations":
+          const ops = event.event.value.operations;
+          if (
+            ops.find(
+              (op) => (!planId || op.planId === planId) && op.repoId === repoId
+            )
+          ) {
+            refresh();
+          }
+          break;
+        case "deletedOperations":
+          refresh();
+          break;
       }
-    }
+    };
 
     subscribeToOperations(callback);
     return () => {
       unsubscribeFromOperations(callback);
-    }
+    };
   }, [planId, repoId]);
   return iconForStatus(status);
-}
+};
 
 const iconForStatus = (status: OperationStatus) => {
   const color = colorForStatus(status);
@@ -303,10 +343,10 @@ const iconForStatus = (status: OperationStatus) => {
     case OperationStatus.STATUS_WARNING:
       return <ExclamationOutlined style={{ color }} />;
     case OperationStatus.STATUS_INPROGRESS:
-      return <LoadingOutlined style={{ color }} />
+      return <LoadingOutlined style={{ color }} />;
     case OperationStatus.STATUS_UNKNOWN:
       return <LoadingOutlined style={{ color }} />;
     default:
       return <CheckCircleOutlined style={{ color }} />;
   }
-}
+};

@@ -1,13 +1,16 @@
-FROM golang:alpine as gobuild
+FROM alpine:latest AS alpine
+RUN apk add --no-cache ca-certificates tini-static
 RUN mkdir /tmp-orig
 COPY backrest /backrest
 RUN /backrest --install-deps-only
 RUN mkdir -p /bin && mv /root/.local/share/backrest/* /bin
 
 FROM scratch 
-COPY --from=gobuild /tmp-orig /tmp
-COPY --from=gobuild /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=gobuild /bin /bin
-
-ENTRYPOINT ["/backrest"]
+COPY --from=alpine /tmp-orig /tmp
+COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=alpine /bin /bin
+COPY --from=alpine /sbin/tini-static /tini
 COPY backrest /backrest
+
+ENTRYPOINT ["/tini", "--"]
+CMD ["/backrest", "--bind-address", ":9898"]

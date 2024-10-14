@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package v1;
+
+option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
+
+import "v1/config.proto";
+import "v1/restic.proto";
+import "v1/operations.proto";
+import "types/value.proto";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
+
+service Hub {
+  // GetInstances returns a list of all instances
+  rpc GetInstances(google.protobuf.Empty) returns (GetInstancesResponse) {}
+}
+
+message GetInstancesResponse {
+  repeated Instance instances = 1;
+}
+
+message Instance {
+  string id = 1;
+}

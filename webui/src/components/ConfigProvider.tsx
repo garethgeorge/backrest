@@ -3,7 +3,7 @@ import { Config, Repo } from "../../gen/ts/v1/config_pb";
 
 type ConfigCtx = [Config | null, (config: Config) => void];
 
-const ConfigContext = React.createContext<ConfigCtx>([null, () => { }]);
+const ConfigContext = React.createContext<ConfigCtx>([null, () => {}]);
 
 export const ConfigContextProvider = ({
   children,
@@ -15,7 +15,7 @@ export const ConfigContextProvider = ({
     <>
       <ConfigContext.Provider value={[config, setConfig]}>
         {children}
-      </ConfigContext.Provider >
+      </ConfigContext.Provider>
     </>
   );
 };
@@ -24,4 +24,3 @@ export const useConfig = (): ConfigCtx => {
   const context = useContext(ConfigContext);
   return context;
 };
-

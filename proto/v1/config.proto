@@ -4,14 +4,27 @@ package v1;
 
 option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
 
+import "google/protobuf/empty.proto";
+
+message HubConfig {
+  repeated InstanceInfo instances = 1 [json_name="instances"];
+  
+  message InstanceInfo {
+    string id = 1 [json_name="id"];
+    string secret = 2 [json_name="secret"]; // secret used to authenticate with the hub.
+  }
+}
+
+
 // Config is the top level config object for restic UI.
 message Config {
   // modification number, used for read-modify-write consistency in the UI. Incremented on every write.
   int32 modno = 1 [json_name="modno"];
   int32 version = 6 [json_name="version"]; // version of the config file format. Used to determine when to run migrations.
 
-  // override the hostname tagged on backups. If provided it will be used in addition to tags to group backups.
-  string host = 2 [json_name="host"];
+  // The instance name for the Backrest installation. 
+  // This identifies backups created by this instance and is displayed in the UI. 
+  string instance = 2 [json_name="instance"];
 
   repeated Repo repos = 3 [json_name="repos"];
   repeated Plan plans = 4 [json_name="plans"];
@@ -25,34 +38,43 @@ message Repo {
   repeated string env = 4 [json_name="env"]; // extra environment variables to set for restic.
   repeated string flags = 5 [json_name="flags"]; // extra flags set on the restic command.
   PrunePolicy prune_policy = 6 [json_name="prunePolicy"]; // policy for when to run prune.
+  CheckPolicy check_policy = 9 [json_name="checkPolicy"]; // policy for when to run check.
   repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on events for this repo.
   bool auto_unlock = 8 [json_name="autoUnlock"]; // automatically unlock the repo when needed.
+  CommandPrefix command_prefix = 10 [json_name="commandPrefix"]; // modifiers for the restic commands
 }
 
 message Plan {
   string id = 1 [json_name="id"]; // unique but human readable ID for this plan.
   string repo = 2 [json_name="repo"]; // ID of the repo to use.
-  bool disabled = 11 [json_name="disabled"];
   repeated string paths = 4 [json_name="paths"]; // paths to include in the backup.
   repeated string excludes = 5 [json_name="excludes"]; // glob patterns to exclude.
   repeated string iexcludes = 9 [json_name="iexcludes"]; // case insensitive glob patterns to exclude.
-  string cron = 6 [json_name="cron"]; // cron expression describing the backup schedule.
+  Schedule schedule = 12 [json_name="schedule"]; // schedule for the backup.
   RetentionPolicy retention = 7 [json_name="retention"]; // retention policy for snapshots.
   repeated Hook hooks = 8 [json_name="hooks"]; // hooks to run on events for this plan.
   repeated string backup_flags = 10 [json_name="backup_flags"]; // extra flags to set when running a backup command.
 }
 
+message CommandPrefix {
+  enum IONiceLevel {
+    IO_DEFAULT = 0;
+    IO_BEST_EFFORT_LOW = 1;
+    IO_BEST_EFFORT_HIGH = 2;
+    IO_IDLE = 3;
+  }
+
+  enum CPUNiceLevel {
+    CPU_DEFAULT = 0;
+    CPU_HIGH = 1;
+    CPU_LOW = 2;
+  }
+
+  IONiceLevel io_nice = 1 [json_name="ioNice"]; // ionice level to set.
+  CPUNiceLevel cpu_nice = 2 [json_name="cpuNice"]; // nice level to set.
+}
+
 message RetentionPolicy {
-  string max_unused_limit = 1 [json_name="maxUnusedLimit", deprecated = true]; 
-
-  int32 keep_last_n = 2 [json_name="keepLastN", deprecated = true];
-  int32 keep_hourly = 3 [json_name="keepHourly", deprecated = true];
-  int32 keep_daily = 4 [json_name="keepDaily", deprecated = true];
-  int32 keep_weekly = 5 [json_name="keepWeekly", deprecated = true];
-  int32 keep_monthly = 6 [json_name="keepMonthly", deprecated = true];
-  int32 keep_yearly = 7 [json_name="keepYearly", deprecated = true];
-  string keep_within_duration = 8 [json_name="keepWithinDuration", deprecated = true]; // keep snapshots within a duration e.g. 1y2m3d4h5m6s
-
   oneof policy {
     int32 policy_keep_last_n = 10 [json_name="policyKeepLastN"];
     TimeBucketedCounts policy_time_bucketed = 11 [json_name="policyTimeBucketed"];
@@ -69,9 +91,36 @@ message RetentionPolicy {
 }
 
 message PrunePolicy {
-  int32 max_frequency_days = 1 [json_name="maxFrequencyDays"]; // max frequency of prune runs in days. If 0, prune will be run on every backup.
-  int32 max_unused_percent = 100 [json_name="maxUnusedPercent"]; // max percentage of repo size that can be unused before prune is run.
-  int32 max_unused_bytes = 101 [json_name="maxUnusedBytes"]; // max number of bytes that can be unused before prune is run.
+  Schedule schedule = 2 [json_name="schedule"];
+  int64 max_unused_bytes = 3 [json_name="maxUnusedBytes"]; // max unused bytes before running prune.
+  double max_unused_percent = 4 [json_name="maxUnusedPercent"]; // max unused percent before running prune.
+}
+
+message CheckPolicy {
+  Schedule schedule = 1 [json_name="schedule"];
+  
+  oneof mode {
+    bool structure_only = 100 [json_name="structureOnly"]; // only check the structure of the repo. No pack data is read.
+    double read_data_subset_percent = 101 [json_name="readDataSubsetPercent"]; // check a percentage of pack data.
+  }
+}
+
+message Schedule {
+  oneof schedule {
+    bool disabled = 1 [json_name="disabled"]; // disable the schedule.
+    string cron = 2 [json_name="cron"]; // cron expression describing the schedule.
+    int32 maxFrequencyDays = 3 [json_name="maxFrequencyDays"]; // max frequency of runs in days.
+    int32 maxFrequencyHours = 4 [json_name="maxFrequencyHours"]; // max frequency of runs in hours.
+  }
+
+  enum Clock {
+    CLOCK_DEFAULT = 0; // same as CLOCK_LOCAL
+    CLOCK_LOCAL = 1;
+    CLOCK_UTC = 2;
+    CLOCK_LAST_RUN_TIME = 3;
+  }
+
+  Clock clock = 5 [json_name="clock"]; // clock to use for scheduling.
 }
 
 message Hook {
@@ -81,9 +130,31 @@ message Hook {
     CONDITION_SNAPSHOT_START = 2; // backup started.
     CONDITION_SNAPSHOT_END = 3; // backup completed (success or fail).
     CONDITION_SNAPSHOT_ERROR = 4; // snapshot failed.
+    CONDITION_SNAPSHOT_WARNING = 5; // snapshot completed with warnings.
+    CONDITION_SNAPSHOT_SUCCESS = 6; // snapshot succeeded.
+    
+    // prune conditions
+    CONDITION_PRUNE_START = 100; // prune started.
+    CONDITION_PRUNE_ERROR = 101; // prune failed.
+    CONDITION_PRUNE_SUCCESS = 102; // prune succeeded.
+
+    // check conditions
+    CONDITION_CHECK_START = 200; // check started.
+    CONDITION_CHECK_ERROR = 201; // check failed.
+    CONDITION_CHECK_SUCCESS = 202; // check succeeded.
+  }
+
+  enum OnError {
+    ON_ERROR_IGNORE = 0;
+    ON_ERROR_CANCEL = 1; // cancels the operation and skips subsequent hooks
+    ON_ERROR_FATAL = 2; // fails the operation and subsequent hooks.
+    ON_ERROR_RETRY_1MINUTE = 100; // retry the operation every minute 
+    ON_ERROR_RETRY_10MINUTES = 101; // retry the operation every 10 minutes
+    ON_ERROR_RETRY_EXPONENTIAL_BACKOFF = 103; // retry the operation with exponential backoff up to 1h max.
   }
 
   repeated Condition conditions = 1 [json_name="conditions"];
+  OnError on_error = 2 [json_name="onError"];
 
   oneof action {
     Command action_command = 100 [json_name="actionCommand"];
@@ -92,6 +163,7 @@ message Hook {
     Gotify action_gotify = 103 [json_name="actionGotify"];
     Slack action_slack = 104 [json_name="actionSlack"];
     Shoutrrr action_shoutrrr = 105 [json_name="actionShoutrrr"];
+    Healthchecks action_healthchecks = 106 [json_name="actionHealthchecks"];
   }
 
   message Command {
@@ -100,6 +172,13 @@ message Hook {
 
   message Webhook {
     string webhook_url = 1 [json_name="webhookUrl"];
+    enum Method {
+      UNKNOWN = 0;
+      GET = 1;
+      POST = 2;
+    }
+    Method method = 2 [json_name="method"];
+    string template = 100 [json_name="template"];
   }
 
   message Discord {
@@ -121,6 +200,11 @@ message Hook {
 
   message Shoutrrr {
     string shoutrrr_url = 1 [json_name="shoutrrrUrl"];
+    string template = 2 [json_name="template"];
+  }
+
+  message Healthchecks {
+    string webhook_url = 1 [json_name="webhookUrl"];
     string template = 2 [json_name="template"];
   }
 }

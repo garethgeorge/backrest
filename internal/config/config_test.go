@@ -5,8 +5,22 @@ import (
 	"testing"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/config/migrations"
 	"google.golang.org/protobuf/proto"
 )
+
+func TestMigrationsOnDefaultConfig(t *testing.T) {
+	config := NewDefaultConfig()
+	t.Logf("config: %v", config)
+	err := migrations.ApplyMigrations(config)
+	if err != nil {
+		t.Errorf("ApplyMigrations() error = %v, want nil", err)
+	}
+
+	if config.Version != migrations.CurrentVersion {
+		t.Errorf("ApplyMigrations() config.Version = %v, want %v", config.Version, migrations.CurrentVersion)
+	}
+}
 
 func TestConfig(t *testing.T) {
 	dir := t.TempDir()
@@ -15,13 +29,24 @@ func TestConfig(t *testing.T) {
 		Id:       "test-repo",
 		Uri:      "/tmp/test",
 		Password: "test",
+		PrunePolicy: &v1.PrunePolicy{
+			Schedule: &v1.Schedule{
+				Schedule: &v1.Schedule_MaxFrequencyDays{
+					MaxFrequencyDays: 14,
+				},
+			},
+		},
 	}
 
 	testPlan := &v1.Plan{
 		Id:    "test-plan",
 		Repo:  "test-repo",
 		Paths: []string{"/tmp/foo"},
-		Cron:  "* * * * *",
+		Schedule: &v1.Schedule{
+			Schedule: &v1.Schedule_Cron{
+				Cron: "0 0 * * *",
+			},
+		},
 	}
 
 	tests := []struct {
@@ -76,7 +101,11 @@ func TestConfig(t *testing.T) {
 						Id:    "test-plan",
 						Repo:  "test-repo",
 						Paths: []string{"/tmp/foo"},
-						Cron:  "bad cron",
+						Schedule: &v1.Schedule{
+							Schedule: &v1.Schedule_Cron{
+								Cron: "bad cron",
+							},
+						},
 					},
 				},
 			},
@@ -84,9 +113,33 @@ func TestConfig(t *testing.T) {
 			wantErr:         true,
 			wantErrContains: "invalid cron \"bad cron\"",
 		},
+		{
+			name: "plan with bad interval days",
+			config: &v1.Config{
+				Repos: []*v1.Repo{
+					testRepo,
+				},
+				Plans: []*v1.Plan{
+					{
+						Id:    "test-plan",
+						Repo:  "test-repo",
+						Paths: []string{"/tmp/foo"},
+						Schedule: &v1.Schedule{
+							Schedule: &v1.Schedule_MaxFrequencyDays{
+								MaxFrequencyDays: 0,
+							},
+						},
+					},
+				},
+			},
+			store:           &CachingValidatingStore{ConfigStore: &JsonFileStore{Path: dir + "/invalid-config3.json"}},
+			wantErr:         true,
+			wantErrContains: "invalid max frequency days",
+		},
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			err := tc.store.Update(tc.config)

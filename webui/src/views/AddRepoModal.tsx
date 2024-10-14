@@ -13,13 +13,20 @@ import {
   FormInstance,
   Collapse,
   Checkbox,
+  Select,
+  Space,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
-import { Hook, Repo } from "../../gen/ts/v1/config_pb";
+import {
+  CommandPrefix_CPUNiceLevel,
+  CommandPrefix_IONiceLevel,
+  Hook,
+  Repo,
+} from "../../gen/ts/v1/config_pb";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import { useAlertApi } from "../components/Alerts";
+import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
 import {
@@ -29,12 +36,16 @@ import {
 } from "../components/HooksFormList";
 import { ConfirmButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
+import Cron from "react-js-cron";
+import {
+  ScheduleDefaultsDaily,
+  ScheduleDefaultsInfrequent,
+  ScheduleFormItem,
+} from "../components/ScheduleFormItem";
+import { proto3 } from "@bufbuild/protobuf";
+import { isWindows } from "../state/buildcfg";
 
-export const AddRepoModal = ({
-  template,
-}: {
-  template: Repo | null;
-}) => {
+export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
@@ -42,7 +53,7 @@ export const AddRepoModal = ({
   const [form] = Form.useForm();
   useEffect(() => {
     form.setFieldsValue(template ? JSON.parse(template.toJsonString()) : {});
-  }, [template])
+  }, [template]);
 
   if (!config) {
     return null;
@@ -78,12 +89,12 @@ export const AddRepoModal = ({
       showModal(null);
       alertsApi.success(
         "Deleted repo " +
-        template.id +
-        " from config but files remain. To release storage delete the files manually. URI: " +
-        template.uri
+          template.id +
+          " from config but files remain. To release storage delete the files manually. URI: " +
+          template.uri
       );
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
     } finally {
       setConfirmLoading(false);
     }
@@ -94,31 +105,37 @@ export const AddRepoModal = ({
 
     try {
       let repoFormData = await validateForm(form);
-      const repo = new Repo().fromJsonString(JSON.stringify(repoFormData), { ignoreUnknownFields: false });
+      const repo = new Repo().fromJsonString(JSON.stringify(repoFormData), {
+        ignoreUnknownFields: false,
+      });
 
       if (template !== null) {
-        // We are in the edit repo flow, update the repo in the config
-        const idx = config.repos!.findIndex((r) => r.id === template!.id);
-        if (idx === -1) {
-          alertsApi.error("Can't update repo, not found");
-          return;
-        }
-        config.repos![idx] = repo;
-        setConfig(await backrestService.setConfig(config));
+        // We are in the update repo flow, update the repo via the service
+        setConfig(await backrestService.addRepo(repo));
         showModal(null);
-        alertsApi.success("Updated repo " + repo.uri);
-
-        // Update the snapshots for the repo to confirm the config works.
-        // TODO: this operation is only used here, find a different RPC for this purpose.
-        await backrestService.listSnapshots({ repoId: repo.id });
+        alertsApi.success("Updated repo configuration " + repo.uri);
       } else {
         // We are in the create repo flow, create the new repo via the service
         setConfig(await backrestService.addRepo(repo));
         showModal(null);
         alertsApi.success("Added repo " + repo.uri);
       }
+
+      try {
+        // Update the snapshots for the repo to confirm the config works.
+        // TODO: this operation is only used here, find a different RPC for this purpose.
+        await backrestService.listSnapshots({ repoId: repo.id });
+      } catch (e: any) {
+        alertsApi.error(
+          formatErrorAlert(
+            e,
+            "Failed to list snapshots for updated/added repo: "
+          ),
+          10
+        );
+      }
     } catch (e: any) {
-      alertsApi.error("Operation failed: " + e.message, 15);
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 10);
     } finally {
       setConfirmLoading(false);
     }
@@ -134,7 +151,7 @@ export const AddRepoModal = ({
         open={true}
         onCancel={handleCancel}
         title={template ? "Edit Restic Repository" : "Add Restic Repository"}
-        width="40vw"
+        width="60vw"
         footer={[
           <Button loading={confirmLoading} key="back" onClick={handleCancel}>
             Cancel
@@ -159,45 +176,68 @@ export const AddRepoModal = ({
             Submit
           </Button>,
         ]}
+        maskClosable={false}
       >
+        <p>
+          See{" "}
+          <a
+            href="https://garethgeorge.github.io/backrest/introduction/getting-started"
+            target="_blank"
+          >
+            backrest getting started guide
+          </a>{" "}
+          for repository configuration instructions or check the{" "}
+          <a href="https://restic.readthedocs.io/" target="_blank">
+            restic documentation
+          </a>{" "}
+          for more details about repositories.
+        </p>
+        <br />
         <Form
           autoComplete="off"
           form={form}
-          labelCol={{ span: 6 }}
-          wrapperCol={{ span: 16 }}
+          labelCol={{ span: 4 }}
+          wrapperCol={{ span: 18 }}
           disabled={confirmLoading}
         >
           {/* Repo.id */}
-          <Form.Item<Repo>
-            hasFeedback
-            name="id"
-            label="Repo Name"
-            validateTrigger={["onChange", "onBlur"]}
-            rules={[
-              {
-                required: true,
-                message: "Please input repo name",
-              },
-              {
-                validator: async (_, value) => {
-                  if (template) return;
-                  if (config?.repos?.find((r) => r.id === value)) {
-                    throw new Error();
-                  }
-                },
-                message: "Repo with name already exists",
-              },
-              {
-                pattern: namePattern,
-                message: "Name must be alphanumeric with dashes or underscores as separators",
-              }
-            ]}
+          <Tooltip
+            title={
+              "Unique ID that identifies this repo in the backrest UI (e.g. s3-mybucket). This cannot be changed after creation."
+            }
           >
-            <Input
-              disabled={!!template}
-              placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
-            />
-          </Form.Item>
+            <Form.Item<Repo>
+              hasFeedback
+              name="id"
+              label="Repo Name"
+              validateTrigger={["onChange", "onBlur"]}
+              rules={[
+                {
+                  required: true,
+                  message: "Please input repo name",
+                },
+                {
+                  validator: async (_, value) => {
+                    if (template) return;
+                    if (config?.repos?.find((r) => r.id === value)) {
+                      throw new Error();
+                    }
+                  },
+                  message: "Repo with name already exists",
+                },
+                {
+                  pattern: namePattern,
+                  message:
+                    "Name must be alphanumeric with dashes or underscores as separators",
+                },
+              ]}
+            >
+              <Input
+                disabled={!!template}
+                placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
+              />
+            </Form.Item>
+          </Tooltip>
 
           {/* Repo.uri */}
 
@@ -208,10 +248,13 @@ export const AddRepoModal = ({
                 <ul>
                   <li>Local filesystem path</li>
                   <li>S3 e.g. s3:// ...</li>
-                  <li>SFTP e.g. sftp://user@host:/repo-path</li>
+                  <li>SFTP e.g. sftp:user@host:/repo-path</li>
                   <li>
                     See{" "}
-                    <a href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository">
+                    <a
+                      href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository"
+                      target="_blank"
+                    >
                       restic docs
                     </a>{" "}
                     for more info.
@@ -237,101 +280,128 @@ export const AddRepoModal = ({
           </Tooltip>
 
           {/* Repo.password */}
-          <Form.Item label="Password">
-            <Row>
-              <Col span={16}>
-                <Form.Item<Repo>
-                  hasFeedback
-                  name="password"
-                  validateTrigger={["onChange", "onBlur"]}
+          <Tooltip
+            title={
+              <>
+                This password that encrypts data in your repository.
+                <ul>
+                  <li>
+                    Recommended to pick a value that is 128 bits of entropy (20
+                    chars or longer)
+                  </li>
+                  <li>
+                    You may alternatively provide env variable credentials e.g.
+                    RESTIC_PASSWORD, RESTIC_PASSWORD_FILE, or
+                    RESTIC_PASSWORD_COMMAND.
+                  </li>
+                  <li>
+                    Click [Generate] to seed a random password from your
+                    browser's crypto random API.
+                  </li>
+                </ul>
+              </>
+            }
+          >
+            <Form.Item label="Password">
+              <Row>
+                <Col span={16}>
+                  <Form.Item<Repo>
+                    hasFeedback
+                    name="password"
+                    validateTrigger={["onChange", "onBlur"]}
+                  >
+                    <Input disabled={!!template} />
+                  </Form.Item>
+                </Col>
+                <Col
+                  span={7}
+                  offset={1}
+                  style={{ display: "flex", justifyContent: "left" }}
                 >
-                  <Input disabled={!!template} />
-                </Form.Item>
-              </Col>
-              <Col
-                span={7}
-                offset={1}
-                style={{ display: "flex", justifyContent: "left" }}
-              >
-                <Button
-                  type="text"
-                  onClick={() => {
-                    if (template) return;
-                    form.setFieldsValue({
-                      password: cryptoRandomPassword(),
-                    });
-                  }}
-                >
-                  [Generate]
-                </Button>
-              </Col>
-            </Row>
-          </Form.Item>
+                  <Button
+                    type="text"
+                    onClick={() => {
+                      if (template) return;
+                      form.setFieldsValue({
+                        password: cryptoRandomPassword(),
+                      });
+                    }}
+                  >
+                    [Generate]
+                  </Button>
+                </Col>
+              </Row>
+            </Form.Item>
+          </Tooltip>
 
           {/* Repo.env */}
-          <Form.Item label="Env Vars">
-            <Form.List
-              name="env"
-              rules={[
-                {
-                  validator: async (_, envVars) => {
-                    return await envVarSetValidator(form, envVars);
+          <Tooltip
+            title={
+              "Environment variables that are passed to restic (e.g. to provide S3 or B2 credentials). References to parent-process env variables are supported as FOO=${MY_FOO_VAR}."
+            }
+          >
+            <Form.Item label="Env Vars">
+              <Form.List
+                name="env"
+                rules={[
+                  {
+                    validator: async (_, envVars) => {
+                      return await envVarSetValidator(form, envVars);
+                    },
                   },
-                },
-              ]}
-            >
-              {(fields, { add, remove }, { errors }) => (
-                <>
-                  {fields.map((field, index) => (
-                    <Form.Item key={field.key}>
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        rules={[
-                          {
-                            required: true,
-                            whitespace: true,
-                            pattern: /^[\w-]+=.*$/,
-                            message:
-                              "Environment variable must be in format KEY=VALUE",
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <Input
-                          placeholder="KEY=VALUE"
-                          onBlur={() => form.validateFields()}
-                          style={{ width: "90%" }}
+                ]}
+              >
+                {(fields, { add, remove }, { errors }) => (
+                  <>
+                    {fields.map((field, index) => (
+                      <Form.Item key={field.key}>
+                        <Form.Item
+                          {...field}
+                          validateTrigger={["onChange", "onBlur"]}
+                          rules={[
+                            {
+                              required: true,
+                              whitespace: true,
+                              pattern: /^[\w-]+=.*$/,
+                              message:
+                                "Environment variable must be in format KEY=VALUE",
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <Input
+                            placeholder="KEY=VALUE"
+                            onBlur={() => form.validateFields()}
+                            style={{ width: "90%" }}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(index)}
+                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(index)}
-                        style={{ paddingLeft: "5px" }}
-                      />
+                    ))}
+                    <Form.Item>
+                      <Button
+                        type="dashed"
+                        onClick={() => add("")}
+                        style={{ width: "90%" }}
+                        icon={<PlusOutlined />}
+                      >
+                        Set Environment Variable
+                      </Button>
+                      <Form.ErrorList errors={errors} />
                     </Form.Item>
-                  ))}
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => add("")}
-                      style={{ width: "90%" }}
-                      icon={<PlusOutlined />}
-                    >
-                      Set Environment Variable
-                    </Button>
-                    <Form.ErrorList errors={errors} />
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
-          </Form.Item>
+                  </>
+                )}
+              </Form.List>
+            </Form.Item>
+          </Tooltip>
 
           {/* Repo.flags */}
           <Form.Item label="Flags">
-            <Form.List
-              name="flags"
-            >
+            <Form.List name="flags">
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
@@ -377,14 +447,16 @@ export const AddRepoModal = ({
 
           {/* Repo.prunePolicy */}
           <Form.Item
-            required={false}
             label={
               <Tooltip
                 title={
                   <span>
                     The schedule on which prune operations are run for this
                     repository. Read{" "}
-                    <a href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning">
+                    <a
+                      href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
+                      target="_blank"
+                    >
                       the restic docs on customizing prune operations
                     </a>{" "}
                     for more details.
@@ -396,35 +468,177 @@ export const AddRepoModal = ({
             }
           >
             <Form.Item
-              name={["prunePolicy", "maxFrequencyDays"]}
-              initialValue={7}
-              required={false}
-            >
-              <InputNumber
-                addonBefore={
-                  <div style={{ width: "12em" }}>Max Frequency Days</div>
-                }
-              />
-            </Form.Item>
-            <Form.Item
               name={["prunePolicy", "maxUnusedPercent"]}
-              initialValue={25}
+              initialValue={10}
               required={false}
             >
-              <InputNumber
+              <InputPercent
                 addonBefore={
                   <Tooltip title="The maximum percentage of the repo size that may be unused after a prune operation completes. High values reduce copying at the expense of storage.">
-                    <div style={{ width: "12em" }}>Max Unused Percent</div>
+                    <div style={{ width: "12" }}>Max Unused After Prune</div>
                   </Tooltip>
                 }
               />
             </Form.Item>
+            <ScheduleFormItem
+              name={["prunePolicy", "schedule"]}
+              defaults={ScheduleDefaultsInfrequent}
+            />
           </Form.Item>
 
-          <Form.Item label={<Tooltip title={"Auto-unlock will remove lockfiles at the start of forget and prune operations. "
-            + "This is potentially unsafe if the repo is shared by multiple client devices. Opt-in (and disabled) by default."}>
-            Auto Unlock
-          </Tooltip>} name="autoUnlock" valuePropName="checked">
+          {/* Repo.checkPolicy */}
+          <Form.Item
+            label={
+              <Tooltip
+                title={
+                  <span>
+                    The schedule on which check operations are run for this
+                    repository. Restic check operations verify the integrity of
+                    your repository by scanning the on-disk structures that make
+                    up your backup data. Check can optionally be configured to
+                    re-read and re-hash data, this is slow and can be bandwidth
+                    expensive but will catch any bitrot or silent corruption in
+                    the storage medium.
+                  </span>
+                }
+              >
+                Check Policy
+              </Tooltip>
+            }
+          >
+            <Form.Item
+              name={["checkPolicy", "readDataSubsetPercent"]}
+              initialValue={0}
+              required={false}
+            >
+              <InputPercent
+                addonBefore={
+                  <Tooltip title="The percentage of pack data in this repository that will be read and verified. Higher values will use more bandwidth (e.g. 100% will re-read the entire repository on each check).">
+                    <div style={{ width: "12" }}>Read Data %</div>
+                  </Tooltip>
+                }
+              />
+            </Form.Item>
+            <ScheduleFormItem
+              name={["checkPolicy", "schedule"]}
+              defaults={ScheduleDefaultsInfrequent}
+            />
+          </Form.Item>
+
+          {/* Repo.commandPrefix */}
+          {!isWindows && (
+            <Form.Item
+              label={
+                <Tooltip
+                  title={
+                    <span>
+                      Modifiers for the backup operation e.g. set the CPU or IO
+                      priority.
+                    </span>
+                  }
+                >
+                  Command Modifiers
+                </Tooltip>
+              }
+              colon={false}
+            >
+              <Row>
+                <Col span={12} style={{ paddingLeft: "5px" }}>
+                  <Tooltip
+                    title={
+                      <>
+                        Available IO priority modes
+                        <ul>
+                          <li>
+                            IO_BEST_EFFORT_LOW - runs at lower than default disk
+                            priority (will prioritize other processes)
+                          </li>
+                          <li>
+                            IO_BEST_EFFORT_HIGH - runs at higher than default
+                            disk priority (top of disk IO queue)
+                          </li>
+                          <li>
+                            IO_IDLE - only runs when disk bandwidth is idle
+                            (e.g. no other operations are queued)
+                          </li>
+                        </ul>
+                      </>
+                    }
+                  >
+                    IO Priority:
+                    <br />
+                    <Form.Item
+                      name={["commandPrefix", "ioNice"]}
+                      required={false}
+                    >
+                      <Select
+                        allowClear
+                        style={{ width: "100%" }}
+                        placeholder="Select an IO priority"
+                        options={proto3
+                          .getEnumType(CommandPrefix_IONiceLevel)
+                          .values.map((v) => ({
+                            label: v.name,
+                            value: v.name,
+                          }))}
+                      />
+                    </Form.Item>
+                  </Tooltip>
+                </Col>
+                <Col span={12} style={{ paddingLeft: "5px" }}>
+                  <Tooltip
+                    title={
+                      <>
+                        Available CPU priority modes:
+                        <ul>
+                          <li>CPU_DEFAULT - no change in priority</li>
+                          <li>
+                            CPU_HIGH - higher than default priority (backrest
+                            must be running as root)
+                          </li>
+                          <li>CPU_LOW - lower than default priority</li>
+                        </ul>
+                      </>
+                    }
+                  >
+                    CPU Priority:
+                    <br />
+                    <Form.Item
+                      name={["commandPrefix", "cpuNice"]}
+                      required={false}
+                    >
+                      <Select
+                        allowClear
+                        style={{ width: "100%" }}
+                        placeholder="Select a CPU priority"
+                        options={proto3
+                          .getEnumType(CommandPrefix_CPUNiceLevel)
+                          .values.map((v) => ({
+                            label: v.name,
+                            value: v.name,
+                          }))}
+                      />
+                    </Form.Item>
+                  </Tooltip>
+                </Col>
+              </Row>
+            </Form.Item>
+          )}
+
+          <Form.Item
+            label={
+              <Tooltip
+                title={
+                  "Auto-unlock will remove lockfiles at the start of forget and prune operations. " +
+                  "This is potentially unsafe if the repo is shared by multiple client devices. Disabled by default."
+                }
+              >
+                Auto Unlock
+              </Tooltip>
+            }
+            name="autoUnlock"
+            valuePropName="checked"
+          >
             <Checkbox />
           </Form.Item>
 
@@ -444,7 +658,9 @@ export const AddRepoModal = ({
                     label: "Repo Config as JSON",
                     children: (
                       <Typography>
-                        <pre>{JSON.stringify(form.getFieldsValue(), undefined, 2)}</pre>
+                        <pre>
+                          {JSON.stringify(form.getFieldsValue(), undefined, 2)}
+                        </pre>
                       </Typography>
                     ),
                   },
@@ -453,7 +669,7 @@ export const AddRepoModal = ({
             )}
           </Form.Item>
         </Form>
-      </Modal >
+      </Modal>
     </>
   );
 };
@@ -461,11 +677,20 @@ export const AddRepoModal = ({
 const expectedEnvVars: { [scheme: string]: string[][] } = {
   s3: [["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]],
   b2: [["B2_ACCOUNT_ID", "B2_ACCOUNT_KEY"]],
-  azure: [["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_KEY"], ["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_SAS"]],
-  gs: [["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"], ["GOOGLE_ACCESS_TOKEN"]],
+  azure: [
+    ["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_KEY"],
+    ["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_SAS"],
+  ],
+  gs: [
+    ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"],
+    ["GOOGLE_ACCESS_TOKEN"],
+  ],
 };
 
-const envVarSetValidator = (form: FormInstance<FormData>, envVars: string[]) => {
+const envVarSetValidator = (
+  form: FormInstance<FormData>,
+  envVars: string[]
+) => {
   if (!envVars) {
     return Promise.resolve();
   }
@@ -518,7 +743,10 @@ const cryptoRandomPassword = (): string => {
   return btoa(String.fromCharCode(...vals)).slice(0, 48);
 };
 
-const checkSchemeEnvVars = (scheme: string, envVarNames: string[]): Promise<void> => {
+const checkSchemeEnvVars = (
+  scheme: string,
+  envVarNames: string[]
+): Promise<void> => {
   let expected = expectedEnvVars[scheme];
   if (!expected) {
     return Promise.resolve();
@@ -527,7 +755,9 @@ const checkSchemeEnvVars = (scheme: string, envVarNames: string[]): Promise<void
   const missingVarsCollection: string[][] = [];
 
   for (let possibility of expected) {
-    const missingVars = possibility.filter(envVar => !envVarNames.includes(envVar));
+    const missingVars = possibility.filter(
+      (envVar) => !envVarNames.includes(envVar)
+    );
 
     // If no env vars are missing, we have a full match and are good
     if (missingVars.length === 0) {
@@ -547,16 +777,35 @@ const checkSchemeEnvVars = (scheme: string, envVarNames: string[]): Promise<void
 
   return Promise.reject(
     new Error(
-      "Missing env vars " + formatMissingEnvVars(missingVarsCollection) + " for scheme " + scheme
+      "Missing env vars " +
+        formatMissingEnvVars(missingVarsCollection) +
+        " for scheme " +
+        scheme
     )
   );
-}
+};
 
 const formatMissingEnvVars = (partialMatches: string[][]): string => {
-  return partialMatches.map(x => {
-    if (x.length > 1) {
-      return `[ ${x.join(", ")} ]`;
-    }
-    return x[0];
-  }).join(" or ");
-}
+  return partialMatches
+    .map((x) => {
+      if (x.length > 1) {
+        return `[ ${x.join(", ")} ]`;
+      }
+      return x[0];
+    })
+    .join(" or ");
+};
+
+const InputPercent = ({ ...props }) => {
+  return (
+    <InputNumber
+      step={1}
+      min={0}
+      max={100}
+      precision={2}
+      controls={false}
+      suffix="%"
+      {...props}
+    />
+  );
+};

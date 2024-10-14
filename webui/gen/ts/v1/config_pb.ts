@@ -4,7 +4,89 @@
 // @ts-nocheck
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
-import { Message, proto3 } from "@bufbuild/protobuf";
+import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
+
+/**
+ * @generated from message v1.HubConfig
+ */
+export class HubConfig extends Message<HubConfig> {
+  /**
+   * @generated from field: repeated v1.HubConfig.InstanceInfo instances = 1;
+   */
+  instances: HubConfig_InstanceInfo[] = [];
+
+  constructor(data?: PartialMessage<HubConfig>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.HubConfig";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "instances", kind: "message", T: HubConfig_InstanceInfo, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HubConfig {
+    return new HubConfig().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HubConfig {
+    return new HubConfig().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HubConfig {
+    return new HubConfig().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: HubConfig | PlainMessage<HubConfig> | undefined, b: HubConfig | PlainMessage<HubConfig> | undefined): boolean {
+    return proto3.util.equals(HubConfig, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.HubConfig.InstanceInfo
+ */
+export class HubConfig_InstanceInfo extends Message<HubConfig_InstanceInfo> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * secret used to authenticate with the hub.
+   *
+   * @generated from field: string secret = 2;
+   */
+  secret = "";
+
+  constructor(data?: PartialMessage<HubConfig_InstanceInfo>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.HubConfig.InstanceInfo";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "secret", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HubConfig_InstanceInfo {
+    return new HubConfig_InstanceInfo().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HubConfig_InstanceInfo {
+    return new HubConfig_InstanceInfo().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HubConfig_InstanceInfo {
+    return new HubConfig_InstanceInfo().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: HubConfig_InstanceInfo | PlainMessage<HubConfig_InstanceInfo> | undefined, b: HubConfig_InstanceInfo | PlainMessage<HubConfig_InstanceInfo> | undefined): boolean {
+    return proto3.util.equals(HubConfig_InstanceInfo, a, b);
+  }
+}
 
 /**
  * Config is the top level config object for restic UI.
@@ -27,11 +109,12 @@ export class Config extends Message<Config> {
   version = 0;
 
   /**
-   * override the hostname tagged on backups. If provided it will be used in addition to tags to group backups.
+   * The instance name for the Backrest installation. 
+   * This identifies backups created by this instance and is displayed in the UI. 
    *
-   * @generated from field: string host = 2;
+   * @generated from field: string instance = 2;
    */
-  host = "";
+  instance = "";
 
   /**
    * @generated from field: repeated v1.Repo repos = 3;
@@ -58,7 +141,7 @@ export class Config extends Message<Config> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "modno", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 6, name: "version", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 2, name: "host", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "instance", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "repos", kind: "message", T: Repo, repeated: true },
     { no: 4, name: "plans", kind: "message", T: Plan, repeated: true },
     { no: 5, name: "auth", kind: "message", T: Auth },
@@ -128,6 +211,13 @@ export class Repo extends Message<Repo> {
   prunePolicy?: PrunePolicy;
 
   /**
+   * policy for when to run check.
+   *
+   * @generated from field: v1.CheckPolicy check_policy = 9;
+   */
+  checkPolicy?: CheckPolicy;
+
+  /**
    * hooks to run on events for this repo.
    *
    * @generated from field: repeated v1.Hook hooks = 7;
@@ -140,6 +230,13 @@ export class Repo extends Message<Repo> {
    * @generated from field: bool auto_unlock = 8;
    */
   autoUnlock = false;
+
+  /**
+   * modifiers for the restic commands
+   *
+   * @generated from field: v1.CommandPrefix command_prefix = 10;
+   */
+  commandPrefix?: CommandPrefix;
 
   constructor(data?: PartialMessage<Repo>) {
     super();
@@ -155,8 +252,10 @@ export class Repo extends Message<Repo> {
     { no: 4, name: "env", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 5, name: "flags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 6, name: "prune_policy", kind: "message", T: PrunePolicy },
+    { no: 9, name: "check_policy", kind: "message", T: CheckPolicy },
     { no: 7, name: "hooks", kind: "message", T: Hook, repeated: true },
     { no: 8, name: "auto_unlock", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "command_prefix", kind: "message", T: CommandPrefix },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Repo {
@@ -195,11 +294,6 @@ export class Plan extends Message<Plan> {
   repo = "";
 
   /**
-   * @generated from field: bool disabled = 11;
-   */
-  disabled = false;
-
-  /**
    * paths to include in the backup.
    *
    * @generated from field: repeated string paths = 4;
@@ -221,11 +315,11 @@ export class Plan extends Message<Plan> {
   iexcludes: string[] = [];
 
   /**
-   * cron expression describing the backup schedule.
+   * schedule for the backup.
    *
-   * @generated from field: string cron = 6;
+   * @generated from field: v1.Schedule schedule = 12;
    */
-  cron = "";
+  schedule?: Schedule;
 
   /**
    * retention policy for snapshots.
@@ -258,11 +352,10 @@ export class Plan extends Message<Plan> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "repo", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 11, name: "disabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 4, name: "paths", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 5, name: "excludes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
     { no: 9, name: "iexcludes", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 6, name: "cron", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 12, name: "schedule", kind: "message", T: Schedule },
     { no: 7, name: "retention", kind: "message", T: RetentionPolicy },
     { no: 8, name: "hooks", kind: "message", T: Hook, repeated: true },
     { no: 10, name: "backup_flags", jsonName: "backup_flags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
@@ -286,59 +379,114 @@ export class Plan extends Message<Plan> {
 }
 
 /**
+ * @generated from message v1.CommandPrefix
+ */
+export class CommandPrefix extends Message<CommandPrefix> {
+  /**
+   * ionice level to set.
+   *
+   * @generated from field: v1.CommandPrefix.IONiceLevel io_nice = 1;
+   */
+  ioNice = CommandPrefix_IONiceLevel.IO_DEFAULT;
+
+  /**
+   * nice level to set.
+   *
+   * @generated from field: v1.CommandPrefix.CPUNiceLevel cpu_nice = 2;
+   */
+  cpuNice = CommandPrefix_CPUNiceLevel.CPU_DEFAULT;
+
+  constructor(data?: PartialMessage<CommandPrefix>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.CommandPrefix";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "io_nice", kind: "enum", T: proto3.getEnumType(CommandPrefix_IONiceLevel) },
+    { no: 2, name: "cpu_nice", kind: "enum", T: proto3.getEnumType(CommandPrefix_CPUNiceLevel) },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CommandPrefix {
+    return new CommandPrefix().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CommandPrefix {
+    return new CommandPrefix().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CommandPrefix {
+    return new CommandPrefix().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CommandPrefix | PlainMessage<CommandPrefix> | undefined, b: CommandPrefix | PlainMessage<CommandPrefix> | undefined): boolean {
+    return proto3.util.equals(CommandPrefix, a, b);
+  }
+}
+
+/**
+ * @generated from enum v1.CommandPrefix.IONiceLevel
+ */
+export enum CommandPrefix_IONiceLevel {
+  /**
+   * @generated from enum value: IO_DEFAULT = 0;
+   */
+  IO_DEFAULT = 0,
+
+  /**
+   * @generated from enum value: IO_BEST_EFFORT_LOW = 1;
+   */
+  IO_BEST_EFFORT_LOW = 1,
+
+  /**
+   * @generated from enum value: IO_BEST_EFFORT_HIGH = 2;
+   */
+  IO_BEST_EFFORT_HIGH = 2,
+
+  /**
+   * @generated from enum value: IO_IDLE = 3;
+   */
+  IO_IDLE = 3,
+}
+// Retrieve enum metadata with: proto3.getEnumType(CommandPrefix_IONiceLevel)
+proto3.util.setEnumType(CommandPrefix_IONiceLevel, "v1.CommandPrefix.IONiceLevel", [
+  { no: 0, name: "IO_DEFAULT" },
+  { no: 1, name: "IO_BEST_EFFORT_LOW" },
+  { no: 2, name: "IO_BEST_EFFORT_HIGH" },
+  { no: 3, name: "IO_IDLE" },
+]);
+
+/**
+ * @generated from enum v1.CommandPrefix.CPUNiceLevel
+ */
+export enum CommandPrefix_CPUNiceLevel {
+  /**
+   * @generated from enum value: CPU_DEFAULT = 0;
+   */
+  CPU_DEFAULT = 0,
+
+  /**
+   * @generated from enum value: CPU_HIGH = 1;
+   */
+  CPU_HIGH = 1,
+
+  /**
+   * @generated from enum value: CPU_LOW = 2;
+   */
+  CPU_LOW = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(CommandPrefix_CPUNiceLevel)
+proto3.util.setEnumType(CommandPrefix_CPUNiceLevel, "v1.CommandPrefix.CPUNiceLevel", [
+  { no: 0, name: "CPU_DEFAULT" },
+  { no: 1, name: "CPU_HIGH" },
+  { no: 2, name: "CPU_LOW" },
+]);
+
+/**
  * @generated from message v1.RetentionPolicy
  */
 export class RetentionPolicy extends Message<RetentionPolicy> {
-  /**
-   * @generated from field: string max_unused_limit = 1 [deprecated = true];
-   * @deprecated
-   */
-  maxUnusedLimit = "";
-
-  /**
-   * @generated from field: int32 keep_last_n = 2 [deprecated = true];
-   * @deprecated
-   */
-  keepLastN = 0;
-
-  /**
-   * @generated from field: int32 keep_hourly = 3 [deprecated = true];
-   * @deprecated
-   */
-  keepHourly = 0;
-
-  /**
-   * @generated from field: int32 keep_daily = 4 [deprecated = true];
-   * @deprecated
-   */
-  keepDaily = 0;
-
-  /**
-   * @generated from field: int32 keep_weekly = 5 [deprecated = true];
-   * @deprecated
-   */
-  keepWeekly = 0;
-
-  /**
-   * @generated from field: int32 keep_monthly = 6 [deprecated = true];
-   * @deprecated
-   */
-  keepMonthly = 0;
-
-  /**
-   * @generated from field: int32 keep_yearly = 7 [deprecated = true];
-   * @deprecated
-   */
-  keepYearly = 0;
-
-  /**
-   * keep snapshots within a duration e.g. 1y2m3d4h5m6s
-   *
-   * @generated from field: string keep_within_duration = 8 [deprecated = true];
-   * @deprecated
-   */
-  keepWithinDuration = "";
-
   /**
    * @generated from oneof v1.RetentionPolicy.policy
    */
@@ -370,14 +518,6 @@ export class RetentionPolicy extends Message<RetentionPolicy> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.RetentionPolicy";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "max_unused_limit", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "keep_last_n", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 3, name: "keep_hourly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 4, name: "keep_daily", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 5, name: "keep_weekly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 6, name: "keep_monthly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 7, name: "keep_yearly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 8, name: "keep_within_duration", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 10, name: "policy_keep_last_n", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "policy" },
     { no: 11, name: "policy_time_bucketed", kind: "message", T: RetentionPolicy_TimeBucketedCounts, oneof: "policy" },
     { no: 12, name: "policy_keep_all", kind: "scalar", T: 8 /* ScalarType.BOOL */, oneof: "policy" },
@@ -476,25 +616,23 @@ export class RetentionPolicy_TimeBucketedCounts extends Message<RetentionPolicy_
  */
 export class PrunePolicy extends Message<PrunePolicy> {
   /**
-   * max frequency of prune runs in days. If 0, prune will be run on every backup.
-   *
-   * @generated from field: int32 max_frequency_days = 1;
+   * @generated from field: v1.Schedule schedule = 2;
    */
-  maxFrequencyDays = 0;
+  schedule?: Schedule;
 
   /**
-   * max percentage of repo size that can be unused before prune is run.
+   * max unused bytes before running prune.
    *
-   * @generated from field: int32 max_unused_percent = 100;
+   * @generated from field: int64 max_unused_bytes = 3;
+   */
+  maxUnusedBytes = protoInt64.zero;
+
+  /**
+   * max unused percent before running prune.
+   *
+   * @generated from field: double max_unused_percent = 4;
    */
   maxUnusedPercent = 0;
-
-  /**
-   * max number of bytes that can be unused before prune is run.
-   *
-   * @generated from field: int32 max_unused_bytes = 101;
-   */
-  maxUnusedBytes = 0;
 
   constructor(data?: PartialMessage<PrunePolicy>) {
     super();
@@ -504,9 +642,9 @@ export class PrunePolicy extends Message<PrunePolicy> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.PrunePolicy";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "max_frequency_days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 100, name: "max_unused_percent", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 101, name: "max_unused_bytes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "schedule", kind: "message", T: Schedule },
+    { no: 3, name: "max_unused_bytes", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "max_unused_percent", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PrunePolicy {
@@ -527,6 +665,180 @@ export class PrunePolicy extends Message<PrunePolicy> {
 }
 
 /**
+ * @generated from message v1.CheckPolicy
+ */
+export class CheckPolicy extends Message<CheckPolicy> {
+  /**
+   * @generated from field: v1.Schedule schedule = 1;
+   */
+  schedule?: Schedule;
+
+  /**
+   * @generated from oneof v1.CheckPolicy.mode
+   */
+  mode: {
+    /**
+     * only check the structure of the repo. No pack data is read.
+     *
+     * @generated from field: bool structure_only = 100;
+     */
+    value: boolean;
+    case: "structureOnly";
+  } | {
+    /**
+     * check a percentage of pack data.
+     *
+     * @generated from field: double read_data_subset_percent = 101;
+     */
+    value: number;
+    case: "readDataSubsetPercent";
+  } | { case: undefined; value?: undefined } = { case: undefined };
+
+  constructor(data?: PartialMessage<CheckPolicy>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.CheckPolicy";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "schedule", kind: "message", T: Schedule },
+    { no: 100, name: "structure_only", kind: "scalar", T: 8 /* ScalarType.BOOL */, oneof: "mode" },
+    { no: 101, name: "read_data_subset_percent", kind: "scalar", T: 1 /* ScalarType.DOUBLE */, oneof: "mode" },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CheckPolicy {
+    return new CheckPolicy().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CheckPolicy {
+    return new CheckPolicy().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CheckPolicy {
+    return new CheckPolicy().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CheckPolicy | PlainMessage<CheckPolicy> | undefined, b: CheckPolicy | PlainMessage<CheckPolicy> | undefined): boolean {
+    return proto3.util.equals(CheckPolicy, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.Schedule
+ */
+export class Schedule extends Message<Schedule> {
+  /**
+   * @generated from oneof v1.Schedule.schedule
+   */
+  schedule: {
+    /**
+     * disable the schedule.
+     *
+     * @generated from field: bool disabled = 1;
+     */
+    value: boolean;
+    case: "disabled";
+  } | {
+    /**
+     * cron expression describing the schedule.
+     *
+     * @generated from field: string cron = 2;
+     */
+    value: string;
+    case: "cron";
+  } | {
+    /**
+     * max frequency of runs in days.
+     *
+     * @generated from field: int32 maxFrequencyDays = 3;
+     */
+    value: number;
+    case: "maxFrequencyDays";
+  } | {
+    /**
+     * max frequency of runs in hours.
+     *
+     * @generated from field: int32 maxFrequencyHours = 4;
+     */
+    value: number;
+    case: "maxFrequencyHours";
+  } | { case: undefined; value?: undefined } = { case: undefined };
+
+  /**
+   * clock to use for scheduling.
+   *
+   * @generated from field: v1.Schedule.Clock clock = 5;
+   */
+  clock = Schedule_Clock.DEFAULT;
+
+  constructor(data?: PartialMessage<Schedule>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.Schedule";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "disabled", kind: "scalar", T: 8 /* ScalarType.BOOL */, oneof: "schedule" },
+    { no: 2, name: "cron", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "schedule" },
+    { no: 3, name: "maxFrequencyDays", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "schedule" },
+    { no: 4, name: "maxFrequencyHours", kind: "scalar", T: 5 /* ScalarType.INT32 */, oneof: "schedule" },
+    { no: 5, name: "clock", kind: "enum", T: proto3.getEnumType(Schedule_Clock) },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Schedule {
+    return new Schedule().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Schedule {
+    return new Schedule().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Schedule {
+    return new Schedule().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Schedule | PlainMessage<Schedule> | undefined, b: Schedule | PlainMessage<Schedule> | undefined): boolean {
+    return proto3.util.equals(Schedule, a, b);
+  }
+}
+
+/**
+ * @generated from enum v1.Schedule.Clock
+ */
+export enum Schedule_Clock {
+  /**
+   * same as CLOCK_LOCAL
+   *
+   * @generated from enum value: CLOCK_DEFAULT = 0;
+   */
+  DEFAULT = 0,
+
+  /**
+   * @generated from enum value: CLOCK_LOCAL = 1;
+   */
+  LOCAL = 1,
+
+  /**
+   * @generated from enum value: CLOCK_UTC = 2;
+   */
+  UTC = 2,
+
+  /**
+   * @generated from enum value: CLOCK_LAST_RUN_TIME = 3;
+   */
+  LAST_RUN_TIME = 3,
+}
+// Retrieve enum metadata with: proto3.getEnumType(Schedule_Clock)
+proto3.util.setEnumType(Schedule_Clock, "v1.Schedule.Clock", [
+  { no: 0, name: "CLOCK_DEFAULT" },
+  { no: 1, name: "CLOCK_LOCAL" },
+  { no: 2, name: "CLOCK_UTC" },
+  { no: 3, name: "CLOCK_LAST_RUN_TIME" },
+]);
+
+/**
  * @generated from message v1.Hook
  */
 export class Hook extends Message<Hook> {
@@ -534,6 +846,11 @@ export class Hook extends Message<Hook> {
    * @generated from field: repeated v1.Hook.Condition conditions = 1;
    */
   conditions: Hook_Condition[] = [];
+
+  /**
+   * @generated from field: v1.Hook.OnError on_error = 2;
+   */
+  onError = Hook_OnError.IGNORE;
 
   /**
    * @generated from oneof v1.Hook.action
@@ -574,6 +891,12 @@ export class Hook extends Message<Hook> {
      */
     value: Hook_Shoutrrr;
     case: "actionShoutrrr";
+  } | {
+    /**
+     * @generated from field: v1.Hook.Healthchecks action_healthchecks = 106;
+     */
+    value: Hook_Healthchecks;
+    case: "actionHealthchecks";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Hook>) {
@@ -585,12 +908,14 @@ export class Hook extends Message<Hook> {
   static readonly typeName = "v1.Hook";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "conditions", kind: "enum", T: proto3.getEnumType(Hook_Condition), repeated: true },
+    { no: 2, name: "on_error", kind: "enum", T: proto3.getEnumType(Hook_OnError) },
     { no: 100, name: "action_command", kind: "message", T: Hook_Command, oneof: "action" },
     { no: 101, name: "action_webhook", kind: "message", T: Hook_Webhook, oneof: "action" },
     { no: 102, name: "action_discord", kind: "message", T: Hook_Discord, oneof: "action" },
     { no: 103, name: "action_gotify", kind: "message", T: Hook_Gotify, oneof: "action" },
     { no: 104, name: "action_slack", kind: "message", T: Hook_Slack, oneof: "action" },
     { no: 105, name: "action_shoutrrr", kind: "message", T: Hook_Shoutrrr, oneof: "action" },
+    { no: 106, name: "action_healthchecks", kind: "message", T: Hook_Healthchecks, oneof: "action" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook {
@@ -646,6 +971,66 @@ export enum Hook_Condition {
    * @generated from enum value: CONDITION_SNAPSHOT_ERROR = 4;
    */
   SNAPSHOT_ERROR = 4,
+
+  /**
+   * snapshot completed with warnings.
+   *
+   * @generated from enum value: CONDITION_SNAPSHOT_WARNING = 5;
+   */
+  SNAPSHOT_WARNING = 5,
+
+  /**
+   * snapshot succeeded.
+   *
+   * @generated from enum value: CONDITION_SNAPSHOT_SUCCESS = 6;
+   */
+  SNAPSHOT_SUCCESS = 6,
+
+  /**
+   * prune conditions
+   *
+   * prune started.
+   *
+   * @generated from enum value: CONDITION_PRUNE_START = 100;
+   */
+  PRUNE_START = 100,
+
+  /**
+   * prune failed.
+   *
+   * @generated from enum value: CONDITION_PRUNE_ERROR = 101;
+   */
+  PRUNE_ERROR = 101,
+
+  /**
+   * prune succeeded.
+   *
+   * @generated from enum value: CONDITION_PRUNE_SUCCESS = 102;
+   */
+  PRUNE_SUCCESS = 102,
+
+  /**
+   * check conditions
+   *
+   * check started.
+   *
+   * @generated from enum value: CONDITION_CHECK_START = 200;
+   */
+  CHECK_START = 200,
+
+  /**
+   * check failed.
+   *
+   * @generated from enum value: CONDITION_CHECK_ERROR = 201;
+   */
+  CHECK_ERROR = 201,
+
+  /**
+   * check succeeded.
+   *
+   * @generated from enum value: CONDITION_CHECK_SUCCESS = 202;
+   */
+  CHECK_SUCCESS = 202,
 }
 // Retrieve enum metadata with: proto3.getEnumType(Hook_Condition)
 proto3.util.setEnumType(Hook_Condition, "v1.Hook.Condition", [
@@ -654,6 +1039,68 @@ proto3.util.setEnumType(Hook_Condition, "v1.Hook.Condition", [
   { no: 2, name: "CONDITION_SNAPSHOT_START" },
   { no: 3, name: "CONDITION_SNAPSHOT_END" },
   { no: 4, name: "CONDITION_SNAPSHOT_ERROR" },
+  { no: 5, name: "CONDITION_SNAPSHOT_WARNING" },
+  { no: 6, name: "CONDITION_SNAPSHOT_SUCCESS" },
+  { no: 100, name: "CONDITION_PRUNE_START" },
+  { no: 101, name: "CONDITION_PRUNE_ERROR" },
+  { no: 102, name: "CONDITION_PRUNE_SUCCESS" },
+  { no: 200, name: "CONDITION_CHECK_START" },
+  { no: 201, name: "CONDITION_CHECK_ERROR" },
+  { no: 202, name: "CONDITION_CHECK_SUCCESS" },
+]);
+
+/**
+ * @generated from enum v1.Hook.OnError
+ */
+export enum Hook_OnError {
+  /**
+   * @generated from enum value: ON_ERROR_IGNORE = 0;
+   */
+  IGNORE = 0,
+
+  /**
+   * cancels the operation and skips subsequent hooks
+   *
+   * @generated from enum value: ON_ERROR_CANCEL = 1;
+   */
+  CANCEL = 1,
+
+  /**
+   * fails the operation and subsequent hooks.
+   *
+   * @generated from enum value: ON_ERROR_FATAL = 2;
+   */
+  FATAL = 2,
+
+  /**
+   * retry the operation every minute 
+   *
+   * @generated from enum value: ON_ERROR_RETRY_1MINUTE = 100;
+   */
+  RETRY_1MINUTE = 100,
+
+  /**
+   * retry the operation every 10 minutes
+   *
+   * @generated from enum value: ON_ERROR_RETRY_10MINUTES = 101;
+   */
+  RETRY_10MINUTES = 101,
+
+  /**
+   * retry the operation with exponential backoff up to 1h max.
+   *
+   * @generated from enum value: ON_ERROR_RETRY_EXPONENTIAL_BACKOFF = 103;
+   */
+  RETRY_EXPONENTIAL_BACKOFF = 103,
+}
+// Retrieve enum metadata with: proto3.getEnumType(Hook_OnError)
+proto3.util.setEnumType(Hook_OnError, "v1.Hook.OnError", [
+  { no: 0, name: "ON_ERROR_IGNORE" },
+  { no: 1, name: "ON_ERROR_CANCEL" },
+  { no: 2, name: "ON_ERROR_FATAL" },
+  { no: 100, name: "ON_ERROR_RETRY_1MINUTE" },
+  { no: 101, name: "ON_ERROR_RETRY_10MINUTES" },
+  { no: 103, name: "ON_ERROR_RETRY_EXPONENTIAL_BACKOFF" },
 ]);
 
 /**
@@ -702,6 +1149,16 @@ export class Hook_Webhook extends Message<Hook_Webhook> {
    */
   webhookUrl = "";
 
+  /**
+   * @generated from field: v1.Hook.Webhook.Method method = 2;
+   */
+  method = Hook_Webhook_Method.UNKNOWN;
+
+  /**
+   * @generated from field: string template = 100;
+   */
+  template = "";
+
   constructor(data?: PartialMessage<Hook_Webhook>) {
     super();
     proto3.util.initPartial(data, this);
@@ -711,6 +1168,8 @@ export class Hook_Webhook extends Message<Hook_Webhook> {
   static readonly typeName = "v1.Hook.Webhook";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "webhook_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "method", kind: "enum", T: proto3.getEnumType(Hook_Webhook_Method) },
+    { no: 100, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Webhook {
@@ -729,6 +1188,32 @@ export class Hook_Webhook extends Message<Hook_Webhook> {
     return proto3.util.equals(Hook_Webhook, a, b);
   }
 }
+
+/**
+ * @generated from enum v1.Hook.Webhook.Method
+ */
+export enum Hook_Webhook_Method {
+  /**
+   * @generated from enum value: UNKNOWN = 0;
+   */
+  UNKNOWN = 0,
+
+  /**
+   * @generated from enum value: GET = 1;
+   */
+  GET = 1,
+
+  /**
+   * @generated from enum value: POST = 2;
+   */
+  POST = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(Hook_Webhook_Method)
+proto3.util.setEnumType(Hook_Webhook_Method, "v1.Hook.Webhook.Method", [
+  { no: 0, name: "UNKNOWN" },
+  { no: 1, name: "GET" },
+  { no: 2, name: "POST" },
+]);
 
 /**
  * @generated from message v1.Hook.Discord
@@ -919,6 +1404,49 @@ export class Hook_Shoutrrr extends Message<Hook_Shoutrrr> {
 
   static equals(a: Hook_Shoutrrr | PlainMessage<Hook_Shoutrrr> | undefined, b: Hook_Shoutrrr | PlainMessage<Hook_Shoutrrr> | undefined): boolean {
     return proto3.util.equals(Hook_Shoutrrr, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.Hook.Healthchecks
+ */
+export class Hook_Healthchecks extends Message<Hook_Healthchecks> {
+  /**
+   * @generated from field: string webhook_url = 1;
+   */
+  webhookUrl = "";
+
+  /**
+   * @generated from field: string template = 2;
+   */
+  template = "";
+
+  constructor(data?: PartialMessage<Hook_Healthchecks>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.Hook.Healthchecks";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "webhook_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "template", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Hook_Healthchecks {
+    return new Hook_Healthchecks().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Hook_Healthchecks {
+    return new Hook_Healthchecks().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Hook_Healthchecks {
+    return new Hook_Healthchecks().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Hook_Healthchecks | PlainMessage<Hook_Healthchecks> | undefined, b: Hook_Healthchecks | PlainMessage<Hook_Healthchecks> | undefined): boolean {
+    return proto3.util.equals(Hook_Healthchecks, a, b);
   }
 }
 

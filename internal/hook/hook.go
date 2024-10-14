@@ -1,92 +1,113 @@
 package hook
 
 import (
-	"bytes"
+	"context"
+	"errors"
 	"fmt"
-	"io"
+	"math"
+	"reflect"
 	"slices"
-	"strings"
-	"text/template"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/rotatinglog"
-	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
+	cfg "github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/hook/types"
+	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 )
 
-var (
-	defaultTemplate = `{{ .Summary }}`
-)
+func TasksTriggeredByEvent(config *v1.Config, repoID string, planID string, parentOp *v1.Operation, events []v1.Hook_Condition, vars interface{}) ([]tasks.Task, error) {
+	var taskSet []tasks.Task
 
-type HookExecutor struct {
-	oplog    *oplog.OpLog
-	logStore *rotatinglog.RotatingLog
-}
-
-func NewHookExecutor(oplog *oplog.OpLog, bigOutputStore *rotatinglog.RotatingLog) *HookExecutor {
-	return &HookExecutor{
-		oplog:    oplog,
-		logStore: bigOutputStore,
+	repo := cfg.FindRepo(config, repoID)
+	if repo == nil {
+		return nil, fmt.Errorf("repo %v not found", repoID)
 	}
-}
-
-// ExecuteHooks schedules tasks for the hooks subscribed to the given event. The vars map is used to substitute variables
-// Hooks are pulled both from the provided plan and from the repo config.
-func (e *HookExecutor) ExecuteHooks(repo *v1.Repo, plan *v1.Plan, snapshotId string, events []v1.Hook_Condition, vars HookVars) {
-	operationBase := v1.Operation{
-		Status:     v1.OperationStatus_STATUS_INPROGRESS,
-		PlanId:     plan.GetId(),
-		RepoId:     repo.GetId(),
-		SnapshotId: snapshotId,
-	}
-
-	vars.SnapshotId = snapshotId
-	vars.Repo = repo
-	vars.Plan = plan
-	vars.CurTime = time.Now()
+	plan := cfg.FindPlan(config, planID)
 
 	for idx, hook := range repo.GetHooks() {
-		h := (*Hook)(hook)
-		event := firstMatchingCondition(h, events)
+		event := firstMatchingCondition(hook, events)
 		if event == v1.Hook_CONDITION_UNKNOWN {
 			continue
 		}
 
 		name := fmt.Sprintf("repo/%v/hook/%v", repo.Id, idx)
-		operation := proto.Clone(&operationBase).(*v1.Operation)
-		operation.UnixTimeStartMs = curTimeMs()
-		operation.Op = &v1.Operation_OperationRunHook{
-			OperationRunHook: &v1.OperationRunHook{
-				Name: name,
-			},
+		task, err := newOneoffRunHookTask(name, config.Instance, repoID, planID, parentOp, time.Now(), hook, event, vars)
+		if err != nil {
+			return nil, err
 		}
-		zap.L().Info("Running hook", zap.String("plan", plan.Id), zap.Int64("opId", operation.Id), zap.String("hook", name))
-		e.executeHook(operation, h, event, vars)
+		taskSet = append(taskSet, task)
 	}
 
 	for idx, hook := range plan.GetHooks() {
-		h := (*Hook)(hook)
-		event := firstMatchingCondition(h, events)
+		event := firstMatchingCondition(hook, events)
 		if event == v1.Hook_CONDITION_UNKNOWN {
 			continue
 		}
 
 		name := fmt.Sprintf("plan/%v/hook/%v", plan.Id, idx)
-		operation := proto.Clone(&operationBase).(*v1.Operation)
-		operation.UnixTimeStartMs = curTimeMs()
-		operation.Op = &v1.Operation_OperationRunHook{
-			OperationRunHook: &v1.OperationRunHook{
-				Name: name,
-			},
+		task, err := newOneoffRunHookTask(name, config.Instance, repoID, planID, parentOp, time.Now(), hook, event, vars)
+		if err != nil {
+			return nil, err
 		}
-		zap.L().Info("Running hook", zap.String("plan", plan.Id), zap.Int64("opId", operation.Id), zap.String("hook", name))
-		e.executeHook(operation, h, event, vars)
+		taskSet = append(taskSet, task)
 	}
+
+	return taskSet, nil
 }
 
-func firstMatchingCondition(hook *Hook, events []v1.Hook_Condition) v1.Hook_Condition {
+func newOneoffRunHookTask(title, instanceID, repoID, planID string, parentOp *v1.Operation, at time.Time, hook *v1.Hook, event v1.Hook_Condition, vars interface{}) (tasks.Task, error) {
+	h, err := types.DefaultRegistry().GetHandler(hook)
+	if err != nil {
+		return nil, fmt.Errorf("no handler for hook type %T", hook.Action)
+	}
+
+	title = h.Name() + " hook " + title
+
+	return &tasks.GenericOneoffTask{
+		OneoffTask: tasks.OneoffTask{
+			BaseTask: tasks.BaseTask{
+				TaskType:   "hook",
+				TaskName:   fmt.Sprintf("run hook %v", title),
+				TaskRepoID: repoID,
+				TaskPlanID: planID,
+			},
+			FlowID: parentOp.GetFlowId(),
+			RunAt:  at,
+			ProtoOp: &v1.Operation{
+				InstanceId: instanceID,
+				RepoId:     repoID,
+				PlanId:     planID,
+				FlowId:     parentOp.GetFlowId(),
+
+				DisplayMessage: fmt.Sprintf("running %v triggered by %v", title, event.String()),
+				Op: &v1.Operation_OperationRunHook{
+					OperationRunHook: &v1.OperationRunHook{
+						Name:      title,
+						Condition: event,
+						ParentOp:  parentOp.GetId(),
+					},
+				},
+			},
+		},
+		Do: func(ctx context.Context, st tasks.ScheduledTask, taskRunner tasks.TaskRunner) error {
+			// TODO: this is a hack to get around the fact that vars is an interface{} .
+			v := reflect.ValueOf(&vars).Elem()
+			clone := reflect.New(v.Elem().Type()).Elem()
+			clone.Set(v.Elem()) // copy vars to clone
+			if field := v.Elem().FieldByName("Event"); field.IsValid() {
+				clone.FieldByName("Event").Set(reflect.ValueOf(event))
+			}
+
+			if err := h.Execute(ctx, hook, clone, taskRunner, event); err != nil {
+				err = applyHookErrorPolicy(hook.OnError, err)
+				return err
+			}
+			return nil
+		},
+	}, nil
+}
+
+func firstMatchingCondition(hook *v1.Hook, events []v1.Hook_Condition) v1.Hook_Condition {
 	for _, event := range events {
 		if slices.Contains(hook.Conditions, event) {
 			return event
@@ -95,83 +116,43 @@ func firstMatchingCondition(hook *Hook, events []v1.Hook_Condition) v1.Hook_Cond
 	return v1.Hook_CONDITION_UNKNOWN
 }
 
-func (e *HookExecutor) executeHook(op *v1.Operation, hook *Hook, event v1.Hook_Condition, vars HookVars) {
-	if err := e.oplog.Add(op); err != nil {
-		zap.S().Errorf("execute hook: add operation: %v", err)
-		return
+func applyHookErrorPolicy(onError v1.Hook_OnError, err error) error {
+	if err == nil || errors.As(err, &HookErrorFatal{}) || errors.As(err, &HookErrorRequestCancel{}) {
+		return err
 	}
 
-	output := &bytes.Buffer{}
-
-	if err := hook.Do(event, vars, io.MultiWriter(output)); err != nil {
-		output.Write([]byte(fmt.Sprintf("Error: %v", err)))
-		op.DisplayMessage = err.Error()
-		op.Status = v1.OperationStatus_STATUS_ERROR
-		zap.S().Errorf("execute hook: %v", err)
-	} else {
-		op.Status = v1.OperationStatus_STATUS_SUCCESS
-	}
-
-	outputRef, err := e.logStore.Write(output.Bytes())
-	if err != nil {
-		zap.S().Errorf("execute hook: write log: %v", err)
-		return
-	}
-	op.Op.(*v1.Operation_OperationRunHook).OperationRunHook.OutputLogref = outputRef
-
-	op.UnixTimeEndMs = curTimeMs()
-	if err := e.oplog.Update(op); err != nil {
-		zap.S().Errorf("execute hook: update operation: %v", err)
-		return
-	}
-}
-
-func curTimeMs() int64 {
-	return time.Now().UnixNano() / 1000000
-}
-
-type Hook v1.Hook
-
-func (h *Hook) Do(event v1.Hook_Condition, vars HookVars, output io.Writer) error {
-	if !slices.Contains(h.Conditions, event) {
-		return nil
-	}
-
-	vars.Event = event
-
-	switch action := h.Action.(type) {
-	case *v1.Hook_ActionCommand:
-		return h.doCommand(action, vars, output)
-	case *v1.Hook_ActionDiscord:
-		return h.doDiscord(action, vars, output)
-	case *v1.Hook_ActionGotify:
-		return h.doGotify(action, vars, output)
-	case *v1.Hook_ActionSlack:
-		return h.doSlack(action, vars, output)
-	case *v1.Hook_ActionShoutrrr:
-		return h.doShoutrrr(action, vars, output)
+	switch onError {
+	case v1.Hook_ON_ERROR_CANCEL:
+		return &HookErrorRequestCancel{Err: err}
+	case v1.Hook_ON_ERROR_FATAL:
+		return &HookErrorFatal{Err: err}
+	case v1.Hook_ON_ERROR_RETRY_1MINUTE:
+		return &HookErrorRetry{Err: err, Backoff: func(attempt int) time.Duration {
+			return 1 * time.Minute
+		}}
+	case v1.Hook_ON_ERROR_RETRY_10MINUTES:
+		return &HookErrorRetry{Err: err, Backoff: func(attempt int) time.Duration {
+			return 10 * time.Minute
+		}}
+	case v1.Hook_ON_ERROR_RETRY_EXPONENTIAL_BACKOFF:
+		return &HookErrorRetry{Err: err, Backoff: func(attempt int) time.Duration {
+			d := time.Duration(math.Pow(2, float64(attempt-1))) * 10 * time.Second
+			if d > 1*time.Hour {
+				return 1 * time.Hour
+			}
+			return d
+		}}
+	case v1.Hook_ON_ERROR_IGNORE:
+		return err
 	default:
-		return fmt.Errorf("unknown hook action: %v", action)
+		panic(fmt.Sprintf("unknown on_error policy %v", onError))
 	}
 }
 
-func (h *Hook) renderTemplate(text string, vars HookVars) (string, error) {
-	template, err := template.New("template").Parse(text)
-	if err != nil {
-		return "", fmt.Errorf("parse template: %w", err)
-	}
-
-	buf := &bytes.Buffer{}
-	if err := template.Execute(buf, vars); err != nil {
-		return "", fmt.Errorf("execute template: %w", err)
-	}
-
-	return buf.String(), nil
-}
-
-func (h *Hook) renderTemplateOrDefault(template string, defaultTmpl string, vars HookVars) (string, error) {
-	if strings.Trim(template, " ") == "" {
-		return h.renderTemplate(defaultTmpl, vars)
-	}
-	return h.renderTemplate(template, vars)
+// IsHaltingError returns true if the error is a fatal error or a request to cancel the operation
+func IsHaltingError(err error) bool {
+	var fatalErr *HookErrorFatal
+	var cancelErr *HookErrorRequestCancel
+	var retryErr *HookErrorRetry
+	return errors.As(err, &fatalErr) || errors.As(err, &cancelErr) || errors.As(err, &retryErr)
 }

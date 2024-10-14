@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -18,10 +19,11 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
-	"github.com/garethgeorge/backrest/internal/rotatinglog"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 )
@@ -51,17 +53,20 @@ func TestUpdateConfig(t *testing.T) {
 		{
 			name: "good modno",
 			req: &v1.Config{
-				Modno: 1234,
+				Modno:    1234,
+				Instance: "test",
 			},
 			wantErr: false,
 			res: &v1.Config{
-				Modno: 1235,
+				Modno:    1235,
+				Instance: "test",
 			},
 		},
 		{
 			name: "reject when validation fails",
 			req: &v1.Config{
-				Modno: 1235,
+				Modno:    1235,
+				Instance: "test",
 				Repos: []*v1.Repo{
 					{},
 				},
@@ -90,12 +95,14 @@ func TestBackup(t *testing.T) {
 
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
-			Modno: 1234,
+			Modno:    1234,
+			Instance: "test",
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
 					Uri:      t.TempDir(),
 					Password: "test",
+					Flags:    []string{"--no-cache"},
 				},
 			},
 			Plans: []*v1.Plan{
@@ -105,9 +112,11 @@ func TestBackup(t *testing.T) {
 					Paths: []string{
 						t.TempDir(),
 					},
-					Cron: "0 0 1 1 *",
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
 					Retention: &v1.RetentionPolicy{
-						KeepHourly: 1,
+						Policy: &v1.RetentionPolicy_PolicyKeepLastN{PolicyKeepLastN: 100},
 					},
 				},
 			},
@@ -134,15 +143,14 @@ func TestBackup(t *testing.T) {
 	}
 
 	// Wait for the index snapshot operation to appear in the oplog.
-	var snapshotId string
-	if err := retry(t, 10, 2*time.Second, func() error {
+	var snapshotOp *v1.Operation
+	if err := retry(t, 10, 1*time.Second, func() error {
 		operations := getOperations(t, sut.oplog)
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationIndexSnapshot)
 			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
 		}); index != -1 {
-			op := operations[index]
-			snapshotId = op.SnapshotId
+			snapshotOp = operations[index]
 			return nil
 		}
 		return errors.New("snapshot not indexed")
@@ -150,20 +158,20 @@ func TestBackup(t *testing.T) {
 		t.Fatalf("Couldn't find snapshot in oplog")
 	}
 
-	if snapshotId == "" {
+	if snapshotOp.SnapshotId == "" {
 		t.Fatalf("snapshotId must be set")
 	}
 
 	// Wait for a forget operation to appear in the oplog.
-	if err := retry(t, 10, 2*time.Second, func() error {
+	if err := retry(t, 10, 1*time.Second, func() error {
 		operations := getOperations(t, sut.oplog)
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationForget)
 			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
 		}); index != -1 {
 			op := operations[index]
-			if op.SnapshotId != snapshotId {
-				t.Fatalf("Snapshot ID mismatch on forget operation")
+			if op.FlowId != snapshotOp.FlowId {
+				t.Fatalf("Flow ID mismatch on forget operation")
 			}
 			return nil
 		}
@@ -178,12 +186,14 @@ func TestMultipleBackup(t *testing.T) {
 
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
-			Modno: 1234,
+			Modno:    1234,
+			Instance: "test",
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
 					Uri:      t.TempDir(),
 					Password: "test",
+					Flags:    []string{"--no-cache"},
 				},
 			},
 			Plans: []*v1.Plan{
@@ -193,7 +203,9 @@ func TestMultipleBackup(t *testing.T) {
 					Paths: []string{
 						t.TempDir(),
 					},
-					Cron: "0 0 1 1 *",
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
 					Retention: &v1.RetentionPolicy{
 						Policy: &v1.RetentionPolicy_PolicyKeepLastN{
 							PolicyKeepLastN: 1,
@@ -218,15 +230,17 @@ func TestMultipleBackup(t *testing.T) {
 	}
 
 	// Wait for a forget that removed 1 snapshot to appear in the oplog
-	if err := retry(t, 10, 2*time.Second, func() error {
+	if err := retry(t, 10, 1*time.Second, func() error {
 		operations := getOperations(t, sut.oplog)
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			forget, ok := op.GetOp().(*v1.Operation_OperationForget)
-			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok && len(forget.OperationForget.Forget) == 1
-		}); index != -1 {
-			return nil
+			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok && len(forget.OperationForget.Forget) > 0
+		}); index == -1 {
+			return errors.New("forget not indexed")
+		} else if len(operations[index].GetOp().(*v1.Operation_OperationForget).OperationForget.Forget) != 1 {
+			return fmt.Errorf("expected 1 item removed in the forget operation, got %d", len(operations[index].GetOp().(*v1.Operation_OperationForget).OperationForget.Forget))
 		}
-		return errors.New("forget not indexed")
+		return nil
 	}); err != nil {
 		t.Fatalf("Couldn't find forget with 1 item removed in the operation log")
 	}
@@ -246,12 +260,14 @@ func TestHookExecution(t *testing.T) {
 
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
-			Modno: 1234,
+			Modno:    1234,
+			Instance: "test",
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
 					Uri:      t.TempDir(),
 					Password: "test",
+					Flags:    []string{"--no-cache"},
 				},
 			},
 			Plans: []*v1.Plan{
@@ -261,7 +277,9 @@ func TestHookExecution(t *testing.T) {
 					Paths: []string{
 						t.TempDir(),
 					},
-					Cron: "0 0 1 1 *",
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
 					Hooks: []*v1.Hook{
 						{
 							Conditions: []v1.Hook_Condition{
@@ -301,7 +319,7 @@ func TestHookExecution(t *testing.T) {
 	}
 
 	// Wait for two hook operations to appear in the oplog
-	if err := retry(t, 10, 2*time.Second, func() error {
+	if err := retry(t, 10, 1*time.Second, func() error {
 		hookOps := slices.DeleteFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationRunHook)
 			return !ok
@@ -325,17 +343,238 @@ func TestHookExecution(t *testing.T) {
 	}
 }
 
-func TestCancelBackup(t *testing.T) {
+func TestHookOnErrorHandling(t *testing.T) {
 	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping test on windows")
+	}
 
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
-			Modno: 1234,
+			Modno:    1234,
+			Instance: "test",
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
 					Uri:      t.TempDir(),
 					Password: "test",
+					Flags:    []string{"--no-cache"},
+				},
+			},
+			Plans: []*v1.Plan{
+				{
+					Id:   "test-cancel",
+					Repo: "local",
+					Paths: []string{
+						t.TempDir(),
+					},
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
+					Hooks: []*v1.Hook{
+						{
+							Conditions: []v1.Hook_Condition{
+								v1.Hook_CONDITION_SNAPSHOT_START,
+							},
+							Action: &v1.Hook_ActionCommand{
+								ActionCommand: &v1.Hook_Command{
+									Command: "exit 123",
+								},
+							},
+							OnError: v1.Hook_ON_ERROR_CANCEL,
+						},
+					},
+				},
+				{
+					Id:   "test-error",
+					Repo: "local",
+					Paths: []string{
+						t.TempDir(),
+					},
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
+					Hooks: []*v1.Hook{
+						{
+							Conditions: []v1.Hook_Condition{
+								v1.Hook_CONDITION_SNAPSHOT_START,
+							},
+							Action: &v1.Hook_ActionCommand{
+								ActionCommand: &v1.Hook_Command{
+									Command: "exit 123",
+								},
+							},
+							OnError: v1.Hook_ON_ERROR_FATAL,
+						},
+					},
+				},
+				{
+					Id:   "test-ignore",
+					Repo: "local",
+					Paths: []string{
+						t.TempDir(),
+					},
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
+					Hooks: []*v1.Hook{
+						{
+							Conditions: []v1.Hook_Condition{
+								v1.Hook_CONDITION_SNAPSHOT_START,
+							},
+							Action: &v1.Hook_ActionCommand{
+								ActionCommand: &v1.Hook_Command{
+									Command: "exit 123",
+								},
+							},
+							OnError: v1.Hook_ON_ERROR_IGNORE,
+						},
+					},
+				},
+				{
+					Id:   "test-retry",
+					Repo: "local",
+					Paths: []string{
+						t.TempDir(),
+					},
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
+					Hooks: []*v1.Hook{
+						{
+							Conditions: []v1.Hook_Condition{
+								v1.Hook_CONDITION_SNAPSHOT_START,
+							},
+							Action: &v1.Hook_ActionCommand{
+								ActionCommand: &v1.Hook_Command{
+									Command: "exit 123",
+								},
+							},
+							OnError: v1.Hook_ON_ERROR_RETRY_10MINUTES,
+						},
+					},
+				},
+			},
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		sut.orch.Run(ctx)
+	}()
+
+	tests := []struct {
+		name             string
+		plan             string
+		wantHookStatus   v1.OperationStatus
+		wantBackupStatus v1.OperationStatus
+		wantBackupError  bool
+		noWaitForBackup  bool
+	}{
+		{
+			name:             "cancel",
+			plan:             "test-cancel",
+			wantHookStatus:   v1.OperationStatus_STATUS_ERROR,
+			wantBackupStatus: v1.OperationStatus_STATUS_USER_CANCELLED,
+			wantBackupError:  true,
+		},
+		{
+			name:             "error",
+			plan:             "test-error",
+			wantHookStatus:   v1.OperationStatus_STATUS_ERROR,
+			wantBackupStatus: v1.OperationStatus_STATUS_ERROR,
+			wantBackupError:  true,
+		},
+		{
+			name:             "ignore",
+			plan:             "test-ignore",
+			wantHookStatus:   v1.OperationStatus_STATUS_ERROR,
+			wantBackupStatus: v1.OperationStatus_STATUS_SUCCESS,
+			wantBackupError:  false,
+		},
+		{
+			name:             "retry",
+			plan:             "test-retry",
+			wantHookStatus:   v1.OperationStatus_STATUS_ERROR,
+			wantBackupStatus: v1.OperationStatus_STATUS_PENDING,
+			wantBackupError:  false,
+			noWaitForBackup:  true,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			sut.opstore.ResetForTest(t)
+
+			var errgroup errgroup.Group
+
+			errgroup.Go(func() error {
+				_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: tc.plan}))
+				if (err != nil) != tc.wantBackupError {
+					return fmt.Errorf("Backup() error = %v, wantErr %v", err, tc.wantBackupError)
+				}
+				return nil
+			})
+
+			if !tc.noWaitForBackup {
+				if err := errgroup.Wait(); err != nil {
+					t.Fatalf(err.Error())
+				}
+			}
+
+			// Wait for hook operation to be attempted in the oplog
+			if err := retry(t, 10, 1*time.Second, func() error {
+				hookOps := slices.DeleteFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+					_, ok := op.GetOp().(*v1.Operation_OperationRunHook)
+					return !ok
+				})
+				if len(hookOps) != 1 {
+					return fmt.Errorf("expected 1 hook operations, got %d", len(hookOps))
+				}
+				if hookOps[0].Status != tc.wantHookStatus {
+					return fmt.Errorf("expected hook operation error status, got %v", hookOps[0].Status)
+				}
+				return nil
+			}); err != nil {
+				t.Fatalf("Couldn't find hook operation in oplog: %v", err)
+			}
+
+			backupOps := slices.DeleteFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+				_, ok := op.GetOp().(*v1.Operation_OperationBackup)
+				return !ok
+			})
+			if len(backupOps) != 1 {
+				t.Errorf("expected 1 backup operation, got %d", len(backupOps))
+			}
+			if backupOps[0].Status != tc.wantBackupStatus {
+				t.Errorf("expected backup operation cancelled status, got %v", backupOps[0].Status)
+			}
+		})
+	}
+}
+
+func TestCancelBackup(t *testing.T) {
+	t.Parallel()
+
+	// a hook is used to make the backup operation wait long enough to be cancelled
+	hookCmd := "sleep 2"
+	if runtime.GOOS == "windows" {
+		hookCmd = "Start-Sleep -Seconds 2"
+	}
+
+	sut := createSystemUnderTest(t, &config.MemoryStore{
+		Config: &v1.Config{
+			Modno:    1234,
+			Instance: "test",
+			Repos: []*v1.Repo{
+				{
+					Id:       "local",
+					Uri:      t.TempDir(),
+					Password: "test",
+					Flags:    []string{"--no-cache"},
 				},
 			},
 			Plans: []*v1.Plan{
@@ -345,9 +584,25 @@ func TestCancelBackup(t *testing.T) {
 					Paths: []string{
 						t.TempDir(),
 					},
-					Cron: "0 0 1 1 *",
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
 					Retention: &v1.RetentionPolicy{
-						KeepHourly: 1,
+						Policy: &v1.RetentionPolicy_PolicyKeepLastN{
+							PolicyKeepLastN: 1,
+						},
+					},
+					Hooks: []*v1.Hook{
+						{
+							Conditions: []v1.Hook_Condition{
+								v1.Hook_CONDITION_SNAPSHOT_START,
+							},
+							Action: &v1.Hook_ActionCommand{
+								ActionCommand: &v1.Hook_Command{
+									Command: hookCmd,
+								},
+							},
+						},
 					},
 				},
 			},
@@ -364,16 +619,13 @@ func TestCancelBackup(t *testing.T) {
 	var errgroup errgroup.Group
 	errgroup.Go(func() error {
 		backupReq := connect.NewRequest(&types.StringValue{Value: "test"})
-		_, err := sut.handler.Backup(context.Background(), backupReq)
-		if err != nil {
-			return fmt.Errorf("Backup() error = %v", err)
-		}
+		sut.handler.Backup(context.Background(), backupReq)
 		return nil
 	})
 
 	// Find the backup operation ID in the oplog
 	var backupOpId int64
-	if err := retry(t, 100, 50*time.Millisecond, func() error {
+	if err := retry(t, 100, 10*time.Millisecond, func() error {
 		operations := getOperations(t, sut.oplog)
 		for _, op := range operations {
 			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
@@ -393,16 +645,17 @@ func TestCancelBackup(t *testing.T) {
 		}
 		return nil
 	})
+
 	if err := errgroup.Wait(); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	// Assert that the backup operation was cancelled
 	if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
 		_, ok := op.GetOp().(*v1.Operation_OperationBackup)
-		return op.Status == v1.OperationStatus_STATUS_USER_CANCELLED && ok
+		return op.Status == v1.OperationStatus_STATUS_ERROR && ok
 	}) == -1 {
-		t.Fatalf("Expected a cancelled backup operation in the log")
+		t.Fatalf("Expected a failed backup operation in the log")
 	}
 }
 
@@ -416,12 +669,14 @@ func TestRestore(t *testing.T) {
 
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
-			Modno: 1234,
+			Modno:    1234,
+			Instance: "test",
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
 					Uri:      t.TempDir(),
 					Password: "test",
+					Flags:    []string{"--no-cache"},
 				},
 			},
 			Plans: []*v1.Plan{
@@ -431,9 +686,11 @@ func TestRestore(t *testing.T) {
 					Paths: []string{
 						backupDataDir,
 					},
-					Cron: "0 0 1 1 *",
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_Disabled{Disabled: true},
+					},
 					Retention: &v1.RetentionPolicy{
-						KeepHourly: 1,
+						Policy: &v1.RetentionPolicy_PolicyKeepAll{PolicyKeepAll: true},
 					},
 				},
 			},
@@ -460,15 +717,14 @@ func TestRestore(t *testing.T) {
 	}
 
 	// Wait for the index snapshot operation to appear in the oplog.
-	var snapshotId string
+	var snapshotOp *v1.Operation
 	if err := retry(t, 10, 2*time.Second, func() error {
 		operations := getOperations(t, sut.oplog)
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationIndexSnapshot)
 			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
 		}); index != -1 {
-			op := operations[index]
-			snapshotId = op.SnapshotId
+			snapshotOp = operations[index]
 			return nil
 		}
 		return errors.New("snapshot not indexed")
@@ -476,14 +732,14 @@ func TestRestore(t *testing.T) {
 		t.Fatalf("Couldn't find snapshot in oplog")
 	}
 
-	if snapshotId == "" {
+	if snapshotOp.SnapshotId == "" {
 		t.Fatalf("snapshotId must be set")
 	}
 
-	restoreTarget := t.TempDir()
+	restoreTarget := t.TempDir() + "/restore"
 
 	_, err = sut.handler.Restore(context.Background(), connect.NewRequest(&v1.RestoreSnapshotRequest{
-		SnapshotId: snapshotId,
+		SnapshotId: snapshotOp.SnapshotId,
 		PlanId:     "test",
 		RepoId:     "local",
 		Target:     restoreTarget,
@@ -500,8 +756,8 @@ func TestRestore(t *testing.T) {
 			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
 		}); index != -1 {
 			op := operations[index]
-			if op.SnapshotId != snapshotId {
-				t.Fatalf("Snapshot ID mismatch on restore operation")
+			if op.SnapshotId != snapshotOp.SnapshotId {
+				t.Errorf("Snapshot ID mismatch on restore operation")
 			}
 			return nil
 		}
@@ -527,11 +783,73 @@ func TestRestore(t *testing.T) {
 	}
 }
 
+func TestRunCommand(t *testing.T) {
+	sut := createSystemUnderTest(t, &config.MemoryStore{
+		Config: &v1.Config{
+			Modno:    1234,
+			Instance: "test",
+			Repos: []*v1.Repo{
+				{
+					Id:       "local",
+					Uri:      t.TempDir(),
+					Password: "test",
+					Flags:    []string{"--no-cache"},
+				},
+			},
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	res, err := sut.handler.RunCommand(ctx, connect.NewRequest(&v1.RunCommandRequest{
+		RepoId:  "local",
+		Command: "help",
+	}))
+	if err != nil {
+		t.Fatalf("RunCommand() error = %v", err)
+	}
+	op, err := sut.oplog.Get(res.Msg.Value)
+	if err != nil {
+		t.Fatalf("Failed to find runcommand operation: %v", err)
+	}
+
+	if op.Status != v1.OperationStatus_STATUS_SUCCESS {
+		t.Fatalf("Expected runcommand operation to succeed")
+	}
+
+	cmdOp := op.GetOperationRunCommand()
+	if cmdOp == nil {
+		t.Fatalf("Expected runcommand operation to be of type OperationRunCommand")
+	}
+	if cmdOp.Command != "help" {
+		t.Fatalf("Expected runcommand operation to have correct command")
+	}
+	if cmdOp.OutputLogref == "" {
+		t.Fatalf("Expected runcommand operation to have output logref")
+	}
+
+	log, err := sut.logStore.Open(cmdOp.OutputLogref)
+	if err != nil {
+		t.Fatalf("Failed to open log: %v", err)
+	}
+	defer log.Close()
+
+	data, err := io.ReadAll(log)
+	if err != nil {
+		t.Fatalf("Failed to read log: %v", err)
+	}
+	if !strings.Contains(string(data), "Usage") {
+		t.Fatalf("Expected log output to contain help text")
+	}
+}
+
 type systemUnderTest struct {
 	handler  *BackrestHandler
 	oplog    *oplog.OpLog
+	opstore  *bboltstore.BboltStore
 	orch     *orchestrator.Orchestrator
-	logStore *rotatinglog.RotatingLog
+	logStore *logstore.LogStore
 	config   *v1.Config
 }
 
@@ -547,14 +865,20 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 	if err != nil {
 		t.Fatalf("Failed to find or install restic binary: %v", err)
 	}
-	oplog, err := oplog.NewOpLog(dir + "/oplog.boltdb")
+	opstore, err := bboltstore.NewBboltStore(filepath.Join(dir, "oplog.bbolt"))
+	if err != nil {
+		t.Fatalf("Failed to create oplog store: %v", err)
+	}
+	t.Cleanup(func() { opstore.Close() })
+	oplog, err := oplog.NewOpLog(opstore)
 	if err != nil {
 		t.Fatalf("Failed to create oplog: %v", err)
 	}
-	t.Cleanup(func() {
-		oplog.Close()
-	})
-	logStore := rotatinglog.NewRotatingLog(dir+"/log", 10)
+	logStore, err := logstore.NewLogStore(filepath.Join(dir, "tasklogs"))
+	if err != nil {
+		t.Fatalf("Failed to create log store: %v", err)
+	}
+	t.Cleanup(func() { logStore.Close() })
 	orch, err := orchestrator.NewOrchestrator(
 		resticBin, cfg, oplog, logStore,
 	)
@@ -562,11 +886,23 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 		t.Fatalf("Failed to create orchestrator: %v", err)
 	}
 
+	for _, repo := range cfg.Repos {
+		rorch, err := orch.GetRepoOrchestrator(repo.Id)
+		if err != nil {
+			t.Fatalf("Failed to get repo %s: %v", repo.Id, err)
+		}
+
+		if err := rorch.Init(context.Background()); err != nil {
+			t.Fatalf("Failed to init repo %s: %v", repo.Id, err)
+		}
+	}
+
 	h := NewBackrestHandler(config, orch, oplog, logStore)
 
 	return systemUnderTest{
 		handler:  h,
 		oplog:    oplog,
+		opstore:  opstore,
 		orch:     orch,
 		logStore: logStore,
 		config:   cfg,
@@ -586,10 +922,10 @@ func retry(t *testing.T, times int, backoff time.Duration, f func() error) error
 	return err
 }
 
-func getOperations(t *testing.T, oplog *oplog.OpLog) []*v1.Operation {
-	t.Logf("Reading oplog")
+func getOperations(t *testing.T, log *oplog.OpLog) []*v1.Operation {
+	t.Logf("Reading oplog at time %v", time.Now())
 	operations := []*v1.Operation{}
-	if err := oplog.ForAll(func(op *v1.Operation) error {
+	if err := log.Query(oplog.SelectAll, func(op *v1.Operation) error {
 		operations = append(operations, op)
 		t.Logf("operation %t status %s", op.GetOp(), op.Status)
 		return nil

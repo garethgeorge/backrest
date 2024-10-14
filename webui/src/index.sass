@@ -14,9 +14,16 @@ body
 pre
   // force text to wrap on overflow even in 'pre' elements.
   white-space: pre-wrap
+  overflow-x: auto
 
 .visible-on-hover .hidden-child
   visibility: hidden
 
 .visible-on-hover:hover .hidden-child
   visibility: visible
+
+.float-center-right
+  position: absolute
+  right: 0px
+  top: "50%"
+  transform: "translateY(-50%)"

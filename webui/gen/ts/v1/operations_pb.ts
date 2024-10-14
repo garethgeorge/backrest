@@ -5,8 +5,9 @@
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
+import { Empty, Int64List } from "../types/value_pb.js";
 import { BackupProgressEntry, BackupProgressError, RepoStats, ResticSnapshot, RestoreProgressEntry } from "./restic_pb.js";
-import { RetentionPolicy } from "./config_pb.js";
+import { Hook_Condition, RetentionPolicy } from "./config_pb.js";
 
 /**
  * OperationEventType indicates whether the operation was created or updated
@@ -163,18 +164,28 @@ export class Operation extends Message<Operation> {
   id = protoInt64.zero;
 
   /**
-   * required, repo id if associated with a repo
+   * flow id groups operations together, e.g. by an execution of a plan.
    *
+   * optional, flow id if associated with a flow
+   *
+   * @generated from field: int64 flow_id = 10;
+   */
+  flowId = protoInt64.zero;
+
+  /**
    * @generated from field: string repo_id = 2;
    */
   repoId = "";
 
   /**
-   * required, plan id if associated with a plan
-   *
    * @generated from field: string plan_id = 3;
    */
   planId = "";
+
+  /**
+   * @generated from field: string instance_id = 11;
+   */
+  instanceId = "";
 
   /**
    * optional snapshot id if associated with a snapshot.
@@ -196,7 +207,7 @@ export class Operation extends Message<Operation> {
   unixTimeStartMs = protoInt64.zero;
 
   /**
-   * optional, unix time in milliseconds of the operation's completion
+   * ptional, unix time in milliseconds of the operation's completion
    *
    * @generated from field: int64 unix_time_end_ms = 6;
    */
@@ -261,6 +272,18 @@ export class Operation extends Message<Operation> {
      */
     value: OperationRunHook;
     case: "operationRunHook";
+  } | {
+    /**
+     * @generated from field: v1.OperationCheck operation_check = 107;
+     */
+    value: OperationCheck;
+    case: "operationCheck";
+  } | {
+    /**
+     * @generated from field: v1.OperationRunCommand operation_run_command = 108;
+     */
+    value: OperationRunCommand;
+    case: "operationRunCommand";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Operation>) {
@@ -272,8 +295,10 @@ export class Operation extends Message<Operation> {
   static readonly typeName = "v1.Operation";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 10, name: "flow_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 2, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "instance_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 8, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "status", kind: "enum", T: proto3.getEnumType(OperationStatus) },
     { no: 5, name: "unix_time_start_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
@@ -287,6 +312,8 @@ export class Operation extends Message<Operation> {
     { no: 104, name: "operation_restore", kind: "message", T: OperationRestore, oneof: "op" },
     { no: 105, name: "operation_stats", kind: "message", T: OperationStats, oneof: "op" },
     { no: 106, name: "operation_run_hook", kind: "message", T: OperationRunHook, oneof: "op" },
+    { no: 107, name: "operation_check", kind: "message", T: OperationCheck, oneof: "op" },
+    { no: 108, name: "operation_run_command", kind: "message", T: OperationRunCommand, oneof: "op" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Operation {
@@ -313,14 +340,33 @@ export class Operation extends Message<Operation> {
  */
 export class OperationEvent extends Message<OperationEvent> {
   /**
-   * @generated from field: v1.OperationEventType type = 1;
+   * @generated from oneof v1.OperationEvent.event
    */
-  type = OperationEventType.EVENT_UNKNOWN;
-
-  /**
-   * @generated from field: v1.Operation operation = 2;
-   */
-  operation?: Operation;
+  event: {
+    /**
+     * @generated from field: types.Empty keep_alive = 1;
+     */
+    value: Empty;
+    case: "keepAlive";
+  } | {
+    /**
+     * @generated from field: v1.OperationList created_operations = 2;
+     */
+    value: OperationList;
+    case: "createdOperations";
+  } | {
+    /**
+     * @generated from field: v1.OperationList updated_operations = 3;
+     */
+    value: OperationList;
+    case: "updatedOperations";
+  } | {
+    /**
+     * @generated from field: types.Int64List deleted_operations = 4;
+     */
+    value: Int64List;
+    case: "deletedOperations";
+  } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<OperationEvent>) {
     super();
@@ -330,8 +376,10 @@ export class OperationEvent extends Message<OperationEvent> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.OperationEvent";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "type", kind: "enum", T: proto3.getEnumType(OperationEventType) },
-    { no: 2, name: "operation", kind: "message", T: Operation },
+    { no: 1, name: "keep_alive", kind: "message", T: Empty, oneof: "event" },
+    { no: 2, name: "created_operations", kind: "message", T: OperationList, oneof: "event" },
+    { no: 3, name: "updated_operations", kind: "message", T: OperationList, oneof: "event" },
+    { no: 4, name: "deleted_operations", kind: "message", T: Int64List, oneof: "event" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationEvent {
@@ -414,13 +462,6 @@ export class OperationIndexSnapshot extends Message<OperationIndexSnapshot> {
    */
   forgot = false;
 
-  /**
-   * ID of a forget operation that removed this snapshot.
-   *
-   * @generated from field: int64 forgot_by_op = 4;
-   */
-  forgotByOp = protoInt64.zero;
-
   constructor(data?: PartialMessage<OperationIndexSnapshot>) {
     super();
     proto3.util.initPartial(data, this);
@@ -431,7 +472,6 @@ export class OperationIndexSnapshot extends Message<OperationIndexSnapshot> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 2, name: "snapshot", kind: "message", T: ResticSnapshot },
     { no: 3, name: "forgot", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 4, name: "forgot_by_op", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationIndexSnapshot {
@@ -505,9 +545,17 @@ export class OperationPrune extends Message<OperationPrune> {
   /**
    * output of the prune.
    *
-   * @generated from field: string output = 1;
+   * @generated from field: string output = 1 [deprecated = true];
+   * @deprecated
    */
   output = "";
+
+  /**
+   * logref of the prune output.
+   *
+   * @generated from field: string output_logref = 2;
+   */
+  outputLogref = "";
 
   constructor(data?: PartialMessage<OperationPrune>) {
     super();
@@ -518,6 +566,7 @@ export class OperationPrune extends Message<OperationPrune> {
   static readonly typeName = "v1.OperationPrune";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "output", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationPrune {
@@ -538,6 +587,109 @@ export class OperationPrune extends Message<OperationPrune> {
 }
 
 /**
+ * OperationCheck tracks a check operation.
+ *
+ * @generated from message v1.OperationCheck
+ */
+export class OperationCheck extends Message<OperationCheck> {
+  /**
+   * output of the check operation.
+   *
+   * @generated from field: string output = 1 [deprecated = true];
+   * @deprecated
+   */
+  output = "";
+
+  /**
+   * logref of the check output.
+   *
+   * @generated from field: string output_logref = 2;
+   */
+  outputLogref = "";
+
+  constructor(data?: PartialMessage<OperationCheck>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.OperationCheck";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "output", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationCheck {
+    return new OperationCheck().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationCheck {
+    return new OperationCheck().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationCheck {
+    return new OperationCheck().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: OperationCheck | PlainMessage<OperationCheck> | undefined, b: OperationCheck | PlainMessage<OperationCheck> | undefined): boolean {
+    return proto3.util.equals(OperationCheck, a, b);
+  }
+}
+
+/**
+ * OperationRunCommand tracks a long running command. Commands are grouped into a flow ID for each session.
+ *
+ * @generated from message v1.OperationRunCommand
+ */
+export class OperationRunCommand extends Message<OperationRunCommand> {
+  /**
+   * @generated from field: string command = 1;
+   */
+  command = "";
+
+  /**
+   * @generated from field: string output_logref = 2;
+   */
+  outputLogref = "";
+
+  /**
+   * @generated from field: int64 output_size_bytes = 3;
+   */
+  outputSizeBytes = protoInt64.zero;
+
+  constructor(data?: PartialMessage<OperationRunCommand>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.OperationRunCommand";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "command", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "output_size_bytes", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationRunCommand {
+    return new OperationRunCommand().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OperationRunCommand {
+    return new OperationRunCommand().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OperationRunCommand {
+    return new OperationRunCommand().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: OperationRunCommand | PlainMessage<OperationRunCommand> | undefined, b: OperationRunCommand | PlainMessage<OperationRunCommand> | undefined): boolean {
+    return proto3.util.equals(OperationRunCommand, a, b);
+  }
+}
+
+/**
+ * OperationRestore tracks a restore operation.
+ *
  * @generated from message v1.OperationRestore
  */
 export class OperationRestore extends Message<OperationRestore> {
@@ -558,9 +710,9 @@ export class OperationRestore extends Message<OperationRestore> {
   /**
    * status of the restore.
    *
-   * @generated from field: v1.RestoreProgressEntry status = 3;
+   * @generated from field: v1.RestoreProgressEntry last_status = 3;
    */
-  status?: RestoreProgressEntry;
+  lastStatus?: RestoreProgressEntry;
 
   constructor(data?: PartialMessage<OperationRestore>) {
     super();
@@ -572,7 +724,7 @@ export class OperationRestore extends Message<OperationRestore> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "target", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "status", kind: "message", T: RestoreProgressEntry },
+    { no: 3, name: "last_status", kind: "message", T: RestoreProgressEntry },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationRestore {
@@ -593,6 +745,8 @@ export class OperationRestore extends Message<OperationRestore> {
 }
 
 /**
+ * OperationStats tracks a stats operation.
+ *
  * @generated from message v1.OperationStats
  */
 export class OperationStats extends Message<OperationStats> {
@@ -630,9 +784,18 @@ export class OperationStats extends Message<OperationStats> {
 }
 
 /**
+ * OperationRunHook tracks a hook that was run.
+ *
  * @generated from message v1.OperationRunHook
  */
 export class OperationRunHook extends Message<OperationRunHook> {
+  /**
+   * ID of the operation that ran the hook.
+   *
+   * @generated from field: int64 parent_op = 4;
+   */
+  parentOp = protoInt64.zero;
+
   /**
    * description of the hook that was run. typically repo/hook_idx or plan/hook_idx.
    *
@@ -641,11 +804,18 @@ export class OperationRunHook extends Message<OperationRunHook> {
   name = "";
 
   /**
-   * logref of the hook's output.
+   * logref of the hook's output. DEPRECATED.
    *
    * @generated from field: string output_logref = 2;
    */
   outputLogref = "";
+
+  /**
+   * triggering condition of the hook.
+   *
+   * @generated from field: v1.Hook.Condition condition = 3;
+   */
+  condition = Hook_Condition.UNKNOWN;
 
   constructor(data?: PartialMessage<OperationRunHook>) {
     super();
@@ -655,8 +825,10 @@ export class OperationRunHook extends Message<OperationRunHook> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.OperationRunHook";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 4, name: "parent_op", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "output_logref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "condition", kind: "enum", T: proto3.getEnumType(Hook_Condition) },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OperationRunHook {

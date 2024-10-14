@@ -11,14 +11,10 @@ const outputBufferLimit = 1000
 type CmdError struct {
 	Command string
 	Err     error
-	Output  string
 }
 
 func (e *CmdError) Error() string {
 	m := fmt.Sprintf("command %q failed: %s", e.Command, e.Err.Error())
-	if e.Output != "" {
-		m += "\nProcess STDOUT: \n" + e.Output
-	}
 	return m
 }
 
@@ -32,30 +28,49 @@ func (e *CmdError) Is(target error) bool {
 }
 
 // newCmdError creates a new error indicating that running a command failed.
-func newCmdError(ctx context.Context, cmd *exec.Cmd, output string, err error) *CmdError {
-	cerr := &CmdError{
-		Command: cmd.String(),
-		Err:     err,
-		Output:  output,
+func newCmdError(ctx context.Context, cmd *exec.Cmd, err error) *CmdError {
+	shortCmd := cmd.String()
+	if len(shortCmd) > 100 {
+		shortCmd = shortCmd[:100] + "..."
 	}
 
-	if len(output) >= outputBufferLimit {
-		cerr.Output = output[:outputBufferLimit] + "\n...[truncated]"
-	}
-	if logger := LoggerFromContext(ctx); logger != nil {
-		logger.Write([]byte(cerr.Error()))
+	cerr := &CmdError{
+		Command: shortCmd,
+		Err:     err,
 	}
 	return cerr
 }
 
-func newCmdErrorPreformatted(ctx context.Context, cmd *exec.Cmd, output string, err error) *CmdError {
-	cerr := &CmdError{
-		Command: cmd.String(),
-		Err:     err,
-		Output:  output,
+type ErrorWithOutput struct {
+	Err    error
+	Output string
+}
+
+func (e *ErrorWithOutput) Error() string {
+	return fmt.Sprintf("%v\nOutput:\n%s", e.Err, e.Output)
+}
+
+func (e *ErrorWithOutput) Unwrap() error {
+	return e.Err
+}
+
+func (e *ErrorWithOutput) Is(target error) bool {
+	_, ok := target.(*ErrorWithOutput)
+	return ok
+}
+
+// newErrorWithOutput creates a new error with the given output.
+func newErrorWithOutput(err error, output string) error {
+	if output == "" {
+		return err
 	}
-	if logger := LoggerFromContext(ctx); logger != nil {
-		logger.Write([]byte(cerr.Error()))
+
+	if len(output) > outputBufferLimit {
+		output = output[:outputBufferLimit] + fmt.Sprintf("\n... %d bytes truncated ...\n", len(output)-outputBufferLimit)
 	}
-	return cerr
+
+	return &ErrorWithOutput{
+		Err:    err,
+		Output: output,
+	}
 }

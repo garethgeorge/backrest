@@ -7,28 +7,168 @@ import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialM
 import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
 
 /**
- * @generated from message v1.ClearHistoryRequest
+ * OpSelector is a message that can be used to select operations e.g. by query.
+ *
+ * @generated from message v1.OpSelector
  */
-export class ClearHistoryRequest extends Message<ClearHistoryRequest> {
+export class OpSelector extends Message<OpSelector> {
+  /**
+   * @generated from field: repeated int64 ids = 1;
+   */
+  ids: bigint[] = [];
+
+  /**
+   * @generated from field: string repo_id = 2;
+   */
+  repoId = "";
+
+  /**
+   * @generated from field: string plan_id = 3;
+   */
+  planId = "";
+
+  /**
+   * @generated from field: string snapshot_id = 4;
+   */
+  snapshotId = "";
+
+  /**
+   * @generated from field: int64 flow_id = 5;
+   */
+  flowId = protoInt64.zero;
+
+  constructor(data?: PartialMessage<OpSelector>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.OpSelector";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ids", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
+    { no: 2, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "flow_id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OpSelector {
+    return new OpSelector().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OpSelector {
+    return new OpSelector().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OpSelector {
+    return new OpSelector().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: OpSelector | PlainMessage<OpSelector> | undefined, b: OpSelector | PlainMessage<OpSelector> | undefined): boolean {
+    return proto3.util.equals(OpSelector, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.DoRepoTaskRequest
+ */
+export class DoRepoTaskRequest extends Message<DoRepoTaskRequest> {
   /**
    * @generated from field: string repo_id = 1;
    */
   repoId = "";
 
   /**
-   * @generated from field: string plan_id = 2;
+   * @generated from field: v1.DoRepoTaskRequest.Task task = 2;
    */
-  planId = "";
+  task = DoRepoTaskRequest_Task.NONE;
+
+  constructor(data?: PartialMessage<DoRepoTaskRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.DoRepoTaskRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "task", kind: "enum", T: proto3.getEnumType(DoRepoTaskRequest_Task) },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DoRepoTaskRequest {
+    return new DoRepoTaskRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DoRepoTaskRequest {
+    return new DoRepoTaskRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DoRepoTaskRequest {
+    return new DoRepoTaskRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DoRepoTaskRequest | PlainMessage<DoRepoTaskRequest> | undefined, b: DoRepoTaskRequest | PlainMessage<DoRepoTaskRequest> | undefined): boolean {
+    return proto3.util.equals(DoRepoTaskRequest, a, b);
+  }
+}
+
+/**
+ * @generated from enum v1.DoRepoTaskRequest.Task
+ */
+export enum DoRepoTaskRequest_Task {
+  /**
+   * @generated from enum value: TASK_NONE = 0;
+   */
+  NONE = 0,
 
   /**
-   * @generated from field: bool only_failed = 3;
+   * @generated from enum value: TASK_INDEX_SNAPSHOTS = 1;
+   */
+  INDEX_SNAPSHOTS = 1,
+
+  /**
+   * @generated from enum value: TASK_PRUNE = 2;
+   */
+  PRUNE = 2,
+
+  /**
+   * @generated from enum value: TASK_CHECK = 3;
+   */
+  CHECK = 3,
+
+  /**
+   * @generated from enum value: TASK_STATS = 4;
+   */
+  STATS = 4,
+
+  /**
+   * @generated from enum value: TASK_UNLOCK = 5;
+   */
+  UNLOCK = 5,
+}
+// Retrieve enum metadata with: proto3.getEnumType(DoRepoTaskRequest_Task)
+proto3.util.setEnumType(DoRepoTaskRequest_Task, "v1.DoRepoTaskRequest.Task", [
+  { no: 0, name: "TASK_NONE" },
+  { no: 1, name: "TASK_INDEX_SNAPSHOTS" },
+  { no: 2, name: "TASK_PRUNE" },
+  { no: 3, name: "TASK_CHECK" },
+  { no: 4, name: "TASK_STATS" },
+  { no: 5, name: "TASK_UNLOCK" },
+]);
+
+/**
+ * @generated from message v1.ClearHistoryRequest
+ */
+export class ClearHistoryRequest extends Message<ClearHistoryRequest> {
+  /**
+   * @generated from field: v1.OpSelector selector = 1;
+   */
+  selector?: OpSelector;
+
+  /**
+   * @generated from field: bool only_failed = 2;
    */
   onlyFailed = false;
-
-  /**
-   * @generated from field: repeated int64 ops = 4;
-   */
-  ops: bigint[] = [];
 
   constructor(data?: PartialMessage<ClearHistoryRequest>) {
     super();
@@ -38,10 +178,8 @@ export class ClearHistoryRequest extends Message<ClearHistoryRequest> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.ClearHistoryRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "only_failed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 4, name: "ops", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
+    { no: 1, name: "selector", kind: "message", T: OpSelector },
+    { no: 2, name: "only_failed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ClearHistoryRequest {
@@ -158,29 +296,14 @@ export class ListSnapshotsRequest extends Message<ListSnapshotsRequest> {
  */
 export class GetOperationsRequest extends Message<GetOperationsRequest> {
   /**
-   * @generated from field: string repo_id = 1;
+   * @generated from field: v1.OpSelector selector = 1;
    */
-  repoId = "";
-
-  /**
-   * @generated from field: string plan_id = 2;
-   */
-  planId = "";
-
-  /**
-   * @generated from field: string snapshot_id = 4;
-   */
-  snapshotId = "";
-
-  /**
-   * @generated from field: repeated int64 ids = 5;
-   */
-  ids: bigint[] = [];
+  selector?: OpSelector;
 
   /**
    * limit to the last n operations
    *
-   * @generated from field: int64 last_n = 3;
+   * @generated from field: int64 last_n = 2;
    */
   lastN = protoInt64.zero;
 
@@ -192,11 +315,8 @@ export class GetOperationsRequest extends Message<GetOperationsRequest> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "v1.GetOperationsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "plan_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "snapshot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 5, name: "ids", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
-    { no: 3, name: "last_n", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 1, name: "selector", kind: "message", T: OpSelector },
+    { no: 2, name: "last_n", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetOperationsRequest {
@@ -494,6 +614,49 @@ export class LsEntry extends Message<LsEntry> {
 
   static equals(a: LsEntry | PlainMessage<LsEntry> | undefined, b: LsEntry | PlainMessage<LsEntry> | undefined): boolean {
     return proto3.util.equals(LsEntry, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.RunCommandRequest
+ */
+export class RunCommandRequest extends Message<RunCommandRequest> {
+  /**
+   * @generated from field: string repo_id = 1;
+   */
+  repoId = "";
+
+  /**
+   * @generated from field: string command = 2;
+   */
+  command = "";
+
+  constructor(data?: PartialMessage<RunCommandRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.RunCommandRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "repo_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "command", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RunCommandRequest {
+    return new RunCommandRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RunCommandRequest {
+    return new RunCommandRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RunCommandRequest {
+    return new RunCommandRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RunCommandRequest | PlainMessage<RunCommandRequest> | undefined, b: RunCommandRequest | PlainMessage<RunCommandRequest> | undefined): boolean {
+    return proto3.util.equals(RunCommandRequest, a, b);
   }
 }
 

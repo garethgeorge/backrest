@@ -26,14 +26,11 @@ service Backrest {
 
   rpc ListSnapshotFiles(ListSnapshotFilesRequest) returns (ListSnapshotFilesResponse) {}
 
-  // IndexSnapshots triggers indexin. It accepts a repo id and returns empty if the task is enqueued.
-  rpc IndexSnapshots(types.StringValue) returns (google.protobuf.Empty) {}
-
   // Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
   rpc Backup(types.StringValue) returns (google.protobuf.Empty) {}
 
-  // Prune schedules a prune operation. It accepts a plan id and returns empty if the task is enqueued.
-  rpc Prune(types.StringValue) returns (google.protobuf.Empty) {}
+  // DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
+  rpc DoRepoTask(DoRepoTaskRequest) returns (google.protobuf.Empty) {}
 
   // Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
   rpc Forget(ForgetRequest) returns (google.protobuf.Empty) {}
@@ -41,17 +38,17 @@ service Backrest {
   // Restore schedules a restore operation.
   rpc Restore(RestoreSnapshotRequest) returns (google.protobuf.Empty) {}
 
-  // Unlock synchronously attempts to unlock the repo. Will block if other operations are in progress.
-  rpc Unlock(types.StringValue) returns (google.protobuf.Empty) {}
-
-  // Stats runs 'restic stats` on the repository and appends the results to the operations log.
-  rpc Stats(types.StringValue) returns (google.protobuf.Empty) {}
-
   // Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
   rpc Cancel(types.Int64Value) returns (google.protobuf.Empty) {}
 
-  // GetBigOperationData returns the keyed large data for the given operation.
-  rpc GetLogs(LogDataRequest) returns (types.BytesValue) {}
+  // GetLogs returns the keyed large data for the given operation.
+  rpc GetLogs(LogDataRequest) returns (stream types.BytesValue) {}
+
+  // RunCommand executes a generic restic command on the repository.
+  rpc RunCommand(RunCommandRequest) returns (types.Int64Value) {}
+
+  // GetDownloadURL returns a signed download URL given a forget operation ID.
+  rpc GetDownloadURL(types.Int64Value) returns (types.StringValue) {}
 
   // Clears the history of operations
   rpc ClearHistory(ClearHistoryRequest) returns (google.protobuf.Empty) {}
@@ -60,11 +57,31 @@ service Backrest {
   rpc PathAutocomplete (types.StringValue) returns (types.StringList) {}
 }
 
-message ClearHistoryRequest {
+// OpSelector is a message that can be used to select operations e.g. by query.
+message OpSelector {
+  repeated int64 ids = 1;
+  string repo_id = 2;
+  string plan_id = 3;
+  string snapshot_id = 4;
+  int64 flow_id = 5;
+}
+
+message DoRepoTaskRequest {
   string repo_id = 1;
-  string plan_id = 2;
-  bool only_failed = 3;
-  repeated int64 ops = 4;
+  enum Task {
+    TASK_NONE = 0;
+    TASK_INDEX_SNAPSHOTS = 1;
+    TASK_PRUNE = 2;
+    TASK_CHECK = 3;
+    TASK_STATS = 4;
+    TASK_UNLOCK = 5;
+  }
+  Task task = 2;
+}
+
+message ClearHistoryRequest {
+  OpSelector selector = 1;
+  bool only_failed = 2;
 }
 
 message ForgetRequest {
@@ -79,11 +96,8 @@ message ListSnapshotsRequest {
 }
 
 message GetOperationsRequest {
-  string repo_id = 1;
-  string plan_id = 2;
-  string snapshot_id = 4;
-  repeated int64 ids = 5;
-  int64 last_n = 3; // limit to the last n operations
+  OpSelector selector = 1;
+  int64 last_n = 2; // limit to the last n operations
 }
 
 message RestoreSnapshotRequest {
@@ -120,4 +134,9 @@ message LsEntry {
   string mtime = 8;
   string atime = 9;
   string ctime = 10;
+}
+
+message RunCommandRequest {
+  string repo_id = 1;
+  string command = 2;
 }

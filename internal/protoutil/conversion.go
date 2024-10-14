@@ -17,6 +17,20 @@ func SnapshotToProto(s *restic.Snapshot) *v1.ResticSnapshot {
 		Username:   s.Username,
 		Tags:       s.Tags,
 		Parent:     s.Parent,
+		Summary: &v1.SnapshotSummary{
+			FilesNew:            int64(s.SnapshotSummary.FilesNew),
+			FilesChanged:        int64(s.SnapshotSummary.FilesChanged),
+			FilesUnmodified:     int64(s.SnapshotSummary.FilesUnmodified),
+			DirsNew:             int64(s.SnapshotSummary.DirsNew),
+			DirsChanged:         int64(s.SnapshotSummary.DirsChanged),
+			DirsUnmodified:      int64(s.SnapshotSummary.DirsUnmodified),
+			DataBlobs:           int64(s.SnapshotSummary.DataBlobs),
+			TreeBlobs:           int64(s.SnapshotSummary.TreeBlobs),
+			DataAdded:           int64(s.SnapshotSummary.DataAdded),
+			TotalFilesProcessed: int64(s.SnapshotSummary.TotalFilesProcessed),
+			TotalBytesProcessed: int64(s.SnapshotSummary.TotalBytesProcessed),
+			TotalDuration:       float64(s.SnapshotSummary.DurationMs()) / 1000.0,
+		},
 	}
 }
 
@@ -88,45 +102,23 @@ func BackupProgressEntryToBackupError(b *restic.BackupProgressEntry) (*v1.Backup
 }
 
 func RetentionPolicyFromProto(p *v1.RetentionPolicy) *restic.RetentionPolicy {
-	if p.Policy != nil {
-		switch p := p.Policy.(type) {
-		case *v1.RetentionPolicy_PolicyKeepAll:
-			return nil
-		case *v1.RetentionPolicy_PolicyTimeBucketed:
-			return &restic.RetentionPolicy{
-				KeepDaily:   int(p.PolicyTimeBucketed.Daily),
-				KeepHourly:  int(p.PolicyTimeBucketed.Hourly),
-				KeepWeekly:  int(p.PolicyTimeBucketed.Weekly),
-				KeepMonthly: int(p.PolicyTimeBucketed.Monthly),
-				KeepYearly:  int(p.PolicyTimeBucketed.Yearly),
-			}
-		case *v1.RetentionPolicy_PolicyKeepLastN:
-			return &restic.RetentionPolicy{
-				KeepLastN: int(p.PolicyKeepLastN),
-			}
+	switch p := p.GetPolicy().(type) {
+	case *v1.RetentionPolicy_PolicyKeepAll:
+		return nil
+	case *v1.RetentionPolicy_PolicyTimeBucketed:
+		return &restic.RetentionPolicy{
+			KeepDaily:   int(p.PolicyTimeBucketed.Daily),
+			KeepHourly:  int(p.PolicyTimeBucketed.Hourly),
+			KeepWeekly:  int(p.PolicyTimeBucketed.Weekly),
+			KeepMonthly: int(p.PolicyTimeBucketed.Monthly),
+			KeepYearly:  int(p.PolicyTimeBucketed.Yearly),
 		}
-	}
-
-	return &restic.RetentionPolicy{
-		KeepLastN:          int(p.KeepLastN),
-		KeepHourly:         int(p.KeepHourly),
-		KeepDaily:          int(p.KeepDaily),
-		KeepWeekly:         int(p.KeepWeekly),
-		KeepMonthly:        int(p.KeepMonthly),
-		KeepYearly:         int(p.KeepYearly),
-		KeepWithinDuration: p.KeepWithinDuration,
-	}
-}
-
-func RetentionPolicyToProto(p *restic.RetentionPolicy) *v1.RetentionPolicy {
-	return &v1.RetentionPolicy{
-		KeepLastN:          int32(p.KeepLastN),
-		KeepHourly:         int32(p.KeepHourly),
-		KeepDaily:          int32(p.KeepDaily),
-		KeepWeekly:         int32(p.KeepWeekly),
-		KeepMonthly:        int32(p.KeepMonthly),
-		KeepYearly:         int32(p.KeepYearly),
-		KeepWithinDuration: p.KeepWithinDuration,
+	case *v1.RetentionPolicy_PolicyKeepLastN:
+		return &restic.RetentionPolicy{
+			KeepLastN: int(p.PolicyKeepLastN),
+		}
+	default:
+		return nil
 	}
 }
 
