@@ -590,6 +590,25 @@ func (s *BackrestHandler) PathAutocomplete(ctx context.Context, path *connect.Re
 	return connect.NewResponse(&types.StringList{Values: paths}), nil
 }
 
+// func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.SummaryDashboardResponse], error) {
+// 	// scan the oplog for each configured repo
+// 	config, err := s.config.Get()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to get config: %w", err)
+// 	}
+
+// 	response := &v1.SummaryDashboardResponse{
+
+// 	for _, repo := range config.Repos {
+// 		_, err := s.orchestrator.GetRepoOrchestrator(repo.Id)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("failed to get repo %q: %w", repo.Id, err)
+// 		}
+// 	}
+
+// 	return connect.NewResponse(dashboard), nil
+// }
+
 func opSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
 	if sel == nil {
 		return oplog.Query{}, errors.New("empty selector")
