@@ -639,15 +639,8 @@ func TestCancelBackup(t *testing.T) {
 		t.Fatalf("Couldn't find backup operation in oplog")
 	}
 
-	errgroup.Go(func() error {
-		if _, err := sut.handler.Cancel(context.Background(), connect.NewRequest(&types.Int64Value{Value: backupOpId})); err != nil {
-			return fmt.Errorf("Cancel() error = %v, wantErr nil", err)
-		}
-		return nil
-	})
-
-	if err := errgroup.Wait(); err != nil {
-		t.Fatal(err.Error())
+	if _, err := sut.handler.Cancel(context.Background(), connect.NewRequest(&types.Int64Value{Value: backupOpId})); err != nil {
+		t.Errorf("Cancel() error = %v, wantErr nil", err)
 	}
 
 	// Assert that the backup operation was cancelled
