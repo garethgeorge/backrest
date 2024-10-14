@@ -660,3 +660,152 @@ export class RunCommandRequest extends Message<RunCommandRequest> {
   }
 }
 
+/**
+ * @generated from message v1.SummaryDashboardResponse
+ */
+export class SummaryDashboardResponse extends Message<SummaryDashboardResponse> {
+  /**
+   * @generated from field: repeated v1.SummaryDashboardResponse.Summary repo_summaries = 1;
+   */
+  repoSummaries: SummaryDashboardResponse_Summary[] = [];
+
+  /**
+   * @generated from field: repeated v1.SummaryDashboardResponse.Summary plan_summaries = 2;
+   */
+  planSummaries: SummaryDashboardResponse_Summary[] = [];
+
+  constructor(data?: PartialMessage<SummaryDashboardResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.SummaryDashboardResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "repo_summaries", kind: "message", T: SummaryDashboardResponse_Summary, repeated: true },
+    { no: 2, name: "plan_summaries", kind: "message", T: SummaryDashboardResponse_Summary, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SummaryDashboardResponse {
+    return new SummaryDashboardResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SummaryDashboardResponse {
+    return new SummaryDashboardResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SummaryDashboardResponse {
+    return new SummaryDashboardResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SummaryDashboardResponse | PlainMessage<SummaryDashboardResponse> | undefined, b: SummaryDashboardResponse | PlainMessage<SummaryDashboardResponse> | undefined): boolean {
+    return proto3.util.equals(SummaryDashboardResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.SummaryDashboardResponse.Summary
+ */
+export class SummaryDashboardResponse_Summary extends Message<SummaryDashboardResponse_Summary> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: int64 backups_last_90days = 2;
+   */
+  backupsLast90days = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 bytes_scanned_last_90days = 3;
+   */
+  bytesScannedLast90days = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 bytes_added_last_90days = 4;
+   */
+  bytesAddedLast90days = protoInt64.zero;
+
+  /**
+   * plot of bytes added per day for last 90 days
+   *
+   * @generated from field: repeated v1.SummaryDashboardResponse.DataPoint bytes_added = 5;
+   */
+  bytesAdded: SummaryDashboardResponse_DataPoint[] = [];
+
+  constructor(data?: PartialMessage<SummaryDashboardResponse_Summary>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.SummaryDashboardResponse.Summary";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "backups_last_90days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "bytes_scanned_last_90days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "bytes_added_last_90days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 5, name: "bytes_added", kind: "message", T: SummaryDashboardResponse_DataPoint, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SummaryDashboardResponse_Summary {
+    return new SummaryDashboardResponse_Summary().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SummaryDashboardResponse_Summary {
+    return new SummaryDashboardResponse_Summary().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SummaryDashboardResponse_Summary {
+    return new SummaryDashboardResponse_Summary().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SummaryDashboardResponse_Summary | PlainMessage<SummaryDashboardResponse_Summary> | undefined, b: SummaryDashboardResponse_Summary | PlainMessage<SummaryDashboardResponse_Summary> | undefined): boolean {
+    return proto3.util.equals(SummaryDashboardResponse_Summary, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.SummaryDashboardResponse.DataPoint
+ */
+export class SummaryDashboardResponse_DataPoint extends Message<SummaryDashboardResponse_DataPoint> {
+  /**
+   * @generated from field: int64 timestamp_millis = 1;
+   */
+  timestampMillis = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 value = 2;
+   */
+  value = protoInt64.zero;
+
+  constructor(data?: PartialMessage<SummaryDashboardResponse_DataPoint>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.SummaryDashboardResponse.DataPoint";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "timestamp_millis", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "value", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SummaryDashboardResponse_DataPoint {
+    return new SummaryDashboardResponse_DataPoint().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SummaryDashboardResponse_DataPoint {
+    return new SummaryDashboardResponse_DataPoint().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SummaryDashboardResponse_DataPoint {
+    return new SummaryDashboardResponse_DataPoint().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SummaryDashboardResponse_DataPoint | PlainMessage<SummaryDashboardResponse_DataPoint> | undefined, b: SummaryDashboardResponse_DataPoint | PlainMessage<SummaryDashboardResponse_DataPoint> | undefined): boolean {
+    return proto3.util.equals(SummaryDashboardResponse_DataPoint, a, b);
+  }
+}
+

@@ -55,6 +55,9 @@ service Backrest {
 
   // PathAutocomplete provides path autocompletion options for a given filesystem path.
   rpc PathAutocomplete (types.StringValue) returns (types.StringList) {}
+
+  // GetSummaryDashboard returns data for the dashboard view.
+  rpc GetSummaryDashboard(google.protobuf.Empty) returns (SummaryDashboardResponse) {}
 }
 
 // OpSelector is a message that can be used to select operations e.g. by query.

@@ -628,8 +628,7 @@ func TestCancelBackup(t *testing.T) {
 	if err := retry(t, 100, 10*time.Millisecond, func() error {
 		operations := getOperations(t, sut.oplog)
 		for _, op := range operations {
-			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
-			if ok {
+			if op.GetOperationBackup() != nil {
 				backupOpId = op.Id
 				return nil
 			}

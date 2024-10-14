@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Col, Empty, Modal, Row, Tooltip, Tree } from "antd";
+import { Col, Empty, Flex, Modal, Row, Splitter, Tooltip, Tree } from "antd";
 import _ from "lodash";
 import { DataNode } from "antd/es/tree";
 import { formatDate, formatTime, localISOTime } from "../lib/formatting";
@@ -174,18 +174,22 @@ export const OperationTree = ({
   }
 
   return (
-    <Row>
-      <Col span={12}>{backupTree}</Col>
-      <Col span={12}>
-        <BackupViewContainer>
-          {selectedBackupId ? (
-            <BackupView
-              backup={backups.find((b) => b.flowID === selectedBackupId)}
-            />
-          ) : null}
-        </BackupViewContainer>
-      </Col>
-    </Row>
+    <Flex vertical gap="middle">
+      <Splitter>
+        <Splitter.Panel defaultSize="40%" min="20%" max="70%">
+          {backupTree}
+        </Splitter.Panel>
+        <Splitter.Panel>
+          <BackupViewContainer>
+            {selectedBackupId ? (
+              <BackupView
+                backup={backups.find((b) => b.flowID === selectedBackupId)}
+              />
+            ) : null}
+          </BackupViewContainer>{" "}
+        </Splitter.Panel>
+      </Splitter>
+    </Flex>
   );
 };
 
