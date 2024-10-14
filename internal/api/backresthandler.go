@@ -590,24 +590,73 @@ func (s *BackrestHandler) PathAutocomplete(ctx context.Context, path *connect.Re
 	return connect.NewResponse(&types.StringList{Values: paths}), nil
 }
 
-// func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.SummaryDashboardResponse], error) {
-// 	// scan the oplog for each configured repo
-// 	config, err := s.config.Get()
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to get config: %w", err)
-// 	}
+func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.SummaryDashboardResponse], error) {
+	// scan the oplog for each configured repo
+	config, err := s.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %w", err)
+	}
 
-// 	response := &v1.SummaryDashboardResponse{
+	response := &v1.SummaryDashboardResponse{
+		RepoSummaries: []*v1.SummaryDashboardResponse_Summary{},
+		PlanSummaries: []*v1.SummaryDashboardResponse_Summary{},
+	}
 
-// 	for _, repo := range config.Repos {
-// 		_, err := s.orchestrator.GetRepoOrchestrator(repo.Id)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("failed to get repo %q: %w", repo.Id, err)
-// 		}
-// 	}
+	for _, repo := range config.Repos {
+		_, err := s.orchestrator.GetRepoOrchestrator(repo.Id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get repo %q: %w", repo.Id, err)
+		}
 
-// 	return connect.NewResponse(dashboard), nil
-// }
+		var bytesScanned90 int64
+		var bytesAdded90 int64
+		var backups90 int64
+		var backupsSuccess90 int64
+		bytesAddedDailyBuckets := make(map[int64]int64)
+
+		s.oplog.Query(oplog.Query{RepoID: repo.Id, Reversed: true}, func(op *v1.Operation) error {
+			t := time.UnixMilli(op.UnixTimeStartMs)
+			if time.Since(t) > 90*24*time.Hour {
+				return oplog.ErrStopIteration
+			}
+
+			dayMs := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).UnixMilli()
+
+			if backupOp := op.GetOperationBackup(); backupOp != nil {
+				backups90++
+				if op.Status == v1.OperationStatus_STATUS_SUCCESS {
+					backupsSuccess90++
+				}
+
+				if summary := backupOp.GetLastStatus().GetSummary(); summary != nil {
+					bytesScanned90 += summary.TotalBytesProcessed
+					bytesAdded90 += summary.DataAdded
+					bytesAddedDailyBuckets[dayMs] += summary.DataAdded
+				}
+			}
+
+			return nil
+		})
+
+		var bytesAddedDaily []*v1.SummaryDashboardResponse_DataPoint
+		for dayMs, bytesAdded := range bytesAddedDailyBuckets {
+			bytesAddedDaily = append(bytesAddedDaily, &v1.SummaryDashboardResponse_DataPoint{
+				TimestampMillis: dayMs,
+				Value:           bytesAdded,
+			})
+		}
+
+		response.RepoSummaries = append(response.RepoSummaries, &v1.SummaryDashboardResponse_Summary{
+			Id:                      repo.Id,
+			BytesScannedLast_90Days: bytesScanned90,
+			BytesAddedLast_90Days:   bytesAdded90,
+			BackupsLast_90Days:      backups90,
+			BytesAdded:              bytesAddedDaily,
+		})
+	}
+
+	return connect.NewResponse(response), nil
+}
 
 func opSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
 	if sel == nil {

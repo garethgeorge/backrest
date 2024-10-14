@@ -713,24 +713,39 @@ export class SummaryDashboardResponse_Summary extends Message<SummaryDashboardRe
   id = "";
 
   /**
-   * @generated from field: int64 backups_last_90days = 2;
+   * @generated from field: int64 flows_successful_last_90days = 2;
+   */
+  flowsSuccessfulLast90days = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 flows_warning_last_90days = 3;
+   */
+  flowsWarningLast90days = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 flows_failed_last_90days = 4;
+   */
+  flowsFailedLast90days = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 backups_last_90days = 10;
    */
   backupsLast90days = protoInt64.zero;
 
   /**
-   * @generated from field: int64 bytes_scanned_last_90days = 3;
+   * @generated from field: int64 bytes_scanned_last_90days = 11;
    */
   bytesScannedLast90days = protoInt64.zero;
 
   /**
-   * @generated from field: int64 bytes_added_last_90days = 4;
+   * @generated from field: int64 bytes_added_last_90days = 12;
    */
   bytesAddedLast90days = protoInt64.zero;
 
   /**
    * plot of bytes added per day for last 90 days
    *
-   * @generated from field: repeated v1.SummaryDashboardResponse.DataPoint bytes_added = 5;
+   * @generated from field: repeated v1.SummaryDashboardResponse.DataPoint bytes_added = 100;
    */
   bytesAdded: SummaryDashboardResponse_DataPoint[] = [];
 
@@ -743,10 +758,13 @@ export class SummaryDashboardResponse_Summary extends Message<SummaryDashboardRe
   static readonly typeName = "v1.SummaryDashboardResponse.Summary";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "backups_last_90days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 3, name: "bytes_scanned_last_90days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 4, name: "bytes_added_last_90days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 5, name: "bytes_added", kind: "message", T: SummaryDashboardResponse_DataPoint, repeated: true },
+    { no: 2, name: "flows_successful_last_90days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "flows_warning_last_90days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "flows_failed_last_90days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 10, name: "backups_last_90days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 11, name: "bytes_scanned_last_90days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 12, name: "bytes_added_last_90days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 100, name: "bytes_added", kind: "message", T: SummaryDashboardResponse_DataPoint, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SummaryDashboardResponse_Summary {

@@ -179,7 +179,7 @@ export const OperationTree = ({
         <Splitter.Panel defaultSize="40%" min="20%" max="70%">
           {backupTree}
         </Splitter.Panel>
-        <Splitter.Panel>
+        <Splitter.Panel style={{ paddingLeft: "10px" }}>
           <BackupViewContainer>
             {selectedBackupId ? (
               <BackupView

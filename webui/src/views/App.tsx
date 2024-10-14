@@ -86,18 +86,37 @@ export const App: React.FC = () => {
   }, []);
 
   const showGettingStarted = () => {
-    setContent(<GettingStartedGuide />, [
-      {
-        title: "Getting Started",
-      },
-    ]);
+    setContent(
+      <React.Suspense fallback={<Spin />}>
+        <GettingStartedGuide />
+      </React.Suspense>,
+      [
+        {
+          title: "Getting Started",
+        },
+      ]
+    );
+  };
+
+  const showSummaryDashboard = async () => {
+    const { SummaryDashboard } = await import("./SummaryDashboard");
+    setContent(
+      <React.Suspense fallback={<Spin />}>
+        <SummaryDashboard />
+      </React.Suspense>,
+      [
+        {
+          title: "Summary Dashboard",
+        },
+      ]
+    );
   };
 
   useEffect(() => {
     if (config === null) {
       setContent(<p>Loading...</p>, []);
     } else {
-      showGettingStarted();
+      showSummaryDashboard();
     }
   }, [config === null]);
 

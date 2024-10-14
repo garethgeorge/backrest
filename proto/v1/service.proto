@@ -151,9 +151,10 @@ message SummaryDashboardResponse {
   message Summary {
     string id = 1;
     int64 backups_last_90days = 2;
-    int64 bytes_scanned_last_90days = 3;
-    int64 bytes_added_last_90days = 4;
-    repeated DataPoint bytes_added = 5; // plot of bytes added per day for last 90 days
+    int64 backups_successful_last_90days = 3;
+    int64 bytes_scanned_last_90days = 4;
+    int64 bytes_added_last_90days = 5;
+    repeated DataPoint bytes_added = 6; // plot of bytes added per day for last 90 days
   }
 
   message DataPoint {
