@@ -14,27 +14,25 @@ if [[ "${OS}" != "Linux" ]]; then
 fi
 
 # Formatting Variables
-Green_font_prefix="\033[32m"
-Red_font_prefix="\033[31m"
-Green_background_prefix="\033[42;37m"
-Red_background_prefix="\033[41;37m"
-Font_color_suffix="\033[0m"
-Yellow_font_prefix="\033[0;33m"
-Info="${Green_font_prefix}[Info]${Font_color_suffix}"
-Error="${Red_font_prefix}[Error]${Font_color_suffix}"
-Warning="${Yellow_font_prefix}[Warning]${Font_color_suffix}"
+greenFontPrefix="\033[32m"
+redFontPrefix="\033[31m"
+yellowFontPrefix="\033[0;33m"
+fontColorSuffix="\033[0m"
+Info="${greenFontPrefix}[Info]${fontColorSuffix}"
+Error="${redFontPrefix}[Error]${fontColorSuffix}"
+Warning="${yellowFontPrefix}[Warning]${fontColorSuffix}"
 
 # Check Kernal Type
 sysArch() {
     echo -e "${Info} Checking OS info..."
     uname=$(uname -m)
 
-    if [[ "$uname" == "x86_64" ]]; then
-        arch="x86_64"
-    elif [[ "$uname" == "armv7" ]] || [[ "$uname" == "armv6l" ]]; then
-        arch="armv6"
-    elif [[ "$uname" == "armv8" ]] || [[ "$uname" == "aarch64" ]]; then
-        arch="arm64"
+    if [[ "$uname" == "x86_64" ]]; 
+        then arch="x86_64"
+    elif [[ "$uname" == "armv7" ]] || [[ "$uname" == "armv6l" ]]; 
+        then arch="armv6"
+    elif [[ "$uname" == "armv8" ]] || [[ "$uname" == "aarch64" ]]; 
+        then arch="arm64"
     else
         echo -e "${Error} Unsupported Architecture ${arch}" && exit 1
     fi
@@ -93,39 +91,39 @@ Start_Menu(){
     clear
     echo -e "
 =============================================
-           Backrest Install Helper
+           Backrest Manage Helper
 =============================================
- ${Red_font_prefix} Warning: This Script Only Work On Linux !${Font_color_suffix}
-————————————————————————————————-------------
- ${Green_font_prefix} 0.${Font_color_suffix} Install / Update Backrest
- ${Green_font_prefix} 1.${Font_color_suffix} Uninstall Backrest
-—————————————————————————————————------------
- ${Green_font_prefix} 2.${Font_color_suffix} Start Backrest
- ${Green_font_prefix} 3.${Font_color_suffix} Stop Backrest
-—————————————————————————————————------------
- ${Green_font_prefix} 4.${Font_color_suffix} Show Backrest Status
----------------------------------------------
- ${Green_font_prefix} 9.${Font_color_suffix} Exit Script
+ ${redFontPrefix} Warning: This Script Only Work On Linux !${fontColorSuffix}
+—————————————————————————————————————————————
+ ${greenFontPrefix} 1. Install / Update${fontColorSuffix} Backrest
+ ${greenFontPrefix} 2.${fontColorSuffix} ${redFontPrefix}Uninstall${fontColorSuffix} Backrest
+—————————————————————————————————————————————
+ ${greenFontPrefix} 3.${fontColorSuffix} ${greenFontPrefix}Start${fontColorSuffix} Backrest
+ ${greenFontPrefix} 4.${fontColorSuffix} ${redFontPrefix}Stop${fontColorSuffix} Backrest
+—————————————————————————————————————————————
+ ${greenFontPrefix} 5.${fontColorSuffix} Show Backrest Status
+—————————————————————————————————————————————
+ ${greenFontPrefix} 0.${fontColorSuffix} Exit Script
 =============================================
 "
-    read -p " Please Input [0-9]:" num
+    read -p " Please Input [0-5]:" num
     case "$num" in
-        0)
+        1)
             Install
         ;;
-        1)
+        2)
             Uninstall
         ;;
-        2)
+        3)
             Start
         ;;
-        3)
+        4)
             Stop
         ;;
-        4)
+        5)
             Status
         ;;
-        9)
+        0)
             exit 1
         ;;
         *)
