@@ -85,19 +85,6 @@ export const App: React.FC = () => {
       });
   }, []);
 
-  const showGettingStarted = () => {
-    setContent(
-      <React.Suspense fallback={<Spin />}>
-        <GettingStartedGuide />
-      </React.Suspense>,
-      [
-        {
-          title: "Getting Started",
-        },
-      ]
-    );
-  };
-
   const showSummaryDashboard = async () => {
     const { SummaryDashboard } = await import("./SummaryDashboard");
     setContent(
@@ -133,7 +120,10 @@ export const App: React.FC = () => {
           backgroundColor: "#1b232c",
         }}
       >
-        <a style={{ color: colorTextLightSolid }} onClick={showGettingStarted}>
+        <a
+          style={{ color: colorTextLightSolid }}
+          onClick={showSummaryDashboard}
+        >
           <img
             src={LogoSvg}
             style={{

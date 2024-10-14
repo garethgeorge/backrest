@@ -610,27 +610,31 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 
 		var bytesScanned90 int64
 		var bytesAdded90 int64
-		var backups90 int64
+		var backupsFailed90 int64
 		var backupsSuccess90 int64
+		var backupsWarning90 int64
 		bytesAddedDailyBuckets := make(map[int64]int64)
 
 		s.oplog.Query(oplog.Query{RepoID: repo.Id, Reversed: true}, func(op *v1.Operation) error {
 			t := time.UnixMilli(op.UnixTimeStartMs)
-			if time.Since(t) > 90*24*time.Hour {
-				return oplog.ErrStopIteration
-			}
-
-			dayMs := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).UnixMilli()
 
 			if backupOp := op.GetOperationBackup(); backupOp != nil {
-				backups90++
+				if time.Since(t) > 90*24*time.Hour {
+					return oplog.ErrStopIteration
+				}
+
 				if op.Status == v1.OperationStatus_STATUS_SUCCESS {
 					backupsSuccess90++
+				} else if op.Status == v1.OperationStatus_STATUS_ERROR {
+					backupsFailed90++
+				} else if op.Status == v1.OperationStatus_STATUS_WARNING {
+					backupsWarning90++
 				}
 
 				if summary := backupOp.GetLastStatus().GetSummary(); summary != nil {
 					bytesScanned90 += summary.TotalBytesProcessed
 					bytesAdded90 += summary.DataAdded
+					dayMs := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).UnixMilli()
 					bytesAddedDailyBuckets[dayMs] += summary.DataAdded
 				}
 			}
@@ -647,11 +651,13 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 		}
 
 		response.RepoSummaries = append(response.RepoSummaries, &v1.SummaryDashboardResponse_Summary{
-			Id:                      repo.Id,
-			BytesScannedLast_90Days: bytesScanned90,
-			BytesAddedLast_90Days:   bytesAdded90,
-			BackupsLast_90Days:      backups90,
-			BytesAdded:              bytesAddedDaily,
+			Id:                        repo.Id,
+			BytesScannedLast_90Days:   bytesScanned90,
+			BytesAddedLast_90Days:     bytesAdded90,
+			BackupsFailed_90Days:      backupsFailed90,
+			BackupsWarningLast_90Days: backupsWarning90,
+			BackupsSuccessLast_90Days: backupsSuccess90,
+			BytesAdded:                bytesAddedDaily,
 		})
 	}
 
