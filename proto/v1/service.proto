@@ -150,16 +150,29 @@ message SummaryDashboardResponse {
 
   message Summary {
     string id = 1;
-    int64 backups_failed_90days = 2;
-    int64 backups_warning_last_90days = 3;
-    int64 backups_success_last_90days = 4;
-    int64 bytes_scanned_last_90days = 5;
-    int64 bytes_added_last_90days = 6;
-    repeated DataPoint bytes_added = 7; // plot of bytes added per day for last 90 days
+    int64 backups_failed_30days = 2;
+    int64 backups_warning_last_30days = 3;
+    int64 backups_success_last_30days = 4;
+    int64 bytes_scanned_last_30days = 5;
+    int64 bytes_added_last_30days = 6;
+    int64 total_snapshots = 7;
+    int64 bytes_scanned_avg = 8;
+
+    // Charts
+    Chart bytes_added = 10; // bytes added bucketed by day
+    BackupChart recent_backups = 11; // recent backups
   }
 
-  message DataPoint {
-    int64 timestamp_millis = 1;
-    int64 value = 2;
+  message Chart {
+    repeated int64 timestamp_milli = 1;
+    repeated int64 value = 2;
+  }
+
+  message BackupChart {
+    repeated int64 flow_id = 1;
+    repeated int64 timestamp_milli = 2;
+    repeated int64 duration_milli = 3;
+    repeated OperationStatus status = 4;
+    repeated int64 bytes_added = 5;
   }
 }

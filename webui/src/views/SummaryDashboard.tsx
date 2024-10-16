@@ -16,20 +16,34 @@ import { useConfig } from "../components/ConfigProvider";
 import { useSetContent } from "./MainContentArea";
 import {
   SummaryDashboardResponse,
+  SummaryDashboardResponse_Chart,
   SummaryDashboardResponse_Summary,
 } from "../../gen/ts/v1/service_pb";
 import { backrestService } from "../api";
 import { useAlertApi } from "../components/Alerts";
-import { formatBytes, formatDate } from "../lib/formatting";
 import {
+  formatBytes,
+  formatDate,
+  formatDuration,
+  formatTime,
+} from "../lib/formatting";
+import {
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
+  Legend,
   Line,
   LineChart,
+  Rectangle,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { colorForStatus } from "../state/flowdisplayaggregator";
+import { useShowModal } from "../components/ModalManager";
+import { OperationStatus } from "../../gen/ts/v1/operations_pb";
 
 export const SummaryDashboard = () => {
   const config = useConfig()[0];
@@ -122,14 +136,62 @@ const SummaryPanel = ({
 }: {
   summary: SummaryDashboardResponse_Summary;
 }) => {
-  const bytesAddedDataset = summary.bytesAdded.map((val) => {
-    return {
-      time: Number(val.timestampMillis),
-      value: Number(val.value),
-    };
-  });
+  const recentBackupsChart: {
+    idx: number;
+    time: number;
+    durationMs: number;
+    color: string;
+    bytesAdded: number;
+  }[] = [];
+  const recentBackups = summary.recentBackups!;
+  for (let i = 0; i < recentBackups.timestampMilli.length; i++) {
+    const color = colorForStatus(recentBackups.status[i]);
+    recentBackupsChart.push({
+      idx: i,
+      time: Number(recentBackups.timestampMilli[i]),
+      durationMs: Number(recentBackups.durationMilli[i]),
+      color: color,
+      bytesAdded: Number(recentBackups.bytesAdded[i]),
+    });
+  }
+  while (recentBackupsChart.length < 60) {
+    recentBackupsChart.push({
+      idx: recentBackupsChart.length,
+      time: 0,
+      durationMs: 0,
+      color: "white",
+      bytesAdded: 0,
+    });
+  }
 
-  bytesAddedDataset.sort((a, b) => a.time - b.time);
+  const BackupChartTooltip = ({ active, payload, label }: any) => {
+    const idx = Number(label);
+
+    const entry = recentBackupsChart[idx];
+    if (!entry || entry.idx > recentBackups.timestampMilli.length) {
+      return null;
+    }
+
+    const isPending =
+      recentBackups.status[idx] === OperationStatus.STATUS_PENDING;
+
+    return (
+      <Card style={{ opacity: 0.9 }} size="small">
+        <Typography.Text>Backup at {formatTime(entry.time)}</Typography.Text>{" "}
+        <br />
+        {isPending ? (
+          <Typography.Text type="secondary">
+            Scheduled, waiting.
+          </Typography.Text>
+        ) : (
+          <Typography.Text type="secondary">
+            Took {formatDuration(entry.durationMs)}, added{" "}
+            {formatBytes(entry.bytesAdded)}
+          </Typography.Text>
+        )}
+      </Card>
+    );
+  };
 
   return (
     <Card title={summary.id} style={{ width: "100%" }}>
@@ -141,25 +203,25 @@ const SummaryPanel = ({
             items={[
               {
                 key: 1,
-                label: "Backups (90d)",
+                label: "Backups (30d)",
                 children: (
                   <>
-                    {summary.backupsSuccessLast90days && (
+                    {summary.backupsSuccessLast30days && (
                       <Typography.Text
                         type="success"
                         style={{ marginRight: "5px" }}
                       >
-                        {summary.backupsSuccessLast90days + ""} ok
+                        {summary.backupsSuccessLast30days + ""} ok
                       </Typography.Text>
                     )}
-                    {summary.backupsFailed90days && (
+                    {summary.backupsFailed30days && (
                       <Typography.Text type="danger">
-                        {summary.backupsFailed90days + ""} failed
+                        {summary.backupsFailed30days + ""} failed
                       </Typography.Text>
                     )}
-                    {summary.backupsWarningLast90days && (
+                    {summary.backupsWarningLast30days && (
                       <Typography.Text type="warning">
-                        {summary.backupsWarningLast90days + ""} warning
+                        {summary.backupsWarningLast30days + ""} warning
                       </Typography.Text>
                     )}
                   </>
@@ -167,42 +229,29 @@ const SummaryPanel = ({
               },
               {
                 key: 2,
-                label: "Bytes Scanned (90d)",
-                children: formatBytes(Number(summary.bytesScannedLast90days)),
+                label: "Bytes Scanned (30d)",
+                children: formatBytes(Number(summary.bytesScannedLast30days)),
               },
               {
                 key: 3,
-                label: "Bytes Added (90d)",
-                children: formatBytes(Number(summary.bytesAddedLast90days)),
+                label: "Bytes Added (30d)",
+                children: formatBytes(Number(summary.bytesAddedLast30days)),
               },
             ]}
           ></Descriptions>
         </Col>
         <Col span={14}>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={bytesAddedDataset}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="time"
-                type="number"
-                domain={["dataMin", "dataMax"]}
-                tickFormatter={(v) => formatDate(v as number)}
-              />
-              <YAxis
-                yAxisId="left"
-                type="number"
-                dataKey="value"
-                tick={false}
-              />
-              <Line
-                yAxisId="left"
-                type="monotone"
-                dataKey="value"
-                stroke="#00BBBB"
-                name="Bytes Added"
-              ></Line>
-              <Tooltip labelFormatter={(v) => formatBytes(v as number)} />
-            </LineChart>
+          <ResponsiveContainer width="100%" height={100}>
+            <BarChart data={recentBackupsChart}>
+              <Bar dataKey="durationMs">
+                {recentBackupsChart.map((entry, index) => (
+                  <Cell cursor="pointer" fill={entry.color} key={`${index}`} />
+                ))}
+              </Bar>
+              <YAxis dataKey="durationMs" hide />
+              <XAxis dataKey="idx" hide />
+              <Tooltip content={<BackupChartTooltip />} cursor={false} />
+            </BarChart>
           </ResponsiveContainer>
         </Col>
       </Row>

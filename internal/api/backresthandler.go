@@ -591,74 +591,87 @@ func (s *BackrestHandler) PathAutocomplete(ctx context.Context, path *connect.Re
 }
 
 func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.SummaryDashboardResponse], error) {
-	// scan the oplog for each configured repo
 	config, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
-	response := &v1.SummaryDashboardResponse{
-		RepoSummaries: []*v1.SummaryDashboardResponse_Summary{},
-		PlanSummaries: []*v1.SummaryDashboardResponse_Summary{},
-	}
+	generateSummaryHelper := func(id string, q oplog.Query) (*v1.SummaryDashboardResponse_Summary, error) {
+		var bytesScanned30 int64
+		var bytesAdded30 int64
+		var backupsFailed30 int64
+		var backupsSuccess30 int64
+		var backupsWarning30 int64
+		backupChart := &v1.SummaryDashboardResponse_BackupChart{}
 
-	for _, repo := range config.Repos {
-		_, err := s.orchestrator.GetRepoOrchestrator(repo.Id)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get repo %q: %w", repo.Id, err)
-		}
-
-		var bytesScanned90 int64
-		var bytesAdded90 int64
-		var backupsFailed90 int64
-		var backupsSuccess90 int64
-		var backupsWarning90 int64
-		bytesAddedDailyBuckets := make(map[int64]int64)
-
-		s.oplog.Query(oplog.Query{RepoID: repo.Id, Reversed: true}, func(op *v1.Operation) error {
+		s.oplog.Query(q, func(op *v1.Operation) error {
 			t := time.UnixMilli(op.UnixTimeStartMs)
 
 			if backupOp := op.GetOperationBackup(); backupOp != nil {
-				if time.Since(t) > 90*24*time.Hour {
+				if time.Since(t) > 30*24*time.Hour {
 					return oplog.ErrStopIteration
 				}
 
 				if op.Status == v1.OperationStatus_STATUS_SUCCESS {
-					backupsSuccess90++
+					backupsSuccess30++
 				} else if op.Status == v1.OperationStatus_STATUS_ERROR {
-					backupsFailed90++
+					backupsFailed30++
 				} else if op.Status == v1.OperationStatus_STATUS_WARNING {
-					backupsWarning90++
+					backupsWarning30++
 				}
 
 				if summary := backupOp.GetLastStatus().GetSummary(); summary != nil {
-					bytesScanned90 += summary.TotalBytesProcessed
-					bytesAdded90 += summary.DataAdded
-					dayMs := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).UnixMilli()
-					bytesAddedDailyBuckets[dayMs] += summary.DataAdded
+					bytesScanned30 += summary.TotalBytesProcessed
+					bytesAdded30 += summary.DataAdded
+				}
+
+				// recent backups chart
+				if len(backupChart.TimestampMilli) < 60 { // only include the latest 90 backups in the chart
+					duration := op.UnixTimeEndMs - op.UnixTimeStartMs
+					if duration <= 1000 {
+						duration = 1000
+					}
+
+					backupChart.FlowId = append(backupChart.FlowId, op.FlowId)
+					backupChart.TimestampMilli = append(backupChart.TimestampMilli, op.UnixTimeStartMs)
+					backupChart.DurationMilli = append(backupChart.DurationMilli, duration)
+					backupChart.Status = append(backupChart.Status, op.Status)
+					backupChart.BytesAdded = append(backupChart.BytesAdded, backupOp.GetLastStatus().GetSummary().GetDataAdded())
 				}
 			}
 
 			return nil
 		})
 
-		var bytesAddedDaily []*v1.SummaryDashboardResponse_DataPoint
-		for dayMs, bytesAdded := range bytesAddedDailyBuckets {
-			bytesAddedDaily = append(bytesAddedDaily, &v1.SummaryDashboardResponse_DataPoint{
-				TimestampMillis: dayMs,
-				Value:           bytesAdded,
-			})
+		return &v1.SummaryDashboardResponse_Summary{
+			Id:                        id,
+			BytesScannedLast_30Days:   bytesScanned30,
+			BytesAddedLast_30Days:     bytesAdded30,
+			BackupsFailed_30Days:      backupsFailed30,
+			BackupsWarningLast_30Days: backupsWarning30,
+			BackupsSuccessLast_30Days: backupsSuccess30,
+			RecentBackups:             backupChart,
+		}, nil
+	}
+
+	response := &v1.SummaryDashboardResponse{}
+
+	for _, repo := range config.Repos {
+		resp, err := generateSummaryHelper(repo.Id, oplog.Query{RepoID: repo.Id, Reversed: true, Limit: 1000})
+		if err != nil {
+			return nil, fmt.Errorf("summary for repo %q: %w", repo.Id, err)
 		}
 
-		response.RepoSummaries = append(response.RepoSummaries, &v1.SummaryDashboardResponse_Summary{
-			Id:                        repo.Id,
-			BytesScannedLast_90Days:   bytesScanned90,
-			BytesAddedLast_90Days:     bytesAdded90,
-			BackupsFailed_90Days:      backupsFailed90,
-			BackupsWarningLast_90Days: backupsWarning90,
-			BackupsSuccessLast_90Days: backupsSuccess90,
-			BytesAdded:                bytesAddedDaily,
-		})
+		response.RepoSummaries = append(response.RepoSummaries, resp)
+	}
+
+	for _, plan := range config.Plans {
+		resp, err := generateSummaryHelper(plan.Id, oplog.Query{PlanID: plan.Id, Reversed: true, Limit: 1000})
+		if err != nil {
+			return nil, fmt.Errorf("summary for plan %q: %w", plan.Id, err)
+		}
+
+		response.PlanSummaries = append(response.PlanSummaries, resp)
 	}
 
 	return connect.NewResponse(response), nil
