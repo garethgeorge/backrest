@@ -675,6 +675,16 @@ export class SummaryDashboardResponse extends Message<SummaryDashboardResponse> 
    */
   planSummaries: SummaryDashboardResponse_Summary[] = [];
 
+  /**
+   * @generated from field: string config_path = 10;
+   */
+  configPath = "";
+
+  /**
+   * @generated from field: string data_path = 11;
+   */
+  dataPath = "";
+
   constructor(data?: PartialMessage<SummaryDashboardResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -685,6 +695,8 @@ export class SummaryDashboardResponse extends Message<SummaryDashboardResponse> 
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "repo_summaries", kind: "message", T: SummaryDashboardResponse_Summary, repeated: true },
     { no: 2, name: "plan_summaries", kind: "message", T: SummaryDashboardResponse_Summary, repeated: true },
+    { no: 10, name: "config_path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "data_path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SummaryDashboardResponse {

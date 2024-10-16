@@ -16,33 +16,21 @@ import { useConfig } from "../components/ConfigProvider";
 import { useSetContent } from "./MainContentArea";
 import {
   SummaryDashboardResponse,
-  SummaryDashboardResponse_Chart,
   SummaryDashboardResponse_Summary,
 } from "../../gen/ts/v1/service_pb";
 import { backrestService } from "../api";
 import { useAlertApi } from "../components/Alerts";
-import {
-  formatBytes,
-  formatDate,
-  formatDuration,
-  formatTime,
-} from "../lib/formatting";
+import { formatBytes, formatDuration, formatTime } from "../lib/formatting";
 import {
   Bar,
   BarChart,
-  CartesianGrid,
   Cell,
-  Legend,
-  Line,
-  LineChart,
-  Rectangle,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { colorForStatus } from "../state/flowdisplayaggregator";
-import { useShowModal } from "../components/ModalManager";
 import { OperationStatus } from "../../gen/ts/v1/operations_pb";
 
 export const SummaryDashboard = () => {
@@ -123,9 +111,23 @@ export const SummaryDashboard = () => {
           <Empty description="No plans found" />
         )}
         <Divider />
-        <Button type="link" onClick={showGettingStarted}>
-          Open getting started guide
-        </Button>
+        <Typography.Title level={3}>System Info</Typography.Title>
+        <Descriptions
+          layout="vertical"
+          column={2}
+          items={[
+            {
+              key: 1,
+              label: "Config Path",
+              children: summaryData.configPath,
+            },
+            {
+              key: 2,
+              label: "Data Directory",
+              children: summaryData.dataPath,
+            },
+          ]}
+        />
       </Flex>
     </>
   );

@@ -19,6 +19,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
@@ -654,7 +655,10 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 		}, nil
 	}
 
-	response := &v1.SummaryDashboardResponse{}
+	response := &v1.SummaryDashboardResponse{
+		ConfigPath: env.ConfigFilePath(),
+		DataPath:   env.DataDir(),
+	}
 
 	for _, repo := range config.Repos {
 		resp, err := generateSummaryHelper(repo.Id, oplog.Query{RepoID: repo.Id, Reversed: true, Limit: 1000})
