@@ -85,19 +85,25 @@ export const App: React.FC = () => {
       });
   }, []);
 
-  const showGettingStarted = () => {
-    setContent(<GettingStartedGuide />, [
-      {
-        title: "Getting Started",
-      },
-    ]);
+  const showSummaryDashboard = async () => {
+    const { SummaryDashboard } = await import("./SummaryDashboard");
+    setContent(
+      <React.Suspense fallback={<Spin />}>
+        <SummaryDashboard />
+      </React.Suspense>,
+      [
+        {
+          title: "Summary Dashboard",
+        },
+      ]
+    );
   };
 
   useEffect(() => {
     if (config === null) {
       setContent(<p>Loading...</p>, []);
     } else {
-      showGettingStarted();
+      showSummaryDashboard();
     }
   }, [config === null]);
 
@@ -114,7 +120,10 @@ export const App: React.FC = () => {
           backgroundColor: "#1b232c",
         }}
       >
-        <a style={{ color: colorTextLightSolid }} onClick={showGettingStarted}>
+        <a
+          style={{ color: colorTextLightSolid }}
+          onClick={showSummaryDashboard}
+        >
           <img
             src={LogoSvg}
             style={{

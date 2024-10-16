@@ -860,7 +860,7 @@ type OperationRunCommand struct {
 
 	Command         string `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
 	OutputLogref    string `protobuf:"bytes,2,opt,name=output_logref,json=outputLogref,proto3" json:"output_logref,omitempty"`
-	OutputSizeBytes int64  `protobuf:"varint,3,opt,name=output_size_bytes,json=outputSizeBytes,proto3" json:"output_size_bytes,omitempty"`
+	OutputSizeBytes int64  `protobuf:"varint,3,opt,name=output_size_bytes,json=outputSizeBytes,proto3" json:"output_size_bytes,omitempty"` // not necessarily authoritative, tracked as an optimization to allow clients to avoid fetching very large outputs.
 }
 
 func (x *OperationRunCommand) Reset() {

@@ -21,7 +21,7 @@
     "@types/node": "^20.9.0",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
-    "antd": "^5.11.1",
+    "antd": "^5.21.3",
     "buffer": "^6.0.3",
     "lodash": "^4.17.21",
     "parcel": "^2.10.2",

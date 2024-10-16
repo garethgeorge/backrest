@@ -687,10 +687,7 @@ const expectedEnvVars: { [scheme: string]: string[][] } = {
   ],
 };
 
-const envVarSetValidator = (
-  form: FormInstance<FormData>,
-  envVars: string[]
-) => {
+const envVarSetValidator = (form: FormInstance<any>, envVars: string[]) => {
   if (!envVars) {
     return Promise.resolve();
   }

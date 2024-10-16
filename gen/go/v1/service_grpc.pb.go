@@ -21,23 +21,24 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Backrest_GetConfig_FullMethodName          = "/v1.Backrest/GetConfig"
-	Backrest_SetConfig_FullMethodName          = "/v1.Backrest/SetConfig"
-	Backrest_AddRepo_FullMethodName            = "/v1.Backrest/AddRepo"
-	Backrest_GetOperationEvents_FullMethodName = "/v1.Backrest/GetOperationEvents"
-	Backrest_GetOperations_FullMethodName      = "/v1.Backrest/GetOperations"
-	Backrest_ListSnapshots_FullMethodName      = "/v1.Backrest/ListSnapshots"
-	Backrest_ListSnapshotFiles_FullMethodName  = "/v1.Backrest/ListSnapshotFiles"
-	Backrest_Backup_FullMethodName             = "/v1.Backrest/Backup"
-	Backrest_DoRepoTask_FullMethodName         = "/v1.Backrest/DoRepoTask"
-	Backrest_Forget_FullMethodName             = "/v1.Backrest/Forget"
-	Backrest_Restore_FullMethodName            = "/v1.Backrest/Restore"
-	Backrest_Cancel_FullMethodName             = "/v1.Backrest/Cancel"
-	Backrest_GetLogs_FullMethodName            = "/v1.Backrest/GetLogs"
-	Backrest_RunCommand_FullMethodName         = "/v1.Backrest/RunCommand"
-	Backrest_GetDownloadURL_FullMethodName     = "/v1.Backrest/GetDownloadURL"
-	Backrest_ClearHistory_FullMethodName       = "/v1.Backrest/ClearHistory"
-	Backrest_PathAutocomplete_FullMethodName   = "/v1.Backrest/PathAutocomplete"
+	Backrest_GetConfig_FullMethodName           = "/v1.Backrest/GetConfig"
+	Backrest_SetConfig_FullMethodName           = "/v1.Backrest/SetConfig"
+	Backrest_AddRepo_FullMethodName             = "/v1.Backrest/AddRepo"
+	Backrest_GetOperationEvents_FullMethodName  = "/v1.Backrest/GetOperationEvents"
+	Backrest_GetOperations_FullMethodName       = "/v1.Backrest/GetOperations"
+	Backrest_ListSnapshots_FullMethodName       = "/v1.Backrest/ListSnapshots"
+	Backrest_ListSnapshotFiles_FullMethodName   = "/v1.Backrest/ListSnapshotFiles"
+	Backrest_Backup_FullMethodName              = "/v1.Backrest/Backup"
+	Backrest_DoRepoTask_FullMethodName          = "/v1.Backrest/DoRepoTask"
+	Backrest_Forget_FullMethodName              = "/v1.Backrest/Forget"
+	Backrest_Restore_FullMethodName             = "/v1.Backrest/Restore"
+	Backrest_Cancel_FullMethodName              = "/v1.Backrest/Cancel"
+	Backrest_GetLogs_FullMethodName             = "/v1.Backrest/GetLogs"
+	Backrest_RunCommand_FullMethodName          = "/v1.Backrest/RunCommand"
+	Backrest_GetDownloadURL_FullMethodName      = "/v1.Backrest/GetDownloadURL"
+	Backrest_ClearHistory_FullMethodName        = "/v1.Backrest/ClearHistory"
+	Backrest_PathAutocomplete_FullMethodName    = "/v1.Backrest/PathAutocomplete"
+	Backrest_GetSummaryDashboard_FullMethodName = "/v1.Backrest/GetSummaryDashboard"
 )
 
 // BackrestClient is the client API for Backrest service.
@@ -71,6 +72,8 @@ type BackrestClient interface {
 	ClearHistory(ctx context.Context, in *ClearHistoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error)
+	// GetSummaryDashboard returns data for the dashboard view.
+	GetSummaryDashboard(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SummaryDashboardResponse, error)
 }
 
 type backrestClient struct {
@@ -280,6 +283,15 @@ func (c *backrestClient) PathAutocomplete(ctx context.Context, in *types.StringV
 	return out, nil
 }
 
+func (c *backrestClient) GetSummaryDashboard(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SummaryDashboardResponse, error) {
+	out := new(SummaryDashboardResponse)
+	err := c.cc.Invoke(ctx, Backrest_GetSummaryDashboard_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BackrestServer is the server API for Backrest service.
 // All implementations must embed UnimplementedBackrestServer
 // for forward compatibility
@@ -311,6 +323,8 @@ type BackrestServer interface {
 	ClearHistory(context.Context, *ClearHistoryRequest) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
 	PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error)
+	// GetSummaryDashboard returns data for the dashboard view.
+	GetSummaryDashboard(context.Context, *emptypb.Empty) (*SummaryDashboardResponse, error)
 	mustEmbedUnimplementedBackrestServer()
 }
 
@@ -368,6 +382,9 @@ func (UnimplementedBackrestServer) ClearHistory(context.Context, *ClearHistoryRe
 }
 func (UnimplementedBackrestServer) PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PathAutocomplete not implemented")
+}
+func (UnimplementedBackrestServer) GetSummaryDashboard(context.Context, *emptypb.Empty) (*SummaryDashboardResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSummaryDashboard not implemented")
 }
 func (UnimplementedBackrestServer) mustEmbedUnimplementedBackrestServer() {}
 
@@ -694,6 +711,24 @@ func _Backrest_PathAutocomplete_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Backrest_GetSummaryDashboard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackrestServer).GetSummaryDashboard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Backrest_GetSummaryDashboard_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackrestServer).GetSummaryDashboard(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Backrest_ServiceDesc is the grpc.ServiceDesc for Backrest service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -760,6 +795,10 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PathAutocomplete",
 			Handler:    _Backrest_PathAutocomplete_Handler,
+		},
+		{
+			MethodName: "GetSummaryDashboard",
+			Handler:    _Backrest_GetSummaryDashboard_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
