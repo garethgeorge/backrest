@@ -149,7 +149,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: now.Add(time.Hour * 24),
@@ -165,7 +166,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: farFuture.Add(time.Hour * 24),
@@ -181,7 +183,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: now.Add(time.Hour),
@@ -197,7 +200,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: farFuture.Add(time.Hour),
@@ -213,7 +217,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: mustParseTime(t, "1970-01-02T00:00:00-08:00"),
@@ -229,7 +234,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: mustParseTime(t, "1970-01-02T08:00:00Z"),
@@ -245,7 +251,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: mustParseTime(t, "1970-01-13T00:00:00-08:00"),
@@ -261,7 +268,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationCheck{
 						OperationCheck: &v1.OperationCheck{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: now.Add(time.Hour),
@@ -277,7 +285,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationCheck{
 						OperationCheck: &v1.OperationCheck{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: now.Add(time.Hour),
@@ -293,7 +302,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationCheck{
 						OperationCheck: &v1.OperationCheck{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 				{
 					InstanceId: "instance1",
@@ -302,7 +312,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: farFuture.Add(time.Hour),
@@ -318,7 +329,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationPrune{
 						OperationPrune: &v1.OperationPrune{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: now.Add(time.Hour),
@@ -334,7 +346,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationPrune{
 						OperationPrune: &v1.OperationPrune{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: now.Add(time.Hour),
@@ -350,7 +363,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationPrune{
 						OperationPrune: &v1.OperationPrune{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 				{
 					InstanceId: "instance1",
@@ -359,7 +373,8 @@ func TestScheduling(t *testing.T) {
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
 					},
-					UnixTimeEndMs: farFuture.UnixMilli(),
+					UnixTimeStartMs: 1000,
+					UnixTimeEndMs:   farFuture.UnixMilli(),
 				},
 			},
 			wantTime: farFuture.Add(time.Hour),

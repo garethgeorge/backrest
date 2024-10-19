@@ -619,8 +619,8 @@ func TestCancelBackup(t *testing.T) {
 	var errgroup errgroup.Group
 	errgroup.Go(func() error {
 		backupReq := connect.NewRequest(&types.StringValue{Value: "test"})
-		sut.handler.Backup(context.Background(), backupReq)
-		return nil
+		_, err := sut.handler.Backup(context.Background(), backupReq)
+		return err
 	})
 
 	// Find the backup operation ID in the oplog
