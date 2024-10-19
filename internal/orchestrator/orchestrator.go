@@ -284,8 +284,8 @@ func (o *Orchestrator) Run(ctx context.Context) {
 
 	go func() {
 		// watchdog timer to detect clock jumps and reschedule all tasks.
-		interval := 10 * time.Second
-		grace := 5 * time.Second
+		interval := 5 * time.Minute
+		grace := 30 * time.Second
 		ticker := time.NewTicker(interval)
 		lastTickTime := time.Now()
 
@@ -296,6 +296,7 @@ func (o *Orchestrator) Run(ctx context.Context) {
 				return
 			case <-ticker.C:
 				deltaMs := lastTickTime.Add(interval).UnixMilli() - time.Now().UnixMilli()
+				lastTickTime = time.Now()
 				if deltaMs < 0 {
 					deltaMs = -deltaMs
 				}
@@ -304,7 +305,6 @@ func (o *Orchestrator) Run(ctx context.Context) {
 				}
 				zap.S().Warnf("detected a clock jump, watchdog timer is off from realtime by %dms, rescheduling all tasks", deltaMs)
 
-				lastTickTime = time.Now()
 				if err := o.ScheduleDefaultTasks(o.config); err != nil {
 					zap.S().Errorf("failed to schedule default tasks: %v", err)
 				}
