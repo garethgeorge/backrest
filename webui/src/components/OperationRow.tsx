@@ -495,7 +495,9 @@ const BackupOperationStatus = ({
       <>
         <Typography.Text>
           <Typography.Text strong>Snapshot ID: </Typography.Text>
-          {normalizeSnapshotId(sum.snapshotId!)}
+          {sum.snapshotId !== ""
+            ? normalizeSnapshotId(sum.snapshotId!)
+            : "No Snapshot Created"}
         </Typography.Text>
         <Row gutter={16}>
           <Col span={8}>

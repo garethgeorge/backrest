@@ -54,6 +54,8 @@ message Plan {
   RetentionPolicy retention = 7 [json_name="retention"]; // retention policy for snapshots.
   repeated Hook hooks = 8 [json_name="hooks"]; // hooks to run on events for this plan.
   repeated string backup_flags = 10 [json_name="backup_flags"]; // extra flags to set when running a backup command.
+  bool skip_if_unchanged = 13 [json_name="skipIfUnchanged"]; // skip the backup if no changes are detected.
+  reserved 3, 6, 11; // deprecated
 }
 
 message CommandPrefix {
@@ -132,6 +134,7 @@ message Hook {
     CONDITION_SNAPSHOT_ERROR = 4; // snapshot failed.
     CONDITION_SNAPSHOT_WARNING = 5; // snapshot completed with warnings.
     CONDITION_SNAPSHOT_SUCCESS = 6; // snapshot succeeded.
+    CONDITION_SNAPSHOT_SKIPPED = 7; // snapshot was skipped e.g. due to no changes.
     
     // prune conditions
     CONDITION_PRUNE_START = 100; // prune started.

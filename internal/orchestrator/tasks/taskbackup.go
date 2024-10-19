@@ -212,11 +212,6 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 			v1.Hook_CONDITION_SNAPSHOT_WARNING,
 			v1.Hook_CONDITION_SNAPSHOT_END,
 		}, vars)
-	} else {
-		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
-			v1.Hook_CONDITION_SNAPSHOT_SUCCESS,
-			v1.Hook_CONDITION_SNAPSHOT_END,
-		}, vars)
 	}
 
 	op.SnapshotId = summary.SnapshotId
@@ -227,15 +222,28 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 
 	l.Info("backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)), zap.Any("summary", backupOp.OperationBackup.LastStatus))
 
-	// schedule followup tasks
-	at := time.Now()
-	if _, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyKeepAll); plan.Retention != nil && !ok {
-		if err := runner.ScheduleTask(NewOneoffForgetTask(t.RepoID(), t.PlanID(), op.FlowId, at), TaskPriorityForget); err != nil {
-			return fmt.Errorf("failed to schedule forget task: %w", err)
+	if summary.SnapshotId == "" { // support --skip-if-unchanged which returns an operation with an empty snapshot ID
+		op.DisplayMessage = "No snapshot added, possibly due to no changes in the source data."
+		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
+			v1.Hook_CONDITION_SNAPSHOT_SKIPPED,
+			v1.Hook_CONDITION_SNAPSHOT_END,
+		}, vars)
+	} else {
+		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
+			v1.Hook_CONDITION_SNAPSHOT_SUCCESS,
+			v1.Hook_CONDITION_SNAPSHOT_END,
+		}, vars)
+
+		// schedule followup tasks if a snapshot was added
+		at := time.Now()
+		if _, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyKeepAll); plan.Retention != nil && !ok {
+			if err := runner.ScheduleTask(NewOneoffForgetTask(t.RepoID(), t.PlanID(), op.FlowId, at), TaskPriorityForget); err != nil {
+				return fmt.Errorf("failed to schedule forget task: %w", err)
+			}
 		}
-	}
-	if err := runner.ScheduleTask(NewOneoffIndexSnapshotsTask(t.RepoID(), at), TaskPriorityIndexSnapshots); err != nil {
-		return fmt.Errorf("failed to schedule index snapshots task: %w", err)
+		if err := runner.ScheduleTask(NewOneoffIndexSnapshotsTask(t.RepoID(), at), TaskPriorityIndexSnapshots); err != nil {
+			return fmt.Errorf("failed to schedule index snapshots task: %w", err)
+		}
 	}
 
 	return nil

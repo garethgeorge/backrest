@@ -342,6 +342,13 @@ export class Plan extends Message<Plan> {
    */
   backupFlags: string[] = [];
 
+  /**
+   * skip the backup if no changes are detected.
+   *
+   * @generated from field: bool skip_if_unchanged = 13;
+   */
+  skipIfUnchanged = false;
+
   constructor(data?: PartialMessage<Plan>) {
     super();
     proto3.util.initPartial(data, this);
@@ -359,6 +366,7 @@ export class Plan extends Message<Plan> {
     { no: 7, name: "retention", kind: "message", T: RetentionPolicy },
     { no: 8, name: "hooks", kind: "message", T: Hook, repeated: true },
     { no: 10, name: "backup_flags", jsonName: "backup_flags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 13, name: "skip_if_unchanged", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Plan {
@@ -987,6 +995,13 @@ export enum Hook_Condition {
   SNAPSHOT_SUCCESS = 6,
 
   /**
+   * snapshot was skipped e.g. due to no changes.
+   *
+   * @generated from enum value: CONDITION_SNAPSHOT_SKIPPED = 7;
+   */
+  SNAPSHOT_SKIPPED = 7,
+
+  /**
    * prune conditions
    *
    * prune started.
@@ -1041,6 +1056,7 @@ proto3.util.setEnumType(Hook_Condition, "v1.Hook.Condition", [
   { no: 4, name: "CONDITION_SNAPSHOT_ERROR" },
   { no: 5, name: "CONDITION_SNAPSHOT_WARNING" },
   { no: 6, name: "CONDITION_SNAPSHOT_SUCCESS" },
+  { no: 7, name: "CONDITION_SNAPSHOT_SKIPPED" },
   { no: 100, name: "CONDITION_PRUNE_START" },
   { no: 101, name: "CONDITION_PRUNE_ERROR" },
   { no: 102, name: "CONDITION_PRUNE_SUCCESS" },

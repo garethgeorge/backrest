@@ -85,9 +85,12 @@ export const OperationTree = ({
         event === OperationEventType.EVENT_UPDATED
       ) {
         for (const flowID of flowIDs) {
-          const displayInfo = displayInfoForFlow(
-            logState.getByFlowID(flowID) || []
-          );
+          const ops = logState.getByFlowID(flowID);
+          if (!ops || ops[0].op.case === "operationRunHook") {
+            continue;
+          }
+
+          const displayInfo = displayInfoForFlow(ops);
           if (!displayInfo.hidden) {
             backupInfoByFlowID.set(flowID, displayInfo);
           } else {

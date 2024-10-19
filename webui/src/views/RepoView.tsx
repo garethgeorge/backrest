@@ -125,7 +125,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
     },
     {
       key: "2",
-      label: "Operation List",
+      label: "Full Operation History",
       children: (
         <>
           <h3>Backup Action History</h3>

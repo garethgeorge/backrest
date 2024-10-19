@@ -117,7 +117,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           },
           {
             key: "2",
-            label: "Operation List",
+            label: "Full Operation History",
             children: (
               <>
                 <h2>Backup Action History</h2>
