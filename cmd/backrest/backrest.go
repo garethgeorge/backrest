@@ -250,59 +250,43 @@ func installLoggers() {
 // operations directly to the sqlite logstore.
 func migrateBboltOplog(logstore oplog.OpStore) {
 	oldBboltOplogFile := path.Join(env.DataDir(), "oplog.boltdb")
-	if _, err := os.Stat(oldBboltOplogFile); err == nil {
-		zap.S().Warnf("found old bbolt oplog file %q, migrating to sqlite", oldBboltOplogFile)
-		oldOpstore, err := bboltstore.NewBboltStore(oldBboltOplogFile)
-		if err != nil {
-			zap.S().Fatalf("error opening old bbolt oplog: %v", err)
-		}
-
-		oldOplog, err := oplog.NewOpLog(oldOpstore)
-		if err != nil {
-			zap.S().Fatalf("error creating old bbolt oplog: %v", err)
-		}
-
-		batch := make([]*v1.Operation, 0, 32)
-
-		var errs []error
-		if err := oldOplog.Query(oplog.Query{}, func(op *v1.Operation) error {
-			batch = append(batch, op)
-			if len(batch) == 256 {
-				if err := logstore.Add(batch...); err != nil {
-					errs = append(errs, err)
-					zap.S().Warnf("error migrating %d operations: %v", len(batch), err)
-				} else {
-					zap.S().Debugf("migrated %d oplog operations from bbolt to sqlite store", len(batch))
-				}
-				batch = batch[:0]
-			}
-			return nil
-		}); err != nil {
-			zap.S().Warnf("couldn't migrate all operations from the old bbolt oplog, if this recurs delete the file %q and restart", oldBboltOplogFile)
-			zap.S().Fatalf("error migrating old bbolt oplog: %v", err)
-		}
-
-		if len(batch) > 0 {
-			if err := logstore.Add(batch...); err != nil {
-				errs = append(errs, err)
-				zap.S().Warnf("error migrating %d operations: %v", len(batch), err)
-			} else {
-				zap.S().Debugf("migrated %d oplog operations from bbolt to sqlite store", len(batch))
-			}
-			zap.S().Debugf("migrated %d oplog operations from bbolt to sqlite store", len(batch))
-		}
-
-		if len(errs) > 0 {
-			zap.S().Fatalf("encountered %d errors migrating old bbolt oplog, see logs for details. If this probelem recurs delete the file %q and restart", len(errs), oldBboltOplogFile)
-		}
-
-		if err := oldOpstore.Close(); err != nil {
-			zap.S().Warnf("error closing old bbolt oplog: %v", err)
-		}
-		if err := os.Rename(oldBboltOplogFile, oldBboltOplogFile+".deprecated"); err != nil {
-			zap.S().Warnf("error removing old bbolt oplog: %v", err)
-		}
-
-		zap.S().Info("migrated old bbolt oplog to sqlite")
+	if _, err := os.Stat(oldBboltOplogFile); err != nil {
+		return
 	}
+
+	zap.S().Warnf("found old bbolt oplog file %q, migrating to sqlite", oldBboltOplogFile)
+	oldOpstore, err := bboltstore.NewBboltStore(oldBboltOplogFile)
+	if err != nil {
+		zap.S().Fatalf("error opening old bolt opstore: %v", oldBboltOplogFile, err)
+	}
+	oldOplog, err := oplog.NewOpLog(oldOpstore)
+	if err != nil {
+		zap.S().Fatalf("error opening old bolt oplog: %v", oldBboltOplogFile, err)
+	}
+
+	var errs []error
+	var count int
+	if err := oldOplog.Query(oplog.Query{}, func(op *v1.Operation) error {
+		if err := logstore.Add(op); err != nil {
+			errs = append(errs, err)
+			zap.L().Warn("failed to migrate operation", zap.Error(err), zap.Any("operation", op))
+		} else {
+			count++
+		}
+		return nil
+	}); err != nil {
+		zap.S().Warnf("couldn't migrate all operations from the old bbolt oplog, if this recurs delete the file %q and restart", oldBboltOplogFile)
+		zap.S().Fatalf("error migrating old bbolt oplog: %v", err)
+	}
+
+	if len(errs) > 0 {
+		zap.S().Errorf("encountered %d errors migrating old bbolt oplog, see logs for details.", len(errs), oldBboltOplogFile)
+	}
+	if err := oldOpstore.Close(); err != nil {
+		zap.S().Warnf("error closing old bbolt oplog: %v", err)
+	}
+	if err := os.Rename(oldBboltOplogFile, oldBboltOplogFile+".deprecated"); err != nil {
+		zap.S().Warnf("error removing old bbolt oplog: %v", err)
+	}
+	zap.S().Infof("migrated %d operations from old bbolt oplog to sqlite", count)
 }

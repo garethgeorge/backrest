@@ -5,6 +5,7 @@
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
+import { OperationStatus } from "./operations_pb.js";
 
 /**
  * OpSelector is a message that can be used to select operations e.g. by query.
@@ -657,6 +658,223 @@ export class RunCommandRequest extends Message<RunCommandRequest> {
 
   static equals(a: RunCommandRequest | PlainMessage<RunCommandRequest> | undefined, b: RunCommandRequest | PlainMessage<RunCommandRequest> | undefined): boolean {
     return proto3.util.equals(RunCommandRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.SummaryDashboardResponse
+ */
+export class SummaryDashboardResponse extends Message<SummaryDashboardResponse> {
+  /**
+   * @generated from field: repeated v1.SummaryDashboardResponse.Summary repo_summaries = 1;
+   */
+  repoSummaries: SummaryDashboardResponse_Summary[] = [];
+
+  /**
+   * @generated from field: repeated v1.SummaryDashboardResponse.Summary plan_summaries = 2;
+   */
+  planSummaries: SummaryDashboardResponse_Summary[] = [];
+
+  /**
+   * @generated from field: string config_path = 10;
+   */
+  configPath = "";
+
+  /**
+   * @generated from field: string data_path = 11;
+   */
+  dataPath = "";
+
+  constructor(data?: PartialMessage<SummaryDashboardResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.SummaryDashboardResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "repo_summaries", kind: "message", T: SummaryDashboardResponse_Summary, repeated: true },
+    { no: 2, name: "plan_summaries", kind: "message", T: SummaryDashboardResponse_Summary, repeated: true },
+    { no: 10, name: "config_path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "data_path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SummaryDashboardResponse {
+    return new SummaryDashboardResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SummaryDashboardResponse {
+    return new SummaryDashboardResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SummaryDashboardResponse {
+    return new SummaryDashboardResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SummaryDashboardResponse | PlainMessage<SummaryDashboardResponse> | undefined, b: SummaryDashboardResponse | PlainMessage<SummaryDashboardResponse> | undefined): boolean {
+    return proto3.util.equals(SummaryDashboardResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.SummaryDashboardResponse.Summary
+ */
+export class SummaryDashboardResponse_Summary extends Message<SummaryDashboardResponse_Summary> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: int64 backups_failed_30days = 2;
+   */
+  backupsFailed30days = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 backups_warning_last_30days = 3;
+   */
+  backupsWarningLast30days = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 backups_success_last_30days = 4;
+   */
+  backupsSuccessLast30days = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 bytes_scanned_last_30days = 5;
+   */
+  bytesScannedLast30days = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 bytes_added_last_30days = 6;
+   */
+  bytesAddedLast30days = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 total_snapshots = 7;
+   */
+  totalSnapshots = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 bytes_scanned_avg = 8;
+   */
+  bytesScannedAvg = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 bytes_added_avg = 9;
+   */
+  bytesAddedAvg = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 next_backup_time_ms = 10;
+   */
+  nextBackupTimeMs = protoInt64.zero;
+
+  /**
+   * Charts
+   *
+   * recent backups
+   *
+   * @generated from field: v1.SummaryDashboardResponse.BackupChart recent_backups = 11;
+   */
+  recentBackups?: SummaryDashboardResponse_BackupChart;
+
+  constructor(data?: PartialMessage<SummaryDashboardResponse_Summary>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.SummaryDashboardResponse.Summary";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "backups_failed_30days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "backups_warning_last_30days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "backups_success_last_30days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 5, name: "bytes_scanned_last_30days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 6, name: "bytes_added_last_30days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 7, name: "total_snapshots", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 8, name: "bytes_scanned_avg", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 9, name: "bytes_added_avg", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 10, name: "next_backup_time_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 11, name: "recent_backups", kind: "message", T: SummaryDashboardResponse_BackupChart },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SummaryDashboardResponse_Summary {
+    return new SummaryDashboardResponse_Summary().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SummaryDashboardResponse_Summary {
+    return new SummaryDashboardResponse_Summary().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SummaryDashboardResponse_Summary {
+    return new SummaryDashboardResponse_Summary().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SummaryDashboardResponse_Summary | PlainMessage<SummaryDashboardResponse_Summary> | undefined, b: SummaryDashboardResponse_Summary | PlainMessage<SummaryDashboardResponse_Summary> | undefined): boolean {
+    return proto3.util.equals(SummaryDashboardResponse_Summary, a, b);
+  }
+}
+
+/**
+ * @generated from message v1.SummaryDashboardResponse.BackupChart
+ */
+export class SummaryDashboardResponse_BackupChart extends Message<SummaryDashboardResponse_BackupChart> {
+  /**
+   * @generated from field: repeated int64 flow_id = 1;
+   */
+  flowId: bigint[] = [];
+
+  /**
+   * @generated from field: repeated int64 timestamp_ms = 2;
+   */
+  timestampMs: bigint[] = [];
+
+  /**
+   * @generated from field: repeated int64 duration_ms = 3;
+   */
+  durationMs: bigint[] = [];
+
+  /**
+   * @generated from field: repeated v1.OperationStatus status = 4;
+   */
+  status: OperationStatus[] = [];
+
+  /**
+   * @generated from field: repeated int64 bytes_added = 5;
+   */
+  bytesAdded: bigint[] = [];
+
+  constructor(data?: PartialMessage<SummaryDashboardResponse_BackupChart>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "v1.SummaryDashboardResponse.BackupChart";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "flow_id", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
+    { no: 2, name: "timestamp_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
+    { no: 3, name: "duration_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
+    { no: 4, name: "status", kind: "enum", T: proto3.getEnumType(OperationStatus), repeated: true },
+    { no: 5, name: "bytes_added", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SummaryDashboardResponse_BackupChart {
+    return new SummaryDashboardResponse_BackupChart().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SummaryDashboardResponse_BackupChart {
+    return new SummaryDashboardResponse_BackupChart().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SummaryDashboardResponse_BackupChart {
+    return new SummaryDashboardResponse_BackupChart().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SummaryDashboardResponse_BackupChart | PlainMessage<SummaryDashboardResponse_BackupChart> | undefined, b: SummaryDashboardResponse_BackupChart | PlainMessage<SummaryDashboardResponse_BackupChart> | undefined): boolean {
+    return proto3.util.equals(SummaryDashboardResponse_BackupChart, a, b);
   }
 }
 

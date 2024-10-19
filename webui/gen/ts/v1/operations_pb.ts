@@ -653,6 +653,8 @@ export class OperationRunCommand extends Message<OperationRunCommand> {
   outputLogref = "";
 
   /**
+   * not necessarily authoritative, tracked as an optimization to allow clients to avoid fetching very large outputs.
+   *
    * @generated from field: int64 output_size_bytes = 3;
    */
   outputSizeBytes = protoInt64.zero;

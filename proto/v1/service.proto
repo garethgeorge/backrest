@@ -55,6 +55,9 @@ service Backrest {
 
   // PathAutocomplete provides path autocompletion options for a given filesystem path.
   rpc PathAutocomplete (types.StringValue) returns (types.StringList) {}
+
+  // GetSummaryDashboard returns data for the dashboard view.
+  rpc GetSummaryDashboard(google.protobuf.Empty) returns (SummaryDashboardResponse) {}
 }
 
 // OpSelector is a message that can be used to select operations e.g. by query.
@@ -139,4 +142,36 @@ message LsEntry {
 message RunCommandRequest {
   string repo_id = 1;
   string command = 2;
+}
+
+message SummaryDashboardResponse {
+  repeated Summary repo_summaries = 1;
+  repeated Summary plan_summaries = 2;
+
+  string config_path = 10;
+  string data_path = 11;
+
+  message Summary {
+    string id = 1;
+    int64 backups_failed_30days = 2;
+    int64 backups_warning_last_30days = 3;
+    int64 backups_success_last_30days = 4;
+    int64 bytes_scanned_last_30days = 5;
+    int64 bytes_added_last_30days = 6;
+    int64 total_snapshots = 7;
+    int64 bytes_scanned_avg = 8;
+    int64 bytes_added_avg = 9;
+    int64 next_backup_time_ms = 10;
+
+    // Charts
+    BackupChart recent_backups = 11; // recent backups
+  }
+
+  message BackupChart {
+    repeated int64 flow_id = 1;
+    repeated int64 timestamp_ms = 2;
+    repeated int64 duration_ms = 3;
+    repeated OperationStatus status = 4;
+    repeated int64 bytes_added = 5;
+  }
 }
