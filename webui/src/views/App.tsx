@@ -206,7 +206,10 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         key: "p-" + plan.id,
         icon: <IconForResource planId={plan.id} repoId={plan.repo} />,
         label: (
-          <div className="backrest visible-on-hover">
+          <div
+            className="backrest visible-on-hover"
+            style={{ width: "100%", height: "100%" }}
+          >
             {plan.id}{" "}
             <Button
               className="hidden-child float-center-right"
@@ -249,7 +252,10 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         key: "r-" + repo.id,
         icon: <IconForResource repoId={repo.id} />,
         label: (
-          <div className="backrest visible-on-hover">
+          <div
+            className="backrest visible-on-hover"
+            style={{ width: "100%", height: "100%" }}
+          >
             {repo.id}{" "}
             <Button
               type="text"
