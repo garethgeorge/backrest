@@ -619,17 +619,16 @@ func TestCancelBackup(t *testing.T) {
 	var errgroup errgroup.Group
 	errgroup.Go(func() error {
 		backupReq := connect.NewRequest(&types.StringValue{Value: "test"})
-		sut.handler.Backup(context.Background(), backupReq)
-		return nil
+		_, err := sut.handler.Backup(context.Background(), backupReq)
+		return err
 	})
 
 	// Find the backup operation ID in the oplog
 	var backupOpId int64
-	if err := retry(t, 100, 10*time.Millisecond, func() error {
+	if err := retry(t, 100, 100*time.Millisecond, func() error {
 		operations := getOperations(t, sut.oplog)
 		for _, op := range operations {
-			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
-			if ok {
+			if op.GetOperationBackup() != nil {
 				backupOpId = op.Id
 				return nil
 			}
@@ -639,23 +638,20 @@ func TestCancelBackup(t *testing.T) {
 		t.Fatalf("Couldn't find backup operation in oplog")
 	}
 
-	errgroup.Go(func() error {
-		if _, err := sut.handler.Cancel(context.Background(), connect.NewRequest(&types.Int64Value{Value: backupOpId})); err != nil {
-			return fmt.Errorf("Cancel() error = %v, wantErr nil", err)
-		}
-		return nil
-	})
-
-	if err := errgroup.Wait(); err != nil {
-		t.Fatal(err.Error())
+	if _, err := sut.handler.Cancel(context.Background(), connect.NewRequest(&types.Int64Value{Value: backupOpId})); err != nil {
+		t.Errorf("Cancel() error = %v, wantErr nil", err)
 	}
 
-	// Assert that the backup operation was cancelled
-	if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
-		_, ok := op.GetOp().(*v1.Operation_OperationBackup)
-		return op.Status == v1.OperationStatus_STATUS_ERROR && ok
-	}) == -1 {
-		t.Fatalf("Expected a failed backup operation in the log")
+	if err := retry(t, 10, 1*time.Second, func() error {
+		if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
+			return op.Status == v1.OperationStatus_STATUS_ERROR && ok
+		}) == -1 {
+			return errors.New("backup operation not found")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("Couldn't find failed canceled backup operation in oplog")
 	}
 }
 

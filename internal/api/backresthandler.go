@@ -19,6 +19,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
@@ -588,6 +589,109 @@ func (s *BackrestHandler) PathAutocomplete(ctx context.Context, path *connect.Re
 	}
 
 	return connect.NewResponse(&types.StringList{Values: paths}), nil
+}
+
+func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.SummaryDashboardResponse], error) {
+	config, err := s.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %w", err)
+	}
+
+	generateSummaryHelper := func(id string, q oplog.Query) (*v1.SummaryDashboardResponse_Summary, error) {
+		var backupsExamined int64
+		var bytesScanned30 int64
+		var bytesAdded30 int64
+		var backupsFailed30 int64
+		var backupsSuccess30 int64
+		var backupsWarning30 int64
+		var nextBackupTime int64
+		backupChart := &v1.SummaryDashboardResponse_BackupChart{}
+
+		s.oplog.Query(q, func(op *v1.Operation) error {
+			t := time.UnixMilli(op.UnixTimeStartMs)
+
+			if backupOp := op.GetOperationBackup(); backupOp != nil {
+				if time.Since(t) > 30*24*time.Hour {
+					return oplog.ErrStopIteration
+				} else if op.GetStatus() == v1.OperationStatus_STATUS_PENDING {
+					nextBackupTime = op.UnixTimeStartMs
+					return nil
+				}
+				backupsExamined++
+
+				if op.Status == v1.OperationStatus_STATUS_SUCCESS {
+					backupsSuccess30++
+				} else if op.Status == v1.OperationStatus_STATUS_ERROR {
+					backupsFailed30++
+				} else if op.Status == v1.OperationStatus_STATUS_WARNING {
+					backupsWarning30++
+				}
+
+				if summary := backupOp.GetLastStatus().GetSummary(); summary != nil {
+					bytesScanned30 += summary.TotalBytesProcessed
+					bytesAdded30 += summary.DataAdded
+				}
+
+				// recent backups chart
+				if len(backupChart.TimestampMs) < 60 { // only include the latest 90 backups in the chart
+					duration := op.UnixTimeEndMs - op.UnixTimeStartMs
+					if duration <= 1000 {
+						duration = 1000
+					}
+
+					backupChart.FlowId = append(backupChart.FlowId, op.FlowId)
+					backupChart.TimestampMs = append(backupChart.TimestampMs, op.UnixTimeStartMs)
+					backupChart.DurationMs = append(backupChart.DurationMs, duration)
+					backupChart.Status = append(backupChart.Status, op.Status)
+					backupChart.BytesAdded = append(backupChart.BytesAdded, backupOp.GetLastStatus().GetSummary().GetDataAdded())
+				}
+			}
+
+			return nil
+		})
+
+		if backupsExamined == 0 {
+			backupsExamined = 1 // prevent division by zero for avg calculations
+		}
+
+		return &v1.SummaryDashboardResponse_Summary{
+			Id:                        id,
+			BytesScannedLast_30Days:   bytesScanned30,
+			BytesAddedLast_30Days:     bytesAdded30,
+			BackupsFailed_30Days:      backupsFailed30,
+			BackupsWarningLast_30Days: backupsWarning30,
+			BackupsSuccessLast_30Days: backupsSuccess30,
+			BytesScannedAvg:           bytesScanned30 / backupsExamined,
+			BytesAddedAvg:             bytesAdded30 / backupsExamined,
+			NextBackupTimeMs:          nextBackupTime,
+			RecentBackups:             backupChart,
+		}, nil
+	}
+
+	response := &v1.SummaryDashboardResponse{
+		ConfigPath: env.ConfigFilePath(),
+		DataPath:   env.DataDir(),
+	}
+
+	for _, repo := range config.Repos {
+		resp, err := generateSummaryHelper(repo.Id, oplog.Query{RepoID: repo.Id, Reversed: true, Limit: 1000})
+		if err != nil {
+			return nil, fmt.Errorf("summary for repo %q: %w", repo.Id, err)
+		}
+
+		response.RepoSummaries = append(response.RepoSummaries, resp)
+	}
+
+	for _, plan := range config.Plans {
+		resp, err := generateSummaryHelper(plan.Id, oplog.Query{PlanID: plan.Id, Reversed: true, Limit: 1000})
+		if err != nil {
+			return nil, fmt.Errorf("summary for plan %q: %w", plan.Id, err)
+		}
+
+		response.PlanSummaries = append(response.PlanSummaries, resp)
+	}
+
+	return connect.NewResponse(response), nil
 }
 
 func opSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {

@@ -390,6 +390,8 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 				zap.S().Errorf("failed to add operation to oplog: %w", err)
 			}
 		}
+	} else {
+		ctx = logging.ContextWithWriter(ctx, io.Discard) // discard logs if no operation.
 	}
 
 	start := time.Now()

@@ -68,6 +68,7 @@ PRAGMA journal_mode=WAL;
 PRAGMA page_size=4096;
 CREATE TABLE IF NOT EXISTS operations (
 	id INTEGER PRIMARY KEY,
+	start_time_ms INTEGER NOT NULL,
 	flow_id INTEGER NOT NULL,
 	instance_id STRING NOT NULL,
 	plan_id STRING NOT NULL,
@@ -81,6 +82,7 @@ CREATE TABLE IF NOT EXISTS system_info (
 CREATE INDEX IF NOT EXISTS operations_repo_id_plan_id_instance_id ON operations (repo_id, plan_id, instance_id);
 CREATE INDEX IF NOT EXISTS operations_snapshot_id ON operations (snapshot_id);
 CREATE INDEX IF NOT EXISTS operations_flow_id ON operations (flow_id);
+CREATE INDEX IF NOT EXISTS operations_start_time_ms ON operations (start_time_ms);
 
 INSERT INTO system_info (version)
 SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM system_info);
@@ -179,9 +181,9 @@ func (m *SqliteStore) buildQuery(q oplog.Query, includeSelectClauses bool) (stri
 
 	if includeSelectClauses {
 		if q.Reversed {
-			query = append(query, " ORDER BY id DESC")
+			query = append(query, " ORDER BY start_time_ms DESC, id DESC")
 		} else {
-			query = append(query, " ORDER BY id ASC")
+			query = append(query, " ORDER BY start_time_ms ASC, id ASC")
 		}
 
 		if q.Limit > 0 {
@@ -195,7 +197,6 @@ func (m *SqliteStore) buildQuery(q oplog.Query, includeSelectClauses bool) (stri
 			query = append(query, " OFFSET ?")
 			args = append(args, q.Offset)
 		}
-
 	}
 
 	return strings.Join(query, ""), args
@@ -281,7 +282,7 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 				return err
 			}
 
-			query := "INSERT INTO operations (id, flow_id, instance_id, plan_id, repo_id, snapshot_id, operation) VALUES (?, ?, ?, ?, ?, ?, ?)"
+			query := "INSERT INTO operations (id, start_time_ms, flow_id, instance_id, plan_id, repo_id, snapshot_id, operation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 
 			bytes, err := proto.Marshal(o)
 			if err != nil {
@@ -289,7 +290,7 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 			}
 
 			if err := sqlitex.Execute(conn, query, &sqlitex.ExecOptions{
-				Args: []any{o.Id, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, bytes},
+				Args: []any{o.Id, o.UnixTimeStartMs, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, bytes},
 			}); err != nil {
 				if sqlite.ErrCode(err) == sqlite.ResultConstraintUnique {
 					return fmt.Errorf("operation already exists %v: %w", o.Id, oplog.ErrExist)
@@ -322,8 +323,8 @@ func (m *SqliteStore) updateInternal(conn *sqlite.Conn, op ...*v1.Operation) err
 		if err != nil {
 			return fmt.Errorf("marshal operation: %v", err)
 		}
-		if err := sqlitex.Execute(conn, "UPDATE operations SET operation = ?, flow_id = ?, instance_id = ?, plan_id = ?, repo_id = ?, snapshot_id = ? WHERE id = ?", &sqlitex.ExecOptions{
-			Args: []any{bytes, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, o.Id},
+		if err := sqlitex.Execute(conn, "UPDATE operations SET operation = ?, start_time_ms = ?, flow_id = ?, instance_id = ?, plan_id = ?, repo_id = ?, snapshot_id = ? WHERE id = ?", &sqlitex.ExecOptions{
+			Args: []any{bytes, o.UnixTimeStartMs, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, o.Id},
 		}); err != nil {
 			return fmt.Errorf("update operation: %v", err)
 		}
