@@ -41,6 +41,8 @@ func (v HookVars) EventName(cond v1.Hook_Condition) string {
 		return "snapshot warning"
 	case v1.Hook_CONDITION_SNAPSHOT_SUCCESS:
 		return "snapshot success"
+	case v1.Hook_CONDITION_SNAPSHOT_SKIPPED:
+		return "snapshot skipped"
 	case v1.Hook_CONDITION_CHECK_START:
 		return "check start"
 	case v1.Hook_CONDITION_CHECK_ERROR:

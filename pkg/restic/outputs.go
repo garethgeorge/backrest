@@ -116,10 +116,7 @@ type BackupProgressEntry struct {
 }
 
 func (b *BackupProgressEntry) Validate() error {
-	if b.MessageType == "summary" {
-		if b.SnapshotId == "" {
-			return errors.New("summary message must have snapshot_id")
-		}
+	if b.MessageType == "summary" && b.SnapshotId != "" {
 		if err := ValidateSnapshotId(b.SnapshotId); err != nil {
 			return err
 		}

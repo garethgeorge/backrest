@@ -60,6 +60,7 @@ export const unsubscribeFromOperations = (
 export const shouldHideOperation = (operation: Operation) => {
   return (
     operation.op.case === "operationStats" ||
+    (operation.status === OperationStatus.STATUS_SUCCESS && operation.op.case === "operationBackup" && !operation.snapshotId) ||
     shouldHideStatus(operation.status)
   );
 };

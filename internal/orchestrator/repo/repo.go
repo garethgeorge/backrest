@@ -169,13 +169,13 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
-	l.Debug("starting backup", zap.String("repo", r.repoConfig.Id), zap.String("plan", plan.Id))
+	l.Debug("starting backup", zap.String("plan", plan.Id))
 	summary, err := r.repo.Backup(ctx, plan.Paths, progressCallback, opts...)
 	if err != nil {
 		return summary, fmt.Errorf("failed to backup: %w", err)
 	}
 
-	l.Debug("backup completed", zap.String("repo", r.repoConfig.Id), zap.Duration("duration", time.Since(startTime)))
+	l.Debug("backup completed", zap.Duration("duration", time.Since(startTime)))
 	return summary, nil
 }
 
