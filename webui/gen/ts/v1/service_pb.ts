@@ -761,15 +761,18 @@ export class SummaryDashboardResponse_Summary extends Message<SummaryDashboardRe
   bytesScannedAvg = protoInt64.zero;
 
   /**
-   * Charts
-   *
-   * bytes added bucketed by day
-   *
-   * @generated from field: v1.SummaryDashboardResponse.Chart bytes_added = 10;
+   * @generated from field: int64 bytes_added_avg = 9;
    */
-  bytesAdded?: SummaryDashboardResponse_Chart;
+  bytesAddedAvg = protoInt64.zero;
 
   /**
+   * @generated from field: int64 next_backup_time_ms = 10;
+   */
+  nextBackupTimeMs = protoInt64.zero;
+
+  /**
+   * Charts
+   *
    * recent backups
    *
    * @generated from field: v1.SummaryDashboardResponse.BackupChart recent_backups = 11;
@@ -792,7 +795,8 @@ export class SummaryDashboardResponse_Summary extends Message<SummaryDashboardRe
     { no: 6, name: "bytes_added_last_30days", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 7, name: "total_snapshots", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 8, name: "bytes_scanned_avg", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 10, name: "bytes_added", kind: "message", T: SummaryDashboardResponse_Chart },
+    { no: 9, name: "bytes_added_avg", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 10, name: "next_backup_time_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 11, name: "recent_backups", kind: "message", T: SummaryDashboardResponse_BackupChart },
   ]);
 
@@ -814,49 +818,6 @@ export class SummaryDashboardResponse_Summary extends Message<SummaryDashboardRe
 }
 
 /**
- * @generated from message v1.SummaryDashboardResponse.Chart
- */
-export class SummaryDashboardResponse_Chart extends Message<SummaryDashboardResponse_Chart> {
-  /**
-   * @generated from field: repeated int64 timestamp_milli = 1;
-   */
-  timestampMilli: bigint[] = [];
-
-  /**
-   * @generated from field: repeated int64 value = 2;
-   */
-  value: bigint[] = [];
-
-  constructor(data?: PartialMessage<SummaryDashboardResponse_Chart>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "v1.SummaryDashboardResponse.Chart";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "timestamp_milli", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
-    { no: 2, name: "value", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SummaryDashboardResponse_Chart {
-    return new SummaryDashboardResponse_Chart().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SummaryDashboardResponse_Chart {
-    return new SummaryDashboardResponse_Chart().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SummaryDashboardResponse_Chart {
-    return new SummaryDashboardResponse_Chart().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: SummaryDashboardResponse_Chart | PlainMessage<SummaryDashboardResponse_Chart> | undefined, b: SummaryDashboardResponse_Chart | PlainMessage<SummaryDashboardResponse_Chart> | undefined): boolean {
-    return proto3.util.equals(SummaryDashboardResponse_Chart, a, b);
-  }
-}
-
-/**
  * @generated from message v1.SummaryDashboardResponse.BackupChart
  */
 export class SummaryDashboardResponse_BackupChart extends Message<SummaryDashboardResponse_BackupChart> {
@@ -866,14 +827,14 @@ export class SummaryDashboardResponse_BackupChart extends Message<SummaryDashboa
   flowId: bigint[] = [];
 
   /**
-   * @generated from field: repeated int64 timestamp_milli = 2;
+   * @generated from field: repeated int64 timestamp_ms = 2;
    */
-  timestampMilli: bigint[] = [];
+  timestampMs: bigint[] = [];
 
   /**
-   * @generated from field: repeated int64 duration_milli = 3;
+   * @generated from field: repeated int64 duration_ms = 3;
    */
-  durationMilli: bigint[] = [];
+  durationMs: bigint[] = [];
 
   /**
    * @generated from field: repeated v1.OperationStatus status = 4;
@@ -894,8 +855,8 @@ export class SummaryDashboardResponse_BackupChart extends Message<SummaryDashboa
   static readonly typeName = "v1.SummaryDashboardResponse.BackupChart";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "flow_id", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
-    { no: 2, name: "timestamp_milli", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
-    { no: 3, name: "duration_milli", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
+    { no: 2, name: "timestamp_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
+    { no: 3, name: "duration_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
     { no: 4, name: "status", kind: "enum", T: proto3.getEnumType(OperationStatus), repeated: true },
     { no: 5, name: "bytes_added", kind: "scalar", T: 3 /* ScalarType.INT64 */, repeated: true },
   ]);

@@ -20,7 +20,12 @@ import {
 } from "../../gen/ts/v1/service_pb";
 import { backrestService } from "../api";
 import { useAlertApi } from "../components/Alerts";
-import { formatBytes, formatDuration, formatTime } from "../lib/formatting";
+import {
+  formatBytes,
+  formatDate,
+  formatDuration,
+  formatTime,
+} from "../lib/formatting";
 import {
   Bar,
   BarChart,
@@ -32,6 +37,7 @@ import {
 } from "recharts";
 import { colorForStatus } from "../state/flowdisplayaggregator";
 import { OperationStatus } from "../../gen/ts/v1/operations_pb";
+import { isMobile } from "../lib/browserutil";
 
 export const SummaryDashboard = () => {
   const config = useConfig()[0];
@@ -146,12 +152,12 @@ const SummaryPanel = ({
     bytesAdded: number;
   }[] = [];
   const recentBackups = summary.recentBackups!;
-  for (let i = 0; i < recentBackups.timestampMilli.length; i++) {
+  for (let i = 0; i < recentBackups.timestampMs.length; i++) {
     const color = colorForStatus(recentBackups.status[i]);
     recentBackupsChart.push({
       idx: i,
-      time: Number(recentBackups.timestampMilli[i]),
-      durationMs: Number(recentBackups.durationMilli[i]),
+      time: Number(recentBackups.timestampMs[i]),
+      durationMs: Number(recentBackups.durationMs[i]),
       color: color,
       bytesAdded: Number(recentBackups.bytesAdded[i]),
     });
@@ -170,7 +176,7 @@ const SummaryPanel = ({
     const idx = Number(label);
 
     const entry = recentBackupsChart[idx];
-    if (!entry || entry.idx > recentBackups.timestampMilli.length) {
+    if (!entry || entry.idx > recentBackups.timestampMs.length) {
       return null;
     }
 
@@ -195,6 +201,68 @@ const SummaryPanel = ({
     );
   };
 
+  const cardInfo: { key: number; label: string; children: React.ReactNode }[] =
+    [];
+
+  cardInfo.push(
+    {
+      key: 1,
+      label: "Backups (30d)",
+      children: (
+        <>
+          {summary.backupsSuccessLast30days && (
+            <Typography.Text type="success" style={{ marginRight: "5px" }}>
+              {summary.backupsSuccessLast30days + ""} ok
+            </Typography.Text>
+          )}
+          {summary.backupsFailed30days && (
+            <Typography.Text type="danger">
+              {summary.backupsFailed30days + ""} failed
+            </Typography.Text>
+          )}
+          {summary.backupsWarningLast30days && (
+            <Typography.Text type="warning">
+              {summary.backupsWarningLast30days + ""} warning
+            </Typography.Text>
+          )}
+        </>
+      ),
+    },
+    {
+      key: 2,
+      label: "Bytes Scanned (30d)",
+      children: formatBytes(Number(summary.bytesScannedLast30days)),
+    },
+    {
+      key: 3,
+      label: "Bytes Added (30d)",
+      children: formatBytes(Number(summary.bytesAddedLast30days)),
+    }
+  );
+
+  // check if mobile layout
+  if (!isMobile()) {
+    cardInfo.push(
+      {
+        key: 4,
+        label: "Next Scheduled Backup",
+        children: summary.nextBackupTimeMs
+          ? formatTime(Number(summary.nextBackupTimeMs))
+          : "None Scheduled",
+      },
+      {
+        key: 5,
+        label: "Bytes Scanned Avg",
+        children: formatBytes(Number(summary.bytesScannedAvg)),
+      },
+      {
+        key: 6,
+        label: "Bytes Added Avg",
+        children: formatBytes(Number(summary.bytesAddedAvg)),
+      }
+    );
+  }
+
   return (
     <Card title={summary.id} style={{ width: "100%" }}>
       <Row gutter={16} key={1}>
@@ -202,48 +270,11 @@ const SummaryPanel = ({
           <Descriptions
             layout="vertical"
             column={3}
-            items={[
-              {
-                key: 1,
-                label: "Backups (30d)",
-                children: (
-                  <>
-                    {summary.backupsSuccessLast30days && (
-                      <Typography.Text
-                        type="success"
-                        style={{ marginRight: "5px" }}
-                      >
-                        {summary.backupsSuccessLast30days + ""} ok
-                      </Typography.Text>
-                    )}
-                    {summary.backupsFailed30days && (
-                      <Typography.Text type="danger">
-                        {summary.backupsFailed30days + ""} failed
-                      </Typography.Text>
-                    )}
-                    {summary.backupsWarningLast30days && (
-                      <Typography.Text type="warning">
-                        {summary.backupsWarningLast30days + ""} warning
-                      </Typography.Text>
-                    )}
-                  </>
-                ),
-              },
-              {
-                key: 2,
-                label: "Bytes Scanned (30d)",
-                children: formatBytes(Number(summary.bytesScannedLast30days)),
-              },
-              {
-                key: 3,
-                label: "Bytes Added (30d)",
-                children: formatBytes(Number(summary.bytesAddedLast30days)),
-              },
-            ]}
+            items={cardInfo}
           ></Descriptions>
         </Col>
         <Col span={14}>
-          <ResponsiveContainer width="100%" height={100}>
+          <ResponsiveContainer width="100%" height={140}>
             <BarChart data={recentBackupsChart}>
               <Bar dataKey="durationMs">
                 {recentBackupsChart.map((entry, index) => (

@@ -160,16 +160,17 @@ message SummaryDashboardResponse {
     int64 bytes_added_last_30days = 6;
     int64 total_snapshots = 7;
     int64 bytes_scanned_avg = 8;
+    int64 bytes_added_avg = 9;
+    int64 next_backup_time_ms = 10;
 
     // Charts
-    Chart bytes_added = 10; // bytes added bucketed by day
     BackupChart recent_backups = 11; // recent backups
   }
 
   message BackupChart {
     repeated int64 flow_id = 1;
-    repeated int64 timestamp_milli = 2;
-    repeated int64 duration_milli = 3;
+    repeated int64 timestamp_ms = 2;
+    repeated int64 duration_ms = 3;
     repeated OperationStatus status = 4;
     repeated int64 bytes_added = 5;
   }

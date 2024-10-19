@@ -8,22 +8,34 @@ import (
 	"github.com/garethgeorge/backrest/pkg/restic"
 )
 
+var (
+	errIDRequired              = errors.New("id is required")
+	errFlowIDRequired          = errors.New("flow_id is required")
+	errRepoIDRequired          = errors.New("repo_id is required")
+	errPlanIDRequired          = errors.New("plan_id is required")
+	errInstanceIDRequired      = errors.New("instance_id is required")
+	errUnixTimeStartMsRequired = errors.New("unix_time_start_ms must be non-zero")
+)
+
 // ValidateOperation verifies critical properties of the operation proto.
 func ValidateOperation(op *v1.Operation) error {
 	if op.Id == 0 {
-		return errors.New("operation.id is required")
+		return errIDRequired
 	}
 	if op.FlowId == 0 {
-		return errors.New("operation.flow_id is required")
+		return errFlowIDRequired
 	}
 	if op.RepoId == "" {
-		return errors.New("operation.repo_id is required")
+		return errRepoIDRequired
 	}
 	if op.PlanId == "" {
-		return errors.New("operation.plan_id is required")
+		return errPlanIDRequired
 	}
 	if op.InstanceId == "" {
-		return errors.New("operation.instance_id is required")
+		return errInstanceIDRequired
+	}
+	if op.UnixTimeStartMs == 0 {
+		return errUnixTimeStartMsRequired
 	}
 	if op.SnapshotId != "" {
 		if err := restic.ValidateSnapshotId(op.SnapshotId); err != nil {

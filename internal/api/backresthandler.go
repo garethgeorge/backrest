@@ -598,11 +598,13 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	}
 
 	generateSummaryHelper := func(id string, q oplog.Query) (*v1.SummaryDashboardResponse_Summary, error) {
+		var backupsExamined int64
 		var bytesScanned30 int64
 		var bytesAdded30 int64
 		var backupsFailed30 int64
 		var backupsSuccess30 int64
 		var backupsWarning30 int64
+		var nextBackupTime int64
 		backupChart := &v1.SummaryDashboardResponse_BackupChart{}
 
 		s.oplog.Query(q, func(op *v1.Operation) error {
@@ -611,7 +613,11 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 			if backupOp := op.GetOperationBackup(); backupOp != nil {
 				if time.Since(t) > 30*24*time.Hour {
 					return oplog.ErrStopIteration
+				} else if op.GetStatus() == v1.OperationStatus_STATUS_PENDING {
+					nextBackupTime = op.UnixTimeStartMs
+					return nil
 				}
+				backupsExamined++
 
 				if op.Status == v1.OperationStatus_STATUS_SUCCESS {
 					backupsSuccess30++
@@ -627,15 +633,15 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 				}
 
 				// recent backups chart
-				if len(backupChart.TimestampMilli) < 60 { // only include the latest 90 backups in the chart
+				if len(backupChart.TimestampMs) < 60 { // only include the latest 90 backups in the chart
 					duration := op.UnixTimeEndMs - op.UnixTimeStartMs
 					if duration <= 1000 {
 						duration = 1000
 					}
 
 					backupChart.FlowId = append(backupChart.FlowId, op.FlowId)
-					backupChart.TimestampMilli = append(backupChart.TimestampMilli, op.UnixTimeStartMs)
-					backupChart.DurationMilli = append(backupChart.DurationMilli, duration)
+					backupChart.TimestampMs = append(backupChart.TimestampMs, op.UnixTimeStartMs)
+					backupChart.DurationMs = append(backupChart.DurationMs, duration)
 					backupChart.Status = append(backupChart.Status, op.Status)
 					backupChart.BytesAdded = append(backupChart.BytesAdded, backupOp.GetLastStatus().GetSummary().GetDataAdded())
 				}
@@ -644,6 +650,10 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 			return nil
 		})
 
+		if backupsExamined == 0 {
+			backupsExamined = 1 // prevent division by zero for avg calculations
+		}
+
 		return &v1.SummaryDashboardResponse_Summary{
 			Id:                        id,
 			BytesScannedLast_30Days:   bytesScanned30,
@@ -651,6 +661,9 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 			BackupsFailed_30Days:      backupsFailed30,
 			BackupsWarningLast_30Days: backupsWarning30,
 			BackupsSuccessLast_30Days: backupsSuccess30,
+			BytesScannedAvg:           bytesScanned30 / backupsExamined,
+			BytesAddedAvg:             bytesAdded30 / backupsExamined,
+			NextBackupTimeMs:          nextBackupTime,
 			RecentBackups:             backupChart,
 		}, nil
 	}
