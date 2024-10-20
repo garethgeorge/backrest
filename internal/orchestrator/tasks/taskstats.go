@@ -42,16 +42,19 @@ func (t *StatsTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 		}, nil
 	}
 
-	// TODO: make the "stats" schedule configurable.
+	// check last stats time
 	var lastRan time.Time
 	if err := runner.OpLog().Query(oplog.Query{RepoID: t.RepoID(), Reversed: true}, func(op *v1.Operation) error {
-		if _, ok := op.Op.(*v1.Operation_OperationStats); ok {
+		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
+			return nil
+		}
+		if _, ok := op.Op.(*v1.Operation_OperationStats); ok && op.UnixTimeEndMs != 0 {
 			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration
 		}
 		return nil
 	}); err != nil {
-		return NeverScheduledTask, fmt.Errorf("finding last backup run time: %w", err)
+		return NeverScheduledTask, fmt.Errorf("finding last check run time: %w", err)
 	}
 
 	// Runs at most once per day.
