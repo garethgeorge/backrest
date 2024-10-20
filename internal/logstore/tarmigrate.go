@@ -3,6 +3,7 @@ package logstore
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,8 +16,10 @@ import (
 
 func MigrateTarLogsInDir(ls *LogStore, dir string) {
 	files, err := os.ReadDir(dir)
-	if err != nil {
-		zap.L().Fatal("failed to read directory", zap.String("dir", dir), zap.Error(err))
+	if errors.Is(err, os.ErrNotExist) {
+		return
+	} else if err != nil {
+		zap.L().Warn("tarlog migration failed to read directory", zap.String("dir", dir), zap.Error(err))
 	}
 
 	for _, file := range files {
