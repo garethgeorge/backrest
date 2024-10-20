@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import {
   ScheduleOutlined,
   DatabaseOutlined,
@@ -9,7 +9,7 @@ import {
   LoadingOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Button, Layout, Menu, Spin, theme } from "antd";
+import { Button, Empty, Layout, Menu, Spin, theme } from "antd";
 import { Config } from "../../gen/ts/v1/config_pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
@@ -25,15 +25,123 @@ import _ from "lodash";
 import { Code } from "@connectrpc/connect";
 import { LoginModal } from "./LoginModal";
 import { backrestService, setAuthToken } from "../api";
-import { MainContentArea, useSetContent } from "./MainContentArea";
-import { GettingStartedGuide } from "./GettingStartedGuide";
 import { useConfig } from "../components/ConfigProvider";
 import { shouldShowSettings } from "../state/configutil";
 import { OpSelector } from "../../gen/ts/v1/service_pb";
 import { colorForStatus } from "../state/flowdisplayaggregator";
 import { getStatusForSelector } from "../state/logstate";
+import {
+  createHashRouter,
+  RouterProvider,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+import { MainContentAreaTemplate } from "./MainContentArea";
 
 const { Header, Sider } = Layout;
+
+const SummaryDashboard = React.lazy(() =>
+  import("./SummaryDashboard").then((m) => ({
+    default: m.SummaryDashboard,
+  }))
+);
+
+const GettingStartedGuide = React.lazy(() =>
+  import("./GettingStartedGuide").then((m) => ({
+    default: m.GettingStartedGuide,
+  }))
+);
+
+const PlanView = React.lazy(() =>
+  import("./PlanView").then((m) => ({
+    default: m.PlanView,
+  }))
+);
+
+const RepoView = React.lazy(() =>
+  import("./RepoView").then((m) => ({
+    default: m.RepoView,
+  }))
+);
+
+const RepoViewContainer = () => {
+  const { repoId } = useParams();
+  const [config, setConfig] = useConfig();
+
+  if (!config) {
+    return <Spin />;
+  }
+
+  const repo = config.repos.find((r) => r.id === repoId);
+  if (!repo) {
+    return <Empty description={`Repo ${repoId} not found`} />;
+  }
+
+  return (
+    <MainContentAreaTemplate
+      breadcrumbs={[{ title: "Repo" }, { title: repoId! }]}
+    >
+      <RepoView repo={repo} />
+    </MainContentAreaTemplate>
+  );
+};
+
+const PlanViewContainer = () => {
+  const { planId } = useParams();
+  const [config, setConfig] = useConfig();
+
+  if (!config) {
+    return <Spin />;
+  }
+
+  const plan = config.plans.find((p) => p.id === planId);
+  if (!plan) {
+    return <Empty description={`Plan ${planId} not found`} />;
+  }
+
+  return (
+    <MainContentAreaTemplate
+      breadcrumbs={[{ title: "Plan" }, { title: planId! }]}
+    >
+      <PlanView plan={plan} />
+    </MainContentAreaTemplate>
+  );
+};
+
+const router = createHashRouter([
+  {
+    path: "/",
+    element: (
+      <Suspense fallback={<Spin />}>
+        <SummaryDashboard />
+      </Suspense>
+    ),
+  },
+  {
+    path: "/getting-started",
+    element: (
+      <Suspense fallback={<Spin />}>
+        <GettingStartedGuide />
+      </Suspense>
+    ),
+  },
+  {
+    path: "/plan/:planId",
+    element: (
+      <Suspense fallback={<Spin />}>
+        <PlanViewContainer />
+      </Suspense>
+    ),
+  },
+  {
+    path: "/repo/:repoId",
+    element: (
+      <Suspense fallback={<Spin />}>
+        <RepoViewContainer />
+      </Suspense>
+    ),
+  },
+]);
 
 export const App: React.FC = () => {
   const {
@@ -41,12 +149,10 @@ export const App: React.FC = () => {
   } = theme.useToken();
   const alertApi = useAlertApi()!;
   const showModal = useShowModal();
-  const setContent = useSetContent();
+  const navigate = useNavigate();
   const [config, setConfig] = useConfig();
 
   useEffect(() => {
-    showModal(<Spin spinning={true} fullscreen />);
-
     backrestService
       .getConfig({})
       .then((config) => {
@@ -86,26 +192,12 @@ export const App: React.FC = () => {
   }, []);
 
   const showSummaryDashboard = async () => {
-    const { SummaryDashboard } = await import("./SummaryDashboard");
-    setContent(
-      <React.Suspense fallback={<Spin />}>
-        <SummaryDashboard />
-      </React.Suspense>,
-      [
-        {
-          title: "Summary Dashboard",
-        },
-      ]
-    );
+    navigate("/");
   };
 
-  useEffect(() => {
-    if (config === null) {
-      setContent(<p>Loading...</p>, []);
-    } else {
-      showSummaryDashboard();
-    }
-  }, [config === null]);
+  if (!config) {
+    return <Spin />;
+  }
 
   const items = getSidenavItems(config);
 
@@ -176,7 +268,7 @@ export const App: React.FC = () => {
             items={items}
           />
         </Sider>
-        <MainContentArea />
+        <RouterProvider router={router} />
       </Layout>
     </Layout>
   );

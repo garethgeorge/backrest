@@ -14,7 +14,7 @@ interface ContentAreaState {
 
 type ContentAreaCtx = [
   ContentAreaState,
-  (content: React.ReactNode, breadcrumbs: Breadcrumb[]) => void,
+  (content: React.ReactNode, breadcrumbs: Breadcrumb[]) => void
 ];
 
 const ContentAreaContext = React.createContext<ContentAreaCtx>([
@@ -58,6 +58,25 @@ export const useSetContent = () => {
 
 export const MainContentArea = () => {
   const { breadcrumbs, content } = React.useContext(ContentAreaContext)[0];
+
+  return (
+    <MainContentAreaTemplate breadcrumbs={breadcrumbs}>
+      {content ? (
+        content
+      ) : (
+        <Spin size="large" style={{ display: "block", margin: "auto" }} />
+      )}
+    </MainContentAreaTemplate>
+  );
+};
+
+export const MainContentAreaTemplate = ({
+  breadcrumbs,
+  children,
+}: {
+  breadcrumbs: Breadcrumb[];
+  children: React.ReactNode;
+}) => {
   const {
     token: { colorBgContainer },
   } = theme.useToken();
@@ -76,7 +95,7 @@ export const MainContentArea = () => {
           background: colorBgContainer,
         }}
       >
-        {content}
+        {children}
       </Content>
     </Layout>
   );

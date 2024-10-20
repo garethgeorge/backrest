@@ -103,7 +103,7 @@ export const SummaryDashboard = () => {
         <Typography.Title level={3}>Repos</Typography.Title>
         {summaryData && summaryData.repoSummaries.length > 0 ? (
           summaryData.repoSummaries.map((summary) => (
-            <SummaryPanel summary={summary} />
+            <SummaryPanel summary={summary} key={summary.id} />
           ))
         ) : (
           <Empty description="No repos found" />
@@ -111,7 +111,7 @@ export const SummaryDashboard = () => {
         <Typography.Title level={3}>Plans</Typography.Title>
         {summaryData && summaryData.planSummaries.length > 0 ? (
           summaryData.planSummaries.map((summary) => (
-            <SummaryPanel summary={summary} />
+            <SummaryPanel summary={summary} key={summary.id} />
           ))
         ) : (
           <Empty description="No plans found" />
@@ -184,7 +184,7 @@ const SummaryPanel = ({
       recentBackups.status[idx] === OperationStatus.STATUS_PENDING;
 
     return (
-      <Card style={{ opacity: 0.9 }} size="small">
+      <Card style={{ opacity: 0.9 }} size="small" key={label}>
         <Typography.Text>Backup at {formatTime(entry.time)}</Typography.Text>{" "}
         <br />
         {isPending ? (

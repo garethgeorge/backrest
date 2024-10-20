@@ -34,8 +34,10 @@ el &&
         ],
       }}
     >
-      <Root>
-        <App />
-      </Root>
+      <React.StrictMode>
+        <Root>
+          <App />
+        </Root>
+      </React.StrictMode>
     </AntdConfigProvider>
   );
