@@ -393,6 +393,9 @@ const BackupViewContainer = ({ children }: { children: React.ReactNode }) => {
 
     // handle scroll events to keep the fixed container in view.
     const handleScroll = () => {
+      if (!ref.current) {
+        return;
+      }
       const refRect = ref.current!.getBoundingClientRect();
       let wiggle = Math.max(refRect.height - window.innerHeight, 0);
       let topY = Math.max(ref.current!.getBoundingClientRect().top, 0);

@@ -8,6 +8,7 @@ import "react-js-cron/dist/styles.css";
 import { ConfigProvider as AntdConfigProvider, theme } from "antd";
 import { ConfigContextProvider } from "./components/ConfigProvider";
 import { MainContentProvider } from "./views/MainContentArea";
+import { HashRouter } from "react-router-dom";
 
 const Root = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -36,7 +37,9 @@ el &&
     >
       <React.StrictMode>
         <Root>
-          <App />
+          <HashRouter>
+            <App />
+          </HashRouter>
         </Root>
       </React.StrictMode>
     </AntdConfigProvider>

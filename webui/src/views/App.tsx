@@ -32,7 +32,9 @@ import { colorForStatus } from "../state/flowdisplayaggregator";
 import { getStatusForSelector } from "../state/logstate";
 import {
   createHashRouter,
+  Route,
   RouterProvider,
+  Routes,
   useNavigate,
   useParams,
 } from "react-router-dom";
@@ -73,15 +75,17 @@ const RepoViewContainer = () => {
   }
 
   const repo = config.repos.find((r) => r.id === repoId);
-  if (!repo) {
-    return <Empty description={`Repo ${repoId} not found`} />;
-  }
 
   return (
     <MainContentAreaTemplate
       breadcrumbs={[{ title: "Repo" }, { title: repoId! }]}
+      key={repoId}
     >
-      <RepoView repo={repo} />
+      {repo ? (
+        <RepoView repo={repo} />
+      ) : (
+        <Empty description={`Repo ${repoId} not found`} />
+      )}
     </MainContentAreaTemplate>
   );
 };
@@ -95,53 +99,19 @@ const PlanViewContainer = () => {
   }
 
   const plan = config.plans.find((p) => p.id === planId);
-  if (!plan) {
-    return <Empty description={`Plan ${planId} not found`} />;
-  }
-
   return (
     <MainContentAreaTemplate
       breadcrumbs={[{ title: "Plan" }, { title: planId! }]}
+      key={planId}
     >
-      <PlanView plan={plan} />
+      {plan ? (
+        <PlanView plan={plan} />
+      ) : (
+        <Empty description={`Plan ${planId} not found`} />
+      )}
     </MainContentAreaTemplate>
   );
 };
-
-const router = createHashRouter([
-  {
-    path: "/",
-    element: (
-      <Suspense fallback={<Spin />}>
-        <SummaryDashboard />
-      </Suspense>
-    ),
-  },
-  {
-    path: "/getting-started",
-    element: (
-      <Suspense fallback={<Spin />}>
-        <GettingStartedGuide />
-      </Suspense>
-    ),
-  },
-  {
-    path: "/plan/:planId",
-    element: (
-      <Suspense fallback={<Spin />}>
-        <PlanViewContainer />
-      </Suspense>
-    ),
-  },
-  {
-    path: "/repo/:repoId",
-    element: (
-      <Suspense fallback={<Spin />}>
-        <RepoViewContainer />
-      </Suspense>
-    ),
-  },
-]);
 
 export const App: React.FC = () => {
   const {
@@ -191,15 +161,11 @@ export const App: React.FC = () => {
       });
   }, []);
 
-  const showSummaryDashboard = async () => {
-    navigate("/");
-  };
+  const items = getSidenavItems(config);
 
   if (!config) {
     return <Spin />;
   }
-
-  const items = getSidenavItems(config);
 
   return (
     <Layout style={{ height: "auto", minHeight: "100vh" }}>
@@ -214,7 +180,9 @@ export const App: React.FC = () => {
       >
         <a
           style={{ color: colorTextLightSolid }}
-          onClick={showSummaryDashboard}
+          onClick={() => {
+            navigate("/");
+          }}
         >
           <img
             src={LogoSvg}
@@ -268,7 +236,42 @@ export const App: React.FC = () => {
             items={items}
           />
         </Sider>
-        <RouterProvider router={router} />
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <MainContentAreaTemplate breadcrumbs={[{ title: "Summary" }]}>
+                <Suspense fallback={<Spin />}>
+                  <SummaryDashboard />
+                </Suspense>
+              </MainContentAreaTemplate>
+            }
+          />
+          <Route
+            path="/getting-started"
+            element={
+              <Suspense fallback={<Spin />}>
+                <GettingStartedGuide />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/plan/:planId"
+            element={
+              <Suspense fallback={<Spin />}>
+                <PlanViewContainer />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/repo/:repoId"
+            element={
+              <Suspense fallback={<Spin />}>
+                <RepoViewContainer />
+              </Suspense>
+            }
+          />
+        </Routes>
       </Layout>
     </Layout>
   );
@@ -276,9 +279,11 @@ export const App: React.FC = () => {
 
 const getSidenavItems = (config: Config | null): MenuProps["items"] => {
   const showModal = useShowModal();
-  const setContent = useSetContent();
+  const navigate = useNavigate();
 
-  if (!config) return [];
+  if (!config) {
+    return;
+  }
 
   const configPlans = config.plans || [];
   const configRepos = config.repos || [];
@@ -318,12 +323,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
           </div>
         ),
         onClick: async () => {
-          const { PlanView } = await import("./PlanView");
-
-          setContent(<PlanView key={plan.id} plan={plan} />, [
-            { title: "Plans" },
-            { title: plan.id || "" },
-          ]);
+          navigate(`/plan/${plan.id}`);
         },
       };
     }),
@@ -364,12 +364,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
           </div>
         ),
         onClick: async () => {
-          const { RepoView } = await import("./RepoView");
-
-          setContent(<RepoView key={repo.id} repo={repo} />, [
-            { title: "Repos" },
-            { title: repo.id || "" },
-          ]);
+          navigate(`/repo/${repo.id}`);
         },
       };
     }),
