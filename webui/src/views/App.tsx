@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import {
   ScheduleOutlined,
   DatabaseOutlined,
@@ -9,7 +9,7 @@ import {
   LoadingOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Button, Layout, Menu, Spin, theme } from "antd";
+import { Button, Empty, Layout, Menu, Spin, theme } from "antd";
 import { Config } from "../../gen/ts/v1/config_pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
@@ -25,15 +25,93 @@ import _ from "lodash";
 import { Code } from "@connectrpc/connect";
 import { LoginModal } from "./LoginModal";
 import { backrestService, setAuthToken } from "../api";
-import { MainContentArea, useSetContent } from "./MainContentArea";
-import { GettingStartedGuide } from "./GettingStartedGuide";
 import { useConfig } from "../components/ConfigProvider";
 import { shouldShowSettings } from "../state/configutil";
 import { OpSelector } from "../../gen/ts/v1/service_pb";
 import { colorForStatus } from "../state/flowdisplayaggregator";
 import { getStatusForSelector } from "../state/logstate";
+import {
+  createHashRouter,
+  Route,
+  RouterProvider,
+  Routes,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+import { MainContentAreaTemplate } from "./MainContentArea";
 
 const { Header, Sider } = Layout;
+
+const SummaryDashboard = React.lazy(() =>
+  import("./SummaryDashboard").then((m) => ({
+    default: m.SummaryDashboard,
+  }))
+);
+
+const GettingStartedGuide = React.lazy(() =>
+  import("./GettingStartedGuide").then((m) => ({
+    default: m.GettingStartedGuide,
+  }))
+);
+
+const PlanView = React.lazy(() =>
+  import("./PlanView").then((m) => ({
+    default: m.PlanView,
+  }))
+);
+
+const RepoView = React.lazy(() =>
+  import("./RepoView").then((m) => ({
+    default: m.RepoView,
+  }))
+);
+
+const RepoViewContainer = () => {
+  const { repoId } = useParams();
+  const [config, setConfig] = useConfig();
+
+  if (!config) {
+    return <Spin />;
+  }
+
+  const repo = config.repos.find((r) => r.id === repoId);
+
+  return (
+    <MainContentAreaTemplate
+      breadcrumbs={[{ title: "Repo" }, { title: repoId! }]}
+      key={repoId}
+    >
+      {repo ? (
+        <RepoView repo={repo} />
+      ) : (
+        <Empty description={`Repo ${repoId} not found`} />
+      )}
+    </MainContentAreaTemplate>
+  );
+};
+
+const PlanViewContainer = () => {
+  const { planId } = useParams();
+  const [config, setConfig] = useConfig();
+
+  if (!config) {
+    return <Spin />;
+  }
+
+  const plan = config.plans.find((p) => p.id === planId);
+  return (
+    <MainContentAreaTemplate
+      breadcrumbs={[{ title: "Plan" }, { title: planId! }]}
+      key={planId}
+    >
+      {plan ? (
+        <PlanView plan={plan} />
+      ) : (
+        <Empty description={`Plan ${planId} not found`} />
+      )}
+    </MainContentAreaTemplate>
+  );
+};
 
 export const App: React.FC = () => {
   const {
@@ -41,12 +119,10 @@ export const App: React.FC = () => {
   } = theme.useToken();
   const alertApi = useAlertApi()!;
   const showModal = useShowModal();
-  const setContent = useSetContent();
+  const navigate = useNavigate();
   const [config, setConfig] = useConfig();
 
   useEffect(() => {
-    showModal(<Spin spinning={true} fullscreen />);
-
     backrestService
       .getConfig({})
       .then((config) => {
@@ -85,29 +161,11 @@ export const App: React.FC = () => {
       });
   }, []);
 
-  const showSummaryDashboard = async () => {
-    const { SummaryDashboard } = await import("./SummaryDashboard");
-    setContent(
-      <React.Suspense fallback={<Spin />}>
-        <SummaryDashboard />
-      </React.Suspense>,
-      [
-        {
-          title: "Summary Dashboard",
-        },
-      ]
-    );
-  };
-
-  useEffect(() => {
-    if (config === null) {
-      setContent(<p>Loading...</p>, []);
-    } else {
-      showSummaryDashboard();
-    }
-  }, [config === null]);
-
   const items = getSidenavItems(config);
+
+  if (!config) {
+    return <Spin />;
+  }
 
   return (
     <Layout style={{ height: "auto", minHeight: "100vh" }}>
@@ -122,7 +180,9 @@ export const App: React.FC = () => {
       >
         <a
           style={{ color: colorTextLightSolid }}
-          onClick={showSummaryDashboard}
+          onClick={() => {
+            navigate("/");
+          }}
         >
           <img
             src={LogoSvg}
@@ -176,7 +236,38 @@ export const App: React.FC = () => {
             items={items}
           />
         </Sider>
-        <MainContentArea />
+        <Suspense fallback={<Spin />}>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <MainContentAreaTemplate breadcrumbs={[{ title: "Summary" }]}>
+                  <SummaryDashboard />
+                </MainContentAreaTemplate>
+              }
+            />
+            <Route
+              path="/getting-started"
+              element={
+                <MainContentAreaTemplate
+                  breadcrumbs={[{ title: "Getting Started" }]}
+                >
+                  <GettingStartedGuide />
+                </MainContentAreaTemplate>
+              }
+            />
+            <Route path="/plan/:planId" element={<PlanViewContainer />} />
+            <Route path="/repo/:repoId" element={<RepoViewContainer />} />
+            <Route
+              path="/*"
+              element={
+                <MainContentAreaTemplate breadcrumbs={[]}>
+                  <Empty description="Page not found" />
+                </MainContentAreaTemplate>
+              }
+            />
+          </Routes>
+        </Suspense>
       </Layout>
     </Layout>
   );
@@ -184,9 +275,11 @@ export const App: React.FC = () => {
 
 const getSidenavItems = (config: Config | null): MenuProps["items"] => {
   const showModal = useShowModal();
-  const setContent = useSetContent();
+  const navigate = useNavigate();
 
-  if (!config) return [];
+  if (!config) {
+    return;
+  }
 
   const configPlans = config.plans || [];
   const configRepos = config.repos || [];
@@ -226,12 +319,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
           </div>
         ),
         onClick: async () => {
-          const { PlanView } = await import("./PlanView");
-
-          setContent(<PlanView key={plan.id} plan={plan} />, [
-            { title: "Plans" },
-            { title: plan.id || "" },
-          ]);
+          navigate(`/plan/${plan.id}`);
         },
       };
     }),
@@ -272,12 +360,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
           </div>
         ),
         onClick: async () => {
-          const { RepoView } = await import("./RepoView");
-
-          setContent(<RepoView key={repo.id} repo={repo} />, [
-            { title: "Repos" },
-            { title: repo.id || "" },
-          ]);
+          navigate(`/repo/${repo.id}`);
         },
       };
     }),

@@ -13,7 +13,6 @@ import {
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useConfig } from "../components/ConfigProvider";
-import { useSetContent } from "./MainContentArea";
 import {
   SummaryDashboardResponse,
   SummaryDashboardResponse_Summary,
@@ -38,28 +37,15 @@ import {
 import { colorForStatus } from "../state/flowdisplayaggregator";
 import { OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { isMobile } from "../lib/browserutil";
+import { useNavigate } from "react-router";
 
 export const SummaryDashboard = () => {
   const config = useConfig()[0];
-  const setContent = useSetContent();
   const alertApi = useAlertApi()!;
+  const navigate = useNavigate();
 
   const [summaryData, setSummaryData] =
     useState<SummaryDashboardResponse | null>();
-
-  const showGettingStarted = async () => {
-    const { GettingStartedGuide } = await import("./GettingStartedGuide");
-    setContent(
-      <React.Suspense fallback={<Spin />}>
-        <GettingStartedGuide />
-      </React.Suspense>,
-      [
-        {
-          title: "Getting Started",
-        },
-      ]
-    );
-  };
 
   useEffect(() => {
     // Fetch summary data
@@ -73,7 +59,7 @@ export const SummaryDashboard = () => {
         const data = await backrestService.getSummaryDashboard({});
         setSummaryData(data);
       } catch (e) {
-        alertApi.error("Failed to fetch summary data", e);
+        alertApi.error("Failed to fetch summary data: " + e);
       }
     };
 
@@ -89,7 +75,7 @@ export const SummaryDashboard = () => {
     }
 
     if (config.repos.length === 0 && config.plans.length === 0) {
-      showGettingStarted();
+      navigate("/getting-started");
     }
   }, [config]);
 
@@ -103,7 +89,7 @@ export const SummaryDashboard = () => {
         <Typography.Title level={3}>Repos</Typography.Title>
         {summaryData && summaryData.repoSummaries.length > 0 ? (
           summaryData.repoSummaries.map((summary) => (
-            <SummaryPanel summary={summary} />
+            <SummaryPanel summary={summary} key={summary.id} />
           ))
         ) : (
           <Empty description="No repos found" />
@@ -111,7 +97,7 @@ export const SummaryDashboard = () => {
         <Typography.Title level={3}>Plans</Typography.Title>
         {summaryData && summaryData.planSummaries.length > 0 ? (
           summaryData.planSummaries.map((summary) => (
-            <SummaryPanel summary={summary} />
+            <SummaryPanel summary={summary} key={summary.id} />
           ))
         ) : (
           <Empty description="No plans found" />
@@ -184,7 +170,7 @@ const SummaryPanel = ({
       recentBackups.status[idx] === OperationStatus.STATUS_PENDING;
 
     return (
-      <Card style={{ opacity: 0.9 }} size="small">
+      <Card style={{ opacity: 0.9 }} size="small" key={label}>
         <Typography.Text>Backup at {formatTime(entry.time)}</Typography.Text>{" "}
         <br />
         {isPending ? (

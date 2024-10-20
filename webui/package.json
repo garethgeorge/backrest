@@ -29,6 +29,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-js-cron": "^5.0.1",
+    "react-router": "^6.27.0",
+    "react-router-dom": "^6.27.0",
     "react-virtualized": "^9.22.5",
     "recharts": "^2.12.7",
     "typescript": "^5.2.2"
