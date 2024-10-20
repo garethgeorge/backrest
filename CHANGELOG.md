@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.6.1](https://github.com/garethgeorge/backrest/compare/v1.6.0...v1.6.1) (2024-10-20)
+
+
+### Bug Fixes
+
+* login form has no background ([4fc28d6](https://github.com/garethgeorge/backrest/commit/4fc28d68a60721d333be96df2030ce53b04fbf55))
+* stats operation occasionally runs twice in a row ([36543c6](https://github.com/garethgeorge/backrest/commit/36543c681ac1f138e4d207f96c143b1d1ffd84fe))
+* tarlog migration fails on new installs ([5617f3f](https://github.com/garethgeorge/backrest/commit/5617f3fbe2aa5278c2b8b1903997980a9e2e16b0))
+
 ## [1.6.0](https://github.com/garethgeorge/backrest/compare/v1.5.1...v1.6.0) (2024-10-20)
 
 
