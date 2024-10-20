@@ -7,16 +7,13 @@ import { ModalContextProvider } from "./components/ModalManager";
 import "react-js-cron/dist/styles.css";
 import { ConfigProvider as AntdConfigProvider, theme } from "antd";
 import { ConfigContextProvider } from "./components/ConfigProvider";
-import { MainContentProvider } from "./views/MainContentArea";
 import { HashRouter } from "react-router-dom";
 
 const Root = ({ children }: { children: React.ReactNode }) => {
   return (
     <ConfigContextProvider>
       <AlertContextProvider>
-        <MainContentProvider>
-          <ModalContextProvider>{children}</ModalContextProvider>
-        </MainContentProvider>
+        <ModalContextProvider>{children}</ModalContextProvider>
       </AlertContextProvider>
     </ConfigContextProvider>
   );

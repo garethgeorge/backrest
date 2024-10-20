@@ -236,42 +236,38 @@ export const App: React.FC = () => {
             items={items}
           />
         </Sider>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <MainContentAreaTemplate breadcrumbs={[{ title: "Summary" }]}>
-                <Suspense fallback={<Spin />}>
+        <Suspense fallback={<Spin />}>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <MainContentAreaTemplate breadcrumbs={[{ title: "Summary" }]}>
                   <SummaryDashboard />
-                </Suspense>
-              </MainContentAreaTemplate>
-            }
-          />
-          <Route
-            path="/getting-started"
-            element={
-              <Suspense fallback={<Spin />}>
-                <GettingStartedGuide />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/plan/:planId"
-            element={
-              <Suspense fallback={<Spin />}>
-                <PlanViewContainer />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/repo/:repoId"
-            element={
-              <Suspense fallback={<Spin />}>
-                <RepoViewContainer />
-              </Suspense>
-            }
-          />
-        </Routes>
+                </MainContentAreaTemplate>
+              }
+            />
+            <Route
+              path="/getting-started"
+              element={
+                <MainContentAreaTemplate
+                  breadcrumbs={[{ title: "Getting Started" }]}
+                >
+                  <GettingStartedGuide />
+                </MainContentAreaTemplate>
+              }
+            />
+            <Route path="/plan/:planId" element={<PlanViewContainer />} />
+            <Route path="/repo/:repoId" element={<RepoViewContainer />} />
+            <Route
+              path="/*"
+              element={
+                <MainContentAreaTemplate breadcrumbs={[]}>
+                  <Empty description="Page not found" />
+                </MainContentAreaTemplate>
+              }
+            />
+          </Routes>
+        </Suspense>
       </Layout>
     </Layout>
   );
