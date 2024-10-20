@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.6.0](https://github.com/garethgeorge/backrest/compare/v1.5.1...v1.6.0) (2024-10-20)
+
+
+### Features
+
+* add a summary dashboard as the "main view" when backrest opens ([#518](https://github.com/garethgeorge/backrest/issues/518)) ([4b3c7e5](https://github.com/garethgeorge/backrest/commit/4b3c7e53d5b8110c179c486c3423ef9ff72feb8f))
+* add watchdog thread to reschedule tasks when system time changes ([66a5241](https://github.com/garethgeorge/backrest/commit/66a5241de8cf410d0766d7e70de9b8f87e6aaddd))
+* initial support for healthchecks.io notifications ([#480](https://github.com/garethgeorge/backrest/issues/480)) ([f6ee51f](https://github.com/garethgeorge/backrest/commit/f6ee51fce509808d8dde3d2af21d10994db381ca))
+* migrate oplog history from bbolt to sqlite store ([#515](https://github.com/garethgeorge/backrest/issues/515)) ([0806eb9](https://github.com/garethgeorge/backrest/commit/0806eb95a044fd5f1da44aff7713b0ca21f7aee5))
+* support --skip-if-unchanged ([afcecae](https://github.com/garethgeorge/backrest/commit/afcecaeb3064782788a4ff41fc31a541d93e844f))
+* track long running generic commands in the oplog ([#516](https://github.com/garethgeorge/backrest/issues/516)) ([28c3172](https://github.com/garethgeorge/backrest/commit/28c31720f249763e2baee43671475c128d17b020))
+* use react-router to enable linking to webUI pages ([#522](https://github.com/garethgeorge/backrest/issues/522)) ([fff3dbd](https://github.com/garethgeorge/backrest/commit/fff3dbd299163b916ae0c6819c9c0170e2e77dd9))
+* use sqlite logstore ([#514](https://github.com/garethgeorge/backrest/issues/514)) ([4d557a1](https://github.com/garethgeorge/backrest/commit/4d557a1146b064ee41d74c80667adcd78ed4240c))
+
+
+### Bug Fixes
+
+* expand env vars in flags i.e. of the form ${MY_ENV_VAR} ([d7704cf](https://github.com/garethgeorge/backrest/commit/d7704cf057989af4ed2f03e81e46a6a924f833cd))
+* gorelaeser docker image builds for armv6 and armv7 ([4fa30e3](https://github.com/garethgeorge/backrest/commit/4fa30e3f7ee7456d2bdf4afccb47918d01bdd32e))
+* plan/repo settings button hard to click ([ec89cfd](https://github.com/garethgeorge/backrest/commit/ec89cfde518e3c38697e6421fa7e1bca31040602))
+
 ## [1.5.1](https://github.com/garethgeorge/backrest/compare/v1.5.0...v1.5.1) (2024-09-18)
 
 
