@@ -163,10 +163,6 @@ export const App: React.FC = () => {
 
   const items = getSidenavItems(config);
 
-  if (!config) {
-    return <Spin />;
-  }
-
   return (
     <Layout style={{ height: "auto", minHeight: "100vh" }}>
       <Header
