@@ -38,6 +38,10 @@ import (
 )
 
 var InstallDepsOnly = flag.Bool("install-deps-only", false, "install dependencies and exit")
+var (
+	version = "unknown"
+	commit  = "unknown"
+)
 
 func main() {
 	flag.Parse()
@@ -242,7 +246,7 @@ func installLoggers() {
 	)
 
 	zap.ReplaceGlobals(zap.New(zapcore.NewTee(pretty, ugly)))
-	zap.S().Infof("writing logs to: %v", logsDir)
+	zap.S().Infof("backrest version %v@%v, using log directory: %v", version, commit, logsDir)
 }
 
 // migrateBboltOplog migrates the old bbolt oplog to the new sqlite oplog.
