@@ -117,7 +117,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           },
           {
             key: "2",
-            label: "Full Operation History",
+            label: "List View",
             children: (
               <>
                 <h2>Backup Action History</h2>
@@ -131,6 +131,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                       lastN: BigInt(MAX_OPERATION_HISTORY),
                     })
                   }
+                  showDelete={true}
                 />
               </>
             ),

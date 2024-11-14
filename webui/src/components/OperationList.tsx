@@ -16,12 +16,14 @@ export const OperationList = ({
   showPlan,
   displayHooksInline,
   filter,
+  showDelete,
 }: React.PropsWithoutRef<{
   req?: GetOperationsRequest;
   useOperations?: Operation[]; // exact set of operations to display; no filtering will be applied.
   showPlan?: boolean;
   displayHooksInline?: boolean;
   filter?: (op: Operation) => boolean;
+  showDelete?: boolean; // allows deleting individual operation rows, useful for the list view in the plan / repo panels.
 }>) => {
   const alertApi = useAlertApi();
 
@@ -87,6 +89,7 @@ export const OperationList = ({
             operation={op}
             showPlan={showPlan || false}
             hookOperations={hookExecutionsForOperation.get(op.id)}
+            showDelete={showDelete}
           />
         );
       }}

@@ -29,7 +29,12 @@ import {
   normalizeSnapshotId,
 } from "../lib/formatting";
 import _ from "lodash";
-import { LogDataRequest } from "../../gen/ts/v1/service_pb";
+import {
+  ClearHistoryRequest,
+  ForgetRequest,
+  LogDataRequest,
+  OpSelector,
+} from "../../gen/ts/v1/service_pb";
 import { MessageInstance } from "antd/es/message/interface";
 import { backrestService } from "../api";
 import { useShowModal } from "./ModalManager";
@@ -42,17 +47,20 @@ import {
 } from "../state/flowdisplayaggregator";
 import { OperationIcon } from "./OperationIcon";
 import { LogView } from "./LogView";
+import { ConfirmButton } from "./SpinButton";
 
 export const OperationRow = ({
   operation,
   alertApi,
   showPlan,
   hookOperations,
+  showDelete,
 }: React.PropsWithoutRef<{
   operation: Operation;
   alertApi?: MessageInstance;
   showPlan?: boolean;
   hookOperations?: Operation[];
+  showDelete?: boolean;
 }>) => {
   const showModal = useShowModal();
   const displayType = getTypeForDisplay(operation);
@@ -67,15 +75,29 @@ export const OperationRow = ({
     }
   }, [operation.status]);
 
-  const doCancel = () => {
-    backrestService
-      .cancel({ value: operation.id! })
-      .then(() => {
-        alertApi?.success("Requested to cancel operation");
-      })
-      .catch((e) => {
-        alertApi?.error("Failed to cancel operation: " + e.message);
-      });
+  const doDelete = async () => {
+    try {
+      await backrestService.clearHistory(
+        new ClearHistoryRequest({
+          selector: new OpSelector({
+            ids: [operation.id!],
+          }),
+          onlyFailed: false,
+        })
+      );
+      alertApi?.success("Deleted operation");
+    } catch (e: any) {
+      alertApi?.error("Failed to delete operation: " + e.message);
+    }
+  };
+
+  const doCancel = async () => {
+    try {
+      await backrestService.cancel({ value: operation.id! });
+      alertApi?.success("Requested to cancel operation");
+    } catch (e: any) {
+      alertApi?.error("Failed to cancel operation: " + e.message);
+    }
   };
 
   const doShowLogs = () => {
@@ -112,48 +134,57 @@ export const OperationRow = ({
   }
 
   const opName = displayTypeToString(getTypeForDisplay(operation));
-  let title = (
-    <>
+
+  const title: React.ReactNode[] = [
+    <div key="title">
       {showPlan ? operation.planId + " - " : undefined}{" "}
       {formatTime(Number(operation.unixTimeStartMs))} - {opName}{" "}
       <span className="backrest operation-details">{details}</span>
-    </>
-  );
+    </div>,
+  ];
+
+  if (operation.logref) {
+    title.push(
+      <Button
+        key="logs"
+        type="link"
+        size="small"
+        className="backrest operation-details"
+        onClick={doShowLogs}
+      >
+        [View Logs]
+      </Button>
+    );
+  }
 
   if (
     operation.status === OperationStatus.STATUS_INPROGRESS ||
     operation.status === OperationStatus.STATUS_PENDING
   ) {
-    title = (
-      <>
-        {title}
-        <Button
-          type="link"
-          size="small"
-          className="backrest operation-details"
-          onClick={doCancel}
-        >
-          [Cancel Operation]
-        </Button>
-      </>
+    title.push(
+      <ConfirmButton
+        key="cancel"
+        type="link"
+        size="small"
+        className="backrest operation-details hidden-child"
+        confirmTitle="[Confirm Cancel?]"
+        onClickAsync={doCancel}
+      >
+        [Cancel Operation]
+      </ConfirmButton>
     );
-  }
-
-  if (operation.logref) {
-    title = (
-      <>
-        {title}
-        <small>
-          <Button
-            type="link"
-            size="middle"
-            className="backrest operation-details"
-            onClick={doShowLogs}
-          >
-            [View Logs]
-          </Button>
-        </small>
-      </>
+  } else if (showDelete) {
+    title.push(
+      <ConfirmButton
+        key="delete"
+        type="link"
+        size="small"
+        className="backrest operation-details hidden-child"
+        confirmTitle="[Confirm Delete?]"
+        onClickAsync={doDelete}
+      >
+        [Delete]
+      </ConfirmButton>
     );
   }
 
@@ -294,31 +325,37 @@ export const OperationRow = ({
   }
 
   return (
-    <List.Item key={operation.id}>
-      <List.Item.Meta
-        title={title}
-        avatar={<OperationIcon type={displayType} status={operation.status} />}
-        description={
-          <>
-            {operation.displayMessage && (
-              <div key="message">
-                <pre>
-                  {operation.status !== OperationStatus.STATUS_SUCCESS &&
-                    nameForStatus(operation.status) + ": "}
-                  {displayMessage}
-                </pre>
-              </div>
-            )}
-            <Collapse
-              size="small"
-              destroyInactivePanel={true}
-              items={bodyItems}
-              defaultActiveKey={expandedBodyItems}
-            />
-          </>
-        }
-      />
-    </List.Item>
+    <div className="backrest visible-on-hover">
+      <List.Item key={operation.id}>
+        <List.Item.Meta
+          title={
+            <div style={{ display: "flex", flexDirection: "row" }}>{title}</div>
+          }
+          avatar={
+            <OperationIcon type={displayType} status={operation.status} />
+          }
+          description={
+            <div className="backrest" style={{ width: "100%", height: "100%" }}>
+              {operation.displayMessage && (
+                <div key="message">
+                  <pre>
+                    {operation.status !== OperationStatus.STATUS_SUCCESS &&
+                      nameForStatus(operation.status) + ": "}
+                    {displayMessage}
+                  </pre>
+                </div>
+              )}
+              <Collapse
+                size="small"
+                destroyInactivePanel={true}
+                items={bodyItems}
+                defaultActiveKey={expandedBodyItems}
+              />
+            </div>
+          }
+        />
+      </List.Item>
+    </div>
   );
 };
 
