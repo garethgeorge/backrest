@@ -110,49 +110,8 @@ export const App: React.FC = () => {
   const {
     token: { colorBgContainer, colorTextLightSolid },
   } = theme.useToken();
-  const alertApi = useAlertApi()!;
-  const showModal = useShowModal();
   const navigate = useNavigate();
   const [config, setConfig] = useConfig();
-
-  useEffect(() => {
-    backrestService
-      .getConfig({})
-      .then((config) => {
-        setConfig(config);
-        if (shouldShowSettings(config)) {
-          import("./SettingsModal").then(({ SettingsModal }) => {
-            showModal(<SettingsModal />);
-          });
-        } else {
-          showModal(null);
-        }
-      })
-      .catch((err) => {
-        if (err.code) {
-          const code = err.code;
-          if (code === Code.Unauthenticated) {
-            showModal(<LoginModal />);
-            return;
-          } else if (
-            code === Code.Unavailable ||
-            code === Code.DeadlineExceeded
-          ) {
-            alertApi.error(
-              "Failed to fetch initial config, typically this means the UI could not connect to the backend",
-              0
-            );
-            return;
-          }
-        }
-
-        alertApi.error(err.message, 0);
-        alertApi.error(
-          "Failed to fetch initial config, typically this means the UI could not connect to the backend",
-          0
-        );
-      });
-  }, []);
 
   const items = getSidenavItems(config);
 
@@ -225,41 +184,92 @@ export const App: React.FC = () => {
             items={items}
           />
         </Sider>
-        <Suspense fallback={<Spin />}>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <MainContentAreaTemplate breadcrumbs={[{ title: "Summary" }]}>
-                  <SummaryDashboard />
-                </MainContentAreaTemplate>
-              }
-            />
-            <Route
-              path="/getting-started"
-              element={
-                <MainContentAreaTemplate
-                  breadcrumbs={[{ title: "Getting Started" }]}
-                >
-                  <GettingStartedGuide />
-                </MainContentAreaTemplate>
-              }
-            />
-            <Route path="/plan/:planId" element={<PlanViewContainer />} />
-            <Route path="/repo/:repoId" element={<RepoViewContainer />} />
-            <Route
-              path="/*"
-              element={
-                <MainContentAreaTemplate breadcrumbs={[]}>
-                  <Empty description="Page not found" />
-                </MainContentAreaTemplate>
-              }
-            />
-          </Routes>
-        </Suspense>
+        <AuthenticationBoundary>
+          <Suspense fallback={<Spin />}>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <MainContentAreaTemplate breadcrumbs={[{ title: "Summary" }]}>
+                    <SummaryDashboard />
+                  </MainContentAreaTemplate>
+                }
+              />
+              <Route
+                path="/getting-started"
+                element={
+                  <MainContentAreaTemplate
+                    breadcrumbs={[{ title: "Getting Started" }]}
+                  >
+                    <GettingStartedGuide />
+                  </MainContentAreaTemplate>
+                }
+              />
+              <Route path="/plan/:planId" element={<PlanViewContainer />} />
+              <Route path="/repo/:repoId" element={<RepoViewContainer />} />
+              <Route
+                path="/*"
+                element={
+                  <MainContentAreaTemplate breadcrumbs={[]}>
+                    <Empty description="Page not found" />
+                  </MainContentAreaTemplate>
+                }
+              />
+            </Routes>
+          </Suspense>
+        </AuthenticationBoundary>
       </Layout>
     </Layout>
   );
+};
+
+const AuthenticationBoundary = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
+  const [config, setConfig] = useConfig();
+  const alertApi = useAlertApi()!;
+  const showModal = useShowModal();
+
+  useEffect(() => {
+    backrestService
+      .getConfig({})
+      .then((config) => {
+        setConfig(config);
+        if (shouldShowSettings(config)) {
+          import("./SettingsModal").then(({ SettingsModal }) => {
+            showModal(<SettingsModal />);
+          });
+        } else {
+          showModal(null);
+        }
+      })
+      .catch((err) => {
+        const code = err.code;
+        if (err.code === Code.Unauthenticated) {
+          showModal(<LoginModal />);
+          return;
+        } else if (
+          err.code !== Code.Unavailable &&
+          err.code !== Code.DeadlineExceeded
+        ) {
+          alertApi.error(err.message, 0);
+          return;
+        }
+
+        alertApi.error(
+          "Failed to fetch initial config, typically this means the UI could not connect to the backend",
+          0
+        );
+      });
+  }, []);
+
+  if (!config) {
+    return <></>;
+  }
+
+  return <>{children}</>;
 };
 
 const getSidenavItems = (config: Config | null): MenuProps["items"] => {
