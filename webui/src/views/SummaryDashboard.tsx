@@ -202,12 +202,12 @@ const SummaryPanel = ({
             </Typography.Text>
           )}
           {summary.backupsFailed30days && (
-            <Typography.Text type="danger">
+            <Typography.Text type="danger" style={{ marginRight: "5px" }}>
               {summary.backupsFailed30days + ""} failed
             </Typography.Text>
           )}
           {summary.backupsWarningLast30days && (
-            <Typography.Text type="warning">
+            <Typography.Text type="warning" style={{ marginRight: "5px" }}>
               {summary.backupsWarningLast30days + ""} warning
             </Typography.Text>
           )}
