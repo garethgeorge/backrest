@@ -30,14 +30,7 @@ import { shouldShowSettings } from "../state/configutil";
 import { OpSelector } from "../../gen/ts/v1/service_pb";
 import { colorForStatus } from "../state/flowdisplayaggregator";
 import { getStatusForSelector } from "../state/logstate";
-import {
-  createHashRouter,
-  Route,
-  RouterProvider,
-  Routes,
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { MainContentAreaTemplate } from "./MainContentArea";
 
 const { Header, Sider } = Layout;
