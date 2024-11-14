@@ -30,6 +30,8 @@ builds:
     goarch:
       - amd64
       - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   - id: linux
     main: ./cmd/backrest
     env:
@@ -40,6 +42,8 @@ builds:
       - amd64
       - arm64
       - arm
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   - id: backrestmon
     main: ./cmd/backrestmon
     binary: backrest-windows-tray
