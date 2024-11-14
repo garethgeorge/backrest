@@ -174,8 +174,6 @@ func (t *CollectGarbageTask) gcOperations(log *oplog.OpLog) error {
 		return fmt.Errorf("identifying gc eligible operations: %w", err)
 	}
 
-	zap.L().Debug("gc operation IDs", zap.Any("ids", forgetIDs))
-
 	if err := log.Delete(forgetIDs...); err != nil {
 		return fmt.Errorf("removing gc eligible operations: %w", err)
 	}
