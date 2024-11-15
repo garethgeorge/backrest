@@ -35,7 +35,7 @@ func NewSqliteStore(db string) (*SqliteStore, error) {
 	}
 	dbpool, err := sqlitex.NewPool(db, sqlitex.PoolOptions{
 		PoolSize: 16,
-		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate,
+		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenWAL,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
@@ -64,6 +64,7 @@ func (m *SqliteStore) Close() error {
 
 func (m *SqliteStore) init() error {
 	var script = `
+PRAGMA journal_mode=WAL;
 PRAGMA page_size=4096;
 CREATE TABLE IF NOT EXISTS operations (
 	id INTEGER PRIMARY KEY,
