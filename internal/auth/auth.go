@@ -26,6 +26,7 @@ func NewAuthenticator(key []byte, config config.ConfigStore) *Authenticator {
 
 var ErrUserNotFound = errors.New("user not found")
 var ErrInvalidPassword = errors.New("invalid password")
+var ErrInvalidKey = errors.New("invalid key")
 
 func (a *Authenticator) Login(username, password string) (*v1.User, error) {
 	config, err := a.config.Get()

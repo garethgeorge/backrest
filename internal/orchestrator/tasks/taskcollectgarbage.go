@@ -19,9 +19,10 @@ type gcSettingsForType struct {
 }
 
 type groupByKey struct {
-	Repo string
-	Plan string
-	Type reflect.Type
+	Repo       string
+	Plan       string
+	InstanceID string
+	Type       reflect.Type
 }
 
 const (
@@ -134,9 +135,10 @@ func (t *CollectGarbageTask) gcOperations(log *oplog.OpLog) error {
 		}
 
 		key := groupByKey{
-			Repo: op.RepoId,
-			Plan: op.PlanId,
-			Type: reflect.TypeOf(op.Op),
+			Repo:       op.RepoId,
+			Plan:       op.PlanId,
+			InstanceID: op.InstanceId,
+			Type:       reflect.TypeOf(op.Op),
 		}
 
 		st, ok := stats[key]

@@ -65,6 +65,7 @@ service Backrest {
 // OpSelector is a message that can be used to select operations e.g. by query.
 message OpSelector {
   repeated int64 ids = 1;
+  string instance_id = 6;
   string repo_id = 2;
   string plan_id = 3;
   string snapshot_id = 4;
@@ -176,4 +177,70 @@ message SummaryDashboardResponse {
     repeated OperationStatus status = 4;
     repeated int64 bytes_added = 5;
   }
+}
+
+service BackrestSyncService {
+  rpc Sync(stream SyncStreamItem) returns (stream SyncStreamItem) {}
+}
+
+message SyncStreamItem {
+  oneof action {
+    SyncActionHandshake handshake = 10;
+    SyncActionConnectRepo connect_repo = 20;
+    SyncActionUpdateConnectionState update_connection_state = 21;
+    SyncActionDiffOperations diff_operations = 22;
+    SyncActionSendOperations send_operations = 23;
+    SyncActionThrottle throttle = 1000;
+  }
+
+  message SyncActionHandshake {
+    int64 protocol_version = 1;
+    string instance_id = 2;
+  }
+
+  message SyncActionConnectRepo {
+    string repo_id = 1;
+    string key_id = 2;
+    string key_secret = 3;
+  }
+
+  enum ConnectionState {
+    CONNECTION_STATE_UNKNOWN = 0;
+    CONNECTION_STATE_CONNECTED = 1;
+    CONNECTION_STATE_PENDING = 2; // Never sent over the wire, tracked by client to indicate that the request is sent but not ack'd.
+    CONNECTION_STATE_DISCONNECTED = 3; // Disconnected for possibly unknown reasons. Client should reconnect eventually.
+    CONNECTION_STATE_UNAUTHORIZED = 4;
+  }
+
+  message SyncActionUpdateConnectionState {
+    string repo_id = 1;
+    ConnectionState state = 2;
+    string message = 3;
+  }
+
+  message SyncActionDiffOperations {
+    // Client connects and sends a list of "have_operations" that exist in its log.
+    // have_operation_ids and have_operation_modnos are the operation IDs and modnos that the client has when zip'd pairwise.
+    OpSelector have_operations_selector = 1;
+    repeated int64 have_operation_ids = 2;
+    repeated int64 have_operation_modnos = 3;
+    // Server sends a list of "request_operations" for any operations that it doesn't have.
+    repeated int64 request_operations = 4;
+  }
+
+  message SyncActionSendOperations {
+    OperationEvent event = 1;
+  }
+
+  message SyncActionThrottle {
+    int64 delay_ms = 1;
+  }
+}
+
+message SyncConnectionInfo  {
+  string instance_id = 1;
+  string repo_id = 2;
+  SyncStreamItem.ConnectionState connection_state = 3;
+  string message = 4;
+  int64 last_activity_ms = 5; // time in milliseconds since last activity.
 }

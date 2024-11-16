@@ -25,6 +25,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// BackrestName is the fully-qualified name of the Backrest service.
 	BackrestName = "v1.Backrest"
+	// BackrestSyncServiceName is the fully-qualified name of the BackrestSyncService service.
+	BackrestSyncServiceName = "v1.BackrestSyncService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -78,6 +80,9 @@ const (
 	// BackrestGetSummaryDashboardProcedure is the fully-qualified name of the Backrest's
 	// GetSummaryDashboard RPC.
 	BackrestGetSummaryDashboardProcedure = "/v1.Backrest/GetSummaryDashboard"
+	// BackrestSyncServiceSyncProcedure is the fully-qualified name of the BackrestSyncService's Sync
+	// RPC.
+	BackrestSyncServiceSyncProcedure = "/v1.BackrestSyncService/Sync"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -102,6 +107,8 @@ var (
 	backrestClearHistoryMethodDescriptor        = backrestServiceDescriptor.Methods().ByName("ClearHistory")
 	backrestPathAutocompleteMethodDescriptor    = backrestServiceDescriptor.Methods().ByName("PathAutocomplete")
 	backrestGetSummaryDashboardMethodDescriptor = backrestServiceDescriptor.Methods().ByName("GetSummaryDashboard")
+	backrestSyncServiceServiceDescriptor        = v1.File_v1_service_proto.Services().ByName("BackrestSyncService")
+	backrestSyncServiceSyncMethodDescriptor     = backrestSyncServiceServiceDescriptor.Methods().ByName("Sync")
 )
 
 // BackrestClient is a client for the v1.Backrest service.
@@ -660,4 +667,72 @@ func (UnimplementedBackrestHandler) PathAutocomplete(context.Context, *connect.R
 
 func (UnimplementedBackrestHandler) GetSummaryDashboard(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.SummaryDashboardResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetSummaryDashboard is not implemented"))
+}
+
+// BackrestSyncServiceClient is a client for the v1.BackrestSyncService service.
+type BackrestSyncServiceClient interface {
+	Sync(context.Context) *connect.BidiStreamForClient[v1.SyncStreamItem, v1.SyncStreamItem]
+}
+
+// NewBackrestSyncServiceClient constructs a client for the v1.BackrestSyncService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewBackrestSyncServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) BackrestSyncServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &backrestSyncServiceClient{
+		sync: connect.NewClient[v1.SyncStreamItem, v1.SyncStreamItem](
+			httpClient,
+			baseURL+BackrestSyncServiceSyncProcedure,
+			connect.WithSchema(backrestSyncServiceSyncMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// backrestSyncServiceClient implements BackrestSyncServiceClient.
+type backrestSyncServiceClient struct {
+	sync *connect.Client[v1.SyncStreamItem, v1.SyncStreamItem]
+}
+
+// Sync calls v1.BackrestSyncService.Sync.
+func (c *backrestSyncServiceClient) Sync(ctx context.Context) *connect.BidiStreamForClient[v1.SyncStreamItem, v1.SyncStreamItem] {
+	return c.sync.CallBidiStream(ctx)
+}
+
+// BackrestSyncServiceHandler is an implementation of the v1.BackrestSyncService service.
+type BackrestSyncServiceHandler interface {
+	Sync(context.Context, *connect.BidiStream[v1.SyncStreamItem, v1.SyncStreamItem]) error
+}
+
+// NewBackrestSyncServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewBackrestSyncServiceHandler(svc BackrestSyncServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	backrestSyncServiceSyncHandler := connect.NewBidiStreamHandler(
+		BackrestSyncServiceSyncProcedure,
+		svc.Sync,
+		connect.WithSchema(backrestSyncServiceSyncMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/v1.BackrestSyncService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case BackrestSyncServiceSyncProcedure:
+			backrestSyncServiceSyncHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedBackrestSyncServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedBackrestSyncServiceHandler struct{}
+
+func (UnimplementedBackrestSyncServiceHandler) Sync(context.Context, *connect.BidiStream[v1.SyncStreamItem, v1.SyncStreamItem]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.BackrestSyncService.Sync is not implemented"))
 }

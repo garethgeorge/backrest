@@ -80,6 +80,20 @@ func (m *MemStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 	return nil
 }
 
+func (m *MemStore) QueryMetadata(q oplog.Query, f func(meta oplog.OpMetadata) error) error {
+	for _, id := range m.idsForQuery(q) {
+		op := m.operations[id]
+		if err := f(oplog.OpMetadata{
+			ID:         op.Id,
+			Modno:      op.Modno,
+			OriginalID: op.OriginalId,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (m *MemStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation, error)) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

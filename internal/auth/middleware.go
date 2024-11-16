@@ -14,6 +14,7 @@ func (k contextKey) String() string {
 }
 
 const UserContextKey contextKey = "user"
+const APIKeyContextKey contextKey = "api_key"
 
 func RequireAuthentication(h http.Handler, auth *Authenticator) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -37,6 +38,8 @@ func RequireAuthentication(h http.Handler, auth *Authenticator) http.Handler {
 				return
 			}
 		}
+
+		// TODO: process the API Key
 
 		token, err := ParseBearerToken(r.Header.Get("Authorization"))
 		if err != nil {

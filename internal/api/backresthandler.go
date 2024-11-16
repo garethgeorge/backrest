@@ -322,7 +322,7 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 }
 
 func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error) {
-	q, err := opSelectorToQuery(req.Msg.Selector)
+	q, err := OpSelectorToQuery(req.Msg.Selector)
 	if req.Msg.LastN != 0 {
 		q.Reversed = true
 		q.Limit = int(req.Msg.LastN)
@@ -513,7 +513,7 @@ func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request
 		return nil
 	}
 
-	q, err := opSelectorToQuery(req.Msg.Selector)
+	q, err := OpSelectorToQuery(req.Msg.Selector)
 	if err != nil {
 		return nil, err
 	}
@@ -746,7 +746,7 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	return connect.NewResponse(response), nil
 }
 
-func opSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
+func OpSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
 	if sel == nil {
 		return oplog.Query{}, errors.New("empty selector")
 	}
@@ -755,6 +755,7 @@ func opSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
 		PlanID:     sel.PlanId,
 		SnapshotID: sel.SnapshotId,
 		FlowID:     sel.FlowId,
+		InstanceID: sel.InstanceId,
 	}
 	if len(sel.Ids) > 0 && !reflect.DeepEqual(q, oplog.Query{}) {
 		return oplog.Query{}, errors.New("cannot specify both query and ids")

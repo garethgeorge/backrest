@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync/atomic"
+	"testing"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -20,6 +21,37 @@ import (
 )
 
 var ErrLocked = errors.New("sqlite db is locked")
+
+var sqliteSchemaMigrations = []string{
+	`
+	CREATE TABLE IF NOT EXISTS operations (
+		id INTEGER PRIMARY KEY,
+		start_time_ms INTEGER NOT NULL,
+		flow_id INTEGER NOT NULL,
+		instance_id STRING NOT NULL,
+		plan_id STRING NOT NULL,
+		repo_id STRING NOT NULL,
+		snapshot_id STRING NOT NULL,
+		operation BLOB NOT NULL
+	);
+	CREATE INDEX IF NOT EXISTS operations_repo_id_plan_id_instance_id ON operations (repo_id, plan_id, instance_id);
+	CREATE INDEX IF NOT EXISTS operations_snapshot_id ON operations (snapshot_id);
+	CREATE INDEX IF NOT EXISTS operations_flow_id ON operations (flow_id);
+	CREATE INDEX IF NOT EXISTS operations_start_time_ms ON operations (start_time_ms);
+
+	-- system_info table to store data version, this is distinct from the sqlite user_version
+	-- which is used by the database schema migration system to track the schema version.
+	CREATE TABLE IF NOT EXISTS system_info (version INTEGER NOT NULL);
+	INSERT INTO system_info (version)
+	SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM system_info);
+	`,
+	`
+	-- Add modno column to operations table, used for diffing.
+	ALTER TABLE operations ADD COLUMN modno INTEGER DEFAULT 0;
+	ALTER TABLE operations ADD COLUMN original_id INTEGER DEFAULT 0;
+	CREATE INDEX IF NOT EXISTS operations_instance_id_original_id ON operations (instance_id, original_id);
+	`,
+}
 
 type SqliteStore struct {
 	dbpool    *sqlitex.Pool
@@ -63,40 +95,16 @@ func (m *SqliteStore) Close() error {
 }
 
 func (m *SqliteStore) init() error {
-	var script = `
-PRAGMA journal_mode=WAL;
-PRAGMA page_size=4096;
-CREATE TABLE IF NOT EXISTS operations (
-	id INTEGER PRIMARY KEY,
-	start_time_ms INTEGER NOT NULL,
-	flow_id INTEGER NOT NULL,
-	instance_id STRING NOT NULL,
-	plan_id STRING NOT NULL,
-	repo_id STRING NOT NULL,
-	snapshot_id STRING NOT NULL,
-	operation BLOB NOT NULL
-);
-CREATE TABLE IF NOT EXISTS system_info (
-	version INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS operations_repo_id_plan_id_instance_id ON operations (repo_id, plan_id, instance_id);
-CREATE INDEX IF NOT EXISTS operations_snapshot_id ON operations (snapshot_id);
-CREATE INDEX IF NOT EXISTS operations_flow_id ON operations (flow_id);
-CREATE INDEX IF NOT EXISTS operations_start_time_ms ON operations (start_time_ms);
-
-INSERT INTO system_info (version)
-SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM system_info);
-`
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("init sqlite: %v", err)
 	}
 	defer m.dbpool.Put(conn)
-	if err := sqlitex.ExecScript(conn, script); err != nil {
-		return fmt.Errorf("init sqlite: %v", err)
+
+	if err := applySqliteMigrations(conn, sqliteSchemaMigrations); err != nil {
+		return err
 	}
 
-	// rand init value
 	if err := sqlitex.ExecuteTransient(conn, "SELECT id FROM operations ORDER BY id DESC LIMIT 1", &sqlitex.ExecOptions{
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			m.nextIDVal.Store(stmt.GetInt64("id"))
@@ -143,8 +151,8 @@ func (m *SqliteStore) SetVersion(version int64) error {
 	return nil
 }
 
-func (m *SqliteStore) buildQuery(q oplog.Query, includeSelectClauses bool) (string, []any) {
-	query := []string{`SELECT operation FROM operations WHERE 1=1`}
+func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses bool) (string, []any) {
+	query := []string{`1=1`}
 	args := []any{}
 
 	if q.FlowID != 0 {
@@ -166,6 +174,10 @@ func (m *SqliteStore) buildQuery(q oplog.Query, includeSelectClauses bool) (stri
 	if q.SnapshotID != "" {
 		query = append(query, " AND snapshot_id = ?")
 		args = append(args, q.SnapshotID)
+	}
+	if q.OriginalID != 0 {
+		query = append(query, " AND original_id = ?")
+		args = append(args, q.OriginalID)
 	}
 	if q.OpIDs != nil {
 		query = append(query, " AND id IN (")
@@ -209,9 +221,8 @@ func (m *SqliteStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 	}
 	defer m.dbpool.Put(conn)
 
-	query, args := m.buildQuery(q, true)
-
-	if err := sqlitex.ExecuteTransient(conn, query, &sqlitex.ExecOptions{
+	where, args := m.buildQueryWhereClause(q, true)
+	if err := sqlitex.ExecuteTransient(conn, "SELECT operation FROM operations WHERE "+where, &sqlitex.ExecOptions{
 		Args: args,
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			opBytes := make([]byte, stmt.ColumnLen(0))
@@ -230,6 +241,29 @@ func (m *SqliteStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 	return nil
 }
 
+func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) error) error {
+	conn, err := m.dbpool.Take(context.Background())
+	if err != nil {
+		return fmt.Errorf("query metadata: %v", err)
+	}
+	defer m.dbpool.Put(conn)
+
+	where, args := m.buildQueryWhereClause(q, false)
+	if err := sqlitex.ExecuteTransient(conn, "SELECT id, modno, original_id FROM operations WHERE "+where, &sqlitex.ExecOptions{
+		Args: args,
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			return f(oplog.OpMetadata{
+				ID:         stmt.GetInt64("id"),
+				Modno:      stmt.GetInt64("modno"),
+				OriginalID: stmt.GetInt64("original_id"),
+			})
+		},
+	}); err != nil && !errors.Is(err, oplog.ErrStopIteration) {
+		return err
+	}
+	return nil
+}
+
 func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation, error)) error {
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
@@ -237,10 +271,9 @@ func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operat
 	}
 	defer m.dbpool.Put(conn)
 
-	query, args := m.buildQuery(q, true)
-
+	where, args := m.buildQueryWhereClause(q, true)
 	return withSqliteTransaction(conn, func() error {
-		return sqlitex.ExecuteTransient(conn, query, &sqlitex.ExecOptions{
+		return sqlitex.ExecuteTransient(conn, "SELECT operation FROM operations WHERE "+where, &sqlitex.ExecOptions{
 			Args: args,
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				opBytes := make([]byte, stmt.ColumnLen(0))
@@ -282,7 +315,7 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 				return err
 			}
 
-			query := "INSERT INTO operations (id, start_time_ms, flow_id, instance_id, plan_id, repo_id, snapshot_id, operation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+			query := "INSERT INTO operations (id, start_time_ms, flow_id, instance_id, plan_id, repo_id, snapshot_id, modno, original_id, operation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 			bytes, err := proto.Marshal(o)
 			if err != nil {
@@ -290,7 +323,7 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 			}
 
 			if err := sqlitex.Execute(conn, query, &sqlitex.ExecOptions{
-				Args: []any{o.Id, o.UnixTimeStartMs, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, bytes},
+				Args: []any{o.Id, o.UnixTimeStartMs, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, o.Modno, o.OriginalId, bytes},
 			}); err != nil {
 				if sqlite.ErrCode(err) == sqlite.ResultConstraintUnique {
 					return fmt.Errorf("operation already exists %v: %w", o.Id, oplog.ErrExist)
@@ -323,8 +356,8 @@ func (m *SqliteStore) updateInternal(conn *sqlite.Conn, op ...*v1.Operation) err
 		if err != nil {
 			return fmt.Errorf("marshal operation: %v", err)
 		}
-		if err := sqlitex.Execute(conn, "UPDATE operations SET operation = ?, start_time_ms = ?, flow_id = ?, instance_id = ?, plan_id = ?, repo_id = ?, snapshot_id = ? WHERE id = ?", &sqlitex.ExecOptions{
-			Args: []any{bytes, o.UnixTimeStartMs, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, o.Id},
+		if err := sqlitex.Execute(conn, "UPDATE operations SET operation = ?, start_time_ms = ?, flow_id = ?, instance_id = ?, plan_id = ?, repo_id = ?, snapshot_id = ?, modno = ?, original_id = ? WHERE id = ?", &sqlitex.ExecOptions{
+			Args: []any{bytes, o.UnixTimeStartMs, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, o.Modno, o.OriginalId, o.Id},
 		}); err != nil {
 			return fmt.Errorf("update operation: %v", err)
 		}
@@ -420,6 +453,20 @@ func (m *SqliteStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 		}
 		return nil
 	})
+}
+
+func (m *SqliteStore) ResetForTest(t *testing.T) error {
+	conn, err := m.dbpool.Take(context.Background())
+	if err != nil {
+		return fmt.Errorf("reset for test: %v", err)
+	}
+	defer m.dbpool.Put(conn)
+
+	if err := sqlitex.Execute(conn, "DELETE FROM operations", &sqlitex.ExecOptions{}); err != nil {
+		return fmt.Errorf("reset for test: %v", err)
+	}
+	m.nextIDVal.Store(1)
+	return nil
 }
 
 func withSqliteTransaction(conn *sqlite.Conn, f func() error) error {

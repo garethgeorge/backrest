@@ -21,7 +21,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
+	"github.com/garethgeorge/backrest/internal/oplog/sqlitestore"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"golang.org/x/sync/errgroup"
@@ -844,7 +844,7 @@ func TestRunCommand(t *testing.T) {
 type systemUnderTest struct {
 	handler  *BackrestHandler
 	oplog    *oplog.OpLog
-	opstore  *bboltstore.BboltStore
+	opstore  *sqlitestore.SqliteStore
 	orch     *orchestrator.Orchestrator
 	logStore *logstore.LogStore
 	config   *v1.Config
@@ -862,9 +862,9 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 	if err != nil {
 		t.Fatalf("Failed to find or install restic binary: %v", err)
 	}
-	opstore, err := bboltstore.NewBboltStore(filepath.Join(dir, "oplog.bbolt"))
+	opstore, err := sqlitestore.NewSqliteStore(filepath.Join(dir, "oplog.sqlite"))
 	if err != nil {
-		t.Fatalf("Failed to create oplog store: %v", err)
+		t.Fatalf("Failed to create opstore: %v", err)
 	}
 	t.Cleanup(func() { opstore.Close() })
 	oplog, err := oplog.NewOpLog(opstore)
