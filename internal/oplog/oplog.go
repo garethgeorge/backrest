@@ -74,6 +74,10 @@ func (o *OpLog) Query(q Query, f func(*v1.Operation) error) error {
 	return o.store.Query(q, f)
 }
 
+func (o *OpLog) QueryMetadata(q Query, f func(OpMetadata) error) error {
+	return o.store.QueryMetadata(q, f)
+}
+
 func (o *OpLog) Subscribe(q Query, f *Subscription) {
 	o.subscribers = append(o.subscribers, subAndQuery{f: f, q: q})
 }
@@ -112,6 +116,7 @@ func (o *OpLog) Update(ops ...*v1.Operation) error {
 		if o.Id == 0 {
 			return errors.New("operation does not have an ID, OpLog.Update is expected to have an ID")
 		}
+		o.Modno++
 	}
 
 	if err := o.store.Update(ops...); err != nil {
@@ -137,13 +142,24 @@ func (o *OpLog) Transform(q Query, f func(*v1.Operation) (*v1.Operation, error))
 }
 
 type OpStore interface {
+	// Query returns all operations that match the query.
 	Query(q Query, f func(*v1.Operation) error) error
+	// QueryMetadata is like Query, but only returns metadata about the operations.
+	// this is useful for very high performance scans that don't deserialize the operation itself.
+	QueryMetadata(q Query, f func(OpMetadata) error) error
+	// Get returns the operation with the given ID.
 	Get(opID int64) (*v1.Operation, error)
+	// Add adds the given operations to the store.
 	Add(op ...*v1.Operation) error
-	Update(op ...*v1.Operation) error              // returns the previous values of the updated operations OR an error
-	Delete(opID ...int64) ([]*v1.Operation, error) // returns the deleted operations OR an error
+	// Update updates the given operations in the store.
+	Update(op ...*v1.Operation) error
+	// Delete removes the operations with the given IDs from the store, and returns the removed operations.
+	Delete(opID ...int64) ([]*v1.Operation, error)
+	// Transform applies the given function to each operation that matches the query.
 	Transform(q Query, f func(*v1.Operation) (*v1.Operation, error)) error
+	// Version returns the current data version
 	Version() (int64, error)
+	// SetVersion sets the data version
 	SetVersion(version int64) error
 }
 
@@ -155,6 +171,7 @@ type Query struct {
 	SnapshotID string
 	FlowID     int64
 	InstanceID string
+	OriginalID int64
 
 	// Pagination
 	Limit    int
@@ -187,6 +204,10 @@ func (q *Query) Match(op *v1.Operation) bool {
 		return false
 	}
 
+	if q.OriginalID != 0 && op.OriginalId != q.OriginalID {
+		return false
+	}
+
 	if q.PlanID != "" && op.PlanId != q.PlanID {
 		return false
 	}
@@ -204,4 +225,11 @@ func (q *Query) Match(op *v1.Operation) bool {
 	}
 
 	return true
+}
+
+// OpMetadata is a struct that contains metadata about an operation without fetching the operation itself.
+type OpMetadata struct {
+	ID         int64
+	OriginalID int64
+	Modno      int64
 }

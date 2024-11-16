@@ -29,6 +29,8 @@ message Config {
   repeated Repo repos = 3 [json_name="repos"];
   repeated Plan plans = 4 [json_name="plans"];
   Auth auth = 5 [json_name="auth"];
+
+  string baseurl = 7 [json_name="urlbase"]; // base URL for the UI, must be set if using the sync feature.
 }
 
 message Repo {
@@ -42,6 +44,12 @@ message Repo {
   repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on events for this repo.
   bool auto_unlock = 8 [json_name="autoUnlock"]; // automatically unlock the repo when needed.
   CommandPrefix command_prefix = 10 [json_name="commandPrefix"]; // modifiers for the restic commands
+
+  repeated ClientKey client_keys = 11 [json_name="clientKeys"]; // client keys for syncing with other instances.
+  message ClientKey {
+    string instance_id = 1 [json_name="instanceId"]; // annotated instance ID using the key, will be set on first client connection if not present.
+    string secret = 2; // secret used to authenticate with the instance.
+  }
 }
 
 message Plan {

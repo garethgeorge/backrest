@@ -160,16 +160,21 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 
 // rescheduleTasksIfNeeded checks if any tasks need to be rescheduled based on config changes.
 func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
+	if o.OpLog == nil {
+		return nil
+	}
+
 	zap.L().Info("scheduling default tasks, waiting for task queue reset.")
 	removedTasks := o.taskQueue.Reset()
-	for _, t := range removedTasks {
-		if t.Op == nil {
-			continue
-		}
 
-		if err := o.OpLog.Delete(t.Op.Id); err != nil {
-			zap.S().Warnf("failed to cancel pending task %d: %v", t.Op.Id, err)
+	ids := []int64{}
+	for _, t := range removedTasks {
+		if t.Op.GetId() != 0 {
+			ids = append(ids, t.Op.GetId())
 		}
+	}
+	if err := o.OpLog.Delete(ids...); err != nil {
+		zap.S().Warnf("failed to delete cancelled tasks from oplog: %v", err)
 	}
 
 	zap.L().Info("reset task queue, scheduling new task set", zap.String("timezone", time.Now().Location().String()))
