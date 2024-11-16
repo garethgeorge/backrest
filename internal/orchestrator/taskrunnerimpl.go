@@ -96,6 +96,10 @@ func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 	if planID != "" {
 		plan, _ = t.findPlan()
 		vars.Plan = plan
+	} else {
+		vars.Plan = &v1.Plan{
+			Id: tasks.PlanForUnassociatedOperations,
+		}
 	}
 
 	hookTasks, err := hook.TasksTriggeredByEvent(t.Config(), repoID, planID, t.op, events, vars)
