@@ -2,11 +2,28 @@ package webui
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"io"
 	"io/fs"
 	"net/http"
 	"strings"
+	"time"
 )
+
+var etagCache = make(map[string]string)
+
+func calcEtag(path string, data []byte) string {
+	etag, ok := etagCache[path]
+	if ok {
+		return etag
+	}
+
+	md5sum := md5.Sum(data)
+	etag = "\"" + hex.EncodeToString(md5sum[:]) + "\""
+	etagCache[path] = etag
+	return etag
+}
 
 func Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -39,12 +56,6 @@ func serveFile(f fs.File, w http.ResponseWriter, r *http.Request, path string) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	stat, err := f.Stat()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	http.ServeContent(w, r, path, stat.ModTime(), bytes.NewReader(data))
+	w.Header().Set("ETag", calcEtag(path, data))
+	http.ServeContent(w, r, path, time.Time{}, bytes.NewReader(data))
 }
