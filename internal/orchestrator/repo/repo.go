@@ -388,10 +388,9 @@ func (r *RepoOrchestrator) AddTags(ctx context.Context, snapshotIDs []string, ta
 	return nil
 }
 
-// RunCommand runs a command in the repo's environment. Output is buffered and sent to the onProgress callback in batches.
+// RunCommand runs a command in the repo's environment.
+// NOTE: this function does not lock the repo.
 func (r *RepoOrchestrator) RunCommand(ctx context.Context, command string, writer io.Writer) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
 
