@@ -29,7 +29,7 @@ var (
 )
 
 var (
-	RequiredResticVersion = "0.17.1"
+	RequiredResticVersion = "0.17.3"
 
 	findResticMu  sync.Mutex
 	didTryInstall bool
