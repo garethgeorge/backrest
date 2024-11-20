@@ -34,7 +34,7 @@ func (commandHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{},
 	// Parse out the shell to use if a #! prefix is present
 	shell := []string{"sh"}
 	if runtime.GOOS == "windows" {
-		shell = []string{"powershell", "-nologo", "-noprofile"}
+		shell = []string{"powershell", "-NoLogo", "-NoProfile", "-Command", "-"}
 	}
 
 	if len(command) > 2 && command[0:2] == "#!" {
