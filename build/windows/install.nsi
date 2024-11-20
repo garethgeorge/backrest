@@ -3,9 +3,8 @@
 !define APP_NAME "Backrest"
 !define COMP_NAME "garethgeorge"
 !define WEB_SITE "https://github.com/garethgeorge/backrest"
-!define VERSION "1.6.1.0"
 !define COPYRIGHT "garethgeorge   2024"
-!define DESCRIPTION "Application"
+!define DESCRIPTION "${APP_NAME} installer"
 !define LICENSE_TXT "${BUILD_DIR}\LICENSE"
 !define INSTALLER_NAME "${OUT_DIR}\Backrest-setup.exe"
 !define MAIN_APP_EXE "backrest-windows-tray.exe"
@@ -16,16 +15,22 @@
 
 !define REG_START_MENU "Start Menu Folder"
 
+# Extract version from the changelog.
+!searchparse /file "${BUILD_DIR}\CHANGELOG.md" `## [` VERSION_LOG `]`
+# NSIS requires X.X.X.X format in VIProductVersion. Use it everywhere for consistency.
+!define VERSION "${VERSION_LOG}.0"
+
 var SM_Folder
 
 ######################################################################
 
-VIProductVersion  "${VERSION}"
+VIProductVersion "${VERSION}"
 VIAddVersionKey "ProductName"  "${APP_NAME}"
 VIAddVersionKey "CompanyName"  "${COMP_NAME}"
 VIAddVersionKey "LegalCopyright"  "${COPYRIGHT}"
 VIAddVersionKey "FileDescription"  "${DESCRIPTION}"
 VIAddVersionKey "FileVersion"  "${VERSION}"
+VIAddVersionKey "ProductVersion" "${VERSION}"
 
 ######################################################################
 
