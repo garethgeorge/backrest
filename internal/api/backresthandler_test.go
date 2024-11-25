@@ -248,15 +248,16 @@ func TestMultipleBackup(t *testing.T) {
 
 func TestHookExecution(t *testing.T) {
 	t.Parallel()
-
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping test on windows")
-	}
-
 	dir := t.TempDir()
-
 	hookOutputBefore := path.Join(dir, "before.txt")
 	hookOutputAfter := path.Join(dir, "after.txt")
+
+	commandBefore := fmt.Sprintf("echo before > %s", hookOutputBefore)
+	commandAfter := fmt.Sprintf("echo after > %s", hookOutputAfter)
+	if runtime.GOOS == "windows" {
+		commandBefore = fmt.Sprintf("echo \"before\" | Out-File -FilePath %q", hookOutputBefore)
+		commandAfter = fmt.Sprintf("echo \"after\" | Out-File -FilePath %q", hookOutputAfter)
+	}
 
 	sut := createSystemUnderTest(t, &config.MemoryStore{
 		Config: &v1.Config{
@@ -287,7 +288,7 @@ func TestHookExecution(t *testing.T) {
 							},
 							Action: &v1.Hook_ActionCommand{
 								ActionCommand: &v1.Hook_Command{
-									Command: "echo before > " + hookOutputBefore,
+									Command: commandBefore,
 								},
 							},
 						},
@@ -297,7 +298,7 @@ func TestHookExecution(t *testing.T) {
 							},
 							Action: &v1.Hook_ActionCommand{
 								ActionCommand: &v1.Hook_Command{
-									Command: "echo after > " + hookOutputAfter,
+									Command: commandAfter,
 								},
 							},
 						},
