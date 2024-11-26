@@ -1,16 +1,16 @@
-//go:build windows
-// +build windows
+//go:build windows || darwin
+// +build windows darwin
 
 package main
 
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"syscall"
 
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/getlantern/systray"
@@ -32,7 +32,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	cmd := exec.CommandContext(ctx, backrest)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	customizeCommand(cmd)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "ENV=production")
 
@@ -52,7 +52,19 @@ func main() {
 		mOpenUI.ClickedCh = make(chan struct{})
 		go func() {
 			for range mOpenUI.ClickedCh {
-				if err := openBrowser("http://localhost:9898"); err != nil {
+				// Parse address from env
+				bindaddr := os.Getenv("BACKREST_PORT")
+				if bindaddr == "" {
+					bindaddr = ":9898"
+				}
+
+				// parse port from IP addr
+				_, port, err := net.SplitHostPort(bindaddr)
+				if err != nil {
+					port = "9898" // try the default
+				}
+
+				if err := openBrowser(fmt.Sprintf("http://localhost:%v", port)); err != nil {
 					reportError(err)
 				}
 			}
