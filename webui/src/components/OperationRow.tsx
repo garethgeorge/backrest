@@ -166,7 +166,7 @@ export const OperationRow = ({
         key="cancel"
         type="link"
         size="small"
-        className="backrest operation-details hidden-child"
+        className="backrest operation-details"
         confirmTitle="[Confirm Cancel?]"
         onClickAsync={doCancel}
       >
