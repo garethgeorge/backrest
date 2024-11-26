@@ -19,7 +19,7 @@ before:
     - sh -c "GOOS=windows BACKREST_BUILD_VERSION={{.Version}} go generate ./..."
 
 builds:
-  - id: other
+  - id: backrestother
     main: ./cmd/backrest
     env:
       - CGO_ENABLED=0
@@ -32,7 +32,7 @@ builds:
       - arm64
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
-  - id: linux
+  - id: backrestlinux
     main: ./cmd/backrest
     env:
       - CGO_ENABLED=0
@@ -44,7 +44,7 @@ builds:
       - arm
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
-  - id: backrestmon
+  - id: backrestmonwindows
     main: ./cmd/backrestmon
     binary: backrest-windows-tray
     env:
@@ -53,6 +53,20 @@ builds:
     ldflags: -H=windowsgui
     goos:
       - windows
+    goarch:
+      - amd64
+      - arm64
+  - id: backrestmondarwin
+    main: ./cmd/backrestmon
+    binary: backrest-macos-tray
+    env:
+      - CGO_ENABLED=1
+      - GO111MODULE=on
+    ldflags:
+      - CGO_ENABLED=1
+      - GO111MODULE=on
+    goos:
+      - darwin
     goarch:
       - amd64
       - arm64
@@ -76,6 +90,9 @@ archives:
       - README.md
       - CHANGELOG.md
     allow_different_binary_count: true
+    builds:
+      - backrestother
+      - backrestlinux
 
 dockers:
   - image_templates:
