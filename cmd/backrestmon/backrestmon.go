@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -52,7 +53,15 @@ func main() {
 		mOpenUI.ClickedCh = make(chan struct{})
 		go func() {
 			for range mOpenUI.ClickedCh {
-				if err := openBrowser("http://localhost:9898"); err != nil {
+				bindaddr := env.BindAddress()
+				if bindaddr == "" {
+					bindaddr = ":9898"
+				}
+				_, port, err := net.SplitHostPort(bindaddr)
+				if err != nil {
+					port = "9898" // try the default
+				}
+				if err := openBrowser(fmt.Sprintf("http://localhost:%v", port)); err != nil {
 					reportError(err)
 				}
 			}
