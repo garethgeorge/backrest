@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.6.2](https://github.com/garethgeorge/backrest/compare/v1.6.1...v1.6.2) (2024-11-26)
+
+
+### Bug Fixes
+
+* allow 'run command' tasks to proceed in parallel to other repo operations ([3397a01](https://github.com/garethgeorge/backrest/commit/3397a011a3bbbdac2f7299ea4f869cd71b2d0a22))
+* allow for deleting individual operations from the list view ([aa39ead](https://github.com/garethgeorge/backrest/commit/aa39ead0e1f223e7fe7c0ce6fe4dbbc3c3050728))
+* better defaults in add repo / add plan views ([4d7be23](https://github.com/garethgeorge/backrest/commit/4d7be23e8cfd959e93f202eb52c8065446446d07))
+* crash on arm32 device due to bad libc dependency version for sqlite driver ([#559](https://github.com/garethgeorge/backrest/issues/559)) ([e60a4fb](https://github.com/garethgeorge/backrest/commit/e60a4fbcd7b695b03ae5402868ae3c4795cb04c6))
+* garbage collection with more sensible limits grouped by plan/repo ([#555](https://github.com/garethgeorge/backrest/issues/555)) ([492beb2](https://github.com/garethgeorge/backrest/commit/492beb29352ba5e5dc824d35dfaa58eed4422b8a))
+* improve memory pressure from getlogs ([592e4cf](https://github.com/garethgeorge/backrest/commit/592e4cf9dd60eaad1a660c4d69fb4ffea79c98cd))
+* improve windows installer and relocate backrest on Windows to %localappdata%\programs  ([#568](https://github.com/garethgeorge/backrest/issues/568)) ([00b0c3e](https://github.com/garethgeorge/backrest/commit/00b0c3e1d256a552aa05a8a90ae05e60d35c5c96))
+* make cancel button more visible for a running operation ([51a6683](https://github.com/garethgeorge/backrest/commit/51a66839ff608fa0e3e60a6a48ca5d490628368e))
+* set etag header to cache webUI source ([0642f4b](https://github.com/garethgeorge/backrest/commit/0642f4b65a11daab379708d7ed813ca8d6a2140f))
+* substantially improve windows installer experience ([#578](https://github.com/garethgeorge/backrest/issues/578)) ([74eb869](https://github.com/garethgeorge/backrest/commit/74eb8692638c04f49004c8312ed57123ea4b5cc2))
+* tray app infers UI port from BACKREST_PORT or --bind-address if available ([c810d27](https://github.com/garethgeorge/backrest/commit/c810d27375c39a9938ad4bde433dfe5997d56bfa))
+* update resticinstaller to use the same binary name across versions and to use system restic install when possible ([5fea5fd](https://github.com/garethgeorge/backrest/commit/5fea5fdefdc2bad7fccb1f0cc0ea57fbe79bbcbb))
+* use command mode when executing powershell scripts on windows ([#569](https://github.com/garethgeorge/backrest/issues/569)) ([57f9aeb](https://github.com/garethgeorge/backrest/commit/57f9aeb72a6db240824998cff91c0921c68a336a))
+* webui may duplicate elements in a multi-instance repo ([bf77bab](https://github.com/garethgeorge/backrest/commit/bf77baba06c7296ade830e10238f1a02d0cea95c))
+
 ## [1.6.1](https://github.com/garethgeorge/backrest/compare/v1.6.0...v1.6.1) (2024-10-20)
 
 
