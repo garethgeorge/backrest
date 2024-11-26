@@ -40,6 +40,7 @@
     "@types/react-virtualized": "^9.21.30",
     "cross-env": "^7.0.3",
     "events": "^3.3.0",
-    "rimraf": "^5.0.5"
+    "rimraf": "^5.0.5",
+    "svgo": "^3.3.2"
   }
 }
