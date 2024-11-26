@@ -95,6 +95,41 @@ func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1
 	return connect.NewResponse(newConfig), nil
 }
 
+func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Request[v1.Repo]) (*connect.Response[emptypb.Empty], error) {
+	c, err := s.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %w", err)
+	}
+
+	// Deep copy the configuration
+	c = proto.Clone(c).(*v1.Config)
+
+	// Add or implicit update the repo
+	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == req.Msg.Id }); idx != -1 {
+		c.Repos[idx] = req.Msg
+	} else {
+		c.Repos = append(c.Repos, req.Msg)
+	}
+
+	if err := config.ValidateConfig(c); err != nil {
+		return nil, fmt.Errorf("validation error: %w", err)
+	}
+
+	bin, err := resticinstaller.FindOrInstallResticBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
+	}
+
+	r, err := repo.NewRepoOrchestrator(c, req.Msg, bin)
+	if err != nil {
+		return nil, fmt.Errorf("failed to configure repo: %w", err)
+	}
+
+	ctx, err := context.WithTimeout(ctx, 60*time.Second)
+
+	return connect.NewResponse(&types.BoolValue{Value: true}), nil
+}
+
 // AddRepo implements POST /v1/config/repo, it includes validation that the repo can be initialized.
 func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error) {
 	c, err := s.config.Get()
