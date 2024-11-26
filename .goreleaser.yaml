@@ -14,7 +14,7 @@ env:
 before:
   hooks:
     - go mod tidy
-    - npm --prefix webui install
+    - pnpm --prefix webui install
     - sh -c "GOOS=linux BACKREST_BUILD_VERSION={{.Version}} go generate ./..."
     - sh -c "GOOS=windows BACKREST_BUILD_VERSION={{.Version}} go generate ./..."
 

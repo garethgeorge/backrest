@@ -22,11 +22,16 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Install dependencies
-        run: npm install --prefix ./docs
+        run: pnpm install --prefix ./docs
 
       - name: Build
-        run: npm run generate --prefix ./docs
+        run: pnpm run generate --prefix ./docs
 
       - name: Fix permissions
         run: |
