@@ -24,8 +24,9 @@ var (
 var (
 	RequiredResticVersion = "0.17.3"
 
-	findResticMu  sync.Mutex
-	didTryInstall bool
+	tryFindRestic   sync.Once
+	findResticErr   error
+	foundResticPath string
 )
 
 func getResticVersion(binary string) (string, error) {
@@ -94,12 +95,6 @@ func verify(sha256 string) error {
 }
 
 func installResticIfNotExists(resticInstallPath string) error {
-	lock := flock.New(filepath.Join(filepath.Dir(resticInstallPath), "install.lock"))
-	if err := lock.Lock(); err != nil {
-		return fmt.Errorf("lock %v: %w", lock.Path(), err)
-	}
-	defer lock.Unlock()
-
 	if _, err := os.Stat(resticInstallPath); err == nil {
 		// file is now installed, probably by another process. We can return.
 		return nil
@@ -148,25 +143,40 @@ func removeOldVersions(installDir string) {
 	}
 }
 
-// FindOrInstallResticBinary first tries to find the restic binary if provided as an environment variable. Otherwise it downloads restic if not already installed.
-func FindOrInstallResticBinary() (string, error) {
-	findResticMu.Lock()
-	defer findResticMu.Unlock()
+func installResticHelper(resticInstallPath string) {
+	if _, err := os.Stat(resticInstallPath); err == nil {
+		zap.S().Infof("replacing restic binary in data dir due to failed check: %w", err)
+		if err := os.Remove(resticInstallPath); err != nil {
+			zap.S().Errorf("failed to remove old restic binary %v: %v", resticInstallPath, err)
+		}
+	}
 
+	zap.S().Infof("downloading restic %v to %v...", RequiredResticVersion, resticInstallPath)
+	if err := installResticIfNotExists(resticInstallPath); err != nil {
+		zap.S().Errorf("failed to install restic %v: %v", RequiredResticVersion, err)
+		return
+	}
+	zap.S().Infof("installed restic %v", RequiredResticVersion)
+
+	// TODO: this check is no longer needed, remove it after a few releases.
+	removeOldVersions(path.Dir(resticInstallPath))
+}
+
+func tryFindOrInstall() (string, error) {
 	// Check if restic is provided.
-	resticBin := env.ResticBinPath()
-	if resticBin != "" {
-		if err := assertResticVersion(resticBin); err != nil {
-			zap.S().Warnf("restic binary %q may not be supported by backrest", resticBin, err)
+	resticBinOverride := env.ResticBinPath()
+	if resticBinOverride != "" {
+		if err := assertResticVersion(resticBinOverride); err != nil {
+			zap.S().Warnf("restic binary %q may not be supported by backrest: %v", resticBinOverride, err)
 		}
 
-		if _, err := os.Stat(resticBin); err != nil {
+		if _, err := os.Stat(resticBinOverride); err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
-				return "", fmt.Errorf("stat(%v): %w", resticBin, err)
+				return "", fmt.Errorf("check if restic binary exists at %v: %v", resticBinOverride, err)
 			}
-			return "", fmt.Errorf("no binary found at path %v: %w", resticBin, ErrResticNotFound)
+			return "", fmt.Errorf("no restic binary found at %v", resticBinOverride)
 		}
-		return resticBin, nil
+		return resticBinOverride, nil
 	}
 
 	// Search the PATH for the specific restic version.
@@ -180,40 +190,46 @@ func FindOrInstallResticBinary() (string, error) {
 	}
 
 	// Check for restic installation in data directory.
-	resticInstallPath := path.Join(env.DataDir(), "restic")
+	var resticInstallPath string
 	if runtime.GOOS == "windows" {
 		// on windows use a path relative to the executable.
-		resticInstallPath, _ = filepath.Abs(path.Join(path.Dir(os.Args[0]), "restic"))
+		resticInstallPath, _ = filepath.Abs(path.Join(path.Dir(os.Args[0]), "restic.exe"))
+	} else {
+		resticInstallPath = filepath.Join(env.DataDir(), "restic")
 	}
-
-	if err := os.MkdirAll(path.Dir(resticInstallPath), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(resticInstallPath), 0700); err != nil {
 		return "", fmt.Errorf("create restic install directory %v: %w", path.Dir(resticInstallPath), err)
 	}
 
 	// Install restic if not found OR if the version is not the required version
 	if err := assertResticVersion(resticInstallPath); err != nil {
-		if _, err := os.Stat(resticInstallPath); err == nil {
-			zap.S().Infof("reinstalling restic binary in data dir due to failed checks: %w", err)
-			if err := os.Remove(resticInstallPath); err != nil {
-				return "", fmt.Errorf("remove old restic binary %v: %w", resticInstallPath, err)
-			}
+		lock := flock.New(filepath.Join(filepath.Dir(resticInstallPath), "install.lock"))
+		if err := lock.Lock(); err != nil {
+			return "", fmt.Errorf("acquire lock on restic install dir %v: %v", lock.Path(), err)
 		}
+		defer lock.Unlock()
 
-		if didTryInstall {
-			return "", fmt.Errorf("already tried to install: %w", ErrResticNotFound)
+		// Check again after acquiring the lock.
+		if err := assertResticVersion(resticInstallPath); err != nil {
+			installResticHelper(resticInstallPath)
 		}
-		didTryInstall = true
-
-		zap.S().Infof("downloading restic %v to %v...", RequiredResticVersion, resticInstallPath)
-		if err := installResticIfNotExists(resticInstallPath); err != nil {
-			return "", fmt.Errorf("install restic: %w", err)
-		}
-		zap.S().Infof("installed restic %v", RequiredResticVersion)
-
-		// TODO: this check is no longer needed, remove it after a few releases.
-		removeOldVersions(path.Dir(resticInstallPath))
 	}
 
 	zap.S().Infof("restic binary %v in data dir will be used as no system install matching required version %v is found", resticInstallPath, RequiredResticVersion)
 	return resticInstallPath, nil
+}
+
+// FindOrInstallResticBinary first tries to find the restic binary if provided as an environment variable. Otherwise it downloads restic if not already installed.
+func FindOrInstallResticBinary() (string, error) {
+	tryFindRestic.Do(func() {
+		foundResticPath, findResticErr = tryFindOrInstall()
+	})
+
+	if findResticErr != nil {
+		return "", findResticErr
+	}
+	if foundResticPath == "" {
+		return "", ErrResticNotFound
+	}
+	return foundResticPath, nil
 }

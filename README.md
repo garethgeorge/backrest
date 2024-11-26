@@ -62,7 +62,7 @@ Download options
 Backrest is accessible from a web browser. By default it binds to `127.0.0.1:9898` and can be accessed at `http://localhost:9898`. Change the port with the `BACKREST_PORT` environment variable e.g. `BACKREST_PORT=0.0.0.0:9898 backrest` to listen on all network interfaces. On first startup backrest will prompt you to create a default username and password, this can be changed later in the settings page.
 
 > [!Note]
-> Backrest installs a specific restic version to ensure that it is compatible. If you wish to use a different version of restic OR if you would prefer to install restic manually, use the `BACKREST_RESTIC_COMMAND` environment variable to specify the path of your restic install.
+> Backrest will use your system install of restic if it is available and matches Backrest's required version. Otherwise it will download and install a compatible version of restic in its data directory. Backrest will keep restic up to date with the latest version. You force use of a specific restic binary (or non-standard version) by setting the `BACKREST_RESTIC_COMMAND` environment variable to the path of your restic binary.
 
 ## Running with Docker Compose
 
@@ -142,7 +142,7 @@ Create a systemd service file at `/etc/systemd/system/backrest.service` with the
 
 ```ini
 [Unit]
-Description=ResticWeb
+Description=Backrest
 After=network.target
 
 [Service]
@@ -189,15 +189,14 @@ Backrest is provided as a [homebrew tap](https://github.com/garethgeorge/homebre
 brew tap garethgeorge/homebrew-backrest-tap
 brew install backrest
 brew services start backrest
+# optionally, install restic
+brew install restic
 ```
 
 This tap uses [Brew services](https://github.com/Homebrew/homebrew-services) to launch and manage Backrest's lifecycle. Backrest will launch on startup and run on port ':9898` by default.
 
 > [!NOTE]
-> You may need to grant Full Disk Access to your restic install. To do this, go to `System Preferences > Security & Privacy > Privacy > Full Disk Access` and add the path to your restic install which is typically ~/.local/share/backrest/restic .
-
-> [!NOTE]
-> You may optionally install `restic` through homebrew as well, but you may need to regrant Full Disk Access to the homebrew managed binary on each update. You should ensure that you update backrest and restic together if using homebrew to manage both dependencies.
+> You may need to grant Full Disk Access to backrest. To do this, go to `System Preferences > Security & Privacy > Privacy > Full Disk Access` and add the path to backrest (typically /usr/local/bin/backrest).
 
 #### Manually using the install script
 
@@ -220,19 +219,15 @@ The install script will:
 
 Read the script before running it to make sure you are comfortable with these operations.
 
-#### Manually
-
-If setting up Backrest manually, it is recommended to install the binary to `/usr/local/bin` and run it manually. You can also create a launch agent to run it on startup or may run it manually when needed.
-
 ## Running on Windows
 
-Download a Windows release from the [releases page](https://github.com/garethgeorge/backrest/releases) and install it to `C:\Program Files\Backrest\backrest.exe` (create the path if it does not exist). The binary should be run as administrator on first launch, otherwise the restic installation will fail and the process will terminate.
+#### Windows Installer
 
-To run the binary on login, create a shortcut to the binary and place it in the `shell:startup` folder. See [this windows support article](https://support.microsoft.com/en-us/windows/add-an-app-to-run-automatically-at-startup-in-windows-10-150da165-dcd9-7230-517b-cf3c295d89dd) for more details.
+Download a the Windows installer for your architecture from the [releases page](https://github.com/garethgeorge/backrest/releases). The installer is named Backrest-setup-[arch].exe. Run the installer and follow the prompts.
 
-> [!WARNING]
-> * If you receive filesystem errors, you may need to run Backrest as an administrator for full filesystem access.
-> * Backrest is **not** tested on Windows to the same extent as Linux and macOS. Some features may not work as expected.
+The installer will place backrest and a GUI tray application to monitor backrest in `%localappdata%\Programs\Backrest\`. The GUI tray application will start on login by default. 
+
+> [!NOTE] You can optionally override the default port of the installation by using PowerShell to run the installer with the `BACKREST_PORT` environment variable set to the desired port. E.g. to run backrest on port 8080, run the following command in PowerShell: `BACKREST_PORT=:8080 .\Backrest-setup-x86_64.exe`
 
 
 # Configuration

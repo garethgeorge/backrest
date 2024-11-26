@@ -3,7 +3,7 @@ RUN apk add --no-cache ca-certificates tini-static
 RUN mkdir /tmp-orig
 COPY backrest /backrest
 RUN /backrest --install-deps-only
-RUN mkdir -p /bin && mv /root/.local/share/backrest/* /bin
+RUN mkdir -p /bin && mv /root/.local/share/backrest/restic /bin/restic
 
 FROM scratch
 LABEL org.opencontainers.image.source="https://github.com/garethgeorge/backrest"
