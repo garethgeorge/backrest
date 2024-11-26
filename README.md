@@ -194,7 +194,10 @@ brew services start backrest
 This tap uses [Brew services](https://github.com/Homebrew/homebrew-services) to launch and manage Backrest's lifecycle. Backrest will launch on startup and run on port ':9898` by default.
 
 > [!NOTE]
-> You may need to enable full disk access on MacOS for backrest to read all files on your computer when running backup operations. Not necessary for browsing.
+> You may need to grant Full Disk Access to your restic install. To do this, go to `System Preferences > Security & Privacy > Privacy > Full Disk Access` and add the path to your restic install which is typically ~/.local/share/backrest/restic .
+
+> [!NOTE]
+> You may optionally install `restic` through homebrew as well, but you may need to regrant Full Disk Access to the homebrew managed binary on each update. You should ensure that you update backrest and restic together if using homebrew to manage both dependencies.
 
 #### Manually using the install script
 
