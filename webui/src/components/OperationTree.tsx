@@ -179,7 +179,7 @@ export const OperationTree = ({
   return (
     <Flex vertical gap="middle">
       <Splitter>
-        <Splitter.Panel defaultSize="40%" min="20%" max="70%">
+        <Splitter.Panel defaultSize="50%" min="20%" max="70%">
           {backupTree}
         </Splitter.Panel>
         <Splitter.Panel style={{ paddingLeft: "10px" }}>
@@ -218,7 +218,7 @@ const buildTree = (
 
       return {
         title,
-        key: "i-" + key,
+        key: "i" + value[0].instanceID,
         children: buildTreePlan(value),
       };
     });
@@ -231,7 +231,7 @@ const buildTree = (
       return op.planID;
     });
     const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
-      let title: React.ReactNode = key;
+      let title: React.ReactNode = value[0].planID;
       if (title === "_unassociated_") {
         title = (
           <Tooltip title="_unassociated_ plan ID collects operations that do not specify a `plan:` tag denoting the backup plan that created them.">
@@ -246,7 +246,7 @@ const buildTree = (
         );
       }
       return {
-        key: "p-" + key,
+        key: "p" + value[0].planID + "\x01" + value[0].instanceID, // use \x01 as separator
         title,
         children: buildTreeDay(key, value),
       };
