@@ -26,10 +26,10 @@ func TestBackup(t *testing.T) {
 	testData := test.CreateTestData(t)
 
 	tcs := []struct {
-		name     string
-		repo     *v1.Repo
-		plan     *v1.Plan
-		unixOnly bool
+		name        string
+		repo        *v1.Repo
+		plan        *v1.Plan
+		excludeGoos []string
 	}{
 		{
 			name: "backup",
@@ -60,7 +60,7 @@ func TestBackup(t *testing.T) {
 				Repo:  "test",
 				Paths: []string{testData},
 			},
-			unixOnly: true,
+			excludeGoos: []string{"windows", "darwin"},
 		},
 	}
 
@@ -68,8 +68,8 @@ func TestBackup(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if tc.unixOnly && runtime.GOOS == "windows" {
-				t.Skip("skipping on windows")
+			if slices.Contains(tc.excludeGoos, runtime.GOOS) {
+				t.Skipf("skipping test on %s", runtime.GOOS)
 			}
 
 			orchestrator := initRepoHelper(t, configForTest, tc.repo)
