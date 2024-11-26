@@ -1,20 +1,13 @@
 package resticinstaller
 
 import (
-	"archive/zip"
-	"bytes"
-	"compress/bzip2"
-	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -35,11 +28,26 @@ var (
 	didTryInstall bool
 )
 
-func resticBinName() string {
-	if runtime.GOOS == "windows" {
-		return fmt.Sprintf("restic-%v.exe", RequiredResticVersion)
+func getResticVersion(binary string) (string, error) {
+	cmd := exec.Command(binary, "version")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("exec %v: %w", cmd.String(), err)
 	}
-	return fmt.Sprintf("restic-%v", RequiredResticVersion)
+	match := regexp.MustCompile(`restic\s+((\d+\.\d+\.\d+))`).FindSubmatch(out)
+	if len(match) < 2 {
+		return "", fmt.Errorf("could not find restic version in output: %s", out)
+	}
+	return string(match[1]), nil
+}
+
+func assertResticVersion(binary string) error {
+	if version, err := getResticVersion(binary); err != nil {
+		return fmt.Errorf("determine restic version: %w", err)
+	} else if version != RequiredResticVersion {
+		return fmt.Errorf("want restic %v but found version %v", RequiredResticVersion, version)
+	}
+	return nil
 }
 
 func resticDownloadURL(version string) string {
@@ -60,22 +68,6 @@ func hashDownloadURL(version string) string {
 
 func sigDownloadURL(version string) string {
 	return fmt.Sprintf("https://github.com/restic/restic/releases/download/v%v/SHA256SUMS.asc", version)
-}
-
-// getURL downloads the given url and returns the response body as a string.
-func getURL(url string) ([]byte, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("http GET %v: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	var body bytes.Buffer
-	_, err = io.Copy(&body, resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("copy response body to buffer: %w", err)
-	}
-	return body.Bytes(), nil
 }
 
 func verify(sha256 string) error {
@@ -99,74 +91,6 @@ func verify(sha256 string) error {
 	}
 
 	return nil
-}
-
-// downloadFile downloads a file from the given url and saves it to the given path. The sha256 checksum of the file is returned on success.
-func downloadFile(url string, downloadPath string) (string, error) {
-	// Download ur as a file and save it to path
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Accept", "application/octet-stream")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("http GET %v: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("http GET %v: %v", url, resp.Status)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("read response body: %w", err)
-	}
-	hash := sha256.Sum256(body)
-
-	if strings.HasSuffix(url, ".bz2") {
-		zap.S().Infof("decompressing bz2 archive (size=%v)...", len(body))
-		body, err = io.ReadAll(bzip2.NewReader(bytes.NewReader(body)))
-		if err != nil {
-			return "", fmt.Errorf("bz2 decompress body: %w", err)
-		}
-	} else if strings.HasSuffix(url, ".zip") {
-		zap.S().Infof("decompressing zip archive (size=%v)...", len(body))
-
-		archive, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
-		if err != nil {
-			return "", fmt.Errorf("open zip archive: %w", err)
-		}
-
-		if len(archive.File) != 1 {
-			return "", fmt.Errorf("expected zip archive to contain exactly one file, got %v", len(archive.File))
-		}
-		f, err := archive.File[0].Open()
-		if err != nil {
-			return "", fmt.Errorf("open zip archive file %v: %w", archive.File[0].Name, err)
-		}
-
-		body, err = io.ReadAll(f)
-		if err != nil {
-			return "", fmt.Errorf("read zip archive file %v: %w", archive.File[0].Name, err)
-		}
-	}
-
-	out, err := os.Create(downloadPath)
-	if err != nil {
-		return "", fmt.Errorf("create file %v: %w", downloadPath, err)
-	}
-	defer out.Close()
-	if err != nil {
-		return "", fmt.Errorf("create file %v: %w", downloadPath, err)
-	}
-	_, err = io.Copy(out, bytes.NewReader(body))
-	if err != nil {
-		return "", fmt.Errorf("copy response body to file %v: %w", downloadPath, err)
-	}
-
-	return hex.EncodeToString(hash[:]), nil
 }
 
 func installResticIfNotExists(resticInstallPath string) error {
@@ -232,6 +156,10 @@ func FindOrInstallResticBinary() (string, error) {
 	// Check if restic is provided.
 	resticBin := env.ResticBinPath()
 	if resticBin != "" {
+		if err := assertResticVersion(resticBin); err != nil {
+			zap.S().Warnf("restic binary %q may not be supported by backrest", resticBin, err)
+		}
+
 		if _, err := os.Stat(resticBin); err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
 				return "", fmt.Errorf("stat(%v): %w", resticBin, err)
@@ -242,26 +170,33 @@ func FindOrInstallResticBinary() (string, error) {
 	}
 
 	// Search the PATH for the specific restic version.
-	resticBinName := resticBinName()
-	if binPath, err := exec.LookPath(resticBinName); err == nil {
-		return binPath, nil
+	if binPath, err := exec.LookPath("restic"); err == nil {
+		if err := assertResticVersion(binPath); err == nil {
+			zap.S().Infof("restic binary %q in $PATH matches required version %v, it will be used for backrest commands", binPath, RequiredResticVersion)
+			return binPath, nil
+		} else {
+			zap.S().Infof("restic binary %q in $PATH is not being used, it may not be supported by backrest: %v", binPath, err)
+		}
 	}
 
 	// Check for restic installation in data directory.
-	resticInstallPath := path.Join(env.DataDir(), resticBinName)
+	resticInstallPath := path.Join(env.DataDir(), "restic")
 	if runtime.GOOS == "windows" {
 		// on windows use a path relative to the executable.
-		resticInstallPath, _ = filepath.Abs(path.Join(path.Dir(os.Args[0]), resticBinName))
+		resticInstallPath, _ = filepath.Abs(path.Join(path.Dir(os.Args[0]), "restic"))
 	}
 
 	if err := os.MkdirAll(path.Dir(resticInstallPath), 0700); err != nil {
 		return "", fmt.Errorf("create restic install directory %v: %w", path.Dir(resticInstallPath), err)
 	}
 
-	// Install restic if not found.
-	if _, err := os.Stat(resticInstallPath); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return "", fmt.Errorf("could not stat restic binary at %v: %w", resticBin, err)
+	// Install restic if not found OR if the version is not the required version
+	if err := assertResticVersion(resticInstallPath); err != nil {
+		if _, err := os.Stat(resticInstallPath); err == nil {
+			zap.S().Infof("reinstalling restic binary in data dir due to failed checks: %w", err)
+			if err := os.Remove(resticInstallPath); err != nil {
+				return "", fmt.Errorf("remove old restic binary %v: %w", resticInstallPath, err)
+			}
 		}
 
 		if didTryInstall {
@@ -269,13 +204,16 @@ func FindOrInstallResticBinary() (string, error) {
 		}
 		didTryInstall = true
 
-		zap.S().Infof("installing restic %v to %v...", resticInstallPath, RequiredResticVersion)
+		zap.S().Infof("downloading restic %v to %v...", RequiredResticVersion, resticInstallPath)
 		if err := installResticIfNotExists(resticInstallPath); err != nil {
 			return "", fmt.Errorf("install restic: %w", err)
 		}
 		zap.S().Infof("installed restic %v", RequiredResticVersion)
+
+		// TODO: this check is no longer needed, remove it after a few releases.
 		removeOldVersions(path.Dir(resticInstallPath))
 	}
 
+	zap.S().Infof("restic binary %v in data dir will be used as no system install matching required version %v is found", resticInstallPath, RequiredResticVersion)
 	return resticInstallPath, nil
 }
