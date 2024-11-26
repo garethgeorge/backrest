@@ -15,7 +15,11 @@ import {
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
-import { Plan, RetentionPolicy } from "../../gen/ts/v1/config_pb";
+import {
+  Plan,
+  RetentionPolicy,
+  Schedule_Clock,
+} from "../../gen/ts/v1/config_pb";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
@@ -32,6 +36,26 @@ import {
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
 
+const planDefaults = new Plan({
+  schedule: {
+    schedule: {
+      case: "cron",
+      value: "0 * * * *", // every hour
+    },
+    clock: Schedule_Clock.LOCAL,
+  },
+  retention: {
+    policy: {
+      case: "policyTimeBucketed",
+      value: {
+        hourly: 24,
+        daily: 30,
+        monthly: 12,
+      },
+    },
+  },
+});
+
 export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
@@ -39,7 +63,11 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   const [config, setConfig] = useConfig();
   const [form] = Form.useForm();
   useEffect(() => {
-    form.setFieldsValue(template ? JSON.parse(template.toJsonString()) : {});
+    form.setFieldsValue(
+      template
+        ? JSON.parse(template.toJsonString())
+        : JSON.parse(planDefaults.toJsonString())
+    );
   }, [template]);
 
   if (!config) {

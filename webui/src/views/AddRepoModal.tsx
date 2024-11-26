@@ -23,6 +23,8 @@ import {
   CommandPrefix_IONiceLevel,
   Hook,
   Repo,
+  Schedule,
+  Schedule_Clock,
 } from "../../gen/ts/v1/config_pb";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
@@ -45,6 +47,28 @@ import {
 import { proto3 } from "@bufbuild/protobuf";
 import { isWindows } from "../state/buildcfg";
 
+const repoDefaults = new Repo({
+  prunePolicy: {
+    maxUnusedPercent: 10,
+    schedule: {
+      schedule: {
+        case: "cron",
+        value: "0 0 1 * *", // 1st of the month,
+      },
+      clock: Schedule_Clock.LAST_RUN_TIME,
+    },
+  },
+  checkPolicy: {
+    schedule: {
+      schedule: {
+        case: "cron",
+        value: "0 0 1 * *", // 1st of the month,
+      },
+      clock: Schedule_Clock.LAST_RUN_TIME,
+    },
+  },
+});
+
 export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
@@ -52,7 +76,11 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [config, setConfig] = useConfig();
   const [form] = Form.useForm();
   useEffect(() => {
-    form.setFieldsValue(template ? JSON.parse(template.toJsonString()) : {});
+    form.setFieldsValue(
+      template
+        ? JSON.parse(template.toJsonString())
+        : JSON.parse(repoDefaults.toJsonString())
+    );
   }, [template]);
 
   if (!config) {

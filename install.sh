@@ -104,5 +104,5 @@ else
   exit 1
 fi
 
-echo "Logs are available at /tmp/backrest.log"
+echo "Logs are available at ~/.local/share/backrest/processlogs/backrest.log"
 echo "Access backrest WebUI at http://localhost:9898"
