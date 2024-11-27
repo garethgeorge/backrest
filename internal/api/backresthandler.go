@@ -11,6 +11,7 @@ import (
 	"path"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -95,16 +96,13 @@ func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1
 	return connect.NewResponse(newConfig), nil
 }
 
-func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Request[v1.Repo]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Request[v1.Repo]) (*connect.Response[types.BoolValue], error) {
 	c, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
-	// Deep copy the configuration
 	c = proto.Clone(c).(*v1.Config)
-
-	// Add or implicit update the repo
 	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == req.Msg.Id }); idx != -1 {
 		c.Repos[idx] = req.Msg
 	} else {
@@ -125,8 +123,15 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 		return nil, fmt.Errorf("failed to configure repo: %w", err)
 	}
 
-	ctx, err := context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
 
+	if err := r.Exists(ctx); err != nil {
+		if strings.Contains(err.Error(), "repository does not exist") {
+			return connect.NewResponse(&types.BoolValue{Value: false}), nil
+		}
+		return nil, err
+	}
 	return connect.NewResponse(&types.BoolValue{Value: true}), nil
 }
 
