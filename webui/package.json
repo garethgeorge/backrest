@@ -14,9 +14,9 @@
   "license": "ISC",
   "dependencies": {
     "@ant-design/icons": "^5.2.6",
-    "@bufbuild/protobuf": "^1.6.0",
-    "@connectrpc/connect": "^1.2.0",
-    "@connectrpc/connect-web": "^1.2.0",
+    "@bufbuild/protobuf": "^2.2.2",
+    "@connectrpc/connect": "^2.0.0",
+    "@connectrpc/connect-web": "^2.0.0",
     "@types/lodash": "^4.14.202",
     "@types/node": "^20.9.0",
     "@types/react": "^18.2.37",
@@ -33,14 +33,15 @@
     "react-router-dom": "^6.27.0",
     "react-virtualized": "^9.22.5",
     "recharts": "^2.12.7",
-    "typescript": "^5.2.2"
-  },
-  "devDependencies": {
+    "typescript": "^5.2.2",
     "@parcel/transformer-sass": "^2.10.3",
     "@types/react-virtualized": "^9.21.30",
     "cross-env": "^7.0.3",
     "events": "^3.3.0",
     "rimraf": "^5.0.5",
     "svgo": "^3.3.2"
+  },
+  "@parcel/resolver-default": {
+    "packageExports": true
   }
 }
