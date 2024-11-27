@@ -123,7 +123,7 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 		return nil, fmt.Errorf("failed to configure repo: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	if err := r.Exists(ctx); err != nil {
