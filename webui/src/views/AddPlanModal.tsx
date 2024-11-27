@@ -16,9 +16,9 @@ import {
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import {
-  Plan,
-  RetentionPolicy,
   Schedule_Clock,
+  type Plan,
+  type RetentionPolicy,
 } from "../../gen/ts/v1/config_pb";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
