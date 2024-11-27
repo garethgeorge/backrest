@@ -43,7 +43,13 @@ import {
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
 import { isWindows } from "../state/buildcfg";
-import { create, fromJson, toJson } from "@bufbuild/protobuf";
+import {
+  create,
+  fromJson,
+  JsonValue,
+  MessageJsonType,
+  toJson,
+} from "@bufbuild/protobuf";
 
 const repoDefaults = create(RepoSchema, {
   prunePolicy: {
@@ -72,15 +78,14 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
   const [config, setConfig] = useConfig();
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<JsonValue>();
   useEffect(() => {
-    form.setFieldsValue(
-      template
-        ? toJson(RepoSchema, template, {
-            alwaysEmitImplicit: true,
-          })
-        : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true })
-    );
+    const initVal = template
+      ? toJson(RepoSchema, template, {
+          alwaysEmitImplicit: true,
+        })
+      : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true });
+    form.setFieldsValue(initVal);
   }, [template]);
 
   if (!config) {
@@ -199,10 +204,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             key="check"
             onClickAsync={async () => {
               let repoFormData = await validateForm(form);
+              console.log("checking repo", repoFormData);
               const repo = fromJson(RepoSchema, repoFormData, {
                 ignoreUnknownFields: false,
               });
-
               try {
                 const exists = await backrestService.checkRepoExists(repo);
                 if (exists) {
