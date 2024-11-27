@@ -13,7 +13,8 @@ import { OperationList } from "./OperationList";
 import {
   ClearHistoryRequestSchema,
   ForgetRequestSchema,
-  GetOperationsRequest,
+  GetOperationsRequestSchema,
+  type GetOperationsRequest,
 } from "../../gen/ts/v1/service_pb";
 import { isMobile } from "../lib/browserutil";
 import { useShowModal } from "./ModalManager";
@@ -28,7 +29,7 @@ import {
 } from "../state/flowdisplayaggregator";
 import { OperationIcon } from "./OperationIcon";
 import { shouldHideOperation } from "../state/oplog";
-import { create } from "@bufbuild/protobuf";
+import { create, toJsonString } from "@bufbuild/protobuf";
 
 type OpTreeNode = DataNode & {
   backup?: FlowDisplayInfo;
@@ -108,7 +109,7 @@ export const OperationTree = ({
     return syncStateFromRequest(logState, req, (err) => {
       alertApi!.error("API error: " + err.message);
     });
-  }, [JSON.stringify(req)]);
+  }, [toJsonString(GetOperationsRequestSchema, req)]);
 
   if (treeData.tree.length === 0) {
     return (

@@ -7,14 +7,14 @@ import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY } from "../constants";
 import { backrestService } from "../api";
 import {
-  DoRepoTaskRequest,
+  ClearHistoryRequestSchema,
   DoRepoTaskRequest_Task,
-  GetOperationsRequest,
-  OpSelector,
+  DoRepoTaskRequestSchema,
+  GetOperationsRequestSchema,
 } from "../../gen/ts/v1/service_pb";
 import { SpinButton } from "../components/SpinButton";
 import { useShowModal } from "../components/ModalManager";
-import { useConfig } from "../components/ConfigProvider";
+import { create } from "@bufbuild/protobuf";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const alertsApi = useAlertApi()!;
@@ -33,7 +33,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
     try {
       alertsApi.info("Unlocking repo...");
       await backrestService.doRepoTask(
-        new DoRepoTaskRequest({
+        create(DoRepoTaskRequestSchema, {
           repoId: plan.repo!,
           task: DoRepoTaskRequest_Task.UNLOCK,
         })
@@ -47,13 +47,15 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const handleClearErrorHistory = async () => {
     try {
       alertsApi.info("Clearing error history...");
-      await backrestService.clearHistory({
-        selector: new OpSelector({
-          planId: plan.id,
-          repoId: plan.repo,
-        }),
-        onlyFailed: true,
-      });
+      await backrestService.clearHistory(
+        create(ClearHistoryRequestSchema, {
+          selector: {
+            planId: plan.id,
+            repoId: plan.repo,
+          },
+          onlyFailed: true,
+        })
+      );
       alertsApi.success("Error history cleared.");
     } catch (e: any) {
       alertsApi.error("Failed to clear error history: " + e.message);
@@ -100,15 +102,13 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             children: (
               <>
                 <OperationTree
-                  req={
-                    new GetOperationsRequest({
-                      selector: new OpSelector({
-                        repoId: plan.repo!,
-                        planId: plan.id!,
-                      }),
-                      lastN: BigInt(MAX_OPERATION_HISTORY),
-                    })
-                  }
+                  req={create(GetOperationsRequestSchema, {
+                    selector: {
+                      repoId: plan.repo!,
+                      planId: plan.id!,
+                    },
+                    lastN: BigInt(MAX_OPERATION_HISTORY),
+                  })}
                   isPlanView={true}
                 />
               </>
@@ -122,15 +122,13 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
               <>
                 <h2>Backup Action History</h2>
                 <OperationList
-                  req={
-                    new GetOperationsRequest({
-                      selector: new OpSelector({
-                        repoId: plan.repo!,
-                        planId: plan.id!,
-                      }),
-                      lastN: BigInt(MAX_OPERATION_HISTORY),
-                    })
-                  }
+                  req={create(GetOperationsRequestSchema, {
+                    selector: {
+                      repoId: plan.repo!,
+                      planId: plan.id!,
+                    },
+                    lastN: BigInt(MAX_OPERATION_HISTORY),
+                  })}
                   showDelete={true}
                 />
               </>

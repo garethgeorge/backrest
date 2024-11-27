@@ -14,8 +14,13 @@ import { Col, Empty, Row } from "antd";
 import { Operation, OperationStats } from "../../gen/ts/v1/operations_pb";
 import { useAlertApi } from "./Alerts";
 import { getOperations } from "../state/oplog";
-import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
+import {
+  GetOperationsRequest,
+  GetOperationsRequestSchema,
+  OpSelector,
+} from "../../gen/ts/v1/service_pb";
 import _ from "lodash";
+import { create } from "@bufbuild/protobuf";
 
 const StatsPanel = ({ repoId }: { repoId: string }) => {
   const [operations, setOperations] = useState<Operation[]>([]);
@@ -26,10 +31,10 @@ const StatsPanel = ({ repoId }: { repoId: string }) => {
       return;
     }
 
-    const req = new GetOperationsRequest({
-      selector: new OpSelector({
+    const req = create(GetOperationsRequestSchema, {
+      selector: {
         repoId: repoId,
-      }),
+      },
     });
 
     getOperations(req)

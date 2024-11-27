@@ -38,6 +38,8 @@ import { colorForStatus } from "../state/flowdisplayaggregator";
 import { OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { isMobile } from "../lib/browserutil";
 import { useNavigate } from "react-router";
+import { toJsonString } from "@bufbuild/protobuf";
+import { ConfigSchema } from "../../gen/ts/v1/config_pb";
 
 export const SummaryDashboard = () => {
   const config = useConfig()[0];
@@ -117,6 +119,20 @@ export const SummaryDashboard = () => {
               key: 2,
               label: "Data Directory",
               children: summaryData.dataPath,
+            },
+          ]}
+        />
+        <Collapse
+          size="small"
+          items={[
+            {
+              label: "Config as JSON",
+              children: (
+                <pre>
+                  {config &&
+                    toJsonString(ConfigSchema, config, { prettySpaces: 2 })}
+                </pre>
+              ),
             },
           ]}
         />

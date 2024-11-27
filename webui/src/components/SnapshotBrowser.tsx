@@ -5,6 +5,7 @@ import {
   ListSnapshotFilesResponse,
   ListSnapshotFilesResponseSchema,
   LsEntry,
+  LsEntrySchema,
   RestoreSnapshotRequest,
   RestoreSnapshotRequestSchema,
 } from "../../gen/ts/v1/service_pb";
@@ -22,7 +23,7 @@ import { backrestService } from "../api";
 import { ConfirmButton } from "./SpinButton";
 import { StringValueSchema } from "../../gen/ts/types/value_pb";
 import { pathSeparator } from "../state/buildcfg";
-import { create } from "@bufbuild/protobuf";
+import { create, toJsonString } from "@bufbuild/protobuf";
 
 const SnapshotBrowserContext = React.createContext<{
   snapshotId: string;
@@ -191,7 +192,11 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
                     onCancel={() => showModal(null)}
                     onOk={() => showModal(null)}
                   >
-                    <pre>{JSON.stringify(entry, null, 2)}</pre>
+                    <pre>
+                      {toJsonString(LsEntrySchema, entry, {
+                        prettySpaces: 2,
+                      })}
+                    </pre>
                   </Modal>
                 );
               },

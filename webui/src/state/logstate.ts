@@ -1,10 +1,11 @@
 import { Operation, OperationEvent, OperationEventType, OperationStatus } from "../../gen/ts/v1/operations_pb";
-import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
+import { GetOperationsRequest, GetOperationsRequestSchema, OpSelector } from "../../gen/ts/v1/service_pb";
 import { getOperations, subscribeToOperations, unsubscribeFromOperations } from "./oplog";
 import {
   STATS_OPERATION_HISTORY,
   STATUS_OPERATION_HISTORY,
 } from "../constants";
+import { create } from "@bufbuild/protobuf";
 
 type Subscriber = (ids: bigint[], flowIDs: bigint[], event: OperationEventType) => void;
 
@@ -81,7 +82,7 @@ const getStatus = async (req: GetOperationsRequest) => {
 };
 
 export const getStatusForSelector = async (sel: OpSelector) => {
-  const req = new GetOperationsRequest({
+  const req = create(GetOperationsRequestSchema, {
     selector: sel,
     lastN: BigInt(20),
   });
