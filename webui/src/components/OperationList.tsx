@@ -2,11 +2,15 @@ import React, { useEffect, useState } from "react";
 import { Operation } from "../../gen/ts/v1/operations_pb";
 import { Empty, List } from "antd";
 import _ from "lodash";
-import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
+import {
+  GetOperationsRequestSchema,
+  type GetOperationsRequest,
+} from "../../gen/ts/v1/service_pb";
 import { useAlertApi } from "./Alerts";
 import { OperationRow } from "./OperationRow";
 import { OplogState, syncStateFromRequest } from "../state/logstate";
 import { shouldHideStatus } from "../state/oplog";
+import { toJsonString } from "@bufbuild/protobuf";
 
 // OperationList displays a list of operations that are either fetched based on 'req' or passed in via 'useBackups'.
 // If showPlan is provided the planId will be displayed next to each operation in the operation list.
@@ -42,7 +46,7 @@ export const OperationList = ({
       return syncStateFromRequest(logState, req, (e) => {
         alertApi!.error("Failed to fetch operations: " + e.message);
       });
-    }, [JSON.stringify(req)]);
+    }, [toJsonString(GetOperationsRequestSchema, req)]);
   }
   if (!operations) {
     return (

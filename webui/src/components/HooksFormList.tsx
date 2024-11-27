@@ -1,30 +1,22 @@
 import React, { useState } from "react";
 import {
-  Hook,
-  Hook_Command,
   Hook_Condition,
-  Hook_Discord,
-  Hook_Gotify,
+  Hook_ConditionSchema,
   Hook_OnError,
-  Hook_Webhook,
+  Hook_OnErrorSchema,
 } from "../../gen/ts/v1/config_pb";
 import {
   Button,
   Card,
-  Collapse,
-  CollapseProps,
   Form,
   FormListFieldData,
   Input,
   Popover,
-  Radio,
-  Row,
   Select,
   Tooltip,
 } from "antd";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { Rule } from "antd/es/form";
-import { proto3 } from "@bufbuild/protobuf";
 
 export interface HookFormData {
   hooks: {
@@ -107,9 +99,10 @@ export const HooksFormList = () => {
                       allowClear
                       style={{ width: "100%" }}
                       placeholder="Runs when..."
-                      options={proto3
-                        .getEnumType(Hook_Condition)
-                        .values.map((v) => ({ label: v.name, value: v.name }))}
+                      options={Hook_ConditionSchema.values.map((v) => ({
+                        label: v.name,
+                        value: v.name,
+                      }))}
                     />
                   </Form.Item>
                 </HookConditionsTooltip>
@@ -371,9 +364,7 @@ const hookTypes: {
             name={[field.name, "actionHealthchecks", "webhookUrl"]}
             rules={[requiredField("Ping URL is required"), { type: "url" }]}
           >
-            <Input
-              addonBefore={<div style={{ width: "8em" }}>Ping URL</div>}
-            />
+            <Input addonBefore={<div style={{ width: "8em" }}>Ping URL</div>} />
           </Form.Item>
           Text Template:
           <Form.Item name={[field.name, "actionHealthchecks", "template"]}>
@@ -448,9 +439,10 @@ const ItemOnErrorSelector = ({ field }: { field: FormListFieldData }) => {
           allowClear
           style={{ width: "100%" }}
           placeholder={"Specify what happens when this hook fails..."}
-          options={proto3
-            .getEnumType(Hook_OnError)
-            .values.map((v) => ({ label: v.name, value: v.name }))}
+          options={Hook_OnErrorSchema.values.map((v) => ({
+            label: v.name,
+            value: v.name,
+          }))}
         />
       </Form.Item>
     </>

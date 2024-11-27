@@ -11,10 +11,10 @@ import {
 import { useAlertApi } from "./Alerts";
 import { OperationList } from "./OperationList";
 import {
-  ClearHistoryRequest,
-  ForgetRequest,
-  GetOperationsRequest,
-  OpSelector,
+  ClearHistoryRequestSchema,
+  ForgetRequestSchema,
+  GetOperationsRequestSchema,
+  type GetOperationsRequest,
 } from "../../gen/ts/v1/service_pb";
 import { isMobile } from "../lib/browserutil";
 import { useShowModal } from "./ModalManager";
@@ -29,6 +29,7 @@ import {
 } from "../state/flowdisplayaggregator";
 import { OperationIcon } from "./OperationIcon";
 import { shouldHideOperation } from "../state/oplog";
+import { create, toJsonString } from "@bufbuild/protobuf";
 
 type OpTreeNode = DataNode & {
   backup?: FlowDisplayInfo;
@@ -108,7 +109,7 @@ export const OperationTree = ({
     return syncStateFromRequest(logState, req, (err) => {
       alertApi!.error("API error: " + err.message);
     });
-  }, [JSON.stringify(req)]);
+  }, [toJsonString(GetOperationsRequestSchema, req)]);
 
   if (treeData.tree.length === 0) {
     return (
@@ -134,7 +135,7 @@ export const OperationTree = ({
       }}
       titleRender={(node: OpTreeNode): React.ReactNode => {
         if (node.title !== undefined) {
-          return <>{node.title}</>;
+          return node.title as React.ReactNode;
         }
         if (node.backup !== undefined) {
           const b = node.backup;
@@ -461,7 +462,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
     const doDeleteSnapshot = async () => {
       try {
         await backrestService.forget(
-          new ForgetRequest({
+          create(ForgetRequestSchema, {
             planId: backup.planID!,
             repoId: backup.repoID!,
             snapshotId: backup.snapshotID!,
@@ -495,10 +496,10 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
           confirmTitle="Confirm clear?"
           onClickAsync={async () => {
             backrestService.clearHistory(
-              new ClearHistoryRequest({
-                selector: new OpSelector({
+              create(ClearHistoryRequestSchema, {
+                selector: {
                   flowId: backup.flowID,
-                }),
+                },
               })
             );
           }}

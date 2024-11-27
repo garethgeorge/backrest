@@ -7,9 +7,12 @@ import { ConnectError } from "@connectrpc/connect";
 import { useAlertApi } from "../components/Alerts";
 import {
   GetOperationsRequest,
+  GetOperationsRequestSchema,
   RunCommandRequest,
+  RunCommandRequestSchema,
 } from "../../gen/ts/v1/service_pb";
 import { OperationList } from "../components/OperationList";
+import { create } from "@bufbuild/protobuf";
 
 interface Invocation {
   command: string;
@@ -36,7 +39,7 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
 
     try {
       const opID = await backrestService.runCommand(
-        new RunCommandRequest({
+        create(RunCommandRequestSchema, {
           repoId,
           command: toRun,
         })
@@ -78,14 +81,12 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
         </em>
       ) : null}
       <OperationList
-        req={
-          new GetOperationsRequest({
-            selector: {
-              repoId: repoId,
-              planId: "_system_", // run commands are not associated with a plan
-            },
-          })
-        }
+        req={create(GetOperationsRequestSchema, {
+          selector: {
+            repoId: repoId,
+            planId: "_system_", // run commands are not associated with a plan
+          },
+        })}
         filter={(op) => op.op.case === "operationRunCommand"}
       />
     </Modal>

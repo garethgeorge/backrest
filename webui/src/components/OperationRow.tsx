@@ -29,12 +29,7 @@ import {
   normalizeSnapshotId,
 } from "../lib/formatting";
 import _ from "lodash";
-import {
-  ClearHistoryRequest,
-  ForgetRequest,
-  LogDataRequest,
-  OpSelector,
-} from "../../gen/ts/v1/service_pb";
+import { ClearHistoryRequestSchema } from "../../gen/ts/v1/service_pb";
 import { MessageInstance } from "antd/es/message/interface";
 import { backrestService } from "../api";
 import { useShowModal } from "./ModalManager";
@@ -48,6 +43,7 @@ import {
 import { OperationIcon } from "./OperationIcon";
 import { LogView } from "./LogView";
 import { ConfirmButton } from "./SpinButton";
+import { create } from "@bufbuild/protobuf";
 
 export const OperationRow = ({
   operation,
@@ -78,10 +74,10 @@ export const OperationRow = ({
   const doDelete = async () => {
     try {
       await backrestService.clearHistory(
-        new ClearHistoryRequest({
-          selector: new OpSelector({
+        create(ClearHistoryRequestSchema, {
+          selector: {
             ids: [operation.id!],
-          }),
+          },
           onlyFailed: false,
         })
       );

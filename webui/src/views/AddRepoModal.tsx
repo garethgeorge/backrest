@@ -19,11 +19,10 @@ import {
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import {
-  CommandPrefix_CPUNiceLevel,
-  CommandPrefix_IONiceLevel,
-  Hook,
-  Repo,
-  Schedule,
+  CommandPrefix_CPUNiceLevelSchema,
+  CommandPrefix_IONiceLevelSchema,
+  type Repo,
+  RepoSchema,
   Schedule_Clock,
 } from "../../gen/ts/v1/config_pb";
 import { URIAutocomplete } from "../components/URIAutocomplete";
@@ -40,14 +39,13 @@ import { ConfirmButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import Cron from "react-js-cron";
 import {
-  ScheduleDefaultsDaily,
   ScheduleDefaultsInfrequent,
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
-import { proto3 } from "@bufbuild/protobuf";
 import { isWindows } from "../state/buildcfg";
+import { create, fromJson, toJson } from "@bufbuild/protobuf";
 
-const repoDefaults = new Repo({
+const repoDefaults = create(RepoSchema, {
   prunePolicy: {
     maxUnusedPercent: 10,
     schedule: {
@@ -78,8 +76,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   useEffect(() => {
     form.setFieldsValue(
       template
-        ? JSON.parse(template.toJsonString())
-        : JSON.parse(repoDefaults.toJsonString())
+        ? toJson(RepoSchema, template, {
+            alwaysEmitImplicit: true,
+          })
+        : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true })
     );
   }, [template]);
 
@@ -133,7 +133,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
 
     try {
       let repoFormData = await validateForm(form);
-      const repo = new Repo().fromJsonString(JSON.stringify(repoFormData), {
+      const repo = fromJson(RepoSchema, repoFormData, {
         ignoreUnknownFields: false,
       });
 
@@ -603,12 +603,12 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                         allowClear
                         style={{ width: "100%" }}
                         placeholder="Select an IO priority"
-                        options={proto3
-                          .getEnumType(CommandPrefix_IONiceLevel)
-                          .values.map((v) => ({
+                        options={CommandPrefix_IONiceLevelSchema.values.map(
+                          (v) => ({
                             label: v.name,
                             value: v.name,
-                          }))}
+                          })
+                        )}
                       />
                     </Form.Item>
                   </Tooltip>
@@ -639,12 +639,12 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                         allowClear
                         style={{ width: "100%" }}
                         placeholder="Select a CPU priority"
-                        options={proto3
-                          .getEnumType(CommandPrefix_CPUNiceLevel)
-                          .values.map((v) => ({
+                        options={CommandPrefix_CPUNiceLevelSchema.values.map(
+                          (v) => ({
                             label: v.name,
                             value: v.name,
-                          }))}
+                          })
+                        )}
                       />
                     </Form.Item>
                   </Tooltip>
