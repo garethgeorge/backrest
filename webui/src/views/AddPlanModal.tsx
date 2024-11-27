@@ -68,7 +68,9 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   const [form] = Form.useForm();
   useEffect(() => {
     form.setFieldsValue(
-      template ? toJson(PlanSchema, template) : toJson(PlanSchema, planDefaults)
+      template
+        ? toJson(PlanSchema, template, { alwaysEmitImplicit: true })
+        : toJson(PlanSchema, planDefaults, { alwaysEmitImplicit: true })
     );
   }, [template]);
 

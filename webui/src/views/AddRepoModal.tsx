@@ -19,7 +19,6 @@ import {
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import {
-  CommandPrefix_CPUNiceLevel,
   CommandPrefix_CPUNiceLevelSchema,
   CommandPrefix_IONiceLevelSchema,
   type Repo,
@@ -76,7 +75,11 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [form] = Form.useForm();
   useEffect(() => {
     form.setFieldsValue(
-      template ? toJson(RepoSchema, template) : toJson(RepoSchema, repoDefaults)
+      template
+        ? toJson(RepoSchema, template, {
+            alwaysEmitImplicit: true,
+          })
+        : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true })
     );
   }, [template]);
 

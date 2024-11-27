@@ -21,8 +21,12 @@ import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
 import { useConfig } from "../components/ConfigProvider";
 import { authenticationService, backrestService } from "../api";
-import { clone, fromJson } from "@bufbuild/protobuf";
-import { AuthSchema, ConfigSchema } from "../../gen/ts/v1/config_pb";
+import { clone, fromJson, toJson, toJsonString } from "@bufbuild/protobuf";
+import {
+  AuthSchema,
+  ConfigSchema,
+  UserSchema,
+} from "../../gen/ts/v1/config_pb";
 
 interface FormData {
   auth: {
@@ -163,7 +167,11 @@ export const SettingsModal = () => {
           <Form.Item label="Users" required={true}>
             <Form.List
               name={["auth", "users"]}
-              initialValue={config.auth?.users?.map(protoToObj) || []}
+              initialValue={
+                config.auth?.users?.map((u) =>
+                  toJson(UserSchema, u, { alwaysEmitImplicit: true })
+                ) || []
+              }
             >
               {(fields, { add, remove }) => (
                 <>
@@ -260,8 +268,4 @@ export const SettingsModal = () => {
       </Modal>
     </>
   );
-};
-
-const protoToObj = (proto: any) => {
-  return JSON.parse(proto.toJsonString());
 };
