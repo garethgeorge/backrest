@@ -33,7 +33,6 @@ import { backrestService } from "../api";
 import {
   HooksFormList,
   hooksListTooltipText,
-  HookFormData,
 } from "../components/HooksFormList";
 import { ConfirmButton, SpinButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
@@ -43,13 +42,7 @@ import {
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
 import { isWindows } from "../state/buildcfg";
-import {
-  create,
-  fromJson,
-  JsonValue,
-  MessageJsonType,
-  toJson,
-} from "@bufbuild/protobuf";
+import { create, fromJson, JsonValue, toJson } from "@bufbuild/protobuf";
 
 const repoDefaults = create(RepoSchema, {
   prunePolicy: {
