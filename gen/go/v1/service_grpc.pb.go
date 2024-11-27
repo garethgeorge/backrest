@@ -100,8 +100,6 @@ func (c *backrestClient) SetConfig(ctx context.Context, in *Config, opts ...grpc
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Config)
 	err := c.cc.Invoke(ctx, Backrest_SetConfig_FullMethodName, in, out, cOpts...)
-<<<<<<< HEAD
-=======
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +110,6 @@ func (c *backrestClient) CheckRepoExists(ctx context.Context, in *Repo, opts ...
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(types.BoolValue)
 	err := c.cc.Invoke(ctx, Backrest_CheckRepoExists_FullMethodName, in, out, cOpts...)
->>>>>>> 4d7a641 (proto changes)
 	if err != nil {
 		return nil, err
 	}

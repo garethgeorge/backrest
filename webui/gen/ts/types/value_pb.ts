@@ -10,9 +10,6 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file types/value.proto.
  */
 export const file_types_value: GenFile = /*@__PURE__*/
-<<<<<<< HEAD
-  fileDesc("ChF0eXBlcy92YWx1ZS5wcm90bxIFdHlwZXMiHAoLU3RyaW5nVmFsdWUSDQoFdmFsdWUYASABKAkiGwoKQnl0ZXNWYWx1ZRINCgV2YWx1ZRgBIAEoDCIcCgpTdHJpbmdMaXN0Eg4KBnZhbHVlcxgBIAMoCSIbCgpJbnQ2NFZhbHVlEg0KBXZhbHVlGAEgASgDIhsKCUludDY0TGlzdBIOCgZ2YWx1ZXMYASADKAMiBwoFRW1wdHlCL1otZ2l0aHViLmNvbS9nYXJldGhnZW9yZ2UvYmFja3Jlc3QvZ2VuL2dvL3R5cGVzYgZwcm90bzM");
-=======
   fileDesc("ChF0eXBlcy92YWx1ZS5wcm90bxIFdHlwZXMiGgoJQm9vbFZhbHVlEg0KBXZhbHVlGAEgASgIIhwKC1N0cmluZ1ZhbHVlEg0KBXZhbHVlGAEgASgJIhsKCkJ5dGVzVmFsdWUSDQoFdmFsdWUYASABKAwiHAoKU3RyaW5nTGlzdBIOCgZ2YWx1ZXMYASADKAkiGwoKSW50NjRWYWx1ZRINCgV2YWx1ZRgBIAEoAyIbCglJbnQ2NExpc3QSDgoGdmFsdWVzGAEgAygDIgcKBUVtcHR5Qi9aLWdpdGh1Yi5jb20vZ2FyZXRoZ2VvcmdlL2JhY2tyZXN0L2dlbi9nby90eXBlc2IGcHJvdG8z");
 
 /**
@@ -31,7 +28,6 @@ export type BoolValue = Message<"types.BoolValue"> & {
  */
 export const BoolValueSchema: GenMessage<BoolValue> = /*@__PURE__*/
   messageDesc(file_types_value, 0);
->>>>>>> 4d7a641 (proto changes)
 
 /**
  * @generated from message types.StringValue
@@ -48,11 +44,7 @@ export type StringValue = Message<"types.StringValue"> & {
  * Use `create(StringValueSchema)` to create a new message.
  */
 export const StringValueSchema: GenMessage<StringValue> = /*@__PURE__*/
-<<<<<<< HEAD
-  messageDesc(file_types_value, 0);
-=======
   messageDesc(file_types_value, 1);
->>>>>>> 4d7a641 (proto changes)
 
 /**
  * @generated from message types.BytesValue
@@ -69,11 +61,7 @@ export type BytesValue = Message<"types.BytesValue"> & {
  * Use `create(BytesValueSchema)` to create a new message.
  */
 export const BytesValueSchema: GenMessage<BytesValue> = /*@__PURE__*/
-<<<<<<< HEAD
-  messageDesc(file_types_value, 1);
-=======
   messageDesc(file_types_value, 2);
->>>>>>> 4d7a641 (proto changes)
 
 /**
  * @generated from message types.StringList
@@ -90,11 +78,7 @@ export type StringList = Message<"types.StringList"> & {
  * Use `create(StringListSchema)` to create a new message.
  */
 export const StringListSchema: GenMessage<StringList> = /*@__PURE__*/
-<<<<<<< HEAD
-  messageDesc(file_types_value, 2);
-=======
   messageDesc(file_types_value, 3);
->>>>>>> 4d7a641 (proto changes)
 
 /**
  * @generated from message types.Int64Value
@@ -111,11 +95,7 @@ export type Int64Value = Message<"types.Int64Value"> & {
  * Use `create(Int64ValueSchema)` to create a new message.
  */
 export const Int64ValueSchema: GenMessage<Int64Value> = /*@__PURE__*/
-<<<<<<< HEAD
-  messageDesc(file_types_value, 3);
-=======
   messageDesc(file_types_value, 4);
->>>>>>> 4d7a641 (proto changes)
 
 /**
  * @generated from message types.Int64List
@@ -132,11 +112,7 @@ export type Int64List = Message<"types.Int64List"> & {
  * Use `create(Int64ListSchema)` to create a new message.
  */
 export const Int64ListSchema: GenMessage<Int64List> = /*@__PURE__*/
-<<<<<<< HEAD
-  messageDesc(file_types_value, 4);
-=======
   messageDesc(file_types_value, 5);
->>>>>>> 4d7a641 (proto changes)
 
 /**
  * @generated from message types.Empty
@@ -149,9 +125,5 @@ export type Empty = Message<"types.Empty"> & {
  * Use `create(EmptySchema)` to create a new message.
  */
 export const EmptySchema: GenMessage<Empty> = /*@__PURE__*/
-<<<<<<< HEAD
-  messageDesc(file_types_value, 5);
-=======
   messageDesc(file_types_value, 6);
->>>>>>> 4d7a641 (proto changes)
 

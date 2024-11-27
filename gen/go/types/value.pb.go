@@ -75,11 +75,7 @@ type StringValue struct {
 
 func (x *StringValue) Reset() {
 	*x = StringValue{}
-<<<<<<< HEAD
-	mi := &file_types_value_proto_msgTypes[0]
-=======
 	mi := &file_types_value_proto_msgTypes[1]
->>>>>>> 4d7a641 (proto changes)
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -91,11 +87,7 @@ func (x *StringValue) String() string {
 func (*StringValue) ProtoMessage() {}
 
 func (x *StringValue) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
-	mi := &file_types_value_proto_msgTypes[0]
-=======
 	mi := &file_types_value_proto_msgTypes[1]
->>>>>>> 4d7a641 (proto changes)
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -128,11 +120,7 @@ type BytesValue struct {
 
 func (x *BytesValue) Reset() {
 	*x = BytesValue{}
-<<<<<<< HEAD
-	mi := &file_types_value_proto_msgTypes[1]
-=======
 	mi := &file_types_value_proto_msgTypes[2]
->>>>>>> 4d7a641 (proto changes)
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -144,11 +132,7 @@ func (x *BytesValue) String() string {
 func (*BytesValue) ProtoMessage() {}
 
 func (x *BytesValue) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
-	mi := &file_types_value_proto_msgTypes[1]
-=======
 	mi := &file_types_value_proto_msgTypes[2]
->>>>>>> 4d7a641 (proto changes)
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -181,11 +165,7 @@ type StringList struct {
 
 func (x *StringList) Reset() {
 	*x = StringList{}
-<<<<<<< HEAD
-	mi := &file_types_value_proto_msgTypes[2]
-=======
 	mi := &file_types_value_proto_msgTypes[3]
->>>>>>> 4d7a641 (proto changes)
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -197,11 +177,7 @@ func (x *StringList) String() string {
 func (*StringList) ProtoMessage() {}
 
 func (x *StringList) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
-	mi := &file_types_value_proto_msgTypes[2]
-=======
 	mi := &file_types_value_proto_msgTypes[3]
->>>>>>> 4d7a641 (proto changes)
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -234,11 +210,7 @@ type Int64Value struct {
 
 func (x *Int64Value) Reset() {
 	*x = Int64Value{}
-<<<<<<< HEAD
-	mi := &file_types_value_proto_msgTypes[3]
-=======
 	mi := &file_types_value_proto_msgTypes[4]
->>>>>>> 4d7a641 (proto changes)
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -250,11 +222,7 @@ func (x *Int64Value) String() string {
 func (*Int64Value) ProtoMessage() {}
 
 func (x *Int64Value) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
-	mi := &file_types_value_proto_msgTypes[3]
-=======
 	mi := &file_types_value_proto_msgTypes[4]
->>>>>>> 4d7a641 (proto changes)
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -287,11 +255,7 @@ type Int64List struct {
 
 func (x *Int64List) Reset() {
 	*x = Int64List{}
-<<<<<<< HEAD
-	mi := &file_types_value_proto_msgTypes[4]
-=======
 	mi := &file_types_value_proto_msgTypes[5]
->>>>>>> 4d7a641 (proto changes)
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -303,11 +267,7 @@ func (x *Int64List) String() string {
 func (*Int64List) ProtoMessage() {}
 
 func (x *Int64List) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
-	mi := &file_types_value_proto_msgTypes[4]
-=======
 	mi := &file_types_value_proto_msgTypes[5]
->>>>>>> 4d7a641 (proto changes)
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -338,11 +298,7 @@ type Empty struct {
 
 func (x *Empty) Reset() {
 	*x = Empty{}
-<<<<<<< HEAD
-	mi := &file_types_value_proto_msgTypes[5]
-=======
 	mi := &file_types_value_proto_msgTypes[6]
->>>>>>> 4d7a641 (proto changes)
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -354,11 +310,7 @@ func (x *Empty) String() string {
 func (*Empty) ProtoMessage() {}
 
 func (x *Empty) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
-	mi := &file_types_value_proto_msgTypes[5]
-=======
 	mi := &file_types_value_proto_msgTypes[6]
->>>>>>> 4d7a641 (proto changes)
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -411,16 +363,6 @@ func file_types_value_proto_rawDescGZIP() []byte {
 	return file_types_value_proto_rawDescData
 }
 
-<<<<<<< HEAD
-var file_types_value_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_types_value_proto_goTypes = []any{
-	(*StringValue)(nil), // 0: types.StringValue
-	(*BytesValue)(nil),  // 1: types.BytesValue
-	(*StringList)(nil),  // 2: types.StringList
-	(*Int64Value)(nil),  // 3: types.Int64Value
-	(*Int64List)(nil),   // 4: types.Int64List
-	(*Empty)(nil),       // 5: types.Empty
-=======
 var file_types_value_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_types_value_proto_goTypes = []any{
 	(*BoolValue)(nil),   // 0: types.BoolValue
@@ -430,7 +372,6 @@ var file_types_value_proto_goTypes = []any{
 	(*Int64Value)(nil),  // 4: types.Int64Value
 	(*Int64List)(nil),   // 5: types.Int64List
 	(*Empty)(nil),       // 6: types.Empty
->>>>>>> 4d7a641 (proto changes)
 }
 var file_types_value_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
