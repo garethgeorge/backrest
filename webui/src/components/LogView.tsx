@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { LogDataRequest } from "../../gen/ts/v1/service_pb";
+import {
+  LogDataRequest,
+  LogDataRequestSchema,
+} from "../../gen/ts/v1/service_pb";
 import { backrestService } from "../api";
 import { Button } from "antd";
+import { create } from "@bufbuild/protobuf";
 
 // TODO: refactor this to use the provider pattern
 export const LogView = ({ logref }: { logref: string }) => {
@@ -18,7 +22,7 @@ export const LogView = ({ logref }: { logref: string }) => {
     (async () => {
       try {
         for await (const log of backrestService.getLogs(
-          new LogDataRequest({
+          create(LogDataRequestSchema, {
             ref: logref,
           }),
           { signal: controller.signal }

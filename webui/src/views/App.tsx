@@ -27,11 +27,12 @@ import { LoginModal } from "./LoginModal";
 import { backrestService, setAuthToken } from "../api";
 import { useConfig } from "../components/ConfigProvider";
 import { shouldShowSettings } from "../state/configutil";
-import { OpSelector } from "../../gen/ts/v1/service_pb";
+import { OpSelector, OpSelectorSchema } from "../../gen/ts/v1/service_pb";
 import { colorForStatus } from "../state/flowdisplayaggregator";
 import { getStatusForSelector } from "../state/logstate";
 import { Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { MainContentAreaTemplate } from "./MainContentArea";
+import { create } from "@bufbuild/protobuf";
 
 const { Header, Sider } = Layout;
 
@@ -400,7 +401,9 @@ const IconForResource = ({
   const [status, setStatus] = useState(OperationStatus.STATUS_UNKNOWN);
   useEffect(() => {
     const load = async () => {
-      setStatus(await getStatusForSelector(new OpSelector({ planId, repoId })));
+      setStatus(
+        await getStatusForSelector(create(OpSelectorSchema, { planId, repoId }))
+      );
     };
     load();
     const refresh = _.debounce(load, 1000, { maxWait: 10000, trailing: true });

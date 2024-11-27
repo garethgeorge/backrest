@@ -16,9 +16,12 @@ import {
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import {
-  Plan,
-  RetentionPolicy,
+  ConfigSchema,
+  PlanSchema,
+  RetentionPolicySchema,
   Schedule_Clock,
+  type Plan,
+  type RetentionPolicy,
 } from "../../gen/ts/v1/config_pb";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
@@ -35,8 +38,9 @@ import {
   ScheduleDefaultsDaily,
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
+import { clone, create, equals, fromJson, toJson } from "@bufbuild/protobuf";
 
-const planDefaults = new Plan({
+const planDefaults = create(PlanSchema, {
   schedule: {
     schedule: {
       case: "cron",
@@ -65,8 +69,8 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   useEffect(() => {
     form.setFieldsValue(
       template
-        ? JSON.parse(template.toJsonString())
-        : JSON.parse(planDefaults.toJsonString())
+        ? toJson(PlanSchema, template, { alwaysEmitImplicit: true })
+        : toJson(PlanSchema, planDefaults, { alwaysEmitImplicit: true })
     );
   }, [template]);
 
@@ -82,7 +86,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         throw new Error("template not found");
       }
 
-      const configCopy = config.clone();
+      const configCopy = clone(ConfigSchema, config);
 
       // Remove the plan from the config
       const idx = configCopy.plans.findIndex((r) => r.id === template.id);
@@ -111,15 +115,22 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
     try {
       let planFormData = await validateForm(form);
-      const plan = new Plan().fromJsonString(JSON.stringify(planFormData), {
+      const plan = fromJson(PlanSchema, planFormData, {
         ignoreUnknownFields: false,
       });
 
-      if (plan.retention && plan.retention.equals(new RetentionPolicy())) {
+      if (
+        plan.retention &&
+        equals(
+          RetentionPolicySchema,
+          plan.retention,
+          create(RetentionPolicySchema, {})
+        )
+      ) {
         delete plan.retention;
       }
 
-      const configCopy = config.clone();
+      const configCopy = clone(ConfigSchema, config);
 
       // Merge the new plan (or update) into the config
       if (template) {

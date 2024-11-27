@@ -1,22 +1,19 @@
-version: v1
+version: v2
+clean: true
 plugins:
-  - plugin: go
+  - local: protoc-gen-go
     out: ../gen/go
     opt:
       - paths=source_relative
-  - plugin: go-grpc
+  - local: protoc-gen-go-grpc
     out: ../gen/go
     opt:
       - paths=source_relative
-  - plugin: connect-go
+  - local: protoc-gen-connect-go
     out: ../gen/go
     opt:
       - paths=source_relative
-  - plugin: es
-    out: ../webui/gen/ts
-    opt:
-      - target=ts
-  - plugin: connect-es
+  - local: protoc-gen-es
     out: ../webui/gen/ts
     opt:
       - target=ts

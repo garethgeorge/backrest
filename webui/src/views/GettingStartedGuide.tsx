@@ -2,8 +2,9 @@ import { Collapse, Divider, Spin, Typography } from "antd";
 import React, { useEffect, useState } from "react";
 import { backrestService } from "../api";
 import { useConfig } from "../components/ConfigProvider";
-import { Config } from "../../gen/ts/v1/config_pb";
+import { Config, ConfigSchema } from "../../gen/ts/v1/config_pb";
 import { isDevBuild } from "../state/buildcfg";
+import { toJsonString } from "@bufbuild/protobuf";
 
 export const GettingStartedGuide = () => {
   const config = useConfig()[0];
@@ -76,7 +77,7 @@ export const GettingStartedGuide = () => {
                   children: config ? (
                     <Typography>
                       <pre>
-                        {config.toJsonString({
+                        {toJsonString(ConfigSchema, config, {
                           prettySpaces: 2,
                         })}
                       </pre>

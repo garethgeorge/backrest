@@ -38,6 +38,8 @@ import { colorForStatus } from "../state/flowdisplayaggregator";
 import { OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { isMobile } from "../lib/browserutil";
 import { useNavigate } from "react-router";
+import { toJsonString } from "@bufbuild/protobuf";
+import { ConfigSchema } from "../../gen/ts/v1/config_pb";
 
 export const SummaryDashboard = () => {
   const config = useConfig()[0];
@@ -120,6 +122,20 @@ export const SummaryDashboard = () => {
             },
           ]}
         />
+        <Collapse
+          size="small"
+          items={[
+            {
+              label: "Config as JSON",
+              children: (
+                <pre>
+                  {config &&
+                    toJsonString(ConfigSchema, config, { prettySpaces: 2 })}
+                </pre>
+              ),
+            },
+          ]}
+        />
       </Flex>
     </>
   );
@@ -196,21 +212,21 @@ const SummaryPanel = ({
       label: "Backups (30d)",
       children: (
         <>
-          {summary.backupsSuccessLast30days && (
+          {summary.backupsSuccessLast30days ? (
             <Typography.Text type="success" style={{ marginRight: "5px" }}>
               {summary.backupsSuccessLast30days + ""} ok
             </Typography.Text>
-          )}
-          {summary.backupsFailed30days && (
+          ) : undefined}
+          {summary.backupsFailed30days ? (
             <Typography.Text type="danger" style={{ marginRight: "5px" }}>
               {summary.backupsFailed30days + ""} failed
             </Typography.Text>
-          )}
-          {summary.backupsWarningLast30days && (
+          ) : undefined}
+          {summary.backupsWarningLast30days ? (
             <Typography.Text type="warning" style={{ marginRight: "5px" }}>
               {summary.backupsWarningLast30days + ""} warning
             </Typography.Text>
-          )}
+          ) : undefined}
         </>
       ),
     },

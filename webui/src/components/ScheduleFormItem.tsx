@@ -9,8 +9,10 @@ import {
 } from "antd";
 import React from "react";
 import Cron, { CronType, PeriodType } from "react-js-cron";
-import { Schedule_Clock } from "../../gen/ts/v1/config_pb";
-import { proto3 } from "@bufbuild/protobuf";
+import {
+  Schedule_Clock,
+  Schedule_ClockSchema,
+} from "../../gen/ts/v1/config_pb";
 
 interface ScheduleDefaults {
   maxFrequencyDays: number;
@@ -262,4 +264,4 @@ export const ScheduleFormItem = ({
 };
 
 const clockEnumValueToString = (clock: Schedule_Clock) =>
-  proto3.getEnumType(Schedule_Clock).findNumber(clock)!.name;
+  Schedule_ClockSchema.values.find((v) => v.number === clock)?.name;

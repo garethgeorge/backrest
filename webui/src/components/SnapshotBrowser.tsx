@@ -3,8 +3,11 @@ import { Button, Dropdown, Form, Input, Modal, Space, Spin, Tree } from "antd";
 import type { DataNode, EventDataNode } from "antd/es/tree";
 import {
   ListSnapshotFilesResponse,
+  ListSnapshotFilesResponseSchema,
   LsEntry,
+  LsEntrySchema,
   RestoreSnapshotRequest,
+  RestoreSnapshotRequestSchema,
 } from "../../gen/ts/v1/service_pb";
 import { useAlertApi } from "./Alerts";
 import {
@@ -18,8 +21,9 @@ import { URIAutocomplete } from "./URIAutocomplete";
 import { validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
 import { ConfirmButton } from "./SpinButton";
-import { StringValue } from "@bufbuild/protobuf";
+import { StringValueSchema } from "../../gen/ts/types/value_pb";
 import { pathSeparator } from "../state/buildcfg";
+import { create, toJsonString } from "@bufbuild/protobuf";
 
 const SnapshotBrowserContext = React.createContext<{
   snapshotId: string;
@@ -84,7 +88,7 @@ export const SnapshotBrowser = ({
   useEffect(() => {
     setTreeData(
       respToNodes(
-        new ListSnapshotFilesResponse({
+        create(ListSnapshotFilesResponseSchema, {
           entries: [
             {
               path: "/",
@@ -188,7 +192,11 @@ const FileNode = ({ entry }: { entry: LsEntry }) => {
                     onCancel={() => showModal(null)}
                     onOk={() => showModal(null)}
                   >
-                    <pre>{JSON.stringify(entry, null, 2)}</pre>
+                    <pre>
+                      {toJsonString(LsEntrySchema, entry, {
+                        prettySpaces: 2,
+                      })}
+                    </pre>
                   </Modal>
                 );
               },
@@ -261,7 +269,7 @@ const RestoreModal = ({
     try {
       const values = await validateForm(form);
       await backrestService.restore(
-        new RestoreSnapshotRequest({
+        create(RestoreSnapshotRequestSchema, {
           repoId,
           planId,
           snapshotId,
@@ -290,7 +298,7 @@ const RestoreModal = ({
 
         const dirname = basename(p);
         const files = await backrestService.pathAutocomplete(
-          new StringValue({ value: dirname })
+          create(StringValueSchema, { value: dirname })
         );
 
         for (const file of files.values) {

@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { createPromiseClient } from "@connectrpc/connect";
-import { Backrest } from "../gen/ts/v1/service_connect";
-import { Authentication } from "../gen/ts/v1/authentication_connect";
-import { Schedule } from "../gen/ts/v1/config_pb";
+import { createClient } from "@connectrpc/connect";
+import { Authentication } from "../gen/ts/v1/authentication_pb";
+import { Backrest } from "../gen/ts/v1/service_pb";
 
 const tokenKey = "backrest-ui-authToken";
 
@@ -30,8 +29,8 @@ const transport = createConnectTransport({
   fetch: fetch as typeof globalThis.fetch,
 });
 
-export const authenticationService = createPromiseClient(
+export const authenticationService = createClient(
   Authentication,
   transport,
 );
-export const backrestService = createPromiseClient(Backrest, transport);
+export const backrestService = createClient(Backrest, transport);

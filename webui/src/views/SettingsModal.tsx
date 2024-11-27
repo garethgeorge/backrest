@@ -16,12 +16,17 @@ import {
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
-import { Auth, Config, User } from "../../gen/ts/v1/config_pb";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
 import { useConfig } from "../components/ConfigProvider";
 import { authenticationService, backrestService } from "../api";
+import { clone, fromJson, toJson, toJsonString } from "@bufbuild/protobuf";
+import {
+  AuthSchema,
+  ConfigSchema,
+  UserSchema,
+} from "../../gen/ts/v1/config_pb";
 
 interface FormData {
   auth: {
@@ -62,8 +67,8 @@ export const SettingsModal = () => {
       }
 
       // Update configuration
-      let newConfig = config!.clone();
-      newConfig.auth = new Auth().fromJson(formData.auth, {
+      let newConfig = clone(ConfigSchema, config);
+      newConfig.auth = fromJson(AuthSchema, formData.auth, {
         ignoreUnknownFields: false,
       });
       newConfig.instance = formData.instance;
@@ -162,7 +167,11 @@ export const SettingsModal = () => {
           <Form.Item label="Users" required={true}>
             <Form.List
               name={["auth", "users"]}
-              initialValue={config.auth?.users?.map(protoToObj) || []}
+              initialValue={
+                config.auth?.users?.map((u) =>
+                  toJson(UserSchema, u, { alwaysEmitImplicit: true })
+                ) || []
+              }
             >
               {(fields, { add, remove }) => (
                 <>
@@ -259,8 +268,4 @@ export const SettingsModal = () => {
       </Modal>
     </>
   );
-};
-
-const protoToObj = (proto: any) => {
-  return JSON.parse(proto.toJsonString());
 };

@@ -1,5 +1,4 @@
 import { FormInstance } from "antd";
-import type { ValidateErrorEntity } from "rc-field-form/lib/interface";
 
 export const validateForm = async <T>(form: FormInstance<T>) => {
   try {
@@ -7,7 +6,7 @@ export const validateForm = async <T>(form: FormInstance<T>) => {
     return form.getFieldsValue();
   } catch (e: any) {
     if (e.errorFields) {
-      const firstError = (e as ValidateErrorEntity).errorFields?.[0]
+      const firstError = (e as any).errorFields?.[0]
         ?.errors?.[0];
       throw new Error(firstError);
     }

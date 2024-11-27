@@ -2,17 +2,21 @@ import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { Button, Col, Form, Input, Modal, Row } from "antd";
 import React, { useEffect, useState } from "react";
 import { authenticationService, setAuthToken } from "../api";
-import { LoginRequest } from "../../gen/ts/v1/authentication_pb";
+import {
+  LoginRequest,
+  LoginRequestSchema,
+} from "../../gen/ts/v1/authentication_pb";
 import { useAlertApi } from "../components/Alerts";
+import { create } from "@bufbuild/protobuf";
 
 export const LoginModal = () => {
-  let defaultCreds = new LoginRequest();
+  let defaultCreds = create(LoginRequestSchema, {});
 
   const [form] = Form.useForm();
   const alertApi = useAlertApi()!;
 
   const onFinish = async (values: any) => {
-    const loginReq = new LoginRequest({
+    const loginReq = create(LoginRequestSchema, {
       username: values.username,
       password: values.password,
     });

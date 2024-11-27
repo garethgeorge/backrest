@@ -5,16 +5,16 @@ import { OperationList } from "../components/OperationList";
 import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY, STATS_OPERATION_HISTORY } from "../constants";
 import {
-  DoRepoTaskRequest,
   DoRepoTaskRequest_Task,
-  GetOperationsRequest,
-  OpSelector,
+  DoRepoTaskRequestSchema,
+  GetOperationsRequestSchema,
 } from "../../gen/ts/v1/service_pb";
 import { backrestService } from "../api";
 import { SpinButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
+import { create } from "@bufbuild/protobuf";
 
 const StatsPanel = React.lazy(() => import("../components/StatsPanel"));
 
@@ -27,7 +27,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   const handleIndexNow = async () => {
     try {
       await backrestService.doRepoTask(
-        new DoRepoTaskRequest({
+        create(DoRepoTaskRequestSchema, {
           repoId: repo.id!,
           task: DoRepoTaskRequest_Task.INDEX_SNAPSHOTS,
         })
@@ -41,7 +41,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
     try {
       alertsApi.info("Unlocking repo...");
       await backrestService.doRepoTask(
-        new DoRepoTaskRequest({
+        create(DoRepoTaskRequestSchema, {
           repoId: repo.id!,
           task: DoRepoTaskRequest_Task.UNLOCK,
         })
@@ -55,7 +55,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   const handleStatsNow = async () => {
     try {
       await backrestService.doRepoTask(
-        new DoRepoTaskRequest({
+        create(DoRepoTaskRequestSchema, {
           repoId: repo.id!,
           task: DoRepoTaskRequest_Task.STATS,
         })
@@ -68,7 +68,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   const handlePruneNow = async () => {
     try {
       await backrestService.doRepoTask(
-        new DoRepoTaskRequest({
+        create(DoRepoTaskRequestSchema, {
           repoId: repo.id!,
           task: DoRepoTaskRequest_Task.PRUNE,
         })
@@ -81,7 +81,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
   const handleCheckNow = async () => {
     try {
       await backrestService.doRepoTask(
-        new DoRepoTaskRequest({
+        create(DoRepoTaskRequestSchema, {
           repoId: repo.id!,
           task: DoRepoTaskRequest_Task.CHECK,
         })
@@ -110,14 +110,12 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
       children: (
         <>
           <OperationTree
-            req={
-              new GetOperationsRequest({
-                selector: new OpSelector({
-                  repoId: repo.id!,
-                }),
-                lastN: BigInt(MAX_OPERATION_HISTORY),
-              })
-            }
+            req={create(GetOperationsRequestSchema, {
+              selector: {
+                repoId: repo.id!,
+              },
+              lastN: BigInt(STATS_OPERATION_HISTORY),
+            })}
           />
         </>
       ),
@@ -130,14 +128,12 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
         <>
           <h3>Backup Action History</h3>
           <OperationList
-            req={
-              new GetOperationsRequest({
-                selector: new OpSelector({
-                  repoId: repo.id!,
-                }),
-                lastN: BigInt(MAX_OPERATION_HISTORY),
-              })
-            }
+            req={create(GetOperationsRequestSchema, {
+              selector: {
+                repoId: repo.id!,
+              },
+              lastN: BigInt(MAX_OPERATION_HISTORY),
+            })}
             showPlan={true}
             showDelete={true}
           />
