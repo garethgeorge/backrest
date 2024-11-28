@@ -1,15 +1,28 @@
 import React, { useContext, useEffect, useMemo } from "react";
 import { Form } from "antd";
-import { clone, create, DescMessage, Message, MessageShape } from "@bufbuild/protobuf";
-import { RepoSchema } from "../../../gen/ts/v1/config_pb";
+import {
+  clone,
+  create,
+  DescMessage,
+  Message,
+  MessageShape,
+} from "@bufbuild/protobuf";
+import {
+  Plan,
+  PlanSchema,
+  Repo,
+  RepoSchema,
+} from "../../../gen/ts/v1/config_pb";
 
-type Paths<T> = T extends object
+export type Paths<T> = T extends object
   ? {
-      [K in keyof T]: `${Exclude<K, symbol>}${"" | `.${Paths<T[K]>}`}`;
-    }[keyof T]
+      [K in Exclude<keyof T, symbol>]: `${K}${Paths<T[K]> extends never
+        ? ""
+        : `.${Paths<T[K]>}`}`;
+    }[Exclude<keyof T, symbol>]
   : never;
 
-type DeepIndex<T, K extends string> = T extends object
+export type DeepIndex<T, K extends string> = T extends object
   ? K extends `${infer F}.${infer R}`
     ? DeepIndex<Idx<T, F>, R>
     : Idx<T, K>
@@ -17,7 +30,7 @@ type DeepIndex<T, K extends string> = T extends object
 
 type Idx<T, K extends string> = K extends keyof T ? T[K] : never;
 
-const getValue = <T extends {}, K extends Paths<T>>(
+const getValue = <T extends {}, K extends string>(
   obj: T,
   path: K
 ): DeepIndex<T, K> => {
@@ -55,15 +68,15 @@ const TypedFormCtx = React.createContext<typedFormCtx>({
 export const TypedForm = <Desc extends DescMessage>({
   schema,
   initialValue,
-  props,
   children,
   onChange,
+  ...props
 }: {
-  props: any;
   schema: Desc;
   initialValue: MessageShape<Desc>;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   onChange?: (value: MessageShape<Desc>) => void;
+  props?: any;
 }) => {
   const [form] = Form.useForm();
   const [formData, setFormData] =
@@ -92,63 +105,53 @@ export const TypedForm = <Desc extends DescMessage>({
   );
 };
 
-export const TypedFormItem = <T extends Message>({
-  name,
+export const TypedFormItem = <T extends {}>({
+  field,
   children,
-  ...props,
 }: {
-  name: Paths<T>;
-  children: React.ReactNode;
-  props: any;
+  field: Paths<T>;
+  children?: React.ReactNode;
 }): React.ReactElement => {
   const { formData } = useContext(TypedFormCtx);
 
   return (
-    <Form.Item name={name as string} initialValue={getValue(formData, name)} {...props}>
+    <Form.Item name={field as string} initialValue={getValue(formData, field)}>
       {children}
     </Form.Item>
   );
 };
 
-export const TypedFormOneof = <T extends Message>({
-  name,
-  children,
-  ...props,
+export const TypedFormOneof = <T extends {}, K extends Paths<T>>({
+  field,
+  items,
 }: {
-  name: Paths<T>;
-  children: React.ReactNode;
-  props: any;
-}): React.ReactElement => {
-  return <></>;
+  field: K;
+  items: { [K2 in DeepIndex<T, K>]: React.ReactNode };
+}): React.ReactNode => {
+  const { formData } = useContext(TypedFormCtx);
+  const c = getValue(formData as T, field);
+  const val = items[c];
+  if (!val) {
+    return <></>;
+  }
+  return val;
 };
 
-const const TypedFormOneofCase = <T extends Message>({
-  name,
-  children,
-  ...props,
-}: {
-  name: Paths<T>;
-  children: React.ReactNode;
-  props: any;
-}): React.ReactElement => {
-  const { formData, setFormData } = useContext(TypedFormCtx);
+// const TestElement = () => {
+//   const a = create(PlanSchema, {});
+//   const b: Paths<typeof a> = "retention.policy.case";
 
-  return <></>
-}
-
-const TestElement = () => {
-  return (
-    <TypedForm
-      schema={RepoSchema}
-      initialValue={create(RepoSchema, {})}
-      onChange={onChange}
-    >
-      <TypedFormItem name="name" props={props}>
-        <Input />
-      </TypedFormItem>
-      <TypedFormItem name="age" props={props}>
-        <Input />
-      </TypedFormItem>
-    </TypedForm>
-  );
-}
+//   return (
+//     <TypedForm schema={RepoSchema} initialValue={create(RepoSchema, {})}>
+//       <TypedFormItem<Plan> field={"id"}></TypedFormItem>
+//       <TypedFormOneof<Plan, "retention.policy.case">
+//         field="retention.policy.case"
+//         items={{
+//           policyKeepAll: <></>,
+//           policyKeepLastN: <></>,
+//           policyTimeBucketed: <></>,
+//         }}
+//       />
+//     </TypedForm>
+//   );
+// };
