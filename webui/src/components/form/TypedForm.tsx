@@ -68,15 +68,14 @@ const TypedFormCtx = React.createContext<typedFormCtx>({
 export const TypedForm = <Desc extends DescMessage>({
   schema,
   initialValue,
-  children,
   onChange,
+  children,
   ...props
 }: {
   schema: Desc;
   initialValue: MessageShape<Desc>;
   children?: React.ReactNode;
   onChange?: (value: MessageShape<Desc>) => void;
-  props?: any;
 }) => {
   const [form] = Form.useForm();
   const [formData, setFormData] =
@@ -108,14 +107,20 @@ export const TypedForm = <Desc extends DescMessage>({
 export const TypedFormItem = <T extends {}>({
   field,
   children,
+  ...props
 }: {
   field: Paths<T>;
   children?: React.ReactNode;
+  props?: any;
 }): React.ReactElement => {
   const { formData } = useContext(TypedFormCtx);
 
   return (
-    <Form.Item name={field as string} initialValue={getValue(formData, field)}>
+    <Form.Item
+      name={field as string}
+      initialValue={getValue(formData, field)}
+      {...props}
+    >
       {children}
     </Form.Item>
   );
@@ -136,22 +141,3 @@ export const TypedFormOneof = <T extends {}, K extends Paths<T>>({
   }
   return val;
 };
-
-// const TestElement = () => {
-//   const a = create(PlanSchema, {});
-//   const b: Paths<typeof a> = "retention.policy.case";
-
-//   return (
-//     <TypedForm schema={RepoSchema} initialValue={create(RepoSchema, {})}>
-//       <TypedFormItem<Plan> field={"id"}></TypedFormItem>
-//       <TypedFormOneof<Plan, "retention.policy.case">
-//         field="retention.policy.case"
-//         items={{
-//           policyKeepAll: <></>,
-//           policyKeepLastN: <></>,
-//           policyTimeBucketed: <></>,
-//         }}
-//       />
-//     </TypedForm>
-//   );
-// };

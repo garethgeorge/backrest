@@ -37,13 +37,13 @@ import {
 } from "../components/HooksFormList";
 import { ConfirmButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
-import Cron from "react-js-cron";
 import {
   ScheduleDefaultsInfrequent,
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
 import { isWindows } from "../state/buildcfg";
 import { create, fromJson, toJson } from "@bufbuild/protobuf";
+import { TypedForm, TypedFormItem } from "../components/form/TypedForm";
 
 const repoDefaults = create(RepoSchema, {
   prunePolicy: {
@@ -221,9 +221,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           for more details about repositories.
         </p>
         <br />
-        <Form
+        <TypedForm
+          schema={RepoSchema}
+          initialValue={template ? template : repoDefaults}
           autoComplete="off"
-          form={form}
           labelCol={{ span: 4 }}
           wrapperCol={{ span: 18 }}
           disabled={confirmLoading}
@@ -234,9 +235,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               "Unique ID that identifies this repo in the backrest UI (e.g. s3-mybucket). This cannot be changed after creation."
             }
           >
-            <Form.Item<Repo>
+            <TypedFormItem<Repo>
               hasFeedback
-              name="id"
               label="Repo Name"
               validateTrigger={["onChange", "onBlur"]}
               rules={[
