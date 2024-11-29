@@ -29,8 +29,24 @@ message Config {
   repeated Repo repos = 3 [json_name="repos"];
   repeated Plan plans = 4 [json_name="plans"];
   Auth auth = 5 [json_name="auth"];
+  Peer peers = 8 [json_name="peers"];
+}
 
-  string baseurl = 7 [json_name="urlbase"]; // base URL for the UI, must be set if using the sync feature.
+message Peer {
+  string instance_id = 1 [json_name="instanceId"]; // instance ID of the peer.
+  string public_key_pem = 2 [json_name="publicKeyPem"]; // PEM encoded public key.
+  repeated Permission global_permissions = 4 [json_name="globalPermissions"]; // global permissions granted to the peer.
+  repeated ScopedPermission permissions = 3 [json_name="permissions"]; // permissions granted to the peer.
+
+  enum Permission {
+    PERMISSION_UNKNOWN = 0;
+    PERMISSION_CONNECT = 1;
+  }
+
+  message ScopedPermission {
+    string scope = 1 [json_name="scope"]; // scope of the permission e.g. repo:<repo ID>
+    Permission perm = 2 [json_name="perm"]; // permission granted.
+  }
 }
 
 message Repo {
@@ -44,12 +60,6 @@ message Repo {
   repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on events for this repo.
   bool auto_unlock = 8 [json_name="autoUnlock"]; // automatically unlock the repo when needed.
   CommandPrefix command_prefix = 10 [json_name="commandPrefix"]; // modifiers for the restic commands
-
-  repeated ClientKey client_keys = 11 [json_name="clientKeys"]; // client keys for syncing with other instances.
-  message ClientKey {
-    string instance_id = 1 [json_name="instanceId"]; // annotated instance ID using the key, will be set on first client connection if not present.
-    string secret = 2; // secret used to authenticate with the instance.
-  }
 }
 
 message Plan {

@@ -2,8 +2,10 @@ package syncengine
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -12,6 +14,8 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"go.uber.org/zap"
+	"golang.org/x/net/http2"
 )
 
 type ServerConnInfo struct {
@@ -25,21 +29,37 @@ type SyncClient struct {
 	oplog           *oplog.OpLog
 	client          v1connect.BackrestSyncServiceClient
 	reconnectDelay  time.Duration
+	connectedRepos  map[string]*v1.SyncConnectionInfo
+}
 
-	connectedRepos map[string]*v1.SyncConnectionInfo
-	lastFullSync   map[string]time.Time
+func newInsecureClient() *http.Client {
+	return &http.Client{
+		Transport: &http2.Transport{
+			AllowHTTP: true,
+			DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
+				return net.Dial(network, addr)
+			},
+			IdleConnTimeout: 300 * time.Second,
+			ReadIdleTimeout: 60 * time.Second,
+		},
+	}
 }
 
 func NewSyncClient(localInstanceID, remoteInstanceURL string, oplog *oplog.OpLog) *SyncClient {
+	urlToUse := backrestRemoteUrlToHTTPUrl(remoteInstanceURL)
+	zap.L().Info("Connecting to sync server", zap.String("url", urlToUse))
+
 	client := v1connect.NewBackrestSyncServiceClient(
-		http.DefaultClient,
-		remoteInstanceURL,
+		newInsecureClient(),
+		urlToUse,
 	)
 
 	return &SyncClient{
 		reconnectDelay: 60 * time.Second,
 		client:         client,
 		oplog:          oplog,
+
+		connectedRepos: make(map[string]*v1.SyncConnectionInfo),
 	}
 }
 
@@ -60,6 +80,7 @@ func (c *SyncClient) RunSyncForRepos(ctx context.Context, repos []*v1.Repo) {
 			break // context is done
 		}
 
+		lastConnect := time.Now()
 		c.setStatusForRepos(repos, v1.SyncStreamItem_CONNECTION_STATE_PENDING, "connecting")
 		if err := c.runSyncForReposInternal(ctx, repos); err != nil {
 			c.setStatusForRepos(repos, v1.SyncStreamItem_CONNECTION_STATE_DISCONNECTED, err.Error())
@@ -67,11 +88,12 @@ func (c *SyncClient) RunSyncForRepos(ctx context.Context, repos []*v1.Repo) {
 			c.setStatusForRepos(repos, v1.SyncStreamItem_CONNECTION_STATE_DISCONNECTED, "connection closed")
 		}
 
-		time.Sleep(c.reconnectDelay) // sleep before reconnecting, by default 60 seconds but the server can adjust this.
+		time.Sleep(c.reconnectDelay - time.Since(lastConnect))
 	}
 }
 
 func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Repo) error {
+	zap.L().Info("Connecting to server for sync")
 	stream := c.client.Sync(ctx)
 
 	ctx, cancelWithError := context.WithCancelCause(ctx)
@@ -83,6 +105,7 @@ func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Re
 		for {
 			item, err := stream.Receive()
 			if err != nil {
+				zap.L().Error("Error receiving from sync stream", zap.Error(err))
 				close(receive)
 				return
 			}
@@ -91,6 +114,7 @@ func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Re
 	}()
 
 	// Broadcast initial packet containing the protocol version and instance ID.
+	zap.S().Infof("Broadcast handshake as %v", c.localInstanceID)
 	if err := stream.Send(&v1.SyncStreamItem{
 		Action: &v1.SyncStreamItem_Handshake{
 			Handshake: &v1.SyncStreamItem_SyncActionHandshake{
@@ -124,16 +148,10 @@ func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Re
 
 	// Send the list of repos to connect to the server.
 	for _, repo := range repos {
-		_, keyID, keySecret, err := ParseRemoteRepoURI(repo.GetUri())
-		if err != nil {
-			return fmt.Errorf("parse repo URI %q: %w", repo.GetUri(), err)
-		}
 		if err := stream.Send(&v1.SyncStreamItem{
 			Action: &v1.SyncStreamItem_ConnectRepo{
 				ConnectRepo: &v1.SyncStreamItem_SyncActionConnectRepo{
-					RepoId:    repo.GetId(),
-					KeyId:     keyID,
-					KeySecret: keySecret,
+					RepoId: repo.GetId(),
 				},
 			},
 		}); err != nil {
@@ -194,7 +212,7 @@ func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Re
 	}
 
 	forwardOperationMetadata := func(repoID string) {
-
+		zap.L().Info("TODO: implement metadata forwarding!")
 	}
 
 	handleSyncCommand := func(item *v1.SyncStreamItem) error {

@@ -9,9 +9,10 @@ import (
 	"connectrpc.com/connect"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
-	"github.com/garethgeorge/backrest/internal/api"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/protoutil"
+	"go.uber.org/zap"
 )
 
 const SyncProtocolVersion = 1
@@ -51,6 +52,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	}()
 
 	// Broadcast initial packet containing the protocol version and instance ID.
+	zap.S().Infof("Client connected, broadcast handshake as %v", initialConfig.Instance)
 	if err := stream.Send(&v1.SyncStreamItem{
 		Action: &v1.SyncStreamItem_Handshake{
 			Handshake: &v1.SyncStreamItem_SyncActionHandshake{
@@ -77,6 +79,8 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	} else {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("no packets received"))
 	}
+
+	zap.S().Infof("Client connected with instance ID %s", clientInstanceID)
 
 	// After receiving handshake packet, start processing commands
 	connectedRepos := make(map[string]struct{})
@@ -141,7 +145,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("action DiffOperations: operation IDs and modnos must be the same length"))
 			}
 
-			diffSelQuery, err := api.OpSelectorToQuery(diffSel)
+			diffSelQuery, err := protoutil.OpSelectorToQuery(diffSel)
 			if err != nil {
 				return fmt.Errorf("action DiffOperations: converting diff selector to query: %w", err)
 			}

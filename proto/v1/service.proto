@@ -196,12 +196,11 @@ message SyncStreamItem {
   message SyncActionHandshake {
     int64 protocol_version = 1;
     string instance_id = 2;
+    string instance_id_signature = 3; // ecc signature attesting to the instance ID.
   }
 
   message SyncActionConnectRepo {
     string repo_id = 1;
-    string key_id = 2;
-    string key_secret = 3;
   }
 
   enum ConnectionState {

@@ -160,7 +160,11 @@ func main() {
 			for uri, repos := range reposByURI {
 				syncWg.Add(1)
 
-				zap.S().Infof("starting sync engine for URI %q serving %d repos", uri, len(repos))
+				repoIDs := make([]string, len(repos))
+				for i, repo := range repos {
+					repoIDs[i] = repo.Id
+				}
+				zap.S().Infof("starting sync engine for URI %q for remote repos %v", uri, repoIDs)
 
 				go func(uri string, repos []*v1.Repo) {
 					defer syncWg.Done()
@@ -171,6 +175,7 @@ func main() {
 			}
 		},
 	}
+	syncConfigHook.onChange(cfg) // initialize sync engine
 
 	apiBackrestHandler := api.NewBackrestHandler(
 		syncConfigHook,

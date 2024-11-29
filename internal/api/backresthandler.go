@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -19,6 +18,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	syncengine "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/logstore"
@@ -156,19 +156,20 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		return nil, fmt.Errorf("validation error: %w", err)
 	}
 
-	bin, err := resticinstaller.FindOrInstallResticBinary()
-	if err != nil {
-		return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
-	}
+	if !syncengine.IsBackrestRemoteRepoURI(req.Msg.Uri) {
+		bin, err := resticinstaller.FindOrInstallResticBinary()
+		if err != nil {
+			return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
+		}
 
-	r, err := repo.NewRepoOrchestrator(c, req.Msg, bin)
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure repo: %w", err)
-	}
+		r, err := repo.NewRepoOrchestrator(c, req.Msg, bin)
+		if err != nil {
+			return nil, fmt.Errorf("failed to configure repo: %w", err)
+		}
 
-	// use background context such that the init op can try to complete even if the connection is closed.
-	if err := r.Init(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed to init repo: %w", err)
+		if err := r.Init(context.Background()); err != nil {
+			return nil, fmt.Errorf("failed to init repo: %w", err)
+		}
 	}
 
 	zap.L().Debug("updating config", zap.Int32("version", c.Version))
@@ -177,7 +178,9 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 	}
 
 	zap.L().Debug("applying config", zap.Int32("version", c.Version))
-	s.orchestrator.ApplyConfig(c)
+	if err := s.orchestrator.ApplyConfig(c); err != nil {
+		return nil, fmt.Errorf("failed to apply config: %w", err)
+	}
 
 	// index snapshots for the newly added repository.
 	zap.L().Debug("scheduling index snapshots task")
@@ -322,7 +325,7 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 }
 
 func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error) {
-	q, err := OpSelectorToQuery(req.Msg.Selector)
+	q, err := protoutil.OpSelectorToQuery(req.Msg.Selector)
 	if req.Msg.LastN != 0 {
 		q.Reversed = true
 		q.Limit = int(req.Msg.LastN)
@@ -513,7 +516,7 @@ func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request
 		return nil
 	}
 
-	q, err := OpSelectorToQuery(req.Msg.Selector)
+	q, err := protoutil.OpSelectorToQuery(req.Msg.Selector)
 	if err != nil {
 		return nil, err
 	}
@@ -744,22 +747,4 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	}
 
 	return connect.NewResponse(response), nil
-}
-
-func OpSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
-	if sel == nil {
-		return oplog.Query{}, errors.New("empty selector")
-	}
-	q := oplog.Query{
-		RepoID:     sel.RepoId,
-		PlanID:     sel.PlanId,
-		SnapshotID: sel.SnapshotId,
-		FlowID:     sel.FlowId,
-		InstanceID: sel.InstanceId,
-	}
-	if len(sel.Ids) > 0 && !reflect.DeepEqual(q, oplog.Query{}) {
-		return oplog.Query{}, errors.New("cannot specify both query and ids")
-	}
-	q.OpIDs = sel.Ids
-	return q, nil
 }

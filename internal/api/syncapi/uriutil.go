@@ -3,9 +3,10 @@ package syncengine
 import (
 	"errors"
 	"net/url"
+	"strings"
 )
 
-func CreateRemoteRepoURI(instanceUrl, keyID, keySecret string) (string, error) {
+func CreateRemoteRepoURI(instanceUrl string) (string, error) {
 	u, err := url.Parse(instanceUrl)
 	if err != nil {
 		return "", err
@@ -19,38 +20,7 @@ func CreateRemoteRepoURI(instanceUrl, keyID, keySecret string) (string, error) {
 		return "", errors.New("unsupported scheme")
 	}
 
-	u.User = url.UserPassword(keyID, keySecret)
-
 	return u.String(), nil
-}
-
-func ParseRemoteRepoURI(repoUri string) (instanceUrl, keyID, keySecret string, err error) {
-	u, err := url.Parse(repoUri)
-	if err != nil {
-		return "", "", "", err
-	}
-
-	if u.Scheme == "backrest" {
-		u.Scheme = "http"
-	} else if u.Scheme == "sbackrest" {
-		u.Scheme = "https"
-	}
-
-	instanceUrl = u.Scheme + "://" + u.Host + "/" + u.Path
-
-	if u.User.Username() != "" {
-		keyID = u.User.Username()
-	} else {
-		return "", "", "", errors.New("missing key ID")
-	}
-
-	if password, ok := u.User.Password(); ok {
-		keySecret = password
-	} else {
-		return "", "", "", errors.New("missing key secret")
-	}
-
-	return
 }
 
 func IsBackrestRemoteRepoURI(repoUri string) bool {
@@ -60,4 +30,14 @@ func IsBackrestRemoteRepoURI(repoUri string) bool {
 	}
 
 	return u.Scheme == "backrest" || u.Scheme == "sbackrest"
+}
+
+func backrestRemoteUrlToHTTPUrl(repoUri string) string {
+	if strings.HasPrefix(repoUri, "backrest:") {
+		return "http://" + strings.TrimPrefix(repoUri, "backrest:")
+	} else if strings.HasPrefix(repoUri, "sbackrest:") {
+		return "https://" + strings.TrimPrefix(repoUri, "sbackrest:")
+	} else {
+		return repoUri
+	}
 }
