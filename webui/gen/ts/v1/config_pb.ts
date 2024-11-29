@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1/config.proto.
  */
 export const file_v1_config: GenFile = /*@__PURE__*/
-  fileDesc("Cg92MS9jb25maWcucHJvdG8SAnYxImYKCUh1YkNvbmZpZxItCglpbnN0YW5jZXMYASADKAsyGi52MS5IdWJDb25maWcuSW5zdGFuY2VJbmZvGioKDEluc3RhbmNlSW5mbxIKCgJpZBgBIAEoCRIOCgZzZWNyZXQYAiABKAkingEKBkNvbmZpZxINCgVtb2RubxgBIAEoBRIPCgd2ZXJzaW9uGAYgASgFEhAKCGluc3RhbmNlGAIgASgJEhcKBXJlcG9zGAMgAygLMggudjEuUmVwbxIXCgVwbGFucxgEIAMoCzIILnYxLlBsYW4SFgoEYXV0aBgFIAEoCzIILnYxLkF1dGgSGAoHYmFzZXVybBgHIAEoCVIHdXJsYmFzZSLPAgoEUmVwbxIKCgJpZBgBIAEoCRILCgN1cmkYAiABKAkSEAoIcGFzc3dvcmQYAyABKAkSCwoDZW52GAQgAygJEg0KBWZsYWdzGAUgAygJEiUKDHBydW5lX3BvbGljeRgGIAEoCzIPLnYxLlBydW5lUG9saWN5EiUKDGNoZWNrX3BvbGljeRgJIAEoCzIPLnYxLkNoZWNrUG9saWN5EhcKBWhvb2tzGAcgAygLMggudjEuSG9vaxITCgthdXRvX3VubG9jaxgIIAEoCBIpCg5jb21tYW5kX3ByZWZpeBgKIAEoCzIRLnYxLkNvbW1hbmRQcmVmaXgSJwoLY2xpZW50X2tleXMYCyADKAsyEi52MS5SZXBvLkNsaWVudEtleRowCglDbGllbnRLZXkSEwoLaW5zdGFuY2VfaWQYASABKAkSDgoGc2VjcmV0GAIgASgJIoYCCgRQbGFuEgoKAmlkGAEgASgJEgwKBHJlcG8YAiABKAkSDQoFcGF0aHMYBCADKAkSEAoIZXhjbHVkZXMYBSADKAkSEQoJaWV4Y2x1ZGVzGAkgAygJEh4KCHNjaGVkdWxlGAwgASgLMgwudjEuU2NoZWR1bGUSJgoJcmV0ZW50aW9uGAcgASgLMhMudjEuUmV0ZW50aW9uUG9saWN5EhcKBWhvb2tzGAggAygLMggudjEuSG9vaxIiCgxiYWNrdXBfZmxhZ3MYCiADKAlSDGJhY2t1cF9mbGFncxIZChFza2lwX2lmX3VuY2hhbmdlZBgNIAEoCEoECAMQBEoECAYQB0oECAsQDCKKAgoNQ29tbWFuZFByZWZpeBIuCgdpb19uaWNlGAEgASgOMh0udjEuQ29tbWFuZFByZWZpeC5JT05pY2VMZXZlbBIwCghjcHVfbmljZRgCIAEoDjIeLnYxLkNvbW1hbmRQcmVmaXguQ1BVTmljZUxldmVsIlsKC0lPTmljZUxldmVsEg4KCklPX0RFRkFVTFQQABIWChJJT19CRVNUX0VGRk9SVF9MT1cQARIXChNJT19CRVNUX0VGRk9SVF9ISUdIEAISCwoHSU9fSURMRRADIjoKDENQVU5pY2VMZXZlbBIPCgtDUFVfREVGQVVMVBAAEgwKCENQVV9ISUdIEAESCwoHQ1BVX0xPVxACIoICCg9SZXRlbnRpb25Qb2xpY3kSHAoScG9saWN5X2tlZXBfbGFzdF9uGAogASgFSAASRgoUcG9saWN5X3RpbWVfYnVja2V0ZWQYCyABKAsyJi52MS5SZXRlbnRpb25Qb2xpY3kuVGltZUJ1Y2tldGVkQ291bnRzSAASGQoPcG9saWN5X2tlZXBfYWxsGAwgASgISAAaZAoSVGltZUJ1Y2tldGVkQ291bnRzEg4KBmhvdXJseRgBIAEoBRINCgVkYWlseRgCIAEoBRIOCgZ3ZWVrbHkYAyABKAUSDwoHbW9udGhseRgEIAEoBRIOCgZ5ZWFybHkYBSABKAVCCAoGcG9saWN5ImMKC1BydW5lUG9saWN5Eh4KCHNjaGVkdWxlGAIgASgLMgwudjEuU2NoZWR1bGUSGAoQbWF4X3VudXNlZF9ieXRlcxgDIAEoAxIaChJtYXhfdW51c2VkX3BlcmNlbnQYBCABKAEicwoLQ2hlY2tQb2xpY3kSHgoIc2NoZWR1bGUYASABKAsyDC52MS5TY2hlZHVsZRIYCg5zdHJ1Y3R1cmVfb25seRhkIAEoCEgAEiIKGHJlYWRfZGF0YV9zdWJzZXRfcGVyY2VudBhlIAEoAUgAQgYKBG1vZGUi6wEKCFNjaGVkdWxlEhIKCGRpc2FibGVkGAEgASgISAASDgoEY3JvbhgCIAEoCUgAEhoKEG1heEZyZXF1ZW5jeURheXMYAyABKAVIABIbChFtYXhGcmVxdWVuY3lIb3VycxgEIAEoBUgAEiEKBWNsb2NrGAUgASgOMhIudjEuU2NoZWR1bGUuQ2xvY2siUwoFQ2xvY2sSEQoNQ0xPQ0tfREVGQVVMVBAAEg8KC0NMT0NLX0xPQ0FMEAESDQoJQ0xPQ0tfVVRDEAISFwoTQ0xPQ0tfTEFTVF9SVU5fVElNRRADQgoKCHNjaGVkdWxlIqULCgRIb29rEiYKCmNvbmRpdGlvbnMYASADKA4yEi52MS5Ib29rLkNvbmRpdGlvbhIiCghvbl9lcnJvchgCIAEoDjIQLnYxLkhvb2suT25FcnJvchIqCg5hY3Rpb25fY29tbWFuZBhkIAEoCzIQLnYxLkhvb2suQ29tbWFuZEgAEioKDmFjdGlvbl93ZWJob29rGGUgASgLMhAudjEuSG9vay5XZWJob29rSAASKgoOYWN0aW9uX2Rpc2NvcmQYZiABKAsyEC52MS5Ib29rLkRpc2NvcmRIABIoCg1hY3Rpb25fZ290aWZ5GGcgASgLMg8udjEuSG9vay5Hb3RpZnlIABImCgxhY3Rpb25fc2xhY2sYaCABKAsyDi52MS5Ib29rLlNsYWNrSAASLAoPYWN0aW9uX3Nob3V0cnJyGGkgASgLMhEudjEuSG9vay5TaG91dHJyckgAEjQKE2FjdGlvbl9oZWFsdGhjaGVja3MYaiABKAsyFS52MS5Ib29rLkhlYWx0aGNoZWNrc0gAGhoKB0NvbW1hbmQSDwoHY29tbWFuZBgBIAEoCRqDAQoHV2ViaG9vaxITCgt3ZWJob29rX3VybBgBIAEoCRInCgZtZXRob2QYAiABKA4yFy52MS5Ib29rLldlYmhvb2suTWV0aG9kEhAKCHRlbXBsYXRlGGQgASgJIigKBk1ldGhvZBILCgdVTktOT1dOEAASBwoDR0VUEAESCAoEUE9TVBACGjAKB0Rpc2NvcmQSEwoLd2ViaG9va191cmwYASABKAkSEAoIdGVtcGxhdGUYAiABKAkaUwoGR290aWZ5EhAKCGJhc2VfdXJsGAEgASgJEg0KBXRva2VuGAMgASgJEhAKCHRlbXBsYXRlGGQgASgJEhYKDnRpdGxlX3RlbXBsYXRlGGUgASgJGi4KBVNsYWNrEhMKC3dlYmhvb2tfdXJsGAEgASgJEhAKCHRlbXBsYXRlGAIgASgJGjIKCFNob3V0cnJyEhQKDHNob3V0cnJyX3VybBgBIAEoCRIQCgh0ZW1wbGF0ZRgCIAEoCRo1CgxIZWFsdGhjaGVja3MSEwoLd2ViaG9va191cmwYASABKAkSEAoIdGVtcGxhdGUYAiABKAkinAMKCUNvbmRpdGlvbhIVChFDT05ESVRJT05fVU5LTk9XThAAEhcKE0NPTkRJVElPTl9BTllfRVJST1IQARIcChhDT05ESVRJT05fU05BUFNIT1RfU1RBUlQQAhIaChZDT05ESVRJT05fU05BUFNIT1RfRU5EEAMSHAoYQ09ORElUSU9OX1NOQVBTSE9UX0VSUk9SEAQSHgoaQ09ORElUSU9OX1NOQVBTSE9UX1dBUk5JTkcQBRIeChpDT05ESVRJT05fU05BUFNIT1RfU1VDQ0VTUxAGEh4KGkNPTkRJVElPTl9TTkFQU0hPVF9TS0lQUEVEEAcSGQoVQ09ORElUSU9OX1BSVU5FX1NUQVJUEGQSGQoVQ09ORElUSU9OX1BSVU5FX0VSUk9SEGUSGwoXQ09ORElUSU9OX1BSVU5FX1NVQ0NFU1MQZhIaChVDT05ESVRJT05fQ0hFQ0tfU1RBUlQQyAESGgoVQ09ORElUSU9OX0NIRUNLX0VSUk9SEMkBEhwKF0NPTkRJVElPTl9DSEVDS19TVUNDRVNTEMoBIqkBCgdPbkVycm9yEhMKD09OX0VSUk9SX0lHTk9SRRAAEhMKD09OX0VSUk9SX0NBTkNFTBABEhIKDk9OX0VSUk9SX0ZBVEFMEAISGgoWT05fRVJST1JfUkVUUllfMU1JTlVURRBkEhwKGE9OX0VSUk9SX1JFVFJZXzEwTUlOVVRFUxBlEiYKIk9OX0VSUk9SX1JFVFJZX0VYUE9ORU5USUFMX0JBQ0tPRkYQZ0IICgZhY3Rpb24iMQoEQXV0aBIQCghkaXNhYmxlZBgBIAEoCBIXCgV1c2VycxgCIAMoCzIILnYxLlVzZXIiOwoEVXNlchIMCgRuYW1lGAEgASgJEhkKD3Bhc3N3b3JkX2JjcnlwdBgCIAEoCUgAQgoKCHBhc3N3b3JkQixaKmdpdGh1Yi5jb20vZ2FyZXRoZ2VvcmdlL2JhY2tyZXN0L2dlbi9nby92MWIGcHJvdG8z", [file_google_protobuf_empty]);
+  fileDesc("Cg92MS9jb25maWcucHJvdG8SAnYxImYKCUh1YkNvbmZpZxItCglpbnN0YW5jZXMYASADKAsyGi52MS5IdWJDb25maWcuSW5zdGFuY2VJbmZvGioKDEluc3RhbmNlSW5mbxIKCgJpZBgBIAEoCRIOCgZzZWNyZXQYAiABKAkinQEKBkNvbmZpZxINCgVtb2RubxgBIAEoBRIPCgd2ZXJzaW9uGAYgASgFEhAKCGluc3RhbmNlGAIgASgJEhcKBXJlcG9zGAMgAygLMggudjEuUmVwbxIXCgVwbGFucxgEIAMoCzIILnYxLlBsYW4SFgoEYXV0aBgFIAEoCzIILnYxLkF1dGgSFwoFcGVlcnMYCCABKAsyCC52MS5QZWVyIucBCgRQZWVyEhMKC2luc3RhbmNlX2lkGAEgASgJEhYKDnB1YmxpY19rZXlfcGVtGAIgASgJEi4KC3Blcm1pc3Npb25zGAMgAygLMhkudjEuUGVlci5TY29wZWRQZXJtaXNzaW9uGkQKEFNjb3BlZFBlcm1pc3Npb24SDQoFc2NvcGUYASABKAkSIQoEcGVybRgCIAEoDjITLnYxLlBlZXIuUGVybWlzc2lvbiI8CgpQZXJtaXNzaW9uEhYKElBFUk1JU1NJT05fVU5LTk9XThAAEhYKElBFUk1JU1NJT05fQ09OTkVDVBABIvQBCgRSZXBvEgoKAmlkGAEgASgJEgsKA3VyaRgCIAEoCRIQCghwYXNzd29yZBgDIAEoCRILCgNlbnYYBCADKAkSDQoFZmxhZ3MYBSADKAkSJQoMcHJ1bmVfcG9saWN5GAYgASgLMg8udjEuUHJ1bmVQb2xpY3kSJQoMY2hlY2tfcG9saWN5GAkgASgLMg8udjEuQ2hlY2tQb2xpY3kSFwoFaG9va3MYByADKAsyCC52MS5Ib29rEhMKC2F1dG9fdW5sb2NrGAggASgIEikKDmNvbW1hbmRfcHJlZml4GAogASgLMhEudjEuQ29tbWFuZFByZWZpeCKGAgoEUGxhbhIKCgJpZBgBIAEoCRIMCgRyZXBvGAIgASgJEg0KBXBhdGhzGAQgAygJEhAKCGV4Y2x1ZGVzGAUgAygJEhEKCWlleGNsdWRlcxgJIAMoCRIeCghzY2hlZHVsZRgMIAEoCzIMLnYxLlNjaGVkdWxlEiYKCXJldGVudGlvbhgHIAEoCzITLnYxLlJldGVudGlvblBvbGljeRIXCgVob29rcxgIIAMoCzIILnYxLkhvb2sSIgoMYmFja3VwX2ZsYWdzGAogAygJUgxiYWNrdXBfZmxhZ3MSGQoRc2tpcF9pZl91bmNoYW5nZWQYDSABKAhKBAgDEARKBAgGEAdKBAgLEAwiigIKDUNvbW1hbmRQcmVmaXgSLgoHaW9fbmljZRgBIAEoDjIdLnYxLkNvbW1hbmRQcmVmaXguSU9OaWNlTGV2ZWwSMAoIY3B1X25pY2UYAiABKA4yHi52MS5Db21tYW5kUHJlZml4LkNQVU5pY2VMZXZlbCJbCgtJT05pY2VMZXZlbBIOCgpJT19ERUZBVUxUEAASFgoSSU9fQkVTVF9FRkZPUlRfTE9XEAESFwoTSU9fQkVTVF9FRkZPUlRfSElHSBACEgsKB0lPX0lETEUQAyI6CgxDUFVOaWNlTGV2ZWwSDwoLQ1BVX0RFRkFVTFQQABIMCghDUFVfSElHSBABEgsKB0NQVV9MT1cQAiKCAgoPUmV0ZW50aW9uUG9saWN5EhwKEnBvbGljeV9rZWVwX2xhc3RfbhgKIAEoBUgAEkYKFHBvbGljeV90aW1lX2J1Y2tldGVkGAsgASgLMiYudjEuUmV0ZW50aW9uUG9saWN5LlRpbWVCdWNrZXRlZENvdW50c0gAEhkKD3BvbGljeV9rZWVwX2FsbBgMIAEoCEgAGmQKElRpbWVCdWNrZXRlZENvdW50cxIOCgZob3VybHkYASABKAUSDQoFZGFpbHkYAiABKAUSDgoGd2Vla2x5GAMgASgFEg8KB21vbnRobHkYBCABKAUSDgoGeWVhcmx5GAUgASgFQggKBnBvbGljeSJjCgtQcnVuZVBvbGljeRIeCghzY2hlZHVsZRgCIAEoCzIMLnYxLlNjaGVkdWxlEhgKEG1heF91bnVzZWRfYnl0ZXMYAyABKAMSGgoSbWF4X3VudXNlZF9wZXJjZW50GAQgASgBInMKC0NoZWNrUG9saWN5Eh4KCHNjaGVkdWxlGAEgASgLMgwudjEuU2NoZWR1bGUSGAoOc3RydWN0dXJlX29ubHkYZCABKAhIABIiChhyZWFkX2RhdGFfc3Vic2V0X3BlcmNlbnQYZSABKAFIAEIGCgRtb2RlIusBCghTY2hlZHVsZRISCghkaXNhYmxlZBgBIAEoCEgAEg4KBGNyb24YAiABKAlIABIaChBtYXhGcmVxdWVuY3lEYXlzGAMgASgFSAASGwoRbWF4RnJlcXVlbmN5SG91cnMYBCABKAVIABIhCgVjbG9jaxgFIAEoDjISLnYxLlNjaGVkdWxlLkNsb2NrIlMKBUNsb2NrEhEKDUNMT0NLX0RFRkFVTFQQABIPCgtDTE9DS19MT0NBTBABEg0KCUNMT0NLX1VUQxACEhcKE0NMT0NLX0xBU1RfUlVOX1RJTUUQA0IKCghzY2hlZHVsZSKlCwoESG9vaxImCgpjb25kaXRpb25zGAEgAygOMhIudjEuSG9vay5Db25kaXRpb24SIgoIb25fZXJyb3IYAiABKA4yEC52MS5Ib29rLk9uRXJyb3ISKgoOYWN0aW9uX2NvbW1hbmQYZCABKAsyEC52MS5Ib29rLkNvbW1hbmRIABIqCg5hY3Rpb25fd2ViaG9vaxhlIAEoCzIQLnYxLkhvb2suV2ViaG9va0gAEioKDmFjdGlvbl9kaXNjb3JkGGYgASgLMhAudjEuSG9vay5EaXNjb3JkSAASKAoNYWN0aW9uX2dvdGlmeRhnIAEoCzIPLnYxLkhvb2suR290aWZ5SAASJgoMYWN0aW9uX3NsYWNrGGggASgLMg4udjEuSG9vay5TbGFja0gAEiwKD2FjdGlvbl9zaG91dHJychhpIAEoCzIRLnYxLkhvb2suU2hvdXRycnJIABI0ChNhY3Rpb25faGVhbHRoY2hlY2tzGGogASgLMhUudjEuSG9vay5IZWFsdGhjaGVja3NIABoaCgdDb21tYW5kEg8KB2NvbW1hbmQYASABKAkagwEKB1dlYmhvb2sSEwoLd2ViaG9va191cmwYASABKAkSJwoGbWV0aG9kGAIgASgOMhcudjEuSG9vay5XZWJob29rLk1ldGhvZBIQCgh0ZW1wbGF0ZRhkIAEoCSIoCgZNZXRob2QSCwoHVU5LTk9XThAAEgcKA0dFVBABEggKBFBPU1QQAhowCgdEaXNjb3JkEhMKC3dlYmhvb2tfdXJsGAEgASgJEhAKCHRlbXBsYXRlGAIgASgJGlMKBkdvdGlmeRIQCghiYXNlX3VybBgBIAEoCRINCgV0b2tlbhgDIAEoCRIQCgh0ZW1wbGF0ZRhkIAEoCRIWCg50aXRsZV90ZW1wbGF0ZRhlIAEoCRouCgVTbGFjaxITCgt3ZWJob29rX3VybBgBIAEoCRIQCgh0ZW1wbGF0ZRgCIAEoCRoyCghTaG91dHJychIUCgxzaG91dHJycl91cmwYASABKAkSEAoIdGVtcGxhdGUYAiABKAkaNQoMSGVhbHRoY2hlY2tzEhMKC3dlYmhvb2tfdXJsGAEgASgJEhAKCHRlbXBsYXRlGAIgASgJIpwDCglDb25kaXRpb24SFQoRQ09ORElUSU9OX1VOS05PV04QABIXChNDT05ESVRJT05fQU5ZX0VSUk9SEAESHAoYQ09ORElUSU9OX1NOQVBTSE9UX1NUQVJUEAISGgoWQ09ORElUSU9OX1NOQVBTSE9UX0VORBADEhwKGENPTkRJVElPTl9TTkFQU0hPVF9FUlJPUhAEEh4KGkNPTkRJVElPTl9TTkFQU0hPVF9XQVJOSU5HEAUSHgoaQ09ORElUSU9OX1NOQVBTSE9UX1NVQ0NFU1MQBhIeChpDT05ESVRJT05fU05BUFNIT1RfU0tJUFBFRBAHEhkKFUNPTkRJVElPTl9QUlVORV9TVEFSVBBkEhkKFUNPTkRJVElPTl9QUlVORV9FUlJPUhBlEhsKF0NPTkRJVElPTl9QUlVORV9TVUNDRVNTEGYSGgoVQ09ORElUSU9OX0NIRUNLX1NUQVJUEMgBEhoKFUNPTkRJVElPTl9DSEVDS19FUlJPUhDJARIcChdDT05ESVRJT05fQ0hFQ0tfU1VDQ0VTUxDKASKpAQoHT25FcnJvchITCg9PTl9FUlJPUl9JR05PUkUQABITCg9PTl9FUlJPUl9DQU5DRUwQARISCg5PTl9FUlJPUl9GQVRBTBACEhoKFk9OX0VSUk9SX1JFVFJZXzFNSU5VVEUQZBIcChhPTl9FUlJPUl9SRVRSWV8xME1JTlVURVMQZRImCiJPTl9FUlJPUl9SRVRSWV9FWFBPTkVOVElBTF9CQUNLT0ZGEGdCCAoGYWN0aW9uIjEKBEF1dGgSEAoIZGlzYWJsZWQYASABKAgSFwoFdXNlcnMYAiADKAsyCC52MS5Vc2VyIjsKBFVzZXISDAoEbmFtZRgBIAEoCRIZCg9wYXNzd29yZF9iY3J5cHQYAiABKAlIAEIKCghwYXNzd29yZEIsWipnaXRodWIuY29tL2dhcmV0aGdlb3JnZS9iYWNrcmVzdC9nZW4vZ28vdjFiBnByb3RvMw", [file_google_protobuf_empty]);
 
 /**
  * @generated from message v1.HubConfig
@@ -98,11 +98,9 @@ export type Config = Message<"v1.Config"> & {
   auth?: Auth;
 
   /**
-   * base URL for the UI, must be set if using the sync feature.
-   *
-   * @generated from field: string baseurl = 7 [json_name = "urlbase"];
+   * @generated from field: v1.Peer peers = 8;
    */
-  baseurl: string;
+  peers?: Peer;
 };
 
 /**
@@ -111,6 +109,88 @@ export type Config = Message<"v1.Config"> & {
  */
 export const ConfigSchema: GenMessage<Config> = /*@__PURE__*/
   messageDesc(file_v1_config, 1);
+
+/**
+ * @generated from message v1.Peer
+ */
+export type Peer = Message<"v1.Peer"> & {
+  /**
+   * instance ID of the peer.
+   *
+   * @generated from field: string instance_id = 1;
+   */
+  instanceId: string;
+
+  /**
+   * PEM encoded public key.
+   *
+   * @generated from field: string public_key_pem = 2;
+   */
+  publicKeyPem: string;
+
+  /**
+   * permissions granted to the peer.
+   *
+   * @generated from field: repeated v1.Peer.ScopedPermission permissions = 3;
+   */
+  permissions: Peer_ScopedPermission[];
+};
+
+/**
+ * Describes the message v1.Peer.
+ * Use `create(PeerSchema)` to create a new message.
+ */
+export const PeerSchema: GenMessage<Peer> = /*@__PURE__*/
+  messageDesc(file_v1_config, 2);
+
+/**
+ * @generated from message v1.Peer.ScopedPermission
+ */
+export type Peer_ScopedPermission = Message<"v1.Peer.ScopedPermission"> & {
+  /**
+   * scope of the permission e.g. repo:<repo ID>
+   *
+   * @generated from field: string scope = 1;
+   */
+  scope: string;
+
+  /**
+   * permission granted.
+   *
+   * @generated from field: v1.Peer.Permission perm = 2;
+   */
+  perm: Peer_Permission;
+};
+
+/**
+ * Describes the message v1.Peer.ScopedPermission.
+ * Use `create(Peer_ScopedPermissionSchema)` to create a new message.
+ */
+export const Peer_ScopedPermissionSchema: GenMessage<Peer_ScopedPermission> = /*@__PURE__*/
+  messageDesc(file_v1_config, 2, 0);
+
+/**
+ * @generated from enum v1.Peer.Permission
+ */
+export enum Peer_Permission {
+  /**
+   * @generated from enum value: PERMISSION_UNKNOWN = 0;
+   */
+  UNKNOWN = 0,
+
+  /**
+   * connect to the instance.
+   *
+   * @generated from enum value: PERMISSION_CONNECT = 1;
+   */
+  CONNECT = 1,
+}
+
+/**
+ * Describes the enum v1.Peer.Permission.
+ */
+export const Peer_PermissionSchema: GenEnum<Peer_Permission> = /*@__PURE__*/
+  enumDesc(file_v1_config, 2, 0);
 
 /**
  * @generated from message v1.Repo
@@ -185,13 +265,6 @@ export type Repo = Message<"v1.Repo"> & {
    * @generated from field: v1.CommandPrefix command_prefix = 10;
    */
   commandPrefix?: CommandPrefix;
-
-  /**
-   * client keys for syncing with other instances.
-   *
-   * @generated from field: repeated v1.Repo.ClientKey client_keys = 11;
-   */
-  clientKeys: Repo_ClientKey[];
 };
 
 /**
@@ -199,33 +272,7 @@ export type Repo = Message<"v1.Repo"> & {
  * Use `create(RepoSchema)` to create a new message.
  */
 export const RepoSchema: GenMessage<Repo> = /*@__PURE__*/
-  messageDesc(file_v1_config, 2);
-
-/**
- * @generated from message v1.Repo.ClientKey
- */
-export type Repo_ClientKey = Message<"v1.Repo.ClientKey"> & {
-  /**
-   * annotated instance ID using the key, will be set on first client connection if not present.
-   *
-   * @generated from field: string instance_id = 1;
-   */
-  instanceId: string;
-
-  /**
-   * secret used to authenticate with the instance.
-   *
-   * @generated from field: string secret = 2;
-   */
-  secret: string;
-};
-
-/**
- * Describes the message v1.Repo.ClientKey.
- * Use `create(Repo_ClientKeySchema)` to create a new message.
- */
-export const Repo_ClientKeySchema: GenMessage<Repo_ClientKey> = /*@__PURE__*/
-  messageDesc(file_v1_config, 2, 0);
+  messageDesc(file_v1_config, 3);
 
 /**
  * @generated from message v1.Plan
@@ -307,7 +354,7 @@ export type Plan = Message<"v1.Plan"> & {
  * Use `create(PlanSchema)` to create a new message.
  */
 export const PlanSchema: GenMessage<Plan> = /*@__PURE__*/
-  messageDesc(file_v1_config, 3);
+  messageDesc(file_v1_config, 4);
 
 /**
  * @generated from message v1.CommandPrefix
@@ -333,7 +380,7 @@ export type CommandPrefix = Message<"v1.CommandPrefix"> & {
  * Use `create(CommandPrefixSchema)` to create a new message.
  */
 export const CommandPrefixSchema: GenMessage<CommandPrefix> = /*@__PURE__*/
-  messageDesc(file_v1_config, 4);
+  messageDesc(file_v1_config, 5);
 
 /**
  * @generated from enum v1.CommandPrefix.IONiceLevel
@@ -364,7 +411,7 @@ export enum CommandPrefix_IONiceLevel {
  * Describes the enum v1.CommandPrefix.IONiceLevel.
  */
 export const CommandPrefix_IONiceLevelSchema: GenEnum<CommandPrefix_IONiceLevel> = /*@__PURE__*/
-  enumDesc(file_v1_config, 4, 0);
+  enumDesc(file_v1_config, 5, 0);
 
 /**
  * @generated from enum v1.CommandPrefix.CPUNiceLevel
@@ -390,7 +437,7 @@ export enum CommandPrefix_CPUNiceLevel {
  * Describes the enum v1.CommandPrefix.CPUNiceLevel.
  */
 export const CommandPrefix_CPUNiceLevelSchema: GenEnum<CommandPrefix_CPUNiceLevel> = /*@__PURE__*/
-  enumDesc(file_v1_config, 4, 1);
+  enumDesc(file_v1_config, 5, 1);
 
 /**
  * @generated from message v1.RetentionPolicy
@@ -425,7 +472,7 @@ export type RetentionPolicy = Message<"v1.RetentionPolicy"> & {
  * Use `create(RetentionPolicySchema)` to create a new message.
  */
 export const RetentionPolicySchema: GenMessage<RetentionPolicy> = /*@__PURE__*/
-  messageDesc(file_v1_config, 5);
+  messageDesc(file_v1_config, 6);
 
 /**
  * @generated from message v1.RetentionPolicy.TimeBucketedCounts
@@ -472,7 +519,7 @@ export type RetentionPolicy_TimeBucketedCounts = Message<"v1.RetentionPolicy.Tim
  * Use `create(RetentionPolicy_TimeBucketedCountsSchema)` to create a new message.
  */
 export const RetentionPolicy_TimeBucketedCountsSchema: GenMessage<RetentionPolicy_TimeBucketedCounts> = /*@__PURE__*/
-  messageDesc(file_v1_config, 5, 0);
+  messageDesc(file_v1_config, 6, 0);
 
 /**
  * @generated from message v1.PrunePolicy
@@ -503,7 +550,7 @@ export type PrunePolicy = Message<"v1.PrunePolicy"> & {
  * Use `create(PrunePolicySchema)` to create a new message.
  */
 export const PrunePolicySchema: GenMessage<PrunePolicy> = /*@__PURE__*/
-  messageDesc(file_v1_config, 6);
+  messageDesc(file_v1_config, 7);
 
 /**
  * @generated from message v1.CheckPolicy
@@ -541,7 +588,7 @@ export type CheckPolicy = Message<"v1.CheckPolicy"> & {
  * Use `create(CheckPolicySchema)` to create a new message.
  */
 export const CheckPolicySchema: GenMessage<CheckPolicy> = /*@__PURE__*/
-  messageDesc(file_v1_config, 7);
+  messageDesc(file_v1_config, 8);
 
 /**
  * @generated from message v1.Schedule
@@ -597,7 +644,7 @@ export type Schedule = Message<"v1.Schedule"> & {
  * Use `create(ScheduleSchema)` to create a new message.
  */
 export const ScheduleSchema: GenMessage<Schedule> = /*@__PURE__*/
-  messageDesc(file_v1_config, 8);
+  messageDesc(file_v1_config, 9);
 
 /**
  * @generated from enum v1.Schedule.Clock
@@ -630,7 +677,7 @@ export enum Schedule_Clock {
  * Describes the enum v1.Schedule.Clock.
  */
 export const Schedule_ClockSchema: GenEnum<Schedule_Clock> = /*@__PURE__*/
-  enumDesc(file_v1_config, 8, 0);
+  enumDesc(file_v1_config, 9, 0);
 
 /**
  * @generated from message v1.Hook
@@ -699,7 +746,7 @@ export type Hook = Message<"v1.Hook"> & {
  * Use `create(HookSchema)` to create a new message.
  */
 export const HookSchema: GenMessage<Hook> = /*@__PURE__*/
-  messageDesc(file_v1_config, 9);
+  messageDesc(file_v1_config, 10);
 
 /**
  * @generated from message v1.Hook.Command
@@ -716,7 +763,7 @@ export type Hook_Command = Message<"v1.Hook.Command"> & {
  * Use `create(Hook_CommandSchema)` to create a new message.
  */
 export const Hook_CommandSchema: GenMessage<Hook_Command> = /*@__PURE__*/
-  messageDesc(file_v1_config, 9, 0);
+  messageDesc(file_v1_config, 10, 0);
 
 /**
  * @generated from message v1.Hook.Webhook
@@ -743,7 +790,7 @@ export type Hook_Webhook = Message<"v1.Hook.Webhook"> & {
  * Use `create(Hook_WebhookSchema)` to create a new message.
  */
 export const Hook_WebhookSchema: GenMessage<Hook_Webhook> = /*@__PURE__*/
-  messageDesc(file_v1_config, 9, 1);
+  messageDesc(file_v1_config, 10, 1);
 
 /**
  * @generated from enum v1.Hook.Webhook.Method
@@ -769,7 +816,7 @@ export enum Hook_Webhook_Method {
  * Describes the enum v1.Hook.Webhook.Method.
  */
 export const Hook_Webhook_MethodSchema: GenEnum<Hook_Webhook_Method> = /*@__PURE__*/
-  enumDesc(file_v1_config, 9, 1, 0);
+  enumDesc(file_v1_config, 10, 1, 0);
 
 /**
  * @generated from message v1.Hook.Discord
@@ -793,7 +840,7 @@ export type Hook_Discord = Message<"v1.Hook.Discord"> & {
  * Use `create(Hook_DiscordSchema)` to create a new message.
  */
 export const Hook_DiscordSchema: GenMessage<Hook_Discord> = /*@__PURE__*/
-  messageDesc(file_v1_config, 9, 2);
+  messageDesc(file_v1_config, 10, 2);
 
 /**
  * @generated from message v1.Hook.Gotify
@@ -829,7 +876,7 @@ export type Hook_Gotify = Message<"v1.Hook.Gotify"> & {
  * Use `create(Hook_GotifySchema)` to create a new message.
  */
 export const Hook_GotifySchema: GenMessage<Hook_Gotify> = /*@__PURE__*/
-  messageDesc(file_v1_config, 9, 3);
+  messageDesc(file_v1_config, 10, 3);
 
 /**
  * @generated from message v1.Hook.Slack
@@ -853,7 +900,7 @@ export type Hook_Slack = Message<"v1.Hook.Slack"> & {
  * Use `create(Hook_SlackSchema)` to create a new message.
  */
 export const Hook_SlackSchema: GenMessage<Hook_Slack> = /*@__PURE__*/
-  messageDesc(file_v1_config, 9, 4);
+  messageDesc(file_v1_config, 10, 4);
 
 /**
  * @generated from message v1.Hook.Shoutrrr
@@ -875,7 +922,7 @@ export type Hook_Shoutrrr = Message<"v1.Hook.Shoutrrr"> & {
  * Use `create(Hook_ShoutrrrSchema)` to create a new message.
  */
 export const Hook_ShoutrrrSchema: GenMessage<Hook_Shoutrrr> = /*@__PURE__*/
-  messageDesc(file_v1_config, 9, 5);
+  messageDesc(file_v1_config, 10, 5);
 
 /**
  * @generated from message v1.Hook.Healthchecks
@@ -897,7 +944,7 @@ export type Hook_Healthchecks = Message<"v1.Hook.Healthchecks"> & {
  * Use `create(Hook_HealthchecksSchema)` to create a new message.
  */
 export const Hook_HealthchecksSchema: GenMessage<Hook_Healthchecks> = /*@__PURE__*/
-  messageDesc(file_v1_config, 9, 6);
+  messageDesc(file_v1_config, 10, 6);
 
 /**
  * @generated from enum v1.Hook.Condition
@@ -1008,7 +1055,7 @@ export enum Hook_Condition {
  * Describes the enum v1.Hook.Condition.
  */
 export const Hook_ConditionSchema: GenEnum<Hook_Condition> = /*@__PURE__*/
-  enumDesc(file_v1_config, 9, 0);
+  enumDesc(file_v1_config, 10, 0);
 
 /**
  * @generated from enum v1.Hook.OnError
@@ -1059,7 +1106,7 @@ export enum Hook_OnError {
  * Describes the enum v1.Hook.OnError.
  */
 export const Hook_OnErrorSchema: GenEnum<Hook_OnError> = /*@__PURE__*/
-  enumDesc(file_v1_config, 9, 1);
+  enumDesc(file_v1_config, 10, 1);
 
 /**
  * @generated from message v1.Auth
@@ -1085,7 +1132,7 @@ export type Auth = Message<"v1.Auth"> & {
  * Use `create(AuthSchema)` to create a new message.
  */
 export const AuthSchema: GenMessage<Auth> = /*@__PURE__*/
-  messageDesc(file_v1_config, 10);
+  messageDesc(file_v1_config, 11);
 
 /**
  * @generated from message v1.User
@@ -1113,5 +1160,5 @@ export type User = Message<"v1.User"> & {
  * Use `create(UserSchema)` to create a new message.
  */
 export const UserSchema: GenMessage<User> = /*@__PURE__*/
-  messageDesc(file_v1_config, 11);
+  messageDesc(file_v1_config, 12);
 
