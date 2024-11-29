@@ -7,12 +7,7 @@ import {
   Message,
   MessageShape,
 } from "@bufbuild/protobuf";
-import {
-  Plan,
-  PlanSchema,
-  Repo,
-  RepoSchema,
-} from "../../../gen/ts/v1/config_pb";
+import { useWatch } from "antd/es/form/Form";
 
 export type Paths<T> = T extends object
   ? {
@@ -56,14 +51,12 @@ const setValue = <T extends {}, K extends Paths<T>>(
 };
 
 interface typedFormCtx {
-  formData: any;
+  formData: Message;
+  schema: DescMessage;
   setFormData: (value: any) => any;
 }
 
-const TypedFormCtx = React.createContext<typedFormCtx>({
-  formData: {},
-  setFormData: () => {},
-});
+const TypedFormCtx = React.createContext<typedFormCtx | null>(null);
 
 export const TypedForm = <Desc extends DescMessage>({
   schema,
@@ -76,26 +69,18 @@ export const TypedForm = <Desc extends DescMessage>({
   initialValue: MessageShape<Desc>;
   children?: React.ReactNode;
   onChange?: (value: MessageShape<Desc>) => void;
+} & {
+  [key: string]: any;
 }) => {
   const [form] = Form.useForm();
   const [formData, setFormData] =
     React.useState<MessageShape<Desc>>(initialValue);
 
   return (
-    <TypedFormCtx.Provider value={{ formData, setFormData }}>
+    <TypedFormCtx.Provider value={{ formData, setFormData, schema }}>
       <Form
         autoComplete="off"
         form={form}
-        onFieldsChange={(changedFields, allFields) => {
-          setFormData((prev) => {
-            const next = clone(schema, prev);
-            changedFields.forEach((field) => {
-              setValue(next, field.name, field.value);
-            });
-            onChange?.(next);
-            return next;
-          });
-        }}
         {...props}
       >
         {children}
@@ -104,16 +89,26 @@ export const TypedForm = <Desc extends DescMessage>({
   );
 };
 
-export const TypedFormItem = <T extends {}>({
+export const TypedFormItem = <T extends Message>({
   field,
   children,
   ...props
 }: {
   field: Paths<T>;
   children?: React.ReactNode;
-  props?: any;
+} & {
+  [key: string]: any;
 }): React.ReactElement => {
-  const { formData } = useContext(TypedFormCtx);
+  const { formData, setFormData, schema } = useContext(TypedFormCtx)!;
+  const value = useWatch({ name: field as string });
+
+  useEffect(() => {
+    setFormData((prev: any) => {
+      const next = clone(schema, prev) as any as T;
+      setValue(next, field, value);
+      return next;
+    });
+  }, [value]);
 
   return (
     <Form.Item
@@ -126,18 +121,41 @@ export const TypedFormItem = <T extends {}>({
   );
 };
 
-export const TypedFormOneof = <T extends {}, K extends Paths<T>>({
+interface oneofCase<T extends {}, F extends Paths<T>> {
+  case: DeepIndex<T, `${F}.case`>;
+  create: () => DeepIndex<T, `${F}.value`>;
+  view: React.ReactNode;
+}
+
+export const TypedFormOneof = <T extends {}, F extends Paths<T>>({
   field,
   items,
 }: {
-  field: K;
-  items: { [K2 in DeepIndex<T, K>]: React.ReactNode };
+  field: F;
+  items: oneofCase<T, F>[];
 }): React.ReactNode => {
-  const { formData } = useContext(TypedFormCtx);
-  const c = getValue(formData as T, field);
-  const val = items[c];
-  if (!val) {
-    return <></>;
+  const { formData, setFormData, schema } = useContext(TypedFormCtx)!;
+  const v = getValue(formData as T, `${field}.value`);
+  const c = getValue(formData as T, `${field}.case`);
+  useEffect(() => {
+    for (const item of items) {
+      if (item.case === c) {
+        setFormData((prev) => {
+          const next = clone(schema, prev) as any as T;
+          setValue(next, `${field}.value` as Paths<T>, v);
+          return next;
+        }
+
+        const nv = item.create();
+        setValue(formData, field + ".value", nv);
+      }
+    }
+  }, [c]);
+
+  for (const item of items) {
+    if (item.case === c) {
+      return item.view;
+    }
   }
-  return val;
+  return null;
 };

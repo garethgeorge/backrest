@@ -237,6 +237,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           >
             <TypedFormItem<Repo>
               hasFeedback
+              field={"id"}
               label="Repo Name"
               validateTrigger={["onChange", "onBlur"]}
               rules={[
