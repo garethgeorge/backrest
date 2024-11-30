@@ -53,11 +53,16 @@ const setValue = <T extends {}, K extends Paths<T>>(
 interface typedFormCtx {
   formData: Message;
   schema: DescMessage;
+<<<<<<< Updated upstream
   setFormData: (value: any) => any;
+=======
+  setFormData: (fn: (prev: any) => any) => void;
+>>>>>>> Stashed changes
 }
 
 const TypedFormCtx = React.createContext<typedFormCtx | null>(null);
 
+<<<<<<< Updated upstream
 export const TypedForm = <Desc extends DescMessage>({
   schema,
   initialValue,
@@ -83,6 +88,27 @@ export const TypedForm = <Desc extends DescMessage>({
         form={form}
         {...props}
       >
+=======
+export const TypedForm = <T extends Message>({
+  schema,
+  formData,
+  setFormData,
+  children,
+  ...props
+}: {
+  schema: DescMessage;
+  formData: T;
+  setFormData: (fn: (prev: T) => T) => void;
+  children?: React.ReactNode;
+} & {
+  [key: string]: any;
+}) => {
+  const [form] = Form.useForm<T>();
+
+  return (
+    <TypedFormCtx.Provider value={{ formData, setFormData, schema }}>
+      <Form autoComplete="off" form={form} {...props}>
+>>>>>>> Stashed changes
         {children}
       </Form>
     </TypedFormCtx.Provider>
@@ -100,9 +126,16 @@ export const TypedFormItem = <T extends Message>({
   [key: string]: any;
 }): React.ReactElement => {
   const { formData, setFormData, schema } = useContext(TypedFormCtx)!;
+<<<<<<< Updated upstream
   const value = useWatch({ name: field as string });
 
   useEffect(() => {
+=======
+  const value = useWatch(field as string);
+
+  useEffect(() => {
+    console.log("set", field, value);
+>>>>>>> Stashed changes
     setFormData((prev: any) => {
       const next = clone(schema, prev) as any as T;
       setValue(next, field, value);
@@ -127,7 +160,11 @@ interface oneofCase<T extends {}, F extends Paths<T>> {
   view: React.ReactNode;
 }
 
+<<<<<<< Updated upstream
 export const TypedFormOneof = <T extends {}, F extends Paths<T>>({
+=======
+export const TypedFormOneof = <T extends Message, F extends Paths<T>>({
+>>>>>>> Stashed changes
   field,
   items,
 }: {
@@ -135,6 +172,7 @@ export const TypedFormOneof = <T extends {}, F extends Paths<T>>({
   items: oneofCase<T, F>[];
 }): React.ReactNode => {
   const { formData, setFormData, schema } = useContext(TypedFormCtx)!;
+<<<<<<< Updated upstream
   const v = getValue(formData as T, `${field}.value`);
   const c = getValue(formData as T, `${field}.case`);
   useEffect(() => {
@@ -150,6 +188,23 @@ export const TypedFormOneof = <T extends {}, F extends Paths<T>>({
         setValue(formData, field + ".value", nv);
       }
     }
+=======
+  const c = useWatch(`${field}.case`);
+  useEffect(() => {
+    for (const item of items) {
+      if (item.case === c) {
+        setFormData((prev: any) => {
+          const next = clone(schema, prev as T) as T;
+          setValue(next, field, {
+            case: c,
+            value: item.create(),
+          } as any);
+          return next;
+        });
+      }
+    }
+    throw new Error("case " + c + " not found");
+>>>>>>> Stashed changes
   }, [c]);
 
   for (const item of items) {
@@ -157,5 +212,9 @@ export const TypedFormOneof = <T extends {}, F extends Paths<T>>({
       return item.view;
     }
   }
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
   return null;
 };

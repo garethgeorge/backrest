@@ -15,6 +15,7 @@ import {
   Checkbox,
   Select,
   Space,
+  Alert,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -42,7 +43,11 @@ import {
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
 import { isWindows } from "../state/buildcfg";
+<<<<<<< Updated upstream
 import { create, fromJson, toJson } from "@bufbuild/protobuf";
+=======
+import { create, fromJson, toJson, toJsonString } from "@bufbuild/protobuf";
+>>>>>>> Stashed changes
 import { TypedForm, TypedFormItem } from "../components/form/TypedForm";
 
 const repoDefaults = create(RepoSchema, {
@@ -73,15 +78,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const alertsApi = useAlertApi()!;
   const [config, setConfig] = useConfig();
   const [form] = Form.useForm();
-  useEffect(() => {
-    form.setFieldsValue(
-      template
-        ? toJson(RepoSchema, template, {
-            alwaysEmitImplicit: true,
-          })
-        : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true })
-    );
-  }, [template]);
+  const [repo, setRepo] = useState<Repo>(template || repoDefaults);
 
   if (!config) {
     return null;
@@ -206,28 +203,41 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         ]}
         maskClosable={false}
       >
-        <p>
-          See{" "}
-          <a
-            href="https://garethgeorge.github.io/backrest/introduction/getting-started"
-            target="_blank"
-          >
-            backrest getting started guide
-          </a>{" "}
-          for repository configuration instructions or check the{" "}
-          <a href="https://restic.readthedocs.io/" target="_blank">
-            restic documentation
-          </a>{" "}
-          for more details about repositories.
-        </p>
+        <Alert
+          message={
+            <>
+              See{" "}
+              <a
+                href="https://garethgeorge.github.io/backrest/introduction/getting-started"
+                target="_blank"
+              >
+                backrest getting started guide
+              </a>{" "}
+              for repository configuration instructions or check the{" "}
+              <a href="https://restic.readthedocs.io/" target="_blank">
+                restic documentation
+              </a>{" "}
+              for more details about repositories.
+            </>
+          }
+          type="info"
+          showIcon
+        />
         <br />
+<<<<<<< Updated upstream
         <TypedForm
           schema={RepoSchema}
           initialValue={template ? template : repoDefaults}
+=======
+        <TypedForm<Repo>
+          schema={RepoSchema}
+>>>>>>> Stashed changes
           autoComplete="off"
           labelCol={{ span: 4 }}
           wrapperCol={{ span: 18 }}
           disabled={confirmLoading}
+          formData={repo}
+          setFormData={setRepo}
         >
           {/* Repo.id */}
           <Tooltip
@@ -246,7 +256,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                   message: "Please input repo name",
                 },
                 {
-                  validator: async (_, value) => {
+                  validator: async (_: any, value: any) => {
                     if (template) return;
                     if (config?.repos?.find((r) => r.id === value)) {
                       throw new Error();
@@ -265,7 +275,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 disabled={!!template}
                 placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
               />
-            </Form.Item>
+            </TypedFormItem>
           </Tooltip>
 
           {/* Repo.uri */}
@@ -292,9 +302,9 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               </>
             }
           >
-            <Form.Item<Repo>
+            <TypedFormItem<Repo>
               hasFeedback
-              name="uri"
+              field="uri"
               label="Repository URI"
               validateTrigger={["onChange", "onBlur"]}
               rules={[
@@ -305,7 +315,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               ]}
             >
               <URIAutocomplete disabled={!!template} />
-            </Form.Item>
+            </TypedFormItem>
           </Tooltip>
 
           {/* Repo.password */}
@@ -334,13 +344,13 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             <Form.Item label="Password">
               <Row>
                 <Col span={16}>
-                  <Form.Item<Repo>
+                  <TypedFormItem<Repo>
                     hasFeedback
-                    name="password"
+                    field="password"
                     validateTrigger={["onChange", "onBlur"]}
                   >
                     <Input disabled={!!template} />
-                  </Form.Item>
+                  </TypedFormItem>
                 </Col>
                 <Col
                   span={7}
@@ -364,7 +374,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           </Tooltip>
 
           {/* Repo.env */}
-          <Tooltip
+          {/* <Tooltip
             title={
               "Environment variables that are passed to restic (e.g. to provide S3 or B2 credentials). References to parent-process env variables are supported as FOO=${MY_FOO_VAR}."
             }
@@ -426,10 +436,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 )}
               </Form.List>
             </Form.Item>
-          </Tooltip>
+          </Tooltip> */}
 
           {/* Repo.flags */}
-          <Form.Item label="Flags">
+          {/* <Form.Item label="Flags">
             <Form.List name="flags">
               {(fields, { add, remove }, { errors }) => (
                 <>
@@ -472,10 +482,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 </>
               )}
             </Form.List>
-          </Form.Item>
+          </Form.Item> */}
 
           {/* Repo.prunePolicy */}
-          <Form.Item
+          {/* <Form.Item
             label={
               <Tooltip
                 title={
@@ -513,10 +523,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               name={["prunePolicy", "schedule"]}
               defaults={ScheduleDefaultsInfrequent}
             />
-          </Form.Item>
+          </Form.Item> */}
 
           {/* Repo.checkPolicy */}
-          <Form.Item
+          {/* <Form.Item
             label={
               <Tooltip
                 title={
@@ -552,10 +562,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               name={["checkPolicy", "schedule"]}
               defaults={ScheduleDefaultsInfrequent}
             />
-          </Form.Item>
+          </Form.Item> */}
 
           {/* Repo.commandPrefix */}
-          {!isWindows && (
+          {/* {!isWindows && (
             <Form.Item
               label={
                 <Tooltip
@@ -652,9 +662,9 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 </Col>
               </Row>
             </Form.Item>
-          )}
+          )} */}
 
-          <Form.Item
+          <TypedFormItem<Repo>
             label={
               <Tooltip
                 title={
@@ -665,11 +675,11 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 Auto Unlock
               </Tooltip>
             }
-            name="autoUnlock"
+            field="autoUnlock"
             valuePropName="checked"
           >
             <Checkbox />
-          </Form.Item>
+          </TypedFormItem>
 
           <Form.Item
             label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>}
@@ -688,7 +698,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                     children: (
                       <Typography>
                         <pre>
-                          {JSON.stringify(form.getFieldsValue(), undefined, 2)}
+                          {toJsonString(RepoSchema, repo, { prettySpaces: 2 })}
                         </pre>
                       </Typography>
                     ),
@@ -697,7 +707,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               />
             )}
           </Form.Item>
-        </Form>
+        </TypedForm>
       </Modal>
     </>
   );
