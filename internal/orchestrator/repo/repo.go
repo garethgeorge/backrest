@@ -85,6 +85,10 @@ func (r *RepoOrchestrator) logger(ctx context.Context) *zap.Logger {
 	return logging.Logger(ctx, "[repo-manager] ").With(zap.String("repo", r.repoConfig.Id))
 }
 
+func (r *RepoOrchestrator) Exists(ctx context.Context) error {
+	return r.repo.Exists(ctx)
+}
+
 func (r *RepoOrchestrator) Init(ctx context.Context) error {
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()

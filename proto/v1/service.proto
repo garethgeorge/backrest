@@ -16,6 +16,8 @@ service Backrest {
 
   rpc SetConfig (Config) returns (Config) {}
 
+  rpc CheckRepoExists (Repo) returns (types.BoolValue) {} // returns an error if the repo does not exist
+
   rpc AddRepo (Repo) returns (Config) {}
 
   rpc GetOperationEvents (google.protobuf.Empty) returns (stream OperationEvent) {}

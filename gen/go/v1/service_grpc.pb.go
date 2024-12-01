@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Backrest_GetConfig_FullMethodName           = "/v1.Backrest/GetConfig"
 	Backrest_SetConfig_FullMethodName           = "/v1.Backrest/SetConfig"
+	Backrest_CheckRepoExists_FullMethodName     = "/v1.Backrest/CheckRepoExists"
 	Backrest_AddRepo_FullMethodName             = "/v1.Backrest/AddRepo"
 	Backrest_GetOperationEvents_FullMethodName  = "/v1.Backrest/GetOperationEvents"
 	Backrest_GetOperations_FullMethodName       = "/v1.Backrest/GetOperations"
@@ -47,6 +48,7 @@ const (
 type BackrestClient interface {
 	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error)
 	SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error)
+	CheckRepoExists(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*types.BoolValue, error)
 	AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error)
 	GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OperationEvent], error)
 	GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error)
@@ -98,6 +100,16 @@ func (c *backrestClient) SetConfig(ctx context.Context, in *Config, opts ...grpc
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Config)
 	err := c.cc.Invoke(ctx, Backrest_SetConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *backrestClient) CheckRepoExists(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*types.BoolValue, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(types.BoolValue)
+	err := c.cc.Invoke(ctx, Backrest_CheckRepoExists_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -288,6 +300,7 @@ func (c *backrestClient) GetSummaryDashboard(ctx context.Context, in *emptypb.Em
 type BackrestServer interface {
 	GetConfig(context.Context, *emptypb.Empty) (*Config, error)
 	SetConfig(context.Context, *Config) (*Config, error)
+	CheckRepoExists(context.Context, *Repo) (*types.BoolValue, error)
 	AddRepo(context.Context, *Repo) (*Config, error)
 	GetOperationEvents(*emptypb.Empty, grpc.ServerStreamingServer[OperationEvent]) error
 	GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error)
@@ -330,6 +343,9 @@ func (UnimplementedBackrestServer) GetConfig(context.Context, *emptypb.Empty) (*
 }
 func (UnimplementedBackrestServer) SetConfig(context.Context, *Config) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetConfig not implemented")
+}
+func (UnimplementedBackrestServer) CheckRepoExists(context.Context, *Repo) (*types.BoolValue, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckRepoExists not implemented")
 }
 func (UnimplementedBackrestServer) AddRepo(context.Context, *Repo) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRepo not implemented")
@@ -432,6 +448,24 @@ func _Backrest_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BackrestServer).SetConfig(ctx, req.(*Config))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Backrest_CheckRepoExists_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Repo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackrestServer).CheckRepoExists(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Backrest_CheckRepoExists_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackrestServer).CheckRepoExists(ctx, req.(*Repo))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -724,6 +758,10 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetConfig",
 			Handler:    _Backrest_SetConfig_Handler,
+		},
+		{
+			MethodName: "CheckRepoExists",
+			Handler:    _Backrest_CheckRepoExists_Handler,
 		},
 		{
 			MethodName: "AddRepo",
