@@ -33,9 +33,8 @@ import { backrestService } from "../api";
 import {
   HooksFormList,
   hooksListTooltipText,
-  HookFormData,
 } from "../components/HooksFormList";
-import { ConfirmButton } from "../components/SpinButton";
+import { ConfirmButton, SpinButton } from "../components/SpinButton";
 import { useConfig } from "../components/ConfigProvider";
 import Cron from "react-js-cron";
 import {
@@ -43,7 +42,7 @@ import {
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
 import { isWindows } from "../state/buildcfg";
-import { create, fromJson, toJson } from "@bufbuild/protobuf";
+import { create, fromJson, JsonValue, toJson } from "@bufbuild/protobuf";
 
 const repoDefaults = create(RepoSchema, {
   prunePolicy: {
@@ -72,15 +71,14 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
   const [config, setConfig] = useConfig();
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<JsonValue>();
   useEffect(() => {
-    form.setFieldsValue(
-      template
-        ? toJson(RepoSchema, template, {
-            alwaysEmitImplicit: true,
-          })
-        : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true })
-    );
+    const initVal = template
+      ? toJson(RepoSchema, template, {
+          alwaysEmitImplicit: true,
+        })
+      : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true });
+    form.setFieldsValue(initVal);
   }, [template]);
 
   if (!config) {
@@ -195,6 +193,38 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               Delete
             </ConfirmButton>
           ) : null,
+          <SpinButton
+            key="check"
+            onClickAsync={async () => {
+              let repoFormData = await validateForm(form);
+              console.log("checking repo", repoFormData);
+              const repo = fromJson(RepoSchema, repoFormData, {
+                ignoreUnknownFields: false,
+              });
+              try {
+                const exists = await backrestService.checkRepoExists(repo);
+                if (exists) {
+                  alertsApi.success(
+                    "Connected successfully to " +
+                      repo.uri +
+                      " and found an existing repo.",
+                    10
+                  );
+                } else {
+                  alertsApi.success(
+                    "Connected successfully to " +
+                      repo.uri +
+                      ". No existing repo found at this location, a new one will be initialized",
+                    10
+                  );
+                }
+              } catch (e: any) {
+                alertsApi.error(formatErrorAlert(e, "Check error: "), 10);
+              }
+            }}
+          >
+            Test Configuration
+          </SpinButton>,
           <Button
             key="submit"
             type="primary"

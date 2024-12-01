@@ -4,6 +4,10 @@ package types;
 
 option go_package = "github.com/garethgeorge/backrest/gen/go/types";
 
+message BoolValue {
+  bool value = 1;
+}
+
 message StringValue {
   string value = 1;
 }
