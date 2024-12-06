@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { Form } from "antd";
 import {
   clone,
@@ -8,6 +8,7 @@ import {
   MessageShape,
 } from "@bufbuild/protobuf";
 import { useWatch } from "antd/es/form/Form";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
 
 export type Paths<T> = T extends object
   ? {
@@ -25,27 +26,28 @@ export type DeepIndex<T, K extends string> = T extends object
 
 type Idx<T, K extends string> = K extends keyof T ? T[K] : never;
 
-const getValue = <T extends {}, K extends string>(
-  obj: T,
-  path: K
-): DeepIndex<T, K> => {
+const getValue = (obj: any, path: string): any => {
   let curr: any = obj;
   const parts = path.split(".");
   for (let i = 0; i < parts.length; i++) {
-    curr = curr[parts[i]];
+    if (Array.isArray(curr)) {
+      curr = curr[parseInt(parts[i])];
+    } else {
+      curr = curr[parts[i]];
+    }
   }
-  return curr as DeepIndex<T, K>;
+  return curr as any;
 };
 
-const setValue = <T extends {}, K extends Paths<T>>(
-  obj: T,
-  path: K,
-  value: DeepIndex<T, K>
-): void => {
+const setValue = (obj: any, path: string, value: any): void => {
   let curr: any = obj;
   const parts = path.split(".");
   for (let i = 0; i < parts.length - 1; i++) {
-    curr = curr[parts[i]];
+    if (Array.isArray(curr)) {
+      curr = curr[parseInt(parts[i])];
+    } else {
+      curr = curr[parts[i]];
+    }
   }
   curr[parts[parts.length - 1]] = value;
 };
@@ -53,42 +55,12 @@ const setValue = <T extends {}, K extends Paths<T>>(
 interface typedFormCtx {
   formData: Message;
   schema: DescMessage;
-<<<<<<< Updated upstream
-  setFormData: (value: any) => any;
-=======
   setFormData: (fn: (prev: any) => any) => void;
->>>>>>> Stashed changes
 }
 
 const TypedFormCtx = React.createContext<typedFormCtx | null>(null);
+const FieldPrefixCtx = React.createContext<string>("");
 
-<<<<<<< Updated upstream
-export const TypedForm = <Desc extends DescMessage>({
-  schema,
-  initialValue,
-  onChange,
-  children,
-  ...props
-}: {
-  schema: Desc;
-  initialValue: MessageShape<Desc>;
-  children?: React.ReactNode;
-  onChange?: (value: MessageShape<Desc>) => void;
-} & {
-  [key: string]: any;
-}) => {
-  const [form] = Form.useForm();
-  const [formData, setFormData] =
-    React.useState<MessageShape<Desc>>(initialValue);
-
-  return (
-    <TypedFormCtx.Provider value={{ formData, setFormData, schema }}>
-      <Form
-        autoComplete="off"
-        form={form}
-        {...props}
-      >
-=======
 export const TypedForm = <T extends Message>({
   schema,
   formData,
@@ -108,7 +80,6 @@ export const TypedForm = <T extends Message>({
   return (
     <TypedFormCtx.Provider value={{ formData, setFormData, schema }}>
       <Form autoComplete="off" form={form} {...props}>
->>>>>>> Stashed changes
         {children}
       </Form>
     </TypedFormCtx.Provider>
@@ -125,32 +96,70 @@ export const TypedFormItem = <T extends Message>({
 } & {
   [key: string]: any;
 }): React.ReactElement => {
+  const prefix = useContext(FieldPrefixCtx);
   const { formData, setFormData, schema } = useContext(TypedFormCtx)!;
-<<<<<<< Updated upstream
-  const value = useWatch({ name: field as string });
+  const form = useFormInstance();
+  const resolvedField = prefix + field;
+
+  const [lastSeen, setLastSeen] = useState<any>(null);
+  const formValue = useWatch(resolvedField);
+  const formDataStateValue = getValue(formData, resolvedField);
 
   useEffect(() => {
-=======
-  const value = useWatch(field as string);
-
-  useEffect(() => {
-    console.log("set", field, value);
->>>>>>> Stashed changes
-    setFormData((prev: any) => {
-      const next = clone(schema, prev) as any as T;
-      setValue(next, field, value);
-      return next;
-    });
-  }, [value]);
+    if (lastSeen !== formValue) {
+      setFormData((prev: any) => {
+        const next = clone(schema, prev) as any as T;
+        setValue(next, resolvedField, formValue);
+        return next;
+      });
+      setLastSeen(formValue);
+    } else if (lastSeen !== formDataStateValue) {
+      form.setFieldsValue({ [resolvedField]: formDataStateValue } as any);
+      setLastSeen(formDataStateValue);
+    }
+  }, [lastSeen, formValue, formDataStateValue]);
 
   return (
     <Form.Item
-      name={field as string}
+      name={resolvedField as string}
       initialValue={getValue(formData, field)}
       {...props}
     >
       {children}
     </Form.Item>
+  );
+};
+
+// This is a helper component that sets a prefix for all of its children.
+const WithFieldPrefix = ({
+  prefix,
+  children,
+}: {
+  prefix: string;
+  children?: React.ReactNode;
+}): React.ReactNode => {
+  const prev = useContext(FieldPrefixCtx);
+  return (
+    <FieldPrefixCtx.Provider value={prev + prefix}>
+      {children}
+    </FieldPrefixCtx.Provider>
+  );
+};
+
+export const TypedFormList = <T extends Message>({
+  field,
+  children,
+  ...props
+}: {
+  field: Paths<T>;
+  children?: React.ReactNode;
+} & {
+  [key: string]: any;
+}): React.ReactElement => {
+  return (
+    <Form.List name={field} {...props}>
+      <WithFieldPrefix prefix={field} children={children} />
+    </Form.List>
   );
 };
 
@@ -160,11 +169,8 @@ interface oneofCase<T extends {}, F extends Paths<T>> {
   view: React.ReactNode;
 }
 
-<<<<<<< Updated upstream
-export const TypedFormOneof = <T extends {}, F extends Paths<T>>({
-=======
+/*
 export const TypedFormOneof = <T extends Message, F extends Paths<T>>({
->>>>>>> Stashed changes
   field,
   items,
 }: {
@@ -172,23 +178,6 @@ export const TypedFormOneof = <T extends Message, F extends Paths<T>>({
   items: oneofCase<T, F>[];
 }): React.ReactNode => {
   const { formData, setFormData, schema } = useContext(TypedFormCtx)!;
-<<<<<<< Updated upstream
-  const v = getValue(formData as T, `${field}.value`);
-  const c = getValue(formData as T, `${field}.case`);
-  useEffect(() => {
-    for (const item of items) {
-      if (item.case === c) {
-        setFormData((prev) => {
-          const next = clone(schema, prev) as any as T;
-          setValue(next, `${field}.value` as Paths<T>, v);
-          return next;
-        }
-
-        const nv = item.create();
-        setValue(formData, field + ".value", nv);
-      }
-    }
-=======
   const c = useWatch(`${field}.case`);
   useEffect(() => {
     for (const item of items) {
@@ -204,7 +193,6 @@ export const TypedFormOneof = <T extends Message, F extends Paths<T>>({
       }
     }
     throw new Error("case " + c + " not found");
->>>>>>> Stashed changes
   }, [c]);
 
   for (const item of items) {
@@ -212,9 +200,7 @@ export const TypedFormOneof = <T extends Message, F extends Paths<T>>({
       return item.view;
     }
   }
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
   return null;
 };
+
+*/

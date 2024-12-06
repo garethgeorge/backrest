@@ -43,11 +43,13 @@ import {
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
 import { isWindows } from "../state/buildcfg";
-<<<<<<< Updated upstream
-import { create, fromJson, toJson } from "@bufbuild/protobuf";
-=======
-import { create, fromJson, toJson, toJsonString } from "@bufbuild/protobuf";
->>>>>>> Stashed changes
+import {
+  clone,
+  create,
+  fromJson,
+  toJson,
+  toJsonString,
+} from "@bufbuild/protobuf";
 import { TypedForm, TypedFormItem } from "../components/form/TypedForm";
 
 const repoDefaults = create(RepoSchema, {
@@ -224,14 +226,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           showIcon
         />
         <br />
-<<<<<<< Updated upstream
-        <TypedForm
-          schema={RepoSchema}
-          initialValue={template ? template : repoDefaults}
-=======
         <TypedForm<Repo>
           schema={RepoSchema}
->>>>>>> Stashed changes
           autoComplete="off"
           labelCol={{ span: 4 }}
           wrapperCol={{ span: 18 }}
@@ -361,8 +357,11 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                     type="text"
                     onClick={() => {
                       if (template) return;
-                      form.setFieldsValue({
-                        password: cryptoRandomPassword(),
+
+                      setRepo((prev) => {
+                        const copy = clone(RepoSchema, prev);
+                        copy.password = cryptoRandomPassword();
+                        return copy;
                       });
                     }}
                   >
