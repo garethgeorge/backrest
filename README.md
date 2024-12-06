@@ -227,8 +227,8 @@ Download a the Windows installer for your architecture from the [releases page](
 
 The installer will place backrest and a GUI tray application to monitor backrest in `%localappdata%\Programs\Backrest\`. The GUI tray application will start on login by default. 
 
-> [!NOTE] You can optionally override the default port of the installation by using PowerShell to run the installer with the `BACKREST_PORT` environment variable set to the desired port. E.g. to run backrest on port 8080, run the following command in PowerShell: `BACKREST_PORT=:8080 .\Backrest-setup-x86_64.exe`
-
+> [!NOTE] You can optionally override the default port Backrest uses by adding a user environment variable before running the installer. Open System Properties. There are multiple ways of getting there depending on Windows version. On Windows 10+ go to Settings - About - Advanced system settings (on the right side). At the bottom of the dialog window click Environment Variables. In the top section called "User variables for...", click New. Enter BACKREST_PORT as the variable name. Enter 127.0.0.1:port as the variable value. E.g. to run backrest on port 8080, enter 127.0.0.1:8080.
+If you make this change after Backrest is installed, just re-run the installer to update shortcuts with the new port.
 
 # Configuration
 
