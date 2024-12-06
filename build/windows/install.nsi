@@ -12,7 +12,6 @@
 !define REG_UNINSTALL_PATH "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
 # Extract version from the changelog.
 !searchparse /file "${BUILD_DIR}\CHANGELOG.md" `## [` VERSION `]`
-!define INSTALLER_NAME "${OUT_DIR}\Backrest-${VERSION}-setup.exe"
 # User variables.
 Var UIPort
 Var WelcomeTitle
@@ -36,11 +35,16 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 
 ######################################################################
 # Installer settings
+Unicode True
 RequestExecutionLevel user
 SetCompressor LZMA
 Name "${APP_NAME}"
 Caption "$(^Name) ${VERSION} Setup"
-OutFile "${INSTALLER_NAME}"
+!ifdef ARCH
+OutFile "${OUT_DIR}\Backrest-${VERSION}-${ARCH}-setup.exe"
+!else
+OutFile "${OUT_DIR}\Backrest-${VERSION}-setup.exe"
+!endif
 XPStyle on
 # Default installation directory.
 InstallDir "$LOCALAPPDATA\Programs\Backrest"
