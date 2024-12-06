@@ -270,10 +270,15 @@ func installLoggers() {
 	c := zap.NewDevelopmentEncoderConfig()
 	c.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	c.EncodeTime = zapcore.ISO8601TimeEncoder
+
+	debugLevel := zapcore.InfoLevel
+	if version == "unknown" { // dev build
+		debugLevel = zapcore.DebugLevel
+	}
 	pretty := zapcore.NewCore(
 		zapcore.NewConsoleEncoder(c),
 		zapcore.AddSync(colorable.NewColorableStdout()),
-		zapcore.InfoLevel,
+		debugLevel,
 	)
 
 	// JSON logging to log directory

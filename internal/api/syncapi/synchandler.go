@@ -80,7 +80,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("no packets received"))
 	}
 
-	zap.S().Infof("Client connected with instance ID %s", clientInstanceID)
+	zap.S().Infof("syncserver client connected with instance ID %s", clientInstanceID)
 
 	// After receiving handshake packet, start processing commands
 	connectedRepos := make(map[string]struct{})
@@ -126,6 +126,8 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			}); err != nil {
 				return fmt.Errorf("action ConnectRepo: send connection state reply: %w", err)
 			}
+
+			zap.S().Debugf("syncserver client %q connected to repo %q", clientInstanceID, action.ConnectRepo.RepoId)
 		case *v1.SyncStreamItem_DiffOperations:
 			diffSel := action.DiffOperations.GetHaveOperationsSelector()
 

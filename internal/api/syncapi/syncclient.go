@@ -30,6 +30,7 @@ type SyncClient struct {
 	client          v1connect.BackrestSyncServiceClient
 	reconnectDelay  time.Duration
 	connectedRepos  map[string]*v1.SyncConnectionInfo
+	l               *zap.Logger
 }
 
 func newInsecureClient() *http.Client {
@@ -47,19 +48,19 @@ func newInsecureClient() *http.Client {
 
 func NewSyncClient(localInstanceID, remoteInstanceURL string, oplog *oplog.OpLog) *SyncClient {
 	urlToUse := backrestRemoteUrlToHTTPUrl(remoteInstanceURL)
-	zap.L().Info("Connecting to sync server", zap.String("url", urlToUse))
-
 	client := v1connect.NewBackrestSyncServiceClient(
 		newInsecureClient(),
 		urlToUse,
 	)
 
 	return &SyncClient{
-		reconnectDelay: 60 * time.Second,
-		client:         client,
-		oplog:          oplog,
+		localInstanceID: localInstanceID,
+		reconnectDelay:  60 * time.Second,
+		client:          client,
+		oplog:           oplog,
 
 		connectedRepos: make(map[string]*v1.SyncConnectionInfo),
+		l:              zap.L().Named("syncclient").With(zap.String("peer", remoteInstanceURL)),
 	}
 }
 
@@ -77,23 +78,30 @@ func (c *SyncClient) setStatusForRepos(repos []*v1.Repo, state v1.SyncStreamItem
 func (c *SyncClient) RunSyncForRepos(ctx context.Context, repos []*v1.Repo) {
 	for {
 		if ctx.Err() != nil {
-			break // context is done
+			return
 		}
 
 		lastConnect := time.Now()
 		c.setStatusForRepos(repos, v1.SyncStreamItem_CONNECTION_STATE_PENDING, "connecting")
 		if err := c.runSyncForReposInternal(ctx, repos); err != nil {
+			c.l.Warn("sync error", zap.Error(err))
 			c.setStatusForRepos(repos, v1.SyncStreamItem_CONNECTION_STATE_DISCONNECTED, err.Error())
 		} else {
 			c.setStatusForRepos(repos, v1.SyncStreamItem_CONNECTION_STATE_DISCONNECTED, "connection closed")
 		}
 
-		time.Sleep(c.reconnectDelay - time.Since(lastConnect))
+		delay := c.reconnectDelay - time.Since(lastConnect)
+		c.l.Info("lost connection, retrying after delay", zap.Duration("delay", delay))
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 
 func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Repo) error {
-	zap.L().Info("Connecting to server for sync")
+	c.l.Info("connecting to sync server")
 	stream := c.client.Sync(ctx)
 
 	ctx, cancelWithError := context.WithCancelCause(ctx)
@@ -105,7 +113,7 @@ func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Re
 		for {
 			item, err := stream.Receive()
 			if err != nil {
-				zap.L().Error("Error receiving from sync stream", zap.Error(err))
+				c.l.Debug("receive error from sync stream, this is typically due to connection loss", zap.Error(err))
 				close(receive)
 				return
 			}
@@ -114,7 +122,6 @@ func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Re
 	}()
 
 	// Broadcast initial packet containing the protocol version and instance ID.
-	zap.S().Infof("Broadcast handshake as %v", c.localInstanceID)
 	if err := stream.Send(&v1.SyncStreamItem{
 		Action: &v1.SyncStreamItem_Handshake{
 			Handshake: &v1.SyncStreamItem_SyncActionHandshake{
