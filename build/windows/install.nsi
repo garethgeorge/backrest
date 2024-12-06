@@ -41,9 +41,9 @@ SetCompressor LZMA
 Name "${APP_NAME}"
 Caption "$(^Name) ${VERSION} Setup"
 !ifdef ARCH
-OutFile "${OUT_DIR}\Backrest-${VERSION}-${ARCH}-setup.exe"
+OutFile "${OUT_DIR}\Backrest-${ARCH}-setup.exe"
 !else
-OutFile "${OUT_DIR}\Backrest-${VERSION}-setup.exe"
+OutFile "${OUT_DIR}\Backrest-setup.exe"
 !endif
 XPStyle on
 # Default installation directory.
