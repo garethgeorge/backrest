@@ -183,6 +183,16 @@ service BackrestSyncService {
   rpc Sync(stream SyncStreamItem) returns (stream SyncStreamItem) {}
 }
 
+enum SyncConnectionState {
+  CONNECTION_STATE_UNKNOWN = 0;
+  CONNECTION_STATE_PENDING = 1;
+  CONNECTION_STATE_CONNECTED = 2;
+  CONNECTION_STATE_DISCONNECTED = 3;
+  CONNECTION_STATE_RETRY_WAIT = 4;
+  CONNECTION_STATE_ERROR_AUTH = 10;
+  CONNECTION_STATE_ERROR_PROTOCOL = 11;
+}
+
 message SyncStreamItem {
   oneof action {
     SyncActionHandshake handshake = 10;
@@ -203,17 +213,17 @@ message SyncStreamItem {
     string repo_id = 1;
   }
 
-  enum ConnectionState {
+  enum RepoConnectionState {
     CONNECTION_STATE_UNKNOWN = 0;
-    CONNECTION_STATE_CONNECTED = 1;
-    CONNECTION_STATE_PENDING = 2; // Never sent over the wire, tracked by client to indicate that the request is sent but not ack'd.
-    CONNECTION_STATE_DISCONNECTED = 3; // Disconnected for possibly unknown reasons. Client should reconnect eventually.
-    CONNECTION_STATE_UNAUTHORIZED = 4;
+    CONNECTION_STATE_PENDING = 1; // queried, response not yet received.
+    CONNECTION_STATE_CONNECTED = 2;
+    CONNECTION_STATE_UNAUTHORIZED = 3;
+    CONNECTION_STATE_NOT_FOUND = 4;
   }
 
   message SyncActionUpdateConnectionState {
     string repo_id = 1;
-    ConnectionState state = 2;
+    RepoConnectionState state = 2;
     string message = 3;
   }
 
@@ -234,12 +244,4 @@ message SyncStreamItem {
   message SyncActionThrottle {
     int64 delay_ms = 1;
   }
-}
-
-message SyncConnectionInfo  {
-  string instance_id = 1;
-  string repo_id = 2;
-  SyncStreamItem.ConnectionState connection_state = 3;
-  string message = 4;
-  int64 last_activity_ms = 5; // time in milliseconds since last activity.
 }

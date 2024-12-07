@@ -18,7 +18,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/api"
-	syncengine "github.com/garethgeorge/backrest/internal/api/syncapi"
+	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/auth"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/env"
@@ -125,12 +125,12 @@ func main() {
 	}()
 
 	// Create and serve the HTTP gateway
-	syncHandler := syncengine.NewBackrestSyncHandler(configStore, log)
+	syncHandler := syncapi.NewBackrestSyncHandler(configStore, log)
 
 	var syncWg sync.WaitGroup
 	var syncCtxCancel context.CancelFunc
 
-	syncConfigHook := &configHookForSyncEngine{
+	syncConfigHook := &configHookForsyncapi{
 		store: configStore,
 		onChange: func(cfg *v1.Config) {
 			if syncCtxCancel != nil {
@@ -143,7 +143,7 @@ func main() {
 			reposByURI := make(map[string][]*v1.Repo)
 
 			for _, repo := range cfg.Repos {
-				if !syncengine.IsBackrestRemoteRepoURI(repo.Uri) {
+				if !syncapi.IsBackrestRemoteRepoURI(repo.Uri) {
 					continue
 				}
 				zap.L()
@@ -169,7 +169,7 @@ func main() {
 				go func(uri string, repos []*v1.Repo) {
 					defer syncWg.Done()
 					// Create a new sync engine for this URI
-					syncClient := syncengine.NewSyncClient(cfg.Instance, uri, log)
+					syncClient := syncapi.NewSyncClient(cfg.Instance, uri, log)
 					syncClient.RunSyncForRepos(ctx, repos)
 				}(uri, repos)
 			}
@@ -353,18 +353,18 @@ func migrateBboltOplog(logstore oplog.OpStore) {
 	zap.S().Infof("migrated %d operations from old bbolt oplog to sqlite", count)
 }
 
-type configHookForSyncEngine struct {
+type configHookForsyncapi struct {
 	store    config.ConfigStore
 	onChange func(*v1.Config)
 }
 
-var _ config.ConfigStore = &configHookForSyncEngine{}
+var _ config.ConfigStore = &configHookForsyncapi{}
 
-func (c *configHookForSyncEngine) Get() (*v1.Config, error) {
+func (c *configHookForsyncapi) Get() (*v1.Config, error) {
 	return c.store.Get()
 }
 
-func (c *configHookForSyncEngine) Update(cfg *v1.Config) error {
+func (c *configHookForsyncapi) Update(cfg *v1.Config) error {
 	err := c.store.Update(cfg)
 	if err == nil {
 		c.onChange(cfg)

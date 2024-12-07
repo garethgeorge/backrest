@@ -18,7 +18,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
-	syncengine "github.com/garethgeorge/backrest/internal/api/syncapi"
+	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/logstore"
@@ -156,7 +156,7 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		return nil, fmt.Errorf("validation error: %w", err)
 	}
 
-	if !syncengine.IsBackrestRemoteRepoURI(req.Msg.Uri) {
+	if !syncapi.IsBackrestRemoteRepoURI(req.Msg.Uri) {
 		bin, err := resticinstaller.FindOrInstallResticBinary()
 		if err != nil {
 			return nil, fmt.Errorf("failed to find or install restic binary: %w", err)

@@ -29,24 +29,31 @@ message Config {
   repeated Repo repos = 3 [json_name="repos"];
   repeated Plan plans = 4 [json_name="plans"];
   Auth auth = 5 [json_name="auth"];
-  Peer peers = 8 [json_name="peers"];
+  Multihost multihost = 7 [json_name="multihost"];
 }
 
-message Peer {
-  string instance_id = 1 [json_name="instanceId"]; // instance ID of the peer.
-  string public_key_pem = 2 [json_name="publicKeyPem"]; // PEM encoded public key.
-  repeated Permission global_permissions = 4 [json_name="globalPermissions"]; // global permissions granted to the peer.
-  repeated ScopedPermission permissions = 3 [json_name="permissions"]; // permissions granted to the peer.
+message Multihost {
+  repeated Peer known_hosts = 1 [json_name="known_hosts"];
+  repeated Peer authorized_clients = 2 [json_name="authorized_clients"];
 
-  enum Permission {
-    PERMISSION_UNKNOWN = 0;
-    PERMISSION_CONNECT = 1;
-  }
+  message Peer {
+    string instance_id = 1 [json_name="instanceId"]; // instance ID of the peer.
+    string peer_uuid = 5 [json_name="peerUUID"]; // UUID of the peer, only valid locally and not sent over the wire. Useful as a key for values that loose validity e.g. if the peer is removed and re-added.
+    PublicKey public_key = 3 [json_name="publicKey"]; // public key of the peer. If changed, the peer must re-verify the public key.
+    bool public_key_verified = 4 [json_name="publicKeyVerified"]; // whether the public key is verified. This must be set for a host to authenticate a client. Clients implicitly validate the first key they see on initial connection.
 
-  message ScopedPermission {
-    string scope = 1 [json_name="scope"]; // scope of the permission e.g. repo:<repo ID>
-    Permission perm = 2 [json_name="perm"]; // permission granted.
+
+    // Known host only fields
+    string instance_url = 2 [json_name="instanceUrl"]; // instance URL, required for a known host. Otherwise meaningless.
   }
+}
+
+message PublicKey {
+  string ed25519 = 1 [json_name="ed25519pub"]; // base64 encoded public key
+}
+
+message PrivateKey {
+  string ed25519 = 2 [json_name="ed25519priv"]; // base64 encoded private key
 }
 
 message Repo {
@@ -60,6 +67,7 @@ message Repo {
   repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on events for this repo.
   bool auto_unlock = 8 [json_name="autoUnlock"]; // automatically unlock the repo when needed.
   CommandPrefix command_prefix = 10 [json_name="commandPrefix"]; // modifiers for the restic commands
+  repeated string allowed_peer_instance_ids = 100 [json_name="allowedPeerInstanceIDs"]; // list of peer instance IDs allowed to access this repo.
 }
 
 message Plan {

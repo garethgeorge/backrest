@@ -1,4 +1,4 @@
-package syncengine
+package syncapi
 
 import (
 	"crypto/ecdsa"
