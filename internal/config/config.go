@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -11,6 +12,53 @@ import (
 )
 
 var ErrConfigNotFound = fmt.Errorf("config not found")
+
+type ConfigManager struct {
+	Store ConfigStore
+
+	callbacksMu sync.Mutex
+	callbacks   []*func(cfg *v1.Config)
+}
+
+func (m *ConfigManager) Get() (*v1.Config, error) {
+	return m.Store.Get()
+}
+
+func (m *ConfigManager) Update(config *v1.Config) error {
+	err := m.Store.Update(config)
+	if err != nil {
+		return err
+	}
+
+	m.callbacksMu.Lock()
+	callbacks := slices.Clone(m.callbacks)
+	m.callbacksMu.Unlock()
+
+	for _, cb := range callbacks {
+		(*cb)(config)
+	}
+
+	return nil
+}
+
+func (m *ConfigManager) Subscribe(cb func(c *v1.Config)) {
+	m.callbacksMu.Lock()
+	m.callbacks = append(m.callbacks, &cb)
+	m.callbacksMu.Unlock()
+}
+
+func (m *ConfigManager) Unsubscribe(cb func(c *v1.Config)) bool {
+	m.callbacksMu.Lock()
+	origLen := len(m.callbacks)
+	m.callbacks = slices.DeleteFunc(m.callbacks, func(v *func(c *v1.Config)) bool {
+		if v == &cb {
+			return true
+		}
+		return false
+	})
+	defer m.callbacksMu.Unlock()
+	return len(m.callbacks) != origLen
+}
 
 type ConfigStore interface {
 	Get() (*v1.Config, error)

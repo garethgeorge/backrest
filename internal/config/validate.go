@@ -17,16 +17,16 @@ import (
 func ValidateConfig(c *v1.Config) error {
 	var err error
 
-	if e := validateAuth(c.Auth); e != nil {
-		err = multierror.Append(err, fmt.Errorf("auth: %w", e))
-	}
-
 	if e := validationutil.ValidateID(c.Instance, validationutil.IDMaxLen); e != nil {
 		if errors.Is(e, validationutil.ErrEmpty) {
 			zap.L().Warn("ACTION REQUIRED: instance ID is empty, will be required in a future update. Please open the backrest UI to set a unique instance ID. Until fixed this warning (and related errors) will print periodically.")
 		} else {
 			err = multierror.Append(err, fmt.Errorf("instance ID %q invalid: %w", c.Instance, e))
 		}
+	}
+
+	if e := validateAuth(c.Auth); e != nil {
+		err = multierror.Append(err, fmt.Errorf("auth: %w", e))
 	}
 
 	repos := make(map[string]*v1.Repo)
@@ -65,6 +65,10 @@ func ValidateConfig(c *v1.Config) error {
 			}
 			return 1
 		})
+	}
+
+	if e := validateMultihost(c); e != nil {
+		err = multierror.Append(err, fmt.Errorf("multihost: %w", e))
 	}
 
 	return err
@@ -158,6 +162,45 @@ func validateAuth(auth *v1.Auth) error {
 		if user.GetPasswordBcrypt() == "" {
 			return fmt.Errorf("user %q: password is required", user.Name)
 		}
+	}
+
+	return nil
+}
+
+func validateMultihost(config *v1.Config) (err error) {
+	multihost := config.GetMultihost()
+	if multihost == nil {
+		return
+	}
+
+	for _, peer := range multihost.GetAuthorizedClients() {
+		if e := validatePeer(peer, false); e != nil {
+			err = multierror.Append(err, fmt.Errorf("authorized client %q: %w", peer.GetInstanceId(), e))
+		}
+	}
+
+	for _, peer := range multihost.GetKnownHosts() {
+		if e := validatePeer(peer, true); e != nil {
+			err = multierror.Append(err, fmt.Errorf("known host %q: %w", peer.GetInstanceId(), e))
+		}
+	}
+
+	return
+}
+
+func validatePeer(peer *v1.Multihost_Peer, isKnownHost bool) error {
+	if e := validationutil.ValidateID(peer.InstanceId, validationutil.IDMaxLen); e != nil {
+		return fmt.Errorf("id %q invalid: %w", peer.InstanceId, e)
+	}
+
+	if isKnownHost {
+		if peer.InstanceUrl == "" {
+			return errors.New("instance URL is required for known hosts")
+		}
+	}
+
+	if peer.PublicKeyVerified && peer.GetPublicKey() == nil {
+		return errors.New("public key cannot be marked as verified if it is unset")
 	}
 
 	return nil

@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1/config.proto.
  */
 export const file_v1_config: GenFile = /*@__PURE__*/
-  fileDesc("Cg92MS9jb25maWcucHJvdG8SAnYxImYKCUh1YkNvbmZpZxItCglpbnN0YW5jZXMYASADKAsyGi52MS5IdWJDb25maWcuSW5zdGFuY2VJbmZvGioKDEluc3RhbmNlSW5mbxIKCgJpZBgBIAEoCRIOCgZzZWNyZXQYAiABKAkinQEKBkNvbmZpZxINCgVtb2RubxgBIAEoBRIPCgd2ZXJzaW9uGAYgASgFEhAKCGluc3RhbmNlGAIgASgJEhcKBXJlcG9zGAMgAygLMggudjEuUmVwbxIXCgVwbGFucxgEIAMoCzIILnYxLlBsYW4SFgoEYXV0aBgFIAEoCzIILnYxLkF1dGgSFwoFcGVlcnMYCCABKAsyCC52MS5QZWVyIucBCgRQZWVyEhMKC2luc3RhbmNlX2lkGAEgASgJEhYKDnB1YmxpY19rZXlfcGVtGAIgASgJEi4KC3Blcm1pc3Npb25zGAMgAygLMhkudjEuUGVlci5TY29wZWRQZXJtaXNzaW9uGkQKEFNjb3BlZFBlcm1pc3Npb24SDQoFc2NvcGUYASABKAkSIQoEcGVybRgCIAEoDjITLnYxLlBlZXIuUGVybWlzc2lvbiI8CgpQZXJtaXNzaW9uEhYKElBFUk1JU1NJT05fVU5LTk9XThAAEhYKElBFUk1JU1NJT05fQ09OTkVDVBABIvQBCgRSZXBvEgoKAmlkGAEgASgJEgsKA3VyaRgCIAEoCRIQCghwYXNzd29yZBgDIAEoCRILCgNlbnYYBCADKAkSDQoFZmxhZ3MYBSADKAkSJQoMcHJ1bmVfcG9saWN5GAYgASgLMg8udjEuUHJ1bmVQb2xpY3kSJQoMY2hlY2tfcG9saWN5GAkgASgLMg8udjEuQ2hlY2tQb2xpY3kSFwoFaG9va3MYByADKAsyCC52MS5Ib29rEhMKC2F1dG9fdW5sb2NrGAggASgIEikKDmNvbW1hbmRfcHJlZml4GAogASgLMhEudjEuQ29tbWFuZFByZWZpeCKGAgoEUGxhbhIKCgJpZBgBIAEoCRIMCgRyZXBvGAIgASgJEg0KBXBhdGhzGAQgAygJEhAKCGV4Y2x1ZGVzGAUgAygJEhEKCWlleGNsdWRlcxgJIAMoCRIeCghzY2hlZHVsZRgMIAEoCzIMLnYxLlNjaGVkdWxlEiYKCXJldGVudGlvbhgHIAEoCzITLnYxLlJldGVudGlvblBvbGljeRIXCgVob29rcxgIIAMoCzIILnYxLkhvb2sSIgoMYmFja3VwX2ZsYWdzGAogAygJUgxiYWNrdXBfZmxhZ3MSGQoRc2tpcF9pZl91bmNoYW5nZWQYDSABKAhKBAgDEARKBAgGEAdKBAgLEAwiigIKDUNvbW1hbmRQcmVmaXgSLgoHaW9fbmljZRgBIAEoDjIdLnYxLkNvbW1hbmRQcmVmaXguSU9OaWNlTGV2ZWwSMAoIY3B1X25pY2UYAiABKA4yHi52MS5Db21tYW5kUHJlZml4LkNQVU5pY2VMZXZlbCJbCgtJT05pY2VMZXZlbBIOCgpJT19ERUZBVUxUEAASFgoSSU9fQkVTVF9FRkZPUlRfTE9XEAESFwoTSU9fQkVTVF9FRkZPUlRfSElHSBACEgsKB0lPX0lETEUQAyI6CgxDUFVOaWNlTGV2ZWwSDwoLQ1BVX0RFRkFVTFQQABIMCghDUFVfSElHSBABEgsKB0NQVV9MT1cQAiKCAgoPUmV0ZW50aW9uUG9saWN5EhwKEnBvbGljeV9rZWVwX2xhc3RfbhgKIAEoBUgAEkYKFHBvbGljeV90aW1lX2J1Y2tldGVkGAsgASgLMiYudjEuUmV0ZW50aW9uUG9saWN5LlRpbWVCdWNrZXRlZENvdW50c0gAEhkKD3BvbGljeV9rZWVwX2FsbBgMIAEoCEgAGmQKElRpbWVCdWNrZXRlZENvdW50cxIOCgZob3VybHkYASABKAUSDQoFZGFpbHkYAiABKAUSDgoGd2Vla2x5GAMgASgFEg8KB21vbnRobHkYBCABKAUSDgoGeWVhcmx5GAUgASgFQggKBnBvbGljeSJjCgtQcnVuZVBvbGljeRIeCghzY2hlZHVsZRgCIAEoCzIMLnYxLlNjaGVkdWxlEhgKEG1heF91bnVzZWRfYnl0ZXMYAyABKAMSGgoSbWF4X3VudXNlZF9wZXJjZW50GAQgASgBInMKC0NoZWNrUG9saWN5Eh4KCHNjaGVkdWxlGAEgASgLMgwudjEuU2NoZWR1bGUSGAoOc3RydWN0dXJlX29ubHkYZCABKAhIABIiChhyZWFkX2RhdGFfc3Vic2V0X3BlcmNlbnQYZSABKAFIAEIGCgRtb2RlIusBCghTY2hlZHVsZRISCghkaXNhYmxlZBgBIAEoCEgAEg4KBGNyb24YAiABKAlIABIaChBtYXhGcmVxdWVuY3lEYXlzGAMgASgFSAASGwoRbWF4RnJlcXVlbmN5SG91cnMYBCABKAVIABIhCgVjbG9jaxgFIAEoDjISLnYxLlNjaGVkdWxlLkNsb2NrIlMKBUNsb2NrEhEKDUNMT0NLX0RFRkFVTFQQABIPCgtDTE9DS19MT0NBTBABEg0KCUNMT0NLX1VUQxACEhcKE0NMT0NLX0xBU1RfUlVOX1RJTUUQA0IKCghzY2hlZHVsZSKlCwoESG9vaxImCgpjb25kaXRpb25zGAEgAygOMhIudjEuSG9vay5Db25kaXRpb24SIgoIb25fZXJyb3IYAiABKA4yEC52MS5Ib29rLk9uRXJyb3ISKgoOYWN0aW9uX2NvbW1hbmQYZCABKAsyEC52MS5Ib29rLkNvbW1hbmRIABIqCg5hY3Rpb25fd2ViaG9vaxhlIAEoCzIQLnYxLkhvb2suV2ViaG9va0gAEioKDmFjdGlvbl9kaXNjb3JkGGYgASgLMhAudjEuSG9vay5EaXNjb3JkSAASKAoNYWN0aW9uX2dvdGlmeRhnIAEoCzIPLnYxLkhvb2suR290aWZ5SAASJgoMYWN0aW9uX3NsYWNrGGggASgLMg4udjEuSG9vay5TbGFja0gAEiwKD2FjdGlvbl9zaG91dHJychhpIAEoCzIRLnYxLkhvb2suU2hvdXRycnJIABI0ChNhY3Rpb25faGVhbHRoY2hlY2tzGGogASgLMhUudjEuSG9vay5IZWFsdGhjaGVja3NIABoaCgdDb21tYW5kEg8KB2NvbW1hbmQYASABKAkagwEKB1dlYmhvb2sSEwoLd2ViaG9va191cmwYASABKAkSJwoGbWV0aG9kGAIgASgOMhcudjEuSG9vay5XZWJob29rLk1ldGhvZBIQCgh0ZW1wbGF0ZRhkIAEoCSIoCgZNZXRob2QSCwoHVU5LTk9XThAAEgcKA0dFVBABEggKBFBPU1QQAhowCgdEaXNjb3JkEhMKC3dlYmhvb2tfdXJsGAEgASgJEhAKCHRlbXBsYXRlGAIgASgJGlMKBkdvdGlmeRIQCghiYXNlX3VybBgBIAEoCRINCgV0b2tlbhgDIAEoCRIQCgh0ZW1wbGF0ZRhkIAEoCRIWCg50aXRsZV90ZW1wbGF0ZRhlIAEoCRouCgVTbGFjaxITCgt3ZWJob29rX3VybBgBIAEoCRIQCgh0ZW1wbGF0ZRgCIAEoCRoyCghTaG91dHJychIUCgxzaG91dHJycl91cmwYASABKAkSEAoIdGVtcGxhdGUYAiABKAkaNQoMSGVhbHRoY2hlY2tzEhMKC3dlYmhvb2tfdXJsGAEgASgJEhAKCHRlbXBsYXRlGAIgASgJIpwDCglDb25kaXRpb24SFQoRQ09ORElUSU9OX1VOS05PV04QABIXChNDT05ESVRJT05fQU5ZX0VSUk9SEAESHAoYQ09ORElUSU9OX1NOQVBTSE9UX1NUQVJUEAISGgoWQ09ORElUSU9OX1NOQVBTSE9UX0VORBADEhwKGENPTkRJVElPTl9TTkFQU0hPVF9FUlJPUhAEEh4KGkNPTkRJVElPTl9TTkFQU0hPVF9XQVJOSU5HEAUSHgoaQ09ORElUSU9OX1NOQVBTSE9UX1NVQ0NFU1MQBhIeChpDT05ESVRJT05fU05BUFNIT1RfU0tJUFBFRBAHEhkKFUNPTkRJVElPTl9QUlVORV9TVEFSVBBkEhkKFUNPTkRJVElPTl9QUlVORV9FUlJPUhBlEhsKF0NPTkRJVElPTl9QUlVORV9TVUNDRVNTEGYSGgoVQ09ORElUSU9OX0NIRUNLX1NUQVJUEMgBEhoKFUNPTkRJVElPTl9DSEVDS19FUlJPUhDJARIcChdDT05ESVRJT05fQ0hFQ0tfU1VDQ0VTUxDKASKpAQoHT25FcnJvchITCg9PTl9FUlJPUl9JR05PUkUQABITCg9PTl9FUlJPUl9DQU5DRUwQARISCg5PTl9FUlJPUl9GQVRBTBACEhoKFk9OX0VSUk9SX1JFVFJZXzFNSU5VVEUQZBIcChhPTl9FUlJPUl9SRVRSWV8xME1JTlVURVMQZRImCiJPTl9FUlJPUl9SRVRSWV9FWFBPTkVOVElBTF9CQUNLT0ZGEGdCCAoGYWN0aW9uIjEKBEF1dGgSEAoIZGlzYWJsZWQYASABKAgSFwoFdXNlcnMYAiADKAsyCC52MS5Vc2VyIjsKBFVzZXISDAoEbmFtZRgBIAEoCRIZCg9wYXNzd29yZF9iY3J5cHQYAiABKAlIAEIKCghwYXNzd29yZEIsWipnaXRodWIuY29tL2dhcmV0aGdlb3JnZS9iYWNrcmVzdC9nZW4vZ28vdjFiBnByb3RvMw", [file_google_protobuf_empty]);
+  fileDesc("Cg92MS9jb25maWcucHJvdG8SAnYxImYKCUh1YkNvbmZpZxItCglpbnN0YW5jZXMYASADKAsyGi52MS5IdWJDb25maWcuSW5zdGFuY2VJbmZvGioKDEluc3RhbmNlSW5mbxIKCgJpZBgBIAEoCRIOCgZzZWNyZXQYAiABKAkipgEKBkNvbmZpZxINCgVtb2RubxgBIAEoBRIPCgd2ZXJzaW9uGAYgASgFEhAKCGluc3RhbmNlGAIgASgJEhcKBXJlcG9zGAMgAygLMggudjEuUmVwbxIXCgVwbGFucxgEIAMoCzIILnYxLlBsYW4SFgoEYXV0aBgFIAEoCzIILnYxLkF1dGgSIAoJbXVsdGlob3N0GAcgASgLMg0udjEuTXVsdGlob3N0IvgBCglNdWx0aWhvc3QSNAoLa25vd25faG9zdHMYASADKAsyEi52MS5NdWx0aWhvc3QuUGVlclILa25vd25faG9zdHMSQgoSYXV0aG9yaXplZF9jbGllbnRzGAIgAygLMhIudjEuTXVsdGlob3N0LlBlZXJSEmF1dGhvcml6ZWRfY2xpZW50cxpxCgRQZWVyEhMKC2luc3RhbmNlX2lkGAEgASgJEiEKCnB1YmxpY19rZXkYAyABKAsyDS52MS5QdWJsaWNLZXkSFAoMaW5zdGFuY2VfdXJsGAIgASgJEhsKE3B1YmxpY19rZXlfdmVyaWZpZWQYBCABKAgiKAoJUHVibGljS2V5EhsKB2VkMjU1MTkYASABKAlSCmVkMjU1MTlwdWIiKgoKUHJpdmF0ZUtleRIcCgdlZDI1NTE5GAIgASgJUgtlZDI1NTE5cHJpdiKvAgoEUmVwbxIKCgJpZBgBIAEoCRILCgN1cmkYAiABKAkSEAoIcGFzc3dvcmQYAyABKAkSCwoDZW52GAQgAygJEg0KBWZsYWdzGAUgAygJEiUKDHBydW5lX3BvbGljeRgGIAEoCzIPLnYxLlBydW5lUG9saWN5EiUKDGNoZWNrX3BvbGljeRgJIAEoCzIPLnYxLkNoZWNrUG9saWN5EhcKBWhvb2tzGAcgAygLMggudjEuSG9vaxITCgthdXRvX3VubG9jaxgIIAEoCBIpCg5jb21tYW5kX3ByZWZpeBgKIAEoCzIRLnYxLkNvbW1hbmRQcmVmaXgSOQoZYWxsb3dlZF9wZWVyX2luc3RhbmNlX2lkcxhkIAMoCVIWYWxsb3dlZFBlZXJJbnN0YW5jZUlEcyKGAgoEUGxhbhIKCgJpZBgBIAEoCRIMCgRyZXBvGAIgASgJEg0KBXBhdGhzGAQgAygJEhAKCGV4Y2x1ZGVzGAUgAygJEhEKCWlleGNsdWRlcxgJIAMoCRIeCghzY2hlZHVsZRgMIAEoCzIMLnYxLlNjaGVkdWxlEiYKCXJldGVudGlvbhgHIAEoCzITLnYxLlJldGVudGlvblBvbGljeRIXCgVob29rcxgIIAMoCzIILnYxLkhvb2sSIgoMYmFja3VwX2ZsYWdzGAogAygJUgxiYWNrdXBfZmxhZ3MSGQoRc2tpcF9pZl91bmNoYW5nZWQYDSABKAhKBAgDEARKBAgGEAdKBAgLEAwiigIKDUNvbW1hbmRQcmVmaXgSLgoHaW9fbmljZRgBIAEoDjIdLnYxLkNvbW1hbmRQcmVmaXguSU9OaWNlTGV2ZWwSMAoIY3B1X25pY2UYAiABKA4yHi52MS5Db21tYW5kUHJlZml4LkNQVU5pY2VMZXZlbCJbCgtJT05pY2VMZXZlbBIOCgpJT19ERUZBVUxUEAASFgoSSU9fQkVTVF9FRkZPUlRfTE9XEAESFwoTSU9fQkVTVF9FRkZPUlRfSElHSBACEgsKB0lPX0lETEUQAyI6CgxDUFVOaWNlTGV2ZWwSDwoLQ1BVX0RFRkFVTFQQABIMCghDUFVfSElHSBABEgsKB0NQVV9MT1cQAiKCAgoPUmV0ZW50aW9uUG9saWN5EhwKEnBvbGljeV9rZWVwX2xhc3RfbhgKIAEoBUgAEkYKFHBvbGljeV90aW1lX2J1Y2tldGVkGAsgASgLMiYudjEuUmV0ZW50aW9uUG9saWN5LlRpbWVCdWNrZXRlZENvdW50c0gAEhkKD3BvbGljeV9rZWVwX2FsbBgMIAEoCEgAGmQKElRpbWVCdWNrZXRlZENvdW50cxIOCgZob3VybHkYASABKAUSDQoFZGFpbHkYAiABKAUSDgoGd2Vla2x5GAMgASgFEg8KB21vbnRobHkYBCABKAUSDgoGeWVhcmx5GAUgASgFQggKBnBvbGljeSJjCgtQcnVuZVBvbGljeRIeCghzY2hlZHVsZRgCIAEoCzIMLnYxLlNjaGVkdWxlEhgKEG1heF91bnVzZWRfYnl0ZXMYAyABKAMSGgoSbWF4X3VudXNlZF9wZXJjZW50GAQgASgBInMKC0NoZWNrUG9saWN5Eh4KCHNjaGVkdWxlGAEgASgLMgwudjEuU2NoZWR1bGUSGAoOc3RydWN0dXJlX29ubHkYZCABKAhIABIiChhyZWFkX2RhdGFfc3Vic2V0X3BlcmNlbnQYZSABKAFIAEIGCgRtb2RlIusBCghTY2hlZHVsZRISCghkaXNhYmxlZBgBIAEoCEgAEg4KBGNyb24YAiABKAlIABIaChBtYXhGcmVxdWVuY3lEYXlzGAMgASgFSAASGwoRbWF4RnJlcXVlbmN5SG91cnMYBCABKAVIABIhCgVjbG9jaxgFIAEoDjISLnYxLlNjaGVkdWxlLkNsb2NrIlMKBUNsb2NrEhEKDUNMT0NLX0RFRkFVTFQQABIPCgtDTE9DS19MT0NBTBABEg0KCUNMT0NLX1VUQxACEhcKE0NMT0NLX0xBU1RfUlVOX1RJTUUQA0IKCghzY2hlZHVsZSKlCwoESG9vaxImCgpjb25kaXRpb25zGAEgAygOMhIudjEuSG9vay5Db25kaXRpb24SIgoIb25fZXJyb3IYAiABKA4yEC52MS5Ib29rLk9uRXJyb3ISKgoOYWN0aW9uX2NvbW1hbmQYZCABKAsyEC52MS5Ib29rLkNvbW1hbmRIABIqCg5hY3Rpb25fd2ViaG9vaxhlIAEoCzIQLnYxLkhvb2suV2ViaG9va0gAEioKDmFjdGlvbl9kaXNjb3JkGGYgASgLMhAudjEuSG9vay5EaXNjb3JkSAASKAoNYWN0aW9uX2dvdGlmeRhnIAEoCzIPLnYxLkhvb2suR290aWZ5SAASJgoMYWN0aW9uX3NsYWNrGGggASgLMg4udjEuSG9vay5TbGFja0gAEiwKD2FjdGlvbl9zaG91dHJychhpIAEoCzIRLnYxLkhvb2suU2hvdXRycnJIABI0ChNhY3Rpb25faGVhbHRoY2hlY2tzGGogASgLMhUudjEuSG9vay5IZWFsdGhjaGVja3NIABoaCgdDb21tYW5kEg8KB2NvbW1hbmQYASABKAkagwEKB1dlYmhvb2sSEwoLd2ViaG9va191cmwYASABKAkSJwoGbWV0aG9kGAIgASgOMhcudjEuSG9vay5XZWJob29rLk1ldGhvZBIQCgh0ZW1wbGF0ZRhkIAEoCSIoCgZNZXRob2QSCwoHVU5LTk9XThAAEgcKA0dFVBABEggKBFBPU1QQAhowCgdEaXNjb3JkEhMKC3dlYmhvb2tfdXJsGAEgASgJEhAKCHRlbXBsYXRlGAIgASgJGlMKBkdvdGlmeRIQCghiYXNlX3VybBgBIAEoCRINCgV0b2tlbhgDIAEoCRIQCgh0ZW1wbGF0ZRhkIAEoCRIWCg50aXRsZV90ZW1wbGF0ZRhlIAEoCRouCgVTbGFjaxITCgt3ZWJob29rX3VybBgBIAEoCRIQCgh0ZW1wbGF0ZRgCIAEoCRoyCghTaG91dHJychIUCgxzaG91dHJycl91cmwYASABKAkSEAoIdGVtcGxhdGUYAiABKAkaNQoMSGVhbHRoY2hlY2tzEhMKC3dlYmhvb2tfdXJsGAEgASgJEhAKCHRlbXBsYXRlGAIgASgJIpwDCglDb25kaXRpb24SFQoRQ09ORElUSU9OX1VOS05PV04QABIXChNDT05ESVRJT05fQU5ZX0VSUk9SEAESHAoYQ09ORElUSU9OX1NOQVBTSE9UX1NUQVJUEAISGgoWQ09ORElUSU9OX1NOQVBTSE9UX0VORBADEhwKGENPTkRJVElPTl9TTkFQU0hPVF9FUlJPUhAEEh4KGkNPTkRJVElPTl9TTkFQU0hPVF9XQVJOSU5HEAUSHgoaQ09ORElUSU9OX1NOQVBTSE9UX1NVQ0NFU1MQBhIeChpDT05ESVRJT05fU05BUFNIT1RfU0tJUFBFRBAHEhkKFUNPTkRJVElPTl9QUlVORV9TVEFSVBBkEhkKFUNPTkRJVElPTl9QUlVORV9FUlJPUhBlEhsKF0NPTkRJVElPTl9QUlVORV9TVUNDRVNTEGYSGgoVQ09ORElUSU9OX0NIRUNLX1NUQVJUEMgBEhoKFUNPTkRJVElPTl9DSEVDS19FUlJPUhDJARIcChdDT05ESVRJT05fQ0hFQ0tfU1VDQ0VTUxDKASKpAQoHT25FcnJvchITCg9PTl9FUlJPUl9JR05PUkUQABITCg9PTl9FUlJPUl9DQU5DRUwQARISCg5PTl9FUlJPUl9GQVRBTBACEhoKFk9OX0VSUk9SX1JFVFJZXzFNSU5VVEUQZBIcChhPTl9FUlJPUl9SRVRSWV8xME1JTlVURVMQZRImCiJPTl9FUlJPUl9SRVRSWV9FWFBPTkVOVElBTF9CQUNLT0ZGEGdCCAoGYWN0aW9uIjEKBEF1dGgSEAoIZGlzYWJsZWQYASABKAgSFwoFdXNlcnMYAiADKAsyCC52MS5Vc2VyIjsKBFVzZXISDAoEbmFtZRgBIAEoCRIZCg9wYXNzd29yZF9iY3J5cHQYAiABKAlIAEIKCghwYXNzd29yZEIsWipnaXRodWIuY29tL2dhcmV0aGdlb3JnZS9iYWNrcmVzdC9nZW4vZ28vdjFiBnByb3RvMw", [file_google_protobuf_empty]);
 
 /**
  * @generated from message v1.HubConfig
@@ -98,9 +98,9 @@ export type Config = Message<"v1.Config"> & {
   auth?: Auth;
 
   /**
-   * @generated from field: v1.Peer peers = 8;
+   * @generated from field: v1.Multihost multihost = 7;
    */
-  peers?: Peer;
+  multihost?: Multihost;
 };
 
 /**
@@ -111,9 +111,31 @@ export const ConfigSchema: GenMessage<Config> = /*@__PURE__*/
   messageDesc(file_v1_config, 1);
 
 /**
- * @generated from message v1.Peer
+ * @generated from message v1.Multihost
  */
-export type Peer = Message<"v1.Peer"> & {
+export type Multihost = Message<"v1.Multihost"> & {
+  /**
+   * @generated from field: repeated v1.Multihost.Peer known_hosts = 1 [json_name = "known_hosts"];
+   */
+  knownHosts: Multihost_Peer[];
+
+  /**
+   * @generated from field: repeated v1.Multihost.Peer authorized_clients = 2 [json_name = "authorized_clients"];
+   */
+  authorizedClients: Multihost_Peer[];
+};
+
+/**
+ * Describes the message v1.Multihost.
+ * Use `create(MultihostSchema)` to create a new message.
+ */
+export const MultihostSchema: GenMessage<Multihost> = /*@__PURE__*/
+  messageDesc(file_v1_config, 2);
+
+/**
+ * @generated from message v1.Multihost.Peer
+ */
+export type Multihost_Peer = Message<"v1.Multihost.Peer"> & {
   /**
    * instance ID of the peer.
    *
@@ -122,75 +144,75 @@ export type Peer = Message<"v1.Peer"> & {
   instanceId: string;
 
   /**
-   * PEM encoded public key.
+   * public key of the peer. 
    *
-   * @generated from field: string public_key_pem = 2;
+   * @generated from field: v1.PublicKey public_key = 3;
    */
-  publicKeyPem: string;
+  publicKey?: PublicKey;
 
   /**
-   * permissions granted to the peer.
+   * Known host only fields
    *
-   * @generated from field: repeated v1.Peer.ScopedPermission permissions = 3;
+   * instance URL, required for a known host. Otherwise meaningless.
+   *
+   * @generated from field: string instance_url = 2;
    */
-  permissions: Peer_ScopedPermission[];
+  instanceUrl: string;
+
+  /**
+   * Authorized client only fields
+   *
+   * whether the host has approved the public key. Used for authorized clients, otherwise meaningless.
+   *
+   * @generated from field: bool public_key_verified = 4;
+   */
+  publicKeyVerified: boolean;
 };
 
 /**
- * Describes the message v1.Peer.
- * Use `create(PeerSchema)` to create a new message.
+ * Describes the message v1.Multihost.Peer.
+ * Use `create(Multihost_PeerSchema)` to create a new message.
  */
-export const PeerSchema: GenMessage<Peer> = /*@__PURE__*/
-  messageDesc(file_v1_config, 2);
-
-/**
- * @generated from message v1.Peer.ScopedPermission
- */
-export type Peer_ScopedPermission = Message<"v1.Peer.ScopedPermission"> & {
-  /**
-   * scope of the permission e.g. repo:<repo ID>
-   *
-   * @generated from field: string scope = 1;
-   */
-  scope: string;
-
-  /**
-   * permission granted.
-   *
-   * @generated from field: v1.Peer.Permission perm = 2;
-   */
-  perm: Peer_Permission;
-};
-
-/**
- * Describes the message v1.Peer.ScopedPermission.
- * Use `create(Peer_ScopedPermissionSchema)` to create a new message.
- */
-export const Peer_ScopedPermissionSchema: GenMessage<Peer_ScopedPermission> = /*@__PURE__*/
+export const Multihost_PeerSchema: GenMessage<Multihost_Peer> = /*@__PURE__*/
   messageDesc(file_v1_config, 2, 0);
 
 /**
- * @generated from enum v1.Peer.Permission
+ * @generated from message v1.PublicKey
  */
-export enum Peer_Permission {
+export type PublicKey = Message<"v1.PublicKey"> & {
   /**
-   * @generated from enum value: PERMISSION_UNKNOWN = 0;
-   */
-  UNKNOWN = 0,
-
-  /**
-   * connect to the instance.
+   * base64 encoded public key
    *
-   * @generated from enum value: PERMISSION_CONNECT = 1;
+   * @generated from field: string ed25519 = 1 [json_name = "ed25519pub"];
    */
-  CONNECT = 1,
-}
+  ed25519: string;
+};
 
 /**
- * Describes the enum v1.Peer.Permission.
+ * Describes the message v1.PublicKey.
+ * Use `create(PublicKeySchema)` to create a new message.
  */
-export const Peer_PermissionSchema: GenEnum<Peer_Permission> = /*@__PURE__*/
-  enumDesc(file_v1_config, 2, 0);
+export const PublicKeySchema: GenMessage<PublicKey> = /*@__PURE__*/
+  messageDesc(file_v1_config, 3);
+
+/**
+ * @generated from message v1.PrivateKey
+ */
+export type PrivateKey = Message<"v1.PrivateKey"> & {
+  /**
+   * base64 encoded private key
+   *
+   * @generated from field: string ed25519 = 2 [json_name = "ed25519priv"];
+   */
+  ed25519: string;
+};
+
+/**
+ * Describes the message v1.PrivateKey.
+ * Use `create(PrivateKeySchema)` to create a new message.
+ */
+export const PrivateKeySchema: GenMessage<PrivateKey> = /*@__PURE__*/
+  messageDesc(file_v1_config, 4);
 
 /**
  * @generated from message v1.Repo
@@ -265,6 +287,13 @@ export type Repo = Message<"v1.Repo"> & {
    * @generated from field: v1.CommandPrefix command_prefix = 10;
    */
   commandPrefix?: CommandPrefix;
+
+  /**
+   * list of peer instance IDs allowed to access this repo.
+   *
+   * @generated from field: repeated string allowed_peer_instance_ids = 100 [json_name = "allowedPeerInstanceIDs"];
+   */
+  allowedPeerInstanceIds: string[];
 };
 
 /**
@@ -272,7 +301,7 @@ export type Repo = Message<"v1.Repo"> & {
  * Use `create(RepoSchema)` to create a new message.
  */
 export const RepoSchema: GenMessage<Repo> = /*@__PURE__*/
-  messageDesc(file_v1_config, 3);
+  messageDesc(file_v1_config, 5);
 
 /**
  * @generated from message v1.Plan
@@ -354,7 +383,7 @@ export type Plan = Message<"v1.Plan"> & {
  * Use `create(PlanSchema)` to create a new message.
  */
 export const PlanSchema: GenMessage<Plan> = /*@__PURE__*/
-  messageDesc(file_v1_config, 4);
+  messageDesc(file_v1_config, 6);
 
 /**
  * @generated from message v1.CommandPrefix
@@ -380,7 +409,7 @@ export type CommandPrefix = Message<"v1.CommandPrefix"> & {
  * Use `create(CommandPrefixSchema)` to create a new message.
  */
 export const CommandPrefixSchema: GenMessage<CommandPrefix> = /*@__PURE__*/
-  messageDesc(file_v1_config, 5);
+  messageDesc(file_v1_config, 7);
 
 /**
  * @generated from enum v1.CommandPrefix.IONiceLevel
@@ -411,7 +440,7 @@ export enum CommandPrefix_IONiceLevel {
  * Describes the enum v1.CommandPrefix.IONiceLevel.
  */
 export const CommandPrefix_IONiceLevelSchema: GenEnum<CommandPrefix_IONiceLevel> = /*@__PURE__*/
-  enumDesc(file_v1_config, 5, 0);
+  enumDesc(file_v1_config, 7, 0);
 
 /**
  * @generated from enum v1.CommandPrefix.CPUNiceLevel
@@ -437,7 +466,7 @@ export enum CommandPrefix_CPUNiceLevel {
  * Describes the enum v1.CommandPrefix.CPUNiceLevel.
  */
 export const CommandPrefix_CPUNiceLevelSchema: GenEnum<CommandPrefix_CPUNiceLevel> = /*@__PURE__*/
-  enumDesc(file_v1_config, 5, 1);
+  enumDesc(file_v1_config, 7, 1);
 
 /**
  * @generated from message v1.RetentionPolicy
@@ -472,7 +501,7 @@ export type RetentionPolicy = Message<"v1.RetentionPolicy"> & {
  * Use `create(RetentionPolicySchema)` to create a new message.
  */
 export const RetentionPolicySchema: GenMessage<RetentionPolicy> = /*@__PURE__*/
-  messageDesc(file_v1_config, 6);
+  messageDesc(file_v1_config, 8);
 
 /**
  * @generated from message v1.RetentionPolicy.TimeBucketedCounts
@@ -519,7 +548,7 @@ export type RetentionPolicy_TimeBucketedCounts = Message<"v1.RetentionPolicy.Tim
  * Use `create(RetentionPolicy_TimeBucketedCountsSchema)` to create a new message.
  */
 export const RetentionPolicy_TimeBucketedCountsSchema: GenMessage<RetentionPolicy_TimeBucketedCounts> = /*@__PURE__*/
-  messageDesc(file_v1_config, 6, 0);
+  messageDesc(file_v1_config, 8, 0);
 
 /**
  * @generated from message v1.PrunePolicy
@@ -550,7 +579,7 @@ export type PrunePolicy = Message<"v1.PrunePolicy"> & {
  * Use `create(PrunePolicySchema)` to create a new message.
  */
 export const PrunePolicySchema: GenMessage<PrunePolicy> = /*@__PURE__*/
-  messageDesc(file_v1_config, 7);
+  messageDesc(file_v1_config, 9);
 
 /**
  * @generated from message v1.CheckPolicy
@@ -588,7 +617,7 @@ export type CheckPolicy = Message<"v1.CheckPolicy"> & {
  * Use `create(CheckPolicySchema)` to create a new message.
  */
 export const CheckPolicySchema: GenMessage<CheckPolicy> = /*@__PURE__*/
-  messageDesc(file_v1_config, 8);
+  messageDesc(file_v1_config, 10);
 
 /**
  * @generated from message v1.Schedule
@@ -644,7 +673,7 @@ export type Schedule = Message<"v1.Schedule"> & {
  * Use `create(ScheduleSchema)` to create a new message.
  */
 export const ScheduleSchema: GenMessage<Schedule> = /*@__PURE__*/
-  messageDesc(file_v1_config, 9);
+  messageDesc(file_v1_config, 11);
 
 /**
  * @generated from enum v1.Schedule.Clock
@@ -677,7 +706,7 @@ export enum Schedule_Clock {
  * Describes the enum v1.Schedule.Clock.
  */
 export const Schedule_ClockSchema: GenEnum<Schedule_Clock> = /*@__PURE__*/
-  enumDesc(file_v1_config, 9, 0);
+  enumDesc(file_v1_config, 11, 0);
 
 /**
  * @generated from message v1.Hook
@@ -746,7 +775,7 @@ export type Hook = Message<"v1.Hook"> & {
  * Use `create(HookSchema)` to create a new message.
  */
 export const HookSchema: GenMessage<Hook> = /*@__PURE__*/
-  messageDesc(file_v1_config, 10);
+  messageDesc(file_v1_config, 12);
 
 /**
  * @generated from message v1.Hook.Command
@@ -763,7 +792,7 @@ export type Hook_Command = Message<"v1.Hook.Command"> & {
  * Use `create(Hook_CommandSchema)` to create a new message.
  */
 export const Hook_CommandSchema: GenMessage<Hook_Command> = /*@__PURE__*/
-  messageDesc(file_v1_config, 10, 0);
+  messageDesc(file_v1_config, 12, 0);
 
 /**
  * @generated from message v1.Hook.Webhook
@@ -790,7 +819,7 @@ export type Hook_Webhook = Message<"v1.Hook.Webhook"> & {
  * Use `create(Hook_WebhookSchema)` to create a new message.
  */
 export const Hook_WebhookSchema: GenMessage<Hook_Webhook> = /*@__PURE__*/
-  messageDesc(file_v1_config, 10, 1);
+  messageDesc(file_v1_config, 12, 1);
 
 /**
  * @generated from enum v1.Hook.Webhook.Method
@@ -816,7 +845,7 @@ export enum Hook_Webhook_Method {
  * Describes the enum v1.Hook.Webhook.Method.
  */
 export const Hook_Webhook_MethodSchema: GenEnum<Hook_Webhook_Method> = /*@__PURE__*/
-  enumDesc(file_v1_config, 10, 1, 0);
+  enumDesc(file_v1_config, 12, 1, 0);
 
 /**
  * @generated from message v1.Hook.Discord
@@ -840,7 +869,7 @@ export type Hook_Discord = Message<"v1.Hook.Discord"> & {
  * Use `create(Hook_DiscordSchema)` to create a new message.
  */
 export const Hook_DiscordSchema: GenMessage<Hook_Discord> = /*@__PURE__*/
-  messageDesc(file_v1_config, 10, 2);
+  messageDesc(file_v1_config, 12, 2);
 
 /**
  * @generated from message v1.Hook.Gotify
@@ -876,7 +905,7 @@ export type Hook_Gotify = Message<"v1.Hook.Gotify"> & {
  * Use `create(Hook_GotifySchema)` to create a new message.
  */
 export const Hook_GotifySchema: GenMessage<Hook_Gotify> = /*@__PURE__*/
-  messageDesc(file_v1_config, 10, 3);
+  messageDesc(file_v1_config, 12, 3);
 
 /**
  * @generated from message v1.Hook.Slack
@@ -900,7 +929,7 @@ export type Hook_Slack = Message<"v1.Hook.Slack"> & {
  * Use `create(Hook_SlackSchema)` to create a new message.
  */
 export const Hook_SlackSchema: GenMessage<Hook_Slack> = /*@__PURE__*/
-  messageDesc(file_v1_config, 10, 4);
+  messageDesc(file_v1_config, 12, 4);
 
 /**
  * @generated from message v1.Hook.Shoutrrr
@@ -922,7 +951,7 @@ export type Hook_Shoutrrr = Message<"v1.Hook.Shoutrrr"> & {
  * Use `create(Hook_ShoutrrrSchema)` to create a new message.
  */
 export const Hook_ShoutrrrSchema: GenMessage<Hook_Shoutrrr> = /*@__PURE__*/
-  messageDesc(file_v1_config, 10, 5);
+  messageDesc(file_v1_config, 12, 5);
 
 /**
  * @generated from message v1.Hook.Healthchecks
@@ -944,7 +973,7 @@ export type Hook_Healthchecks = Message<"v1.Hook.Healthchecks"> & {
  * Use `create(Hook_HealthchecksSchema)` to create a new message.
  */
 export const Hook_HealthchecksSchema: GenMessage<Hook_Healthchecks> = /*@__PURE__*/
-  messageDesc(file_v1_config, 10, 6);
+  messageDesc(file_v1_config, 12, 6);
 
 /**
  * @generated from enum v1.Hook.Condition
@@ -1055,7 +1084,7 @@ export enum Hook_Condition {
  * Describes the enum v1.Hook.Condition.
  */
 export const Hook_ConditionSchema: GenEnum<Hook_Condition> = /*@__PURE__*/
-  enumDesc(file_v1_config, 10, 0);
+  enumDesc(file_v1_config, 12, 0);
 
 /**
  * @generated from enum v1.Hook.OnError
@@ -1106,7 +1135,7 @@ export enum Hook_OnError {
  * Describes the enum v1.Hook.OnError.
  */
 export const Hook_OnErrorSchema: GenEnum<Hook_OnError> = /*@__PURE__*/
-  enumDesc(file_v1_config, 10, 1);
+  enumDesc(file_v1_config, 12, 1);
 
 /**
  * @generated from message v1.Auth
@@ -1132,7 +1161,7 @@ export type Auth = Message<"v1.Auth"> & {
  * Use `create(AuthSchema)` to create a new message.
  */
 export const AuthSchema: GenMessage<Auth> = /*@__PURE__*/
-  messageDesc(file_v1_config, 11);
+  messageDesc(file_v1_config, 13);
 
 /**
  * @generated from message v1.User
@@ -1160,5 +1189,5 @@ export type User = Message<"v1.User"> & {
  * Use `create(UserSchema)` to create a new message.
  */
 export const UserSchema: GenMessage<User> = /*@__PURE__*/
-  messageDesc(file_v1_config, 12);
+  messageDesc(file_v1_config, 14);
 

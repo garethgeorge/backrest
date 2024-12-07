@@ -1,4 +1,4 @@
-package syncengine
+package syncapi
 
 import (
 	"context"
@@ -18,19 +18,13 @@ import (
 	"golang.org/x/net/http2"
 )
 
-type ServerConnInfo struct {
-	Status   v1.SyncStreamItem_ConnectionState
-	Message  string
-	LastSeen time.Time // only valid for disconnected streams.
-}
-
 type SyncClient struct {
 	localInstanceID string
 	oplog           *oplog.OpLog
 	client          v1connect.BackrestSyncServiceClient
 	reconnectDelay  time.Duration
-	connectedRepos  map[string]*v1.SyncConnectionInfo
 	l               *zap.Logger
+	connectionState v1.SyncConnectionState
 }
 
 func newInsecureClient() *http.Client {
@@ -58,20 +52,7 @@ func NewSyncClient(localInstanceID, remoteInstanceURL string, oplog *oplog.OpLog
 		reconnectDelay:  60 * time.Second,
 		client:          client,
 		oplog:           oplog,
-
-		connectedRepos: make(map[string]*v1.SyncConnectionInfo),
-		l:              zap.L().Named("syncclient").With(zap.String("peer", remoteInstanceURL)),
-	}
-}
-
-func (c *SyncClient) setStatusForRepos(repos []*v1.Repo, state v1.SyncStreamItem_ConnectionState, message string) {
-	for _, repo := range repos {
-		c.connectedRepos[repo.GetId()] = &v1.SyncConnectionInfo{
-			RepoId:          repo.GetId(),
-			ConnectionState: state,
-			Message:         message,
-			LastActivityMs:  time.Now().UnixMilli(),
-		}
+		l:               zap.L().Named("syncclient").With(zap.String("peer", remoteInstanceURL)),
 	}
 }
 
