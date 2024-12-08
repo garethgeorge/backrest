@@ -68,6 +68,7 @@ func main() {
 	if err != nil {
 		zap.S().Fatalf("error loading config: %v", err)
 	}
+	configMgr := &config.ConfigManager{Store: configStore}
 
 	var wg sync.WaitGroup
 
@@ -113,6 +114,7 @@ func main() {
 	}()
 
 	// Create orchestrator and start task loop.
+	// TODO: update the orchestrator to accept a configMgr and auto-refresh the config w/o explicit ApplyConfig call.
 	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, log, logStore)
 	if err != nil {
 		zap.S().Fatalf("error creating orchestrator: %v", err)
@@ -125,65 +127,22 @@ func main() {
 	}()
 
 	// Create and serve the HTTP gateway
-	syncHandler := syncapi.NewBackrestSyncHandler(configStore, log)
+	syncMgr := syncapi.NewSyncManager(configMgr, log, orchestrator, filepath.Join(env.DataDir(), "sync"))
+	wg.Add(1)
+	go func() {
+		syncMgr.RunSync(ctx)
+		wg.Done()
+	}()
 
-	var syncWg sync.WaitGroup
-	var syncCtxCancel context.CancelFunc
-
-	syncConfigHook := &configHookForsyncapi{
-		store: configStore,
-		onChange: func(cfg *v1.Config) {
-			if syncCtxCancel != nil {
-				zap.L().Info("cancelling existing sync context due to config change, preparing to reinitialize sync engine")
-				syncCtxCancel()
-			}
-			syncWg.Wait()
-
-			// Start running a sync loop with this context for each distinct URI
-			reposByURI := make(map[string][]*v1.Repo)
-
-			for _, repo := range cfg.Repos {
-				if !syncapi.IsBackrestRemoteRepoURI(repo.Uri) {
-					continue
-				}
-				zap.L()
-				reposByURI[repo.Uri] = append(reposByURI[repo.Uri], repo)
-			}
-
-			if len(reposByURI) == 0 {
-				return
-			}
-
-			ctx, cancel := context.WithCancel(context.Background())
-			syncCtxCancel = cancel
-
-			for uri, repos := range reposByURI {
-				syncWg.Add(1)
-
-				repoIDs := make([]string, len(repos))
-				for i, repo := range repos {
-					repoIDs[i] = repo.Id
-				}
-				zap.S().Infof("starting sync engine for URI %q for remote repos %v", uri, repoIDs)
-
-				go func(uri string, repos []*v1.Repo) {
-					defer syncWg.Done()
-					// Create a new sync engine for this URI
-					syncClient := syncapi.NewSyncClient(cfg.Instance, uri, log)
-					syncClient.RunSyncForRepos(ctx, repos)
-				}(uri, repos)
-			}
-		},
-	}
-	syncConfigHook.onChange(cfg) // initialize sync engine
+	syncHandler := syncapi.NewBackrestSyncHandler(syncMgr)
 
 	apiBackrestHandler := api.NewBackrestHandler(
-		syncConfigHook,
+		configMgr,
 		orchestrator,
 		log,
 		logStore,
 	)
-	authenticator := auth.NewAuthenticator(getSecret(), configStore)
+	authenticator := auth.NewAuthenticator(getSecret(), configMgr)
 	apiAuthenticationHandler := api.NewAuthenticationHandler(authenticator)
 
 	mux := http.NewServeMux()

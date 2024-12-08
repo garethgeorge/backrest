@@ -165,12 +165,12 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("no packets received"))
 	}
 
-	didSubscribeOplog := false
+	haveRunSync := make(map[string]struct{}) // repo ID -> have run sync?
 
 	oplogSubscription := func(ops []*v1.Operation, event oplog.OperationEvent) {
 		var opsToForward []*v1.Operation
 		for _, op := range ops {
-			if connInfo, ok := c.connectedRepos[op.GetRepoId()]; ok && connInfo.ConnectionState == v1.SyncStreamItem_CONNECTION_STATE_CONNECTED {
+			if _, ok := haveRunSync[op.GetRepoId()]; ok {
 				opsToForward = append(opsToForward, op)
 			}
 		}
@@ -216,17 +216,30 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			cancelWithError(fmt.Errorf("operation send buffer overflow"))
 		}
 	}
-
-	haveRunSync := make(map[string]struct{}) // repo ID -> have run sync?
+	c.oplog.Subscribe(oplog.Query{}, &oplogSubscription)
+	defer c.oplog.Unsubscribe(&oplogSubscription)
 
 	handleSyncCommand := func(item *v1.SyncStreamItem) error {
 		switch action := item.Action.(type) {
 		case *v1.SyncStreamItem_SendConfig:
 			newRemoteConfig := action.SendConfig.Config
-			if err := c.mgr.remoteConfigStore.Update(c.peer.InstanceId); err != nil {
+			if err := c.mgr.remoteConfigStore.Update(c.peer.InstanceId, newRemoteConfig); err != nil {
 				return fmt.Errorf("update remote config store with latest config: %w", err)
 			}
 
+			// remove any repo IDs that are no longer in the config, our access has been revoked.
+			remoteRepoIDs := make(map[string]struct{})
+			for _, repo := range newRemoteConfig.GetRepos() {
+				remoteRepoIDs[repo.GetId()] = struct{}{}
+			}
+			for repoID := range haveRunSync {
+				if _, ok := remoteRepoIDs[repoID]; !ok {
+					delete(haveRunSync, repoID)
+				}
+			}
+
+			// load the local config so that we can index the remote repos into any local repos that reference their URIs
+			// e.g. backrest:<instance-id> format URI.
 			localConfig, err := c.mgr.configMgr.Get()
 			if err != nil {
 				return fmt.Errorf("get local config: %w", err)
@@ -242,7 +255,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				repo.Hooks = nil // we don't accept any hooks from the server. This could be used to execute arbitrary code on the client.
 				instanceID, err := InstanceForBackrestURI(localRepoConfig.Uri)
 				if err != nil || instanceID != c.peer.InstanceId {
-					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name specifies URI %q which does not reference the peer providing this config", c.peer.InstanceId, repo.GetId(), localRepoConfig.BackrestURI)
+					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name specifies URI %q which does not reference the peer providing this config", c.peer.InstanceId, repo.GetId(), localRepoConfig.Uri)
 					continue
 				}
 
@@ -281,6 +294,26 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			var deletedIDs []int64
 			var sendOps []*v1.Operation
 			var ops []*v1.Operation
+
+			sendOpsFunc := func() error {
+				if err := stream.Send(&v1.SyncStreamItem{
+					Action: &v1.SyncStreamItem_SendOperations{
+						SendOperations: &v1.SyncStreamItem_SyncActionSendOperations{
+							Event: &v1.OperationEvent{
+								Event: &v1.OperationEvent_CreatedOperations{
+									CreatedOperations: &v1.OperationList{Operations: sendOps},
+								},
+							},
+						},
+					},
+				}); err != nil {
+					sendOps = sendOps[:0] // clear the slice
+					return fmt.Errorf("action diff operations: send create operations: %w", err)
+				}
+				sendOps = sendOps[:0] // clear the slice
+				return nil
+			}
+
 			for _, opID := range requestedOperations {
 				op, err := c.oplog.Get(opID)
 				if err != nil {
@@ -294,11 +327,23 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 
 				_, ok := haveRunSync[op.GetRepoId()]
 				if !ok {
-					// this should never happen if sync is working correctly. Would probably indicate oplog corruption?
+					// this should never happen if sync is working correctly. Would probably indicate oplog or our access was revoked.
+					// Error out and re-initiate sync.
 					return fmt.Errorf("remote requested operation for repo %q for which sync was never initiated", op.GetRepoId())
 				}
 
 				sendOps = append(ops, op)
+				if len(sendOps) >= 128 {
+					if err := sendOpsFunc(); err != nil {
+						return err
+					}
+				}
+			}
+
+			if len(sendOps) > 0 {
+				if err := sendOpsFunc(); err != nil {
+					return err
+				}
 			}
 
 			if len(deletedIDs) > 0 {
@@ -314,22 +359,6 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					},
 				}); err != nil {
 					return fmt.Errorf("action diff operations: send delete operations: %w", err)
-				}
-			}
-
-			if len(sendOps) > 0 {
-				if err := stream.Send(&v1.SyncStreamItem{
-					Action: &v1.SyncStreamItem_SendOperations{
-						SendOperations: &v1.SyncStreamItem_SyncActionSendOperations{
-							Event: &v1.OperationEvent{
-								Event: &v1.OperationEvent_CreatedOperations{
-									CreatedOperations: &v1.OperationList{Operations: sendOps},
-								},
-							},
-						},
-					},
-				}); err != nil {
-					return fmt.Errorf("action diff operations: send create operations: %w", err)
 				}
 			}
 		case *v1.SyncStreamItem_Throttle:
@@ -357,10 +386,6 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				return err
 			}
 		case <-ctx.Done():
-			if didSubscribeOplog {
-				c.oplog.Unsubscribe(&oplogSubscription)
-			}
-
 			return ctx.Err()
 		}
 	}

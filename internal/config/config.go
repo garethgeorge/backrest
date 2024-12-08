@@ -20,6 +20,8 @@ type ConfigManager struct {
 	changeNotifyCh []chan struct{}
 }
 
+var _ ConfigStore = &ConfigManager{}
+
 func (m *ConfigManager) Get() (*v1.Config, error) {
 	return m.Store.Get()
 }
