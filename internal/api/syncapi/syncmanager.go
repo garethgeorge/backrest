@@ -47,8 +47,10 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 		defer m.mu.Unlock()
 
 		// TODO: rather than cancel the top level context, something clever e.g. diffing the set of peers could be done here.
+		if cancelLastSync != nil {
+			cancelLastSync()
+		}
 		syncCtx, cancel := context.WithCancel(ctx)
-		cancelLastSync()
 		cancelLastSync = cancel
 
 		config, err := m.configMgr.Get()
@@ -58,7 +60,7 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 		}
 
 		if len(config.Multihost.GetKnownHosts()) == 0 {
-			zap.L().Debug("syncmanager found known known host peers declared, sync is disabled")
+			zap.L().Debug("syncmanager no known host peers declared, sync is disabled")
 			return
 		}
 
