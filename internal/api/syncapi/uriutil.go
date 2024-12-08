@@ -3,7 +3,6 @@ package syncapi
 import (
 	"errors"
 	"net/url"
-	"strings"
 )
 
 func CreateRemoteRepoURI(instanceUrl string) (string, error) {
@@ -29,15 +28,18 @@ func IsBackrestRemoteRepoURI(repoUri string) bool {
 		return false
 	}
 
-	return u.Scheme == "backrest" || u.Scheme == "sbackrest"
+	return u.Scheme == "backrest"
 }
 
-func backrestRemoteUrlToHTTPUrl(repoUri string) string {
-	if strings.HasPrefix(repoUri, "backrest:") {
-		return "http://" + strings.TrimPrefix(repoUri, "backrest:")
-	} else if strings.HasPrefix(repoUri, "sbackrest:") {
-		return "https://" + strings.TrimPrefix(repoUri, "sbackrest:")
-	} else {
-		return repoUri
+func InstanceForBackrestURI(repoUri string) (string, error) {
+	u, err := url.Parse(repoUri)
+	if err != nil {
+		return "", err
 	}
+
+	if u.Scheme != "backrest" {
+		return "", errors.New("not a backrest URI")
+	}
+
+	return u.Hostname(), nil
 }

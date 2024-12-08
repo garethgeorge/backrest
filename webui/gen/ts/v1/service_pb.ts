@@ -4,8 +4,10 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
-import type { ConfigSchema, RepoSchema } from "./config_pb";
+import type { ConfigSchema, Repo, RepoSchema } from "./config_pb";
 import { file_v1_config } from "./config_pb";
+import type { PublicKey, SignedMessage } from "./crypto_pb";
+import { file_v1_crypto } from "./crypto_pb";
 import type { ResticSnapshotListSchema } from "./restic_pb";
 import { file_v1_restic } from "./restic_pb";
 import type { OperationEvent, OperationEventSchema, OperationListSchema, OperationStatus } from "./operations_pb";
@@ -21,7 +23,11 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1/service.proto.
  */
 export const file_v1_service: GenFile = /*@__PURE__*/
+<<<<<<< HEAD
   fileDesc("ChB2MS9zZXJ2aWNlLnByb3RvEgJ2MSJ2CgpPcFNlbGVjdG9yEgsKA2lkcxgBIAMoAxITCgtpbnN0YW5jZV9pZBgGIAEoCRIPCgdyZXBvX2lkGAIgASgJEg8KB3BsYW5faWQYAyABKAkSEwoLc25hcHNob3RfaWQYBCABKAkSDwoHZmxvd19pZBgFIAEoAyLAAQoRRG9SZXBvVGFza1JlcXVlc3QSDwoHcmVwb19pZBgBIAEoCRIoCgR0YXNrGAIgASgOMhoudjEuRG9SZXBvVGFza1JlcXVlc3QuVGFzayJwCgRUYXNrEg0KCVRBU0tfTk9ORRAAEhgKFFRBU0tfSU5ERVhfU05BUFNIT1RTEAESDgoKVEFTS19QUlVORRACEg4KClRBU0tfQ0hFQ0sQAxIOCgpUQVNLX1NUQVRTEAQSDwoLVEFTS19VTkxPQ0sQBSJMChNDbGVhckhpc3RvcnlSZXF1ZXN0EiAKCHNlbGVjdG9yGAEgASgLMg4udjEuT3BTZWxlY3RvchITCgtvbmx5X2ZhaWxlZBgCIAEoCCJGCg1Gb3JnZXRSZXF1ZXN0Eg8KB3JlcG9faWQYASABKAkSDwoHcGxhbl9pZBgCIAEoCRITCgtzbmFwc2hvdF9pZBgDIAEoCSI4ChRMaXN0U25hcHNob3RzUmVxdWVzdBIPCgdyZXBvX2lkGAEgASgJEg8KB3BsYW5faWQYAiABKAkiSAoUR2V0T3BlcmF0aW9uc1JlcXVlc3QSIAoIc2VsZWN0b3IYASABKAsyDi52MS5PcFNlbGVjdG9yEg4KBmxhc3RfbhgCIAEoAyJtChZSZXN0b3JlU25hcHNob3RSZXF1ZXN0Eg8KB3BsYW5faWQYASABKAkSDwoHcmVwb19pZBgFIAEoCRITCgtzbmFwc2hvdF9pZBgCIAEoCRIMCgRwYXRoGAMgASgJEg4KBnRhcmdldBgEIAEoCSJOChhMaXN0U25hcHNob3RGaWxlc1JlcXVlc3QSDwoHcmVwb19pZBgBIAEoCRITCgtzbmFwc2hvdF9pZBgCIAEoCRIMCgRwYXRoGAMgASgJIkcKGUxpc3RTbmFwc2hvdEZpbGVzUmVzcG9uc2USDAoEcGF0aBgBIAEoCRIcCgdlbnRyaWVzGAIgAygLMgsudjEuTHNFbnRyeSIdCg5Mb2dEYXRhUmVxdWVzdBILCgNyZWYYASABKAkilgEKB0xzRW50cnkSDAoEbmFtZRgBIAEoCRIMCgR0eXBlGAIgASgJEgwKBHBhdGgYAyABKAkSCwoDdWlkGAQgASgDEgsKA2dpZBgFIAEoAxIMCgRzaXplGAYgASgDEgwKBG1vZGUYByABKAMSDQoFbXRpbWUYCCABKAkSDQoFYXRpbWUYCSABKAkSDQoFY3RpbWUYCiABKAkiNQoRUnVuQ29tbWFuZFJlcXVlc3QSDwoHcmVwb19pZBgBIAEoCRIPCgdjb21tYW5kGAIgASgJIrUFChhTdW1tYXJ5RGFzaGJvYXJkUmVzcG9uc2USPAoOcmVwb19zdW1tYXJpZXMYASADKAsyJC52MS5TdW1tYXJ5RGFzaGJvYXJkUmVzcG9uc2UuU3VtbWFyeRI8Cg5wbGFuX3N1bW1hcmllcxgCIAMoCzIkLnYxLlN1bW1hcnlEYXNoYm9hcmRSZXNwb25zZS5TdW1tYXJ5EhMKC2NvbmZpZ19wYXRoGAogASgJEhEKCWRhdGFfcGF0aBgLIAEoCRruAgoHU3VtbWFyeRIKCgJpZBgBIAEoCRIdChViYWNrdXBzX2ZhaWxlZF8zMGRheXMYAiABKAMSIwobYmFja3Vwc193YXJuaW5nX2xhc3RfMzBkYXlzGAMgASgDEiMKG2JhY2t1cHNfc3VjY2Vzc19sYXN0XzMwZGF5cxgEIAEoAxIhChlieXRlc19zY2FubmVkX2xhc3RfMzBkYXlzGAUgASgDEh8KF2J5dGVzX2FkZGVkX2xhc3RfMzBkYXlzGAYgASgDEhcKD3RvdGFsX3NuYXBzaG90cxgHIAEoAxIZChFieXRlc19zY2FubmVkX2F2ZxgIIAEoAxIXCg9ieXRlc19hZGRlZF9hdmcYCSABKAMSGwoTbmV4dF9iYWNrdXBfdGltZV9tcxgKIAEoAxJACg5yZWNlbnRfYmFja3VwcxgLIAEoCzIoLnYxLlN1bW1hcnlEYXNoYm9hcmRSZXNwb25zZS5CYWNrdXBDaGFydBqDAQoLQmFja3VwQ2hhcnQSDwoHZmxvd19pZBgBIAMoAxIUCgx0aW1lc3RhbXBfbXMYAiADKAMSEwoLZHVyYXRpb25fbXMYAyADKAMSIwoGc3RhdHVzGAQgAygOMhMudjEuT3BlcmF0aW9uU3RhdHVzEhMKC2J5dGVzX2FkZGVkGAUgAygDIosJCg5TeW5jU3RyZWFtSXRlbRI7CgloYW5kc2hha2UYCiABKAsyJi52MS5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uSGFuZHNoYWtlSAASQAoMY29ubmVjdF9yZXBvGBQgASgLMigudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvbkNvbm5lY3RSZXBvSAASVQoXdXBkYXRlX2Nvbm5lY3Rpb25fc3RhdGUYFSABKAsyMi52MS5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uVXBkYXRlQ29ubmVjdGlvblN0YXRlSAASRgoPZGlmZl9vcGVyYXRpb25zGBYgASgLMisudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvbkRpZmZPcGVyYXRpb25zSAASRgoPc2VuZF9vcGVyYXRpb25zGBcgASgLMisudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblNlbmRPcGVyYXRpb25zSAASOgoIdGhyb3R0bGUY6AcgASgLMiUudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblRocm90dGxlSAAaYwoTU3luY0FjdGlvbkhhbmRzaGFrZRIYChBwcm90b2NvbF92ZXJzaW9uGAEgASgDEhMKC2luc3RhbmNlX2lkGAIgASgJEh0KFWluc3RhbmNlX2lkX3NpZ25hdHVyZRgDIAEoCRooChVTeW5jQWN0aW9uQ29ubmVjdFJlcG8SDwoHcmVwb19pZBgBIAEoCRp6Ch9TeW5jQWN0aW9uVXBkYXRlQ29ubmVjdGlvblN0YXRlEg8KB3JlcG9faWQYASABKAkSNQoFc3RhdGUYAiABKA4yJi52MS5TeW5jU3RyZWFtSXRlbS5SZXBvQ29ubmVjdGlvblN0YXRlEg8KB21lc3NhZ2UYAyABKAkaowEKGFN5bmNBY3Rpb25EaWZmT3BlcmF0aW9ucxIwChhoYXZlX29wZXJhdGlvbnNfc2VsZWN0b3IYASABKAsyDi52MS5PcFNlbGVjdG9yEhoKEmhhdmVfb3BlcmF0aW9uX2lkcxgCIAMoAxIdChVoYXZlX29wZXJhdGlvbl9tb2Rub3MYAyADKAMSGgoScmVxdWVzdF9vcGVyYXRpb25zGAQgAygDGj0KGFN5bmNBY3Rpb25TZW5kT3BlcmF0aW9ucxIhCgVldmVudBgBIAEoCzISLnYxLk9wZXJhdGlvbkV2ZW50GiYKElN5bmNBY3Rpb25UaHJvdHRsZRIQCghkZWxheV9tcxgBIAEoAyK0AQoTUmVwb0Nvbm5lY3Rpb25TdGF0ZRIcChhDT05ORUNUSU9OX1NUQVRFX1VOS05PV04QABIcChhDT05ORUNUSU9OX1NUQVRFX1BFTkRJTkcQARIeChpDT05ORUNUSU9OX1NUQVRFX0NPTk5FQ1RFRBACEiEKHUNPTk5FQ1RJT05fU1RBVEVfVU5BVVRIT1JJWkVEEAMSHgoaQ09OTkVDVElPTl9TVEFURV9OT1RfRk9VTkQQBEIICgZhY3Rpb24q+wEKE1N5bmNDb25uZWN0aW9uU3RhdGUSHAoYQ09OTkVDVElPTl9TVEFURV9VTktOT1dOEAASHAoYQ09OTkVDVElPTl9TVEFURV9QRU5ESU5HEAESHgoaQ09OTkVDVElPTl9TVEFURV9DT05ORUNURUQQAhIhCh1DT05ORUNUSU9OX1NUQVRFX0RJU0NPTk5FQ1RFRBADEh8KG0NPTk5FQ1RJT05fU1RBVEVfUkVUUllfV0FJVBAEEh8KG0NPTk5FQ1RJT05fU1RBVEVfRVJST1JfQVVUSBAKEiMKH0NPTk5FQ1RJT05fU1RBVEVfRVJST1JfUFJPVE9DT0wQCzL3CAoIQmFja3Jlc3QSMQoJR2V0Q29uZmlnEhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5GgoudjEuQ29uZmlnIgASJQoJU2V0Q29uZmlnEgoudjEuQ29uZmlnGgoudjEuQ29uZmlnIgASLwoPQ2hlY2tSZXBvRXhpc3RzEggudjEuUmVwbxoQLnR5cGVzLkJvb2xWYWx1ZSIAEiEKB0FkZFJlcG8SCC52MS5SZXBvGgoudjEuQ29uZmlnIgASRAoSR2V0T3BlcmF0aW9uRXZlbnRzEhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5GhIudjEuT3BlcmF0aW9uRXZlbnQiADABEj4KDUdldE9wZXJhdGlvbnMSGC52MS5HZXRPcGVyYXRpb25zUmVxdWVzdBoRLnYxLk9wZXJhdGlvbkxpc3QiABJDCg1MaXN0U25hcHNob3RzEhgudjEuTGlzdFNuYXBzaG90c1JlcXVlc3QaFi52MS5SZXN0aWNTbmFwc2hvdExpc3QiABJSChFMaXN0U25hcHNob3RGaWxlcxIcLnYxLkxpc3RTbmFwc2hvdEZpbGVzUmVxdWVzdBodLnYxLkxpc3RTbmFwc2hvdEZpbGVzUmVzcG9uc2UiABI2CgZCYWNrdXASEi50eXBlcy5TdHJpbmdWYWx1ZRoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIAEj0KCkRvUmVwb1Rhc2sSFS52MS5Eb1JlcG9UYXNrUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIAEjUKBkZvcmdldBIRLnYxLkZvcmdldFJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABI/CgdSZXN0b3JlEhoudjEuUmVzdG9yZVNuYXBzaG90UmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIAEjUKBkNhbmNlbBIRLnR5cGVzLkludDY0VmFsdWUaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABI0CgdHZXRMb2dzEhIudjEuTG9nRGF0YVJlcXVlc3QaES50eXBlcy5CeXRlc1ZhbHVlIgAwARI4CgpSdW5Db21tYW5kEhUudjEuUnVuQ29tbWFuZFJlcXVlc3QaES50eXBlcy5JbnQ2NFZhbHVlIgASOQoOR2V0RG93bmxvYWRVUkwSES50eXBlcy5JbnQ2NFZhbHVlGhIudHlwZXMuU3RyaW5nVmFsdWUiABJBCgxDbGVhckhpc3RvcnkSFy52MS5DbGVhckhpc3RvcnlSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IgASOwoQUGF0aEF1dG9jb21wbGV0ZRISLnR5cGVzLlN0cmluZ1ZhbHVlGhEudHlwZXMuU3RyaW5nTGlzdCIAEk0KE0dldFN1bW1hcnlEYXNoYm9hcmQSFi5nb29nbGUucHJvdG9idWYuRW1wdHkaHC52MS5TdW1tYXJ5RGFzaGJvYXJkUmVzcG9uc2UiADJLChNCYWNrcmVzdFN5bmNTZXJ2aWNlEjQKBFN5bmMSEi52MS5TeW5jU3RyZWFtSXRlbRoSLnYxLlN5bmNTdHJlYW1JdGVtIgAoATABQixaKmdpdGh1Yi5jb20vZ2FyZXRoZ2VvcmdlL2JhY2tyZXN0L2dlbi9nby92MWIGcHJvdG8z", [file_v1_config, file_v1_restic, file_v1_operations, file_types_value, file_google_protobuf_empty, file_google_api_annotations]);
+=======
+  fileDesc("ChB2MS9zZXJ2aWNlLnByb3RvEgJ2MSJ2CgpPcFNlbGVjdG9yEgsKA2lkcxgBIAMoAxITCgtpbnN0YW5jZV9pZBgGIAEoCRIPCgdyZXBvX2lkGAIgASgJEg8KB3BsYW5faWQYAyABKAkSEwoLc25hcHNob3RfaWQYBCABKAkSDwoHZmxvd19pZBgFIAEoAyLAAQoRRG9SZXBvVGFza1JlcXVlc3QSDwoHcmVwb19pZBgBIAEoCRIoCgR0YXNrGAIgASgOMhoudjEuRG9SZXBvVGFza1JlcXVlc3QuVGFzayJwCgRUYXNrEg0KCVRBU0tfTk9ORRAAEhgKFFRBU0tfSU5ERVhfU05BUFNIT1RTEAESDgoKVEFTS19QUlVORRACEg4KClRBU0tfQ0hFQ0sQAxIOCgpUQVNLX1NUQVRTEAQSDwoLVEFTS19VTkxPQ0sQBSJMChNDbGVhckhpc3RvcnlSZXF1ZXN0EiAKCHNlbGVjdG9yGAEgASgLMg4udjEuT3BTZWxlY3RvchITCgtvbmx5X2ZhaWxlZBgCIAEoCCJGCg1Gb3JnZXRSZXF1ZXN0Eg8KB3JlcG9faWQYASABKAkSDwoHcGxhbl9pZBgCIAEoCRITCgtzbmFwc2hvdF9pZBgDIAEoCSI4ChRMaXN0U25hcHNob3RzUmVxdWVzdBIPCgdyZXBvX2lkGAEgASgJEg8KB3BsYW5faWQYAiABKAkiSAoUR2V0T3BlcmF0aW9uc1JlcXVlc3QSIAoIc2VsZWN0b3IYASABKAsyDi52MS5PcFNlbGVjdG9yEg4KBmxhc3RfbhgCIAEoAyJtChZSZXN0b3JlU25hcHNob3RSZXF1ZXN0Eg8KB3BsYW5faWQYASABKAkSDwoHcmVwb19pZBgFIAEoCRITCgtzbmFwc2hvdF9pZBgCIAEoCRIMCgRwYXRoGAMgASgJEg4KBnRhcmdldBgEIAEoCSJOChhMaXN0U25hcHNob3RGaWxlc1JlcXVlc3QSDwoHcmVwb19pZBgBIAEoCRITCgtzbmFwc2hvdF9pZBgCIAEoCRIMCgRwYXRoGAMgASgJIkcKGUxpc3RTbmFwc2hvdEZpbGVzUmVzcG9uc2USDAoEcGF0aBgBIAEoCRIcCgdlbnRyaWVzGAIgAygLMgsudjEuTHNFbnRyeSIdCg5Mb2dEYXRhUmVxdWVzdBILCgNyZWYYASABKAkilgEKB0xzRW50cnkSDAoEbmFtZRgBIAEoCRIMCgR0eXBlGAIgASgJEgwKBHBhdGgYAyABKAkSCwoDdWlkGAQgASgDEgsKA2dpZBgFIAEoAxIMCgRzaXplGAYgASgDEgwKBG1vZGUYByABKAMSDQoFbXRpbWUYCCABKAkSDQoFYXRpbWUYCSABKAkSDQoFY3RpbWUYCiABKAkiNQoRUnVuQ29tbWFuZFJlcXVlc3QSDwoHcmVwb19pZBgBIAEoCRIPCgdjb21tYW5kGAIgASgJIrUFChhTdW1tYXJ5RGFzaGJvYXJkUmVzcG9uc2USPAoOcmVwb19zdW1tYXJpZXMYASADKAsyJC52MS5TdW1tYXJ5RGFzaGJvYXJkUmVzcG9uc2UuU3VtbWFyeRI8Cg5wbGFuX3N1bW1hcmllcxgCIAMoCzIkLnYxLlN1bW1hcnlEYXNoYm9hcmRSZXNwb25zZS5TdW1tYXJ5EhMKC2NvbmZpZ19wYXRoGAogASgJEhEKCWRhdGFfcGF0aBgLIAEoCRruAgoHU3VtbWFyeRIKCgJpZBgBIAEoCRIdChViYWNrdXBzX2ZhaWxlZF8zMGRheXMYAiABKAMSIwobYmFja3Vwc193YXJuaW5nX2xhc3RfMzBkYXlzGAMgASgDEiMKG2JhY2t1cHNfc3VjY2Vzc19sYXN0XzMwZGF5cxgEIAEoAxIhChlieXRlc19zY2FubmVkX2xhc3RfMzBkYXlzGAUgASgDEh8KF2J5dGVzX2FkZGVkX2xhc3RfMzBkYXlzGAYgASgDEhcKD3RvdGFsX3NuYXBzaG90cxgHIAEoAxIZChFieXRlc19zY2FubmVkX2F2ZxgIIAEoAxIXCg9ieXRlc19hZGRlZF9hdmcYCSABKAMSGwoTbmV4dF9iYWNrdXBfdGltZV9tcxgKIAEoAxJACg5yZWNlbnRfYmFja3VwcxgLIAEoCzIoLnYxLlN1bW1hcnlEYXNoYm9hcmRSZXNwb25zZS5CYWNrdXBDaGFydBqDAQoLQmFja3VwQ2hhcnQSDwoHZmxvd19pZBgBIAMoAxIUCgx0aW1lc3RhbXBfbXMYAiADKAMSEwoLZHVyYXRpb25fbXMYAyADKAMSIwoGc3RhdHVzGAQgAygOMhMudjEuT3BlcmF0aW9uU3RhdHVzEhMKC2J5dGVzX2FkZGVkGAUgAygDIr8JCg5TeW5jU3RyZWFtSXRlbRIrCg5zaWduZWRfbWVzc2FnZRgBIAEoCzIRLnYxLlNpZ25lZE1lc3NhZ2VIABI7CgloYW5kc2hha2UYCiABKAsyJi52MS5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uSGFuZHNoYWtlSAASRgoPZGlmZl9vcGVyYXRpb25zGBQgASgLMisudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvbkRpZmZPcGVyYXRpb25zSAASRgoPc2VuZF9vcGVyYXRpb25zGBUgASgLMisudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblNlbmRPcGVyYXRpb25zSAASPgoLc2VuZF9jb25maWcYFiABKAsyJy52MS5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uU2VuZENvbmZpZ0gAEjoKCHRocm90dGxlGOgHIAEoCzIlLnYxLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25UaHJvdHRsZUgAEk8KF2VzdGFibGlzaF9zaGFyZWRfc2VjcmV0GBcgASgLMiwudjEuU3luY1N0cmVhbUl0ZW0uU3luY0VzdGFibGlzaFNoYXJlZFNlY3JldEgAGnoKE1N5bmNBY3Rpb25IYW5kc2hha2USGAoQcHJvdG9jb2xfdmVyc2lvbhgBIAEoAxIhCgpwdWJsaWNfa2V5GAIgASgLMg0udjEuUHVibGljS2V5EiYKC2luc3RhbmNlX2lkGAMgASgLMhEudjEuU2lnbmVkTWVzc2FnZRo4ChRTeW5jQWN0aW9uU2VuZENvbmZpZxIgCgZjb25maWcYASABKAsyEC52MS5SZW1vdGVDb25maWcaKAoVU3luY0FjdGlvbkNvbm5lY3RSZXBvEg8KB3JlcG9faWQYASABKAkaowEKGFN5bmNBY3Rpb25EaWZmT3BlcmF0aW9ucxIwChhoYXZlX29wZXJhdGlvbnNfc2VsZWN0b3IYASABKAsyDi52MS5PcFNlbGVjdG9yEhoKEmhhdmVfb3BlcmF0aW9uX2lkcxgCIAMoAxIdChVoYXZlX29wZXJhdGlvbl9tb2Rub3MYAyADKAMSGgoScmVxdWVzdF9vcGVyYXRpb25zGAQgAygDGj0KGFN5bmNBY3Rpb25TZW5kT3BlcmF0aW9ucxIhCgVldmVudBgBIAEoCzISLnYxLk9wZXJhdGlvbkV2ZW50GiYKElN5bmNBY3Rpb25UaHJvdHRsZRIQCghkZWxheV9tcxgBIAEoAxo4ChlTeW5jRXN0YWJsaXNoU2hhcmVkU2VjcmV0EhsKB2VkMjU1MTkYAiABKAlSCmVkMjU1MTlwdWIitAEKE1JlcG9Db25uZWN0aW9uU3RhdGUSHAoYQ09OTkVDVElPTl9TVEFURV9VTktOT1dOEAASHAoYQ09OTkVDVElPTl9TVEFURV9QRU5ESU5HEAESHgoaQ09OTkVDVElPTl9TVEFURV9DT05ORUNURUQQAhIhCh1DT05ORUNUSU9OX1NUQVRFX1VOQVVUSE9SSVpFRBADEh4KGkNPTk5FQ1RJT05fU1RBVEVfTk9UX0ZPVU5EEARCCAoGYWN0aW9uIicKDFJlbW90ZUNvbmZpZxIXCgVyZXBvcxgBIAMoCzIILnYxLlJlcG8q+wEKE1N5bmNDb25uZWN0aW9uU3RhdGUSHAoYQ09OTkVDVElPTl9TVEFURV9VTktOT1dOEAASHAoYQ09OTkVDVElPTl9TVEFURV9QRU5ESU5HEAESHgoaQ09OTkVDVElPTl9TVEFURV9DT05ORUNURUQQAhIhCh1DT05ORUNUSU9OX1NUQVRFX0RJU0NPTk5FQ1RFRBADEh8KG0NPTk5FQ1RJT05fU1RBVEVfUkVUUllfV0FJVBAEEh8KG0NPTk5FQ1RJT05fU1RBVEVfRVJST1JfQVVUSBAKEiMKH0NPTk5FQ1RJT05fU1RBVEVfRVJST1JfUFJPVE9DT0wQCzLGCAoIQmFja3Jlc3QSMQoJR2V0Q29uZmlnEhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5GgoudjEuQ29uZmlnIgASJQoJU2V0Q29uZmlnEgoudjEuQ29uZmlnGgoudjEuQ29uZmlnIgASIQoHQWRkUmVwbxIILnYxLlJlcG8aCi52MS5Db25maWciABJEChJHZXRPcGVyYXRpb25FdmVudHMSFi5nb29nbGUucHJvdG9idWYuRW1wdHkaEi52MS5PcGVyYXRpb25FdmVudCIAMAESPgoNR2V0T3BlcmF0aW9ucxIYLnYxLkdldE9wZXJhdGlvbnNSZXF1ZXN0GhEudjEuT3BlcmF0aW9uTGlzdCIAEkMKDUxpc3RTbmFwc2hvdHMSGC52MS5MaXN0U25hcHNob3RzUmVxdWVzdBoWLnYxLlJlc3RpY1NuYXBzaG90TGlzdCIAElIKEUxpc3RTbmFwc2hvdEZpbGVzEhwudjEuTGlzdFNuYXBzaG90RmlsZXNSZXF1ZXN0Gh0udjEuTGlzdFNuYXBzaG90RmlsZXNSZXNwb25zZSIAEjYKBkJhY2t1cBISLnR5cGVzLlN0cmluZ1ZhbHVlGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IgASPQoKRG9SZXBvVGFzaxIVLnYxLkRvUmVwb1Rhc2tSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IgASNQoGRm9yZ2V0EhEudjEuRm9yZ2V0UmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIAEj8KB1Jlc3RvcmUSGi52MS5SZXN0b3JlU25hcHNob3RSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IgASNQoGQ2FuY2VsEhEudHlwZXMuSW50NjRWYWx1ZRoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIAEjQKB0dldExvZ3MSEi52MS5Mb2dEYXRhUmVxdWVzdBoRLnR5cGVzLkJ5dGVzVmFsdWUiADABEjgKClJ1bkNvbW1hbmQSFS52MS5SdW5Db21tYW5kUmVxdWVzdBoRLnR5cGVzLkludDY0VmFsdWUiABI5Cg5HZXREb3dubG9hZFVSTBIRLnR5cGVzLkludDY0VmFsdWUaEi50eXBlcy5TdHJpbmdWYWx1ZSIAEkEKDENsZWFySGlzdG9yeRIXLnYxLkNsZWFySGlzdG9yeVJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABI7ChBQYXRoQXV0b2NvbXBsZXRlEhIudHlwZXMuU3RyaW5nVmFsdWUaES50eXBlcy5TdHJpbmdMaXN0IgASTQoTR2V0U3VtbWFyeURhc2hib2FyZBIWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRocLnYxLlN1bW1hcnlEYXNoYm9hcmRSZXNwb25zZSIAMksKE0JhY2tyZXN0U3luY1NlcnZpY2USNAoEU3luYxISLnYxLlN5bmNTdHJlYW1JdGVtGhIudjEuU3luY1N0cmVhbUl0ZW0iACgBMAFCLFoqZ2l0aHViLmNvbS9nYXJldGhnZW9yZ2UvYmFja3Jlc3QvZ2VuL2dvL3YxYgZwcm90bzM", [file_v1_config, file_v1_crypto, file_v1_restic, file_v1_operations, file_types_value, file_google_protobuf_empty, file_google_api_annotations]);
+>>>>>>> 3fff743 (progress managing remote config sync and syncmanager impl)
 
 /**
  * OpSelector is a message that can be used to select operations e.g. by query.
@@ -561,40 +567,46 @@ export type SyncStreamItem = Message<"v1.SyncStreamItem"> & {
    */
   action: {
     /**
+     * @generated from field: v1.SignedMessage signed_message = 1;
+     */
+    value: SignedMessage;
+    case: "signedMessage";
+  } | {
+    /**
      * @generated from field: v1.SyncStreamItem.SyncActionHandshake handshake = 10;
      */
     value: SyncStreamItem_SyncActionHandshake;
     case: "handshake";
   } | {
     /**
-     * @generated from field: v1.SyncStreamItem.SyncActionConnectRepo connect_repo = 20;
-     */
-    value: SyncStreamItem_SyncActionConnectRepo;
-    case: "connectRepo";
-  } | {
-    /**
-     * @generated from field: v1.SyncStreamItem.SyncActionUpdateConnectionState update_connection_state = 21;
-     */
-    value: SyncStreamItem_SyncActionUpdateConnectionState;
-    case: "updateConnectionState";
-  } | {
-    /**
-     * @generated from field: v1.SyncStreamItem.SyncActionDiffOperations diff_operations = 22;
+     * @generated from field: v1.SyncStreamItem.SyncActionDiffOperations diff_operations = 20;
      */
     value: SyncStreamItem_SyncActionDiffOperations;
     case: "diffOperations";
   } | {
     /**
-     * @generated from field: v1.SyncStreamItem.SyncActionSendOperations send_operations = 23;
+     * @generated from field: v1.SyncStreamItem.SyncActionSendOperations send_operations = 21;
      */
     value: SyncStreamItem_SyncActionSendOperations;
     case: "sendOperations";
+  } | {
+    /**
+     * @generated from field: v1.SyncStreamItem.SyncActionSendConfig send_config = 22;
+     */
+    value: SyncStreamItem_SyncActionSendConfig;
+    case: "sendConfig";
   } | {
     /**
      * @generated from field: v1.SyncStreamItem.SyncActionThrottle throttle = 1000;
      */
     value: SyncStreamItem_SyncActionThrottle;
     case: "throttle";
+  } | {
+    /**
+     * @generated from field: v1.SyncStreamItem.SyncEstablishSharedSecret establish_shared_secret = 23;
+     */
+    value: SyncStreamItem_SyncEstablishSharedSecret;
+    case: "establishSharedSecret";
   } | { case: undefined; value?: undefined };
 };
 
@@ -615,16 +627,14 @@ export type SyncStreamItem_SyncActionHandshake = Message<"v1.SyncStreamItem.Sync
   protocolVersion: bigint;
 
   /**
-   * @generated from field: string instance_id = 2;
+   * @generated from field: v1.PublicKey public_key = 2;
    */
-  instanceId: string;
+  publicKey?: PublicKey;
 
   /**
-   * ecc signature attesting to the instance ID.
-   *
-   * @generated from field: string instance_id_signature = 3;
+   * @generated from field: v1.SignedMessage instance_id = 3;
    */
-  instanceIdSignature: string;
+  instanceId?: SignedMessage;
 };
 
 /**
@@ -633,6 +643,23 @@ export type SyncStreamItem_SyncActionHandshake = Message<"v1.SyncStreamItem.Sync
  */
 export const SyncStreamItem_SyncActionHandshakeSchema: GenMessage<SyncStreamItem_SyncActionHandshake> = /*@__PURE__*/
   messageDesc(file_v1_service, 13, 0);
+
+/**
+ * @generated from message v1.SyncStreamItem.SyncActionSendConfig
+ */
+export type SyncStreamItem_SyncActionSendConfig = Message<"v1.SyncStreamItem.SyncActionSendConfig"> & {
+  /**
+   * @generated from field: v1.RemoteConfig config = 1;
+   */
+  config?: RemoteConfig;
+};
+
+/**
+ * Describes the message v1.SyncStreamItem.SyncActionSendConfig.
+ * Use `create(SyncStreamItem_SyncActionSendConfigSchema)` to create a new message.
+ */
+export const SyncStreamItem_SyncActionSendConfigSchema: GenMessage<SyncStreamItem_SyncActionSendConfig> = /*@__PURE__*/
+  messageDesc(file_v1_service, 13, 1);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionConnectRepo
@@ -649,33 +676,6 @@ export type SyncStreamItem_SyncActionConnectRepo = Message<"v1.SyncStreamItem.Sy
  * Use `create(SyncStreamItem_SyncActionConnectRepoSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionConnectRepoSchema: GenMessage<SyncStreamItem_SyncActionConnectRepo> = /*@__PURE__*/
-  messageDesc(file_v1_service, 13, 1);
-
-/**
- * @generated from message v1.SyncStreamItem.SyncActionUpdateConnectionState
- */
-export type SyncStreamItem_SyncActionUpdateConnectionState = Message<"v1.SyncStreamItem.SyncActionUpdateConnectionState"> & {
-  /**
-   * @generated from field: string repo_id = 1;
-   */
-  repoId: string;
-
-  /**
-   * @generated from field: v1.SyncStreamItem.RepoConnectionState state = 2;
-   */
-  state: SyncStreamItem_RepoConnectionState;
-
-  /**
-   * @generated from field: string message = 3;
-   */
-  message: string;
-};
-
-/**
- * Describes the message v1.SyncStreamItem.SyncActionUpdateConnectionState.
- * Use `create(SyncStreamItem_SyncActionUpdateConnectionStateSchema)` to create a new message.
- */
-export const SyncStreamItem_SyncActionUpdateConnectionStateSchema: GenMessage<SyncStreamItem_SyncActionUpdateConnectionState> = /*@__PURE__*/
   messageDesc(file_v1_service, 13, 2);
 
 /**
@@ -750,6 +750,28 @@ export const SyncStreamItem_SyncActionThrottleSchema: GenMessage<SyncStreamItem_
   messageDesc(file_v1_service, 13, 5);
 
 /**
+ * @generated from message v1.SyncStreamItem.SyncEstablishSharedSecret
+ */
+export type SyncStreamItem_SyncEstablishSharedSecret = Message<"v1.SyncStreamItem.SyncEstablishSharedSecret"> & {
+  /**
+   * a one-time-use ed25519 public key with a matching unshared private key. Used to perform a key exchange.
+   * See https://pkg.go.dev/crypto/ecdh#PrivateKey.ECDH .
+   *
+   * base64 encoded public key
+   *
+   * @generated from field: string ed25519 = 2 [json_name = "ed25519pub"];
+   */
+  ed25519: string;
+};
+
+/**
+ * Describes the message v1.SyncStreamItem.SyncEstablishSharedSecret.
+ * Use `create(SyncStreamItem_SyncEstablishSharedSecretSchema)` to create a new message.
+ */
+export const SyncStreamItem_SyncEstablishSharedSecretSchema: GenMessage<SyncStreamItem_SyncEstablishSharedSecret> = /*@__PURE__*/
+  messageDesc(file_v1_service, 13, 6);
+
+/**
  * @generated from enum v1.SyncStreamItem.RepoConnectionState
  */
 export enum SyncStreamItem_RepoConnectionState {
@@ -786,6 +808,25 @@ export enum SyncStreamItem_RepoConnectionState {
  */
 export const SyncStreamItem_RepoConnectionStateSchema: GenEnum<SyncStreamItem_RepoConnectionState> = /*@__PURE__*/
   enumDesc(file_v1_service, 13, 0);
+
+/**
+ * RemoteConfig contains shareable properties from a remote backrest instance.
+ *
+ * @generated from message v1.RemoteConfig
+ */
+export type RemoteConfig = Message<"v1.RemoteConfig"> & {
+  /**
+   * @generated from field: repeated v1.Repo repos = 1;
+   */
+  repos: Repo[];
+};
+
+/**
+ * Describes the message v1.RemoteConfig.
+ * Use `create(RemoteConfigSchema)` to create a new message.
+ */
+export const RemoteConfigSchema: GenMessage<RemoteConfig> = /*@__PURE__*/
+  messageDesc(file_v1_service, 14);
 
 /**
  * @generated from enum v1.SyncConnectionState

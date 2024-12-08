@@ -5,6 +5,7 @@ package v1;
 option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
 
 import "v1/config.proto";
+import "v1/crypto.proto";
 import "v1/restic.proto";
 import "v1/operations.proto";
 import "types/value.proto";
@@ -195,18 +196,24 @@ enum SyncConnectionState {
 
 message SyncStreamItem {
   oneof action {
+    SignedMessage signed_message = 1;
     SyncActionHandshake handshake = 10;
-    SyncActionConnectRepo connect_repo = 20;
-    SyncActionUpdateConnectionState update_connection_state = 21;
-    SyncActionDiffOperations diff_operations = 22;
-    SyncActionSendOperations send_operations = 23;
+    SyncActionDiffOperations diff_operations = 20;
+    SyncActionSendOperations send_operations = 21;
+    SyncActionSendConfig send_config = 22;
     SyncActionThrottle throttle = 1000;
+
+    SyncEstablishSharedSecret establish_shared_secret = 23;
   }
 
   message SyncActionHandshake {
     int64 protocol_version = 1;
-    string instance_id = 2;
-    string instance_id_signature = 3; // ecc signature attesting to the instance ID.
+    PublicKey public_key = 2;
+    SignedMessage instance_id = 3;
+  }
+
+  message SyncActionSendConfig {
+    RemoteConfig config = 1;
   }
 
   message SyncActionConnectRepo {
@@ -219,12 +226,6 @@ message SyncStreamItem {
     CONNECTION_STATE_CONNECTED = 2;
     CONNECTION_STATE_UNAUTHORIZED = 3;
     CONNECTION_STATE_NOT_FOUND = 4;
-  }
-
-  message SyncActionUpdateConnectionState {
-    string repo_id = 1;
-    RepoConnectionState state = 2;
-    string message = 3;
   }
 
   message SyncActionDiffOperations {
@@ -244,4 +245,15 @@ message SyncStreamItem {
   message SyncActionThrottle {
     int64 delay_ms = 1;
   }
+
+  message SyncEstablishSharedSecret {
+    // a one-time-use ed25519 public key with a matching unshared private key. Used to perform a key exchange.
+    // See https://pkg.go.dev/crypto/ecdh#PrivateKey.ECDH .
+    string ed25519 = 2 [json_name="ed25519pub"]; // base64 encoded public key
+  }
+}
+
+// RemoteConfig contains shareable properties from a remote backrest instance.
+message RemoteConfig {
+  repeated Repo repos = 1;
 }

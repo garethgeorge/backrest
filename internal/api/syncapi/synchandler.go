@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 
 	"connectrpc.com/connect"
@@ -13,27 +14,27 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 const SyncProtocolVersion = 1
 
 type BackrestSyncHandler struct {
-	config config.ConfigStore
-	oplog  *oplog.OpLog
+	mgr *SyncManager
 }
 
 var _ v1connect.BackrestSyncServiceHandler = &BackrestSyncHandler{}
 
-func NewBackrestSyncHandler(config config.ConfigStore, oplog *oplog.OpLog) *BackrestSyncHandler {
+func NewBackrestSyncHandler(mgr *SyncManager) *BackrestSyncHandler {
 	return &BackrestSyncHandler{
-		config: config,
-		oplog:  oplog,
+		mgr: mgr,
 	}
 }
 
 func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStream[v1.SyncStreamItem, v1.SyncStreamItem]) error {
 	// TODO: this request can be very long lived, we must periodically refresh the config
-	initialConfig, err := h.config.Get()
+	// e.g. to disconnect a client if its access is revoked.
+	initialConfig, err := h.mgr.configMgr.Get()
 	if err != nil {
 		return err
 	}
@@ -57,7 +58,11 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		Action: &v1.SyncStreamItem_Handshake{
 			Handshake: &v1.SyncStreamItem_SyncActionHandshake{
 				ProtocolVersion: SyncProtocolVersion,
-				InstanceId:      initialConfig.Instance,
+				InstanceId: &v1.SignedMessage{
+					Payload:   []byte(initialConfig.Instance),
+					Signature: []byte("TODO: inject a valid signature"),
+					Keyid:     "TODO: inject a valid key ID",
+				},
 			},
 		},
 	}); err != nil {
@@ -65,6 +70,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	}
 
 	// Try to read the handshake packet from the client.
+	// TODO: perform this handshake in a header as a pre-flight before opening the stream.
 	clientInstanceID := ""
 	if msg, ok := <-receive; ok {
 		handshake := msg.GetHandshake()
@@ -72,7 +78,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("handshake packet must be sent first"))
 		}
 
-		clientInstanceID = handshake.GetInstanceId()
+		clientInstanceID = string(handshake.GetInstanceId().GetPayload())
 		if clientInstanceID == "" {
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("instance ID is required"))
 		}
@@ -80,14 +86,22 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("no packets received"))
 	}
 
-	zap.S().Infof("syncserver client connected with instance ID %s", clientInstanceID)
-
-	// After receiving handshake packet, start processing commands
-	connectedRepos := make(map[string]struct{})
+	var authorizedClientPeer *v1.Multihost_Peer
+	authorizedClientPeerIdx := slices.IndexFunc(initialConfig.Multihost.GetAuthorizedClients(), func(peer *v1.Multihost_Peer) bool {
+		return peer.InstanceId == clientInstanceID
+	})
+	if authorizedClientPeerIdx == -1 {
+		// TODO: check the key signature of the handshake message here.
+		zap.S().Warnf("syncserver rejected a connection from client instance ID %q because it is not authorized", clientInstanceID)
+		return connect.NewError(connect.CodePermissionDenied, errors.New("client is not an authorized peer"))
+	} else {
+		authorizedClientPeer = initialConfig.Multihost.AuthorizedClients[authorizedClientPeerIdx]
+	}
+	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
 
 	insertOrUpdate := func(op *v1.Operation) error {
 		var foundOp *v1.Operation
-		if err := h.oplog.Query(oplog.Query{OriginalID: op.Id, InstanceID: op.InstanceId}, func(o *v1.Operation) error {
+		if err := h.mgr.oplog.Query(oplog.Query{OriginalID: op.Id, InstanceID: op.InstanceId}, func(o *v1.Operation) error {
 			foundOp = o
 			return nil
 		}); err != nil {
@@ -97,51 +111,61 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		if foundOp == nil {
 			op.OriginalId = op.Id
 			op.Id = 0
-			return h.oplog.Add(op)
+			return h.mgr.oplog.Add(op)
 		} else {
 			op.OriginalId = op.Id
 			op.Id = foundOp.Id
-			return h.oplog.Update(op)
+			return h.mgr.oplog.Update(op)
 		}
+	}
+
+	sendConfigToClient := func(config *v1.Config) error {
+		remoteConfig := &v1.RemoteConfig{}
+		for _, repo := range config.Repos {
+			if slices.Contains(repo.AllowedPeerInstanceIds, clientInstanceID) {
+				repoCopy := proto.Clone(repo).(*v1.Repo)
+				repoCopy.AllowedPeerInstanceIds = nil
+				remoteConfig.Repos = append(remoteConfig.Repos, repoCopy)
+			}
+		}
+
+		if err := stream.Send(&v1.SyncStreamItem{
+			Action: &v1.SyncStreamItem_SendConfig{
+				SendConfig: &v1.SyncStreamItem_SyncActionSendConfig{
+					Config: remoteConfig,
+				},
+			},
+		}); err != nil {
+			return fmt.Errorf("sending config to client: %w", err)
+		}
+		return nil
 	}
 
 	handleSyncCommand := func(item *v1.SyncStreamItem) error {
 		switch action := item.Action.(type) {
-		case *v1.SyncStreamItem_ConnectRepo:
-			// TODO: enforce authentication here
-			// Auth should check credentials and also the instance ID of the client.
-			if _, ok := connectedRepos[action.ConnectRepo.RepoId]; ok {
-				return connect.NewError(connect.CodeAlreadyExists, errors.New("client is already connected to repo"))
-			}
-
-			connectedRepos[action.ConnectRepo.RepoId] = struct{}{}
-
-			if err := stream.Send(&v1.SyncStreamItem{
-				Action: &v1.SyncStreamItem_UpdateConnectionState{
-					UpdateConnectionState: &v1.SyncStreamItem_SyncActionUpdateConnectionState{
-						RepoId: action.ConnectRepo.RepoId,
-						State:  v1.SyncStreamItem_CONNECTION_STATE_CONNECTED,
-					},
-				},
-			}); err != nil {
-				return fmt.Errorf("action ConnectRepo: send connection state reply: %w", err)
-			}
-
-			zap.S().Debugf("syncserver client %q connected to repo %q", clientInstanceID, action.ConnectRepo.RepoId)
+		case *v1.SyncStreamItem_SendConfig:
+			return errors.New("clients can not push configs to server")
 		case *v1.SyncStreamItem_DiffOperations:
 			diffSel := action.DiffOperations.GetHaveOperationsSelector()
 
 			if diffSel == nil {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("action DiffOperations: selector is required"))
 			}
+
 			// The diff selector _must_ be scoped to the instance ID of the client.
 			if diffSel.GetInstanceId() != clientInstanceID {
 				return connect.NewError(connect.CodePermissionDenied, errors.New("action DiffOperations: instance ID mismatch in diff selector"))
 			}
-			// The diff selector _must_ specify a repo we are subscribed to.
-			if _, ok := connectedRepos[diffSel.GetRepoId()]; !ok {
-				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: client is not subscribed to repo %s", diffSel.GetRepoId()))
+
+			// The diff selector _must_ specify a repo the client has access to
+			repo := config.FindRepo(initialConfig, diffSel.GetRepoId())
+			if repo == nil {
+				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: repo %q not found", diffSel.GetRepoId()))
 			}
+			if !slices.Contains(repo.GetAllowedPeerInstanceIds(), clientInstanceID) {
+				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: client is not allowed to access repo %q", diffSel.GetRepoId()))
+			}
+
 			// These are required to be the same length for a pairwise zip.
 			if len(action.DiffOperations.HaveOperationIds) != len(action.DiffOperations.HaveOperationModnos) {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("action DiffOperations: operation IDs and modnos must be the same length"))
@@ -153,7 +177,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			}
 
 			localMetadata := []oplog.OpMetadata{}
-			if err := h.oplog.QueryMetadata(diffSelQuery, func(metadata oplog.OpMetadata) error {
+			if err := h.mgr.oplog.QueryMetadata(diffSelQuery, func(metadata oplog.OpMetadata) error {
 				localMetadata = append(localMetadata, metadata)
 				return nil
 			}); err != nil {
@@ -237,7 +261,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 					}
 				}
 			case *v1.OperationEvent_DeletedOperations:
-				if err := h.oplog.Delete(event.DeletedOperations.GetValues()...); err != nil {
+				if err := h.mgr.oplog.Delete(event.DeletedOperations.GetValues()...); err != nil {
 					return fmt.Errorf("action SendOperations: operation event delete: %w", err)
 				}
 			case *v1.OperationEvent_KeepAlive:
@@ -250,6 +274,11 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 		return nil
 	}
+
+	// subscribe to our own configuration for changes
+	configWatchCh := h.mgr.configMgr.Watch()
+	defer h.mgr.configMgr.StopWatching(configWatchCh)
+	sendConfigToClient(initialConfig)
 
 	for {
 		select {
@@ -269,6 +298,13 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			if err := stream.Send(sendItem); err != nil {
 				return err
 			}
+		case <-configWatchCh:
+			newConfig, err := h.mgr.configMgr.Get()
+			if err != nil {
+				zap.S().Warnf("syncserver failed to get the newest config: %v", err)
+				continue
+			}
+			sendConfigToClient(newConfig)
 		case <-ctx.Done():
 			return ctx.Err()
 		}
