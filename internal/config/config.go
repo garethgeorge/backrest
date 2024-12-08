@@ -16,8 +16,8 @@ var ErrConfigNotFound = fmt.Errorf("config not found")
 type ConfigManager struct {
 	Store ConfigStore
 
-	callbacksMu sync.Mutex
-	callbacks   []*func(cfg *v1.Config)
+	callbacksMu    sync.Mutex
+	changeNotifyCh []chan struct{}
 }
 
 func (m *ConfigManager) Get() (*v1.Config, error) {
@@ -31,33 +31,35 @@ func (m *ConfigManager) Update(config *v1.Config) error {
 	}
 
 	m.callbacksMu.Lock()
-	callbacks := slices.Clone(m.callbacks)
+	changeNotifyCh := slices.Clone(m.changeNotifyCh)
 	m.callbacksMu.Unlock()
 
-	for _, cb := range callbacks {
-		(*cb)(config)
+	for _, ch := range changeNotifyCh {
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
 	}
 
 	return nil
 }
 
-func (m *ConfigManager) Subscribe(cb func(c *v1.Config)) {
+func (m *ConfigManager) Watch() <-chan struct{} {
 	m.callbacksMu.Lock()
-	m.callbacks = append(m.callbacks, &cb)
+	ch := make(chan struct{}, 1)
+	m.changeNotifyCh = append(m.changeNotifyCh, ch)
 	m.callbacksMu.Unlock()
+	return ch
 }
 
-func (m *ConfigManager) Unsubscribe(cb func(c *v1.Config)) bool {
+func (m *ConfigManager) StopWatching(ch <-chan struct{}) bool {
 	m.callbacksMu.Lock()
-	origLen := len(m.callbacks)
-	m.callbacks = slices.DeleteFunc(m.callbacks, func(v *func(c *v1.Config)) bool {
-		if v == &cb {
-			return true
-		}
-		return false
+	origLen := len(m.changeNotifyCh)
+	m.changeNotifyCh = slices.DeleteFunc(m.changeNotifyCh, func(v chan struct{}) bool {
+		return v == ch
 	})
 	defer m.callbacksMu.Unlock()
-	return len(m.callbacks) != origLen
+	return len(m.changeNotifyCh) != origLen
 }
 
 type ConfigStore interface {
@@ -77,6 +79,7 @@ func NewDefaultConfig() *v1.Config {
 	}
 }
 
+// TODO: merge caching validating store functions into config manager
 type CachingValidatingStore struct {
 	ConfigStore
 	mu     sync.Mutex

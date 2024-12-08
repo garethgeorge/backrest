@@ -7,24 +7,33 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 )
 
 type SyncClient struct {
+	mgr             *SyncManager
 	localInstanceID string
+	peer            *v1.Multihost_Peer
 	oplog           *oplog.OpLog
 	client          v1connect.BackrestSyncServiceClient
 	reconnectDelay  time.Duration
 	l               *zap.Logger
-	connectionState v1.SyncConnectionState
+
+	// mutable properties
+	mu                      sync.Mutex
+	remoteConfigStore       RemoteConfigStore
+	connectionStatus        v1.SyncConnectionState
+	connectionStatusMessage string
 }
 
 func newInsecureClient() *http.Client {
@@ -40,35 +49,52 @@ func newInsecureClient() *http.Client {
 	}
 }
 
-func NewSyncClient(localInstanceID, remoteInstanceURL string, oplog *oplog.OpLog) *SyncClient {
-	urlToUse := backrestRemoteUrlToHTTPUrl(remoteInstanceURL)
+func NewSyncClient(mgr *SyncManager, localInstanceID string, peer *v1.Multihost_Peer, oplog *oplog.OpLog) (*SyncClient, error) {
+	if peer.GetInstanceUrl() == "" {
+		return nil, errors.New("peer instance URL is required")
+	}
+
 	client := v1connect.NewBackrestSyncServiceClient(
 		newInsecureClient(),
-		urlToUse,
+		peer.GetInstanceUrl(),
 	)
 
 	return &SyncClient{
+		mgr:             mgr,
 		localInstanceID: localInstanceID,
+		peer:            peer,
 		reconnectDelay:  60 * time.Second,
 		client:          client,
 		oplog:           oplog,
-		l:               zap.L().Named("syncclient").With(zap.String("peer", remoteInstanceURL)),
-	}
+		l:               zap.L().Named("syncclient").With(zap.String("peer", peer.GetInstanceUrl())),
+	}, nil
 }
 
-func (c *SyncClient) RunSyncForRepos(ctx context.Context, repos []*v1.Repo) {
+func (c *SyncClient) setConnectionState(state v1.SyncConnectionState, message string) {
+	c.mu.Lock()
+	c.connectionStatus = state
+	c.mu.Unlock()
+}
+
+func (c *SyncClient) GetConnectionState() (v1.SyncConnectionState, string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.connectionStatus, c.connectionStatusMessage
+}
+
+func (c *SyncClient) RunSync(ctx context.Context) {
 	for {
 		if ctx.Err() != nil {
 			return
 		}
 
 		lastConnect := time.Now()
-		c.setStatusForRepos(repos, v1.SyncStreamItem_CONNECTION_STATE_PENDING, "connecting")
-		if err := c.runSyncForReposInternal(ctx, repos); err != nil {
-			c.l.Warn("sync error", zap.Error(err))
-			c.setStatusForRepos(repos, v1.SyncStreamItem_CONNECTION_STATE_DISCONNECTED, err.Error())
-		} else {
-			c.setStatusForRepos(repos, v1.SyncStreamItem_CONNECTION_STATE_DISCONNECTED, "connection closed")
+
+		c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_PENDING, "connection pending")
+
+		if err := c.runSyncInternal(ctx); err != nil {
+			c.l.Error("sync error", zap.Error(err))
+			c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED, err.Error())
 		}
 
 		delay := c.reconnectDelay - time.Since(lastConnect)
@@ -81,7 +107,7 @@ func (c *SyncClient) RunSyncForRepos(ctx context.Context, repos []*v1.Repo) {
 	}
 }
 
-func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Repo) error {
+func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	c.l.Info("connecting to sync server")
 	stream := c.client.Sync(ctx)
 
@@ -103,11 +129,16 @@ func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Re
 	}()
 
 	// Broadcast initial packet containing the protocol version and instance ID.
+	// TODO: do this in a header instead of as a part of the stream.
 	if err := stream.Send(&v1.SyncStreamItem{
 		Action: &v1.SyncStreamItem_Handshake{
 			Handshake: &v1.SyncStreamItem_SyncActionHandshake{
 				ProtocolVersion: SyncProtocolVersion,
-				InstanceId:      c.localInstanceID,
+				InstanceId: &v1.SignedMessage{
+					Payload:   []byte(c.localInstanceID),
+					Signature: []byte("TOOD: inject a valid signature"),
+					Keyid:     "TODO: inject a valid key ID",
+				},
 			},
 		},
 	}); err != nil {
@@ -122,7 +153,7 @@ func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Re
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("handshake packet must be sent first"))
 		}
 
-		serverInstanceID = handshake.GetInstanceId()
+		serverInstanceID = string(handshake.GetInstanceId().GetPayload())
 		if serverInstanceID == "" {
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("instance ID is required"))
 		}
@@ -132,19 +163,6 @@ func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Re
 		}
 	} else {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("no packets received"))
-	}
-
-	// Send the list of repos to connect to the server.
-	for _, repo := range repos {
-		if err := stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_ConnectRepo{
-				ConnectRepo: &v1.SyncStreamItem_SyncActionConnectRepo{
-					RepoId: repo.GetId(),
-				},
-			},
-		}); err != nil {
-			return fmt.Errorf("send connect repo: %w", err)
-		}
 	}
 
 	didSubscribeOplog := false
@@ -199,30 +217,46 @@ func (c *SyncClient) runSyncForReposInternal(ctx context.Context, repos []*v1.Re
 		}
 	}
 
-	forwardOperationMetadata := func(repoID string) {
-		zap.L().Info("TODO: implement metadata forwarding!")
-	}
+	haveRunSync := make(map[string]bool) // repo ID -> have run sync?
 
 	handleSyncCommand := func(item *v1.SyncStreamItem) error {
 		switch action := item.Action.(type) {
-		case *v1.SyncStreamItem_UpdateConnectionState:
-			update := action.UpdateConnectionState
-			c.connectedRepos[update.RepoId] = &v1.SyncConnectionInfo{
-				RepoId:          update.RepoId,
-				ConnectionState: update.State,
-				Message:         update.Message,
-				InstanceId:      serverInstanceID,
-				LastActivityMs:  time.Now().UnixMilli(),
+		case *v1.SyncStreamItem_SendConfig:
+			newRemoteConfig := action.SendConfig.Config
+			if err := c.mgr.remoteConfigStore.Update(c.peer.InstanceId); err != nil {
+				return fmt.Errorf("update remote config store with latest config: %w", err)
 			}
 
-			if update.State == v1.SyncStreamItem_CONNECTION_STATE_CONNECTED {
-				if !didSubscribeOplog {
-					didSubscribeOplog = true
-					c.oplog.Subscribe(oplog.Query{}, &oplogSubscription)
+			localConfig, err := c.mgr.configMgr.Get()
+			if err != nil {
+				return fmt.Errorf("get local config: %w", err)
+			}
+
+			for _, repo := range newRemoteConfig.GetRepos() {
+				_, ok := haveRunSync[repo.GetId()]
+				if ok {
+					continue
+				}
+				haveRunSync[repo.GetId()] = true
+				localRepoConfig := config.FindRepo(localConfig, repo.GetId())
+
+				instanceID, err := InstanceForBackrestURI(localRepoConfig.Uri)
+				if err != nil || instanceID != c.peer.InstanceId {
+					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name specifies URI %q which does not reference it", c.peer.InstanceId, repo.GetId(), localRepoConfig.BackrestURI)
+					continue
 				}
 
-				forwardOperationMetadata(update.RepoId)
+				// initialize a diff operations command that sends our local operation set for this repo
+
+				// TODO: send the diff operations
 			}
+
+		case *v1.SyncStreamItem_DiffOperations:
+			// requestedOperations := action.DiffOperations.GetRequestOperations()
+
+			// TODO: check that the server is allowed to have these operations using haveRunSync map.
+			// If we sent a sync packet for the repo, then we are expecting operation requests back for ops in that repo.
+
 		case *v1.SyncStreamItem_Throttle:
 			c.reconnectDelay = time.Duration(action.Throttle.GetDelayMs()) * time.Millisecond
 		default:
