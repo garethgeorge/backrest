@@ -217,7 +217,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 		}
 	}
 
-	haveRunSync := make(map[string]bool) // repo ID -> have run sync?
+	haveRunSync := make(map[string]struct{}) // repo ID -> have run sync?
 
 	handleSyncCommand := func(item *v1.SyncStreamItem) error {
 		switch action := item.Action.(type) {
@@ -237,26 +237,101 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				if ok {
 					continue
 				}
-				haveRunSync[repo.GetId()] = true
+				haveRunSync[repo.GetId()] = struct{}{}
 				localRepoConfig := config.FindRepo(localConfig, repo.GetId())
-
+				repo.Hooks = nil // we don't accept any hooks from the server. This could be used to execute arbitrary code on the client.
 				instanceID, err := InstanceForBackrestURI(localRepoConfig.Uri)
 				if err != nil || instanceID != c.peer.InstanceId {
-					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name specifies URI %q which does not reference it", c.peer.InstanceId, repo.GetId(), localRepoConfig.BackrestURI)
+					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name specifies URI %q which does not reference the peer providing this config", c.peer.InstanceId, repo.GetId(), localRepoConfig.BackrestURI)
 					continue
 				}
 
-				// initialize a diff operations command that sends our local operation set for this repo
+				// Load operation metadata and send the initial diff state.
+				var opIds []int64
+				var opModnos []int64
+				if err := c.oplog.QueryMetadata(oplog.Query{
+					InstanceID: c.localInstanceID,
+					RepoID:     repo.GetId(),
+				}, func(op oplog.OpMetadata) error {
+					opIds = append(opIds, op.ID)
+					opModnos = append(opModnos, op.Modno)
+					return nil
+				}); err != nil {
+					return fmt.Errorf("action sync config: query oplog for repo %q: %w", repo.GetId(), err)
+				}
 
-				// TODO: send the diff operations
+				if err := stream.Send(&v1.SyncStreamItem{
+					Action: &v1.SyncStreamItem_DiffOperations{
+						DiffOperations: &v1.SyncStreamItem_SyncActionDiffOperations{
+							HaveOperationsSelector: &v1.OpSelector{
+								InstanceId: c.localInstanceID,
+								RepoId:     repo.GetId(),
+							},
+							HaveOperationIds:    opIds,
+							HaveOperationModnos: opModnos,
+						},
+					},
+				}); err != nil {
+					return fmt.Errorf("action sync config: send diff operations: %w", err)
+				}
+			}
+		case *v1.SyncStreamItem_DiffOperations:
+			requestedOperations := action.DiffOperations.GetRequestOperations()
+
+			var deletedIDs []int64
+			var sendOps []*v1.Operation
+			var ops []*v1.Operation
+			for _, opID := range requestedOperations {
+				op, err := c.oplog.Get(opID)
+				if err != nil {
+					if errors.Is(err, oplog.ErrNotExist) {
+						deletedIDs = append(deletedIDs, opID)
+						continue
+					}
+					c.l.Sugar().Warnf("action diff operations, failed to fetch a requested operation %d: %v", opID, err)
+					continue // skip this operation
+				}
+
+				_, ok := haveRunSync[op.GetRepoId()]
+				if !ok {
+					// this should never happen if sync is working correctly. Would probably indicate oplog corruption?
+					return fmt.Errorf("remote requested operation for repo %q for which sync was never initiated", op.GetRepoId())
+				}
+
+				sendOps = append(ops, op)
 			}
 
-		case *v1.SyncStreamItem_DiffOperations:
-			// requestedOperations := action.DiffOperations.GetRequestOperations()
+			if len(deletedIDs) > 0 {
+				if err := stream.Send(&v1.SyncStreamItem{
+					Action: &v1.SyncStreamItem_SendOperations{
+						SendOperations: &v1.SyncStreamItem_SyncActionSendOperations{
+							Event: &v1.OperationEvent{
+								Event: &v1.OperationEvent_DeletedOperations{
+									DeletedOperations: &types.Int64List{Values: deletedIDs},
+								},
+							},
+						},
+					},
+				}); err != nil {
+					return fmt.Errorf("action diff operations: send delete operations: %w", err)
+				}
+			}
 
-			// TODO: check that the server is allowed to have these operations using haveRunSync map.
-			// If we sent a sync packet for the repo, then we are expecting operation requests back for ops in that repo.
-
+			if len(sendOps) > 0 {
+				if err := stream.Send(&v1.SyncStreamItem{
+					Action: &v1.SyncStreamItem_SendOperations{
+						SendOperations: &v1.SyncStreamItem_SyncActionSendOperations{
+							Event: &v1.OperationEvent{
+								Event: &v1.OperationEvent_CreatedOperations{
+									CreatedOperations: &v1.OperationList{Operations: sendOps},
+								},
+							},
+						},
+					},
+				}); err != nil {
+					return fmt.Errorf("action diff operations: send create operations: %w", err)
+				}
+			}
 		case *v1.SyncStreamItem_Throttle:
 			c.reconnectDelay = time.Duration(action.Throttle.GetDelayMs()) * time.Millisecond
 		default:
@@ -274,7 +349,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			if err := handleSyncCommand(item); err != nil {
 				return err
 			}
-		case sendItem, ok := <-send:
+		case sendItem, ok := <-send: // note: send channel should only be used when sending from a different goroutine than the main loop
 			if !ok {
 				return nil
 			}

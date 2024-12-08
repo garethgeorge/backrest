@@ -290,7 +290,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			if err := handleSyncCommand(item); err != nil {
 				return err
 			}
-		case sendItem, ok := <-send:
+		case sendItem, ok := <-send: // note: send channel should only be used when sending from a different goroutine than the main loop
 			if !ok {
 				return nil
 			}
