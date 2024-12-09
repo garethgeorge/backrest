@@ -3,6 +3,7 @@ package syncapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -60,7 +61,7 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 		}
 
 		if len(config.Multihost.GetKnownHosts()) == 0 {
-			zap.L().Debug("syncmanager no known host peers declared, sync is disabled")
+			zap.L().Debug("syncmanager no known host peers declared, sync client exiting early")
 			return
 		}
 
@@ -70,7 +71,7 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 				zap.S().Debugf("syncmanager starting sync goroutine with peer %q", knownHostPeer.InstanceId)
 				err := m.runSyncWithPeerInternal(syncCtx, config, knownHostPeer)
 				if err != nil {
-					zap.S().Errorf("syncmanager error running sync with peer %q: %v", knownHostPeer.InstanceId, err)
+					zap.S().Errorf("syncmanager error starting client for peer %q: %v", knownHostPeer.InstanceId, err)
 				}
 			}(knownHostPeer)
 		}
@@ -99,7 +100,7 @@ func (m *SyncManager) runSyncWithPeerInternal(ctx context.Context, config *v1.Co
 	if !ok {
 		newClient, err := NewSyncClient(m, config.Instance, knownHostPeer, m.oplog)
 		if err != nil {
-			zap.S().Errorf("syncmanager failed to create sync client for peer %q", knownHostPeer.InstanceId)
+			return fmt.Errorf("creating sync client: %w", err)
 		}
 		m.syncClients[knownHostPeer.InstanceId] = client
 		client = newClient

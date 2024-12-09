@@ -307,10 +307,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 						},
 					},
 				}); err != nil {
-					sendOps = sendOps[:0] // clear the slice
+					sendOps = sendOps[:0]
 					return fmt.Errorf("action diff operations: send create operations: %w", err)
 				}
-				sendOps = sendOps[:0] // clear the slice
+				sendOps = sendOps[:0]
 				return nil
 			}
 
@@ -325,7 +325,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					continue // skip this operation
 				}
 
-				_, ok := haveRunSync[op.GetRepoId()]
+				_, ok := haveRunSync[op.RepoId]
 				if !ok {
 					// this should never happen if sync is working correctly. Would probably indicate oplog or our access was revoked.
 					// Error out and re-initiate sync.
@@ -333,7 +333,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				}
 
 				sendOps = append(ops, op)
-				if len(sendOps) >= 128 {
+				if len(sendOps) >= 256 {
 					if err := sendOpsFunc(); err != nil {
 						return err
 					}
