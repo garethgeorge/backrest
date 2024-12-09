@@ -38,7 +38,7 @@ func (healthchecksHandler) Execute(ctx context.Context, cmd *v1.Hook, vars inter
 
 	// Send a "fail" signal to healthchecks.io when the hook is failing.
 	if protoutil.IsErrorCondition(event) {
-        	PingUrl += "/fail"
+		PingUrl += "/fail"
 	}
 
 	// Send a "log" signal to healthchecks.io when the hook is ending.
