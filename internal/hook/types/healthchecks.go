@@ -43,7 +43,7 @@ func (healthchecksHandler) Execute(ctx context.Context, cmd *v1.Hook, vars inter
 
 	// Send a "log" signal to healthchecks.io when the hook is ending.
 	if protoutil.IsLogCondition(event) {
-        	PingUrl += "/log"
+		PingUrl += "/log"
 	}
 
 	body, err := hookutil.PostRequest(PingUrl, "text/plain", bytes.NewBufferString(payload))
@@ -52,7 +52,7 @@ func (healthchecksHandler) Execute(ctx context.Context, cmd *v1.Hook, vars inter
 	}
 
 	l.Debug("Healthchecks response", zap.String("body", body))
-    	return nil
+	return nil
 }
 
 func (healthchecksHandler) ActionType() reflect.Type {
