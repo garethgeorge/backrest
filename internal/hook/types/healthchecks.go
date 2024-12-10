@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -47,17 +46,7 @@ func (healthchecksHandler) Execute(ctx context.Context, cmd *v1.Hook, vars inter
 		PingUrl += "/log"
 	}
 
-	type Message struct {
-		Text string `json:"text"`
-	}
-
-	request := Message{
-		Text: payload,
-	}
-
-	requestBytes, _ := json.Marshal(request)
-
-	body, err := hookutil.PostRequest(PingUrl, "application/json", bytes.NewReader(requestBytes))
+	body, err := hookutil.PostRequest(PingUrl, "text/plain", bytes.NewBufferString(payload))
 	if err != nil {
 		return fmt.Errorf("sending healthchecks message to %q: %w", PingUrl, err)
 	}
