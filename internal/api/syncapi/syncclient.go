@@ -334,6 +334,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				return nil
 			}
 
+			sentOps := 0
 			for _, opID := range requestedOperations {
 				op, err := c.oplog.Get(opID)
 				if err != nil {
@@ -344,6 +345,9 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					c.l.Sugar().Warnf("action diff operations, failed to fetch a requested operation %d: %v", opID, err)
 					continue // skip this operation
 				}
+				if op.GetInstanceId() != c.localInstanceID {
+					continue // skip operations that are not from this instance e.g. an "index snapshot" picking up snapshots created by another instance.
+				}
 
 				_, ok := haveRunSync[op.RepoId]
 				if !ok {
@@ -353,6 +357,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				}
 
 				sendOps = append(ops, op)
+				sentOps += 1
 				if len(sendOps) >= 256 {
 					if err := sendOpsFunc(); err != nil {
 						return err
@@ -381,6 +386,8 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					return fmt.Errorf("action diff operations: send delete operations: %w", err)
 				}
 			}
+
+			c.l.Debug("replied to an operations request", zap.Int("num_ops_requested", len(requestedOperations)), zap.Int("num_ops_sent", sentOps), zap.Int("num_ops_deleted", len(deletedIDs)))
 		case *v1.SyncStreamItem_Throttle:
 			c.reconnectDelay = time.Duration(action.Throttle.GetDelayMs()) * time.Millisecond
 		default:

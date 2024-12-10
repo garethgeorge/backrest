@@ -120,6 +120,22 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		}
 	}
 
+	deleteByOriginalID := func(originalID int64) error {
+		var foundOp *v1.Operation
+		if err := h.mgr.oplog.Query(oplog.Query{OriginalID: originalID}, func(o *v1.Operation) error {
+			foundOp = o
+			return nil
+		}); err != nil {
+			return fmt.Errorf("mapping remote ID to local ID: %w", err)
+		}
+
+		if foundOp == nil {
+			return nil
+		}
+
+		return h.mgr.oplog.Delete(foundOp.Id)
+	}
+
 	sendConfigToClient := func(config *v1.Config) error {
 		remoteConfig := &v1.RemoteConfig{}
 		for _, repo := range config.Repos {
@@ -263,8 +279,10 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 					}
 				}
 			case *v1.OperationEvent_DeletedOperations:
-				if err := h.mgr.oplog.Delete(event.DeletedOperations.GetValues()...); err != nil {
-					return fmt.Errorf("action SendOperations: operation event delete: %w", err)
+				for _, id := range event.DeletedOperations.GetValues() {
+					if err := deleteByOriginalID(id); err != nil {
+						return fmt.Errorf("action SendOperations: operation event delete %d: %w", id, err)
+					}
 				}
 			case *v1.OperationEvent_KeepAlive:
 			default:
