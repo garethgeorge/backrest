@@ -311,22 +311,3 @@ func migrateBboltOplog(logstore oplog.OpStore) {
 	}
 	zap.S().Infof("migrated %d operations from old bbolt oplog to sqlite", count)
 }
-
-type configHookForsyncapi struct {
-	store    config.ConfigStore
-	onChange func(*v1.Config)
-}
-
-var _ config.ConfigStore = &configHookForsyncapi{}
-
-func (c *configHookForsyncapi) Get() (*v1.Config, error) {
-	return c.store.Get()
-}
-
-func (c *configHookForsyncapi) Update(cfg *v1.Config) error {
-	err := c.store.Update(cfg)
-	if err == nil {
-		c.onChange(cfg)
-	}
-	return err
-}

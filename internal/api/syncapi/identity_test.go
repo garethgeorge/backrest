@@ -16,8 +16,8 @@ func TestIdentity(t *testing.T) {
 		t.Fatalf("failed to create identity: %v", err)
 	}
 
-	signed, err := ident.SignMessage([]byte("hello world!"))
-	fmt.Println("signed message: %x", signed)
+	signature, err := ident.SignMessage([]byte("hello world!"))
+	fmt.Printf("signed message: %x\n", signature)
 
 	// Load and print identity file
 	bytes, _ := os.ReadFile(filepath.Join(dir, "myidentity.pem"))

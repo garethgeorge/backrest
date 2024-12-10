@@ -20,6 +20,7 @@ import (
 const SyncProtocolVersion = 1
 
 type BackrestSyncHandler struct {
+	v1connect.UnimplementedBackrestSyncServiceHandler
 	mgr *SyncManager
 }
 
@@ -53,7 +54,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	}()
 
 	// Broadcast initial packet containing the protocol version and instance ID.
-	zap.S().Infof("Client connected, broadcast handshake as %v", initialConfig.Instance)
+	zap.S().Debugf("syncserver a client connected, broadcast handshake as %v", initialConfig.Instance)
 	if err := stream.Send(&v1.SyncStreamItem{
 		Action: &v1.SyncStreamItem_Handshake{
 			Handshake: &v1.SyncStreamItem_SyncActionHandshake{
@@ -125,6 +126,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			if slices.Contains(repo.AllowedPeerInstanceIds, clientInstanceID) {
 				repoCopy := proto.Clone(repo).(*v1.Repo)
 				repoCopy.AllowedPeerInstanceIds = nil
+				repoCopy.Hooks = nil
 				remoteConfig.Repos = append(remoteConfig.Repos, repoCopy)
 			}
 		}
@@ -306,6 +308,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			}
 			sendConfigToClient(newConfig)
 		case <-ctx.Done():
+			zap.S().Infof("syncserver client %q disconnected", authorizedClientPeer.InstanceId)
 			return ctx.Err()
 		}
 	}

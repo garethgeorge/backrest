@@ -5,6 +5,8 @@ import (
 	"net/url"
 )
 
+var ErrNotBackrestURI = errors.New("not a backrest URI")
+
 func CreateRemoteRepoURI(instanceUrl string) (string, error) {
 	u, err := url.Parse(instanceUrl)
 	if err != nil {
@@ -42,4 +44,17 @@ func InstanceForBackrestURI(repoUri string) (string, error) {
 	}
 
 	return u.Hostname(), nil
+}
+
+func RepoForBackrestURI(repoUri string) (string, error) {
+	u, err := url.Parse(repoUri)
+	if err != nil {
+		return "", err
+	}
+
+	if u.Scheme != "backrest" {
+		return "", errors.New("not a backrest URI")
+	}
+
+	return u.Path, nil
 }

@@ -33,11 +33,14 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 		orchestrator:      orchestrator,
 		oplog:             oplog,
 		remoteConfigStore: remoteConfigStore,
+
+		syncClients: make(map[string]*SyncClient),
 	}
 }
 
 // Note: top level function will be called holding the lock, must kick off goroutines and then return.
 func (m *SyncManager) RunSync(ctx context.Context) {
+	var syncWg sync.WaitGroup
 	var cancelLastSync context.CancelFunc
 
 	configWatchCh := m.configMgr.Watch()
@@ -50,6 +53,8 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 		// TODO: rather than cancel the top level context, something clever e.g. diffing the set of peers could be done here.
 		if cancelLastSync != nil {
 			cancelLastSync()
+			zap.L().Info("syncmanager applying new config, waiting for existing sync goroutines to exit")
+			syncWg.Wait()
 		}
 		syncCtx, cancel := context.WithCancel(ctx)
 		cancelLastSync = cancel
@@ -65,9 +70,15 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 			return
 		}
 
-		zap.S().Info("syncmanager applying new config, starting sync goroutines for %d known peers", len(config.Multihost.GetKnownHosts()))
+		zap.S().Infof("syncmanager applying new config, starting sync goroutines for %d known peers", len(config.Multihost.GetKnownHosts()))
 		for _, knownHostPeer := range config.Multihost.KnownHosts {
+			if knownHostPeer.InstanceId == "" {
+				continue
+			}
+
+			syncWg.Add(1)
 			go func(knownHostPeer *v1.Multihost_Peer) {
+				defer syncWg.Done()
 				zap.S().Debugf("syncmanager starting sync goroutine with peer %q", knownHostPeer.InstanceId)
 				err := m.runSyncWithPeerInternal(syncCtx, config, knownHostPeer)
 				if err != nil {
@@ -96,16 +107,13 @@ func (m *SyncManager) runSyncWithPeerInternal(ctx context.Context, config *v1.Co
 		return errors.New("local instance must set instance name before peersync can be enabled")
 	}
 
-	client, ok := m.syncClients[knownHostPeer.InstanceId]
-	if !ok {
-		newClient, err := NewSyncClient(m, config.Instance, knownHostPeer, m.oplog)
-		if err != nil {
-			return fmt.Errorf("creating sync client: %w", err)
-		}
-		m.syncClients[knownHostPeer.InstanceId] = client
-		client = newClient
+	newClient, err := NewSyncClient(m, config.Instance, knownHostPeer, m.oplog)
+	if err != nil {
+		return fmt.Errorf("creating sync client: %w", err)
 	}
+	m.syncClients[knownHostPeer.InstanceId] = newClient
 
-	go client.RunSync(ctx)
+	go newClient.RunSync(ctx)
+
 	return nil
 }
