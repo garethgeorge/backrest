@@ -30,7 +30,7 @@ message Config {
   repeated Repo repos = 3 [json_name="repos"];
   repeated Plan plans = 4 [json_name="plans"];
   Auth auth = 5 [json_name="auth"];
-  Multihost multihost = 7 [json_name="multihost"];
+  Multihost multihost = 7 [json_name="sync"];
 }
 
 message Multihost {
@@ -58,7 +58,7 @@ message Repo {
   repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on events for this repo.
   bool auto_unlock = 8 [json_name="autoUnlock"]; // automatically unlock the repo when needed.
   CommandPrefix command_prefix = 10 [json_name="commandPrefix"]; // modifiers for the restic commands
-  repeated string allowed_peer_instance_ids = 100 [json_name="allowedPeerInstanceIDs"]; // list of peer instance IDs allowed to access this repo.
+  repeated string allowed_peer_instance_ids = 100 [json_name="allowedPeers"]; // list of peer instance IDs allowed to access this repo.
 }
 
 message Plan {

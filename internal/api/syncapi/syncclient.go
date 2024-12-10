@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"sync"
@@ -66,13 +67,14 @@ func NewSyncClient(mgr *SyncManager, localInstanceID string, peer *v1.Multihost_
 		reconnectDelay:  60 * time.Second,
 		client:          client,
 		oplog:           oplog,
-		l:               zap.L().Named("syncclient").With(zap.String("peer", peer.GetInstanceUrl())),
+		l:               zap.L().Named(fmt.Sprintf("syncclient %q", peer.GetInstanceId())),
 	}, nil
 }
 
 func (c *SyncClient) setConnectionState(state v1.SyncConnectionState, message string) {
 	c.mu.Lock()
 	c.connectionStatus = state
+	c.connectionStatusMessage = message
 	c.mu.Unlock()
 }
 
@@ -93,7 +95,7 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 		c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_PENDING, "connection pending")
 
 		if err := c.runSyncInternal(ctx); err != nil {
-			c.l.Error("sync error", zap.Error(err))
+			c.l.Sugar().Errorf("sync error: %v", err)
 			c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED, err.Error())
 		}
 
@@ -113,6 +115,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 
 	ctx, cancelWithError := context.WithCancelCause(ctx)
 
+	receiveError := make(chan error, 1)
 	receive := make(chan *v1.SyncStreamItem, 1)
 	send := make(chan *v1.SyncStreamItem, 100)
 
@@ -120,8 +123,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 		for {
 			item, err := stream.Receive()
 			if err != nil {
-				c.l.Debug("receive error from sync stream, this is typically due to connection loss", zap.Error(err))
-				close(receive)
+				receiveError <- err
 				return
 			}
 			receive <- item
@@ -142,7 +144,14 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			},
 		},
 	}); err != nil {
-		return err
+		// note: the error checking w/streams in connectrpc is fairly awkward.
+		// If write returns an EOF error, we are expected to call stream.Receive()
+		// to get the unmarshalled network failure.
+		if !errors.Is(err, io.EOF) {
+			return err
+		}
+		_, err2 := stream.Receive()
+		return err2
 	}
 
 	// Wait for the handshake packet from the server.
@@ -163,6 +172,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 		}
 	} else {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("no packets received"))
+	}
+
+	if serverInstanceID != c.peer.InstanceId {
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("server instance ID %q does not match expected peer instance ID %q", serverInstanceID, c.peer.InstanceId))
 	}
 
 	haveRunSync := make(map[string]struct{}) // repo ID -> have run sync?
@@ -222,6 +235,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	handleSyncCommand := func(item *v1.SyncStreamItem) error {
 		switch action := item.Action.(type) {
 		case *v1.SyncStreamItem_SendConfig:
+			c.l.Sugar().Debugf("received remote config update")
 			newRemoteConfig := action.SendConfig.Config
 			if err := c.mgr.remoteConfigStore.Update(c.peer.InstanceId, newRemoteConfig); err != nil {
 				return fmt.Errorf("update remote config store with latest config: %w", err)
@@ -252,10 +266,14 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				}
 				haveRunSync[repo.GetId()] = struct{}{}
 				localRepoConfig := config.FindRepo(localConfig, repo.GetId())
+				if localRepoConfig == nil {
+					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name does not exist", c.peer.InstanceId, repo.GetId())
+					continue
+				}
 				repo.Hooks = nil // we don't accept any hooks from the server. This could be used to execute arbitrary code on the client.
 				instanceID, err := InstanceForBackrestURI(localRepoConfig.Uri)
 				if err != nil || instanceID != c.peer.InstanceId {
-					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name specifies URI %q which does not reference the peer providing this config", c.peer.InstanceId, repo.GetId(), localRepoConfig.Uri)
+					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name specifies URI %q (instance ID %q) which does not reference the peer providing this config", c.peer.InstanceId, repo.GetId(), localRepoConfig.Uri, instanceID)
 					continue
 				}
 
@@ -272,6 +290,8 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				}); err != nil {
 					return fmt.Errorf("action sync config: query oplog for repo %q: %w", repo.GetId(), err)
 				}
+
+				c.l.Sugar().Infof("initiating operation history sync for repo %q", repo.GetId())
 
 				if err := stream.Send(&v1.SyncStreamItem{
 					Action: &v1.SyncStreamItem_DiffOperations{
@@ -371,6 +391,8 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 
 	for {
 		select {
+		case err := <-receiveError:
+			return fmt.Errorf("receive error: %w", err)
 		case item, ok := <-receive:
 			if !ok {
 				return nil
@@ -389,5 +411,4 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			return ctx.Err()
 		}
 	}
-
 }
