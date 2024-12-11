@@ -26,6 +26,4 @@ func TestIdentity(t *testing.T) {
 	// Load and print public key file
 	bytes, _ = os.ReadFile(filepath.Join(dir, "myidentity.pem.pub"))
 	t.Log(string(bytes))
-
-	t.Fatal("test failed")
 }

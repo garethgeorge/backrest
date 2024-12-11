@@ -156,8 +156,8 @@ func (m *MemStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	ops := make([]*v1.Operation, 0, len(opID))
-	for idx, id := range opID {
-		ops[idx] = m.operations[id]
+	for _, id := range opID {
+		ops = append(ops, m.operations[id])
 		delete(m.operations, id)
 	}
 	return ops, nil
