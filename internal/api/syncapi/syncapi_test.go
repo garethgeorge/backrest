@@ -224,6 +224,12 @@ func TestSimpleOperationSync(t *testing.T) {
 			DisplayMessage: "hostop1",
 		},
 	})...)
+	peerHost.oplog.Add(testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
+		{
+			DisplayMessage: "clientop-missing",
+			OriginalId:     1234, // must be an ID that doesn't exist remotely
+		},
+	})...)
 
 	peerClient.oplog.Add(testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 		{
@@ -240,6 +246,19 @@ func TestSimpleOperationSync(t *testing.T) {
 	tryConnect(t, ctx, peerClient, defaultHostID)
 
 	tryExpectOperationsSynced(t, ctx, peerHost, peerClient, oplog.Query{RepoID: defaultRepoID, InstanceID: defaultClientID})
+	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{RepoID: defaultRepoID, InstanceID: defaultClientID},
+		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
+			{
+				Id:             3, // b/c hostop1 has id 1
+				OriginalId:     1,
+				DisplayMessage: "clientop1",
+			},
+			{
+				Id:             4, // b/c hostop1 has id 1
+				OriginalId:     2,
+				DisplayMessage: "clientop2",
+			},
+		}))
 }
 
 func getOperations(t *testing.T, oplog *oplog.OpLog, query oplog.Query) []*v1.Operation {
@@ -272,6 +291,17 @@ func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnd
 	err := testutil.Retry(t, ctx, func() error {
 		peer1Ops := getOperations(t, peer1.oplog, query)
 		peer2Ops := getOperations(t, peer2.oplog, query)
+		// clear fields that we expect will be re-mapped
+		for _, op := range peer1Ops {
+			op.Id = 0
+			op.FlowId = 0
+			op.OriginalId = 0
+		}
+		for _, op := range peer2Ops {
+			op.Id = 0
+			op.FlowId = 0
+			op.OriginalId = 0
+		}
 
 		sortFn := func(a, b *v1.Operation) int {
 			if a.DisplayMessage < b.DisplayMessage {

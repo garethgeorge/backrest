@@ -317,10 +317,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			}
 		case *v1.SyncStreamItem_DiffOperations:
 			requestedOperations := action.DiffOperations.GetRequestOperations()
+			c.l.Sugar().Debugf("received operation request for operations: %v", requestedOperations)
 
 			var deletedIDs []int64
 			var sendOps []*v1.Operation
-			var ops []*v1.Operation
 
 			sendOpsFunc := func() error {
 				if err := stream.Send(&v1.SyncStreamItem{
@@ -337,6 +337,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					sendOps = sendOps[:0]
 					return fmt.Errorf("action diff operations: send create operations: %w", err)
 				}
+				c.l.Sugar().Debugf("sent %d operations", len(sendOps))
 				sendOps = sendOps[:0]
 				return nil
 			}
@@ -353,6 +354,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					continue // skip this operation
 				}
 				if op.GetInstanceId() != c.localInstanceID {
+					c.l.Sugar().Warnf("action diff operations, requested operation %d is not from this instance, this shouldn't happen with a wellbehaved server", opID)
 					continue // skip operations that are not from this instance e.g. an "index snapshot" picking up snapshots created by another instance.
 				}
 
@@ -363,7 +365,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					return fmt.Errorf("remote requested operation for repo %q for which sync was never initiated", op.GetRepoId())
 				}
 
-				sendOps = append(ops, op)
+				sendOps = append(sendOps, op)
 				sentOps += 1
 				if len(sendOps) >= 256 {
 					if err := sendOpsFunc(); err != nil {

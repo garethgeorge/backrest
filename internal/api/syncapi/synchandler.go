@@ -174,9 +174,11 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			// The diff selector _must_ specify a repo the client has access to
 			repo := config.FindRepo(initialConfig, diffSel.GetRepoId())
 			if repo == nil {
+				zap.S().Warnf("syncserver action DiffOperations: client %q tried to diff with repo %q that does not exist", clientInstanceID, diffSel.GetRepoId())
 				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: repo %q not found", diffSel.GetRepoId()))
 			}
 			if !slices.Contains(repo.GetAllowedPeerInstanceIds(), clientInstanceID) {
+				zap.S().Warnf("syncserver action DiffOperations: client %q tried to diff with repo %q that they are not allowed to access", clientInstanceID, diffSel.GetRepoId())
 				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: client is not allowed to access repo %q", diffSel.GetRepoId()))
 			}
 
@@ -192,6 +194,9 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 			localMetadata := []oplog.OpMetadata{}
 			if err := h.mgr.oplog.QueryMetadata(diffSelQuery, func(metadata oplog.OpMetadata) error {
+				if metadata.OriginalID == 0 {
+					return nil // skip operations that didn't come from a remote
+				}
 				localMetadata = append(localMetadata, metadata)
 				return nil
 			}); err != nil {
@@ -212,6 +217,9 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 				return remoteMetadata[i].ID < remoteMetadata[j].ID
 			})
 
+			requestDueToModno := 0
+			requestMissingRemote := 0
+			requestMissingLocal := 0
 			requestIDs := []int64{}
 
 			// This is a simple O(n) diff algorithm that compares the local and remote metadata vectors.
@@ -227,26 +235,39 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 					}
 					localIndex++
 					remoteIndex++
+					requestDueToModno++
 				} else if local.OriginalID < remote.ID {
 					// the ID is found locally not remotely, request it and see if we get a delete event back
 					// from the client indicating that the operation was deleted.
 					requestIDs = append(requestIDs, local.OriginalID)
 					localIndex++
+					requestMissingLocal++
 				} else {
 					// the ID is found remotely not locally, request it for initial sync.
 					requestIDs = append(requestIDs, remote.ID)
 					remoteIndex++
+					requestMissingRemote++
 				}
 			}
 			for localIndex < len(localMetadata) {
 				requestIDs = append(requestIDs, localMetadata[localIndex].OriginalID)
 				localIndex++
+				requestMissingLocal++
 			}
 			for remoteIndex < len(remoteMetadata) {
 				requestIDs = append(requestIDs, remoteMetadata[remoteIndex].ID)
 				remoteIndex++
+				requestMissingRemote++
 			}
 
+			zap.L().Debug("syncserver diff operations with client metadata",
+				zap.String("client_instance_id", clientInstanceID),
+				zap.Any("query", diffSelQuery),
+				zap.Int("request_due_to_modno", requestDueToModno),
+				zap.Int("request_local_but_not_remote", requestMissingLocal),
+				zap.Int("request_remote_but_not_local", requestMissingRemote),
+				zap.Int("request_ids_total", len(requestIDs)),
+			)
 			if len(requestIDs) > 0 {
 				if err := stream.Send(&v1.SyncStreamItem{
 					Action: &v1.SyncStreamItem_DiffOperations{
@@ -263,18 +284,21 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		case *v1.SyncStreamItem_SendOperations:
 			switch event := action.SendOperations.GetEvent().Event.(type) {
 			case *v1.OperationEvent_CreatedOperations:
+				zap.L().Debug("syncserver received created operations", zap.Any("operations", event.CreatedOperations.GetOperations()))
 				for _, op := range event.CreatedOperations.GetOperations() {
 					if err := insertOrUpdate(op); err != nil {
 						return fmt.Errorf("action SendOperations: operation event create: %w", err)
 					}
 				}
 			case *v1.OperationEvent_UpdatedOperations:
+				zap.L().Debug("syncserver received update operations", zap.Any("operations", event.UpdatedOperations.GetOperations()))
 				for _, op := range event.UpdatedOperations.GetOperations() {
 					if err := insertOrUpdate(op); err != nil {
 						return fmt.Errorf("action SendOperations: operation event update: %w", err)
 					}
 				}
 			case *v1.OperationEvent_DeletedOperations:
+				zap.L().Debug("syncserver received delete operations", zap.Any("operations", event.DeletedOperations.GetValues()))
 				for _, id := range event.DeletedOperations.GetValues() {
 					if err := deleteByOriginalID(id); err != nil {
 						return fmt.Errorf("action SendOperations: operation event delete %d: %w", id, err)
@@ -285,7 +309,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("action SendOperations: unknown event type"))
 			}
 		default:
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("Unknown action type"))
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("unknown action type"))
 		}
 
 		return nil
