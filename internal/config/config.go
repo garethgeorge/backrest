@@ -57,9 +57,17 @@ func (m *ConfigManager) Watch() <-chan struct{} {
 func (m *ConfigManager) StopWatching(ch <-chan struct{}) bool {
 	m.callbacksMu.Lock()
 	origLen := len(m.changeNotifyCh)
-	m.changeNotifyCh = slices.DeleteFunc(m.changeNotifyCh, func(v chan struct{}) bool {
-		return v == ch
-	})
+
+	for i := range m.changeNotifyCh {
+		if m.changeNotifyCh[i] != ch {
+			continue
+		}
+		close(m.changeNotifyCh[i])
+		m.changeNotifyCh[i] = m.changeNotifyCh[len(m.changeNotifyCh)-1]
+		m.changeNotifyCh = m.changeNotifyCh[:len(m.changeNotifyCh)-1]
+		break
+	}
+
 	defer m.callbacksMu.Unlock()
 	return len(m.changeNotifyCh) != origLen
 }

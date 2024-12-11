@@ -148,11 +148,15 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 		// If write returns an EOF error, we are expected to call stream.Receive()
 		// to get the unmarshalled network failure.
 		if !errors.Is(err, io.EOF) {
+			c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_ERROR_PROTOCOL, err.Error())
 			return err
+		} else {
+			_, err2 := stream.Receive()
+			c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED, err.Error())
+			return err2
 		}
-		_, err2 := stream.Receive()
-		return err2
 	}
+	c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_CONNECTED, "connected")
 
 	// Wait for the handshake packet from the server.
 	serverInstanceID := ""
@@ -241,9 +245,13 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				return fmt.Errorf("update remote config store with latest config: %w", err)
 			}
 
+			if newRemoteConfig == nil {
+				return fmt.Errorf("received nil remote config")
+			}
+
 			// remove any repo IDs that are no longer in the config, our access has been revoked.
 			remoteRepoIDs := make(map[string]struct{})
-			for _, repo := range newRemoteConfig.GetRepos() {
+			for _, repo := range newRemoteConfig.Repos {
 				remoteRepoIDs[repo.GetId()] = struct{}{}
 			}
 			for repoID := range haveRunSync {
@@ -259,18 +267,17 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				return fmt.Errorf("get local config: %w", err)
 			}
 
-			for _, repo := range newRemoteConfig.GetRepos() {
+			for _, repo := range newRemoteConfig.Repos {
 				_, ok := haveRunSync[repo.GetId()]
 				if ok {
 					continue
 				}
-				haveRunSync[repo.GetId()] = struct{}{}
-				localRepoConfig := config.FindRepo(localConfig, repo.GetId())
+				haveRunSync[repo.Id] = struct{}{}
+				localRepoConfig := config.FindRepo(localConfig, repo.Id)
 				if localRepoConfig == nil {
-					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name does not exist", c.peer.InstanceId, repo.GetId())
+					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name does not exist", c.peer.InstanceId, repo.Id)
 					continue
 				}
-				repo.Hooks = nil // we don't accept any hooks from the server. This could be used to execute arbitrary code on the client.
 				instanceID, err := InstanceForBackrestURI(localRepoConfig.Uri)
 				if err != nil || instanceID != c.peer.InstanceId {
 					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name specifies URI %q (instance ID %q) which does not reference the peer providing this config", c.peer.InstanceId, repo.GetId(), localRepoConfig.Uri, instanceID)

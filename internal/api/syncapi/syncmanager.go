@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"sync"
 
@@ -36,6 +37,13 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 
 		syncClients: make(map[string]*SyncClient),
 	}
+}
+
+// GetSyncClients returns a copy of the sync clients map. This makes the map safe to read from concurrently.
+func (m *SyncManager) GetSyncClients() map[string]*SyncClient {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return maps.Clone(m.syncClients)
 }
 
 // Note: top level function will be called holding the lock, must kick off goroutines and then return.
