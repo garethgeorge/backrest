@@ -14,7 +14,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 const SyncProtocolVersion = 1
@@ -140,10 +139,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		remoteConfig := &v1.RemoteConfig{}
 		for _, repo := range config.Repos {
 			if slices.Contains(repo.AllowedPeerInstanceIds, clientInstanceID) {
-				repoCopy := proto.Clone(repo).(*v1.Repo)
-				repoCopy.AllowedPeerInstanceIds = nil
-				repoCopy.Hooks = nil
-				remoteConfig.Repos = append(remoteConfig.Repos, repoCopy)
+				remoteConfig.Repos = append(remoteConfig.Repos, protoutil.RepoToRemoteRepo(repo))
 			}
 		}
 

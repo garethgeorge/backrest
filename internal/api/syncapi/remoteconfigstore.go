@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -29,18 +30,27 @@ type RemoteConfigStore interface {
 }
 
 type jsonDirRemoteConfigStore struct {
-	dir string
+	mu    sync.Mutex
+	dir   string
+	cache map[string]*v1.RemoteConfig
 }
 
 func NewJSONDirRemoteConfigStore(dir string) RemoteConfigStore {
 	return &jsonDirRemoteConfigStore{
-		dir: dir,
+		dir:   dir,
+		cache: make(map[string]*v1.RemoteConfig),
 	}
 }
 
 func (s *jsonDirRemoteConfigStore) Get(instanceID string) (*v1.RemoteConfig, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if instanceID == "" {
 		return nil, errors.New("instanceID is required")
+	}
+
+	if config, ok := s.cache[instanceID]; ok {
+		return config, nil
 	}
 
 	file := s.fileForInstance(instanceID)
@@ -57,10 +67,13 @@ func (s *jsonDirRemoteConfigStore) Get(instanceID string) (*v1.RemoteConfig, err
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 
+	s.cache[instanceID] = &config
 	return &config, nil
 }
 
 func (s *jsonDirRemoteConfigStore) Update(instanceID string, config *v1.RemoteConfig) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if instanceID == "" {
 		return errors.New("instanceID is required")
 	}
@@ -83,10 +96,13 @@ func (s *jsonDirRemoteConfigStore) Update(instanceID string, config *v1.RemoteCo
 		return fmt.Errorf("write config file: %w", err)
 	}
 
+	s.cache[instanceID] = config
 	return nil
 }
 
 func (s *jsonDirRemoteConfigStore) Delete(instanceID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if instanceID == "" {
 		return errors.New("instanceID is required")
 	}
@@ -96,6 +112,7 @@ func (s *jsonDirRemoteConfigStore) Delete(instanceID string) error {
 		return fmt.Errorf("remove config file: %w", err)
 	}
 
+	delete(s.cache, instanceID)
 	return nil
 }
 
@@ -104,4 +121,37 @@ func (s *jsonDirRemoteConfigStore) fileForInstance(instanceID string) string {
 	safeInstanceID = sanitizeFilenameRegex.ReplaceAllString(safeInstanceID, "_")
 	checksum := crc32.ChecksumIEEE([]byte(instanceID)) // checksum eliminates collisions in the case of replacing characters.
 	return filepath.Join(s.dir, fmt.Sprintf("%s-%08x.json", safeInstanceID, checksum))
+}
+
+type memoryConfigStore struct {
+	configs map[string]*v1.RemoteConfig
+}
+
+func newMemoryConfigStore() *memoryConfigStore {
+	return &memoryConfigStore{
+		configs: make(map[string]*v1.RemoteConfig),
+	}
+}
+
+func (s *memoryConfigStore) Get(instanceID string) (*v1.RemoteConfig, error) {
+	if config, ok := s.configs[instanceID]; ok {
+		return config, nil
+	}
+	return nil, ErrRemoteConfigNotFound
+}
+
+func (s *memoryConfigStore) Update(instanceID string, config *v1.RemoteConfig) error {
+	if instanceID == "" {
+		return errors.New("instanceID is required")
+	}
+	s.configs[instanceID] = config
+	return nil
+}
+
+func (s *memoryConfigStore) Delete(instanceID string) error {
+	if instanceID == "" {
+		return errors.New("instanceID is required")
+	}
+	delete(s.configs, instanceID)
+	return nil
 }

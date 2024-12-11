@@ -99,5 +99,13 @@ message SyncStreamItem {
 
 // RemoteConfig contains shareable properties from a remote backrest instance.
 message RemoteConfig {
-  repeated Repo repos = 1;
+  repeated RemoteRepo repos = 1;
+}
+
+message RemoteRepo {
+  string id = 1;
+  string uri = 2;
+  string password = 3;
+  repeated string env = 4;
+  repeated string flags = 5;
 }
