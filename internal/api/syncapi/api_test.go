@@ -2,11 +2,12 @@ package syncapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"path/filepath"
-	"strings"
+	"slices"
 	"testing"
 	"time"
 
@@ -18,11 +19,11 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog/memstore"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
+	"github.com/garethgeorge/backrest/internal/testutil"
 	"github.com/google/go-cmp/cmp"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 )
@@ -31,10 +32,33 @@ const (
 	defaultClientID = "test-client"
 	defaultHostID   = "test-host"
 	defaultRepoID   = "test-repo"
+	defaultPlanID   = "test-plan"
+)
+
+var (
+	basicHostOperationTempl = &v1.Operation{
+		InstanceId:      defaultHostID,
+		RepoId:          defaultRepoID,
+		PlanId:          defaultPlanID,
+		UnixTimeStartMs: 1234,
+		UnixTimeEndMs:   5678,
+		Status:          v1.OperationStatus_STATUS_SUCCESS,
+		Op:              &v1.Operation_OperationBackup{},
+	}
+
+	basicClientOperationTempl = &v1.Operation{
+		InstanceId:      defaultClientID,
+		RepoId:          defaultRepoID,
+		PlanId:          defaultPlanID,
+		UnixTimeStartMs: 1234,
+		UnixTimeEndMs:   5678,
+		Status:          v1.OperationStatus_STATUS_SUCCESS,
+		Op:              &v1.Operation_OperationBackup{},
+	}
 )
 
 func TestConnectionSucceeds(t *testing.T) {
-	installZapLogger(t)
+	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
 	peerHostAddr := allocBindAddrForTest(t)
@@ -75,7 +99,7 @@ func TestConnectionSucceeds(t *testing.T) {
 }
 
 func TestSyncConfigChange(t *testing.T) {
-	installZapLogger(t)
+	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
 	peerHostAddr := allocBindAddrForTest(t)
@@ -150,10 +174,8 @@ func TestSyncConfigChange(t *testing.T) {
 	})
 }
 
-func TestSyncOperations(t *testing.T) {
-	// TODO: other tests that exhaustively cover permissions e.g. trying to sync to invalid locations.
-
-	installZapLogger(t)
+func TestSimpleOperationSync(t *testing.T) {
+	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
 	peerHostAddr := allocBindAddrForTest(t)
@@ -181,7 +203,7 @@ func TestSyncOperations(t *testing.T) {
 		Repos: []*v1.Repo{
 			{
 				Id:  defaultRepoID,
-				Uri: "backrest:" + defaultHostID,
+				Uri: "backrest://" + defaultHostID, // TODO: get rid of the :// requirement
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -197,35 +219,93 @@ func TestSyncOperations(t *testing.T) {
 	peerHost := newPeerUnderTest(t, peerHostConfig)
 	peerClient := newPeerUnderTest(t, peerClientConfig)
 
+	peerHost.oplog.Add(testutil.OperationsWithDefaults(basicHostOperationTempl, []*v1.Operation{
+		{
+			DisplayMessage: "hostop1",
+		},
+	})...)
+
+	peerClient.oplog.Add(testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
+		{
+			DisplayMessage: "clientop1",
+		},
+		{
+			DisplayMessage: "clientop2",
+		},
+	})...)
+
 	startRunningSyncAPI(t, peerHost, peerHostAddr)
 	startRunningSyncAPI(t, peerClient, peerClientAddr)
 
 	tryConnect(t, ctx, peerClient, defaultHostID)
 
-	// wait for the initial config to propagate
-	tryExpectConfig(t, ctx, peerClient, defaultHostID, &v1.RemoteConfig{
-		Repos: []*v1.RemoteRepo{
-			{
-				Id: defaultRepoID,
-			},
-		},
-	})
-	hostConfigChanged := proto.Clone(peerHostConfig).(*v1.Config)
-	hostConfigChanged.Repos[0].Env = []string{"SOME_ENV=VALUE"}
-	peerHost.configMgr.Update(hostConfigChanged)
+	tryExpectOperationsSynced(t, ctx, peerHost, peerClient, oplog.Query{RepoID: defaultRepoID, InstanceID: defaultClientID})
+}
 
-	tryExpectConfig(t, ctx, peerClient, defaultHostID, &v1.RemoteConfig{
-		Repos: []*v1.RemoteRepo{
-			{
-				Id:  defaultRepoID,
-				Env: []string{"SOME_ENV=VALUE"},
-			},
-		},
+func getOperations(t *testing.T, oplog *oplog.OpLog, query oplog.Query) []*v1.Operation {
+	ops := []*v1.Operation{}
+	if err := oplog.Query(query, func(op *v1.Operation) error {
+		ops = append(ops, op)
+		return nil
+	}); err != nil {
+		t.Fatalf("failed to get operations: %v", err)
+	}
+	return ops
+}
+
+func tryExpectExactOperations(t *testing.T, ctx context.Context, peer *peerUnderTest, query oplog.Query, wantOps []*v1.Operation) {
+	err := testutil.Retry(t, ctx, func() error {
+		ops := getOperations(t, peer.oplog, query)
+		if diff := cmp.Diff(ops, wantOps, protocmp.Transform()); diff != "" {
+			return fmt.Errorf("unexpected diff: %v", diff)
+		}
+		return nil
 	})
+	if err != nil {
+		opsJson, _ := protojson.MarshalOptions{Indent: "  "}.Marshal(&v1.OperationList{Operations: getOperations(t, peer.oplog, query)})
+		t.Logf("found operations: %v", string(opsJson))
+		t.Fatalf("timeout without finding wanted operations: %v", err)
+	}
+}
+
+func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnderTest, peer2 *peerUnderTest, query oplog.Query) {
+	err := testutil.Retry(t, ctx, func() error {
+		peer1Ops := getOperations(t, peer1.oplog, query)
+		peer2Ops := getOperations(t, peer2.oplog, query)
+
+		sortFn := func(a, b *v1.Operation) int {
+			if a.DisplayMessage < b.DisplayMessage {
+				return -1
+			}
+			return 1
+		}
+
+		slices.SortFunc(peer1Ops, sortFn)
+		slices.SortFunc(peer2Ops, sortFn)
+
+		if len(peer1Ops) == 0 {
+			return errors.New("no operations found in peer1")
+		}
+		if len(peer2Ops) == 0 {
+			return errors.New("no operations found in peer2")
+		}
+		if diff := cmp.Diff(peer1Ops, peer2Ops, protocmp.Transform()); diff != "" {
+			return fmt.Errorf("unexpected diff: %v", diff)
+		}
+
+		return nil
+	})
+	if err != nil {
+		ops1Json, _ := protojson.MarshalOptions{Indent: "  "}.Marshal(&v1.OperationList{Operations: getOperations(t, peer1.oplog, query)})
+		ops2Json, _ := protojson.MarshalOptions{Indent: "  "}.Marshal(&v1.OperationList{Operations: getOperations(t, peer2.oplog, query)})
+		t.Logf("peer1 operations: %v", string(ops1Json))
+		t.Logf("peer2 operations: %v", string(ops2Json))
+		t.Fatalf("timeout without syncing operations: %v", err)
+	}
 }
 
 func tryExpectConfig(t *testing.T, ctx context.Context, peer *peerUnderTest, instanceID string, wantCfg *v1.RemoteConfig) {
-	try(t, ctx, func() error {
+	testutil.Try(t, ctx, func() error {
 		cfg, err := peer.manager.remoteConfigStore.Get(instanceID)
 		if err != nil {
 			return err
@@ -238,7 +318,7 @@ func tryExpectConfig(t *testing.T, ctx context.Context, peer *peerUnderTest, ins
 }
 
 func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, instanceID string) {
-	try(t, ctx, func() error {
+	testutil.Try(t, ctx, func() error {
 		allClients := peer.manager.GetSyncClients()
 		client, ok := allClients[instanceID]
 		if !ok {
@@ -250,47 +330,6 @@ func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, instance
 		}
 		return nil
 	})
-}
-
-// try is a helper that spins until the condition becomes true OR the context is done.
-func try(t *testing.T, ctx context.Context, f func() error) {
-	t.Helper()
-
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-
-	var err error
-
-	for {
-		select {
-		case <-ctx.Done():
-			t.Fatalf("try timeout before OK: %v", err)
-		case <-ticker.C:
-			err = f()
-			if err == nil {
-				return
-			}
-		}
-	}
-}
-
-func installZapLogger(t *testing.T) {
-	t.Helper()
-	logger := zap.New(zapcore.NewCore(
-		zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()),
-		zapcore.AddSync(&testLogger{t: t}),
-		zapcore.DebugLevel,
-	))
-	zap.ReplaceGlobals(logger)
-}
-
-type testLogger struct {
-	t *testing.T
-}
-
-func (l *testLogger) Write(p []byte) (n int, err error) {
-	l.t.Log("global log: " + strings.Trim(string(p), "\n"))
-	return len(p), nil
 }
 
 func allocBindAddrForTest(t *testing.T) string {
