@@ -163,6 +163,11 @@ type OpStore interface {
 	SetVersion(version int64) error
 }
 
+type BackupableOpStore interface {
+	Backup(toFile string) error
+	Restore(fromFile string) error
+}
+
 type Query struct {
 	// Filter by fields
 	OpIDs      []int64
