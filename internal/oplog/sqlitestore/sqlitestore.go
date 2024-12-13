@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -53,10 +54,20 @@ var sqliteSchemaMigrations = []string{
 	`,
 }
 
+type opGroupInfo struct {
+	part string
+	repo string
+	plan string
+	inst string
+}
+
 type SqliteStore struct {
+	dbpath    string
 	dbpool    *sqlitex.Pool
 	nextIDVal atomic.Int64
 	dblock    *flock.Flock
+
+	tidyGroupsOnce sync.Once
 }
 
 var _ oplog.OpStore = (*SqliteStore)(nil)
@@ -73,6 +84,7 @@ func NewSqliteStore(db string) (*SqliteStore, error) {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
 	}
 	store := &SqliteStore{
+		dbpath: db,
 		dbpool: dbpool,
 		dblock: flock.New(db + ".lock"),
 	}
@@ -101,11 +113,11 @@ func (m *SqliteStore) init() error {
 	}
 	defer m.dbpool.Put(conn)
 
-	if err := applySqliteMigrations(conn, sqliteSchemaMigrations); err != nil {
+	if err := applySqliteMigrations(m, conn, m.dbpath); err != nil {
 		return err
 	}
 
-	if err := sqlitex.ExecuteTransient(conn, "SELECT id FROM operations ORDER BY id DESC LIMIT 1", &sqlitex.ExecOptions{
+	if err := sqlitex.ExecuteTransient(conn, "SELECT operations.id FROM operations ORDER BY operations.id DESC LIMIT 1", &sqlitex.ExecOptions{
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			m.nextIDVal.Store(stmt.GetInt64("id"))
 			return nil
@@ -114,6 +126,7 @@ func (m *SqliteStore) init() error {
 		return fmt.Errorf("init sqlite: %v", err)
 	}
 	m.nextIDVal.CompareAndSwap(0, 1)
+
 	return nil
 }
 
@@ -156,31 +169,31 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 	args := []any{}
 
 	if q.FlowID != 0 {
-		query = append(query, " AND flow_id = ?")
+		query = append(query, " AND operations.flow_id = ?")
 		args = append(args, q.FlowID)
 	}
 	if q.InstanceID != "" {
-		query = append(query, " AND instance_id = ?")
+		query = append(query, " AND operation_groups.instance_id = ?")
 		args = append(args, q.InstanceID)
 	}
 	if q.PlanID != "" {
-		query = append(query, " AND plan_id = ?")
+		query = append(query, " AND operation_groups.plan_id = ?")
 		args = append(args, q.PlanID)
 	}
 	if q.RepoID != "" {
-		query = append(query, " AND repo_id = ?")
+		query = append(query, " AND operation_groups.repo_id = ?")
 		args = append(args, q.RepoID)
 	}
 	if q.SnapshotID != "" {
-		query = append(query, " AND snapshot_id = ?")
+		query = append(query, " AND operations.snapshot_id = ?")
 		args = append(args, q.SnapshotID)
 	}
 	if q.OriginalID != 0 {
-		query = append(query, " AND original_id = ?")
+		query = append(query, " AND operations.original_id = ?")
 		args = append(args, q.OriginalID)
 	}
 	if q.OpIDs != nil {
-		query = append(query, " AND id IN (")
+		query = append(query, " AND operations.id IN (")
 		for i, id := range q.OpIDs {
 			if i > 0 {
 				query = append(query, ",")
@@ -193,9 +206,9 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 
 	if includeSelectClauses {
 		if q.Reversed {
-			query = append(query, " ORDER BY start_time_ms DESC, id DESC")
+			query = append(query, " ORDER BY operations.start_time_ms DESC, operations.id DESC")
 		} else {
-			query = append(query, " ORDER BY start_time_ms ASC, id ASC")
+			query = append(query, " ORDER BY operations.start_time_ms ASC, operations.id ASC")
 		}
 
 		if q.Limit > 0 {
@@ -222,7 +235,7 @@ func (m *SqliteStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 	defer m.dbpool.Put(conn)
 
 	where, args := m.buildQueryWhereClause(q, true)
-	if err := sqlitex.ExecuteTransient(conn, "SELECT operation FROM operations WHERE "+where, &sqlitex.ExecOptions{
+	if err := sqlitex.ExecuteTransient(conn, "SELECT operations.operation FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+where, &sqlitex.ExecOptions{
 		Args: args,
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			opBytes := make([]byte, stmt.ColumnLen(0))
@@ -249,7 +262,7 @@ func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) erro
 	defer m.dbpool.Put(conn)
 
 	where, args := m.buildQueryWhereClause(q, false)
-	if err := sqlitex.ExecuteTransient(conn, "SELECT id, modno, original_id FROM operations WHERE "+where, &sqlitex.ExecOptions{
+	if err := sqlitex.ExecuteTransient(conn, "SELECT operations.id, operations.modno, operations.original_id FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+where, &sqlitex.ExecOptions{
 		Args: args,
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			return f(oplog.OpMetadata{
@@ -264,6 +277,42 @@ func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) erro
 	return nil
 }
 
+func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (ogid int64, err error) {
+	var found bool
+	if err := sqlitex.Execute(conn, "SELECT ogid FROM operation_groups WHERE partition_id = ? AND instance_id = ? AND repo_id = ? AND plan_id = ? LIMIT 1", &sqlitex.ExecOptions{
+		Args: []any{"", op.InstanceId, op.RepoId, op.PlanId},
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			ogid = stmt.ColumnInt64(0)
+			found = true
+			return nil
+		},
+	}); err != nil {
+		return 0, fmt.Errorf("find operation group: %v", err)
+	}
+
+	if !found {
+		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (partition_id, instance_id, repo_id, plan_id) VALUES (?, ?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
+			Args: []any{"", op.InstanceId, op.RepoId, op.PlanId},
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				ogid = stmt.ColumnInt64(0)
+				return nil
+			},
+		}); err != nil {
+			return 0, fmt.Errorf("insert operation group: %v", err)
+		}
+
+		// Tidy operation groups every once in a while when the set of groups changes.
+		m.tidyGroupsOnce.Do(func() {
+			err = sqlitex.ExecuteTransient(conn, "DELETE FROM operation_groups WHERE ogid NOT IN (SELECT DISTINCT ogid FROM operations)", &sqlitex.ExecOptions{})
+		})
+		if err != nil {
+			return 0, fmt.Errorf("tidy operation groups: %v", err)
+		}
+	}
+
+	return ogid, nil
+}
+
 func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation, error)) error {
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
@@ -273,7 +322,7 @@ func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operat
 
 	where, args := m.buildQueryWhereClause(q, true)
 	return withSqliteTransaction(conn, func() error {
-		return sqlitex.ExecuteTransient(conn, "SELECT operation FROM operations WHERE "+where, &sqlitex.ExecOptions{
+		return sqlitex.ExecuteTransient(conn, "SELECT operations.operation FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+where, &sqlitex.ExecOptions{
 			Args: args,
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				opBytes := make([]byte, stmt.ColumnLen(0))
@@ -298,6 +347,45 @@ func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operat
 	})
 }
 
+func (m *SqliteStore) addInternal(conn *sqlite.Conn, op ...*v1.Operation) error {
+	var err error
+	groupCache := make(map[opGroupInfo]int64)
+
+	for _, o := range op {
+		// First try to find an existing operation group
+		key := opGroupInfo{
+			part: "",
+			repo: o.RepoId,
+			plan: o.PlanId,
+			inst: o.InstanceId,
+		}
+		ogid, ok := groupCache[key]
+		if !ok {
+			ogid, err = m.findOrCreateGroup(conn, o)
+			if err != nil {
+				return fmt.Errorf("find ogid: %v", err)
+			}
+			groupCache[key] = ogid
+		}
+
+		query := "INSERT INTO operations (id, ogid, original_id, modno, flow_id, start_time_ms, status, snapshot_id, operation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+		bytes, err := proto.Marshal(o)
+		if err != nil {
+			return fmt.Errorf("marshal operation: %v", err)
+		}
+
+		if err := sqlitex.Execute(conn, query, &sqlitex.ExecOptions{
+			Args: []any{o.Id, ogid, o.OriginalId, o.Modno, o.FlowId, o.UnixTimeStartMs, int64(o.Status), o.SnapshotId, bytes},
+		}); err != nil {
+			if sqlite.ErrCode(err) == sqlite.ResultConstraintUnique {
+				return fmt.Errorf("operation already exists %v: %w", o.Id, oplog.ErrExist)
+			}
+			return fmt.Errorf("add operation: %v", err)
+		}
+	}
+	return nil
+}
+
 func (m *SqliteStore) Add(op ...*v1.Operation) error {
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
@@ -314,24 +402,9 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 			if err := protoutil.ValidateOperation(o); err != nil {
 				return err
 			}
-
-			query := "INSERT INTO operations (id, start_time_ms, flow_id, instance_id, plan_id, repo_id, snapshot_id, modno, original_id, operation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-
-			bytes, err := proto.Marshal(o)
-			if err != nil {
-				return fmt.Errorf("marshal operation: %v", err)
-			}
-
-			if err := sqlitex.Execute(conn, query, &sqlitex.ExecOptions{
-				Args: []any{o.Id, o.UnixTimeStartMs, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, o.Modno, o.OriginalId, bytes},
-			}); err != nil {
-				if sqlite.ErrCode(err) == sqlite.ResultConstraintUnique {
-					return fmt.Errorf("operation already exists %v: %w", o.Id, oplog.ErrExist)
-				}
-				return fmt.Errorf("add operation: %v", err)
-			}
 		}
-		return nil
+
+		return m.addInternal(conn, op...)
 	})
 }
 
@@ -348,6 +421,8 @@ func (m *SqliteStore) Update(op ...*v1.Operation) error {
 }
 
 func (m *SqliteStore) updateInternal(conn *sqlite.Conn, op ...*v1.Operation) error {
+	groupCache := make(map[opGroupInfo]int64)
+
 	for _, o := range op {
 		if err := protoutil.ValidateOperation(o); err != nil {
 			return err
@@ -356,8 +431,24 @@ func (m *SqliteStore) updateInternal(conn *sqlite.Conn, op ...*v1.Operation) err
 		if err != nil {
 			return fmt.Errorf("marshal operation: %v", err)
 		}
-		if err := sqlitex.Execute(conn, "UPDATE operations SET operation = ?, start_time_ms = ?, flow_id = ?, instance_id = ?, plan_id = ?, repo_id = ?, snapshot_id = ?, modno = ?, original_id = ? WHERE id = ?", &sqlitex.ExecOptions{
-			Args: []any{bytes, o.UnixTimeStartMs, o.FlowId, o.InstanceId, o.PlanId, o.RepoId, o.SnapshotId, o.Modno, o.OriginalId, o.Id},
+
+		key := opGroupInfo{
+			part: "",
+			repo: o.RepoId,
+			plan: o.PlanId,
+			inst: o.InstanceId,
+		}
+		ogid, ok := groupCache[key]
+		if !ok {
+			ogid, err = m.findOrCreateGroup(conn, o)
+			if err != nil {
+				return fmt.Errorf("find ogid: %v", err)
+			}
+			groupCache[key] = ogid
+		}
+
+		if err := sqlitex.Execute(conn, "UPDATE operations SET operation = ?, ogid = ?, start_time_ms = ?, flow_id = ?, snapshot_id = ?, modno = ?, original_id = ?, status = ? WHERE id = ?", &sqlitex.ExecOptions{
+			Args: []any{bytes, ogid, o.UnixTimeStartMs, o.FlowId, o.SnapshotId, o.Modno, o.OriginalId, int64(o.Status), o.Id},
 		}); err != nil {
 			return fmt.Errorf("update operation: %v", err)
 		}
@@ -411,7 +502,7 @@ func (m *SqliteStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 	ops := make([]*v1.Operation, 0, len(opID))
 	return ops, withSqliteTransaction(conn, func() error {
 		// fetch all the operations we're about to delete
-		predicate := []string{"id IN ("}
+		predicate := []string{"operations.id IN ("}
 		args := []any{}
 		for i, id := range opID {
 			if i > 0 {
@@ -423,7 +514,7 @@ func (m *SqliteStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 		predicate = append(predicate, ")")
 		predicateStr := strings.Join(predicate, "")
 
-		if err := sqlitex.ExecuteTransient(conn, "SELECT operation FROM operations WHERE "+predicateStr, &sqlitex.ExecOptions{
+		if err := sqlitex.ExecuteTransient(conn, "SELECT operations.operation FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+predicateStr, &sqlitex.ExecOptions{
 			Args: args,
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				opBytes := make([]byte, stmt.ColumnLen(0))
@@ -445,12 +536,13 @@ func (m *SqliteStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 			return fmt.Errorf("couldn't find all operations to delete: %w", oplog.ErrNotExist)
 		}
 
-		// delete the operations
+		// Delete the operations
 		if err := sqlitex.ExecuteTransient(conn, "DELETE FROM operations WHERE "+predicateStr, &sqlitex.ExecOptions{
 			Args: args,
 		}); err != nil {
 			return fmt.Errorf("delete operations: %v", err)
 		}
+
 		return nil
 	})
 }
@@ -469,10 +561,28 @@ func (m *SqliteStore) ResetForTest(t *testing.T) error {
 	return nil
 }
 
-func withSqliteTransaction(conn *sqlite.Conn, f func() error) error {
-	var err error
-	endFunc := sqlitex.Transaction(conn)
-	err = f()
-	endFunc(&err)
-	return err
+func (m *SqliteStore) Backup(backupFile string) error {
+	conn, err := m.dbpool.Take(context.Background())
+	if err != nil {
+		return fmt.Errorf("backup: %v", err)
+	}
+	defer m.dbpool.Put(conn)
+
+	if err := createBackupFile(conn, backupFile); err != nil {
+		return fmt.Errorf("backup: %v", err)
+	}
+	return nil
+}
+
+func (m *SqliteStore) Restore(backupFile string) error {
+	conn, err := m.dbpool.Take(context.Background())
+	if err != nil {
+		return fmt.Errorf("restore: %v", err)
+	}
+	defer m.dbpool.Put(conn)
+
+	if err := restoreBackupFile(conn, backupFile); err != nil {
+		return fmt.Errorf("restore: %v", err)
+	}
+	return nil
 }

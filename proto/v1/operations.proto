@@ -16,9 +16,9 @@ message Operation {
   // required, primary ID of the operation. ID is sequential based on creation time of the operation.
   int64 id = 1;
   int64 modno = 12; // modification number of the operation for change detection.
-  int64 original_id = 13; // original ID of the operation (e.g. if it was sync'd from another instance).
   // flow id groups operations together, e.g. by an execution of a plan.
   int64 flow_id = 10; // optional, flow id if associated with a flow
+  string partition_id = 13; // optional, partition id if associated with a partition
   string repo_id = 2; 
   string plan_id = 3; 
   string instance_id = 11;
