@@ -312,15 +312,7 @@ func (o *BboltStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 }
 
 func (o *BboltStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) error) error {
-	// Note: low performance implementation strictly for API compatibility in test coverage,
-	// should not be used in production. Sqlite store is preferred.
-	return o.queryHelper(q, func(tx *bbolt.Tx, op *v1.Operation) error {
-		return f(oplog.OpMetadata{
-			ID:         op.Id,
-			Modno:      op.Modno,
-			OriginalID: op.OriginalId,
-		})
-	}, true)
+	return errors.New("not implemented")
 }
 
 func (o *BboltStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation, error)) error {
@@ -396,7 +388,10 @@ func (o *BboltStore) queryHelper(query oplog.Query, do func(tx *bbolt.Tx, op *v1
 		}
 
 		return o.forOpsByIds(tx, ids, func(op *v1.Operation) error {
-			return do(tx, op)
+			if query.Match(op) {
+				return do(tx, op)
+			}
+			return nil
 		})
 	}
 	if isReadOnly {

@@ -10,7 +10,9 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/oplog/memstore"
 	"github.com/garethgeorge/backrest/internal/oplog/sqlitestore"
+	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 const (
@@ -45,6 +47,59 @@ func TestCreate(t *testing.T) {
 			_, err := oplog.NewOpLog(store)
 			if err != nil {
 				t.Fatalf("error creating oplog: %v", err)
+			}
+		})
+	}
+}
+
+func TestListAll(t *testing.T) {
+	// t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			store, err := oplog.NewOpLog(store)
+			if err != nil {
+				t.Fatalf("error creating oplog: %v", err)
+			}
+
+			opsToAdd := []*v1.Operation{
+				{
+					UnixTimeStartMs: 1234,
+					PlanId:          "plan1",
+					RepoId:          "repo1",
+					InstanceId:      "instance1",
+					Op:              &v1.Operation_OperationBackup{},
+				},
+				{
+					UnixTimeStartMs: 4567,
+					PlanId:          "plan2",
+					RepoId:          "repo2",
+					InstanceId:      "instance2",
+					Op:              &v1.Operation_OperationBackup{},
+				},
+			}
+
+			for _, op := range opsToAdd {
+				if err := store.Add(op); err != nil {
+					t.Fatalf("error adding operation: %s", err)
+				}
+			}
+
+			var ops []*v1.Operation
+			if err := store.Query(oplog.Query{}, func(op *v1.Operation) error {
+				ops = append(ops, op)
+				return nil
+			}); err != nil {
+				t.Fatalf("error querying operations: %s", err)
+			}
+
+			if len(ops) != len(opsToAdd) {
+				t.Errorf("expected %d operations, got %d", len(opsToAdd), len(ops))
+			}
+
+			for i := 0; i < len(ops); i++ {
+				if diff := cmp.Diff(ops[i], opsToAdd[i], protocmp.Transform()); diff != "" {
+					t.Fatalf("unexpected diff ops[%d] != opsToAdd[%d]: %v", i, i, diff)
+				}
 			}
 		})
 	}
@@ -186,6 +241,16 @@ func TestListOperation(t *testing.T) {
 			FlowId:          943,
 			Op:              &v1.Operation_OperationBackup{},
 		},
+		{
+			UnixTimeStartMs: 1234,
+			PlanId:          "foo-plan",
+			RepoId:          "foo-repo",
+			InstanceId:      "foo-instance",
+			DisplayMessage:  "foo-op",
+			Op:              &v1.Operation_OperationBackup{},
+			OriginalId:      4567,
+			OriginalFlowId:  789,
+		},
 	}
 
 	tests := []struct {
@@ -233,6 +298,33 @@ func TestListOperation(t *testing.T) {
 			query: oplog.Query{FlowID: 943},
 			expected: []string{
 				"op3",
+			},
+		},
+		{
+			name:  "list original ID",
+			query: oplog.Query{OriginalID: 4567},
+			expected: []string{
+				"foo-op",
+			},
+		},
+		{
+			name:  "list original flow ID",
+			query: oplog.Query{OriginalFlowID: 789},
+			expected: []string{
+				"foo-op",
+			},
+		},
+		{
+			name: "a very compound query",
+			query: oplog.Query{
+				PlanID:         "foo-plan",
+				RepoID:         "foo-repo",
+				InstanceID:     "foo-instance",
+				OriginalID:     4567,
+				OriginalFlowID: 789,
+			},
+			expected: []string{
+				"foo-op",
 			},
 		},
 	}
