@@ -84,9 +84,11 @@ func (m *MemStore) QueryMetadata(q oplog.Query, f func(meta oplog.OpMetadata) er
 	for _, id := range m.idsForQuery(q) {
 		op := m.operations[id]
 		if err := f(oplog.OpMetadata{
-			ID:         op.Id,
-			Modno:      op.Modno,
-			OriginalID: op.OriginalId,
+			ID:             op.Id,
+			Modno:          op.Modno,
+			OriginalID:     op.OriginalId,
+			FlowID:         op.FlowId,
+			OriginalFlowID: op.OriginalFlowId,
 		}); err != nil {
 			return err
 		}

@@ -170,13 +170,14 @@ type BackupableOpStore interface {
 
 type Query struct {
 	// Filter by fields
-	OpIDs      []int64
-	PlanID     string
-	RepoID     string
-	SnapshotID string
-	FlowID     int64
-	InstanceID string
-	OriginalID int64
+	OpIDs          []int64
+	PlanID         string
+	RepoID         string
+	SnapshotID     string
+	FlowID         int64
+	InstanceID     string
+	OriginalID     int64
+	OriginalFlowID int64
 
 	// Pagination
 	Limit    int
@@ -209,10 +210,6 @@ func (q *Query) Match(op *v1.Operation) bool {
 		return false
 	}
 
-	if q.OriginalID != 0 && op.OriginalId != q.OriginalID {
-		return false
-	}
-
 	if q.PlanID != "" && op.PlanId != q.PlanID {
 		return false
 	}
@@ -229,12 +226,22 @@ func (q *Query) Match(op *v1.Operation) bool {
 		return false
 	}
 
+	if q.OriginalID != 0 && op.OriginalId != q.OriginalID {
+		return false
+	}
+
+	if q.OriginalFlowID != 0 && op.OriginalFlowId != q.OriginalFlowID {
+		return false
+	}
+
 	return true
 }
 
 // OpMetadata is a struct that contains metadata about an operation without fetching the operation itself.
 type OpMetadata struct {
-	ID         int64
-	OriginalID int64
-	Modno      int64
+	ID             int64
+	FlowID         int64
+	Modno          int64
+	OriginalID     int64
+	OriginalFlowID int64
 }

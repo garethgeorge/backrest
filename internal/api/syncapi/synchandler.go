@@ -108,8 +108,21 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			return fmt.Errorf("mapping remote ID to local ID: %w", err)
 		}
 
+		var flowOp *v1.Operation
+		if err := h.mgr.oplog.Query(oplog.Query{OriginalFlowID: op.FlowId, InstanceID: op.InstanceId}, func(o *v1.Operation) error {
+			flowOp = o
+			return nil
+		}); err != nil {
+			return fmt.Errorf("mapping remote flow ID to local ID: %w", err)
+		}
+
+		if flowOp != nil {
+			op.FlowId = flowOp.Id
+		}
+
 		if foundOp == nil {
 			op.OriginalId = op.Id
+			op.OriginalFlowId = op.FlowId
 			op.Id = 0
 			return h.mgr.oplog.Add(op)
 		} else {

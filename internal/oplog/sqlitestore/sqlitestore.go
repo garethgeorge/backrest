@@ -14,6 +14,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/gofrs/flock"
@@ -22,44 +23,6 @@ import (
 )
 
 var ErrLocked = errors.New("sqlite db is locked")
-
-var sqliteSchemaMigrations = []string{
-	`
-	CREATE TABLE IF NOT EXISTS operations (
-		id INTEGER PRIMARY KEY,
-		start_time_ms INTEGER NOT NULL,
-		flow_id INTEGER NOT NULL,
-		instance_id STRING NOT NULL,
-		plan_id STRING NOT NULL,
-		repo_id STRING NOT NULL,
-		snapshot_id STRING NOT NULL,
-		operation BLOB NOT NULL
-	);
-	CREATE INDEX IF NOT EXISTS operations_repo_id_plan_id_instance_id ON operations (repo_id, plan_id, instance_id);
-	CREATE INDEX IF NOT EXISTS operations_snapshot_id ON operations (snapshot_id);
-	CREATE INDEX IF NOT EXISTS operations_flow_id ON operations (flow_id);
-	CREATE INDEX IF NOT EXISTS operations_start_time_ms ON operations (start_time_ms);
-
-	-- system_info table to store data version, this is distinct from the sqlite user_version
-	-- which is used by the database schema migration system to track the schema version.
-	CREATE TABLE IF NOT EXISTS system_info (version INTEGER NOT NULL);
-	INSERT INTO system_info (version)
-	SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM system_info);
-	`,
-	`
-	-- Add modno column to operations table, used for diffing.
-	ALTER TABLE operations ADD COLUMN modno INTEGER DEFAULT 0;
-	ALTER TABLE operations ADD COLUMN original_id INTEGER DEFAULT 0;
-	CREATE INDEX IF NOT EXISTS operations_instance_id_original_id ON operations (instance_id, original_id);
-	`,
-}
-
-type opGroupInfo struct {
-	part string
-	repo string
-	plan string
-	inst string
-}
 
 type SqliteStore struct {
 	dbpath    string
@@ -165,17 +128,11 @@ func (m *SqliteStore) SetVersion(version int64) error {
 }
 
 func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses bool) (string, []any) {
-	query := []string{`1=1`}
-	args := []any{}
+	query := make([]string, 0, 8)
+	args := make([]any, 0, 8)
 
-	if q.FlowID != 0 {
-		query = append(query, " AND operations.flow_id = ?")
-		args = append(args, q.FlowID)
-	}
-	if q.InstanceID != "" {
-		query = append(query, " AND operation_groups.instance_id = ?")
-		args = append(args, q.InstanceID)
-	}
+	query = append(query, " 1=1 ")
+
 	if q.PlanID != "" {
 		query = append(query, " AND operation_groups.plan_id = ?")
 		args = append(args, q.PlanID)
@@ -184,13 +141,25 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 		query = append(query, " AND operation_groups.repo_id = ?")
 		args = append(args, q.RepoID)
 	}
+	if q.InstanceID != "" {
+		query = append(query, " AND operation_groups.instance_id = ?")
+		args = append(args, q.InstanceID)
+	}
 	if q.SnapshotID != "" {
 		query = append(query, " AND operations.snapshot_id = ?")
 		args = append(args, q.SnapshotID)
 	}
+	if q.FlowID != 0 {
+		query = append(query, " AND operations.flow_id = ?")
+		args = append(args, q.FlowID)
+	}
 	if q.OriginalID != 0 {
 		query = append(query, " AND operations.original_id = ?")
 		args = append(args, q.OriginalID)
+	}
+	if q.OriginalFlowID != 0 {
+		query = append(query, " AND operations.original_flow_id = ?")
+		args = append(args, q.OriginalFlowID)
 	}
 	if q.OpIDs != nil {
 		query = append(query, " AND operations.id IN (")
@@ -224,7 +193,9 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 		}
 	}
 
-	return strings.Join(query, ""), args
+	zap.L().Debug("query", zap.String("query", strings.Join(query, " ")), zap.Any("args", args))
+
+	return strings.Join(query, "")[1:], args
 }
 
 func (m *SqliteStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
@@ -262,13 +233,15 @@ func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) erro
 	defer m.dbpool.Put(conn)
 
 	where, args := m.buildQueryWhereClause(q, false)
-	if err := sqlitex.ExecuteTransient(conn, "SELECT operations.id, operations.modno, operations.original_id FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+where, &sqlitex.ExecOptions{
+	if err := sqlitex.ExecuteTransient(conn, "SELECT operations.id, operations.modno, operations.original_id, operations.flow_id, operations.original_flow_id FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+where, &sqlitex.ExecOptions{
 		Args: args,
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			return f(oplog.OpMetadata{
-				ID:         stmt.GetInt64("id"),
-				Modno:      stmt.GetInt64("modno"),
-				OriginalID: stmt.GetInt64("original_id"),
+				ID:             stmt.GetInt64("id"),
+				Modno:          stmt.GetInt64("modno"),
+				OriginalID:     stmt.GetInt64("original_id"),
+				FlowID:         stmt.GetInt64("flow_id"),
+				OriginalFlowID: stmt.GetInt64("original_flow_id"),
 			})
 		},
 	}); err != nil && !errors.Is(err, oplog.ErrStopIteration) {
@@ -279,8 +252,8 @@ func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) erro
 
 func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (ogid int64, err error) {
 	var found bool
-	if err := sqlitex.Execute(conn, "SELECT ogid FROM operation_groups WHERE partition_id = ? AND instance_id = ? AND repo_id = ? AND plan_id = ? LIMIT 1", &sqlitex.ExecOptions{
-		Args: []any{"", op.InstanceId, op.RepoId, op.PlanId},
+	if err := sqlitex.Execute(conn, "SELECT ogid FROM operation_groups WHERE instance_id = ? AND repo_id = ? AND plan_id = ? LIMIT 1", &sqlitex.ExecOptions{
+		Args: []any{op.InstanceId, op.RepoId, op.PlanId},
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			ogid = stmt.ColumnInt64(0)
 			found = true
@@ -291,22 +264,21 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 	}
 
 	if !found {
-		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (partition_id, instance_id, repo_id, plan_id) VALUES (?, ?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
-			Args: []any{"", op.InstanceId, op.RepoId, op.PlanId},
+		m.tidyGroupsOnce.Do(func() {
+			err = sqlitex.ExecuteTransient(conn, "DELETE FROM operation_groups WHERE ogid NOT IN (SELECT DISTINCT ogid FROM operations)", &sqlitex.ExecOptions{})
+		})
+		if err != nil {
+			return 0, fmt.Errorf("tidy operation groups: %v", err)
+		}
+
+		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (instance_id, repo_id, plan_id) VALUES (?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
+			Args: []any{op.InstanceId, op.RepoId, op.PlanId},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				ogid = stmt.ColumnInt64(0)
 				return nil
 			},
 		}); err != nil {
 			return 0, fmt.Errorf("insert operation group: %v", err)
-		}
-
-		// Tidy operation groups every once in a while when the set of groups changes.
-		m.tidyGroupsOnce.Do(func() {
-			err = sqlitex.ExecuteTransient(conn, "DELETE FROM operation_groups WHERE ogid NOT IN (SELECT DISTINCT ogid FROM operations)", &sqlitex.ExecOptions{})
-		})
-		if err != nil {
-			return 0, fmt.Errorf("tidy operation groups: %v", err)
 		}
 	}
 
@@ -353,12 +325,7 @@ func (m *SqliteStore) addInternal(conn *sqlite.Conn, op ...*v1.Operation) error 
 
 	for _, o := range op {
 		// First try to find an existing operation group
-		key := opGroupInfo{
-			part: "",
-			repo: o.RepoId,
-			plan: o.PlanId,
-			inst: o.InstanceId,
-		}
+		key := groupInfoForOp(o)
 		ogid, ok := groupCache[key]
 		if !ok {
 			ogid, err = m.findOrCreateGroup(conn, o)
@@ -368,14 +335,21 @@ func (m *SqliteStore) addInternal(conn *sqlite.Conn, op ...*v1.Operation) error 
 			groupCache[key] = ogid
 		}
 
-		query := "INSERT INTO operations (id, ogid, original_id, modno, flow_id, start_time_ms, status, snapshot_id, operation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+		zap.L().Debug("add operation with gid", zap.Int64("ogid", ogid))
+
+		query := `INSERT INTO operations 
+			(id, ogid, original_id, original_flow_id, modno, flow_id, start_time_ms, status, snapshot_id, operation)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		bytes, err := proto.Marshal(o)
 		if err != nil {
 			return fmt.Errorf("marshal operation: %v", err)
 		}
 
 		if err := sqlitex.Execute(conn, query, &sqlitex.ExecOptions{
-			Args: []any{o.Id, ogid, o.OriginalId, o.Modno, o.FlowId, o.UnixTimeStartMs, int64(o.Status), o.SnapshotId, bytes},
+			Args: []any{
+				o.Id, ogid, o.OriginalId, o.OriginalFlowId, o.Modno, o.FlowId,
+				o.UnixTimeStartMs, int64(o.Status), o.SnapshotId, bytes,
+			},
 		}); err != nil {
 			if sqlite.ErrCode(err) == sqlite.ResultConstraintUnique {
 				return fmt.Errorf("operation already exists %v: %w", o.Id, oplog.ErrExist)
@@ -432,12 +406,7 @@ func (m *SqliteStore) updateInternal(conn *sqlite.Conn, op ...*v1.Operation) err
 			return fmt.Errorf("marshal operation: %v", err)
 		}
 
-		key := opGroupInfo{
-			part: "",
-			repo: o.RepoId,
-			plan: o.PlanId,
-			inst: o.InstanceId,
-		}
+		key := groupInfoForOp(o)
 		ogid, ok := groupCache[key]
 		if !ok {
 			ogid, err = m.findOrCreateGroup(conn, o)
@@ -447,8 +416,8 @@ func (m *SqliteStore) updateInternal(conn *sqlite.Conn, op ...*v1.Operation) err
 			groupCache[key] = ogid
 		}
 
-		if err := sqlitex.Execute(conn, "UPDATE operations SET operation = ?, ogid = ?, start_time_ms = ?, flow_id = ?, snapshot_id = ?, modno = ?, original_id = ?, status = ? WHERE id = ?", &sqlitex.ExecOptions{
-			Args: []any{bytes, ogid, o.UnixTimeStartMs, o.FlowId, o.SnapshotId, o.Modno, o.OriginalId, int64(o.Status), o.Id},
+		if err := sqlitex.Execute(conn, "UPDATE operations SET operation = ?, ogid = ?, start_time_ms = ?, flow_id = ?, snapshot_id = ?, modno = ?, original_id = ?, original_flow_id = ?, status = ? WHERE id = ?", &sqlitex.ExecOptions{
+			Args: []any{bytes, ogid, o.UnixTimeStartMs, o.FlowId, o.SnapshotId, o.Modno, o.OriginalId, o.OriginalFlowId, int64(o.Status), o.Id},
 		}); err != nil {
 			return fmt.Errorf("update operation: %v", err)
 		}
@@ -561,28 +530,16 @@ func (m *SqliteStore) ResetForTest(t *testing.T) error {
 	return nil
 }
 
-func (m *SqliteStore) Backup(backupFile string) error {
-	conn, err := m.dbpool.Take(context.Background())
-	if err != nil {
-		return fmt.Errorf("backup: %v", err)
-	}
-	defer m.dbpool.Put(conn)
-
-	if err := createBackupFile(conn, backupFile); err != nil {
-		return fmt.Errorf("backup: %v", err)
-	}
-	return nil
+type opGroupInfo struct {
+	repo string
+	plan string
+	inst string
 }
 
-func (m *SqliteStore) Restore(backupFile string) error {
-	conn, err := m.dbpool.Take(context.Background())
-	if err != nil {
-		return fmt.Errorf("restore: %v", err)
+func groupInfoForOp(op *v1.Operation) opGroupInfo {
+	return opGroupInfo{
+		repo: op.RepoId,
+		plan: op.PlanId,
+		inst: op.InstanceId,
 	}
-	defer m.dbpool.Put(conn)
-
-	if err := restoreBackupFile(conn, backupFile); err != nil {
-		return fmt.Errorf("restore: %v", err)
-	}
-	return nil
 }
