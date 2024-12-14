@@ -76,6 +76,7 @@ func ValidateConfig(c *v1.Config) error {
 
 func validateRepo(repo *v1.Repo) error {
 	var err error
+
 	if e := validationutil.ValidateID(repo.Id, 0); e != nil {
 		err = multierror.Append(err, fmt.Errorf("id %q invalid: %w", repo.Id, e))
 	}

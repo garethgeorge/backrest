@@ -10,7 +10,7 @@ import (
 	"zombiezen.com/go/sqlite/sqlitex"
 )
 
-const sqlSchemaVersion = 3
+const sqlSchemaVersion = 2
 
 var sqlSchema = fmt.Sprintf(`
 PRAGMA user_version = %d;
@@ -42,6 +42,7 @@ CREATE INDEX operation_original_flow_id ON operations (ogid, original_flow_id);
 CREATE TABLE operation_groups (
 	ogid INTEGER PRIMARY KEY AUTOINCREMENT,
 	instance_id STRING NOT NULL,
+	repo_provider STRING NOT NULL,
 	repo_id STRING NOT NULL,
 	plan_id STRING NOT NULL
 );
@@ -82,6 +83,33 @@ func applySqliteMigrations(store *SqliteStore, conn *sqlite.Conn, dbPath string)
 			zap.S().Info("renaming existing operations table to operations_old as a backup")
 			if err := sqlitex.ExecuteTransient(conn, "ALTER TABLE operations RENAME TO operations_old", nil); err != nil {
 				return fmt.Errorf("renaming operations table: %w", err)
+			}
+
+			// drop all tables that aren't operations_old
+			drop_tables := []string{
+				"operation_groups",
+				"operations",
+			}
+			for _, table := range drop_tables {
+				if err := sqlitex.ExecuteTransient(conn, fmt.Sprintf("DROP TABLE IF EXISTS %s", table), nil); err != nil {
+					return fmt.Errorf("dropping table %s: %w", table, err)
+				}
+			}
+
+			// drop all indexes
+			indexes := []string{}
+			if err := sqlitex.ExecuteTransient(conn, "SELECT name FROM sqlite_master WHERE type='index'", &sqlitex.ExecOptions{
+				ResultFunc: func(stmt *sqlite.Stmt) error {
+					indexes = append(indexes, stmt.ColumnText(0))
+					return nil
+				},
+			}); err != nil {
+				return fmt.Errorf("dropping indexes: %w", err)
+			}
+			for _, index := range indexes {
+				if err := sqlitex.ExecuteTransient(conn, fmt.Sprintf("DROP INDEX IF EXISTS %s", index), nil); err != nil {
+					return fmt.Errorf("dropping index %s: %w", index, err)
+				}
 			}
 		}
 

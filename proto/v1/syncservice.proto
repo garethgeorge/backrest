@@ -41,13 +41,14 @@ enum SyncConnectionState {
 message SyncStreamItem {
   oneof action {
     SignedMessage signed_message = 1;
-    SyncActionHandshake handshake = 10;
+    SyncActionHandshake handshake = 3;
+    
     SyncActionDiffOperations diff_operations = 20;
     SyncActionSendOperations send_operations = 21;
     SyncActionSendConfig send_config = 22;
-    SyncActionThrottle throttle = 1000;
-
     SyncEstablishSharedSecret establish_shared_secret = 23;
+
+    SyncActionThrottle throttle = 1000;
   }
 
   message SyncActionHandshake {
