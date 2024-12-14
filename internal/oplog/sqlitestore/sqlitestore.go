@@ -140,6 +140,10 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 		query = append(query, " AND operation_groups.repo_id = ?")
 		args = append(args, q.RepoID)
 	}
+	if q.RepoProvider != "" {
+		query = append(query, " AND operation_groups.repo_provider = ?")
+		args = append(args, q.RepoProvider)
+	}
 	if q.InstanceID != "" {
 		query = append(query, " AND operation_groups.instance_id = ?")
 		args = append(args, q.InstanceID)
@@ -249,8 +253,8 @@ func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) erro
 
 func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (ogid int64, err error) {
 	var found bool
-	if err := sqlitex.Execute(conn, "SELECT ogid FROM operation_groups WHERE instance_id = ? AND repo_id = ? AND plan_id = ? LIMIT 1", &sqlitex.ExecOptions{
-		Args: []any{op.InstanceId, op.RepoId, op.PlanId},
+	if err := sqlitex.Execute(conn, "SELECT ogid FROM operation_groups WHERE instance_id = ? AND repo_id = ? AND repo_provider = ? AND plan_id = ? LIMIT 1", &sqlitex.ExecOptions{
+		Args: []any{op.InstanceId, op.RepoId, op.RepoProvider, op.PlanId},
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			ogid = stmt.ColumnInt64(0)
 			found = true
@@ -268,8 +272,8 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 			return 0, fmt.Errorf("tidy operation groups: %v", err)
 		}
 
-		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (instance_id, repo_id, plan_id) VALUES (?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
-			Args: []any{op.InstanceId, op.RepoId, op.PlanId},
+		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (instance_id, repo_id, repo_provider, plan_id) VALUES (?, ?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
+			Args: []any{op.InstanceId, op.RepoId, op.RepoProvider, op.PlanId},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				ogid = stmt.ColumnInt64(0)
 				return nil
@@ -526,15 +530,17 @@ func (m *SqliteStore) ResetForTest(t *testing.T) error {
 }
 
 type opGroupInfo struct {
-	repo string
-	plan string
-	inst string
+	repo     string
+	plan     string
+	inst     string
+	provider string
 }
 
 func groupInfoForOp(op *v1.Operation) opGroupInfo {
 	return opGroupInfo{
-		repo: op.RepoId,
-		plan: op.PlanId,
-		inst: op.InstanceId,
+		repo:     op.RepoId,
+		plan:     op.PlanId,
+		inst:     op.InstanceId,
+		provider: op.RepoProvider,
 	}
 }

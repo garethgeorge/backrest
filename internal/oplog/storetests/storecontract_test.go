@@ -66,6 +66,7 @@ func TestListAll(t *testing.T) {
 					UnixTimeStartMs: 1234,
 					PlanId:          "plan1",
 					RepoId:          "repo1",
+					RepoProvider:    "provider1",
 					InstanceId:      "instance1",
 					Op:              &v1.Operation_OperationBackup{},
 				},
@@ -73,6 +74,7 @@ func TestListAll(t *testing.T) {
 					UnixTimeStartMs: 4567,
 					PlanId:          "plan2",
 					RepoId:          "repo2",
+					RepoProvider:    "provider1",
 					InstanceId:      "instance2",
 					Op:              &v1.Operation_OperationBackup{},
 				},
@@ -220,6 +222,7 @@ func TestListOperation(t *testing.T) {
 			UnixTimeStartMs: 1234,
 			PlanId:          "plan1",
 			RepoId:          "repo1",
+			RepoProvider:    "provider1",
 			InstanceId:      "instance1",
 			DisplayMessage:  "op1",
 			Op:              &v1.Operation_OperationBackup{},
@@ -228,6 +231,7 @@ func TestListOperation(t *testing.T) {
 			UnixTimeStartMs: 1234,
 			PlanId:          "plan1",
 			RepoId:          "repo2",
+			RepoProvider:    "provider1",
 			InstanceId:      "instance2",
 			DisplayMessage:  "op2",
 			Op:              &v1.Operation_OperationBackup{},
@@ -236,6 +240,7 @@ func TestListOperation(t *testing.T) {
 			UnixTimeStartMs: 1234,
 			PlanId:          "plan2",
 			RepoId:          "repo2",
+			RepoProvider:    "provider2",
 			InstanceId:      "instance3",
 			DisplayMessage:  "op3",
 			FlowId:          943,
@@ -245,6 +250,7 @@ func TestListOperation(t *testing.T) {
 			UnixTimeStartMs: 1234,
 			PlanId:          "foo-plan",
 			RepoId:          "foo-repo",
+			RepoProvider:    "foo-provider",
 			InstanceId:      "foo-instance",
 			DisplayMessage:  "foo-op",
 			Op:              &v1.Operation_OperationBackup{},
@@ -315,6 +321,21 @@ func TestListOperation(t *testing.T) {
 			},
 		},
 		{
+			name:     "list provider1",
+			query:    oplog.Query{RepoProvider: "provider1"},
+			expected: []string{"op1", "op2"},
+		},
+		{
+			name:     "list provider2",
+			query:    oplog.Query{RepoProvider: "provider2"},
+			expected: []string{"op3"},
+		},
+		{
+			name:     "list provider1 and repo2",
+			query:    oplog.Query{RepoProvider: "provider1", RepoID: "repo2"},
+			expected: []string{"op2"},
+		},
+		{
 			name: "a very compound query",
 			query: oplog.Query{
 				PlanID:         "foo-plan",
@@ -322,6 +343,18 @@ func TestListOperation(t *testing.T) {
 				InstanceID:     "foo-instance",
 				OriginalID:     4567,
 				OriginalFlowID: 789,
+			},
+			expected: []string{
+				"foo-op",
+			},
+		},
+		{
+			name: "compound query with provider",
+			query: oplog.Query{
+				PlanID:       "foo-plan",
+				RepoID:       "foo-repo",
+				RepoProvider: "foo-provider",
+				InstanceID:   "foo-instance",
 			},
 			expected: []string{
 				"foo-op",

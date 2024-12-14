@@ -242,6 +242,7 @@ type Query struct {
 	OpIDs          []int64
 	PlanID         string
 	RepoID         string
+	RepoProvider   string
 	SnapshotID     string
 	FlowID         int64
 	InstanceID     string
@@ -284,6 +285,10 @@ func (q *Query) Match(op *v1.Operation) bool {
 	}
 
 	if q.RepoID != "" && op.RepoId != q.RepoID {
+		return false
+	}
+
+	if q.RepoProvider != "" && op.RepoProvider != q.RepoProvider {
 		return false
 	}
 
