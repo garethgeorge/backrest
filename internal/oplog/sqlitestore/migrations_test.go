@@ -20,22 +20,11 @@ func TestNewSqliteStore(t *testing.T) {
 }
 
 func TestMigrateExisting(t *testing.T) {
-	testutil.InstallZapLogger(t)
-
 	tempDir := t.TempDir()
 
-	testOps := []*v1.Operation{
-		{
-			UnixTimeStartMs: 1234,
-			PlanId:          "plan1",
-			RepoId:          "repo1",
-			InstanceId:      "instance1",
-			Op:              &v1.Operation_OperationBackup{},
-			OriginalId:      1,
-			OriginalFlowId:  2,
-			Modno:           3,
-			Status:          v1.OperationStatus_STATUS_INPROGRESS,
-		},
+	testOps := []*v1.Operation{}
+	for i := 0; i < 10; i++ {
+		testOps = append(testOps, testutil.RandomOperation())
 	}
 
 	store, err := NewSqliteStore(tempDir + "/test.sqlite")

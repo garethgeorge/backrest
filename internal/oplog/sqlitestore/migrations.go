@@ -10,7 +10,7 @@ import (
 	"zombiezen.com/go/sqlite/sqlitex"
 )
 
-const sqlSchemaVersion = 2
+const sqlSchemaVersion = 3
 
 var sqlSchema = fmt.Sprintf(`
 PRAGMA user_version = %d;
@@ -36,8 +36,6 @@ CREATE INDEX operation_ogid ON operations (ogid);
 CREATE INDEX operation_snapshot_id ON operations (snapshot_id);
 CREATE INDEX operation_flow_id ON operations (flow_id);
 CREATE INDEX operation_start_time_ms ON operations (start_time_ms);
-
--- Compound indexes for efficient original_id and original_flow_id lookups
 CREATE INDEX operation_original_id ON operations (ogid, original_id);
 CREATE INDEX operation_original_flow_id ON operations (ogid, original_flow_id);
 
@@ -68,7 +66,7 @@ func applySqliteMigrations(store *SqliteStore, conn *sqlite.Conn, dbPath string)
 
 	zap.S().Infof("applying oplog sqlite schema migration from storage schema %d to %d", version, sqlSchemaVersion)
 
-	return withSqliteTransaction(conn, func() error {
+	if err := withSqliteTransaction(conn, func() error {
 		// Check if operations table exists and rename it
 		var hasOperationsTable bool
 		if err := sqlitex.ExecuteTransient(conn, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='operations'", &sqlitex.ExecOptions{
@@ -81,6 +79,7 @@ func applySqliteMigrations(store *SqliteStore, conn *sqlite.Conn, dbPath string)
 		}
 
 		if hasOperationsTable {
+			zap.S().Info("renaming existing operations table to operations_old as a backup")
 			if err := sqlitex.ExecuteTransient(conn, "ALTER TABLE operations RENAME TO operations_old", nil); err != nil {
 				return fmt.Errorf("renaming operations table: %w", err)
 			}
@@ -136,5 +135,8 @@ func applySqliteMigrations(store *SqliteStore, conn *sqlite.Conn, dbPath string)
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return fmt.Errorf("migrate sqlite schema from version %d to %d: %w", version, sqlSchemaVersion, err)
+	}
+	return nil
 }

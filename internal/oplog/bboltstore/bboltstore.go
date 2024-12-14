@@ -357,7 +357,12 @@ func (o *BboltStore) queryHelper(query oplog.Query, do func(tx *bbolt.Tx, op *v1
 		var ids []int64
 		if len(iterators) == 0 && len(query.OpIDs) == 0 {
 			if query.Limit == 0 && query.Offset == 0 && !query.Reversed {
-				return o.forAll(tx, func(op *v1.Operation) error { return do(tx, op) })
+				return o.forAll(tx, func(op *v1.Operation) error {
+					if query.Match(op) {
+						return do(tx, op)
+					}
+					return nil
+				})
 			} else {
 				b := tx.Bucket(OpLogBucket)
 				c := b.Cursor()
