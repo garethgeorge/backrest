@@ -14,7 +14,6 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/gofrs/flock"
@@ -193,8 +192,6 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 		}
 	}
 
-	zap.L().Debug("query", zap.String("query", strings.Join(query, " ")), zap.Any("args", args))
-
 	return strings.Join(query, "")[1:], args
 }
 
@@ -334,8 +331,6 @@ func (m *SqliteStore) addInternal(conn *sqlite.Conn, op ...*v1.Operation) error 
 			}
 			groupCache[key] = ogid
 		}
-
-		zap.L().Debug("add operation with gid", zap.Int64("ogid", ogid))
 
 		query := `INSERT INTO operations 
 			(id, ogid, original_id, original_flow_id, modno, flow_id, start_time_ms, status, snapshot_id, operation)
