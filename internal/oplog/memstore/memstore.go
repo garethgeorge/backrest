@@ -86,8 +86,8 @@ func (m *MemStore) QueryMetadata(q oplog.Query, f func(meta oplog.OpMetadata) er
 		if err := f(oplog.OpMetadata{
 			ID:             op.Id,
 			Modno:          op.Modno,
-			OriginalID:     op.OriginalId,
 			FlowID:         op.FlowId,
+			OriginalID:     op.OriginalId,
 			OriginalFlowID: op.OriginalFlowId,
 		}); err != nil {
 			return err

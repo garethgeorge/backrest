@@ -234,9 +234,15 @@ func TestSimpleOperationSync(t *testing.T) {
 	peerClient.oplog.Add(testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 		{
 			DisplayMessage: "clientop1",
+			FlowId:         1,
 		},
 		{
 			DisplayMessage: "clientop2",
+			FlowId:         1,
+		},
+		{
+			DisplayMessage: "clientop3",
+			FlowId:         2, // in a different flow from the other two
 		},
 	})...)
 
@@ -249,14 +255,25 @@ func TestSimpleOperationSync(t *testing.T) {
 	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{RepoID: defaultRepoID, InstanceID: defaultClientID},
 		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 			{
-				Id:             3, // b/c hostop1 has id 1
+				Id:             3, // b/c of the already inserted host ops the sync'd ops start at 3
+				FlowId:         3,
 				OriginalId:     1,
+				OriginalFlowId: 1,
 				DisplayMessage: "clientop1",
 			},
 			{
-				Id:             4, // b/c hostop1 has id 1
+				Id:             4,
+				FlowId:         3,
 				OriginalId:     2,
+				OriginalFlowId: 1,
 				DisplayMessage: "clientop2",
+			},
+			{
+				Id:             5,
+				FlowId:         5,
+				OriginalId:     3,
+				OriginalFlowId: 2,
+				DisplayMessage: "clientop3",
 			},
 		}))
 }
@@ -296,11 +313,13 @@ func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnd
 			op.Id = 0
 			op.FlowId = 0
 			op.OriginalId = 0
+			op.OriginalFlowId = 0
 		}
 		for _, op := range peer2Ops {
 			op.Id = 0
 			op.FlowId = 0
 			op.OriginalId = 0
+			op.OriginalFlowId = 0
 		}
 
 		sortFn := func(a, b *v1.Operation) int {

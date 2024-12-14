@@ -100,8 +100,13 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
 
 	insertOrUpdate := func(op *v1.Operation) error {
+		op.OriginalId = op.Id
+		op.OriginalFlowId = op.FlowId
+		op.Id = 0
+		op.FlowId = 0
+
 		var foundOp *v1.Operation
-		if err := h.mgr.oplog.Query(oplog.Query{OriginalID: op.Id, InstanceID: op.InstanceId}, func(o *v1.Operation) error {
+		if err := h.mgr.oplog.Query(oplog.Query{OriginalID: op.OriginalId, InstanceID: op.InstanceId}, func(o *v1.Operation) error {
 			foundOp = o
 			return nil
 		}); err != nil {
@@ -109,7 +114,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		}
 
 		var flowOp *v1.Operation
-		if err := h.mgr.oplog.Query(oplog.Query{OriginalFlowID: op.FlowId, InstanceID: op.InstanceId}, func(o *v1.Operation) error {
+		if err := h.mgr.oplog.Query(oplog.Query{OriginalFlowID: op.OriginalFlowId, InstanceID: op.InstanceId}, func(o *v1.Operation) error {
 			flowOp = o
 			return nil
 		}); err != nil {
@@ -117,18 +122,14 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		}
 
 		if flowOp != nil {
-			op.FlowId = flowOp.Id
+			op.FlowId = flowOp.FlowId
 		}
 
-		if foundOp == nil {
-			op.OriginalId = op.Id
-			op.OriginalFlowId = op.FlowId
-			op.Id = 0
-			return h.mgr.oplog.Add(op)
-		} else {
-			op.OriginalId = op.Id
+		if foundOp != nil {
 			op.Id = foundOp.Id
 			return h.mgr.oplog.Update(op)
+		} else {
+			return h.mgr.oplog.Add(op)
 		}
 	}
 
