@@ -64,6 +64,7 @@ func TestMigrateExisting(t *testing.T) {
 		t.Fatalf("error closing sqlite store: %s", err)
 	}
 
+	// re-open the store
 	store2, err := NewSqliteStore(tempDir + "/test.sqlite")
 	if err != nil {
 		t.Fatalf("error creating sqlite store: %s", err)
