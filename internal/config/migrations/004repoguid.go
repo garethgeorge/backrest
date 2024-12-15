@@ -13,8 +13,8 @@ func migration004RepoGuid(config *v1.Config) {
 			continue
 		}
 
-		// attempt to connect given this configuration
-		var bytes [16]byte
+		// generate a 256 bit guid that links the repo.
+		var bytes [32]byte
 		if _, err := rand.Read(bytes[:]); err != nil {
 			panic(err)
 		}
