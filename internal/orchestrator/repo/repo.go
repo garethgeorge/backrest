@@ -415,6 +415,13 @@ func (r *RepoOrchestrator) Config() *v1.Repo {
 	return r.repoConfig
 }
 
+func (r *RepoOrchestrator) RepoGUID() (string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	cfg, err := r.repo.Config(context.Background())
+	return cfg.Id, err
+}
+
 func sortSnapshotsByTime(snapshots []*restic.Snapshot) {
 	sort.SliceStable(snapshots, func(i, j int) bool {
 		return snapshots[i].UnixTimeMs() < snapshots[j].UnixTimeMs()

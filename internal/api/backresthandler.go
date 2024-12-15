@@ -36,20 +36,22 @@ import (
 
 type BackrestHandler struct {
 	v1connect.UnimplementedBackrestHandler
-	config       config.ConfigStore
-	orchestrator *orchestrator.Orchestrator
-	oplog        *oplog.OpLog
-	logStore     *logstore.LogStore
+	config            config.ConfigStore
+	orchestrator      *orchestrator.Orchestrator
+	oplog             *oplog.OpLog
+	logStore          *logstore.LogStore
+	remoteConfigStore syncapi.RemoteConfigStore
 }
 
 var _ v1connect.BackrestHandler = &BackrestHandler{}
 
-func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *logstore.LogStore) *BackrestHandler {
+func NewBackrestHandler(config config.ConfigStore, remoteConfigStore syncapi.RemoteConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *logstore.LogStore) *BackrestHandler {
 	s := &BackrestHandler{
-		config:       config,
-		orchestrator: orchestrator,
-		oplog:        oplog,
-		logStore:     logStore,
+		config:            config,
+		orchestrator:      orchestrator,
+		oplog:             oplog,
+		logStore:          logStore,
+		remoteConfigStore: remoteConfigStore,
 	}
 
 	return s
@@ -142,33 +144,66 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
+	newRepo := req.Msg
+
 	// Deep copy the configuration
 	c = proto.Clone(c).(*v1.Config)
 
 	// Add or implicit update the repo
-	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == req.Msg.Id }); idx != -1 {
-		c.Repos[idx] = req.Msg
+	var oldRepoGUID string
+	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == newRepo.Id }); idx != -1 {
+		oldRepoGUID = c.Repos[idx].Guid
+		c.Repos[idx] = newRepo
 	} else {
-		c.Repos = append(c.Repos, req.Msg)
+		c.Repos = append(c.Repos, newRepo)
 	}
 
 	if err := config.ValidateConfig(c); err != nil {
 		return nil, fmt.Errorf("validation error: %w", err)
 	}
 
-	if !syncapi.IsBackrestRemoteRepoURI(req.Msg.Uri) {
+	if !syncapi.IsBackrestRemoteRepoURI(newRepo.Uri) {
 		bin, err := resticinstaller.FindOrInstallResticBinary()
 		if err != nil {
 			return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
 		}
 
-		r, err := repo.NewRepoOrchestrator(c, req.Msg, bin)
+		r, err := repo.NewRepoOrchestrator(c, newRepo, bin)
 		if err != nil {
 			return nil, fmt.Errorf("failed to configure repo: %w", err)
 		}
 
 		if err := r.Init(context.Background()); err != nil {
 			return nil, fmt.Errorf("failed to init repo: %w", err)
+		}
+
+		guid, err := r.RepoGUID()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get repo config: %w", err)
+		}
+
+		if guid != oldRepoGUID {
+			// query for the old guid in the oplog
+		}
+	} else {
+		// TODO: must validate that the remote repo is accessible and populate its GUID
+
+		// parse the URI
+		instanceID, err := syncapi.InstanceForBackrestURI(newRepo.Uri)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse remote repo URI: %w", err)
+		}
+
+		// fetch the remote config
+		remoteRepo, err := syncapi.GetRepoConfig(s.remoteConfigStore, instanceID, newRepo.Id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get remote repo config: %w", err)
+		}
+
+		// set the GUID
+		newRepo.Guid = remoteRepo.Guid
+		if newRepo.Guid == "" {
+			return nil, fmt.Errorf("GUID not found for repo %q", newRepo.Id)
 		}
 	}
 
@@ -184,7 +219,7 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 
 	// index snapshots for the newly added repository.
 	zap.L().Debug("scheduling index snapshots task")
-	s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(req.Msg.Id, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots)
+	s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(newRepo.Id, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots)
 
 	zap.L().Debug("done add repo")
 	return connect.NewResponse(c), nil

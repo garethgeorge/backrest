@@ -49,7 +49,8 @@ message Multihost {
 
 message Repo {
   string id = 1 [json_name="id"]; // unique but human readable ID for this repo.
-  string uri = 2 [json_name="uri"]; // restic repo URI
+  string uri = 2 [json_name="uri"]; // URI of the repo.
+  string guid = 11 [json_name="guid"]; // a globally unique ID for this repo. Should be derived as the 'id' field in `restic cat config --json`.
   string password = 3 [json_name="password"]; // plaintext password
   repeated string env = 4 [json_name="env"]; // extra environment variables to set for restic.
   repeated string flags = 5 [json_name="flags"]; // extra flags set on the restic command.

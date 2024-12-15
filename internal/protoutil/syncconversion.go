@@ -10,6 +10,7 @@ func RepoToRemoteRepo(r *v1.Repo) *v1.RemoteRepo {
 	}
 	return &v1.RemoteRepo{
 		Id:       r.Id,
+		Guid:     r.Guid,
 		Uri:      r.Uri,
 		Password: r.Password,
 		Env:      r.Env,
@@ -23,6 +24,7 @@ func RemoteRepoToRepo(r *v1.RemoteRepo) *v1.Repo {
 	}
 	return &v1.Repo{
 		Id:       r.Id,
+		Guid:     r.Guid,
 		Uri:      r.Uri,
 		Password: r.Password,
 		Env:      r.Env,

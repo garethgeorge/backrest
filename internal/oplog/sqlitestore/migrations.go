@@ -42,11 +42,12 @@ CREATE INDEX operation_original_flow_id ON operations (ogid, original_flow_id);
 CREATE TABLE operation_groups (
 	ogid INTEGER PRIMARY KEY AUTOINCREMENT,
 	instance_id STRING NOT NULL,
-	repo_provider STRING NOT NULL,
+	repo_guid STRING NOT NULL,
 	repo_id STRING NOT NULL,
 	plan_id STRING NOT NULL
 );
 CREATE INDEX group_repo_instance ON operation_groups (repo_id, instance_id);
+CREATE INDEX group_repo_guid ON operation_groups (repo_guid);
 CREATE INDEX group_instance ON operation_groups (instance_id);
 `, sqlSchemaVersion)
 
