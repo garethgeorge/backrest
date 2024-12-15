@@ -105,6 +105,7 @@ message RemoteConfig {
 
 message RemoteRepo {
   string id = 1;
+  string guid = 11;
   string uri = 2;
   string password = 3;
   repeated string env = 4;

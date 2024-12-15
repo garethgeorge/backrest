@@ -140,9 +140,9 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 		query = append(query, " AND operation_groups.repo_id = ?")
 		args = append(args, q.RepoID)
 	}
-	if q.RepoProvider != "" {
-		query = append(query, " AND operation_groups.repo_provider = ?")
-		args = append(args, q.RepoProvider)
+	if q.RepoGUID != "" {
+		query = append(query, " AND operation_groups.repo_guid = ?")
+		args = append(args, q.RepoGUID)
 	}
 	if q.InstanceID != "" {
 		query = append(query, " AND operation_groups.instance_id = ?")
@@ -251,10 +251,23 @@ func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) erro
 	return nil
 }
 
+func (m *SqliteStore) tidyGroups() error {
+	conn, err := m.dbpool.Take(context.Background())
+	if err != nil {
+		return fmt.Errorf("take connection: %v", err)
+	}
+	defer m.dbpool.Put(conn)
+	err = sqlitex.ExecuteTransient(conn, "DELETE FROM operation_groups WHERE ogid NOT IN (SELECT DISTINCT ogid FROM operations)", &sqlitex.ExecOptions{})
+	if err != nil {
+		return fmt.Errorf("tidy operation groups: %v", err)
+	}
+	return nil
+}
+
 func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (ogid int64, err error) {
 	var found bool
-	if err := sqlitex.Execute(conn, "SELECT ogid FROM operation_groups WHERE instance_id = ? AND repo_id = ? AND repo_provider = ? AND plan_id = ? LIMIT 1", &sqlitex.ExecOptions{
-		Args: []any{op.InstanceId, op.RepoId, op.RepoProvider, op.PlanId},
+	if err := sqlitex.Execute(conn, "SELECT ogid FROM operation_groups WHERE instance_id = ? AND repo_id = ? AND plan_id = ? AND repo_guid = ? LIMIT 1", &sqlitex.ExecOptions{
+		Args: []any{op.InstanceId, op.RepoId, op.PlanId, op.RepoGuid},
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			ogid = stmt.ColumnInt64(0)
 			found = true
@@ -266,14 +279,14 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 
 	if !found {
 		m.tidyGroupsOnce.Do(func() {
-			err = sqlitex.ExecuteTransient(conn, "DELETE FROM operation_groups WHERE ogid NOT IN (SELECT DISTINCT ogid FROM operations)", &sqlitex.ExecOptions{})
+			err = m.tidyGroups() // performed in a different transaction to avoid deadlocks
 		})
 		if err != nil {
 			return 0, fmt.Errorf("tidy operation groups: %v", err)
 		}
 
-		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (instance_id, repo_id, repo_provider, plan_id) VALUES (?, ?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
-			Args: []any{op.InstanceId, op.RepoId, op.RepoProvider, op.PlanId},
+		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (instance_id, repo_id, plan_id, repo_guid) VALUES (?, ?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
+			Args: []any{op.InstanceId, op.RepoId, op.PlanId, op.RepoGuid},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				ogid = stmt.ColumnInt64(0)
 				return nil
@@ -530,17 +543,15 @@ func (m *SqliteStore) ResetForTest(t *testing.T) error {
 }
 
 type opGroupInfo struct {
-	repo     string
-	plan     string
-	inst     string
-	provider string
+	repo string
+	plan string
+	inst string
 }
 
 func groupInfoForOp(op *v1.Operation) opGroupInfo {
 	return opGroupInfo{
-		repo:     op.RepoId,
-		plan:     op.PlanId,
-		inst:     op.InstanceId,
-		provider: op.RepoProvider,
+		repo: op.RepoId,
+		plan: op.PlanId,
+		inst: op.InstanceId,
 	}
 }

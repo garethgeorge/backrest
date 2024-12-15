@@ -22,9 +22,9 @@ message Operation {
   // must be unique within the context of a repo.
   int64 flow_id = 10;
   int64 original_flow_id = 14;
-  // repo id is a string identifier for the repo, and repo_provider is the unique ID of the instance that provides this repo.
+  // repo id is a string identifier for the repo, and repo_guid is the globally unique ID of the repo.
   string repo_id = 2;
-  string repo_provider = 15; // instance that provided / hosts the repo (if not the same as local instance). Must be empty string for a local repo.
+  string repo_guid = 15;
   // plan id e.g. a scheduled set of operations (or system) that created this operation.
   string plan_id = 3; 
   // instance ID that created the operation

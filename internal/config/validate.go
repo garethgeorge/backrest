@@ -85,6 +85,10 @@ func validateRepo(repo *v1.Repo) error {
 		err = multierror.Append(err, errors.New("uri is required"))
 	}
 
+	if repo.Guid == "" {
+		err = multierror.Append(err, errors.New("guid is required"))
+	}
+
 	if repo.PrunePolicy.GetSchedule() != nil {
 		if e := protoutil.ValidateSchedule(repo.PrunePolicy.GetSchedule()); e != nil {
 			err = multierror.Append(err, fmt.Errorf("prune policy schedule: %w", e))
