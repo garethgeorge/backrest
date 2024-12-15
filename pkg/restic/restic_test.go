@@ -28,6 +28,53 @@ func TestResticInit(t *testing.T) {
 	}
 }
 
+func TestResticExists(t *testing.T) {
+	t.Parallel()
+	repo := t.TempDir()
+
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
+	if err := r.Exists(context.Background()); err == nil {
+		t.Fatalf("expected repo not to exist")
+	}
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+	r2 := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
+	if err := r2.Exists(context.Background()); err != nil {
+		t.Fatalf("expected repo to exist, got error: %v", err)
+	}
+}
+
+func TestResticConfig(t *testing.T) {
+	t.Parallel()
+	repo := t.TempDir()
+
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
+	if err := r.Exists(context.Background()); err == nil {
+		t.Fatalf("expected repo not to exist")
+	}
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+	r2 := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
+	if err := r2.Exists(context.Background()); err != nil {
+		t.Fatalf("expected repo to exist, got error: %v", err)
+	}
+	cfg, err := r2.Config(context.Background())
+	if err != nil {
+		t.Fatalf("failed to get repo config: %v", err)
+	}
+	if cfg.Id == "" {
+		t.Errorf("expected repo id to be set, got: %s", cfg.Id)
+	}
+	if cfg.ChunkerPolynomial == "" {
+		t.Errorf("expected chunker polynomial to be set, got: %s", cfg.ChunkerPolynomial)
+	}
+	if cfg.Version == 0 {
+		t.Errorf("expected version to be set, got: %d", cfg.Version)
+	}
+}
+
 func TestResticBackup(t *testing.T) {
 	t.Parallel()
 	repo := t.TempDir()
@@ -36,6 +83,9 @@ func TestResticBackup(t *testing.T) {
 	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
 	if err := r.Init(context.Background()); err != nil {
 		t.Fatalf("failed to init repo: %v", err)
+	}
+	if err := r.Exists(context.Background()); err != nil {
+		t.Fatalf("expected repo to exist, got error: %v", err)
 	}
 
 	testData := helpers.CreateTestData(t)
