@@ -158,10 +158,9 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		c.Repos = append(c.Repos, newRepo)
 	}
 
-	if err := config.ValidateConfig(c); err != nil {
-		return nil, fmt.Errorf("validation error: %w", err)
-	}
-
+	// Ensure the Repo GUID is set to the correct value.
+	// This is derived from 'restic cat config' for local repos.
+	// For remote repos, the GUID is derived from the remote config's value for the repo.
 	if !syncapi.IsBackrestRemoteRepoURI(newRepo.Uri) {
 		bin, err := resticinstaller.FindOrInstallResticBinary()
 		if err != nil {
@@ -183,12 +182,17 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		}
 
 		if guid != oldRepoGUID {
-			// query for the old guid in the oplog
+			if err := s.oplog.Transform(oplog.Query{RepoGUID: oldRepoGUID}, func(op *v1.Operation) (*v1.Operation, error) {
+				op.RepoGuid = guid
+				return op, nil
+			}); err != nil {
+				return nil, fmt.Errorf("failed to get operations for repo: %w", err)
+			}
 		}
-	} else {
-		// TODO: must validate that the remote repo is accessible and populate its GUID
 
-		// parse the URI
+	} else {
+		// It's a remote repo, let's find the configuration and guid for it.
+
 		instanceID, err := syncapi.InstanceForBackrestURI(newRepo.Uri)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse remote repo URI: %w", err)
@@ -200,11 +204,15 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 			return nil, fmt.Errorf("failed to get remote repo config: %w", err)
 		}
 
-		// set the GUID
+		// set the GUID from the remote config.
 		newRepo.Guid = remoteRepo.Guid
 		if newRepo.Guid == "" {
 			return nil, fmt.Errorf("GUID not found for repo %q", newRepo.Id)
 		}
+	}
+
+	if err := config.ValidateConfig(c); err != nil {
+		return nil, fmt.Errorf("validation error: %w", err)
 	}
 
 	zap.L().Debug("updating config", zap.Int32("version", c.Version))
