@@ -8,6 +8,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/memstore"
 )
@@ -23,7 +24,12 @@ func TestScheduling(t *testing.T) {
 	cfg := &v1.Config{
 		Repos: []*v1.Repo{
 			{
-				Id: "repo-absolute",
+				Id:   "repo1",
+				Guid: cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+			},
+			{
+				Id:   "repo-absolute",
+				Guid: cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 				CheckPolicy: &v1.CheckPolicy{
 					Schedule: &v1.Schedule{
 						Schedule: &v1.Schedule_MaxFrequencyHours{
@@ -40,7 +46,8 @@ func TestScheduling(t *testing.T) {
 				},
 			},
 			{
-				Id: "repo-relative",
+				Id:   "repo-relative",
+				Guid: cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 				CheckPolicy: &v1.CheckPolicy{
 					Schedule: &v1.Schedule{
 						Schedule: &v1.Schedule_MaxFrequencyHours{
@@ -88,8 +95,7 @@ func TestScheduling(t *testing.T) {
 				},
 			},
 			{
-				Id:   "plan-max-frequency-days",
-				Repo: "repo1",
+				Id: "plan-max-frequency-days",
 				Schedule: &v1.Schedule{
 					Schedule: &v1.Schedule_MaxFrequencyDays{
 						MaxFrequencyDays: 1,
@@ -98,8 +104,7 @@ func TestScheduling(t *testing.T) {
 				},
 			},
 			{
-				Id:   "plan-min-days-since-last-run",
-				Repo: "repo1",
+				Id: "plan-min-days-since-last-run",
 				Schedule: &v1.Schedule{
 					Schedule: &v1.Schedule_MaxFrequencyDays{
 						MaxFrequencyDays: 1,
@@ -108,8 +113,7 @@ func TestScheduling(t *testing.T) {
 				},
 			},
 			{
-				Id:   "plan-max-frequency-hours",
-				Repo: "repo1",
+				Id: "plan-max-frequency-hours",
 				Schedule: &v1.Schedule{
 					Schedule: &v1.Schedule_MaxFrequencyHours{
 						MaxFrequencyHours: 1,
@@ -117,8 +121,7 @@ func TestScheduling(t *testing.T) {
 				},
 			},
 			{
-				Id:   "plan-min-hours-since-last-run",
-				Repo: "repo1",
+				Id: "plan-min-hours-since-last-run",
 				Schedule: &v1.Schedule{
 					Schedule: &v1.Schedule_MaxFrequencyHours{
 						MaxFrequencyHours: 1,
@@ -146,11 +149,12 @@ func TestScheduling(t *testing.T) {
 	}{
 		{
 			name: "backup schedule max frequency days",
-			task: NewScheduledBackupTask(config.FindPlan(cfg, "plan-max-frequency-days")),
+			task: NewScheduledBackupTask(config.FindRepo(cfg, "repo1"), config.FindPlan(cfg, "plan-max-frequency-days")),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
+					RepoGuid:   repoAbsolute.Guid,
 					PlanId:     "plan-max-frequency-days",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -163,11 +167,12 @@ func TestScheduling(t *testing.T) {
 		},
 		{
 			name: "backup schedule min days since last run",
-			task: NewScheduledBackupTask(config.FindPlan(cfg, "plan-min-days-since-last-run")),
+			task: NewScheduledBackupTask(config.FindRepo(cfg, "repo1"), config.FindPlan(cfg, "plan-min-days-since-last-run")),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
+					RepoGuid:   repoAbsolute.Guid,
 					PlanId:     "plan-min-days-since-last-run",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -180,11 +185,12 @@ func TestScheduling(t *testing.T) {
 		},
 		{
 			name: "backup schedule max frequency hours",
-			task: NewScheduledBackupTask(config.FindPlan(cfg, "plan-max-frequency-hours")),
+			task: NewScheduledBackupTask(config.FindRepo(cfg, "repo1"), config.FindPlan(cfg, "plan-max-frequency-hours")),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
+					RepoGuid:   repoAbsolute.Guid,
 					PlanId:     "plan-max-frequency-hours",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -197,11 +203,12 @@ func TestScheduling(t *testing.T) {
 		},
 		{
 			name: "backup schedule min hours since last run",
-			task: NewScheduledBackupTask(config.FindPlan(cfg, "plan-min-hours-since-last-run")),
+			task: NewScheduledBackupTask(config.FindRepo(cfg, "repo1"), config.FindPlan(cfg, "plan-min-hours-since-last-run")),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
+					RepoGuid:   repoAbsolute.Guid,
 					PlanId:     "plan-min-hours-since-last-run",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -214,11 +221,12 @@ func TestScheduling(t *testing.T) {
 		},
 		{
 			name: "backup schedule cron",
-			task: NewScheduledBackupTask(config.FindPlan(cfg, "plan-cron")),
+			task: NewScheduledBackupTask(config.FindRepo(cfg, "repo1"), config.FindPlan(cfg, "plan-cron")),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
+					RepoGuid:   repoAbsolute.Guid,
 					PlanId:     "plan-cron",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -231,11 +239,12 @@ func TestScheduling(t *testing.T) {
 		},
 		{
 			name: "backup schedule cron utc",
-			task: NewScheduledBackupTask(config.FindPlan(cfg, "plan-cron-utc")),
+			task: NewScheduledBackupTask(config.FindRepo(cfg, "repo1"), config.FindPlan(cfg, "plan-cron-utc")),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
+					RepoGuid:   repoAbsolute.Guid,
 					PlanId:     "plan-cron-utc",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -248,11 +257,12 @@ func TestScheduling(t *testing.T) {
 		},
 		{
 			name: "backup schedule cron since last run",
-			task: NewScheduledBackupTask(config.FindPlan(cfg, "plan-cron-since-last-run")),
+			task: NewScheduledBackupTask(config.FindRepo(cfg, "repo1"), config.FindPlan(cfg, "plan-cron-since-last-run")),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
+					RepoGuid:   repoAbsolute.Guid,
 					PlanId:     "plan-cron-since-last-run",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -270,6 +280,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo-absolute",
+					RepoGuid:   repoAbsolute.Guid,
 					PlanId:     "_system_",
 					Op: &v1.Operation_OperationCheck{
 						OperationCheck: &v1.OperationCheck{},
@@ -287,6 +298,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
 					PlanId:     "_system_",
 					Op: &v1.Operation_OperationCheck{
 						OperationCheck: &v1.OperationCheck{},
@@ -304,6 +316,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
 					PlanId:     "_system_",
 					Op: &v1.Operation_OperationCheck{
 						OperationCheck: &v1.OperationCheck{},
@@ -314,6 +327,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
 					PlanId:     "_system_",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -331,6 +345,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo-absolute",
+					RepoGuid:   repoAbsolute.Guid,
 					PlanId:     "_system_",
 					Op: &v1.Operation_OperationPrune{
 						OperationPrune: &v1.OperationPrune{},
@@ -348,6 +363,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
 					PlanId:     "_system_",
 					Op: &v1.Operation_OperationPrune{
 						OperationPrune: &v1.OperationPrune{},
@@ -365,6 +381,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
 					PlanId:     "_system_",
 					Op: &v1.Operation_OperationPrune{
 						OperationPrune: &v1.OperationPrune{},
@@ -375,6 +392,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
 					PlanId:     "_system_",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},

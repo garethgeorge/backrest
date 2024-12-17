@@ -37,15 +37,6 @@ func newTaskRunnerImpl(orchestrator *Orchestrator, task tasks.Task, op *v1.Opera
 	}
 }
 
-func (t *taskRunnerImpl) findRepo() (*v1.Repo, error) {
-	if t.repo != nil {
-		return t.repo, nil
-	}
-	var err error
-	t.repo, err = t.orchestrator.GetRepo(t.t.RepoID())
-	return t.repo, err
-}
-
 func (t *taskRunnerImpl) findPlan() (*v1.Plan, error) {
 	if t.plan != nil {
 		return t.plan, nil
@@ -83,14 +74,8 @@ func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 
 	repoID := t.t.RepoID()
 	planID := t.t.PlanID()
-	var repo *v1.Repo
 	var plan *v1.Plan
-	if repoID != "" {
-		var err error
-		repo, err = t.findRepo()
-		if err != nil {
-			return err
-		}
+	if repo := t.t.Repo(); repo != nil {
 		vars.Repo = repo
 	}
 	if planID != "" {
@@ -131,7 +116,7 @@ func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 
 func (t *taskRunnerImpl) GetRepo(repoID string) (*v1.Repo, error) {
 	if repoID == t.t.RepoID() {
-		return t.findRepo() // optimization for the common case of the current repo
+		return t.t.Repo(), nil
 	}
 	return t.orchestrator.GetRepo(repoID)
 }

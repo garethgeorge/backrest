@@ -402,23 +402,31 @@ func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Reques
 }
 
 func (s *BackrestHandler) IndexSnapshots(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	_, err := s.orchestrator.GetRepo(req.Msg.Value)
+	// Ensure the repo is valid before scheduling the task
+	repo, err := s.orchestrator.GetRepo(req.Msg.Value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.Value, err)
 	}
 
-	s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(req.Msg.Value, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots)
+	// Schedule the indexing task
+	if err := s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(repo, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots); err != nil {
+		return nil, fmt.Errorf("failed to schedule indexing task: %w", err)
+	}
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
 func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+	repo, err := s.orchestrator.GetRepo(req.Msg.Value)
+	if err != nil {
+		return nil, err
+	}
 	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.Value, err)
+		return nil, err
 	}
 	wait := make(chan struct{})
-	s.orchestrator.ScheduleTask(tasks.NewOneoffBackupTask(plan, time.Now()), tasks.TaskPriorityInteractive, func(e error) {
+	s.orchestrator.ScheduleTask(tasks.NewOneoffBackupTask(repo, plan, time.Now()), tasks.TaskPriorityInteractive, func(e error) {
 		err = e
 		close(wait)
 	})
@@ -486,7 +494,7 @@ func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1
 	case v1.DoRepoTaskRequest_TASK_UNLOCK:
 		repo, err := s.orchestrator.GetRepoOrchestrator(req.Msg.RepoId)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.RepoId, err)
+			return nil, err
 		}
 		if err := repo.Unlock(ctx); err != nil {
 			return nil, fmt.Errorf("failed to unlock repo %q: %w", req.Msg.RepoId, err)
@@ -517,19 +525,28 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 	if req.Msg.Path == "" {
 		req.Msg.Path = "/"
 	}
-
 	// prevent restoring to a directory that already exists
 	if _, err := os.Stat(req.Msg.Target); err == nil {
 		return nil, fmt.Errorf("target directory %q already exists", req.Msg.Target)
 	}
 
+	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
+	if err != nil {
+		return nil, err
+	}
+
 	at := time.Now()
-	s.orchestrator.ScheduleTask(tasks.NewOneoffRestoreTask(req.Msg.RepoId, req.Msg.PlanId, 0 /* flowID */, at, req.Msg.SnapshotId, req.Msg.Path, req.Msg.Target), tasks.TaskPriorityInteractive+tasks.TaskPriorityDefault)
+	s.orchestrator.ScheduleTask(tasks.NewOneoffRestoreTask(repo, req.Msg.PlanId, 0 /* flowID */, at, req.Msg.SnapshotId, req.Msg.Path, req.Msg.Target), tasks.TaskPriorityInteractive+tasks.TaskPriorityDefault)
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
 func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error) {
+	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
+	if err != nil {
+		return nil, err
+	}
+
 	// group commands within the last 24 hours (or 256 operations) into the same flow ID
 	var flowID int64
 	if s.oplog.Query(oplog.Query{RepoID: req.Msg.RepoId, Limit: 256, Reversed: true}, func(op *v1.Operation) error {
@@ -541,7 +558,7 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 		return nil, fmt.Errorf("failed to query operations")
 	}
 
-	task := tasks.NewOneoffRunCommandTask(req.Msg.RepoId, tasks.PlanForSystemTasks, flowID, time.Now(), req.Msg.Command)
+	task := tasks.NewOneoffRunCommandTask(repo, tasks.PlanForSystemTasks, flowID, time.Now(), req.Msg.Command)
 	st, err := s.orchestrator.CreateUnscheduledTask(task, tasks.TaskPriorityInteractive, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create task: %w", err)
@@ -649,6 +666,9 @@ func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.L
 				return nil
 			}
 			if err := resp.Send(&types.BytesValue{Value: data}); err != nil {
+				bufferMu.Lock()
+				buffer.Write(data)
+				bufferMu.Unlock()
 				return err
 			}
 		case err := <-errChan:
