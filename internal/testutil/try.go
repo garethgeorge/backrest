@@ -6,16 +6,30 @@ import (
 	"time"
 )
 
+var defaultDeadlineMargin = 5 * time.Second
+
+func WithDeadlineFromTest(t *testing.T, ctx context.Context) (context.Context, context.CancelFunc) {
+	if deadline, ok := t.Deadline(); ok {
+		return context.WithDeadline(ctx, deadline.Add(-defaultDeadlineMargin))
+	}
+	return ctx, func() {}
+}
+
 func tryHelper(t *testing.T, ctx context.Context, f func() error) error {
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
+	ctx, cancel := WithDeadlineFromTest(t, ctx)
+	defer cancel()
 
 	var err error
+	interval := 10 * time.Millisecond
 	for {
+		timer := time.NewTimer(interval)
+		interval += 10 * time.Millisecond
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			return err
-		case <-ticker.C:
+		case <-timer.C:
+			timer.Stop()
 			err = f()
 			if err == nil {
 				return nil
