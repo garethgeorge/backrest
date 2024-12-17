@@ -101,7 +101,8 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 		planId := planForSnapshot(snapshotProto)
 		instanceID := instanceIDForSnapshot(snapshotProto)
 		indexOps = append(indexOps, &v1.Operation{
-			RepoId:          t.RepoID(),
+			RepoId:          t.Repo().GetId(),
+			RepoGuid:        t.Repo().GetGuid(),
 			PlanId:          planId,
 			FlowId:          flowID,
 			InstanceId:      instanceID,

@@ -598,7 +598,7 @@ func TestTransform(t *testing.T) {
 				return op, nil
 			},
 			ops: ops,
-			want: withModnoIncr([]*v1.Operation{
+			want: []*v1.Operation{
 				{
 					InstanceId:      "foo",
 					PlanId:          "newplan",
@@ -606,9 +606,10 @@ func TestTransform(t *testing.T) {
 					RepoGuid:        "repo1",
 					UnixTimeStartMs: 1234,
 					UnixTimeEndMs:   5678,
+					Modno:           1,
 				},
 				ops[1],
-			}),
+			},
 			query: oplog.Query{InstanceID: "foo"},
 		},
 	}

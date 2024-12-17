@@ -522,7 +522,8 @@ func (o *Orchestrator) CreateUnscheduledTask(t tasks.Task, priority int, curTime
 	if nextRun.Op != nil {
 		nextRun.Op.InstanceId = o.config.Instance
 		nextRun.Op.PlanId = t.PlanID()
-		nextRun.Op.RepoId = t.RepoID()
+		nextRun.Op.RepoId = t.Repo().GetId()
+		nextRun.Op.RepoGuid = t.Repo().GetGuid()
 		nextRun.Op.Status = v1.OperationStatus_STATUS_PENDING
 		nextRun.Op.UnixTimeStartMs = nextRun.RunAt.UnixMilli()
 

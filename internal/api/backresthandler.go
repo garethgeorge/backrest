@@ -172,7 +172,7 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 			return nil, fmt.Errorf("failed to configure repo: %w", err)
 		}
 
-		if err := r.Init(context.Background()); err != nil {
+		if err := r.Init(ctx); err != nil {
 			return nil, fmt.Errorf("failed to init repo: %w", err)
 		}
 
@@ -433,10 +433,12 @@ func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types
 		return nil, err
 	}
 	wait := make(chan struct{})
-	s.orchestrator.ScheduleTask(tasks.NewOneoffBackupTask(repo, plan, time.Now()), tasks.TaskPriorityInteractive, func(e error) {
+	if err := s.orchestrator.ScheduleTask(tasks.NewOneoffBackupTask(repo, plan, time.Now()), tasks.TaskPriorityInteractive, func(e error) {
 		err = e
 		close(wait)
-	})
+	}); err != nil {
+		return nil, err
+	}
 	<-wait
 	return connect.NewResponse(&emptypb.Empty{}), err
 }
@@ -452,21 +454,25 @@ func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.Fo
 
 	if req.Msg.SnapshotId != "" && req.Msg.PlanId != "" && req.Msg.RepoId != "" {
 		wait := make(chan struct{})
-		s.orchestrator.ScheduleTask(
+		if err := s.orchestrator.ScheduleTask(
 			tasks.NewOneoffForgetSnapshotTask(repo, req.Msg.PlanId, 0, at, req.Msg.SnapshotId),
 			tasks.TaskPriorityInteractive+tasks.TaskPriorityForget, func(e error) {
 				err = e
 				close(wait)
-			})
+			}); err != nil {
+			return nil, err
+		}
 		<-wait
 	} else if req.Msg.RepoId != "" && req.Msg.PlanId != "" {
 		wait := make(chan struct{})
-		s.orchestrator.ScheduleTask(
+		if err := s.orchestrator.ScheduleTask(
 			tasks.NewOneoffForgetTask(repo, req.Msg.PlanId, 0, at),
 			tasks.TaskPriorityInteractive+tasks.TaskPriorityForget, func(e error) {
 				err = e
 				close(wait)
-			})
+			}); err != nil {
+			return nil, err
+		}
 		<-wait
 	} else {
 		return nil, errors.New("must specify repoId and planId and (optionally) snapshotId")
