@@ -18,7 +18,9 @@ import (
 	"connectrpc.com/connect"
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/sqlitestore"
@@ -100,6 +102,7 @@ func TestBackup(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -191,6 +194,7 @@ func TestMultipleBackup(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -266,6 +270,7 @@ func TestHookExecution(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -358,6 +363,7 @@ func TestHookOnErrorHandling(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -573,6 +579,7 @@ func TestCancelBackup(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -671,6 +678,7 @@ func TestRestore(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -788,6 +796,7 @@ func TestRunCommand(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -858,6 +867,7 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 		t.Fatalf("Failed to get config: %v", err)
 	}
 
+	remoteConfigStore := syncapi.NewJSONDirRemoteConfigStore(dir)
 	resticBin, err := resticinstaller.FindOrInstallResticBinary()
 	if err != nil {
 		t.Fatalf("Failed to find or install restic binary: %v", err)
@@ -894,7 +904,7 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 		}
 	}
 
-	h := NewBackrestHandler(config, orch, oplog, logStore)
+	h := NewBackrestHandler(config, remoteConfigStore, orch, oplog, logStore)
 
 	return systemUnderTest{
 		handler:  h,

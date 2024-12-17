@@ -111,6 +111,7 @@ func (m *MemStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation
 			}
 			return err
 		} else if op != nil {
+			op.Modno = m.operations[id].Modno + 1
 			changes[id] = op
 		}
 	}

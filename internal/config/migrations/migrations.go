@@ -12,6 +12,7 @@ var migrations = []*func(*v1.Config){
 	&noop, // migration001PrunePolicy is deprecated
 	&noop, // migration002Schedules is deprecated
 	&migration003RelativeScheduling,
+	&migration004RepoGuid,
 }
 
 var CurrentVersion = int32(len(migrations))

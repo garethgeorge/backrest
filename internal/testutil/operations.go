@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -26,12 +27,14 @@ func OperationsWithDefaults(op *v1.Operation, ops []*v1.Operation) []*v1.Operati
 func RandomOperation() *v1.Operation {
 	randomPlanID := "plan" + randomString(5)
 	randomRepoID := "repo" + randomString(5)
+	randomRepoGUID := cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
 	randomInstanceID := "instance" + randomString(5)
 
 	return &v1.Operation{
 		UnixTimeStartMs: nextRandomOperationTimeMillis.Add(1000),
 		PlanId:          randomPlanID,
 		RepoId:          randomRepoID,
+		RepoGuid:        randomRepoGUID,
 		InstanceId:      randomInstanceID,
 		Op:              &v1.Operation_OperationBackup{},
 		FlowId:          randomInt(),

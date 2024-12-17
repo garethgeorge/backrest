@@ -110,6 +110,9 @@ func (b BaseTask) PlanID() string {
 }
 
 func (b BaseTask) RepoID() string {
+	if b.TaskRepo == nil {
+		return ""
+	}
 	return b.TaskRepo.Id
 }
 

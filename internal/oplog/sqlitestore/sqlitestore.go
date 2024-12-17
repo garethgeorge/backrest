@@ -14,6 +14,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/gofrs/flock"
@@ -251,17 +252,20 @@ func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) erro
 	return nil
 }
 
-func (m *SqliteStore) tidyGroups() error {
+// tidyGroups deletes operation groups that are no longer referenced, it takes an int64 specifying the maximum group ID to consider.
+// this allows ignoring newly created groups that may not yet be referenced.
+func (m *SqliteStore) tidyGroups(eligibleIDsBelow int64) {
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
-		return fmt.Errorf("take connection: %v", err)
+		zap.S().Warnf("tidy groups: %v", err)
 	}
 	defer m.dbpool.Put(conn)
-	err = sqlitex.ExecuteTransient(conn, "DELETE FROM operation_groups WHERE ogid NOT IN (SELECT DISTINCT ogid FROM operations)", &sqlitex.ExecOptions{})
+	err = sqlitex.ExecuteTransient(conn, "DELETE FROM operation_groups WHERE ogid NOT IN (SELECT DISTINCT ogid FROM operations WHERE ogid < ?)", &sqlitex.ExecOptions{
+		Args: []any{eligibleIDsBelow},
+	})
 	if err != nil {
-		return fmt.Errorf("tidy operation groups: %v", err)
+		zap.S().Warnf("tidy groups: %v", err)
 	}
-	return nil
 }
 
 func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (ogid int64, err error) {
@@ -278,12 +282,18 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 	}
 
 	if !found {
-		m.tidyGroupsOnce.Do(func() {
-			err = m.tidyGroups() // performed in a different transaction to avoid deadlocks
-		})
-		if err != nil {
-			return 0, fmt.Errorf("tidy operation groups: %v", err)
-		}
+		// var maxOGID int64
+		// if err := sqlitex.ExecuteTransient(conn, "SELECT MAX(ogid) FROM operation_groups", &sqlitex.ExecOptions{
+		// 	ResultFunc: func(stmt *sqlite.Stmt) error {
+		// 		maxOGID = stmt.ColumnInt64(0)
+		// 		return nil
+		// 	},
+		// }); err != nil {
+		// 	return 0, fmt.Errorf("find max ogid: %v", err)
+		// }
+		// m.tidyGroupsOnce.Do(func() {
+		// 	go m.tidyGroups(maxOGID)
+		// })
 
 		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (instance_id, repo_id, plan_id, repo_guid) VALUES (?, ?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
 			Args: []any{op.InstanceId, op.RepoId, op.PlanId, op.RepoGuid},
@@ -327,6 +337,7 @@ func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operat
 					return nil
 				}
 
+				newOp.Modno = op.Modno + 1
 				return m.updateInternal(conn, newOp)
 			},
 		})
