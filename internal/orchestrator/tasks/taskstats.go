@@ -15,12 +15,12 @@ type StatsTask struct {
 	didRun bool
 }
 
-func NewStatsTask(repoID, planID string, force bool) Task {
+func NewStatsTask(repo *v1.Repo, planID string, force bool) Task {
 	return &StatsTask{
 		BaseTask: BaseTask{
 			TaskType:   "stats",
-			TaskName:   fmt.Sprintf("stats for repo %q", repoID),
-			TaskRepoID: repoID,
+			TaskName:   fmt.Sprintf("stats for repo %q", repo.Id),
+			TaskRepo:   repo,
 			TaskPlanID: planID,
 		},
 		force: force,

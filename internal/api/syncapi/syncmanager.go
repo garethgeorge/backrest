@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"path/filepath"
 	"sync"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -26,9 +25,7 @@ type SyncManager struct {
 	syncClients map[string]*SyncClient
 }
 
-func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchestrator *orchestrator.Orchestrator, syncStateDir string) *SyncManager {
-	remoteConfigStore := NewJSONDirRemoteConfigStore(filepath.Join(syncStateDir, "remote_configs"))
-
+func NewSyncManager(configMgr *config.ConfigManager, remoteConfigStore RemoteConfigStore, oplog *oplog.OpLog, orchestrator *orchestrator.Orchestrator) *SyncManager {
 	return &SyncManager{
 		configMgr:         configMgr,
 		orchestrator:      orchestrator,

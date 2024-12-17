@@ -129,6 +129,12 @@ func TestScheduling(t *testing.T) {
 		},
 	}
 
+	repoAbsolute := config.FindRepo(cfg, "repo-absolute")
+	repoRelative := config.FindRepo(cfg, "repo-relative")
+	if repoAbsolute == nil || repoRelative == nil {
+		t.Fatalf("test config declaration error")
+	}
+
 	now := time.Unix(100000, 0) // 1000 seconds after the epoch as an arbitrary time for the test
 	farFuture := time.Unix(999999, 0)
 
@@ -259,7 +265,7 @@ func TestScheduling(t *testing.T) {
 		},
 		{
 			name: "check schedule absolute",
-			task: NewCheckTask("repo-absolute", "_system_", false),
+			task: NewCheckTask(repoAbsolute, "_system_", false),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",
@@ -276,7 +282,7 @@ func TestScheduling(t *testing.T) {
 		},
 		{
 			name: "check schedule relative no backup yet",
-			task: NewCheckTask("repo-relative", "_system_", false),
+			task: NewCheckTask(repoRelative, "_system_", false),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",
@@ -293,7 +299,7 @@ func TestScheduling(t *testing.T) {
 		},
 		{
 			name: "check schedule relative",
-			task: NewCheckTask("repo-relative", "_system_", false),
+			task: NewCheckTask(repoRelative, "_system_", false),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",
@@ -320,7 +326,7 @@ func TestScheduling(t *testing.T) {
 		},
 		{
 			name: "prune schedule absolute",
-			task: NewPruneTask("repo-absolute", "_system_", false),
+			task: NewPruneTask(repoAbsolute, "_system_", false),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",
@@ -337,7 +343,7 @@ func TestScheduling(t *testing.T) {
 		},
 		{
 			name: "prune schedule relative no backup yet",
-			task: NewPruneTask("repo-relative", "_system_", false),
+			task: NewPruneTask(repoRelative, "_system_", false),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",
@@ -354,7 +360,7 @@ func TestScheduling(t *testing.T) {
 		},
 		{
 			name: "prune schedule relative",
-			task: NewPruneTask("repo-relative", "_system_", false),
+			task: NewPruneTask(repoRelative, "_system_", false),
 			ops: []*v1.Operation{
 				{
 					InstanceId: "instance1",

@@ -18,12 +18,12 @@ type PruneTask struct {
 	didRun bool
 }
 
-func NewPruneTask(repoID, planID string, force bool) Task {
+func NewPruneTask(repo *v1.Repo, planID string, force bool) Task {
 	return &PruneTask{
 		BaseTask: BaseTask{
 			TaskType:   "prune",
-			TaskName:   fmt.Sprintf("prune repo %q", repoID),
-			TaskRepoID: repoID,
+			TaskName:   fmt.Sprintf("prune repo %q", repo.Id),
+			TaskRepo:   repo,
 			TaskPlanID: planID,
 		},
 		force: force,
@@ -142,7 +142,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	}
 
 	// Run a stats task after a successful prune
-	if err := runner.ScheduleTask(NewStatsTask(t.RepoID(), PlanForSystemTasks, false), TaskPriorityStats); err != nil {
+	if err := runner.ScheduleTask(NewStatsTask(t.Repo(), PlanForSystemTasks, false), TaskPriorityStats); err != nil {
 		zap.L().Error("schedule stats task", zap.Error(err))
 	}
 
