@@ -15,13 +15,13 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) Task {
+func NewOneoffIndexSnapshotsTask(repo *v1.Repo, at time.Time) Task {
 	return &GenericOneoffTask{
 		OneoffTask: OneoffTask{
 			BaseTask: BaseTask{
-				TaskType:   "index_snapshots",
-				TaskName:   fmt.Sprintf("index snapshots for repo %q", repoID),
-				TaskRepoID: repoID,
+				TaskType: "index_snapshots",
+				TaskName: fmt.Sprintf("index snapshots for repo %q", repo.Id),
+				TaskRepo: repo,
 			},
 			RunAt:   at,
 			ProtoOp: nil,

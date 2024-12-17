@@ -1,10 +1,8 @@
 package migrations
 
 import (
-	"crypto/rand"
-	"encoding/hex"
-
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 )
 
 func migration004RepoGuid(config *v1.Config) {
@@ -13,11 +11,6 @@ func migration004RepoGuid(config *v1.Config) {
 			continue
 		}
 
-		// generate a 256 bit guid that links the repo.
-		var bytes [32]byte
-		if _, err := rand.Read(bytes[:]); err != nil {
-			panic(err)
-		}
-		repo.Guid = "migration-" + hex.EncodeToString(bytes[:])
+		repo.Guid = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
 	}
 }

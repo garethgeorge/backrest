@@ -12,13 +12,13 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewOneoffForgetTask(repoID, planID string, flowID int64, at time.Time) Task {
+func NewOneoffForgetTask(repo *v1.Repo, planID string, flowID int64, at time.Time) Task {
 	return &GenericOneoffTask{
 		OneoffTask: OneoffTask{
 			BaseTask: BaseTask{
 				TaskType:   "forget",
-				TaskName:   fmt.Sprintf("forget for plan %q in repo %q", repoID, planID),
-				TaskRepoID: repoID,
+				TaskName:   fmt.Sprintf("forget for plan %q in repo %q", repo.Id, planID),
+				TaskRepo:   repo,
 				TaskPlanID: planID,
 			},
 			FlowID: flowID,

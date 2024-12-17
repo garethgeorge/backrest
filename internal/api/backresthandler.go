@@ -182,17 +182,19 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		}
 
 		if guid != oldRepoGUID {
-			if err := s.oplog.Transform(oplog.Query{RepoGUID: oldRepoGUID}, func(op *v1.Operation) (*v1.Operation, error) {
+			if err := s.oplog.Transform(oplog.Query{
+				RepoGUID:   oldRepoGUID,
+				RepoID:     newRepo.Id,
+				InstanceID: c.Instance,
+			}, func(op *v1.Operation) (*v1.Operation, error) {
 				op.RepoGuid = guid
 				return op, nil
 			}); err != nil {
 				return nil, fmt.Errorf("failed to get operations for repo: %w", err)
 			}
 		}
-
 	} else {
 		// It's a remote repo, let's find the configuration and guid for it.
-
 		instanceID, err := syncapi.InstanceForBackrestURI(newRepo.Uri)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse remote repo URI: %w", err)
@@ -227,7 +229,7 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 
 	// index snapshots for the newly added repository.
 	zap.L().Debug("scheduling index snapshots task")
-	s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(newRepo.Id, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots)
+	s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(newRepo, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots)
 
 	zap.L().Debug("done add repo")
 	return connect.NewResponse(c), nil
@@ -427,10 +429,16 @@ func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types
 func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {
 	at := time.Now()
 	var err error
+
+	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
+	if err != nil {
+		return nil, err
+	}
+
 	if req.Msg.SnapshotId != "" && req.Msg.PlanId != "" && req.Msg.RepoId != "" {
 		wait := make(chan struct{})
 		s.orchestrator.ScheduleTask(
-			tasks.NewOneoffForgetSnapshotTask(req.Msg.RepoId, req.Msg.PlanId, 0, at, req.Msg.SnapshotId),
+			tasks.NewOneoffForgetSnapshotTask(repo, req.Msg.PlanId, 0, at, req.Msg.SnapshotId),
 			tasks.TaskPriorityInteractive+tasks.TaskPriorityForget, func(e error) {
 				err = e
 				close(wait)
@@ -439,7 +447,7 @@ func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.Fo
 	} else if req.Msg.RepoId != "" && req.Msg.PlanId != "" {
 		wait := make(chan struct{})
 		s.orchestrator.ScheduleTask(
-			tasks.NewOneoffForgetTask(req.Msg.RepoId, req.Msg.PlanId, 0, at),
+			tasks.NewOneoffForgetTask(repo, req.Msg.PlanId, 0, at),
 			tasks.TaskPriorityInteractive+tasks.TaskPriorityForget, func(e error) {
 				err = e
 				close(wait)
@@ -456,18 +464,24 @@ func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.Fo
 
 func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error) {
 	var task tasks.Task
+
+	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
+	if err != nil {
+		return nil, err
+	}
+
 	priority := tasks.TaskPriorityInteractive
 	switch req.Msg.Task {
 	case v1.DoRepoTaskRequest_TASK_CHECK:
-		task = tasks.NewCheckTask(req.Msg.RepoId, tasks.PlanForSystemTasks, true)
+		task = tasks.NewCheckTask(repo, tasks.PlanForSystemTasks, true)
 	case v1.DoRepoTaskRequest_TASK_PRUNE:
-		task = tasks.NewPruneTask(req.Msg.RepoId, tasks.PlanForSystemTasks, true)
+		task = tasks.NewPruneTask(repo, tasks.PlanForSystemTasks, true)
 		priority |= tasks.TaskPriorityPrune
 	case v1.DoRepoTaskRequest_TASK_STATS:
-		task = tasks.NewStatsTask(req.Msg.RepoId, tasks.PlanForSystemTasks, true)
+		task = tasks.NewStatsTask(repo, tasks.PlanForSystemTasks, true)
 		priority |= tasks.TaskPriorityStats
 	case v1.DoRepoTaskRequest_TASK_INDEX_SNAPSHOTS:
-		task = tasks.NewOneoffIndexSnapshotsTask(req.Msg.RepoId, time.Now())
+		task = tasks.NewOneoffIndexSnapshotsTask(repo, time.Now())
 		priority |= tasks.TaskPriorityIndexSnapshots
 	case v1.DoRepoTaskRequest_TASK_UNLOCK:
 		repo, err := s.orchestrator.GetRepoOrchestrator(req.Msg.RepoId)
@@ -482,7 +496,6 @@ func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1
 		return nil, fmt.Errorf("unknown task %v", req.Msg.Task.String())
 	}
 
-	var err error
 	wait := make(chan struct{})
 	if err := s.orchestrator.ScheduleTask(task, priority, func(e error) {
 		err = e

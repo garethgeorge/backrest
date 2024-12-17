@@ -27,23 +27,23 @@ type BackupTask struct {
 
 var _ Task = &BackupTask{}
 
-func NewScheduledBackupTask(plan *v1.Plan) *BackupTask {
+func NewScheduledBackupTask(repo *v1.Repo, plan *v1.Plan) *BackupTask {
 	return &BackupTask{
 		BaseTask: BaseTask{
 			TaskType:   "backup",
 			TaskName:   fmt.Sprintf("backup for plan %q", plan.Id),
-			TaskRepoID: plan.Repo,
+			TaskRepo:   repo,
 			TaskPlanID: plan.Id,
 		},
 	}
 }
 
-func NewOneoffBackupTask(plan *v1.Plan, at time.Time) *BackupTask {
+func NewOneoffBackupTask(repo *v1.Repo, plan *v1.Plan, at time.Time) *BackupTask {
 	return &BackupTask{
 		BaseTask: BaseTask{
 			TaskType:   "backup",
 			TaskName:   fmt.Sprintf("backup for plan %q", plan.Id),
-			TaskRepoID: plan.Repo,
+			TaskRepo:   repo,
 			TaskPlanID: plan.Id,
 		},
 		force: true,
@@ -237,11 +237,11 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		// schedule followup tasks if a snapshot was added
 		at := time.Now()
 		if _, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyKeepAll); plan.Retention != nil && !ok {
-			if err := runner.ScheduleTask(NewOneoffForgetTask(t.RepoID(), t.PlanID(), op.FlowId, at), TaskPriorityForget); err != nil {
+			if err := runner.ScheduleTask(NewOneoffForgetTask(t.Repo(), t.PlanID(), op.FlowId, at), TaskPriorityForget); err != nil {
 				return fmt.Errorf("failed to schedule forget task: %w", err)
 			}
 		}
-		if err := runner.ScheduleTask(NewOneoffIndexSnapshotsTask(t.RepoID(), at), TaskPriorityIndexSnapshots); err != nil {
+		if err := runner.ScheduleTask(NewOneoffIndexSnapshotsTask(t.Repo(), at), TaskPriorityIndexSnapshots); err != nil {
 			return fmt.Errorf("failed to schedule index snapshots task: %w", err)
 		}
 	}

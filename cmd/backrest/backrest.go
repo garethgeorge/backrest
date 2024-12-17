@@ -127,7 +127,8 @@ func main() {
 	}()
 
 	// Create and serve the HTTP gateway
-	syncMgr := syncapi.NewSyncManager(configMgr, log, orchestrator, filepath.Join(env.DataDir(), "sync"))
+	remoteConfigStore := syncapi.NewJSONDirRemoteConfigStore(filepath.Join(env.DataDir(), "sync", "remote_configs"))
+	syncMgr := syncapi.NewSyncManager(configMgr, remoteConfigStore, log, orchestrator)
 	wg.Add(1)
 	go func() {
 		syncMgr.RunSync(ctx)
@@ -138,6 +139,7 @@ func main() {
 
 	apiBackrestHandler := api.NewBackrestHandler(
 		configMgr,
+		remoteConfigStore,
 		orchestrator,
 		log,
 		logStore,

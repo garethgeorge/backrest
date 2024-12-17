@@ -17,12 +17,12 @@ type CheckTask struct {
 	didRun bool
 }
 
-func NewCheckTask(repoID, planID string, force bool) Task {
+func NewCheckTask(repo *v1.Repo, planID string, force bool) Task {
 	return &CheckTask{
 		BaseTask: BaseTask{
 			TaskType:   "check",
-			TaskName:   fmt.Sprintf("check for repo %q", repoID),
-			TaskRepoID: repoID,
+			TaskName:   fmt.Sprintf("check for repo %q", repo.Id),
+			TaskRepo:   repo,
 			TaskPlanID: planID,
 		},
 		force: force,

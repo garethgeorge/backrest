@@ -87,13 +87,14 @@ type Task interface {
 	Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error // run the task.
 	PlanID() string                                                     // the ID of the plan this task is associated with.
 	RepoID() string                                                     // the ID of the repo this task is associated with.
+	Repo() *v1.Repo                                                     // the repo this task is associated with.
 }
 
 type BaseTask struct {
 	TaskType   string
 	TaskName   string
 	TaskPlanID string
-	TaskRepoID string
+	TaskRepo   *v1.Repo
 }
 
 func (b BaseTask) Type() string {
@@ -109,7 +110,11 @@ func (b BaseTask) PlanID() string {
 }
 
 func (b BaseTask) RepoID() string {
-	return b.TaskRepoID
+	return b.TaskRepo.Id
+}
+
+func (b BaseTask) Repo() *v1.Repo {
+	return b.TaskRepo
 }
 
 type OneoffTask struct {
@@ -129,8 +134,9 @@ func (o *OneoffTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 	var op *v1.Operation
 	if o.ProtoOp != nil {
 		op = proto.Clone(o.ProtoOp).(*v1.Operation)
-		op.RepoId = o.RepoID()
-		op.PlanId = o.PlanID()
+		op.RepoId = o.TaskRepo.Id
+		op.PlanId = o.TaskPlanID
+		op.RepoGuid = o.TaskRepo.Guid
 		op.FlowId = o.FlowID
 		op.UnixTimeStartMs = timeToUnixMillis(o.RunAt) // TODO: this should be updated before Run is called.
 		op.Status = v1.OperationStatus_STATUS_PENDING

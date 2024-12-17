@@ -629,6 +629,57 @@ func TestTransform(t *testing.T) {
 	}
 }
 
+func TestQueryMetadata(t *testing.T) {
+	t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			if name == "bbolt" {
+				t.Skip("bbolt does not support metadata")
+			}
+
+			log, err := oplog.NewOpLog(store)
+			if err != nil {
+				t.Fatalf("error creating oplog: %v", err)
+			}
+			if err := log.Add(&v1.Operation{
+				UnixTimeStartMs: 1234,
+				PlanId:          "plan1",
+				RepoId:          "repo1",
+				RepoGuid:        "repo1-guid",
+				InstanceId:      "instance1",
+				Op:              &v1.Operation_OperationBackup{},
+				Modno:           2,
+				FlowId:          5,
+				OriginalId:      3,
+				OriginalFlowId:  4,
+			}); err != nil {
+				t.Fatalf("error adding operation: %s", err)
+			}
+
+			var metadata []oplog.OpMetadata
+			if err := log.QueryMetadata(oplog.Query{PlanID: "plan1"}, func(op oplog.OpMetadata) error {
+				metadata = append(metadata, op)
+				return nil
+			}); err != nil {
+				t.Fatalf("error listing metadata: %s", err)
+			}
+			if len(metadata) != 1 {
+				t.Fatalf("want 1 metadata, got %d", len(metadata))
+			}
+
+			if diff := cmp.Diff(metadata[0], oplog.OpMetadata{
+				ID:             metadata[0].ID,
+				FlowID:         5,
+				Modno:          2,
+				OriginalID:     3,
+				OriginalFlowID: 4,
+			}); diff != "" {
+				t.Errorf("unexpected diff: %v", diff)
+			}
+		})
+	}
+}
+
 func collectMessages(ops []*v1.Operation) []string {
 	var messages []string
 	for _, op := range ops {
