@@ -81,6 +81,10 @@ func validateRepo(repo *v1.Repo) error {
 		err = multierror.Append(err, fmt.Errorf("id %q invalid: %w", repo.Id, e))
 	}
 
+	if len(repo.Guid) != 64 { // 64 bits in hex
+		err = multierror.Append(err, fmt.Errorf("guid %q invalid: must be 64 characters", repo.Guid))
+	}
+
 	if repo.Uri == "" {
 		err = multierror.Append(err, errors.New("uri is required"))
 	}

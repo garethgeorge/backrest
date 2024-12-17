@@ -150,9 +150,9 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 	c = proto.Clone(c).(*v1.Config)
 
 	// Add or implicit update the repo
-	var oldRepoGUID string
+	var oldRepo *v1.Repo
 	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == newRepo.Id }); idx != -1 {
-		oldRepoGUID = c.Repos[idx].Guid
+		oldRepo = c.Repos[idx]
 		c.Repos[idx] = newRepo
 	} else {
 		c.Repos = append(c.Repos, newRepo)
@@ -181,18 +181,7 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 			return nil, fmt.Errorf("failed to get repo config: %w", err)
 		}
 
-		if guid != oldRepoGUID {
-			if err := s.oplog.Transform(oplog.Query{
-				RepoGUID:   oldRepoGUID,
-				RepoID:     newRepo.Id,
-				InstanceID: c.Instance,
-			}, func(op *v1.Operation) (*v1.Operation, error) {
-				op.RepoGuid = guid
-				return op, nil
-			}); err != nil {
-				return nil, fmt.Errorf("failed to get operations for repo: %w", err)
-			}
-		}
+		newRepo.Guid = guid
 	} else {
 		// It's a remote repo, let's find the configuration and guid for it.
 		instanceID, err := syncapi.InstanceForBackrestURI(newRepo.Uri)
@@ -220,6 +209,24 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 	zap.L().Debug("updating config", zap.Int32("version", c.Version))
 	if err := s.config.Update(c); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
+	}
+
+	// If the GUID has changed, and we just successfully updated the config in storage, then we need to migrate the oplog.
+	if newRepo.Guid != oldRepo.Guid {
+		migratedCount := 0
+		if err := s.oplog.Transform(oplog.Query{
+			RepoGUID:   oldRepo.Guid,
+			RepoID:     newRepo.Id,
+			InstanceID: c.Instance,
+		}, func(op *v1.Operation) (*v1.Operation, error) {
+			op.RepoGuid = newRepo.Guid
+			migratedCount++
+			return op, nil
+		}); err != nil {
+			return nil, fmt.Errorf("failed to get operations for repo: %w", err)
+		}
+
+		zap.S().Infof("updated GUID for repo %q from %q to %q, migrated %d operations to reference the new GUID", newRepo.Id, oldRepo.Guid, newRepo.Guid, migratedCount)
 	}
 
 	zap.L().Debug("applying config", zap.Int32("version", c.Version))
@@ -417,11 +424,11 @@ func (s *BackrestHandler) IndexSnapshots(ctx context.Context, req *connect.Reque
 }
 
 func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	repo, err := s.orchestrator.GetRepo(req.Msg.Value)
+	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
 	if err != nil {
 		return nil, err
 	}
-	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
+	repo, err := s.orchestrator.GetRepo(plan.Repo)
 	if err != nil {
 		return nil, err
 	}

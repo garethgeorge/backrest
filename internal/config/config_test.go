@@ -6,6 +6,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config/migrations"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -27,6 +28,7 @@ func TestConfig(t *testing.T) {
 
 	testRepo := &v1.Repo{
 		Id:       "test-repo",
+		Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 		Uri:      "/tmp/test",
 		Password: "test",
 		PrunePolicy: &v1.PrunePolicy{

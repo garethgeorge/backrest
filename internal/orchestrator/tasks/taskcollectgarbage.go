@@ -19,8 +19,9 @@ type gcSettingsForType struct {
 }
 
 type groupByKey struct {
-	Repo       string
-	Plan       string
+	RepoID     string
+	RepoGUID   string
+	PlanID     string
 	InstanceID string
 	Type       reflect.Type
 }
@@ -91,15 +92,14 @@ func (t *CollectGarbageTask) Next(now time.Time, runner TaskRunner) (ScheduledTa
 
 func (t *CollectGarbageTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
 	oplog := runner.OpLog()
-
-	if err := t.gcOperations(oplog); err != nil {
+	if err := t.gcOperations(oplog, runner.Config()); err != nil {
 		return fmt.Errorf("collecting garbage: %w", err)
 	}
 
 	return nil
 }
 
-func (t *CollectGarbageTask) gcOperations(log *oplog.OpLog) error {
+func (t *CollectGarbageTask) gcOperations(log *oplog.OpLog, config *v1.Config) error {
 	// snapshotForgottenForFlow returns whether the snapshot associated with the flow is forgotten
 	snapshotForgottenForFlow := make(map[int64]bool)
 	if err := log.Query(oplog.SelectAll, func(op *v1.Operation) error {
@@ -135,8 +135,9 @@ func (t *CollectGarbageTask) gcOperations(log *oplog.OpLog) error {
 		}
 
 		key := groupByKey{
-			Repo:       op.RepoId,
-			Plan:       op.PlanId,
+			RepoGUID:   op.RepoGuid,
+			RepoID:     op.RepoId,
+			PlanID:     op.PlanId,
 			InstanceID: op.InstanceId,
 			Type:       reflect.TypeOf(op.Op),
 		}

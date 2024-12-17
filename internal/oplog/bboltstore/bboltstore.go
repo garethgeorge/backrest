@@ -325,6 +325,7 @@ func (o *BboltStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operati
 		if transformed == nil {
 			return nil
 		}
+		transformed.Modno = op.Modno + 1
 		if _, err := o.deleteOperationHelper(tx, origId); err != nil {
 			return fmt.Errorf("deleting old operation: %w", err)
 		}

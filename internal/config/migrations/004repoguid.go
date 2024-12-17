@@ -5,12 +5,11 @@ import (
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 )
 
-func migration004RepoGuid(config *v1.Config) {
+var migration004RepoGuid = func(config *v1.Config) {
 	for _, repo := range config.Repos {
 		if repo.Guid != "" {
 			continue
 		}
-
 		repo.Guid = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
 	}
 }

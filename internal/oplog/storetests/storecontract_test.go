@@ -66,6 +66,7 @@ func TestListAll(t *testing.T) {
 					UnixTimeStartMs: 1234,
 					PlanId:          "plan1",
 					RepoId:          "repo1",
+					RepoGuid:        "repo1",
 					InstanceId:      "instance1",
 					Op:              &v1.Operation_OperationBackup{},
 				},
@@ -73,6 +74,7 @@ func TestListAll(t *testing.T) {
 					UnixTimeStartMs: 4567,
 					PlanId:          "plan2",
 					RepoId:          "repo2",
+					RepoGuid:        "repo2",
 					InstanceId:      "instance2",
 					Op:              &v1.Operation_OperationBackup{},
 				},
@@ -123,6 +125,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				UnixTimeStartMs: 1234,
 				RepoId:          "testrepo",
+				RepoGuid:        "testrepo",
 				PlanId:          "testplan",
 				InstanceId:      "testinstance",
 				Op:              &v1.Operation_OperationBackup{},
@@ -134,6 +137,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				UnixTimeStartMs: 1234,
 				RepoId:          "testrepo",
+				RepoGuid:        "testrepo",
 				PlanId:          "testplan",
 				InstanceId:      "testinstance",
 				Op: &v1.Operation_OperationIndexSnapshot{
@@ -151,6 +155,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				Id:              1,
 				RepoId:          "testrepo",
+				RepoGuid:        "testrepo",
 				PlanId:          "testplan",
 				InstanceId:      "testinstance",
 				UnixTimeStartMs: 1234,
@@ -163,6 +168,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				UnixTimeStartMs: 1234,
 				RepoId:          "testrepo",
+				RepoGuid:        "testrepo",
 				Op:              &v1.Operation_OperationBackup{},
 			},
 			wantErr: true,
@@ -217,36 +223,39 @@ func TestListOperation(t *testing.T) {
 	// these should get assigned IDs 1-3 respectively by the oplog
 	ops := []*v1.Operation{
 		{
-			UnixTimeStartMs: 1234,
+			InstanceId:      "foo",
 			PlanId:          "plan1",
 			RepoId:          "repo1",
-			InstanceId:      "instance1",
+			RepoGuid:        "repo1",
+			UnixTimeStartMs: 1234,
 			DisplayMessage:  "op1",
 			Op:              &v1.Operation_OperationBackup{},
 		},
 		{
-			UnixTimeStartMs: 1234,
+			InstanceId:      "bar",
 			PlanId:          "plan1",
 			RepoId:          "repo2",
-			InstanceId:      "instance2",
+			RepoGuid:        "repo2",
+			UnixTimeStartMs: 1234,
 			DisplayMessage:  "op2",
 			Op:              &v1.Operation_OperationBackup{},
 		},
 		{
-			UnixTimeStartMs: 1234,
+			InstanceId:      "baz",
 			PlanId:          "plan2",
 			RepoId:          "repo2",
-			InstanceId:      "instance3",
+			RepoGuid:        "repo2",
+			UnixTimeStartMs: 1234,
 			DisplayMessage:  "op3",
 			FlowId:          943,
 			Op:              &v1.Operation_OperationBackup{},
 		},
 		{
-			UnixTimeStartMs: 1234,
+			InstanceId:      "foo",
 			PlanId:          "foo-plan",
 			RepoId:          "foo-repo",
 			RepoGuid:        "foo-repo-guid",
-			InstanceId:      "foo-instance",
+			UnixTimeStartMs: 1234,
 			DisplayMessage:  "foo-op",
 			Op:              &v1.Operation_OperationBackup{},
 			OriginalId:      4567,
@@ -321,7 +330,7 @@ func TestListOperation(t *testing.T) {
 				PlanID:         "foo-plan",
 				RepoID:         "foo-repo",
 				RepoGUID:       "foo-repo-guid",
-				InstanceID:     "foo-instance",
+				InstanceID:     "foo",
 				OriginalID:     4567,
 				OriginalFlowID: 789,
 			},
@@ -385,6 +394,7 @@ func TestBigIO(t *testing.T) {
 					UnixTimeStartMs: 1234,
 					PlanId:          "plan1",
 					RepoId:          "repo1",
+					RepoGuid:        "repo1",
 					InstanceId:      "instance1",
 					Op:              &v1.Operation_OperationBackup{},
 				}); err != nil {
@@ -405,6 +415,7 @@ func TestIndexSnapshot(t *testing.T) {
 		UnixTimeStartMs: 1234,
 		PlanId:          "plan1",
 		RepoId:          "repo1",
+		RepoGuid:        "repo1",
 		InstanceId:      "instance1",
 		SnapshotId:      snapshotId,
 		Op:              &v1.Operation_OperationIndexSnapshot{},
@@ -449,6 +460,7 @@ func TestUpdateOperation(t *testing.T) {
 		UnixTimeStartMs: 1234,
 		PlanId:          "oldplan",
 		RepoId:          "oldrepo",
+		RepoGuid:        "oldrepo",
 		InstanceId:      "instance1",
 		SnapshotId:      snapshotId,
 	}
@@ -477,6 +489,7 @@ func TestUpdateOperation(t *testing.T) {
 			op.SnapshotId = snapshotId2
 			op.PlanId = "myplan"
 			op.RepoId = "myrepo"
+			op.RepoGuid = "myrepo"
 			if err := log.Update(op); err != nil {
 				t.Fatalf("error updating operation: %s", err)
 			}
@@ -504,6 +517,7 @@ func TestTransform(t *testing.T) {
 			InstanceId:      "foo",
 			PlanId:          "plan1",
 			RepoId:          "repo1",
+			RepoGuid:        "repo1",
 			UnixTimeStartMs: 1234,
 			UnixTimeEndMs:   5678,
 		},
@@ -511,9 +525,19 @@ func TestTransform(t *testing.T) {
 			InstanceId:      "bar",
 			PlanId:          "plan1",
 			RepoId:          "repo1",
+			RepoGuid:        "repo1",
 			UnixTimeStartMs: 1234,
 			UnixTimeEndMs:   5678,
 		},
+	}
+
+	withModnoIncr := func(ops []*v1.Operation) []*v1.Operation {
+		copy := make([]*v1.Operation, len(ops))
+		for i, op := range ops {
+			copy[i] = proto.Clone(op).(*v1.Operation)
+			copy[i].Modno++
+		}
+		return copy
 	}
 
 	tcs := []struct {
@@ -532,12 +556,12 @@ func TestTransform(t *testing.T) {
 			want: ops,
 		},
 		{
-			name: "no change by copy",
+			name: "modno incremented by copy",
 			f: func(op *v1.Operation) (*v1.Operation, error) {
 				return proto.Clone(op).(*v1.Operation), nil
 			},
 			ops:  ops,
-			want: ops,
+			want: withModnoIncr(ops),
 		},
 		{
 			name: "change plan",
@@ -550,6 +574,7 @@ func TestTransform(t *testing.T) {
 					InstanceId:      "foo",
 					PlanId:          "oldplan",
 					RepoId:          "repo1",
+					RepoGuid:        "repo1",
 					UnixTimeStartMs: 1234,
 					UnixTimeEndMs:   5678,
 				},
@@ -559,8 +584,10 @@ func TestTransform(t *testing.T) {
 					InstanceId:      "foo",
 					PlanId:          "newplan",
 					RepoId:          "repo1",
+					RepoGuid:        "repo1",
 					UnixTimeStartMs: 1234,
 					UnixTimeEndMs:   5678,
+					Modno:           1,
 				},
 			},
 		},
@@ -571,16 +598,17 @@ func TestTransform(t *testing.T) {
 				return op, nil
 			},
 			ops: ops,
-			want: []*v1.Operation{
+			want: withModnoIncr([]*v1.Operation{
 				{
 					InstanceId:      "foo",
 					PlanId:          "newplan",
 					RepoId:          "repo1",
+					RepoGuid:        "repo1",
 					UnixTimeStartMs: 1234,
 					UnixTimeEndMs:   5678,
 				},
 				ops[1],
-			},
+			}),
 			query: oplog.Query{InstanceID: "foo"},
 		},
 	}
@@ -615,13 +643,8 @@ func TestTransform(t *testing.T) {
 						t.Fatalf("error listing operations: %s", err)
 					}
 
-					if slices.CompareFunc(got, tc.want, func(a, b *v1.Operation) int {
-						if proto.Equal(a, b) {
-							return 0
-						}
-						return 1
-					}) != 0 {
-						t.Errorf("want operations: %v, got unexpected operations: %v", tc.want, got)
+					if diff := cmp.Diff(got, tc.want, protocmp.Transform()); diff != "" {
+						t.Errorf("unexpected diff: %v", diff)
 					}
 				})
 			}
@@ -742,6 +765,7 @@ func BenchmarkAdd(b *testing.B) {
 					UnixTimeStartMs: 1234,
 					PlanId:          "plan1",
 					RepoId:          "repo1",
+					RepoGuid:        "repo1",
 					InstanceId:      "instance1",
 					Op:              &v1.Operation_OperationBackup{},
 				})
@@ -763,6 +787,7 @@ func BenchmarkList(b *testing.B) {
 						UnixTimeStartMs: 1234,
 						PlanId:          "plan1",
 						RepoId:          "repo1",
+						RepoGuid:        "repo1",
 						InstanceId:      "instance1",
 						Op:              &v1.Operation_OperationBackup{},
 					})
@@ -800,6 +825,7 @@ func BenchmarkGetLastItem(b *testing.B) {
 						UnixTimeStartMs: 1234,
 						PlanId:          "plan1",
 						RepoId:          "repo1",
+						RepoGuid:        "repo1",
 						InstanceId:      "instance1",
 						Op:              &v1.Operation_OperationBackup{},
 					})
