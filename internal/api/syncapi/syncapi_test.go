@@ -14,6 +14,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/oplog/memstore"
@@ -39,6 +40,7 @@ var (
 	basicHostOperationTempl = &v1.Operation{
 		InstanceId:      defaultHostID,
 		RepoId:          defaultRepoID,
+		RepoGuid:        cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 		PlanId:          defaultPlanID,
 		UnixTimeStartMs: 1234,
 		UnixTimeEndMs:   5678,
@@ -49,6 +51,7 @@ var (
 	basicClientOperationTempl = &v1.Operation{
 		InstanceId:      defaultClientID,
 		RepoId:          defaultRepoID,
+		RepoGuid:        cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 		PlanId:          defaultPlanID,
 		UnixTimeStartMs: 1234,
 		UnixTimeEndMs:   5678,
@@ -231,7 +234,7 @@ func TestSimpleOperationSync(t *testing.T) {
 		},
 	})...)
 
-	peerClient.oplog.Add(testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
+	if err := peerClient.oplog.Add(testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 		{
 			DisplayMessage: "clientop1",
 			FlowId:         1,
@@ -244,7 +247,9 @@ func TestSimpleOperationSync(t *testing.T) {
 			DisplayMessage: "clientop3",
 			FlowId:         2, // in a different flow from the other two
 		},
-	})...)
+	})...); err != nil {
+		t.Fatalf("failed to add operations: %v", err)
+	}
 
 	startRunningSyncAPI(t, peerHost, peerHostAddr)
 	startRunningSyncAPI(t, peerClient, peerClientAddr)
