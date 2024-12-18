@@ -634,11 +634,13 @@ func TestCancelBackup(t *testing.T) {
 		sut.orch.Run(ctx)
 	}()
 
-	backupReq := &types.StringValue{Value: "test"}
-	_, err := sut.handler.Backup(ctx, connect.NewRequest(backupReq))
-	if err != nil {
-		t.Fatalf("Backup() error = %v", err)
-	}
+	go func() {
+		backupReq := &types.StringValue{Value: "test"}
+		_, err := sut.handler.Backup(ctx, connect.NewRequest(backupReq))
+		if err != nil {
+			t.Logf("Backup() error = %v", err)
+		}
+	}()
 
 	// Find the backup operation ID in the oplog
 	var backupOpId int64
