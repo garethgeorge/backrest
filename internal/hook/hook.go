@@ -137,7 +137,7 @@ func applyHookErrorPolicy(onError v1.Hook_OnError, err error) error {
 	case v1.Hook_ON_ERROR_RETRY_EXPONENTIAL_BACKOFF:
 		return &HookErrorRetry{Err: err, Backoff: func(attempt int) time.Duration {
 			d := time.Duration(math.Pow(2, float64(attempt-1))) * 10 * time.Second
-			if d > 1*time.Hour {
+			if attempt > 32 || d > 1*time.Hour {
 				return 1 * time.Hour
 			}
 			return d
