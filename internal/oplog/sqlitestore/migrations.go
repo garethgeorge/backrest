@@ -10,7 +10,7 @@ import (
 	"zombiezen.com/go/sqlite/sqlitex"
 )
 
-const sqlSchemaVersion = 2
+const sqlSchemaVersion = 4
 
 var sqlSchema = fmt.Sprintf(`
 PRAGMA user_version = %d;

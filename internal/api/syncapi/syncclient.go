@@ -17,6 +17,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 )
@@ -284,13 +285,21 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					continue
 				}
 
+				diffSel := &v1.OpSelector{
+					InstanceId: c.localInstanceID,
+					RepoId:     repo.GetId(),
+					RepoGuid:   repo.GetGuid(),
+				}
+
+				diffQuery, err := protoutil.OpSelectorToQuery(diffSel)
+				if err != nil {
+					return fmt.Errorf("convert operation selector to query: %w", err)
+				}
+
 				// Load operation metadata and send the initial diff state.
 				var opIds []int64
 				var opModnos []int64
-				if err := c.oplog.QueryMetadata(oplog.Query{
-					InstanceID: c.localInstanceID,
-					RepoID:     repo.GetId(),
-				}, func(op oplog.OpMetadata) error {
+				if err := c.oplog.QueryMetadata(diffQuery, func(op oplog.OpMetadata) error {
 					opIds = append(opIds, op.ID)
 					opModnos = append(opModnos, op.Modno)
 					return nil
@@ -303,12 +312,9 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				if err := stream.Send(&v1.SyncStreamItem{
 					Action: &v1.SyncStreamItem_DiffOperations{
 						DiffOperations: &v1.SyncStreamItem_SyncActionDiffOperations{
-							HaveOperationsSelector: &v1.OpSelector{
-								InstanceId: c.localInstanceID,
-								RepoId:     repo.GetId(),
-							},
-							HaveOperationIds:    opIds,
-							HaveOperationModnos: opModnos,
+							HaveOperationsSelector: diffSel,
+							HaveOperationIds:       opIds,
+							HaveOperationModnos:    opModnos,
 						},
 					},
 				}); err != nil {
@@ -408,7 +414,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	for {
 		select {
 		case err := <-receiveError:
-			return fmt.Errorf("receive error: %w", err)
+			return fmt.Errorf("connection terminated with error: %w", err)
 		case item, ok := <-receive:
 			if !ok {
 				return nil

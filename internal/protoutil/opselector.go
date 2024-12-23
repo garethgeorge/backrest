@@ -14,6 +14,7 @@ func OpSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
 	}
 	q := oplog.Query{
 		RepoID:     sel.RepoId,
+		RepoGUID:   sel.RepoGuid,
 		PlanID:     sel.PlanId,
 		SnapshotID: sel.SnapshotId,
 		FlowID:     sel.FlowId,

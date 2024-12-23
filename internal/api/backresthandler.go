@@ -177,6 +177,7 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		}
 
 		guid, err := r.RepoGUID()
+		zap.S().Debugf("GUID for repo %q is %q from restic", newRepo.Id, guid)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get repo config: %w", err)
 		}

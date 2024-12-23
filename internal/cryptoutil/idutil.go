@@ -27,8 +27,8 @@ func MustRandomID(bits int) string {
 }
 
 func TruncateID(id string, bits int) string {
-	if len(id)*8 < bits {
+	if len(id)*4 < bits {
 		return id
 	}
-	return id[:bits/8]
+	return id[:bits/4]
 }

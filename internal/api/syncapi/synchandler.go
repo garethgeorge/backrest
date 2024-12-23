@@ -151,12 +151,18 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 	sendConfigToClient := func(config *v1.Config) error {
 		remoteConfig := &v1.RemoteConfig{}
+		var allowedRepoIDs []string
 		for _, repo := range config.Repos {
 			if slices.Contains(repo.AllowedPeerInstanceIds, clientInstanceID) {
+				allowedRepoIDs = append(allowedRepoIDs, repo.Id)
 				remoteConfig.Repos = append(remoteConfig.Repos, protoutil.RepoToRemoteRepo(repo))
 			}
 		}
 
+		zap.S().Debugf("syncserver determined client %v is allowlisted for repos %v", clientInstanceID, allowedRepoIDs)
+
+		// Send the config, this is the first meaningful packet the client will receive.
+		// Once configuration is received, the client will start sending diffs.
 		if err := stream.Send(&v1.SyncStreamItem{
 			Action: &v1.SyncStreamItem_SendConfig{
 				SendConfig: &v1.SyncStreamItem_SyncActionSendConfig{
@@ -186,7 +192,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			}
 
 			// The diff selector _must_ specify a repo the client has access to
-			repo := config.FindRepo(initialConfig, diffSel.GetRepoId())
+			repo := config.FindRepoByGUID(initialConfig, diffSel.GetRepoGuid())
 			if repo == nil {
 				zap.S().Warnf("syncserver action DiffOperations: client %q tried to diff with repo %q that does not exist", clientInstanceID, diffSel.GetRepoId())
 				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: repo %q not found", diffSel.GetRepoId()))

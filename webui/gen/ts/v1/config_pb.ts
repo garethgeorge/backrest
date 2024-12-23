@@ -217,7 +217,7 @@ export type Repo = Message<"v1.Repo"> & {
   uri: string;
 
   /**
-   * a globally unique ID for this repo. Should be derived from restic cat config output.
+   * a globally unique ID for this repo. Should be derived as the 'id' field in `restic cat config --json`.
    *
    * @generated from field: string guid = 11;
    */

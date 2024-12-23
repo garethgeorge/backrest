@@ -21,3 +21,12 @@ func FindRepo(cfg *v1.Config, repoID string) *v1.Repo {
 	}
 	return nil
 }
+
+func FindRepoByGUID(cfg *v1.Config, guid string) *v1.Repo {
+	for _, repo := range cfg.Repos {
+		if repo.Guid == guid {
+			return repo
+		}
+	}
+	return nil
+}

@@ -567,7 +567,7 @@ type Repo struct {
 
 	Id                     string         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                                                   // unique but human readable ID for this repo.
 	Uri                    string         `protobuf:"bytes,2,opt,name=uri,proto3" json:"uri,omitempty"`                                                                 // URI of the repo.
-	Guid                   string         `protobuf:"bytes,11,opt,name=guid,proto3" json:"guid,omitempty"`                                                              // a globally unique ID for this repo. Should be derived from restic cat config output.
+	Guid                   string         `protobuf:"bytes,11,opt,name=guid,proto3" json:"guid,omitempty"`                                                              // a globally unique ID for this repo. Should be derived as the 'id' field in `restic cat config --json`.
 	Password               string         `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`                                                       // plaintext password
 	Env                    []string       `protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty"`                                                                 // extra environment variables to set for restic.
 	Flags                  []string       `protobuf:"bytes,5,rep,name=flags,proto3" json:"flags,omitempty"`                                                             // extra flags set on the restic command.
