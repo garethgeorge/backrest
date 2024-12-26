@@ -44,7 +44,8 @@ func (t *StatsTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 
 	// check last stats time
 	var lastRan time.Time
-	if err := runner.OpLog().Query(oplog.Query{RepoID: t.RepoID(), Reversed: true}, func(op *v1.Operation) error {
+	repoID := t.RepoID()
+	if err := runner.OpLog().Query(oplog.Query{RepoID: &repoID, Reversed: true}, func(op *v1.Operation) error {
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
 			return nil
 		}

@@ -297,11 +297,11 @@ func (o *BboltStore) Get(id int64) (*v1.Operation, error) {
 
 // Query represents a query to the operation log.
 type Query struct {
-	RepoId     string
-	PlanId     string
-	SnapshotId string
-	FlowId     int64
-	InstanceId string
+	RepoId     *string
+	PlanId     *string
+	SnapshotId *string
+	FlowId     *int64
+	InstanceId *string
 	Ids        []int64
 }
 
@@ -339,20 +339,20 @@ func (o *BboltStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operati
 func (o *BboltStore) queryHelper(query oplog.Query, do func(tx *bbolt.Tx, op *v1.Operation) error, isReadOnly bool) error {
 	helper := func(tx *bolt.Tx) error {
 		iterators := make([]indexutil.IndexIterator, 0, 5)
-		if query.RepoID != "" {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(RepoIndexBucket), []byte(query.RepoID)))
+		if query.RepoID != nil {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(RepoIndexBucket), []byte(*query.RepoID)))
 		}
-		if query.PlanID != "" {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(PlanIndexBucket), []byte(query.PlanID)))
+		if query.PlanID != nil {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(PlanIndexBucket), []byte(*query.PlanID)))
 		}
-		if query.SnapshotID != "" {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(SnapshotIndexBucket), []byte(query.SnapshotID)))
+		if query.SnapshotID != nil {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(SnapshotIndexBucket), []byte(*query.SnapshotID)))
 		}
-		if query.FlowID != 0 {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(query.FlowID)))
+		if query.FlowID != nil {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(*query.FlowID)))
 		}
-		if query.InstanceID != "" {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(InstanceIndexBucket), []byte(query.InstanceID)))
+		if query.InstanceID != nil {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(InstanceIndexBucket), []byte(*query.InstanceID)))
 		}
 
 		var ids []int64

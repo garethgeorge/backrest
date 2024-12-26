@@ -20,6 +20,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
+	"google.golang.org/protobuf/proto"
 )
 
 type SyncClient struct {
@@ -101,7 +102,7 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 		}
 
 		delay := c.reconnectDelay - time.Since(lastConnect)
-		c.l.Info("lost connection, retrying after delay", zap.Duration("delay", delay))
+		c.l.Sugar().Infof("disconnected, will retry after %v", delay)
 		select {
 		case <-time.After(delay):
 		case <-ctx.Done():
@@ -183,12 +184,14 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("server instance ID %q does not match expected peer instance ID %q", serverInstanceID, c.peer.InstanceId))
 	}
 
-	haveRunSync := make(map[string]struct{}) // repo ID -> have run sync?
+	// haveRunSync tracks which repo GUIDs we've initiated a sync for with the server.
+	// operation requests (from the server) are ignored if the GUID is not allowlisted in this map.
+	haveRunSync := make(map[string]struct{})
 
 	oplogSubscription := func(ops []*v1.Operation, event oplog.OperationEvent) {
 		var opsToForward []*v1.Operation
 		for _, op := range ops {
-			if _, ok := haveRunSync[op.GetRepoId()]; ok {
+			if _, ok := haveRunSync[op.GetRepoGuid()]; ok {
 				opsToForward = append(opsToForward, op)
 			}
 		}
@@ -251,12 +254,12 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			}
 
 			// remove any repo IDs that are no longer in the config, our access has been revoked.
-			remoteRepoIDs := make(map[string]struct{})
+			remoteRepoGUIDs := make(map[string]struct{})
 			for _, repo := range newRemoteConfig.Repos {
-				remoteRepoIDs[repo.GetId()] = struct{}{}
+				remoteRepoGUIDs[repo.GetGuid()] = struct{}{}
 			}
 			for repoID := range haveRunSync {
-				if _, ok := remoteRepoIDs[repoID]; !ok {
+				if _, ok := remoteRepoGUIDs[repoID]; !ok {
 					delete(haveRunSync, repoID)
 				}
 			}
@@ -269,32 +272,33 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			}
 
 			for _, repo := range newRemoteConfig.Repos {
-				_, ok := haveRunSync[repo.GetId()]
+				_, ok := haveRunSync[repo.GetGuid()]
 				if ok {
 					continue
 				}
-				haveRunSync[repo.Id] = struct{}{}
-				localRepoConfig := config.FindRepo(localConfig, repo.Id)
+				localRepoConfig := config.FindRepoByGUID(localConfig, repo.GetGuid())
 				if localRepoConfig == nil {
-					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name does not exist", c.peer.InstanceId, repo.Id)
+					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because no local repo has the same GUID %q", c.peer.InstanceId, repo.GetId())
 					continue
 				}
 				instanceID, err := InstanceForBackrestURI(localRepoConfig.Uri)
 				if err != nil || instanceID != c.peer.InstanceId {
-					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo with the same name specifies URI %q (instance ID %q) which does not reference the peer providing this config", c.peer.InstanceId, repo.GetId(), localRepoConfig.Uri, instanceID)
+					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo (%q) with the same GUID specifies URI %q (instance ID %q) which does not reference the peer providing this config", c.peer.InstanceId, repo.GetId(), localRepoConfig.Guid, instanceID)
 					continue
 				}
 
 				diffSel := &v1.OpSelector{
-					InstanceId: c.localInstanceID,
-					RepoId:     repo.GetId(),
-					RepoGuid:   repo.GetGuid(),
+					InstanceId: proto.String(c.localInstanceID),
+					RepoId:     proto.String(repo.GetId()),
+					RepoGuid:   proto.String(repo.GetGuid()),
 				}
 
 				diffQuery, err := protoutil.OpSelectorToQuery(diffSel)
 				if err != nil {
 					return fmt.Errorf("convert operation selector to query: %w", err)
 				}
+
+				haveRunSync[repo.GetGuid()] = struct{}{}
 
 				// Load operation metadata and send the initial diff state.
 				var opIds []int64
@@ -364,7 +368,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					continue // skip operations that are not from this instance e.g. an "index snapshot" picking up snapshots created by another instance.
 				}
 
-				_, ok := haveRunSync[op.RepoId]
+				_, ok := haveRunSync[op.RepoGuid]
 				if !ok {
 					// this should never happen if sync is working correctly. Would probably indicate oplog or our access was revoked.
 					// Error out and re-initiate sync.

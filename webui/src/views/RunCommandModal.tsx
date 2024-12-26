@@ -13,6 +13,7 @@ import {
 } from "../../gen/ts/v1/service_pb";
 import { OperationList } from "../components/OperationList";
 import { create } from "@bufbuild/protobuf";
+import { useConfig } from "../components/ConfigProvider";
 
 interface Invocation {
   command: string;
@@ -21,6 +22,7 @@ interface Invocation {
 }
 
 export const RunCommandModal = ({ repoId }: { repoId: string }) => {
+  const [config, _] = useConfig();
   const showModal = useShowModal();
   const alertApi = useAlertApi()!;
   const [command, setCommand] = React.useState("");
@@ -83,6 +85,7 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
       <OperationList
         req={create(GetOperationsRequestSchema, {
           selector: {
+            instanceId: config?.instance,
             repoId: repoId,
             planId: "_system_", // run commands are not associated with a plan
           },

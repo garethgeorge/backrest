@@ -191,7 +191,7 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		}
 
 		// fetch the remote config
-		remoteRepo, err := syncapi.GetRepoConfig(s.remoteConfigStore, instanceID, newRepo.Id)
+		remoteRepo, err := syncapi.GetRepoConfig(s.remoteConfigStore, instanceID, newRepo.Guid)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get remote repo config: %w", err)
 		}
@@ -213,13 +213,12 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 	}
 
 	// If the GUID has changed, and we just successfully updated the config in storage, then we need to migrate the oplog.
-	if newRepo.Guid != oldRepo.Guid {
+	if oldRepo != nil && newRepo.Guid != oldRepo.Guid {
 		migratedCount := 0
-		if err := s.oplog.Transform(oplog.Query{
-			RepoGUID:   oldRepo.Guid,
-			RepoID:     newRepo.Id,
-			InstanceID: c.Instance,
-		}, func(op *v1.Operation) (*v1.Operation, error) {
+		if err := s.oplog.Transform(oplog.Query{}.
+			SetRepoGUID(oldRepo.Guid).
+			SetRepoID(oldRepo.Id).
+			SetInstanceID(c.Instance), func(op *v1.Operation) (*v1.Operation, error) {
 			op.RepoGuid = newRepo.Guid
 			migratedCount++
 			return op, nil
@@ -556,6 +555,10 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 }
 
 func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error) {
+	config, err := s.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %w", err)
+	}
 	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
 	if err != nil {
 		return nil, err
@@ -563,7 +566,11 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 
 	// group commands within the last 24 hours (or 256 operations) into the same flow ID
 	var flowID int64
-	if s.oplog.Query(oplog.Query{RepoID: req.Msg.RepoId, Limit: 256, Reversed: true}, func(op *v1.Operation) error {
+	if s.oplog.Query(oplog.Query{}.
+		SetInstanceID(config.Instance).
+		SetRepoID(req.Msg.RepoId).
+		SetLimit(256).
+		SetReversed(true), func(op *v1.Operation) error {
 		if op.GetOperationRunCommand() != nil && time.Since(time.UnixMilli(op.UnixTimeStartMs)) < 30*time.Minute {
 			flowID = op.FlowId
 		}
@@ -819,7 +826,7 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	}
 
 	for _, repo := range config.Repos {
-		resp, err := generateSummaryHelper(repo.Id, oplog.Query{RepoID: repo.Id, Reversed: true, Limit: 1000})
+		resp, err := generateSummaryHelper(repo.Id, oplog.Query{}.SetInstanceID(config.Instance).SetRepoID(repo.Id).SetReversed(true).SetLimit(1000))
 		if err != nil {
 			return nil, fmt.Errorf("summary for repo %q: %w", repo.Id, err)
 		}
@@ -828,7 +835,7 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	}
 
 	for _, plan := range config.Plans {
-		resp, err := generateSummaryHelper(plan.Id, oplog.Query{PlanID: plan.Id, Reversed: true, Limit: 1000})
+		resp, err := generateSummaryHelper(plan.Id, oplog.Query{}.SetInstanceID(config.Instance).SetPlanID(plan.Id).SetReversed(true).SetLimit(1000))
 		if err != nil {
 			return nil, fmt.Errorf("summary for plan %q: %w", plan.Id, err)
 		}

@@ -34,8 +34,8 @@ message Config {
 }
 
 message Multihost {
-  repeated Peer known_hosts = 1 [json_name="known_hosts"];
-  repeated Peer authorized_clients = 2 [json_name="authorized_clients"];
+  repeated Peer known_hosts = 1 [json_name="knownHosts"];
+  repeated Peer authorized_clients = 2 [json_name="authorizedClients"];
 
   message Peer {
     string instance_id = 1 [json_name="instanceId"]; // instance ID of the peer.

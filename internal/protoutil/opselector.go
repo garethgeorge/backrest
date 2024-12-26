@@ -12,6 +12,7 @@ func OpSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
 	if sel == nil {
 		return oplog.Query{}, errors.New("empty selector")
 	}
+
 	q := oplog.Query{
 		RepoID:     sel.RepoId,
 		RepoGUID:   sel.RepoGuid,

@@ -270,70 +270,69 @@ func TestListOperation(t *testing.T) {
 	}{
 		{
 			name:     "list plan1",
-			query:    oplog.Query{PlanID: "plan1"},
+			query:    oplog.Query{}.SetPlanID("plan1"),
 			expected: []string{"op1", "op2"},
 		},
 		{
 			name:     "list plan1 with limit",
-			query:    oplog.Query{PlanID: "plan1", Limit: 1},
+			query:    oplog.Query{}.SetPlanID("plan1").SetLimit(1),
 			expected: []string{"op1"},
 		},
 		{
 			name:     "list plan1 with offset",
-			query:    oplog.Query{PlanID: "plan1", Offset: 1},
+			query:    oplog.Query{}.SetPlanID("plan1").SetOffset(1),
 			expected: []string{"op2"},
 		},
 		{
 			name:     "list plan1 reversed",
-			query:    oplog.Query{PlanID: "plan1", Reversed: true},
+			query:    oplog.Query{}.SetPlanID("plan1").SetReversed(true),
 			expected: []string{"op2", "op1"},
 		},
 		{
 			name:     "list plan2",
-			query:    oplog.Query{PlanID: "plan2"},
+			query:    oplog.Query{}.SetPlanID("plan2"),
 			expected: []string{"op3"},
 		},
 		{
 			name:     "list repo1",
-			query:    oplog.Query{RepoID: "repo1"},
+			query:    oplog.Query{}.SetRepoID("repo1"),
 			expected: []string{"op1"},
 		},
 		{
 			name:     "list repo2",
-			query:    oplog.Query{RepoID: "repo2"},
+			query:    oplog.Query{}.SetRepoID("repo2"),
 			expected: []string{"op2", "op3"},
 		},
 		{
 			name:  "list flow 943",
-			query: oplog.Query{FlowID: 943},
+			query: oplog.Query{}.SetFlowID(943),
 			expected: []string{
 				"op3",
 			},
 		},
 		{
 			name:  "list original ID",
-			query: oplog.Query{OriginalID: 4567},
+			query: oplog.Query{}.SetOriginalID(4567),
 			expected: []string{
 				"foo-op",
 			},
 		},
 		{
 			name:  "list original flow ID",
-			query: oplog.Query{OriginalFlowID: 789},
+			query: oplog.Query{}.SetOriginalFlowID(789),
 			expected: []string{
 				"foo-op",
 			},
 		},
 		{
 			name: "a very compound query",
-			query: oplog.Query{
-				PlanID:         "foo-plan",
-				RepoID:         "foo-repo",
-				RepoGUID:       "foo-repo-guid",
-				InstanceID:     "foo",
-				OriginalID:     4567,
-				OriginalFlowID: 789,
-			},
+			query: oplog.Query{}.
+				SetPlanID("foo-plan").
+				SetRepoID("foo-repo").
+				SetRepoGUID("foo-repo-guid").
+				SetInstanceID("foo").
+				SetOriginalID(4567).
+				SetOriginalFlowID(789),
 			expected: []string{
 				"foo-op",
 			},
@@ -436,7 +435,7 @@ func TestIndexSnapshot(t *testing.T) {
 			}
 
 			var ops []*v1.Operation
-			if err := log.Query(oplog.Query{SnapshotID: snapshotId}, func(op *v1.Operation) error {
+			if err := log.Query(oplog.Query{}.SetSnapshotID(snapshotId), func(op *v1.Operation) error {
 				ops = append(ops, op)
 				return nil
 			}); err != nil {
@@ -610,7 +609,7 @@ func TestTransform(t *testing.T) {
 				},
 				ops[1],
 			},
-			query: oplog.Query{InstanceID: "foo"},
+			query: oplog.Query{}.SetInstanceID("foo"),
 		},
 	}
 	for _, tc := range tcs {
@@ -681,7 +680,7 @@ func TestQueryMetadata(t *testing.T) {
 			}
 
 			var metadata []oplog.OpMetadata
-			if err := log.QueryMetadata(oplog.Query{PlanID: "plan1"}, func(op oplog.OpMetadata) error {
+			if err := log.QueryMetadata(oplog.Query{}.SetPlanID("plan1"), func(op oplog.OpMetadata) error {
 				metadata = append(metadata, op)
 				return nil
 			}); err != nil {
@@ -715,7 +714,7 @@ func collectMessages(ops []*v1.Operation) []string {
 func countByRepoHelper(t *testing.T, log *oplog.OpLog, repo string, expected int) {
 	t.Helper()
 	count := 0
-	if err := log.Query(oplog.Query{RepoID: repo}, func(op *v1.Operation) error {
+	if err := log.Query(oplog.Query{}.SetRepoID(repo), func(op *v1.Operation) error {
 		count += 1
 		return nil
 	}); err != nil {
@@ -729,7 +728,7 @@ func countByRepoHelper(t *testing.T, log *oplog.OpLog, repo string, expected int
 func countByPlanHelper(t *testing.T, log *oplog.OpLog, plan string, expected int) {
 	t.Helper()
 	count := 0
-	if err := log.Query(oplog.Query{PlanID: plan}, func(op *v1.Operation) error {
+	if err := log.Query(oplog.Query{}.SetPlanID(plan), func(op *v1.Operation) error {
 		count += 1
 		return nil
 	}); err != nil {
@@ -743,7 +742,7 @@ func countByPlanHelper(t *testing.T, log *oplog.OpLog, plan string, expected int
 func countBySnapshotIdHelper(t *testing.T, log *oplog.OpLog, snapshotId string, expected int) {
 	t.Helper()
 	count := 0
-	if err := log.Query(oplog.Query{SnapshotID: snapshotId}, func(op *v1.Operation) error {
+	if err := log.Query(oplog.Query{}.SetSnapshotID(snapshotId), func(op *v1.Operation) error {
 		count += 1
 		return nil
 	}); err != nil {
@@ -797,7 +796,7 @@ func BenchmarkList(b *testing.B) {
 				b.Run(name, func(b *testing.B) {
 					for i := 0; i < b.N; i++ {
 						c := 0
-						if err := log.Query(oplog.Query{PlanID: "plan1"}, func(op *v1.Operation) error {
+						if err := log.Query(oplog.Query{}.SetPlanID("plan1"), func(op *v1.Operation) error {
 							c += 1
 							return nil
 						}); err != nil {
@@ -835,7 +834,7 @@ func BenchmarkGetLastItem(b *testing.B) {
 				b.Run(name, func(b *testing.B) {
 					for i := 0; i < b.N; i++ {
 						c := 0
-						if err := log.Query(oplog.Query{PlanID: "plan1", Reversed: true}, func(op *v1.Operation) error {
+						if err := log.Query(oplog.Query{}.SetPlanID("plan1").SetReversed(true), func(op *v1.Operation) error {
 							c += 1
 							return oplog.ErrStopIteration
 						}); err != nil {

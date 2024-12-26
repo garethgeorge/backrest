@@ -45,9 +45,10 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 		}, nil
 	}
 
-	repo, err := runner.GetRepo(t.RepoID())
+	repoID := t.RepoID()
+	repo, err := runner.GetRepo(repoID)
 	if err != nil {
-		return ScheduledTask{}, fmt.Errorf("get repo %v: %w", t.RepoID(), err)
+		return ScheduledTask{}, fmt.Errorf("get repo %v: %w", repoID, err)
 	}
 
 	if repo.PrunePolicy.GetSchedule() == nil {
@@ -56,7 +57,10 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 
 	var lastRan time.Time
 	var foundBackup bool
-	if err := runner.OpLog().Query(oplog.Query{RepoID: t.RepoID(), Reversed: true}, func(op *v1.Operation) error {
+	if err := runner.OpLog().Query(oplog.Query{}.
+		SetInstanceID(runner.Config().Instance).
+		SetRepoID(repoID).
+		SetReversed(true), func(op *v1.Operation) error {
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
 			return nil
 		}

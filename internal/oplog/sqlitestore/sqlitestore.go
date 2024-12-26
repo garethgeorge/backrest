@@ -133,37 +133,37 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 
 	query = append(query, " 1=1 ")
 
-	if q.PlanID != "" {
+	if q.PlanID != nil {
 		query = append(query, " AND operation_groups.plan_id = ?")
-		args = append(args, q.PlanID)
+		args = append(args, *q.PlanID)
 	}
-	if q.RepoID != "" {
+	if q.RepoID != nil {
 		query = append(query, " AND operation_groups.repo_id = ?")
-		args = append(args, q.RepoID)
+		args = append(args, *q.RepoID)
 	}
-	if q.RepoGUID != "" {
+	if q.RepoGUID != nil {
 		query = append(query, " AND operation_groups.repo_guid = ?")
-		args = append(args, q.RepoGUID)
+		args = append(args, *q.RepoGUID)
 	}
-	if q.InstanceID != "" {
+	if q.InstanceID != nil {
 		query = append(query, " AND operation_groups.instance_id = ?")
-		args = append(args, q.InstanceID)
+		args = append(args, *q.InstanceID)
 	}
-	if q.SnapshotID != "" {
+	if q.SnapshotID != nil {
 		query = append(query, " AND operations.snapshot_id = ?")
-		args = append(args, q.SnapshotID)
+		args = append(args, *q.SnapshotID)
 	}
-	if q.FlowID != 0 {
+	if q.FlowID != nil {
 		query = append(query, " AND operations.flow_id = ?")
-		args = append(args, q.FlowID)
+		args = append(args, *q.FlowID)
 	}
-	if q.OriginalID != 0 {
+	if q.OriginalID != nil {
 		query = append(query, " AND operations.original_id = ?")
-		args = append(args, q.OriginalID)
+		args = append(args, *q.OriginalID)
 	}
-	if q.OriginalFlowID != 0 {
+	if q.OriginalFlowID != nil {
 		query = append(query, " AND operations.original_flow_id = ?")
-		args = append(args, q.OriginalFlowID)
+		args = append(args, *q.OriginalFlowID)
 	}
 	if q.OpIDs != nil {
 		query = append(query, " AND operations.id IN (")

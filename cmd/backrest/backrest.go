@@ -88,6 +88,7 @@ func main() {
 		zap.S().Fatalf("error creating oplog: %v", err)
 	}
 	migrateBboltOplog(opstore)
+	migratePopulateGuids(opstore, cfg)
 
 	// Create rotating log storage
 	logStore, err := logstore.NewLogStore(filepath.Join(env.DataDir(), "tasklogs"))
@@ -312,4 +313,32 @@ func migrateBboltOplog(logstore oplog.OpStore) {
 		zap.S().Warnf("error removing old bbolt oplog: %v", err)
 	}
 	zap.S().Infof("migrated %d operations from old bbolt oplog to sqlite", count)
+}
+
+func migratePopulateGuids(logstore oplog.OpStore, cfg *v1.Config) {
+	zap.S().Info("migrating oplog to populate GUIDs")
+
+	repoToGUID := make(map[string]string)
+	for _, repo := range cfg.Repos {
+		if repo.Guid != "" {
+			repoToGUID[repo.Id] = repo.Guid
+		}
+	}
+
+	migratedOpCount := 0
+	if err := logstore.Transform(oplog.Query{}.SetRepoGUID(""), func(op *v1.Operation) (*v1.Operation, error) {
+		if op.RepoGuid != "" {
+			return nil, nil
+		}
+		if guid, ok := repoToGUID[op.RepoId]; ok {
+			op.RepoGuid = guid
+			migratedOpCount++
+			return op, nil
+		}
+		return nil, nil
+	}); err != nil {
+		zap.S().Fatalf("error populating repo GUIDs for existing operations: %v", err)
+	} else if migratedOpCount > 0 {
+		zap.S().Infof("populated repo GUIDs for %d existing operations", migratedOpCount)
+	}
 }

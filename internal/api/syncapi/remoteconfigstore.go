@@ -17,7 +17,7 @@ import (
 var (
 	sanitizeFilenameRegex = regexp.MustCompile("[^a-zA-Z0-9\\-_\\.]+")
 
-	ErrRemoteConfigNotFound = errors.New("config for remote instance not found")
+	ErrRemoteConfigNotFound = errors.New("remote config not found")
 )
 
 type RemoteConfigStore interface {
@@ -159,12 +159,12 @@ func (s *memoryConfigStore) Delete(instanceID string) error {
 func GetRepoConfig(store RemoteConfigStore, instanceID, repoID string) (*v1.RemoteRepo, error) {
 	config, err := store.Get(instanceID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get %q: %w", instanceID, err)
 	}
 	for _, repo := range config.Repos {
 		if repo.Id == repoID {
 			return repo, nil
 		}
 	}
-	return nil, ErrRemoteConfigNotFound
+	return nil, fmt.Errorf("get %q/%q: %w", instanceID, repoID, ErrRemoteConfigNotFound)
 }

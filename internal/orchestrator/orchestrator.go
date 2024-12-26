@@ -344,7 +344,7 @@ func (o *Orchestrator) Run(ctx context.Context) {
 			t.Op.DisplayMessage = fmt.Sprintf("running after %d retries", t.retryCount)
 			// Delete any previous hook executions for this operation incase this is a retry.
 			prevHookExecutionIDs := []int64{}
-			if err := o.OpLog.Query(oplog.Query{FlowID: t.Op.FlowId}, func(op *v1.Operation) error {
+			if err := o.OpLog.Query(oplog.Query{FlowID: &t.Op.FlowId}, func(op *v1.Operation) error {
 				if hookOp, ok := op.Op.(*v1.Operation_OperationRunHook); ok && hookOp.OperationRunHook.GetParentOp() == t.Op.Id {
 					prevHookExecutionIDs = append(prevHookExecutionIDs, op.Id)
 				}

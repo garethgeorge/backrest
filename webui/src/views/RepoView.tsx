@@ -112,7 +112,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           <OperationTree
             req={create(GetOperationsRequestSchema, {
               selector: {
-                repoId: repo.id!,
+                repoGuid: repo.guid,
               },
               lastN: BigInt(STATS_OPERATION_HISTORY),
             })}
@@ -130,7 +130,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           <OperationList
             req={create(GetOperationsRequestSchema, {
               selector: {
-                repoId: repo.id!,
+                repoGuid: repo.guid,
               },
               lastN: BigInt(MAX_OPERATION_HISTORY),
             })}

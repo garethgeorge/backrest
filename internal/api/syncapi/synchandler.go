@@ -106,7 +106,9 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		op.FlowId = 0
 
 		var foundOp *v1.Operation
-		if err := h.mgr.oplog.Query(oplog.Query{OriginalID: op.OriginalId, InstanceID: op.InstanceId}, func(o *v1.Operation) error {
+		if err := h.mgr.oplog.Query(oplog.Query{}.
+			SetOriginalID(op.OriginalId).
+			SetInstanceID(op.InstanceId), func(o *v1.Operation) error {
 			foundOp = o
 			return nil
 		}); err != nil {
@@ -114,7 +116,9 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		}
 
 		var flowOp *v1.Operation
-		if err := h.mgr.oplog.Query(oplog.Query{OriginalFlowID: op.OriginalFlowId, InstanceID: op.InstanceId}, func(o *v1.Operation) error {
+		if err := h.mgr.oplog.Query(oplog.Query{}.
+			SetOriginalFlowID(op.OriginalFlowId).
+			SetInstanceID(op.InstanceId), func(o *v1.Operation) error {
 			flowOp = o
 			return nil
 		}); err != nil {
@@ -135,7 +139,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 	deleteByOriginalID := func(originalID int64) error {
 		var foundOp *v1.Operation
-		if err := h.mgr.oplog.Query(oplog.Query{OriginalID: originalID}, func(o *v1.Operation) error {
+		if err := h.mgr.oplog.Query(oplog.Query{}.SetOriginalID(originalID), func(o *v1.Operation) error {
 			foundOp = o
 			return nil
 		}); err != nil {
@@ -143,6 +147,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		}
 
 		if foundOp == nil {
+			zap.S().Debugf("syncserver received delete for non-existent operation %v", originalID)
 			return nil
 		}
 

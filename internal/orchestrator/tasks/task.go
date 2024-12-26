@@ -33,6 +33,8 @@ const (
 
 // TaskRunner is an interface for running tasks. It is used by tasks to create operations and write logs.
 type TaskRunner interface {
+	// InstanceID returns the instance ID executing this task.
+	InstanceID() string
 	// CreateOperation creates the operation in storage and sets the operation ID in the task.
 	CreateOperation(*v1.Operation) error
 	// UpdateOperation updates the operation in storage. It must be called after CreateOperation.
@@ -180,6 +182,10 @@ func newTestTaskRunner(_ testing.TB, config *v1.Config, oplog *oplog.OpLog) *tes
 		config: config,
 		oplog:  oplog,
 	}
+}
+
+func (t *testTaskRunner) InstanceID() string {
+	return t.config.Instance
 }
 
 func (t *testTaskRunner) CreateOperation(op *v1.Operation) error {

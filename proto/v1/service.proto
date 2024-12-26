@@ -65,12 +65,12 @@ service Backrest {
 // OpSelector is a message that can be used to select operations e.g. by query.
 message OpSelector {
   repeated int64 ids = 1;
-  string instance_id = 6;
-  string repo_id = 2;
-  string repo_guid = 7;
-  string plan_id = 3;
-  string snapshot_id = 4;
-  int64 flow_id = 5;
+  optional string instance_id = 6;
+  optional string repo_id = 2;
+  optional string repo_guid = 7;
+  optional string plan_id = 3;
+  optional string snapshot_id = 4;
+  optional int64 flow_id = 5;
 }
 
 message DoRepoTaskRequest {

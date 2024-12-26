@@ -62,7 +62,7 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 	}
 
 	// collect all current snapshot IDs.
-	currentIds, err := indexCurrentSnapshotIdsForRepo(taskRunner.OpLog(), t.RepoID())
+	currentIds, err := indexCurrentSnapshotIdsForRepo(taskRunner.OpLog(), taskRunner.Config().Instance, t.RepoID())
 	if err != nil {
 		return fmt.Errorf("get known snapshot IDs for repo %q: %w", t.RepoID(), err)
 	}
@@ -157,11 +157,11 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 }
 
 // returns a map of current (e.g. not forgotten) snapshot IDs for the plan.
-func indexCurrentSnapshotIdsForRepo(log *oplog.OpLog, repoId string) (map[string]int64, error) {
+func indexCurrentSnapshotIdsForRepo(log *oplog.OpLog, instanceID, repoId string) (map[string]int64, error) {
 	knownIds := make(map[string]int64)
 
 	startTime := time.Now()
-	if err := log.Query(oplog.Query{RepoID: repoId}, func(op *v1.Operation) error {
+	if err := log.Query(oplog.Query{}.SetInstanceID(instanceID).SetRepoID(repoId), func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
 			if !snapshotOp.OperationIndexSnapshot.Forgot {
 				knownIds[snapshotOp.OperationIndexSnapshot.Snapshot.Id] = op.Id

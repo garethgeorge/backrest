@@ -22,7 +22,6 @@ type taskRunnerImpl struct {
 	orchestrator *Orchestrator
 	t            tasks.Task
 	op           *v1.Operation
-	repo         *v1.Repo   // cache, populated on first call to Repo()
 	plan         *v1.Plan   // cache, populated on first call to Plan()
 	config       *v1.Config // cache, populated on first call to Config()
 }
@@ -31,6 +30,7 @@ var _ tasks.TaskRunner = &taskRunnerImpl{}
 
 func newTaskRunnerImpl(orchestrator *Orchestrator, task tasks.Task, op *v1.Operation) *taskRunnerImpl {
 	return &taskRunnerImpl{
+		config:       orchestrator.config,
 		orchestrator: orchestrator,
 		t:            task,
 		op:           op,
@@ -46,13 +46,17 @@ func (t *taskRunnerImpl) findPlan() (*v1.Plan, error) {
 	return t.plan, err
 }
 
+func (t *taskRunnerImpl) InstanceID() string {
+	return t.config.Instance
+}
+
 func (t *taskRunnerImpl) CreateOperation(op *v1.Operation) error {
-	op.InstanceId = t.orchestrator.config.Instance
+	op.InstanceId = t.InstanceID()
 	return t.orchestrator.OpLog.Add(op)
 }
 
 func (t *taskRunnerImpl) UpdateOperation(op *v1.Operation) error {
-	op.InstanceId = t.orchestrator.config.Instance
+	op.InstanceId = t.InstanceID()
 	return t.orchestrator.OpLog.Update(op)
 }
 
