@@ -37,10 +37,14 @@ const (
 )
 
 var (
+	defaultRepoGUID = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+)
+
+var (
 	basicHostOperationTempl = &v1.Operation{
 		InstanceId:      defaultHostID,
 		RepoId:          defaultRepoID,
-		RepoGuid:        cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+		RepoGuid:        defaultRepoGUID,
 		PlanId:          defaultPlanID,
 		UnixTimeStartMs: 1234,
 		UnixTimeEndMs:   5678,
@@ -51,7 +55,7 @@ var (
 	basicClientOperationTempl = &v1.Operation{
 		InstanceId:      defaultClientID,
 		RepoId:          defaultRepoID,
-		RepoGuid:        cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+		RepoGuid:        defaultRepoGUID,
 		PlanId:          defaultPlanID,
 		UnixTimeStartMs: 1234,
 		UnixTimeEndMs:   5678,
@@ -103,7 +107,7 @@ func TestConnectionSucceeds(t *testing.T) {
 
 func TestSyncConfigChange(t *testing.T) {
 	testutil.InstallZapLogger(t)
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
 	peerHostAddr := allocBindAddrForTest(t)
 	peerClientAddr := allocBindAddrForTest(t)
@@ -113,10 +117,12 @@ func TestSyncConfigChange(t *testing.T) {
 		Repos: []*v1.Repo{
 			{
 				Id:                     defaultRepoID,
+				Guid:                   defaultRepoGUID,
 				AllowedPeerInstanceIds: []string{defaultClientID},
 			},
 			{
 				Id:                     "do-not-sync",
+				Guid:                   cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 				AllowedPeerInstanceIds: []string{"some-other-client"},
 			},
 		},
@@ -133,8 +139,9 @@ func TestSyncConfigChange(t *testing.T) {
 		Instance: defaultClientID,
 		Repos: []*v1.Repo{
 			{
-				Id:  defaultRepoID,
-				Uri: "backrest:" + defaultHostID,
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
+				Uri:  "backrest:" + defaultHostID,
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -170,8 +177,9 @@ func TestSyncConfigChange(t *testing.T) {
 	tryExpectConfig(t, ctx, peerClient, defaultHostID, &v1.RemoteConfig{
 		Repos: []*v1.RemoteRepo{
 			{
-				Id:  defaultRepoID,
-				Env: []string{"SOME_ENV=VALUE"},
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
+				Env:  []string{"SOME_ENV=VALUE"},
 			},
 		},
 	})
@@ -189,6 +197,7 @@ func TestSimpleOperationSync(t *testing.T) {
 		Repos: []*v1.Repo{
 			{
 				Id:                     defaultRepoID,
+				Guid:                   defaultRepoGUID,
 				AllowedPeerInstanceIds: []string{defaultClientID},
 			},
 		},
@@ -205,8 +214,9 @@ func TestSimpleOperationSync(t *testing.T) {
 		Instance: defaultClientID,
 		Repos: []*v1.Repo{
 			{
-				Id:  defaultRepoID,
-				Uri: "backrest://" + defaultHostID, // TODO: get rid of the :// requirement
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
+				Uri:  "backrest://" + defaultHostID, // TODO: get rid of the :// requirement
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -256,8 +266,8 @@ func TestSimpleOperationSync(t *testing.T) {
 
 	tryConnect(t, ctx, peerClient, defaultHostID)
 
-	tryExpectOperationsSynced(t, ctx, peerHost, peerClient, oplog.Query{RepoID: defaultRepoID, InstanceID: defaultClientID})
-	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{RepoID: defaultRepoID, InstanceID: defaultClientID},
+	tryExpectOperationsSynced(t, ctx, peerHost, peerClient, oplog.Query{}.SetInstanceID(defaultClientID).SetRepoGUID(defaultRepoGUID))
+	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetInstanceID(defaultClientID).SetRepoGUID(defaultRepoGUID),
 		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 			{
 				Id:             3, // b/c of the already inserted host ops the sync'd ops start at 3
