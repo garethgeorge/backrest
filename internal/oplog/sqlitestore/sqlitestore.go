@@ -154,10 +154,6 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 		query = append(query, " AND operation_groups.plan_id = ?")
 		args = append(args, *q.PlanID)
 	}
-	if q.RepoID != nil {
-		query = append(query, " AND operation_groups.repo_id = ?")
-		args = append(args, *q.RepoID)
-	}
 	if q.RepoGUID != nil {
 		query = append(query, " AND operation_groups.repo_guid = ?")
 		args = append(args, *q.RepoGUID)

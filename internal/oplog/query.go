@@ -6,7 +6,6 @@ type Query struct {
 	// Filter by fields
 	OpIDs          []int64
 	PlanID         *string
-	RepoID         *string // Note: almost all queries should use RepoGUID as the key for storage purposes.
 	RepoGUID       *string
 	SnapshotID     *string
 	FlowID         *int64
@@ -101,10 +100,6 @@ func (q *Query) Match(op *v1.Operation) bool {
 	}
 
 	if q.PlanID != nil && op.PlanId != *q.PlanID {
-		return false
-	}
-
-	if q.RepoID != nil && op.RepoId != *q.RepoID {
 		return false
 	}
 

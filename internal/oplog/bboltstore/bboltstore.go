@@ -339,9 +339,6 @@ func (o *BboltStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operati
 func (o *BboltStore) queryHelper(query oplog.Query, do func(tx *bbolt.Tx, op *v1.Operation) error, isReadOnly bool) error {
 	helper := func(tx *bolt.Tx) error {
 		iterators := make([]indexutil.IndexIterator, 0, 5)
-		if query.RepoID != nil {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(RepoIndexBucket), []byte(*query.RepoID)))
-		}
 		if query.PlanID != nil {
 			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(PlanIndexBucket), []byte(*query.PlanID)))
 		}
