@@ -133,9 +133,10 @@ func TestScheduling(t *testing.T) {
 		},
 	}
 
+	repo1 := config.FindRepo(cfg, "repo1")
 	repoAbsolute := config.FindRepo(cfg, "repo-absolute")
 	repoRelative := config.FindRepo(cfg, "repo-relative")
-	if repoAbsolute == nil || repoRelative == nil {
+	if repoAbsolute == nil || repoRelative == nil || repo1 == nil {
 		t.Fatalf("test config declaration error")
 	}
 
@@ -155,7 +156,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
-					RepoGuid:   repoAbsolute.Guid,
+					RepoGuid:   repo1.Guid,
 					PlanId:     "plan-max-frequency-days",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -173,7 +174,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
-					RepoGuid:   repoAbsolute.Guid,
+					RepoGuid:   repo1.Guid,
 					PlanId:     "plan-min-days-since-last-run",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -191,7 +192,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
-					RepoGuid:   repoAbsolute.Guid,
+					RepoGuid:   repo1.Guid,
 					PlanId:     "plan-max-frequency-hours",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -209,7 +210,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
-					RepoGuid:   repoAbsolute.Guid,
+					RepoGuid:   repo1.Guid,
 					PlanId:     "plan-min-hours-since-last-run",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -227,7 +228,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
-					RepoGuid:   repoAbsolute.Guid,
+					RepoGuid:   repo1.Guid,
 					PlanId:     "plan-cron",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -245,7 +246,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
-					RepoGuid:   repoAbsolute.Guid,
+					RepoGuid:   repo1.Guid,
 					PlanId:     "plan-cron-utc",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
@@ -263,7 +264,7 @@ func TestScheduling(t *testing.T) {
 				{
 					InstanceId: "instance1",
 					RepoId:     "repo1",
-					RepoGuid:   repoAbsolute.Guid,
+					RepoGuid:   repo1.Guid,
 					PlanId:     "plan-cron-since-last-run",
 					Op: &v1.Operation_OperationBackup{
 						OperationBackup: &v1.OperationBackup{},
