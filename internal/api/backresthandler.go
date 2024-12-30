@@ -217,7 +217,6 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		migratedCount := 0
 		if err := s.oplog.Transform(oplog.Query{}.
 			SetRepoGUID(oldRepo.Guid).
-			SetRepoID(oldRepo.Id).
 			SetInstanceID(c.Instance), func(op *v1.Operation) (*v1.Operation, error) {
 			op.RepoGuid = newRepo.Guid
 			migratedCount++
@@ -555,20 +554,20 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 }
 
 func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error) {
-	config, err := s.config.Get()
+	cfg, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
-	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
-	if err != nil {
-		return nil, err
+	repo := config.FindRepo(cfg, req.Msg.RepoId)
+	if repo == nil {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("repo %q not found", req.Msg.RepoId))
 	}
 
 	// group commands within the last 24 hours (or 256 operations) into the same flow ID
 	var flowID int64
 	if s.oplog.Query(oplog.Query{}.
-		SetInstanceID(config.Instance).
-		SetRepoID(req.Msg.RepoId).
+		SetInstanceID(cfg.Instance).
+		SetRepoGUID(repo.GetGuid()).
 		SetLimit(256).
 		SetReversed(true), func(op *v1.Operation) error {
 		if op.GetOperationRunCommand() != nil && time.Since(time.UnixMilli(op.UnixTimeStartMs)) < 30*time.Minute {
@@ -826,7 +825,11 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	}
 
 	for _, repo := range config.Repos {
-		resp, err := generateSummaryHelper(repo.Id, oplog.Query{}.SetInstanceID(config.Instance).SetRepoID(repo.Id).SetReversed(true).SetLimit(1000))
+		resp, err := generateSummaryHelper(repo.Id, oplog.Query{}.
+			SetInstanceID(config.Instance).
+			SetRepoGUID(repo.GetGuid()).
+			SetReversed(true).
+			SetLimit(1000))
 		if err != nil {
 			return nil, fmt.Errorf("summary for repo %q: %w", repo.Id, err)
 		}
@@ -835,7 +838,11 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	}
 
 	for _, plan := range config.Plans {
-		resp, err := generateSummaryHelper(plan.Id, oplog.Query{}.SetInstanceID(config.Instance).SetPlanID(plan.Id).SetReversed(true).SetLimit(1000))
+		resp, err := generateSummaryHelper(plan.Id, oplog.Query{}.
+			SetInstanceID(config.Instance).
+			SetPlanID(plan.Id).
+			SetReversed(true).
+			SetLimit(1000))
 		if err != nil {
 			return nil, fmt.Errorf("summary for plan %q: %w", plan.Id, err)
 		}

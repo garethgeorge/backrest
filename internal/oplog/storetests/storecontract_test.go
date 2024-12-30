@@ -27,16 +27,23 @@ func StoresForTest(t testing.TB) map[string]oplog.OpStore {
 	}
 	t.Cleanup(func() { bboltstore.Close() })
 
-	sqlitestore, err := sqlitestore.NewSqliteStore(t.TempDir() + "/test.sqlite")
+	sqlitestoreinst, err := sqlitestore.NewSqliteStore(t.TempDir() + "/test.sqlite")
 	if err != nil {
 		t.Fatalf("error creating sqlite store: %s", err)
 	}
-	t.Cleanup(func() { sqlitestore.Close() })
+	t.Cleanup(func() { sqlitestoreinst.Close() })
+
+	sqlitememstore, err := sqlitestore.NewMemorySqliteStore()
+	if err != nil {
+		t.Fatalf("error creating sqlite store: %s", err)
+	}
+	t.Cleanup(func() { sqlitememstore.Close() })
 
 	return map[string]oplog.OpStore{
-		"bbolt":  bboltstore,
-		"memory": memstore.NewMemStore(),
-		"sqlite": sqlitestore,
+		"bbolt":     bboltstore,
+		"memory":    memstore.NewMemStore(),
+		"sqlite":    sqlitestoreinst,
+		"sqlitemem": sqlitememstore,
 	}
 }
 
@@ -295,12 +302,12 @@ func TestListOperation(t *testing.T) {
 		},
 		{
 			name:     "list repo1",
-			query:    oplog.Query{}.SetRepoID("repo1"),
+			query:    oplog.Query{}.SetRepoGUID("repo1"),
 			expected: []string{"op1"},
 		},
 		{
 			name:     "list repo2",
-			query:    oplog.Query{}.SetRepoID("repo2"),
+			query:    oplog.Query{}.SetRepoGUID("repo2"),
 			expected: []string{"op2", "op3"},
 		},
 		{
@@ -328,7 +335,6 @@ func TestListOperation(t *testing.T) {
 			name: "a very compound query",
 			query: oplog.Query{}.
 				SetPlanID("foo-plan").
-				SetRepoID("foo-repo").
 				SetRepoGUID("foo-repo-guid").
 				SetInstanceID("foo").
 				SetOriginalID(4567).
@@ -402,7 +408,7 @@ func TestBigIO(t *testing.T) {
 			}
 
 			countByPlanHelper(t, log, "plan1", count)
-			countByRepoHelper(t, log, "repo1", count)
+			countByRepoGUIDHelper(t, log, "repo1", count)
 		})
 	}
 }
@@ -481,7 +487,7 @@ func TestUpdateOperation(t *testing.T) {
 
 			// Validate initial values are indexed
 			countByPlanHelper(t, log, "oldplan", 1)
-			countByRepoHelper(t, log, "oldrepo", 1)
+			countByRepoGUIDHelper(t, log, "oldrepo", 1)
 			countBySnapshotIdHelper(t, log, snapshotId, 1)
 
 			// Update indexed values
@@ -499,12 +505,12 @@ func TestUpdateOperation(t *testing.T) {
 			}
 
 			countByPlanHelper(t, log, "myplan", 1)
-			countByRepoHelper(t, log, "myrepo", 1)
+			countByRepoGUIDHelper(t, log, "myrepo", 1)
 			countBySnapshotIdHelper(t, log, snapshotId2, 1)
 
 			// Validate prior values are gone
 			countByPlanHelper(t, log, "oldplan", 0)
-			countByRepoHelper(t, log, "oldrepo", 0)
+			countByRepoGUIDHelper(t, log, "oldrepo", 0)
 			countBySnapshotIdHelper(t, log, snapshotId, 0)
 		})
 	}
@@ -711,10 +717,10 @@ func collectMessages(ops []*v1.Operation) []string {
 	return messages
 }
 
-func countByRepoHelper(t *testing.T, log *oplog.OpLog, repo string, expected int) {
+func countByRepoGUIDHelper(t *testing.T, log *oplog.OpLog, repoGUID string, expected int) {
 	t.Helper()
 	count := 0
-	if err := log.Query(oplog.Query{}.SetRepoID(repo), func(op *v1.Operation) error {
+	if err := log.Query(oplog.Query{}.SetRepoGUID(repoGUID), func(op *v1.Operation) error {
 		count += 1
 		return nil
 	}); err != nil {

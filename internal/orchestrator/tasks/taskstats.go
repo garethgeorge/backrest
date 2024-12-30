@@ -44,8 +44,10 @@ func (t *StatsTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 
 	// check last stats time
 	var lastRan time.Time
-	repoID := t.RepoID()
-	if err := runner.OpLog().Query(oplog.Query{RepoID: &repoID, Reversed: true}, func(op *v1.Operation) error {
+	if err := runner.QueryOperations(oplog.Query{}.
+		SetInstanceID(runner.InstanceID()). // note: this means that stats tasks run by remote instances are ignored.
+		SetRepoGUID(t.Repo().GetGuid()).
+		SetReversed(true), func(op *v1.Operation) error {
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
 			return nil
 		}

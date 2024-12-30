@@ -131,7 +131,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 		if foundOp != nil {
 			op.Id = foundOp.Id
-			return h.mgr.oplog.Update(op)
+			return h.mgr.oplog.Set(op)
 		} else {
 			return h.mgr.oplog.Add(op)
 		}

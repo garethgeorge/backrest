@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
@@ -25,9 +26,8 @@ import (
 var ErrLocked = errors.New("sqlite db is locked")
 
 type SqliteStore struct {
-	dbpath    string
 	dbpool    *sqlitex.Pool
-	nextIDVal atomic.Int64
+	lastIDVal atomic.Int64
 	dblock    *flock.Flock
 
 	tidyGroupsOnce sync.Once
@@ -47,7 +47,6 @@ func NewSqliteStore(db string) (*SqliteStore, error) {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
 	}
 	store := &SqliteStore{
-		dbpath: db,
 		dbpool: dbpool,
 		dblock: flock.New(db + ".lock"),
 	}
@@ -62,9 +61,28 @@ func NewSqliteStore(db string) (*SqliteStore, error) {
 	return store, nil
 }
 
+func NewMemorySqliteStore() (*SqliteStore, error) {
+	dbpool, err := sqlitex.NewPool("file:"+cryptoutil.MustRandomID(64)+"?mode=memory&cache=shared", sqlitex.PoolOptions{
+		PoolSize: 16,
+		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenURI,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("open sqlite pool: %v", err)
+	}
+	store := &SqliteStore{
+		dbpool: dbpool,
+	}
+	if err := store.init(); err != nil {
+		return nil, err
+	}
+	return store, nil
+}
+
 func (m *SqliteStore) Close() error {
-	if err := m.dblock.Unlock(); err != nil {
-		return fmt.Errorf("unlock sqlite db: %v", err)
+	if m.dblock != nil {
+		if err := m.dblock.Unlock(); err != nil {
+			return fmt.Errorf("unlock sqlite db: %v", err)
+		}
 	}
 	return m.dbpool.Close()
 }
@@ -76,19 +94,18 @@ func (m *SqliteStore) init() error {
 	}
 	defer m.dbpool.Put(conn)
 
-	if err := applySqliteMigrations(m, conn, m.dbpath); err != nil {
+	if err := applySqliteMigrations(m, conn); err != nil {
 		return err
 	}
 
 	if err := sqlitex.ExecuteTransient(conn, "SELECT operations.id FROM operations ORDER BY operations.id DESC LIMIT 1", &sqlitex.ExecOptions{
 		ResultFunc: func(stmt *sqlite.Stmt) error {
-			m.nextIDVal.Store(stmt.GetInt64("id"))
+			m.lastIDVal.Store(stmt.GetInt64("id"))
 			return nil
 		},
 	}); err != nil {
 		return fmt.Errorf("init sqlite: %v", err)
 	}
-	m.nextIDVal.CompareAndSwap(0, 1)
 
 	return nil
 }
@@ -282,19 +299,6 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 	}
 
 	if !found {
-		// var maxOGID int64
-		// if err := sqlitex.ExecuteTransient(conn, "SELECT MAX(ogid) FROM operation_groups", &sqlitex.ExecOptions{
-		// 	ResultFunc: func(stmt *sqlite.Stmt) error {
-		// 		maxOGID = stmt.ColumnInt64(0)
-		// 		return nil
-		// 	},
-		// }); err != nil {
-		// 	return 0, fmt.Errorf("find max ogid: %v", err)
-		// }
-		// m.tidyGroupsOnce.Do(func() {
-		// 	go m.tidyGroups(maxOGID)
-		// })
-
 		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (instance_id, repo_id, plan_id, repo_guid) VALUES (?, ?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
 			Args: []any{op.InstanceId, op.RepoId, op.PlanId, op.RepoGuid},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
@@ -392,7 +396,7 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 
 	return withSqliteTransaction(conn, func() error {
 		for _, o := range op {
-			o.Id = m.nextIDVal.Add(1)
+			o.Id = m.lastIDVal.Add(1)
 			if o.FlowId == 0 {
 				o.FlowId = o.Id
 			}
@@ -549,7 +553,7 @@ func (m *SqliteStore) ResetForTest(t *testing.T) error {
 	if err := sqlitex.Execute(conn, "DELETE FROM operations", &sqlitex.ExecOptions{}); err != nil {
 		return fmt.Errorf("reset for test: %v", err)
 	}
-	m.nextIDVal.Store(1)
+	m.lastIDVal.Store(0)
 	return nil
 }
 

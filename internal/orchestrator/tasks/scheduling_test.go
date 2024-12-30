@@ -10,7 +10,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/memstore"
+	"github.com/garethgeorge/backrest/internal/oplog/sqlitestore"
 )
 
 func TestScheduling(t *testing.T) {
@@ -22,6 +22,7 @@ func TestScheduling(t *testing.T) {
 	defer os.Unsetenv("TZ")
 
 	cfg := &v1.Config{
+		Instance: "instance1",
 		Repos: []*v1.Repo{
 			{
 				Id:   "repo1",
@@ -410,7 +411,10 @@ func TestScheduling(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			opstore := memstore.NewMemStore()
+			opstore, err := sqlitestore.NewMemorySqliteStore()
+			if err != nil {
+				t.Fatalf("failed to create opstore: %v", err)
+			}
 			for _, op := range tc.ops {
 				if err := opstore.Add(op); err != nil {
 					t.Fatalf("failed to add operation to opstore: %v", err)

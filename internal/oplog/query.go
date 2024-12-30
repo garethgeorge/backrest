@@ -6,7 +6,7 @@ type Query struct {
 	// Filter by fields
 	OpIDs          []int64
 	PlanID         *string
-	RepoID         *string
+	RepoID         *string // Note: almost all queries should use RepoGUID as the key for storage purposes.
 	RepoGUID       *string
 	SnapshotID     *string
 	FlowID         *int64
@@ -29,11 +29,6 @@ func (q Query) SetOpIDs(opIDs []int64) Query {
 
 func (q Query) SetPlanID(planID string) Query {
 	q.PlanID = &planID
-	return q
-}
-
-func (q Query) SetRepoID(repoID string) Query {
-	q.RepoID = &repoID
 	return q
 }
 

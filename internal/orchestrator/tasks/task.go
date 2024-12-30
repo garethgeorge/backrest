@@ -35,14 +35,18 @@ const (
 type TaskRunner interface {
 	// InstanceID returns the instance ID executing this task.
 	InstanceID() string
+	// GetOperation returns the operation with the given ID.
+	GetOperation(id int64) (*v1.Operation, error)
 	// CreateOperation creates the operation in storage and sets the operation ID in the task.
-	CreateOperation(*v1.Operation) error
+	CreateOperation(...*v1.Operation) error
 	// UpdateOperation updates the operation in storage. It must be called after CreateOperation.
-	UpdateOperation(*v1.Operation) error
+	UpdateOperation(...*v1.Operation) error
+	// DeleteOperation deletes the operation from storage.
+	DeleteOperation(...int64) error
+	// QueryOperations queries the operation log.
+	QueryOperations(oplog.Query, func(*v1.Operation) error) error
 	// ExecuteHooks
 	ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars HookVars) error
-	// OpLog returns the oplog for the operations.
-	OpLog() *oplog.OpLog
 	// GetRepo returns the repo with the given ID.
 	GetRepo(repoID string) (*v1.Repo, error)
 	// GetPlan returns the plan with the given ID.
@@ -138,10 +142,13 @@ func (o *OneoffTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 
 	var op *v1.Operation
 	if o.ProtoOp != nil {
+		if o.TaskRepo == nil {
+			return NeverScheduledTask, errors.New("task.repo must be provided if task.protoOp is provided")
+		}
 		op = proto.Clone(o.ProtoOp).(*v1.Operation)
 		op.RepoId = o.TaskRepo.Id
-		op.PlanId = o.TaskPlanID
 		op.RepoGuid = o.TaskRepo.Guid
+		op.PlanId = o.TaskPlanID
 		op.FlowId = o.FlowID
 		op.UnixTimeStartMs = timeToUnixMillis(o.RunAt) // TODO: this should be updated before Run is called.
 		op.Status = v1.OperationStatus_STATUS_PENDING
@@ -188,20 +195,43 @@ func (t *testTaskRunner) InstanceID() string {
 	return t.config.Instance
 }
 
-func (t *testTaskRunner) CreateOperation(op *v1.Operation) error {
-	panic("not implemented")
+func (t *testTaskRunner) GetOperation(id int64) (*v1.Operation, error) {
+	return t.oplog.Get(id)
 }
 
-func (t *testTaskRunner) UpdateOperation(op *v1.Operation) error {
-	panic("not implemented")
+func (t *testTaskRunner) CreateOperation(op ...*v1.Operation) error {
+	for _, o := range op {
+		if o.InstanceId != "" {
+			continue
+		}
+		o.InstanceId = t.InstanceID()
+	}
+	return t.oplog.Add(op...)
+}
+
+func (t *testTaskRunner) UpdateOperation(op ...*v1.Operation) error {
+	for _, o := range op {
+		if o.InstanceId != "" {
+			continue
+		}
+		o.InstanceId = t.InstanceID()
+	}
+	return t.oplog.Update(op...)
+}
+
+func (t *testTaskRunner) DeleteOperation(id ...int64) error {
+	return t.oplog.Delete(id...)
 }
 
 func (t *testTaskRunner) ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars HookVars) error {
 	panic("not implemented")
 }
 
-func (t *testTaskRunner) OpLog() *oplog.OpLog {
-	return t.oplog
+func (t *testTaskRunner) QueryOperations(q oplog.Query, fn func(*v1.Operation) error) error {
+	if q.InstanceID == nil {
+		q.SetInstanceID(t.InstanceID())
+	}
+	return t.oplog.Query(q, fn)
 }
 
 func (t *testTaskRunner) GetRepo(repoID string) (*v1.Repo, error) {

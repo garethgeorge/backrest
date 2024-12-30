@@ -50,22 +50,40 @@ func (t *taskRunnerImpl) InstanceID() string {
 	return t.config.Instance
 }
 
-func (t *taskRunnerImpl) CreateOperation(op *v1.Operation) error {
-	op.InstanceId = t.InstanceID()
-	return t.orchestrator.OpLog.Add(op)
+func (t *taskRunnerImpl) GetOperation(id int64) (*v1.Operation, error) {
+	return t.orchestrator.OpLog.Get(id)
 }
 
-func (t *taskRunnerImpl) UpdateOperation(op *v1.Operation) error {
-	op.InstanceId = t.InstanceID()
-	return t.orchestrator.OpLog.Update(op)
+func (t *taskRunnerImpl) CreateOperation(op ...*v1.Operation) error {
+	for _, o := range op {
+		if o.InstanceId != "" {
+			continue
+		}
+		o.InstanceId = t.InstanceID()
+	}
+	return t.orchestrator.OpLog.Add(op...)
+}
+
+func (t *taskRunnerImpl) UpdateOperation(op ...*v1.Operation) error {
+	for _, o := range op {
+		if o.InstanceId != "" {
+			continue
+		}
+		o.InstanceId = t.InstanceID()
+	}
+	return t.orchestrator.OpLog.Update(op...)
+}
+
+func (t *taskRunnerImpl) DeleteOperation(id ...int64) error {
+	return t.orchestrator.OpLog.Delete(id...)
 }
 
 func (t *taskRunnerImpl) Orchestrator() *Orchestrator {
 	return t.orchestrator
 }
 
-func (t *taskRunnerImpl) OpLog() *oplog.OpLog {
-	return t.orchestrator.OpLog
+func (t *taskRunnerImpl) QueryOperations(q oplog.Query, fn func(*v1.Operation) error) error {
+	return t.orchestrator.OpLog.Query(q, fn)
 }
 
 func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars tasks.HookVars) error {

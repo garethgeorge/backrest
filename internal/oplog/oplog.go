@@ -1,15 +1,11 @@
 package oplog
 
 import (
-	"bufio"
-	"compress/gzip"
 	"errors"
-	"os"
 	"slices"
 	"sync"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type OperationEvent int
@@ -131,6 +127,9 @@ func (o *OpLog) Update(ops ...*v1.Operation) error {
 	return nil
 }
 
+// Set is an alias for Update that does not increment the modno, provided for use by the syncapi.
+func (o *OpLog) Set(op *v1.Operation) error { return o.Update(op) }
+
 func (o *OpLog) Delete(opID ...int64) error {
 	removedOps, err := o.store.Delete(opID...)
 	if err != nil {
@@ -143,71 +142,6 @@ func (o *OpLog) Delete(opID ...int64) error {
 
 func (o *OpLog) Transform(q Query, f func(*v1.Operation) (*v1.Operation, error)) error {
 	return o.store.Transform(q, f)
-}
-
-func (o *OpLog) BackupToFile(toFile string) error {
-	f, err := os.Create(toFile + ".tmp")
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	writer := gzip.NewWriter(f)
-	defer writer.Close()
-
-	o.store.Query(SelectAll, func(op *v1.Operation) error {
-		jsonLine, err := protojson.Marshal(op)
-		if err != nil {
-			return err
-		}
-		if _, err := writer.Write(append(jsonLine, '\n')); err != nil {
-			return err
-		}
-		return nil
-	})
-
-	if err := writer.Close(); err != nil {
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	if err := os.Rename(toFile+".tmp", toFile); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (o *OpLog) RestoreFromFile(fromFile string) error {
-	f, err := os.Open(fromFile)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	reader, err := gzip.NewReader(f)
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		var op v1.Operation
-		if err := protojson.Unmarshal(scanner.Bytes(), &op); err != nil {
-			return err
-		}
-		if err := o.Add(&op); err != nil {
-			return err
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 type OpStore interface {

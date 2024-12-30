@@ -51,7 +51,7 @@ CREATE INDEX group_repo_guid ON operation_groups (repo_guid);
 CREATE INDEX group_instance ON operation_groups (instance_id);
 `, sqlSchemaVersion)
 
-func applySqliteMigrations(store *SqliteStore, conn *sqlite.Conn, dbPath string) error {
+func applySqliteMigrations(store *SqliteStore, conn *sqlite.Conn) error {
 	var version int
 	if err := sqlitex.ExecuteTransient(conn, "PRAGMA user_version", &sqlitex.ExecOptions{
 		ResultFunc: func(stmt *sqlite.Stmt) error {

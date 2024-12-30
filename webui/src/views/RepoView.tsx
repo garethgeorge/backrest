@@ -146,7 +146,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
       label: "Stats",
       children: (
         <Suspense fallback={<div>Loading...</div>}>
-          <StatsPanel repoId={repo.id!} />
+          <StatsPanel repoId={repo.id!} instanceId={config?.instance!} />
         </Suspense>
       ),
       destroyInactiveTabPane: true,

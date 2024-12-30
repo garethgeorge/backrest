@@ -56,9 +56,9 @@ func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	var lastRan time.Time
 	var foundBackup bool
 
-	if err := runner.OpLog().Query(oplog.Query{}.
-		SetInstanceID(runner.Config().Instance).
-		SetRepoID(t.RepoID()).
+	if err := runner.QueryOperations(oplog.Query{}.
+		SetInstanceID(runner.InstanceID()). // note: this means that check tasks run by remote instances are ignored.
+		SetRepoGUID(t.Repo().GetGuid()).
 		SetReversed(true), func(op *v1.Operation) error {
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
 			return nil

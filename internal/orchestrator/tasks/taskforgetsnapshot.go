@@ -61,7 +61,7 @@ func forgetSnapshotHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 	}
 
 	taskRunner.ScheduleTask(NewOneoffIndexSnapshotsTask(t.Repo(), time.Now()), TaskPriorityIndexSnapshots)
-	taskRunner.OpLog().Delete(st.Op.Id)
+	taskRunner.DeleteOperation(st.Op.Id)
 	st.Op = nil
 	return err
 }

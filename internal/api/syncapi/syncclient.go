@@ -283,7 +283,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				}
 				instanceID, err := InstanceForBackrestURI(localRepoConfig.Uri)
 				if err != nil || instanceID != c.peer.InstanceId {
-					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo (%q) with the same GUID specifies URI %q (instance ID %q) which does not reference the peer providing this config", c.peer.InstanceId, repo.GetId(), localRepoConfig.Guid, instanceID)
+					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo (%q) with the same GUID specifies URI %q (instance ID %q) which does not reference the peer providing this config", c.peer.InstanceId, repo.GetId(), localRepoConfig.Id, localRepoConfig.Guid, instanceID)
 					continue
 				}
 

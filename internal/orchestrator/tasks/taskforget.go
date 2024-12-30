@@ -50,7 +50,6 @@ func NewOneoffForgetTask(repo *v1.Repo, planID string, flowID int64, at time.Tim
 
 func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 	t := st.Task
-	log := taskRunner.OpLog()
 	l := taskRunner.Logger(ctx)
 
 	r, err := taskRunner.GetRepoOrchestrator(t.RepoID())
@@ -69,7 +68,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 	}
 
 	tags := []string{repo.TagForPlan(t.PlanID())}
-	if compat, err := useLegacyCompatMode(l, log, t.RepoID(), t.PlanID()); err != nil {
+	if compat, err := useLegacyCompatMode(l, taskRunner, t.Repo().GetGuid(), t.PlanID()); err != nil {
 		return fmt.Errorf("check legacy compat mode: %w", err)
 	} else if !compat {
 		tags = append(tags, repo.TagForInstance(taskRunner.Config().Instance))
@@ -95,8 +94,8 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 
 	var ops []*v1.Operation
 	for _, forgot := range forgot {
-		if e := taskRunner.OpLog().Query(oplog.Query{}.
-			SetInstanceID(taskRunner.Config().Instance).
+		if e := taskRunner.QueryOperations(oplog.Query{}.
+			SetRepoGUID(t.Repo().GetGuid()).
 			SetSnapshotID(forgot.Id), func(op *v1.Operation) error {
 			ops = append(ops, op)
 			return nil
@@ -122,9 +121,9 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 
 // useLegacyCompatMode checks if there are any snapshots that were created without a `created-by` tag still exist in the repo.
 // The property is overridden if mixed `created-by` tag values are found.
-func useLegacyCompatMode(l *zap.Logger, log *oplog.OpLog, repoID, planID string) (bool, error) {
+func useLegacyCompatMode(l *zap.Logger, taskRunner TaskRunner, repoGUID, planID string) (bool, error) {
 	instanceIDs := make(map[string]struct{})
-	if err := log.Query(oplog.Query{}.SetRepoID(repoID).SetPlanID(planID).SetReversed(true), func(op *v1.Operation) error {
+	if err := taskRunner.QueryOperations(oplog.Query{}.SetRepoGUID(repoGUID).SetPlanID(planID).SetReversed(true), func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok && !snapshotOp.OperationIndexSnapshot.GetForgot() {
 			tags := snapshotOp.OperationIndexSnapshot.GetSnapshot().GetTags()
 			instanceIDs[repo.InstanceIDFromTags(tags)] = struct{}{}

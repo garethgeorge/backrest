@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/memstore"
+	"github.com/garethgeorge/backrest/internal/oplog/sqlitestore"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"github.com/garethgeorge/backrest/internal/testutil"
@@ -141,7 +142,7 @@ func TestSyncConfigChange(t *testing.T) {
 			{
 				Id:   defaultRepoID,
 				Guid: defaultRepoGUID,
-				Uri:  "backrest:" + defaultHostID,
+				Uri:  "backrest://" + defaultHostID, // TODO: get rid of the :// requirement
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -166,7 +167,8 @@ func TestSyncConfigChange(t *testing.T) {
 	tryExpectConfig(t, ctx, peerClient, defaultHostID, &v1.RemoteConfig{
 		Repos: []*v1.RemoteRepo{
 			{
-				Id: defaultRepoID,
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
 			},
 		},
 	})
@@ -266,7 +268,7 @@ func TestSimpleOperationSync(t *testing.T) {
 
 	tryConnect(t, ctx, peerClient, defaultHostID)
 
-	tryExpectOperationsSynced(t, ctx, peerHost, peerClient, oplog.Query{}.SetInstanceID(defaultClientID).SetRepoGUID(defaultRepoGUID))
+	tryExpectOperationsSynced(t, ctx, peerHost, peerClient, oplog.Query{}.SetInstanceID(defaultClientID).SetRepoGUID(defaultRepoGUID), "host and client should be synced")
 	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetInstanceID(defaultClientID).SetRepoGUID(defaultRepoGUID),
 		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 			{
@@ -290,7 +292,140 @@ func TestSimpleOperationSync(t *testing.T) {
 				OriginalFlowId: 2,
 				DisplayMessage: "clientop3",
 			},
-		}))
+		}), "host and client should be synced")
+}
+
+func TestSyncMutations(t *testing.T) {
+	testutil.InstallZapLogger(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	peerHostAddr := allocBindAddrForTest(t)
+	peerClientAddr := allocBindAddrForTest(t)
+
+	peerHostConfig := &v1.Config{
+		Instance: defaultHostID,
+		Repos: []*v1.Repo{
+			{
+				Id:                     defaultRepoID,
+				Guid:                   defaultRepoGUID,
+				AllowedPeerInstanceIds: []string{defaultClientID},
+			},
+		},
+		Multihost: &v1.Multihost{
+			AuthorizedClients: []*v1.Multihost_Peer{
+				{
+					InstanceId: defaultClientID,
+				},
+			},
+		},
+	}
+
+	peerClientConfig := &v1.Config{
+		Instance: defaultClientID,
+		Repos: []*v1.Repo{
+			{
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
+				Uri:  "backrest://" + defaultHostID, // TODO: get rid of the :// requirement
+			},
+		},
+		Multihost: &v1.Multihost{
+			KnownHosts: []*v1.Multihost_Peer{
+				{
+					InstanceId:  defaultHostID,
+					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
+				},
+			},
+		},
+	}
+
+	peerHost := newPeerUnderTest(t, peerHostConfig)
+	peerClient := newPeerUnderTest(t, peerClientConfig)
+
+	op := testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
+		{
+			DisplayMessage: "clientop1",
+		},
+	})[0]
+
+	if err := peerClient.oplog.Add(op); err != nil {
+		t.Fatalf("failed to add operations: %v", err)
+	}
+
+	syncCtx, cancelSyncCtx := context.WithCancel(ctx)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		runSyncAPIWithCtx(syncCtx, peerHost, peerHostAddr)
+	}()
+	go func() {
+		defer wg.Done()
+		runSyncAPIWithCtx(syncCtx, peerClient, peerClientAddr)
+	}()
+	tryConnect(t, ctx, peerClient, defaultHostID)
+
+	tryExpectOperationsSynced(t, ctx, peerClient, peerHost, oplog.Query{}.SetRepoGUID(defaultRepoGUID), "host and client should sync initially")
+
+	op.DisplayMessage = "clientop1-mod-while-online"
+	if err := peerClient.oplog.Update(op); err != nil {
+		t.Fatalf("failed to update operation: %v", err)
+	}
+
+	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetRepoGUID(defaultRepoGUID),
+		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
+			{
+				Id:             1,
+				DisplayMessage: "clientop1-mod-while-online",
+				Modno:          1,
+				OriginalFlowId: 1,
+				OriginalId:     1,
+				FlowId:         1,
+			},
+		}), "host and client should sync online edits")
+
+	// Wait for shutdown
+	cancelSyncCtx()
+	wg.Wait()
+
+	// Now make an offline edit
+	op.DisplayMessage = "clientop1-mod-while-offline"
+	if err := peerClient.oplog.Update(op); err != nil {
+		t.Fatalf("failed to add operations: %v", err)
+	}
+
+	// Now restart sync and check that the offline edit is applied
+	syncCtx, cancelSyncCtx = context.WithCancel(ctx)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		runSyncAPIWithCtx(syncCtx, peerHost, peerHostAddr)
+	}()
+	go func() {
+		defer wg.Done()
+		runSyncAPIWithCtx(syncCtx, peerClient, peerClientAddr)
+	}()
+
+	tryConnect(t, ctx, peerClient, defaultHostID)
+
+	// Verify all operations are synced after reconnection
+	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetRepoGUID(defaultRepoGUID),
+		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
+			{
+				Id:             1,
+				DisplayMessage: "clientop1-mod-while-offline",
+				Modno:          2,
+				OriginalFlowId: 1,
+				OriginalId:     1,
+				FlowId:         1,
+			},
+		}), "host and client should sync offline edits")
+
+	// Clean up
+	cancelSyncCtx()
+	wg.Wait()
 }
 
 func getOperations(t *testing.T, oplog *oplog.OpLog, query oplog.Query) []*v1.Operation {
@@ -304,7 +439,7 @@ func getOperations(t *testing.T, oplog *oplog.OpLog, query oplog.Query) []*v1.Op
 	return ops
 }
 
-func tryExpectExactOperations(t *testing.T, ctx context.Context, peer *peerUnderTest, query oplog.Query, wantOps []*v1.Operation) {
+func tryExpectExactOperations(t *testing.T, ctx context.Context, peer *peerUnderTest, query oplog.Query, wantOps []*v1.Operation, message string) {
 	err := testutil.Retry(t, ctx, func() error {
 		ops := getOperations(t, peer.oplog, query)
 		if diff := cmp.Diff(ops, wantOps, protocmp.Transform()); diff != "" {
@@ -315,11 +450,11 @@ func tryExpectExactOperations(t *testing.T, ctx context.Context, peer *peerUnder
 	if err != nil {
 		opsJson, _ := protojson.MarshalOptions{Indent: "  "}.Marshal(&v1.OperationList{Operations: getOperations(t, peer.oplog, query)})
 		t.Logf("found operations: %v", string(opsJson))
-		t.Fatalf("timeout without finding wanted operations: %v", err)
+		t.Fatalf("%v: timeout without finding wanted operations: %v", message, err)
 	}
 }
 
-func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnderTest, peer2 *peerUnderTest, query oplog.Query) {
+func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnderTest, peer2 *peerUnderTest, query oplog.Query, message string) {
 	err := testutil.Retry(t, ctx, func() error {
 		peer1Ops := getOperations(t, peer1.oplog, query)
 		peer2Ops := getOperations(t, peer2.oplog, query)
@@ -414,9 +549,7 @@ func allocBindAddrForTest(t *testing.T) string {
 	return "localhost:" + port
 }
 
-func startRunningSyncAPI(t *testing.T, peer *peerUnderTest, bindAddr string) {
-	t.Helper()
-
+func runSyncAPIWithCtx(ctx context.Context, peer *peerUnderTest, bindAddr string) {
 	mux := http.NewServeMux()
 	syncHandler := NewBackrestSyncHandler(peer.manager)
 	mux.Handle(v1connect.NewBackrestSyncServiceHandler(syncHandler))
@@ -426,25 +559,41 @@ func startRunningSyncAPI(t *testing.T, peer *peerUnderTest, bindAddr string) {
 		Handler: h2c.NewHandler(mux, &http2.Server{}), // h2c is HTTP/2 without TLS for grpc-connect support.
 	}
 
-	t.Cleanup(func() { server.Shutdown(context.Background()) })
+	var wg sync.WaitGroup
 
+	go func() {
+		<-ctx.Done()
+		server.Shutdown(context.Background())
+	}()
+
+	wg.Add(1)
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			panic(err)
 		}
+		wg.Done()
 	}()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	wg.Add(1)
 	go func() {
 		peer.manager.RunSync(ctx)
+		wg.Done()
 	}()
+
+	wg.Wait()
+}
+
+func startRunningSyncAPI(t *testing.T, peer *peerUnderTest, bindAddr string) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
+	go runSyncAPIWithCtx(ctx, peer, bindAddr)
 }
 
 type peerUnderTest struct {
 	manager   *SyncManager
 	oplog     *oplog.OpLog
-	opstore   *memstore.MemStore
+	opstore   oplog.OpStore
 	configMgr *config.ConfigManager
 }
 
@@ -452,7 +601,10 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 	t.Helper()
 
 	configMgr := &config.ConfigManager{Store: &config.MemoryStore{Config: initialConfig}}
-	opstore := memstore.NewMemStore()
+	opstore, err := sqlitestore.NewMemorySqliteStore()
+	if err != nil {
+		t.Fatalf("failed to create opstore: %v", err)
+	}
 	oplog, err := oplog.NewOpLog(opstore)
 	if err != nil {
 		t.Fatalf("failed to create oplog: %v", err)

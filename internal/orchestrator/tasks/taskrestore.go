@@ -49,7 +49,6 @@ func NewOneoffRestoreTask(repo *v1.Repo, planID string, flowID int64, at time.Ti
 
 func restoreHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner, snapshotID, path, target string) error {
 	t := st.Task
-	oplog := taskRunner.OpLog()
 	op := st.Op
 
 	if snapshotID == "" || path == "" || target == "" {
@@ -79,7 +78,7 @@ func restoreHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner,
 
 		sendWg.Add(1)
 		go func() {
-			if err := oplog.Update(op); err != nil {
+			if err := taskRunner.UpdateOperation(op); err != nil {
 				zap.S().Errorf("failed to update oplog with progress for restore: %v", err)
 			}
 			sendWg.Done()
