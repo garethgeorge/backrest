@@ -379,7 +379,6 @@ func TestSyncMutations(t *testing.T) {
 			{
 				Id:             1,
 				DisplayMessage: "clientop1-mod-while-online",
-				Modno:          1,
 				OriginalFlowId: 1,
 				OriginalId:     1,
 				FlowId:         1,
@@ -416,7 +415,6 @@ func TestSyncMutations(t *testing.T) {
 			{
 				Id:             1,
 				DisplayMessage: "clientop1-mod-while-offline",
-				Modno:          2,
 				OriginalFlowId: 1,
 				OriginalId:     1,
 				FlowId:         1,
@@ -442,6 +440,9 @@ func getOperations(t *testing.T, oplog *oplog.OpLog, query oplog.Query) []*v1.Op
 func tryExpectExactOperations(t *testing.T, ctx context.Context, peer *peerUnderTest, query oplog.Query, wantOps []*v1.Operation, message string) {
 	err := testutil.Retry(t, ctx, func() error {
 		ops := getOperations(t, peer.oplog, query)
+		for _, op := range ops {
+			op.Modno = 0
+		}
 		if diff := cmp.Diff(ops, wantOps, protocmp.Transform()); diff != "" {
 			return fmt.Errorf("unexpected diff: %v", diff)
 		}

@@ -536,15 +536,6 @@ func TestTransform(t *testing.T) {
 		},
 	}
 
-	withModnoIncr := func(ops []*v1.Operation) []*v1.Operation {
-		copy := make([]*v1.Operation, len(ops))
-		for i, op := range ops {
-			copy[i] = proto.Clone(op).(*v1.Operation)
-			copy[i].Modno++
-		}
-		return copy
-	}
-
 	tcs := []struct {
 		name  string
 		f     func(*v1.Operation) (*v1.Operation, error)
@@ -566,7 +557,7 @@ func TestTransform(t *testing.T) {
 				return proto.Clone(op).(*v1.Operation), nil
 			},
 			ops:  ops,
-			want: withModnoIncr(ops),
+			want: ops,
 		},
 		{
 			name: "change plan",
@@ -592,7 +583,6 @@ func TestTransform(t *testing.T) {
 					RepoGuid:        "repo1",
 					UnixTimeStartMs: 1234,
 					UnixTimeEndMs:   5678,
-					Modno:           1,
 				},
 			},
 		},
@@ -611,7 +601,6 @@ func TestTransform(t *testing.T) {
 					RepoGuid:        "repo1",
 					UnixTimeStartMs: 1234,
 					UnixTimeEndMs:   5678,
-					Modno:           1,
 				},
 				ops[1],
 			},
@@ -649,6 +638,10 @@ func TestTransform(t *testing.T) {
 						t.Fatalf("error listing operations: %s", err)
 					}
 
+					for _, op := range got {
+						op.Modno = 0
+					}
+
 					if diff := cmp.Diff(got, tc.want, protocmp.Transform()); diff != "" {
 						t.Errorf("unexpected diff: %v", diff)
 					}
@@ -677,7 +670,6 @@ func TestQueryMetadata(t *testing.T) {
 				RepoGuid:        "repo1-guid",
 				InstanceId:      "instance1",
 				Op:              &v1.Operation_OperationBackup{},
-				Modno:           2,
 				FlowId:          5,
 				OriginalId:      3,
 				OriginalFlowId:  4,
@@ -696,10 +688,14 @@ func TestQueryMetadata(t *testing.T) {
 				t.Fatalf("want 1 metadata, got %d", len(metadata))
 			}
 
+			if metadata[0].Modno == 0 {
+				t.Errorf("modno should not be 0")
+			}
+			metadata[0].Modno = 0 // ignore for diff since it's random
+
 			if diff := cmp.Diff(metadata[0], oplog.OpMetadata{
 				ID:             metadata[0].ID,
 				FlowID:         5,
-				Modno:          2,
 				OriginalID:     3,
 				OriginalFlowID: 4,
 			}); diff != "" {

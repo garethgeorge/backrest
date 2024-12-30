@@ -199,12 +199,12 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			// The diff selector _must_ specify a repo the client has access to
 			repo := config.FindRepoByGUID(initialConfig, diffSel.GetRepoGuid())
 			if repo == nil {
-				zap.S().Warnf("syncserver action DiffOperations: client %q tried to diff with repo %q that does not exist", clientInstanceID, diffSel.GetRepoId())
-				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: repo %q not found", diffSel.GetRepoId()))
+				zap.S().Warnf("syncserver action DiffOperations: client %q tried to diff with repo %q that does not exist", clientInstanceID, diffSel.GetRepoGuid())
+				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: repo %q not found", diffSel.GetRepoGuid()))
 			}
 			if !slices.Contains(repo.GetAllowedPeerInstanceIds(), clientInstanceID) {
-				zap.S().Warnf("syncserver action DiffOperations: client %q tried to diff with repo %q that they are not allowed to access", clientInstanceID, diffSel.GetRepoId())
-				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: client is not allowed to access repo %q", diffSel.GetRepoId()))
+				zap.S().Warnf("syncserver action DiffOperations: client %q tried to diff with repo %q that they are not allowed to access", clientInstanceID, repo.Id)
+				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: client is not allowed to access repo %q", repo.Id))
 			}
 
 			// These are required to be the same length for a pairwise zip.
@@ -256,11 +256,11 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 				if local.OriginalID == remote.ID {
 					if local.Modno != remote.Modno {
-						requestIDs = append(requestIDs, local.ID)
+						requestIDs = append(requestIDs, local.OriginalID)
+						requestDueToModno++
 					}
 					localIndex++
 					remoteIndex++
-					requestDueToModno++
 				} else if local.OriginalID < remote.ID {
 					// the ID is found locally not remotely, request it and see if we get a delete event back
 					// from the client indicating that the operation was deleted.
@@ -294,6 +294,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 				zap.Int("request_ids_total", len(requestIDs)),
 			)
 			if len(requestIDs) > 0 {
+				zap.L().Debug("syncserver sending request operations to client", zap.String("client_instance_id", clientInstanceID), zap.Any("request_ids", requestIDs))
 				if err := stream.Send(&v1.SyncStreamItem{
 					Action: &v1.SyncStreamItem_DiffOperations{
 						DiffOperations: &v1.SyncStreamItem_SyncActionDiffOperations{

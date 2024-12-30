@@ -101,6 +101,9 @@ func (o *OpLog) Add(ops ...*v1.Operation) error {
 		if o.Id != 0 {
 			return errors.New("operation already has an ID, OpLog.Add is expected to set the ID")
 		}
+		if o.Modno == 0 {
+			o.Modno = NewRandomModno(0)
+		}
 	}
 
 	if err := o.store.Add(ops...); err != nil {
@@ -116,7 +119,7 @@ func (o *OpLog) Update(ops ...*v1.Operation) error {
 		if o.Id == 0 {
 			return errors.New("operation does not have an ID, OpLog.Update is expected to have an ID")
 		}
-		o.Modno++
+		o.Modno = NewRandomModno(o.Modno)
 	}
 
 	if err := o.store.Update(ops...); err != nil {

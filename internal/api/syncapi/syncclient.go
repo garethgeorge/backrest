@@ -69,7 +69,7 @@ func NewSyncClient(mgr *SyncManager, localInstanceID string, peer *v1.Multihost_
 		reconnectDelay:  60 * time.Second,
 		client:          client,
 		oplog:           oplog,
-		l:               zap.L().Named(fmt.Sprintf("syncclient %q", peer.GetInstanceId())),
+		l:               zap.L().Named(fmt.Sprintf("syncclient for %q", peer.GetInstanceId())),
 	}, nil
 }
 
@@ -289,7 +289,6 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 
 				diffSel := &v1.OpSelector{
 					InstanceId: proto.String(c.localInstanceID),
-					RepoId:     proto.String(repo.GetId()),
 					RepoGuid:   proto.String(repo.GetGuid()),
 				}
 
