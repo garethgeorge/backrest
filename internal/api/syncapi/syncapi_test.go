@@ -601,6 +601,9 @@ type peerUnderTest struct {
 func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 	t.Helper()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
 	configMgr := &config.ConfigManager{Store: &config.MemoryStore{Config: initialConfig}}
 	opstore, err := sqlitestore.NewMemorySqliteStore()
 	t.Cleanup(func() { opstore.Close() })
@@ -628,6 +631,7 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 	if err != nil {
 		t.Fatalf("failed to create orchestrator: %v", err)
 	}
+	go orchestrator.Run(ctx)
 
 	ch := configMgr.Watch()
 

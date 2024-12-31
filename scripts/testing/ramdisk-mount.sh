@@ -21,14 +21,14 @@ if [ "$(uname)" = "Darwin" ]; then
     sudo diskutil erasevolume HFS+ RAM_Disk_512MB $(hdiutil attach -nomount ram://1048576)
   fi
   export TMPDIR="/Volumes/RAM_Disk_512MB"
-  export XDG_CACHE_HOME="$TMPDIR/.cache"
+  export RESTIC_CACHE_DIR="$TMPDIR/.cache"
   echo "Created 512MB RAM disk at /Volumes/RAM_Disk_512MB"
   echo "TMPDIR=$TMPDIR"
-  echo "XDG_CACHE_HOME=$XDG_CACHE_HOME"
+  echo "RESTIC_CACHE_DIR=$RESTIC_CACHE_DIR"
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
   # Create ramdisk 
   sudo mkdir -p /mnt/ramdisk
   sudo mount -t tmpfs -o size=512M tmpfs /mnt/ramdisk
   export TMPDIR="/mnt/ramdisk"
-  export XDG_CACHE_HOME="$TMPDIR/.cache"
+  export RESTIC_CACHE_DIR="$TMPDIR/.cache"
 fi
