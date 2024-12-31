@@ -27,6 +27,9 @@ jobs:
         with:
           go-version: "1.23"
 
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
       - name: Create Fake WebUI Sources
         run: |
           mkdir -p webui/dist
@@ -36,7 +39,7 @@ jobs:
         run: go build ./...
 
       - name: Test
-        run: PATH=$(pwd):$PATH go test ./... --race
+        run: PATH=$(pwd):$PATH gotestsum ./... -- --race
 
   test-win:
     runs-on: windows-latest
