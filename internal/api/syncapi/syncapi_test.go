@@ -603,6 +603,7 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 
 	configMgr := &config.ConfigManager{Store: &config.MemoryStore{Config: initialConfig}}
 	opstore, err := sqlitestore.NewMemorySqliteStore()
+	t.Cleanup(func() { opstore.Close() })
 	if err != nil {
 		t.Fatalf("failed to create opstore: %v", err)
 	}
@@ -618,6 +619,7 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 
 	tempDir := t.TempDir()
 	logStore, err := logstore.NewLogStore(filepath.Join(tempDir, "tasklogs"))
+	t.Cleanup(func() { logStore.Close() })
 	if err != nil {
 		t.Fatalf("failed to create log store: %v", err)
 	}
