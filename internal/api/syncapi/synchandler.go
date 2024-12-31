@@ -13,6 +13,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"go.uber.org/zap"
 )
 
@@ -99,42 +100,45 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	}
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
 
+	opIDLru, _ := lru.New[int64, int64](128)   // original ID -> local ID
+	flowIDLru, _ := lru.New[int64, int64](128) // original flow ID -> local flow ID
+
 	insertOrUpdate := func(op *v1.Operation) error {
 		op.OriginalId = op.Id
 		op.OriginalFlowId = op.FlowId
-		op.Id = 0
-		op.FlowId = 0
-
-		var foundOp *v1.Operation
-		if err := h.mgr.oplog.Query(oplog.Query{}.
-			SetOriginalID(op.OriginalId).
-			SetInstanceID(op.InstanceId), func(o *v1.Operation) error {
-			foundOp = o
-			return nil
-		}); err != nil {
-			return fmt.Errorf("mapping remote ID to local ID: %w", err)
+		var ok bool
+		if op.Id, ok = opIDLru.Get(op.OriginalId); !ok {
+			var foundOp *v1.Operation
+			if err := h.mgr.oplog.Query(oplog.Query{}.
+				SetOriginalID(op.OriginalId).
+				SetInstanceID(op.InstanceId), func(o *v1.Operation) error {
+				foundOp = o
+				return nil
+			}); err != nil {
+				return fmt.Errorf("mapping remote ID to local ID: %w", err)
+			}
+			if foundOp != nil {
+				op.Id = foundOp.Id
+				opIDLru.Add(foundOp.Id, foundOp.Id)
+			}
+		}
+		if op.FlowId, ok = flowIDLru.Get(op.OriginalFlowId); !ok {
+			var flowOp *v1.Operation
+			if err := h.mgr.oplog.Query(oplog.Query{}.
+				SetOriginalFlowID(op.OriginalFlowId).
+				SetInstanceID(op.InstanceId), func(o *v1.Operation) error {
+				flowOp = o
+				return nil
+			}); err != nil {
+				return fmt.Errorf("mapping remote flow ID to local ID: %w", err)
+			}
+			if flowOp != nil {
+				op.FlowId = flowOp.FlowId
+				flowIDLru.Add(op.OriginalFlowId, flowOp.FlowId)
+			}
 		}
 
-		var flowOp *v1.Operation
-		if err := h.mgr.oplog.Query(oplog.Query{}.
-			SetOriginalFlowID(op.OriginalFlowId).
-			SetInstanceID(op.InstanceId), func(o *v1.Operation) error {
-			flowOp = o
-			return nil
-		}); err != nil {
-			return fmt.Errorf("mapping remote flow ID to local ID: %w", err)
-		}
-
-		if flowOp != nil {
-			op.FlowId = flowOp.FlowId
-		}
-
-		if foundOp != nil {
-			op.Id = foundOp.Id
-			return h.mgr.oplog.Set(op)
-		} else {
-			return h.mgr.oplog.Add(op)
-		}
+		return h.mgr.oplog.Set(op)
 	}
 
 	deleteByOriginalID := func(originalID int64) error {

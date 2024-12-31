@@ -131,7 +131,22 @@ func (o *OpLog) Update(ops ...*v1.Operation) error {
 }
 
 // Set is an alias for Update that does not increment the modno, provided for use by the syncapi.
-func (o *OpLog) Set(op *v1.Operation) error { return o.Update(op) }
+func (o *OpLog) Set(op *v1.Operation) error {
+	var err error
+	if op.Id == 0 {
+		err = o.store.Add(op)
+	} else {
+		err = o.store.Update(op)
+		if errors.Is(err, ErrNotExist) {
+			err = o.store.Add(op)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	o.notify([]*v1.Operation{op}, OPERATION_UPDATED)
+	return nil
+}
 
 func (o *OpLog) Delete(opID ...int64) error {
 	removedOps, err := o.store.Delete(opID...)

@@ -252,11 +252,11 @@ func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) erro
 		Args: args,
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			return f(oplog.OpMetadata{
-				ID:             stmt.GetInt64("id"),
-				Modno:          stmt.GetInt64("modno"),
-				OriginalID:     stmt.GetInt64("original_id"),
-				FlowID:         stmt.GetInt64("flow_id"),
-				OriginalFlowID: stmt.GetInt64("original_flow_id"),
+				ID:             stmt.ColumnInt64(0),
+				Modno:          stmt.ColumnInt64(1),
+				OriginalID:     stmt.ColumnInt64(2),
+				FlowID:         stmt.ColumnInt64(3),
+				OriginalFlowID: stmt.ColumnInt64(4),
 			})
 		},
 	}); err != nil && !errors.Is(err, oplog.ErrStopIteration) {
