@@ -15,6 +15,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 
@@ -29,6 +30,9 @@ type SqliteStore struct {
 	dbpool    *sqlitex.Pool
 	lastIDVal atomic.Int64
 	dblock    *flock.Flock
+	querymu   sync.RWMutex
+
+	ogidCache *lru.TwoQueueCache[opGroupInfo, int64]
 
 	tidyGroupsOnce sync.Once
 }
@@ -46,9 +50,11 @@ func NewSqliteStore(db string) (*SqliteStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
 	}
+	ogidCache, _ := lru.New2Q[opGroupInfo, int64](128)
 	store := &SqliteStore{
-		dbpool: dbpool,
-		dblock: flock.New(db + ".lock"),
+		dbpool:    dbpool,
+		dblock:    flock.New(db + ".lock"),
+		ogidCache: ogidCache,
 	}
 	if locked, err := store.dblock.TryLock(); err != nil {
 		return nil, fmt.Errorf("lock sqlite db: %v", err)
@@ -69,8 +75,10 @@ func NewMemorySqliteStore() (*SqliteStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
 	}
+	ogidCache, _ := lru.New2Q[opGroupInfo, int64](128)
 	store := &SqliteStore{
-		dbpool: dbpool,
+		dbpool:    dbpool,
+		ogidCache: ogidCache,
 	}
 	if err := store.init(); err != nil {
 		return nil, err
@@ -214,6 +222,8 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 }
 
 func (m *SqliteStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
+	m.querymu.RLock()
+	defer m.querymu.RUnlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("query: %v", err)
@@ -241,6 +251,8 @@ func (m *SqliteStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 }
 
 func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) error) error {
+	m.querymu.RLock()
+	defer m.querymu.RUnlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("query metadata: %v", err)
@@ -267,13 +279,8 @@ func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) erro
 
 // tidyGroups deletes operation groups that are no longer referenced, it takes an int64 specifying the maximum group ID to consider.
 // this allows ignoring newly created groups that may not yet be referenced.
-func (m *SqliteStore) tidyGroups(eligibleIDsBelow int64) {
-	conn, err := m.dbpool.Take(context.Background())
-	if err != nil {
-		zap.S().Warnf("tidy groups: %v", err)
-	}
-	defer m.dbpool.Put(conn)
-	err = sqlitex.ExecuteTransient(conn, "DELETE FROM operation_groups WHERE ogid NOT IN (SELECT DISTINCT ogid FROM operations WHERE ogid < ?)", &sqlitex.ExecOptions{
+func (m *SqliteStore) tidyGroups(conn *sqlite.Conn, eligibleIDsBelow int64) {
+	err := sqlitex.ExecuteTransient(conn, "DELETE FROM operation_groups WHERE ogid NOT IN (SELECT DISTINCT ogid FROM operations WHERE ogid < ?)", &sqlitex.ExecOptions{
 		Args: []any{eligibleIDsBelow},
 	})
 	if err != nil {
@@ -282,6 +289,11 @@ func (m *SqliteStore) tidyGroups(eligibleIDsBelow int64) {
 }
 
 func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (ogid int64, err error) {
+	ogidKey := groupInfoForOp(op)
+	if cachedOGID, ok := m.ogidCache.Get(ogidKey); ok {
+		return cachedOGID, nil
+	}
+
 	var found bool
 	if err := sqlitex.Execute(conn, "SELECT ogid FROM operation_groups WHERE instance_id = ? AND repo_id = ? AND plan_id = ? AND repo_guid = ? LIMIT 1", &sqlitex.ExecOptions{
 		Args: []any{op.InstanceId, op.RepoId, op.PlanId, op.RepoGuid},
@@ -295,6 +307,20 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 	}
 
 	if !found {
+		m.tidyGroupsOnce.Do(func() {
+			var maxOGID int64
+			if err := sqlitex.ExecuteTransient(conn, "SELECT MAX(ogid) FROM operation_groups", &sqlitex.ExecOptions{
+				ResultFunc: func(stmt *sqlite.Stmt) error {
+					maxOGID = stmt.ColumnInt64(0)
+					return nil
+				},
+			}); err != nil {
+				zap.S().Warnf("tidy groups couldn't find max ogid: %v", err)
+				return
+			}
+			m.tidyGroups(conn, maxOGID)
+		})
+
 		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (instance_id, repo_id, plan_id, repo_guid) VALUES (?, ?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
 			Args: []any{op.InstanceId, op.RepoId, op.PlanId, op.RepoGuid},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
@@ -306,10 +332,13 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 		}
 	}
 
+	m.ogidCache.Add(ogidKey, ogid)
 	return ogid, nil
 }
 
 func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation, error)) error {
+	m.querymu.Lock()
+	defer m.querymu.Unlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("transform: %v", err)
@@ -346,19 +375,10 @@ func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operat
 }
 
 func (m *SqliteStore) addInternal(conn *sqlite.Conn, op ...*v1.Operation) error {
-	var err error
-	groupCache := make(map[opGroupInfo]int64)
-
 	for _, o := range op {
-		// First try to find an existing operation group
-		key := groupInfoForOp(o)
-		ogid, ok := groupCache[key]
-		if !ok {
-			ogid, err = m.findOrCreateGroup(conn, o)
-			if err != nil {
-				return fmt.Errorf("find ogid: %v", err)
-			}
-			groupCache[key] = ogid
+		ogid, err := m.findOrCreateGroup(conn, o)
+		if err != nil {
+			return fmt.Errorf("find ogid: %v", err)
 		}
 
 		query := `INSERT INTO operations 
@@ -385,6 +405,8 @@ func (m *SqliteStore) addInternal(conn *sqlite.Conn, op ...*v1.Operation) error 
 }
 
 func (m *SqliteStore) Add(op ...*v1.Operation) error {
+	m.querymu.Lock()
+	defer m.querymu.Unlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("add operation: %v", err)
@@ -407,6 +429,8 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 }
 
 func (m *SqliteStore) Update(op ...*v1.Operation) error {
+	m.querymu.Lock()
+	defer m.querymu.Unlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("update operation: %v", err)
@@ -419,8 +443,6 @@ func (m *SqliteStore) Update(op ...*v1.Operation) error {
 }
 
 func (m *SqliteStore) updateInternal(conn *sqlite.Conn, op ...*v1.Operation) error {
-	groupCache := make(map[opGroupInfo]int64)
-
 	for _, o := range op {
 		if err := protoutil.ValidateOperation(o); err != nil {
 			return err
@@ -430,14 +452,9 @@ func (m *SqliteStore) updateInternal(conn *sqlite.Conn, op ...*v1.Operation) err
 			return fmt.Errorf("marshal operation: %v", err)
 		}
 
-		key := groupInfoForOp(o)
-		ogid, ok := groupCache[key]
-		if !ok {
-			ogid, err = m.findOrCreateGroup(conn, o)
-			if err != nil {
-				return fmt.Errorf("find ogid: %v", err)
-			}
-			groupCache[key] = ogid
+		ogid, err := m.findOrCreateGroup(conn, o)
+		if err != nil {
+			return fmt.Errorf("find ogid: %v", err)
 		}
 
 		if err := sqlitex.Execute(conn, "UPDATE operations SET operation = ?, ogid = ?, start_time_ms = ?, flow_id = ?, snapshot_id = ?, modno = ?, original_id = ?, original_flow_id = ?, status = ? WHERE id = ?", &sqlitex.ExecOptions{
@@ -453,6 +470,8 @@ func (m *SqliteStore) updateInternal(conn *sqlite.Conn, op ...*v1.Operation) err
 }
 
 func (m *SqliteStore) Get(opID int64) (*v1.Operation, error) {
+	m.querymu.RLock()
+	defer m.querymu.RUnlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("get operation: %v", err)
@@ -486,6 +505,8 @@ func (m *SqliteStore) Get(opID int64) (*v1.Operation, error) {
 }
 
 func (m *SqliteStore) Delete(opID ...int64) ([]*v1.Operation, error) {
+	m.querymu.Lock()
+	defer m.querymu.Unlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("delete operation: %v", err)
@@ -541,6 +562,8 @@ func (m *SqliteStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 }
 
 func (m *SqliteStore) ResetForTest(t *testing.T) error {
+	m.querymu.Lock()
+	defer m.querymu.Unlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("reset for test: %v", err)
