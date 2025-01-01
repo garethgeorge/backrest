@@ -642,12 +642,12 @@ func TestCancelBackup(t *testing.T) {
 		}
 	}()
 
-	// Find the backup operation ID in the oplog
+	// Find the in-progress backup operation ID in the oplog, waits for the task to be in progress before attempting to cancel.
 	var backupOpId int64
 	if err := testutil.Retry(t, ctx, func() error {
 		operations := getOperations(t, sut.oplog)
 		for _, op := range operations {
-			if op.GetOperationBackup() != nil {
+			if op.GetOperationBackup() != nil && op.Status == v1.OperationStatus_STATUS_INPROGRESS {
 				backupOpId = op.Id
 				return nil
 			}

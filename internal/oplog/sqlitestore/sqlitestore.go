@@ -307,20 +307,6 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 	}
 
 	if !found {
-		m.tidyGroupsOnce.Do(func() {
-			var maxOGID int64
-			if err := sqlitex.ExecuteTransient(conn, "SELECT MAX(ogid) FROM operation_groups", &sqlitex.ExecOptions{
-				ResultFunc: func(stmt *sqlite.Stmt) error {
-					maxOGID = stmt.ColumnInt64(0)
-					return nil
-				},
-			}); err != nil {
-				zap.S().Warnf("tidy groups couldn't find max ogid: %v", err)
-				return
-			}
-			m.tidyGroups(conn, maxOGID)
-		})
-
 		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (instance_id, repo_id, plan_id, repo_guid) VALUES (?, ?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
 			Args: []any{op.InstanceId, op.RepoId, op.PlanId, op.RepoGuid},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
