@@ -429,6 +429,7 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 	err := st.Task.Run(ctx, st, runner)
 	if err != nil {
 		runner.Logger(ctx).Error("task failed", zap.Error(err), zap.Duration("duration", time.Since(start)))
+		metric.GetRegistry().RecordTaskRun(st.Task.RepoID(), st.Task.PlanID(), st.Task.Type(), time.Since(start).Seconds(), "failed")
 	} else {
 		runner.Logger(ctx).Info("task finished", zap.Duration("duration", time.Since(start)))
 		metric.GetRegistry().RecordTaskRun(st.Task.RepoID(), st.Task.PlanID(), st.Task.Type(), time.Since(start).Seconds(), "success")
