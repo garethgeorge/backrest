@@ -246,10 +246,11 @@ const buildTree = (
           </Tooltip>
         );
       }
+      const uniqueKey = value[0].planID + "\x01" + value[0].instanceID + "\x01"; // use \x01 as delimiter
       return {
-        key: "p" + value[0].planID + "\x01" + value[0].instanceID, // use \x01 as separator
+        key: uniqueKey,
         title,
-        children: buildTreeDay(key, value),
+        children: buildTreeDay(uniqueKey, value),
       };
     });
     entries.sort(sortByKeyReverse);

@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package v1;
+
+option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
+
+import "v1/config.proto";
+import "v1/crypto.proto";
+import "v1/restic.proto";
+import "v1/service.proto";
+import "v1/operations.proto";
+import "types/value.proto";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
+
+
+service BackrestSyncService {
+  rpc Sync(stream SyncStreamItem) returns (stream SyncStreamItem) {}
+  rpc GetRemoteRepos(google.protobuf.Empty) returns (GetRemoteReposResponse) {}
+}
+
+message GetRemoteReposResponse {
+  message RemoteRepoMetadata {
+    string instance_id = 1;
+    string repo_id = 2;
+  }
+  
+  repeated RemoteRepoMetadata repos = 1;
+}
+
+enum SyncConnectionState {
+  CONNECTION_STATE_UNKNOWN = 0;
+  CONNECTION_STATE_PENDING = 1;
+  CONNECTION_STATE_CONNECTED = 2;
+  CONNECTION_STATE_DISCONNECTED = 3;
+  CONNECTION_STATE_RETRY_WAIT = 4;
+  CONNECTION_STATE_ERROR_AUTH = 10;
+  CONNECTION_STATE_ERROR_PROTOCOL = 11;
+}
+
+message SyncStreamItem {
+  oneof action {
+    SignedMessage signed_message = 1;
+    SyncActionHandshake handshake = 3;
+    
+    SyncActionDiffOperations diff_operations = 20;
+    SyncActionSendOperations send_operations = 21;
+    SyncActionSendConfig send_config = 22;
+    SyncEstablishSharedSecret establish_shared_secret = 23;
+
+    SyncActionThrottle throttle = 1000;
+  }
+
+  message SyncActionHandshake {
+    int64 protocol_version = 1;
+    PublicKey public_key = 2;
+    SignedMessage instance_id = 3;
+  }
+
+  message SyncActionSendConfig {
+    RemoteConfig config = 1;
+  }
+
+  message SyncActionConnectRepo {
+    string repo_id = 1;
+  }
+
+  enum RepoConnectionState {
+    CONNECTION_STATE_UNKNOWN = 0;
+    CONNECTION_STATE_PENDING = 1; // queried, response not yet received.
+    CONNECTION_STATE_CONNECTED = 2;
+    CONNECTION_STATE_UNAUTHORIZED = 3;
+    CONNECTION_STATE_NOT_FOUND = 4;
+  }
+
+  message SyncActionDiffOperations {
+    // Client connects and sends a list of "have_operations" that exist in its log.
+    // have_operation_ids and have_operation_modnos are the operation IDs and modnos that the client has when zip'd pairwise.
+    OpSelector have_operations_selector = 1;
+    repeated int64 have_operation_ids = 2;
+    repeated int64 have_operation_modnos = 3;
+    // Server sends a list of "request_operations" for any operations that it doesn't have.
+    repeated int64 request_operations = 4;
+  }
+
+  message SyncActionSendOperations {
+    OperationEvent event = 1;
+  }
+
+  message SyncActionThrottle {
+    int64 delay_ms = 1;
+  }
+
+  message SyncEstablishSharedSecret {
+    // a one-time-use ed25519 public key with a matching unshared private key. Used to perform a key exchange.
+    // See https://pkg.go.dev/crypto/ecdh#PrivateKey.ECDH .
+    string ed25519 = 2 [json_name="ed25519pub"]; // base64 encoded public key
+  }
+}
+
+// RemoteConfig contains shareable properties from a remote backrest instance.
+message RemoteConfig {
+  repeated RemoteRepo repos = 1;
+}
+
+message RemoteRepo {
+  string id = 1;
+  string guid = 11;
+  string uri = 2;
+  string password = 3;
+  repeated string env = 4;
+  repeated string flags = 5;
+}

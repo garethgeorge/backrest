@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package v1;
+
+option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
+
+message SignedMessage {
+  string keyid = 1; // a unique identifier generated as the SHA256 of the public key used to sign the message.
+  bytes payload = 2; // the payload
+  bytes signature = 3; // the signature of the payload
+}
+
+message EncryptedMessage {
+  bytes payload = 1;
+}
+
+message PublicKey {
+  string keyid = 1 [json_name="keyid"]; // a unique identifier generated as the SHA256 of the public key.
+  string ed25519 = 2 [json_name="ed25519pub"]; // base64 encoded public key
+}
+
+message PrivateKey {
+  string keyid = 1 [json_name="keyid"]; // a unique identifier generated as the SHA256 of the public key.
+  string ed25519 = 2 [json_name="ed25519priv"]; // base64 encoded private key
+}

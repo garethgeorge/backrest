@@ -15,13 +15,13 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) Task {
+func NewOneoffIndexSnapshotsTask(repo *v1.Repo, at time.Time) Task {
 	return &GenericOneoffTask{
 		OneoffTask: OneoffTask{
 			BaseTask: BaseTask{
-				TaskType:   "index_snapshots",
-				TaskName:   fmt.Sprintf("index snapshots for repo %q", repoID),
-				TaskRepoID: repoID,
+				TaskType: "index_snapshots",
+				TaskName: fmt.Sprintf("index snapshots for repo %q", repo.Id),
+				TaskRepo: repo,
 			},
 			RunAt:   at,
 			ProtoOp: nil,
@@ -47,7 +47,6 @@ func NewOneoffIndexSnapshotsTask(repoID string, at time.Time) Task {
 //   - If an index snapshot operation is found for a snapshot that is not returned by the repo, it is marked as forgotten.
 func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 	t := st.Task
-	oplog := taskRunner.OpLog()
 	l := taskRunner.Logger(ctx)
 
 	repo, err := taskRunner.GetRepoOrchestrator(t.RepoID())
@@ -62,26 +61,10 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 	}
 
 	// collect all current snapshot IDs.
-	currentIds, err := indexCurrentSnapshotIdsForRepo(taskRunner.OpLog(), t.RepoID())
+	currentIds, err := indexCurrentSnapshotIdsForRepo(taskRunner, t.Repo().GetGuid())
 	if err != nil {
 		return fmt.Errorf("get known snapshot IDs for repo %q: %w", t.RepoID(), err)
 	}
-
-	// check if any migrations are required
-	// if migrated, err := tryMigrate(ctx, repo, config, snapshots); err != nil {
-	// 	return fmt.Errorf("migrate snapshots for repo %q: %w", t.RepoID(), err)
-	// } else if migrated {
-	// 	// Delete snapshot operations
-	// 	if err := oplog.Delete(maps.Values(currentIds)...); err != nil {
-	// 		return fmt.Errorf("delete prior indexed operations: %w", err)
-	// 	}
-
-	// 	snapshots, err = repo.Snapshots(ctx)
-	// 	if err != nil {
-	// 		return fmt.Errorf("get snapshots for repo %q: %w", t.RepoID(), err)
-	// 	}
-	// 	currentIds = nil
-	// }
 
 	foundIds := make(map[string]struct{})
 
@@ -94,14 +77,15 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 		}
 
 		snapshotProto := protoutil.SnapshotToProto(snapshot)
-		flowID, err := FlowIDForSnapshotID(taskRunner.OpLog(), snapshot.Id)
+		flowID, err := FlowIDForSnapshotID(taskRunner, snapshot.Id)
 		if err != nil {
 			return fmt.Errorf("get flow ID for snapshot %q: %w", snapshot.Id, err)
 		}
 		planId := planForSnapshot(snapshotProto)
 		instanceID := instanceIDForSnapshot(snapshotProto)
 		indexOps = append(indexOps, &v1.Operation{
-			RepoId:          t.RepoID(),
+			RepoId:          t.Repo().Id,
+			RepoGuid:        t.Repo().Guid,
 			PlanId:          planId,
 			FlowId:          flowID,
 			InstanceId:      instanceID,
@@ -120,8 +104,8 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 	l.Sugar().Debugf("adding %v new snapshots to the oplog", len(indexOps))
 	l.Sugar().Debugf("found %v snapshots already indexed", len(foundIds))
 
-	if err := taskRunner.OpLog().Add(indexOps...); err != nil {
-		return fmt.Errorf("BulkAdd snapshot operations: %w", err)
+	if err := taskRunner.CreateOperation(indexOps...); err != nil {
+		return fmt.Errorf("Create snapshot operations: %w", err)
 	}
 
 	// Mark missing operations as newly forgotten.
@@ -132,7 +116,7 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 		}
 
 		// mark snapshot forgotten.
-		op, err := oplog.Get(opId)
+		op, err := taskRunner.GetOperation(opId)
 		if err != nil {
 			// should only be possible in the case of a data race (e.g. operation was somehow deleted).
 			return fmt.Errorf("get operation %v: %w", opId, err)
@@ -144,23 +128,22 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 		}
 		snapshotOp.OperationIndexSnapshot.Forgot = true
 
-		if err := oplog.Update(op); err != nil {
+		if err := taskRunner.UpdateOperation(op); err != nil {
 			return fmt.Errorf("mark index snapshot operation %v as forgotten: %w", opId, err)
 		}
 	}
 
 	l.Sugar().Debugf("marked %v snapshots as forgotten", len(currentIds)-len(foundIds))
-	l.Sugar().Debugf("done indexing %v for repo %v, took %v", len(foundIds), t.RepoID())
 
 	return err
 }
 
 // returns a map of current (e.g. not forgotten) snapshot IDs for the plan.
-func indexCurrentSnapshotIdsForRepo(log *oplog.OpLog, repoId string) (map[string]int64, error) {
+func indexCurrentSnapshotIdsForRepo(taskRunner TaskRunner, repoGUID string) (map[string]int64, error) {
 	knownIds := make(map[string]int64)
 
 	startTime := time.Now()
-	if err := log.Query(oplog.Query{RepoID: repoId}, func(op *v1.Operation) error {
+	if err := taskRunner.QueryOperations(oplog.Query{}.SetRepoGUID(repoGUID), func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
 			if !snapshotOp.OperationIndexSnapshot.Forgot {
 				knownIds[snapshotOp.OperationIndexSnapshot.Snapshot.Id] = op.Id
@@ -170,7 +153,7 @@ func indexCurrentSnapshotIdsForRepo(log *oplog.OpLog, repoId string) (map[string
 	}); err != nil {
 		return nil, err
 	}
-	zap.S().Debugf("found %v known snapshot IDs for repo %v in %v", len(knownIds), repoId, time.Since(startTime))
+	zap.S().Debugf("found %v known snapshot IDs for repo %v in %v", len(knownIds), repoGUID, time.Since(startTime))
 	return knownIds, nil
 }
 

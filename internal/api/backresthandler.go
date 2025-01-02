@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -19,6 +18,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/logstore"
@@ -36,20 +36,22 @@ import (
 
 type BackrestHandler struct {
 	v1connect.UnimplementedBackrestHandler
-	config       config.ConfigStore
-	orchestrator *orchestrator.Orchestrator
-	oplog        *oplog.OpLog
-	logStore     *logstore.LogStore
+	config            config.ConfigStore
+	orchestrator      *orchestrator.Orchestrator
+	oplog             *oplog.OpLog
+	logStore          *logstore.LogStore
+	remoteConfigStore syncapi.RemoteConfigStore
 }
 
 var _ v1connect.BackrestHandler = &BackrestHandler{}
 
-func NewBackrestHandler(config config.ConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *logstore.LogStore) *BackrestHandler {
+func NewBackrestHandler(config config.ConfigStore, remoteConfigStore syncapi.RemoteConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *logstore.LogStore) *BackrestHandler {
 	s := &BackrestHandler{
-		config:       config,
-		orchestrator: orchestrator,
-		oplog:        oplog,
-		logStore:     logStore,
+		config:            config,
+		orchestrator:      orchestrator,
+		oplog:             oplog,
+		logStore:          logStore,
+		remoteConfigStore: remoteConfigStore,
 	}
 
 	return s
@@ -142,33 +144,67 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
+	newRepo := req.Msg
+
 	// Deep copy the configuration
 	c = proto.Clone(c).(*v1.Config)
 
 	// Add or implicit update the repo
-	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == req.Msg.Id }); idx != -1 {
-		c.Repos[idx] = req.Msg
+	var oldRepo *v1.Repo
+	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == newRepo.Id }); idx != -1 {
+		oldRepo = c.Repos[idx]
+		c.Repos[idx] = newRepo
 	} else {
-		c.Repos = append(c.Repos, req.Msg)
+		c.Repos = append(c.Repos, newRepo)
+	}
+
+	// Ensure the Repo GUID is set to the correct value.
+	// This is derived from 'restic cat config' for local repos.
+	// For remote repos, the GUID is derived from the remote config's value for the repo.
+	if !syncapi.IsBackrestRemoteRepoURI(newRepo.Uri) {
+		bin, err := resticinstaller.FindOrInstallResticBinary()
+		if err != nil {
+			return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
+		}
+
+		r, err := repo.NewRepoOrchestrator(c, newRepo, bin)
+		if err != nil {
+			return nil, fmt.Errorf("failed to configure repo: %w", err)
+		}
+
+		if err := r.Init(ctx); err != nil {
+			return nil, fmt.Errorf("failed to init repo: %w", err)
+		}
+
+		guid, err := r.RepoGUID()
+		zap.S().Debugf("GUID for repo %q is %q from restic", newRepo.Id, guid)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get repo config: %w", err)
+		}
+
+		newRepo.Guid = guid
+	} else {
+		// It's a remote repo, let's find the configuration and guid for it.
+		instanceID, err := syncapi.InstanceForBackrestURI(newRepo.Uri)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse remote repo URI: %w", err)
+		}
+
+		// fetch the remote config
+		remoteRepo, err := syncapi.GetRepoConfig(s.remoteConfigStore, instanceID, newRepo.Guid)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get remote repo config: %w", err)
+		}
+
+		// set the GUID from the remote config.
+		newRepo.Guid = remoteRepo.Guid
+		if newRepo.Guid == "" {
+			return nil, fmt.Errorf("GUID not found for repo %q", newRepo.Id)
+		}
 	}
 
 	if err := config.ValidateConfig(c); err != nil {
 		return nil, fmt.Errorf("validation error: %w", err)
-	}
-
-	bin, err := resticinstaller.FindOrInstallResticBinary()
-	if err != nil {
-		return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
-	}
-
-	r, err := repo.NewRepoOrchestrator(c, req.Msg, bin)
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure repo: %w", err)
-	}
-
-	// use background context such that the init op can try to complete even if the connection is closed.
-	if err := r.Init(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed to init repo: %w", err)
 	}
 
 	zap.L().Debug("updating config", zap.Int32("version", c.Version))
@@ -176,12 +212,30 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
 
+	// If the GUID has changed, and we just successfully updated the config in storage, then we need to migrate the oplog.
+	if oldRepo != nil && newRepo.Guid != oldRepo.Guid {
+		migratedCount := 0
+		if err := s.oplog.Transform(oplog.Query{}.
+			SetRepoGUID(oldRepo.Guid).
+			SetInstanceID(c.Instance), func(op *v1.Operation) (*v1.Operation, error) {
+			op.RepoGuid = newRepo.Guid
+			migratedCount++
+			return op, nil
+		}); err != nil {
+			return nil, fmt.Errorf("failed to get operations for repo: %w", err)
+		}
+
+		zap.S().Infof("updated GUID for repo %q from %q to %q, migrated %d operations to reference the new GUID", newRepo.Id, oldRepo.Guid, newRepo.Guid, migratedCount)
+	}
+
 	zap.L().Debug("applying config", zap.Int32("version", c.Version))
-	s.orchestrator.ApplyConfig(c)
+	if err := s.orchestrator.ApplyConfig(c); err != nil {
+		return nil, fmt.Errorf("failed to apply config: %w", err)
+	}
 
 	// index snapshots for the newly added repository.
 	zap.L().Debug("scheduling index snapshots task")
-	s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(req.Msg.Id, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots)
+	s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(newRepo, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots)
 
 	zap.L().Debug("done add repo")
 	return connect.NewResponse(c), nil
@@ -322,7 +376,7 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 }
 
 func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error) {
-	q, err := opSelectorToQuery(req.Msg.Selector)
+	q, err := protoutil.OpSelectorToQuery(req.Msg.Selector)
 	if req.Msg.LastN != 0 {
 		q.Reversed = true
 		q.Limit = int(req.Msg.LastN)
@@ -354,12 +408,16 @@ func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Reques
 }
 
 func (s *BackrestHandler) IndexSnapshots(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	_, err := s.orchestrator.GetRepo(req.Msg.Value)
+	// Ensure the repo is valid before scheduling the task
+	repo, err := s.orchestrator.GetRepo(req.Msg.Value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.Value, err)
 	}
 
-	s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(req.Msg.Value, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots)
+	// Schedule the indexing task
+	if err := s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(repo, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots); err != nil {
+		return nil, fmt.Errorf("failed to schedule indexing task: %w", err)
+	}
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
@@ -367,13 +425,19 @@ func (s *BackrestHandler) IndexSnapshots(ctx context.Context, req *connect.Reque
 func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
 	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get plan %q: %w", req.Msg.Value, err)
+		return nil, err
+	}
+	repo, err := s.orchestrator.GetRepo(plan.Repo)
+	if err != nil {
+		return nil, err
 	}
 	wait := make(chan struct{})
-	s.orchestrator.ScheduleTask(tasks.NewOneoffBackupTask(plan, time.Now()), tasks.TaskPriorityInteractive, func(e error) {
+	if err := s.orchestrator.ScheduleTask(tasks.NewOneoffBackupTask(repo, plan, time.Now()), tasks.TaskPriorityInteractive, func(e error) {
 		err = e
 		close(wait)
-	})
+	}); err != nil {
+		return nil, err
+	}
 	<-wait
 	return connect.NewResponse(&emptypb.Empty{}), err
 }
@@ -381,23 +445,33 @@ func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types
 func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {
 	at := time.Now()
 	var err error
+
+	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
+	if err != nil {
+		return nil, err
+	}
+
 	if req.Msg.SnapshotId != "" && req.Msg.PlanId != "" && req.Msg.RepoId != "" {
 		wait := make(chan struct{})
-		s.orchestrator.ScheduleTask(
-			tasks.NewOneoffForgetSnapshotTask(req.Msg.RepoId, req.Msg.PlanId, 0, at, req.Msg.SnapshotId),
+		if err := s.orchestrator.ScheduleTask(
+			tasks.NewOneoffForgetSnapshotTask(repo, req.Msg.PlanId, 0, at, req.Msg.SnapshotId),
 			tasks.TaskPriorityInteractive+tasks.TaskPriorityForget, func(e error) {
 				err = e
 				close(wait)
-			})
+			}); err != nil {
+			return nil, err
+		}
 		<-wait
 	} else if req.Msg.RepoId != "" && req.Msg.PlanId != "" {
 		wait := make(chan struct{})
-		s.orchestrator.ScheduleTask(
-			tasks.NewOneoffForgetTask(req.Msg.RepoId, req.Msg.PlanId, 0, at),
+		if err := s.orchestrator.ScheduleTask(
+			tasks.NewOneoffForgetTask(repo, req.Msg.PlanId, 0, at),
 			tasks.TaskPriorityInteractive+tasks.TaskPriorityForget, func(e error) {
 				err = e
 				close(wait)
-			})
+			}); err != nil {
+			return nil, err
+		}
 		<-wait
 	} else {
 		return nil, errors.New("must specify repoId and planId and (optionally) snapshotId")
@@ -410,23 +484,29 @@ func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.Fo
 
 func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error) {
 	var task tasks.Task
+
+	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
+	if err != nil {
+		return nil, err
+	}
+
 	priority := tasks.TaskPriorityInteractive
 	switch req.Msg.Task {
 	case v1.DoRepoTaskRequest_TASK_CHECK:
-		task = tasks.NewCheckTask(req.Msg.RepoId, tasks.PlanForSystemTasks, true)
+		task = tasks.NewCheckTask(repo, tasks.PlanForSystemTasks, true)
 	case v1.DoRepoTaskRequest_TASK_PRUNE:
-		task = tasks.NewPruneTask(req.Msg.RepoId, tasks.PlanForSystemTasks, true)
+		task = tasks.NewPruneTask(repo, tasks.PlanForSystemTasks, true)
 		priority |= tasks.TaskPriorityPrune
 	case v1.DoRepoTaskRequest_TASK_STATS:
-		task = tasks.NewStatsTask(req.Msg.RepoId, tasks.PlanForSystemTasks, true)
+		task = tasks.NewStatsTask(repo, tasks.PlanForSystemTasks, true)
 		priority |= tasks.TaskPriorityStats
 	case v1.DoRepoTaskRequest_TASK_INDEX_SNAPSHOTS:
-		task = tasks.NewOneoffIndexSnapshotsTask(req.Msg.RepoId, time.Now())
+		task = tasks.NewOneoffIndexSnapshotsTask(repo, time.Now())
 		priority |= tasks.TaskPriorityIndexSnapshots
 	case v1.DoRepoTaskRequest_TASK_UNLOCK:
 		repo, err := s.orchestrator.GetRepoOrchestrator(req.Msg.RepoId)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.RepoId, err)
+			return nil, err
 		}
 		if err := repo.Unlock(ctx); err != nil {
 			return nil, fmt.Errorf("failed to unlock repo %q: %w", req.Msg.RepoId, err)
@@ -436,7 +516,6 @@ func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1
 		return nil, fmt.Errorf("unknown task %v", req.Msg.Task.String())
 	}
 
-	var err error
 	wait := make(chan struct{})
 	if err := s.orchestrator.ScheduleTask(task, priority, func(e error) {
 		err = e
@@ -458,22 +537,39 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 	if req.Msg.Path == "" {
 		req.Msg.Path = "/"
 	}
-
 	// prevent restoring to a directory that already exists
 	if _, err := os.Stat(req.Msg.Target); err == nil {
 		return nil, fmt.Errorf("target directory %q already exists", req.Msg.Target)
 	}
 
+	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
+	if err != nil {
+		return nil, err
+	}
+
 	at := time.Now()
-	s.orchestrator.ScheduleTask(tasks.NewOneoffRestoreTask(req.Msg.RepoId, req.Msg.PlanId, 0 /* flowID */, at, req.Msg.SnapshotId, req.Msg.Path, req.Msg.Target), tasks.TaskPriorityInteractive+tasks.TaskPriorityDefault)
+	s.orchestrator.ScheduleTask(tasks.NewOneoffRestoreTask(repo, req.Msg.PlanId, 0 /* flowID */, at, req.Msg.SnapshotId, req.Msg.Path, req.Msg.Target), tasks.TaskPriorityInteractive+tasks.TaskPriorityDefault)
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
 func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error) {
+	cfg, err := s.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %w", err)
+	}
+	repo := config.FindRepo(cfg, req.Msg.RepoId)
+	if repo == nil {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("repo %q not found", req.Msg.RepoId))
+	}
+
 	// group commands within the last 24 hours (or 256 operations) into the same flow ID
 	var flowID int64
-	if s.oplog.Query(oplog.Query{RepoID: req.Msg.RepoId, Limit: 256, Reversed: true}, func(op *v1.Operation) error {
+	if s.oplog.Query(oplog.Query{}.
+		SetInstanceID(cfg.Instance).
+		SetRepoGUID(repo.GetGuid()).
+		SetLimit(256).
+		SetReversed(true), func(op *v1.Operation) error {
 		if op.GetOperationRunCommand() != nil && time.Since(time.UnixMilli(op.UnixTimeStartMs)) < 30*time.Minute {
 			flowID = op.FlowId
 		}
@@ -482,7 +578,7 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 		return nil, fmt.Errorf("failed to query operations")
 	}
 
-	task := tasks.NewOneoffRunCommandTask(req.Msg.RepoId, tasks.PlanForSystemTasks, flowID, time.Now(), req.Msg.Command)
+	task := tasks.NewOneoffRunCommandTask(repo, tasks.PlanForSystemTasks, flowID, time.Now(), req.Msg.Command)
 	st, err := s.orchestrator.CreateUnscheduledTask(task, tasks.TaskPriorityInteractive, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create task: %w", err)
@@ -513,7 +609,7 @@ func (s *BackrestHandler) ClearHistory(ctx context.Context, req *connect.Request
 		return nil
 	}
 
-	q, err := opSelectorToQuery(req.Msg.Selector)
+	q, err := protoutil.OpSelectorToQuery(req.Msg.Selector)
 	if err != nil {
 		return nil, err
 	}
@@ -590,6 +686,9 @@ func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.L
 				return nil
 			}
 			if err := resp.Send(&types.BytesValue{Value: data}); err != nil {
+				bufferMu.Lock()
+				buffer.Write(data)
+				bufferMu.Unlock()
 				return err
 			}
 		case err := <-errChan:
@@ -726,7 +825,11 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	}
 
 	for _, repo := range config.Repos {
-		resp, err := generateSummaryHelper(repo.Id, oplog.Query{RepoID: repo.Id, Reversed: true, Limit: 1000})
+		resp, err := generateSummaryHelper(repo.Id, oplog.Query{}.
+			SetInstanceID(config.Instance).
+			SetRepoGUID(repo.GetGuid()).
+			SetReversed(true).
+			SetLimit(1000))
 		if err != nil {
 			return nil, fmt.Errorf("summary for repo %q: %w", repo.Id, err)
 		}
@@ -735,7 +838,11 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	}
 
 	for _, plan := range config.Plans {
-		resp, err := generateSummaryHelper(plan.Id, oplog.Query{PlanID: plan.Id, Reversed: true, Limit: 1000})
+		resp, err := generateSummaryHelper(plan.Id, oplog.Query{}.
+			SetInstanceID(config.Instance).
+			SetPlanID(plan.Id).
+			SetReversed(true).
+			SetLimit(1000))
 		if err != nil {
 			return nil, fmt.Errorf("summary for plan %q: %w", plan.Id, err)
 		}
@@ -744,21 +851,4 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	}
 
 	return connect.NewResponse(response), nil
-}
-
-func opSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
-	if sel == nil {
-		return oplog.Query{}, errors.New("empty selector")
-	}
-	q := oplog.Query{
-		RepoID:     sel.RepoId,
-		PlanID:     sel.PlanId,
-		SnapshotID: sel.SnapshotId,
-		FlowID:     sel.FlowId,
-	}
-	if len(sel.Ids) > 0 && !reflect.DeepEqual(q, oplog.Query{}) {
-		return oplog.Query{}, errors.New("cannot specify both query and ids")
-	}
-	q.OpIDs = sel.Ids
-	return q, nil
 }

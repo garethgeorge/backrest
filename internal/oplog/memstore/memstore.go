@@ -80,6 +80,22 @@ func (m *MemStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 	return nil
 }
 
+func (m *MemStore) QueryMetadata(q oplog.Query, f func(meta oplog.OpMetadata) error) error {
+	for _, id := range m.idsForQuery(q) {
+		op := m.operations[id]
+		if err := f(oplog.OpMetadata{
+			ID:             op.Id,
+			Modno:          op.Modno,
+			FlowID:         op.FlowId,
+			OriginalID:     op.OriginalId,
+			OriginalFlowID: op.OriginalFlowId,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (m *MemStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation, error)) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -95,6 +111,7 @@ func (m *MemStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation
 			}
 			return err
 		} else if op != nil {
+			op.Modno = oplog.NewRandomModno(m.operations[id].Modno)
 			changes[id] = op
 		}
 	}
@@ -142,8 +159,8 @@ func (m *MemStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	ops := make([]*v1.Operation, 0, len(opID))
-	for idx, id := range opID {
-		ops[idx] = m.operations[id]
+	for _, id := range opID {
+		ops = append(ops, m.operations[id])
 		delete(m.operations, id)
 	}
 	return ops, nil

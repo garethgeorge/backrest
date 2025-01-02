@@ -15,12 +15,12 @@ type StatsTask struct {
 	didRun bool
 }
 
-func NewStatsTask(repoID, planID string, force bool) Task {
+func NewStatsTask(repo *v1.Repo, planID string, force bool) Task {
 	return &StatsTask{
 		BaseTask: BaseTask{
 			TaskType:   "stats",
-			TaskName:   fmt.Sprintf("stats for repo %q", repoID),
-			TaskRepoID: repoID,
+			TaskName:   fmt.Sprintf("stats for repo %q", repo.Id),
+			TaskRepo:   repo,
 			TaskPlanID: planID,
 		},
 		force: force,
@@ -44,7 +44,10 @@ func (t *StatsTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 
 	// check last stats time
 	var lastRan time.Time
-	if err := runner.OpLog().Query(oplog.Query{RepoID: t.RepoID(), Reversed: true}, func(op *v1.Operation) error {
+	if err := runner.QueryOperations(oplog.Query{}.
+		SetInstanceID(runner.InstanceID()). // note: this means that stats tasks run by remote instances are ignored.
+		SetRepoGUID(t.Repo().GetGuid()).
+		SetReversed(true), func(op *v1.Operation) error {
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
 			return nil
 		}

@@ -15,11 +15,20 @@ message OperationList {
 message Operation {
   // required, primary ID of the operation. ID is sequential based on creation time of the operation.
   int64 id = 1;
+  int64 original_id = 13;
+  // modno increments with each change to the operation. This supports easy diffing.
+  int64 modno = 12;
   // flow id groups operations together, e.g. by an execution of a plan.
-  int64 flow_id = 10; // optional, flow id if associated with a flow
-  string repo_id = 2; 
+  // must be unique within the context of a repo.
+  int64 flow_id = 10;
+  int64 original_flow_id = 14;
+  // repo id is a string identifier for the repo, and repo_guid is the globally unique ID of the repo.
+  string repo_id = 2;
+  string repo_guid = 15;
+  // plan id e.g. a scheduled set of operations (or system) that created this operation.
   string plan_id = 3; 
-  string instance_id = 11;
+  // instance ID that created the operation
+  string instance_id = 11; 
   // optional snapshot id if associated with a snapshot.
   string snapshot_id = 8; 
   OperationStatus status = 4;

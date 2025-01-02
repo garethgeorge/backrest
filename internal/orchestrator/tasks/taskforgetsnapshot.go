@@ -8,13 +8,13 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
 
-func NewOneoffForgetSnapshotTask(repoID, planID string, flowID int64, at time.Time, snapshotID string) Task {
+func NewOneoffForgetSnapshotTask(repo *v1.Repo, planID string, flowID int64, at time.Time, snapshotID string) Task {
 	return &GenericOneoffTask{
 		OneoffTask: OneoffTask{
 			BaseTask: BaseTask{
 				TaskType:   "forget_snapshot",
-				TaskName:   fmt.Sprintf("forget snapshot %q for plan %q in repo %q", snapshotID, planID, repoID),
-				TaskRepoID: repoID,
+				TaskName:   fmt.Sprintf("forget snapshot %q for plan %q in repo %q", snapshotID, planID, repo.Id),
+				TaskRepo:   repo,
 				TaskPlanID: planID,
 			},
 			FlowID: flowID,
@@ -60,8 +60,8 @@ func forgetSnapshotHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 		return fmt.Errorf("forget %q: %w", snapshotID, err)
 	}
 
-	taskRunner.ScheduleTask(NewOneoffIndexSnapshotsTask(t.RepoID(), time.Now()), TaskPriorityIndexSnapshots)
-	taskRunner.OpLog().Delete(st.Op.Id)
+	taskRunner.ScheduleTask(NewOneoffIndexSnapshotsTask(t.Repo(), time.Now()), TaskPriorityIndexSnapshots)
+	taskRunner.DeleteOperation(st.Op.Id)
 	st.Op = nil
 	return err
 }

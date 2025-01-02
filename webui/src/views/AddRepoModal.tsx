@@ -19,7 +19,9 @@ import {
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import {
+  CommandPrefix_CPUNiceLevel,
   CommandPrefix_CPUNiceLevelSchema,
+  CommandPrefix_IONiceLevel,
   CommandPrefix_IONiceLevelSchema,
   type Repo,
   RepoSchema,
@@ -63,6 +65,10 @@ const repoDefaults = create(RepoSchema, {
       },
       clock: Schedule_Clock.LAST_RUN_TIME,
     },
+  },
+  commandPrefix: {
+    ioNice: CommandPrefix_IONiceLevel.IO_DEFAULT,
+    cpuNice: CommandPrefix_CPUNiceLevel.CPU_DEFAULT,
   },
 });
 
