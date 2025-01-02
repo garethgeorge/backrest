@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.7.0](https://github.com/garethgeorge/backrest/compare/v1.6.2...v1.7.0) (2025-01-02)
+
+
+### Features
+
+* add a "test configuration" button to aid users setting up new repos ([#582](https://github.com/garethgeorge/backrest/issues/582)) ([1bb3cd7](https://github.com/garethgeorge/backrest/commit/1bb3cd70fd8a7eb12df19eaf8f01edb075f34d48))
+* change payload for healthchecks to text ([#607](https://github.com/garethgeorge/backrest/issues/607)) ([a1e3a70](https://github.com/garethgeorge/backrest/commit/a1e3a708eb583c9c7116b9842c0fcd9a04b086af))
+* cont'd windows installer refinements ([#603](https://github.com/garethgeorge/backrest/issues/603)) ([b1b7fb9](https://github.com/garethgeorge/backrest/commit/b1b7fb97077150c7fd5548625c6d790a4006df08))
+
+
+### Bug Fixes
+
+* int overflow in exponential backoff hook error policy ([#619](https://github.com/garethgeorge/backrest/issues/619)) ([1ff69f1](https://github.com/garethgeorge/backrest/commit/1ff69f121ae4f3455e132193dffe6c4a4fa80abd))
+
 ## [1.6.2](https://github.com/garethgeorge/backrest/compare/v1.6.1...v1.6.2) (2024-11-26)
 
 
