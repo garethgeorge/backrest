@@ -247,7 +247,7 @@ const hookTypes: {
         <>
           <Form.Item
             name={[field.name, "actionDiscord", "webhookUrl"]}
-            rules={[requiredField("webhook URL is required"), { type: "url" }]}
+            rules={[requiredField("webhook URL is required")]}
           >
             <Input
               addonBefore={<div style={{ width: "8em" }}>Discord Webhook</div>}
@@ -331,7 +331,7 @@ const hookTypes: {
         <>
           <Form.Item
             name={[field.name, "actionSlack", "webhookUrl"]}
-            rules={[requiredField("webhook URL is required"), { type: "url" }]}
+            rules={[requiredField("webhook URL is required")]}
           >
             <Input
               addonBefore={<div style={{ width: "8em" }}>Slack Webhook</div>}
@@ -362,7 +362,7 @@ const hookTypes: {
         <>
           <Form.Item
             name={[field.name, "actionHealthchecks", "webhookUrl"]}
-            rules={[requiredField("Ping URL is required"), { type: "url" }]}
+            rules={[requiredField("Ping URL is required")]}
           >
             <Input addonBefore={<div style={{ width: "8em" }}>Ping URL</div>} />
           </Form.Item>
