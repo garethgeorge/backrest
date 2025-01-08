@@ -121,9 +121,16 @@ func (m *SyncManager) runSyncWithPeerInternal(ctx context.Context, config *v1.Co
 	if err != nil {
 		return fmt.Errorf("creating sync client: %w", err)
 	}
+	m.mu.Lock()
 	m.syncClients[knownHostPeer.InstanceId] = newClient
+	m.mu.Unlock()
 
-	go newClient.RunSync(ctx)
+	go func() {
+		newClient.RunSync(ctx)
+		m.mu.Lock()
+		delete(m.syncClients, knownHostPeer.InstanceId)
+		m.mu.Unlock()
+	}()
 
 	return nil
 }

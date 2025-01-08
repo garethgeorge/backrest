@@ -30,7 +30,6 @@ type SqliteStore struct {
 	dbpool    *sqlitex.Pool
 	lastIDVal atomic.Int64
 	dblock    *flock.Flock
-	querymu   sync.RWMutex
 
 	ogidCache *lru.TwoQueueCache[opGroupInfo, int64]
 
@@ -222,8 +221,6 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 }
 
 func (m *SqliteStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
-	m.querymu.RLock()
-	defer m.querymu.RUnlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("query: %v", err)
@@ -251,8 +248,6 @@ func (m *SqliteStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 }
 
 func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) error) error {
-	m.querymu.RLock()
-	defer m.querymu.RUnlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("query metadata: %v", err)
@@ -323,8 +318,6 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 }
 
 func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation, error)) error {
-	m.querymu.Lock()
-	defer m.querymu.Unlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("transform: %v", err)
@@ -332,7 +325,7 @@ func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operat
 	defer m.dbpool.Put(conn)
 
 	where, args := m.buildQueryWhereClause(q, true)
-	return withSqliteTransaction(conn, func() error {
+	return withImmediateSqliteTransaction(conn, func() error {
 		return sqlitex.ExecuteTransient(conn, "SELECT operations.operation FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+where, &sqlitex.ExecOptions{
 			Args: args,
 			ResultFunc: func(stmt *sqlite.Stmt) error {
@@ -391,15 +384,13 @@ func (m *SqliteStore) addInternal(conn *sqlite.Conn, op ...*v1.Operation) error 
 }
 
 func (m *SqliteStore) Add(op ...*v1.Operation) error {
-	m.querymu.Lock()
-	defer m.querymu.Unlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("add operation: %v", err)
 	}
 	defer m.dbpool.Put(conn)
 
-	return withSqliteTransaction(conn, func() error {
+	return withImmediateSqliteTransaction(conn, func() error {
 		for _, o := range op {
 			o.Id = m.lastIDVal.Add(1)
 			if o.FlowId == 0 {
@@ -415,15 +406,13 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 }
 
 func (m *SqliteStore) Update(op ...*v1.Operation) error {
-	m.querymu.Lock()
-	defer m.querymu.Unlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("update operation: %v", err)
 	}
 	defer m.dbpool.Put(conn)
 
-	return withSqliteTransaction(conn, func() error {
+	return withImmediateSqliteTransaction(conn, func() error {
 		return m.updateInternal(conn, op...)
 	})
 }
@@ -456,8 +445,6 @@ func (m *SqliteStore) updateInternal(conn *sqlite.Conn, op ...*v1.Operation) err
 }
 
 func (m *SqliteStore) Get(opID int64) (*v1.Operation, error) {
-	m.querymu.RLock()
-	defer m.querymu.RUnlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("get operation: %v", err)
@@ -491,8 +478,6 @@ func (m *SqliteStore) Get(opID int64) (*v1.Operation, error) {
 }
 
 func (m *SqliteStore) Delete(opID ...int64) ([]*v1.Operation, error) {
-	m.querymu.Lock()
-	defer m.querymu.Unlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("delete operation: %v", err)
@@ -500,7 +485,7 @@ func (m *SqliteStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 	defer m.dbpool.Put(conn)
 
 	ops := make([]*v1.Operation, 0, len(opID))
-	return ops, withSqliteTransaction(conn, func() error {
+	return ops, withImmediateSqliteTransaction(conn, func() error {
 		// fetch all the operations we're about to delete
 		predicate := []string{"operations.id IN ("}
 		args := []any{}
@@ -548,8 +533,6 @@ func (m *SqliteStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 }
 
 func (m *SqliteStore) ResetForTest(t *testing.T) error {
-	m.querymu.Lock()
-	defer m.querymu.Unlock()
 	conn, err := m.dbpool.Take(context.Background())
 	if err != nil {
 		return fmt.Errorf("reset for test: %v", err)
