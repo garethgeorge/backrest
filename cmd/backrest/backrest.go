@@ -149,11 +149,11 @@ func main() {
 	apiAuthenticationHandler := api.NewAuthenticationHandler(authenticator)
 
 	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewAuthenticationHandler(apiAuthenticationHandler))
 	if cfg.GetMultihost() != nil {
 		// alpha feature, only available if the user manually enables it in the config.
-		mux.Handle(v1connect.NewAuthenticationHandler(apiAuthenticationHandler))
+		mux.Handle(v1connect.NewBackrestSyncServiceHandler(syncHandler))
 	}
-	mux.Handle(v1connect.NewBackrestSyncServiceHandler(syncHandler))
 	backrestHandlerPath, backrestHandler := v1connect.NewBackrestHandler(apiBackrestHandler)
 	mux.Handle(backrestHandlerPath, auth.RequireAuthentication(backrestHandler, authenticator))
 	mux.Handle("/", webui.Handler())
