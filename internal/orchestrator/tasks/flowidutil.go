@@ -8,9 +8,9 @@ import (
 )
 
 // FlowIDForSnapshotID returns the flow ID associated with the backup task that created snapshot ID or 0 if not found.
-func FlowIDForSnapshotID(log *oplog.OpLog, snapshotID string) (int64, error) {
+func FlowIDForSnapshotID(runner TaskRunner, snapshotID string) (int64, error) {
 	var flowID int64
-	if err := log.Query(oplog.Query{SnapshotID: snapshotID}, func(op *v1.Operation) error {
+	if err := runner.QueryOperations(oplog.Query{SnapshotID: &snapshotID}, func(op *v1.Operation) error {
 		if _, ok := op.Op.(*v1.Operation_OperationBackup); !ok {
 			return nil
 		}

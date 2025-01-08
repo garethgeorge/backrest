@@ -9,13 +9,13 @@ import (
 	"github.com/garethgeorge/backrest/internal/ioutil"
 )
 
-func NewOneoffRunCommandTask(repoID string, planID string, flowID int64, at time.Time, command string) Task {
+func NewOneoffRunCommandTask(repo *v1.Repo, planID string, flowID int64, at time.Time, command string) Task {
 	return &GenericOneoffTask{
 		OneoffTask: OneoffTask{
 			BaseTask: BaseTask{
 				TaskType:   "run_command",
-				TaskName:   fmt.Sprintf("run command in repo %q", repoID),
-				TaskRepoID: repoID,
+				TaskName:   fmt.Sprintf("run command in repo %q", repo.Id),
+				TaskRepo:   repo,
 				TaskPlanID: planID,
 			},
 			FlowID: flowID,

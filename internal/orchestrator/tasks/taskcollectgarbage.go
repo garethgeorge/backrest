@@ -19,9 +19,11 @@ type gcSettingsForType struct {
 }
 
 type groupByKey struct {
-	Repo string
-	Plan string
-	Type reflect.Type
+	RepoID     string
+	RepoGUID   string
+	PlanID     string
+	InstanceID string
+	Type       reflect.Type
 }
 
 const (
@@ -89,19 +91,17 @@ func (t *CollectGarbageTask) Next(now time.Time, runner TaskRunner) (ScheduledTa
 }
 
 func (t *CollectGarbageTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
-	oplog := runner.OpLog()
-
-	if err := t.gcOperations(oplog); err != nil {
+	if err := t.gcOperations(runner); err != nil {
 		return fmt.Errorf("collecting garbage: %w", err)
 	}
 
 	return nil
 }
 
-func (t *CollectGarbageTask) gcOperations(log *oplog.OpLog) error {
+func (t *CollectGarbageTask) gcOperations(runner TaskRunner) error {
 	// snapshotForgottenForFlow returns whether the snapshot associated with the flow is forgotten
 	snapshotForgottenForFlow := make(map[int64]bool)
-	if err := log.Query(oplog.SelectAll, func(op *v1.Operation) error {
+	if err := runner.QueryOperations(oplog.SelectAll, func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
 			snapshotForgottenForFlow[op.FlowId] = snapshotOp.OperationIndexSnapshot.Forgot
 		}
@@ -119,7 +119,7 @@ func (t *CollectGarbageTask) gcOperations(log *oplog.OpLog) error {
 	deletedByType := make(map[string]int)
 	stats := make(map[groupByKey]gcSettingsForType)
 
-	if err := log.Query(oplog.Query{Reversed: true}, func(op *v1.Operation) error {
+	if err := runner.QueryOperations(oplog.Query{}.SetReversed(true), func(op *v1.Operation) error {
 		validIDs[op.Id] = struct{}{}
 
 		forgot, ok := snapshotForgottenForFlow[op.FlowId]
@@ -134,9 +134,11 @@ func (t *CollectGarbageTask) gcOperations(log *oplog.OpLog) error {
 		}
 
 		key := groupByKey{
-			Repo: op.RepoId,
-			Plan: op.PlanId,
-			Type: reflect.TypeOf(op.Op),
+			RepoGUID:   op.RepoGuid,
+			RepoID:     op.RepoId,
+			PlanID:     op.PlanId,
+			InstanceID: op.InstanceId,
+			Type:       reflect.TypeOf(op.Op),
 		}
 
 		st, ok := stats[key]
@@ -174,7 +176,7 @@ func (t *CollectGarbageTask) gcOperations(log *oplog.OpLog) error {
 		return fmt.Errorf("identifying gc eligible operations: %w", err)
 	}
 
-	if err := log.Delete(forgetIDs...); err != nil {
+	if err := runner.DeleteOperation(forgetIDs...); err != nil {
 		return fmt.Errorf("removing gc eligible operations: %w", err)
 	}
 	for _, id := range forgetIDs { // update validIDs with respect to the just deleted operations

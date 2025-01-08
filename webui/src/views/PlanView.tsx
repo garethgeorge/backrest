@@ -15,10 +15,13 @@ import {
 import { SpinButton } from "../components/SpinButton";
 import { useShowModal } from "../components/ModalManager";
 import { create } from "@bufbuild/protobuf";
+import { useConfig } from "../components/ConfigProvider";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
+  const [config, _] = useConfig();
   const alertsApi = useAlertApi()!;
   const showModal = useShowModal();
+  const repo = config?.repos.find((r) => r.id === plan.repo);
 
   const handleBackupNow = async () => {
     try {
@@ -62,6 +65,16 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
     }
   };
 
+  if (!repo) {
+    return (
+      <>
+        <Typography.Title>
+          Repo {plan.repo} for plan {plan.id} not found
+        </Typography.Title>
+      </>
+    );
+  }
+
   return (
     <>
       <Flex gap="small" align="center" wrap="wrap">
@@ -104,7 +117,8 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                 <OperationTree
                   req={create(GetOperationsRequestSchema, {
                     selector: {
-                      repoId: plan.repo!,
+                      instanceId: config?.instance,
+                      repoGuid: repo.guid,
                       planId: plan.id!,
                     },
                     lastN: BigInt(MAX_OPERATION_HISTORY),
@@ -124,7 +138,8 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                 <OperationList
                   req={create(GetOperationsRequestSchema, {
                     selector: {
-                      repoId: plan.repo!,
+                      instanceId: config?.instance,
+                      repoGuid: repo.guid,
                       planId: plan.id!,
                     },
                     lastN: BigInt(MAX_OPERATION_HISTORY),

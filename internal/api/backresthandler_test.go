@@ -18,12 +18,15 @@ import (
 	"connectrpc.com/connect"
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
+	"github.com/garethgeorge/backrest/internal/oplog/sqlitestore"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
+	"github.com/garethgeorge/backrest/internal/testutil"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 )
@@ -77,7 +80,10 @@ func TestUpdateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := sut.handler.SetConfig(context.Background(), connect.NewRequest(tt.req))
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			res, err := sut.handler.SetConfig(ctx, connect.NewRequest(tt.req))
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SetConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -100,6 +106,7 @@ func TestBackup(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -123,28 +130,34 @@ func TestBackup(t *testing.T) {
 		},
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
 	go func() {
 		sut.orch.Run(ctx)
 	}()
 
-	_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
+	_, err := sut.handler.Backup(ctx, connect.NewRequest(&types.StringValue{Value: "test"}))
 	if err != nil {
 		t.Fatalf("Backup() error = %v", err)
 	}
 
-	// Check that there is a successful backup recorded in the log.
-	if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
-		_, ok := op.GetOp().(*v1.Operation_OperationBackup)
-		return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
-	}) == -1 {
-		t.Fatalf("Expected a backup operation")
+	// Wait for the backup to complete.
+	if err := testutil.Retry(t, ctx, func() error {
+		ops := getOperations(t, sut.oplog)
+		if slices.IndexFunc(ops, func(op *v1.Operation) bool {
+			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
+			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
+		}) == -1 {
+			return fmt.Errorf("expected a backup operation, got %v", ops)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("Couldn't find backup operation in oplog")
 	}
 
 	// Wait for the index snapshot operation to appear in the oplog.
 	var snapshotOp *v1.Operation
-	if err := retry(t, 10, 1*time.Second, func() error {
+	if err := testutil.Retry(t, ctx, func() error {
 		operations := getOperations(t, sut.oplog)
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationIndexSnapshot)
@@ -163,7 +176,7 @@ func TestBackup(t *testing.T) {
 	}
 
 	// Wait for a forget operation to appear in the oplog.
-	if err := retry(t, 10, 1*time.Second, func() error {
+	if err := testutil.Retry(t, ctx, func() error {
 		operations := getOperations(t, sut.oplog)
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationForget)
@@ -191,6 +204,7 @@ func TestMultipleBackup(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -216,21 +230,22 @@ func TestMultipleBackup(t *testing.T) {
 		},
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
+
 	go func() {
 		sut.orch.Run(ctx)
 	}()
 
 	for i := 0; i < 2; i++ {
-		_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
+		_, err := sut.handler.Backup(ctx, connect.NewRequest(&types.StringValue{Value: "test"}))
 		if err != nil {
 			t.Fatalf("Backup() error = %v", err)
 		}
 	}
 
 	// Wait for a forget that removed 1 snapshot to appear in the oplog
-	if err := retry(t, 10, 1*time.Second, func() error {
+	if err := testutil.Retry(t, ctx, func() error {
 		operations := getOperations(t, sut.oplog)
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			forget, ok := op.GetOp().(*v1.Operation_OperationForget)
@@ -266,6 +281,7 @@ func TestHookExecution(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -308,19 +324,19 @@ func TestHookExecution(t *testing.T) {
 		},
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
 	go func() {
 		sut.orch.Run(ctx)
 	}()
 
-	_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
+	_, err := sut.handler.Backup(ctx, connect.NewRequest(&types.StringValue{Value: "test"}))
 	if err != nil {
 		t.Fatalf("Backup() error = %v", err)
 	}
 
 	// Wait for two hook operations to appear in the oplog
-	if err := retry(t, 10, 1*time.Second, func() error {
+	if err := testutil.Retry(t, ctx, func() error {
 		hookOps := slices.DeleteFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationRunHook)
 			return !ok
@@ -358,6 +374,7 @@ func TestHookOnErrorHandling(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -460,7 +477,7 @@ func TestHookOnErrorHandling(t *testing.T) {
 		},
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
 	go func() {
 		sut.orch.Run(ctx)
@@ -522,12 +539,12 @@ func TestHookOnErrorHandling(t *testing.T) {
 
 			if !tc.noWaitForBackup {
 				if err := errgroup.Wait(); err != nil {
-					t.Fatalf(err.Error())
+					t.Fatalf("%s", err.Error())
 				}
 			}
 
 			// Wait for hook operation to be attempted in the oplog
-			if err := retry(t, 10, 1*time.Second, func() error {
+			if err := testutil.Retry(t, ctx, func() error {
 				hookOps := slices.DeleteFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
 					_, ok := op.GetOp().(*v1.Operation_OperationRunHook)
 					return !ok
@@ -573,6 +590,7 @@ func TestCancelBackup(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -610,26 +628,26 @@ func TestCancelBackup(t *testing.T) {
 		},
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
 	go func() {
 		sut.orch.Run(ctx)
 	}()
 
-	// Start a backup
-	var errgroup errgroup.Group
-	errgroup.Go(func() error {
-		backupReq := connect.NewRequest(&types.StringValue{Value: "test"})
-		_, err := sut.handler.Backup(context.Background(), backupReq)
-		return err
-	})
+	go func() {
+		backupReq := &types.StringValue{Value: "test"}
+		_, err := sut.handler.Backup(ctx, connect.NewRequest(backupReq))
+		if err != nil {
+			t.Logf("Backup() error = %v", err)
+		}
+	}()
 
-	// Find the backup operation ID in the oplog
+	// Find the in-progress backup operation ID in the oplog, waits for the task to be in progress before attempting to cancel.
 	var backupOpId int64
-	if err := retry(t, 100, 100*time.Millisecond, func() error {
+	if err := testutil.Retry(t, ctx, func() error {
 		operations := getOperations(t, sut.oplog)
 		for _, op := range operations {
-			if op.GetOperationBackup() != nil {
+			if op.GetOperationBackup() != nil && op.Status == v1.OperationStatus_STATUS_INPROGRESS {
 				backupOpId = op.Id
 				return nil
 			}
@@ -643,7 +661,7 @@ func TestCancelBackup(t *testing.T) {
 		t.Errorf("Cancel() error = %v, wantErr nil", err)
 	}
 
-	if err := retry(t, 10, 1*time.Second, func() error {
+	if err := testutil.Retry(t, ctx, func() error {
 		if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
 			return op.Status == v1.OperationStatus_STATUS_ERROR && ok
@@ -671,6 +689,7 @@ func TestRestore(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -694,28 +713,34 @@ func TestRestore(t *testing.T) {
 		},
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
 	go func() {
 		sut.orch.Run(ctx)
 	}()
 
-	_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test"}))
+	_, err := sut.handler.Backup(ctx, connect.NewRequest(&types.StringValue{Value: "test"}))
 	if err != nil {
 		t.Fatalf("Backup() error = %v", err)
 	}
 
-	// Check that there is a successful backup recorded in the log.
-	if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
-		_, ok := op.GetOp().(*v1.Operation_OperationBackup)
-		return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
-	}) == -1 {
-		t.Fatalf("Expected a backup operation")
+	// Wait for the backup to complete.
+	if err := testutil.Retry(t, ctx, func() error {
+		// Check that there is a successful backup recorded in the log.
+		if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
+			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
+		}) == -1 {
+			return errors.New("Expected a backup operation")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("Couldn't find backup operation in oplog")
 	}
 
 	// Wait for the index snapshot operation to appear in the oplog.
 	var snapshotOp *v1.Operation
-	if err := retry(t, 10, 2*time.Second, func() error {
+	if err := testutil.Retry(t, ctx, func() error {
 		operations := getOperations(t, sut.oplog)
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationIndexSnapshot)
@@ -735,7 +760,7 @@ func TestRestore(t *testing.T) {
 
 	restoreTarget := t.TempDir() + "/restore"
 
-	_, err = sut.handler.Restore(context.Background(), connect.NewRequest(&v1.RestoreSnapshotRequest{
+	_, err = sut.handler.Restore(ctx, connect.NewRequest(&v1.RestoreSnapshotRequest{
 		SnapshotId: snapshotOp.SnapshotId,
 		PlanId:     "test",
 		RepoId:     "local",
@@ -746,7 +771,7 @@ func TestRestore(t *testing.T) {
 	}
 
 	// Wait for a restore operation to appear in the oplog.
-	if err := retry(t, 10, 2*time.Second, func() error {
+	if err := testutil.Retry(t, ctx, func() error {
 		operations := getOperations(t, sut.oplog)
 		if index := slices.IndexFunc(operations, func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationRestore)
@@ -788,6 +813,7 @@ func TestRunCommand(t *testing.T) {
 			Repos: []*v1.Repo{
 				{
 					Id:       "local",
+					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 					Uri:      t.TempDir(),
 					Password: "test",
 					Flags:    []string{"--no-cache"},
@@ -796,8 +822,11 @@ func TestRunCommand(t *testing.T) {
 		},
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
+	go func() {
+		sut.orch.Run(ctx)
+	}()
 
 	res, err := sut.handler.RunCommand(ctx, connect.NewRequest(&v1.RunCommandRequest{
 		RepoId:  "local",
@@ -844,7 +873,7 @@ func TestRunCommand(t *testing.T) {
 type systemUnderTest struct {
 	handler  *BackrestHandler
 	oplog    *oplog.OpLog
-	opstore  *bboltstore.BboltStore
+	opstore  *sqlitestore.SqliteStore
 	orch     *orchestrator.Orchestrator
 	logStore *logstore.LogStore
 	config   *v1.Config
@@ -858,13 +887,14 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 		t.Fatalf("Failed to get config: %v", err)
 	}
 
+	remoteConfigStore := syncapi.NewJSONDirRemoteConfigStore(dir)
 	resticBin, err := resticinstaller.FindOrInstallResticBinary()
 	if err != nil {
 		t.Fatalf("Failed to find or install restic binary: %v", err)
 	}
-	opstore, err := bboltstore.NewBboltStore(filepath.Join(dir, "oplog.bbolt"))
+	opstore, err := sqlitestore.NewSqliteStore(filepath.Join(dir, "oplog.sqlite"))
 	if err != nil {
-		t.Fatalf("Failed to create oplog store: %v", err)
+		t.Fatalf("Failed to create opstore: %v", err)
 	}
 	t.Cleanup(func() { opstore.Close() })
 	oplog, err := oplog.NewOpLog(opstore)
@@ -894,7 +924,7 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 		}
 	}
 
-	h := NewBackrestHandler(config, orch, oplog, logStore)
+	h := NewBackrestHandler(config, remoteConfigStore, orch, oplog, logStore)
 
 	return systemUnderTest{
 		handler:  h,
@@ -906,25 +936,10 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 	}
 }
 
-func retry(t *testing.T, times int, backoff time.Duration, f func() error) error {
-	t.Helper()
-	var err error
-	for i := 0; i < times; i++ {
-		err = f()
-		if err == nil {
-			return nil
-		}
-		time.Sleep(backoff)
-	}
-	return err
-}
-
 func getOperations(t *testing.T, log *oplog.OpLog) []*v1.Operation {
-	t.Logf("Reading oplog at time %v", time.Now())
 	operations := []*v1.Operation{}
 	if err := log.Query(oplog.SelectAll, func(op *v1.Operation) error {
 		operations = append(operations, op)
-		t.Logf("operation %t status %s", op.GetOp(), op.Status)
 		return nil
 	}); err != nil {
 		t.Fatalf("Failed to read oplog: %v", err)

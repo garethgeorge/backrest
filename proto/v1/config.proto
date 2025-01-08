@@ -5,6 +5,7 @@ package v1;
 option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
 
 import "google/protobuf/empty.proto";
+import "v1/crypto.proto";
 
 message HubConfig {
   repeated InstanceInfo instances = 1 [json_name="instances"];
@@ -29,11 +30,27 @@ message Config {
   repeated Repo repos = 3 [json_name="repos"];
   repeated Plan plans = 4 [json_name="plans"];
   Auth auth = 5 [json_name="auth"];
+  Multihost multihost = 7 [json_name="sync"];
+}
+
+message Multihost {
+  repeated Peer known_hosts = 1 [json_name="knownHosts"];
+  repeated Peer authorized_clients = 2 [json_name="authorizedClients"];
+
+  message Peer {
+    string instance_id = 1 [json_name="instanceId"]; // instance ID of the peer.
+    PublicKey public_key = 3 [json_name="publicKey"]; // public key of the peer. If changed, the peer must re-verify the public key.
+    bool public_key_verified = 4 [json_name="publicKeyVerified"]; // whether the public key is verified. This must be set for a host to authenticate a client. Clients implicitly validate the first key they see on initial connection.
+
+    // Known host only fields
+    string instance_url = 2 [json_name="instanceUrl"]; // instance URL, required for a known host. Otherwise meaningless.
+  }
 }
 
 message Repo {
   string id = 1 [json_name="id"]; // unique but human readable ID for this repo.
-  string uri = 2 [json_name="uri"]; // restic repo URI
+  string uri = 2 [json_name="uri"]; // URI of the repo.
+  string guid = 11 [json_name="guid"]; // a globally unique ID for this repo. Should be derived as the 'id' field in `restic cat config --json`.
   string password = 3 [json_name="password"]; // plaintext password
   repeated string env = 4 [json_name="env"]; // extra environment variables to set for restic.
   repeated string flags = 5 [json_name="flags"]; // extra flags set on the restic command.
@@ -42,6 +59,7 @@ message Repo {
   repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on events for this repo.
   bool auto_unlock = 8 [json_name="autoUnlock"]; // automatically unlock the repo when needed.
   CommandPrefix command_prefix = 10 [json_name="commandPrefix"]; // modifiers for the restic commands
+  repeated string allowed_peer_instance_ids = 100 [json_name="allowedPeers"]; // list of peer instance IDs allowed to access this repo.
 }
 
 message Plan {

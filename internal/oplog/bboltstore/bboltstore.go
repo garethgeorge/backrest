@@ -297,11 +297,11 @@ func (o *BboltStore) Get(id int64) (*v1.Operation, error) {
 
 // Query represents a query to the operation log.
 type Query struct {
-	RepoId     string
-	PlanId     string
-	SnapshotId string
-	FlowId     int64
-	InstanceId string
+	RepoId     *string
+	PlanId     *string
+	SnapshotId *string
+	FlowId     *int64
+	InstanceId *string
 	Ids        []int64
 }
 
@@ -309,6 +309,10 @@ func (o *BboltStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 	return o.queryHelper(q, func(tx *bbolt.Tx, op *v1.Operation) error {
 		return f(op)
 	}, true)
+}
+
+func (o *BboltStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) error) error {
+	return errors.New("not implemented")
 }
 
 func (o *BboltStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation, error)) error {
@@ -321,6 +325,7 @@ func (o *BboltStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operati
 		if transformed == nil {
 			return nil
 		}
+		transformed.Modno = op.Modno + 1
 		if _, err := o.deleteOperationHelper(tx, origId); err != nil {
 			return fmt.Errorf("deleting old operation: %w", err)
 		}
@@ -334,26 +339,28 @@ func (o *BboltStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operati
 func (o *BboltStore) queryHelper(query oplog.Query, do func(tx *bbolt.Tx, op *v1.Operation) error, isReadOnly bool) error {
 	helper := func(tx *bolt.Tx) error {
 		iterators := make([]indexutil.IndexIterator, 0, 5)
-		if query.RepoID != "" {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(RepoIndexBucket), []byte(query.RepoID)))
+		if query.PlanID != nil {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(PlanIndexBucket), []byte(*query.PlanID)))
 		}
-		if query.PlanID != "" {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(PlanIndexBucket), []byte(query.PlanID)))
+		if query.SnapshotID != nil {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(SnapshotIndexBucket), []byte(*query.SnapshotID)))
 		}
-		if query.SnapshotID != "" {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(SnapshotIndexBucket), []byte(query.SnapshotID)))
+		if query.FlowID != nil {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(*query.FlowID)))
 		}
-		if query.FlowID != 0 {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(FlowIdIndexBucket), serializationutil.Itob(query.FlowID)))
-		}
-		if query.InstanceID != "" {
-			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(InstanceIndexBucket), []byte(query.InstanceID)))
+		if query.InstanceID != nil {
+			iterators = append(iterators, indexutil.IndexSearchByteValue(tx.Bucket(InstanceIndexBucket), []byte(*query.InstanceID)))
 		}
 
 		var ids []int64
 		if len(iterators) == 0 && len(query.OpIDs) == 0 {
 			if query.Limit == 0 && query.Offset == 0 && !query.Reversed {
-				return o.forAll(tx, func(op *v1.Operation) error { return do(tx, op) })
+				return o.forAll(tx, func(op *v1.Operation) error {
+					if query.Match(op) {
+						return do(tx, op)
+					}
+					return nil
+				})
 			} else {
 				b := tx.Bucket(OpLogBucket)
 				c := b.Cursor()
@@ -384,7 +391,10 @@ func (o *BboltStore) queryHelper(query oplog.Query, do func(tx *bbolt.Tx, op *v1
 		}
 
 		return o.forOpsByIds(tx, ids, func(op *v1.Operation) error {
-			return do(tx, op)
+			if query.Match(op) {
+				return do(tx, op)
+			}
+			return nil
 		})
 	}
 	if isReadOnly {

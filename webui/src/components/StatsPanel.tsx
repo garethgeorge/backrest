@@ -22,7 +22,13 @@ import {
 import _ from "lodash";
 import { create } from "@bufbuild/protobuf";
 
-const StatsPanel = ({ repoId }: { repoId: string }) => {
+const StatsPanel = ({
+  instanceId,
+  repoId,
+}: {
+  instanceId: string;
+  repoId: string;
+}) => {
   const [operations, setOperations] = useState<Operation[]>([]);
   const alertApi = useAlertApi();
 
@@ -33,7 +39,8 @@ const StatsPanel = ({ repoId }: { repoId: string }) => {
 
     const req = create(GetOperationsRequestSchema, {
       selector: {
-        repoId: repoId,
+        repoId,
+        instanceId,
       },
     });
 

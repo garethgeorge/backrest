@@ -33,6 +33,7 @@ type Repo struct {
 	checkExists      sync.Once
 	initialized      error // nil or errAlreadyInitialized if initialized, error if initialization failed.
 	shouldInitialize sync.Once
+	repoConfig       RepoConfig // set by init (which calls Exists)
 }
 
 // NewRepo instantiates a new repository.
@@ -99,6 +100,8 @@ func (r *Repo) Exists(ctx context.Context, opts ...GenericOption) error {
 		r.pipeCmdOutputToWriter(cmd, output)
 		if err := cmd.Run(); err != nil {
 			r.exists = newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
+		} else if err := json.Unmarshal(output.Bytes(), &r.repoConfig); err != nil {
+			r.exists = newCmdError(ctx, cmd, newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", err), output.String()))
 		} else {
 			r.exists = nil
 		}
@@ -123,6 +126,11 @@ func (r *Repo) init(ctx context.Context, opts ...GenericOption) error {
 			} else {
 				r.initialized = newCmdError(ctx, cmd, newCmdError(ctx, cmd, newErrorWithOutput(err, output.String())))
 			}
+		} else {
+			if err := json.Unmarshal(output.Bytes(), &r.repoConfig); err != nil {
+				r.initialized = newCmdError(ctx, cmd, newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", err), output.String()))
+			}
+			r.exists = r.initialized
 		}
 	})
 
@@ -134,6 +142,13 @@ func (r *Repo) Init(ctx context.Context, opts ...GenericOption) error {
 		return fmt.Errorf("init failed: %w", err)
 	}
 	return nil
+}
+
+func (r *Repo) Config(ctx context.Context, opts ...GenericOption) (RepoConfig, error) {
+	if err := r.Exists(ctx, opts...); err != nil {
+		return RepoConfig{}, err
+	}
+	return r.repoConfig, nil
 }
 
 func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func(*BackupProgressEntry), opts ...GenericOption) (*BackupProgressEntry, error) {

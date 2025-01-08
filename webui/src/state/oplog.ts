@@ -6,8 +6,7 @@ import {
 } from "../../gen/ts/v1/operations_pb";
 import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
 import { BackupProgressEntry, ResticSnapshot, RestoreProgressEntry } from "../../gen/ts/v1/restic_pb";
-import _, { flow } from "lodash";
-import { formatDuration, formatTime } from "../lib/formatting";
+import _ from "lodash";
 import { backrestService } from "../api";
 
 const subscribers: ((event?: OperationEvent, err?: Error) => void)[] = [];

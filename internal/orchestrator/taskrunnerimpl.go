@@ -22,7 +22,6 @@ type taskRunnerImpl struct {
 	orchestrator *Orchestrator
 	t            tasks.Task
 	op           *v1.Operation
-	repo         *v1.Repo   // cache, populated on first call to Repo()
 	plan         *v1.Plan   // cache, populated on first call to Plan()
 	config       *v1.Config // cache, populated on first call to Config()
 }
@@ -31,19 +30,11 @@ var _ tasks.TaskRunner = &taskRunnerImpl{}
 
 func newTaskRunnerImpl(orchestrator *Orchestrator, task tasks.Task, op *v1.Operation) *taskRunnerImpl {
 	return &taskRunnerImpl{
+		config:       orchestrator.config,
 		orchestrator: orchestrator,
 		t:            task,
 		op:           op,
 	}
-}
-
-func (t *taskRunnerImpl) findRepo() (*v1.Repo, error) {
-	if t.repo != nil {
-		return t.repo, nil
-	}
-	var err error
-	t.repo, err = t.orchestrator.GetRepo(t.t.RepoID())
-	return t.repo, err
 }
 
 func (t *taskRunnerImpl) findPlan() (*v1.Plan, error) {
@@ -55,22 +46,44 @@ func (t *taskRunnerImpl) findPlan() (*v1.Plan, error) {
 	return t.plan, err
 }
 
-func (t *taskRunnerImpl) CreateOperation(op *v1.Operation) error {
-	op.InstanceId = t.orchestrator.config.Instance
-	return t.orchestrator.OpLog.Add(op)
+func (t *taskRunnerImpl) InstanceID() string {
+	return t.config.Instance
 }
 
-func (t *taskRunnerImpl) UpdateOperation(op *v1.Operation) error {
-	op.InstanceId = t.orchestrator.config.Instance
-	return t.orchestrator.OpLog.Update(op)
+func (t *taskRunnerImpl) GetOperation(id int64) (*v1.Operation, error) {
+	return t.orchestrator.OpLog.Get(id)
+}
+
+func (t *taskRunnerImpl) CreateOperation(op ...*v1.Operation) error {
+	for _, o := range op {
+		if o.InstanceId != "" {
+			continue
+		}
+		o.InstanceId = t.InstanceID()
+	}
+	return t.orchestrator.OpLog.Add(op...)
+}
+
+func (t *taskRunnerImpl) UpdateOperation(op ...*v1.Operation) error {
+	for _, o := range op {
+		if o.InstanceId != "" {
+			continue
+		}
+		o.InstanceId = t.InstanceID()
+	}
+	return t.orchestrator.OpLog.Update(op...)
+}
+
+func (t *taskRunnerImpl) DeleteOperation(id ...int64) error {
+	return t.orchestrator.OpLog.Delete(id...)
 }
 
 func (t *taskRunnerImpl) Orchestrator() *Orchestrator {
 	return t.orchestrator
 }
 
-func (t *taskRunnerImpl) OpLog() *oplog.OpLog {
-	return t.orchestrator.OpLog
+func (t *taskRunnerImpl) QueryOperations(q oplog.Query, fn func(*v1.Operation) error) error {
+	return t.orchestrator.OpLog.Query(q, fn)
 }
 
 func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars tasks.HookVars) error {
@@ -83,14 +96,8 @@ func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 
 	repoID := t.t.RepoID()
 	planID := t.t.PlanID()
-	var repo *v1.Repo
 	var plan *v1.Plan
-	if repoID != "" {
-		var err error
-		repo, err = t.findRepo()
-		if err != nil {
-			return err
-		}
+	if repo := t.t.Repo(); repo != nil {
 		vars.Repo = repo
 	}
 	if planID != "" {
@@ -131,7 +138,7 @@ func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 
 func (t *taskRunnerImpl) GetRepo(repoID string) (*v1.Repo, error) {
 	if repoID == t.t.RepoID() {
-		return t.findRepo() // optimization for the common case of the current repo
+		return t.t.Repo(), nil
 	}
 	return t.orchestrator.GetRepo(repoID)
 }
