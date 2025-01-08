@@ -1,5 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Col, Empty, Flex, Modal, Row, Splitter, Tooltip, Tree } from "antd";
+import {
+  Col,
+  Empty,
+  Flex,
+  Modal,
+  Row,
+  Splitter,
+  Tooltip,
+  Tree,
+  Typography,
+} from "antd";
 import _, { flow } from "lodash";
 import { DataNode } from "antd/es/tree";
 import { formatDate, formatTime, localISOTime } from "../lib/formatting";
@@ -29,6 +39,7 @@ import {
 import { OperationIcon } from "./OperationIcon";
 import { shouldHideOperation } from "../state/oplog";
 import { create, toJsonString } from "@bufbuild/protobuf";
+import { useConfig } from "./ConfigProvider";
 
 type OpTreeNode = DataNode & {
   backup?: FlowDisplayInfo;
@@ -41,6 +52,7 @@ export const OperationTreeView = ({
   req: GetOperationsRequest;
   isPlanView?: boolean;
 }>) => {
+  const config = useConfig()[0];
   const alertApi = useAlertApi();
   const setScreenWidth = useState(window.innerWidth)[1];
   const [backups, setBackups] = useState<FlowDisplayInfo[]>([]);
@@ -106,15 +118,49 @@ export const OperationTreeView = ({
 
   const useMobileLayout = isMobile();
 
-  const displayTree = (
-    <DisplayOperationTree
-      operations={backups}
-      isPlanView={isPlanView}
-      onSelect={(flow) => {
-        setSelectedBackupId(flow ? flow.flowID : null);
-      }}
-    />
-  );
+  const backupsByInstance = _.groupBy(backups, (b) => {
+    return b.instanceID;
+  });
+
+  let primaryTree: React.ReactNode | null = null;
+  const otherTrees: React.ReactNode[] = [];
+
+  for (const instance of Object.keys(backupsByInstance)) {
+    const instanceOps = backupsByInstance[instance];
+    const instTree = (
+      <DisplayOperationTree
+        operations={backups}
+        isPlanView={isPlanView}
+        onSelect={(flow) => {
+          setSelectedBackupId(flow ? flow.flowID : null);
+        }}
+      />
+    );
+
+    if (instance === config!.instance) {
+      primaryTree = instTree;
+    } else {
+      otherTrees.push(
+        <>
+          <Typography.Title level={4}>{instance}</Typography.Title>
+          {instTree}
+        </>
+      );
+    }
+  }
+
+  let displayTree: React.ReactNode;
+  if (otherTrees.length > 0) {
+    displayTree = (
+      <>
+        <Typography.Title level={4}>{config!.instance}</Typography.Title>
+        {primaryTree}
+        {otherTrees}
+      </>
+    );
+  } else {
+    displayTree = primaryTree;
+  }
 
   if (useMobileLayout) {
     const backup = backups.find((b) => b.flowID === selectedBackupId);
@@ -386,7 +432,7 @@ const buildTree = (
     tree = buildTreeDay("", operations);
     expanded = expandTree(tree, 5, 0, 2);
   } else {
-    tree = buildTreeInstanceID(operations);
+    tree = buildTreePlan(operations);
     expanded = expandTree(tree, 5, 2, 4);
   }
   return { tree, expanded };
