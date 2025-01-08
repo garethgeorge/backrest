@@ -66,7 +66,7 @@ func NewSyncClient(mgr *SyncManager, localInstanceID string, peer *v1.Multihost_
 		mgr:             mgr,
 		localInstanceID: localInstanceID,
 		peer:            peer,
-		reconnectDelay:  60 * time.Second,
+		reconnectDelay:  mgr.syncClientRetryDelay,
 		client:          client,
 		oplog:           oplog,
 		l:               zap.L().Named(fmt.Sprintf("syncclient for %q", peer.GetInstanceId())),

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"sync"
+	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
@@ -21,7 +22,10 @@ type SyncManager struct {
 	remoteConfigStore RemoteConfigStore
 
 	// mutable properties
-	mu          sync.Mutex
+	mu sync.Mutex
+
+	syncClientRetryDelay time.Duration // the default retry delay for sync clients
+
 	syncClients map[string]*SyncClient
 }
 
@@ -32,7 +36,8 @@ func NewSyncManager(configMgr *config.ConfigManager, remoteConfigStore RemoteCon
 		oplog:             oplog,
 		remoteConfigStore: remoteConfigStore,
 
-		syncClients: make(map[string]*SyncClient),
+		syncClientRetryDelay: 60 * time.Second,
+		syncClients:          make(map[string]*SyncClient),
 	}
 }
 

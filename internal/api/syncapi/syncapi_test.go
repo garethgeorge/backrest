@@ -402,11 +402,11 @@ func TestSyncMutations(t *testing.T) {
 		defer wg.Done()
 		runSyncAPIWithCtx(syncCtx, peerHost, peerHostAddr)
 	}()
+
 	go func() {
 		defer wg.Done()
 		runSyncAPIWithCtx(syncCtx, peerClient, peerClientAddr)
 	}()
-
 	tryConnect(t, ctx, peerClient, defaultHostID)
 
 	// Verify all operations are synced after reconnection
@@ -655,8 +655,11 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 
 	remoteConfigStore := NewJSONDirRemoteConfigStore(filepath.Join(tempDir, "remoteconfig"))
 
+	manager := NewSyncManager(configMgr, remoteConfigStore, oplog, orchestrator)
+	manager.syncClientRetryDelay = 250 * time.Millisecond
+
 	return &peerUnderTest{
-		manager:   NewSyncManager(configMgr, remoteConfigStore, oplog, orchestrator),
+		manager:   manager,
 		oplog:     oplog,
 		opstore:   opstore,
 		configMgr: configMgr,
