@@ -8,12 +8,16 @@ import (
 	"io/fs"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
+var etagCacheMu sync.Mutex
 var etagCache = make(map[string]string)
 
 func calcEtag(path string, data []byte) string {
+	etagCacheMu.Lock()
+	defer etagCacheMu.Unlock()
 	etag, ok := etagCache[path]
 	if ok {
 		return etag
