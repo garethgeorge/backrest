@@ -126,14 +126,15 @@ export const OperationTreeView = ({
   const otherTrees: React.ReactNode[] = [];
 
   for (const instance of Object.keys(backupsByInstance)) {
-    const instanceOps = backupsByInstance[instance];
+    const instanceBackups = backupsByInstance[instance];
     const instTree = (
       <DisplayOperationTree
-        operations={backups}
+        operations={instanceBackups}
         isPlanView={isPlanView}
         onSelect={(flow) => {
           setSelectedBackupId(flow ? flow.flowID : null);
         }}
+        expand={instance === config!.instance}
       />
     );
 
@@ -205,10 +206,12 @@ const DisplayOperationTree = ({
   operations,
   isPlanView,
   onSelect,
+  expand,
 }: {
   operations: FlowDisplayInfo[];
   isPlanView?: boolean;
   onSelect?: (flow: FlowDisplayInfo | null) => any;
+  expand?: boolean;
 }) => {
   const [treeData, setTreeData] = useState<{
     tree: OpTreeNode[];
@@ -237,7 +240,7 @@ const DisplayOperationTree = ({
     <Tree<OpTreeNode>
       treeData={treeData.tree}
       showIcon
-      defaultExpandedKeys={treeData.expanded}
+      defaultExpandedKeys={expand ? treeData.expanded : []}
       onSelect={(keys, info) => {
         if (info.selectedNodes.length === 0) return;
         const backup = info.selectedNodes[0].backup;
@@ -433,7 +436,7 @@ const buildTree = (
     expanded = expandTree(tree, 5, 0, 2);
   } else {
     tree = buildTreePlan(operations);
-    expanded = expandTree(tree, 5, 2, 4);
+    expanded = expandTree(tree, 5, 1, 3);
   }
   return { tree, expanded };
 };
