@@ -297,7 +297,13 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     ...configPlans.map((plan) => {
       return {
         key: "p-" + plan.id,
-        icon: <IconForResource planId={plan.id} repoId={plan.repo} />,
+        icon: (
+          <IconForResource
+            instanceId={config.instance}
+            planId={plan.id}
+            repoId={plan.repo}
+          />
+        ),
         label: (
           <div
             className="backrest visible-on-hover"
@@ -338,7 +344,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     ...configRepos.map((repo) => {
       return {
         key: "r-" + repo.id,
-        icon: <IconForResource repoId={repo.id} />,
+        icon: <IconForResource instanceId={config.instance} repoId={repo.id} />,
         label: (
           <div
             className="backrest visible-on-hover"
@@ -392,9 +398,11 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
 };
 
 const IconForResource = ({
+  instanceId,
   planId,
   repoId,
 }: {
+  instanceId: string;
   planId?: string;
   repoId?: string;
 }) => {
@@ -402,7 +410,9 @@ const IconForResource = ({
   useEffect(() => {
     const load = async () => {
       setStatus(
-        await getStatusForSelector(create(OpSelectorSchema, { planId, repoId }))
+        await getStatusForSelector(
+          create(OpSelectorSchema, { instanceId, planId, repoId })
+        )
       );
     };
     load();

@@ -31,7 +31,7 @@ func TasksTriggeredByEvent(config *v1.Config, repoID string, planID string, pare
 		}
 
 		name := fmt.Sprintf("repo/%v/hook/%v", repo.Id, idx)
-		task, err := newOneoffRunHookTask(name, config.Instance, repoID, planID, parentOp, time.Now(), hook, event, vars)
+		task, err := newOneoffRunHookTask(name, config.Instance, repo, planID, parentOp, time.Now(), hook, event, vars)
 		if err != nil {
 			return nil, err
 		}
@@ -45,7 +45,7 @@ func TasksTriggeredByEvent(config *v1.Config, repoID string, planID string, pare
 		}
 
 		name := fmt.Sprintf("plan/%v/hook/%v", plan.Id, idx)
-		task, err := newOneoffRunHookTask(name, config.Instance, repoID, planID, parentOp, time.Now(), hook, event, vars)
+		task, err := newOneoffRunHookTask(name, config.Instance, repo, planID, parentOp, time.Now(), hook, event, vars)
 		if err != nil {
 			return nil, err
 		}
@@ -55,7 +55,7 @@ func TasksTriggeredByEvent(config *v1.Config, repoID string, planID string, pare
 	return taskSet, nil
 }
 
-func newOneoffRunHookTask(title, instanceID, repoID, planID string, parentOp *v1.Operation, at time.Time, hook *v1.Hook, event v1.Hook_Condition, vars interface{}) (tasks.Task, error) {
+func newOneoffRunHookTask(title, instanceID string, repo *v1.Repo, planID string, parentOp *v1.Operation, at time.Time, hook *v1.Hook, event v1.Hook_Condition, vars interface{}) (tasks.Task, error) {
 	h, err := types.DefaultRegistry().GetHandler(hook)
 	if err != nil {
 		return nil, fmt.Errorf("no handler for hook type %T", hook.Action)
@@ -68,17 +68,12 @@ func newOneoffRunHookTask(title, instanceID, repoID, planID string, parentOp *v1
 			BaseTask: tasks.BaseTask{
 				TaskType:   "hook",
 				TaskName:   fmt.Sprintf("run hook %v", title),
-				TaskRepoID: repoID,
+				TaskRepo:   repo,
 				TaskPlanID: planID,
 			},
 			FlowID: parentOp.GetFlowId(),
 			RunAt:  at,
 			ProtoOp: &v1.Operation{
-				InstanceId: instanceID,
-				RepoId:     repoID,
-				PlanId:     planID,
-				FlowId:     parentOp.GetFlowId(),
-
 				DisplayMessage: fmt.Sprintf("running %v triggered by %v", title, event.String()),
 				Op: &v1.Operation_OperationRunHook{
 					OperationRunHook: &v1.OperationRunHook{

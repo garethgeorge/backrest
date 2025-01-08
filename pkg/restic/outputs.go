@@ -306,3 +306,9 @@ type RepoStats struct {
 	TotalBlobCount         int64   `json:"total_blob_count"`
 	SnapshotsCount         int64   `json:"snapshots_count"`
 }
+
+type RepoConfig struct {
+	Version           int    `json:"version"`
+	Id                string `json:"id"`
+	ChunkerPolynomial string `json:"chunker_polynomial"`
+}

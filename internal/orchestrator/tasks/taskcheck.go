@@ -17,12 +17,12 @@ type CheckTask struct {
 	didRun bool
 }
 
-func NewCheckTask(repoID, planID string, force bool) Task {
+func NewCheckTask(repo *v1.Repo, planID string, force bool) Task {
 	return &CheckTask{
 		BaseTask: BaseTask{
 			TaskType:   "check",
-			TaskName:   fmt.Sprintf("check for repo %q", repoID),
-			TaskRepoID: repoID,
+			TaskName:   fmt.Sprintf("check for repo %q", repo.Id),
+			TaskRepo:   repo,
 			TaskPlanID: planID,
 		},
 		force: force,
@@ -56,7 +56,10 @@ func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	var lastRan time.Time
 	var foundBackup bool
 
-	if err := runner.OpLog().Query(oplog.Query{RepoID: t.RepoID(), Reversed: true}, func(op *v1.Operation) error {
+	if err := runner.QueryOperations(oplog.Query{}.
+		SetInstanceID(runner.InstanceID()). // note: this means that check tasks run by remote instances are ignored.
+		SetRepoGUID(t.Repo().GetGuid()).
+		SetReversed(true), func(op *v1.Operation) error {
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
 			return nil
 		}
