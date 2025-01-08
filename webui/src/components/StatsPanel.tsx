@@ -15,33 +15,19 @@ import { Operation, OperationStats } from "../../gen/ts/v1/operations_pb";
 import { useAlertApi } from "./Alerts";
 import { getOperations } from "../state/oplog";
 import {
-  GetOperationsRequest,
   GetOperationsRequestSchema,
   OpSelector,
 } from "../../gen/ts/v1/service_pb";
 import _ from "lodash";
 import { create } from "@bufbuild/protobuf";
 
-const StatsPanel = ({
-  instanceId,
-  repoId,
-}: {
-  instanceId: string;
-  repoId: string;
-}) => {
+const StatsPanel = ({ selector }: { selector: OpSelector }) => {
   const [operations, setOperations] = useState<Operation[]>([]);
   const alertApi = useAlertApi();
 
   useEffect(() => {
-    if (!repoId) {
-      return;
-    }
-
     const req = create(GetOperationsRequestSchema, {
-      selector: {
-        repoId,
-        instanceId,
-      },
+      selector,
     });
 
     getOperations(req)
@@ -54,7 +40,7 @@ const StatsPanel = ({
       .catch((e) => {
         alertApi!.error("Failed to fetch operations: " + e.message);
       });
-  }, [repoId]);
+  }, [JSON.stringify(selector)]);
 
   if (operations.length === 0) {
     return (

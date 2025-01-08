@@ -34,7 +34,6 @@ import { MessageInstance } from "antd/es/message/interface";
 import { backrestService } from "../api";
 import { useShowModal } from "./ModalManager";
 import { useAlertApi } from "./Alerts";
-import { OperationList } from "./OperationList";
 import {
   displayTypeToString,
   getTypeForDisplay,
@@ -44,6 +43,7 @@ import { OperationIcon } from "./OperationIcon";
 import { LogView } from "./LogView";
 import { ConfirmButton } from "./SpinButton";
 import { create } from "@bufbuild/protobuf";
+import { OperationListView } from "./OperationListView";
 
 export const OperationRow = ({
   operation,
@@ -133,7 +133,9 @@ export const OperationRow = ({
 
   const title: React.ReactNode[] = [
     <div key="title">
-      {showPlan ? operation.planId + " - " : undefined}{" "}
+      {showPlan
+        ? operation.instanceId + " - " + operation.planId + " - "
+        : undefined}{" "}
       {formatTime(Number(operation.unixTimeStartMs))} - {opName}{" "}
       <span className="backrest operation-details">{details}</span>
     </div>,
@@ -305,7 +307,7 @@ export const OperationRow = ({
       key: "hookOperations",
       label: "Hooks Triggered",
       children: (
-        <OperationList
+        <OperationListView
           useOperations={hookOperations}
           displayHooksInline={true}
         />

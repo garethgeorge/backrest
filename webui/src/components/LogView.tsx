@@ -37,7 +37,7 @@ export const LogView = ({ logref }: { logref: string }) => {
           });
         }
       } catch (e) {
-        setLines((prev) => [...prev, `Fetch log error: ${e}`]);
+        // setLines((prev) => [...prev, `Fetch log error: ${e}`]);
       }
     })();
 

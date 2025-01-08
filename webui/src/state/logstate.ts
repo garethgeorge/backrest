@@ -223,7 +223,7 @@ export const matchSelector = (selector: OpSelector, op: Operation) => {
   if (selector.planId && selector.planId !== op.planId) {
     return false;
   }
-  if (selector.repoId && selector.repoId !== op.repoId) {
+  if (selector.repoGuid && selector.repoGuid !== op.repoGuid) {
     return false;
   }
   if (selector.flowId && selector.flowId !== op.flowId) {

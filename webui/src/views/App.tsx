@@ -29,7 +29,7 @@ import { useConfig } from "../components/ConfigProvider";
 import { shouldShowSettings } from "../state/configutil";
 import { OpSelector, OpSelectorSchema } from "../../gen/ts/v1/service_pb";
 import { colorForStatus } from "../state/flowdisplayaggregator";
-import { getStatusForSelector } from "../state/logstate";
+import { getStatusForSelector, matchSelector } from "../state/logstate";
 import { Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { MainContentAreaTemplate } from "./MainContentArea";
 import { create } from "@bufbuild/protobuf";
@@ -281,6 +281,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     return;
   }
 
+  const reposById = _.keyBy(config.repos, (r) => r.id);
   const configPlans = config.plans || [];
   const configRepos = config.repos || [];
 
@@ -295,15 +296,15 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
       },
     },
     ...configPlans.map((plan) => {
+      const sel = create(OpSelectorSchema, {
+        instanceId: config.instance,
+        planId: plan.id,
+        repoGuid: reposById[plan.repo]?.guid,
+      });
+
       return {
         key: "p-" + plan.id,
-        icon: (
-          <IconForResource
-            instanceId={config.instance}
-            planId={plan.id}
-            repoId={plan.repo}
-          />
-        ),
+        icon: <IconForResource selector={sel} />,
         label: (
           <div
             className="backrest visible-on-hover"
@@ -344,7 +345,14 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     ...configRepos.map((repo) => {
       return {
         key: "r-" + repo.id,
-        icon: <IconForResource instanceId={config.instance} repoId={repo.id} />,
+        icon: (
+          <IconForResource
+            selector={create(OpSelectorSchema, {
+              instanceId: config.instance,
+              repoGuid: repo.guid,
+            })}
+          />
+        ),
         label: (
           <div
             className="backrest visible-on-hover"
@@ -397,23 +405,15 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
   ];
 };
 
-const IconForResource = ({
-  instanceId,
-  planId,
-  repoId,
-}: {
-  instanceId: string;
-  planId?: string;
-  repoId?: string;
-}) => {
+const IconForResource = ({ selector }: { selector: OpSelector }) => {
   const [status, setStatus] = useState(OperationStatus.STATUS_UNKNOWN);
   useEffect(() => {
+    if (!selector || !selector.instanceId || !selector.repoGuid) {
+      return;
+    }
+
     const load = async () => {
-      setStatus(
-        await getStatusForSelector(
-          create(OpSelectorSchema, { instanceId, planId, repoId })
-        )
-      );
+      setStatus(await getStatusForSelector(selector));
     };
     load();
     const refresh = _.debounce(load, 1000, { maxWait: 10000, trailing: true });
@@ -423,11 +423,7 @@ const IconForResource = ({
         case "createdOperations":
         case "updatedOperations":
           const ops = event.event.value.operations;
-          if (
-            ops.find(
-              (op) => (!planId || op.planId === planId) && op.repoId === repoId
-            )
-          ) {
+          if (ops.find((op) => matchSelector(selector, op))) {
             refresh();
           }
           break;
@@ -441,7 +437,7 @@ const IconForResource = ({
     return () => {
       unsubscribeFromOperations(callback);
     };
-  }, [planId, repoId]);
+  }, [JSON.stringify(selector)]);
   return iconForStatus(status);
 };
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Col, Empty, Flex, Modal, Row, Splitter, Tooltip, Tree } from "antd";
-import _ from "lodash";
+import _, { flow } from "lodash";
 import { DataNode } from "antd/es/tree";
 import { formatDate, formatTime, localISOTime } from "../lib/formatting";
 import { ExclamationOutlined, QuestionOutlined } from "@ant-design/icons";
@@ -9,7 +9,7 @@ import {
   OperationStatus,
 } from "../../gen/ts/v1/operations_pb";
 import { useAlertApi } from "./Alerts";
-import { OperationList } from "./OperationList";
+import { OperationListView } from "./OperationListView";
 import {
   ClearHistoryRequestSchema,
   ForgetRequestSchema,
@@ -17,7 +17,6 @@ import {
   type GetOperationsRequest,
 } from "../../gen/ts/v1/service_pb";
 import { isMobile } from "../lib/browserutil";
-import { useShowModal } from "./ModalManager";
 import { backrestService } from "../api";
 import { ConfirmButton } from "./SpinButton";
 import { OplogState, syncStateFromRequest } from "../state/logstate";
@@ -35,7 +34,7 @@ type OpTreeNode = DataNode & {
   backup?: FlowDisplayInfo;
 };
 
-export const OperationTree = ({
+export const OperationTreeView = ({
   req,
   isPlanView,
 }: React.PropsWithoutRef<{
@@ -45,10 +44,6 @@ export const OperationTree = ({
   const alertApi = useAlertApi();
   const setScreenWidth = useState(window.innerWidth)[1];
   const [backups, setBackups] = useState<FlowDisplayInfo[]>([]);
-  const [treeData, setTreeData] = useState<{
-    tree: OpTreeNode[];
-    expanded: React.Key[];
-  }>({ tree: [], expanded: [] });
   const [selectedBackupId, setSelectedBackupId] = useState<bigint | null>(null);
 
   // track the screen width so we can switch between mobile and desktop layouts.
@@ -70,16 +65,6 @@ export const OperationTree = ({
 
     const backupInfoByFlowID = new Map<bigint, FlowDisplayInfo>();
 
-    const refresh = _.debounce(
-      () => {
-        const flows = Array.from(backupInfoByFlowID.values());
-        setTreeData(buildTree(flows, isPlanView || false));
-        setBackups(flows);
-      },
-      100,
-      { leading: true, trailing: true }
-    );
-
     logState.subscribe((ids, flowIDs, event) => {
       if (
         event === OperationEventType.EVENT_CREATED ||
@@ -88,6 +73,7 @@ export const OperationTree = ({
         for (const flowID of flowIDs) {
           const ops = logState.getByFlowID(flowID);
           if (!ops || ops[0].op.case === "operationRunHook") {
+            // sometimes hook operations become awkwardly orphaned. These are ignored.
             continue;
           }
 
@@ -103,7 +89,8 @@ export const OperationTree = ({
           backupInfoByFlowID.delete(flowID);
         }
       }
-      refresh();
+
+      setBackups([...backupInfoByFlowID.values()]);
     });
 
     return syncStateFromRequest(logState, req, (err) => {
@@ -111,7 +98,7 @@ export const OperationTree = ({
     });
   }, [toJsonString(GetOperationsRequestSchema, req)]);
 
-  if (treeData.tree.length === 0) {
+  if (backups.length === 0) {
     return (
       <Empty description={""} image={Empty.PRESENTED_IMAGE_SIMPLE}></Empty>
     );
@@ -119,7 +106,88 @@ export const OperationTree = ({
 
   const useMobileLayout = isMobile();
 
-  const backupTree = (
+  const displayTree = (
+    <DisplayOperationTree
+      operations={backups}
+      isPlanView={isPlanView}
+      onSelect={(flow) => {
+        setSelectedBackupId(flow ? flow.flowID : null);
+      }}
+    />
+  );
+
+  if (useMobileLayout) {
+    const backup = backups.find((b) => b.flowID === selectedBackupId);
+    return (
+      <>
+        <Modal
+          open={!!backup}
+          footer={null}
+          onCancel={() => {
+            setSelectedBackupId(null);
+          }}
+          width="60vw"
+        >
+          <BackupView backup={backup} />
+        </Modal>
+        {displayTree}
+      </>
+    );
+  }
+
+  return (
+    <Flex vertical gap="middle">
+      <Splitter>
+        <Splitter.Panel defaultSize="50%" min="20%" max="70%">
+          {displayTree}
+        </Splitter.Panel>
+        <Splitter.Panel style={{ paddingLeft: "10px" }}>
+          <BackupViewContainer>
+            {selectedBackupId ? (
+              <BackupView
+                backup={backups.find((b) => b.flowID === selectedBackupId)}
+              />
+            ) : null}
+          </BackupViewContainer>{" "}
+        </Splitter.Panel>
+      </Splitter>
+    </Flex>
+  );
+};
+
+const DisplayOperationTree = ({
+  operations,
+  isPlanView,
+  onSelect,
+}: {
+  operations: FlowDisplayInfo[];
+  isPlanView?: boolean;
+  onSelect?: (flow: FlowDisplayInfo | null) => any;
+}) => {
+  const [treeData, setTreeData] = useState<{
+    tree: OpTreeNode[];
+    expanded: React.Key[];
+  }>({ tree: [], expanded: [] });
+
+  useEffect(() => {
+    const cancel = setTimeout(
+      () => {
+        const { tree, expanded } = buildTree(operations, isPlanView || false);
+        setTreeData({ tree, expanded });
+      },
+      treeData && treeData.tree.length > 0 ? 100 : 0
+    );
+
+    return () => {
+      clearTimeout(cancel);
+    };
+  }, [operations]);
+
+  if (treeData.tree.length === 0) {
+    return <></>;
+  }
+
+  return (
     <Tree<OpTreeNode>
       treeData={treeData.tree}
       showIcon
@@ -127,11 +195,7 @@ export const OperationTree = ({
       onSelect={(keys, info) => {
         if (info.selectedNodes.length === 0) return;
         const backup = info.selectedNodes[0].backup;
-        if (!backup) {
-          setSelectedBackupId(null);
-          return;
-        }
-        setSelectedBackupId(backup!.flowID);
+        onSelect && onSelect(backup || null);
       }}
       titleRender={(node: OpTreeNode): React.ReactNode => {
         if (node.title !== undefined) {
@@ -156,44 +220,6 @@ export const OperationTree = ({
         );
       }}
     />
-  );
-
-  if (useMobileLayout) {
-    const backup = backups.find((b) => b.flowID === selectedBackupId);
-    return (
-      <>
-        <Modal
-          open={!!backup}
-          footer={null}
-          onCancel={() => {
-            setSelectedBackupId(null);
-          }}
-          width="60vw"
-        >
-          <BackupView backup={backup} />
-        </Modal>
-        {backupTree}
-      </>
-    );
-  }
-
-  return (
-    <Flex vertical gap="middle">
-      <Splitter>
-        <Splitter.Panel defaultSize="50%" min="20%" max="70%">
-          {backupTree}
-        </Splitter.Panel>
-        <Splitter.Panel style={{ paddingLeft: "10px" }}>
-          <BackupViewContainer>
-            {selectedBackupId ? (
-              <BackupView
-                backup={backups.find((b) => b.flowID === selectedBackupId)}
-              />
-            ) : null}
-          </BackupViewContainer>{" "}
-        </Splitter.Panel>
-      </Splitter>
-    </Flex>
   );
 };
 
@@ -528,7 +554,10 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
               : null}
           </div>
         </div>
-        <OperationList key={backup.flowID} useOperations={backup.operations} />
+        <OperationListView
+          key={backup.flowID}
+          useOperations={backup.operations}
+        />
       </div>
     );
   }

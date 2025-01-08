@@ -11,7 +11,8 @@ import {
   RunCommandRequest,
   RunCommandRequestSchema,
 } from "../../gen/ts/v1/service_pb";
-import { OperationList } from "../components/OperationList";
+import { Repo } from "../../gen/ts/v1/config_pb";
+import { OperationListView } from "../components/OperationListView";
 import { create } from "@bufbuild/protobuf";
 import { useConfig } from "../components/ConfigProvider";
 
@@ -21,7 +22,7 @@ interface Invocation {
   error: string;
 }
 
-export const RunCommandModal = ({ repoId }: { repoId: string }) => {
+export const RunCommandModal = ({ repo }: { repo: Repo }) => {
   const [config, _] = useConfig();
   const showModal = useShowModal();
   const alertApi = useAlertApi()!;
@@ -42,7 +43,7 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
     try {
       const opID = await backrestService.runCommand(
         create(RunCommandRequestSchema, {
-          repoId,
+          repoId: repo.id!,
           command: toRun,
         })
       );
@@ -57,7 +58,7 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
     <Modal
       open={true}
       onCancel={handleCancel}
-      title={"Run Command in repo " + repoId}
+      title={"Run Command in repo " + repo.id}
       width="80vw"
       footer={[]}
     >
@@ -82,11 +83,11 @@ export const RunCommandModal = ({ repoId }: { repoId: string }) => {
           before running another operation that requires the repo lock.
         </em>
       ) : null}
-      <OperationList
+      <OperationListView
         req={create(GetOperationsRequestSchema, {
           selector: {
             instanceId: config?.instance,
-            repoId: repoId,
+            repoGuid: repo.guid,
             planId: "_system_", // run commands are not associated with a plan
           },
         })}

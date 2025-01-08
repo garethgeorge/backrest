@@ -1,13 +1,14 @@
 import React, { Suspense, useContext, useEffect, useState } from "react";
 import { Repo } from "../../gen/ts/v1/config_pb";
 import { Flex, Tabs, Tooltip, Typography, Button } from "antd";
-import { OperationList } from "../components/OperationList";
-import { OperationTree } from "../components/OperationTree";
+import { OperationListView } from "../components/OperationListView";
+import { OperationTreeView } from "../components/OperationTreeView";
 import { MAX_OPERATION_HISTORY, STATS_OPERATION_HISTORY } from "../constants";
 import {
   DoRepoTaskRequest_Task,
   DoRepoTaskRequestSchema,
   GetOperationsRequestSchema,
+  OpSelectorSchema,
 } from "../../gen/ts/v1/service_pb";
 import { backrestService } from "../api";
 import { SpinButton } from "../components/SpinButton";
@@ -109,7 +110,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
       label: "Tree View",
       children: (
         <>
-          <OperationTree
+          <OperationTreeView
             req={create(GetOperationsRequestSchema, {
               selector: {
                 repoGuid: repo.guid,
@@ -127,7 +128,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
       children: (
         <>
           <h3>Backup Action History</h3>
-          <OperationList
+          <OperationListView
             req={create(GetOperationsRequestSchema, {
               selector: {
                 repoGuid: repo.guid,
@@ -146,7 +147,12 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
       label: "Stats",
       children: (
         <Suspense fallback={<div>Loading...</div>}>
-          <StatsPanel repoId={repo.id!} instanceId={config?.instance!} />
+          <StatsPanel
+            selector={create(OpSelectorSchema, {
+              repoGuid: repo.guid,
+              instanceId: config?.instance,
+            })}
+          />
         </Suspense>
       ),
       destroyInactiveTabPane: true,
@@ -163,7 +169,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
             type="default"
             onClick={async () => {
               const { RunCommandModal } = await import("./RunCommandModal");
-              showModal(<RunCommandModal repoId={repo.id!} />);
+              showModal(<RunCommandModal repo={repo} />);
             }}
           >
             Run Command
