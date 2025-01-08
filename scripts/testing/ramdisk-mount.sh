@@ -15,20 +15,20 @@ fi
 
 # Check if MacOS 
 if [ "$(uname)" = "Darwin" ]; then
-  if [ -d "/Volumes/RAM_Disk_512MB" ]; then
-    echo "RAM disk /Volumes/RAM_Disk_512MB already exists."
+  if [ -d "/Volumes/RAM_Disk_1GB" ]; then
+    echo "RAM disk /Volumes/RAM_Disk_1GB already exists."
   else 
-    sudo diskutil erasevolume HFS+ RAM_Disk_512MB $(hdiutil attach -nomount ram://1048576)
+    sudo diskutil erasevolume HFS+ RAM_Disk_1GB $(hdiutil attach -nomount ram://2048000)
   fi
-  export TMPDIR="/Volumes/RAM_Disk_512MB"
+  export TMPDIR="/Volumes/RAM_Disk_1GB"
   export RESTIC_CACHE_DIR="$TMPDIR/.cache"
-  echo "Created 512MB RAM disk at /Volumes/RAM_Disk_512MB"
+  echo "Created 512MB RAM disk at /Volumes/RAM_Disk_1GB"
   echo "TMPDIR=$TMPDIR"
   echo "RESTIC_CACHE_DIR=$RESTIC_CACHE_DIR"
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
   # Create ramdisk 
   sudo mkdir -p /mnt/ramdisk
-  sudo mount -t tmpfs -o size=512M tmpfs /mnt/ramdisk
+  sudo mount -t tmpfs -o size=1024M tmpfs /mnt/ramdisk
   export TMPDIR="/mnt/ramdisk"
   export RESTIC_CACHE_DIR="$TMPDIR/.cache"
 fi
