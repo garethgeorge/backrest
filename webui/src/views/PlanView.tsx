@@ -2,8 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Plan } from "../../gen/ts/v1/config_pb";
 import { Button, Flex, Tabs, Tooltip, Typography } from "antd";
 import { useAlertApi } from "../components/Alerts";
-import { OperationList } from "../components/OperationList";
-import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY } from "../constants";
 import { backrestService } from "../api";
 import {
@@ -16,6 +14,8 @@ import { SpinButton } from "../components/SpinButton";
 import { useShowModal } from "../components/ModalManager";
 import { create } from "@bufbuild/protobuf";
 import { useConfig } from "../components/ConfigProvider";
+import { OperationListView } from "../components/OperationListView";
+import { OperationTreeView } from "../components/OperationTreeView";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const [config, _] = useConfig();
@@ -54,7 +54,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         create(ClearHistoryRequestSchema, {
           selector: {
             planId: plan.id,
-            repoId: plan.repo,
+            repoGuid: repo!.guid,
           },
           onlyFailed: true,
         })
@@ -89,7 +89,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             type="default"
             onClick={async () => {
               const { RunCommandModal } = await import("./RunCommandModal");
-              showModal(<RunCommandModal repoId={plan.repo!} />);
+              showModal(<RunCommandModal repo={repo} />);
             }}
           >
             Run Command
@@ -114,7 +114,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             label: "Tree View",
             children: (
               <>
-                <OperationTree
+                <OperationTreeView
                   req={create(GetOperationsRequestSchema, {
                     selector: {
                       instanceId: config?.instance,
@@ -135,7 +135,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             children: (
               <>
                 <h2>Backup Action History</h2>
-                <OperationList
+                <OperationListView
                   req={create(GetOperationsRequestSchema, {
                     selector: {
                       instanceId: config?.instance,
