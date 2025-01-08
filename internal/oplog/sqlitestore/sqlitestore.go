@@ -564,15 +564,17 @@ func (m *SqliteStore) ResetForTest(t *testing.T) error {
 }
 
 type opGroupInfo struct {
-	repo string
-	plan string
-	inst string
+	repo     string
+	repoGuid string
+	plan     string
+	inst     string
 }
 
 func groupInfoForOp(op *v1.Operation) opGroupInfo {
 	return opGroupInfo{
-		repo: op.RepoId,
-		plan: op.PlanId,
-		inst: op.InstanceId,
+		repo:     op.RepoId,
+		repoGuid: op.RepoGuid,
+		plan:     op.PlanId,
+		inst:     op.InstanceId,
 	}
 }
