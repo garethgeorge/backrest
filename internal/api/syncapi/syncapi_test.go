@@ -547,7 +547,7 @@ func allocBindAddrForTest(t *testing.T) string {
 		t.Fatalf("failed to split host and port: %v", err)
 	}
 
-	return "localhost:" + port
+	return "127.0.0.1:" + port
 }
 
 func runSyncAPIWithCtx(ctx context.Context, peer *peerUnderTest, bindAddr string) {
@@ -602,7 +602,6 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 	t.Helper()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
 
 	configMgr := &config.ConfigManager{Store: &config.MemoryStore{Config: initialConfig}}
 	opstore, err := sqlitestore.NewMemorySqliteStore()
@@ -627,23 +626,31 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 		t.Fatalf("failed to create log store: %v", err)
 	}
 
+	var wg sync.WaitGroup
 	orchestrator, err := orchestrator.NewOrchestrator(resticbin, initialConfig, oplog, logStore)
 	if err != nil {
 		t.Fatalf("failed to create orchestrator: %v", err)
 	}
-	go orchestrator.Run(ctx)
+	wg.Add(1)
+	go func() {
+		orchestrator.Run(ctx)
+		wg.Done()
+	}()
 
 	ch := configMgr.Watch()
 
+	wg.Add(1)
 	go func() {
 		for range ch {
 			cfg, _ := configMgr.Get()
 			orchestrator.ApplyConfig(cfg)
 		}
+		wg.Done()
 	}()
-
 	t.Cleanup(func() {
 		configMgr.StopWatching(ch)
+		cancel()
+		wg.Wait()
 	})
 
 	remoteConfigStore := NewJSONDirRemoteConfigStore(filepath.Join(tempDir, "remoteconfig"))
