@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.7.0](https://github.com/garethgeorge/backrest/compare/v1.6.2...v1.7.0) (2025-01-09)
+
+
+### Features
+
+* add a "test configuration" button to aid users setting up new repos ([#582](https://github.com/garethgeorge/backrest/issues/582)) ([1bb3cd7](https://github.com/garethgeorge/backrest/commit/1bb3cd70fd8a7eb12df19eaf8f01edb075f34d48))
+* change payload for healthchecks to text ([#607](https://github.com/garethgeorge/backrest/issues/607)) ([a1e3a70](https://github.com/garethgeorge/backrest/commit/a1e3a708eb583c9c7116b9842c0fcd9a04b086af))
+* cont'd windows installer refinements ([#603](https://github.com/garethgeorge/backrest/issues/603)) ([b1b7fb9](https://github.com/garethgeorge/backrest/commit/b1b7fb97077150c7fd5548625c6d790a4006df08))
+* improve repo view layout when backups from multiple-instances are found ([ad5d396](https://github.com/garethgeorge/backrest/commit/ad5d39643ec74a546cb6316da620e3d3bc4c8ae6))
+* initial backend implementation of multihost synchronization  ([#562](https://github.com/garethgeorge/backrest/issues/562)) ([a4b4de5](https://github.com/garethgeorge/backrest/commit/a4b4de5152a0437cc2fe88b97fe808d6ef6da75d))
+
+
+### Bug Fixes
+
+* avoid ant design url rule as it requires a tld to be present ([#626](https://github.com/garethgeorge/backrest/issues/626)) ([b3402a1](https://github.com/garethgeorge/backrest/commit/b3402a18d2026a2b5998ecdae5a9802f7b3c844a))
+* int overflow in exponential backoff hook error policy ([#619](https://github.com/garethgeorge/backrest/issues/619)) ([1ff69f1](https://github.com/garethgeorge/backrest/commit/1ff69f121ae4f3455e132193dffe6c4a4fa80abd))
+* ogid caching for better insert / update performance ([d9cf79b](https://github.com/garethgeorge/backrest/commit/d9cf79b48a4a1846a709a1d808ade53b17389fcc))
+* rare race condition in etag cache when serving webui ([dbcaa7b](https://github.com/garethgeorge/backrest/commit/dbcaa7b4fb5abe88b9e5cb2ff21f2daad81b4ee5))
+* ui bugs introduced by repo guid migration ([407652c](https://github.com/garethgeorge/backrest/commit/407652c9ef8e8b00e20d76b5fa4b681a32d27a81))
+
 ## [1.6.2](https://github.com/garethgeorge/backrest/compare/v1.6.1...v1.6.2) (2024-11-26)
 
 
