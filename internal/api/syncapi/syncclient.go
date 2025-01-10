@@ -62,7 +62,7 @@ func NewSyncClient(mgr *SyncManager, localInstanceID string, peer *v1.Multihost_
 		peer.GetInstanceUrl(),
 	)
 
-	return &SyncClient{
+	c := &SyncClient{
 		mgr:             mgr,
 		localInstanceID: localInstanceID,
 		peer:            peer,
@@ -70,7 +70,9 @@ func NewSyncClient(mgr *SyncManager, localInstanceID string, peer *v1.Multihost_
 		client:          client,
 		oplog:           oplog,
 		l:               zap.L().Named(fmt.Sprintf("syncclient for %q", peer.GetInstanceId())),
-	}, nil
+	}
+	c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED, "starting up")
+	return c, nil
 }
 
 func (c *SyncClient) setConnectionState(state v1.SyncConnectionState, message string) {
@@ -116,6 +118,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	stream := c.client.Sync(ctx)
 
 	ctx, cancelWithError := context.WithCancelCause(ctx)
+	defer cancelWithError(nil)
 
 	receiveError := make(chan error, 1)
 	receive := make(chan *v1.SyncStreamItem, 1)

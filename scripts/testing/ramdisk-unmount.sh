@@ -15,8 +15,8 @@ fi
 
 # Check if MacOS 
 if [ "$(uname)" = "Darwin" ]; then
-  sudo diskutil unmount /Volumes/RAM_Disk_512MB
-  hdiutil detach /Volumes/RAM_Disk_512MB
+  sudo diskutil unmount /Volumes/RAM_Disk_1GB
+  hdiutil detach /Volumes/RAM_Disk_1GB
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
   sudo umount /mnt/ramdisk
 fi

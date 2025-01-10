@@ -79,10 +79,14 @@ func (o *OpLog) QueryMetadata(q Query, f func(OpMetadata) error) error {
 }
 
 func (o *OpLog) Subscribe(q Query, f *Subscription) {
+	o.subscribersMu.Lock()
+	defer o.subscribersMu.Unlock()
 	o.subscribers = append(o.subscribers, subAndQuery{f: f, q: q})
 }
 
 func (o *OpLog) Unsubscribe(f *Subscription) error {
+	o.subscribersMu.Lock()
+	defer o.subscribersMu.Unlock()
 	for i, sub := range o.subscribers {
 		if sub.f == f {
 			o.subscribers = append(o.subscribers[:i], o.subscribers[i+1:]...)
