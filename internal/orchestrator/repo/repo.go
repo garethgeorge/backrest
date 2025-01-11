@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"path"
-	"runtime"
 	"slices"
 	"sort"
 	"strings"
