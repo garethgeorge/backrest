@@ -18,12 +18,12 @@ type PruneTask struct {
 	didRun bool
 }
 
-func NewPruneTask(repoID, planID string, force bool) Task {
+func NewPruneTask(repo *v1.Repo, planID string, force bool) Task {
 	return &PruneTask{
 		BaseTask: BaseTask{
 			TaskType:   "prune",
-			TaskName:   fmt.Sprintf("prune repo %q", repoID),
-			TaskRepoID: repoID,
+			TaskName:   fmt.Sprintf("prune repo %q", repo.Id),
+			TaskRepo:   repo,
 			TaskPlanID: planID,
 		},
 		force: force,
@@ -56,7 +56,10 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 
 	var lastRan time.Time
 	var foundBackup bool
-	if err := runner.OpLog().Query(oplog.Query{RepoID: t.RepoID(), Reversed: true}, func(op *v1.Operation) error {
+	if err := runner.QueryOperations(oplog.Query{}.
+		SetInstanceID(runner.InstanceID()). // note: this means that prune tasks run by remote instances are ignored.
+		SetRepoGUID(repo.GetGuid()).
+		SetReversed(true), func(op *v1.Operation) error {
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
 			return nil
 		}
@@ -142,7 +145,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	}
 
 	// Run a stats task after a successful prune
-	if err := runner.ScheduleTask(NewStatsTask(t.RepoID(), PlanForSystemTasks, false), TaskPriorityStats); err != nil {
+	if err := runner.ScheduleTask(NewStatsTask(t.Repo(), PlanForSystemTasks, false), TaskPriorityStats); err != nil {
 		zap.L().Error("schedule stats task", zap.Error(err))
 	}
 

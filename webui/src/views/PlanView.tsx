@@ -2,8 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Plan } from "../../gen/ts/v1/config_pb";
 import { Button, Flex, Tabs, Tooltip, Typography } from "antd";
 import { useAlertApi } from "../components/Alerts";
-import { OperationList } from "../components/OperationList";
-import { OperationTree } from "../components/OperationTree";
 import { MAX_OPERATION_HISTORY } from "../constants";
 import { backrestService } from "../api";
 import {
@@ -15,10 +13,15 @@ import {
 import { SpinButton } from "../components/SpinButton";
 import { useShowModal } from "../components/ModalManager";
 import { create } from "@bufbuild/protobuf";
+import { useConfig } from "../components/ConfigProvider";
+import { OperationListView } from "../components/OperationListView";
+import { OperationTreeView } from "../components/OperationTreeView";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
+  const [config, _] = useConfig();
   const alertsApi = useAlertApi()!;
   const showModal = useShowModal();
+  const repo = config?.repos.find((r) => r.id === plan.repo);
 
   const handleBackupNow = async () => {
     try {
@@ -51,7 +54,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         create(ClearHistoryRequestSchema, {
           selector: {
             planId: plan.id,
-            repoId: plan.repo,
+            repoGuid: repo!.guid,
           },
           onlyFailed: true,
         })
@@ -61,6 +64,16 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
       alertsApi.error("Failed to clear error history: " + e.message);
     }
   };
+
+  if (!repo) {
+    return (
+      <>
+        <Typography.Title>
+          Repo {plan.repo} for plan {plan.id} not found
+        </Typography.Title>
+      </>
+    );
+  }
 
   return (
     <>
@@ -76,7 +89,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             type="default"
             onClick={async () => {
               const { RunCommandModal } = await import("./RunCommandModal");
-              showModal(<RunCommandModal repoId={plan.repo!} />);
+              showModal(<RunCommandModal repo={repo} />);
             }}
           >
             Run Command
@@ -101,10 +114,11 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             label: "Tree View",
             children: (
               <>
-                <OperationTree
+                <OperationTreeView
                   req={create(GetOperationsRequestSchema, {
                     selector: {
-                      repoId: plan.repo!,
+                      instanceId: config?.instance,
+                      repoGuid: repo.guid,
                       planId: plan.id!,
                     },
                     lastN: BigInt(MAX_OPERATION_HISTORY),
@@ -121,10 +135,11 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             children: (
               <>
                 <h2>Backup Action History</h2>
-                <OperationList
+                <OperationListView
                   req={create(GetOperationsRequestSchema, {
                     selector: {
-                      repoId: plan.repo!,
+                      instanceId: config?.instance,
+                      repoGuid: repo.guid,
                       planId: plan.id!,
                     },
                     lastN: BigInt(MAX_OPERATION_HISTORY),

@@ -3,6 +3,8 @@ package repo
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -14,6 +16,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/test/helpers"
 	test "github.com/garethgeorge/backrest/test/helpers"
+	"golang.org/x/sync/errgroup"
 )
 
 var configForTest = &v1.Config{
@@ -188,60 +191,74 @@ func TestSnapshotParenting(t *testing.T) {
 
 	orchestrator := initRepoHelper(t, configForTest, r)
 
-	for i := 0; i < 4; i++ {
-		for _, plan := range plans {
-			summary, err := orchestrator.Backup(context.Background(), plan, nil)
-			if err != nil {
-				t.Fatalf("failed to backup plan %s: %v", plan.Id, err)
-			}
+	var eg errgroup.Group
+	for _, plan := range plans {
+		eg.Go(func() error {
+			for i := 0; i < 2; i++ {
+				summary, err := orchestrator.Backup(context.Background(), plan, nil)
+				if err != nil {
+					return fmt.Errorf("failed to backup plan %s: %v", plan.Id, err)
+				}
 
-			if summary.SnapshotId == "" {
-				t.Errorf("expected snapshot id")
-			}
+				if summary.SnapshotId == "" {
+					return errors.New("expected snapshot id")
+				}
 
-			if summary.TotalFilesProcessed != 100 {
-				t.Logf("summary is: %+v", summary)
-				t.Errorf("expected 100 done files, got %d", summary.TotalFilesProcessed)
+				if summary.TotalFilesProcessed != 100 {
+					t.Logf("summary is: %+v", summary)
+					return fmt.Errorf("expected 100 done files, got %d", summary.TotalFilesProcessed)
+				}
 			}
-		}
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		t.Fatal(err)
 	}
 
 	for _, plan := range plans {
-		snapshots, err := orchestrator.SnapshotsForPlan(context.Background(), plan)
-		if err != nil {
-			t.Errorf("failed to get snapshots for plan %s: %v", plan.Id, err)
-			continue
-		}
+		t.Run("verify_"+plan.Id, func(t *testing.T) {
+			t.Parallel()
+			snapshots, err := orchestrator.SnapshotsForPlan(context.Background(), plan)
+			if err != nil {
+				t.Errorf("failed to get snapshots for plan %s: %v", plan.Id, err)
+				return
+			}
 
+			if len(snapshots) != 2 {
+				t.Errorf("expected 4 snapshots, got %d", len(snapshots))
+			}
+
+			for i := 1; i < len(snapshots); i++ {
+				prev := snapshots[i-1]
+				curr := snapshots[i]
+
+				if prev.UnixTimeMs() >= curr.UnixTimeMs() {
+					t.Errorf("snapshots are out of order")
+				}
+
+				if prev.Id != curr.Parent {
+					t.Errorf("expected snapshot %s to have parent %s, got %s", curr.Id, prev.Id, curr.Parent)
+				}
+
+				if !slices.Contains(curr.Tags, TagForPlan(plan.Id)) {
+					t.Errorf("expected snapshot %s to have tag %s", curr.Id, TagForPlan(plan.Id))
+				}
+			}
+		})
+	}
+
+	t.Run("verify_snapshot_count", func(t *testing.T) {
+		t.Parallel()
+		snapshots, err := orchestrator.Snapshots(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(snapshots) != 4 {
 			t.Errorf("expected 4 snapshots, got %d", len(snapshots))
 		}
-
-		for i := 1; i < len(snapshots); i++ {
-			prev := snapshots[i-1]
-			curr := snapshots[i]
-
-			if prev.UnixTimeMs() >= curr.UnixTimeMs() {
-				t.Errorf("snapshots are out of order")
-			}
-
-			if prev.Id != curr.Parent {
-				t.Errorf("expected snapshot %s to have parent %s, got %s", curr.Id, prev.Id, curr.Parent)
-			}
-
-			if !slices.Contains(curr.Tags, TagForPlan(plan.Id)) {
-				t.Errorf("expected snapshot %s to have tag %s", curr.Id, TagForPlan(plan.Id))
-			}
-		}
-	}
-
-	snapshots, err := orchestrator.Snapshots(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(snapshots) != 8 {
-		t.Errorf("expected 8 snapshots, got %d", len(snapshots))
-	}
+	})
 }
 
 func TestEnvVarPropagation(t *testing.T) {

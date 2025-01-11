@@ -12,6 +12,7 @@ var (
 	errIDRequired              = errors.New("id is required")
 	errFlowIDRequired          = errors.New("flow_id is required")
 	errRepoIDRequired          = errors.New("repo_id is required")
+	errRepoGUIDRequired        = errors.New("repo_guid is required")
 	errPlanIDRequired          = errors.New("plan_id is required")
 	errInstanceIDRequired      = errors.New("instance_id is required")
 	errUnixTimeStartMsRequired = errors.New("unix_time_start_ms must be non-zero")
@@ -21,6 +22,9 @@ var (
 func ValidateOperation(op *v1.Operation) error {
 	if op.Id == 0 {
 		return errIDRequired
+	}
+	if op.RepoGuid == "" {
+		return errRepoGUIDRequired
 	}
 	if op.FlowId == 0 {
 		return errFlowIDRequired

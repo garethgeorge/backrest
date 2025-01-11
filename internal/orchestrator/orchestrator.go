@@ -160,16 +160,21 @@ func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
 
 // rescheduleTasksIfNeeded checks if any tasks need to be rescheduled based on config changes.
 func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
+	if o.OpLog == nil {
+		return nil
+	}
+
 	zap.L().Info("scheduling default tasks, waiting for task queue reset.")
 	removedTasks := o.taskQueue.Reset()
-	for _, t := range removedTasks {
-		if t.Op == nil {
-			continue
-		}
 
-		if err := o.OpLog.Delete(t.Op.Id); err != nil {
-			zap.S().Warnf("failed to cancel pending task %d: %v", t.Op.Id, err)
+	ids := []int64{}
+	for _, t := range removedTasks {
+		if t.Op.GetId() != 0 {
+			ids = append(ids, t.Op.GetId())
 		}
+	}
+	if err := o.OpLog.Delete(ids...); err != nil {
+		zap.S().Warnf("failed to delete cancelled tasks from oplog: %v", err)
 	}
 
 	zap.L().Info("reset task queue, scheduling new task set", zap.String("timezone", time.Now().Location().String()))
@@ -179,9 +184,19 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 		return fmt.Errorf("schedule collect garbage task: %w", err)
 	}
 
+	var repoByID = map[string]*v1.Repo{}
+	for _, repo := range config.Repos {
+		repoByID[repo.GetId()] = repo
+	}
+
 	for _, plan := range config.Plans {
 		// Schedule a backup task for the plan
-		t := tasks.NewScheduledBackupTask(plan)
+		repo := repoByID[plan.Repo]
+		if repo == nil {
+			return fmt.Errorf("repo %q not found for plan %q", plan.Repo, plan.Id)
+		}
+
+		t := tasks.NewScheduledBackupTask(repo, plan)
 		if err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {
 			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
 		}
@@ -189,13 +204,13 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 
 	for _, repo := range config.Repos {
 		// Schedule a prune task for the repo
-		t := tasks.NewPruneTask(repo.GetId(), tasks.PlanForSystemTasks, false)
+		t := tasks.NewPruneTask(repo, tasks.PlanForSystemTasks, false)
 		if err := o.ScheduleTask(t, tasks.TaskPriorityPrune); err != nil {
 			return fmt.Errorf("schedule prune task for repo %q: %w", repo.GetId(), err)
 		}
 
 		// Schedule a check task for the repo
-		t = tasks.NewCheckTask(repo.GetId(), tasks.PlanForSystemTasks, false)
+		t = tasks.NewCheckTask(repo, tasks.PlanForSystemTasks, false)
 		if err := o.ScheduleTask(t, tasks.TaskPriorityCheck); err != nil {
 			return fmt.Errorf("schedule check task for repo %q: %w", repo.GetId(), err)
 		}
@@ -329,7 +344,7 @@ func (o *Orchestrator) Run(ctx context.Context) {
 			t.Op.DisplayMessage = fmt.Sprintf("running after %d retries", t.retryCount)
 			// Delete any previous hook executions for this operation incase this is a retry.
 			prevHookExecutionIDs := []int64{}
-			if err := o.OpLog.Query(oplog.Query{FlowID: t.Op.FlowId}, func(op *v1.Operation) error {
+			if err := o.OpLog.Query(oplog.Query{FlowID: &t.Op.FlowId}, func(op *v1.Operation) error {
 				if hookOp, ok := op.Op.(*v1.Operation_OperationRunHook); ok && hookOp.OperationRunHook.GetParentOp() == t.Op.Id {
 					prevHookExecutionIDs = append(prevHookExecutionIDs, op.Id)
 				}
@@ -508,7 +523,8 @@ func (o *Orchestrator) CreateUnscheduledTask(t tasks.Task, priority int, curTime
 	if nextRun.Op != nil {
 		nextRun.Op.InstanceId = o.config.Instance
 		nextRun.Op.PlanId = t.PlanID()
-		nextRun.Op.RepoId = t.RepoID()
+		nextRun.Op.RepoId = t.Repo().GetId()
+		nextRun.Op.RepoGuid = t.Repo().GetGuid()
 		nextRun.Op.Status = v1.OperationStatus_STATUS_PENDING
 		nextRun.Op.UnixTimeStartMs = nextRun.RunAt.UnixMilli()
 

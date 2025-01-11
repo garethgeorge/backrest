@@ -10,7 +10,9 @@ import (
 	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/oplog/memstore"
 	"github.com/garethgeorge/backrest/internal/oplog/sqlitestore"
+	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 const (
@@ -25,16 +27,23 @@ func StoresForTest(t testing.TB) map[string]oplog.OpStore {
 	}
 	t.Cleanup(func() { bboltstore.Close() })
 
-	sqlitestore, err := sqlitestore.NewSqliteStore(t.TempDir() + "/test.sqlite")
+	sqlitestoreinst, err := sqlitestore.NewSqliteStore(t.TempDir() + "/test.sqlite")
 	if err != nil {
 		t.Fatalf("error creating sqlite store: %s", err)
 	}
-	t.Cleanup(func() { sqlitestore.Close() })
+	t.Cleanup(func() { sqlitestoreinst.Close() })
+
+	sqlitememstore, err := sqlitestore.NewMemorySqliteStore()
+	if err != nil {
+		t.Fatalf("error creating sqlite store: %s", err)
+	}
+	t.Cleanup(func() { sqlitememstore.Close() })
 
 	return map[string]oplog.OpStore{
-		"bbolt":  bboltstore,
-		"memory": memstore.NewMemStore(),
-		"sqlite": sqlitestore,
+		"bbolt":     bboltstore,
+		"memory":    memstore.NewMemStore(),
+		"sqlite":    sqlitestoreinst,
+		"sqlitemem": sqlitememstore,
 	}
 }
 
@@ -45,6 +54,61 @@ func TestCreate(t *testing.T) {
 			_, err := oplog.NewOpLog(store)
 			if err != nil {
 				t.Fatalf("error creating oplog: %v", err)
+			}
+		})
+	}
+}
+
+func TestListAll(t *testing.T) {
+	// t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			store, err := oplog.NewOpLog(store)
+			if err != nil {
+				t.Fatalf("error creating oplog: %v", err)
+			}
+
+			opsToAdd := []*v1.Operation{
+				{
+					UnixTimeStartMs: 1234,
+					PlanId:          "plan1",
+					RepoId:          "repo1",
+					RepoGuid:        "repo1",
+					InstanceId:      "instance1",
+					Op:              &v1.Operation_OperationBackup{},
+				},
+				{
+					UnixTimeStartMs: 4567,
+					PlanId:          "plan2",
+					RepoId:          "repo2",
+					RepoGuid:        "repo2",
+					InstanceId:      "instance2",
+					Op:              &v1.Operation_OperationBackup{},
+				},
+			}
+
+			for _, op := range opsToAdd {
+				if err := store.Add(op); err != nil {
+					t.Fatalf("error adding operation: %s", err)
+				}
+			}
+
+			var ops []*v1.Operation
+			if err := store.Query(oplog.Query{}, func(op *v1.Operation) error {
+				ops = append(ops, op)
+				return nil
+			}); err != nil {
+				t.Fatalf("error querying operations: %s", err)
+			}
+
+			if len(ops) != len(opsToAdd) {
+				t.Errorf("expected %d operations, got %d", len(opsToAdd), len(ops))
+			}
+
+			for i := 0; i < len(ops); i++ {
+				if diff := cmp.Diff(ops[i], opsToAdd[i], protocmp.Transform()); diff != "" {
+					t.Fatalf("unexpected diff ops[%d] != opsToAdd[%d]: %v", i, i, diff)
+				}
 			}
 		})
 	}
@@ -68,6 +132,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				UnixTimeStartMs: 1234,
 				RepoId:          "testrepo",
+				RepoGuid:        "testrepo",
 				PlanId:          "testplan",
 				InstanceId:      "testinstance",
 				Op:              &v1.Operation_OperationBackup{},
@@ -79,6 +144,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				UnixTimeStartMs: 1234,
 				RepoId:          "testrepo",
+				RepoGuid:        "testrepo",
 				PlanId:          "testplan",
 				InstanceId:      "testinstance",
 				Op: &v1.Operation_OperationIndexSnapshot{
@@ -96,6 +162,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				Id:              1,
 				RepoId:          "testrepo",
+				RepoGuid:        "testrepo",
 				PlanId:          "testplan",
 				InstanceId:      "testinstance",
 				UnixTimeStartMs: 1234,
@@ -108,6 +175,7 @@ func TestAddOperation(t *testing.T) {
 			op: &v1.Operation{
 				UnixTimeStartMs: 1234,
 				RepoId:          "testrepo",
+				RepoGuid:        "testrepo",
 				Op:              &v1.Operation_OperationBackup{},
 			},
 			wantErr: true,
@@ -162,29 +230,43 @@ func TestListOperation(t *testing.T) {
 	// these should get assigned IDs 1-3 respectively by the oplog
 	ops := []*v1.Operation{
 		{
-			UnixTimeStartMs: 1234,
+			InstanceId:      "foo",
 			PlanId:          "plan1",
 			RepoId:          "repo1",
-			InstanceId:      "instance1",
+			RepoGuid:        "repo1",
+			UnixTimeStartMs: 1234,
 			DisplayMessage:  "op1",
 			Op:              &v1.Operation_OperationBackup{},
 		},
 		{
-			UnixTimeStartMs: 1234,
+			InstanceId:      "bar",
 			PlanId:          "plan1",
 			RepoId:          "repo2",
-			InstanceId:      "instance2",
+			RepoGuid:        "repo2",
+			UnixTimeStartMs: 1234,
 			DisplayMessage:  "op2",
 			Op:              &v1.Operation_OperationBackup{},
 		},
 		{
-			UnixTimeStartMs: 1234,
+			InstanceId:      "baz",
 			PlanId:          "plan2",
 			RepoId:          "repo2",
-			InstanceId:      "instance3",
+			RepoGuid:        "repo2",
+			UnixTimeStartMs: 1234,
 			DisplayMessage:  "op3",
 			FlowId:          943,
 			Op:              &v1.Operation_OperationBackup{},
+		},
+		{
+			InstanceId:      "foo",
+			PlanId:          "foo-plan",
+			RepoId:          "foo-repo",
+			RepoGuid:        "foo-repo-guid",
+			UnixTimeStartMs: 1234,
+			DisplayMessage:  "foo-op",
+			Op:              &v1.Operation_OperationBackup{},
+			OriginalId:      4567,
+			OriginalFlowId:  789,
 		},
 	}
 
@@ -195,44 +277,70 @@ func TestListOperation(t *testing.T) {
 	}{
 		{
 			name:     "list plan1",
-			query:    oplog.Query{PlanID: "plan1"},
+			query:    oplog.Query{}.SetPlanID("plan1"),
 			expected: []string{"op1", "op2"},
 		},
 		{
 			name:     "list plan1 with limit",
-			query:    oplog.Query{PlanID: "plan1", Limit: 1},
+			query:    oplog.Query{}.SetPlanID("plan1").SetLimit(1),
 			expected: []string{"op1"},
 		},
 		{
 			name:     "list plan1 with offset",
-			query:    oplog.Query{PlanID: "plan1", Offset: 1},
+			query:    oplog.Query{}.SetPlanID("plan1").SetOffset(1),
 			expected: []string{"op2"},
 		},
 		{
 			name:     "list plan1 reversed",
-			query:    oplog.Query{PlanID: "plan1", Reversed: true},
+			query:    oplog.Query{}.SetPlanID("plan1").SetReversed(true),
 			expected: []string{"op2", "op1"},
 		},
 		{
 			name:     "list plan2",
-			query:    oplog.Query{PlanID: "plan2"},
+			query:    oplog.Query{}.SetPlanID("plan2"),
 			expected: []string{"op3"},
 		},
 		{
 			name:     "list repo1",
-			query:    oplog.Query{RepoID: "repo1"},
+			query:    oplog.Query{}.SetRepoGUID("repo1"),
 			expected: []string{"op1"},
 		},
 		{
 			name:     "list repo2",
-			query:    oplog.Query{RepoID: "repo2"},
+			query:    oplog.Query{}.SetRepoGUID("repo2"),
 			expected: []string{"op2", "op3"},
 		},
 		{
 			name:  "list flow 943",
-			query: oplog.Query{FlowID: 943},
+			query: oplog.Query{}.SetFlowID(943),
 			expected: []string{
 				"op3",
+			},
+		},
+		{
+			name:  "list original ID",
+			query: oplog.Query{}.SetOriginalID(4567),
+			expected: []string{
+				"foo-op",
+			},
+		},
+		{
+			name:  "list original flow ID",
+			query: oplog.Query{}.SetOriginalFlowID(789),
+			expected: []string{
+				"foo-op",
+			},
+		},
+		{
+			name: "a very compound query",
+			query: oplog.Query{}.
+				SetPlanID("foo-plan").
+				SetRepoGUID("foo-repo-guid").
+				SetInstanceID("foo").
+				SetOriginalID(4567).
+				SetOriginalFlowID(789),
+			expected: []string{
+				"foo-op",
 			},
 		},
 	}
@@ -291,6 +399,7 @@ func TestBigIO(t *testing.T) {
 					UnixTimeStartMs: 1234,
 					PlanId:          "plan1",
 					RepoId:          "repo1",
+					RepoGuid:        "repo1",
 					InstanceId:      "instance1",
 					Op:              &v1.Operation_OperationBackup{},
 				}); err != nil {
@@ -299,7 +408,7 @@ func TestBigIO(t *testing.T) {
 			}
 
 			countByPlanHelper(t, log, "plan1", count)
-			countByRepoHelper(t, log, "repo1", count)
+			countByRepoGUIDHelper(t, log, "repo1", count)
 		})
 	}
 }
@@ -311,6 +420,7 @@ func TestIndexSnapshot(t *testing.T) {
 		UnixTimeStartMs: 1234,
 		PlanId:          "plan1",
 		RepoId:          "repo1",
+		RepoGuid:        "repo1",
 		InstanceId:      "instance1",
 		SnapshotId:      snapshotId,
 		Op:              &v1.Operation_OperationIndexSnapshot{},
@@ -331,7 +441,7 @@ func TestIndexSnapshot(t *testing.T) {
 			}
 
 			var ops []*v1.Operation
-			if err := log.Query(oplog.Query{SnapshotID: snapshotId}, func(op *v1.Operation) error {
+			if err := log.Query(oplog.Query{}.SetSnapshotID(snapshotId), func(op *v1.Operation) error {
 				ops = append(ops, op)
 				return nil
 			}); err != nil {
@@ -355,6 +465,7 @@ func TestUpdateOperation(t *testing.T) {
 		UnixTimeStartMs: 1234,
 		PlanId:          "oldplan",
 		RepoId:          "oldrepo",
+		RepoGuid:        "oldrepo",
 		InstanceId:      "instance1",
 		SnapshotId:      snapshotId,
 	}
@@ -376,13 +487,14 @@ func TestUpdateOperation(t *testing.T) {
 
 			// Validate initial values are indexed
 			countByPlanHelper(t, log, "oldplan", 1)
-			countByRepoHelper(t, log, "oldrepo", 1)
+			countByRepoGUIDHelper(t, log, "oldrepo", 1)
 			countBySnapshotIdHelper(t, log, snapshotId, 1)
 
 			// Update indexed values
 			op.SnapshotId = snapshotId2
 			op.PlanId = "myplan"
 			op.RepoId = "myrepo"
+			op.RepoGuid = "myrepo"
 			if err := log.Update(op); err != nil {
 				t.Fatalf("error updating operation: %s", err)
 			}
@@ -393,12 +505,12 @@ func TestUpdateOperation(t *testing.T) {
 			}
 
 			countByPlanHelper(t, log, "myplan", 1)
-			countByRepoHelper(t, log, "myrepo", 1)
+			countByRepoGUIDHelper(t, log, "myrepo", 1)
 			countBySnapshotIdHelper(t, log, snapshotId2, 1)
 
 			// Validate prior values are gone
 			countByPlanHelper(t, log, "oldplan", 0)
-			countByRepoHelper(t, log, "oldrepo", 0)
+			countByRepoGUIDHelper(t, log, "oldrepo", 0)
 			countBySnapshotIdHelper(t, log, snapshotId, 0)
 		})
 	}
@@ -410,6 +522,7 @@ func TestTransform(t *testing.T) {
 			InstanceId:      "foo",
 			PlanId:          "plan1",
 			RepoId:          "repo1",
+			RepoGuid:        "repo1",
 			UnixTimeStartMs: 1234,
 			UnixTimeEndMs:   5678,
 		},
@@ -417,6 +530,7 @@ func TestTransform(t *testing.T) {
 			InstanceId:      "bar",
 			PlanId:          "plan1",
 			RepoId:          "repo1",
+			RepoGuid:        "repo1",
 			UnixTimeStartMs: 1234,
 			UnixTimeEndMs:   5678,
 		},
@@ -438,7 +552,7 @@ func TestTransform(t *testing.T) {
 			want: ops,
 		},
 		{
-			name: "no change by copy",
+			name: "modno incremented by copy",
 			f: func(op *v1.Operation) (*v1.Operation, error) {
 				return proto.Clone(op).(*v1.Operation), nil
 			},
@@ -456,6 +570,7 @@ func TestTransform(t *testing.T) {
 					InstanceId:      "foo",
 					PlanId:          "oldplan",
 					RepoId:          "repo1",
+					RepoGuid:        "repo1",
 					UnixTimeStartMs: 1234,
 					UnixTimeEndMs:   5678,
 				},
@@ -465,6 +580,7 @@ func TestTransform(t *testing.T) {
 					InstanceId:      "foo",
 					PlanId:          "newplan",
 					RepoId:          "repo1",
+					RepoGuid:        "repo1",
 					UnixTimeStartMs: 1234,
 					UnixTimeEndMs:   5678,
 				},
@@ -482,12 +598,13 @@ func TestTransform(t *testing.T) {
 					InstanceId:      "foo",
 					PlanId:          "newplan",
 					RepoId:          "repo1",
+					RepoGuid:        "repo1",
 					UnixTimeStartMs: 1234,
 					UnixTimeEndMs:   5678,
 				},
 				ops[1],
 			},
-			query: oplog.Query{InstanceID: "foo"},
+			query: oplog.Query{}.SetInstanceID("foo"),
 		},
 	}
 	for _, tc := range tcs {
@@ -521,15 +638,68 @@ func TestTransform(t *testing.T) {
 						t.Fatalf("error listing operations: %s", err)
 					}
 
-					if slices.CompareFunc(got, tc.want, func(a, b *v1.Operation) int {
-						if proto.Equal(a, b) {
-							return 0
-						}
-						return 1
-					}) != 0 {
-						t.Errorf("want operations: %v, got unexpected operations: %v", tc.want, got)
+					for _, op := range got {
+						op.Modno = 0
+					}
+
+					if diff := cmp.Diff(got, tc.want, protocmp.Transform()); diff != "" {
+						t.Errorf("unexpected diff: %v", diff)
 					}
 				})
+			}
+		})
+	}
+}
+
+func TestQueryMetadata(t *testing.T) {
+	t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			if name == "bbolt" {
+				t.Skip("bbolt does not support metadata")
+			}
+
+			log, err := oplog.NewOpLog(store)
+			if err != nil {
+				t.Fatalf("error creating oplog: %v", err)
+			}
+			if err := log.Add(&v1.Operation{
+				UnixTimeStartMs: 1234,
+				PlanId:          "plan1",
+				RepoId:          "repo1",
+				RepoGuid:        "repo1-guid",
+				InstanceId:      "instance1",
+				Op:              &v1.Operation_OperationBackup{},
+				FlowId:          5,
+				OriginalId:      3,
+				OriginalFlowId:  4,
+			}); err != nil {
+				t.Fatalf("error adding operation: %s", err)
+			}
+
+			var metadata []oplog.OpMetadata
+			if err := log.QueryMetadata(oplog.Query{}.SetPlanID("plan1"), func(op oplog.OpMetadata) error {
+				metadata = append(metadata, op)
+				return nil
+			}); err != nil {
+				t.Fatalf("error listing metadata: %s", err)
+			}
+			if len(metadata) != 1 {
+				t.Fatalf("want 1 metadata, got %d", len(metadata))
+			}
+
+			if metadata[0].Modno == 0 {
+				t.Errorf("modno should not be 0")
+			}
+			metadata[0].Modno = 0 // ignore for diff since it's random
+
+			if diff := cmp.Diff(metadata[0], oplog.OpMetadata{
+				ID:             metadata[0].ID,
+				FlowID:         5,
+				OriginalID:     3,
+				OriginalFlowID: 4,
+			}); diff != "" {
+				t.Errorf("unexpected diff: %v", diff)
 			}
 		})
 	}
@@ -543,10 +713,10 @@ func collectMessages(ops []*v1.Operation) []string {
 	return messages
 }
 
-func countByRepoHelper(t *testing.T, log *oplog.OpLog, repo string, expected int) {
+func countByRepoGUIDHelper(t *testing.T, log *oplog.OpLog, repoGUID string, expected int) {
 	t.Helper()
 	count := 0
-	if err := log.Query(oplog.Query{RepoID: repo}, func(op *v1.Operation) error {
+	if err := log.Query(oplog.Query{}.SetRepoGUID(repoGUID), func(op *v1.Operation) error {
 		count += 1
 		return nil
 	}); err != nil {
@@ -560,7 +730,7 @@ func countByRepoHelper(t *testing.T, log *oplog.OpLog, repo string, expected int
 func countByPlanHelper(t *testing.T, log *oplog.OpLog, plan string, expected int) {
 	t.Helper()
 	count := 0
-	if err := log.Query(oplog.Query{PlanID: plan}, func(op *v1.Operation) error {
+	if err := log.Query(oplog.Query{}.SetPlanID(plan), func(op *v1.Operation) error {
 		count += 1
 		return nil
 	}); err != nil {
@@ -574,7 +744,7 @@ func countByPlanHelper(t *testing.T, log *oplog.OpLog, plan string, expected int
 func countBySnapshotIdHelper(t *testing.T, log *oplog.OpLog, snapshotId string, expected int) {
 	t.Helper()
 	count := 0
-	if err := log.Query(oplog.Query{SnapshotID: snapshotId}, func(op *v1.Operation) error {
+	if err := log.Query(oplog.Query{}.SetSnapshotID(snapshotId), func(op *v1.Operation) error {
 		count += 1
 		return nil
 	}); err != nil {
@@ -597,6 +767,7 @@ func BenchmarkAdd(b *testing.B) {
 					UnixTimeStartMs: 1234,
 					PlanId:          "plan1",
 					RepoId:          "repo1",
+					RepoGuid:        "repo1",
 					InstanceId:      "instance1",
 					Op:              &v1.Operation_OperationBackup{},
 				})
@@ -618,6 +789,7 @@ func BenchmarkList(b *testing.B) {
 						UnixTimeStartMs: 1234,
 						PlanId:          "plan1",
 						RepoId:          "repo1",
+						RepoGuid:        "repo1",
 						InstanceId:      "instance1",
 						Op:              &v1.Operation_OperationBackup{},
 					})
@@ -626,7 +798,7 @@ func BenchmarkList(b *testing.B) {
 				b.Run(name, func(b *testing.B) {
 					for i := 0; i < b.N; i++ {
 						c := 0
-						if err := log.Query(oplog.Query{PlanID: "plan1"}, func(op *v1.Operation) error {
+						if err := log.Query(oplog.Query{}.SetPlanID("plan1"), func(op *v1.Operation) error {
 							c += 1
 							return nil
 						}); err != nil {
@@ -655,6 +827,7 @@ func BenchmarkGetLastItem(b *testing.B) {
 						UnixTimeStartMs: 1234,
 						PlanId:          "plan1",
 						RepoId:          "repo1",
+						RepoGuid:        "repo1",
 						InstanceId:      "instance1",
 						Op:              &v1.Operation_OperationBackup{},
 					})
@@ -663,7 +836,7 @@ func BenchmarkGetLastItem(b *testing.B) {
 				b.Run(name, func(b *testing.B) {
 					for i := 0; i < b.N; i++ {
 						c := 0
-						if err := log.Query(oplog.Query{PlanID: "plan1", Reversed: true}, func(op *v1.Operation) error {
+						if err := log.Query(oplog.Query{}.SetPlanID("plan1").SetReversed(true), func(op *v1.Operation) error {
 							c += 1
 							return oplog.ErrStopIteration
 						}); err != nil {

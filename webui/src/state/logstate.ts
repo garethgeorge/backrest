@@ -141,6 +141,13 @@ export class OplogState {
         flowIDsRemoved.add(op.flowId);
         this.removeHelper(op);
       } else {
+        const flow = this.byFlowID.get(op.flowId);
+        if (op.op.case === "operationIndexSnapshot" && flow &&
+          flow.find((o) => o.op.case === "operationIndexSnapshot" && o.snapshotId === op.snapshotId)) {
+          // don't add a second index snapshot for the same flow, this can happen in multihost mode
+          continue;
+        }
+
         ids.push(op.id);
         flowIDs.add(op.flowId);
         this.addHelper(op);
@@ -216,7 +223,7 @@ export const matchSelector = (selector: OpSelector, op: Operation) => {
   if (selector.planId && selector.planId !== op.planId) {
     return false;
   }
-  if (selector.repoId && selector.repoId !== op.repoId) {
+  if (selector.repoGuid && selector.repoGuid !== op.repoGuid) {
     return false;
   }
   if (selector.flowId && selector.flowId !== op.flowId) {

@@ -7,7 +7,9 @@ import (
 	"testing"
 	"time"
 
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 )
 
@@ -23,7 +25,7 @@ func newTestTask(onRun func() error, onNext func(curTime time.Time) *time.Time) 
 	return &testTask{
 		BaseTask: tasks.BaseTask{
 			TaskName:   "test task",
-			TaskRepoID: "repo",
+			TaskRepo:   &v1.Repo{Id: "repo", Guid: cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)},
 			TaskPlanID: "plan",
 		},
 		onRun:  onRun,

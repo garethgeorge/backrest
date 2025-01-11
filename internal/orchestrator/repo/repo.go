@@ -14,6 +14,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/orchestrator/logging"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
@@ -409,6 +410,13 @@ func (r *RepoOrchestrator) Config() *v1.Repo {
 		return nil
 	}
 	return r.repoConfig
+}
+
+func (r *RepoOrchestrator) RepoGUID() (string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	cfg, err := r.repo.Config(context.Background())
+	return cryptoutil.TruncateID(cfg.Id, cryptoutil.DefaultIDBits), err
 }
 
 func sortSnapshotsByTime(snapshots []*restic.Snapshot) {
