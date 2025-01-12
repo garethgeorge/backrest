@@ -303,6 +303,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             </Form.Item>
           </Tooltip>
 
+          <Form.Item<Repo> name="guid" hidden>
+            <Input />
+          </Form.Item>
+
           {/* Repo.uri */}
 
           <Tooltip
