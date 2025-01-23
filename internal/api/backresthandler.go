@@ -92,9 +92,6 @@ func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1
 	if err != nil {
 		return nil, fmt.Errorf("failed to get newly set config: %w", err)
 	}
-	if err := s.orchestrator.ApplyConfig(newConfig); err != nil {
-		return nil, fmt.Errorf("failed to apply config: %w", err)
-	}
 	return connect.NewResponse(newConfig), nil
 }
 
@@ -226,11 +223,6 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		}
 
 		zap.S().Infof("updated GUID for repo %q from %q to %q, migrated %d operations to reference the new GUID", newRepo.Id, oldRepo.Guid, newRepo.Guid, migratedCount)
-	}
-
-	zap.L().Debug("applying config", zap.Int32("version", c.Version))
-	if err := s.orchestrator.ApplyConfig(c); err != nil {
-		return nil, fmt.Errorf("failed to apply config: %w", err)
 	}
 
 	// index snapshots for the newly added repository.

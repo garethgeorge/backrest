@@ -81,16 +81,20 @@ func validateRepo(repo *v1.Repo) error {
 		err = multierror.Append(err, fmt.Errorf("id %q invalid: %w", repo.Id, e))
 	}
 
-	if len(repo.Guid) != 64 { // 64 bits in hex
-		err = multierror.Append(err, fmt.Errorf("guid %q invalid: must be 64 characters", repo.Guid))
+	// GUID or AutoInitialize must be set, but not both.
+	if repo.Guid != "" {
+		if repo.AutoInitialize {
+			err = multierror.Append(err, fmt.Errorf("auto_initialize set with guid but guid implies that repo is already initialized"))
+		}
+		if len(repo.Guid) != 64 { // 64 bits in hex
+			err = multierror.Append(err, fmt.Errorf("guid %q invalid: must be 64 characters", repo.Guid))
+		}
+	} else if !repo.AutoInitialize {
+		err = multierror.Append(err, fmt.Errorf("guid is required unless using auto_initialize to implicitly initialize repos"))
 	}
 
 	if repo.Uri == "" {
 		err = multierror.Append(err, errors.New("uri is required"))
-	}
-
-	if repo.Guid == "" {
-		err = multierror.Append(err, errors.New("guid is required"))
 	}
 
 	if repo.PrunePolicy.GetSchedule() != nil {
