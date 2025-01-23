@@ -209,7 +209,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               });
               try {
                 const exists = await backrestService.checkRepoExists(repo);
-                if (exists) {
+                if (exists.value) {
                   alertsApi.success(
                     "Connected successfully to " +
                       repo.uri +

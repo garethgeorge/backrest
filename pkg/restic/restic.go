@@ -22,6 +22,7 @@ var errAlreadyInitialized = errors.New("repo already initialized")
 var ErrPartialBackup = errors.New("incomplete backup")
 var ErrBackupFailed = errors.New("backup failed")
 var ErrRestoreFailed = errors.New("restore failed")
+var ErrRepoNotFound = errors.New("repo does not exist")
 
 type Repo struct {
 	cmd string
@@ -99,6 +100,10 @@ func (r *Repo) Exists(ctx context.Context, opts ...GenericOption) error {
 		cmd := r.commandWithContext(ctx, []string{"cat", "config"}, opts...)
 		r.pipeCmdOutputToWriter(cmd, output)
 		if err := cmd.Run(); err != nil {
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) && exitErr.ExitCode() == 10 {
+				err = ErrRepoNotFound
+			}
 			r.exists = newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
 		} else if err := json.Unmarshal(output.Bytes(), &r.repoConfig); err != nil {
 			r.exists = newCmdError(ctx, cmd, newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", err), output.String()))
