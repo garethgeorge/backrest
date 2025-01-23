@@ -531,6 +531,9 @@ func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1
 }
 
 func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error) {
+	req.Msg.Target = strings.TrimSpace(req.Msg.Target)
+	req.Msg.Path = strings.TrimSpace(req.Msg.Path)
+
 	if req.Msg.Target == "" {
 		req.Msg.Target = path.Join(os.Getenv("HOME"), "Downloads", fmt.Sprintf("restic-restore-%v", time.Now().Format("2006-01-02T15-04-05")))
 	}
