@@ -627,7 +627,7 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 	}
 
 	var wg sync.WaitGroup
-	orchestrator, err := orchestrator.NewOrchestrator(resticbin, initialConfig, oplog, logStore)
+	orchestrator, err := orchestrator.NewOrchestrator(resticbin, configMgr, oplog, logStore)
 	if err != nil {
 		t.Fatalf("failed to create orchestrator: %v", err)
 	}
@@ -637,18 +637,7 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 		wg.Done()
 	}()
 
-	ch := configMgr.Watch()
-
-	wg.Add(1)
-	go func() {
-		for range ch {
-			cfg, _ := configMgr.Get()
-			orchestrator.ApplyConfig(cfg)
-		}
-		wg.Done()
-	}()
 	t.Cleanup(func() {
-		configMgr.StopWatching(ch)
 		cancel()
 		wg.Wait()
 	})
