@@ -12,7 +12,7 @@ func TestReadBackupProgressEntries(t *testing.T) {
 
 	b := bytes.NewBuffer([]byte(testInput))
 
-	summary, err := readBackupProgressEntries(b, func(event *BackupProgressEntry) {
+	summary, err := readBackupProgressEntries(b, nil, func(event *BackupProgressEntry) {
 		t.Logf("event: %v", event)
 	})
 	if err != nil {
