@@ -191,7 +191,8 @@ func (o *Orchestrator) autoInitReposIfNeeded(resticBin string) error {
 		initializedRepo = true
 	}
 
-	if initializedRepo {
+	if initializedRepo && fullErr == nil {
+		cfg.Modno++
 		if err := o.configMgr.Update(cfg); err != nil {
 			return fmt.Errorf("update config: %w", err)
 		}
