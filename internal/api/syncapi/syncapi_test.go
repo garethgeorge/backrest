@@ -637,6 +637,11 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 		wg.Done()
 	}()
 
+	t.Cleanup(func() {
+		cancel()
+		wg.Wait()
+	})
+
 	remoteConfigStore := NewJSONDirRemoteConfigStore(filepath.Join(tempDir, "remoteconfig"))
 
 	manager := NewSyncManager(configMgr, remoteConfigStore, oplog, orchestrator)

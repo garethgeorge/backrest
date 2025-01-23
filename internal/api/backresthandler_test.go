@@ -31,14 +31,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+func createConfigManager(cfg *v1.Config) *config.ConfigManager {
+	return &config.ConfigManager{
+		Store: &config.MemoryStore{
+			Config: cfg,
+		},
+	}
+}
+
 func TestUpdateConfig(t *testing.T) {
 	t.Parallel()
 
-	sut := createSystemUnderTest(t, &config.MemoryStore{
-		Config: &v1.Config{
-			Modno: 1234,
-		},
-	})
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Modno: 1234,
+	}))
 
 	tests := []struct {
 		name    string
@@ -99,36 +105,34 @@ func TestUpdateConfig(t *testing.T) {
 func TestBackup(t *testing.T) {
 	t.Parallel()
 
-	sut := createSystemUnderTest(t, &config.MemoryStore{
-		Config: &v1.Config{
-			Modno:    1234,
-			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
-					Uri:      t.TempDir(),
-					Password: "test",
-					Flags:    []string{"--no-cache"},
-				},
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{
+				Id:       "local",
+				Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+				Uri:      t.TempDir(),
+				Password: "test",
+				Flags:    []string{"--no-cache"},
 			},
-			Plans: []*v1.Plan{
-				{
-					Id:   "test",
-					Repo: "local",
-					Paths: []string{
-						t.TempDir(),
-					},
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_Disabled{Disabled: true},
-					},
-					Retention: &v1.RetentionPolicy{
-						Policy: &v1.RetentionPolicy_PolicyKeepLastN{PolicyKeepLastN: 100},
-					},
+		},
+		Plans: []*v1.Plan{
+			{
+				Id:   "test",
+				Repo: "local",
+				Paths: []string{
+					t.TempDir(),
+				},
+				Schedule: &v1.Schedule{
+					Schedule: &v1.Schedule_Disabled{Disabled: true},
+				},
+				Retention: &v1.RetentionPolicy{
+					Policy: &v1.RetentionPolicy_PolicyKeepLastN{PolicyKeepLastN: 100},
 				},
 			},
 		},
-	})
+	}))
 
 	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
@@ -197,38 +201,36 @@ func TestBackup(t *testing.T) {
 func TestMultipleBackup(t *testing.T) {
 	t.Parallel()
 
-	sut := createSystemUnderTest(t, &config.MemoryStore{
-		Config: &v1.Config{
-			Modno:    1234,
-			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
-					Uri:      t.TempDir(),
-					Password: "test",
-					Flags:    []string{"--no-cache"},
-				},
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{
+				Id:       "local",
+				Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+				Uri:      t.TempDir(),
+				Password: "test",
+				Flags:    []string{"--no-cache"},
 			},
-			Plans: []*v1.Plan{
-				{
-					Id:   "test",
-					Repo: "local",
-					Paths: []string{
-						t.TempDir(),
-					},
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_Disabled{Disabled: true},
-					},
-					Retention: &v1.RetentionPolicy{
-						Policy: &v1.RetentionPolicy_PolicyKeepLastN{
-							PolicyKeepLastN: 1,
-						},
+		},
+		Plans: []*v1.Plan{
+			{
+				Id:   "test",
+				Repo: "local",
+				Paths: []string{
+					t.TempDir(),
+				},
+				Schedule: &v1.Schedule{
+					Schedule: &v1.Schedule_Disabled{Disabled: true},
+				},
+				Retention: &v1.RetentionPolicy{
+					Policy: &v1.RetentionPolicy_PolicyKeepLastN{
+						PolicyKeepLastN: 1,
 					},
 				},
 			},
 		},
-	})
+	}))
 
 	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
@@ -274,55 +276,53 @@ func TestHookExecution(t *testing.T) {
 		commandAfter = fmt.Sprintf("echo \"after\" | Out-File -FilePath %q", hookOutputAfter)
 	}
 
-	sut := createSystemUnderTest(t, &config.MemoryStore{
-		Config: &v1.Config{
-			Modno:    1234,
-			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
-					Uri:      t.TempDir(),
-					Password: "test",
-					Flags:    []string{"--no-cache"},
-				},
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{
+				Id:       "local",
+				Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+				Uri:      t.TempDir(),
+				Password: "test",
+				Flags:    []string{"--no-cache"},
 			},
-			Plans: []*v1.Plan{
-				{
-					Id:   "test",
-					Repo: "local",
-					Paths: []string{
-						t.TempDir(),
-					},
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_Disabled{Disabled: true},
-					},
-					Hooks: []*v1.Hook{
-						{
-							Conditions: []v1.Hook_Condition{
-								v1.Hook_CONDITION_SNAPSHOT_START,
-							},
-							Action: &v1.Hook_ActionCommand{
-								ActionCommand: &v1.Hook_Command{
-									Command: commandBefore,
-								},
+		},
+		Plans: []*v1.Plan{
+			{
+				Id:   "test",
+				Repo: "local",
+				Paths: []string{
+					t.TempDir(),
+				},
+				Schedule: &v1.Schedule{
+					Schedule: &v1.Schedule_Disabled{Disabled: true},
+				},
+				Hooks: []*v1.Hook{
+					{
+						Conditions: []v1.Hook_Condition{
+							v1.Hook_CONDITION_SNAPSHOT_START,
+						},
+						Action: &v1.Hook_ActionCommand{
+							ActionCommand: &v1.Hook_Command{
+								Command: commandBefore,
 							},
 						},
-						{
-							Conditions: []v1.Hook_Condition{
-								v1.Hook_CONDITION_SNAPSHOT_END,
-							},
-							Action: &v1.Hook_ActionCommand{
-								ActionCommand: &v1.Hook_Command{
-									Command: commandAfter,
-								},
+					},
+					{
+						Conditions: []v1.Hook_Condition{
+							v1.Hook_CONDITION_SNAPSHOT_END,
+						},
+						Action: &v1.Hook_ActionCommand{
+							ActionCommand: &v1.Hook_Command{
+								Command: commandAfter,
 							},
 						},
 					},
 				},
 			},
 		},
-	})
+	}))
 
 	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
@@ -362,120 +362,117 @@ func TestHookExecution(t *testing.T) {
 
 func TestHookOnErrorHandling(t *testing.T) {
 	t.Parallel()
-
 	if runtime.GOOS == "windows" {
 		t.Skip("skipping test on windows")
 	}
 
-	sut := createSystemUnderTest(t, &config.MemoryStore{
-		Config: &v1.Config{
-			Modno:    1234,
-			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
-					Uri:      t.TempDir(),
-					Password: "test",
-					Flags:    []string{"--no-cache"},
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{
+				Id:       "local",
+				Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+				Uri:      t.TempDir(),
+				Password: "test",
+				Flags:    []string{"--no-cache"},
+			},
+		},
+		Plans: []*v1.Plan{
+			{
+				Id:   "test-cancel",
+				Repo: "local",
+				Paths: []string{
+					t.TempDir(),
+				},
+				Schedule: &v1.Schedule{
+					Schedule: &v1.Schedule_Disabled{Disabled: true},
+				},
+				Hooks: []*v1.Hook{
+					{
+						Conditions: []v1.Hook_Condition{
+							v1.Hook_CONDITION_SNAPSHOT_START,
+						},
+						Action: &v1.Hook_ActionCommand{
+							ActionCommand: &v1.Hook_Command{
+								Command: "exit 123",
+							},
+						},
+						OnError: v1.Hook_ON_ERROR_CANCEL,
+					},
 				},
 			},
-			Plans: []*v1.Plan{
-				{
-					Id:   "test-cancel",
-					Repo: "local",
-					Paths: []string{
-						t.TempDir(),
-					},
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_Disabled{Disabled: true},
-					},
-					Hooks: []*v1.Hook{
-						{
-							Conditions: []v1.Hook_Condition{
-								v1.Hook_CONDITION_SNAPSHOT_START,
-							},
-							Action: &v1.Hook_ActionCommand{
-								ActionCommand: &v1.Hook_Command{
-									Command: "exit 123",
-								},
-							},
-							OnError: v1.Hook_ON_ERROR_CANCEL,
+			{
+				Id:   "test-error",
+				Repo: "local",
+				Paths: []string{
+					t.TempDir(),
+				},
+				Schedule: &v1.Schedule{
+					Schedule: &v1.Schedule_Disabled{Disabled: true},
+				},
+				Hooks: []*v1.Hook{
+					{
+						Conditions: []v1.Hook_Condition{
+							v1.Hook_CONDITION_SNAPSHOT_START,
 						},
+						Action: &v1.Hook_ActionCommand{
+							ActionCommand: &v1.Hook_Command{
+								Command: "exit 123",
+							},
+						},
+						OnError: v1.Hook_ON_ERROR_FATAL,
 					},
 				},
-				{
-					Id:   "test-error",
-					Repo: "local",
-					Paths: []string{
-						t.TempDir(),
-					},
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_Disabled{Disabled: true},
-					},
-					Hooks: []*v1.Hook{
-						{
-							Conditions: []v1.Hook_Condition{
-								v1.Hook_CONDITION_SNAPSHOT_START,
-							},
-							Action: &v1.Hook_ActionCommand{
-								ActionCommand: &v1.Hook_Command{
-									Command: "exit 123",
-								},
-							},
-							OnError: v1.Hook_ON_ERROR_FATAL,
+			},
+			{
+				Id:   "test-ignore",
+				Repo: "local",
+				Paths: []string{
+					t.TempDir(),
+				},
+				Schedule: &v1.Schedule{
+					Schedule: &v1.Schedule_Disabled{Disabled: true},
+				},
+				Hooks: []*v1.Hook{
+					{
+						Conditions: []v1.Hook_Condition{
+							v1.Hook_CONDITION_SNAPSHOT_START,
 						},
+						Action: &v1.Hook_ActionCommand{
+							ActionCommand: &v1.Hook_Command{
+								Command: "exit 123",
+							},
+						},
+						OnError: v1.Hook_ON_ERROR_IGNORE,
 					},
 				},
-				{
-					Id:   "test-ignore",
-					Repo: "local",
-					Paths: []string{
-						t.TempDir(),
-					},
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_Disabled{Disabled: true},
-					},
-					Hooks: []*v1.Hook{
-						{
-							Conditions: []v1.Hook_Condition{
-								v1.Hook_CONDITION_SNAPSHOT_START,
-							},
-							Action: &v1.Hook_ActionCommand{
-								ActionCommand: &v1.Hook_Command{
-									Command: "exit 123",
-								},
-							},
-							OnError: v1.Hook_ON_ERROR_IGNORE,
-						},
-					},
+			},
+			{
+				Id:   "test-retry",
+				Repo: "local",
+				Paths: []string{
+					t.TempDir(),
 				},
-				{
-					Id:   "test-retry",
-					Repo: "local",
-					Paths: []string{
-						t.TempDir(),
-					},
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_Disabled{Disabled: true},
-					},
-					Hooks: []*v1.Hook{
-						{
-							Conditions: []v1.Hook_Condition{
-								v1.Hook_CONDITION_SNAPSHOT_START,
-							},
-							Action: &v1.Hook_ActionCommand{
-								ActionCommand: &v1.Hook_Command{
-									Command: "exit 123",
-								},
-							},
-							OnError: v1.Hook_ON_ERROR_RETRY_10MINUTES,
+				Schedule: &v1.Schedule{
+					Schedule: &v1.Schedule_Disabled{Disabled: true},
+				},
+				Hooks: []*v1.Hook{
+					{
+						Conditions: []v1.Hook_Condition{
+							v1.Hook_CONDITION_SNAPSHOT_START,
 						},
+						Action: &v1.Hook_ActionCommand{
+							ActionCommand: &v1.Hook_Command{
+								Command: "exit 123",
+							},
+						},
+						OnError: v1.Hook_ON_ERROR_RETRY_10MINUTES,
 					},
 				},
 			},
 		},
-	})
+	}))
 
 	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
@@ -583,50 +580,48 @@ func TestCancelBackup(t *testing.T) {
 		hookCmd = "Start-Sleep -Seconds 2"
 	}
 
-	sut := createSystemUnderTest(t, &config.MemoryStore{
-		Config: &v1.Config{
-			Modno:    1234,
-			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
-					Uri:      t.TempDir(),
-					Password: "test",
-					Flags:    []string{"--no-cache"},
-				},
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{
+				Id:       "local",
+				Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+				Uri:      t.TempDir(),
+				Password: "test",
+				Flags:    []string{"--no-cache"},
 			},
-			Plans: []*v1.Plan{
-				{
-					Id:   "test",
-					Repo: "local",
-					Paths: []string{
-						t.TempDir(),
+		},
+		Plans: []*v1.Plan{
+			{
+				Id:   "test",
+				Repo: "local",
+				Paths: []string{
+					t.TempDir(),
+				},
+				Schedule: &v1.Schedule{
+					Schedule: &v1.Schedule_Disabled{Disabled: true},
+				},
+				Retention: &v1.RetentionPolicy{
+					Policy: &v1.RetentionPolicy_PolicyKeepLastN{
+						PolicyKeepLastN: 1,
 					},
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_Disabled{Disabled: true},
-					},
-					Retention: &v1.RetentionPolicy{
-						Policy: &v1.RetentionPolicy_PolicyKeepLastN{
-							PolicyKeepLastN: 1,
+				},
+				Hooks: []*v1.Hook{
+					{
+						Conditions: []v1.Hook_Condition{
+							v1.Hook_CONDITION_SNAPSHOT_START,
 						},
-					},
-					Hooks: []*v1.Hook{
-						{
-							Conditions: []v1.Hook_Condition{
-								v1.Hook_CONDITION_SNAPSHOT_START,
-							},
-							Action: &v1.Hook_ActionCommand{
-								ActionCommand: &v1.Hook_Command{
-									Command: hookCmd,
-								},
+						Action: &v1.Hook_ActionCommand{
+							ActionCommand: &v1.Hook_Command{
+								Command: hookCmd,
 							},
 						},
 					},
 				},
 			},
 		},
-	})
+	}))
 
 	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
@@ -682,36 +677,34 @@ func TestRestore(t *testing.T) {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
-	sut := createSystemUnderTest(t, &config.MemoryStore{
-		Config: &v1.Config{
-			Modno:    1234,
-			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
-					Uri:      t.TempDir(),
-					Password: "test",
-					Flags:    []string{"--no-cache"},
-				},
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{
+				Id:       "local",
+				Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+				Uri:      t.TempDir(),
+				Password: "test",
+				Flags:    []string{"--no-cache"},
 			},
-			Plans: []*v1.Plan{
-				{
-					Id:   "test",
-					Repo: "local",
-					Paths: []string{
-						backupDataDir,
-					},
-					Schedule: &v1.Schedule{
-						Schedule: &v1.Schedule_Disabled{Disabled: true},
-					},
-					Retention: &v1.RetentionPolicy{
-						Policy: &v1.RetentionPolicy_PolicyKeepAll{PolicyKeepAll: true},
-					},
+		},
+		Plans: []*v1.Plan{
+			{
+				Id:   "test",
+				Repo: "local",
+				Paths: []string{
+					backupDataDir,
+				},
+				Schedule: &v1.Schedule{
+					Schedule: &v1.Schedule_Disabled{Disabled: true},
+				},
+				Retention: &v1.RetentionPolicy{
+					Policy: &v1.RetentionPolicy_PolicyKeepAll{PolicyKeepAll: true},
 				},
 			},
 		},
-	})
+	}))
 
 	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
@@ -806,21 +799,19 @@ func TestRestore(t *testing.T) {
 }
 
 func TestRunCommand(t *testing.T) {
-	sut := createSystemUnderTest(t, &config.MemoryStore{
-		Config: &v1.Config{
-			Modno:    1234,
-			Instance: "test",
-			Repos: []*v1.Repo{
-				{
-					Id:       "local",
-					Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
-					Uri:      t.TempDir(),
-					Password: "test",
-					Flags:    []string{"--no-cache"},
-				},
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{
+				Id:       "local",
+				Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+				Uri:      t.TempDir(),
+				Password: "test",
+				Flags:    []string{"--no-cache"},
 			},
 		},
-	})
+	}))
 
 	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
@@ -879,7 +870,7 @@ type systemUnderTest struct {
 	config   *v1.Config
 }
 
-func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderTest {
+func createSystemUnderTest(t *testing.T, config *config.ConfigManager) systemUnderTest {
 	dir := t.TempDir()
 
 	cfg, err := config.Get()
@@ -907,7 +898,7 @@ func createSystemUnderTest(t *testing.T, config config.ConfigStore) systemUnderT
 	}
 	t.Cleanup(func() { logStore.Close() })
 	orch, err := orchestrator.NewOrchestrator(
-		resticBin, cfg, oplog, logStore,
+		resticBin, config, oplog, logStore,
 	)
 	if err != nil {
 		t.Fatalf("Failed to create orchestrator: %v", err)

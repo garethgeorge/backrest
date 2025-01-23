@@ -19,6 +19,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 	"github.com/garethgeorge/backrest/internal/queue"
 	"github.com/google/uuid"
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
@@ -27,7 +28,11 @@ var ErrRepoNotFound = errors.New("repo not found")
 var ErrRepoInitializationFailed = errors.New("repo initialization failed")
 var ErrPlanNotFound = errors.New("plan not found")
 
-const defaultTaskLogDuration = 14 * 24 * time.Hour
+const (
+	defaultTaskLogDuration = 14 * 24 * time.Hour
+
+	defaultAutoInitTimeout = 60 * time.Second
+)
 
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
@@ -38,6 +43,7 @@ type Orchestrator struct {
 	repoPool  *resticRepoPool
 	taskQueue *queue.TimePriorityQueue[stContainer]
 	logStore  *logstore.LogStore
+	resticBin string
 
 	taskCancelMu sync.Mutex
 	taskCancel   map[int64]context.CancelFunc
@@ -64,22 +70,14 @@ func (st stContainer) Less(other stContainer) bool {
 }
 
 func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, log *oplog.OpLog, logStore *logstore.LogStore) (*Orchestrator, error) {
-	cfg, err := cfgMgr.Get()
-	if err != nil {
-		return nil, err
-	}
-	cfg = proto.Clone(cfg).(*v1.Config)
-
 	// create the orchestrator.
 	o := &Orchestrator{
-		OpLog:     log,
-		configMgr: cfgMgr,
-		config:    cfg,
-		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
-		repoPool:   newResticRepoPool(resticBin, cfg),
+		OpLog:      log,
+		configMgr:  cfgMgr,
 		taskQueue:  queue.NewTimePriorityQueue[stContainer](),
 		logStore:   logStore,
 		taskCancel: make(map[int64]context.CancelFunc),
+		resticBin:  resticBin,
 	}
 
 	// verify the operation log and mark any incomplete operations as failed.
@@ -139,7 +137,16 @@ func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, log *oplog.
 			zap.Int("deleted_ops", len(toDelete)))
 	}
 
+	// initialize any uninitialized repos.
+	if err := o.autoInitReposIfNeeded(resticBin); err != nil {
+		return nil, fmt.Errorf("auto-initialize repos: %w", err)
+	}
+
 	// apply starting configuration which also queues initial tasks.
+	cfg, err := o.configMgr.Get()
+	if err != nil {
+		return nil, fmt.Errorf("get config: %w", err)
+	}
 	if err := o.applyConfig(cfg); err != nil {
 		return nil, fmt.Errorf("apply initial config: %w", err)
 	}
@@ -147,6 +154,50 @@ func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, log *oplog.
 	zap.L().Info("orchestrator created")
 
 	return o, nil
+}
+
+func (o *Orchestrator) autoInitReposIfNeeded(resticBin string) error {
+	var fullErr error
+	cfg, err := o.configMgr.Get()
+	if err != nil {
+		return fmt.Errorf("get config: %w", err)
+	}
+	cfg = proto.Clone(cfg).(*v1.Config)
+
+	initializedRepo := false
+	for _, r := range cfg.Repos {
+		if !r.AutoInitialize {
+			continue
+		}
+		zap.L().Info("auto-initializing repo", zap.String("repo", r.Id))
+		rorch, err := repo.NewRepoOrchestrator(cfg, r, resticBin)
+		if err != nil {
+			fullErr = multierr.Append(fullErr, fmt.Errorf("auto-initialize repo %q: %w", r.Id, err))
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), defaultAutoInitTimeout)
+		defer cancel()
+		if err := rorch.Init(ctx); err != nil {
+			fullErr = multierr.Append(fullErr, fmt.Errorf("auto-initialize repo %q: %w", r.Id, err))
+			continue
+		}
+
+		guid, err := rorch.RepoGUID()
+		if err != nil {
+			return fmt.Errorf("get repo %q guid: %w", r.Id, err)
+		}
+		r.Guid = guid
+		r.AutoInitialize = false
+		initializedRepo = true
+	}
+
+	if initializedRepo {
+		if err := o.configMgr.Update(cfg); err != nil {
+			return fmt.Errorf("update config: %w", err)
+		}
+	}
+
+	return fullErr
 }
 
 func (o *Orchestrator) curTime() time.Time {
@@ -157,14 +208,14 @@ func (o *Orchestrator) curTime() time.Time {
 }
 
 func (o *Orchestrator) applyConfig(cfg *v1.Config) error {
-	for _, repo := range o.config.Repos {
+	for _, repo := range cfg.Repos {
 		if repo.Guid == "" {
 			return errors.New("guid is required for all repos")
 		}
 	}
 	o.mu.Lock()
 	o.config = proto.Clone(cfg).(*v1.Config)
-	o.repoPool = newResticRepoPool(o.repoPool.resticPath, o.config)
+	o.repoPool = newResticRepoPool(o.resticBin, o.config)
 	o.mu.Unlock()
 	return o.ScheduleDefaultTasks(cfg)
 }
