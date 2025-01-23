@@ -20,6 +20,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -108,6 +109,10 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 		c.Repos = append(c.Repos, req.Msg)
 	}
 
+	if req.Msg.Guid == "" {
+		req.Msg.Guid = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+	}
+
 	if err := config.ValidateConfig(c); err != nil {
 		return nil, fmt.Errorf("validation error: %w", err)
 	}
@@ -126,7 +131,9 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 	defer cancel()
 
 	if err := r.Exists(ctx); err != nil {
-		if strings.Contains(err.Error(), "repository does not exist") {
+		zap.S().Debugf("repo %q exists or not: %v", req.Msg.Id, err)
+		if errors.Is(err, restic.ErrRepoNotFound) {
+			zap.S().Debugf("repo %q does not exist", req.Msg.Id)
 			return connect.NewResponse(&types.BoolValue{Value: false}), nil
 		}
 		return nil, err
