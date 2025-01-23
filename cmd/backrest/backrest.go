@@ -115,8 +115,7 @@ func main() {
 	}()
 
 	// Create orchestrator and start task loop.
-	// TODO: update the orchestrator to accept a configMgr and auto-refresh the config w/o explicit ApplyConfig call.
-	orchestrator, err := orchestrator.NewOrchestrator(resticPath, cfg, log, logStore)
+	orchestrator, err := orchestrator.NewOrchestrator(resticPath, configMgr, log, logStore)
 	if err != nil {
 		zap.S().Fatalf("error creating orchestrator: %v", err)
 	}

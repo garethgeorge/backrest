@@ -32,6 +32,7 @@ const defaultTaskLogDuration = 14 * 24 * time.Hour
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
 	mu        sync.Mutex
+	configMgr *config.ConfigManager
 	config    *v1.Config
 	OpLog     *oplog.OpLog
 	repoPool  *resticRepoPool
@@ -62,13 +63,18 @@ func (st stContainer) Less(other stContainer) bool {
 	return st.ScheduledTask.Less(other.ScheduledTask)
 }
 
-func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStore *logstore.LogStore) (*Orchestrator, error) {
+func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, log *oplog.OpLog, logStore *logstore.LogStore) (*Orchestrator, error) {
+	cfg, err := cfgMgr.Get()
+	if err != nil {
+		return nil, err
+	}
 	cfg = proto.Clone(cfg).(*v1.Config)
 
 	// create the orchestrator.
 	o := &Orchestrator{
-		OpLog:  log,
-		config: cfg,
+		OpLog:     log,
+		configMgr: cfgMgr,
+		config:    cfg,
 		// repoPool created with a memory store to ensure the config is updated in an atomic operation with the repo pool's config value.
 		repoPool:   newResticRepoPool(resticBin, cfg),
 		taskQueue:  queue.NewTimePriorityQueue[stContainer](),
@@ -134,7 +140,7 @@ func NewOrchestrator(resticBin string, cfg *v1.Config, log *oplog.OpLog, logStor
 	}
 
 	// apply starting configuration which also queues initial tasks.
-	if err := o.ApplyConfig(cfg); err != nil {
+	if err := o.applyConfig(cfg); err != nil {
 		return nil, fmt.Errorf("apply initial config: %w", err)
 	}
 
@@ -150,7 +156,12 @@ func (o *Orchestrator) curTime() time.Time {
 	return time.Now()
 }
 
-func (o *Orchestrator) ApplyConfig(cfg *v1.Config) error {
+func (o *Orchestrator) applyConfig(cfg *v1.Config) error {
+	for _, repo := range o.config.Repos {
+		if repo.Guid == "" {
+			return errors.New("guid is required for all repos")
+		}
+	}
 	o.mu.Lock()
 	o.config = proto.Clone(cfg).(*v1.Config)
 	o.repoPool = newResticRepoPool(o.repoPool.resticPath, o.config)
@@ -296,6 +307,27 @@ func (o *Orchestrator) cancelHelper(op *v1.Operation, status v1.OperationStatus)
 // Run is the main orchestration loop. Cancel the context to stop the loop.
 func (o *Orchestrator) Run(ctx context.Context) {
 	zap.L().Info("starting orchestrator loop")
+
+	configCh := o.configMgr.Watch()
+	defer o.configMgr.StopWatching(configCh)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-configCh:
+				cfg, err := o.configMgr.Get()
+				if err != nil {
+					zap.S().Errorf("orchestrator failed to refresh config after change notification: %v", err)
+					continue
+				}
+				if err := o.applyConfig(cfg); err != nil {
+					zap.S().Errorf("orchestrator failed to apply config: %v", err)
+				}
+			}
+		}
+	}()
 
 	go func() {
 		// watchdog timer to detect clock jumps and reschedule all tasks.

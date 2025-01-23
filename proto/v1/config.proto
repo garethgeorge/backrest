@@ -58,6 +58,7 @@ message Repo {
   CheckPolicy check_policy = 9 [json_name="checkPolicy"]; // policy for when to run check.
   repeated Hook hooks = 7 [json_name="hooks"]; // hooks to run on events for this repo.
   bool auto_unlock = 8 [json_name="autoUnlock"]; // automatically unlock the repo when needed.
+  bool auto_initialize = 12 [json_name="autoInitialize"]; // whether the repo should be auto-initialized if not found.
   CommandPrefix command_prefix = 10 [json_name="commandPrefix"]; // modifiers for the restic commands
   repeated string allowed_peer_instance_ids = 100 [json_name="allowedPeers"]; // list of peer instance IDs allowed to access this repo.
 }
