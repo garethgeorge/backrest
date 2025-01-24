@@ -103,9 +103,10 @@ func (t *taskRunnerImpl) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 	if planID != "" {
 		plan, _ = t.findPlan()
 		vars.Plan = plan
-	} else {
+	}
+	if vars.Plan == nil {
 		vars.Plan = &v1.Plan{
-			Id: tasks.PlanForUnassociatedOperations,
+			Id: t.t.PlanID(), // make a fake plan that conveys only the ID, e.g. for unassociated operations OR system plan.
 		}
 	}
 
