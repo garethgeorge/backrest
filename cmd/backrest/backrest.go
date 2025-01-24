@@ -318,8 +318,6 @@ func migrateBboltOplog(logstore oplog.OpStore) {
 }
 
 func migratePopulateGuids(logstore oplog.OpStore, cfg *v1.Config) {
-	zap.S().Info("migrating oplog to populate GUIDs")
-
 	repoToGUID := make(map[string]string)
 	for _, repo := range cfg.Repos {
 		if repo.Guid != "" {
