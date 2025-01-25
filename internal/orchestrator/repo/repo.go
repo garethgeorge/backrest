@@ -311,14 +311,12 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, snaps
 	opts = append(opts, restic.WithFlags("--target", target))
 
 	if snapshotPath != "" {
-		// Convertire il separatore di percorso per Windows in uno universale
 		normalizedPath := strings.ReplaceAll(snapshotPath, "\\", "/")
 
 		dir := path.Dir(normalizedPath)
 		base := path.Base(normalizedPath)
 		
 		if runtime.GOOS == "windows" {
-		    // Su Windows, specificare il percorso relativo come su Linux
 		    if dir != "" {
 		        snapshotId = snapshotId + ":" + dir
 		    }
@@ -326,7 +324,6 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, snaps
 		        opts = append(opts, restic.WithFlags("--include", base))
 		    }
 		} else {
-		    // Su Linux, mantenere la logica esistente
 		    if dir != "" {
 		        snapshotId = snapshotId + ":" + dir
 		    }
