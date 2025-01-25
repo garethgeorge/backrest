@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.1](https://github.com/garethgeorge/backrest/compare/v1.7.0...v1.7.1) (2025-01-24)
+
+
+### Bug Fixes
+
+* add favicon to webui ([#649](https://github.com/garethgeorge/backrest/issues/649)) ([dd1e18c](https://github.com/garethgeorge/backrest/commit/dd1e18c9cbe6ed6ba5788ea646fc99d50e41ce25))
+* local network access on macOS 15 Sequoia ([#630](https://github.com/garethgeorge/backrest/issues/630)) ([0dd360b](https://github.com/garethgeorge/backrest/commit/0dd360b4973b9f60ba706f869a1a6eb883713afd))
+* only log important messages e.g. errors or summary for backup and restore commands ([82f05d8](https://github.com/garethgeorge/backrest/commit/82f05d8b809efb1a7051947cafc75ee75fd2ba5f))
+* provide an option for auto-initializing repos created externally ([#650](https://github.com/garethgeorge/backrest/issues/650)) ([99264b2](https://github.com/garethgeorge/backrest/commit/99264b2469e5f04705036173a2698e6dcef25671))
+* test repo configuration button ([b3cfef1](https://github.com/garethgeorge/backrest/commit/b3cfef14057540bfb0d3d2e67f66d0bbfb6c45dc))
+* test repo configuration button doesn't work ([07a1561](https://github.com/garethgeorge/backrest/commit/07a1561df7aed7265cdfc9561d7bd6a2e10deac2))
+* whitespace at start of path can result in invalid restore target ([47a4b52](https://github.com/garethgeorge/backrest/commit/47a4b522636370ca19d85b7ac5e1019d5b227edc))
+
 ## [1.7.0](https://github.com/garethgeorge/backrest/compare/v1.6.2...v1.7.0) (2025-01-09)
 
 

@@ -22,6 +22,7 @@ var errAlreadyInitialized = errors.New("repo already initialized")
 var ErrPartialBackup = errors.New("incomplete backup")
 var ErrBackupFailed = errors.New("backup failed")
 var ErrRestoreFailed = errors.New("restore failed")
+var ErrRepoNotFound = errors.New("repo does not exist")
 
 type Repo struct {
 	cmd string
@@ -99,6 +100,10 @@ func (r *Repo) Exists(ctx context.Context, opts ...GenericOption) error {
 		cmd := r.commandWithContext(ctx, []string{"cat", "config"}, opts...)
 		r.pipeCmdOutputToWriter(cmd, output)
 		if err := cmd.Run(); err != nil {
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) && exitErr.ExitCode() == 10 {
+				err = ErrRepoNotFound
+			}
 			r.exists = newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
 		} else if err := json.Unmarshal(output.Bytes(), &r.repoConfig); err != nil {
 			r.exists = newCmdError(ctx, cmd, newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", err), output.String()))
@@ -162,8 +167,16 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 	args = append(args, paths...)
 	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
 
+	logger := LoggerFromContext(ctx)
 	cmdCtx, cancel := context.WithCancel(ctx)
+	cmdCtx = ContextWithLogger(cmdCtx, nil) // ensure no logger is used
 	cmd := r.commandWithContext(cmdCtx, args, opts...)
+
+	// Ensure the command is logged since we're overriding the logger
+	if logger != nil {
+		fmt.Fprintf(logger, "command: %v %v\n", cmd.Path, strings.Join(cmd.Args, " "))
+	}
+
 	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
 	reader, writer := nio.Pipe(buf)
 	r.pipeCmdOutputToWriter(cmd, writer)
@@ -176,7 +189,7 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 		defer wg.Done()
 		defer cancel()
 		var err error
-		summary, err = readBackupProgressEntries(reader, progressCallback)
+		summary, err = readBackupProgressEntries(reader, logger, progressCallback)
 		if err != nil {
 			readErr = fmt.Errorf("processing command output: %w", err)
 		}
@@ -204,8 +217,14 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 
 func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
 	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
+
+	logger := LoggerFromContext(ctx)
 	cmdCtx, cancel := context.WithCancel(ctx)
+	cmdCtx = ContextWithLogger(cmdCtx, nil) // ensure no logger is used
 	cmd := r.commandWithContext(cmdCtx, []string{"restore", "--json", snapshot}, opts...)
+	if logger != nil {
+		fmt.Fprintf(logger, "command: %v %v\n", cmd.Path, strings.Join(cmd.Args, " "))
+	}
 	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
 	reader, writer := nio.Pipe(buf)
 	r.pipeCmdOutputToWriter(cmd, writer)
@@ -218,7 +237,7 @@ func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*Rest
 		defer wg.Done()
 		defer cancel()
 		var err error
-		summary, err = readRestoreProgressEntries(reader, callback)
+		summary, err = readRestoreProgressEntries(reader, logger, callback)
 		if err != nil {
 			readErr = fmt.Errorf("processing command output: %w", err)
 		}
