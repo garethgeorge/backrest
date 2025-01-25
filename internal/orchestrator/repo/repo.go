@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"runtime"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
@@ -316,20 +315,12 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, snaps
 		dir := path.Dir(normalizedPath)
 		base := path.Base(normalizedPath)
 		
-		if runtime.GOOS == "windows" {
-		    if dir != "" {
-		        snapshotId = snapshotId + ":" + dir
-		    }
-		    if base != "" {
-		        opts = append(opts, restic.WithFlags("--include", base))
-		    }
-		} else {
-		    if dir != "" {
-		        snapshotId = snapshotId + ":" + dir
-		    }
-		    if base != "" {
-		        opts = append(opts, restic.WithFlags("--include", base))
-		    }
+		
+		if dir != "" {
+		    snapshotId = snapshotId + ":" + dir
+		}
+		if base != "" {
+		    opts = append(opts, restic.WithFlags("--include", base))
 		}
 	}
 
