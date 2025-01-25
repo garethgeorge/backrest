@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"runtime"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
@@ -310,14 +311,29 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, snaps
 	opts = append(opts, restic.WithFlags("--target", target))
 
 	if snapshotPath != "" {
-	    dir := path.Dir(snapshotPath)
-	    base := path.Base(snapshotPath)
-	    if dir != "" {
-		snapshotId = snapshotId + ":" + dir
-	    }
-	    if base != "" {
-		opts = append(opts, restic.WithFlags("--include", base))
-	    }
+		// Convertire il separatore di percorso per Windows in uno universale
+		normalizedPath := strings.ReplaceAll(snapshotPath, "\\", "/")
+
+		dir := path.Dir(normalizedPath)
+		base := path.Base(normalizedPath)
+		
+		if runtime.GOOS == "windows" {
+		    // Su Windows, specificare il percorso relativo come su Linux
+		    if dir != "" {
+		        snapshotId = snapshotId + ":" + dir
+		    }
+		    if base != "" {
+		        opts = append(opts, restic.WithFlags("--include", base))
+		    }
+		} else {
+		    // Su Linux, mantenere la logica esistente
+		    if dir != "" {
+		        snapshotId = snapshotId + ":" + dir
+		    }
+		    if base != "" {
+		        opts = append(opts, restic.WithFlags("--include", base))
+		    }
+		}
 	}
 
 	summary, err := r.repo.Restore(ctx, snapshotId, func(event *restic.RestoreProgressEntry) {
