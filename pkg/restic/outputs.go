@@ -126,7 +126,7 @@ func (b *BackupProgressEntry) Validate() error {
 }
 
 // readBackupProgressEntries returns the summary event or an error if the command failed.
-func readBackupProgressEntries(output io.Reader, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
+func readBackupProgressEntries(output io.Reader, logger io.Writer, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
@@ -139,16 +139,28 @@ func readBackupProgressEntries(output io.Reader, callback func(event *BackupProg
 		var event BackupProgressEntry
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
 			nonJSONOutput.Write(scanner.Bytes())
+			if logger != nil {
+				logger.Write(scanner.Bytes())
+			}
 			continue
 		}
 		if err := event.Validate(); err != nil {
 			nonJSONOutput.Write(scanner.Bytes())
+			if logger != nil {
+				logger.Write(scanner.Bytes())
+			}
 			continue
+		}
+		if event.MessageType == "error" && logger != nil {
+			logger.Write(scanner.Bytes())
 		}
 		if callback != nil {
 			callback(&event)
 		}
 		if event.MessageType == "summary" {
+			if logger != nil {
+				logger.Write(scanner.Bytes())
+			}
 			summary = &event
 		}
 	}
@@ -250,7 +262,7 @@ func (e *RestoreProgressEntry) Validate() error {
 }
 
 // readRestoreProgressEntries returns the summary event or an error if the command failed.
-func readRestoreProgressEntries(output io.Reader, callback func(event *RestoreProgressEntry)) (*RestoreProgressEntry, error) {
+func readRestoreProgressEntries(output io.Reader, logger io.Writer, callback func(event *RestoreProgressEntry)) (*RestoreProgressEntry, error) {
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
@@ -263,18 +275,30 @@ func readRestoreProgressEntries(output io.Reader, callback func(event *RestorePr
 		var event RestoreProgressEntry
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
 			nonJSONOutput.Write(scanner.Bytes())
+			if logger != nil {
+				logger.Write(scanner.Bytes())
+			}
 			continue
 		}
 		if err := event.Validate(); err != nil {
 			// skip it. Best effort parsing, restic will return with a non-zero exit code if it fails.
 			nonJSONOutput.Write(scanner.Bytes())
+			if logger != nil {
+				logger.Write(scanner.Bytes())
+			}
 			continue
 		}
 
+		if event.MessageType == "error" && logger != nil {
+			logger.Write(scanner.Bytes())
+		}
 		if callback != nil {
 			callback(&event)
 		}
 		if event.MessageType == "summary" {
+			if logger != nil {
+				logger.Write(scanner.Bytes())
+			}
 			summary = &event
 		}
 	}

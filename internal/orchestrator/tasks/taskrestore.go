@@ -86,7 +86,7 @@ func restoreHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner,
 	})
 
 	if err != nil {
-		return fmt.Errorf("restore failed: %w", err)
+		return err
 	}
 	restoreOp.LastStatus = summary
 

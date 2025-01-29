@@ -20,6 +20,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -92,9 +93,6 @@ func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1
 	if err != nil {
 		return nil, fmt.Errorf("failed to get newly set config: %w", err)
 	}
-	if err := s.orchestrator.ApplyConfig(newConfig); err != nil {
-		return nil, fmt.Errorf("failed to apply config: %w", err)
-	}
 	return connect.NewResponse(newConfig), nil
 }
 
@@ -109,6 +107,10 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 		c.Repos[idx] = req.Msg
 	} else {
 		c.Repos = append(c.Repos, req.Msg)
+	}
+
+	if req.Msg.Guid == "" {
+		req.Msg.Guid = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
 	}
 
 	if err := config.ValidateConfig(c); err != nil {
@@ -129,7 +131,9 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 	defer cancel()
 
 	if err := r.Exists(ctx); err != nil {
-		if strings.Contains(err.Error(), "repository does not exist") {
+		zap.S().Debugf("repo %q exists or not: %v", req.Msg.Id, err)
+		if errors.Is(err, restic.ErrRepoNotFound) {
+			zap.S().Debugf("repo %q does not exist", req.Msg.Id)
 			return connect.NewResponse(&types.BoolValue{Value: false}), nil
 		}
 		return nil, err
@@ -226,11 +230,6 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 		}
 
 		zap.S().Infof("updated GUID for repo %q from %q to %q, migrated %d operations to reference the new GUID", newRepo.Id, oldRepo.Guid, newRepo.Guid, migratedCount)
-	}
-
-	zap.L().Debug("applying config", zap.Int32("version", c.Version))
-	if err := s.orchestrator.ApplyConfig(c); err != nil {
-		return nil, fmt.Errorf("failed to apply config: %w", err)
 	}
 
 	// index snapshots for the newly added repository.
@@ -531,6 +530,9 @@ func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1
 }
 
 func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error) {
+	req.Msg.Target = strings.TrimSpace(req.Msg.Target)
+	req.Msg.Path = strings.TrimSpace(req.Msg.Path)
+
 	if req.Msg.Target == "" {
 		req.Msg.Target = path.Join(os.Getenv("HOME"), "Downloads", fmt.Sprintf("restic-restore-%v", time.Now().Format("2006-01-02T15-04-05")))
 	}
