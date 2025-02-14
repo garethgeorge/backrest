@@ -48,7 +48,7 @@ jobs:
           args: release --snapshot --clean
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: backrest-snapshot-builds
           path: |
@@ -61,7 +61,7 @@ jobs:
           ./scripts/generate-installers.sh ./dist-installers
 
       - name: Upload Installers
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: backrest-snapshot-installers
           path: dist-installers/*.exe
