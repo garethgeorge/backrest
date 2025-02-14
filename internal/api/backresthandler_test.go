@@ -102,6 +102,50 @@ func TestUpdateConfig(t *testing.T) {
 	}
 }
 
+func TestRemoveRepo(t *testing.T) {
+	t.Parallel()
+
+	mgr := createConfigManager(&v1.Config{
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{
+				Id:       "local",
+				Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+				Uri:      t.TempDir(),
+				Password: "test",
+			},
+		},
+	})
+	sut := createSystemUnderTest(t, mgr)
+
+	// insert an operation that should get removed
+	if _, err := sut.handler.RunCommand(context.Background(), connect.NewRequest(&v1.RunCommandRequest{
+		RepoId:  "local",
+		Command: "help",
+	})); err != nil {
+		t.Fatalf("RunCommand() error = %v", err)
+	}
+
+	// assert that the operation exists
+	ops := getOperations(t, sut.oplog)
+	if len(ops) != 1 {
+		t.Fatalf("expected 1 operation, got %d", len(ops))
+	}
+
+	if _, err := sut.handler.RemoveRepo(context.Background(), connect.NewRequest(&types.StringValue{
+		Value: "local",
+	})); err != nil {
+		t.Fatalf("RemoveRepo() error = %v", err)
+	}
+
+	// assert that the operation has been removed
+	ops = getOperations(t, sut.oplog)
+	if len(ops) != 0 {
+		t.Fatalf("expected 0 operations, got %d", len(ops))
+	}
+}
+
 func TestBackup(t *testing.T) {
 	t.Parallel()
 
@@ -877,7 +921,6 @@ func createSystemUnderTest(t *testing.T, config *config.ConfigManager) systemUnd
 	if err != nil {
 		t.Fatalf("Failed to get config: %v", err)
 	}
-
 	remoteConfigStore := syncapi.NewJSONDirRemoteConfigStore(dir)
 	resticBin, err := resticinstaller.FindOrInstallResticBinary()
 	if err != nil {

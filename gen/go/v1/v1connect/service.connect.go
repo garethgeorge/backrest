@@ -44,6 +44,8 @@ const (
 	BackrestCheckRepoExistsProcedure = "/v1.Backrest/CheckRepoExists"
 	// BackrestAddRepoProcedure is the fully-qualified name of the Backrest's AddRepo RPC.
 	BackrestAddRepoProcedure = "/v1.Backrest/AddRepo"
+	// BackrestRemoveRepoProcedure is the fully-qualified name of the Backrest's RemoveRepo RPC.
+	BackrestRemoveRepoProcedure = "/v1.Backrest/RemoveRepo"
 	// BackrestGetOperationEventsProcedure is the fully-qualified name of the Backrest's
 	// GetOperationEvents RPC.
 	BackrestGetOperationEventsProcedure = "/v1.Backrest/GetOperationEvents"
@@ -87,6 +89,7 @@ var (
 	backrestSetConfigMethodDescriptor           = backrestServiceDescriptor.Methods().ByName("SetConfig")
 	backrestCheckRepoExistsMethodDescriptor     = backrestServiceDescriptor.Methods().ByName("CheckRepoExists")
 	backrestAddRepoMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("AddRepo")
+	backrestRemoveRepoMethodDescriptor          = backrestServiceDescriptor.Methods().ByName("RemoveRepo")
 	backrestGetOperationEventsMethodDescriptor  = backrestServiceDescriptor.Methods().ByName("GetOperationEvents")
 	backrestGetOperationsMethodDescriptor       = backrestServiceDescriptor.Methods().ByName("GetOperations")
 	backrestListSnapshotsMethodDescriptor       = backrestServiceDescriptor.Methods().ByName("ListSnapshots")
@@ -110,6 +113,7 @@ type BackrestClient interface {
 	SetConfig(context.Context, *connect.Request[v1.Config]) (*connect.Response[v1.Config], error)
 	CheckRepoExists(context.Context, *connect.Request[v1.Repo]) (*connect.Response[types.BoolValue], error)
 	AddRepo(context.Context, *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error)
+	RemoveRepo(context.Context, *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error)
 	GetOperationEvents(context.Context, *connect.Request[emptypb.Empty]) (*connect.ServerStreamForClient[v1.OperationEvent], error)
 	GetOperations(context.Context, *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error)
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error)
@@ -170,6 +174,12 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			httpClient,
 			baseURL+BackrestAddRepoProcedure,
 			connect.WithSchema(backrestAddRepoMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		removeRepo: connect.NewClient[types.StringValue, v1.Config](
+			httpClient,
+			baseURL+BackrestRemoveRepoProcedure,
+			connect.WithSchema(backrestRemoveRepoMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getOperationEvents: connect.NewClient[emptypb.Empty, v1.OperationEvent](
@@ -271,6 +281,7 @@ type backrestClient struct {
 	setConfig           *connect.Client[v1.Config, v1.Config]
 	checkRepoExists     *connect.Client[v1.Repo, types.BoolValue]
 	addRepo             *connect.Client[v1.Repo, v1.Config]
+	removeRepo          *connect.Client[types.StringValue, v1.Config]
 	getOperationEvents  *connect.Client[emptypb.Empty, v1.OperationEvent]
 	getOperations       *connect.Client[v1.GetOperationsRequest, v1.OperationList]
 	listSnapshots       *connect.Client[v1.ListSnapshotsRequest, v1.ResticSnapshotList]
@@ -306,6 +317,11 @@ func (c *backrestClient) CheckRepoExists(ctx context.Context, req *connect.Reque
 // AddRepo calls v1.Backrest.AddRepo.
 func (c *backrestClient) AddRepo(ctx context.Context, req *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error) {
 	return c.addRepo.CallUnary(ctx, req)
+}
+
+// RemoveRepo calls v1.Backrest.RemoveRepo.
+func (c *backrestClient) RemoveRepo(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error) {
+	return c.removeRepo.CallUnary(ctx, req)
 }
 
 // GetOperationEvents calls v1.Backrest.GetOperationEvents.
@@ -389,6 +405,7 @@ type BackrestHandler interface {
 	SetConfig(context.Context, *connect.Request[v1.Config]) (*connect.Response[v1.Config], error)
 	CheckRepoExists(context.Context, *connect.Request[v1.Repo]) (*connect.Response[types.BoolValue], error)
 	AddRepo(context.Context, *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error)
+	RemoveRepo(context.Context, *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error)
 	GetOperationEvents(context.Context, *connect.Request[emptypb.Empty], *connect.ServerStream[v1.OperationEvent]) error
 	GetOperations(context.Context, *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error)
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error)
@@ -445,6 +462,12 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		BackrestAddRepoProcedure,
 		svc.AddRepo,
 		connect.WithSchema(backrestAddRepoMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	backrestRemoveRepoHandler := connect.NewUnaryHandler(
+		BackrestRemoveRepoProcedure,
+		svc.RemoveRepo,
+		connect.WithSchema(backrestRemoveRepoMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestGetOperationEventsHandler := connect.NewServerStreamHandler(
@@ -547,6 +570,8 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 			backrestCheckRepoExistsHandler.ServeHTTP(w, r)
 		case BackrestAddRepoProcedure:
 			backrestAddRepoHandler.ServeHTTP(w, r)
+		case BackrestRemoveRepoProcedure:
+			backrestRemoveRepoHandler.ServeHTTP(w, r)
 		case BackrestGetOperationEventsProcedure:
 			backrestGetOperationEventsHandler.ServeHTTP(w, r)
 		case BackrestGetOperationsProcedure:
@@ -600,6 +625,10 @@ func (UnimplementedBackrestHandler) CheckRepoExists(context.Context, *connect.Re
 
 func (UnimplementedBackrestHandler) AddRepo(context.Context, *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.AddRepo is not implemented"))
+}
+
+func (UnimplementedBackrestHandler) RemoveRepo(context.Context, *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.RemoveRepo is not implemented"))
 }
 
 func (UnimplementedBackrestHandler) GetOperationEvents(context.Context, *connect.Request[emptypb.Empty], *connect.ServerStream[v1.OperationEvent]) error {

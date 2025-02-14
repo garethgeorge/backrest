@@ -20,6 +20,8 @@ service Backrest {
 
   rpc AddRepo (Repo) returns (Config) {}
 
+  rpc RemoveRepo (types.StringValue) returns (Config) {} // remvoes a repo from the config and deletes its history, does not delete the repo on disk
+
   rpc GetOperationEvents (google.protobuf.Empty) returns (stream OperationEvent) {}
 
   rpc GetOperations (GetOperationsRequest) returns (OperationList) {}
