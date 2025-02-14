@@ -143,7 +143,7 @@ export class OplogState {
       } else {
         const flow = this.byFlowID.get(op.flowId);
         if (op.op.case === "operationIndexSnapshot" && flow &&
-          flow.find((o) => o.op.case === "operationIndexSnapshot" && o.snapshotId === op.snapshotId)) {
+          flow.find((o) => o.id !== op.id && o.op.case === "operationIndexSnapshot" && o.snapshotId === op.snapshotId)) {
           // don't add a second index snapshot for the same flow, this can happen in multihost mode
           continue;
         }
