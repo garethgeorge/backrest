@@ -25,6 +25,7 @@ const (
 	Backrest_SetConfig_FullMethodName           = "/v1.Backrest/SetConfig"
 	Backrest_CheckRepoExists_FullMethodName     = "/v1.Backrest/CheckRepoExists"
 	Backrest_AddRepo_FullMethodName             = "/v1.Backrest/AddRepo"
+	Backrest_RemoveRepo_FullMethodName          = "/v1.Backrest/RemoveRepo"
 	Backrest_GetOperationEvents_FullMethodName  = "/v1.Backrest/GetOperationEvents"
 	Backrest_GetOperations_FullMethodName       = "/v1.Backrest/GetOperations"
 	Backrest_ListSnapshots_FullMethodName       = "/v1.Backrest/ListSnapshots"
@@ -50,6 +51,7 @@ type BackrestClient interface {
 	SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error)
 	CheckRepoExists(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*types.BoolValue, error)
 	AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error)
+	RemoveRepo(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*Config, error)
 	GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OperationEvent], error)
 	GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error)
 	ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error)
@@ -120,6 +122,16 @@ func (c *backrestClient) AddRepo(ctx context.Context, in *Repo, opts ...grpc.Cal
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Config)
 	err := c.cc.Invoke(ctx, Backrest_AddRepo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *backrestClient) RemoveRepo(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*Config, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Config)
+	err := c.cc.Invoke(ctx, Backrest_RemoveRepo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -302,6 +314,7 @@ type BackrestServer interface {
 	SetConfig(context.Context, *Config) (*Config, error)
 	CheckRepoExists(context.Context, *Repo) (*types.BoolValue, error)
 	AddRepo(context.Context, *Repo) (*Config, error)
+	RemoveRepo(context.Context, *types.StringValue) (*Config, error)
 	GetOperationEvents(*emptypb.Empty, grpc.ServerStreamingServer[OperationEvent]) error
 	GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error)
 	ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error)
@@ -349,6 +362,9 @@ func (UnimplementedBackrestServer) CheckRepoExists(context.Context, *Repo) (*typ
 }
 func (UnimplementedBackrestServer) AddRepo(context.Context, *Repo) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRepo not implemented")
+}
+func (UnimplementedBackrestServer) RemoveRepo(context.Context, *types.StringValue) (*Config, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveRepo not implemented")
 }
 func (UnimplementedBackrestServer) GetOperationEvents(*emptypb.Empty, grpc.ServerStreamingServer[OperationEvent]) error {
 	return status.Errorf(codes.Unimplemented, "method GetOperationEvents not implemented")
@@ -484,6 +500,24 @@ func _Backrest_AddRepo_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BackrestServer).AddRepo(ctx, req.(*Repo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Backrest_RemoveRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(types.StringValue)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackrestServer).RemoveRepo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Backrest_RemoveRepo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackrestServer).RemoveRepo(ctx, req.(*types.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -766,6 +800,10 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddRepo",
 			Handler:    _Backrest_AddRepo_Handler,
+		},
+		{
+			MethodName: "RemoveRepo",
+			Handler:    _Backrest_RemoveRepo_Handler,
 		},
 		{
 			MethodName: "GetOperations",

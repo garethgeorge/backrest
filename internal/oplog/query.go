@@ -4,14 +4,15 @@ import v1 "github.com/garethgeorge/backrest/gen/go/v1"
 
 type Query struct {
 	// Filter by fields
-	OpIDs          []int64
-	PlanID         *string
-	RepoGUID       *string
-	SnapshotID     *string
-	FlowID         *int64
-	InstanceID     *string
-	OriginalID     *int64
-	OriginalFlowID *int64
+	OpIDs            []int64
+	PlanID           *string
+	RepoGUID         *string
+	DeprecatedRepoID *string // Deprecated: use RepoGUID instead
+	SnapshotID       *string
+	FlowID           *int64
+	InstanceID       *string
+	OriginalID       *int64
+	OriginalFlowID   *int64
 
 	// Pagination
 	Limit    int

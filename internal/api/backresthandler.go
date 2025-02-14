@@ -219,9 +219,13 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 	// If the GUID has changed, and we just successfully updated the config in storage, then we need to migrate the oplog.
 	if oldRepo != nil && newRepo.Guid != oldRepo.Guid {
 		migratedCount := 0
-		if err := s.oplog.Transform(oplog.Query{}.
-			SetRepoGUID(oldRepo.Guid).
-			SetInstanceID(c.Instance), func(op *v1.Operation) (*v1.Operation, error) {
+
+		q := oplog.Query{}.
+			SetInstanceID(c.Instance)
+		// we use RepoID here to _ensure_ we consolidate all operations to the most recent GUID.
+		// this provides some resiliancy in the case of a previous partial update.
+		q.DeprecatedRepoID = &oldRepo.Id
+		if err := s.oplog.Transform(q, func(op *v1.Operation) (*v1.Operation, error) {
 			op.RepoGuid = newRepo.Guid
 			migratedCount++
 			return op, nil
@@ -238,6 +242,47 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 
 	zap.L().Debug("done add repo")
 	return connect.NewResponse(c), nil
+}
+
+func (s *BackrestHandler) RemoveRepo(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error) {
+	cfg, err := s.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %w", err)
+	}
+
+	// Remove the repo from the configuration
+	cfg.Repos = slices.DeleteFunc(cfg.Repos, func(r *v1.Repo) bool {
+		return r.Id == req.Msg.Value
+	})
+	if err := s.config.Update(cfg); err != nil {
+		return nil, fmt.Errorf("failed to update config: %w", err)
+	}
+
+	// Query for all operations for the repo
+	q := oplog.Query{}.
+		SetInstanceID(cfg.Instance)
+	q.DeprecatedRepoID = &req.Msg.Value
+	var opIDs []int64
+	if err := s.oplog.Query(q, func(op *v1.Operation) error {
+		opIDs = append(opIDs, op.Id)
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("failed to get operations for repo: %w", err)
+	}
+
+	// Delete operations referencing the repo from the oplog in batches
+	for len(opIDs) > 0 {
+		batchSize := 256
+		if batchSize > len(opIDs) {
+			batchSize = len(opIDs)
+		}
+		if err := s.oplog.Delete(opIDs[:batchSize]...); err != nil {
+			return nil, fmt.Errorf("failed to delete operations: %w", err)
+		}
+		opIDs = opIDs[batchSize:]
+	}
+
+	return connect.NewResponse(cfg), nil
 }
 
 // ListSnapshots implements POST /v1/snapshots

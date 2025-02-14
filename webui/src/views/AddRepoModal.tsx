@@ -27,6 +27,7 @@ import {
   RepoSchema,
   Schedule_Clock,
 } from "../../gen/ts/v1/config_pb";
+import { StringValueSchema } from "../../gen/ts/types/value_pb";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
@@ -95,35 +96,18 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     setConfirmLoading(true);
 
     try {
-      config.repos = config.repos || [];
-
-      if (!template) {
-        throw new Error("template not found");
-      }
-
-      // Check if still in use by a plan
-      for (const plan of config.plans || []) {
-        if (plan.repo === template.id) {
-          throw new Error("Can't delete repo, still in use by plan " + plan.id);
-        }
-      }
-
-      // Remove the plan from the config
-      const idx = config.repos.findIndex((r) => r.id === template.id);
-      if (idx === -1) {
-        throw new Error("failed to update config, plan to delete not found");
-      }
-
-      config.repos.splice(idx, 1);
-
       // Update config and notify success.
-      setConfig(await backrestService.setConfig(config));
+      setConfig(
+        await backrestService.removeRepo(
+          create(StringValueSchema, { value: template!.id })
+        )
+      );
       showModal(null);
       alertsApi.success(
         "Deleted repo " +
-          template.id +
+          template!.id! +
           " from config but files remain. To release storage delete the files manually. URI: " +
-          template.uri
+          template!.uri
       );
     } catch (e: any) {
       alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
@@ -189,15 +173,17 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             Cancel
           </Button>,
           template != null ? (
-            <ConfirmButton
-              key="delete"
-              type="primary"
-              danger
-              onClickAsync={handleDestroy}
-              confirmTitle="Confirm Delete"
-            >
-              Delete
-            </ConfirmButton>
+            <Tooltip title="Removes the repo from the config but will not delete the restic repository">
+              <ConfirmButton
+                key="delete"
+                type="primary"
+                danger
+                onClickAsync={handleDestroy}
+                confirmTitle="Confirm Delete"
+              >
+                Delete
+              </ConfirmButton>
+            </Tooltip>
           ) : null,
           <SpinButton
             key="check"

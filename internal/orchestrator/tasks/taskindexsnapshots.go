@@ -77,7 +77,7 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 		}
 
 		snapshotProto := protoutil.SnapshotToProto(snapshot)
-		flowID, err := FlowIDForSnapshotID(taskRunner, snapshot.Id)
+		flowID, err := FlowIDForSnapshotID(taskRunner, t.Repo().GetGuid(), snapshot.Id)
 		if err != nil {
 			return fmt.Errorf("get flow ID for snapshot %q: %w", snapshot.Id, err)
 		}
@@ -143,14 +143,17 @@ func indexCurrentSnapshotIdsForRepo(taskRunner TaskRunner, repoGUID string) (map
 	knownIds := make(map[string]int64)
 
 	startTime := time.Now()
-	if err := taskRunner.QueryOperations(oplog.Query{}.SetRepoGUID(repoGUID), func(op *v1.Operation) error {
-		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
-			if !snapshotOp.OperationIndexSnapshot.Forgot {
-				knownIds[snapshotOp.OperationIndexSnapshot.Snapshot.Id] = op.Id
+	if err := taskRunner.QueryOperations(oplog.Query{}.
+		SetRepoGUID(repoGUID).
+		SetInstanceID(taskRunner.InstanceID()),
+		func(op *v1.Operation) error {
+			if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
+				if !snapshotOp.OperationIndexSnapshot.Forgot {
+					knownIds[snapshotOp.OperationIndexSnapshot.Snapshot.Id] = op.Id
+				}
 			}
-		}
-		return nil
-	}); err != nil {
+			return nil
+		}); err != nil {
 		return nil, err
 	}
 	zap.S().Debugf("found %v known snapshot IDs for repo %v in %v", len(knownIds), repoGUID, time.Since(startTime))

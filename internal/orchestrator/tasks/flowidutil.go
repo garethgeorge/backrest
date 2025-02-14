@@ -8,9 +8,15 @@ import (
 )
 
 // FlowIDForSnapshotID returns the flow ID associated with the backup task that created snapshot ID or 0 if not found.
-func FlowIDForSnapshotID(runner TaskRunner, snapshotID string) (int64, error) {
+func FlowIDForSnapshotID(runner TaskRunner, repoGUID string, snapshotID string) (int64, error) {
 	var flowID int64
 	if err := runner.QueryOperations(oplog.Query{SnapshotID: &snapshotID}, func(op *v1.Operation) error {
+		if op.RepoGuid != repoGUID {
+			// ignore operations from other repos, done here instead of in the query
+			// to encourage sqlite to make the right index choice. SnapshotID is vastly
+			// more selective than RepoGUID.
+			return nil
+		}
 		if _, ok := op.Op.(*v1.Operation_OperationBackup); !ok {
 			return nil
 		}

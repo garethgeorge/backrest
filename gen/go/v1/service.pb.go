@@ -1288,7 +1288,7 @@ var file_v1_service_proto_rawDesc = []byte{
 	0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x06, 0x73, 0x74,
 	0x61, 0x74, 0x75, 0x73, 0x12, 0x1f, 0x0a, 0x0b, 0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x61, 0x64,
 	0x64, 0x65, 0x64, 0x18, 0x05, 0x20, 0x03, 0x28, 0x03, 0x52, 0x0a, 0x62, 0x79, 0x74, 0x65, 0x73,
-	0x41, 0x64, 0x64, 0x65, 0x64, 0x32, 0xf7, 0x08, 0x0a, 0x08, 0x42, 0x61, 0x63, 0x6b, 0x72, 0x65,
+	0x41, 0x64, 0x64, 0x65, 0x64, 0x32, 0xa7, 0x09, 0x0a, 0x08, 0x42, 0x61, 0x63, 0x6b, 0x72, 0x65,
 	0x73, 0x74, 0x12, 0x31, 0x0a, 0x09, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12,
 	0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75,
 	0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x0a, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6e,
@@ -1300,6 +1300,9 @@ var file_v1_service_proto_rawDesc = []byte{
 	0x73, 0x2e, 0x42, 0x6f, 0x6f, 0x6c, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x00, 0x12, 0x21, 0x0a,
 	0x07, 0x41, 0x64, 0x64, 0x52, 0x65, 0x70, 0x6f, 0x12, 0x08, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65,
 	0x70, 0x6f, 0x1a, 0x0a, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x22, 0x00,
+	0x12, 0x2e, 0x0a, 0x0a, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x52, 0x65, 0x70, 0x6f, 0x12, 0x12,
+	0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x53, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x56, 0x61, 0x6c,
+	0x75, 0x65, 0x1a, 0x0a, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x22, 0x00,
 	0x12, 0x44, 0x0a, 0x12, 0x47, 0x65, 0x74, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e,
 	0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x12, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e,
 	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x12,
@@ -1423,42 +1426,44 @@ var file_v1_service_proto_depIdxs = []int32{
 	18, // 9: v1.Backrest.SetConfig:input_type -> v1.Config
 	19, // 10: v1.Backrest.CheckRepoExists:input_type -> v1.Repo
 	19, // 11: v1.Backrest.AddRepo:input_type -> v1.Repo
-	17, // 12: v1.Backrest.GetOperationEvents:input_type -> google.protobuf.Empty
-	6,  // 13: v1.Backrest.GetOperations:input_type -> v1.GetOperationsRequest
-	5,  // 14: v1.Backrest.ListSnapshots:input_type -> v1.ListSnapshotsRequest
-	8,  // 15: v1.Backrest.ListSnapshotFiles:input_type -> v1.ListSnapshotFilesRequest
-	20, // 16: v1.Backrest.Backup:input_type -> types.StringValue
-	2,  // 17: v1.Backrest.DoRepoTask:input_type -> v1.DoRepoTaskRequest
-	4,  // 18: v1.Backrest.Forget:input_type -> v1.ForgetRequest
-	7,  // 19: v1.Backrest.Restore:input_type -> v1.RestoreSnapshotRequest
-	21, // 20: v1.Backrest.Cancel:input_type -> types.Int64Value
-	10, // 21: v1.Backrest.GetLogs:input_type -> v1.LogDataRequest
-	12, // 22: v1.Backrest.RunCommand:input_type -> v1.RunCommandRequest
-	21, // 23: v1.Backrest.GetDownloadURL:input_type -> types.Int64Value
-	3,  // 24: v1.Backrest.ClearHistory:input_type -> v1.ClearHistoryRequest
-	20, // 25: v1.Backrest.PathAutocomplete:input_type -> types.StringValue
-	17, // 26: v1.Backrest.GetSummaryDashboard:input_type -> google.protobuf.Empty
-	18, // 27: v1.Backrest.GetConfig:output_type -> v1.Config
-	18, // 28: v1.Backrest.SetConfig:output_type -> v1.Config
-	22, // 29: v1.Backrest.CheckRepoExists:output_type -> types.BoolValue
-	18, // 30: v1.Backrest.AddRepo:output_type -> v1.Config
-	23, // 31: v1.Backrest.GetOperationEvents:output_type -> v1.OperationEvent
-	24, // 32: v1.Backrest.GetOperations:output_type -> v1.OperationList
-	25, // 33: v1.Backrest.ListSnapshots:output_type -> v1.ResticSnapshotList
-	9,  // 34: v1.Backrest.ListSnapshotFiles:output_type -> v1.ListSnapshotFilesResponse
-	17, // 35: v1.Backrest.Backup:output_type -> google.protobuf.Empty
-	17, // 36: v1.Backrest.DoRepoTask:output_type -> google.protobuf.Empty
-	17, // 37: v1.Backrest.Forget:output_type -> google.protobuf.Empty
-	17, // 38: v1.Backrest.Restore:output_type -> google.protobuf.Empty
-	17, // 39: v1.Backrest.Cancel:output_type -> google.protobuf.Empty
-	26, // 40: v1.Backrest.GetLogs:output_type -> types.BytesValue
-	21, // 41: v1.Backrest.RunCommand:output_type -> types.Int64Value
-	20, // 42: v1.Backrest.GetDownloadURL:output_type -> types.StringValue
-	17, // 43: v1.Backrest.ClearHistory:output_type -> google.protobuf.Empty
-	27, // 44: v1.Backrest.PathAutocomplete:output_type -> types.StringList
-	13, // 45: v1.Backrest.GetSummaryDashboard:output_type -> v1.SummaryDashboardResponse
-	27, // [27:46] is the sub-list for method output_type
-	8,  // [8:27] is the sub-list for method input_type
+	20, // 12: v1.Backrest.RemoveRepo:input_type -> types.StringValue
+	17, // 13: v1.Backrest.GetOperationEvents:input_type -> google.protobuf.Empty
+	6,  // 14: v1.Backrest.GetOperations:input_type -> v1.GetOperationsRequest
+	5,  // 15: v1.Backrest.ListSnapshots:input_type -> v1.ListSnapshotsRequest
+	8,  // 16: v1.Backrest.ListSnapshotFiles:input_type -> v1.ListSnapshotFilesRequest
+	20, // 17: v1.Backrest.Backup:input_type -> types.StringValue
+	2,  // 18: v1.Backrest.DoRepoTask:input_type -> v1.DoRepoTaskRequest
+	4,  // 19: v1.Backrest.Forget:input_type -> v1.ForgetRequest
+	7,  // 20: v1.Backrest.Restore:input_type -> v1.RestoreSnapshotRequest
+	21, // 21: v1.Backrest.Cancel:input_type -> types.Int64Value
+	10, // 22: v1.Backrest.GetLogs:input_type -> v1.LogDataRequest
+	12, // 23: v1.Backrest.RunCommand:input_type -> v1.RunCommandRequest
+	21, // 24: v1.Backrest.GetDownloadURL:input_type -> types.Int64Value
+	3,  // 25: v1.Backrest.ClearHistory:input_type -> v1.ClearHistoryRequest
+	20, // 26: v1.Backrest.PathAutocomplete:input_type -> types.StringValue
+	17, // 27: v1.Backrest.GetSummaryDashboard:input_type -> google.protobuf.Empty
+	18, // 28: v1.Backrest.GetConfig:output_type -> v1.Config
+	18, // 29: v1.Backrest.SetConfig:output_type -> v1.Config
+	22, // 30: v1.Backrest.CheckRepoExists:output_type -> types.BoolValue
+	18, // 31: v1.Backrest.AddRepo:output_type -> v1.Config
+	18, // 32: v1.Backrest.RemoveRepo:output_type -> v1.Config
+	23, // 33: v1.Backrest.GetOperationEvents:output_type -> v1.OperationEvent
+	24, // 34: v1.Backrest.GetOperations:output_type -> v1.OperationList
+	25, // 35: v1.Backrest.ListSnapshots:output_type -> v1.ResticSnapshotList
+	9,  // 36: v1.Backrest.ListSnapshotFiles:output_type -> v1.ListSnapshotFilesResponse
+	17, // 37: v1.Backrest.Backup:output_type -> google.protobuf.Empty
+	17, // 38: v1.Backrest.DoRepoTask:output_type -> google.protobuf.Empty
+	17, // 39: v1.Backrest.Forget:output_type -> google.protobuf.Empty
+	17, // 40: v1.Backrest.Restore:output_type -> google.protobuf.Empty
+	17, // 41: v1.Backrest.Cancel:output_type -> google.protobuf.Empty
+	26, // 42: v1.Backrest.GetLogs:output_type -> types.BytesValue
+	21, // 43: v1.Backrest.RunCommand:output_type -> types.Int64Value
+	20, // 44: v1.Backrest.GetDownloadURL:output_type -> types.StringValue
+	17, // 45: v1.Backrest.ClearHistory:output_type -> google.protobuf.Empty
+	27, // 46: v1.Backrest.PathAutocomplete:output_type -> types.StringList
+	13, // 47: v1.Backrest.GetSummaryDashboard:output_type -> v1.SummaryDashboardResponse
+	28, // [28:48] is the sub-list for method output_type
+	8,  // [8:28] is the sub-list for method input_type
 	8,  // [8:8] is the sub-list for extension type_name
 	8,  // [8:8] is the sub-list for extension extendee
 	0,  // [0:8] is the sub-list for field type_name
