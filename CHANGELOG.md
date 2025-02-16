@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.2](https://github.com/garethgeorge/backrest/compare/v1.7.1...v1.7.2) (2025-02-16)
+
+
+### Bug Fixes
+
+* convert prometheus metrics to use `gauge` type ([#640](https://github.com/garethgeorge/backrest/issues/640)) ([8c4ddee](https://github.com/garethgeorge/backrest/commit/8c4ddeea7132fb94484dc32872e00ddd3b35e44d))
+* hooks fail to populate a non-nil Plan variable for system tasks ([f119e1e](https://github.com/garethgeorge/backrest/commit/f119e1e979a464e508edcb13404691ad45ac3d64))
+* incorrectly formatted total size on stats panel ([#667](https://github.com/garethgeorge/backrest/issues/667)) ([d2ac114](https://github.com/garethgeorge/backrest/commit/d2ac1146ac0d2d75ca7dc51c9db076adc7170000))
+* misaligned favicon ([#660](https://github.com/garethgeorge/backrest/issues/660)) ([403458f](https://github.com/garethgeorge/backrest/commit/403458f70705258906258fa77d4668d70ac176e3))
+* more robust delete repo and misc repo guid related bug fixes ([146032a](https://github.com/garethgeorge/backrest/commit/146032a9d7a66c422318461b8113d6369c6cd640))
+* restore path on Windows ([#631](https://github.com/garethgeorge/backrest/issues/631)) ([1a9ecc5](https://github.com/garethgeorge/backrest/commit/1a9ecc58390957523f21c6a55c809b0bf22cf978))
+* snapshot still showing after forget until page is refreshed ([0600733](https://github.com/garethgeorge/backrest/commit/060073325dbbf6cc94ce6471134efb91fe191cca))
+
 ## [1.7.1](https://github.com/garethgeorge/backrest/compare/v1.7.0...v1.7.1) (2025-01-24)
 
 
