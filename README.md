@@ -118,6 +118,9 @@ The install script will:
 
 Read the script before running it to make sure you are comfortable with these operations.
 
+If the machine is headless, you will need to run this command (or manually edit `/etc/systemd/system/backrest.service` to enter 0.0.0.0).
+`sudo sed -i 's|Environment="BACKREST_PORT=172\.0\.0\.1:9898"|Environment="BACKREST_PORT=0.0.0.0:9898"|' /etc/systemd/system/backrest.service`
+
 #### Run on startup with cron (Basic)
 
 Move the Backrest binary to `/usr/local/bin`:
