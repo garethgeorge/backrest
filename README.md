@@ -120,6 +120,7 @@ Read the script before running it to make sure you are comfortable with these op
 
 If the machine is headless, you will need to run this command (or manually edit `/etc/systemd/system/backrest.service` to enter 0.0.0.0).
 `sudo sed -i 's|Environment="BACKREST_PORT=172\.0\.0\.1:9898"|Environment="BACKREST_PORT=0.0.0.0:9898"|' /etc/systemd/system/backrest.service`
+_Note that this will allow web-ui connections from any device on your network. Always enable user authentication and set a password immediately after enabling this_
 
 #### Run on startup with cron (Basic)
 
