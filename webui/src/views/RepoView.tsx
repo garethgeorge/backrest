@@ -115,7 +115,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
               selector: {
                 repoGuid: repo.guid,
               },
-              lastN: BigInt(STATS_OPERATION_HISTORY),
+              lastN: BigInt(MAX_OPERATION_HISTORY),
             })}
           />
         </>
