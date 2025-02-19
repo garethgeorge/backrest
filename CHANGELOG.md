@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.3](https://github.com/garethgeorge/backrest/compare/v1.7.2...v1.7.3) (2025-02-19)
+
+
+### Bug Fixes
+
+* occasional truncated operation history display in repo view ([3b41d9f](https://github.com/garethgeorge/backrest/commit/3b41d9fd5bd611dd0c59bcef13a3da0e2d6f02ce))
+
 ## [1.7.2](https://github.com/garethgeorge/backrest/compare/v1.7.1...v1.7.2) (2025-02-16)
 
 
