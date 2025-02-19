@@ -1,6 +1,6 @@
 module github.com/garethgeorge/backrest
 
-go 1.23.1
+go 1.24
 
 replace (
 	modernc.org/libc => modernc.org/libc v1.55.3
