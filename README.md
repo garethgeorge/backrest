@@ -99,6 +99,11 @@ services:
 
 Download a release from the [releases page](https://github.com/garethgeorge/backrest/releases)
 
+For example, for the latest 64 bit Linux release:
+```
+curl -L -O https://github.com/garethgeorge/backrest/releases/latest/download/backrest_Linux_x86_64.tar.gz
+```
+
 #### Using systemd with the install script (Recommended)
 
 Extract the release you downloaded and run the install script:
@@ -118,11 +123,17 @@ The install script will:
 
 Read the script before running it to make sure you are comfortable with these operations.
 
-If the machine is headless, you will need to run this command (or manually edit `/etc/systemd/system/backrest.service` to enter 0.0.0.0).
+If the machine is headless, you will need to edit the systemctl service to allow other connection sources.
 ```
-sudo sed -i 's|Environment="BACKREST_PORT=172\.0\.0\.1:9898"|Environment="BACKREST_PORT=0.0.0.0:9898"|' /etc/systemd/system/backrest.service
+sudo systemctl edit backrest
 ```
+and add the line `Environment="BACKREST_PORT=0.0.0.0:9898"` (optionally you may furter refine the subnet and / or change the port).
 _Note that this will allow web-ui connections from any device on your network. Always enable user authentication and set a password immediately after enabling this_
+Once you've modified the service run
+```
+sudo systemctl daemon-reload && sudo service backrest restart
+```
+
 
 #### Run on startup with cron (Basic)
 
