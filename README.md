@@ -14,7 +14,7 @@ Backrest is a web-accessible backup solution built on top of [restic](https://re
 
 By building on restic, Backrest leverages its mature, fast, reliable, and secure backup capabilities while adding an intuitive interface.
 
-Built in Golang, Backrest is shipped as a self-contained lightweight binary with no dependencies other than restic. While the WebUI handles most operations, you retain full access to use the [restic CLI](https://restic.readthedocs.io/en/latest/manual_rest.html) directly when needed. Backrest can also safely detect and import your existing snapshots.
+Built with Go, Backrest is distributed as a standalone, lightweight binary with restic as its sole dependency. It can securely create new repositories or manage existing ones. Once storage is configured, the WebUI handles most operations, while still allowing direct access to the powerful [restic CLI](https://restic.readthedocs.io/en/latest/manual_rest.html) for advanced operations when needed.
 
 ## Preview
 
@@ -34,10 +34,10 @@ Built in Golang, Backrest is shipped as a self-contained lightweight binary with
   - [Docker](https://hub.docker.com/r/garethgeorge/backrest)
 - **Backup Management**:
   - Import existing restic repositories
-  - Cron-scheduled backups and maintenance
+  - Cron-scheduled backups and maintenance (e.g. prune, check, forget, etc)
   - Browse and restore files from snapshots
   - Configurable notifications (Discord, Slack, Shoutrrr, Gotify, Healthchecks)
-  - Pre/post backup command hooks
+  - Pre/post backup command hooks to execute shell scripts
 - **Storage Options**:
 - Compatible with rclone remotes
   - Supports all restic storage backends (S3, B2, Azure, GCS, local, SFTP, and [all rclone remotes](https://rclone.org/))
