@@ -64,7 +64,7 @@ export const RunCommandModal = ({ repo }: { repo: Repo }) => {
     >
       <Space.Compact style={{ width: "100%" }}>
         <Input
-          placeholder="Run a restic comamnd e.g. 'help' to print help text"
+          placeholder="Run a restic command e.g. 'help' to print help text"
           value={command}
           onChange={(e) => setCommand(e.target.value)}
           onKeyUp={(e) => {
