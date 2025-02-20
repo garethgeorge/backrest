@@ -31,33 +31,34 @@ jobs:
         run: pnpm install --prefix ./docs
 
       - name: Build
-        run: cd docs && pnpm run generate
+        run: |
+          cd docs
+          pnpm run generate
+          ls -la .output/public
 
       - name: Fix permissions
         run: |
-          chmod -c -R +rX "./docs/.output/public" | while read line; do
+          chmod -c -R +rX "docs/.output/public" | while read line; do
             echo "::warning title=Invalid file permissions automatically fixed::$line"
           done
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v2
+      - name: Upload static files as artifact
+        id: deployment
+        uses: actions/upload-pages-artifact@v3 # or specific "vX.X.X" version tag for this action
         with:
-          path: ./docs/.output/public
+          path: docs/.output/public
 
   deploy:
-    needs: build
-
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       pages: write
       id-token: write
       actions: read
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
