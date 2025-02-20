@@ -27,10 +27,10 @@ Built with Go, Backrest is distributed as a standalone, lightweight binary with 
 
 - **Web Interface**: Access locally or remotely (perfect for NAS deployments)
 - **Multi-Platform Support**: 
-- Linux
-- macOS
-- Windows
-- FreeBSD
+  - Linux
+  - macOS
+  - Windows
+  - FreeBSD
   - [Docker](https://hub.docker.com/r/garethgeorge/backrest)
 - **Backup Management**:
   - Import existing restic repositories
@@ -39,7 +39,7 @@ Built with Go, Backrest is distributed as a standalone, lightweight binary with 
   - Configurable notifications (Discord, Slack, Shoutrrr, Gotify, Healthchecks)
   - Pre/post backup command hooks to execute shell scripts
 - **Storage Options**:
-- Compatible with rclone remotes
+  - Compatible with rclone remotes
   - Supports all restic storage backends (S3, B2, Azure, GCS, local, SFTP, and [all rclone remotes](https://rclone.org/))
 
 ---
