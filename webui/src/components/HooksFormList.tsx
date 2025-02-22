@@ -272,6 +272,7 @@ const hookTypes: {
         template: "{{ .Summary }}",
         titleTemplate:
           "Backrest {{ .EventName .Event }} in plan {{ .Plan.Id }}",
+        priority: 5,
       },
       conditions: [],
     },
@@ -310,6 +311,27 @@ const hookTypes: {
           <Form.Item name={[field.name, "actionGotify", "template"]}>
             <Input.TextArea
               style={{ width: "100%", fontFamily: "monospace" }}
+            />
+          </Form.Item>
+          <Form.Item name={[field.name, "actionGotify", "priority"]}>
+            <Select
+              allowClear
+              style={{ width: "100%" }}
+              placeholder={"Set priority"}
+              options={Array.from({ length: 11 }, (_, i) => {
+                let description = "";
+                if (i === 0) description = "No notification";
+                else if (i >= 1 && i <= 3)
+                  description = "Icon in notification bar";
+                else if (i >= 4 && i <= 7)
+                  description = "Icon in notification bar + Sound";
+                else if (i >= 8)
+                  description = "Icon in notification bar + Sound + Vibration";
+                return {
+                  label: `${i} - ${description}`,
+                  value: i,
+                };
+              })}
             />
           </Form.Item>
         </>
