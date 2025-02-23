@@ -33,6 +33,7 @@ export interface HookFields {
   actionSlack?: any;
   actionShoutrrr?: any;
   actionHealthchecks?: any;
+  actionBeeep?: any;
 }
 
 export const hooksListTooltipText = (
@@ -341,6 +342,56 @@ const hookTypes: {
           <Form.Item name={[field.name, "actionSlack", "template"]}>
             <Input.TextArea
               style={{ width: "100%", fontFamily: "monospace" }}
+            />
+          </Form.Item>
+        </>
+      );
+    },
+  },
+  {
+    name: "Beeep",
+    template: {
+      actionBeeep: {
+        template: "{{ .Summary }}",
+        titleTemplate:
+          "Backrest {{ .EventName .Event }} in plan {{ .Plan.Id }}",
+        frequency: 220.0,
+        duration: 1000,
+        icon: "assets/information.png",
+      },
+      conditions: [],
+    },
+    oneofKey: "actionBeeep",
+    component: ({ field }: { field: FormListFieldData }) => {
+      return (
+        <>
+          <Form.Item
+            name={[field.name, "actionBeeep", "frequency"]}
+            rules={[{ type: "number" }]}
+          >
+            <Input
+              addonBefore={<div style={{ width: "8em" }}>Audio frequency</div>}
+            />
+          </Form.Item>
+          <Form.Item
+            name={[field.name, "actionBeeep", "duration"]}
+            rules={[{ type: "number" }]}
+          >
+            <Input
+              addonBefore={
+                <div style={{ width: "8em" }}>Notification duration</div>
+              }
+            />
+          </Form.Item>
+          <Form.Item name={[field.name, "actionBeeep", "icon"]}>
+            <Select
+              allowClear
+              style={{ width: "100%" }}
+              placeholder={"Choose icon"}
+              options={[
+                { label: "Information", value: "assets/information.png" },
+                { label: "Warning", value: "assets/warning.png" },
+              ]}
             />
           </Form.Item>
         </>

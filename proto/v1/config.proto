@@ -186,6 +186,7 @@ message Hook {
     Slack action_slack = 104 [json_name="actionSlack"];
     Shoutrrr action_shoutrrr = 105 [json_name="actionShoutrrr"];
     Healthchecks action_healthchecks = 106 [json_name="actionHealthchecks"];
+    Beeep action_beeep = 107 [json_name="actionBeeep"];
   }
 
   message Command {
@@ -228,6 +229,14 @@ message Hook {
   message Healthchecks {
     string webhook_url = 1 [json_name="webhookUrl"];
     string template = 2 [json_name="template"];
+  }
+
+  message Beeep {
+    string template = 1 [json_name="template"];
+    string title_template = 2 [json_name="titleTemplate"];
+    double frequency = 3 [json_name="frequency"];
+    int32 duration = 4 [json_name="duration"];
+    string icon = 5 [json_name="icon"];
   }
 }
 
