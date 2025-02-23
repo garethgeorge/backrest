@@ -35,9 +35,6 @@ func (gotifyHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, 
 	}
 
 	priority := int(g.Priority)
-	if priority == 0 {
-		priority = 5 // Default priority if not set
-	}
 
 	l := runner.Logger(ctx)
 

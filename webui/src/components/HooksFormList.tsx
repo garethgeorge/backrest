@@ -318,20 +318,12 @@ const hookTypes: {
               allowClear
               style={{ width: "100%" }}
               placeholder={"Set priority"}
-              options={Array.from({ length: 11 }, (_, i) => {
-                let description = "";
-                if (i === 0) description = "No notification";
-                else if (i >= 1 && i <= 3)
-                  description = "Icon in notification bar";
-                else if (i >= 4 && i <= 7)
-                  description = "Icon in notification bar + Sound";
-                else if (i >= 8)
-                  description = "Icon in notification bar + Sound + Vibration";
-                return {
-                  label: `${i} - ${description}`,
-                  value: i,
-                };
-              })}
+              options={[
+                  {label: "0 - No notification", value: 0},
+                  {label: "1 - Icon in notification bar", value: 1},
+                  {label: "4 - Icon in notification bar + Sound", value: 4},
+                  {label: "8 - Icon in notification bar + Sound + Vibration", value: 8},
+              ]}
             />
           </Form.Item>
         </>
