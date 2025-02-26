@@ -33,6 +33,7 @@ export interface HookFields {
   actionSlack?: any;
   actionShoutrrr?: any;
   actionHealthchecks?: any;
+  actionOsNotification?: any;
 }
 
 export const hooksListTooltipText = (
@@ -341,6 +342,36 @@ const hookTypes: {
           <Form.Item name={[field.name, "actionSlack", "template"]}>
             <Input.TextArea
               style={{ width: "100%", fontFamily: "monospace" }}
+            />
+          </Form.Item>
+        </>
+      );
+    },
+  },
+  {
+    name: "OsNotification",
+    template: {
+      actionOsNotification: {
+        template: "{{ .Summary }}",
+        titleTemplate:
+          "Backrest {{ .EventName .Event }} in plan {{ .Plan.Id }}",
+        deliveryMode: 1,
+      },
+      conditions: [],
+    },
+    oneofKey: "actionOsNotification",
+    component: ({ field }: { field: FormListFieldData }) => {
+      return (
+        <>
+          <Form.Item name={[field.name, "actionOsNotification", "deliveryMode"]}>
+            <Select
+              allowClear
+              style={{ width: "100%" }}
+              placeholder={"Choose delivery mode"}
+              options={[
+                { label: "Silent", value: 0 },
+                { label: "Chime", value: 1 },
+              ]}
             />
           </Form.Item>
         </>

@@ -186,6 +186,7 @@ message Hook {
     Slack action_slack = 104 [json_name="actionSlack"];
     Shoutrrr action_shoutrrr = 105 [json_name="actionShoutrrr"];
     Healthchecks action_healthchecks = 106 [json_name="actionHealthchecks"];
+    OsNotification action_os_notification = 107 [json_name="actionOsNotification"];
   }
 
   message Command {
@@ -228,6 +229,16 @@ message Hook {
   message Healthchecks {
     string webhook_url = 1 [json_name="webhookUrl"];
     string template = 2 [json_name="template"];
+  }
+
+  message OsNotification {
+    string template = 1 [json_name="template"];
+    string title_template = 2 [json_name="titleTemplate"];
+    enum DeliveryMode {
+      SILENT = 0;
+      CHIME = 1;
+    }
+    DeliveryMode delivery_mode = 3 [json_name="deliveryMode"];
   }
 }
 
