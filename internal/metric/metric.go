@@ -38,6 +38,10 @@ func initRegistry() *Registry {
 			Name: "backrest_tasks_run_total",
 			Help: "The total number of tasks run",
 		}, append(slices.Clone(commonDims), "task_type", "status")),
+		lastTaskStatus: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "backrest_last_task_status",
+			Help: "The status of the last task",
+		}, append(slices.Clone(commonDims), "task_type", "status")),
 	}
 
 	registry.reg.MustRegister(registry.backupBytesProcessed)
@@ -45,6 +49,7 @@ func initRegistry() *Registry {
 	registry.reg.MustRegister(registry.backupFileWarnings)
 	registry.reg.MustRegister(registry.tasksDuration)
 	registry.reg.MustRegister(registry.tasksRun)
+	registry.reg.MustRegister(registry.lastTaskStatus)
 
 	return registry
 }
@@ -60,6 +65,7 @@ type Registry struct {
 	backupFileWarnings   *prometheus.GaugeVec
 	tasksDuration        *prometheus.GaugeVec
 	tasksRun             *prometheus.CounterVec
+	lastTaskStatus       *prometheus.GaugeVec
 }
 
 func (r *Registry) Handler() http.Handler {
@@ -73,7 +79,14 @@ func (r *Registry) RecordTaskRun(repoID, planID, taskType string, duration_secs 
 	if planID == "" {
 		planID = "_unassociated_"
 	}
-	r.tasksRun.DeletePartialMatch(prometheus.Labels{"repo_id": repoID, "plan_id": planID, "task_type": taskType})
+	r.lastTaskStatus.DeletePartialMatch(prometheus.Labels{"repo_id": repoID, "plan_id": planID, "task_type": taskType})
+	if status == "success" {
+		r.lastTaskStatus.WithLabelValues(repoID, planID, taskType, status).Set(0)
+	} else if status == "failed" {
+		r.lastTaskStatus.WithLabelValues(repoID, planID, taskType, status).Set(1)
+	} else {
+		r.lastTaskStatus.WithLabelValues(repoID, planID, taskType, status).Set(-1)
+	}
 	r.tasksRun.WithLabelValues(repoID, planID, taskType, status).Inc()
 	r.tasksDuration.WithLabelValues(repoID, planID, taskType).Set(duration_secs)
 }
