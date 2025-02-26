@@ -33,7 +33,7 @@ export interface HookFields {
   actionSlack?: any;
   actionShoutrrr?: any;
   actionHealthchecks?: any;
-  actionBeeep?: any;
+  actionOsNotification?: any;
 }
 
 export const hooksListTooltipText = (
@@ -349,48 +349,28 @@ const hookTypes: {
     },
   },
   {
-    name: "Beeep",
+    name: "OsNotification",
     template: {
-      actionBeeep: {
+      actionOsNotification: {
         template: "{{ .Summary }}",
         titleTemplate:
           "Backrest {{ .EventName .Event }} in plan {{ .Plan.Id }}",
-        frequency: 220.0,
-        duration: 1000,
-        icon: "assets/information.png",
+        deliveryMode: 1,
       },
       conditions: [],
     },
-    oneofKey: "actionBeeep",
+    oneofKey: "actionOsNotification",
     component: ({ field }: { field: FormListFieldData }) => {
       return (
         <>
-          <Form.Item
-            name={[field.name, "actionBeeep", "frequency"]}
-            rules={[{ type: "number" }]}
-          >
-            <Input
-              addonBefore={<div style={{ width: "8em" }}>Audio frequency</div>}
-            />
-          </Form.Item>
-          <Form.Item
-            name={[field.name, "actionBeeep", "duration"]}
-            rules={[{ type: "number" }]}
-          >
-            <Input
-              addonBefore={
-                <div style={{ width: "8em" }}>Notification duration</div>
-              }
-            />
-          </Form.Item>
-          <Form.Item name={[field.name, "actionBeeep", "icon"]}>
+          <Form.Item name={[field.name, "actionOsNotification", "deliveryMode"]}>
             <Select
               allowClear
               style={{ width: "100%" }}
-              placeholder={"Choose icon"}
+              placeholder={"Choose delivery mode"}
               options={[
-                { label: "Information", value: "assets/information.png" },
-                { label: "Warning", value: "assets/warning.png" },
+                { label: "Silent", value: 0 },
+                { label: "Chime", value: 1 },
               ]}
             />
           </Form.Item>
