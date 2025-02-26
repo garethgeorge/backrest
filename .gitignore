@@ -5,3 +5,4 @@ __debug_bin
 cmd/backrest/backrest
 *.exe
 .DS_Store
+.idea/
