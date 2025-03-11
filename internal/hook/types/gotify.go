@@ -34,6 +34,8 @@ func (gotifyHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, 
 		return fmt.Errorf("title template rendering: %w", err)
 	}
 
+	priority := int(g.Priority)
+
 	l := runner.Logger(ctx)
 
 	message := struct {
@@ -42,7 +44,7 @@ func (gotifyHandler) Execute(ctx context.Context, h *v1.Hook, vars interface{}, 
 		Priority int    `json:"priority"`
 	}{
 		Title:    title,
-		Priority: 5,
+		Priority: priority,
 		Message:  payload,
 	}
 

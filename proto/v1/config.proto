@@ -213,6 +213,7 @@ message Hook {
     string token = 3 [json_name="token"];
     string template = 100 [json_name="template"]; // template for the webhook payload.
     string title_template = 101 [json_name="titleTemplate"]; // template for the webhook title.
+    int32 priority = 102 [json_name="priority"]; // priority level for the notification (1-10)
   }
 
   message Slack {
