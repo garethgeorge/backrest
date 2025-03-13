@@ -144,8 +144,7 @@ func indexCurrentSnapshotIdsForRepo(taskRunner TaskRunner, repoGUID string) (map
 
 	startTime := time.Now()
 	if err := taskRunner.QueryOperations(oplog.Query{}.
-		SetRepoGUID(repoGUID).
-		SetInstanceID(taskRunner.InstanceID()),
+		SetRepoGUID(repoGUID),
 		func(op *v1.Operation) error {
 			if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
 				if !snapshotOp.OperationIndexSnapshot.Forgot {
