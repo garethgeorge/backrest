@@ -905,6 +905,117 @@ func TestRunCommand(t *testing.T) {
 	}
 }
 
+func TestMultihostIndexSnapshots(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
+	defer cancel()
+
+	emptyDir := t.TempDir()
+	repoGUID := cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+
+	repo1 := &v1.Repo{
+		Id:       "local1",
+		Guid:     repoGUID,
+		Uri:      t.TempDir(),
+		Password: "test",
+		Flags:    []string{"--no-cache"},
+	}
+	repo2 := proto.Clone(repo1).(*v1.Repo)
+	repo2.Id = "local2"
+
+	plan1 := &v1.Plan{
+		Id:   "test1",
+		Repo: "local1",
+		Paths: []string{
+			emptyDir,
+		},
+		Schedule: &v1.Schedule{
+			Schedule: &v1.Schedule_Disabled{Disabled: true},
+		},
+	}
+	plan2 := proto.Clone(plan1).(*v1.Plan)
+	plan2.Id = "test2"
+	plan2.Repo = "local2"
+
+	host1 := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Modno:    1234,
+		Instance: "test1",
+		Repos: []*v1.Repo{
+			repo1,
+		},
+		Plans: []*v1.Plan{
+			plan1,
+		},
+	}))
+	go func() {
+		host1.orch.Run(ctx)
+	}()
+
+	host2 := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Modno:    1234,
+		Instance: "test2",
+		Repos: []*v1.Repo{
+			repo2,
+		},
+		Plans: []*v1.Plan{
+			plan2,
+		},
+	}))
+	go func() {
+		host2.orch.Run(ctx)
+	}()
+
+	host1.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test1"}))
+	host2.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test2"}))
+
+	for i := 0; i < 2; i++ {
+		if _, err := host1.handler.IndexSnapshots(context.Background(), connect.NewRequest(&types.StringValue{Value: "local1"})); err != nil {
+			t.Errorf("local1 sut1 IndexSnapshots() error = %v", err)
+		}
+		if _, err := host2.handler.IndexSnapshots(context.Background(), connect.NewRequest(&types.StringValue{Value: "local2"})); err != nil {
+			t.Errorf("local2 sut2 IndexSnapshots() error = %v", err)
+		}
+	}
+
+	time.Sleep(1 * time.Second)
+
+	ops := getOperations(t, host1.oplog)
+	ops2 := getOperations(t, host2.oplog)
+
+	findSnapshotsFromInstance := func(ops []*v1.Operation, inst string) []*v1.Operation {
+		output := []*v1.Operation{}
+		for _, op := range ops {
+			if op.GetOperationIndexSnapshot() != nil && op.InstanceId == inst {
+				output = append(output, op)
+			}
+		}
+		return output
+	}
+
+	countSnapshotOperations := func(ops []*v1.Operation) int {
+		count := 0
+		for _, op := range ops {
+			if op.GetOperationIndexSnapshot() != nil {
+				count++
+			}
+		}
+		return count
+	}
+
+	if ops := findSnapshotsFromInstance(ops, "test1"); len(ops) != 1 {
+		t.Errorf("expected exactly 1 snapshot from test1, got %d", len(ops))
+	}
+	if ops := findSnapshotsFromInstance(ops2, "test2"); len(ops) != 1 {
+		t.Errorf("expected exactly 1 snapshot from test2, got %d", len(ops))
+	}
+	if countSnapshotOperations(ops) != 2 {
+		t.Errorf("expected exactly 2 snapshot operation in sut1 log, got %d", countSnapshotOperations(ops))
+	}
+	if countSnapshotOperations(ops2) != 2 {
+		t.Errorf("expected exactly 2 snapshot operation in sut2 log, got %d", countSnapshotOperations(ops2))
+	}
+}
+
 type systemUnderTest struct {
 	handler  *BackrestHandler
 	oplog    *oplog.OpLog
