@@ -141,6 +141,7 @@ func readBackupProgressEntries(output io.Reader, logger io.Writer, callback func
 			nonJSONOutput.Write(scanner.Bytes())
 			if logger != nil {
 				logger.Write(scanner.Bytes())
+				logger.Write([]byte("\n"))
 			}
 			continue
 		}
@@ -148,11 +149,13 @@ func readBackupProgressEntries(output io.Reader, logger io.Writer, callback func
 			nonJSONOutput.Write(scanner.Bytes())
 			if logger != nil {
 				logger.Write(scanner.Bytes())
+				logger.Write([]byte("\n"))
 			}
 			continue
 		}
 		if event.MessageType == "error" && logger != nil {
 			logger.Write(scanner.Bytes())
+			logger.Write([]byte("\n"))
 		}
 		if callback != nil {
 			callback(&event)
@@ -160,6 +163,7 @@ func readBackupProgressEntries(output io.Reader, logger io.Writer, callback func
 		if event.MessageType == "summary" {
 			if logger != nil {
 				logger.Write(scanner.Bytes())
+				logger.Write([]byte("\n"))
 			}
 			summary = &event
 		}
@@ -277,6 +281,7 @@ func readRestoreProgressEntries(output io.Reader, logger io.Writer, callback fun
 			nonJSONOutput.Write(scanner.Bytes())
 			if logger != nil {
 				logger.Write(scanner.Bytes())
+				logger.Write([]byte("\n"))
 			}
 			continue
 		}
@@ -285,12 +290,14 @@ func readRestoreProgressEntries(output io.Reader, logger io.Writer, callback fun
 			nonJSONOutput.Write(scanner.Bytes())
 			if logger != nil {
 				logger.Write(scanner.Bytes())
+				logger.Write([]byte("\n"))
 			}
 			continue
 		}
 
 		if event.MessageType == "error" && logger != nil {
 			logger.Write(scanner.Bytes())
+			logger.Write([]byte("\n"))
 		}
 		if callback != nil {
 			callback(&event)
@@ -298,6 +305,7 @@ func readRestoreProgressEntries(output io.Reader, logger io.Writer, callback fun
 		if event.MessageType == "summary" {
 			if logger != nil {
 				logger.Write(scanner.Bytes())
+				logger.Write([]byte("\n"))
 			}
 			summary = &event
 		}
