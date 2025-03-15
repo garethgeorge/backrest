@@ -729,7 +729,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
 };
 
 const expectedEnvVars: { [scheme: string]: string[][] } = {
-  s3: [["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]],
+  s3: [
+    ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"],
+    ["AWS_SHARED_CREDENTIALS_FILE"],
+  ],
   b2: [["B2_ACCOUNT_ID", "B2_ACCOUNT_KEY"]],
   azure: [
     ["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_KEY"],
