@@ -55,6 +55,12 @@ func (v HookVars) EventName(cond v1.Hook_Condition) string {
 		return "prune error"
 	case v1.Hook_CONDITION_PRUNE_SUCCESS:
 		return "prune success"
+	case v1.Hook_CONDITION_FORGET_START:
+		return "forget start"
+	case v1.Hook_CONDITION_FORGET_ERROR:
+		return "forget error"
+	case v1.Hook_CONDITION_FORGET_SUCCESS:
+		return "forget success"
 	default:
 		return "unknown"
 	}

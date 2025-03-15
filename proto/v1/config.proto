@@ -164,6 +164,11 @@ message Hook {
     CONDITION_CHECK_START = 200; // check started.
     CONDITION_CHECK_ERROR = 201; // check failed.
     CONDITION_CHECK_SUCCESS = 202; // check succeeded.
+
+    // forget conditions
+    CONDITION_FORGET_START = 300; // forget started.
+    CONDITION_FORGET_ERROR = 301; // forget failed.
+    CONDITION_FORGET_SUCCESS = 302; // forget succeeded.
   }
 
   enum OnError {

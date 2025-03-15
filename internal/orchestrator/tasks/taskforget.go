@@ -34,16 +34,7 @@ func NewOneoffForgetTask(repo *v1.Repo, planID string, flowID int64, at time.Tim
 				panic("forget task with non-forget operation")
 			}
 
-			if err := forgetHelper(ctx, st, taskRunner); err != nil {
-				taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
-					v1.Hook_CONDITION_ANY_ERROR,
-				}, HookVars{
-					Error: err.Error(),
-				})
-				return err
-			}
-
-			return nil
+			return forgetHelper(ctx, st, taskRunner)
 		},
 	}
 }
@@ -67,6 +58,13 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 		return fmt.Errorf("get plan %q: %w", t.PlanID(), err)
 	}
 
+	// execute hooks
+	if err := taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
+		v1.Hook_CONDITION_FORGET_START,
+	}, HookVars{Plan: plan}); err != nil {
+		return fmt.Errorf("forget start hook: %w", err)
+	}
+
 	tags := []string{repo.TagForPlan(t.PlanID())}
 	if compat, err := useLegacyCompatMode(l, taskRunner, t.Repo().GetGuid(), t.PlanID()); err != nil {
 		return fmt.Errorf("check legacy compat mode: %w", err)
@@ -80,9 +78,6 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 
 	// check if any other instance IDs exist in the repo (unassociated don't count)
 	forgot, err := r.Forget(ctx, plan, tags)
-	if err != nil {
-		return fmt.Errorf("forget: %w", err)
-	}
 
 	forgetOp := &v1.Operation_OperationForget{
 		OperationForget: &v1.OperationForget{},
@@ -114,6 +109,22 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 				continue
 			}
 		}
+	}
+
+	if err != nil {
+		if e := taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
+			v1.Hook_CONDITION_FORGET_ERROR,
+			v1.Hook_CONDITION_ANY_ERROR,
+		}, HookVars{
+			Error: err.Error(),
+		}); e != nil {
+			err = multierror.Append(err, fmt.Errorf("forget on error hook: %w", e))
+		}
+		return fmt.Errorf("forget: %w", err)
+	} else if e := taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
+		v1.Hook_CONDITION_FORGET_SUCCESS,
+	}, HookVars{}); e != nil {
+		return fmt.Errorf("forget end hook: %w", e)
 	}
 
 	return err
