@@ -63,11 +63,12 @@ const getStatus = async (req: GetOperationsRequest) => {
 
   let flowID: BigInt | undefined = undefined;
   for (const op of ops) {
-    if (op.status === OperationStatus.STATUS_PENDING || op.status === OperationStatus.STATUS_SYSTEM_CANCELLED) {
+    if (
+      op.status === OperationStatus.STATUS_PENDING ||
+      op.status === OperationStatus.STATUS_SYSTEM_CANCELLED ||
+      op.op.case === "operationRunHook"
+    ) {
       continue;
-    }
-    if (op.status !== OperationStatus.STATUS_SUCCESS) {
-      return op.status;
     }
     if (!flowID) {
       flowID = op.flowId;
