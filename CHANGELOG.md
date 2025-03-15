@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.3](https://github.com/garethgeorge/backrest/compare/v1.7.2...v1.7.3) (2025-03-15)
+
+
+### Bug Fixes
+
+* add missing hooks for CONDITION_FORGET_{START, SUCCESS, ERROR} ([489c6f5](https://github.com/garethgeorge/backrest/commit/489c6f5b34d39d718f4ccf62ac155826685fa8d3))
+* add priority fields to gotify notifications ([#678](https://github.com/garethgeorge/backrest/issues/678)) ([ec95c4a](https://github.com/garethgeorge/backrest/commit/ec95c4a8a311f63f3c033f39c8633f50d2d47be9))
+* hook errors should be shown as warnings in tree view ([9f112bc](https://github.com/garethgeorge/backrest/commit/9f112bc78d7fc9609b5832b9f665dd55c9c28714))
+* improve exported prometheus metrics for task execution and status ([#684](https://github.com/garethgeorge/backrest/issues/684)) ([8bafe7e](https://github.com/garethgeorge/backrest/commit/8bafe7ea35e990377f96662fc81ccdcc34b4dda6))
+* index snapshots incorrectly creates duplicate entries for snapshots from other instances  ([#693](https://github.com/garethgeorge/backrest/issues/693)) ([5ab7553](https://github.com/garethgeorge/backrest/commit/5ab755393a640090b659537de900988302d3e9ea))
+* occasional truncated operation history display in repo view ([3b41d9f](https://github.com/garethgeorge/backrest/commit/3b41d9fd5bd611dd0c59bcef13a3da0e2d6f02ce))
+* support AWS_SHARED_CREDENTIALS_FILE for s3 authentication ([154aef4](https://github.com/garethgeorge/backrest/commit/154aef4c9a26248ec7f09c731465647b5359a995))
+
 ## [1.7.2](https://github.com/garethgeorge/backrest/compare/v1.7.1...v1.7.2) (2025-02-16)
 
 
