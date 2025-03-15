@@ -121,7 +121,11 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
         info.hidden = true;
       }
     }
-    if (op.status === OperationStatus.STATUS_INPROGRESS || op.status === OperationStatus.STATUS_ERROR || op.status === OperationStatus.STATUS_WARNING) {
+    if (op.op.case === "operationRunHook" && op.status === OperationStatus.STATUS_ERROR) {
+      if (info.status === OperationStatus.STATUS_SUCCESS) {
+        info.status = OperationStatus.STATUS_WARNING;
+      }
+    } else if (op.status === OperationStatus.STATUS_INPROGRESS || op.status === OperationStatus.STATUS_ERROR || op.status === OperationStatus.STATUS_WARNING) {
       info.status = op.status;
     }
   }
