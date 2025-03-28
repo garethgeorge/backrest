@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.4](https://github.com/garethgeorge/backrest/compare/v1.7.3...v1.7.4) (2025-03-28)
+
+
+### Bug Fixes
+
+* restic outputs add newline separators between log messages ([addf49c](https://github.com/garethgeorge/backrest/commit/addf49c1f37818b5e4be05db2982a0555703fa78))
+
 ## [1.7.3](https://github.com/garethgeorge/backrest/compare/v1.7.2...v1.7.3) (2025-03-15)
 
 
