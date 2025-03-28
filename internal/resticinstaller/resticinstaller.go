@@ -22,7 +22,7 @@ var (
 )
 
 var (
-	RequiredResticVersion = "0.17.3"
+	RequiredResticVersion = "0.18.0"
 
 	tryFindRestic   sync.Once
 	findResticErr   error
