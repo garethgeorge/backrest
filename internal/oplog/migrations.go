@@ -13,6 +13,7 @@ var migrations = []func(*OpLog) error{
 	migration002InstanceID,
 	migrationNoop,
 	migration002InstanceID, // re-run migration002InstanceID to fix improperly set instance IDs
+	migration003DeduplicateIndexedSnapshots,
 }
 
 var CurrentVersion = int64(len(migrations))
@@ -98,6 +99,29 @@ func migration002InstanceID(oplog *OpLog) error {
 		op.InstanceId = "_unassociated_"
 		return nil
 	})
+}
+
+func migration003DeduplicateIndexedSnapshots(oplog *OpLog) error {
+	var snapshotIDs = make(map[string]struct{})
+	var deleteIDs []int64
+	if err := oplog.Query(SelectAll, func(op *v1.Operation) error {
+		if _, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok {
+			if _, ok := snapshotIDs[op.SnapshotId]; ok {
+				deleteIDs = append(deleteIDs, op.Id)
+			} else {
+				snapshotIDs[op.SnapshotId] = struct{}{}
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	if len(deleteIDs) == 0 {
+		return nil
+	}
+	_, err := oplog.store.Delete(deleteIDs...)
+	return err
 }
 
 // migrationNoop is a migration that does nothing; replaces deprecated migrations.
