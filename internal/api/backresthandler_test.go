@@ -27,6 +27,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"github.com/garethgeorge/backrest/internal/testutil"
+	"github.com/hashicorp/go-multierror"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 )
@@ -977,11 +978,6 @@ func TestMultihostIndexSnapshots(t *testing.T) {
 		}
 	}
 
-	time.Sleep(1 * time.Second)
-
-	ops := getOperations(t, host1.oplog)
-	ops2 := getOperations(t, host2.oplog)
-
 	findSnapshotsFromInstance := func(ops []*v1.Operation, inst string) []*v1.Operation {
 		output := []*v1.Operation{}
 		for _, op := range ops {
@@ -1002,12 +998,23 @@ func TestMultihostIndexSnapshots(t *testing.T) {
 		return count
 	}
 
-	if ops := findSnapshotsFromInstance(ops, "test1"); len(ops) != 1 {
-		t.Errorf("expected exactly 1 snapshot from test1, got %d", len(ops))
-	}
-	if ops := findSnapshotsFromInstance(ops2, "test2"); len(ops) != 1 {
-		t.Errorf("expected exactly 1 snapshot from test2, got %d", len(ops))
-	}
+	var ops []*v1.Operation
+	var ops2 []*v1.Operation
+	testutil.TryNonfatal(t, ctx, func() error {
+		ops = getOperations(t, host1.oplog)
+		ops2 = getOperations(t, host2.oplog)
+
+		var err error
+		if ops := findSnapshotsFromInstance(ops, "test1"); len(ops) != 1 {
+			err = multierror.Append(err, fmt.Errorf("expected exactly 1 snapshot from test1, got %d", len(ops)))
+		}
+		if ops := findSnapshotsFromInstance(ops2, "test2"); len(ops) != 1 {
+			err = multierror.Append(err, fmt.Errorf("expected exactly 1 snapshot from test2, got %d", len(ops)))
+		}
+
+		return err
+	})
+
 	if countSnapshotOperations(ops) != 2 {
 		t.Errorf("expected exactly 2 snapshot operation in sut1 log, got %d", countSnapshotOperations(ops))
 	}
