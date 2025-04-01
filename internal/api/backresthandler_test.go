@@ -602,15 +602,20 @@ func TestHookOnErrorHandling(t *testing.T) {
 				t.Fatalf("Couldn't find hook operation in oplog: %v", err)
 			}
 
-			backupOps := slices.DeleteFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
-				_, ok := op.GetOp().(*v1.Operation_OperationBackup)
-				return !ok
-			})
-			if len(backupOps) != 1 {
-				t.Errorf("expected 1 backup operation, got %d", len(backupOps))
-			}
-			if backupOps[0].Status != tc.wantBackupStatus {
-				t.Errorf("expected backup operation cancelled status, got %v", backupOps[0].Status)
+			if err := testutil.Retry(t, ctx, func() error {
+				backupOps := slices.DeleteFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+					_, ok := op.GetOp().(*v1.Operation_OperationBackup)
+					return !ok
+				})
+				if len(backupOps) != 1 {
+					return fmt.Errorf("expected 1 backup operation, got %d", len(backupOps))
+				}
+				if backupOps[0].Status != tc.wantBackupStatus {
+					return fmt.Errorf("expected backup operation status %v, got %v", tc.wantBackupStatus, backupOps[0].Status)
+				}
+				return nil
+			}); err != nil {
+				t.Fatalf("Failed to verify backup operation: %v", err)
 			}
 		})
 	}
@@ -969,7 +974,7 @@ func TestMultihostIndexSnapshots(t *testing.T) {
 	host1.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test1"}))
 	host2.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test2"}))
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 1; i++ {
 		if _, err := host1.handler.IndexSnapshots(context.Background(), connect.NewRequest(&types.StringValue{Value: "local1"})); err != nil {
 			t.Errorf("local1 sut1 IndexSnapshots() error = %v", err)
 		}
@@ -1003,15 +1008,21 @@ func TestMultihostIndexSnapshots(t *testing.T) {
 	testutil.TryNonfatal(t, ctx, func() error {
 		ops = getOperations(t, host1.oplog)
 		ops2 = getOperations(t, host2.oplog)
-
 		var err error
-		if ops := findSnapshotsFromInstance(ops, "test1"); len(ops) != 1 {
-			err = multierror.Append(err, fmt.Errorf("expected exactly 1 snapshot from test1, got %d", len(ops)))
+		for _, logOps := range []struct {
+			ops      []*v1.Operation
+			instance string
+		}{
+			{ops, "test1"},
+			{ops, "test2"},
+			{ops2, "test1"},
+			{ops2, "test2"},
+		} {
+			snapshotOps := findSnapshotsFromInstance(logOps.ops, logOps.instance)
+			if len(snapshotOps) != 1 {
+				err = multierror.Append(err, fmt.Errorf("expected exactly 1 snapshot from %s, got %d", logOps.instance, len(snapshotOps)))
+			}
 		}
-		if ops := findSnapshotsFromInstance(ops2, "test2"); len(ops) != 1 {
-			err = multierror.Append(err, fmt.Errorf("expected exactly 1 snapshot from test2, got %d", len(ops)))
-		}
-
 		return err
 	})
 

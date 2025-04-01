@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -314,13 +315,12 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, snaps
 
 		dir := path.Dir(normalizedPath)
 		base := path.Base(normalizedPath)
-		
-		
+
 		if dir != "" {
-		    snapshotId = snapshotId + ":" + dir
+			snapshotId = snapshotId + ":" + dir
 		}
 		if base != "" {
-		    opts = append(opts, restic.WithFlags("--include", base))
+			opts = append(opts, restic.WithFlags("--include", escapeGlob(base)))
 		}
 	}
 
@@ -433,4 +433,13 @@ func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
 		items, chunks = items[chunkSize:], append(chunks, items[0:chunkSize:chunkSize])
 	}
 	return append(chunks, items)
+}
+
+var globEscapeReplacer = strings.NewReplacer(`\`, `\\`, `*`, `\*`, `?`, `\?`, `[`, `\[`, `]`, `\]`)
+
+func escapeGlob(s string) string {
+	if runtime.GOOS == "windows" {
+		return s // escaping is not supported on Windows
+	}
+	return globEscapeReplacer.Replace(s)
 }
