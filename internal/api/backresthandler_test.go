@@ -602,15 +602,20 @@ func TestHookOnErrorHandling(t *testing.T) {
 				t.Fatalf("Couldn't find hook operation in oplog: %v", err)
 			}
 
-			backupOps := slices.DeleteFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
-				_, ok := op.GetOp().(*v1.Operation_OperationBackup)
-				return !ok
-			})
-			if len(backupOps) != 1 {
-				t.Errorf("expected 1 backup operation, got %d", len(backupOps))
-			}
-			if backupOps[0].Status != tc.wantBackupStatus {
-				t.Errorf("expected backup operation cancelled status, got %v", backupOps[0].Status)
+			if err := testutil.Retry(t, ctx, func() error {
+				backupOps := slices.DeleteFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+					_, ok := op.GetOp().(*v1.Operation_OperationBackup)
+					return !ok
+				})
+				if len(backupOps) != 1 {
+					return fmt.Errorf("expected 1 backup operation, got %d", len(backupOps))
+				}
+				if backupOps[0].Status != tc.wantBackupStatus {
+					return fmt.Errorf("expected backup operation status %v, got %v", tc.wantBackupStatus, backupOps[0].Status)
+				}
+				return nil
+			}); err != nil {
+				t.Fatalf("Failed to verify backup operation: %v", err)
 			}
 		})
 	}
@@ -1004,11 +1009,18 @@ func TestMultihostIndexSnapshots(t *testing.T) {
 		ops = getOperations(t, host1.oplog)
 		ops2 = getOperations(t, host2.oplog)
 		var err error
-		for _, currentLog := range [][]*v1.Operation{ops, ops2} {
-			for _, repo := range []string{"test1", "test2"} {
-				if foundOps := findSnapshotsFromInstance(currentLog, repo); len(foundOps) != 1 {
-					err = multierror.Append(err, fmt.Errorf("expected exactly 1 snapshot from %s, got %d", repo, len(foundOps)))
-				}
+		for _, logOps := range []struct {
+			ops      []*v1.Operation
+			instance string
+		}{
+			{ops, "test1"},
+			{ops, "test2"},
+			{ops2, "test1"},
+			{ops2, "test2"},
+		} {
+			snapshotOps := findSnapshotsFromInstance(logOps.ops, logOps.instance)
+			if len(snapshotOps) != 1 {
+				err = multierror.Append(err, fmt.Errorf("expected exactly 1 snapshot from %s, got %d", logOps.instance, len(snapshotOps)))
 			}
 		}
 		return err
