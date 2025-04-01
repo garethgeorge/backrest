@@ -96,7 +96,13 @@ func TestBackup(t *testing.T) {
 func TestRestore(t *testing.T) {
 	t.Parallel()
 
-	testFile := path.Join(t.TempDir(), "test.txt")
+	// Use a filepath that exercises a few of the glob characters to test escaping
+	messyFilePathToTestGlobs := "test.txt"
+	if runtime.GOOS != "windows" {
+		messyFilePathToTestGlobs = "test*?[].txt"
+	}
+
+	testFile := path.Join(t.TempDir(), messyFilePathToTestGlobs)
 	if err := ioutil.WriteFile(testFile, []byte("lorum ipsum"), 0644); err != nil {
 		t.Fatalf("failed to create test file: %v", err)
 	}
@@ -149,7 +155,7 @@ func TestRestore(t *testing.T) {
 	}
 
 	// Check the restored file
-	restoredFile := path.Join(restoreDir, "test.txt")
+	restoredFile := path.Join(restoreDir, messyFilePathToTestGlobs)
 	if _, err := os.Stat(restoredFile); err != nil {
 		t.Fatalf("failed to stat restored file: %v", err)
 	}
