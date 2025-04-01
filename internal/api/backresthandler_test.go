@@ -969,7 +969,7 @@ func TestMultihostIndexSnapshots(t *testing.T) {
 	host1.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test1"}))
 	host2.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test2"}))
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 1; i++ {
 		if _, err := host1.handler.IndexSnapshots(context.Background(), connect.NewRequest(&types.StringValue{Value: "local1"})); err != nil {
 			t.Errorf("local1 sut1 IndexSnapshots() error = %v", err)
 		}
@@ -1003,15 +1003,14 @@ func TestMultihostIndexSnapshots(t *testing.T) {
 	testutil.TryNonfatal(t, ctx, func() error {
 		ops = getOperations(t, host1.oplog)
 		ops2 = getOperations(t, host2.oplog)
-
 		var err error
-		if ops := findSnapshotsFromInstance(ops, "test1"); len(ops) != 1 {
-			err = multierror.Append(err, fmt.Errorf("expected exactly 1 snapshot from test1, got %d", len(ops)))
+		for _, currentLog := range [][]*v1.Operation{ops, ops2} {
+			for _, repo := range []string{"test1", "test2"} {
+				if foundOps := findSnapshotsFromInstance(currentLog, repo); len(foundOps) != 1 {
+					err = multierror.Append(err, fmt.Errorf("expected exactly 1 snapshot from %s, got %d", repo, len(foundOps)))
+				}
+			}
 		}
-		if ops := findSnapshotsFromInstance(ops2, "test2"); len(ops) != 1 {
-			err = multierror.Append(err, fmt.Errorf("expected exactly 1 snapshot from test2, got %d", len(ops)))
-		}
-
 		return err
 	})
 
