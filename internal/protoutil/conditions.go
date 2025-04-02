@@ -8,6 +8,7 @@ var startConditionsMap = map[v1.Hook_Condition]bool{
 	v1.Hook_CONDITION_CHECK_START:    true,
 	v1.Hook_CONDITION_PRUNE_START:    true,
 	v1.Hook_CONDITION_SNAPSHOT_START: true,
+	v1.Hook_CONDITION_FORGET_START:   true,
 }
 
 var errorConditionsMap = map[v1.Hook_Condition]bool{
@@ -15,6 +16,7 @@ var errorConditionsMap = map[v1.Hook_Condition]bool{
 	v1.Hook_CONDITION_CHECK_ERROR:    true,
 	v1.Hook_CONDITION_PRUNE_ERROR:    true,
 	v1.Hook_CONDITION_SNAPSHOT_ERROR: true,
+	v1.Hook_CONDITION_FORGET_ERROR:   true,
 	v1.Hook_CONDITION_UNKNOWN:        true,
 }
 
@@ -26,6 +28,7 @@ var successConditionsMap = map[v1.Hook_Condition]bool{
 	v1.Hook_CONDITION_CHECK_SUCCESS:    true,
 	v1.Hook_CONDITION_PRUNE_SUCCESS:    true,
 	v1.Hook_CONDITION_SNAPSHOT_SUCCESS: true,
+	v1.Hook_CONDITION_FORGET_SUCCESS:   true,
 }
 
 // IsErrorCondition returns true if the event is an error condition.
