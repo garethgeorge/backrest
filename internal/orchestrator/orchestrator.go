@@ -360,57 +360,17 @@ func (o *Orchestrator) cancelHelper(op *v1.Operation, status v1.OperationStatus)
 func (o *Orchestrator) Run(ctx context.Context) {
 	zap.L().Info("starting orchestrator loop")
 
+	// Setup config watching
 	configCh := o.configMgr.Watch()
 	defer o.configMgr.StopWatching(configCh)
 
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-configCh:
-				cfg, err := o.configMgr.Get()
-				if err != nil {
-					zap.S().Errorf("orchestrator failed to refresh config after change notification: %v", err)
-					continue
-				}
-				if err := o.applyConfig(cfg); err != nil {
-					zap.S().Errorf("orchestrator failed to apply config: %v", err)
-				}
-			}
-		}
-	}()
+	// Start the config watcher goroutine
+	go o.watchConfigChanges(ctx, configCh)
 
-	go func() {
-		// watchdog timer to detect clock jumps and reschedule all tasks.
-		interval := 5 * time.Minute
-		grace := 30 * time.Second
-		ticker := time.NewTicker(interval)
-		lastTickTime := time.Now()
+	// Start the clock jump detector goroutine
+	go o.watchForClockJumps(ctx)
 
-		for {
-			select {
-			case <-ctx.Done():
-				ticker.Stop()
-				return
-			case <-ticker.C:
-				deltaMs := lastTickTime.Add(interval).UnixMilli() - time.Now().UnixMilli()
-				lastTickTime = time.Now()
-				if deltaMs < 0 {
-					deltaMs = -deltaMs
-				}
-				if deltaMs < grace.Milliseconds() {
-					continue
-				}
-				zap.S().Warnf("detected a clock jump, watchdog timer is off from realtime by %dms, rescheduling all tasks", deltaMs)
-
-				if err := o.ScheduleDefaultTasks(o.config); err != nil {
-					zap.S().Errorf("failed to schedule default tasks: %v", err)
-				}
-			}
-		}
-	}()
-
+	// Main task processing loop
 	for {
 		if ctx.Err() != nil {
 			zap.L().Info("shutting down orchestrator loop, context cancelled.")
@@ -422,110 +382,251 @@ func (o *Orchestrator) Run(ctx context.Context) {
 			continue
 		}
 
-		// Clone the operation incase we need to reset changes and reschedule the task for a retry
+		// Clone the operation in case we need to reset changes and reschedule the task for a retry
 		originalOp := proto.Clone(t.Op).(*v1.Operation)
-		if t.Op != nil && t.retryCount != 0 {
-			t.Op.DisplayMessage = fmt.Sprintf("running after %d retries", t.retryCount)
-			// Delete any previous hook executions for this operation incase this is a retry.
-			prevHookExecutionIDs := []int64{}
-			if err := o.OpLog.Query(oplog.Query{FlowID: &t.Op.FlowId}, func(op *v1.Operation) error {
-				if hookOp, ok := op.Op.(*v1.Operation_OperationRunHook); ok && hookOp.OperationRunHook.GetParentOp() == t.Op.Id {
-					prevHookExecutionIDs = append(prevHookExecutionIDs, op.Id)
-				}
-				return nil
-			}); err != nil {
-				zap.L().Error("failed to collect previous hook execution IDs", zap.Error(err))
-			}
-			zap.S().Debugf("deleting previous hook execution IDs: %v", prevHookExecutionIDs)
-			if err := o.OpLog.Delete(prevHookExecutionIDs...); err != nil {
-				zap.L().Error("failed to delete previous hook execution IDs", zap.Error(err))
-			}
-		}
+		o.prepareOperationForRetry(&t)
 
+		// Execute the task
 		err := o.RunTask(ctx, t.ScheduledTask)
 
-		o.mu.Lock()
-		curCfgModno := o.config.Modno
-		o.mu.Unlock()
-		if t.configModno == curCfgModno {
-			// Only reschedule tasks if the config hasn't changed since the task was scheduled.
-			var retryErr *tasks.TaskRetryError
-			if errors.As(err, &retryErr) {
-				// If the task returned a retry error, schedule for a retry reusing the same task and operation data.
-				t.retryCount += 1
-				delay := retryErr.Backoff(t.retryCount)
-				if t.Op != nil {
-					t.Op = originalOp
-					t.Op.DisplayMessage = fmt.Sprintf("waiting for retry, current backoff delay: %v", delay)
-					t.Op.UnixTimeStartMs = t.RunAt.UnixMilli()
-					if err := o.OpLog.Update(t.Op); err != nil {
-						zap.S().Errorf("failed to update operation in oplog: %v", err)
-					}
-				}
-				t.RunAt = time.Now().Add(delay)
-				o.taskQueue.Enqueue(t.RunAt, tasks.TaskPriorityDefault, t)
-				zap.L().Info("retrying task",
-					zap.String("task", t.Task.Name()),
-					zap.String("runAt", t.RunAt.Format(time.RFC3339)),
-					zap.Duration("delay", delay))
-				continue // skip executing the task's callbacks.
-			} else if e := o.ScheduleTask(t.Task, tasks.TaskPriorityDefault); e != nil {
-				// Schedule the next execution of the task
-				zap.L().Error("reschedule task", zap.String("task", t.Task.Name()), zap.Error(e))
-			}
+		// Handle task completion, including potential retry
+		if o.handleTaskCompletion(&t, err, originalOp) {
+			continue // Skip callbacks for retried tasks
 		}
+
+		// Execute callbacks
 		for _, cb := range t.callbacks {
 			go cb(err)
 		}
 	}
 }
 
-func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+// watchConfigChanges handles configuration updates from the config manager
+func (o *Orchestrator) watchConfigChanges(ctx context.Context, configCh <-chan struct{}) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-configCh:
+			cfg, err := o.configMgr.Get()
+			if err != nil {
+				zap.S().Errorf("orchestrator failed to refresh config after change notification: %v", err)
+				continue
+			}
+			if err := o.applyConfig(cfg); err != nil {
+				zap.S().Errorf("orchestrator failed to apply config: %v", err)
+			}
+		}
+	}
+}
 
+// watchForClockJumps detects system clock jumps and reschedules tasks when detected
+func (o *Orchestrator) watchForClockJumps(ctx context.Context) {
+	// Watchdog timer to detect clock jumps and reschedule all tasks
+	interval := 5 * time.Minute
+	grace := 30 * time.Second
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	lastTickTime := time.Now()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			deltaMs := lastTickTime.Add(interval).UnixMilli() - time.Now().UnixMilli()
+			lastTickTime = time.Now()
+			if deltaMs < 0 {
+				deltaMs = -deltaMs
+			}
+			if deltaMs < grace.Milliseconds() {
+				continue
+			}
+			zap.S().Warnf("detected a clock jump, watchdog timer is off from realtime by %dms, rescheduling all tasks", deltaMs)
+
+			if err := o.ScheduleDefaultTasks(o.config); err != nil {
+				zap.S().Errorf("failed to schedule default tasks: %v", err)
+			}
+		}
+	}
+}
+
+// prepareOperationForRetry prepares a task's operation for a retry by updating its display message
+// and cleaning up previous hook executions if necessary
+func (o *Orchestrator) prepareOperationForRetry(t *stContainer) {
+	if t.Op == nil || t.retryCount == 0 {
+		return
+	}
+
+	t.Op.DisplayMessage = fmt.Sprintf("running after %d retries", t.retryCount)
+
+	// Delete any previous hook executions for this operation in case this is a retry
+	prevHookExecutionIDs := []int64{}
+	if err := o.OpLog.Query(oplog.Query{FlowID: &t.Op.FlowId}, func(op *v1.Operation) error {
+		if hookOp, ok := op.Op.(*v1.Operation_OperationRunHook); ok && hookOp.OperationRunHook.GetParentOp() == t.Op.Id {
+			prevHookExecutionIDs = append(prevHookExecutionIDs, op.Id)
+		}
+		return nil
+	}); err != nil {
+		zap.L().Error("failed to collect previous hook execution IDs", zap.Error(err))
+	}
+
+	if len(prevHookExecutionIDs) > 0 {
+		zap.S().Debugf("deleting previous hook execution IDs: %v", prevHookExecutionIDs)
+		if err := o.OpLog.Delete(prevHookExecutionIDs...); err != nil {
+			zap.L().Error("failed to delete previous hook execution IDs", zap.Error(err))
+		}
+	}
+}
+
+// handleTaskCompletion processes task completion, handling retry logic or rescheduling as needed.
+// Returns true if the task was requeued for retry.
+func (o *Orchestrator) handleTaskCompletion(t *stContainer, err error, originalOp *v1.Operation) bool {
+	// Check if config has changed since the task was scheduled
+	o.mu.Lock()
+	curCfgModno := o.config.Modno
+	o.mu.Unlock()
+
+	if t.configModno != curCfgModno {
+		// Config has changed, don't reschedule
+		return false
+	}
+
+	// Handle task retry logic if needed
+	var retryErr *tasks.TaskRetryError
+	if errors.As(err, &retryErr) {
+		o.retryTask(t, retryErr, originalOp)
+		return true // Skip callbacks for retried tasks
+	}
+
+	// Regular rescheduling
+	if e := o.ScheduleTask(t.Task, tasks.TaskPriorityDefault); e != nil {
+		zap.L().Error("reschedule task", zap.String("task", t.Task.Name()), zap.Error(e))
+	}
+
+	return false
+}
+
+// retryTask sets up a task for retry with backoff
+func (o *Orchestrator) retryTask(t *stContainer, retryErr *tasks.TaskRetryError, originalOp *v1.Operation) {
+	t.retryCount++
+	delay := retryErr.Backoff(t.retryCount)
+
+	// Update operation state if present
+	if t.Op != nil {
+		t.Op = originalOp
+		t.Op.DisplayMessage = fmt.Sprintf("waiting for retry, current backoff delay: %v", delay)
+		t.Op.UnixTimeStartMs = t.RunAt.UnixMilli()
+		if err := o.OpLog.Update(t.Op); err != nil {
+			zap.S().Errorf("failed to update operation in oplog: %v", err)
+		}
+	}
+
+	// Enqueue the task for retry
+	t.RunAt = time.Now().Add(delay)
+	o.taskQueue.Enqueue(t.RunAt, tasks.TaskPriorityDefault, *t)
+
+	zap.L().Info("retrying task",
+		zap.String("task", t.Task.Name()),
+		zap.String("runAt", t.RunAt.Format(time.RFC3339)),
+		zap.Duration("delay", delay))
+}
+
+func (o *Orchestrator) RunTask(parentCtx context.Context, st tasks.ScheduledTask) error {
 	zap.L().Info("running task", zap.String("task", st.Task.Name()), zap.String("runAt", st.RunAt.Format(time.RFC3339)))
+
+	// Set up context, logging, and cancellation
+	ctx, cancel := context.WithCancel(parentCtx)
+	defer cancel()
+	ctx, logWriter := o.setupTaskContext(ctx, st.Op, cancel)
+	defer o.cleanupTaskContext(ctx, st.Op, logWriter)
+
+	// Run the task and record metrics
+	err := o.executeTask(ctx, st)
+
+	// Update operation status based on execution result
+	if st.Op != nil {
+		o.updateOperationStatus(ctx, st.Op, err)
+	}
+
+	return err
+}
+
+// setupTaskContext prepares the context for task execution with appropriate logging and cancellation
+func (o *Orchestrator) setupTaskContext(ctx context.Context, op *v1.Operation, cancel context.CancelFunc) (context.Context, io.WriteCloser) {
 	var logWriter io.WriteCloser
-	op := st.Op
+
 	if op != nil {
-		var err error
+		// Register cancellation function
 		o.taskCancelMu.Lock()
 		o.taskCancel[op.Id] = cancel
 		o.taskCancelMu.Unlock()
-		defer func() {
-			o.taskCancelMu.Lock()
-			delete(o.taskCancel, op.Id)
-			o.taskCancelMu.Unlock()
-		}()
 
+		// Set up logging
 		logID := uuid.New().String()
+		var err error
 		logWriter, err = o.logStore.Create(logID, op.Id, defaultTaskLogDuration)
 		if err != nil {
 			zap.S().Errorf("failed to create live log writer: %v", err)
 		}
 		ctx = logging.ContextWithWriter(ctx, logWriter)
 
+		// Update operation status and log reference
 		op.Logref = logID
 		op.UnixTimeStartMs = time.Now().UnixMilli()
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
 			op.Status = v1.OperationStatus_STATUS_INPROGRESS
 		}
-		if op.Id != 0 {
-			if err := o.OpLog.Update(op); err != nil {
-				zap.S().Errorf("failed to add operation to oplog: %w", err)
-			}
-		} else {
-			if err := o.OpLog.Add(op); err != nil {
-				zap.S().Errorf("failed to add operation to oplog: %w", err)
-			}
-		}
+
+		// Record the operation in the oplog
+		o.recordOperationInOplog(op)
 	} else {
-		ctx = logging.ContextWithWriter(ctx, io.Discard) // discard logs if no operation.
+		// If no operation is provided, discard logs
+		ctx = logging.ContextWithWriter(ctx, io.Discard)
 	}
 
+	return ctx, logWriter
+}
+
+// recordOperationInOplog adds or updates an operation in the operation log
+func (o *Orchestrator) recordOperationInOplog(op *v1.Operation) {
+	var err error
+	if op.Id != 0 {
+		err = o.OpLog.Update(op)
+	} else {
+		err = o.OpLog.Add(op)
+	}
+
+	if err != nil {
+		zap.S().Errorf("failed to update operation in oplog: %v", err)
+	}
+}
+
+// cleanupTaskContext handles cleanup after task execution
+func (o *Orchestrator) cleanupTaskContext(ctx context.Context, op *v1.Operation, logWriter io.WriteCloser) {
+	// Remove the cancel function from the map if there was an operation
+	if op != nil {
+		o.taskCancelMu.Lock()
+		delete(o.taskCancel, op.Id)
+		o.taskCancelMu.Unlock()
+	}
+
+	// Close the log writer if one was created
+	if logWriter != nil {
+		if err := logWriter.Close(); err != nil {
+			zap.S().Warnf("failed to close log writer, logs may be partial: %v", err)
+		}
+	}
+}
+
+// executeTask runs the task and records metrics for it
+func (o *Orchestrator) executeTask(ctx context.Context, st tasks.ScheduledTask) error {
 	start := time.Now()
 	runner := newTaskRunnerImpl(o, st.Task, st.Op)
 	err := st.Task.Run(ctx, st, runner)
+
+	// Record metrics based on task result
 	if err != nil {
 		runner.Logger(ctx).Error("task failed", zap.Error(err), zap.Duration("duration", time.Since(start)))
 		metric.GetRegistry().RecordTaskRun(st.Task.RepoID(), st.Task.PlanID(), st.Task.Type(), time.Since(start).Seconds(), "failed")
@@ -534,46 +635,47 @@ func (o *Orchestrator) RunTask(ctx context.Context, st tasks.ScheduledTask) erro
 		metric.GetRegistry().RecordTaskRun(st.Task.RepoID(), st.Task.PlanID(), st.Task.Type(), time.Since(start).Seconds(), "success")
 	}
 
-	// write logs to log storage for this task.
-	if logWriter != nil {
-		if err := logWriter.Close(); err != nil {
-			zap.S().Warnf("failed to close log writer for %q, logs may be partial: %v", st.Task.Name(), err)
-		}
-	}
-
-	if op != nil {
-		if err != nil {
-			var taskCancelledError *tasks.TaskCancelledError
-			var taskRetryError *tasks.TaskRetryError
-			if errors.As(err, &taskCancelledError) {
-				op.Status = v1.OperationStatus_STATUS_USER_CANCELLED
-			} else if errors.As(err, &taskRetryError) {
-				op.Status = v1.OperationStatus_STATUS_PENDING
-			} else {
-				op.Status = v1.OperationStatus_STATUS_ERROR
-			}
-
-			// prepend the error to the display
-			if op.DisplayMessage != "" {
-				op.DisplayMessage = err.Error() + "\n\n" + op.DisplayMessage
-			} else {
-				op.DisplayMessage = err.Error()
-			}
-		}
-		op.UnixTimeEndMs = time.Now().UnixMilli()
-		if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
-			op.Status = v1.OperationStatus_STATUS_SUCCESS
-		}
-		if e := o.OpLog.Update(op); e != nil {
-			zap.S().Errorf("failed to update operation in oplog: %v", e)
-		}
-	}
-
 	return err
 }
 
-// ScheduleTask schedules a task to run at the next available time.
-// note that o.mu must not be held when calling this function.
+// updateOperationStatus updates the operation's status based on the task execution result
+func (o *Orchestrator) updateOperationStatus(ctx context.Context, op *v1.Operation, err error) {
+	if err != nil {
+		// Handle different error types
+		var taskCancelledError *tasks.TaskCancelledError
+		var taskRetryError *tasks.TaskRetryError
+		if errors.As(err, &taskCancelledError) {
+			op.Status = v1.OperationStatus_STATUS_USER_CANCELLED
+		} else if errors.As(err, &taskRetryError) {
+			op.Status = v1.OperationStatus_STATUS_PENDING
+		} else {
+			op.Status = v1.OperationStatus_STATUS_ERROR
+		}
+
+		// Prepend the error to the display message
+		if op.DisplayMessage != "" {
+			op.DisplayMessage = err.Error() + "\n\n" + op.DisplayMessage
+		} else {
+			op.DisplayMessage = err.Error()
+		}
+
+		if ctx.Err() != nil {
+			op.DisplayMessage += "\n\nnote: task was interrupted by context cancellation or instance shutdown"
+		}
+	}
+
+	// Set end time and update final status
+	op.UnixTimeEndMs = time.Now().UnixMilli()
+	if op.Status == v1.OperationStatus_STATUS_INPROGRESS {
+		op.Status = v1.OperationStatus_STATUS_SUCCESS
+	}
+
+	// Update the operation in the log
+	if err := o.OpLog.Update(op); err != nil {
+		zap.S().Errorf("failed to update operation in oplog: %v", err)
+	}
+}
+
 func (o *Orchestrator) ScheduleTask(t tasks.Task, priority int, callbacks ...func(error)) error {
 	nextRun, err := o.CreateUnscheduledTask(t, priority, o.curTime())
 	if err != nil {

@@ -125,6 +125,10 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		return err
 	}
 
+	if err := repo.UnlockIfAutoEnabled(ctx); err != nil {
+		return fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err)
+	}
+
 	plan, err := runner.GetPlan(t.PlanID())
 	if err != nil {
 		return err
