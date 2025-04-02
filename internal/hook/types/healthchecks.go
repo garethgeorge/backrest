@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
+	"path"
 	"reflect"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -28,27 +30,26 @@ func (healthchecksHandler) Execute(ctx context.Context, cmd *v1.Hook, vars inter
 	l := runner.Logger(ctx)
 	l.Sugar().Infof("Sending healthchecks message to %s", cmd.GetActionHealthchecks().GetWebhookUrl())
 	l.Debug("Sending healthchecks message", zap.String("payload", payload))
-
-	PingUrl := cmd.GetActionHealthchecks().GetWebhookUrl()
-
-	// Send a "start" signal to healthchecks.io when the hook is starting.
-	if protoutil.IsStartCondition(event) {
-		PingUrl += "/start"
-	}
-
-	// Send a "fail" signal to healthchecks.io when the hook is failing.
-	if protoutil.IsErrorCondition(event) {
-		PingUrl += "/fail"
-	}
-
-	// Send a "log" signal to healthchecks.io when the hook is ending.
-	if protoutil.IsLogCondition(event) {
-		PingUrl += "/log"
-	}
-
-	body, err := hookutil.PostRequest(PingUrl, "text/plain", bytes.NewBufferString(payload))
+	baseURL := cmd.GetActionHealthchecks().GetWebhookUrl()
+	u, err := url.Parse(baseURL)
 	if err != nil {
-		return fmt.Errorf("sending healthchecks message to %q: %w", PingUrl, err)
+		return fmt.Errorf("parsing webhook URL: %w", err)
+	}
+
+	switch {
+	case protoutil.IsStartCondition(event):
+		u.Path = path.Join(u.Path, "start")
+	case protoutil.IsErrorCondition(event):
+		u.Path = path.Join(u.Path, "fail")
+	case protoutil.IsLogCondition(event):
+		u.Path = path.Join(u.Path, "log")
+	}
+
+	pingUrl := u.String()
+
+	body, err := hookutil.PostRequest(pingUrl, "text/plain", bytes.NewBufferString(payload))
+	if err != nil {
+		return fmt.Errorf("sending healthchecks message to %q: %w", pingUrl, err)
 	}
 
 	l.Debug("Healthchecks response", zap.String("body", body))
