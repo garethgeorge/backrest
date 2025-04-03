@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.8.0](https://github.com/garethgeorge/backrest/compare/v1.7.3...v1.8.0) (2025-04-02)
+
+
+### Bug Fixes
+
+* deduplicate indexed snapshots ([#716](https://github.com/garethgeorge/backrest/issues/716)) ([b3b1eef](https://github.com/garethgeorge/backrest/commit/b3b1eefe9b07dbc782ad2a519f960834be1329b3))
+* glob escape some linux filename characters ([#721](https://github.com/garethgeorge/backrest/issues/721)) ([190b3bf](https://github.com/garethgeorge/backrest/commit/190b3bfd0e7debf274022b64e294204a94074d1f))
+* restic outputs add newline separators between log messages ([addf49c](https://github.com/garethgeorge/backrest/commit/addf49c1f37818b5e4be05db2982a0555703fa78))
+* update healthchecks hook to construct urls such that query parameters are preserved ([2a24b0a](https://github.com/garethgeorge/backrest/commit/2a24b0ad5fa3583686086e58744184fe07e3e657))
+
+
+### Miscellaneous Chores
+
+* release 1.8.0 for restic version upgrade to 0.18.0 ([ad2c357](https://github.com/garethgeorge/backrest/commit/ad2c357bc3c4d54e7290b8e6a24483a8afeba1f5))
+
 ## [1.7.3](https://github.com/garethgeorge/backrest/compare/v1.7.2...v1.7.3) (2025-03-15)
 
 
