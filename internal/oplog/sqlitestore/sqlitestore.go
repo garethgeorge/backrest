@@ -13,6 +13,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
+	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -490,50 +491,68 @@ func (m *SqliteStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 
 	ops := make([]*v1.Operation, 0, len(opID))
 	return ops, withImmediateSqliteTransaction(conn, func() error {
-		// fetch all the operations we're about to delete
-		predicate := []string{"operations.id IN ("}
-		args := []any{}
-		for i, id := range opID {
-			if i > 0 {
-				predicate = append(predicate, ",")
+		for _, batch := range ioutil.Batchify(opID, ioutil.DefaultBatchSize) {
+			// Optimize for the case of 1 element or batch size elements (which will be common)
+			useTransient := len(batch) != ioutil.DefaultBatchSize || len(batch) == 1
+			batchOps, err := m.deleteHelper(conn, useTransient, batch...)
+			if err != nil {
+				return err
 			}
-			predicate = append(predicate, "?")
-			args = append(args, id)
+			ops = append(ops, batchOps...)
 		}
-		predicate = append(predicate, ")")
-		predicateStr := strings.Join(predicate, "")
-
-		if err := sqlitex.ExecuteTransient(conn, "SELECT operations.operation FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+predicateStr, &sqlitex.ExecOptions{
-			Args: args,
-			ResultFunc: func(stmt *sqlite.Stmt) error {
-				opBytes := make([]byte, stmt.ColumnLen(0))
-				n := stmt.GetBytes("operation", opBytes)
-				opBytes = opBytes[:n]
-
-				var op v1.Operation
-				if err := proto.Unmarshal(opBytes, &op); err != nil {
-					return fmt.Errorf("unmarshal operation bytes: %v", err)
-				}
-				ops = append(ops, &op)
-				return nil
-			},
-		}); err != nil {
-			return fmt.Errorf("load operations for delete: %v", err)
-		}
-
-		if len(ops) != len(opID) {
-			return fmt.Errorf("couldn't find all operations to delete: %w", oplog.ErrNotExist)
-		}
-
-		// Delete the operations
-		if err := sqlitex.ExecuteTransient(conn, "DELETE FROM operations WHERE "+predicateStr, &sqlitex.ExecOptions{
-			Args: args,
-		}); err != nil {
-			return fmt.Errorf("delete operations: %v", err)
-		}
-
 		return nil
 	})
+}
+
+func (m *SqliteStore) deleteHelper(conn *sqlite.Conn, transient bool, opID ...int64) ([]*v1.Operation, error) {
+	// fetch all the operations we're about to delete
+	predicate := []string{"operations.id IN ("}
+	args := []any{}
+	for i, id := range opID {
+		if i > 0 {
+			predicate = append(predicate, ",")
+		}
+		predicate = append(predicate, "?")
+		args = append(args, id)
+	}
+	predicate = append(predicate, ")")
+	predicateStr := strings.Join(predicate, "")
+
+	var ops []*v1.Operation
+	if err := sqlitex.ExecuteTransient(conn, "SELECT operations.operation FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+predicateStr, &sqlitex.ExecOptions{
+		Args: args,
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			opBytes := make([]byte, stmt.ColumnLen(0))
+			n := stmt.GetBytes("operation", opBytes)
+			opBytes = opBytes[:n]
+
+			var op v1.Operation
+			if err := proto.Unmarshal(opBytes, &op); err != nil {
+				return fmt.Errorf("unmarshal operation bytes: %v", err)
+			}
+			ops = append(ops, &op)
+			return nil
+		},
+	}); err != nil {
+		return nil, fmt.Errorf("load operations for delete: %v", err)
+	}
+
+	if len(ops) != len(opID) {
+		return nil, fmt.Errorf("couldn't find all operations to delete: %w", oplog.ErrNotExist)
+	}
+
+	// Delete the operations
+	execFunc := sqlitex.Execute
+	if transient {
+		execFunc = sqlitex.ExecuteTransient
+	}
+	if err := execFunc(conn, "DELETE FROM operations WHERE "+predicateStr, &sqlitex.ExecOptions{
+		Args: args,
+	}); err != nil {
+		return nil, fmt.Errorf("delete operations: %v", err)
+	}
+
+	return ops, nil
 }
 
 func (m *SqliteStore) ResetForTest(t *testing.T) error {

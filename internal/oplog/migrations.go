@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/ioutil"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
@@ -120,8 +121,13 @@ func migration003DeduplicateIndexedSnapshots(oplog *OpLog) error {
 	if len(deleteIDs) == 0 {
 		return nil
 	}
-	_, err := oplog.store.Delete(deleteIDs...)
-	return err
+
+	for _, batch := range ioutil.Batchify(deleteIDs, ioutil.DefaultBatchSize) {
+		if _, err := oplog.store.Delete(batch...); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // migrationNoop is a migration that does nothing; replaces deprecated migrations.
