@@ -69,7 +69,7 @@ func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...Ge
 		sw := &ioutil.SynchronizedWriter{W: logger}
 		cmd.Stderr = sw
 		cmd.Stdout = sw
-		fmt.Fprintf(logger, "\ncommand: %v %v\n", fullCmd[0], strings.Join(fullCmd[1:], " "))
+		fmt.Fprintf(logger, "\ncommand: %q\n", fullCmd)
 	}
 
 	return cmd
@@ -174,7 +174,7 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 
 	// Ensure the command is logged since we're overriding the logger
 	if logger != nil {
-		fmt.Fprintf(logger, "command: %v %v\n", cmd.Path, strings.Join(cmd.Args, " "))
+		fmt.Fprintf(logger, "command: %q\n", cmd)
 	}
 
 	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
