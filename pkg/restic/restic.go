@@ -92,6 +92,35 @@ func (r *Repo) pipeCmdOutputToWriter(cmd *exec.Cmd, handlers ...io.Writer) {
 	cmd.Stderr = mw
 }
 
+// executeWithOutput runs a command and captures the output in a buffer
+func (r *Repo) executeWithOutput(ctx context.Context, args []string, opts ...GenericOption) ([]byte, error) {
+	cmd := r.commandWithContext(ctx, args, opts...)
+	output := bytes.NewBuffer(nil)
+	r.pipeCmdOutputToWriter(cmd, output)
+
+	err := cmd.Run()
+	if err != nil {
+		return output.Bytes(), newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
+	}
+
+	return output.Bytes(), nil
+}
+
+// executeWithJSONOutput runs a command and parses its JSON output
+func (r *Repo) executeWithJSONOutput(ctx context.Context, args []string, result interface{}, opts ...GenericOption) error {
+	output, err := r.executeWithOutput(ctx, args, opts...)
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(output, result); err != nil {
+		return newCmdError(ctx, r.commandWithContext(ctx, args),
+			newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", err), string(output)))
+	}
+
+	return nil
+}
+
 // Exists checks if the repository exists.
 // Returns true if exists, false if it does not exist OR an access error occurred.
 func (r *Repo) Exists(ctx context.Context, opts ...GenericOption) error {
@@ -143,10 +172,7 @@ func (r *Repo) init(ctx context.Context, opts ...GenericOption) error {
 }
 
 func (r *Repo) Init(ctx context.Context, opts ...GenericOption) error {
-	if err := r.init(ctx, opts...); err != nil && !errors.Is(err, errAlreadyInitialized) {
-		return fmt.Errorf("init failed: %w", err)
-	}
-	return nil
+	return r.init(ctx, opts...)
 }
 
 func (r *Repo) Config(ctx context.Context, opts ...GenericOption) (RepoConfig, error) {
@@ -167,6 +193,33 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 	args = append(args, paths...)
 	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
 
+	result, err := r.runWithProgressTracking(ctx, args, readBackupProgressEntries, progressCallback, ErrBackupFailed, opts...)
+	if err != nil {
+		return result.(*BackupProgressEntry), err
+	}
+	return result.(*BackupProgressEntry), nil
+}
+
+func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
+	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
+	args := []string{"restore", "--json", snapshot}
+
+	result, err := r.runWithProgressTracking(ctx, args, readRestoreProgressEntries, callback, ErrRestoreFailed, opts...)
+	if err != nil {
+		return result.(*RestoreProgressEntry), err
+	}
+	return result.(*RestoreProgressEntry), nil
+}
+
+// runWithProgressTracking runs a command that produces progress events and handles tracking
+func (r *Repo) runWithProgressTracking(
+	ctx context.Context,
+	args []string,
+	readProgressFn interface{},
+	callback interface{},
+	failureErr error,
+	opts ...GenericOption) (interface{}, error) {
+
 	logger := LoggerFromContext(ctx)
 	cmdCtx, cancel := context.WithCancel(ctx)
 	cmdCtx = ContextWithLogger(cmdCtx, nil) // ensure no logger is used
@@ -182,18 +235,38 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 	r.pipeCmdOutputToWriter(cmd, writer)
 
 	var readErr error
-	var summary *BackupProgressEntry
+	var summary interface{}
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer cancel()
-		var err error
-		summary, err = readBackupProgressEntries(reader, logger, progressCallback)
-		if err != nil {
-			readErr = fmt.Errorf("processing command output: %w", err)
-		}
-	}()
+
+	switch typedReader := readProgressFn.(type) {
+	case func(io.Reader, io.Writer, func(*BackupProgressEntry)) (*BackupProgressEntry, error):
+		typedCallback, _ := callback.(func(*BackupProgressEntry))
+		go func() {
+			defer wg.Done()
+			defer cancel()
+			result, err := typedReader(reader, logger, typedCallback)
+			summary = result
+			if err != nil {
+				readErr = fmt.Errorf("processing command output: %w", err)
+			}
+		}()
+	case func(io.Reader, io.Writer, func(*RestoreProgressEntry)) (*RestoreProgressEntry, error):
+		typedCallback, _ := callback.(func(*RestoreProgressEntry))
+		go func() {
+			defer wg.Done()
+			defer cancel()
+			result, err := typedReader(reader, logger, typedCallback)
+			summary = result
+			if err != nil {
+				readErr = fmt.Errorf("processing command output: %w", err)
+			}
+		}()
+	default:
+		wg.Done()
+		cancel()
+		return nil, fmt.Errorf("unsupported progress reader type")
+	}
 
 	cmdErr := cmd.Run()
 	writer.Close()
@@ -201,80 +274,31 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 
 	if cmdErr != nil || readErr != nil {
 		if cmdErr != nil {
-			var exitErr *exec.ExitError
-			if errors.As(cmdErr, &exitErr) {
-				if exitErr.ExitCode() == 3 {
-					cmdErr = ErrPartialBackup
-				} else {
-					cmdErr = fmt.Errorf("exit code %d: %w", exitErr.ExitCode(), ErrBackupFailed)
-				}
-			}
+			cmdErr = r.handleExitError(cmdErr, failureErr)
 		}
 		return summary, newCmdError(ctx, cmd, errors.Join(cmdErr, readErr))
 	}
+
 	return summary, nil
 }
 
-func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
-	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
-
-	logger := LoggerFromContext(ctx)
-	cmdCtx, cancel := context.WithCancel(ctx)
-	cmdCtx = ContextWithLogger(cmdCtx, nil) // ensure no logger is used
-	cmd := r.commandWithContext(cmdCtx, []string{"restore", "--json", snapshot}, opts...)
-	if logger != nil {
-		fmt.Fprintf(logger, "command: %v %v\n", cmd.Path, strings.Join(cmd.Args, " "))
-	}
-	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
-	reader, writer := nio.Pipe(buf)
-	r.pipeCmdOutputToWriter(cmd, writer)
-
-	var readErr error
-	var summary *RestoreProgressEntry
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer cancel()
-		var err error
-		summary, err = readRestoreProgressEntries(reader, logger, callback)
-		if err != nil {
-			readErr = fmt.Errorf("processing command output: %w", err)
+// handleExitError processes a command exit error and converts it to an appropriate error type
+func (r *Repo) handleExitError(err error, failureErr error) error {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		if exitErr.ExitCode() == 3 {
+			return ErrPartialBackup
+		} else {
+			return fmt.Errorf("exit code %d: %w", exitErr.ExitCode(), failureErr)
 		}
-	}()
-
-	cmdErr := cmd.Run()
-	writer.Close()
-	wg.Wait()
-	if cmdErr != nil || readErr != nil {
-		if cmdErr != nil {
-			var exitErr *exec.ExitError
-			if errors.As(cmdErr, &exitErr) {
-				if exitErr.ExitCode() == 3 {
-					cmdErr = ErrPartialBackup
-				} else {
-					cmdErr = fmt.Errorf("exit code %d: %w", exitErr.ExitCode(), ErrRestoreFailed)
-				}
-			}
-		}
-
-		return summary, newCmdError(ctx, cmd, errors.Join(cmdErr, readErr))
 	}
-	return summary, nil
+	return err
 }
 
 func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapshot, error) {
-	cmd := r.commandWithContext(ctx, []string{"snapshots", "--json"}, opts...)
-	output := bytes.NewBuffer(nil)
-	r.pipeCmdOutputToWriter(cmd, output)
-
-	if err := cmd.Run(); err != nil {
-		return nil, newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
-	}
-
 	var snapshots []*Snapshot
-	if err := json.Unmarshal(output.Bytes(), &snapshots); err != nil {
-		return nil, newCmdError(ctx, cmd, newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", err), output.String()))
+	if err := r.executeWithJSONOutput(ctx, []string{"snapshots", "--json"}, &snapshots, opts...); err != nil {
+		return nil, err
 	}
 
 	for _, snapshot := range snapshots {
@@ -289,45 +313,36 @@ func (r *Repo) Forget(ctx context.Context, policy *RetentionPolicy, opts ...Gene
 	args := []string{"forget", "--json"}
 	args = append(args, policy.toForgetFlags()...)
 
-	cmd := r.commandWithContext(ctx, args, opts...)
-	output := bytes.NewBuffer(nil)
-	r.pipeCmdOutputToWriter(cmd, output)
-	if err := cmd.Run(); err != nil {
-		return nil, newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
+	var results []ForgetResult
+	if err := r.executeWithJSONOutput(ctx, args, &results, opts...); err != nil {
+		return nil, err
 	}
 
-	var result []ForgetResult
-	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
-		return nil, newCmdError(ctx, cmd, newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", err), output.String()))
-	}
-	if len(result) != 1 {
-		return nil, fmt.Errorf("expected 1 output from forget, got %v", len(result))
-	}
-	if err := result[0].Validate(); err != nil {
-		return nil, newCmdError(ctx, cmd, fmt.Errorf("invalid forget result: %w", err))
+	if len(results) != 1 {
+		return nil, fmt.Errorf("expected 1 output from forget, got %v", len(results))
 	}
 
-	return &result[0], nil
+	if err := results[0].Validate(); err != nil {
+		return nil, fmt.Errorf("invalid forget result: %w", err)
+	}
+
+	return &results[0], nil
 }
 
 func (r *Repo) ForgetSnapshot(ctx context.Context, snapshotId string, opts ...GenericOption) error {
 	args := []string{"forget", "--json", snapshotId}
-
-	output := bytes.NewBuffer(nil)
-	cmd := r.commandWithContext(ctx, args, opts...)
-	r.pipeCmdOutputToWriter(cmd, output)
-	if err := cmd.Run(); err != nil {
-		return newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
-	}
-
-	return nil
+	_, err := r.executeWithOutput(ctx, args, opts...)
+	return err
 }
 
 func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...GenericOption) error {
-	args := []string{"prune"}
-	cmd := r.commandWithContext(ctx, args, opts...)
-	if pruneOutput != nil {
-		r.pipeCmdOutputToWriter(cmd, pruneOutput)
+	return r.runSimpleCommand(ctx, []string{"prune"}, pruneOutput, opts...)
+}
+
+func (r *Repo) Check(ctx context.Context, checkOutput io.Writer, opts ...GenericOption) error {
+	cmd := r.commandWithContext(ctx, []string{"check"}, opts...)
+	if checkOutput != nil {
+		r.pipeCmdOutputToWriter(cmd, checkOutput)
 	}
 	if err := cmd.Run(); err != nil {
 		return newCmdError(ctx, cmd, err)
@@ -335,12 +350,11 @@ func (r *Repo) Prune(ctx context.Context, pruneOutput io.Writer, opts ...Generic
 	return nil
 }
 
-func (r *Repo) Check(ctx context.Context, checkOutput io.Writer, opts ...GenericOption) error {
-	args := []string{"check"}
+// runSimpleCommand executes a command with optional output capture
+func (r *Repo) runSimpleCommand(ctx context.Context, args []string, outputWriter io.Writer, opts ...GenericOption) error {
 	cmd := r.commandWithContext(ctx, args, opts...)
-	cmd.Stdin = bytes.NewBuffer(nil)
-	if checkOutput != nil {
-		r.pipeCmdOutputToWriter(cmd, checkOutput)
+	if outputWriter != nil {
+		r.pipeCmdOutputToWriter(cmd, outputWriter)
 	}
 	if err := cmd.Run(); err != nil {
 		return newCmdError(ctx, cmd, err)
@@ -357,43 +371,28 @@ func (r *Repo) ListDirectory(ctx context.Context, snapshot string, path string, 
 	cmd := r.commandWithContext(ctx, []string{"ls", "--json", snapshot, path}, opts...)
 	output := bytes.NewBuffer(nil)
 	r.pipeCmdOutputToWriter(cmd, output)
-
 	if err := cmd.Run(); err != nil {
 		return nil, nil, newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
 	}
 
-	snapshots, entries, err := readLs(output)
+	snap, entries, err := readLs(output)
 	if err != nil {
-		return nil, nil, newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
+		return nil, nil, newCmdError(ctx, cmd, fmt.Errorf("error parsing JSON: %w", err))
 	}
-
-	return snapshots, entries, nil
+	return snap, entries, nil
 }
 
 func (r *Repo) Unlock(ctx context.Context, opts ...GenericOption) error {
-	output := bytes.NewBuffer(nil)
-	cmd := r.commandWithContext(ctx, []string{"unlock"}, opts...)
-	r.pipeCmdOutputToWriter(cmd, output)
-	if err := cmd.Run(); err != nil {
-		return newCmdError(ctx, cmd, newErrorWithOutput(err, output.String()))
-	}
-	return nil
+	_, err := r.executeWithOutput(ctx, []string{"unlock"}, opts...)
+	return err
 }
 
 func (r *Repo) Stats(ctx context.Context, opts ...GenericOption) (*RepoStats, error) {
-	cmd := r.commandWithContext(ctx, []string{"stats", "--json", "--mode=raw-data"}, opts...)
-	output := bytes.NewBuffer(nil)
-	r.pipeCmdOutputToWriter(cmd, output)
-
-	if err := cmd.Run(); err != nil {
-		return nil, newCmdError(ctx, cmd, err)
-	}
-
 	var stats RepoStats
-	if err := json.Unmarshal(output.Bytes(), &stats); err != nil {
-		return nil, newCmdError(ctx, cmd, newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", err), output.String()))
+	err := r.executeWithJSONOutput(ctx, []string{"stats", "--json", "--mode=raw-data"}, &stats, opts...)
+	if err != nil {
+		return nil, err
 	}
-
 	return &stats, nil
 }
 
@@ -403,11 +402,8 @@ func (r *Repo) AddTags(ctx context.Context, snapshotIDs []string, tags []string,
 	args = append(args, "--add", strings.Join(tags, ","))
 	args = append(args, snapshotIDs...)
 
-	cmd := r.commandWithContext(ctx, args, opts...)
-	if err := cmd.Run(); err != nil {
-		return newCmdError(ctx, cmd, err)
-	}
-	return nil
+	_, err := r.executeWithOutput(ctx, args, opts...)
+	return err
 }
 
 func (r *Repo) GenericCommand(ctx context.Context, args []string, opts ...GenericOption) error {
