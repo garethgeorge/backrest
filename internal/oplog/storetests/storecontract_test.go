@@ -651,6 +651,102 @@ func TestTransform(t *testing.T) {
 	}
 }
 
+func TestDelete(t *testing.T) {
+	t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			log, err := oplog.NewOpLog(store)
+			if err != nil {
+				t.Fatalf("error creating oplog: %v", err)
+			}
+
+			op := &v1.Operation{
+				UnixTimeStartMs: 1234,
+				PlanId:          "plan1",
+				RepoId:          "repo1",
+				RepoGuid:        "repo1",
+				InstanceId:      "instance1",
+				Op:              &v1.Operation_OperationBackup{},
+			}
+
+			if err := log.Add(op); err != nil {
+				t.Fatalf("error adding operation: %s", err)
+			}
+
+			if err := log.Delete(op.Id); err != nil {
+				t.Fatalf("error deleting operation: %s", err)
+			}
+
+			var ops []*v1.Operation
+			if err := log.Query(oplog.Query{}, func(op *v1.Operation) error {
+				ops = append(ops, op)
+				return nil
+			}); err != nil {
+				t.Fatalf("error querying operations: %s", err)
+			}
+
+			if len(ops) != 0 {
+				t.Errorf("expected 0 operations after deletion, got %d", len(ops))
+			}
+		})
+	}
+}
+
+func TestBulkDelete(t *testing.T) {
+	t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			log, err := oplog.NewOpLog(store)
+			if err != nil {
+				t.Fatalf("error creating oplog: %v", err)
+			}
+
+			// Add 2000 operations
+			var ops []*v1.Operation
+			for i := 0; i < 2000; i++ {
+				op := &v1.Operation{
+					UnixTimeStartMs: 1234,
+					PlanId:          fmt.Sprintf("plan%d", i),
+					RepoId:          fmt.Sprintf("repo%d", i),
+					RepoGuid:        fmt.Sprintf("repo%d", i),
+					InstanceId:      fmt.Sprintf("instance%d", i),
+					Op:              &v1.Operation_OperationBackup{},
+				}
+				ops = append(ops, op)
+			}
+
+			var ids []int64
+			if err := log.Add(ops...); err != nil {
+				t.Fatalf("error adding operations: %s", err)
+			}
+			for _, op := range ops {
+				ids = append(ids, op.Id)
+			}
+
+			// Delete all operations
+			err = log.Delete(ids...)
+			if err != nil {
+				t.Fatalf("error deleting operations: %s", err)
+			}
+			if len(ids) != 2000 {
+				t.Errorf("expected 2000 deleted operations, got %d", len(ids))
+			}
+
+			// Verify deletion
+			var count int
+			if err := log.Query(oplog.Query{}, func(op *v1.Operation) error {
+				count++
+				return nil
+			}); err != nil {
+				t.Fatalf("error querying operations: %s", err)
+			}
+			if count != 0 {
+				t.Errorf("expected 0 operations after deletion, got %d", count)
+			}
+		})
+	}
+}
+
 func TestQueryMetadata(t *testing.T) {
 	t.Parallel()
 	for name, store := range StoresForTest(t) {
