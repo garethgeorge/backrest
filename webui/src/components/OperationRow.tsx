@@ -605,6 +605,9 @@ const ForgetOperationDetails = ({
       if (val.yearly) {
         policyDesc.push(`Keep yearly for ${val.yearly} years`);
       }
+      if (val.keepWithinDuration) {
+        policyDesc.push(`Keep all snapshots within ${val.keepWithinDuration}`);
+      }
     }
   }
 

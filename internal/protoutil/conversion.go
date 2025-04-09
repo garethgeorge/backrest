@@ -107,11 +107,12 @@ func RetentionPolicyFromProto(p *v1.RetentionPolicy) *restic.RetentionPolicy {
 		return nil
 	case *v1.RetentionPolicy_PolicyTimeBucketed:
 		return &restic.RetentionPolicy{
-			KeepDaily:   int(p.PolicyTimeBucketed.Daily),
-			KeepHourly:  int(p.PolicyTimeBucketed.Hourly),
-			KeepWeekly:  int(p.PolicyTimeBucketed.Weekly),
-			KeepMonthly: int(p.PolicyTimeBucketed.Monthly),
-			KeepYearly:  int(p.PolicyTimeBucketed.Yearly),
+			KeepDaily:          int(p.PolicyTimeBucketed.Daily),
+			KeepHourly:         int(p.PolicyTimeBucketed.Hourly),
+			KeepWeekly:         int(p.PolicyTimeBucketed.Weekly),
+			KeepMonthly:        int(p.PolicyTimeBucketed.Monthly),
+			KeepYearly:         int(p.PolicyTimeBucketed.Yearly),
+			KeepWithinDuration: p.PolicyTimeBucketed.KeepWithinDuration,
 		}
 	case *v1.RetentionPolicy_PolicyKeepLastN:
 		return &restic.RetentionPolicy{
