@@ -169,16 +169,6 @@ func (r *RestoreProgressEntry) IsSummary() bool {
 	return r.MessageType == "summary"
 }
 
-// logAndCollectLine handles writing non-JSON output to both a buffer and logger
-func logAndCollectLine(line []byte, logger io.Writer, nonJSONOutput *bytes.Buffer) {
-	nonJSONOutput.Write(line)
-	nonJSONOutput.Write([]byte("\n"))
-	if logger != nil {
-		logger.Write(line)
-		logger.Write([]byte("\n"))
-	}
-}
-
 // processProgressOutput handles common JSON output processing logic with proper type safety
 func processProgressOutput[T ProgressEntryValidator](
 	output io.Reader,
@@ -189,6 +179,12 @@ func processProgressOutput[T ProgressEntryValidator](
 	scanner.Split(bufio.ScanLines)
 
 	nonJSONOutput := bytes.NewBuffer(nil)
+
+	var writeNonJSON io.Writer = nonJSONOutput
+	if logger != nil {
+		writeNonJSON = io.MultiWriter(nonJSONOutput, logger)
+	}
+
 	var summary *T
 	var nullT T
 
@@ -197,18 +193,20 @@ func processProgressOutput[T ProgressEntryValidator](
 		var event T
 
 		if err := json.Unmarshal(line, &event); err != nil {
-			logAndCollectLine(line, logger, nonJSONOutput)
+			writeNonJSON.Write(line)
+			writeNonJSON.Write([]byte("\n"))
 			continue
 		}
 
 		if err := event.Validate(); err != nil {
-			logAndCollectLine(line, logger, nonJSONOutput)
+			writeNonJSON.Write(line)
+			writeNonJSON.Write([]byte("\n"))
 			continue
 		}
 
 		if event.IsError() && logger != nil {
-			logger.Write(line)
-			logger.Write([]byte("\n"))
+			writeNonJSON.Write(line)
+			writeNonJSON.Write([]byte("\n"))
 		}
 
 		if callback != nil {
@@ -216,10 +214,8 @@ func processProgressOutput[T ProgressEntryValidator](
 		}
 
 		if event.IsSummary() {
-			if logger != nil {
-				logger.Write(line)
-				logger.Write([]byte("\n"))
-			}
+			writeNonJSON.Write(line)
+			writeNonJSON.Write([]byte("\n"))
 			eventCopy := event // Make a copy to avoid issues with loop variable
 			summary = &eventCopy
 		}
