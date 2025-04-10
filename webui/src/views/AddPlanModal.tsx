@@ -792,7 +792,7 @@ const RetentionPolicyView = () => {
           ]}
         >
           <InputNumber
-            addonAfter={(
+            addonAfter={!schedule?.disabled && (
               <Tooltip 
                 title={lastNDurationTooltipText()}
                 trigger={['click', 'hover']}
