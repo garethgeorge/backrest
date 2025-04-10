@@ -21,9 +21,8 @@ import {
   RetentionPolicySchema,
   Schedule_Clock,
   type Plan,
-  type RetentionPolicy,
 } from "../../gen/ts/v1/config_pb";
-import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import { CalculatorOutlined, MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
@@ -39,6 +38,8 @@ import {
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
 import { clone, create, equals, fromJson, toJson } from "@bufbuild/protobuf";
+import { parseCronExpression } from 'cron-schedule';
+import prettyMilliseconds, { Options as PrettyMsOptions } from 'pretty-ms';
 
 const planDefaults = create(PlanSchema, {
   schedule: {
@@ -59,6 +60,13 @@ const planDefaults = create(PlanSchema, {
     },
   },
 });
+
+// Options for displaying time durations in a human-readable format
+const prettyMsOptions: PrettyMsOptions = { 
+  hideSeconds: true,
+  // Time units as full words 
+  verbose: true 
+};
 
 export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -545,7 +553,9 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 };
 
 const RetentionPolicyView = () => {
+  const [lastNDurationTooltipOpen, setLastNDurationTooltipOpen] = useState(false);
   const form = Form.useFormInstance();
+  const schedule = Form.useWatch("schedule", { form }) as any;
   const retention = Form.useWatch("retention", { form, preserve: true }) as any;
 
   const determineMode = () => {
@@ -559,6 +569,106 @@ const RetentionPolicyView = () => {
       return "policyTimeBucketed";
     }
   };
+
+  const hasBucketedKeepLastN = retention?.policyTimeBucketed?.keepLastN > 1;
+
+  // Calculates the average duration of the last N snapshots
+  const calculateBucketedLastNDuration = () => {
+    if (!hasBucketedKeepLastN) {
+      return { min: 0, max: 0 };
+    }
+    const msPerHour = 60 * 60 * 1000;
+    const msPerDay = 24 * msPerHour;
+    const { keepLastN } = retention.policyTimeBucketed;
+    // Simple calculations for non-cron schedules
+    if (schedule.maxFrequencyHours) {
+      const value = schedule.maxFrequencyHours * keepLastN * msPerHour;
+      return { min: value, max: value };
+    }
+    if (schedule.maxFrequencyDays) {
+      const value = schedule.maxFrequencyDays * keepLastN * msPerDay;
+      return { min: value, max: value };
+    }
+    if (!schedule.cron) {
+      return { min: 0, max: 0 };
+    }
+    const cron = parseCronExpression(schedule.cron);
+    const { minutes, hours, days, weekdays } = cron;
+    // The days and weekdays are additive in cron expressions, so we need to estimate the total
+    // number of days enabled per month.
+    const daysPerMonth = weekdays.length === 7 
+      // All weekdays are enabled so it's just the number of days enabled per month
+      ? days.length
+      : Math.floor(
+        // Estimated number of weekdays enabled per month
+        weekdays.length * 31 / 7 
+        // Plus the number of days enabled per month, reduced by the number of days that are also
+        // enabled as weekdays to avoid double counting
+        + days.length * (7 - weekdays.length) / 7
+      );
+    // Get a sufficient number of dates to calculate durations.
+    const dates = cron.getNextDates(Math.max(
+      // Larger sample size for schedules more tightly restricted by day and/or weekday
+      minutes.length * hours.length * (32 - daysPerMonth), 
+      // Larger sample size for schedules with a high retention count
+      keepLastN * 2
+    ));
+    const durations: number[] = [];
+
+    for (const [index, firstDate] of dates.entries()) {
+      const lastDate = dates[index + keepLastN];
+      if (!lastDate) {
+        // Reached end of window size
+        break;
+      }
+      const duration = lastDate.valueOf() - firstDate.valueOf();
+      durations.push(duration);
+    }
+
+    // Sort from least to greatest
+    durations.sort((a, b) => a - b);
+    return {
+      min: durations[0],
+      max: durations[durations.length - 1],
+    }
+  };
+
+  // Calculates the duration only when the tooltip is open
+  const lastNDurationTooltipText = () => {
+    if (!hasBucketedKeepLastN) {
+      return null;
+    }
+    // If the tooltip is not open, do not calculate the duration
+    if (!lastNDurationTooltipOpen) {
+      return ' ';
+    }
+    const { min, max } = calculateBucketedLastNDuration();
+    return (
+      <>
+        For this schedule, {
+          retention.policyTimeBucketed.keepLastN
+        } snapshots represent a timespan {
+          min !== max ? "ranging from" : "of"
+        } {
+          prettyMilliseconds(min, prettyMsOptions)
+        }{
+          // Only show the range if the min and max are different
+          min !== max && (
+            <>
+              {' to '}
+              {
+                prettyMilliseconds(max, prettyMsOptions)
+              }
+            </>
+          )
+        }.
+      </>
+    );
+  }
+
+  // If the first value in the cron expression (minutes) is not just a plain number (e.g. 30), the
+  // cron will hit more than once per hour (e.g. "*/15" "1,30" and "*").
+  const cronIsSubHourly = schedule?.cron && !/^\d+ /.test(schedule.cron);
 
   const mode = determineMode();
 
@@ -602,67 +712,106 @@ const RetentionPolicyView = () => {
     );
   } else if (mode === "policyTimeBucketed") {
     elem = (
-      <Row>
-        <Col span={11}>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "yearly"]}
-            validateTrigger={["onChange", "onBlur"]}
-            initialValue={0}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Yearly</div>}
-              type="number"
-            />
-          </Form.Item>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "monthly"]}
-            initialValue={0}
-            validateTrigger={["onChange", "onBlur"]}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Monthly</div>}
-              type="number"
-            />
-          </Form.Item>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "weekly"]}
-            initialValue={0}
-            validateTrigger={["onChange", "onBlur"]}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Weekly</div>}
-              type="number"
-            />
-          </Form.Item>
-        </Col>
-        <Col span={11} offset={1}>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "daily"]}
-            validateTrigger={["onChange", "onBlur"]}
-            initialValue={0}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Daily</div>}
-              type="number"
-            />
-          </Form.Item>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "hourly"]}
-            validateTrigger={["onChange", "onBlur"]}
-            initialValue={0}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Hourly</div>}
-              type="number"
-            />
-          </Form.Item>
-        </Col>
-      </Row>
+      <>
+        <Row>
+          <Col span={11}>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "yearly"]}
+              validateTrigger={["onChange", "onBlur"]}
+              initialValue={0}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Yearly</div>}
+                type="number"
+              />
+            </Form.Item>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "monthly"]}
+              initialValue={0}
+              validateTrigger={["onChange", "onBlur"]}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Monthly</div>}
+                type="number"
+              />
+            </Form.Item>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "weekly"]}
+              initialValue={0}
+              validateTrigger={["onChange", "onBlur"]}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Weekly</div>}
+                type="number"
+              />
+            </Form.Item>
+          </Col>
+          <Col span={11} offset={1}>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "daily"]}
+              validateTrigger={["onChange", "onBlur"]}
+              initialValue={0}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Daily</div>}
+                type="number"
+              />
+            </Form.Item>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "hourly"]}
+              validateTrigger={["onChange", "onBlur"]}
+              initialValue={0}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Hourly</div>}
+                type="number"
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Form.Item
+          name={["retention", "policyTimeBucketed", "keepLastN"]}
+          label="Latest snapshots to keep regardless of age"
+          validateTrigger={["onChange", "onBlur"]}
+          initialValue={10}
+          required={cronIsSubHourly}
+          rules={[
+            {
+              validator: (_, value) => {
+                if (cronIsSubHourly && !(value > 1)) {
+                  throw new Error("Specify a number greater than 1");
+                }
+              },
+              message: "Your schedule runs more than once per hour; choose how many snapshots to keep before handing off to the retention policy.",
+            },
+          ]}
+        >
+          <InputNumber
+            addonAfter={(
+              <Tooltip 
+                title={lastNDurationTooltipText()}
+                trigger={['click', 'hover']}
+                onOpenChange={setLastNDurationTooltipOpen}
+              >
+                <CalculatorOutlined 
+                  style={{ 
+                    fontSize: "1.5em",
+                    opacity: hasBucketedKeepLastN ? 1 : 0.5
+                  }} 
+                />
+              </Tooltip>
+            )}
+            type="number"
+            min={0}
+            style={{ width: "7em" }}
+          />
+        </Form.Item>
+      </>
     );
   }
 
