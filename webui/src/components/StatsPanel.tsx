@@ -90,7 +90,8 @@ const StatsPanel = ({ selector }: { selector: OpSelector }) => {
                 dataKey="totalSizeBytes"
                 tickFormatter={(v) => formatBytes(v)}
               />
-              <Tooltip labelFormatter={(v) => formatBytes(v as number)}/>
+              <Tooltip labelFormatter={(x) => formatDate(x as number)}
+                       formatter={(y) => [formatBytes(y as number), 'Total Size']}/>
               <Legend />
               <Line
                 yAxisId="left"
