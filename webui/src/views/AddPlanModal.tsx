@@ -778,7 +778,7 @@ const RetentionPolicyView = () => {
           name={["retention", "policyTimeBucketed", "keepLastN"]}
           label="Latest snapshots to keep regardless of age"
           validateTrigger={["onChange", "onBlur"]}
-          initialValue={10}
+          initialValue={0}
           required={cronIsSubHourly}
           rules={[
             {
