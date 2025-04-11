@@ -63,7 +63,7 @@ func (i *Identity) loadOrGenerateKey() error {
 	if pubKeyBlock == nil {
 		return errors.New("no public key found in pem")
 	}
-	pubKey, err := x509.ParsePKIXPublicKey(pubKeyBytes)
+	pubKey, err := x509.ParsePKIXPublicKey(pubKeyBlock.Bytes)
 	if err != nil {
 		return fmt.Errorf("parse public key: %w", err)
 	}
