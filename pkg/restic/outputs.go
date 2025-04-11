@@ -125,56 +125,105 @@ func (b *BackupProgressEntry) Validate() error {
 	return nil
 }
 
-// readBackupProgressEntries returns the summary event or an error if the command failed.
-func readBackupProgressEntries(output io.Reader, logger io.Writer, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
+func (b *BackupProgressEntry) IsError() bool {
+	return b.MessageType == "error"
+}
+
+func (b *BackupProgressEntry) IsSummary() bool {
+	return b.MessageType == "summary"
+}
+
+type RestoreProgressEntry struct {
+	MessageType    string  `json:"message_type"` // "summary" or "status"
+	SecondsElapsed float64 `json:"seconds_elapsed"`
+	TotalBytes     int64   `json:"total_bytes"`
+	BytesRestored  int64   `json:"bytes_restored"`
+	TotalFiles     int64   `json:"total_files"`
+	FilesRestored  int64   `json:"files_restored"`
+	PercentDone    float64 `json:"percent_done"`
+}
+
+func (e *RestoreProgressEntry) Validate() error {
+	if e.MessageType != "summary" && e.MessageType != "status" {
+		return fmt.Errorf("message_type must be 'summary' or 'status', got %v", e.MessageType)
+	}
+	return nil
+}
+
+func (r *RestoreProgressEntry) IsError() bool {
+	return r.MessageType == "error"
+}
+
+func (r *RestoreProgressEntry) IsSummary() bool {
+	return r.MessageType == "summary"
+}
+
+type ProgressEntryValidator interface {
+	Validate() error
+	IsError() bool
+	IsSummary() bool
+}
+
+// processProgressOutput handles common JSON output processing logic with proper type safety
+func processProgressOutput[T ProgressEntryValidator](
+	output io.Reader,
+	logger io.Writer,
+	callback func(T)) (T, error) {
+
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
 	nonJSONOutput := bytes.NewBuffer(nil)
+	var captureNonJSON io.Writer = nonJSONOutput
+	if logger != nil {
+		captureNonJSON = io.MultiWriter(nonJSONOutput, logger)
+	}
 
-	var summary *BackupProgressEntry
+	var summary *T
+	var nullT T
 
-	// remaining events are parsed as JSON
 	for scanner.Scan() {
-		var event BackupProgressEntry
-		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			nonJSONOutput.Write(scanner.Bytes())
-			if logger != nil {
-				logger.Write(scanner.Bytes())
-				logger.Write([]byte("\n"))
-			}
+		line := scanner.Bytes()
+		var event T
+
+		if err := json.Unmarshal(line, &event); err != nil {
+			captureNonJSON.Write(line)
+			captureNonJSON.Write([]byte("\n"))
 			continue
 		}
+
 		if err := event.Validate(); err != nil {
-			nonJSONOutput.Write(scanner.Bytes())
-			if logger != nil {
-				logger.Write(scanner.Bytes())
-				logger.Write([]byte("\n"))
-			}
+			captureNonJSON.Write(line)
+			captureNonJSON.Write([]byte("\n"))
 			continue
 		}
-		if event.MessageType == "error" && logger != nil {
-			logger.Write(scanner.Bytes())
-			logger.Write([]byte("\n"))
+
+		if event.IsError() && logger != nil {
+			captureNonJSON.Write(line)
+			captureNonJSON.Write([]byte("\n"))
 		}
+
 		if callback != nil {
-			callback(&event)
+			callback(event)
 		}
-		if event.MessageType == "summary" {
-			if logger != nil {
-				logger.Write(scanner.Bytes())
-				logger.Write([]byte("\n"))
-			}
-			summary = &event
+
+		if event.IsSummary() {
+			captureNonJSON.Write(line)
+			captureNonJSON.Write([]byte("\n"))
+			eventCopy := event // Make a copy to avoid issues with loop variable
+			summary = &eventCopy
 		}
 	}
+
 	if err := scanner.Err(); err != nil {
-		return summary, newErrorWithOutput(err, nonJSONOutput.String())
+		return nullT, newErrorWithOutput(err, nonJSONOutput.String())
 	}
+
 	if summary == nil {
-		return nil, newErrorWithOutput(errors.New("no summary event found"), nonJSONOutput.String())
+		return nullT, newErrorWithOutput(errors.New("no summary event found"), nonJSONOutput.String())
 	}
-	return summary, nil
+
+	return *summary, nil
 }
 
 type LsEntry struct {
@@ -246,80 +295,6 @@ func (r *ForgetResult) Validate() error {
 		}
 	}
 	return nil
-}
-
-type RestoreProgressEntry struct {
-	MessageType    string  `json:"message_type"` // "summary" or "status"
-	SecondsElapsed float64 `json:"seconds_elapsed"`
-	TotalBytes     int64   `json:"total_bytes"`
-	BytesRestored  int64   `json:"bytes_restored"`
-	TotalFiles     int64   `json:"total_files"`
-	FilesRestored  int64   `json:"files_restored"`
-	PercentDone    float64 `json:"percent_done"`
-}
-
-func (e *RestoreProgressEntry) Validate() error {
-	if e.MessageType != "summary" && e.MessageType != "status" {
-		return fmt.Errorf("message_type must be 'summary' or 'status', got %v", e.MessageType)
-	}
-	return nil
-}
-
-// readRestoreProgressEntries returns the summary event or an error if the command failed.
-func readRestoreProgressEntries(output io.Reader, logger io.Writer, callback func(event *RestoreProgressEntry)) (*RestoreProgressEntry, error) {
-	scanner := bufio.NewScanner(output)
-	scanner.Split(bufio.ScanLines)
-
-	nonJSONOutput := bytes.NewBuffer(nil)
-
-	var summary *RestoreProgressEntry
-
-	// remaining events are parsed as JSON
-	for scanner.Scan() {
-		var event RestoreProgressEntry
-		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			nonJSONOutput.Write(scanner.Bytes())
-			if logger != nil {
-				logger.Write(scanner.Bytes())
-				logger.Write([]byte("\n"))
-			}
-			continue
-		}
-		if err := event.Validate(); err != nil {
-			// skip it. Best effort parsing, restic will return with a non-zero exit code if it fails.
-			nonJSONOutput.Write(scanner.Bytes())
-			if logger != nil {
-				logger.Write(scanner.Bytes())
-				logger.Write([]byte("\n"))
-			}
-			continue
-		}
-
-		if event.MessageType == "error" && logger != nil {
-			logger.Write(scanner.Bytes())
-			logger.Write([]byte("\n"))
-		}
-		if callback != nil {
-			callback(&event)
-		}
-		if event.MessageType == "summary" {
-			if logger != nil {
-				logger.Write(scanner.Bytes())
-				logger.Write([]byte("\n"))
-			}
-			summary = &event
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return summary, newErrorWithOutput(err, nonJSONOutput.String())
-	}
-
-	if summary == nil {
-		return nil, newErrorWithOutput(errors.New("no summary event found"), nonJSONOutput.String())
-	}
-
-	return summary, nil
 }
 
 func ValidateSnapshotId(id string) error {
