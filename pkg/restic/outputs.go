@@ -226,24 +226,6 @@ func processProgressOutput[T ProgressEntryValidator](
 	return *summary, nil
 }
 
-// readBackupProgressEntries returns the summary event or an error if the command failed.
-func readBackupProgressEntries(output io.Reader, logger io.Writer, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
-	return processProgressOutput(
-		output,
-		logger,
-		callback,
-	)
-}
-
-// readRestoreProgressEntries returns the summary event or an error if the command failed.
-func readRestoreProgressEntries(output io.Reader, logger io.Writer, callback func(event *RestoreProgressEntry)) (*RestoreProgressEntry, error) {
-	return processProgressOutput(
-		output,
-		logger,
-		callback,
-	)
-}
-
 type LsEntry struct {
 	Name  string `json:"name"`
 	Type  string `json:"type"`

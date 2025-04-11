@@ -182,6 +182,56 @@ func (r *Repo) Config(ctx context.Context, opts ...GenericOption) (RepoConfig, e
 	return r.repoConfig, nil
 }
 
+type cmdRunnerWithProgress[T ProgressEntryValidator] struct {
+	repo       *Repo
+	callback   func(T)
+	failureErr error
+}
+
+func (cr *cmdRunnerWithProgress[T]) Run(ctx context.Context, args []string, opts ...GenericOption) (T, error) {
+	logger := LoggerFromContext(ctx)
+	cmdCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	cmdCtx = ContextWithLogger(cmdCtx, nil) // ensure no logger is used
+	cmd := cr.repo.commandWithContext(cmdCtx, args, opts...)
+
+	// Ensure the command is logged since we're overriding the logger
+	if logger != nil {
+		fmt.Fprintf(logger, "command: %q\n", cmd)
+	}
+
+	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
+	reader, writer := nio.Pipe(buf)
+	cr.repo.pipeCmdOutputToWriter(cmd, writer)
+
+	var readErr error
+	var summary T
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		result, err := processProgressOutput[T](reader, logger, cr.callback)
+		summary = result
+		if err != nil {
+			readErr = fmt.Errorf("processing command output: %w", err)
+		}
+	}()
+
+	cmdErr := cmd.Run()
+	writer.Close()
+	wg.Wait()
+
+	if cmdErr != nil || readErr != nil {
+		if cmdErr != nil {
+			cmdErr = cr.repo.handleExitError(cmdErr, cr.failureErr)
+		}
+		return summary, newCmdError(ctx, cmd, errors.Join(cmdErr, readErr))
+	}
+
+	return summary, nil
+}
+
 func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func(*BackupProgressEntry), opts ...GenericOption) (*BackupProgressEntry, error) {
 	for _, p := range paths {
 		if _, err := os.Stat(p); err != nil {
@@ -193,93 +243,24 @@ func (r *Repo) Backup(ctx context.Context, paths []string, progressCallback func
 	args = append(args, paths...)
 	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
 
-	result, err := r.runWithProgressTracking(ctx, args, readBackupProgressEntries, progressCallback, ErrBackupFailed, opts...)
-	if err != nil {
-		return result.(*BackupProgressEntry), err
+	cr := cmdRunnerWithProgress[*BackupProgressEntry]{
+		repo:       r,
+		callback:   progressCallback,
+		failureErr: ErrBackupFailed,
 	}
-	return result.(*BackupProgressEntry), nil
+	return cr.Run(ctx, args, opts...)
 }
 
 func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*RestoreProgressEntry), opts ...GenericOption) (*RestoreProgressEntry, error) {
 	opts = append(slices.Clone(opts), WithEnv("RESTIC_PROGRESS_FPS=2"))
 	args := []string{"restore", "--json", snapshot}
 
-	result, err := r.runWithProgressTracking(ctx, args, readRestoreProgressEntries, callback, ErrRestoreFailed, opts...)
-	if err != nil {
-		return result.(*RestoreProgressEntry), err
+	cr := cmdRunnerWithProgress[*RestoreProgressEntry]{
+		repo:       r,
+		callback:   callback,
+		failureErr: ErrRestoreFailed,
 	}
-	return result.(*RestoreProgressEntry), nil
-}
-
-// runWithProgressTracking runs a command that produces progress events and handles tracking
-func (r *Repo) runWithProgressTracking(
-	ctx context.Context,
-	args []string,
-	readProgressFn interface{},
-	callback interface{},
-	failureErr error,
-	opts ...GenericOption) (interface{}, error) {
-
-	logger := LoggerFromContext(ctx)
-	cmdCtx, cancel := context.WithCancel(ctx)
-	cmdCtx = ContextWithLogger(cmdCtx, nil) // ensure no logger is used
-	cmd := r.commandWithContext(cmdCtx, args, opts...)
-
-	// Ensure the command is logged since we're overriding the logger
-	if logger != nil {
-		fmt.Fprintf(logger, "command: %q\n", cmd)
-	}
-
-	buf := buffer.New(32 * 1024) // 32KB IO buffer for the realtime event parsing
-	reader, writer := nio.Pipe(buf)
-	r.pipeCmdOutputToWriter(cmd, writer)
-
-	var readErr error
-	var summary interface{}
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	switch typedReader := readProgressFn.(type) {
-	case func(io.Reader, io.Writer, func(*BackupProgressEntry)) (*BackupProgressEntry, error):
-		typedCallback, _ := callback.(func(*BackupProgressEntry))
-		go func() {
-			defer wg.Done()
-			defer cancel()
-			result, err := typedReader(reader, logger, typedCallback)
-			summary = result
-			if err != nil {
-				readErr = fmt.Errorf("processing command output: %w", err)
-			}
-		}()
-	case func(io.Reader, io.Writer, func(*RestoreProgressEntry)) (*RestoreProgressEntry, error):
-		typedCallback, _ := callback.(func(*RestoreProgressEntry))
-		go func() {
-			defer wg.Done()
-			defer cancel()
-			result, err := typedReader(reader, logger, typedCallback)
-			summary = result
-			if err != nil {
-				readErr = fmt.Errorf("processing command output: %w", err)
-			}
-		}()
-	default:
-		wg.Done()
-		cancel()
-		return nil, fmt.Errorf("unsupported progress reader type")
-	}
-
-	cmdErr := cmd.Run()
-	writer.Close()
-	wg.Wait()
-
-	if cmdErr != nil || readErr != nil {
-		if cmdErr != nil {
-			cmdErr = r.handleExitError(cmdErr, failureErr)
-		}
-		return summary, newCmdError(ctx, cmd, errors.Join(cmdErr, readErr))
-	}
-
-	return summary, nil
+	return cr.Run(ctx, args, opts...)
 }
 
 // handleExitError processes a command exit error and converts it to an appropriate error type
