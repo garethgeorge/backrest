@@ -125,6 +125,14 @@ func (b *BackupProgressEntry) Validate() error {
 	return nil
 }
 
+func (b *BackupProgressEntry) IsError() bool {
+	return b.MessageType == "error"
+}
+
+func (b *BackupProgressEntry) IsSummary() bool {
+	return b.MessageType == "summary"
+}
+
 type RestoreProgressEntry struct {
 	MessageType    string  `json:"message_type"` // "summary" or "status"
 	SecondsElapsed float64 `json:"seconds_elapsed"`
@@ -142,31 +150,18 @@ func (e *RestoreProgressEntry) Validate() error {
 	return nil
 }
 
-type ProgressEntryValidator interface {
-	Validate() error
-	IsError() bool
-	IsSummary() bool
-}
-
-var (
-	_ ProgressEntryValidator = (*BackupProgressEntry)(nil)
-	_ ProgressEntryValidator = (*RestoreProgressEntry)(nil)
-)
-
-func (b *BackupProgressEntry) IsError() bool {
-	return b.MessageType == "error"
-}
-
-func (b *BackupProgressEntry) IsSummary() bool {
-	return b.MessageType == "summary"
-}
-
 func (r *RestoreProgressEntry) IsError() bool {
 	return r.MessageType == "error"
 }
 
 func (r *RestoreProgressEntry) IsSummary() bool {
 	return r.MessageType == "summary"
+}
+
+type ProgressEntryValidator interface {
+	Validate() error
+	IsError() bool
+	IsSummary() bool
 }
 
 // processProgressOutput handles common JSON output processing logic with proper type safety
