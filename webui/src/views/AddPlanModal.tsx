@@ -619,7 +619,8 @@ const RetentionPolicyView = () => {
       // Larger sample size for schedules with a high retention count
       keepLastN * 2
     ));
-    const durations: number[] = [];
+    let min = Infinity;
+    let max = 0;
 
     for (const [index, firstDate] of dates.entries()) {
       const lastDate = dates[index + keepLastN];
@@ -628,14 +629,17 @@ const RetentionPolicyView = () => {
         break;
       }
       const duration = lastDate.valueOf() - firstDate.valueOf();
-      durations.push(duration);
+      if (duration < min) {
+        min = duration;
+      }
+      if (duration > max) {
+        max = duration;
+      }
     }
 
-    // Sort from least to greatest
-    durations.sort((a, b) => a - b);
     return {
-      min: durations[0],
-      max: durations[durations.length - 1],
+      min,
+      max,
     }
   };
 
