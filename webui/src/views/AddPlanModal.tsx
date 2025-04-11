@@ -778,7 +778,7 @@ const RetentionPolicyView = () => {
           required={cronIsSubHourly}
           rules={[
             {
-              validator: (_, value) => {
+              validator: async (_, value) => {
                 if (cronIsSubHourly && !(value > 1)) {
                   throw new Error("Specify a number greater than 1");
                 }
