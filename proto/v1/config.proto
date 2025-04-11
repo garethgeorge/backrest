@@ -108,6 +108,7 @@ message RetentionPolicy {
     int32 weekly = 3 [json_name="weekly"]; // keep the last n weekly snapshots.
     int32 monthly = 4 [json_name="monthly"]; // keep the last n monthly snapshots.
     int32 yearly = 5 [json_name="yearly"];  // keep the last n yearly snapshots.
+    string keep_within_duration = 6 [json_name="keepWithinDuration"]; // keep all snapshots within time duration.
   }
 }
 

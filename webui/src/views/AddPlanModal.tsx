@@ -55,6 +55,7 @@ const planDefaults = create(PlanSchema, {
         hourly: 24,
         daily: 30,
         monthly: 12,
+        keepWithinDuration: "24h",
       },
     },
   },
@@ -546,6 +547,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
 const RetentionPolicyView = () => {
   const form = Form.useFormInstance();
+  const schedule = Form.useWatch("schedule", { form }) as any;
   const retention = Form.useWatch("retention", { form, preserve: true }) as any;
 
   const determineMode = () => {
@@ -602,67 +604,92 @@ const RetentionPolicyView = () => {
     );
   } else if (mode === "policyTimeBucketed") {
     elem = (
-      <Row>
-        <Col span={11}>
+      <>
+        <Row>
+          <Col span={11}>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "yearly"]}
+              validateTrigger={["onChange", "onBlur"]}
+              initialValue={0}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Yearly</div>}
+                type="number"
+              />
+            </Form.Item>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "monthly"]}
+              initialValue={0}
+              validateTrigger={["onChange", "onBlur"]}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Monthly</div>}
+                type="number"
+              />
+            </Form.Item>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "weekly"]}
+              initialValue={0}
+              validateTrigger={["onChange", "onBlur"]}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Weekly</div>}
+                type="number"
+              />
+            </Form.Item>
+          </Col>
+          <Col span={11} offset={1}>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "daily"]}
+              validateTrigger={["onChange", "onBlur"]}
+              initialValue={0}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Daily</div>}
+                type="number"
+              />
+            </Form.Item>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "hourly"]}
+              validateTrigger={["onChange", "onBlur"]}
+              initialValue={0}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Hourly</div>}
+                type="number"
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+        {schedule?.cron && !/^\d+ /.test(schedule?.cron) && (
           <Form.Item
-            name={["retention", "policyTimeBucketed", "yearly"]}
-            validateTrigger={["onChange", "onBlur"]}
-            initialValue={0}
-            required={false}
+            name={["retention", "policyTimeBucketed", "keepWithinDuration"]}
+            label="Keep all snapshots within duration:"
+            initialValue={"24h"}
+            rules={[
+              {
+                pattern: /^(\d+y)?(\d+m)?(\d+d)?(\d+h)?$/,
+                message: <span>
+                  Must be in the format '1y2m3d4h'<br/>
+                  (1 year, 2 months, 3 days, 4 hours)<br/>
+                  e.g. 24h or 1y6m
+                </span>
+              },
+            ]}
+            required={true}
           >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Yearly</div>}
-              type="number"
+            <Input
+              placeholder="e.g. 7d12h"
+              style={{ width: "7em" }}
             />
           </Form.Item>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "monthly"]}
-            initialValue={0}
-            validateTrigger={["onChange", "onBlur"]}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Monthly</div>}
-              type="number"
-            />
-          </Form.Item>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "weekly"]}
-            initialValue={0}
-            validateTrigger={["onChange", "onBlur"]}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Weekly</div>}
-              type="number"
-            />
-          </Form.Item>
-        </Col>
-        <Col span={11} offset={1}>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "daily"]}
-            validateTrigger={["onChange", "onBlur"]}
-            initialValue={0}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Daily</div>}
-              type="number"
-            />
-          </Form.Item>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "hourly"]}
-            validateTrigger={["onChange", "onBlur"]}
-            initialValue={0}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Hourly</div>}
-              type="number"
-            />
-          </Form.Item>
-        </Col>
-      </Row>
+        )}
+      </>
     );
   }
 
@@ -684,6 +711,7 @@ const RetentionPolicyView = () => {
                     weekly: 4,
                     daily: 7,
                     hourly: 24,
+                    keepWithinDuration: "24h",
                   },
                 });
               } else {
