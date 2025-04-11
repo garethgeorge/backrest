@@ -6,7 +6,7 @@
       "type": "go",
       "request": "launch",
       "mode": "debug",
-      "program": "${workspaceFolder}/backrest.go",
+      "program": "${workspaceFolder}/cmd/backrest/backrest.go",
       "output": "__debug_bin",
       "preLaunchTask": "Build Webui"
     },

@@ -6,3 +6,4 @@ cmd/backrest/backrest
 *.exe
 .DS_Store
 .idea/
+.pnpm-store/

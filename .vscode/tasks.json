@@ -4,7 +4,7 @@
     {
       "label": "npm i",
       "type": "shell",
-      "command": "cd webui && npm i"
+      "command": "cd webui && npx --yes pnpm i"
     },
     {
       "label": "Parcel",
