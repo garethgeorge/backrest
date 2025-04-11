@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.8.1](https://github.com/garethgeorge/backrest/compare/v1.8.0...v1.8.1) (2025-04-11)
+
+
+### Bug Fixes
+
+* batch sqlite store IO to better handle large deletes in migrations ([d7c57a8](https://github.com/garethgeorge/backrest/commit/d7c57a850671f1ecc8efa11418a6fddeaf3d9d28))
+* correct bug in stats panel date format for "Total Size" stats ([658514c](https://github.com/garethgeorge/backrest/commit/658514ceb8f786af63d307ff045c238eaf8eeed5))
+* improve formatting of commands printed in logs for debugability ([f5c1bb9](https://github.com/garethgeorge/backrest/commit/f5c1bb90b583f644ed79ba4a27a64ad8b15fbe01))
+
 ## [1.8.0](https://github.com/garethgeorge/backrest/compare/v1.7.3...v1.8.0) (2025-04-02)
 
 
