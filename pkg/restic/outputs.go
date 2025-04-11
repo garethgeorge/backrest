@@ -179,10 +179,9 @@ func processProgressOutput[T ProgressEntryValidator](
 	scanner.Split(bufio.ScanLines)
 
 	nonJSONOutput := bytes.NewBuffer(nil)
-
-	var writeNonJSON io.Writer = nonJSONOutput
+	var captureNonJSON io.Writer = nonJSONOutput
 	if logger != nil {
-		writeNonJSON = io.MultiWriter(nonJSONOutput, logger)
+		captureNonJSON = io.MultiWriter(nonJSONOutput, logger)
 	}
 
 	var summary *T
@@ -193,20 +192,20 @@ func processProgressOutput[T ProgressEntryValidator](
 		var event T
 
 		if err := json.Unmarshal(line, &event); err != nil {
-			writeNonJSON.Write(line)
-			writeNonJSON.Write([]byte("\n"))
+			captureNonJSON.Write(line)
+			captureNonJSON.Write([]byte("\n"))
 			continue
 		}
 
 		if err := event.Validate(); err != nil {
-			writeNonJSON.Write(line)
-			writeNonJSON.Write([]byte("\n"))
+			captureNonJSON.Write(line)
+			captureNonJSON.Write([]byte("\n"))
 			continue
 		}
 
 		if event.IsError() && logger != nil {
-			writeNonJSON.Write(line)
-			writeNonJSON.Write([]byte("\n"))
+			captureNonJSON.Write(line)
+			captureNonJSON.Write([]byte("\n"))
 		}
 
 		if callback != nil {
@@ -214,8 +213,8 @@ func processProgressOutput[T ProgressEntryValidator](
 		}
 
 		if event.IsSummary() {
-			writeNonJSON.Write(line)
-			writeNonJSON.Write([]byte("\n"))
+			captureNonJSON.Write(line)
+			captureNonJSON.Write([]byte("\n"))
 			eventCopy := event // Make a copy to avoid issues with loop variable
 			summary = &eventCopy
 		}
@@ -234,7 +233,7 @@ func processProgressOutput[T ProgressEntryValidator](
 
 // readBackupProgressEntries returns the summary event or an error if the command failed.
 func readBackupProgressEntries(output io.Reader, logger io.Writer, callback func(event *BackupProgressEntry)) (*BackupProgressEntry, error) {
-	return processProgressOutput[*BackupProgressEntry](
+	return processProgressOutput(
 		output,
 		logger,
 		callback,
@@ -243,7 +242,7 @@ func readBackupProgressEntries(output io.Reader, logger io.Writer, callback func
 
 // readRestoreProgressEntries returns the summary event or an error if the command failed.
 func readRestoreProgressEntries(output io.Reader, logger io.Writer, callback func(event *RestoreProgressEntry)) (*RestoreProgressEntry, error) {
-	return processProgressOutput[*RestoreProgressEntry](
+	return processProgressOutput(
 		output,
 		logger,
 		callback,
