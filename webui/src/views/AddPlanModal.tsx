@@ -552,6 +552,12 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   );
 };
 
+const prettyTimeDuration = (duration: number) => {
+  const phrase = prettyMilliseconds(duration, prettyMsOptions);
+  // Add conjunction 1 day 16 hours [and] 38 minutes
+  return phrase.replace(/(\d+[^\d]+)(\d+[^\d]+)$/, "$1 and $2");
+};
+
 const RetentionPolicyView = () => {
   const [lastNDurationTooltipOpen, setLastNDurationTooltipOpen] = useState(false);
   const form = Form.useFormInstance();
@@ -648,19 +654,9 @@ const RetentionPolicyView = () => {
         For this schedule, {
           retention.policyTimeBucketed.keepLastN
         } snapshots represent a timespan {
-          min !== max ? "ranging from" : "of"
-        } {
-          prettyMilliseconds(min, prettyMsOptions)
-        }{
-          // Only show the range if the min and max are different
-          min !== max && (
-            <>
-              {' to '}
-              {
-                prettyMilliseconds(max, prettyMsOptions)
-              }
-            </>
-          )
+          min !== max 
+            ? `ranging from ${prettyTimeDuration(min)} to ${prettyTimeDuration(max)}`
+            : `of ${prettyTimeDuration(min)}`
         }.
       </>
     );
