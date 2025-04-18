@@ -13,7 +13,7 @@ import {
   Collapse,
   Checkbox,
 } from "antd";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import {
   ConfigSchema,
@@ -22,7 +22,7 @@ import {
   Schedule_Clock,
   type Plan,
 } from "../../gen/ts/v1/config_pb";
-import { CalculatorOutlined, MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
@@ -38,8 +38,8 @@ import {
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
 import { clone, create, equals, fromJson, toJson } from "@bufbuild/protobuf";
-import { parseCronExpression } from 'cron-schedule';
-import prettyMilliseconds, { Options as PrettyMsOptions } from 'pretty-ms';
+import { formatDuration } from '../lib/formatting';
+import { getMinimumCronDuration } from '../lib/cronutil';
 
 const planDefaults = create(PlanSchema, {
   schedule: {
@@ -60,13 +60,6 @@ const planDefaults = create(PlanSchema, {
     },
   },
 });
-
-// Options for displaying time durations in a human-readable format
-const prettyMsOptions: PrettyMsOptions = { 
-  hideSeconds: true,
-  // Time units as full words 
-  verbose: true 
-};
 
 export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -552,17 +545,36 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   );
 };
 
-const prettyTimeDuration = (duration: number) => {
-  const phrase = prettyMilliseconds(duration, prettyMsOptions);
-  // Add conjunction 1 day 16 hours [and] 38 minutes
-  return phrase.replace(/(\d+[^\d]+)(\d+[^\d]+)$/, "$1 and $2");
-};
-
 const RetentionPolicyView = () => {
-  const [lastNDurationTooltipOpen, setLastNDurationTooltipOpen] = useState(false);
   const form = Form.useFormInstance();
   const schedule = Form.useWatch("schedule", { form }) as any;
   const retention = Form.useWatch("retention", { form, preserve: true }) as any;
+  // If the first value in the cron expression (minutes) is not just a plain number (e.g. 30), the
+  // cron will hit more than once per hour (e.g. "*/15" "1,30" and "*").
+  const cronIsSubHourly = useMemo(() => schedule?.cron && !/^\d+ /.test(schedule.cron), [schedule?.cron]);
+  // Translates the number of snapshots retained to a retention duration for cron schedules.
+  const minRetention = useMemo(() => {
+    const keepLastN = retention?.policyTimeBucketed?.keepLastN;
+    if (!keepLastN) {
+      return null;
+    }
+    const msPerHour = 60 * 60 * 1000;
+    const msPerDay = 24 * msPerHour;
+    let duration = 0;
+    // Simple calculations for non-cron schedules
+    if (schedule?.maxFrequencyHours) {
+      duration = schedule.maxFrequencyHours * (keepLastN - 1) * msPerHour;
+    } else if (schedule?.maxFrequencyDays) {
+      duration = schedule.maxFrequencyDays * (keepLastN - 1) * msPerDay;
+    } else if (schedule?.cron && retention.policyTimeBucketed?.keepLastN) {
+      duration = getMinimumCronDuration(schedule.cron, retention.policyTimeBucketed?.keepLastN);
+    }
+    return duration
+      ? formatDuration(duration)
+        // Remove seconds and any 0 duration units (e.g. "1h0m" -> "1h")
+        .replace(/\d+s$|(?<=[dh])0[hm]/g, '')
+      : null;
+  }, [schedule?.cron, retention?.policyTimeBucketed?.keepLastN]);
 
   const determineMode = () => {
     if (!retention) {
@@ -575,100 +587,6 @@ const RetentionPolicyView = () => {
       return "policyTimeBucketed";
     }
   };
-
-  const hasBucketedKeepLastN = retention?.policyTimeBucketed?.keepLastN > 1;
-
-  // Calculates the average duration of the last N snapshots
-  const calculateBucketedLastNDuration = () => {
-    if (!hasBucketedKeepLastN) {
-      return { min: 0, max: 0 };
-    }
-    const msPerHour = 60 * 60 * 1000;
-    const msPerDay = 24 * msPerHour;
-    const { keepLastN } = retention.policyTimeBucketed;
-    // Simple calculations for non-cron schedules
-    if (schedule.maxFrequencyHours) {
-      const value = schedule.maxFrequencyHours * keepLastN * msPerHour;
-      return { min: value, max: value };
-    }
-    if (schedule.maxFrequencyDays) {
-      const value = schedule.maxFrequencyDays * keepLastN * msPerDay;
-      return { min: value, max: value };
-    }
-    if (!schedule.cron) {
-      return { min: 0, max: 0 };
-    }
-    const cron = parseCronExpression(schedule.cron);
-    const { minutes, hours, days, weekdays } = cron;
-    // The days and weekdays are additive in cron expressions, so we need to estimate the total
-    // number of days enabled per month.
-    const daysPerMonth = weekdays.length === 7 
-      // All weekdays are enabled so it's just the number of days enabled per month
-      ? days.length
-      : Math.floor(
-        // Estimated number of weekdays enabled per month
-        weekdays.length * 31 / 7 
-        // Plus the number of days enabled per month, reduced by the number of days that are also
-        // enabled as weekdays to avoid double counting
-        + days.length * (7 - weekdays.length) / 7
-      );
-    // Get a sufficient number of dates to calculate durations.
-    const dates = cron.getNextDates(Math.max(
-      // Larger sample size for schedules more tightly restricted by day and/or weekday
-      minutes.length * hours.length * (32 - daysPerMonth), 
-      // Larger sample size for schedules with a high retention count
-      keepLastN * 2
-    ));
-    let min = Infinity;
-    let max = 0;
-
-    for (const [index, firstDate] of dates.entries()) {
-      const lastDate = dates[index + keepLastN];
-      if (!lastDate) {
-        // Reached end of window size
-        break;
-      }
-      const duration = lastDate.valueOf() - firstDate.valueOf();
-      if (duration < min) {
-        min = duration;
-      }
-      if (duration > max) {
-        max = duration;
-      }
-    }
-
-    return {
-      min,
-      max,
-    }
-  };
-
-  // Calculates the duration only when the tooltip is open
-  const lastNDurationTooltipText = () => {
-    if (!hasBucketedKeepLastN) {
-      return null;
-    }
-    // If the tooltip is not open, do not calculate the duration
-    if (!lastNDurationTooltipOpen) {
-      return ' ';
-    }
-    const { min, max } = calculateBucketedLastNDuration();
-    return (
-      <>
-        For this schedule, {
-          retention.policyTimeBucketed.keepLastN
-        } snapshots represent a timespan {
-          min !== max 
-            ? `ranging from ${prettyTimeDuration(min)} to ${prettyTimeDuration(max)}`
-            : `of ${prettyTimeDuration(min)}`
-        }.
-      </>
-    );
-  }
-
-  // If the first value in the cron expression (minutes) is not just a plain number (e.g. 30), the
-  // cron will hit more than once per hour (e.g. "*/15" "1,30" and "*").
-  const cronIsSubHourly = schedule?.cron && !/^\d+ /.test(schedule.cron);
 
   const mode = determineMode();
 
@@ -790,22 +708,13 @@ const RetentionPolicyView = () => {
               message: "Your schedule runs more than once per hour; choose how many snapshots to keep before handing off to the retention policy.",
             },
           ]}
+          extra={minRetention && `
+            ${retention?.policyTimeBucketed?.keepLastN} snapshots represents an expected retention 
+            duration of at least ${minRetention}, but this may vary with manual backups or if 
+            intermittently online.
+          `}
         >
           <InputNumber
-            addonAfter={!schedule?.disabled && (
-              <Tooltip 
-                title={lastNDurationTooltipText()}
-                trigger={['click', 'hover']}
-                onOpenChange={setLastNDurationTooltipOpen}
-              >
-                <CalculatorOutlined 
-                  style={{ 
-                    fontSize: "1.5em",
-                    opacity: hasBucketedKeepLastN ? 1 : 0.5
-                  }} 
-                />
-              </Tooltip>
-            )}
             type="number"
             min={0}
             style={{ width: "7em" }}
