@@ -32,7 +32,7 @@
     "process": "^0.11.10",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-js-cron": "^5.0.1",
+    "react-js-cron": "^5.2.0",
     "react-router": "^6.28.0",
     "react-router-dom": "^6.28.0",
     "react-virtualized": "^9.22.5",
