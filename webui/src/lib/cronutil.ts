@@ -1,4 +1,4 @@
-import { parseCronExpression } from 'cron-schedule';
+import { converter } from 'react-js-cron';
 
 interface FindOptimalStartIndexConstraints {
   /** The number of forward values to consider when optimizing the start index */
@@ -80,8 +80,34 @@ const hasConsecutiveValues = (sortedValues: readonly number[]) => sortedValues.s
   (v, i) => i > 0 && v === sortedValues[i - 1] + 1,
 );
 
+// min/max range for each cron unit in the order returned by `converter.parseCronString`
+const rangeByUnit = [
+  [0, 59],
+  [0, 23],
+  [1, 31],
+  [1, 12],
+  [0, 6],
+];
+
+/** Parses a cron expression and returns the enabled values for each unit. */
+const parseCronExpression = (cronExpr: string) => {
+  const [ minutes, hours, days, months, weekdays ] = converter.parseCronString(cronExpr).map(
+    (value, unitIndex) => (value.length > 0
+      ? value
+      // `parseCronString` returns `*` as an empty array; swap with the full range of values
+      : Array.from(
+        { length: rangeByUnit[unitIndex][1] - rangeByUnit[unitIndex][0] + 1 }, 
+        (_, i) => rangeByUnit[unitIndex][0] + i
+      )
+    )
+  );
+  return { minutes, hours, days, months, weekdays };
+};
+
 /**
  * Calculates a rough minimum duration for the cron expression to run the specified number of times.
+ * 
+ * Months are ignored since backrest does not support scheduling by month.
  * @param cronExpr The cron expression to evaluate
  * @param targetInvocations The number of times the cron expression must run
  * @returns Minimal duration in milliseconds
