@@ -57,22 +57,32 @@ const findMinimalDurationStartIndex = (
   return minDurationIndex;
 };
 
+const monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
 /** 
- * Generates days that are enabled by the cron expression simplified to 31 days per month.
- * 
- * Yields increasing numbers representing any day enabled by either `days` or `weekdays`. The `days` 
- * list repeats every 31 days but since 31 is not divisible by 7 it can take a few months to get 
- * sufficient coverage relevant to these calculations.
-*/
+ * Generates days that are enabled by the cron expression.
+ *
+ * Yields increasing numbers representing any day enabled by either `days` or `weekdays`. The
+ * numbers represent an absolute count of days since the start of the schedule. Follows calendar
+ * months beginning in February.
+ */
 function* enabledCronDays(days: readonly number[], weekdays: readonly number[]) {
-  let day = 1;
+  let absoluteDay = 1;
+  let monthDay = 1;
+  let month = 1; // February
   const enabledDays = new Set(days.length === 31 && weekdays.length < 7 ? [] : days);
   const enabledWeekdays = new Set(weekdays.length === 7 ? [] : weekdays);
   while (true) {
-    if (enabledWeekdays.has(day % 7) || enabledDays.has((day - 1) % 31 + 1)) {
-      yield day;
+    if (monthDay > monthDays[month]) {
+      // Jump to the next month
+      monthDay = 1;
+      month = (month + 1) % 12;
     }
-    day++;
+    if (enabledWeekdays.has(absoluteDay % 7) || enabledDays.has(monthDay)) {
+      yield absoluteDay;
+    }
+    absoluteDay++;
+    monthDay++;
   }
 }
 
