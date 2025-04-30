@@ -100,8 +100,8 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	}
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
 
-	opIDLru, _ := lru.New[int64, int64](128)   // original ID -> local ID
-	flowIDLru, _ := lru.New[int64, int64](128) // original flow ID -> local flow ID
+	opIDLru, _ := lru.New[int64, int64](2048)   // original ID -> local ID
+	flowIDLru, _ := lru.New[int64, int64](2048) // original flow ID -> local flow ID
 
 	insertOrUpdate := func(op *v1.Operation) error {
 		op.OriginalId = op.Id
@@ -123,18 +123,38 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			}
 		}
 		if op.FlowId, ok = flowIDLru.Get(op.OriginalFlowId); !ok {
-			var flowOp *v1.Operation
-			if err := h.mgr.oplog.Query(oplog.Query{}.
-				SetOriginalFlowID(op.OriginalFlowId).
-				SetInstanceID(op.InstanceId), func(o *v1.Operation) error {
-				flowOp = o
-				return nil
-			}); err != nil {
-				return fmt.Errorf("mapping remote flow ID to local ID: %w", err)
+			tryFindFlowID := func(q oplog.Query) (int64, error) {
+				var flowOp *v1.Operation
+				if err := h.mgr.oplog.Query(q, func(o *v1.Operation) error {
+					flowOp = o
+					return nil
+				}); err != nil {
+					return 0, fmt.Errorf("mapping remote flow ID to local ID: %w", err)
+				}
+				if flowOp != nil {
+					return flowOp.FlowId, nil
+				}
+				return 0, nil
 			}
-			if flowOp != nil {
-				op.FlowId = flowOp.FlowId
-				flowIDLru.Add(op.OriginalFlowId, flowOp.FlowId)
+
+			var err error
+			var flowId int64
+			flowId, err = tryFindFlowID(oplog.Query{}.SetSnapshotID(op.SnapshotId))
+			if err != nil {
+				return err
+			}
+			if flowId == 0 {
+				flowId, err = tryFindFlowID(oplog.Query{}.
+					SetOriginalFlowID(op.OriginalFlowId).
+					SetInstanceID(op.InstanceId))
+				if err != nil {
+					return err
+				}
+			}
+
+			if flowId != 0 {
+				op.FlowId = flowId
+				flowIDLru.Add(op.OriginalFlowId, flowId)
 			}
 		}
 

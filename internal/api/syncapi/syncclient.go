@@ -34,7 +34,6 @@ type SyncClient struct {
 
 	// mutable properties
 	mu                      sync.Mutex
-	remoteConfigStore       RemoteConfigStore
 	connectionStatus        v1.SyncConnectionState
 	connectionStatusMessage string
 }
