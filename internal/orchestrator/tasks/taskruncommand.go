@@ -9,6 +9,8 @@ import (
 	"github.com/garethgeorge/backrest/internal/ioutil"
 )
 
+var DefaultCommandOutputSizeLimit uint64 = 2_000_000 // 2MB
+
 func NewOneoffRunCommandTask(repo *v1.Repo, planID string, flowID int64, at time.Time, command string) Task {
 	return &GenericOneoffTask{
 		OneoffTask: OneoffTask{
@@ -54,9 +56,13 @@ func runCommandHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunn
 		return fmt.Errorf("get logref writer: %w", err)
 	}
 	defer writer.Close()
-	sizeWriter := &ioutil.SizeTrackingWriter{Writer: writer}
+	sizeWriter := &ioutil.SizeLimitedWriter{
+		SizeTrackingWriter: ioutil.SizeTrackingWriter{Writer: writer},
+		Limit:              DefaultCommandOutputSizeLimit, // 2 MB max output size
+	}
 	defer func() {
-		runCmdOp.OutputSizeBytes = int64(sizeWriter.Size())
+		size := sizeWriter.Size()
+		runCmdOp.OutputSizeBytes = int64(size)
 	}()
 
 	runCmdOp.OutputLogref = id
