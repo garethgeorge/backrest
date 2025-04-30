@@ -2,6 +2,7 @@ package ioutil
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -100,4 +101,26 @@ func (w *SizeTrackingWriter) Write(p []byte) (n int, err error) {
 // The value is fundamentally racy only consistent if synchronized with the writer or closed.
 func (w *SizeTrackingWriter) Size() uint64 {
 	return w.size.Load()
+}
+
+type SizeLimitedWriter struct {
+	SizeTrackingWriter
+	Limit uint64
+}
+
+var _ io.Writer = &SizeLimitedWriter{}
+
+func (w *SizeLimitedWriter) Write(p []byte) (n int, err error) {
+	size := w.Size()
+	if size+uint64(len(p)) > w.Limit {
+		p = p[:w.Limit-size]
+		err = fmt.Errorf("size limit exceeded: %d bytes written, limit is %d bytes", size, w.Limit)
+	}
+
+	var e error
+	n, e = w.Writer.Write(p)
+	if e != nil {
+		err = e
+	}
+	return
 }

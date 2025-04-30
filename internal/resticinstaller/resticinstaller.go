@@ -145,7 +145,7 @@ func removeOldVersions(installDir string) {
 
 func installResticHelper(resticInstallPath string) {
 	if _, err := os.Stat(resticInstallPath); err == nil {
-		zap.S().Infof("replacing restic binary in data dir due to failed check: %w", err)
+		zap.S().Infof("replacing restic binary in data dir due to failed check: %v", err)
 		if err := os.Remove(resticInstallPath); err != nil {
 			zap.S().Errorf("failed to remove old restic binary %v: %v", resticInstallPath, err)
 		}
@@ -211,6 +211,7 @@ func tryFindOrInstall() (string, error) {
 
 		// Check again after acquiring the lock.
 		if err := assertResticVersion(resticInstallPath); err != nil {
+			zap.S().Errorf("could not verify version of binary %v: %v", resticInstallPath, err)
 			installResticHelper(resticInstallPath)
 		}
 	}
