@@ -60,16 +60,47 @@ export const formatDate = (time: number | string | Date) => {
   return isoStr.substring(0, 10);
 };
 
-export const formatDuration = (ms: number) => {
+export interface FormatDurationOptions {
+  minUnit?: "seconds" | "minutes" | "hours" | "days";
+  maxUnit?: "seconds" | "minutes" | "hours" | "days";
+}
+
+const durationUnits = ["seconds", "minutes", "hours", "days"];
+
+export const formatDuration = (ms: number, options?: FormatDurationOptions) => {
+  const minUnitIndex = durationUnits.indexOf(options?.minUnit || "seconds");
+  const maxUnitIndex = durationUnits.indexOf(options?.maxUnit || "hours");
+
   const seconds = Math.ceil(ms / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
-  if (hours === 0 && minutes === 0) {
-    return `${seconds % 60}s`;
-  } else if (hours === 0) {
-    return `${minutes}m${seconds % 60}s`;
+  const days = Math.floor(hours / 24);
+
+  let parts: string[] = [];
+
+  if (maxUnitIndex >= 3 && days > 0) {
+    parts.push(`${days}d`);
   }
-  return `${hours}h${minutes % 60}m${Math.floor(seconds % 60)}s`;
+  if (maxUnitIndex >= 2 && minUnitIndex <= 2) {
+    const h = maxUnitIndex === 2 ? hours : (hours % 24);
+    if (h > 0) {
+      parts.push(`${h}h`);
+    }
+  }
+  if (maxUnitIndex >= 1 && minUnitIndex <= 1) {
+    const m = maxUnitIndex === 1 ? minutes : (minutes % 60);
+    if (m > 0) {
+      parts.push(`${m}m`);
+    }
+  }
+  if (maxUnitIndex >= 0) {
+    const s = maxUnitIndex === 0 ? seconds : (seconds % 60);
+    if (s > 0 || parts.length === 0) {
+      parts.push(`${s}s`);
+    }
+  }
+
+  return parts.join("");
 };
 
 export const normalizeSnapshotId = (id: string) => {

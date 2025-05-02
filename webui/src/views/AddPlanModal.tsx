@@ -570,9 +570,7 @@ const RetentionPolicyView = () => {
       duration = getMinimumCronDuration(schedule.cron, retention.policyTimeBucketed?.keepLastN);
     }
     return duration
-      ? formatDuration(duration)
-        // Remove seconds and any 0 duration units (e.g. "1h0m" -> "1h")
-        .replace(/\d+s$|(?<=[dh])0[hm]/g, '')
+      ? formatDuration(duration, { maxUnit: "days", minUnit: "minutes" })
       : null;
   }, [schedule?.cron, retention?.policyTimeBucketed?.keepLastN]);
 
