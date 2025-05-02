@@ -60,12 +60,14 @@ export const formatDate = (time: number | string | Date) => {
   return isoStr.substring(0, 10);
 };
 
+const durationUnits = ["seconds", "minutes", "hours", "days"] as const;
+type DurationUnit = typeof durationUnits[number];
+
 export interface FormatDurationOptions {
-  minUnit?: "seconds" | "minutes" | "hours" | "days";
-  maxUnit?: "seconds" | "minutes" | "hours" | "days";
+  minUnit?: DurationUnit;
+  maxUnit?: DurationUnit;
 }
 
-const durationUnits = ["seconds", "minutes", "hours", "days"];
 
 export const formatDuration = (ms: number, options?: FormatDurationOptions) => {
   const minUnitIndex = durationUnits.indexOf(options?.minUnit || "seconds");
