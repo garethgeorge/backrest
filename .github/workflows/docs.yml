@@ -15,7 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Set up NodeJS
         uses: actions/setup-node@v2
