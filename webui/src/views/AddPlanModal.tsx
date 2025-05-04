@@ -572,7 +572,7 @@ const RetentionPolicyView = () => {
     return duration
       ? formatDuration(duration, { maxUnit: "days", minUnit: "minutes" })
       : null;
-  }, [schedule?.cron, retention?.policyTimeBucketed?.keepLastN]);
+  }, [schedule, retention?.policyTimeBucketed?.keepLastN]);
 
   const determineMode = () => {
     if (!retention) {
