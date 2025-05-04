@@ -706,16 +706,19 @@ const RetentionPolicyView = () => {
               message: "Your schedule runs more than once per hour; choose how many snapshots to keep before handing off to the retention policy.",
             },
           ]}
-          extra={minRetention && `
-            ${retention?.policyTimeBucketed?.keepLastN} snapshots represents an expected retention 
-            duration of at least ${minRetention}, but this may vary with manual backups or if 
-            intermittently online.
-          `}
         >
           <InputNumber
             type="number"
             min={0}
-            style={{ width: "7em" }}
+            addonAfter={minRetention 
+              ? (
+                <Tooltip title={`${retention?.policyTimeBucketed?.keepLastN} snapshots represents an expected retention duration of at least 
+                  ${minRetention}, but this may vary with manual backups or if intermittently online.`} >
+                  {minRetention}
+                </Tooltip>
+              ) 
+              : ' '
+            }
           />
         </Form.Item>
       </>
