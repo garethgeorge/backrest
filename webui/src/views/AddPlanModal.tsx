@@ -38,8 +38,8 @@ import {
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
 import { clone, create, equals, fromJson, toJson } from "@bufbuild/protobuf";
-import { formatDuration } from '../lib/formatting';
-import { getMinimumCronDuration } from '../lib/cronutil';
+import { formatDuration } from "../lib/formatting";
+import { getMinimumCronDuration } from "../lib/cronutil";
 
 const planDefaults = create(PlanSchema, {
   schedule: {
@@ -717,7 +717,7 @@ const RetentionPolicyView = () => {
                   {minRetention}
                 </Tooltip>
               ) 
-              : ' '
+              : " "
             }
           />
         </Form.Item>

@@ -1,4 +1,4 @@
-import { converter } from 'react-js-cron';
+import { converter } from "react-js-cron";
 
 interface FindOptimalStartIndexConstraints {
   /** The number of forward values to consider when optimizing the start index */
