@@ -22,7 +22,7 @@ import {
   Schedule_Clock,
   type Plan,
 } from "../../gen/ts/v1/config_pb";
-import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import { CalculatorOutlined, MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
@@ -710,14 +710,17 @@ const RetentionPolicyView = () => {
           <InputNumber
             type="number"
             min={0}
-            addonAfter={minRetention 
-              ? (
-                <Tooltip title={`${retention?.policyTimeBucketed?.keepLastN} snapshots represents an expected retention duration of at least 
-                  ${minRetention}, but this may vary with manual backups or if intermittently online.`} >
-                  {minRetention}
-                </Tooltip>
-              ) 
-              : " "
+            addonAfter={
+              <Tooltip title={minRetention
+                ? `${retention?.policyTimeBucketed?.keepLastN} snapshots represents an expected retention duration of at least 
+                ${minRetention}, but this may vary with manual backups or if intermittently online.`
+                : "Choose how many snapshots to retain, then use the calculator to see the expected duration they would cover."
+              }>
+                <CalculatorOutlined style={{ 
+                  padding: ".5em",
+                  margin: "0 -.5em"
+                }} />
+              </Tooltip>
             }
           />
         </Form.Item>
