@@ -605,6 +605,9 @@ const ForgetOperationDetails = ({
       if (val.yearly) {
         policyDesc.push(`Keep yearly for ${val.yearly} years`);
       }
+      if (val.keepLastN) {
+        policyDesc.push(`Keep latest ${val.keepLastN} snapshots regardless of age`);
+      }
     }
   }
 
