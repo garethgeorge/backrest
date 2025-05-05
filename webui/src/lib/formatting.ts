@@ -60,49 +60,43 @@ export const formatDate = (time: number | string | Date) => {
   return isoStr.substring(0, 10);
 };
 
-const durationUnits = ["seconds", "minutes", "hours", "days"] as const;
-type DurationUnit = typeof durationUnits[number];
+const durationSteps = [1000, 60, 60, 24, Number.MAX_VALUE];
+const durationFactors = [1, 1000, 60 * 1000, 60 * 60 * 1000, 24 * 60 * 60 * 1000];
+const shortDurationUnits = ["ms", "s", "m", "h", "d"];
+type DurationUnit = typeof shortDurationUnits[number];
 
 export interface FormatDurationOptions {
   minUnit?: DurationUnit;
   maxUnit?: DurationUnit;
 }
 
-
 export const formatDuration = (ms: number, options?: FormatDurationOptions) => {
-  const minUnitIndex = durationUnits.indexOf(options?.minUnit || "seconds");
-  const maxUnitIndex = durationUnits.indexOf(options?.maxUnit || "hours");
+  if (!ms && ms !== 0) return "";
 
-  const seconds = Math.ceil(ms / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
+  if (!options && ms < 60 * 1000) {
+    // If no options and less than a minute, show seconds
+    // Performance optimization
+    return `${Math.round(ms / 1000)}s`;
+  }
 
-  let parts: string[] = [];
+  const minUnitIndex = options?.minUnit ? shortDurationUnits.indexOf(options.minUnit) : 1; // Don't show ms by default
+  const maxUnitIndex = options?.maxUnit ? shortDurationUnits.indexOf(options.maxUnit) : shortDurationUnits.length - 1;
 
-  if (maxUnitIndex >= 3 && days > 0) {
-    parts.push(`${days}d`);
-  }
-  if (maxUnitIndex >= 2 && minUnitIndex <= 2) {
-    const h = maxUnitIndex === 2 ? hours : (hours % 24);
-    if (h > 0) {
-      parts.push(`${h}h`);
-    }
-  }
-  if (maxUnitIndex >= 1 && minUnitIndex <= 1) {
-    const m = maxUnitIndex === 1 ? minutes : (minutes % 60);
-    if (m > 0) {
-      parts.push(`${m}m`);
-    }
-  }
-  if (maxUnitIndex >= 0) {
-    const s = maxUnitIndex === 0 ? seconds : (seconds % 60);
-    if (s > 0 || parts.length === 0) {
-      parts.push(`${s}s`);
+  const absMs = Math.abs(ms);
+  let result = "";
+
+  for (let i = maxUnitIndex; i >= minUnitIndex; i--) {
+    const value = Math.floor(absMs / durationFactors[i]) % durationSteps[i];
+    if (value > 0) {
+      result += `${value}${shortDurationUnits[i]}`;
     }
   }
 
-  return parts.join("");
+  if (!result) {
+    result = `0${shortDurationUnits[minUnitIndex]}`;
+  }
+
+  return ms < 0 ? `-${result}` : result;
 };
 
 export const normalizeSnapshotId = (id: string) => {
