@@ -13,7 +13,7 @@ import {
   Collapse,
   Checkbox,
 } from "antd";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import {
   ConfigSchema,
@@ -21,9 +21,8 @@ import {
   RetentionPolicySchema,
   Schedule_Clock,
   type Plan,
-  type RetentionPolicy,
 } from "../../gen/ts/v1/config_pb";
-import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import { CalculatorOutlined, MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
@@ -39,6 +38,8 @@ import {
   ScheduleFormItem,
 } from "../components/ScheduleFormItem";
 import { clone, create, equals, fromJson, toJson } from "@bufbuild/protobuf";
+import { formatDuration } from "../lib/formatting";
+import { getMinimumCronDuration } from "../lib/cronutil";
 
 const planDefaults = create(PlanSchema, {
   schedule: {
@@ -546,7 +547,32 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
 const RetentionPolicyView = () => {
   const form = Form.useFormInstance();
+  const schedule = Form.useWatch("schedule", { form }) as any;
   const retention = Form.useWatch("retention", { form, preserve: true }) as any;
+  // If the first value in the cron expression (minutes) is not just a plain number (e.g. 30), the
+  // cron will hit more than once per hour (e.g. "*/15" "1,30" and "*").
+  const cronIsSubHourly = useMemo(() => schedule?.cron && !/^\d+ /.test(schedule.cron), [schedule?.cron]);
+  // Translates the number of snapshots retained to a retention duration for cron schedules.
+  const minRetention = useMemo(() => {
+    const keepLastN = retention?.policyTimeBucketed?.keepLastN;
+    if (!keepLastN) {
+      return null;
+    }
+    const msPerHour = 60 * 60 * 1000;
+    const msPerDay = 24 * msPerHour;
+    let duration = 0;
+    // Simple calculations for non-cron schedules
+    if (schedule?.maxFrequencyHours) {
+      duration = schedule.maxFrequencyHours * (keepLastN - 1) * msPerHour;
+    } else if (schedule?.maxFrequencyDays) {
+      duration = schedule.maxFrequencyDays * (keepLastN - 1) * msPerDay;
+    } else if (schedule?.cron && retention.policyTimeBucketed?.keepLastN) {
+      duration = getMinimumCronDuration(schedule.cron, retention.policyTimeBucketed?.keepLastN);
+    }
+    return duration
+      ? formatDuration(duration, { maxUnit: "days", minUnit: "minutes" })
+      : null;
+  }, [schedule, retention?.policyTimeBucketed?.keepLastN]);
 
   const determineMode = () => {
     if (!retention) {
@@ -602,67 +628,103 @@ const RetentionPolicyView = () => {
     );
   } else if (mode === "policyTimeBucketed") {
     elem = (
-      <Row>
-        <Col span={11}>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "yearly"]}
-            validateTrigger={["onChange", "onBlur"]}
-            initialValue={0}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Yearly</div>}
-              type="number"
-            />
-          </Form.Item>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "monthly"]}
-            initialValue={0}
-            validateTrigger={["onChange", "onBlur"]}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Monthly</div>}
-              type="number"
-            />
-          </Form.Item>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "weekly"]}
-            initialValue={0}
-            validateTrigger={["onChange", "onBlur"]}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Weekly</div>}
-              type="number"
-            />
-          </Form.Item>
-        </Col>
-        <Col span={11} offset={1}>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "daily"]}
-            validateTrigger={["onChange", "onBlur"]}
-            initialValue={0}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Daily</div>}
-              type="number"
-            />
-          </Form.Item>
-          <Form.Item
-            name={["retention", "policyTimeBucketed", "hourly"]}
-            validateTrigger={["onChange", "onBlur"]}
-            initialValue={0}
-            required={false}
-          >
-            <InputNumber
-              addonBefore={<div style={{ width: "5em" }}>Hourly</div>}
-              type="number"
-            />
-          </Form.Item>
-        </Col>
-      </Row>
+      <>
+        <Row>
+          <Col span={11}>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "yearly"]}
+              validateTrigger={["onChange", "onBlur"]}
+              initialValue={0}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Yearly</div>}
+                type="number"
+              />
+            </Form.Item>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "monthly"]}
+              initialValue={0}
+              validateTrigger={["onChange", "onBlur"]}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Monthly</div>}
+                type="number"
+              />
+            </Form.Item>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "weekly"]}
+              initialValue={0}
+              validateTrigger={["onChange", "onBlur"]}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Weekly</div>}
+                type="number"
+              />
+            </Form.Item>
+          </Col>
+          <Col span={11} offset={1}>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "daily"]}
+              validateTrigger={["onChange", "onBlur"]}
+              initialValue={0}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Daily</div>}
+                type="number"
+              />
+            </Form.Item>
+            <Form.Item
+              name={["retention", "policyTimeBucketed", "hourly"]}
+              validateTrigger={["onChange", "onBlur"]}
+              initialValue={0}
+              required={false}
+            >
+              <InputNumber
+                addonBefore={<div style={{ width: "5em" }}>Hourly</div>}
+                type="number"
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Form.Item
+          name={["retention", "policyTimeBucketed", "keepLastN"]}
+          label="Latest snapshots to keep regardless of age"
+          validateTrigger={["onChange", "onBlur"]}
+          initialValue={0}
+          required={cronIsSubHourly}
+          rules={[
+            {
+              validator: async (_, value) => {
+                if (cronIsSubHourly && !(value > 1)) {
+                  throw new Error("Specify a number greater than 1");
+                }
+              },
+              message: "Your schedule runs more than once per hour; choose how many snapshots to keep before handing off to the retention policy.",
+            },
+          ]}
+        >
+          <InputNumber
+            type="number"
+            min={0}
+            addonAfter={
+              <Tooltip title={minRetention
+                ? `${retention?.policyTimeBucketed?.keepLastN} snapshots represents an expected retention duration of at least 
+                ${minRetention}, but this may vary with manual backups or if intermittently online.`
+                : "Choose how many snapshots to retain, then use the calculator to see the expected duration they would cover."
+              }>
+                <CalculatorOutlined style={{ 
+                  padding: ".5em",
+                  margin: "0 -.5em"
+                }} />
+              </Tooltip>
+            }
+          />
+        </Form.Item>
+      </>
     );
   }
 

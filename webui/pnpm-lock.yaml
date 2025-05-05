@@ -66,8 +66,8 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
       react-js-cron:
-        specifier: ^5.0.1
-        version: 5.0.1(antd@5.22.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^5.2.0
+        version: 5.2.0(antd@5.22.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-router:
         specifier: ^6.28.0
         version: 6.28.0(react@18.3.1)
@@ -1584,8 +1584,8 @@ packages:
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
 
-  react-js-cron@5.0.1:
-    resolution: {integrity: sha512-qHUb/qWeMvXklGW6/hLtH9CjboRU7pu2hHxGGErUDTjHDOLn/b6CZHvVsx/e3ak+UObwf4Y0BHSQJzpn1JpvvA==}
+  react-js-cron@5.2.0:
+    resolution: {integrity: sha512-+Mxm3cS7qmIoAIz7NVY27jvsJKNZ4tx+H/nNtMUJW4DcKR7jUIL1GP0jOD79K5j86Dq8jvShKJMh30+c8bmVtA==}
     peerDependencies:
       antd: '>=5.8.0'
       react: '>=17.0.0'
@@ -3646,7 +3646,7 @@ snapshots:
 
   react-is@18.3.1: {}
 
-  react-js-cron@5.0.1(antd@5.22.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  react-js-cron@5.2.0(antd@5.22.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       antd: 5.22.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
