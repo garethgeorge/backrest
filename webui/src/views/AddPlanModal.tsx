@@ -22,7 +22,11 @@ import {
   Schedule_Clock,
   type Plan,
 } from "../../gen/ts/v1/config_pb";
-import { CalculatorOutlined, MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  CalculatorOutlined,
+  MinusCircleOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import { URIAutocomplete } from "../components/URIAutocomplete";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
@@ -551,7 +555,10 @@ const RetentionPolicyView = () => {
   const retention = Form.useWatch("retention", { form, preserve: true }) as any;
   // If the first value in the cron expression (minutes) is not just a plain number (e.g. 30), the
   // cron will hit more than once per hour (e.g. "*/15" "1,30" and "*").
-  const cronIsSubHourly = useMemo(() => schedule?.cron && !/^\d+ /.test(schedule.cron), [schedule?.cron]);
+  const cronIsSubHourly = useMemo(
+    () => schedule?.cron && !/^\d+ /.test(schedule.cron),
+    [schedule?.cron]
+  );
   // Translates the number of snapshots retained to a retention duration for cron schedules.
   const minRetention = useMemo(() => {
     const keepLastN = retention?.policyTimeBucketed?.keepLastN;
@@ -567,11 +574,12 @@ const RetentionPolicyView = () => {
     } else if (schedule?.maxFrequencyDays) {
       duration = schedule.maxFrequencyDays * (keepLastN - 1) * msPerDay;
     } else if (schedule?.cron && retention.policyTimeBucketed?.keepLastN) {
-      duration = getMinimumCronDuration(schedule.cron, retention.policyTimeBucketed?.keepLastN);
+      duration = getMinimumCronDuration(
+        schedule.cron,
+        retention.policyTimeBucketed?.keepLastN
+      );
     }
-    return duration
-      ? formatDuration(duration, { maxUnit: "days", minUnit: "minutes" })
-      : null;
+    return duration ? formatDuration(duration, { minUnit: "h" }) : null;
   }, [schedule, retention?.policyTimeBucketed?.keepLastN]);
 
   const determineMode = () => {
@@ -703,7 +711,8 @@ const RetentionPolicyView = () => {
                   throw new Error("Specify a number greater than 1");
                 }
               },
-              message: "Your schedule runs more than once per hour; choose how many snapshots to keep before handing off to the retention policy.",
+              message:
+                "Your schedule runs more than once per hour; choose how many snapshots to keep before handing off to the retention policy.",
             },
           ]}
         >
@@ -711,15 +720,20 @@ const RetentionPolicyView = () => {
             type="number"
             min={0}
             addonAfter={
-              <Tooltip title={minRetention
-                ? `${retention?.policyTimeBucketed?.keepLastN} snapshots represents an expected retention duration of at least 
+              <Tooltip
+                title={
+                  minRetention
+                    ? `${retention?.policyTimeBucketed?.keepLastN} snapshots represents an expected retention duration of at least 
                 ${minRetention}, but this may vary with manual backups or if intermittently online.`
-                : "Choose how many snapshots to retain, then use the calculator to see the expected duration they would cover."
-              }>
-                <CalculatorOutlined style={{ 
-                  padding: ".5em",
-                  margin: "0 -.5em"
-                }} />
+                    : "Choose how many snapshots to retain, then use the calculator to see the expected duration they would cover."
+                }
+              >
+                <CalculatorOutlined
+                  style={{
+                    padding: ".5em",
+                    margin: "0 -.5em",
+                  }}
+                />
               </Tooltip>
             }
           />
