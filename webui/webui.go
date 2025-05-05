@@ -2,10 +2,10 @@ package webui
 
 import (
 	"bytes"
+	"compress/gzip"
 	"crypto/md5"
 	"encoding/hex"
 	"io"
-	"io/fs"
 	"net/http"
 	"strings"
 	"sync"
@@ -38,8 +38,20 @@ func Handler() http.Handler {
 		f, err := content.Open(contentPrefix + r.URL.Path + ".gz")
 		if err == nil {
 			defer f.Close()
-			w.Header().Set("Content-Encoding", "gzip")
-			serveFile(f, w, r, r.URL.Path)
+			// Check if gzip encoding is supported
+			var fr io.Reader = f
+			if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+				gzr, err := gzip.NewReader(f)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				defer gzr.Close()
+				fr = gzr
+			} else {
+				w.Header().Set("Content-Encoding", "gzip")
+			}
+			serveFile(fr, w, r, r.URL.Path)
 			return
 		}
 
@@ -54,7 +66,7 @@ func Handler() http.Handler {
 	})
 }
 
-func serveFile(f fs.File, w http.ResponseWriter, r *http.Request, path string) {
+func serveFile(f io.Reader, w http.ResponseWriter, r *http.Request, path string) {
 	data, err := io.ReadAll(f)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
