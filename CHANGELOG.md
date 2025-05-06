@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.8.1](https://github.com/garethgeorge/backrest/compare/v1.8.0...v1.8.1) (2025-05-06)
+
+
+### Bug Fixes
+
+* --keep-last n param to mitigate loss of sub-hourly snapshots ([#741](https://github.com/garethgeorge/backrest/issues/741)) ([18354c8](https://github.com/garethgeorge/backrest/commit/18354c82692e43fbb56d1d155e50cbce4c981fae))
+* batch sqlite store IO to better handle large deletes in migrations ([d7c57a8](https://github.com/garethgeorge/backrest/commit/d7c57a850671f1ecc8efa11418a6fddeaf3d9d28))
+* correct bug in stats panel date format for "Total Size" stats ([658514c](https://github.com/garethgeorge/backrest/commit/658514ceb8f786af63d307ff045c238eaf8eeed5))
+* handle Accept-Encoding properly for compressed webui srcs ([7930b9c](https://github.com/garethgeorge/backrest/commit/7930b9c2d9bca61ccce73c5699f0ad134f005ffb))
+* improve formatting of commands printed in logs for debugability ([f5c1bb9](https://github.com/garethgeorge/backrest/commit/f5c1bb90b583f644ed79ba4a27a64ad8b15fbe01))
+* limit run command output to 2MB ([01d9c9f](https://github.com/garethgeorge/backrest/commit/01d9c9f3834e39c2de0a8ebc3b51e30d46afafd6))
+* rare repoPool initialization crash ([59614d8](https://github.com/garethgeorge/backrest/commit/59614d84b77d0616542170fecec90303d4b973ff))
+* reduce memory overhead when downloading restic updates ([715c7cc](https://github.com/garethgeorge/backrest/commit/715c7ccf130923bc001df55b322ae898219c1a00))
+* update restic install script to allow newer versions of restic if present in the path ([ceeaad4](https://github.com/garethgeorge/backrest/commit/ceeaad49891fe299b3cfb47be0aebfc81b5378fa))
+* use github.com/vearutop/statigz to embed webUI srcs and improve Accept-Encoding handling ([e8297b1](https://github.com/garethgeorge/backrest/commit/e8297b1ee55be5ec9823f39bc870fb5900643a1a))
+* use gitlfs to track image assets for docs ([153b43b](https://github.com/garethgeorge/backrest/commit/153b43be0a178d9886b746a72187e60ac8a73674))
+
 ## [1.8.0](https://github.com/garethgeorge/backrest/compare/v1.7.3...v1.8.0) (2025-04-02)
 
 
