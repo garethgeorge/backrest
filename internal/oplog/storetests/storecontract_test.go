@@ -7,7 +7,6 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/oplog/bboltstore"
 	"github.com/garethgeorge/backrest/internal/oplog/memstore"
 	"github.com/garethgeorge/backrest/internal/oplog/sqlitestore"
 	"github.com/google/go-cmp/cmp"
@@ -21,12 +20,6 @@ const (
 )
 
 func StoresForTest(t testing.TB) map[string]oplog.OpStore {
-	bboltstore, err := bboltstore.NewBboltStore(t.TempDir() + "/test.boltdb")
-	if err != nil {
-		t.Fatalf("error creating bbolt store: %s", err)
-	}
-	t.Cleanup(func() { bboltstore.Close() })
-
 	sqlitestoreinst, err := sqlitestore.NewSqliteStore(t.TempDir() + "/test.sqlite")
 	if err != nil {
 		t.Fatalf("error creating sqlite store: %s", err)
@@ -40,7 +33,6 @@ func StoresForTest(t testing.TB) map[string]oplog.OpStore {
 	t.Cleanup(func() { sqlitememstore.Close() })
 
 	return map[string]oplog.OpStore{
-		"bbolt":     bboltstore,
 		"memory":    memstore.NewMemStore(),
 		"sqlite":    sqlitestoreinst,
 		"sqlitemem": sqlitememstore,
@@ -751,10 +743,6 @@ func TestQueryMetadata(t *testing.T) {
 	t.Parallel()
 	for name, store := range StoresForTest(t) {
 		t.Run(name, func(t *testing.T) {
-			if name == "bbolt" {
-				t.Skip("bbolt does not support metadata")
-			}
-
 			log, err := oplog.NewOpLog(store)
 			if err != nil {
 				t.Fatalf("error creating oplog: %v", err)
