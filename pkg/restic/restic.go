@@ -53,12 +53,12 @@ func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...Ge
 	resolveOpts(opt, r.opts)
 	resolveOpts(opt, opts)
 
-	fullCmd := append([]string{r.cmd}, args...)
-
-	if len(opt.prefixCmd) > 0 {
-		fullCmd = append(slices.Clone(opt.prefixCmd), fullCmd...)
+	var fullCmd []string
+	fullCmd = append(fullCmd, opt.prefixCmd...)
+	if r.cmd != "" {
+		fullCmd = append(fullCmd, r.cmd)
 	}
-
+	fullCmd = append(fullCmd, args...)
 	fullCmd = append(fullCmd, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, fullCmd[0], fullCmd[1:]...)
