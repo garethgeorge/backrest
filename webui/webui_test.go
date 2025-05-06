@@ -38,9 +38,9 @@ func TestServeIndexNoGzip(t *testing.T) {
 
 	// Windows doesn't have the gzip binary, so we skip compression during the
 	// go:generate step on Windows
-	if runtime.GOOS != "windows" && rr.Header().Get("Content-Encoding") != "gzip" {
+	if runtime.GOOS != "windows" && rr.Header().Get("Content-Encoding") != "" {
 		t.Errorf("handler returned wrong content encoding: got %v want %v",
-			rr.Header().Get("Content-Encoding"), "gzip")
+			rr.Header().Get("Content-Encoding"), "")
 	}
 }
 
