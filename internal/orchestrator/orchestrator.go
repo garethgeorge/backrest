@@ -116,18 +116,22 @@ func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, log *oplog.
 			return nil, fmt.Errorf("delete incomplete operations: %w", err)
 		}
 
-		for _, repoId := range incompleteRepos {
-			repo, err := o.GetRepoOrchestrator(repoId)
-			if err != nil {
-				if errors.Is(err, ErrRepoNotFound) {
-					zap.L().Warn("repo not found for incomplete operation. Possibly just deleted.", zap.String("repo", repoId))
-				}
-				return nil, fmt.Errorf("get repo %q: %w", repoId, err)
-			}
+		if len(incompleteRepos) > 0 {
+			defer func() {
+				for _, repoId := range incompleteRepos {
+					repo, err := o.GetRepoOrchestrator(repoId)
+					if err != nil {
+						if errors.Is(err, ErrRepoNotFound) {
+							zap.L().Warn("repo not found for incomplete operation. Possibly just deleted.", zap.String("repo", repoId))
+						}
+						zap.L().Error("failed to unlock repo", zap.String("repo", repoId), zap.Error(err))
+					}
 
-			if err := repo.Unlock(context.Background()); err != nil {
-				zap.L().Error("failed to unlock repo", zap.String("repo", repoId), zap.Error(err))
-			}
+					if err := repo.Unlock(context.Background()); err != nil {
+						zap.L().Error("failed to unlock repo", zap.String("repo", repoId), zap.Error(err))
+					}
+				}
+			}()
 		}
 
 		zap.L().Info("scrubbed operation log for incomplete operations",

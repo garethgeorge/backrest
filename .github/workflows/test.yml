@@ -33,7 +33,8 @@ jobs:
       - name: Create Fake WebUI Sources
         run: |
           mkdir -p webui/dist
-          touch webui/dist/index.html.gz
+          # Create an empty gzip file for testing
+          gzip -c /dev/null > webui/dist/index.html.gz
 
       - name: Build
         run: go build ./...
