@@ -11,9 +11,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
-
-	"go.uber.org/zap"
 )
 
 // getURL downloads the given url and returns the response body as a string.
@@ -34,7 +33,6 @@ func getURL(url string) ([]byte, error) {
 
 // downloadFile downloads a file from the given url and saves it to the given path. The sha256 checksum of the file is returned on success.
 func downloadFile(url string, downloadPath string) (string, error) {
-	// Download ur as a file and save it to path
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
@@ -50,52 +48,50 @@ func downloadFile(url string, downloadPath string) (string, error) {
 		return "", fmt.Errorf("http GET %v: %v", url, resp.Status)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("read response body: %w", err)
+	var dst *os.File
+	if err := os.MkdirAll(filepath.Dir(downloadPath), 0755); err != nil {
+		return "", fmt.Errorf("create directory %v: %w", filepath.Dir(downloadPath), err)
 	}
-	hash := sha256.Sum256(body)
+	dst, err = os.Create(downloadPath)
+	if err != nil {
+		return "", fmt.Errorf("create file %v: %w", downloadPath, err)
+	}
+	defer dst.Close()
+
+	shasum := sha256.New()
+	reader := io.TeeReader(resp.Body, shasum)
 
 	if strings.HasSuffix(url, ".bz2") {
-		zap.S().Infof("decompressing bz2 archive (size=%v)...", len(body))
-		body, err = io.ReadAll(bzip2.NewReader(bytes.NewReader(body)))
-		if err != nil {
-			return "", fmt.Errorf("bz2 decompress body: %w", err)
+		bz2Reader := bzip2.NewReader(reader)
+		if _, err := io.Copy(dst, bz2Reader); err != nil {
+			return "", fmt.Errorf("copy bz2 response body to file %v: %w", downloadPath, err)
 		}
 	} else if strings.HasSuffix(url, ".zip") {
-		zap.S().Infof("decompressing zip archive (size=%v)...", len(body))
-
-		archive, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+		var bodyBytes []byte
+		if bodyBytes, err = io.ReadAll(reader); err != nil {
+			return "", fmt.Errorf("read response body: %w", err)
+		}
+		zipReader, err := zip.NewReader(bytes.NewReader(bodyBytes), int64(len(bodyBytes)))
 		if err != nil {
-			return "", fmt.Errorf("open zip archive: %w", err)
+			return "", fmt.Errorf("read zip archive: %w", err)
 		}
-
-		if len(archive.File) != 1 {
-			return "", fmt.Errorf("expected zip archive to contain exactly one file, got %v", len(archive.File))
+		if len(zipReader.File) != 1 {
+			return "", fmt.Errorf("expected zip archive to contain exactly one file, got %v", len(zipReader.File))
 		}
-		f, err := archive.File[0].Open()
+		f, err := zipReader.File[0].Open()
 		if err != nil {
-			return "", fmt.Errorf("open zip archive file %v: %w", archive.File[0].Name, err)
+			return "", fmt.Errorf("open zip archive file %v: %w", zipReader.File[0].Name, err)
 		}
-
-		body, err = io.ReadAll(f)
-		if err != nil {
-			return "", fmt.Errorf("read zip archive file %v: %w", archive.File[0].Name, err)
+		if _, err := io.Copy(dst, f); err != nil {
+			return "", fmt.Errorf("copy zip archive file %v to file %v: %w", zipReader.File[0].Name, downloadPath, err)
+		}
+		f.Close()
+	} else {
+		if _, err := io.Copy(dst, reader); err != nil {
+			return "", fmt.Errorf("copy response body to file %v: %w", downloadPath, err)
 		}
 	}
-
-	out, err := os.Create(downloadPath)
-	if err != nil {
-		return "", fmt.Errorf("create file %v: %w", downloadPath, err)
-	}
-	defer out.Close()
-	if err != nil {
-		return "", fmt.Errorf("create file %v: %w", downloadPath, err)
-	}
-	_, err = io.Copy(out, bytes.NewReader(body))
-	if err != nil {
-		return "", fmt.Errorf("copy response body to file %v: %w", downloadPath, err)
-	}
+	hash := shasum.Sum(nil)
 
 	return hex.EncodeToString(hash[:]), nil
 }
