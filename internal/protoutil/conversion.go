@@ -112,6 +112,7 @@ func RetentionPolicyFromProto(p *v1.RetentionPolicy) *restic.RetentionPolicy {
 			KeepWeekly:  int(p.PolicyTimeBucketed.Weekly),
 			KeepMonthly: int(p.PolicyTimeBucketed.Monthly),
 			KeepYearly:  int(p.PolicyTimeBucketed.Yearly),
+			KeepLastN:   int(p.PolicyTimeBucketed.KeepLastN),
 		}
 	case *v1.RetentionPolicy_PolicyKeepLastN:
 		return &restic.RetentionPolicy{
