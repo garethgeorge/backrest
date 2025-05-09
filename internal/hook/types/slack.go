@@ -20,24 +20,29 @@ func (slackHandler) Name() string {
 }
 
 func (slackHandler) Execute(ctx context.Context, cmd *v1.Hook, vars interface{}, runner tasks.TaskRunner, event v1.Hook_Condition) error {
+
 	payload, err := hookutil.RenderTemplateOrDefault(cmd.GetActionSlack().GetTemplate(), hookutil.DefaultTemplate, vars)
 	if err != nil {
 		return fmt.Errorf("template rendering: %w", err)
 	}
 
 	l := runner.Logger(ctx)
-	l.Sugar().Infof("Sending slack message to %s", cmd.GetActionSlack().GetWebhookUrl())
-	l.Debug("Sending slack message", zap.String("payload", payload))
 
-	type Message struct {
-		Text string `json:"text"`
+	var requestBytes []byte
+	if json.Valid([]byte(payload)) {
+		l.Sugar().Infof("Sending advanced slack message to %s", cmd.GetActionSlack().GetWebhookUrl())
+		l.Sugar().Debugf("Sending advanced slack message: %s", payload)
+		requestBytes = []byte(payload)
+	} else {
+		l.Sugar().Infof("Sending slack message to %s", cmd.GetActionSlack().GetWebhookUrl())
+		l.Debug("Sending slack message", zap.String("payload", payload))
+		request := struct {
+			Text string `json:"text"`
+		}{
+			Text: "Backrest Notification\n" + payload,
+		}
+		requestBytes, _ = json.Marshal(request)
 	}
-
-	request := Message{
-		Text: "Backrest Notification\n" + payload, // leading newline looks better in discord.
-	}
-
-	requestBytes, _ := json.Marshal(request)
 
 	body, err := hookutil.PostRequest(cmd.GetActionSlack().GetWebhookUrl(), "application/json", bytes.NewReader(requestBytes))
 	if err != nil {
