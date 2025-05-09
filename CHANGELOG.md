@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.2](https://github.com/garethgeorge/backrest/compare/v1.8.1...v1.8.2) (2025-05-09)
+
+
+### Bug Fixes
+
+* missing KeepLastN in scheduled retention policy ([#778](https://github.com/garethgeorge/backrest/issues/778)) ([1a9bed2](https://github.com/garethgeorge/backrest/commit/1a9bed21e2b543908dffb705d4a56d0a6b64c4fa))
+
 ## [1.8.1](https://github.com/garethgeorge/backrest/compare/v1.8.0...v1.8.1) (2025-05-06)
 
 
