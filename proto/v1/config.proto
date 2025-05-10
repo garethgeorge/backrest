@@ -45,6 +45,11 @@ message Multihost {
     // Known host only fields
     string instance_url = 2 [json_name="instanceUrl"]; // instance URL, required for a known host. Otherwise meaningless.
   }
+
+  message Identity {
+    PublicKey public_key = 1 [json_name="publicKey"]; // public key of the instance.
+    PrivateKey private_key = 2 [json_name="privateKey"]; // private key of the instance.
+  }
 }
 
 message Repo {

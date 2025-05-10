@@ -4,15 +4,16 @@ import v1 "github.com/garethgeorge/backrest/gen/go/v1"
 
 type Query struct {
 	// Filter by fields
-	OpIDs            []int64
-	PlanID           *string
-	RepoGUID         *string
-	DeprecatedRepoID *string // Deprecated: use RepoGUID instead
-	SnapshotID       *string
-	FlowID           *int64
-	InstanceID       *string
-	OriginalID       *int64
-	OriginalFlowID   *int64
+	OpIDs                 []int64
+	PlanID                *string
+	RepoGUID              *string
+	DeprecatedRepoID      *string // Deprecated: use RepoGUID instead
+	SnapshotID            *string
+	FlowID                *int64
+	InstanceID            *string
+	OriginalInstanceKeyid *string
+	OriginalID            *int64
+	OriginalFlowID        *int64
 
 	// Pagination
 	Limit    int
@@ -49,6 +50,11 @@ func (q Query) SetFlowID(flowID int64) Query {
 
 func (q Query) SetInstanceID(instanceID string) Query {
 	q.InstanceID = &instanceID
+	return q
+}
+
+func (q Query) SetOriginalInstanceGuid(instanceKeyid string) Query {
+	q.OriginalInstanceKeyid = &instanceKeyid
 	return q
 }
 

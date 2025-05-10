@@ -100,8 +100,8 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	}
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
 
-	opIDLru, _ := lru.New[int64, int64](128)   // original ID -> local ID
-	flowIDLru, _ := lru.New[int64, int64](128) // original flow ID -> local flow ID
+	opIDLru, _ := lru.New[int64, int64](1024)   // original ID -> local ID
+	flowIDLru, _ := lru.New[int64, int64](1024) // original flow ID -> local flow ID
 
 	insertOrUpdate := func(op *v1.Operation) error {
 		op.OriginalId = op.Id

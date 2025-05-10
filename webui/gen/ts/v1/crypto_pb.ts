@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1/crypto.proto.
  */
 export const file_v1_crypto: GenFile = /*@__PURE__*/
-  fileDesc("Cg92MS9jcnlwdG8ucHJvdG8SAnYxIkIKDVNpZ25lZE1lc3NhZ2USDQoFa2V5aWQYASABKAkSDwoHcGF5bG9hZBgCIAEoDBIRCglzaWduYXR1cmUYAyABKAwiIwoQRW5jcnlwdGVkTWVzc2FnZRIPCgdwYXlsb2FkGAEgASgMIjcKCVB1YmxpY0tleRINCgVrZXlpZBgBIAEoCRIbCgdlZDI1NTE5GAIgASgJUgplZDI1NTE5cHViIjkKClByaXZhdGVLZXkSDQoFa2V5aWQYASABKAkSHAoHZWQyNTUxORgCIAEoCVILZWQyNTUxOXByaXZCLFoqZ2l0aHViLmNvbS9nYXJldGhnZW9yZ2UvYmFja3Jlc3QvZ2VuL2dvL3YxYgZwcm90bzM");
+  fileDesc("Cg92MS9jcnlwdG8ucHJvdG8SAnYxIkIKDVNpZ25lZE1lc3NhZ2USDQoFa2V5aWQYASABKAkSDwoHcGF5bG9hZBgCIAEoDBIRCglzaWduYXR1cmUYAyABKAwiLgoJUHVibGljS2V5Eg0KBWtleWlkGAEgASgJEhIKCmVkMjU1MTlwdWIYAiABKAkiRAoKUHJpdmF0ZUtleRINCgVrZXlpZBgBIAEoCRITCgtlZDI1NTE5cHJpdhgCIAEoCRISCgplZDI1NTE5cHViGAMgASgJQixaKmdpdGh1Yi5jb20vZ2FyZXRoZ2VvcmdlL2JhY2tyZXN0L2dlbi9nby92MWIGcHJvdG8z");
 
 /**
  * @generated from message v1.SignedMessage
@@ -46,23 +46,6 @@ export const SignedMessageSchema: GenMessage<SignedMessage> = /*@__PURE__*/
   messageDesc(file_v1_crypto, 0);
 
 /**
- * @generated from message v1.EncryptedMessage
- */
-export type EncryptedMessage = Message<"v1.EncryptedMessage"> & {
-  /**
-   * @generated from field: bytes payload = 1;
-   */
-  payload: Uint8Array;
-};
-
-/**
- * Describes the message v1.EncryptedMessage.
- * Use `create(EncryptedMessageSchema)` to create a new message.
- */
-export const EncryptedMessageSchema: GenMessage<EncryptedMessage> = /*@__PURE__*/
-  messageDesc(file_v1_crypto, 1);
-
-/**
  * @generated from message v1.PublicKey
  */
 export type PublicKey = Message<"v1.PublicKey"> & {
@@ -74,11 +57,9 @@ export type PublicKey = Message<"v1.PublicKey"> & {
   keyid: string;
 
   /**
-   * base64 encoded public key
-   *
-   * @generated from field: string ed25519 = 2 [json_name = "ed25519pub"];
+   * @generated from field: string ed25519pub = 2;
    */
-  ed25519: string;
+  ed25519pub: string;
 };
 
 /**
@@ -86,25 +67,28 @@ export type PublicKey = Message<"v1.PublicKey"> & {
  * Use `create(PublicKeySchema)` to create a new message.
  */
 export const PublicKeySchema: GenMessage<PublicKey> = /*@__PURE__*/
-  messageDesc(file_v1_crypto, 2);
+  messageDesc(file_v1_crypto, 1);
 
 /**
  * @generated from message v1.PrivateKey
  */
 export type PrivateKey = Message<"v1.PrivateKey"> & {
   /**
-   * a unique identifier generated as the SHA256 of the public key.
+   * a unique identifier generated as the SHA256 of the public key
    *
    * @generated from field: string keyid = 1;
    */
   keyid: string;
 
   /**
-   * base64 encoded private key
-   *
-   * @generated from field: string ed25519 = 2 [json_name = "ed25519priv"];
+   * @generated from field: string ed25519priv = 2;
    */
-  ed25519: string;
+  ed25519priv: string;
+
+  /**
+   * @generated from field: string ed25519pub = 3;
+   */
+  ed25519pub: string;
 };
 
 /**
@@ -112,5 +96,5 @@ export type PrivateKey = Message<"v1.PrivateKey"> & {
  * Use `create(PrivateKeySchema)` to create a new message.
  */
 export const PrivateKeySchema: GenMessage<PrivateKey> = /*@__PURE__*/
-  messageDesc(file_v1_crypto, 3);
+  messageDesc(file_v1_crypto, 2);
 
