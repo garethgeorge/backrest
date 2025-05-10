@@ -122,19 +122,22 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
 
-	opIDLru, _ := lru.New[int64, int64](1024)   // original ID -> local ID
+	opIDLru, _ := lru.New[int64, int64](4096)   // original ID -> local ID
 	flowIDLru, _ := lru.New[int64, int64](1024) // original flow ID -> local flow ID
 
 	insertOrUpdate := func(op *v1.Operation) error {
 		op.OriginalInstanceKeyid = authorizedClientPeer.Keyid
 		op.OriginalId = op.Id
 		op.OriginalFlowId = op.FlowId
+		op.Id = 0
+		op.FlowId = 0
+
 		var ok bool
 		if op.Id, ok = opIDLru.Get(op.OriginalId); !ok {
 			var foundOp *v1.Operation
 			if err := h.mgr.oplog.Query(oplog.Query{}.
 				SetOriginalInstanceKeyid(op.OriginalInstanceKeyid).
-				SetInstanceID(op.InstanceId), func(o *v1.Operation) error {
+				SetOriginalID(op.OriginalId), func(o *v1.Operation) error {
 				foundOp = o
 				return nil
 			}); err != nil {
@@ -340,14 +343,14 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 				zap.L().Debug("syncserver received created operations", zap.Any("operations", event.CreatedOperations.GetOperations()))
 				for _, op := range event.CreatedOperations.GetOperations() {
 					if err := insertOrUpdate(op); err != nil {
-						return fmt.Errorf("action SendOperations: operation event create: %w", err)
+						return fmt.Errorf("action SendOperations: operation event create %+v: %w", op, err)
 					}
 				}
 			case *v1.OperationEvent_UpdatedOperations:
 				zap.L().Debug("syncserver received update operations", zap.Any("operations", event.UpdatedOperations.GetOperations()))
 				for _, op := range event.UpdatedOperations.GetOperations() {
 					if err := insertOrUpdate(op); err != nil {
-						return fmt.Errorf("action SendOperations: operation event update: %w", err)
+						return fmt.Errorf("action SendOperations: operation event update %+v: %w", op, err)
 					}
 				}
 			case *v1.OperationEvent_DeletedOperations:
