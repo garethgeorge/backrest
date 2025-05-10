@@ -39,8 +39,9 @@ type Repo struct {
 
 // NewRepo instantiates a new repository.
 func NewRepo(resticBin string, uri string, opts ...GenericOption) *Repo {
-	opts = append(opts, WithEnv("RESTIC_REPOSITORY="+uri))
-
+	envMap := envMapFromOptsAndGlobal(opts)
+	expandedURI := expandEnvFromMap(uri, envMap)
+	opts = append(opts, WithEnv("RESTIC_REPOSITORY="+expandedURI))
 	return &Repo{
 		cmd:  resticBin,
 		uri:  uri,
@@ -492,4 +493,86 @@ func WithPrefixCommand(args ...string) GenericOption {
 	return func(opts *GenericOpts) {
 		opts.prefixCmd = append(opts.prefixCmd, args...)
 	}
+}
+
+func expandEnvFromMap(s string, envMap map[string]string) string {
+	// Replace $VAR or ${VAR} with envMap[VAR] if present
+	var result strings.Builder
+	for i := 0; i < len(s); {
+		if s[i] == '$' {
+			if i+1 < len(s) && s[i+1] == '{' {
+				// ${VAR}
+				end := strings.IndexByte(s[i+2:], '}')
+				if end >= 0 {
+					varName := s[i+2 : i+2+end]
+					if val, ok := envMap[varName]; ok {
+						result.WriteString(val)
+					} else {
+						result.WriteString(s[i : i+3+end])
+					}
+					i += 3 + end
+					continue
+				}
+			} else {
+				// $VAR
+				j := i + 1
+				for j < len(s) && (s[j] == '_' || s[j] >= 'A' && s[j] <= 'Z' || s[j] >= 'a' && s[j] <= 'z' || s[j] >= '0' && s[j] <= '9') {
+					j++
+				}
+				if j > i+1 {
+					varName := s[i+1 : j]
+					if val, ok := envMap[varName]; ok {
+						result.WriteString(val)
+					} else {
+						result.WriteString(s[i:j])
+					}
+					i = j
+					continue
+				}
+			}
+		}
+		result.WriteByte(s[i])
+		i++
+	}
+	return result.String()
+}
+
+// Extract environment variables from opts (as a map)
+func envMapFromOpts(opts []GenericOption) map[string]string {
+	opt := &GenericOpts{}
+	resolveOpts(opt, opts)
+	envMap := make(map[string]string)
+	for _, env := range opt.extraEnv {
+		if eq := strings.Index(env, "="); eq > 0 {
+			key := env[:eq]
+			val := env[eq+1:]
+			envMap[key] = val
+		}
+	}
+	return envMap
+}
+
+// Merge opts env map with os.Environ, preferring opts values
+func mergeEnvWithOS(envMap map[string]string) map[string]string {
+	merged := make(map[string]string)
+	// Copy opts env first
+	for k, v := range envMap {
+		merged[k] = v
+	}
+	// Add os.Environ if not already present
+	for _, env := range os.Environ() {
+		if eq := strings.Index(env, "="); eq > 0 {
+			key := env[:eq]
+			if _, exists := merged[key]; !exists {
+				val := env[eq+1:]
+				merged[key] = val
+			}
+		}
+	}
+	return merged
+}
+
+func envMapFromOptsAndGlobal(opts []GenericOption) map[string]string {
+	envMap := envMapFromOpts(opts)
+	return mergeEnvWithOS(envMap)
 }
