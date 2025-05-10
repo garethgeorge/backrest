@@ -126,7 +126,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	stream := c.client.Sync(ctx)
 
 	localConfig := c.syncConfigSnapshot.config
-	identityKey := c.syncConfigSnapshot.identityKey
+	localIdentityKey := c.syncConfigSnapshot.identityKey
 
 	ctx, cancelWithError := context.WithCancelCause(ctx)
 	defer cancelWithError(nil)
@@ -149,7 +149,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 
 	// Broadcast initial packet containing the protocol version and instance ID.
 	// TODO: do this in a header instead of as a part of the stream.
-	handshakePacket, err := createHandshakePacket(c.localInstanceID, identityKey)
+	handshakePacket, err := createHandshakePacket(c.localInstanceID, localIdentityKey)
 	if err != nil {
 		return fmt.Errorf("create handshake packet: %w", err)
 	}
@@ -172,31 +172,22 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	c.l.Debug("sent handshake packet, now waiting for server handshake", zap.String("local_instance_id", c.localInstanceID), zap.String("host_instance_id", c.peer.InstanceId))
 
 	// Wait for the handshake packet from the server.
-
-	// Create a timer that cancels the context after 5 seconds.
-	// This is to prevent the client from blocking indefinitely if the server
-	// doesn't send a handshake packet.
 	serverInstanceID := ""
-	if msg, err := tryReceiveWithinDuration(ctx, receive, receiveError, 5*time.Second); err == nil {
-		handshake := msg.GetHandshake()
-		if handshake == nil {
-			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("expected handshake packet, got %+v", msg))
-		}
-
-		serverInstanceID = string(handshake.GetInstanceId().GetPayload())
-		if serverInstanceID == "" {
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("instance ID is required"))
-		}
-
-		if handshake.GetProtocolVersion() != SyncProtocolVersion {
-			return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("unsupported peer protocol version, got %d, expected %d", handshake.GetProtocolVersion(), SyncProtocolVersion))
-		}
-	} else {
+	handshakeMsg, err := tryReceiveWithinDuration(ctx, receive, receiveError, 5*time.Second)
+	if err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("read error before handshake packet: %v", err))
 	}
+	if _, err := verifyHandshakePacket(handshakeMsg); err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify handshake packet: %v", err))
+	}
+	serverInstanceID = string(handshakeMsg.GetHandshake().GetInstanceId().GetPayload())
 
+	// Verify the peer's instance ID is what we expect (configured locally) and that the key ID matches the trusted key.
 	if serverInstanceID != c.peer.InstanceId {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("server instance ID %q does not match expected peer instance ID %q", serverInstanceID, c.peer.InstanceId))
+	}
+	if handshakeMsg.GetHandshake().GetPublicKey().GetKeyid() != c.peer.Keyid {
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("server public key ID %q does not expected peer key ID %q", handshakeMsg.GetHandshake().GetPublicKey().GetKeyid(), c.peer.Keyid))
 	}
 
 	// haveRunSync tracks which repo GUIDs we've initiated a sync for with the server.

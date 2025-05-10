@@ -72,16 +72,15 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 	// Try to read the handshake packet from the client.
 	// TODO: perform this handshake in a header as a pre-flight before opening the stream.
-	var handshake *v1.SyncStreamItem_SyncActionHandshake
-	if msg, err := tryReceiveWithinDuration(ctx, receive, receiveError, 5*time.Second); err == nil {
-		h := msg.GetHandshake()
-		if h == nil {
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("handshake packet must be sent first"))
-		}
-		handshake = h
-	} else {
+	handshakeMsg, err := tryReceiveWithinDuration(ctx, receive, receiveError, 5*time.Second)
+	if err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("handshake packet not received: %w", err))
 	}
+	handshake := handshakeMsg.GetHandshake()
+	if _, err := verifyHandshakePacket(handshakeMsg); err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify handshake packet: %w", err))
+	}
+
 	clientInstanceID := string(handshake.GetInstanceId().Payload)
 	clientKeyID := handshake.GetPublicKey().GetKeyid()
 	if clientInstanceID == "" {
@@ -120,7 +119,6 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	// 3. start communicating.
 
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
-
 	opIDLru, _ := lru.New[int64, int64](4096)   // original ID -> local ID
 	flowIDLru, _ := lru.New[int64, int64](1024) // original flow ID -> local flow ID
 

@@ -6,7 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -42,7 +42,7 @@ func NewPublicKey(pubkey *v1.PublicKey) (*PublicKey, error) {
 	}
 
 	if derived := deriveKeyId(ecdsaPubKey); derived != pubkey.Keyid {
-		return nil, fmt.Errorf("public key id does not match: %s != %s", derived, pubkey.Keyid)
+		return nil, fmt.Errorf("public key_id provided does not match the derived key: %s != %s", derived, pubkey.Keyid)
 	}
 
 	return &PublicKey{
@@ -147,12 +147,5 @@ func deriveKeyId(key *ecdsa.PublicKey) string {
 	shasum := sha256.New()
 	shasum.Write(key.X.Bytes())
 	shasum.Write(key.Y.Bytes())
-	return "ecdsa" + hex.EncodeToString(shasum.Sum(nil))
-}
-
-func PrivateKeyToPublicKey(privkey *v1.PrivateKey) *v1.PublicKey {
-	return &v1.PublicKey{
-		Keyid:      privkey.Keyid,
-		Ed25519Pub: privkey.Ed25519Pub,
-	}
+	return "ecdsa." + base64.RawURLEncoding.EncodeToString(shasum.Sum(nil))
 }
