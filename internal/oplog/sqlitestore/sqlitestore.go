@@ -296,7 +296,7 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 
 	var found bool
 	if err := sqlitex.Execute(conn, "SELECT ogid FROM operation_groups WHERE instance_id = ? AND original_instance_keyid = ? AND repo_id = ? AND plan_id = ? AND repo_guid = ? LIMIT 1", &sqlitex.ExecOptions{
-		Args: []any{op.InstanceId, op.OriginalInstanceGuid, op.RepoId, op.PlanId, op.RepoGuid, op.OriginalInstanceGuid},
+		Args: []any{op.InstanceId, op.OriginalInstanceKeyid, op.RepoId, op.PlanId, op.RepoGuid},
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			ogid = stmt.ColumnInt64(0)
 			found = true
@@ -308,7 +308,7 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 
 	if !found {
 		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (instance_id, original_instance_keyid, repo_id, plan_id, repo_guid) VALUES (?, ?, ?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
-			Args: []any{op.InstanceId, op.OriginalInstanceGuid, op.RepoId, op.PlanId, op.RepoGuid},
+			Args: []any{op.InstanceId, op.OriginalInstanceKeyid, op.RepoId, op.PlanId, op.RepoGuid},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				ogid = stmt.ColumnInt64(0)
 				return nil

@@ -34,21 +34,17 @@ message Config {
 }
 
 message Multihost {
-  repeated Peer known_hosts = 1 [json_name="knownHosts"];
-  repeated Peer authorized_clients = 2 [json_name="authorizedClients"];
+  PrivateKey identity = 1;
+  repeated Peer known_hosts = 2 [json_name="knownHosts"];
+  repeated Peer authorized_clients = 3 [json_name="authorizedClients"];
 
   message Peer {
-    string instance_id = 1 [json_name="instanceId"]; // instance ID of the peer.
+    string name = 1 [json_name="name"]; // a human readable name for the peer, typically the same as its instance ID.
     PublicKey public_key = 3 [json_name="publicKey"]; // public key of the peer. If changed, the peer must re-verify the public key.
     bool public_key_verified = 4 [json_name="publicKeyVerified"]; // whether the public key is verified. This must be set for a host to authenticate a client. Clients implicitly validate the first key they see on initial connection.
 
     // Known host only fields
     string instance_url = 2 [json_name="instanceUrl"]; // instance URL, required for a known host. Otherwise meaningless.
-  }
-
-  message Identity {
-    PublicKey public_key = 1 [json_name="publicKey"]; // public key of the instance.
-    PrivateKey private_key = 2 [json_name="privateKey"]; // private key of the instance.
   }
 }
 

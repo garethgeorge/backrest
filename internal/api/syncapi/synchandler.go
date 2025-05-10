@@ -98,19 +98,27 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	} else {
 		authorizedClientPeer = initialConfig.Multihost.AuthorizedClients[authorizedClientPeerIdx]
 	}
+
+	if authorizedClientPeer.GetPublicKey().GetKeyid() == "" {
+		return errors.New("authorized client peer must have a configured keyid")
+	}
+
+	// TODO: implement key handshake and verification
+
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
 
 	opIDLru, _ := lru.New[int64, int64](1024)   // original ID -> local ID
 	flowIDLru, _ := lru.New[int64, int64](1024) // original flow ID -> local flow ID
 
 	insertOrUpdate := func(op *v1.Operation) error {
+		op.OriginalInstanceKeyid = authorizedClientPeer.GetPublicKey().GetKeyid()
 		op.OriginalId = op.Id
 		op.OriginalFlowId = op.FlowId
 		var ok bool
 		if op.Id, ok = opIDLru.Get(op.OriginalId); !ok {
 			var foundOp *v1.Operation
 			if err := h.mgr.oplog.Query(oplog.Query{}.
-				SetOriginalID(op.OriginalId).
+				SetOriginalInstanceKeyid(op.OriginalInstanceKeyid).
 				SetInstanceID(op.InstanceId), func(o *v1.Operation) error {
 				foundOp = o
 				return nil
@@ -125,8 +133,8 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		if op.FlowId, ok = flowIDLru.Get(op.OriginalFlowId); !ok {
 			var flowOp *v1.Operation
 			if err := h.mgr.oplog.Query(oplog.Query{}.
-				SetOriginalFlowID(op.OriginalFlowId).
-				SetInstanceID(op.InstanceId), func(o *v1.Operation) error {
+				SetOriginalInstanceKeyid(op.OriginalInstanceKeyid).
+				SetOriginalFlowID(op.OriginalFlowId), func(o *v1.Operation) error {
 				flowOp = o
 				return nil
 			}); err != nil {

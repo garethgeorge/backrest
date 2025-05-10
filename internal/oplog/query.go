@@ -53,7 +53,7 @@ func (q Query) SetInstanceID(instanceID string) Query {
 	return q
 }
 
-func (q Query) SetOriginalInstanceGuid(instanceKeyid string) Query {
+func (q Query) SetOriginalInstanceKeyid(instanceKeyid string) Query {
 	q.OriginalInstanceKeyid = &instanceKeyid
 	return q
 }

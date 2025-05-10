@@ -8,6 +8,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config/migrations"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"go.uber.org/zap"
 )
 
@@ -78,6 +79,11 @@ type ConfigStore interface {
 }
 
 func NewDefaultConfig() *v1.Config {
+	identity, err := cryptoutil.GeneratePrivateKey()
+	if err != nil {
+		zap.S().Fatalf("failed to generate cryptographic identity: %v", err)
+	}
+
 	return &v1.Config{
 		Version:  migrations.CurrentVersion,
 		Instance: "",
@@ -85,6 +91,9 @@ func NewDefaultConfig() *v1.Config {
 		Plans:    []*v1.Plan{},
 		Auth: &v1.Auth{
 			Disabled: true,
+		},
+		Multihost: &v1.Multihost{
+			Identity: identity,
 		},
 	}
 }
