@@ -8,6 +8,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config/validationutil"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
@@ -186,6 +187,14 @@ func validateMultihost(config *v1.Config) (err error) {
 		return
 	}
 
+	if multihost.GetIdentity().GetKeyid() == "" {
+		return errors.New("identity keyid is required")
+	}
+
+	if _, err := cryptoutil.NewPrivateKey(multihost.GetIdentity()); err != nil {
+		return fmt.Errorf("verify private key: %w", err)
+	}
+
 	for _, peer := range multihost.GetAuthorizedClients() {
 		if e := validatePeer(peer, false); e != nil {
 			err = multierror.Append(err, fmt.Errorf("authorized client %q: %w", peer.GetInstanceId(), e))
@@ -206,17 +215,17 @@ func validatePeer(peer *v1.Multihost_Peer, isKnownHost bool) error {
 		return fmt.Errorf("id %q invalid: %w", peer.InstanceId, e)
 	}
 
+	if peer.GetKeyid() == "" {
+		return errors.New("keyid must be specified")
+	}
+
 	if isKnownHost {
 		if peer.InstanceUrl == "" {
 			return errors.New("instance URL is required for known hosts")
 		}
-	} else {
-		if peer.GetPublicKey().GetKeyid() == "" {
-			return errors.New("public key id is required for authorized clients")
-		}
 	}
 
-	if peer.PublicKeyVerified && peer.GetPublicKey().GetKeyid() == "" {
+	if peer.KeyidVerified && peer.GetKeyid() == "" {
 		return errors.New("public key cannot be marked as verified if it is unset, the keyid must be specified at a minimum")
 	}
 

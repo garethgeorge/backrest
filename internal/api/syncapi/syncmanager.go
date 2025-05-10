@@ -115,9 +115,11 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 func (m *SyncManager) runSyncWithPeerInternal(ctx context.Context, config *v1.Config, knownHostPeer *v1.Multihost_Peer) error {
 	if config.Instance == "" {
 		return errors.New("local instance must set instance name before peersync can be enabled")
+	} else if config.Multihost == nil {
+		return errors.New("multihost config must be set before peersync can be enabled")
 	}
 
-	newClient, err := NewSyncClient(m, config.Instance, knownHostPeer, m.oplog)
+	newClient, err := NewSyncClient(m, config.Instance, config.Multihost, knownHostPeer, m.oplog)
 	if err != nil {
 		return fmt.Errorf("creating sync client: %w", err)
 	}

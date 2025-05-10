@@ -73,6 +73,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	// Try to read the handshake packet from the client.
 	// TODO: perform this handshake in a header as a pre-flight before opening the stream.
 	clientInstanceID := ""
+	keyID := ""
 	if msg, ok := <-receive; ok {
 		handshake := msg.GetHandshake()
 		if handshake == nil {
@@ -82,6 +83,11 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		clientInstanceID = string(handshake.GetInstanceId().GetPayload())
 		if clientInstanceID == "" {
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("instance ID is required"))
+		}
+
+		keyID = handshake.GetPublicKey().GetKeyid()
+		if keyID == "" {
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("key ID is required"))
 		}
 	} else {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("no packets received"))
@@ -99,7 +105,10 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		authorizedClientPeer = initialConfig.Multihost.AuthorizedClients[authorizedClientPeerIdx]
 	}
 
-	if authorizedClientPeer.Keyid == "" {
+	// Logic to check the key. The keyid must match the configured key ID, must be non-empty, and must be verified.
+	if authorizedClientPeer.Keyid != keyID {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("key ID mismatch"))
+	} else if authorizedClientPeer.Keyid == "" {
 		return errors.New("keyid must be configured for the authorized client")
 	} else if !authorizedClientPeer.KeyidVerified {
 		return errors.New("authorized keyid must be verified prior to establishing connection")

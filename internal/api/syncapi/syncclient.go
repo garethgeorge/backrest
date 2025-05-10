@@ -16,6 +16,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
@@ -24,13 +25,14 @@ import (
 )
 
 type SyncClient struct {
-	mgr             *SyncManager
-	localInstanceID string
-	peer            *v1.Multihost_Peer
-	oplog           *oplog.OpLog
-	client          v1connect.BackrestSyncServiceClient
-	reconnectDelay  time.Duration
-	l               *zap.Logger
+	mgr                  *SyncManager
+	localInstanceID      string
+	localMultihostConfig *v1.Multihost
+	peer                 *v1.Multihost_Peer
+	oplog                *oplog.OpLog
+	client               v1connect.BackrestSyncServiceClient
+	reconnectDelay       time.Duration
+	l                    *zap.Logger
 
 	// mutable properties
 	mu                      sync.Mutex
@@ -52,7 +54,7 @@ func newInsecureClient() *http.Client {
 	}
 }
 
-func NewSyncClient(mgr *SyncManager, localInstanceID string, peer *v1.Multihost_Peer, oplog *oplog.OpLog) (*SyncClient, error) {
+func NewSyncClient(mgr *SyncManager, localInstanceID string, localMultihostConfig *v1.Multihost, peer *v1.Multihost_Peer, oplog *oplog.OpLog) (*SyncClient, error) {
 	if peer.GetInstanceUrl() == "" {
 		return nil, errors.New("peer instance URL is required")
 	}
@@ -63,13 +65,14 @@ func NewSyncClient(mgr *SyncManager, localInstanceID string, peer *v1.Multihost_
 	)
 
 	c := &SyncClient{
-		mgr:             mgr,
-		localInstanceID: localInstanceID,
-		peer:            peer,
-		reconnectDelay:  mgr.syncClientRetryDelay,
-		client:          client,
-		oplog:           oplog,
-		l:               zap.L().Named(fmt.Sprintf("syncclient for %q", peer.GetInstanceId())),
+		mgr:                  mgr,
+		localInstanceID:      localInstanceID,
+		localMultihostConfig: localMultihostConfig,
+		peer:                 peer,
+		reconnectDelay:       mgr.syncClientRetryDelay,
+		client:               client,
+		oplog:                oplog,
+		l:                    zap.L().Named(fmt.Sprintf("syncclient for %q", peer.GetInstanceId())),
 	}
 	c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED, "starting up")
 	return c, nil
@@ -146,6 +149,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					Signature: []byte("TOOD: inject a valid signature"),
 					Keyid:     "TODO: inject a valid key ID",
 				},
+				PublicKey: cryptoutil.PrivateKeyToPublicKey(c.localMultihostConfig.Identity),
 			},
 		},
 	}); err != nil {
@@ -291,8 +295,9 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				}
 
 				diffSel := &v1.OpSelector{
-					InstanceId: proto.String(c.localInstanceID),
-					RepoGuid:   proto.String(repo.GetGuid()),
+					InstanceId:            proto.String(c.localInstanceID),
+					OriginalInstanceKeyid: proto.String(c.localMultihostConfig.Identity.GetKeyid()),
+					RepoGuid:              proto.String(repo.GetGuid()),
 				}
 
 				diffQuery, err := protoutil.OpSelectorToQuery(diffSel)

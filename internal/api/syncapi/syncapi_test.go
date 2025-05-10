@@ -290,25 +290,28 @@ func TestSimpleOperationSync(t *testing.T) {
 	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetInstanceID(defaultClientID).SetRepoGUID(defaultRepoGUID),
 		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 			{
-				Id:             3, // b/c of the already inserted host ops the sync'd ops start at 3
-				FlowId:         3,
-				OriginalId:     1,
-				OriginalFlowId: 1,
-				DisplayMessage: "clientop1",
+				Id:                    3, // b/c of the already inserted host ops the sync'd ops start at 3
+				FlowId:                3,
+				OriginalId:            1,
+				OriginalFlowId:        1,
+				OriginalInstanceKeyid: identity2.Keyid,
+				DisplayMessage:        "clientop1",
 			},
 			{
-				Id:             4,
-				FlowId:         3,
-				OriginalId:     2,
-				OriginalFlowId: 1,
-				DisplayMessage: "clientop2",
+				Id:                    4,
+				FlowId:                3,
+				OriginalId:            2,
+				OriginalFlowId:        1,
+				OriginalInstanceKeyid: identity2.Keyid,
+				DisplayMessage:        "clientop2",
 			},
 			{
-				Id:             5,
-				FlowId:         5,
-				OriginalId:     3,
-				OriginalFlowId: 2,
-				DisplayMessage: "clientop3",
+				Id:                    5,
+				FlowId:                5,
+				OriginalId:            3,
+				OriginalFlowId:        2,
+				OriginalInstanceKeyid: identity2.Keyid,
+				DisplayMessage:        "clientop3",
 			},
 		}), "host and client should be synced")
 }
@@ -400,11 +403,12 @@ func TestSyncMutations(t *testing.T) {
 	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetRepoGUID(defaultRepoGUID),
 		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 			{
-				Id:             1,
-				DisplayMessage: "clientop1-mod-while-online",
-				OriginalFlowId: 1,
-				OriginalId:     1,
-				FlowId:         1,
+				Id:                    1,
+				DisplayMessage:        "clientop1-mod-while-online",
+				OriginalFlowId:        1,
+				OriginalId:            1,
+				FlowId:                1,
+				OriginalInstanceKeyid: identity2.Keyid,
 			},
 		}), "host and client should sync online edits")
 
@@ -436,11 +440,12 @@ func TestSyncMutations(t *testing.T) {
 	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetRepoGUID(defaultRepoGUID),
 		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 			{
-				Id:             1,
-				DisplayMessage: "clientop1-mod-while-offline",
-				OriginalFlowId: 1,
-				OriginalId:     1,
-				FlowId:         1,
+				Id:                    1,
+				DisplayMessage:        "clientop1-mod-while-offline",
+				OriginalFlowId:        1,
+				OriginalId:            1,
+				FlowId:                1,
+				OriginalInstanceKeyid: identity2.Keyid,
 			},
 		}), "host and client should sync offline edits")
 
@@ -488,12 +493,14 @@ func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnd
 			op.FlowId = 0
 			op.OriginalId = 0
 			op.OriginalFlowId = 0
+			op.OriginalInstanceKeyid = ""
 		}
 		for _, op := range peer2Ops {
 			op.Id = 0
 			op.FlowId = 0
 			op.OriginalId = 0
 			op.OriginalFlowId = 0
+			op.OriginalInstanceKeyid = ""
 		}
 
 		sortFn := func(a, b *v1.Operation) int {

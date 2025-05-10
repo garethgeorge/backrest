@@ -111,9 +111,9 @@ func (t *CollectGarbageTask) gcOperations(runner TaskRunner) error {
 	}
 
 	// cache known peer key ids, operations from unknown peers will be purged from the history as they can always be resync'd if the peer is readded.
-	var knownPeerKeyids map[string]struct{}
+	knownPeerKeyids := make(map[string]struct{})
 	for _, peer := range runner.Config().GetMultihost().GetAuthorizedClients() {
-		peerKeyid := peer.GetPublicKey().GetKeyid()
+		peerKeyid := peer.GetKeyid()
 		if peerKeyid != "" {
 			knownPeerKeyids[peerKeyid] = struct{}{}
 		}

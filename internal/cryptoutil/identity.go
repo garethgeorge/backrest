@@ -132,3 +132,10 @@ func deriveKeyId(key *ecdsa.PublicKey) string {
 	shasum.Write(key.Y.Bytes())
 	return "ecdsa" + hex.EncodeToString(shasum.Sum(nil))
 }
+
+func PrivateKeyToPublicKey(privkey *v1.PrivateKey) *v1.PublicKey {
+	return &v1.PublicKey{
+		Keyid:      privkey.Keyid,
+		Ed25519Pub: privkey.Ed25519Pub,
+	}
+}
