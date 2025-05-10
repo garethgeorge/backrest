@@ -80,15 +80,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	if _, err := verifyHandshakePacket(handshakeMsg); err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify handshake packet: %w", err))
 	}
-
 	clientInstanceID := string(handshake.GetInstanceId().Payload)
-	clientKeyID := handshake.GetPublicKey().GetKeyid()
-	if clientInstanceID == "" {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("handshake.instance_id is required"))
-	}
-	if clientKeyID == "" {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("handshake.public_key.keyid is required"))
-	}
 
 	var authorizedClientPeer *v1.Multihost_Peer
 	authorizedClientPeerIdx := slices.IndexFunc(initialConfig.Multihost.GetAuthorizedClients(), func(peer *v1.Multihost_Peer) bool {
@@ -102,14 +94,10 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		authorizedClientPeer = initialConfig.Multihost.AuthorizedClients[authorizedClientPeerIdx]
 	}
 
-	// Logic to check the key. The keyid must match the configured key ID, must be non-empty, and must be verified.
-	// NOTE: these should also be checked by config verification _but_ because they are security critical, we double the check here.
-	if authorizedClientPeer.Keyid != clientKeyID {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("key ID mismatch"))
-	} else if authorizedClientPeer.Keyid == "" {
-		return errors.New("keyid must be configured for the authorized client")
-	} else if !authorizedClientPeer.KeyidVerified {
+	if !authorizedClientPeer.KeyidVerified {
 		return errors.New("authorized keyid must be verified prior to establishing connection")
+	} else if err := authorizeHandshakeAsPeer(handshakeMsg, authorizedClientPeer); err != nil {
+		return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("rejected authorization as peer %v: %w", authorizedClientPeer.InstanceId, err))
 	}
 
 	// TODO: implement key handshake and verification

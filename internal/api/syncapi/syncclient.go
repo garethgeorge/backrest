@@ -172,7 +172,6 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	c.l.Debug("sent handshake packet, now waiting for server handshake", zap.String("local_instance_id", c.localInstanceID), zap.String("host_instance_id", c.peer.InstanceId))
 
 	// Wait for the handshake packet from the server.
-	serverInstanceID := ""
 	handshakeMsg, err := tryReceiveWithinDuration(ctx, receive, receiveError, 5*time.Second)
 	if err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("read error before handshake packet: %v", err))
@@ -180,15 +179,12 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	if _, err := verifyHandshakePacket(handshakeMsg); err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify handshake packet: %v", err))
 	}
-	serverInstanceID = string(handshakeMsg.GetHandshake().GetInstanceId().GetPayload())
+	if err := authorizeHandshakeAsPeer(handshakeMsg, c.peer); err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("authorize handshake packet: %v", err))
+	}
+	serverInstanceID := c.peer.InstanceId
 
-	// Verify the peer's instance ID is what we expect (configured locally) and that the key ID matches the trusted key.
-	if serverInstanceID != c.peer.InstanceId {
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("server instance ID %q does not match expected peer instance ID %q", serverInstanceID, c.peer.InstanceId))
-	}
-	if handshakeMsg.GetHandshake().GetPublicKey().GetKeyid() != c.peer.Keyid {
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("server public key ID %q does not expected peer key ID %q", handshakeMsg.GetHandshake().GetPublicKey().GetKeyid(), c.peer.Keyid))
-	}
+	c.l.Debug("received handshake packet from server", zap.String("server_instance_id", serverInstanceID))
 
 	// haveRunSync tracks which repo GUIDs we've initiated a sync for with the server.
 	// operation requests (from the server) are ignored if the GUID is not allowlisted in this map.

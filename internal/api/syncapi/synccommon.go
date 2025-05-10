@@ -49,6 +49,11 @@ func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey) (
 	}, nil
 }
 
+// verifyHandshakePacket verifies that
+//   - the signature on the instance ID is valid against the public key provided in the handshake
+//   - that the public key's ID is as attested in the handshake packet e.g. matches handshake.PublicKey.Keyid
+//
+// To authenticate, the caller must then check that the public key is trusted by checking the key ID against a local list.
 func verifyHandshakePacket(item *v1.SyncStreamItem) (*cryptoutil.PublicKey, error) {
 	handshake := item.GetHandshake()
 	if handshake == nil {
@@ -77,4 +82,20 @@ func verifyHandshakePacket(item *v1.SyncStreamItem) (*cryptoutil.PublicKey, erro
 	}
 
 	return peerKey, nil
+}
+
+// authorizeHandshakeAsPeer checks that the handshake packet has the expected key ID and instance ID.
+// If this succeeds and the handshake is verified, then it is safe to assume the identity we are talking to.
+func authorizeHandshakeAsPeer(item *v1.SyncStreamItem, peer *v1.Multihost_Peer) error {
+	handshake := item.GetHandshake()
+	if handshake == nil {
+		return fmt.Errorf("empty or nil handshake, handshake packet must be sent first")
+	}
+	if handshake.GetPublicKey().GetKeyid() != peer.Keyid {
+		return fmt.Errorf("public key ID mismatch: expected %s, got %s", peer.Keyid, handshake.PublicKey.Keyid)
+	}
+	if string(handshake.GetInstanceId().GetPayload()) != peer.InstanceId {
+		return fmt.Errorf("instance ID mismatch: expected %s, got %s", peer.InstanceId, string(handshake.InstanceId.GetPayload()))
+	}
+	return nil
 }
