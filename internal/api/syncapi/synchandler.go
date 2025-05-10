@@ -99,11 +99,17 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		authorizedClientPeer = initialConfig.Multihost.AuthorizedClients[authorizedClientPeerIdx]
 	}
 
-	if authorizedClientPeer.GetPublicKey().GetKeyid() == "" {
-		return errors.New("authorized client peer must have a configured keyid")
+	if authorizedClientPeer.Keyid == "" {
+		return errors.New("keyid must be configured for the authorized client")
+	} else if !authorizedClientPeer.KeyidVerified {
+		return errors.New("authorized keyid must be verified prior to establishing connection")
 	}
 
 	// TODO: implement key handshake and verification
+	// key handshake flow is
+	// 1. both ends send their public keys and key ids
+	// 2. key ids are checked against values stored in config and against the public key exchanged. E.g. it must match the hash of the key.
+	// 3. start communicating.
 
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
 
@@ -111,7 +117,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	flowIDLru, _ := lru.New[int64, int64](1024) // original flow ID -> local flow ID
 
 	insertOrUpdate := func(op *v1.Operation) error {
-		op.OriginalInstanceKeyid = authorizedClientPeer.GetPublicKey().GetKeyid()
+		op.OriginalInstanceKeyid = authorizedClientPeer.Keyid
 		op.OriginalId = op.Id
 		op.OriginalFlowId = op.FlowId
 		var ok bool

@@ -39,6 +39,9 @@ const (
 
 var (
 	defaultRepoGUID = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+
+	identity1, _ = cryptoutil.GeneratePrivateKey()
+	identity2, _ = cryptoutil.GeneratePrivateKey()
 )
 
 var (
@@ -76,9 +79,12 @@ func TestConnectionSucceeds(t *testing.T) {
 		Instance: defaultHostID,
 		Repos:    []*v1.Repo{},
 		Multihost: &v1.Multihost{
+			Identity: identity1,
 			AuthorizedClients: []*v1.Multihost_Peer{
 				{
-					InstanceId: defaultClientID,
+					Keyid:         identity2.Keyid,
+					KeyidVerified: true,
+					InstanceId:    defaultClientID,
 				},
 			},
 		},
@@ -88,8 +94,10 @@ func TestConnectionSucceeds(t *testing.T) {
 		Instance: defaultClientID,
 		Repos:    []*v1.Repo{},
 		Multihost: &v1.Multihost{
+			Identity: identity2,
 			KnownHosts: []*v1.Multihost_Peer{
 				{
+					Keyid:       identity1.Keyid,
 					InstanceId:  defaultHostID,
 					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
 				},
@@ -128,9 +136,12 @@ func TestSyncConfigChange(t *testing.T) {
 			},
 		},
 		Multihost: &v1.Multihost{
+			Identity: identity1,
 			AuthorizedClients: []*v1.Multihost_Peer{
 				{
-					InstanceId: defaultClientID,
+					Keyid:         identity2.Keyid,
+					KeyidVerified: true,
+					InstanceId:    defaultClientID,
 				},
 			},
 		},
@@ -146,8 +157,10 @@ func TestSyncConfigChange(t *testing.T) {
 			},
 		},
 		Multihost: &v1.Multihost{
+			Identity: identity2,
 			KnownHosts: []*v1.Multihost_Peer{
 				{
+					Keyid:       identity1.Keyid,
 					InstanceId:  defaultHostID,
 					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
 				},
@@ -204,9 +217,12 @@ func TestSimpleOperationSync(t *testing.T) {
 			},
 		},
 		Multihost: &v1.Multihost{
+			Identity: identity1,
 			AuthorizedClients: []*v1.Multihost_Peer{
 				{
-					InstanceId: defaultClientID,
+					Keyid:         identity2.Keyid,
+					KeyidVerified: true,
+					InstanceId:    defaultClientID,
 				},
 			},
 		},
@@ -222,8 +238,10 @@ func TestSimpleOperationSync(t *testing.T) {
 			},
 		},
 		Multihost: &v1.Multihost{
+			Identity: identity2,
 			KnownHosts: []*v1.Multihost_Peer{
 				{
+					Keyid:       identity1.Keyid,
 					InstanceId:  defaultHostID,
 					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
 				},
@@ -313,9 +331,12 @@ func TestSyncMutations(t *testing.T) {
 			},
 		},
 		Multihost: &v1.Multihost{
+			Identity: identity1,
 			AuthorizedClients: []*v1.Multihost_Peer{
 				{
-					InstanceId: defaultClientID,
+					Keyid:         identity2.Keyid,
+					KeyidVerified: true,
+					InstanceId:    defaultClientID,
 				},
 			},
 		},
@@ -331,8 +352,10 @@ func TestSyncMutations(t *testing.T) {
 			},
 		},
 		Multihost: &v1.Multihost{
+			Identity: identity2,
 			KnownHosts: []*v1.Multihost_Peer{
 				{
+					Keyid:       identity1.Keyid,
 					InstanceId:  defaultHostID,
 					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
 				},

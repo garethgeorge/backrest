@@ -210,10 +210,14 @@ func validatePeer(peer *v1.Multihost_Peer, isKnownHost bool) error {
 		if peer.InstanceUrl == "" {
 			return errors.New("instance URL is required for known hosts")
 		}
+	} else {
+		if peer.GetPublicKey().GetKeyid() == "" {
+			return errors.New("public key id is required for authorized clients")
+		}
 	}
 
-	if peer.PublicKeyVerified && peer.GetPublicKey() == nil {
-		return errors.New("public key cannot be marked as verified if it is unset")
+	if peer.PublicKeyVerified && peer.GetPublicKey().GetKeyid() == "" {
+		return errors.New("public key cannot be marked as verified if it is unset, the keyid must be specified at a minimum")
 	}
 
 	return nil
