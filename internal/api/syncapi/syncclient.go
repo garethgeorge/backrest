@@ -16,7 +16,6 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
-	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
@@ -25,14 +24,15 @@ import (
 )
 
 type SyncClient struct {
-	mgr                  *SyncManager
-	localInstanceID      string
-	localMultihostConfig *v1.Multihost
-	peer                 *v1.Multihost_Peer
-	oplog                *oplog.OpLog
-	client               v1connect.BackrestSyncServiceClient
-	reconnectDelay       time.Duration
-	l                    *zap.Logger
+	mgr *SyncManager
+
+	syncConfigSnapshot syncConfigSnapshot
+	localInstanceID    string
+	peer               *v1.Multihost_Peer
+	oplog              *oplog.OpLog
+	client             v1connect.BackrestSyncServiceClient
+	reconnectDelay     time.Duration
+	l                  *zap.Logger
 
 	// mutable properties
 	mu                      sync.Mutex
@@ -54,7 +54,12 @@ func newInsecureClient() *http.Client {
 	}
 }
 
-func NewSyncClient(mgr *SyncManager, localInstanceID string, localMultihostConfig *v1.Multihost, peer *v1.Multihost_Peer, oplog *oplog.OpLog) (*SyncClient, error) {
+func NewSyncClient(
+	mgr *SyncManager,
+	snapshot syncConfigSnapshot,
+	peer *v1.Multihost_Peer,
+	oplog *oplog.OpLog,
+) (*SyncClient, error) {
 	if peer.GetInstanceUrl() == "" {
 		return nil, errors.New("peer instance URL is required")
 	}
@@ -65,14 +70,14 @@ func NewSyncClient(mgr *SyncManager, localInstanceID string, localMultihostConfi
 	)
 
 	c := &SyncClient{
-		mgr:                  mgr,
-		localInstanceID:      localInstanceID,
-		localMultihostConfig: localMultihostConfig,
-		peer:                 peer,
-		reconnectDelay:       mgr.syncClientRetryDelay,
-		client:               client,
-		oplog:                oplog,
-		l:                    zap.L().Named(fmt.Sprintf("syncclient for %q", peer.GetInstanceId())),
+		mgr:                mgr,
+		syncConfigSnapshot: snapshot,
+		localInstanceID:    snapshot.config.Instance,
+		peer:               peer,
+		reconnectDelay:     mgr.syncClientRetryDelay,
+		client:             client,
+		oplog:              oplog,
+		l:                  zap.L().Named(fmt.Sprintf("syncclient for %q", peer.GetInstanceId())),
 	}
 	c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED, "starting up")
 	return c, nil
@@ -120,11 +125,14 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	c.l.Info("connecting to sync server")
 	stream := c.client.Sync(ctx)
 
+	localConfig := c.syncConfigSnapshot.config
+	identityKey := c.syncConfigSnapshot.identityKey
+
 	ctx, cancelWithError := context.WithCancelCause(ctx)
 	defer cancelWithError(nil)
 
-	receiveError := make(chan error, 1)
-	receive := make(chan *v1.SyncStreamItem, 1)
+	receiveError := make(chan error)
+	receive := make(chan *v1.SyncStreamItem)
 	send := make(chan *v1.SyncStreamItem, 100)
 
 	go func() {
@@ -132,27 +140,21 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			item, err := stream.Receive()
 			if err != nil {
 				receiveError <- err
-				return
+				break
 			}
 			receive <- item
 		}
+		close(receive)
 	}()
 
 	// Broadcast initial packet containing the protocol version and instance ID.
 	// TODO: do this in a header instead of as a part of the stream.
-	if err := stream.Send(&v1.SyncStreamItem{
-		Action: &v1.SyncStreamItem_Handshake{
-			Handshake: &v1.SyncStreamItem_SyncActionHandshake{
-				ProtocolVersion: SyncProtocolVersion,
-				InstanceId: &v1.SignedMessage{
-					Payload:   []byte(c.localInstanceID),
-					Signature: []byte("TOOD: inject a valid signature"),
-					Keyid:     "TODO: inject a valid key ID",
-				},
-				PublicKey: cryptoutil.PrivateKeyToPublicKey(c.localMultihostConfig.Identity),
-			},
-		},
-	}); err != nil {
+	handshakePacket, err := createHandshakePacket(c.localInstanceID, identityKey)
+	if err != nil {
+		return fmt.Errorf("create handshake packet: %w", err)
+	}
+
+	if err := stream.Send(handshakePacket); err != nil {
 		// note: the error checking w/streams in connectrpc is fairly awkward.
 		// If write returns an EOF error, we are expected to call stream.Receive()
 		// to get the unmarshalled network failure.
@@ -167,12 +169,18 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	}
 	c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_CONNECTED, "connected")
 
+	c.l.Debug("sent handshake packet, now waiting for server handshake", zap.String("local_instance_id", c.localInstanceID), zap.String("host_instance_id", c.peer.InstanceId))
+
 	// Wait for the handshake packet from the server.
+
+	// Create a timer that cancels the context after 5 seconds.
+	// This is to prevent the client from blocking indefinitely if the server
+	// doesn't send a handshake packet.
 	serverInstanceID := ""
-	if msg, ok := <-receive; ok {
+	if msg, err := tryReceiveWithinDuration(ctx, receive, receiveError, 5*time.Second); err == nil {
 		handshake := msg.GetHandshake()
 		if handshake == nil {
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("handshake packet must be sent first"))
+			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("expected handshake packet, got %+v", msg))
 		}
 
 		serverInstanceID = string(handshake.GetInstanceId().GetPayload())
@@ -184,7 +192,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("unsupported peer protocol version, got %d, expected %d", handshake.GetProtocolVersion(), SyncProtocolVersion))
 		}
 	} else {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("no packets received"))
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("read error before handshake packet: %v", err))
 	}
 
 	if serverInstanceID != c.peer.InstanceId {
@@ -271,13 +279,6 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				}
 			}
 
-			// load the local config so that we can index the remote repos into any local repos that reference their URIs
-			// e.g. backrest:<instance-id> format URI.
-			localConfig, err := c.mgr.configMgr.Get()
-			if err != nil {
-				return fmt.Errorf("get local config: %w", err)
-			}
-
 			for _, repo := range newRemoteConfig.Repos {
 				_, ok := haveRunSync[repo.GetGuid()]
 				if ok {
@@ -296,7 +297,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 
 				diffSel := &v1.OpSelector{
 					InstanceId:            proto.String(c.localInstanceID),
-					OriginalInstanceKeyid: proto.String(c.localMultihostConfig.Identity.GetKeyid()),
+					OriginalInstanceKeyid: proto.String(c.syncConfigSnapshot.identityKey.KeyID()),
 					RepoGuid:              proto.String(repo.GetGuid()),
 				}
 

@@ -204,7 +204,12 @@ func (t *CollectGarbageTask) gcOperations(runner TaskRunner) error {
 	}
 
 	zap.L().Info("collecting garbage operations",
-		zap.Int("operations_removed", len(forgetIDs)), zap.Int("removed_by_age", deletedByMaxAge), zap.Int("removed_by_limit", deletedByMaxCount), zap.Int("removed_by_snapshot_forgotten", deletedByForgottenSnapshot), zap.Any("removed_by_type", deletedByType))
+		zap.Int("operations_removed", len(forgetIDs)),
+		zap.Int("removed_by_age", deletedByMaxAge),
+		zap.Int("removed_by_limit", deletedByMaxCount),
+		zap.Int("removed_by_snapshot_forgotten", deletedByForgottenSnapshot),
+		zap.Any("removed_by_type", deletedByType),
+		zap.Any("removed_by_unknown_peer_keyid", deletedByUnknownPeerKeyid))
 
 	// cleaning up logstore
 	toDelete := []string{}

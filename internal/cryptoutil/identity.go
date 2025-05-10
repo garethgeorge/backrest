@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -20,6 +21,7 @@ var (
 )
 
 type PublicKey struct {
+	proto           *v1.PublicKey
 	publicCryptoKey ecdsa.PublicKey
 }
 
@@ -44,8 +46,17 @@ func NewPublicKey(pubkey *v1.PublicKey) (*PublicKey, error) {
 	}
 
 	return &PublicKey{
+		proto:           pubkey,
 		publicCryptoKey: *ecdsaPubKey,
 	}, nil
+}
+
+func (pk *PublicKey) KeyID() string {
+	return pk.proto.Keyid
+}
+
+func (pk *PublicKey) PublicKeyProto() *v1.PublicKey {
+	return proto.Clone(pk.proto).(*v1.PublicKey)
 }
 
 // VerifySignature verifies the signature of a message
@@ -59,6 +70,7 @@ func (pk *PublicKey) Verify(message, sig []byte) error {
 
 type PrivateKey struct {
 	*PublicKey
+	proto            *v1.PrivateKey
 	privateCryptoKey *ecdsa.PrivateKey
 }
 
@@ -87,8 +99,9 @@ func NewPrivateKey(privkey *v1.PrivateKey) (*PrivateKey, error) {
 	}
 
 	return &PrivateKey{
-		privateCryptoKey: ecdsaPrivKey,
 		PublicKey:        pubKey,
+		proto:            privkey,
+		privateCryptoKey: ecdsaPrivKey,
 	}, nil
 }
 
@@ -114,6 +127,10 @@ func GeneratePrivateKey() (*v1.PrivateKey, error) {
 		Ed25519Priv: string(pemPrivateKeyBytes),
 		Ed25519Pub:  string(pemPublicKeyBytes),
 	}, nil
+}
+
+func (pk *PrivateKey) PrivateKeyProto() *v1.PrivateKey {
+	return proto.Clone(pk.proto).(*v1.PrivateKey)
 }
 
 // SignMessage signs a message using the private key
