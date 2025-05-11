@@ -68,6 +68,7 @@ service Backrest {
 message OpSelector {
   repeated int64 ids = 1;
   optional string instance_id = 6;
+  optional string original_instance_keyid = 8;
   optional string repo_guid = 7;
   optional string plan_id = 3;
   optional string snapshot_id = 4;

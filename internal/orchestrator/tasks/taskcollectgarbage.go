@@ -110,17 +110,37 @@ func (t *CollectGarbageTask) gcOperations(runner TaskRunner) error {
 		return fmt.Errorf("identifying forgotten snapshots: %w", err)
 	}
 
+	// cache known peer key ids, operations from unknown peers will be purged from the history as they can always be resync'd if the peer is readded.
+	knownPeerKeyids := make(map[string]struct{})
+	for _, peer := range runner.Config().GetMultihost().GetAuthorizedClients() {
+		peerKeyid := peer.GetKeyid()
+		if peerKeyid != "" {
+			knownPeerKeyids[peerKeyid] = struct{}{}
+		}
+	}
+
 	// keep track of IDs that are still valid and of the IDs that are being forgotten
 	validIDs := make(map[int64]struct{})
 	forgetIDs := []int64{}
 	curTime := curTimeMillis()
 
-	var deletedByMaxAge, deletedByMaxCount, deletedByForgottenSnapshot int
+	var deletedByMaxAge, deletedByMaxCount, deletedByForgottenSnapshot, deletedByUnknownPeerKeyid int
 	deletedByType := make(map[string]int)
 	stats := make(map[groupByKey]gcSettingsForType)
 
 	if err := runner.QueryOperations(oplog.Query{}.SetReversed(true), func(op *v1.Operation) error {
 		validIDs[op.Id] = struct{}{}
+
+		// check if its a remote op, if it is forget it if its peer is forgotten. Elsewise use age.
+		if op.OriginalInstanceKeyid != "" {
+			_, ok := knownPeerKeyids[op.OriginalInstanceKeyid]
+			if !ok {
+				forgetIDs = append(forgetIDs, op.Id)
+				deletedByUnknownPeerKeyid++
+				deletedByType[reflect.TypeOf(op.Op).String()]++
+				return nil
+			}
+		}
 
 		forgot, ok := snapshotForgottenForFlow[op.FlowId]
 		if ok {
@@ -184,7 +204,12 @@ func (t *CollectGarbageTask) gcOperations(runner TaskRunner) error {
 	}
 
 	zap.L().Info("collecting garbage operations",
-		zap.Int("operations_removed", len(forgetIDs)), zap.Int("removed_by_age", deletedByMaxAge), zap.Int("removed_by_limit", deletedByMaxCount), zap.Int("removed_by_snapshot_forgotten", deletedByForgottenSnapshot), zap.Any("removed_by_type", deletedByType))
+		zap.Int("operations_removed", len(forgetIDs)),
+		zap.Int("removed_by_age", deletedByMaxAge),
+		zap.Int("removed_by_limit", deletedByMaxCount),
+		zap.Int("removed_by_snapshot_forgotten", deletedByForgottenSnapshot),
+		zap.Any("removed_by_type", deletedByType),
+		zap.Any("removed_by_unknown_peer_keyid", deletedByUnknownPeerKeyid))
 
 	// cleaning up logstore
 	toDelete := []string{}

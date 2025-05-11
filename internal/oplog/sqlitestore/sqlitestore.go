@@ -295,8 +295,8 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 	}
 
 	var found bool
-	if err := sqlitex.Execute(conn, "SELECT ogid FROM operation_groups WHERE instance_id = ? AND repo_id = ? AND plan_id = ? AND repo_guid = ? LIMIT 1", &sqlitex.ExecOptions{
-		Args: []any{op.InstanceId, op.RepoId, op.PlanId, op.RepoGuid},
+	if err := sqlitex.Execute(conn, "SELECT ogid FROM operation_groups WHERE instance_id = ? AND original_instance_keyid = ? AND repo_id = ? AND plan_id = ? AND repo_guid = ? LIMIT 1", &sqlitex.ExecOptions{
+		Args: []any{op.InstanceId, op.OriginalInstanceKeyid, op.RepoId, op.PlanId, op.RepoGuid},
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			ogid = stmt.ColumnInt64(0)
 			found = true
@@ -307,8 +307,8 @@ func (m *SqliteStore) findOrCreateGroup(conn *sqlite.Conn, op *v1.Operation) (og
 	}
 
 	if !found {
-		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (instance_id, repo_id, plan_id, repo_guid) VALUES (?, ?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
-			Args: []any{op.InstanceId, op.RepoId, op.PlanId, op.RepoGuid},
+		if err := sqlitex.Execute(conn, "INSERT INTO operation_groups (instance_id, original_instance_keyid, repo_id, plan_id, repo_guid) VALUES (?, ?, ?, ?, ?) RETURNING ogid", &sqlitex.ExecOptions{
+			Args: []any{op.InstanceId, op.OriginalInstanceKeyid, op.RepoId, op.PlanId, op.RepoGuid},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				ogid = stmt.ColumnInt64(0)
 				return nil
@@ -570,17 +570,19 @@ func (m *SqliteStore) ResetForTest(t *testing.T) error {
 }
 
 type opGroupInfo struct {
-	repo     string
-	repoGuid string
-	plan     string
-	inst     string
+	repo          string
+	repoGuid      string
+	plan          string
+	inst          string
+	origInstKeyid string
 }
 
 func groupInfoForOp(op *v1.Operation) opGroupInfo {
 	return opGroupInfo{
-		repo:     op.RepoId,
-		repoGuid: op.RepoGuid,
-		plan:     op.PlanId,
-		inst:     op.InstanceId,
+		repo:          op.RepoId,
+		repoGuid:      op.RepoGuid,
+		plan:          op.PlanId,
+		inst:          op.InstanceId,
+		origInstKeyid: op.OriginalInstanceKeyid,
 	}
 }

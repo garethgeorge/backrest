@@ -10,6 +10,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"go.uber.org/zap"
@@ -24,9 +25,11 @@ type SyncManager struct {
 	// mutable properties
 	mu sync.Mutex
 
-	syncClientRetryDelay time.Duration // the default retry delay for sync clients
+	snapshot *syncConfigSnapshot // the current snapshot of the sync context, protected by mu
 
-	syncClients map[string]*SyncClient
+	syncClientRetryDelay time.Duration // the default retry delay for sync clients, protected by mu
+
+	syncClients map[string]*SyncClient // current sync clients, protected by mu
 }
 
 func NewSyncManager(configMgr *config.ConfigManager, remoteConfigStore RemoteConfigStore, oplog *oplog.OpLog, orchestrator *orchestrator.Orchestrator) *SyncManager {
@@ -75,12 +78,26 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 			return
 		}
 
-		if len(config.Multihost.GetKnownHosts()) == 0 {
-			zap.L().Debug("syncmanager no known host peers declared, sync client exiting early")
+		// Pull out configuration from the new config and cache it for sync handler e.g. the config and identity key.
+		identityKey, err := cryptoutil.NewPrivateKey(config.Multihost.GetIdentity())
+		if err != nil {
+			zap.S().Warnf("syncmanager failed to load local instance identity key, synchandler will reject requests: %v", err)
 			return
 		}
 
-		zap.S().Infof("syncmanager applying new config, starting sync goroutines for %d known peers", len(config.Multihost.GetKnownHosts()))
+		m.snapshot = &syncConfigSnapshot{
+			config:      config,
+			identityKey: identityKey,
+		}
+
+		// Past this point, determine if sync clients are configured and start threads for any.
+		if len(config.Multihost.GetKnownHosts()) == 0 {
+			zap.L().Info("syncmanager no known host peers declared, sync client exiting early")
+			return
+		}
+
+		zap.S().Infof("syncmanager applying new config, starting sync with identity %v, spawning goroutines for %d known peers",
+			config.Multihost.GetIdentity().GetKeyid(), len(config.Multihost.GetKnownHosts()))
 		for _, knownHostPeer := range config.Multihost.KnownHosts {
 			if knownHostPeer.InstanceId == "" {
 				continue
@@ -115,9 +132,11 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 func (m *SyncManager) runSyncWithPeerInternal(ctx context.Context, config *v1.Config, knownHostPeer *v1.Multihost_Peer) error {
 	if config.Instance == "" {
 		return errors.New("local instance must set instance name before peersync can be enabled")
+	} else if config.Multihost == nil {
+		return errors.New("multihost config must be set before peersync can be enabled")
 	}
 
-	newClient, err := NewSyncClient(m, config.Instance, knownHostPeer, m.oplog)
+	newClient, err := NewSyncClient(m, *m.snapshot, knownHostPeer, m.oplog)
 	if err != nil {
 		return fmt.Errorf("creating sync client: %w", err)
 	}
@@ -133,4 +152,22 @@ func (m *SyncManager) runSyncWithPeerInternal(ctx context.Context, config *v1.Co
 	}()
 
 	return nil
+}
+
+type syncConfigSnapshot struct {
+	config      *v1.Config
+	identityKey *cryptoutil.PrivateKey
+}
+
+func (m *SyncManager) getSyncConfigSnapshot() *syncConfigSnapshot {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.snapshot == nil {
+		return nil
+	}
+
+	// defensive copy
+	copy := *m.snapshot
+	return &copy
 }
