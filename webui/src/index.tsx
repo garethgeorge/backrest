@@ -30,6 +30,10 @@ el &&
           darkTheme ? theme.darkAlgorithm : theme.defaultAlgorithm,
           theme.compactAlgorithm,
         ],
+        token: {
+          fontSize: 20,
+          paddingXS: 16
+        }
       }}
     >
       <React.StrictMode>
