@@ -32,7 +32,8 @@ el &&
         ],
         token: {
           fontSize: 20,
-          paddingXS: 16
+          paddingXS: 16,
+          lineHeight: 2
         }
       }}
     >
