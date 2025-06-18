@@ -21,6 +21,14 @@ const Root = ({ children }: { children: React.ReactNode }) => {
 
 const darkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
+const customTheme = {
+  token: {
+    fontSize: 20,
+    paddingXS: 16,
+    lineHeight: 2
+  }
+}
+
 const el = document.querySelector("#app");
 el &&
   createRoot(el).render(
@@ -30,11 +38,7 @@ el &&
           darkTheme ? theme.darkAlgorithm : theme.defaultAlgorithm,
           theme.compactAlgorithm,
         ],
-        token: {
-          fontSize: 20,
-          paddingXS: 16,
-          lineHeight: 2
-        }
+        ...customTheme
       }}
     >
       <React.StrictMode>
