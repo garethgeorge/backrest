@@ -115,7 +115,7 @@ export const SettingsModal = () => {
         <Form
           autoComplete="off"
           form={form}
-          labelCol={{ span: 6 }}
+          labelCol={{ span: 8 }}
           wrapperCol={{ span: 16 }}
         >
           {users.length > 0 || config.auth?.disabled ? null : (
