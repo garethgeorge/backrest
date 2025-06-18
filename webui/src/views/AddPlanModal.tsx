@@ -207,7 +207,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         <Form
           autoComplete="off"
           form={form}
-          labelCol={{ span: 6 }}
+          labelCol={{ span: 8 }}
           wrapperCol={{ span: 16 }}
           disabled={confirmLoading}
         >

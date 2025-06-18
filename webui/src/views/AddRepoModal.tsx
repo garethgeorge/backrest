@@ -246,7 +246,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         <Form
           autoComplete="off"
           form={form}
-          labelCol={{ span: 4 }}
+          labelCol={{ span: 6 }}
           wrapperCol={{ span: 18 }}
           disabled={confirmLoading}
         >
