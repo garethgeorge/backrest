@@ -126,7 +126,7 @@ export const SettingsModal = () => {
           autoComplete="off"
           form={form}
           labelWrap 
-          labelCol={{ span: 8 }}
+          labelCol={{ span: 6 }}
           wrapperCol={{ span: 16 }}
         >
           {users.length > 0 || config.auth?.disabled ? null : (
@@ -265,11 +265,11 @@ export const SettingsModal = () => {
           </Form.Item>
           <Form.Item
             label="Ant design theme tokens"
-            extra="Must JSON format !!!"
+            extra={<span>Must JSON format !!! <br/><a href="https://ant.design/theme-editor/">Theme Editor - Ant Design</a></span>}
             name={["ui", "tokens"]}
             initialValue={config.ui?.tokens}
           >
-            <TextArea />
+            <TextArea rows={10} />
           </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">
