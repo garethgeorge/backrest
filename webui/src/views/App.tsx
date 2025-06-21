@@ -307,12 +307,12 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         icon: <IconForResource selector={sel} />,
         label: (
           <div
-            className="backrest visible-on-hover"
+            className="backrest visible-on-hover flex-between-box"
             style={{ width: "100%", height: "100%" }}
           >
             {plan.id}{" "}
             <Button
-              className="hidden-child float-center-right"
+              className="hidden-child"
               type="text"
               size="small"
               shape="circle"
@@ -355,7 +355,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         ),
         label: (
           <div
-            className="backrest visible-on-hover"
+            className="backrest visible-on-hover flex-between-box"
             style={{ width: "100%", height: "100%" }}
           >
             {repo.id}{" "}
@@ -363,7 +363,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
               type="text"
               size="small"
               shape="circle"
-              className="hidden-child float-center-right"
+              className="hidden-child"
               style={{ width: "30px", height: "30px" }}
               icon={<SettingOutlined />}
               onClick={async () => {
