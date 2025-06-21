@@ -1561,6 +1561,7 @@ func (*User_PasswordBcrypt) isUser_Password() {}
 type UiSetting struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UseCompactUi  bool                   `protobuf:"varint,1,opt,name=useCompactUi,proto3" json:"useCompactUi,omitempty"`
+	Tokens        string                 `protobuf:"bytes,2,opt,name=tokens,proto3" json:"tokens,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1600,6 +1601,13 @@ func (x *UiSetting) GetUseCompactUi() bool {
 		return x.UseCompactUi
 	}
 	return false
+}
+
+func (x *UiSetting) GetTokens() string {
+	if x != nil {
+		return x.Tokens
+	}
+	return ""
 }
 
 type HubConfig_InstanceInfo struct {
@@ -2378,9 +2386,10 @@ const file_v1_config_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12)\n" +
 	"\x0fpassword_bcrypt\x18\x02 \x01(\tH\x00R\x0epasswordBcryptB\n" +
 	"\n" +
-	"\bpassword\"/\n" +
+	"\bpassword\"G\n" +
 	"\tUiSetting\x12\"\n" +
-	"\fuseCompactUi\x18\x01 \x01(\bR\fuseCompactUiB,Z*github.com/garethgeorge/backrest/gen/go/v1b\x06proto3"
+	"\fuseCompactUi\x18\x01 \x01(\bR\fuseCompactUi\x12\x16\n" +
+	"\x06tokens\x18\x02 \x01(\tR\x06tokensB,Z*github.com/garethgeorge/backrest/gen/go/v1b\x06proto3"
 
 var (
 	file_v1_config_proto_rawDescOnce sync.Once

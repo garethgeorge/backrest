@@ -29,6 +29,7 @@ import {
   UiSettingSchema,
   UserSchema,
 } from "../../gen/ts/v1/config_pb";
+import TextArea from "antd/es/input/TextArea";
 
 interface FormData {
   auth: {
@@ -41,6 +42,7 @@ interface FormData {
   instance: string;
   ui: {
     useCompactUi: boolean;
+    tokens: string;
   }
 }
 
@@ -123,6 +125,7 @@ export const SettingsModal = () => {
         <Form
           autoComplete="off"
           form={form}
+          labelWrap 
           labelCol={{ span: 8 }}
           wrapperCol={{ span: 16 }}
         >
@@ -259,6 +262,14 @@ export const SettingsModal = () => {
             initialValue={config.ui?.useCompactUi || false}
           >
             <Checkbox />
+          </Form.Item>
+          <Form.Item
+            label="Ant design theme tokens"
+            extra="Must JSON format !!!"
+            name={["ui", "tokens"]}
+            initialValue={config.ui?.tokens}
+          >
+            <TextArea />
           </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">

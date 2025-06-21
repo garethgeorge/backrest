@@ -253,4 +253,5 @@ message User {
 
 message UiSetting {
   bool useCompactUi = 1 [json_name="useCompactUi"];
+  string tokens = 2 [json_name="tokens"];
 }
