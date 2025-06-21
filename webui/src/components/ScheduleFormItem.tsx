@@ -170,7 +170,7 @@ export const ScheduleFormItem = ({
 
   return (
     <>
-      <Row align={"middle"}>
+      <Row>
         <Radio.Group
           value={mode}
           onChange={(e) => {
@@ -217,10 +217,13 @@ export const ScheduleFormItem = ({
             </Tooltip>
           </Radio.Button>
         </Radio.Group>
-        <Typography.Text style={{ marginLeft: "1em", marginRight: "1em" }}>
-          Clock for schedule:{" "}
-        </Typography.Text>
-        <Tooltip
+      </Row>
+      <div style={{ height: "0.5em" }} />
+      <Row>
+        <Form.Item>{elem}</Form.Item>
+      </Row>
+      <Row>
+      <Tooltip
           title={
             <>
               Clock provides the time that the schedule is evaluated relative
@@ -236,7 +239,7 @@ export const ScheduleFormItem = ({
             </>
           }
         >
-          <Form.Item name={name.concat("clock")} style={{ marginBottom: 0 }}>
+          <Form.Item name={name.concat("clock")} label="Clock for schedule">
             <Radio.Group>
               <Radio.Button
                 value={clockEnumValueToString(Schedule_Clock.LOCAL)}
@@ -254,10 +257,6 @@ export const ScheduleFormItem = ({
             </Radio.Group>
           </Form.Item>
         </Tooltip>
-      </Row>
-      <div style={{ height: "0.5em" }} />
-      <Row>
-        <Form.Item>{elem}</Form.Item>
       </Row>
     </>
   );
