@@ -12,14 +12,14 @@ importers:
         specifier: ^5.5.1
         version: 5.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@bufbuild/protobuf':
-        specifier: ^2.2.2
-        version: 2.2.2
+        specifier: ^2.5.2
+        version: 2.5.2
       '@connectrpc/connect':
         specifier: ^2.0.0
-        version: 2.0.0(@bufbuild/protobuf@2.2.2)
+        version: 2.0.0(@bufbuild/protobuf@2.5.2)
       '@connectrpc/connect-web':
         specifier: ^2.0.0
-        version: 2.0.0(@bufbuild/protobuf@2.2.2)(@connectrpc/connect@2.0.0(@bufbuild/protobuf@2.2.2))
+        version: 2.0.0(@bufbuild/protobuf@2.5.2)(@connectrpc/connect@2.0.0(@bufbuild/protobuf@2.5.2))
       '@parcel/transformer-sass':
         specifier: ^2.13.2
         version: 2.13.2(@parcel/core@2.13.2(@swc/helpers@0.5.15))
@@ -142,8 +142,8 @@ packages:
     resolution: {integrity: sha512-FDSOghenHTiToteC/QRlv2q3DhPZ/oOXTBoirfWNx1Cx3TMVcGWQtMMmQcSvb/JjpNeGzx8Pq/b4fKEJuWm1sw==}
     engines: {node: '>=6.9.0'}
 
-  '@bufbuild/protobuf@2.2.2':
-    resolution: {integrity: sha512-UNtPCbrwrenpmrXuRwn9jYpPoweNXj8X5sMvYgsqYyaH8jQ6LfUJSk3dJLnBK+6sfYPrF4iAIo5sd5HQ+tg75A==}
+  '@bufbuild/protobuf@2.5.2':
+    resolution: {integrity: sha512-foZ7qr0IsUBjzWIq+SuBLfdQCpJ1j8cTuNNT4owngTHoN5KsJb8L9t65fzz7SCeSWzescoOil/0ldqiL041ABg==}
 
   '@connectrpc/connect-web@2.0.0':
     resolution: {integrity: sha512-oeCxqHXLXlWJdmcvp9L3scgAuK+FjNSn+twyhUxc8yvDbTumnt5Io+LnBzSYxAdUdYqTw5yHfTSCJ4hj0QID0g==}
@@ -496,36 +496,42 @@ packages:
     engines: {node: '>= 10.0.0'}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@parcel/watcher-linux-arm-musl@2.5.0':
     resolution: {integrity: sha512-6uHywSIzz8+vi2lAzFeltnYbdHsDm3iIB57d4g5oaB9vKwjb6N6dRIgZMujw4nm5r6v9/BQH0noq6DzHrqr2pA==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm]
     os: [linux]
+    libc: [musl]
 
   '@parcel/watcher-linux-arm64-glibc@2.5.0':
     resolution: {integrity: sha512-BfNjXwZKxBy4WibDb/LDCriWSKLz+jJRL3cM/DllnHH5QUyoiUNEp3GmL80ZqxeumoADfCCP19+qiYiC8gUBjA==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@parcel/watcher-linux-arm64-musl@2.5.0':
     resolution: {integrity: sha512-S1qARKOphxfiBEkwLUbHjCY9BWPdWnW9j7f7Hb2jPplu8UZ3nes7zpPOW9bkLbHRvWM0WDTsjdOTUgW0xLBN1Q==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@parcel/watcher-linux-x64-glibc@2.5.0':
     resolution: {integrity: sha512-d9AOkusyXARkFD66S6zlGXyzx5RvY+chTP9Jp0ypSTC9d4lzyRs9ovGf/80VCxjKddcUvnsGwCHWuF2EoPgWjw==}
     engines: {node: '>= 10.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@parcel/watcher-linux-x64-musl@2.5.0':
     resolution: {integrity: sha512-iqOC+GoTDoFyk/VYSFHwjHhYrk8bljW6zOhPuhi5t9ulqiYq1togGJB5e3PwYVFFfeVgc6pbz3JdQyDoBszVaA==}
     engines: {node: '>= 10.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@parcel/watcher-win32-arm64@2.5.0':
     resolution: {integrity: sha512-twtft1d+JRNkM5YbmexfcH/N4znDtjgysFaV9zvZmmJezQsKpkfLYJ+JFV3uygugK6AtIM2oADPkB2AdhBrNig==}
@@ -641,24 +647,28 @@ packages:
     engines: {node: '>=10'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@swc/core-linux-arm64-musl@1.9.3':
     resolution: {integrity: sha512-tzVH480RY6RbMl/QRgh5HK3zn1ZTFsThuxDGo6Iuk1MdwIbdFYUY034heWUTI4u3Db97ArKh0hNL0xhO3+PZdg==}
     engines: {node: '>=10'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@swc/core-linux-x64-gnu@1.9.3':
     resolution: {integrity: sha512-ivXXBRDXDc9k4cdv10R21ccBmGebVOwKXT/UdH1PhxUn9m/h8erAWjz5pcELwjiMf27WokqPgaWVfaclDbgE+w==}
     engines: {node: '>=10'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@swc/core-linux-x64-musl@1.9.3':
     resolution: {integrity: sha512-ILsGMgfnOz1HwdDz+ZgEuomIwkP1PHT6maigZxaCIuC6OPEhKE8uYna22uU63XvYcLQvZYDzpR3ms47WQPuNEg==}
     engines: {node: '>=10'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@swc/core-win32-arm64-msvc@1.9.3':
     resolution: {integrity: sha512-e+XmltDVIHieUnNJHtspn6B+PCcFOMYXNJB1GqoCcyinkEIQNwC8KtWgMqUucUbEWJkPc35NHy9k8aCXRmw9Kg==}
@@ -1178,24 +1188,28 @@ packages:
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   lightningcss-linux-arm64-musl@1.28.2:
     resolution: {integrity: sha512-1SPG1ZTNnphWvAv8RVOymlZ8BDtAg69Hbo7n4QxARvkFVCJAt0cgjAw1Fox0WEhf4PwnyoOBaVH0Z5YNgzt4dA==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   lightningcss-linux-x64-gnu@1.28.2:
     resolution: {integrity: sha512-ZhQy0FcO//INWUdo/iEdbefntTdpPVQ0XJwwtdbBuMQe+uxqZoytm9M+iqR9O5noWFaxK+nbS2iR/I80Q2Ofpg==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   lightningcss-linux-x64-musl@1.28.2:
     resolution: {integrity: sha512-alb/j1NMrgQmSFyzTbN1/pvMPM+gdDw7YBuQ5VSgcFDypN3Ah0BzC2dTZbzwzaMdUVDszX6zH5MzjfVN1oGuww==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   lightningcss-win32-arm64-msvc@1.28.2:
     resolution: {integrity: sha512-WnwcjcBeAt0jGdjlgbT9ANf30pF0C/QMb1XnLnH272DQU8QXh+kmpi24R55wmWBwaTtNAETZ+m35ohyeMiNt+g==}
@@ -1859,16 +1873,16 @@ snapshots:
     dependencies:
       regenerator-runtime: 0.14.1
 
-  '@bufbuild/protobuf@2.2.2': {}
+  '@bufbuild/protobuf@2.5.2': {}
 
-  '@connectrpc/connect-web@2.0.0(@bufbuild/protobuf@2.2.2)(@connectrpc/connect@2.0.0(@bufbuild/protobuf@2.2.2))':
+  '@connectrpc/connect-web@2.0.0(@bufbuild/protobuf@2.5.2)(@connectrpc/connect@2.0.0(@bufbuild/protobuf@2.5.2))':
     dependencies:
-      '@bufbuild/protobuf': 2.2.2
-      '@connectrpc/connect': 2.0.0(@bufbuild/protobuf@2.2.2)
+      '@bufbuild/protobuf': 2.5.2
+      '@connectrpc/connect': 2.0.0(@bufbuild/protobuf@2.5.2)
 
-  '@connectrpc/connect@2.0.0(@bufbuild/protobuf@2.2.2)':
+  '@connectrpc/connect@2.0.0(@bufbuild/protobuf@2.5.2)':
     dependencies:
-      '@bufbuild/protobuf': 2.2.2
+      '@bufbuild/protobuf': 2.5.2
 
   '@ctrl/tinycolor@3.6.1': {}
 

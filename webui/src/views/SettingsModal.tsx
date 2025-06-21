@@ -13,6 +13,7 @@ import {
   Col,
   Collapse,
   Checkbox,
+  Divider,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -25,6 +26,7 @@ import { clone, fromJson, toJson, toJsonString } from "@bufbuild/protobuf";
 import {
   AuthSchema,
   ConfigSchema,
+  UiSettingSchema,
   UserSchema,
 } from "../../gen/ts/v1/config_pb";
 
@@ -37,6 +39,9 @@ interface FormData {
     }[];
   };
   instance: string;
+  ui: {
+    useCompactUi: boolean;
+  }
 }
 
 export const SettingsModal = () => {
@@ -72,6 +77,9 @@ export const SettingsModal = () => {
         ignoreUnknownFields: false,
       });
       newConfig.instance = formData.instance;
+      newConfig.ui = fromJson(UiSettingSchema, formData.ui, {
+        ignoreUnknownFields: false,
+      });
 
       if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
         throw new Error(
@@ -242,6 +250,15 @@ export const SettingsModal = () => {
                 </>
               )}
             </Form.List>
+          </Form.Item>
+
+          <Form.Item
+            label="Use compect ui"
+            name={["ui", "useCompactUi"]}
+            valuePropName="checked"
+            initialValue={config.ui?.useCompactUi || false}
+          >
+            <Checkbox />
           </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">

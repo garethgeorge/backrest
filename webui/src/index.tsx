@@ -5,48 +5,24 @@ import { AlertContextProvider } from "./components/Alerts";
 import { ModalContextProvider } from "./components/ModalManager";
 
 import "react-js-cron/dist/styles.css";
-import { ConfigProvider as AntdConfigProvider, theme } from "antd";
 import { ConfigContextProvider } from "./components/ConfigProvider";
 import { HashRouter } from "react-router-dom";
-
-const Root = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <ConfigContextProvider>
-      <AlertContextProvider>
-        <ModalContextProvider>{children}</ModalContextProvider>
-      </AlertContextProvider>
-    </ConfigContextProvider>
-  );
-};
-
-const darkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-const customTheme = {
-  token: {
-    fontSize: 20,
-    paddingXS: 16,
-    lineHeight: 2
-  }
-}
+import { CustomThemeProvider } from "./components/CustomThemeProvider";
 
 const el = document.querySelector("#app");
 el &&
   createRoot(el).render(
-    <AntdConfigProvider
-      theme={{
-        algorithm: [
-          darkTheme ? theme.darkAlgorithm : theme.defaultAlgorithm,
-          theme.compactAlgorithm,
-        ],
-        ...customTheme
-      }}
-    >
-      <React.StrictMode>
-        <Root>
-          <HashRouter>
-            <App />
-          </HashRouter>
-        </Root>
-      </React.StrictMode>
-    </AntdConfigProvider>
+    <React.StrictMode>
+      <ConfigContextProvider>
+        <CustomThemeProvider>
+          <AlertContextProvider>
+            <ModalContextProvider>
+              <HashRouter>
+                <App />
+              </HashRouter>
+            </ModalContextProvider>
+          </AlertContextProvider>
+        </CustomThemeProvider>
+      </ConfigContextProvider>
+    </React.StrictMode>
   );
