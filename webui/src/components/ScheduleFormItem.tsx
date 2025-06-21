@@ -170,7 +170,7 @@ export const ScheduleFormItem = ({
 
   return (
     <>
-      <Row>
+      <Row align={"middle"}>
         <Radio.Group
           value={mode}
           onChange={(e) => {
@@ -236,7 +236,7 @@ export const ScheduleFormItem = ({
             </>
           }
         >
-          <Form.Item name={name.concat("clock")}>
+          <Form.Item name={name.concat("clock")} style={{ marginBottom: 0 }}>
             <Radio.Group>
               <Radio.Button
                 value={clockEnumValueToString(Schedule_Clock.LOCAL)}
