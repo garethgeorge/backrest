@@ -432,7 +432,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                         <MinusCircleOutlined
                           className="dynamic-delete-button"
                           onClick={() => remove(index)}
-                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
                     ))}
@@ -479,7 +478,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                       <MinusCircleOutlined
                         className="dynamic-delete-button"
                         onClick={() => remove(index)}
-                        style={{ paddingLeft: "5px" }}
                       />
                     </Form.Item>
                   ))}
