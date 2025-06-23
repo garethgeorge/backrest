@@ -23,6 +23,8 @@ const SyncProtocolVersion = 1
 type BackrestSyncHandler struct {
 	v1connect.UnimplementedBackrestSyncServiceHandler
 	mgr *SyncManager
+
+	connectedClients map[string]v1.SyncConnectionState
 }
 
 var _ v1connect.BackrestSyncServiceHandler = &BackrestSyncHandler{}

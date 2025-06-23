@@ -16,16 +16,6 @@ import "google/api/annotations.proto";
 
 service BackrestSyncService {
   rpc Sync(stream SyncStreamItem) returns (stream SyncStreamItem) {}
-  rpc GetRemoteRepos(google.protobuf.Empty) returns (GetRemoteReposResponse) {}
-}
-
-message GetRemoteReposResponse {
-  message RemoteRepoMetadata {
-    string instance_id = 1;
-    string repo_id = 2;
-  }
-  
-  repeated RemoteRepoMetadata repos = 1;
 }
 
 enum SyncConnectionState {
