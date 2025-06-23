@@ -79,11 +79,6 @@ type ConfigStore interface {
 }
 
 func NewDefaultConfig() *v1.Config {
-	identity, err := cryptoutil.GeneratePrivateKey()
-	if err != nil {
-		zap.S().Fatalf("failed to generate cryptographic identity: %v", err)
-	}
-
 	return &v1.Config{
 		Version:  migrations.CurrentVersion,
 		Instance: "",
@@ -92,10 +87,23 @@ func NewDefaultConfig() *v1.Config {
 		Auth: &v1.Auth{
 			Disabled: true,
 		},
-		Multihost: &v1.Multihost{
-			Identity: identity,
-		},
 	}
+}
+
+func PopulateRequiredFields(config *v1.Config) (mutated bool, err error) {
+	if config.GetMultihost() == nil {
+		config.Multihost = &v1.Multihost{}
+		mutated = true
+	}
+	if config.GetMultihost().Identity == nil {
+		identity, err := cryptoutil.GeneratePrivateKey()
+		if err != nil {
+			zap.S().Fatalf("failed to generate cryptographic identity: %v", err)
+		}
+		config.GetMultihost().Identity = identity
+		mutated = true
+	}
+	return
 }
 
 // TODO: merge caching validating store functions into config manager
@@ -123,12 +131,18 @@ func (c *CachingValidatingStore) Get() (*v1.Config, error) {
 	}
 
 	// Check if we need to migrate
+	mutated, err := PopulateRequiredFields(config)
+	if err != nil {
+		return nil, fmt.Errorf("populate required fields: %w", err)
+	}
 	if config.Version < migrations.CurrentVersion {
 		zap.S().Infof("migrating config from version %d to %d", config.Version, migrations.CurrentVersion)
 		if err := migrations.ApplyMigrations(config); err != nil {
 			return nil, err
 		}
-
+		mutated = true
+	}
+	if mutated {
 		// Write back the migrated config.
 		if err := c.ConfigStore.Update(config); err != nil {
 			return nil, err

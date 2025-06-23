@@ -3,16 +3,12 @@ import {
   Modal,
   Input,
   Typography,
-  Select,
   Button,
-  Tooltip,
-  Radio,
-  InputNumber,
   Row,
-  Card,
   Col,
   Collapse,
   Checkbox,
+  FormInstance,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -24,6 +20,7 @@ import { authenticationService, backrestService } from "../api";
 import { clone, fromJson, toJson, toJsonString } from "@bufbuild/protobuf";
 import {
   AuthSchema,
+  Config,
   ConfigSchema,
   UserSchema,
 } from "../../gen/ts/v1/config_pb";
@@ -102,7 +99,7 @@ export const SettingsModal = () => {
         open={true}
         onCancel={handleCancel}
         title={"Settings"}
-        width="40vw"
+        width="60vw"
         footer={[
           <Button key="back" onClick={handleCancel}>
             Cancel
@@ -116,7 +113,7 @@ export const SettingsModal = () => {
           autoComplete="off"
           form={form}
           labelCol={{ span: 6 }}
-          wrapperCol={{ span: 16 }}
+          wrapperCol={{ span: 18 }}
         >
           {users.length > 0 || config.auth?.disabled ? null : (
             <>
@@ -132,140 +129,212 @@ export const SettingsModal = () => {
               </p>
             </>
           )}
-          <Tooltip title="The instance name will be used to identify this backrest install. Pick a value carefully as it cannot be changed later.">
-            <Form.Item
-              hasFeedback
-              name="instance"
-              label="Instance ID"
-              required
-              initialValue={config.instance || ""}
-              rules={[
-                { required: true, message: "Instance ID is required" },
-                {
-                  pattern: namePattern,
-                  message:
-                    "Instance ID must be alphanumeric with '_-.' allowed as separators",
-                },
-              ]}
-            >
-              <Input
-                placeholder={
-                  "Unique instance ID for this instance (e.g. my-backrest-server)"
-                }
-                disabled={!!config.instance}
-              />
-            </Form.Item>
-          </Tooltip>
           <Form.Item
-            label="Disable Authentication"
-            name={["auth", "disabled"]}
-            valuePropName="checked"
-            initialValue={config.auth?.disabled || false}
+            hasFeedback
+            name="instance"
+            label="Instance ID"
+            required
+            initialValue={config.instance || ""}
+            tooltip="The instance name will be used to identify this backrest install. Pick a value carefully as it cannot be changed later."
+            rules={[
+              { required: true, message: "Instance ID is required" },
+              {
+                pattern: namePattern,
+                message:
+                  "Instance ID must be alphanumeric with '_-.' allowed as separators",
+              },
+            ]}
           >
-            <Checkbox />
-          </Form.Item>
-          <Form.Item label="Users" required={true}>
-            <Form.List
-              name={["auth", "users"]}
-              initialValue={
-                config.auth?.users?.map((u) =>
-                  toJson(UserSchema, u, { alwaysEmitImplicit: true })
-                ) || []
+            <Input
+              placeholder={
+                "Unique instance ID for this instance (e.g. my-backrest-server)"
               }
-            >
-              {(fields, { add, remove }) => (
-                <>
-                  {fields.map((field, index) => {
-                    return (
-                      <Row key={field.key} gutter={16}>
-                        <Col span={11}>
-                          <Form.Item
-                            name={[field.name, "name"]}
-                            rules={[
-                              { required: true, message: "Name is required" },
-                              {
-                                pattern: namePattern,
-                                message:
-                                  "Name must be alphanumeric with dashes or underscores as separators",
-                              },
-                            ]}
-                          >
-                            <Input placeholder="Username" />
-                          </Form.Item>
-                        </Col>
-                        <Col span={11}>
-                          <Form.Item
-                            name={[field.name, "passwordBcrypt"]}
-                            rules={[
-                              {
-                                required: true,
-                                message: "Password is required",
-                              },
-                            ]}
-                          >
-                            <Input.Password
-                              placeholder="Password"
-                              onFocus={() => {
-                                form.setFieldValue(
-                                  ["auth", "users", index, "needsBcrypt"],
-                                  true
-                                );
-                                form.setFieldValue(
-                                  ["auth", "users", index, "passwordBcrypt"],
-                                  ""
-                                );
-                              }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={2}>
-                          <MinusCircleOutlined
-                            onClick={() => {
-                              remove(field.name);
-                            }}
-                          />
-                        </Col>
-                      </Row>
-                    );
-                  })}
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => {
-                        add();
-                      }}
-                      block
-                    >
-                      <PlusOutlined /> Add user
-                    </Button>
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
+              disabled={!!config.instance}
+            />
           </Form.Item>
 
-          <Form.Item shouldUpdate label="Preview">
-            {() => (
-              <Collapse
-                size="small"
-                items={[
-                  {
-                    key: "1",
-                    label: "Config as JSON",
-                    children: (
+          <Collapse
+            items={[
+              {
+                key: "1",
+                label: "Authentication",
+                children: <AuthenticationForm form={form} config={config} />,
+              },
+              {
+                key: "2",
+                label: "Multihost Identity and Sharing",
+                children: <MultihostIdentityForm form={form} config={config} />,
+              },
+              {
+                key: "last",
+                label: "Preview",
+                children: (
+                  <Form.Item shouldUpdate wrapperCol={{ span: 24 }}>
+                    {() => (
                       <Typography>
                         <pre>
                           {JSON.stringify(form.getFieldsValue(), null, 2)}
                         </pre>
                       </Typography>
-                    ),
-                  },
-                ]}
-              />
-            )}
-          </Form.Item>
+                    )}
+                  </Form.Item>
+                ),
+              },
+            ]}
+          />
         </Form>
       </Modal>
+    </>
+  );
+};
+
+const AuthenticationForm: React.FC<{
+  config: Config;
+  form: FormInstance<FormData>;
+}> = ({ form, config }) => {
+  return (
+    <>
+      <Form.Item
+        label="Disable Authentication"
+        name={["auth", "disabled"]}
+        valuePropName="checked"
+        initialValue={config.auth?.disabled || false}
+      >
+        <Checkbox />
+      </Form.Item>
+
+      <Form.Item label="Users" required={true}>
+        <Form.List
+          name={["auth", "users"]}
+          initialValue={
+            config.auth?.users?.map((u) =>
+              toJson(UserSchema, u, { alwaysEmitImplicit: true })
+            ) || []
+          }
+        >
+          {(fields, { add, remove }) => (
+            <>
+              {fields.map((field, index) => {
+                return (
+                  <Row key={field.key} gutter={16}>
+                    <Col span={11}>
+                      <Form.Item
+                        name={[field.name, "name"]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Name is required",
+                          },
+                          {
+                            pattern: namePattern,
+                            message:
+                              "Name must be alphanumeric with dashes or underscores as separators",
+                          },
+                        ]}
+                      >
+                        <Input placeholder="Username" />
+                      </Form.Item>
+                    </Col>
+                    <Col span={11}>
+                      <Form.Item
+                        name={[field.name, "passwordBcrypt"]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Password is required",
+                          },
+                        ]}
+                      >
+                        <Input.Password
+                          placeholder="Password"
+                          onFocus={() => {
+                            form.setFieldValue(
+                              ["auth", "users", index, "needsBcrypt"],
+                              true
+                            );
+                            form.setFieldValue(
+                              ["auth", "users", index, "passwordBcrypt"],
+                              ""
+                            );
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={2}>
+                      <MinusCircleOutlined
+                        onClick={() => {
+                          remove(field.name);
+                        }}
+                      />
+                    </Col>
+                  </Row>
+                );
+              })}
+              <Form.Item>
+                <Button
+                  type="dashed"
+                  onClick={() => {
+                    add();
+                  }}
+                  block
+                >
+                  <PlusOutlined /> Add user
+                </Button>
+              </Form.Item>
+            </>
+          )}
+        </Form.List>
+      </Form.Item>
+    </>
+  );
+};
+
+const MultihostIdentityForm: React.FC<{
+  config: Config;
+  form: FormInstance<FormData>;
+}> = ({ form, config }) => {
+  return (
+    <>
+      {/* Show the current instance's identity */}
+      <Form.Item
+        label="Multihost Identity"
+        name={["multihost", "identity", "keyId"]}
+        initialValue={config.multihost?.identity?.keyid || ""}
+        rules={[
+          {
+            required: true,
+            message: "Multihost identity is required",
+          },
+        ]}
+        tooltip="Multihost identity is used to identify this instance in a multihost setup. It is cryptographically derived from the public key of this instance."
+        wrapperCol={{ span: 16 }}
+      >
+        <Row>
+          <Col flex="auto">
+            <Input
+              placeholder="Unique multihost identity"
+              disabled
+              value={config.multihost?.identity?.keyid}
+            />
+          </Col>
+          <Col>
+            <Button
+              type="link"
+              onClick={() =>
+                navigator.clipboard.writeText(
+                  config.multihost?.identity?.keyid || ""
+                )
+              }
+            >
+              copy
+            </Button>
+          </Col>
+        </Row>
+      </Form.Item>
+
+      {/* Authorized client peers. */}
+
+      {/* Known host peers. */}
     </>
   );
 };
