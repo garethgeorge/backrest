@@ -67,8 +67,12 @@ export const SummaryDashboard = () => {
 
     fetchData();
 
+    document.addEventListener("visibilitychange", fetchData);
     const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      document.removeEventListener("visibilitychange", fetchData);
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -82,7 +86,7 @@ export const SummaryDashboard = () => {
   }, [config]);
 
   if (!summaryData) {
-    return <Spin />;
+    return <Spin className="summary-dashboard-spin" />;
   }
 
   return (
