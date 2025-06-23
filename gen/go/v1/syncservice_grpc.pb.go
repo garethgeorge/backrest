@@ -113,3 +113,154 @@ var BackrestSyncService_ServiceDesc = grpc.ServiceDesc{
 	},
 	Metadata: "v1/syncservice.proto",
 }
+
+const (
+	BackrestSyncStateService_GetKnownHostSyncStateStream_FullMethodName = "/v1.BackrestSyncStateService/GetKnownHostSyncStateStream"
+	BackrestSyncStateService_GetClientSyncStateStream_FullMethodName    = "/v1.BackrestSyncStateService/GetClientSyncStateStream"
+)
+
+// BackrestSyncStateServiceClient is the client API for BackrestSyncStateService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type BackrestSyncStateServiceClient interface {
+	// GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
+	GetKnownHostSyncStateStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SyncStateStreamItem], error)
+	// GetClientSyncStateStream returns the sync state of clients of the current instance.
+	GetClientSyncStateStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SyncStateStreamItem], error)
+}
+
+type backrestSyncStateServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewBackrestSyncStateServiceClient(cc grpc.ClientConnInterface) BackrestSyncStateServiceClient {
+	return &backrestSyncStateServiceClient{cc}
+}
+
+func (c *backrestSyncStateServiceClient) GetKnownHostSyncStateStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SyncStateStreamItem], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &BackrestSyncStateService_ServiceDesc.Streams[0], BackrestSyncStateService_GetKnownHostSyncStateStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SyncStateStreamRequest, SyncStateStreamItem]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type BackrestSyncStateService_GetKnownHostSyncStateStreamClient = grpc.ServerStreamingClient[SyncStateStreamItem]
+
+func (c *backrestSyncStateServiceClient) GetClientSyncStateStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SyncStateStreamItem], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &BackrestSyncStateService_ServiceDesc.Streams[1], BackrestSyncStateService_GetClientSyncStateStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SyncStateStreamRequest, SyncStateStreamItem]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type BackrestSyncStateService_GetClientSyncStateStreamClient = grpc.ServerStreamingClient[SyncStateStreamItem]
+
+// BackrestSyncStateServiceServer is the server API for BackrestSyncStateService service.
+// All implementations must embed UnimplementedBackrestSyncStateServiceServer
+// for forward compatibility.
+type BackrestSyncStateServiceServer interface {
+	// GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
+	GetKnownHostSyncStateStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[SyncStateStreamItem]) error
+	// GetClientSyncStateStream returns the sync state of clients of the current instance.
+	GetClientSyncStateStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[SyncStateStreamItem]) error
+	mustEmbedUnimplementedBackrestSyncStateServiceServer()
+}
+
+// UnimplementedBackrestSyncStateServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedBackrestSyncStateServiceServer struct{}
+
+func (UnimplementedBackrestSyncStateServiceServer) GetKnownHostSyncStateStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[SyncStateStreamItem]) error {
+	return status.Errorf(codes.Unimplemented, "method GetKnownHostSyncStateStream not implemented")
+}
+func (UnimplementedBackrestSyncStateServiceServer) GetClientSyncStateStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[SyncStateStreamItem]) error {
+	return status.Errorf(codes.Unimplemented, "method GetClientSyncStateStream not implemented")
+}
+func (UnimplementedBackrestSyncStateServiceServer) mustEmbedUnimplementedBackrestSyncStateServiceServer() {
+}
+func (UnimplementedBackrestSyncStateServiceServer) testEmbeddedByValue() {}
+
+// UnsafeBackrestSyncStateServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to BackrestSyncStateServiceServer will
+// result in compilation errors.
+type UnsafeBackrestSyncStateServiceServer interface {
+	mustEmbedUnimplementedBackrestSyncStateServiceServer()
+}
+
+func RegisterBackrestSyncStateServiceServer(s grpc.ServiceRegistrar, srv BackrestSyncStateServiceServer) {
+	// If the following call pancis, it indicates UnimplementedBackrestSyncStateServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&BackrestSyncStateService_ServiceDesc, srv)
+}
+
+func _BackrestSyncStateService_GetKnownHostSyncStateStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SyncStateStreamRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(BackrestSyncStateServiceServer).GetKnownHostSyncStateStream(m, &grpc.GenericServerStream[SyncStateStreamRequest, SyncStateStreamItem]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type BackrestSyncStateService_GetKnownHostSyncStateStreamServer = grpc.ServerStreamingServer[SyncStateStreamItem]
+
+func _BackrestSyncStateService_GetClientSyncStateStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SyncStateStreamRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(BackrestSyncStateServiceServer).GetClientSyncStateStream(m, &grpc.GenericServerStream[SyncStateStreamRequest, SyncStateStreamItem]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type BackrestSyncStateService_GetClientSyncStateStreamServer = grpc.ServerStreamingServer[SyncStateStreamItem]
+
+// BackrestSyncStateService_ServiceDesc is the grpc.ServiceDesc for BackrestSyncStateService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var BackrestSyncStateService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "v1.BackrestSyncStateService",
+	HandlerType: (*BackrestSyncStateServiceServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetKnownHostSyncStateStream",
+			Handler:       _BackrestSyncStateService_GetKnownHostSyncStateStream_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "GetClientSyncStateStream",
+			Handler:       _BackrestSyncStateService_GetClientSyncStateStream_Handler,
+			ServerStreams: true,
+		},
+	},
+	Metadata: "v1/syncservice.proto",
+}

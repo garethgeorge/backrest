@@ -16,7 +16,11 @@ import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
 import { useConfig } from "../components/ConfigProvider";
-import { authenticationService, backrestService } from "../api";
+import {
+  authenticationService,
+  backrestService,
+  syncStateService,
+} from "../api";
 import { clone, fromJson, toJson, toJsonString } from "@bufbuild/protobuf";
 import {
   AuthSchema,
@@ -26,6 +30,13 @@ import {
   MultihostSchema,
   Multihost_PeerSchema,
 } from "../../gen/ts/v1/config_pb";
+import {
+  SyncConnectionState,
+  SyncStateStreamItem,
+  SyncStreamItem,
+} from "../../gen/ts/v1/syncservice_pb";
+import { abort } from "process";
+import { subscribeToKnownHostSyncStates } from "../state/syncstate";
 
 interface FormData {
   auth: {
@@ -59,10 +70,25 @@ export const SettingsModal = () => {
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
   const [form] = Form.useForm<FormData>();
+  const [syncState, setSyncState] = useState<SyncStateStreamItem[]>([]);
 
   if (!config) {
     return null;
   }
+
+  useEffect(() => {
+    const abortController = new AbortController();
+    subscribeToKnownHostSyncStates(
+      abortController,
+      (syncStates: SyncStateStreamItem[]) => {
+        setSyncState(syncStates);
+      }
+    );
+
+    return () => {
+      abortController.abort();
+    };
+  }, []);
 
   const handleOk = async () => {
     try {

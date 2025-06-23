@@ -21,7 +21,58 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1/syncservice.proto.
  */
 export const file_v1_syncservice: GenFile = /*@__PURE__*/
-  fileDesc("ChR2MS9zeW5jc2VydmljZS5wcm90bxICdjEivwkKDlN5bmNTdHJlYW1JdGVtEisKDnNpZ25lZF9tZXNzYWdlGAEgASgLMhEudjEuU2lnbmVkTWVzc2FnZUgAEjsKCWhhbmRzaGFrZRgDIAEoCzImLnYxLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25IYW5kc2hha2VIABJGCg9kaWZmX29wZXJhdGlvbnMYFCABKAsyKy52MS5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uRGlmZk9wZXJhdGlvbnNIABJGCg9zZW5kX29wZXJhdGlvbnMYFSABKAsyKy52MS5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uU2VuZE9wZXJhdGlvbnNIABI+CgtzZW5kX2NvbmZpZxgWIAEoCzInLnYxLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25TZW5kQ29uZmlnSAASTwoXZXN0YWJsaXNoX3NoYXJlZF9zZWNyZXQYFyABKAsyLC52MS5TeW5jU3RyZWFtSXRlbS5TeW5jRXN0YWJsaXNoU2hhcmVkU2VjcmV0SAASOgoIdGhyb3R0bGUY6AcgASgLMiUudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblRocm90dGxlSAAaegoTU3luY0FjdGlvbkhhbmRzaGFrZRIYChBwcm90b2NvbF92ZXJzaW9uGAEgASgDEiEKCnB1YmxpY19rZXkYAiABKAsyDS52MS5QdWJsaWNLZXkSJgoLaW5zdGFuY2VfaWQYAyABKAsyES52MS5TaWduZWRNZXNzYWdlGjgKFFN5bmNBY3Rpb25TZW5kQ29uZmlnEiAKBmNvbmZpZxgBIAEoCzIQLnYxLlJlbW90ZUNvbmZpZxooChVTeW5jQWN0aW9uQ29ubmVjdFJlcG8SDwoHcmVwb19pZBgBIAEoCRqjAQoYU3luY0FjdGlvbkRpZmZPcGVyYXRpb25zEjAKGGhhdmVfb3BlcmF0aW9uc19zZWxlY3RvchgBIAEoCzIOLnYxLk9wU2VsZWN0b3ISGgoSaGF2ZV9vcGVyYXRpb25faWRzGAIgAygDEh0KFWhhdmVfb3BlcmF0aW9uX21vZG5vcxgDIAMoAxIaChJyZXF1ZXN0X29wZXJhdGlvbnMYBCADKAMaPQoYU3luY0FjdGlvblNlbmRPcGVyYXRpb25zEiEKBWV2ZW50GAEgASgLMhIudjEuT3BlcmF0aW9uRXZlbnQaJgoSU3luY0FjdGlvblRocm90dGxlEhAKCGRlbGF5X21zGAEgASgDGjgKGVN5bmNFc3RhYmxpc2hTaGFyZWRTZWNyZXQSGwoHZWQyNTUxORgCIAEoCVIKZWQyNTUxOXB1YiK0AQoTUmVwb0Nvbm5lY3Rpb25TdGF0ZRIcChhDT05ORUNUSU9OX1NUQVRFX1VOS05PV04QABIcChhDT05ORUNUSU9OX1NUQVRFX1BFTkRJTkcQARIeChpDT05ORUNUSU9OX1NUQVRFX0NPTk5FQ1RFRBACEiEKHUNPTk5FQ1RJT05fU1RBVEVfVU5BVVRIT1JJWkVEEAMSHgoaQ09OTkVDVElPTl9TVEFURV9OT1RfRk9VTkQQBEIICgZhY3Rpb24iLQoMUmVtb3RlQ29uZmlnEh0KBXJlcG9zGAEgAygLMg4udjEuUmVtb3RlUmVwbyJhCgpSZW1vdGVSZXBvEgoKAmlkGAEgASgJEgwKBGd1aWQYCyABKAkSCwoDdXJpGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJEgsKA2VudhgEIAMoCRINCgVmbGFncxgFIAMoCSr7AQoTU3luY0Nvbm5lY3Rpb25TdGF0ZRIcChhDT05ORUNUSU9OX1NUQVRFX1VOS05PV04QABIcChhDT05ORUNUSU9OX1NUQVRFX1BFTkRJTkcQARIeChpDT05ORUNUSU9OX1NUQVRFX0NPTk5FQ1RFRBACEiEKHUNPTk5FQ1RJT05fU1RBVEVfRElTQ09OTkVDVEVEEAMSHwobQ09OTkVDVElPTl9TVEFURV9SRVRSWV9XQUlUEAQSHwobQ09OTkVDVElPTl9TVEFURV9FUlJPUl9BVVRIEAoSIwofQ09OTkVDVElPTl9TVEFURV9FUlJPUl9QUk9UT0NPTBALMksKE0JhY2tyZXN0U3luY1NlcnZpY2USNAoEU3luYxISLnYxLlN5bmNTdHJlYW1JdGVtGhIudjEuU3luY1N0cmVhbUl0ZW0iACgBMAFCLFoqZ2l0aHViLmNvbS9nYXJldGhnZW9yZ2UvYmFja3Jlc3QvZ2VuL2dvL3YxYgZwcm90bzM", [file_v1_config, file_v1_crypto, file_v1_restic, file_v1_service, file_v1_operations, file_types_value, file_google_protobuf_empty, file_google_api_annotations]);
+  fileDesc("ChR2MS9zeW5jc2VydmljZS5wcm90bxICdjEiKwoWU3luY1N0YXRlU3RyZWFtUmVxdWVzdBIRCglzdWJzY3JpYmUYASABKAgigwEKE1N5bmNTdGF0ZVN0cmVhbUl0ZW0SGAoQcGVlcl9pbnN0YW5jZV9pZBgBIAEoCRISCgpwZWVyX2tleWlkGAIgASgJEiYKBXN0YXRlGAMgASgOMhcudjEuU3luY0Nvbm5lY3Rpb25TdGF0ZRIWCg5zdGF0dXNfbWVzc2FnZRgEIAEoCSK/CQoOU3luY1N0cmVhbUl0ZW0SKwoOc2lnbmVkX21lc3NhZ2UYASABKAsyES52MS5TaWduZWRNZXNzYWdlSAASOwoJaGFuZHNoYWtlGAMgASgLMiYudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvbkhhbmRzaGFrZUgAEkYKD2RpZmZfb3BlcmF0aW9ucxgUIAEoCzIrLnYxLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25EaWZmT3BlcmF0aW9uc0gAEkYKD3NlbmRfb3BlcmF0aW9ucxgVIAEoCzIrLnYxLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25TZW5kT3BlcmF0aW9uc0gAEj4KC3NlbmRfY29uZmlnGBYgASgLMicudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblNlbmRDb25maWdIABJPChdlc3RhYmxpc2hfc2hhcmVkX3NlY3JldBgXIAEoCzIsLnYxLlN5bmNTdHJlYW1JdGVtLlN5bmNFc3RhYmxpc2hTaGFyZWRTZWNyZXRIABI6Cgh0aHJvdHRsZRjoByABKAsyJS52MS5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uVGhyb3R0bGVIABp6ChNTeW5jQWN0aW9uSGFuZHNoYWtlEhgKEHByb3RvY29sX3ZlcnNpb24YASABKAMSIQoKcHVibGljX2tleRgCIAEoCzINLnYxLlB1YmxpY0tleRImCgtpbnN0YW5jZV9pZBgDIAEoCzIRLnYxLlNpZ25lZE1lc3NhZ2UaOAoUU3luY0FjdGlvblNlbmRDb25maWcSIAoGY29uZmlnGAEgASgLMhAudjEuUmVtb3RlQ29uZmlnGigKFVN5bmNBY3Rpb25Db25uZWN0UmVwbxIPCgdyZXBvX2lkGAEgASgJGqMBChhTeW5jQWN0aW9uRGlmZk9wZXJhdGlvbnMSMAoYaGF2ZV9vcGVyYXRpb25zX3NlbGVjdG9yGAEgASgLMg4udjEuT3BTZWxlY3RvchIaChJoYXZlX29wZXJhdGlvbl9pZHMYAiADKAMSHQoVaGF2ZV9vcGVyYXRpb25fbW9kbm9zGAMgAygDEhoKEnJlcXVlc3Rfb3BlcmF0aW9ucxgEIAMoAxo9ChhTeW5jQWN0aW9uU2VuZE9wZXJhdGlvbnMSIQoFZXZlbnQYASABKAsyEi52MS5PcGVyYXRpb25FdmVudBomChJTeW5jQWN0aW9uVGhyb3R0bGUSEAoIZGVsYXlfbXMYASABKAMaOAoZU3luY0VzdGFibGlzaFNoYXJlZFNlY3JldBIbCgdlZDI1NTE5GAIgASgJUgplZDI1NTE5cHViIrQBChNSZXBvQ29ubmVjdGlvblN0YXRlEhwKGENPTk5FQ1RJT05fU1RBVEVfVU5LTk9XThAAEhwKGENPTk5FQ1RJT05fU1RBVEVfUEVORElORxABEh4KGkNPTk5FQ1RJT05fU1RBVEVfQ09OTkVDVEVEEAISIQodQ09OTkVDVElPTl9TVEFURV9VTkFVVEhPUklaRUQQAxIeChpDT05ORUNUSU9OX1NUQVRFX05PVF9GT1VORBAEQggKBmFjdGlvbiItCgxSZW1vdGVDb25maWcSHQoFcmVwb3MYASADKAsyDi52MS5SZW1vdGVSZXBvImEKClJlbW90ZVJlcG8SCgoCaWQYASABKAkSDAoEZ3VpZBgLIAEoCRILCgN1cmkYAiABKAkSEAoIcGFzc3dvcmQYAyABKAkSCwoDZW52GAQgAygJEg0KBWZsYWdzGAUgAygJKvsBChNTeW5jQ29ubmVjdGlvblN0YXRlEhwKGENPTk5FQ1RJT05fU1RBVEVfVU5LTk9XThAAEhwKGENPTk5FQ1RJT05fU1RBVEVfUEVORElORxABEh4KGkNPTk5FQ1RJT05fU1RBVEVfQ09OTkVDVEVEEAISIQodQ09OTkVDVElPTl9TVEFURV9ESVNDT05ORUNURUQQAxIfChtDT05ORUNUSU9OX1NUQVRFX1JFVFJZX1dBSVQQBBIfChtDT05ORUNUSU9OX1NUQVRFX0VSUk9SX0FVVEgQChIjCh9DT05ORUNUSU9OX1NUQVRFX0VSUk9SX1BST1RPQ09MEAsySwoTQmFja3Jlc3RTeW5jU2VydmljZRI0CgRTeW5jEhIudjEuU3luY1N0cmVhbUl0ZW0aEi52MS5TeW5jU3RyZWFtSXRlbSIAKAEwATLHAQoYQmFja3Jlc3RTeW5jU3RhdGVTZXJ2aWNlElYKG0dldEtub3duSG9zdFN5bmNTdGF0ZVN0cmVhbRIaLnYxLlN5bmNTdGF0ZVN0cmVhbVJlcXVlc3QaFy52MS5TeW5jU3RhdGVTdHJlYW1JdGVtIgAwARJTChhHZXRDbGllbnRTeW5jU3RhdGVTdHJlYW0SGi52MS5TeW5jU3RhdGVTdHJlYW1SZXF1ZXN0GhcudjEuU3luY1N0YXRlU3RyZWFtSXRlbSIAMAFCLFoqZ2l0aHViLmNvbS9nYXJldGhnZW9yZ2UvYmFja3Jlc3QvZ2VuL2dvL3YxYgZwcm90bzM", [file_v1_config, file_v1_crypto, file_v1_restic, file_v1_service, file_v1_operations, file_types_value, file_google_protobuf_empty, file_google_api_annotations]);
+
+/**
+ * @generated from message v1.SyncStateStreamRequest
+ */
+export type SyncStateStreamRequest = Message<"v1.SyncStateStreamRequest"> & {
+  /**
+   * If true, the stream will continue to send updates until cancelled.
+   *
+   * @generated from field: bool subscribe = 1;
+   */
+  subscribe: boolean;
+};
+
+/**
+ * Describes the message v1.SyncStateStreamRequest.
+ * Use `create(SyncStateStreamRequestSchema)` to create a new message.
+ */
+export const SyncStateStreamRequestSchema: GenMessage<SyncStateStreamRequest> = /*@__PURE__*/
+  messageDesc(file_v1_syncservice, 0);
+
+/**
+ * @generated from message v1.SyncStateStreamItem
+ */
+export type SyncStateStreamItem = Message<"v1.SyncStateStreamItem"> & {
+  /**
+   * @generated from field: string peer_instance_id = 1;
+   */
+  peerInstanceId: string;
+
+  /**
+   * @generated from field: string peer_keyid = 2;
+   */
+  peerKeyid: string;
+
+  /**
+   * @generated from field: v1.SyncConnectionState state = 3;
+   */
+  state: SyncConnectionState;
+
+  /**
+   * @generated from field: string status_message = 4;
+   */
+  statusMessage: string;
+};
+
+/**
+ * Describes the message v1.SyncStateStreamItem.
+ * Use `create(SyncStateStreamItemSchema)` to create a new message.
+ */
+export const SyncStateStreamItemSchema: GenMessage<SyncStateStreamItem> = /*@__PURE__*/
+  messageDesc(file_v1_syncservice, 1);
 
 /**
  * @generated from message v1.SyncStreamItem
@@ -80,7 +131,7 @@ export type SyncStreamItem = Message<"v1.SyncStreamItem"> & {
  * Use `create(SyncStreamItemSchema)` to create a new message.
  */
 export const SyncStreamItemSchema: GenMessage<SyncStreamItem> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 0);
+  messageDesc(file_v1_syncservice, 2);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionHandshake
@@ -107,7 +158,7 @@ export type SyncStreamItem_SyncActionHandshake = Message<"v1.SyncStreamItem.Sync
  * Use `create(SyncStreamItem_SyncActionHandshakeSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionHandshakeSchema: GenMessage<SyncStreamItem_SyncActionHandshake> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 0, 0);
+  messageDesc(file_v1_syncservice, 2, 0);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionSendConfig
@@ -124,7 +175,7 @@ export type SyncStreamItem_SyncActionSendConfig = Message<"v1.SyncStreamItem.Syn
  * Use `create(SyncStreamItem_SyncActionSendConfigSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionSendConfigSchema: GenMessage<SyncStreamItem_SyncActionSendConfig> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 0, 1);
+  messageDesc(file_v1_syncservice, 2, 1);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionConnectRepo
@@ -141,7 +192,7 @@ export type SyncStreamItem_SyncActionConnectRepo = Message<"v1.SyncStreamItem.Sy
  * Use `create(SyncStreamItem_SyncActionConnectRepoSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionConnectRepoSchema: GenMessage<SyncStreamItem_SyncActionConnectRepo> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 0, 2);
+  messageDesc(file_v1_syncservice, 2, 2);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionDiffOperations
@@ -178,7 +229,7 @@ export type SyncStreamItem_SyncActionDiffOperations = Message<"v1.SyncStreamItem
  * Use `create(SyncStreamItem_SyncActionDiffOperationsSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionDiffOperationsSchema: GenMessage<SyncStreamItem_SyncActionDiffOperations> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 0, 3);
+  messageDesc(file_v1_syncservice, 2, 3);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionSendOperations
@@ -195,7 +246,7 @@ export type SyncStreamItem_SyncActionSendOperations = Message<"v1.SyncStreamItem
  * Use `create(SyncStreamItem_SyncActionSendOperationsSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionSendOperationsSchema: GenMessage<SyncStreamItem_SyncActionSendOperations> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 0, 4);
+  messageDesc(file_v1_syncservice, 2, 4);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionThrottle
@@ -212,7 +263,7 @@ export type SyncStreamItem_SyncActionThrottle = Message<"v1.SyncStreamItem.SyncA
  * Use `create(SyncStreamItem_SyncActionThrottleSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionThrottleSchema: GenMessage<SyncStreamItem_SyncActionThrottle> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 0, 5);
+  messageDesc(file_v1_syncservice, 2, 5);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncEstablishSharedSecret
@@ -234,7 +285,7 @@ export type SyncStreamItem_SyncEstablishSharedSecret = Message<"v1.SyncStreamIte
  * Use `create(SyncStreamItem_SyncEstablishSharedSecretSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncEstablishSharedSecretSchema: GenMessage<SyncStreamItem_SyncEstablishSharedSecret> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 0, 6);
+  messageDesc(file_v1_syncservice, 2, 6);
 
 /**
  * @generated from enum v1.SyncStreamItem.RepoConnectionState
@@ -272,7 +323,7 @@ export enum SyncStreamItem_RepoConnectionState {
  * Describes the enum v1.SyncStreamItem.RepoConnectionState.
  */
 export const SyncStreamItem_RepoConnectionStateSchema: GenEnum<SyncStreamItem_RepoConnectionState> = /*@__PURE__*/
-  enumDesc(file_v1_syncservice, 0, 0);
+  enumDesc(file_v1_syncservice, 2, 0);
 
 /**
  * RemoteConfig contains shareable properties from a remote backrest instance.
@@ -291,7 +342,7 @@ export type RemoteConfig = Message<"v1.RemoteConfig"> & {
  * Use `create(RemoteConfigSchema)` to create a new message.
  */
 export const RemoteConfigSchema: GenMessage<RemoteConfig> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 1);
+  messageDesc(file_v1_syncservice, 3);
 
 /**
  * @generated from message v1.RemoteRepo
@@ -333,7 +384,7 @@ export type RemoteRepo = Message<"v1.RemoteRepo"> & {
  * Use `create(RemoteRepoSchema)` to create a new message.
  */
 export const RemoteRepoSchema: GenMessage<RemoteRepo> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 2);
+  messageDesc(file_v1_syncservice, 4);
 
 /**
  * @generated from enum v1.SyncConnectionState
@@ -395,4 +446,31 @@ export const BackrestSyncService: GenService<{
   },
 }> = /*@__PURE__*/
   serviceDesc(file_v1_syncservice, 0);
+
+/**
+ * @generated from service v1.BackrestSyncStateService
+ */
+export const BackrestSyncStateService: GenService<{
+  /**
+   * GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
+   *
+   * @generated from rpc v1.BackrestSyncStateService.GetKnownHostSyncStateStream
+   */
+  getKnownHostSyncStateStream: {
+    methodKind: "server_streaming";
+    input: typeof SyncStateStreamRequestSchema;
+    output: typeof SyncStateStreamItemSchema;
+  },
+  /**
+   * GetClientSyncStateStream returns the sync state of clients of the current instance.
+   *
+   * @generated from rpc v1.BackrestSyncStateService.GetClientSyncStateStream
+   */
+  getClientSyncStateStream: {
+    methodKind: "server_streaming";
+    input: typeof SyncStateStreamRequestSchema;
+    output: typeof SyncStateStreamItemSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_v1_syncservice, 1);
 

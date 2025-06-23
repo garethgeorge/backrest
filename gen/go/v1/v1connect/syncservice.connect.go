@@ -23,6 +23,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// BackrestSyncServiceName is the fully-qualified name of the BackrestSyncService service.
 	BackrestSyncServiceName = "v1.BackrestSyncService"
+	// BackrestSyncStateServiceName is the fully-qualified name of the BackrestSyncStateService service.
+	BackrestSyncStateServiceName = "v1.BackrestSyncStateService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -36,12 +38,21 @@ const (
 	// BackrestSyncServiceSyncProcedure is the fully-qualified name of the BackrestSyncService's Sync
 	// RPC.
 	BackrestSyncServiceSyncProcedure = "/v1.BackrestSyncService/Sync"
+	// BackrestSyncStateServiceGetKnownHostSyncStateStreamProcedure is the fully-qualified name of the
+	// BackrestSyncStateService's GetKnownHostSyncStateStream RPC.
+	BackrestSyncStateServiceGetKnownHostSyncStateStreamProcedure = "/v1.BackrestSyncStateService/GetKnownHostSyncStateStream"
+	// BackrestSyncStateServiceGetClientSyncStateStreamProcedure is the fully-qualified name of the
+	// BackrestSyncStateService's GetClientSyncStateStream RPC.
+	BackrestSyncStateServiceGetClientSyncStateStreamProcedure = "/v1.BackrestSyncStateService/GetClientSyncStateStream"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	backrestSyncServiceServiceDescriptor    = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncService")
-	backrestSyncServiceSyncMethodDescriptor = backrestSyncServiceServiceDescriptor.Methods().ByName("Sync")
+	backrestSyncServiceServiceDescriptor                                = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncService")
+	backrestSyncServiceSyncMethodDescriptor                             = backrestSyncServiceServiceDescriptor.Methods().ByName("Sync")
+	backrestSyncStateServiceServiceDescriptor                           = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncStateService")
+	backrestSyncStateServiceGetKnownHostSyncStateStreamMethodDescriptor = backrestSyncStateServiceServiceDescriptor.Methods().ByName("GetKnownHostSyncStateStream")
+	backrestSyncStateServiceGetClientSyncStateStreamMethodDescriptor    = backrestSyncStateServiceServiceDescriptor.Methods().ByName("GetClientSyncStateStream")
 )
 
 // BackrestSyncServiceClient is a client for the v1.BackrestSyncService service.
@@ -110,4 +121,102 @@ type UnimplementedBackrestSyncServiceHandler struct{}
 
 func (UnimplementedBackrestSyncServiceHandler) Sync(context.Context, *connect.BidiStream[v1.SyncStreamItem, v1.SyncStreamItem]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.BackrestSyncService.Sync is not implemented"))
+}
+
+// BackrestSyncStateServiceClient is a client for the v1.BackrestSyncStateService service.
+type BackrestSyncStateServiceClient interface {
+	// GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
+	GetKnownHostSyncStateStream(context.Context, *connect.Request[v1.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1.SyncStateStreamItem], error)
+	// GetClientSyncStateStream returns the sync state of clients of the current instance.
+	GetClientSyncStateStream(context.Context, *connect.Request[v1.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1.SyncStateStreamItem], error)
+}
+
+// NewBackrestSyncStateServiceClient constructs a client for the v1.BackrestSyncStateService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewBackrestSyncStateServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) BackrestSyncStateServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &backrestSyncStateServiceClient{
+		getKnownHostSyncStateStream: connect.NewClient[v1.SyncStateStreamRequest, v1.SyncStateStreamItem](
+			httpClient,
+			baseURL+BackrestSyncStateServiceGetKnownHostSyncStateStreamProcedure,
+			connect.WithSchema(backrestSyncStateServiceGetKnownHostSyncStateStreamMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		getClientSyncStateStream: connect.NewClient[v1.SyncStateStreamRequest, v1.SyncStateStreamItem](
+			httpClient,
+			baseURL+BackrestSyncStateServiceGetClientSyncStateStreamProcedure,
+			connect.WithSchema(backrestSyncStateServiceGetClientSyncStateStreamMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// backrestSyncStateServiceClient implements BackrestSyncStateServiceClient.
+type backrestSyncStateServiceClient struct {
+	getKnownHostSyncStateStream *connect.Client[v1.SyncStateStreamRequest, v1.SyncStateStreamItem]
+	getClientSyncStateStream    *connect.Client[v1.SyncStateStreamRequest, v1.SyncStateStreamItem]
+}
+
+// GetKnownHostSyncStateStream calls v1.BackrestSyncStateService.GetKnownHostSyncStateStream.
+func (c *backrestSyncStateServiceClient) GetKnownHostSyncStateStream(ctx context.Context, req *connect.Request[v1.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1.SyncStateStreamItem], error) {
+	return c.getKnownHostSyncStateStream.CallServerStream(ctx, req)
+}
+
+// GetClientSyncStateStream calls v1.BackrestSyncStateService.GetClientSyncStateStream.
+func (c *backrestSyncStateServiceClient) GetClientSyncStateStream(ctx context.Context, req *connect.Request[v1.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1.SyncStateStreamItem], error) {
+	return c.getClientSyncStateStream.CallServerStream(ctx, req)
+}
+
+// BackrestSyncStateServiceHandler is an implementation of the v1.BackrestSyncStateService service.
+type BackrestSyncStateServiceHandler interface {
+	// GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
+	GetKnownHostSyncStateStream(context.Context, *connect.Request[v1.SyncStateStreamRequest], *connect.ServerStream[v1.SyncStateStreamItem]) error
+	// GetClientSyncStateStream returns the sync state of clients of the current instance.
+	GetClientSyncStateStream(context.Context, *connect.Request[v1.SyncStateStreamRequest], *connect.ServerStream[v1.SyncStateStreamItem]) error
+}
+
+// NewBackrestSyncStateServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewBackrestSyncStateServiceHandler(svc BackrestSyncStateServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	backrestSyncStateServiceGetKnownHostSyncStateStreamHandler := connect.NewServerStreamHandler(
+		BackrestSyncStateServiceGetKnownHostSyncStateStreamProcedure,
+		svc.GetKnownHostSyncStateStream,
+		connect.WithSchema(backrestSyncStateServiceGetKnownHostSyncStateStreamMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	backrestSyncStateServiceGetClientSyncStateStreamHandler := connect.NewServerStreamHandler(
+		BackrestSyncStateServiceGetClientSyncStateStreamProcedure,
+		svc.GetClientSyncStateStream,
+		connect.WithSchema(backrestSyncStateServiceGetClientSyncStateStreamMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/v1.BackrestSyncStateService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case BackrestSyncStateServiceGetKnownHostSyncStateStreamProcedure:
+			backrestSyncStateServiceGetKnownHostSyncStateStreamHandler.ServeHTTP(w, r)
+		case BackrestSyncStateServiceGetClientSyncStateStreamProcedure:
+			backrestSyncStateServiceGetClientSyncStateStreamHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedBackrestSyncStateServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedBackrestSyncStateServiceHandler struct{}
+
+func (UnimplementedBackrestSyncStateServiceHandler) GetKnownHostSyncStateStream(context.Context, *connect.Request[v1.SyncStateStreamRequest], *connect.ServerStream[v1.SyncStateStreamItem]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.BackrestSyncStateService.GetKnownHostSyncStateStream is not implemented"))
+}
+
+func (UnimplementedBackrestSyncStateServiceHandler) GetClientSyncStateStream(context.Context, *connect.Request[v1.SyncStateStreamRequest], *connect.ServerStream[v1.SyncStateStreamItem]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.BackrestSyncStateService.GetClientSyncStateStream is not implemented"))
 }

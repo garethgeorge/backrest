@@ -195,14 +195,30 @@ func validateMultihost(config *v1.Config) (err error) {
 		return fmt.Errorf("verify private key: %w", err)
 	}
 
+	seenInstanceIDs := make(map[string]struct{})
+	seenInstanceIDs[config.Instance] = struct{}{}
+	assertIDNew := func(id string) error {
+		if _, ok := seenInstanceIDs[id]; ok {
+			return fmt.Errorf("instance ID %q is already used by another peer, an instance ID can only appear once as either a known host OR authorized client of the instance", id)
+		}
+		seenInstanceIDs[id] = struct{}{}
+		return nil
+	}
+
 	for _, peer := range multihost.GetAuthorizedClients() {
 		if e := validatePeer(peer, false); e != nil {
+			err = multierror.Append(err, fmt.Errorf("authorized client %q: %w", peer.GetInstanceId(), e))
+		}
+		if e := assertIDNew(peer.GetInstanceId()); e != nil {
 			err = multierror.Append(err, fmt.Errorf("authorized client %q: %w", peer.GetInstanceId(), e))
 		}
 	}
 
 	for _, peer := range multihost.GetKnownHosts() {
 		if e := validatePeer(peer, true); e != nil {
+			err = multierror.Append(err, fmt.Errorf("known host %q: %w", peer.GetInstanceId(), e))
+		}
+		if e := assertIDNew(peer.GetInstanceId()); e != nil {
 			err = multierror.Append(err, fmt.Errorf("known host %q: %w", peer.GetInstanceId(), e))
 		}
 	}

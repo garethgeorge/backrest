@@ -39,6 +39,10 @@ type SyncClient struct {
 	remoteConfigStore       RemoteConfigStore
 	connectionStatus        v1.SyncConnectionState
 	connectionStatusMessage string
+
+	// sync state subscribers are channels that can be used to notify
+	// subscribers about changes in the sync state.
+	subscribers []chan struct{}
 }
 
 func newInsecureClient() *http.Client {
@@ -87,6 +91,14 @@ func (c *SyncClient) setConnectionState(state v1.SyncConnectionState, message st
 	c.mu.Lock()
 	c.connectionStatus = state
 	c.connectionStatusMessage = message
+	for _, subscriber := range c.subscribers {
+		select {
+		case subscriber <- struct{}{}:
+		default:
+			// If the subscriber channel is full, we skip sending the update.
+			// This is to prevent blocking the sync client if a subscriber is not reading updates.
+		}
+	}
 	c.mu.Unlock()
 }
 
@@ -94,6 +106,31 @@ func (c *SyncClient) GetConnectionState() (v1.SyncConnectionState, string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.connectionStatus, c.connectionStatusMessage
+}
+
+func (c *SyncClient) SubscribeToSyncStateUpdates() chan struct{} {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	ch := make(chan struct{}, 1)
+	c.subscribers = append(c.subscribers, ch)
+	return ch
+}
+
+func (c *SyncClient) UnsubscribeFromSyncStateUpdates(ch chan struct{}) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for i := range c.subscribers {
+		if c.subscribers[i] == ch {
+			// Swap with last element and truncate slice
+			lastIdx := len(c.subscribers) - 1
+			c.subscribers[i] = c.subscribers[lastIdx]
+			c.subscribers = c.subscribers[:lastIdx]
+			close(ch)
+			return
+		}
+	}
 }
 
 func (c *SyncClient) RunSync(ctx context.Context) {

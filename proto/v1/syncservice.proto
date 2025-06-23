@@ -18,6 +18,24 @@ service BackrestSyncService {
   rpc Sync(stream SyncStreamItem) returns (stream SyncStreamItem) {}
 }
 
+service BackrestSyncStateService {
+  // GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
+  rpc GetKnownHostSyncStateStream(SyncStateStreamRequest) returns (stream SyncStateStreamItem) {}
+  // GetClientSyncStateStream returns the sync state of clients of the current instance.
+  rpc GetClientSyncStateStream(SyncStateStreamRequest) returns (stream SyncStateStreamItem) {}
+}
+
+message SyncStateStreamRequest {
+  bool subscribe = 1; // If true, the stream will continue to send updates until cancelled.
+}
+
+message SyncStateStreamItem {
+  string peer_instance_id = 1;
+  string peer_keyid = 2;
+  SyncConnectionState state = 3;
+  string status_message = 4;
+}
+
 enum SyncConnectionState {
   CONNECTION_STATE_UNKNOWN = 0;
   CONNECTION_STATE_PENDING = 1;
