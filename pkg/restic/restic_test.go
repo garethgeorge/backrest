@@ -608,6 +608,65 @@ func TestResticCheck(t *testing.T) {
 	}
 }
 
+func TestJSONCommandResilantToBeginningWarnings(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("this test is designed to run on Linux, as it uses bash")
+	}
+
+	r := NewRepo("bash", "")
+	var result struct {
+		Foo string `json:"foo"`
+	}
+	if err := r.executeWithJSONOutput(context.Background(), []string{"-c", "echo 'warning: this is a warning' >&2; echo '{\"foo\": \"bar\"}';"}, &result); err != nil {
+		t.Fatalf("expected command to succeed, got error: %v", err)
+	}
+
+	if result.Foo != "bar" {
+		t.Errorf("expected foo to be 'bar', got: %s", result.Foo)
+	}
+}
+
+func TestJSONCommandFailsWithWarningsAtEnd(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("this test is designed to run on Linux, as it uses bash")
+	}
+
+	r := NewRepo("bash", "")
+	var result struct {
+		Foo string `json:"foo"`
+	}
+	err := r.executeWithJSONOutput(context.Background(), []string{"-c", "echo '{\"foo\": \"bar\"}'; echo 'warning: this is a warning' >&2;"}, &result)
+	if err == nil {
+		t.Fatal("expected command to fail with warnings after JSON output, but it succeeded")
+	}
+
+	if !strings.Contains(err.Error(), "command output is not valid JSON") {
+		t.Errorf("expected error to contain 'command output is not valid JSON', got: %v", err)
+	}
+}
+
+func TestJSONCommandFailsIfNoValidJSON(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("this test is designed to run on Linux, as it uses bash")
+	}
+
+	r := NewRepo("bash", "")
+	var result struct {
+		Foo string `json:"foo"`
+	}
+	err := r.executeWithJSONOutput(context.Background(), []string{"-c", "echo 'not really any valid\njson here\n'"}, &result)
+	if err == nil {
+		t.Fatal("expected command to fail with empty JSON output, but it succeeded")
+	}
+
+	if !strings.Contains(err.Error(), "command output is not valid JSON") {
+		t.Errorf("expected error to contain 'command output is not valid JSON', got: %v", err)
+	}
+}
+
 func toRepoPath(path string) string {
 	if runtime.GOOS != "windows" {
 		return path
