@@ -120,7 +120,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           />
         </>
       ),
-      destroyInactiveTabPane: true,
+      destroyOnHidden: true,
     },
     {
       key: "2",
@@ -140,7 +140,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           />
         </>
       ),
-      destroyInactiveTabPane: true,
+      destroyOnHidden: true,
     },
     {
       key: "3",
@@ -155,7 +155,7 @@ export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
           />
         </Suspense>
       ),
-      destroyInactiveTabPane: true,
+      destroyOnHidden: true,
     },
   ];
   return (
