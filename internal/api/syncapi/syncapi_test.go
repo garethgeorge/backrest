@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	connect "connectrpc.com/connect"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
@@ -112,6 +114,48 @@ func TestConnectionSucceeds(t *testing.T) {
 	startRunningSyncAPI(t, peerClient, peerClientAddr)
 
 	tryConnect(t, ctx, peerClient, defaultHostID)
+}
+
+func TestConnectionBadKeyRejected(t *testing.T) {
+	testutil.InstallZapLogger(t)
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	peerHostAddr := allocBindAddrForTest(t)
+	peerClientAddr := allocBindAddrForTest(t)
+
+	// Host has identity1, and authorizes no one.
+	peerHostConfig := &v1.Config{
+		Instance: defaultHostID,
+		Repos:    []*v1.Repo{},
+		Multihost: &v1.Multihost{
+			Identity:          identity1,
+			AuthorizedClients: []*v1.Multihost_Peer{}, // No authorized clients
+		},
+	}
+
+	// Client has identity2 and tries to connect to host.
+	peerClientConfig := &v1.Config{
+		Instance: defaultClientID,
+		Repos:    []*v1.Repo{},
+		Multihost: &v1.Multihost{
+			Identity: identity2,
+			KnownHosts: []*v1.Multihost_Peer{
+				{
+					Keyid:       identity1.Keyid,
+					InstanceId:  defaultHostID,
+					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
+				},
+			},
+		},
+	}
+
+	peerHost := newPeerUnderTest(t, peerHostConfig)
+	peerClient := newPeerUnderTest(t, peerClientConfig)
+
+	startRunningSyncAPI(t, peerHost, peerHostAddr)
+	startRunningSyncAPI(t, peerClient, peerClientAddr)
+
+	tryExpectConnectionFailure(t, ctx, peerClient, defaultHostID, connect.CodePermissionDenied)
 }
 
 func TestSyncConfigChange(t *testing.T) {
@@ -558,6 +602,33 @@ func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, instance
 		if state != v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
 			return fmt.Errorf("expected connection state to be CONNECTED, got %v", v1.SyncConnectionState.String(state))
 		}
+		return nil
+	})
+}
+
+func tryExpectConnectionFailure(t *testing.T, ctx context.Context, peer *peerUnderTest, instanceID string, wantCode connect.Code) {
+	t.Helper()
+	testutil.Try(t, ctx, func() error {
+		allClients := peer.manager.GetSyncClients()
+		client, ok := allClients[instanceID]
+		if !ok {
+			// It might take a moment for the client to be created.
+			return fmt.Errorf("client for instance %q not found yet", instanceID)
+		}
+
+		state, reason := client.GetConnectionState()
+		// The state can be either ERROR_AUTH or DISCONNECTED, since there's a race.
+		// The important part is that the reason contains the permission denied error.
+		if state != v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH && state != v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED {
+			return fmt.Errorf("expected connection state to be ERROR_AUTH or DISCONNECTED, got %v (reason: %q)", state, reason)
+		}
+
+		// The reason is the error string. For connect errors, it's "<code>: <message>".
+		// e.g. "permission_denied: peer ... not authorized"
+		if !strings.Contains(reason, wantCode.String()) {
+			return fmt.Errorf("expected reason to contain %q, but got %q", wantCode.String(), reason)
+		}
+
 		return nil
 	})
 }
