@@ -154,7 +154,9 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 	deleteByOriginalID := func(originalID int64) error {
 		var foundOp *v1.Operation
-		if err := h.mgr.oplog.Query(oplog.Query{}.SetOriginalID(originalID), func(o *v1.Operation) error {
+		if err := h.mgr.oplog.Query(oplog.Query{}.
+			SetOriginalInstanceKeyid(authorizedClientPeer.Keyid).
+			SetOriginalID(originalID), func(o *v1.Operation) error {
 			foundOp = o
 			return nil
 		}); err != nil {
