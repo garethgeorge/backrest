@@ -2,6 +2,32 @@
 
 cd "$(dirname "$0")" # cd to the directory of this script
 
+# Parse command line arguments
+ALLOW_REMOTE_ACCESS=false
+for arg in "$@"; do
+  case $arg in
+    --allow-remote-access)
+      ALLOW_REMOTE_ACCESS=true
+      shift
+      ;;
+    *)
+      echo "Unknown option: $arg"
+      echo "Usage: $0 [--allow-remote-access]"
+      echo "  --allow-remote-access: Allow remote access by binding to 0.0.0.0:9898 instead of 127.0.0.1:9898"
+      exit 1
+      ;;
+  esac
+done
+
+# Set the appropriate port based on the flag
+if [ "$ALLOW_REMOTE_ACCESS" = true ]; then
+  BACKREST_PORT="0.0.0.0:9898"
+  echo "Remote access enabled: Backrest will bind to 0.0.0.0:9898"
+else
+  BACKREST_PORT="127.0.0.1:9898"
+  echo "Local access only: Backrest will bind to 127.0.0.1:9898, run ./install.sh --allow-remote-access to enable remote access"
+fi
+
 install_or_update_unix() {
   if systemctl is-active --quiet backrest; then
     sudo systemctl stop backrest
@@ -40,7 +66,7 @@ Type=simple
 User=$(whoami)
 Group=$(whoami)
 ExecStart=/usr/local/bin/backrest
-Environment="BACKREST_PORT=127.0.0.1:9898"
+Environment="BACKREST_PORT=$BACKREST_PORT"
 
 [Install]
 WantedBy=multi-user.target
@@ -71,7 +97,7 @@ create_launchd_plist() {
         <key>PATH</key>
         <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
         <key>BACKREST_PORT</key>
-        <string>127.0.0.1:9898</string>
+        <string>$BACKREST_PORT</string>
     </dict>
 </dict>
 </plist>
@@ -105,4 +131,9 @@ else
 fi
 
 echo "Logs are available at ~/.local/share/backrest/processlogs/backrest.log"
-echo "Access backrest WebUI at http://localhost:9898"
+if [ "$ALLOW_REMOTE_ACCESS" = true ]; then
+  echo "Access backrest WebUI at http://0.0.0.0:9898 (remote access enabled)"
+  echo "Note: Remote access allows connections from any IP address. Ensure proper firewall configuration or that authentication is set up."
+else
+  echo "Access backrest WebUI at http://localhost:9898"
+fi
