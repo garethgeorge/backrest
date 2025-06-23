@@ -23,6 +23,8 @@ import {
   Config,
   ConfigSchema,
   UserSchema,
+  MultihostSchema,
+  Multihost_PeerSchema,
 } from "../../gen/ts/v1/config_pb";
 
 interface FormData {
@@ -34,6 +36,22 @@ interface FormData {
     }[];
   };
   instance: string;
+  multihost: {
+    identity: {
+      keyId: string;
+    };
+    knownHosts: {
+      instanceId: string;
+      keyid: string;
+      keyidVerified?: boolean;
+      instanceUrl: string;
+    }[];
+    authorizedClients: {
+      instanceId: string;
+      keyid: string;
+      keyidVerified?: boolean;
+    }[];
+  };
 }
 
 export const SettingsModal = () => {
@@ -69,6 +87,35 @@ export const SettingsModal = () => {
         ignoreUnknownFields: false,
       });
       newConfig.instance = formData.instance;
+
+      // Update multihost configuration if provided
+      if (formData.multihost) {
+        if (!newConfig.multihost) {
+          newConfig.multihost = fromJson(
+            MultihostSchema,
+            {},
+            {
+              ignoreUnknownFields: false,
+            }
+          );
+        }
+        if (formData.multihost.authorizedClients) {
+          newConfig.multihost.authorizedClients =
+            formData.multihost.authorizedClients.map((peer) =>
+              fromJson(Multihost_PeerSchema, peer, {
+                ignoreUnknownFields: false,
+              })
+            );
+        }
+        if (formData.multihost.knownHosts) {
+          newConfig.multihost.knownHosts = formData.multihost.knownHosts.map(
+            (peer) =>
+              fromJson(Multihost_PeerSchema, peer, {
+                ignoreUnknownFields: false,
+              })
+          );
+        }
+      }
 
       if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
         throw new Error(
@@ -112,8 +159,8 @@ export const SettingsModal = () => {
         <Form
           autoComplete="off"
           form={form}
-          labelCol={{ span: 6 }}
-          wrapperCol={{ span: 18 }}
+          labelCol={{ span: 4 }}
+          wrapperCol={{ span: 20 }}
         >
           {users.length > 0 || config.auth?.disabled ? null : (
             <>
@@ -333,8 +380,165 @@ const MultihostIdentityForm: React.FC<{
       </Form.Item>
 
       {/* Authorized client peers. */}
+      <Form.Item
+        label="Authorized Clients"
+        tooltip="Authorized clients are other Backrest instances that are allowed to access repositories on this instance."
+      >
+        <PeerFormList
+          form={form}
+          listName={["multihost", "authorizedClients"]}
+          showInstanceUrl={false}
+          itemTypeName="Authorized Client"
+          initialValue={
+            config.multihost?.authorizedClients?.map((peer) =>
+              toJson(Multihost_PeerSchema, peer, { alwaysEmitImplicit: true })
+            ) || []
+          }
+        />
+      </Form.Item>
 
       {/* Known host peers. */}
+      <Form.Item
+        label="Known Hosts"
+        tooltip="Known hosts are other Backrest instances that this instance can connect to."
+      >
+        <PeerFormList
+          form={form}
+          listName={["multihost", "knownHosts"]}
+          showInstanceUrl={true}
+          itemTypeName="Known Host"
+          initialValue={
+            config.multihost?.knownHosts?.map((peer) =>
+              toJson(Multihost_PeerSchema, peer, { alwaysEmitImplicit: true })
+            ) || []
+          }
+        />
+      </Form.Item>
     </>
+  );
+};
+
+const PeerFormList: React.FC<{
+  form: FormInstance<FormData>;
+  listName: string[];
+  showInstanceUrl: boolean;
+  itemTypeName: string;
+  initialValue: any[];
+}> = ({ form, listName, showInstanceUrl, itemTypeName, initialValue }) => {
+  return (
+    <Form.List name={listName} initialValue={initialValue}>
+      {(fields, { add, remove }, { errors }) => (
+        <>
+          {fields.map((field, index) => (
+            <PeerFormListItem
+              key={field.key}
+              form={form}
+              fieldName={field.name}
+              remove={remove}
+              showInstanceUrl={showInstanceUrl}
+              index={index}
+            />
+          ))}
+          <Form.Item>
+            <Button
+              type="dashed"
+              onClick={() => add({})}
+              block
+              icon={<PlusOutlined />}
+            >
+              Add {itemTypeName || "Peer"}
+            </Button>
+            <Form.ErrorList errors={errors} />
+          </Form.Item>
+        </>
+      )}
+    </Form.List>
+  );
+};
+
+const PeerFormListItem: React.FC<{
+  form: FormInstance<FormData>;
+  fieldName: number;
+  remove: (index: number | number[]) => void;
+  showInstanceUrl: boolean;
+  index: number;
+}> = ({ form, fieldName, remove, showInstanceUrl, index }) => {
+  return (
+    <div
+      style={{
+        border: "1px solid #d9d9d9",
+        borderRadius: "6px",
+        padding: "16px",
+        marginBottom: "16px",
+        position: "relative",
+      }}
+    >
+      <MinusCircleOutlined
+        style={{
+          position: "absolute",
+          top: "8px",
+          right: "8px",
+          color: "#999",
+          cursor: "pointer",
+        }}
+        onClick={() => remove(fieldName)}
+      />
+
+      <Row gutter={16}>
+        <Col span={10}>
+          <Form.Item
+            name={[fieldName, "instanceId"]}
+            label="Instance ID"
+            rules={[
+              { required: true, message: "Instance ID is required" },
+              {
+                pattern: namePattern,
+                message:
+                  "Instance ID must be alphanumeric with '_-.' allowed as separators",
+              },
+            ]}
+          >
+            <Input placeholder="e.g. my-backup-server" />
+          </Form.Item>
+        </Col>
+        <Col span={10}>
+          <Form.Item
+            name={[fieldName, "keyid"]}
+            label="Key ID"
+            rules={[{ required: true, message: "Key ID is required" }]}
+          >
+            <Input placeholder="Public key identifier" />
+          </Form.Item>
+        </Col>
+        <Col span={4}>
+          <Form.Item
+            name={[fieldName, "keyidVerified"]}
+            valuePropName="checked"
+          >
+            <Checkbox>Verified</Checkbox>
+          </Form.Item>
+        </Col>
+      </Row>
+
+      {showInstanceUrl && (
+        <Row gutter={16}>
+          <Col span={24}>
+            <Form.Item
+              name={[fieldName, "instanceUrl"]}
+              label="Instance URL"
+              rules={[
+                {
+                  required: showInstanceUrl,
+                  message: "Instance URL is required for known hosts",
+                },
+                { type: "url", message: "Please enter a valid URL" },
+              ]}
+            >
+              <Input placeholder="https://example.com:9898" />
+            </Form.Item>
+          </Col>
+        </Row>
+      )}
+    </div>
   );
 };
