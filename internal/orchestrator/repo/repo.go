@@ -73,7 +73,7 @@ func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath stri
 		opts = append(opts, restic.WithFlags("-o", "sftp.args=-oBatchMode=yes"))
 	}
 
-	repo := restic.NewRepo(resticPath, repoConfig.GetUri(), opts...)
+	repo := restic.NewRepo(resticPath, ExpandEnv(repoConfig.GetUri()), opts...)
 
 	return &RepoOrchestrator{
 		config:     config,
