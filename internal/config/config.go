@@ -98,7 +98,7 @@ func PopulateRequiredFields(config *v1.Config) (mutated bool, err error) {
 	if config.GetMultihost().Identity == nil {
 		identity, err := cryptoutil.GeneratePrivateKey()
 		if err != nil {
-			zap.S().Fatalf("failed to generate cryptographic identity: %v", err)
+			return false, fmt.Errorf("generate private key: %w", err)
 		}
 		config.GetMultihost().Identity = identity
 		mutated = true
