@@ -173,7 +173,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             Cancel
           </Button>,
           template != null ? (
-            <Tooltip title="Removes the repo from the config but will not delete the restic repository">
+            <Tooltip
+              key="delete-tooltip"
+              title="Removes the repo from the config but will not delete the restic repository"
+            >
               <ConfirmButton
                 key="delete"
                 type="primary"
@@ -407,35 +410,38 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               >
                 {(fields, { add, remove }, { errors }) => (
                   <>
-                    {fields.map((field, index) => (
-                      <Form.Item key={field.key}>
-                        <Form.Item
-                          {...field}
-                          validateTrigger={["onChange", "onBlur"]}
-                          rules={[
-                            {
-                              required: true,
-                              whitespace: true,
-                              pattern: /^[\w-]+=.*$/,
-                              message:
-                                "Environment variable must be in format KEY=VALUE",
-                            },
-                          ]}
-                          noStyle
-                        >
-                          <Input
-                            placeholder="KEY=VALUE"
-                            onBlur={() => form.validateFields()}
-                            style={{ width: "90%" }}
+                    {fields.map((field, index) => {
+                      const { key, ...restField } = field;
+                      return (
+                        <Form.Item key={field.key}>
+                          <Form.Item
+                            {...restField}
+                            validateTrigger={["onChange", "onBlur"]}
+                            rules={[
+                              {
+                                required: true,
+                                whitespace: true,
+                                pattern: /^[\w-]+=.*$/,
+                                message:
+                                  "Environment variable must be in format KEY=VALUE",
+                              },
+                            ]}
+                            noStyle
+                          >
+                            <Input
+                              placeholder="KEY=VALUE"
+                              onBlur={() => form.validateFields()}
+                              style={{ width: "90%" }}
+                            />
+                          </Form.Item>
+                          <MinusCircleOutlined
+                            className="dynamic-delete-button"
+                            onClick={() => remove(index)}
+                            style={{ paddingLeft: "5px" }}
                           />
                         </Form.Item>
-                        <MinusCircleOutlined
-                          className="dynamic-delete-button"
-                          onClick={() => remove(index)}
-                          style={{ paddingLeft: "5px" }}
-                        />
-                      </Form.Item>
-                    ))}
+                      );
+                    })}
                     <Form.Item>
                       <Button
                         type="dashed"
@@ -458,31 +464,37 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             <Form.List name="flags">
               {(fields, { add, remove }, { errors }) => (
                 <>
-                  {fields.map((field, index) => (
-                    <Form.Item required={false} key={field.key}>
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        rules={[
-                          {
-                            required: true,
-                            whitespace: true,
-                            pattern: /^\-\-?.*$/,
-                            message:
-                              "Value should be a CLI flag e.g. see restic --help",
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <Input placeholder="--flag" style={{ width: "90%" }} />
+                  {fields.map((field, index) => {
+                    const { key, ...restField } = field;
+                    return (
+                      <Form.Item required={false} key={field.key}>
+                        <Form.Item
+                          {...restField}
+                          validateTrigger={["onChange", "onBlur"]}
+                          rules={[
+                            {
+                              required: true,
+                              whitespace: true,
+                              pattern: /^\-\-?.*$/,
+                              message:
+                                "Value should be a CLI flag e.g. see restic --help",
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <Input
+                            placeholder="--flag"
+                            style={{ width: "90%" }}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(index)}
+                          style={{ paddingLeft: "5px" }}
+                        />
                       </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(index)}
-                        style={{ paddingLeft: "5px" }}
-                      />
-                    </Form.Item>
-                  ))}
+                    );
+                  })}
                   <Form.Item>
                     <Button
                       type="dashed"

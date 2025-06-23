@@ -278,31 +278,34 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             >
               {(fields, { add, remove }, { errors }) => (
                 <>
-                  {fields.map((field, index) => (
-                    <Form.Item key={field.key}>
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        initialValue={""}
-                        rules={[
-                          {
-                            required: true,
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <URIAutocomplete
-                          style={{ width: "90%" }}
-                          onBlur={() => form.validateFields()}
+                  {fields.map((field, index) => {
+                    const { key, ...restField } = field;
+                    return (
+                      <Form.Item key={field.key}>
+                        <Form.Item
+                          {...restField}
+                          validateTrigger={["onChange", "onBlur"]}
+                          initialValue={""}
+                          rules={[
+                            {
+                              required: true,
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <URIAutocomplete
+                            style={{ width: "90%" }}
+                            onBlur={() => form.validateFields()}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(field.name)}
+                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(field.name)}
-                        style={{ paddingLeft: "5px" }}
-                      />
-                    </Form.Item>
-                  ))}
+                    );
+                  })}
                   <Form.Item>
                     <Button
                       type="dashed"
@@ -343,32 +346,35 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             >
               {(fields, { add, remove }, { errors }) => (
                 <>
-                  {fields.map((field, index) => (
-                    <Form.Item required={false} key={field.key}>
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        initialValue={""}
-                        rules={[
-                          {
-                            required: true,
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <URIAutocomplete
-                          style={{ width: "90%" }}
-                          onBlur={() => form.validateFields()}
-                          globAllowed={true}
+                  {fields.map((field, index) => {
+                    const { key, ...restField } = field;
+                    return (
+                      <Form.Item required={false} key={field.key}>
+                        <Form.Item
+                          {...restField}
+                          validateTrigger={["onChange", "onBlur"]}
+                          initialValue={""}
+                          rules={[
+                            {
+                              required: true,
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <URIAutocomplete
+                            style={{ width: "90%" }}
+                            onBlur={() => form.validateFields()}
+                            globAllowed={true}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(field.name)}
+                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(field.name)}
-                        style={{ paddingLeft: "5px" }}
-                      />
-                    </Form.Item>
-                  ))}
+                    );
+                  })}
                   <Form.Item>
                     <Button
                       type="dashed"
@@ -409,32 +415,35 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             >
               {(fields, { add, remove }, { errors }) => (
                 <>
-                  {fields.map((field, index) => (
-                    <Form.Item required={false} key={field.key}>
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        initialValue={""}
-                        rules={[
-                          {
-                            required: true,
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <URIAutocomplete
-                          style={{ width: "90%" }}
-                          onBlur={() => form.validateFields()}
-                          globAllowed={true}
+                  {fields.map((field, index) => {
+                    const { key, ...restField } = field;
+                    return (
+                      <Form.Item required={false} key={field.key}>
+                        <Form.Item
+                          {...restField}
+                          validateTrigger={["onChange", "onBlur"]}
+                          initialValue={""}
+                          rules={[
+                            {
+                              required: true,
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <URIAutocomplete
+                            style={{ width: "90%" }}
+                            onBlur={() => form.validateFields()}
+                            globAllowed={true}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(field.name)}
+                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(field.name)}
-                        style={{ paddingLeft: "5px" }}
-                      />
-                    </Form.Item>
-                  ))}
+                    );
+                  })}
                   <Form.Item>
                     <Button
                       type="dashed"
@@ -470,31 +479,37 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             <Form.List name="backup_flags">
               {(fields, { add, remove }, { errors }) => (
                 <>
-                  {fields.map((field, index) => (
-                    <Form.Item required={false} key={field.key}>
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        rules={[
-                          {
-                            required: true,
-                            whitespace: true,
-                            pattern: /^\-\-?.*$/,
-                            message:
-                              "Value should be a CLI flag e.g. see restic backup --help",
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <Input placeholder="--flag" style={{ width: "90%" }} />
+                  {fields.map((field, index) => {
+                    const { key, ...restField } = field;
+                    return (
+                      <Form.Item required={false} key={field.key}>
+                        <Form.Item
+                          {...restField}
+                          validateTrigger={["onChange", "onBlur"]}
+                          rules={[
+                            {
+                              required: true,
+                              whitespace: true,
+                              pattern: /^\-\-?.*$/,
+                              message:
+                                "Value should be a CLI flag e.g. see restic backup --help",
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <Input
+                            placeholder="--flag"
+                            style={{ width: "90%" }}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(index)}
+                          style={{ paddingLeft: "5px" }}
+                        />
                       </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(index)}
-                        style={{ paddingLeft: "5px" }}
-                      />
-                    </Form.Item>
-                  ))}
+                    );
+                  })}
                   <Form.Item>
                     <Button
                       type="dashed"
