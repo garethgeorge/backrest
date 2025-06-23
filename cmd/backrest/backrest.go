@@ -158,9 +158,23 @@ func main() {
 	mux.Handle("/metrics", auth.RequireAuthentication(metric.GetRegistry().Handler(), authenticator))
 
 	// Serve the HTTP gateway
+	var handler http.Handler = mux
+	if version == "unknown" { // dev build, enable CORS for local development
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Connect-Protocol-Version, Connect-Timeout-Ms, Authorization")
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			mux.ServeHTTP(w, r)
+		})
+	}
+
 	server := &http.Server{
 		Addr:    env.BindAddress(),
-		Handler: h2c.NewHandler(mux, &http2.Server{}), // h2c is HTTP/2 without TLS for grpc-connect support.
+		Handler: h2c.NewHandler(handler, &http2.Server{}), // h2c is HTTP/2 without TLS for grpc-connect support.
 	}
 
 	zap.S().Infof("starting web server %v", server.Addr)
