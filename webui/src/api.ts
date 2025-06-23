@@ -3,6 +3,7 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { createClient } from "@connectrpc/connect";
 import { Authentication } from "../gen/ts/v1/authentication_pb";
 import { Backrest } from "../gen/ts/v1/service_pb";
+import { backendUrl } from "./state/buildcfg";
 
 const tokenKey = "backrest-ui-authToken";
 
@@ -24,7 +25,7 @@ const fetch = (
 };
 
 const transport = createConnectTransport({
-  baseUrl: "./",
+  baseUrl: backendUrl,
   useBinaryFormat: true,
   fetch: fetch as typeof globalThis.fetch,
 });
