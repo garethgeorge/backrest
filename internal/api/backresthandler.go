@@ -60,11 +60,11 @@ func NewBackrestHandler(config config.ConfigStore, remoteConfigStore syncapi.Rem
 
 // GetConfig implements GET /v1/config
 func (s *BackrestHandler) GetConfig(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.Config], error) {
-	config, err := s.config.Get()
+	c, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
-	return connect.NewResponse(config), nil
+	return connect.NewResponse(config.SanitizeForNetwork(c)), nil
 }
 
 // SetConfig implements POST /v1/config
@@ -79,13 +79,16 @@ func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1
 		return nil, errors.New("config modno mismatch, reload and try again")
 	}
 
-	if err := config.ValidateConfig(req.Msg); err != nil {
+	// Rehydrate the network sanitized config
+	rehydratedConfig := config.RehydrateNetworkSanitizedConfig(req.Msg, existing)
+
+	if err := config.ValidateConfig(rehydratedConfig); err != nil {
 		return nil, fmt.Errorf("validation error: %w", err)
 	}
 
-	req.Msg.Modno += 1
+	rehydratedConfig.Modno++
 
-	if err := s.config.Update(req.Msg); err != nil {
+	if err := s.config.Update(rehydratedConfig); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
 
