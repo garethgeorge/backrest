@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	connect "connectrpc.com/connect"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
@@ -39,6 +41,9 @@ const (
 
 var (
 	defaultRepoGUID = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+
+	identity1, _ = cryptoutil.GeneratePrivateKey()
+	identity2, _ = cryptoutil.GeneratePrivateKey()
 )
 
 var (
@@ -76,9 +81,12 @@ func TestConnectionSucceeds(t *testing.T) {
 		Instance: defaultHostID,
 		Repos:    []*v1.Repo{},
 		Multihost: &v1.Multihost{
+			Identity: identity1,
 			AuthorizedClients: []*v1.Multihost_Peer{
 				{
-					InstanceId: defaultClientID,
+					Keyid:         identity2.Keyid,
+					KeyidVerified: true,
+					InstanceId:    defaultClientID,
 				},
 			},
 		},
@@ -88,8 +96,10 @@ func TestConnectionSucceeds(t *testing.T) {
 		Instance: defaultClientID,
 		Repos:    []*v1.Repo{},
 		Multihost: &v1.Multihost{
+			Identity: identity2,
 			KnownHosts: []*v1.Multihost_Peer{
 				{
+					Keyid:       identity1.Keyid,
 					InstanceId:  defaultHostID,
 					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
 				},
@@ -104,6 +114,48 @@ func TestConnectionSucceeds(t *testing.T) {
 	startRunningSyncAPI(t, peerClient, peerClientAddr)
 
 	tryConnect(t, ctx, peerClient, defaultHostID)
+}
+
+func TestConnectionBadKeyRejected(t *testing.T) {
+	testutil.InstallZapLogger(t)
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	peerHostAddr := allocBindAddrForTest(t)
+	peerClientAddr := allocBindAddrForTest(t)
+
+	// Host has identity1, and authorizes no one.
+	peerHostConfig := &v1.Config{
+		Instance: defaultHostID,
+		Repos:    []*v1.Repo{},
+		Multihost: &v1.Multihost{
+			Identity:          identity1,
+			AuthorizedClients: []*v1.Multihost_Peer{}, // No authorized clients
+		},
+	}
+
+	// Client has identity2 and tries to connect to host.
+	peerClientConfig := &v1.Config{
+		Instance: defaultClientID,
+		Repos:    []*v1.Repo{},
+		Multihost: &v1.Multihost{
+			Identity: identity2,
+			KnownHosts: []*v1.Multihost_Peer{
+				{
+					Keyid:       identity1.Keyid,
+					InstanceId:  defaultHostID,
+					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
+				},
+			},
+		},
+	}
+
+	peerHost := newPeerUnderTest(t, peerHostConfig)
+	peerClient := newPeerUnderTest(t, peerClientConfig)
+
+	startRunningSyncAPI(t, peerHost, peerHostAddr)
+	startRunningSyncAPI(t, peerClient, peerClientAddr)
+
+	tryExpectConnectionFailure(t, ctx, peerClient, defaultHostID, connect.CodePermissionDenied)
 }
 
 func TestSyncConfigChange(t *testing.T) {
@@ -128,9 +180,12 @@ func TestSyncConfigChange(t *testing.T) {
 			},
 		},
 		Multihost: &v1.Multihost{
+			Identity: identity1,
 			AuthorizedClients: []*v1.Multihost_Peer{
 				{
-					InstanceId: defaultClientID,
+					Keyid:         identity2.Keyid,
+					KeyidVerified: true,
+					InstanceId:    defaultClientID,
 				},
 			},
 		},
@@ -146,8 +201,10 @@ func TestSyncConfigChange(t *testing.T) {
 			},
 		},
 		Multihost: &v1.Multihost{
+			Identity: identity2,
 			KnownHosts: []*v1.Multihost_Peer{
 				{
+					Keyid:       identity1.Keyid,
 					InstanceId:  defaultHostID,
 					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
 				},
@@ -204,9 +261,12 @@ func TestSimpleOperationSync(t *testing.T) {
 			},
 		},
 		Multihost: &v1.Multihost{
+			Identity: identity1,
 			AuthorizedClients: []*v1.Multihost_Peer{
 				{
-					InstanceId: defaultClientID,
+					Keyid:         identity2.Keyid,
+					KeyidVerified: true,
+					InstanceId:    defaultClientID,
 				},
 			},
 		},
@@ -222,8 +282,10 @@ func TestSimpleOperationSync(t *testing.T) {
 			},
 		},
 		Multihost: &v1.Multihost{
+			Identity: identity2,
 			KnownHosts: []*v1.Multihost_Peer{
 				{
+					Keyid:       identity1.Keyid,
 					InstanceId:  defaultHostID,
 					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
 				},
@@ -272,25 +334,28 @@ func TestSimpleOperationSync(t *testing.T) {
 	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetInstanceID(defaultClientID).SetRepoGUID(defaultRepoGUID),
 		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 			{
-				Id:             3, // b/c of the already inserted host ops the sync'd ops start at 3
-				FlowId:         3,
-				OriginalId:     1,
-				OriginalFlowId: 1,
-				DisplayMessage: "clientop1",
+				Id:                    3, // b/c of the already inserted host ops the sync'd ops start at 3
+				FlowId:                3,
+				OriginalId:            1,
+				OriginalFlowId:        1,
+				OriginalInstanceKeyid: identity2.Keyid,
+				DisplayMessage:        "clientop1",
 			},
 			{
-				Id:             4,
-				FlowId:         3,
-				OriginalId:     2,
-				OriginalFlowId: 1,
-				DisplayMessage: "clientop2",
+				Id:                    4,
+				FlowId:                3,
+				OriginalId:            2,
+				OriginalFlowId:        1,
+				OriginalInstanceKeyid: identity2.Keyid,
+				DisplayMessage:        "clientop2",
 			},
 			{
-				Id:             5,
-				FlowId:         5,
-				OriginalId:     3,
-				OriginalFlowId: 2,
-				DisplayMessage: "clientop3",
+				Id:                    5,
+				FlowId:                5,
+				OriginalId:            3,
+				OriginalFlowId:        2,
+				OriginalInstanceKeyid: identity2.Keyid,
+				DisplayMessage:        "clientop3",
 			},
 		}), "host and client should be synced")
 }
@@ -313,9 +378,12 @@ func TestSyncMutations(t *testing.T) {
 			},
 		},
 		Multihost: &v1.Multihost{
+			Identity: identity1,
 			AuthorizedClients: []*v1.Multihost_Peer{
 				{
-					InstanceId: defaultClientID,
+					Keyid:         identity2.Keyid,
+					KeyidVerified: true,
+					InstanceId:    defaultClientID,
 				},
 			},
 		},
@@ -331,8 +399,10 @@ func TestSyncMutations(t *testing.T) {
 			},
 		},
 		Multihost: &v1.Multihost{
+			Identity: identity2,
 			KnownHosts: []*v1.Multihost_Peer{
 				{
+					Keyid:       identity1.Keyid,
 					InstanceId:  defaultHostID,
 					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
 				},
@@ -377,11 +447,12 @@ func TestSyncMutations(t *testing.T) {
 	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetRepoGUID(defaultRepoGUID),
 		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 			{
-				Id:             1,
-				DisplayMessage: "clientop1-mod-while-online",
-				OriginalFlowId: 1,
-				OriginalId:     1,
-				FlowId:         1,
+				Id:                    1,
+				DisplayMessage:        "clientop1-mod-while-online",
+				OriginalFlowId:        1,
+				OriginalId:            1,
+				FlowId:                1,
+				OriginalInstanceKeyid: identity2.Keyid,
 			},
 		}), "host and client should sync online edits")
 
@@ -413,11 +484,12 @@ func TestSyncMutations(t *testing.T) {
 	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetRepoGUID(defaultRepoGUID),
 		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 			{
-				Id:             1,
-				DisplayMessage: "clientop1-mod-while-offline",
-				OriginalFlowId: 1,
-				OriginalId:     1,
-				FlowId:         1,
+				Id:                    1,
+				DisplayMessage:        "clientop1-mod-while-offline",
+				OriginalFlowId:        1,
+				OriginalId:            1,
+				FlowId:                1,
+				OriginalInstanceKeyid: identity2.Keyid,
 			},
 		}), "host and client should sync offline edits")
 
@@ -465,12 +537,14 @@ func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnd
 			op.FlowId = 0
 			op.OriginalId = 0
 			op.OriginalFlowId = 0
+			op.OriginalInstanceKeyid = ""
 		}
 		for _, op := range peer2Ops {
 			op.Id = 0
 			op.FlowId = 0
 			op.OriginalId = 0
 			op.OriginalFlowId = 0
+			op.OriginalInstanceKeyid = ""
 		}
 
 		sortFn := func(a, b *v1.Operation) int {
@@ -528,6 +602,33 @@ func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, instance
 		if state != v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
 			return fmt.Errorf("expected connection state to be CONNECTED, got %v", v1.SyncConnectionState.String(state))
 		}
+		return nil
+	})
+}
+
+func tryExpectConnectionFailure(t *testing.T, ctx context.Context, peer *peerUnderTest, instanceID string, wantCode connect.Code) {
+	t.Helper()
+	testutil.Try(t, ctx, func() error {
+		allClients := peer.manager.GetSyncClients()
+		client, ok := allClients[instanceID]
+		if !ok {
+			// It might take a moment for the client to be created.
+			return fmt.Errorf("client for instance %q not found yet", instanceID)
+		}
+
+		state, reason := client.GetConnectionState()
+		// The state can be either ERROR_AUTH or DISCONNECTED, since there's a race.
+		// The important part is that the reason contains the permission denied error.
+		if state != v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH && state != v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED {
+			return fmt.Errorf("expected connection state to be ERROR_AUTH or DISCONNECTED, got %v (reason: %q)", state, reason)
+		}
+
+		// The reason is the error string. For connect errors, it's "<code>: <message>".
+		// e.g. "permission_denied: peer ... not authorized"
+		if !strings.Contains(reason, wantCode.String()) {
+			return fmt.Errorf("expected reason to contain %q, but got %q", wantCode.String(), reason)
+		}
+
 		return nil
 	})
 }
