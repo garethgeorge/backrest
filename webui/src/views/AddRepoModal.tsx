@@ -246,7 +246,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         <Form
           autoComplete="off"
           form={form}
-          labelCol={{ span: 4 }}
+          labelCol={{ span: 6 }}
           wrapperCol={{ span: 18 }}
           disabled={confirmLoading}
         >
@@ -432,7 +432,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                         <MinusCircleOutlined
                           className="dynamic-delete-button"
                           onClick={() => remove(index)}
-                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
                     ))}
@@ -479,7 +478,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                       <MinusCircleOutlined
                         className="dynamic-delete-button"
                         onClick={() => remove(index)}
-                        style={{ paddingLeft: "5px" }}
                       />
                     </Form.Item>
                   ))}

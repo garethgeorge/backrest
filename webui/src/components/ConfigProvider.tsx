@@ -12,11 +12,9 @@ export const ConfigContextProvider = ({
 }) => {
   const [config, setConfig] = useState<Config | null>(null);
   return (
-    <>
-      <ConfigContext.Provider value={[config, setConfig]}>
-        {children}
-      </ConfigContext.Provider>
-    </>
+    <ConfigContext.Provider value={[config, setConfig]}>
+      {children}
+    </ConfigContext.Provider>
   );
 };
 

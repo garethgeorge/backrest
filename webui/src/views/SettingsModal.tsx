@@ -13,6 +13,7 @@ import {
   Col,
   Collapse,
   Checkbox,
+  Divider,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -25,8 +26,10 @@ import { clone, fromJson, toJson, toJsonString } from "@bufbuild/protobuf";
 import {
   AuthSchema,
   ConfigSchema,
+  UiSettingSchema,
   UserSchema,
 } from "../../gen/ts/v1/config_pb";
+import TextArea from "antd/es/input/TextArea";
 
 interface FormData {
   auth: {
@@ -37,6 +40,10 @@ interface FormData {
     }[];
   };
   instance: string;
+  ui: {
+    useCompactUi: boolean;
+    tokens: string;
+  }
 }
 
 export const SettingsModal = () => {
@@ -72,6 +79,9 @@ export const SettingsModal = () => {
         ignoreUnknownFields: false,
       });
       newConfig.instance = formData.instance;
+      newConfig.ui = fromJson(UiSettingSchema, formData.ui, {
+        ignoreUnknownFields: false,
+      });
 
       if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
         throw new Error(
@@ -115,6 +125,7 @@ export const SettingsModal = () => {
         <Form
           autoComplete="off"
           form={form}
+          labelWrap 
           labelCol={{ span: 6 }}
           wrapperCol={{ span: 16 }}
         >
@@ -242,6 +253,23 @@ export const SettingsModal = () => {
                 </>
               )}
             </Form.List>
+          </Form.Item>
+
+          <Form.Item
+            label="Use compect ui"
+            name={["ui", "useCompactUi"]}
+            valuePropName="checked"
+            initialValue={config.ui?.useCompactUi || false}
+          >
+            <Checkbox />
+          </Form.Item>
+          <Form.Item
+            label="Ant design theme tokens"
+            extra={<span>Must JSON format !!! <br/><a href="https://ant.design/theme-editor/">Theme Editor - Ant Design</a></span>}
+            name={["ui", "tokens"]}
+            initialValue={config.ui?.tokens}
+          >
+            <TextArea rows={10} />
           </Form.Item>
 
           <Form.Item shouldUpdate label="Preview">
