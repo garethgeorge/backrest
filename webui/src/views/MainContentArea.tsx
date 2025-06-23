@@ -2,7 +2,7 @@ import { Breadcrumb, Layout, Spin, theme } from "antd";
 import { Content } from "antd/es/layout/layout";
 import React from "react";
 
-interface Breadcrumb {
+interface BreadcrumbItem {
   title: string;
   onClick?: () => void;
 }
@@ -11,7 +11,7 @@ export const MainContentAreaTemplate = ({
   breadcrumbs,
   children,
 }: {
-  breadcrumbs: Breadcrumb[];
+  breadcrumbs: BreadcrumbItem[];
   children: React.ReactNode;
 }) => {
   const {
@@ -22,7 +22,7 @@ export const MainContentAreaTemplate = ({
     <Layout style={{ padding: "0 24px 24px" }}>
       <Breadcrumb
         style={{ margin: "16px 0" }}
-        items={[...(breadcrumbs || [])]}
+        items={breadcrumbs.map((b) => ({ title: b.title, onClick: b.onClick }))}
       ></Breadcrumb>
       <Content
         style={{

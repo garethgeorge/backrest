@@ -345,7 +345,7 @@ export const OperationRow = ({
               )}
               <Collapse
                 size="small"
-                destroyInactivePanel={true}
+                destroyOnHidden={true}
                 items={bodyItems}
                 defaultActiveKey={expandedBodyItems}
               />
@@ -606,7 +606,9 @@ const ForgetOperationDetails = ({
         policyDesc.push(`Keep yearly for ${val.yearly} years`);
       }
       if (val.keepLastN) {
-        policyDesc.push(`Keep latest ${val.keepLastN} snapshots regardless of age`);
+        policyDesc.push(
+          `Keep latest ${val.keepLastN} snapshots regardless of age`
+        );
       }
     }
   }

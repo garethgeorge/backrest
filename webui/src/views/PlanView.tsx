@@ -127,7 +127,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                 />
               </>
             ),
-            destroyInactiveTabPane: true,
+            destroyOnHidden: true,
           },
           {
             key: "2",
@@ -148,7 +148,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                 />
               </>
             ),
-            destroyInactiveTabPane: true,
+            destroyOnHidden: true,
           },
         ]}
       />
