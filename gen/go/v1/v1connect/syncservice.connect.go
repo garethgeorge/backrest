@@ -9,7 +9,6 @@ import (
 	context "context"
 	errors "errors"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	http "net/http"
 	strings "strings"
 )
@@ -37,22 +36,17 @@ const (
 	// BackrestSyncServiceSyncProcedure is the fully-qualified name of the BackrestSyncService's Sync
 	// RPC.
 	BackrestSyncServiceSyncProcedure = "/v1.BackrestSyncService/Sync"
-	// BackrestSyncServiceGetRemoteReposProcedure is the fully-qualified name of the
-	// BackrestSyncService's GetRemoteRepos RPC.
-	BackrestSyncServiceGetRemoteReposProcedure = "/v1.BackrestSyncService/GetRemoteRepos"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	backrestSyncServiceServiceDescriptor              = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncService")
-	backrestSyncServiceSyncMethodDescriptor           = backrestSyncServiceServiceDescriptor.Methods().ByName("Sync")
-	backrestSyncServiceGetRemoteReposMethodDescriptor = backrestSyncServiceServiceDescriptor.Methods().ByName("GetRemoteRepos")
+	backrestSyncServiceServiceDescriptor    = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncService")
+	backrestSyncServiceSyncMethodDescriptor = backrestSyncServiceServiceDescriptor.Methods().ByName("Sync")
 )
 
 // BackrestSyncServiceClient is a client for the v1.BackrestSyncService service.
 type BackrestSyncServiceClient interface {
 	Sync(context.Context) *connect.BidiStreamForClient[v1.SyncStreamItem, v1.SyncStreamItem]
-	GetRemoteRepos(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.GetRemoteReposResponse], error)
 }
 
 // NewBackrestSyncServiceClient constructs a client for the v1.BackrestSyncService service. By
@@ -71,19 +65,12 @@ func NewBackrestSyncServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(backrestSyncServiceSyncMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		getRemoteRepos: connect.NewClient[emptypb.Empty, v1.GetRemoteReposResponse](
-			httpClient,
-			baseURL+BackrestSyncServiceGetRemoteReposProcedure,
-			connect.WithSchema(backrestSyncServiceGetRemoteReposMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
 // backrestSyncServiceClient implements BackrestSyncServiceClient.
 type backrestSyncServiceClient struct {
-	sync           *connect.Client[v1.SyncStreamItem, v1.SyncStreamItem]
-	getRemoteRepos *connect.Client[emptypb.Empty, v1.GetRemoteReposResponse]
+	sync *connect.Client[v1.SyncStreamItem, v1.SyncStreamItem]
 }
 
 // Sync calls v1.BackrestSyncService.Sync.
@@ -91,15 +78,9 @@ func (c *backrestSyncServiceClient) Sync(ctx context.Context) *connect.BidiStrea
 	return c.sync.CallBidiStream(ctx)
 }
 
-// GetRemoteRepos calls v1.BackrestSyncService.GetRemoteRepos.
-func (c *backrestSyncServiceClient) GetRemoteRepos(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.GetRemoteReposResponse], error) {
-	return c.getRemoteRepos.CallUnary(ctx, req)
-}
-
 // BackrestSyncServiceHandler is an implementation of the v1.BackrestSyncService service.
 type BackrestSyncServiceHandler interface {
 	Sync(context.Context, *connect.BidiStream[v1.SyncStreamItem, v1.SyncStreamItem]) error
-	GetRemoteRepos(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.GetRemoteReposResponse], error)
 }
 
 // NewBackrestSyncServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -114,18 +95,10 @@ func NewBackrestSyncServiceHandler(svc BackrestSyncServiceHandler, opts ...conne
 		connect.WithSchema(backrestSyncServiceSyncMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	backrestSyncServiceGetRemoteReposHandler := connect.NewUnaryHandler(
-		BackrestSyncServiceGetRemoteReposProcedure,
-		svc.GetRemoteRepos,
-		connect.WithSchema(backrestSyncServiceGetRemoteReposMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/v1.BackrestSyncService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case BackrestSyncServiceSyncProcedure:
 			backrestSyncServiceSyncHandler.ServeHTTP(w, r)
-		case BackrestSyncServiceGetRemoteReposProcedure:
-			backrestSyncServiceGetRemoteReposHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -137,8 +110,4 @@ type UnimplementedBackrestSyncServiceHandler struct{}
 
 func (UnimplementedBackrestSyncServiceHandler) Sync(context.Context, *connect.BidiStream[v1.SyncStreamItem, v1.SyncStreamItem]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.BackrestSyncService.Sync is not implemented"))
-}
-
-func (UnimplementedBackrestSyncServiceHandler) GetRemoteRepos(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.GetRemoteReposResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.BackrestSyncService.GetRemoteRepos is not implemented"))
 }

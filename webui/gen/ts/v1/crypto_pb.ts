@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1/crypto.proto.
  */
 export const file_v1_crypto: GenFile = /*@__PURE__*/
-  fileDesc("Cg92MS9jcnlwdG8ucHJvdG8SAnYxIkIKDVNpZ25lZE1lc3NhZ2USDQoFa2V5aWQYASABKAkSDwoHcGF5bG9hZBgCIAEoDBIRCglzaWduYXR1cmUYAyABKAwiLgoJUHVibGljS2V5Eg0KBWtleWlkGAEgASgJEhIKCmVkMjU1MTlwdWIYAiABKAkiRAoKUHJpdmF0ZUtleRINCgVrZXlpZBgBIAEoCRITCgtlZDI1NTE5cHJpdhgCIAEoCRISCgplZDI1NTE5cHViGAMgASgJQixaKmdpdGh1Yi5jb20vZ2FyZXRoZ2VvcmdlL2JhY2tyZXN0L2dlbi9nby92MWIGcHJvdG8z");
+  fileDesc("Cg92MS9jcnlwdG8ucHJvdG8SAnYxIlsKDVNpZ25lZE1lc3NhZ2USDQoFa2V5aWQYASABKAkSDwoHcGF5bG9hZBgCIAEoDBIRCglzaWduYXR1cmUYAyABKAwSFwoPdGltZXN0YW1wTWlsbGlzGAQgASgDIi4KCVB1YmxpY0tleRINCgVrZXlpZBgBIAEoCRISCgplZDI1NTE5cHViGAIgASgJIkQKClByaXZhdGVLZXkSDQoFa2V5aWQYASABKAkSEwoLZWQyNTUxOXByaXYYAiABKAkSEgoKZWQyNTUxOXB1YhgDIAEoCUIsWipnaXRodWIuY29tL2dhcmV0aGdlb3JnZS9iYWNrcmVzdC9nZW4vZ28vdjFiBnByb3RvMw");
 
 /**
  * @generated from message v1.SignedMessage
@@ -36,6 +36,13 @@ export type SignedMessage = Message<"v1.SignedMessage"> & {
    * @generated from field: bytes signature = 3;
    */
   signature: Uint8Array;
+
+  /**
+   * the timestamp in milliseconds since epoch when the message was signed. Must be within 5 minutes of the current time.
+   *
+   * @generated from field: int64 timestampMillis = 4;
+   */
+  timestampMillis: bigint;
 };
 
 /**

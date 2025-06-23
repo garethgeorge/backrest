@@ -10,6 +10,8 @@ import (
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 )
 
+var maxSignatureAge = 5 * time.Minute
+
 func tryReceiveWithinDuration(ctx context.Context, receiveChan chan *v1.SyncStreamItem, receiveErrChan chan error, timeout time.Duration) (*v1.SyncStreamItem, error) {
 	if timeout > 0 {
 		var cancel context.CancelFunc
@@ -39,9 +41,10 @@ func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey) (
 			Handshake: &v1.SyncStreamItem_SyncActionHandshake{
 				ProtocolVersion: SyncProtocolVersion,
 				InstanceId: &v1.SignedMessage{
-					Payload:   instanceIDBytes,
-					Signature: instanceIDBytesSignature,
-					Keyid:     identity.KeyID(),
+					Payload:         instanceIDBytes,
+					Signature:       instanceIDBytesSignature,
+					Keyid:           identity.KeyID(),
+					TimestampMillis: time.Now().UnixMilli(),
 				},
 				PublicKey: identity.PublicKeyProto(),
 			},
@@ -79,6 +82,10 @@ func verifyHandshakePacket(item *v1.SyncStreamItem) (*cryptoutil.PublicKey, erro
 
 	if err := peerKey.Verify(handshake.InstanceId.GetPayload(), handshake.InstanceId.GetSignature()); err != nil {
 		return nil, fmt.Errorf("verifying instance ID: %w", err)
+	}
+
+	if time.Since(time.UnixMilli(handshake.InstanceId.GetTimestampMillis())) > maxSignatureAge {
+		return nil, fmt.Errorf("instance ID signature is too old, max age is %s. Is the clock out of sync?", maxSignatureAge)
 	}
 
 	return peerKey, nil
