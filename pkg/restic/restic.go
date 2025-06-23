@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/djherbis/buffer"
 	nio "github.com/djherbis/nio/v3"
@@ -123,7 +124,7 @@ func (r *Repo) executeWithJSONOutput(ctx context.Context, args []string, result 
 	// Find the index afterwhich everything is whitespace
 	allWhitespaceAfterIdx := len(output)
 	for i, b := range output {
-		if b != ' ' && b != '\n' && b != '\t' {
+		if unicode.IsSpace(rune(b)) {
 			allWhitespaceAfterIdx = i
 		}
 	}
