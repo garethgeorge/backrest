@@ -10,7 +10,7 @@ import (
 	"zombiezen.com/go/sqlite/sqlitex"
 )
 
-const sqlSchemaVersion = 4
+const sqlSchemaVersion = 5
 
 var sqlSchema = fmt.Sprintf(`
 PRAGMA user_version = %d;
@@ -42,6 +42,7 @@ CREATE INDEX operation_original_flow_id ON operations (ogid, original_flow_id);
 CREATE TABLE operation_groups (
 	ogid INTEGER PRIMARY KEY AUTOINCREMENT,
 	instance_id STRING NOT NULL,
+	original_instance_keyid STRING NOT NULL,
 	repo_guid STRING NOT NULL,
 	repo_id STRING NOT NULL,
 	plan_id STRING NOT NULL

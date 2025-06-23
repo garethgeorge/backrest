@@ -118,7 +118,7 @@ func (w *SizeLimitedWriter) Write(p []byte) (n int, err error) {
 	}
 
 	var e error
-	n, e = w.Writer.Write(p)
+	n, e = w.SizeTrackingWriter.Write(p)
 	if e != nil {
 		err = e
 	}

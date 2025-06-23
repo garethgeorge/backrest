@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"time"
 
 	"connectrpc.com/connect"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -35,17 +36,22 @@ func NewBackrestSyncHandler(mgr *SyncManager) *BackrestSyncHandler {
 func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStream[v1.SyncStreamItem, v1.SyncStreamItem]) error {
 	// TODO: this request can be very long lived, we must periodically refresh the config
 	// e.g. to disconnect a client if its access is revoked.
-	initialConfig, err := h.mgr.configMgr.Get()
-	if err != nil {
-		return err
+	snapshot := h.mgr.getSyncConfigSnapshot()
+	if snapshot == nil {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("sync server is not configured"))
 	}
 
-	receive := make(chan *v1.SyncStreamItem, 1)
+	initialConfig := snapshot.config
+	identityKey := snapshot.identityKey
+
+	receiveError := make(chan error)
+	receive := make(chan *v1.SyncStreamItem)
 	send := make(chan *v1.SyncStreamItem, 1)
 	go func() {
 		for {
 			item, err := stream.Receive()
 			if err != nil {
+				receiveError <- err
 				break
 			}
 			receive <- item
@@ -55,37 +61,26 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 	// Broadcast initial packet containing the protocol version and instance ID.
 	zap.S().Debugf("syncserver a client connected, broadcast handshake as %v", initialConfig.Instance)
-	if err := stream.Send(&v1.SyncStreamItem{
-		Action: &v1.SyncStreamItem_Handshake{
-			Handshake: &v1.SyncStreamItem_SyncActionHandshake{
-				ProtocolVersion: SyncProtocolVersion,
-				InstanceId: &v1.SignedMessage{
-					Payload:   []byte(initialConfig.Instance),
-					Signature: []byte("TODO: inject a valid signature"),
-					Keyid:     "TODO: inject a valid key ID",
-				},
-			},
-		},
-	}); err != nil {
+	handshakePacket, err := createHandshakePacket(initialConfig.Instance, identityKey)
+	if err != nil {
+		zap.S().Warnf("syncserver failed to create handshake packet: %v", err)
+		return connect.NewError(connect.CodeInternal, errors.New("couldn't build handshake packet, check server logs"))
+	}
+	if err := stream.Send(handshakePacket); err != nil {
 		return err
 	}
 
 	// Try to read the handshake packet from the client.
 	// TODO: perform this handshake in a header as a pre-flight before opening the stream.
-	clientInstanceID := ""
-	if msg, ok := <-receive; ok {
-		handshake := msg.GetHandshake()
-		if handshake == nil {
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("handshake packet must be sent first"))
-		}
-
-		clientInstanceID = string(handshake.GetInstanceId().GetPayload())
-		if clientInstanceID == "" {
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("instance ID is required"))
-		}
-	} else {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("no packets received"))
+	handshakeMsg, err := tryReceiveWithinDuration(ctx, receive, receiveError, 5*time.Second)
+	if err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("handshake packet not received: %w", err))
 	}
+	handshake := handshakeMsg.GetHandshake()
+	if _, err := verifyHandshakePacket(handshakeMsg); err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify handshake packet: %w", err))
+	}
+	clientInstanceID := string(handshake.GetInstanceId().Payload)
 
 	var authorizedClientPeer *v1.Multihost_Peer
 	authorizedClientPeerIdx := slices.IndexFunc(initialConfig.Multihost.GetAuthorizedClients(), func(peer *v1.Multihost_Peer) bool {
@@ -98,20 +93,36 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	} else {
 		authorizedClientPeer = initialConfig.Multihost.AuthorizedClients[authorizedClientPeerIdx]
 	}
-	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
 
-	opIDLru, _ := lru.New[int64, int64](128)   // original ID -> local ID
-	flowIDLru, _ := lru.New[int64, int64](128) // original flow ID -> local flow ID
+	if !authorizedClientPeer.KeyidVerified {
+		return errors.New("authorized keyid must be verified prior to establishing connection")
+	} else if err := authorizeHandshakeAsPeer(handshakeMsg, authorizedClientPeer); err != nil {
+		return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("rejected authorization as peer %v: %w", authorizedClientPeer.InstanceId, err))
+	}
+
+	// TODO: implement key handshake and verification
+	// key handshake flow is
+	// 1. both ends send their public keys and key ids
+	// 2. key ids are checked against values stored in config and against the public key exchanged. E.g. it must match the hash of the key.
+	// 3. start communicating.
+
+	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
+	opIDLru, _ := lru.New[int64, int64](4096)   // original ID -> local ID
+	flowIDLru, _ := lru.New[int64, int64](1024) // original flow ID -> local flow ID
 
 	insertOrUpdate := func(op *v1.Operation) error {
+		op.OriginalInstanceKeyid = authorizedClientPeer.Keyid
 		op.OriginalId = op.Id
 		op.OriginalFlowId = op.FlowId
+		op.Id = 0
+		op.FlowId = 0
+
 		var ok bool
 		if op.Id, ok = opIDLru.Get(op.OriginalId); !ok {
 			var foundOp *v1.Operation
 			if err := h.mgr.oplog.Query(oplog.Query{}.
-				SetOriginalID(op.OriginalId).
-				SetInstanceID(op.InstanceId), func(o *v1.Operation) error {
+				SetOriginalInstanceKeyid(op.OriginalInstanceKeyid).
+				SetOriginalID(op.OriginalId), func(o *v1.Operation) error {
 				foundOp = o
 				return nil
 			}); err != nil {
@@ -125,8 +136,8 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		if op.FlowId, ok = flowIDLru.Get(op.OriginalFlowId); !ok {
 			var flowOp *v1.Operation
 			if err := h.mgr.oplog.Query(oplog.Query{}.
-				SetOriginalFlowID(op.OriginalFlowId).
-				SetInstanceID(op.InstanceId), func(o *v1.Operation) error {
+				SetOriginalInstanceKeyid(op.OriginalInstanceKeyid).
+				SetOriginalFlowID(op.OriginalFlowId), func(o *v1.Operation) error {
 				flowOp = o
 				return nil
 			}); err != nil {
@@ -143,7 +154,9 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 	deleteByOriginalID := func(originalID int64) error {
 		var foundOp *v1.Operation
-		if err := h.mgr.oplog.Query(oplog.Query{}.SetOriginalID(originalID), func(o *v1.Operation) error {
+		if err := h.mgr.oplog.Query(oplog.Query{}.
+			SetOriginalInstanceKeyid(authorizedClientPeer.Keyid).
+			SetOriginalID(originalID), func(o *v1.Operation) error {
 			foundOp = o
 			return nil
 		}); err != nil {
@@ -190,7 +203,6 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			return errors.New("clients can not push configs to server")
 		case *v1.SyncStreamItem_DiffOperations:
 			diffSel := action.DiffOperations.GetHaveOperationsSelector()
-
 			if diffSel == nil {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("action DiffOperations: selector is required"))
 			}
@@ -317,14 +329,14 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 				zap.L().Debug("syncserver received created operations", zap.Any("operations", event.CreatedOperations.GetOperations()))
 				for _, op := range event.CreatedOperations.GetOperations() {
 					if err := insertOrUpdate(op); err != nil {
-						return fmt.Errorf("action SendOperations: operation event create: %w", err)
+						return fmt.Errorf("action SendOperations: operation event create %+v: %w", op, err)
 					}
 				}
 			case *v1.OperationEvent_UpdatedOperations:
 				zap.L().Debug("syncserver received update operations", zap.Any("operations", event.UpdatedOperations.GetOperations()))
 				for _, op := range event.UpdatedOperations.GetOperations() {
 					if err := insertOrUpdate(op); err != nil {
-						return fmt.Errorf("action SendOperations: operation event update: %w", err)
+						return fmt.Errorf("action SendOperations: operation event update %+v: %w", op, err)
 					}
 				}
 			case *v1.OperationEvent_DeletedOperations:
@@ -352,20 +364,21 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 	for {
 		select {
-		case item, ok := <-receive:
-			if !ok {
-				return nil
-			}
-
-			if err := handleSyncCommand(item); err != nil {
-				return err
-			}
+		case err := <-receiveError:
+			zap.S().Debugf("syncserver receive error from client %q: %v", authorizedClientPeer.InstanceId, err)
+			return err
 		case sendItem, ok := <-send: // note: send channel should only be used when sending from a different goroutine than the main loop
 			if !ok {
 				return nil
 			}
-
 			if err := stream.Send(sendItem); err != nil {
+				return err
+			}
+		case item, ok := <-receive:
+			if !ok {
+				return nil
+			}
+			if err := handleSyncCommand(item); err != nil {
 				return err
 			}
 		case <-configWatchCh:

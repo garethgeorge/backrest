@@ -12,6 +12,7 @@ message OperationList {
   repeated Operation operations = 1;
 }
 
+// Operation is the basic unit of record in backrest
 message Operation {
   // required, primary ID of the operation. ID is sequential based on creation time of the operation.
   int64 id = 1;
@@ -27,8 +28,10 @@ message Operation {
   string repo_guid = 15;
   // plan id e.g. a scheduled set of operations (or system) that created this operation.
   string plan_id = 3; 
-  // instance ID that created the operation
+  // instance ID that the operation is attributed to, not necessarily the same as the instance that created it.
   string instance_id = 11; 
+  // original instance guid is the verifiable instance that created the operation. Only set for remote operations created by sync.
+  string original_instance_keyid = 16;
   // optional snapshot id if associated with a snapshot.
   string snapshot_id = 8; 
   OperationStatus status = 4;
