@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1/crypto.proto.
  */
 export const file_v1_crypto: GenFile = /*@__PURE__*/
-  fileDesc("Cg92MS9jcnlwdG8ucHJvdG8SAnYxIlsKDVNpZ25lZE1lc3NhZ2USDQoFa2V5aWQYASABKAkSDwoHcGF5bG9hZBgCIAEoDBIRCglzaWduYXR1cmUYAyABKAwSFwoPdGltZXN0YW1wTWlsbGlzGAQgASgDIi4KCVB1YmxpY0tleRINCgVrZXlpZBgBIAEoCRISCgplZDI1NTE5cHViGAIgASgJIkQKClByaXZhdGVLZXkSDQoFa2V5aWQYASABKAkSEwoLZWQyNTUxOXByaXYYAiABKAkSEgoKZWQyNTUxOXB1YhgDIAEoCUIsWipnaXRodWIuY29tL2dhcmV0aGdlb3JnZS9iYWNrcmVzdC9nZW4vZ28vdjFiBnByb3RvMw");
+  fileDesc("Cg92MS9jcnlwdG8ucHJvdG8SAnYxIlsKDVNpZ25lZE1lc3NhZ2USDQoFa2V5aWQYASABKAkSDwoHcGF5bG9hZBgCIAEoDBIRCglzaWduYXR1cmUYAyABKAwSFwoPdGltZXN0YW1wTWlsbGlzGAQgASgDIjUKCVB1YmxpY0tleRIUCgVrZXlpZBgBIAEoCVIFa2V5SWQSEgoKZWQyNTUxOXB1YhgCIAEoCSJLCgpQcml2YXRlS2V5EhQKBWtleWlkGAEgASgJUgVrZXlJZBITCgtlZDI1NTE5cHJpdhgCIAEoCRISCgplZDI1NTE5cHViGAMgASgJQixaKmdpdGh1Yi5jb20vZ2FyZXRoZ2VvcmdlL2JhY2tyZXN0L2dlbi9nby92MWIGcHJvdG8z");
 
 /**
  * @generated from message v1.SignedMessage
@@ -59,7 +59,7 @@ export type PublicKey = Message<"v1.PublicKey"> & {
   /**
    * a unique identifier generated as the SHA256 of the public key.
    *
-   * @generated from field: string keyid = 1;
+   * @generated from field: string keyid = 1 [json_name = "keyId"];
    */
   keyid: string;
 
@@ -83,7 +83,7 @@ export type PrivateKey = Message<"v1.PrivateKey"> & {
   /**
    * a unique identifier generated as the SHA256 of the public key
    *
-   * @generated from field: string keyid = 1;
+   * @generated from field: string keyid = 1 [json_name = "keyId"];
    */
   keyid: string;
 

@@ -145,7 +145,12 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 
 		if err := c.runSyncInternal(ctx); err != nil {
 			c.l.Sugar().Errorf("sync error: %v", err)
-			c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED, err.Error())
+			var syncErr *SyncError
+			if errors.As(err, &syncErr) {
+				c.setConnectionState(syncErr.State, syncErr.Message.Error())
+			} else {
+				c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL, err.Error())
+			}
 		}
 
 		delay := c.reconnectDelay - time.Since(lastConnect)
@@ -196,12 +201,16 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 		// If write returns an EOF error, we are expected to call stream.Receive()
 		// to get the unmarshalled network failure.
 		if !errors.Is(err, io.EOF) {
-			c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_ERROR_PROTOCOL, err.Error())
-			return err
+			return &SyncError{
+				State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_PROTOCOL,
+				Message: fmt.Errorf("send handshake packet: %w", err),
+			}
 		} else {
 			_, err2 := stream.Receive()
-			c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED, err.Error())
-			return err2
+			return &SyncError{
+				State:   v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED,
+				Message: err2,
+			}
 		}
 	}
 	c.setConnectionState(v1.SyncConnectionState_CONNECTION_STATE_CONNECTED, "connected")
@@ -211,13 +220,22 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	// Wait for the handshake packet from the server.
 	handshakeMsg, err := tryReceiveWithinDuration(ctx, receive, receiveError, 5*time.Second)
 	if err != nil {
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("read error before handshake packet: %v", err))
+		return connect.NewError(connect.CodeInvalidArgument, &SyncError{
+			State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH,
+			Message: fmt.Errorf("read error before handshake packet: %v", err),
+		})
 	}
 	if _, err := verifyHandshakePacket(handshakeMsg); err != nil {
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify handshake packet: %v", err))
+		return connect.NewError(connect.CodeInvalidArgument, &SyncError{
+			State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH,
+			Message: fmt.Errorf("verify handshake packet: %v", err),
+		})
 	}
 	if err := authorizeHandshakeAsPeer(handshakeMsg, c.peer); err != nil {
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("authorize handshake packet: %v", err))
+		return connect.NewError(connect.CodeInvalidArgument, &SyncError{
+			State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH,
+			Message: fmt.Errorf("authorize handshake packet: %v", err),
+		})
 	}
 	serverInstanceID := c.peer.InstanceId
 
@@ -289,7 +307,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			}
 
 			if newRemoteConfig == nil {
-				return fmt.Errorf("received nil remote config")
+				return &SyncError{
+					State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_PROTOCOL,
+					Message: fmt.Errorf("received nil remote config"),
+				}
 			}
 
 			// remove any repo IDs that are no longer in the config, our access has been revoked.
@@ -354,7 +375,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 						},
 					},
 				}); err != nil {
-					return fmt.Errorf("action sync config: send diff operations: %w", err)
+					return &SyncError{
+						State:   v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED,
+						Message: fmt.Errorf("action sync config: send diff operations: %w", err),
+					}
 				}
 			}
 		case *v1.SyncStreamItem_DiffOperations:
@@ -377,7 +401,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					},
 				}); err != nil {
 					sendOps = sendOps[:0]
-					return fmt.Errorf("action diff operations: send create operations: %w", err)
+					return &SyncError{
+						State:   v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED,
+						Message: fmt.Errorf("action diff operations: send create operations: %w", err),
+					}
 				}
 				c.l.Sugar().Debugf("sent %d operations", len(sendOps))
 				sendOps = sendOps[:0]
@@ -404,7 +431,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				if !ok {
 					// this should never happen if sync is working correctly. Would probably indicate oplog or our access was revoked.
 					// Error out and re-initiate sync.
-					return fmt.Errorf("remote requested operation for repo %q for which sync was never initiated", op.GetRepoId())
+					return &SyncError{
+						State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_PROTOCOL,
+						Message: fmt.Errorf("remote requested operation for repo %q for which sync was never initiated", op.GetRepoId()),
+					}
 				}
 
 				sendOps = append(sendOps, op)
@@ -434,7 +464,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 						},
 					},
 				}); err != nil {
-					return fmt.Errorf("action diff operations: send delete operations: %w", err)
+					return &SyncError{
+						State:   v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED,
+						Message: fmt.Errorf("action diff operations: send delete operations: %w", err),
+					}
 				}
 			}
 
@@ -442,7 +475,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 		case *v1.SyncStreamItem_Throttle:
 			c.reconnectDelay = time.Duration(action.Throttle.GetDelayMs()) * time.Millisecond
 		default:
-			return fmt.Errorf("unknown action: %v", action)
+			return &SyncError{
+				State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_PROTOCOL,
+				Message: fmt.Errorf("unknown action: %v", action),
+			}
 		}
 		return nil
 	}
@@ -450,7 +486,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	for {
 		select {
 		case err := <-receiveError:
-			return fmt.Errorf("connection terminated with error: %w", err)
+			return &SyncError{
+				State:   v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED,
+				Message: fmt.Errorf("connection terminated with error: %w", err),
+			}
 		case item, ok := <-receive:
 			if !ok {
 				return nil
@@ -463,7 +502,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				return nil
 			}
 			if err := stream.Send(sendItem); err != nil {
-				return err
+				return &SyncError{
+					State:   v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED,
+					Message: err,
+				}
 			}
 		case <-ctx.Done():
 			return ctx.Err()

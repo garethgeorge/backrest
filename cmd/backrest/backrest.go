@@ -133,8 +133,6 @@ func main() {
 		wg.Done()
 	}()
 
-	syncHandler := syncapi.NewBackrestSyncHandler(syncMgr)
-
 	apiBackrestHandler := api.NewBackrestHandler(
 		configMgr,
 		remoteConfigStore,
@@ -147,12 +145,10 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewAuthenticationHandler(apiAuthenticationHandler))
-	if cfg.GetMultihost() != nil {
-		// alpha feature, only available if the user manually enables it in the config.
-		mux.Handle(v1connect.NewBackrestSyncServiceHandler(syncHandler))
-	}
 	backrestHandlerPath, backrestHandler := v1connect.NewBackrestHandler(apiBackrestHandler)
 	mux.Handle(backrestHandlerPath, auth.RequireAuthentication(backrestHandler, authenticator))
+	mux.Handle(v1connect.NewBackrestSyncServiceHandler(syncapi.NewBackrestSyncHandler(syncMgr)))
+	mux.Handle(v1connect.NewBackrestSyncStateServiceHandler(syncapi.NewBackrestSyncStateHandler(syncMgr)))
 	mux.Handle("/", webui.Handler())
 	mux.Handle("/download/", http.StripPrefix("/download", api.NewDownloadHandler(log)))
 	mux.Handle("/metrics", auth.RequireAuthentication(metric.GetRegistry().Handler(), authenticator))

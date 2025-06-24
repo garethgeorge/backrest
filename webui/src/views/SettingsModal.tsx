@@ -9,10 +9,23 @@ import {
   Collapse,
   Checkbox,
   FormInstance,
+  Tooltip,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
-import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  MinusCircleOutlined,
+  PlusOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  CloseCircleOutlined,
+  LoadingOutlined,
+  QuestionCircleOutlined,
+  StopOutlined,
+  ClockCircleOutlined,
+  KeyOutlined,
+  DisconnectOutlined,
+} from "@ant-design/icons";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { namePattern, validateForm } from "../lib/formutil";
 import { useConfig } from "../components/ConfigProvider";
@@ -112,36 +125,10 @@ export const SettingsModal = () => {
       newConfig.auth = fromJson(AuthSchema, formData.auth, {
         ignoreUnknownFields: false,
       });
+      newConfig.multihost = fromJson(MultihostSchema, formData.multihost, {
+        ignoreUnknownFields: false,
+      });
       newConfig.instance = formData.instance;
-
-      // Update multihost configuration if provided
-      if (formData.multihost) {
-        if (!newConfig.multihost) {
-          newConfig.multihost = fromJson(
-            MultihostSchema,
-            {},
-            {
-              ignoreUnknownFields: false,
-            }
-          );
-        }
-        if (formData.multihost.authorizedClients) {
-          newConfig.multihost.authorizedClients =
-            formData.multihost.authorizedClients.map((peer) =>
-              fromJson(Multihost_PeerSchema, peer, {
-                ignoreUnknownFields: false,
-              })
-            );
-        }
-        if (formData.multihost.knownHosts) {
-          newConfig.multihost.knownHosts = formData.multihost.knownHosts.map(
-            (peer) =>
-              fromJson(Multihost_PeerSchema, peer, {
-                ignoreUnknownFields: false,
-              })
-          );
-        }
-      }
 
       if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
         throw new Error(
@@ -156,7 +143,6 @@ export const SettingsModal = () => {
       }, 500);
     } catch (e: any) {
       alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
-      console.error(e);
     }
   };
 
@@ -231,12 +217,20 @@ export const SettingsModal = () => {
               {
                 key: "1",
                 label: "Authentication",
+                forceRender: true,
                 children: <AuthenticationForm form={form} config={config} />,
               },
               {
                 key: "2",
                 label: "Multihost Identity and Sharing",
-                children: <MultihostIdentityForm form={form} config={config} />,
+                forceRender: true,
+                children: (
+                  <MultihostIdentityForm
+                    form={form}
+                    config={config}
+                    syncState={syncState}
+                  />
+                ),
               },
               {
                 key: "last",
@@ -365,7 +359,8 @@ const AuthenticationForm: React.FC<{
 const MultihostIdentityForm: React.FC<{
   config: Config;
   form: FormInstance<FormData>;
-}> = ({ form, config }) => {
+  syncState: SyncStateStreamItem[];
+}> = ({ form, config, syncState }) => {
   return (
     <>
       {/* Show the current instance's identity */}
@@ -415,6 +410,8 @@ const MultihostIdentityForm: React.FC<{
           listName={["multihost", "authorizedClients"]}
           showInstanceUrl={false}
           itemTypeName="Authorized Client"
+          showSyncState={false}
+          syncState={syncState}
           initialValue={
             config.multihost?.authorizedClients?.map((peer) =>
               toJson(Multihost_PeerSchema, peer, { alwaysEmitImplicit: true })
@@ -433,6 +430,8 @@ const MultihostIdentityForm: React.FC<{
           listName={["multihost", "knownHosts"]}
           showInstanceUrl={true}
           itemTypeName="Known Host"
+          showSyncState={true}
+          syncState={syncState}
           initialValue={
             config.multihost?.knownHosts?.map((peer) =>
               toJson(Multihost_PeerSchema, peer, { alwaysEmitImplicit: true })
@@ -448,9 +447,19 @@ const PeerFormList: React.FC<{
   form: FormInstance<FormData>;
   listName: string[];
   showInstanceUrl: boolean;
+  showSyncState: boolean;
   itemTypeName: string;
+  syncState: SyncStateStreamItem[];
   initialValue: any[];
-}> = ({ form, listName, showInstanceUrl, itemTypeName, initialValue }) => {
+}> = ({
+  form,
+  listName,
+  showInstanceUrl,
+  showSyncState,
+  itemTypeName,
+  syncState,
+  initialValue,
+}) => {
   return (
     <Form.List name={listName} initialValue={initialValue}>
       {(fields, { add, remove }, { errors }) => (
@@ -462,6 +471,8 @@ const PeerFormList: React.FC<{
               fieldName={field.name}
               remove={remove}
               showInstanceUrl={showInstanceUrl}
+              showSyncState={showSyncState}
+              syncState={syncState}
               index={index}
             />
           ))}
@@ -487,8 +498,27 @@ const PeerFormListItem: React.FC<{
   fieldName: number;
   remove: (index: number | number[]) => void;
   showInstanceUrl: boolean;
+  showSyncState: boolean;
+  syncState: SyncStateStreamItem[];
   index: number;
-}> = ({ form, fieldName, remove, showInstanceUrl, index }) => {
+}> = ({
+  form,
+  fieldName,
+  remove,
+  showInstanceUrl,
+  showSyncState,
+  syncState,
+  index,
+}) => {
+  // Get the instance ID from the form to find the matching sync state
+  const instanceId =
+    form.getFieldValue(["multihost", "knownHosts", index, "instanceId"]) ||
+    form.getFieldValue(["multihost", "authorizedClients", index, "instanceId"]);
+
+  const peerSyncState = syncState.find(
+    (state) => state.peerInstanceId === instanceId
+  );
+
   return (
     <div
       style={{
@@ -499,16 +529,27 @@ const PeerFormListItem: React.FC<{
         position: "relative",
       }}
     >
-      <MinusCircleOutlined
+      <div
         style={{
           position: "absolute",
           top: "8px",
           right: "8px",
-          color: "#999",
-          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
         }}
-        onClick={() => remove(fieldName)}
-      />
+      >
+        {showSyncState && peerSyncState && (
+          <SyncStateTile syncState={peerSyncState} />
+        )}
+        <MinusCircleOutlined
+          style={{
+            color: "#999",
+            cursor: "pointer",
+          }}
+          onClick={() => remove(fieldName)}
+        />
+      </div>
 
       <Row gutter={16}>
         <Col span={10}>
@@ -529,7 +570,7 @@ const PeerFormListItem: React.FC<{
         </Col>
         <Col span={10}>
           <Form.Item
-            name={[fieldName, "keyid"]}
+            name={[fieldName, "keyId"]}
             label="Key ID"
             rules={[{ required: true, message: "Key ID is required" }]}
           >
@@ -538,7 +579,7 @@ const PeerFormListItem: React.FC<{
         </Col>
         <Col span={4}>
           <Form.Item
-            name={[fieldName, "keyidVerified"]}
+            name={[fieldName, "keyIdVerified"]}
             valuePropName="checked"
           >
             <Checkbox>Verified</Checkbox>
@@ -566,5 +607,130 @@ const PeerFormListItem: React.FC<{
         </Row>
       )}
     </div>
+  );
+};
+
+export const SyncStateTile = ({
+  syncState,
+}: {
+  syncState: SyncStateStreamItem;
+}) => {
+  const getStatusIcon = () => {
+    switch (syncState.state) {
+      case SyncConnectionState.CONNECTION_STATE_CONNECTED:
+        return (
+          <CheckCircleOutlined style={{ color: "#52c41a", fontSize: "16px" }} />
+        );
+
+      case SyncConnectionState.CONNECTION_STATE_PENDING:
+        return (
+          <LoadingOutlined style={{ color: "#1890ff", fontSize: "16px" }} />
+        );
+
+      case SyncConnectionState.CONNECTION_STATE_RETRY_WAIT:
+        return (
+          <ClockCircleOutlined style={{ color: "#faad14", fontSize: "16px" }} />
+        );
+
+      case SyncConnectionState.CONNECTION_STATE_DISCONNECTED:
+        return (
+          <DisconnectOutlined style={{ color: "#d9d9d9", fontSize: "16px" }} />
+        );
+
+      case SyncConnectionState.CONNECTION_STATE_ERROR_AUTH:
+        return <KeyOutlined style={{ color: "#ff4d4f", fontSize: "16px" }} />;
+
+      case SyncConnectionState.CONNECTION_STATE_ERROR_PROTOCOL:
+        return (
+          <ExclamationCircleOutlined
+            style={{ color: "#ff4d4f", fontSize: "16px" }}
+          />
+        );
+
+      case SyncConnectionState.CONNECTION_STATE_ERROR_INTERNAL:
+        return (
+          <CloseCircleOutlined style={{ color: "#ff4d4f", fontSize: "16px" }} />
+        );
+
+      case SyncConnectionState.CONNECTION_STATE_UNKNOWN:
+      default:
+        return (
+          <QuestionCircleOutlined
+            style={{ color: "#8c8c8c", fontSize: "16px" }}
+          />
+        );
+    }
+  };
+
+  const getStatusTooltip = () => {
+    const baseMessage = `${syncState.peerInstanceId}: `;
+
+    switch (syncState.state) {
+      case SyncConnectionState.CONNECTION_STATE_CONNECTED:
+        return (
+          baseMessage +
+          "Connected" +
+          (syncState.statusMessage ? ` - ${syncState.statusMessage}` : "")
+        );
+      case SyncConnectionState.CONNECTION_STATE_PENDING:
+        return (
+          baseMessage +
+          "Connecting..." +
+          (syncState.statusMessage ? ` - ${syncState.statusMessage}` : "")
+        );
+
+      case SyncConnectionState.CONNECTION_STATE_RETRY_WAIT:
+        return (
+          baseMessage +
+          "Retrying connection" +
+          (syncState.statusMessage ? ` - ${syncState.statusMessage}` : "")
+        );
+
+      case SyncConnectionState.CONNECTION_STATE_DISCONNECTED:
+        return (
+          baseMessage +
+          "Disconnected" +
+          (syncState.statusMessage ? ` - ${syncState.statusMessage}` : "")
+        );
+
+      case SyncConnectionState.CONNECTION_STATE_ERROR_AUTH:
+        return (
+          baseMessage +
+          "Authentication error" +
+          (syncState.statusMessage ? ` - ${syncState.statusMessage}` : "")
+        );
+
+      case SyncConnectionState.CONNECTION_STATE_ERROR_PROTOCOL:
+        return (
+          baseMessage +
+          "Protocol error" +
+          (syncState.statusMessage ? ` - ${syncState.statusMessage}` : "")
+        );
+
+      case SyncConnectionState.CONNECTION_STATE_ERROR_INTERNAL:
+        return (
+          baseMessage +
+          "Internal error" +
+          (syncState.statusMessage ? ` - ${syncState.statusMessage}` : "")
+        );
+
+      case SyncConnectionState.CONNECTION_STATE_UNKNOWN:
+      default:
+        return (
+          baseMessage +
+          "Unknown status" +
+          (syncState.statusMessage ? ` - ${syncState.statusMessage}` : "")
+        );
+    }
+  };
+
+  return (
+    <Tooltip title={getStatusTooltip()} placement="top">
+      <span
+        style={{ cursor: "help", display: "inline-flex", alignItems: "center" }}
+      >
+        {getStatusIcon()}
+      </span>
+    </Tooltip>
   );
 };
