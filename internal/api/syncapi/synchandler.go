@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
@@ -96,17 +97,17 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		authorizedClientPeer = initialConfig.Multihost.AuthorizedClients[authorizedClientPeerIdx]
 	}
 
+	peerPerms, err := permissions.NewPermissionSet(authorizedClientPeer.GetPermissions())
+	if err != nil {
+		zap.S().Warnf("syncserver failed to create permission set for client %q: %v", clientInstanceID, err)
+		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to create permission set for client %q: %w", clientInstanceID, err))
+	}
+
 	if !authorizedClientPeer.KeyidVerified {
-		return errors.New("authorized keyid must be verified prior to establishing connection")
+		return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("client %q is not visually verified, please verify the key ID %q", clientInstanceID, authorizedClientPeer.Keyid))
 	} else if err := authorizeHandshakeAsPeer(handshakeMsg, authorizedClientPeer); err != nil {
 		return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("rejected authorization as peer %v: %w", authorizedClientPeer.InstanceId, err))
 	}
-
-	// TODO: implement key handshake and verification
-	// key handshake flow is
-	// 1. both ends send their public keys and key ids
-	// 2. key ids are checked against values stored in config and against the public key exchanged. E.g. it must match the hash of the key.
-	// 3. start communicating.
 
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
 	opIDLru, _ := lru.New[int64, int64](4096)   // original ID -> local ID
@@ -177,13 +178,11 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		remoteConfig := &v1.RemoteConfig{}
 		var allowedRepoIDs []string
 		for _, repo := range config.Repos {
-			if slices.Contains(repo.AllowedPeerInstanceIds, clientInstanceID) {
-				allowedRepoIDs = append(allowedRepoIDs, repo.Id)
+			if peerPerms.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_REPO) {
 				remoteConfig.Repos = append(remoteConfig.Repos, protoutil.RepoToRemoteRepo(repo))
 			}
 		}
-
-		zap.S().Debugf("syncserver determined client %v is allowlisted for repos %v", clientInstanceID, allowedRepoIDs)
+		zap.S().Debugf("syncserver determined client %v is allowlisted to read configs for repos %v", clientInstanceID, allowedRepoIDs)
 
 		// Send the config, this is the first meaningful packet the client will receive.
 		// Once configuration is received, the client will start sending diffs.
@@ -220,7 +219,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 				zap.S().Warnf("syncserver action DiffOperations: client %q tried to diff with repo %q that does not exist", clientInstanceID, diffSel.GetRepoGuid())
 				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: repo %q not found", diffSel.GetRepoGuid()))
 			}
-			if !slices.Contains(repo.GetAllowedPeerInstanceIds(), clientInstanceID) {
+			if !peerPerms.CheckPermissionForRepo(v1.Multihost_Permission_PERMISSION_READ_CONFIG, repo.Id) {
 				zap.S().Warnf("syncserver action DiffOperations: client %q tried to diff with repo %q that they are not allowed to access", clientInstanceID, repo.Id)
 				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: client is not allowed to access repo %q", repo.Id))
 			}

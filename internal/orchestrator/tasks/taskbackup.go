@@ -201,6 +201,8 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		SnapshotId:    summary.SnapshotId,
 	}
 
+	var conditions []v1.Hook_Condition
+
 	if err != nil {
 		vars.Error = err.Error()
 		if !errors.Is(err, restic.ErrPartialBackup) {
@@ -215,11 +217,6 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		}
 		op.Status = v1.OperationStatus_STATUS_WARNING
 		op.DisplayMessage = "Partial backup, some files may not have been read completely."
-
-		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
-			v1.Hook_CONDITION_SNAPSHOT_WARNING,
-			v1.Hook_CONDITION_SNAPSHOT_END,
-		}, vars)
 	}
 
 	op.SnapshotId = summary.SnapshotId
@@ -232,16 +229,9 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 
 	if summary.SnapshotId == "" { // support --skip-if-unchanged which returns an operation with an empty snapshot ID
 		op.DisplayMessage = "No snapshot added, possibly due to no changes in the source data."
-		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
-			v1.Hook_CONDITION_SNAPSHOT_SKIPPED,
-			v1.Hook_CONDITION_SNAPSHOT_END,
-		}, vars)
-	} else {
-		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
-			v1.Hook_CONDITION_SNAPSHOT_SUCCESS,
-			v1.Hook_CONDITION_SNAPSHOT_END,
-		}, vars)
 
+		conditions = append(conditions, v1.Hook_CONDITION_SNAPSHOT_SKIPPED)
+	} else {
 		// schedule followup tasks if a snapshot was added
 		at := time.Now()
 		if _, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyKeepAll); plan.Retention != nil && !ok {
@@ -252,6 +242,16 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		if err := runner.ScheduleTask(NewOneoffIndexSnapshotsTask(t.Repo(), at), TaskPriorityIndexSnapshots); err != nil {
 			return fmt.Errorf("failed to schedule index snapshots task: %w", err)
 		}
+	}
+
+	if err == nil {
+		conditions = append(conditions, v1.Hook_CONDITION_SNAPSHOT_SUCCESS)
+	} else {
+		conditions = append(conditions, v1.Hook_CONDITION_SNAPSHOT_WARNING)
+	}
+	conditions = append(conditions, v1.Hook_CONDITION_SNAPSHOT_END)
+	if err := runner.ExecuteHooks(ctx, conditions, vars); err != nil {
+		return fmt.Errorf("snapshot end hook: %w", err)
 	}
 
 	return nil

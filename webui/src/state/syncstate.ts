@@ -29,6 +29,8 @@ const subscribeToSyncStates = async (
           console.error("Error in sync state stream:", error);
         }
       }
+
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait before next iteration.
     }
     if (updateTimeout) {
       clearTimeout(updateTimeout);

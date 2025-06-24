@@ -14,10 +14,14 @@ import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
 
 
+// BackrestSyncService provides methods to sync data between backrest instances.
+// This service provides its own authentication and authorization.
 service BackrestSyncService {
   rpc Sync(stream SyncStreamItem) returns (stream SyncStreamItem) {}
 }
 
+// BackrestSyncStateService provides methods to query the sync state of known hosts and clients.
+// This service should be served behind authentication and authorization.
 service BackrestSyncStateService {
   // GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
   rpc GetKnownHostSyncStateStream(SyncStateStreamRequest) returns (stream SyncStateStreamItem) {}

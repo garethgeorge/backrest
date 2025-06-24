@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
 	"github.com/garethgeorge/backrest/internal/config/validationutil"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/protoutil"
@@ -243,6 +244,11 @@ func validatePeer(peer *v1.Multihost_Peer, isKnownHost bool) error {
 
 	if peer.KeyidVerified && peer.GetKeyid() == "" {
 		return errors.New("public key cannot be marked as verified if it is unset, the keyid must be specified at a minimum")
+	}
+
+	_, err := permissions.NewPermissionSet(peer.GetPermissions())
+	if err != nil {
+		return fmt.Errorf("peer permissions: %w", err)
 	}
 
 	return nil

@@ -21,6 +21,58 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type Multihost_Permission_Type int32
+
+const (
+	Multihost_Permission_TYPE_UNKNOWN Multihost_Permission_Type = 0
+	// When granted to an authorizedClient, the client will be sent the config in scope on connecting. This only applies to repos.
+	Multihost_Permission_PERMISSION_READ_REPO_CONFIG Multihost_Permission_Type = 1
+	// When granted to a knownHost the local instance will push local changes to the known host regardless of whether they are requested.option
+	// When granted to an authorizedClient, the client will be able to pull operations from the known host.
+	Multihost_Permission_PERMISSION_READ_OPERATIONS Multihost_Permission_Type = 2
+)
+
+// Enum value maps for Multihost_Permission_Type.
+var (
+	Multihost_Permission_Type_name = map[int32]string{
+		0: "TYPE_UNKNOWN",
+		1: "PERMISSION_READ_REPO_CONFIG",
+		2: "PERMISSION_READ_OPERATIONS",
+	}
+	Multihost_Permission_Type_value = map[string]int32{
+		"TYPE_UNKNOWN":                0,
+		"PERMISSION_READ_REPO_CONFIG": 1,
+		"PERMISSION_READ_OPERATIONS":  2,
+	}
+)
+
+func (x Multihost_Permission_Type) Enum() *Multihost_Permission_Type {
+	p := new(Multihost_Permission_Type)
+	*p = x
+	return p
+}
+
+func (x Multihost_Permission_Type) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Multihost_Permission_Type) Descriptor() protoreflect.EnumDescriptor {
+	return file_v1_config_proto_enumTypes[0].Descriptor()
+}
+
+func (Multihost_Permission_Type) Type() protoreflect.EnumType {
+	return &file_v1_config_proto_enumTypes[0]
+}
+
+func (x Multihost_Permission_Type) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Multihost_Permission_Type.Descriptor instead.
+func (Multihost_Permission_Type) EnumDescriptor() ([]byte, []int) {
+	return file_v1_config_proto_rawDescGZIP(), []int{2, 1, 0}
+}
+
 type CommandPrefix_IONiceLevel int32
 
 const (
@@ -57,11 +109,11 @@ func (x CommandPrefix_IONiceLevel) String() string {
 }
 
 func (CommandPrefix_IONiceLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_v1_config_proto_enumTypes[0].Descriptor()
+	return file_v1_config_proto_enumTypes[1].Descriptor()
 }
 
 func (CommandPrefix_IONiceLevel) Type() protoreflect.EnumType {
-	return &file_v1_config_proto_enumTypes[0]
+	return &file_v1_config_proto_enumTypes[1]
 }
 
 func (x CommandPrefix_IONiceLevel) Number() protoreflect.EnumNumber {
@@ -106,11 +158,11 @@ func (x CommandPrefix_CPUNiceLevel) String() string {
 }
 
 func (CommandPrefix_CPUNiceLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_v1_config_proto_enumTypes[1].Descriptor()
+	return file_v1_config_proto_enumTypes[2].Descriptor()
 }
 
 func (CommandPrefix_CPUNiceLevel) Type() protoreflect.EnumType {
-	return &file_v1_config_proto_enumTypes[1]
+	return &file_v1_config_proto_enumTypes[2]
 }
 
 func (x CommandPrefix_CPUNiceLevel) Number() protoreflect.EnumNumber {
@@ -158,11 +210,11 @@ func (x Schedule_Clock) String() string {
 }
 
 func (Schedule_Clock) Descriptor() protoreflect.EnumDescriptor {
-	return file_v1_config_proto_enumTypes[2].Descriptor()
+	return file_v1_config_proto_enumTypes[3].Descriptor()
 }
 
 func (Schedule_Clock) Type() protoreflect.EnumType {
-	return &file_v1_config_proto_enumTypes[2]
+	return &file_v1_config_proto_enumTypes[3]
 }
 
 func (x Schedule_Clock) Number() protoreflect.EnumNumber {
@@ -252,11 +304,11 @@ func (x Hook_Condition) String() string {
 }
 
 func (Hook_Condition) Descriptor() protoreflect.EnumDescriptor {
-	return file_v1_config_proto_enumTypes[3].Descriptor()
+	return file_v1_config_proto_enumTypes[4].Descriptor()
 }
 
 func (Hook_Condition) Type() protoreflect.EnumType {
-	return &file_v1_config_proto_enumTypes[3]
+	return &file_v1_config_proto_enumTypes[4]
 }
 
 func (x Hook_Condition) Number() protoreflect.EnumNumber {
@@ -310,11 +362,11 @@ func (x Hook_OnError) String() string {
 }
 
 func (Hook_OnError) Descriptor() protoreflect.EnumDescriptor {
-	return file_v1_config_proto_enumTypes[4].Descriptor()
+	return file_v1_config_proto_enumTypes[5].Descriptor()
 }
 
 func (Hook_OnError) Type() protoreflect.EnumType {
-	return &file_v1_config_proto_enumTypes[4]
+	return &file_v1_config_proto_enumTypes[5]
 }
 
 func (x Hook_OnError) Number() protoreflect.EnumNumber {
@@ -359,11 +411,11 @@ func (x Hook_Webhook_Method) String() string {
 }
 
 func (Hook_Webhook_Method) Descriptor() protoreflect.EnumDescriptor {
-	return file_v1_config_proto_enumTypes[5].Descriptor()
+	return file_v1_config_proto_enumTypes[6].Descriptor()
 }
 
 func (Hook_Webhook_Method) Type() protoreflect.EnumType {
-	return &file_v1_config_proto_enumTypes[5]
+	return &file_v1_config_proto_enumTypes[6]
 }
 
 func (x Hook_Webhook_Method) Number() protoreflect.EnumNumber {
@@ -583,19 +635,18 @@ type Repo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id                     string         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                                                   // unique but human readable ID for this repo.
-	Uri                    string         `protobuf:"bytes,2,opt,name=uri,proto3" json:"uri,omitempty"`                                                                 // URI of the repo.
-	Guid                   string         `protobuf:"bytes,11,opt,name=guid,proto3" json:"guid,omitempty"`                                                              // a globally unique ID for this repo. Should be derived as the 'id' field in `restic cat config --json`.
-	Password               string         `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`                                                       // plaintext password
-	Env                    []string       `protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty"`                                                                 // extra environment variables to set for restic.
-	Flags                  []string       `protobuf:"bytes,5,rep,name=flags,proto3" json:"flags,omitempty"`                                                             // extra flags set on the restic command.
-	PrunePolicy            *PrunePolicy   `protobuf:"bytes,6,opt,name=prune_policy,json=prunePolicy,proto3" json:"prune_policy,omitempty"`                              // policy for when to run prune.
-	CheckPolicy            *CheckPolicy   `protobuf:"bytes,9,opt,name=check_policy,json=checkPolicy,proto3" json:"check_policy,omitempty"`                              // policy for when to run check.
-	Hooks                  []*Hook        `protobuf:"bytes,7,rep,name=hooks,proto3" json:"hooks,omitempty"`                                                             // hooks to run on events for this repo.
-	AutoUnlock             bool           `protobuf:"varint,8,opt,name=auto_unlock,json=autoUnlock,proto3" json:"auto_unlock,omitempty"`                                // automatically unlock the repo when needed.
-	AutoInitialize         bool           `protobuf:"varint,12,opt,name=auto_initialize,json=autoInitialize,proto3" json:"auto_initialize,omitempty"`                   // whether the repo should be auto-initialized if not found.
-	CommandPrefix          *CommandPrefix `protobuf:"bytes,10,opt,name=command_prefix,json=commandPrefix,proto3" json:"command_prefix,omitempty"`                       // modifiers for the restic commands
-	AllowedPeerInstanceIds []string       `protobuf:"bytes,100,rep,name=allowed_peer_instance_ids,json=allowedPeers,proto3" json:"allowed_peer_instance_ids,omitempty"` // list of peer instance IDs allowed to access this repo.
+	Id             string         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                                 // unique but human readable ID for this repo.
+	Uri            string         `protobuf:"bytes,2,opt,name=uri,proto3" json:"uri,omitempty"`                                               // URI of the repo.
+	Guid           string         `protobuf:"bytes,11,opt,name=guid,proto3" json:"guid,omitempty"`                                            // a globally unique ID for this repo. Should be derived as the 'id' field in `restic cat config --json`.
+	Password       string         `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`                                     // plaintext password
+	Env            []string       `protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty"`                                               // extra environment variables to set for restic.
+	Flags          []string       `protobuf:"bytes,5,rep,name=flags,proto3" json:"flags,omitempty"`                                           // extra flags set on the restic command.
+	PrunePolicy    *PrunePolicy   `protobuf:"bytes,6,opt,name=prune_policy,json=prunePolicy,proto3" json:"prune_policy,omitempty"`            // policy for when to run prune.
+	CheckPolicy    *CheckPolicy   `protobuf:"bytes,9,opt,name=check_policy,json=checkPolicy,proto3" json:"check_policy,omitempty"`            // policy for when to run check.
+	Hooks          []*Hook        `protobuf:"bytes,7,rep,name=hooks,proto3" json:"hooks,omitempty"`                                           // hooks to run on events for this repo.
+	AutoUnlock     bool           `protobuf:"varint,8,opt,name=auto_unlock,json=autoUnlock,proto3" json:"auto_unlock,omitempty"`              // automatically unlock the repo when needed.
+	AutoInitialize bool           `protobuf:"varint,12,opt,name=auto_initialize,json=autoInitialize,proto3" json:"auto_initialize,omitempty"` // whether the repo should be auto-initialized if not found.
+	CommandPrefix  *CommandPrefix `protobuf:"bytes,10,opt,name=command_prefix,json=commandPrefix,proto3" json:"command_prefix,omitempty"`     // modifiers for the restic commands
 }
 
 func (x *Repo) Reset() {
@@ -708,13 +759,6 @@ func (x *Repo) GetAutoInitialize() bool {
 func (x *Repo) GetCommandPrefix() *CommandPrefix {
 	if x != nil {
 		return x.CommandPrefix
-	}
-	return nil
-}
-
-func (x *Repo) GetAllowedPeerInstanceIds() []string {
-	if x != nil {
-		return x.AllowedPeerInstanceIds
 	}
 	return nil
 }
@@ -1594,9 +1638,10 @@ type Multihost_Peer struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	InstanceId    string `protobuf:"bytes,1,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`           // a human readable name for the peer, typically the same as its instance ID.
-	Keyid         string `protobuf:"bytes,2,opt,name=keyid,json=keyId,proto3" json:"keyid,omitempty"`                            // the key ID of the peer. This must match the sha256 of the public key the client provides in handshake.
-	KeyidVerified bool   `protobuf:"varint,3,opt,name=keyid_verified,json=keyIdVerified,proto3" json:"keyid_verified,omitempty"` // marks whether the key ID was visually verified by the user, this must be done for authorized clients. Not required for known hosts but recommended.
+	InstanceId    string                  `protobuf:"bytes,1,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`           // a human readable name for the peer, typically the same as its instance ID.
+	Keyid         string                  `protobuf:"bytes,2,opt,name=keyid,json=keyId,proto3" json:"keyid,omitempty"`                            // the key ID of the peer. This must match the sha256 of the public key the client provides in handshake.
+	KeyidVerified bool                    `protobuf:"varint,3,opt,name=keyid_verified,json=keyIdVerified,proto3" json:"keyid_verified,omitempty"` // marks whether the key ID was visually verified by the user, this must be done for authorized clients. Not required for known hosts but recommended.
+	Permissions   []*Multihost_Permission `protobuf:"bytes,5,rep,name=permissions,proto3" json:"permissions,omitempty"`                           // permissions granted to this peer.
 	// Known host only fields
 	InstanceUrl string `protobuf:"bytes,4,opt,name=instance_url,json=instanceUrl,proto3" json:"instance_url,omitempty"` // instance URL, required for a known host. Otherwise meaningless.
 }
@@ -1652,11 +1697,74 @@ func (x *Multihost_Peer) GetKeyidVerified() bool {
 	return false
 }
 
+func (x *Multihost_Peer) GetPermissions() []*Multihost_Permission {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
+}
+
 func (x *Multihost_Peer) GetInstanceUrl() string {
 	if x != nil {
 		return x.InstanceUrl
 	}
 	return ""
+}
+
+type Multihost_Permission struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Scopes are any of '*', 'repo:<repo_id>' or 'plan:<plan_id>','-repo:<repo_id>','-plan:<plan_id>'.
+	// '*' means all repos and plans, 'repo:<repo_id>' means the repo with the given ID, 'plan:<plan_id>' means the plan with the given ID.
+	// '!repo:<repo_id>' means all repos except the one with the given ID, '!plan:<plan_id>' means all plans except the one with the given ID.
+	Type   Multihost_Permission_Type `protobuf:"varint,1,opt,name=type,proto3,enum=v1.Multihost_Permission_Type" json:"type,omitempty"`
+	Scopes []string                  `protobuf:"bytes,2,rep,name=scopes,proto3" json:"scopes,omitempty"`
+}
+
+func (x *Multihost_Permission) Reset() {
+	*x = Multihost_Permission{}
+	mi := &file_v1_config_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Multihost_Permission) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Multihost_Permission) ProtoMessage() {}
+
+func (x *Multihost_Permission) ProtoReflect() protoreflect.Message {
+	mi := &file_v1_config_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Multihost_Permission.ProtoReflect.Descriptor instead.
+func (*Multihost_Permission) Descriptor() ([]byte, []int) {
+	return file_v1_config_proto_rawDescGZIP(), []int{2, 1}
+}
+
+func (x *Multihost_Permission) GetType() Multihost_Permission_Type {
+	if x != nil {
+		return x.Type
+	}
+	return Multihost_Permission_TYPE_UNKNOWN
+}
+
+func (x *Multihost_Permission) GetScopes() []string {
+	if x != nil {
+		return x.Scopes
+	}
+	return nil
 }
 
 type RetentionPolicy_TimeBucketedCounts struct {
@@ -1674,7 +1782,7 @@ type RetentionPolicy_TimeBucketedCounts struct {
 
 func (x *RetentionPolicy_TimeBucketedCounts) Reset() {
 	*x = RetentionPolicy_TimeBucketedCounts{}
-	mi := &file_v1_config_proto_msgTypes[15]
+	mi := &file_v1_config_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1686,7 +1794,7 @@ func (x *RetentionPolicy_TimeBucketedCounts) String() string {
 func (*RetentionPolicy_TimeBucketedCounts) ProtoMessage() {}
 
 func (x *RetentionPolicy_TimeBucketedCounts) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_config_proto_msgTypes[15]
+	mi := &file_v1_config_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1754,7 +1862,7 @@ type Hook_Command struct {
 
 func (x *Hook_Command) Reset() {
 	*x = Hook_Command{}
-	mi := &file_v1_config_proto_msgTypes[16]
+	mi := &file_v1_config_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1766,7 +1874,7 @@ func (x *Hook_Command) String() string {
 func (*Hook_Command) ProtoMessage() {}
 
 func (x *Hook_Command) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_config_proto_msgTypes[16]
+	mi := &file_v1_config_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1801,7 +1909,7 @@ type Hook_Webhook struct {
 
 func (x *Hook_Webhook) Reset() {
 	*x = Hook_Webhook{}
-	mi := &file_v1_config_proto_msgTypes[17]
+	mi := &file_v1_config_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1813,7 +1921,7 @@ func (x *Hook_Webhook) String() string {
 func (*Hook_Webhook) ProtoMessage() {}
 
 func (x *Hook_Webhook) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_config_proto_msgTypes[17]
+	mi := &file_v1_config_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1861,7 +1969,7 @@ type Hook_Discord struct {
 
 func (x *Hook_Discord) Reset() {
 	*x = Hook_Discord{}
-	mi := &file_v1_config_proto_msgTypes[18]
+	mi := &file_v1_config_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1873,7 +1981,7 @@ func (x *Hook_Discord) String() string {
 func (*Hook_Discord) ProtoMessage() {}
 
 func (x *Hook_Discord) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_config_proto_msgTypes[18]
+	mi := &file_v1_config_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1917,7 +2025,7 @@ type Hook_Gotify struct {
 
 func (x *Hook_Gotify) Reset() {
 	*x = Hook_Gotify{}
-	mi := &file_v1_config_proto_msgTypes[19]
+	mi := &file_v1_config_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1929,7 +2037,7 @@ func (x *Hook_Gotify) String() string {
 func (*Hook_Gotify) ProtoMessage() {}
 
 func (x *Hook_Gotify) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_config_proto_msgTypes[19]
+	mi := &file_v1_config_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1991,7 +2099,7 @@ type Hook_Slack struct {
 
 func (x *Hook_Slack) Reset() {
 	*x = Hook_Slack{}
-	mi := &file_v1_config_proto_msgTypes[20]
+	mi := &file_v1_config_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2003,7 +2111,7 @@ func (x *Hook_Slack) String() string {
 func (*Hook_Slack) ProtoMessage() {}
 
 func (x *Hook_Slack) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_config_proto_msgTypes[20]
+	mi := &file_v1_config_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2044,7 +2152,7 @@ type Hook_Shoutrrr struct {
 
 func (x *Hook_Shoutrrr) Reset() {
 	*x = Hook_Shoutrrr{}
-	mi := &file_v1_config_proto_msgTypes[21]
+	mi := &file_v1_config_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2056,7 +2164,7 @@ func (x *Hook_Shoutrrr) String() string {
 func (*Hook_Shoutrrr) ProtoMessage() {}
 
 func (x *Hook_Shoutrrr) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_config_proto_msgTypes[21]
+	mi := &file_v1_config_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2097,7 +2205,7 @@ type Hook_Healthchecks struct {
 
 func (x *Hook_Healthchecks) Reset() {
 	*x = Hook_Healthchecks{}
-	mi := &file_v1_config_proto_msgTypes[22]
+	mi := &file_v1_config_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2109,7 +2217,7 @@ func (x *Hook_Healthchecks) String() string {
 func (*Hook_Healthchecks) ProtoMessage() {}
 
 func (x *Hook_Healthchecks) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_config_proto_msgTypes[22]
+	mi := &file_v1_config_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2168,7 +2276,7 @@ var file_v1_config_proto_rawDesc = []byte{
 	0x68, 0x52, 0x04, 0x61, 0x75, 0x74, 0x68, 0x12, 0x26, 0x0a, 0x09, 0x6d, 0x75, 0x6c, 0x74, 0x69,
 	0x68, 0x6f, 0x73, 0x74, 0x18, 0x07, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0d, 0x2e, 0x76, 0x31, 0x2e,
 	0x4d, 0x75, 0x6c, 0x74, 0x69, 0x68, 0x6f, 0x73, 0x74, 0x52, 0x04, 0x73, 0x79, 0x6e, 0x63, 0x22,
-	0xb9, 0x02, 0x0a, 0x09, 0x4d, 0x75, 0x6c, 0x74, 0x69, 0x68, 0x6f, 0x73, 0x74, 0x12, 0x2a, 0x0a,
+	0xaa, 0x04, 0x0a, 0x09, 0x4d, 0x75, 0x6c, 0x74, 0x69, 0x68, 0x6f, 0x73, 0x74, 0x12, 0x2a, 0x0a,
 	0x08, 0x69, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
 	0x0e, 0x2e, 0x76, 0x31, 0x2e, 0x50, 0x72, 0x69, 0x76, 0x61, 0x74, 0x65, 0x4b, 0x65, 0x79, 0x52,
 	0x08, 0x69, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x12, 0x33, 0x0a, 0x0b, 0x6b, 0x6e, 0x6f,
@@ -2179,43 +2287,55 @@ var file_v1_config_proto_rawDesc = []byte{
 	0x65, 0x6e, 0x74, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x76, 0x31, 0x2e,
 	0x4d, 0x75, 0x6c, 0x74, 0x69, 0x68, 0x6f, 0x73, 0x74, 0x2e, 0x50, 0x65, 0x65, 0x72, 0x52, 0x11,
 	0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x65, 0x64, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74,
-	0x73, 0x1a, 0x87, 0x01, 0x0a, 0x04, 0x50, 0x65, 0x65, 0x72, 0x12, 0x1f, 0x0a, 0x0b, 0x69, 0x6e,
+	0x73, 0x1a, 0xc3, 0x01, 0x0a, 0x04, 0x50, 0x65, 0x65, 0x72, 0x12, 0x1f, 0x0a, 0x0b, 0x69, 0x6e,
 	0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
 	0x0a, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x49, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x6b,
 	0x65, 0x79, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6b, 0x65, 0x79, 0x49,
 	0x64, 0x12, 0x25, 0x0a, 0x0e, 0x6b, 0x65, 0x79, 0x69, 0x64, 0x5f, 0x76, 0x65, 0x72, 0x69, 0x66,
 	0x69, 0x65, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0d, 0x6b, 0x65, 0x79, 0x49, 0x64,
-	0x56, 0x65, 0x72, 0x69, 0x66, 0x69, 0x65, 0x64, 0x12, 0x21, 0x0a, 0x0c, 0x69, 0x6e, 0x73, 0x74,
-	0x61, 0x6e, 0x63, 0x65, 0x5f, 0x75, 0x72, 0x6c, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b,
-	0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x55, 0x72, 0x6c, 0x22, 0xbd, 0x03, 0x0a, 0x04,
-	0x52, 0x65, 0x70, 0x6f, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x02, 0x69, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x75, 0x72, 0x69, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x03, 0x75, 0x72, 0x69, 0x12, 0x12, 0x0a, 0x04, 0x67, 0x75, 0x69, 0x64, 0x18, 0x0b,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x67, 0x75, 0x69, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x70, 0x61,
-	0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x61,
-	0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x65, 0x6e, 0x76, 0x18, 0x04, 0x20,
-	0x03, 0x28, 0x09, 0x52, 0x03, 0x65, 0x6e, 0x76, 0x12, 0x14, 0x0a, 0x05, 0x66, 0x6c, 0x61, 0x67,
-	0x73, 0x18, 0x05, 0x20, 0x03, 0x28, 0x09, 0x52, 0x05, 0x66, 0x6c, 0x61, 0x67, 0x73, 0x12, 0x32,
-	0x0a, 0x0c, 0x70, 0x72, 0x75, 0x6e, 0x65, 0x5f, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x18, 0x06,
-	0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x76, 0x31, 0x2e, 0x50, 0x72, 0x75, 0x6e, 0x65, 0x50,
-	0x6f, 0x6c, 0x69, 0x63, 0x79, 0x52, 0x0b, 0x70, 0x72, 0x75, 0x6e, 0x65, 0x50, 0x6f, 0x6c, 0x69,
-	0x63, 0x79, 0x12, 0x32, 0x0a, 0x0c, 0x63, 0x68, 0x65, 0x63, 0x6b, 0x5f, 0x70, 0x6f, 0x6c, 0x69,
-	0x63, 0x79, 0x18, 0x09, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x68,
-	0x65, 0x63, 0x6b, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x52, 0x0b, 0x63, 0x68, 0x65, 0x63, 0x6b,
-	0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x12, 0x1e, 0x0a, 0x05, 0x68, 0x6f, 0x6f, 0x6b, 0x73, 0x18,
-	0x07, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x08, 0x2e, 0x76, 0x31, 0x2e, 0x48, 0x6f, 0x6f, 0x6b, 0x52,
-	0x05, 0x68, 0x6f, 0x6f, 0x6b, 0x73, 0x12, 0x1f, 0x0a, 0x0b, 0x61, 0x75, 0x74, 0x6f, 0x5f, 0x75,
-	0x6e, 0x6c, 0x6f, 0x63, 0x6b, 0x18, 0x08, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0a, 0x61, 0x75, 0x74,
-	0x6f, 0x55, 0x6e, 0x6c, 0x6f, 0x63, 0x6b, 0x12, 0x27, 0x0a, 0x0f, 0x61, 0x75, 0x74, 0x6f, 0x5f,
-	0x69, 0x6e, 0x69, 0x74, 0x69, 0x61, 0x6c, 0x69, 0x7a, 0x65, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x08,
-	0x52, 0x0e, 0x61, 0x75, 0x74, 0x6f, 0x49, 0x6e, 0x69, 0x74, 0x69, 0x61, 0x6c, 0x69, 0x7a, 0x65,
-	0x12, 0x38, 0x0a, 0x0e, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x5f, 0x70, 0x72, 0x65, 0x66,
-	0x69, 0x78, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f,
-	0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x50, 0x72, 0x65, 0x66, 0x69, 0x78, 0x52, 0x0d, 0x63, 0x6f, 0x6d,
-	0x6d, 0x61, 0x6e, 0x64, 0x50, 0x72, 0x65, 0x66, 0x69, 0x78, 0x12, 0x2f, 0x0a, 0x19, 0x61, 0x6c,
-	0x6c, 0x6f, 0x77, 0x65, 0x64, 0x5f, 0x70, 0x65, 0x65, 0x72, 0x5f, 0x69, 0x6e, 0x73, 0x74, 0x61,
-	0x6e, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x73, 0x18, 0x64, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0c, 0x61,
-	0x6c, 0x6c, 0x6f, 0x77, 0x65, 0x64, 0x50, 0x65, 0x65, 0x72, 0x73, 0x22, 0xd9, 0x02, 0x0a, 0x04,
+	0x56, 0x65, 0x72, 0x69, 0x66, 0x69, 0x65, 0x64, 0x12, 0x3a, 0x0a, 0x0b, 0x70, 0x65, 0x72, 0x6d,
+	0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x05, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x18, 0x2e,
+	0x76, 0x31, 0x2e, 0x4d, 0x75, 0x6c, 0x74, 0x69, 0x68, 0x6f, 0x73, 0x74, 0x2e, 0x50, 0x65, 0x72,
+	0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x0b, 0x70, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73,
+	0x69, 0x6f, 0x6e, 0x73, 0x12, 0x21, 0x0a, 0x0c, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65,
+	0x5f, 0x75, 0x72, 0x6c, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x69, 0x6e, 0x73, 0x74,
+	0x61, 0x6e, 0x63, 0x65, 0x55, 0x72, 0x6c, 0x1a, 0xb2, 0x01, 0x0a, 0x0a, 0x50, 0x65, 0x72, 0x6d,
+	0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x31, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x0e, 0x32, 0x1d, 0x2e, 0x76, 0x31, 0x2e, 0x4d, 0x75, 0x6c, 0x74, 0x69, 0x68,
+	0x6f, 0x73, 0x74, 0x2e, 0x50, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x2e, 0x54,
+	0x79, 0x70, 0x65, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x63, 0x6f,
+	0x70, 0x65, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06, 0x73, 0x63, 0x6f, 0x70, 0x65,
+	0x73, 0x22, 0x59, 0x0a, 0x04, 0x54, 0x79, 0x70, 0x65, 0x12, 0x10, 0x0a, 0x0c, 0x54, 0x59, 0x50,
+	0x45, 0x5f, 0x55, 0x4e, 0x4b, 0x4e, 0x4f, 0x57, 0x4e, 0x10, 0x00, 0x12, 0x1f, 0x0a, 0x1b, 0x50,
+	0x45, 0x52, 0x4d, 0x49, 0x53, 0x53, 0x49, 0x4f, 0x4e, 0x5f, 0x52, 0x45, 0x41, 0x44, 0x5f, 0x52,
+	0x45, 0x50, 0x4f, 0x5f, 0x43, 0x4f, 0x4e, 0x46, 0x49, 0x47, 0x10, 0x01, 0x12, 0x1e, 0x0a, 0x1a,
+	0x50, 0x45, 0x52, 0x4d, 0x49, 0x53, 0x53, 0x49, 0x4f, 0x4e, 0x5f, 0x52, 0x45, 0x41, 0x44, 0x5f,
+	0x4f, 0x50, 0x45, 0x52, 0x41, 0x54, 0x49, 0x4f, 0x4e, 0x53, 0x10, 0x02, 0x22, 0x8c, 0x03, 0x0a,
+	0x04, 0x52, 0x65, 0x70, 0x6f, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x75, 0x72, 0x69, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x03, 0x75, 0x72, 0x69, 0x12, 0x12, 0x0a, 0x04, 0x67, 0x75, 0x69, 0x64, 0x18,
+	0x0b, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x67, 0x75, 0x69, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x70,
+	0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70,
+	0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x65, 0x6e, 0x76, 0x18, 0x04,
+	0x20, 0x03, 0x28, 0x09, 0x52, 0x03, 0x65, 0x6e, 0x76, 0x12, 0x14, 0x0a, 0x05, 0x66, 0x6c, 0x61,
+	0x67, 0x73, 0x18, 0x05, 0x20, 0x03, 0x28, 0x09, 0x52, 0x05, 0x66, 0x6c, 0x61, 0x67, 0x73, 0x12,
+	0x32, 0x0a, 0x0c, 0x70, 0x72, 0x75, 0x6e, 0x65, 0x5f, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x18,
+	0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x76, 0x31, 0x2e, 0x50, 0x72, 0x75, 0x6e, 0x65,
+	0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x52, 0x0b, 0x70, 0x72, 0x75, 0x6e, 0x65, 0x50, 0x6f, 0x6c,
+	0x69, 0x63, 0x79, 0x12, 0x32, 0x0a, 0x0c, 0x63, 0x68, 0x65, 0x63, 0x6b, 0x5f, 0x70, 0x6f, 0x6c,
+	0x69, 0x63, 0x79, 0x18, 0x09, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x76, 0x31, 0x2e, 0x43,
+	0x68, 0x65, 0x63, 0x6b, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x52, 0x0b, 0x63, 0x68, 0x65, 0x63,
+	0x6b, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x12, 0x1e, 0x0a, 0x05, 0x68, 0x6f, 0x6f, 0x6b, 0x73,
+	0x18, 0x07, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x08, 0x2e, 0x76, 0x31, 0x2e, 0x48, 0x6f, 0x6f, 0x6b,
+	0x52, 0x05, 0x68, 0x6f, 0x6f, 0x6b, 0x73, 0x12, 0x1f, 0x0a, 0x0b, 0x61, 0x75, 0x74, 0x6f, 0x5f,
+	0x75, 0x6e, 0x6c, 0x6f, 0x63, 0x6b, 0x18, 0x08, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0a, 0x61, 0x75,
+	0x74, 0x6f, 0x55, 0x6e, 0x6c, 0x6f, 0x63, 0x6b, 0x12, 0x27, 0x0a, 0x0f, 0x61, 0x75, 0x74, 0x6f,
+	0x5f, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x61, 0x6c, 0x69, 0x7a, 0x65, 0x18, 0x0c, 0x20, 0x01, 0x28,
+	0x08, 0x52, 0x0e, 0x61, 0x75, 0x74, 0x6f, 0x49, 0x6e, 0x69, 0x74, 0x69, 0x61, 0x6c, 0x69, 0x7a,
+	0x65, 0x12, 0x38, 0x0a, 0x0e, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x5f, 0x70, 0x72, 0x65,
+	0x66, 0x69, 0x78, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x76, 0x31, 0x2e, 0x43,
+	0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x50, 0x72, 0x65, 0x66, 0x69, 0x78, 0x52, 0x0d, 0x63, 0x6f,
+	0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x50, 0x72, 0x65, 0x66, 0x69, 0x78, 0x22, 0xd9, 0x02, 0x0a, 0x04,
 	0x50, 0x6c, 0x61, 0x6e, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
 	0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x72, 0x65, 0x70, 0x6f, 0x18, 0x02, 0x20, 0x01,
 	0x28, 0x09, 0x52, 0x04, 0x72, 0x65, 0x70, 0x6f, 0x12, 0x14, 0x0a, 0x05, 0x70, 0x61, 0x74, 0x68,
@@ -2461,78 +2581,82 @@ func file_v1_config_proto_rawDescGZIP() []byte {
 	return file_v1_config_proto_rawDescData
 }
 
-var file_v1_config_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_v1_config_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_v1_config_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
+var file_v1_config_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_v1_config_proto_goTypes = []any{
-	(CommandPrefix_IONiceLevel)(0),             // 0: v1.CommandPrefix.IONiceLevel
-	(CommandPrefix_CPUNiceLevel)(0),            // 1: v1.CommandPrefix.CPUNiceLevel
-	(Schedule_Clock)(0),                        // 2: v1.Schedule.Clock
-	(Hook_Condition)(0),                        // 3: v1.Hook.Condition
-	(Hook_OnError)(0),                          // 4: v1.Hook.OnError
-	(Hook_Webhook_Method)(0),                   // 5: v1.Hook.Webhook.Method
-	(*HubConfig)(nil),                          // 6: v1.HubConfig
-	(*Config)(nil),                             // 7: v1.Config
-	(*Multihost)(nil),                          // 8: v1.Multihost
-	(*Repo)(nil),                               // 9: v1.Repo
-	(*Plan)(nil),                               // 10: v1.Plan
-	(*CommandPrefix)(nil),                      // 11: v1.CommandPrefix
-	(*RetentionPolicy)(nil),                    // 12: v1.RetentionPolicy
-	(*PrunePolicy)(nil),                        // 13: v1.PrunePolicy
-	(*CheckPolicy)(nil),                        // 14: v1.CheckPolicy
-	(*Schedule)(nil),                           // 15: v1.Schedule
-	(*Hook)(nil),                               // 16: v1.Hook
-	(*Auth)(nil),                               // 17: v1.Auth
-	(*User)(nil),                               // 18: v1.User
-	(*HubConfig_InstanceInfo)(nil),             // 19: v1.HubConfig.InstanceInfo
-	(*Multihost_Peer)(nil),                     // 20: v1.Multihost.Peer
-	(*RetentionPolicy_TimeBucketedCounts)(nil), // 21: v1.RetentionPolicy.TimeBucketedCounts
-	(*Hook_Command)(nil),                       // 22: v1.Hook.Command
-	(*Hook_Webhook)(nil),                       // 23: v1.Hook.Webhook
-	(*Hook_Discord)(nil),                       // 24: v1.Hook.Discord
-	(*Hook_Gotify)(nil),                        // 25: v1.Hook.Gotify
-	(*Hook_Slack)(nil),                         // 26: v1.Hook.Slack
-	(*Hook_Shoutrrr)(nil),                      // 27: v1.Hook.Shoutrrr
-	(*Hook_Healthchecks)(nil),                  // 28: v1.Hook.Healthchecks
-	(*PrivateKey)(nil),                         // 29: v1.PrivateKey
+	(Multihost_Permission_Type)(0),             // 0: v1.Multihost.Permission.Type
+	(CommandPrefix_IONiceLevel)(0),             // 1: v1.CommandPrefix.IONiceLevel
+	(CommandPrefix_CPUNiceLevel)(0),            // 2: v1.CommandPrefix.CPUNiceLevel
+	(Schedule_Clock)(0),                        // 3: v1.Schedule.Clock
+	(Hook_Condition)(0),                        // 4: v1.Hook.Condition
+	(Hook_OnError)(0),                          // 5: v1.Hook.OnError
+	(Hook_Webhook_Method)(0),                   // 6: v1.Hook.Webhook.Method
+	(*HubConfig)(nil),                          // 7: v1.HubConfig
+	(*Config)(nil),                             // 8: v1.Config
+	(*Multihost)(nil),                          // 9: v1.Multihost
+	(*Repo)(nil),                               // 10: v1.Repo
+	(*Plan)(nil),                               // 11: v1.Plan
+	(*CommandPrefix)(nil),                      // 12: v1.CommandPrefix
+	(*RetentionPolicy)(nil),                    // 13: v1.RetentionPolicy
+	(*PrunePolicy)(nil),                        // 14: v1.PrunePolicy
+	(*CheckPolicy)(nil),                        // 15: v1.CheckPolicy
+	(*Schedule)(nil),                           // 16: v1.Schedule
+	(*Hook)(nil),                               // 17: v1.Hook
+	(*Auth)(nil),                               // 18: v1.Auth
+	(*User)(nil),                               // 19: v1.User
+	(*HubConfig_InstanceInfo)(nil),             // 20: v1.HubConfig.InstanceInfo
+	(*Multihost_Peer)(nil),                     // 21: v1.Multihost.Peer
+	(*Multihost_Permission)(nil),               // 22: v1.Multihost.Permission
+	(*RetentionPolicy_TimeBucketedCounts)(nil), // 23: v1.RetentionPolicy.TimeBucketedCounts
+	(*Hook_Command)(nil),                       // 24: v1.Hook.Command
+	(*Hook_Webhook)(nil),                       // 25: v1.Hook.Webhook
+	(*Hook_Discord)(nil),                       // 26: v1.Hook.Discord
+	(*Hook_Gotify)(nil),                        // 27: v1.Hook.Gotify
+	(*Hook_Slack)(nil),                         // 28: v1.Hook.Slack
+	(*Hook_Shoutrrr)(nil),                      // 29: v1.Hook.Shoutrrr
+	(*Hook_Healthchecks)(nil),                  // 30: v1.Hook.Healthchecks
+	(*PrivateKey)(nil),                         // 31: v1.PrivateKey
 }
 var file_v1_config_proto_depIdxs = []int32{
-	19, // 0: v1.HubConfig.instances:type_name -> v1.HubConfig.InstanceInfo
-	9,  // 1: v1.Config.repos:type_name -> v1.Repo
-	10, // 2: v1.Config.plans:type_name -> v1.Plan
-	17, // 3: v1.Config.auth:type_name -> v1.Auth
-	8,  // 4: v1.Config.multihost:type_name -> v1.Multihost
-	29, // 5: v1.Multihost.identity:type_name -> v1.PrivateKey
-	20, // 6: v1.Multihost.known_hosts:type_name -> v1.Multihost.Peer
-	20, // 7: v1.Multihost.authorized_clients:type_name -> v1.Multihost.Peer
-	13, // 8: v1.Repo.prune_policy:type_name -> v1.PrunePolicy
-	14, // 9: v1.Repo.check_policy:type_name -> v1.CheckPolicy
-	16, // 10: v1.Repo.hooks:type_name -> v1.Hook
-	11, // 11: v1.Repo.command_prefix:type_name -> v1.CommandPrefix
-	15, // 12: v1.Plan.schedule:type_name -> v1.Schedule
-	12, // 13: v1.Plan.retention:type_name -> v1.RetentionPolicy
-	16, // 14: v1.Plan.hooks:type_name -> v1.Hook
-	0,  // 15: v1.CommandPrefix.io_nice:type_name -> v1.CommandPrefix.IONiceLevel
-	1,  // 16: v1.CommandPrefix.cpu_nice:type_name -> v1.CommandPrefix.CPUNiceLevel
-	21, // 17: v1.RetentionPolicy.policy_time_bucketed:type_name -> v1.RetentionPolicy.TimeBucketedCounts
-	15, // 18: v1.PrunePolicy.schedule:type_name -> v1.Schedule
-	15, // 19: v1.CheckPolicy.schedule:type_name -> v1.Schedule
-	2,  // 20: v1.Schedule.clock:type_name -> v1.Schedule.Clock
-	3,  // 21: v1.Hook.conditions:type_name -> v1.Hook.Condition
-	4,  // 22: v1.Hook.on_error:type_name -> v1.Hook.OnError
-	22, // 23: v1.Hook.action_command:type_name -> v1.Hook.Command
-	23, // 24: v1.Hook.action_webhook:type_name -> v1.Hook.Webhook
-	24, // 25: v1.Hook.action_discord:type_name -> v1.Hook.Discord
-	25, // 26: v1.Hook.action_gotify:type_name -> v1.Hook.Gotify
-	26, // 27: v1.Hook.action_slack:type_name -> v1.Hook.Slack
-	27, // 28: v1.Hook.action_shoutrrr:type_name -> v1.Hook.Shoutrrr
-	28, // 29: v1.Hook.action_healthchecks:type_name -> v1.Hook.Healthchecks
-	18, // 30: v1.Auth.users:type_name -> v1.User
-	5,  // 31: v1.Hook.Webhook.method:type_name -> v1.Hook.Webhook.Method
-	32, // [32:32] is the sub-list for method output_type
-	32, // [32:32] is the sub-list for method input_type
-	32, // [32:32] is the sub-list for extension type_name
-	32, // [32:32] is the sub-list for extension extendee
-	0,  // [0:32] is the sub-list for field type_name
+	20, // 0: v1.HubConfig.instances:type_name -> v1.HubConfig.InstanceInfo
+	10, // 1: v1.Config.repos:type_name -> v1.Repo
+	11, // 2: v1.Config.plans:type_name -> v1.Plan
+	18, // 3: v1.Config.auth:type_name -> v1.Auth
+	9,  // 4: v1.Config.multihost:type_name -> v1.Multihost
+	31, // 5: v1.Multihost.identity:type_name -> v1.PrivateKey
+	21, // 6: v1.Multihost.known_hosts:type_name -> v1.Multihost.Peer
+	21, // 7: v1.Multihost.authorized_clients:type_name -> v1.Multihost.Peer
+	14, // 8: v1.Repo.prune_policy:type_name -> v1.PrunePolicy
+	15, // 9: v1.Repo.check_policy:type_name -> v1.CheckPolicy
+	17, // 10: v1.Repo.hooks:type_name -> v1.Hook
+	12, // 11: v1.Repo.command_prefix:type_name -> v1.CommandPrefix
+	16, // 12: v1.Plan.schedule:type_name -> v1.Schedule
+	13, // 13: v1.Plan.retention:type_name -> v1.RetentionPolicy
+	17, // 14: v1.Plan.hooks:type_name -> v1.Hook
+	1,  // 15: v1.CommandPrefix.io_nice:type_name -> v1.CommandPrefix.IONiceLevel
+	2,  // 16: v1.CommandPrefix.cpu_nice:type_name -> v1.CommandPrefix.CPUNiceLevel
+	23, // 17: v1.RetentionPolicy.policy_time_bucketed:type_name -> v1.RetentionPolicy.TimeBucketedCounts
+	16, // 18: v1.PrunePolicy.schedule:type_name -> v1.Schedule
+	16, // 19: v1.CheckPolicy.schedule:type_name -> v1.Schedule
+	3,  // 20: v1.Schedule.clock:type_name -> v1.Schedule.Clock
+	4,  // 21: v1.Hook.conditions:type_name -> v1.Hook.Condition
+	5,  // 22: v1.Hook.on_error:type_name -> v1.Hook.OnError
+	24, // 23: v1.Hook.action_command:type_name -> v1.Hook.Command
+	25, // 24: v1.Hook.action_webhook:type_name -> v1.Hook.Webhook
+	26, // 25: v1.Hook.action_discord:type_name -> v1.Hook.Discord
+	27, // 26: v1.Hook.action_gotify:type_name -> v1.Hook.Gotify
+	28, // 27: v1.Hook.action_slack:type_name -> v1.Hook.Slack
+	29, // 28: v1.Hook.action_shoutrrr:type_name -> v1.Hook.Shoutrrr
+	30, // 29: v1.Hook.action_healthchecks:type_name -> v1.Hook.Healthchecks
+	19, // 30: v1.Auth.users:type_name -> v1.User
+	22, // 31: v1.Multihost.Peer.permissions:type_name -> v1.Multihost.Permission
+	0,  // 32: v1.Multihost.Permission.type:type_name -> v1.Multihost.Permission.Type
+	6,  // 33: v1.Hook.Webhook.method:type_name -> v1.Hook.Webhook.Method
+	34, // [34:34] is the sub-list for method output_type
+	34, // [34:34] is the sub-list for method input_type
+	34, // [34:34] is the sub-list for extension type_name
+	34, // [34:34] is the sub-list for extension extendee
+	0,  // [0:34] is the sub-list for field type_name
 }
 
 func init() { file_v1_config_proto_init() }
@@ -2573,8 +2697,8 @@ func file_v1_config_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_v1_config_proto_rawDesc,
-			NumEnums:      6,
-			NumMessages:   23,
+			NumEnums:      7,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
