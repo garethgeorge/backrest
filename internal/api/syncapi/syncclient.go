@@ -259,7 +259,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 		}
 
 		return (op.GetPlanId() != "" && peerPerms.CheckPermissionForPlan(op.GetPlanId(), v1.Multihost_Permission_PERMISSION_READ_OPERATIONS)) ||
-			(op.GetRepoGuid() != "" && peerPerms.CheckPermissionForRepo(op.GetRepoGuid(), v1.Multihost_Permission_PERMISSION_READ_OPERATIONS))
+			(op.GetRepoId() != "" && peerPerms.CheckPermissionForRepo(op.GetRepoId(), v1.Multihost_Permission_PERMISSION_READ_OPERATIONS))
 	}
 
 	oplogSubscription := func(ops []*v1.Operation, event oplog.OperationEvent) {
@@ -348,8 +348,9 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			return nil
 		}
 
-		c.l.Sugar().Infof("identifying plans and repos to send operations for, local instance ID: %q, peer instance ID: %q",
-			c.localInstanceID, c.peer.InstanceId)
+		reposToSync := []string{}
+		plansToSync := []string{}
+
 		// Start syncing operations for all repos and plans that the peer is allowed to read.
 		for _, repo := range localConfig.Repos {
 			if !peerPerms.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
@@ -363,6 +364,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				cancelWithError(fmt.Errorf("start sync for repo %q: %w", repo.Guid, err))
 				return
 			}
+			reposToSync = append(reposToSync, repo.Id)
 		}
 
 		for _, plan := range localConfig.Plans {
@@ -381,7 +383,11 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				cancelWithError(fmt.Errorf("start sync for plan %q: %w", plan.Id, err))
 				return
 			}
+			plansToSync = append(plansToSync, plan.Id)
 		}
+		c.l.Sugar().Infof("triggered sync for repos %v and plans %v for local instance ID: %q, peer instance ID: %q",
+			reposToSync, plansToSync, c.localInstanceID, c.peer.InstanceId)
+
 	}()
 
 	handleSyncCommand := func(item *v1.SyncStreamItem) error {
@@ -445,7 +451,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					continue // skip this operation
 				}
 				if !canForwardOperation(op) {
-					c.l.Sugar().Debugf("skipping operation %d for repo %q, plan %q, not allowed to read by peer %q",
+					c.l.Sugar().Warnf("skipping operation %d for repo %q, plan %q, not allowed to read by peer %q",
 						op.GetId(), op.GetRepoGuid(), op.GetPlanId(), c.peer.InstanceId)
 					continue // skip operations that the peer is not allowed to read
 				}
