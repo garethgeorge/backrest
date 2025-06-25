@@ -169,14 +169,12 @@ func TestSyncConfigChange(t *testing.T) {
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
-				Id:                     defaultRepoID,
-				Guid:                   defaultRepoGUID,
-				AllowedPeerInstanceIds: []string{defaultClientID},
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
 			},
 			{
-				Id:                     "do-not-sync",
-				Guid:                   cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
-				AllowedPeerInstanceIds: []string{"some-other-client"},
+				Id:   "do-not-sync",
+				Guid: cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -186,6 +184,14 @@ func TestSyncConfigChange(t *testing.T) {
 					Keyid:         identity2.Keyid,
 					KeyidVerified: true,
 					InstanceId:    defaultClientID,
+					Permissions: []*v1.Multihost_Permission{
+						{
+							Type: v1.Multihost_Permission_PERMISSION_READ_CONFIG,
+							Scopes: []string{
+								"repo:" + defaultRepoID,
+							},
+						},
+					},
 				},
 			},
 		},
@@ -222,7 +228,7 @@ func TestSyncConfigChange(t *testing.T) {
 
 	// wait for the initial config to propagate
 	tryExpectConfig(t, ctx, peerClient, defaultHostID, &v1.RemoteConfig{
-		Repos: []*v1.RemoteRepo{
+		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
 				Guid: defaultRepoGUID,
@@ -234,7 +240,7 @@ func TestSyncConfigChange(t *testing.T) {
 	peerHost.configMgr.Update(hostConfigChanged)
 
 	tryExpectConfig(t, ctx, peerClient, defaultHostID, &v1.RemoteConfig{
-		Repos: []*v1.RemoteRepo{
+		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
 				Guid: defaultRepoGUID,
@@ -255,9 +261,8 @@ func TestSimpleOperationSync(t *testing.T) {
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
-				Id:                     defaultRepoID,
-				Guid:                   defaultRepoGUID,
-				AllowedPeerInstanceIds: []string{defaultClientID},
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -267,6 +272,14 @@ func TestSimpleOperationSync(t *testing.T) {
 					Keyid:         identity2.Keyid,
 					KeyidVerified: true,
 					InstanceId:    defaultClientID,
+					Permissions: []*v1.Multihost_Permission{
+						{
+							Type: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
+							Scopes: []string{
+								"repo:" + defaultRepoID,
+							},
+						},
+					},
 				},
 			},
 		},
@@ -372,9 +385,8 @@ func TestSyncMutations(t *testing.T) {
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
-				Id:                     defaultRepoID,
-				Guid:                   defaultRepoGUID,
-				AllowedPeerInstanceIds: []string{defaultClientID},
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -384,6 +396,14 @@ func TestSyncMutations(t *testing.T) {
 					Keyid:         identity2.Keyid,
 					KeyidVerified: true,
 					InstanceId:    defaultClientID,
+					Permissions: []*v1.Multihost_Permission{
+						{
+							Type: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
+							Scopes: []string{
+								"repo:" + defaultRepoID,
+							},
+						},
+					},
 				},
 			},
 		},

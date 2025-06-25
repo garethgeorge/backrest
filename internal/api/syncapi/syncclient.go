@@ -37,7 +37,6 @@ type SyncClient struct {
 
 	// mutable properties
 	mu                      sync.Mutex
-	remoteConfigStore       RemoteConfigStore
 	connectionStatus        v1.SyncConnectionState
 	connectionStatusMessage string
 
@@ -218,7 +217,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 
 	// start by forwarding the configuration and the resource lists the peer is allowed to see.
 	{
-		remoteConfig := &v1.RemoteConfig{}
+		remoteConfig := &v1.RemoteConfig{
+			Version: localConfig.Version,
+			Modno:   localConfig.Modno,
+		}
 		resourceList := &v1.SyncStreamItem_SyncActionListResources{}
 		for _, repo := range localConfig.Repos {
 			if peerPerms.CheckPermissionForRepo(repo.Guid, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
@@ -382,6 +384,10 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 
 	handleSyncCommand := func(item *v1.SyncStreamItem) error {
 		switch action := item.Action.(type) {
+		case *v1.SyncStreamItem_ListResources:
+			c.l.Sugar().Debugf("received resource list for peer %q, repo IDs: %v, plan IDs: %v",
+				c.peer.InstanceId, action.ListResources.RepoIds, action.ListResources.PlanIds)
+			// TODO: update this in the peer info store for this peer eventually.
 		case *v1.SyncStreamItem_SendConfig:
 			c.l.Sugar().Debugf("received remote config update")
 			newRemoteConfig := action.SendConfig.Config
@@ -476,16 +482,37 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			}
 
 			c.l.Debug("replied to an operations request", zap.Int("num_ops_requested", len(requestedOperations)), zap.Int("num_ops_sent", sentOps), zap.Int("num_ops_deleted", len(deletedIDs)))
+
+		case *v1.SyncStreamItem_Heartbeat:
+			// TODO: handle the heartbeat messages, currently we just ignore them.
 		case *v1.SyncStreamItem_Throttle:
 			c.reconnectDelay = time.Duration(action.Throttle.GetDelayMs()) * time.Millisecond
 		default:
 			return &SyncError{
 				State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_PROTOCOL,
-				Message: fmt.Errorf("unknown action: %v", action),
+				Message: fmt.Errorf("unknown action: %T - %v", action, action),
 			}
 		}
 		return nil
 	}
+
+	// start a heartbeat thread
+	go func() {
+		ticker := time.NewTicker(60 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				send <- &v1.SyncStreamItem{
+					Action: &v1.SyncStreamItem_Heartbeat{
+						Heartbeat: &v1.SyncStreamItem_SyncActionHeartbeat{},
+					},
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 	for {
 		select {

@@ -75,7 +75,7 @@ type PeerState struct {
 	KnownPlans map[string]struct{}
 
 	// Partial configuration available for this peer
-	Config *v1.Config
+	Config *v1.RemoteConfig
 }
 
 func (ps *PeerState) Clone() *PeerState {
@@ -83,6 +83,6 @@ func (ps *PeerState) Clone() *PeerState {
 	*clone = *ps                                 // Shallow copy of the PeerState
 	clone.KnownRepos = maps.Clone(ps.KnownRepos) // Clone maps to ensure deep copy
 	clone.KnownPlans = maps.Clone(ps.KnownPlans)
-	clone.Config = proto.Clone(ps.Config).(*v1.Config) // Clone the protobuf Config
+	clone.Config = proto.Clone(ps.Config).(*v1.RemoteConfig) // Clone the protobuf Config
 	return clone
 }

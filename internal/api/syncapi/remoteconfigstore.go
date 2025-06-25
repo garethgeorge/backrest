@@ -156,7 +156,7 @@ func (s *memoryConfigStore) Delete(instanceID string) error {
 	return nil
 }
 
-func GetRepoConfig(store RemoteConfigStore, instanceID, repoID string) (*v1.RemoteRepo, error) {
+func GetRepoConfig(store RemoteConfigStore, instanceID, repoID string) (*v1.Repo, error) {
 	config, err := store.Get(instanceID)
 	if err != nil {
 		return nil, fmt.Errorf("get %q: %w", instanceID, err)

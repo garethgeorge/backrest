@@ -24,14 +24,15 @@ type BackrestSyncHandler struct {
 	v1connect.UnimplementedBackrestSyncServiceHandler
 	mgr *SyncManager
 
-	PeerStates PeerStateManager
+	PeerStates *PeerStateManager
 }
 
 var _ v1connect.BackrestSyncServiceHandler = &BackrestSyncHandler{}
 
 func NewBackrestSyncHandler(mgr *SyncManager) *BackrestSyncHandler {
 	return &BackrestSyncHandler{
-		mgr: mgr,
+		mgr:        mgr,
+		PeerStates: NewPeerStateManager(),
 	}
 }
 
@@ -190,7 +191,10 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	}
 
 	sendConfigToClient := func(config *v1.Config) error {
-		remoteConfig := &v1.RemoteConfig{}
+		remoteConfig := &v1.RemoteConfig{
+			Version: config.Version,
+			Modno:   config.Modno,
+		}
 		resourceListMsg := &v1.SyncStreamItem_SyncActionListResources{}
 		var allowedRepoIDs []string
 		for _, repo := range config.Repos {
@@ -233,7 +237,8 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	handleSyncCommand := func(item *v1.SyncStreamItem) error {
 		switch action := item.Action.(type) {
 		case *v1.SyncStreamItem_SendConfig:
-			return errors.New("clients can not push configs to server")
+			peerState.Config = action.SendConfig.GetConfig()
+			h.PeerStates.SetPeerState(clientInstanceID, peerState)
 		case *v1.SyncStreamItem_ListResources:
 			zap.L().Debug("syncserver received resource list from client", zap.String("client_instance_id", clientInstanceID),
 				zap.Any("repos", action.ListResources.GetRepoIds()),
@@ -407,6 +412,8 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 						Heartbeat: &v1.SyncStreamItem_SyncActionHeartbeat{},
 					},
 				}
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()

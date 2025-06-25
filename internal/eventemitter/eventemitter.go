@@ -69,12 +69,6 @@ type BlockingEventEmitter[T any] struct {
 	EventEmitter[T]
 }
 
-func NewBlocking[T any]() *BlockingEventEmitter[T] {
-	return &BlockingEventEmitter[T]{
-		EventEmitter: *New[T](),
-	}
-}
-
 func (e *BlockingEventEmitter[T]) Emit(event T) {
 	e.mu.Lock()
 	defer e.mu.Unlock()

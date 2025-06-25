@@ -45,7 +45,7 @@ func TestPermissionSet_CheckPermissionForPlan(t *testing.T) {
 				},
 				{
 					name:     "write plan1 without write permission",
-					permType: v1.Multihost_Permission_PERMISSION_SEND_OPERATIONS,
+					permType: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
 					planID:   "plan1",
 					expected: false,
 				},
@@ -59,7 +59,7 @@ func TestPermissionSet_CheckPermissionForPlan(t *testing.T) {
 					Scopes: []string{"plan:plan1", "plan:plan2"},
 				},
 				{
-					Type:   v1.Multihost_Permission_PERMISSION_SEND_OPERATIONS,
+					Type:   v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
 					Scopes: []string{"plan:plan1"},
 				},
 			},
@@ -89,13 +89,13 @@ func TestPermissionSet_CheckPermissionForPlan(t *testing.T) {
 				},
 				{
 					name:     "write plan1 with write permission",
-					permType: v1.Multihost_Permission_PERMISSION_SEND_OPERATIONS,
+					permType: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
 					planID:   "plan1",
 					expected: true,
 				},
 				{
 					name:     "write plan2 without write permission",
-					permType: v1.Multihost_Permission_PERMISSION_SEND_OPERATIONS,
+					permType: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
 					planID:   "plan2",
 					expected: false,
 				},
@@ -203,7 +203,7 @@ func TestPermissionSet_CheckPermissionForPlan(t *testing.T) {
 			permSet, _ := NewPermissionSet(tt.permissions)
 			for _, query := range tt.queries {
 				t.Run(query.name, func(t *testing.T) {
-					result := permSet.CheckPermissionForPlan(query.permType, query.planID)
+					result := permSet.CheckPermissionForPlan(query.planID, query.permType)
 					if result != query.expected {
 						t.Errorf("CheckPermissionForPlan(%v, %q) = %v, want %v", query.permType, query.planID, result, query.expected)
 					}
@@ -252,7 +252,7 @@ func TestPermissionSet_CheckPermissionForRepo(t *testing.T) {
 				},
 				{
 					name:     "write repo1 without write permission",
-					permType: v1.Multihost_Permission_PERMISSION_SEND_OPERATIONS,
+					permType: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
 					repoID:   "repo1",
 					expected: false,
 				},
@@ -266,7 +266,7 @@ func TestPermissionSet_CheckPermissionForRepo(t *testing.T) {
 					Scopes: []string{"repo:repo1", "repo:repo2"},
 				},
 				{
-					Type:   v1.Multihost_Permission_PERMISSION_SEND_OPERATIONS,
+					Type:   v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
 					Scopes: []string{"repo:repo1"},
 				},
 			},
@@ -296,13 +296,13 @@ func TestPermissionSet_CheckPermissionForRepo(t *testing.T) {
 				},
 				{
 					name:     "write repo1 with write permission",
-					permType: v1.Multihost_Permission_PERMISSION_SEND_OPERATIONS,
+					permType: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
 					repoID:   "repo1",
 					expected: true,
 				},
 				{
 					name:     "write repo2 without write permission",
-					permType: v1.Multihost_Permission_PERMISSION_SEND_OPERATIONS,
+					permType: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
 					repoID:   "repo2",
 					expected: false,
 				},
@@ -438,7 +438,7 @@ func TestPermissionSet_CheckPermissionForRepo(t *testing.T) {
 			permSet, _ := NewPermissionSet(tt.permissions)
 			for _, query := range tt.queries {
 				t.Run(query.name, func(t *testing.T) {
-					result := permSet.CheckPermissionForRepo(query.permType, query.repoID)
+					result := permSet.CheckPermissionForRepo(query.repoID, query.permType)
 					if result != query.expected {
 						t.Errorf("CheckPermissionForRepo(%v, %q) = %v, want %v", query.permType, query.repoID, result, query.expected)
 					}

@@ -133,6 +133,8 @@ message SyncStreamItem {
 
 // RemoteConfig contains shareable properties from a remote backrest instance.
 message RemoteConfig {
-  repeated Repo repos = 1;
-  repeated Plan plans = 2;
+  int32 modno = 1; // The modno of the config.
+  int32 version = 2; // The storage version of the config.
+  repeated Repo repos = 3;
+  repeated Plan plans = 4;
 }
