@@ -317,7 +317,6 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	// Initiate sync on a background thread, this allows us to handle responses while still sending the initial diff state.
 	// This is a slow operation and we don't want to block the main loop waiting for it to complete and potentially forcing incomming messages to buffer or drop.
 	go func() {
-
 		startSync := func(diffSel *v1.OpSelector) error {
 			c.l.Sugar().Infof("starting sync with diffselector: %v", diffSel)
 
@@ -336,7 +335,7 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				return fmt.Errorf("query oplog with selector %v: %w", diffSel, err)
 			}
 
-			diffQuery.OriginalInstanceKeyid = proto.String(c.syncConfigSnapshot.identityKey.KeyID())
+			diffSel.OriginalInstanceKeyid = proto.String(c.syncConfigSnapshot.identityKey.KeyID())
 			send <- &v1.SyncStreamItem{
 				Action: &v1.SyncStreamItem_DiffOperations{
 					DiffOperations: &v1.SyncStreamItem_SyncActionDiffOperations{
@@ -348,9 +347,12 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 			}
 			return nil
 		}
+
+		c.l.Sugar().Infof("identifying plans and repos to send operations for, local instance ID: %q, peer instance ID: %q",
+			c.localInstanceID, c.peer.InstanceId)
 		// Start syncing operations for all repos and plans that the peer is allowed to read.
 		for _, repo := range localConfig.Repos {
-			if !peerPerms.CheckPermissionForRepo(repo.Guid, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
+			if !peerPerms.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
 				continue // skip repos that the peer is not allowed to read
 			}
 			diffSel := &v1.OpSelector{

@@ -197,19 +197,22 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		}
 		resourceListMsg := &v1.SyncStreamItem_SyncActionListResources{}
 		var allowedRepoIDs []string
+		var allowedPlanIDs []string
 		for _, repo := range config.Repos {
 			if peerPerms.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
 				remoteConfig.Repos = append(remoteConfig.Repos, repo)
 				resourceListMsg.RepoIds = append(resourceListMsg.RepoIds, repo.Id)
+				allowedRepoIDs = append(allowedRepoIDs, repo.Id)
 			}
 		}
 		for _, plan := range config.Plans {
 			if peerPerms.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
 				remoteConfig.Plans = append(remoteConfig.Plans, plan)
 				resourceListMsg.PlanIds = append(resourceListMsg.PlanIds, plan.Id)
+				allowedPlanIDs = append(allowedPlanIDs, plan.Id)
 			}
 		}
-		zap.S().Debugf("syncserver determined client %v is allowlisted to read configs for repos %v", clientInstanceID, allowedRepoIDs)
+		zap.S().Debugf("syncserver determined client %v is allowlisted to read configs for repos %v and plans %v", clientInstanceID, allowedRepoIDs, allowedPlanIDs)
 
 		// Send the config, this is the first meaningful packet the client will receive.
 		// Once configuration is received, the client will start sending diffs.

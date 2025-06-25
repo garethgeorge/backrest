@@ -52,8 +52,8 @@ var (
 		RepoId:          defaultRepoID,
 		RepoGuid:        defaultRepoGUID,
 		PlanId:          defaultPlanID,
-		UnixTimeStartMs: 1234,
-		UnixTimeEndMs:   5678,
+		UnixTimeStartMs: time.Now().UnixMilli() - 1000, // 1 second ago
+		UnixTimeEndMs:   time.Now().UnixMilli(),
 		Status:          v1.OperationStatus_STATUS_SUCCESS,
 		Op:              &v1.Operation_OperationBackup{},
 	}
@@ -63,8 +63,8 @@ var (
 		RepoId:          defaultRepoID,
 		RepoGuid:        defaultRepoGUID,
 		PlanId:          defaultPlanID,
-		UnixTimeStartMs: 1234,
-		UnixTimeEndMs:   5678,
+		UnixTimeStartMs: time.Now().UnixMilli() - 1000, // 1 second ago
+		UnixTimeEndMs:   time.Now().UnixMilli(),
 		Status:          v1.OperationStatus_STATUS_SUCCESS,
 		Op:              &v1.Operation_OperationBackup{},
 	}
@@ -272,14 +272,6 @@ func TestSimpleOperationSync(t *testing.T) {
 					Keyid:         identity2.Keyid,
 					KeyidVerified: true,
 					InstanceId:    defaultClientID,
-					Permissions: []*v1.Multihost_Permission{
-						{
-							Type: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
-							Scopes: []string{
-								"repo:" + defaultRepoID,
-							},
-						},
-					},
 				},
 			},
 		},
@@ -301,6 +293,14 @@ func TestSimpleOperationSync(t *testing.T) {
 					Keyid:       identity1.Keyid,
 					InstanceId:  defaultHostID,
 					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
+					Permissions: []*v1.Multihost_Permission{
+						{
+							Type: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
+							Scopes: []string{
+								"repo:" + defaultRepoID,
+							},
+						},
+					},
 				},
 			},
 		},
@@ -396,14 +396,6 @@ func TestSyncMutations(t *testing.T) {
 					Keyid:         identity2.Keyid,
 					KeyidVerified: true,
 					InstanceId:    defaultClientID,
-					Permissions: []*v1.Multihost_Permission{
-						{
-							Type: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
-							Scopes: []string{
-								"repo:" + defaultRepoID,
-							},
-						},
-					},
 				},
 			},
 		},
@@ -425,6 +417,14 @@ func TestSyncMutations(t *testing.T) {
 					Keyid:       identity1.Keyid,
 					InstanceId:  defaultHostID,
 					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
+					Permissions: []*v1.Multihost_Permission{
+						{
+							Type: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
+							Scopes: []string{
+								"repo:" + defaultRepoID,
+							},
+						},
+					},
 				},
 			},
 		},
