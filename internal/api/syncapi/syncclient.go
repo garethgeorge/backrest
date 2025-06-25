@@ -15,7 +15,8 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
-	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
+	"github.com/garethgeorge/backrest/internal/eventemitter"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
@@ -40,9 +41,8 @@ type SyncClient struct {
 	connectionStatus        v1.SyncConnectionState
 	connectionStatusMessage string
 
-	// sync state subscribers are channels that can be used to notify
-	// subscribers about changes in the sync state.
-	subscribers []chan struct{}
+	// event emitters
+	OnStateChange eventemitter.EventEmitter[struct{}]
 }
 
 func newInsecureClient() *http.Client {
@@ -91,14 +91,7 @@ func (c *SyncClient) setConnectionState(state v1.SyncConnectionState, message st
 	c.mu.Lock()
 	c.connectionStatus = state
 	c.connectionStatusMessage = message
-	for _, subscriber := range c.subscribers {
-		select {
-		case subscriber <- struct{}{}:
-		default:
-			// If the subscriber channel is full, we skip sending the update.
-			// This is to prevent blocking the sync client if a subscriber is not reading updates.
-		}
-	}
+	c.OnStateChange.Emit(struct{}{})
 	c.mu.Unlock()
 }
 
@@ -106,31 +99,6 @@ func (c *SyncClient) GetConnectionState() (v1.SyncConnectionState, string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.connectionStatus, c.connectionStatusMessage
-}
-
-func (c *SyncClient) SubscribeToSyncStateUpdates() chan struct{} {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	ch := make(chan struct{}, 1)
-	c.subscribers = append(c.subscribers, ch)
-	return ch
-}
-
-func (c *SyncClient) UnsubscribeFromSyncStateUpdates(ch chan struct{}) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	for i := range c.subscribers {
-		if c.subscribers[i] == ch {
-			// Swap with last element and truncate slice
-			lastIdx := len(c.subscribers) - 1
-			c.subscribers[i] = c.subscribers[lastIdx]
-			c.subscribers = c.subscribers[:lastIdx]
-			close(ch)
-			return
-		}
-	}
 }
 
 func (c *SyncClient) RunSync(ctx context.Context) {
@@ -239,16 +207,63 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	}
 	serverInstanceID := c.peer.InstanceId
 
+	peerPerms, err := permissions.NewPermissionSet(c.peer.Permissions)
+	if err != nil {
+		return &SyncError{
+			State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH,
+			Message: fmt.Errorf("parse peer permissions: %w", err),
+		}
+	}
 	c.l.Debug("received handshake packet from server", zap.String("server_instance_id", serverInstanceID))
 
-	// haveRunSync tracks which repo GUIDs we've initiated a sync for with the server.
-	// operation requests (from the server) are ignored if the GUID is not allowlisted in this map.
-	haveRunSync := make(map[string]struct{})
+	// start by forwarding the configuration and the resource lists the peer is allowed to see.
+	{
+		remoteConfig := &v1.RemoteConfig{}
+		resourceList := &v1.SyncStreamItem_SyncActionListResources{}
+		for _, repo := range localConfig.Repos {
+			if peerPerms.CheckPermissionForRepo(repo.Guid, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
+				remoteConfig.Repos = append(remoteConfig.Repos, repo)
+				resourceList.RepoIds = append(resourceList.RepoIds, repo.Id)
+			}
+		}
+		for _, plan := range localConfig.Plans {
+			if peerPerms.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
+				remoteConfig.Plans = append(remoteConfig.Plans, plan)
+				resourceList.PlanIds = append(resourceList.PlanIds, plan.Id)
+			}
+		}
+
+		if err := stream.Send(&v1.SyncStreamItem{
+			Action: &v1.SyncStreamItem_SendConfig{
+				SendConfig: &v1.SyncStreamItem_SyncActionSendConfig{
+					Config: remoteConfig,
+				},
+			},
+		}); err != nil {
+			return fmt.Errorf("send initial config: %w", err)
+		}
+		if err := stream.Send(&v1.SyncStreamItem{
+			Action: &v1.SyncStreamItem_ListResources{
+				ListResources: resourceList,
+			},
+		}); err != nil {
+			return fmt.Errorf("send initial resource list: %w", err)
+		}
+	}
+
+	canForwardOperation := func(op *v1.Operation) bool {
+		if op.GetOriginalInstanceKeyid() != "" || op.GetInstanceId() != c.localInstanceID {
+			return false // only forward operations that were created by this instance
+		}
+
+		return (op.GetPlanId() != "" && peerPerms.CheckPermissionForPlan(op.GetPlanId(), v1.Multihost_Permission_PERMISSION_READ_OPERATIONS)) ||
+			(op.GetRepoGuid() != "" && peerPerms.CheckPermissionForRepo(op.GetRepoGuid(), v1.Multihost_Permission_PERMISSION_READ_OPERATIONS))
+	}
 
 	oplogSubscription := func(ops []*v1.Operation, event oplog.OperationEvent) {
 		var opsToForward []*v1.Operation
 		for _, op := range ops {
-			if _, ok := haveRunSync[op.GetRepoGuid()]; ok {
+			if canForwardOperation(op) {
 				opsToForward = append(opsToForward, op)
 			}
 		}
@@ -297,6 +312,74 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 	c.oplog.Subscribe(oplog.Query{}, &oplogSubscription)
 	defer c.oplog.Unsubscribe(&oplogSubscription)
 
+	// Initiate sync on a background thread, this allows us to handle responses while still sending the initial diff state.
+	// This is a slow operation and we don't want to block the main loop waiting for it to complete and potentially forcing incomming messages to buffer or drop.
+	go func() {
+
+		startSync := func(diffSel *v1.OpSelector) error {
+			c.l.Sugar().Infof("starting sync with diffselector: %v", diffSel)
+
+			diffQuery, err := protoutil.OpSelectorToQuery(diffSel)
+			if err != nil {
+				return fmt.Errorf("convert operation selector to query: %w", err)
+			}
+			// Load operation metadata and send the initial diff state.
+			var opIds []int64
+			var opModnos []int64
+			if err := c.oplog.QueryMetadata(diffQuery, func(op oplog.OpMetadata) error {
+				opIds = append(opIds, op.ID)
+				opModnos = append(opModnos, op.Modno)
+				return nil
+			}); err != nil {
+				return fmt.Errorf("query oplog with selector %v: %w", diffSel, err)
+			}
+
+			diffQuery.OriginalInstanceKeyid = proto.String(c.syncConfigSnapshot.identityKey.KeyID())
+			send <- &v1.SyncStreamItem{
+				Action: &v1.SyncStreamItem_DiffOperations{
+					DiffOperations: &v1.SyncStreamItem_SyncActionDiffOperations{
+						HaveOperationsSelector: diffSel,
+						HaveOperationIds:       opIds,
+						HaveOperationModnos:    opModnos,
+					},
+				},
+			}
+			return nil
+		}
+		// Start syncing operations for all repos and plans that the peer is allowed to read.
+		for _, repo := range localConfig.Repos {
+			if !peerPerms.CheckPermissionForRepo(repo.Guid, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
+				continue // skip repos that the peer is not allowed to read
+			}
+			diffSel := &v1.OpSelector{
+				RepoGuid: proto.String(repo.Guid),
+			}
+			if err := startSync(diffSel); err != nil {
+				c.l.Sugar().Errorf("failed to start sync for repo %q: %v", repo.Guid, err)
+				cancelWithError(fmt.Errorf("start sync for repo %q: %w", repo.Guid, err))
+				return
+			}
+		}
+
+		for _, plan := range localConfig.Plans {
+			if !peerPerms.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
+				continue // skip plans that the peer is not allowed to read
+			}
+			if peerPerms.CheckPermissionForPlan(plan.Repo, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
+				continue // skip the sync if we're already syncing the whole repo that it belongs to
+			}
+			diffSel := &v1.OpSelector{
+				PlanId:   proto.String(plan.Id),
+				RepoGuid: proto.String(plan.Repo),
+			}
+			if err := startSync(diffSel); err != nil {
+				c.l.Sugar().Errorf("failed to start sync for plan %q: %v", plan.Id, err)
+				cancelWithError(fmt.Errorf("start sync for plan %q: %w", plan.Id, err))
+				return
+			}
+		}
+	}()
+
 	handleSyncCommand := func(item *v1.SyncStreamItem) error {
 		switch action := item.Action.(type) {
 		case *v1.SyncStreamItem_SendConfig:
@@ -310,75 +393,6 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 				return &SyncError{
 					State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_PROTOCOL,
 					Message: fmt.Errorf("received nil remote config"),
-				}
-			}
-
-			// remove any repo IDs that are no longer in the config, our access has been revoked.
-			remoteRepoGUIDs := make(map[string]struct{})
-			for _, repo := range newRemoteConfig.Repos {
-				remoteRepoGUIDs[repo.GetGuid()] = struct{}{}
-			}
-			for repoID := range haveRunSync {
-				if _, ok := remoteRepoGUIDs[repoID]; !ok {
-					delete(haveRunSync, repoID)
-				}
-			}
-
-			for _, repo := range newRemoteConfig.Repos {
-				_, ok := haveRunSync[repo.GetGuid()]
-				if ok {
-					continue
-				}
-				localRepoConfig := config.FindRepoByGUID(localConfig, repo.GetGuid())
-				if localRepoConfig == nil {
-					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because no local repo has the same GUID %q", c.peer.InstanceId, repo.GetId())
-					continue
-				}
-				instanceID, err := InstanceForBackrestURI(localRepoConfig.Uri)
-				if err != nil || instanceID != c.peer.InstanceId {
-					c.l.Sugar().Debugf("ignoring remote repo config %q/%q because the local repo (%q) with the same GUID specifies URI %q (instance ID %q) which does not reference the peer providing this config", c.peer.InstanceId, repo.GetId(), localRepoConfig.Id, localRepoConfig.Guid, instanceID)
-					continue
-				}
-
-				diffSel := &v1.OpSelector{
-					InstanceId:            proto.String(c.localInstanceID),
-					OriginalInstanceKeyid: proto.String(c.syncConfigSnapshot.identityKey.KeyID()),
-					RepoGuid:              proto.String(repo.GetGuid()),
-				}
-
-				diffQuery, err := protoutil.OpSelectorToQuery(diffSel)
-				if err != nil {
-					return fmt.Errorf("convert operation selector to query: %w", err)
-				}
-
-				haveRunSync[repo.GetGuid()] = struct{}{}
-
-				// Load operation metadata and send the initial diff state.
-				var opIds []int64
-				var opModnos []int64
-				if err := c.oplog.QueryMetadata(diffQuery, func(op oplog.OpMetadata) error {
-					opIds = append(opIds, op.ID)
-					opModnos = append(opModnos, op.Modno)
-					return nil
-				}); err != nil {
-					return fmt.Errorf("action sync config: query oplog for repo %q: %w", repo.GetId(), err)
-				}
-
-				c.l.Sugar().Infof("initiating operation history sync for repo %q", repo.GetId())
-
-				if err := stream.Send(&v1.SyncStreamItem{
-					Action: &v1.SyncStreamItem_DiffOperations{
-						DiffOperations: &v1.SyncStreamItem_SyncActionDiffOperations{
-							HaveOperationsSelector: diffSel,
-							HaveOperationIds:       opIds,
-							HaveOperationModnos:    opModnos,
-						},
-					},
-				}); err != nil {
-					return &SyncError{
-						State:   v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED,
-						Message: fmt.Errorf("action sync config: send diff operations: %w", err),
-					}
 				}
 			}
 		case *v1.SyncStreamItem_DiffOperations:
@@ -422,21 +436,11 @@ func (c *SyncClient) runSyncInternal(ctx context.Context) error {
 					c.l.Sugar().Warnf("action diff operations, failed to fetch a requested operation %d: %v", opID, err)
 					continue // skip this operation
 				}
-				if op.GetInstanceId() != c.localInstanceID {
-					c.l.Sugar().Warnf("action diff operations, requested operation %d is not from this instance, this shouldn't happen with a wellbehaved server", opID)
-					continue // skip operations that are not from this instance e.g. an "index snapshot" picking up snapshots created by another instance.
+				if !canForwardOperation(op) {
+					c.l.Sugar().Debugf("skipping operation %d for repo %q, plan %q, not allowed to read by peer %q",
+						op.GetId(), op.GetRepoGuid(), op.GetPlanId(), c.peer.InstanceId)
+					continue // skip operations that the peer is not allowed to read
 				}
-
-				_, ok := haveRunSync[op.RepoGuid]
-				if !ok {
-					// this should never happen if sync is working correctly. Would probably indicate oplog or our access was revoked.
-					// Error out and re-initiate sync.
-					return &SyncError{
-						State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_PROTOCOL,
-						Message: fmt.Errorf("remote requested operation for repo %q for which sync was never initiated", op.GetRepoId()),
-					}
-				}
-
 				sendOps = append(sendOps, op)
 				sentOps += 1
 				if len(sendOps) >= 256 {

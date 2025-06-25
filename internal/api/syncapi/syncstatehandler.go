@@ -60,8 +60,8 @@ func (h *BackrestSyncStateHandler) GetKnownHostSyncStateStream(ctx context.Conte
 				return
 			}
 
-			ch := c.SubscribeToSyncStateUpdates()
-			defer c.UnsubscribeFromSyncStateUpdates(ch)
+			ch := c.OnStateChange.Subscribe()
+			defer c.OnStateChange.Unsubscribe(ch)
 			for {
 				select {
 				case <-ctx.Done():

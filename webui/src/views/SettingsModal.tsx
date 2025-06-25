@@ -10,6 +10,7 @@ import {
   Checkbox,
   FormInstance,
   Tooltip,
+  Select,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -42,6 +43,8 @@ import {
   UserSchema,
   MultihostSchema,
   Multihost_PeerSchema,
+  Multihost_PermissionSchema,
+  Multihost_Permission_Type,
 } from "../../gen/ts/v1/config_pb";
 import {
   SyncConnectionState,
@@ -69,11 +72,19 @@ interface FormData {
       keyid: string;
       keyidVerified?: boolean;
       instanceUrl: string;
+      permissions?: {
+        type: number;
+        scopes: string[];
+      }[];
     }[];
     authorizedClients: {
       instanceId: string;
       keyid: string;
       keyidVerified?: boolean;
+      permissions?: {
+        type: number;
+        scopes: string[];
+      }[];
     }[];
   };
 }
@@ -412,6 +423,8 @@ const MultihostIdentityForm: React.FC<{
           itemTypeName="Authorized Client"
           showSyncState={false}
           syncState={syncState}
+          config={config}
+          listType="authorizedClients"
           initialValue={
             config.multihost?.authorizedClients?.map((peer) =>
               toJson(Multihost_PeerSchema, peer, { alwaysEmitImplicit: true })
@@ -432,6 +445,8 @@ const MultihostIdentityForm: React.FC<{
           itemTypeName="Known Host"
           showSyncState={true}
           syncState={syncState}
+          config={config}
+          listType="knownHosts"
           initialValue={
             config.multihost?.knownHosts?.map((peer) =>
               toJson(Multihost_PeerSchema, peer, { alwaysEmitImplicit: true })
@@ -451,6 +466,8 @@ const PeerFormList: React.FC<{
   itemTypeName: string;
   syncState: SyncStateStreamItem[];
   initialValue: any[];
+  config: Config;
+  listType: "knownHosts" | "authorizedClients";
 }> = ({
   form,
   listName,
@@ -459,6 +476,8 @@ const PeerFormList: React.FC<{
   itemTypeName,
   syncState,
   initialValue,
+  config,
+  listType,
 }) => {
   return (
     <Form.List name={listName} initialValue={initialValue}>
@@ -474,6 +493,8 @@ const PeerFormList: React.FC<{
               showSyncState={showSyncState}
               syncState={syncState}
               index={index}
+              config={config}
+              listType={listType}
             />
           ))}
           <Form.Item>
@@ -501,6 +522,8 @@ const PeerFormListItem: React.FC<{
   showSyncState: boolean;
   syncState: SyncStateStreamItem[];
   index: number;
+  config: Config;
+  listType: "knownHosts" | "authorizedClients";
 }> = ({
   form,
   fieldName,
@@ -509,6 +532,8 @@ const PeerFormListItem: React.FC<{
   showSyncState,
   syncState,
   index,
+  config,
+  listType,
 }) => {
   // Get the instance ID from the form to find the matching sync state
   const instanceId =
@@ -606,6 +631,13 @@ const PeerFormListItem: React.FC<{
           </Col>
         </Row>
       )}
+
+      <PeerPermissionsTile
+        form={form}
+        fieldName={fieldName}
+        listType={listType}
+        config={config}
+      />
     </div>
   );
 };
@@ -732,5 +764,132 @@ export const SyncStateTile = ({
         {getStatusIcon()}
       </span>
     </Tooltip>
+  );
+};
+
+const PeerPermissionsTile: React.FC<{
+  form: FormInstance<FormData>;
+  fieldName: number;
+  listType: "knownHosts" | "authorizedClients";
+  config: Config;
+}> = ({ form, fieldName, listType, config }) => {
+  const repoOptions = (config.repos || []).map((repo) => ({
+    label: repo.id,
+    value: `repo:${repo.id}`,
+  }));
+
+  return (
+    <div
+    // style={{
+    //   marginTop: "16px",
+    //   padding: "12px",
+    //   borderRadius: "6px",
+    //   border: "1px solid #e8e8e8",
+    //   background: "none",
+    // }}
+    >
+      <Typography.Text strong style={{ marginBottom: "8px", display: "block" }}>
+        Permissions
+      </Typography.Text>
+
+      <Form.List name={[fieldName, "permissions"]}>
+        {(
+          permissionFields,
+          { add: addPermission, remove: removePermission }
+        ) => (
+          <>
+            {permissionFields.map((permissionField) => (
+              <div
+                key={permissionField.key}
+                style={{
+                  border: "1px solid #d9d9d9",
+                  borderRadius: "4px",
+                  padding: "12px",
+                  marginBottom: "8px",
+                  backgroundColor: "transparent",
+                }}
+              >
+                <Row gutter={8} align="middle">
+                  <Col span={8}>
+                    <Form.Item
+                      name={[permissionField.name, "type"]}
+                      label="Permission Type"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Permission type is required",
+                        },
+                      ]}
+                    >
+                      <Select placeholder="Select permission type">
+                        <Select.Option
+                          value={
+                            Multihost_Permission_Type.PERMISSION_READ_REPO_CONFIG
+                          }
+                        >
+                          Read Repo Config
+                        </Select.Option>
+                        <Select.Option
+                          value={
+                            Multihost_Permission_Type.PERMISSION_READ_OPERATIONS
+                          }
+                        >
+                          Read Operations
+                        </Select.Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                  <Col span={14}>
+                    <Form.Item
+                      name={[permissionField.name, "scopes"]}
+                      label="Repository Scopes"
+                      rules={[
+                        {
+                          required: true,
+                          message: "At least one scope is required",
+                        },
+                      ]}
+                    >
+                      <Select
+                        mode="multiple"
+                        placeholder="Select repositories or use * for all"
+                        options={[
+                          { label: "All Repositories (*)", value: "*" },
+                          ...repoOptions,
+                        ]}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={2}>
+                    <MinusCircleOutlined
+                      style={{
+                        color: "#999",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                      }}
+                      onClick={() => removePermission(permissionField.name)}
+                    />
+                  </Col>
+                </Row>
+              </div>
+            ))}
+            <Button
+              type="dashed"
+              onClick={() =>
+                addPermission({
+                  type: Multihost_Permission_Type.PERMISSION_READ_REPO_CONFIG,
+                  scopes: [],
+                })
+              }
+              icon={<PlusOutlined />}
+              size="small"
+              style={{ width: "100%" }}
+            >
+              Add Permission
+            </Button>
+          </>
+        )}
+      </Form.List>
+    </div>
   );
 };

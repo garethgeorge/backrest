@@ -56,8 +56,8 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 	var syncWg sync.WaitGroup
 	var cancelLastSync context.CancelFunc
 
-	configWatchCh := m.configMgr.Watch()
-	defer m.configMgr.StopWatching(configWatchCh)
+	configWatchCh := m.configMgr.OnChange.Subscribe()
+	defer m.configMgr.OnChange.Unsubscribe(configWatchCh)
 
 	runSyncWithNewConfig := func() {
 		m.mu.Lock()
@@ -156,7 +156,7 @@ func (m *SyncManager) runSyncWithPeerInternal(ctx context.Context, config *v1.Co
 
 type syncConfigSnapshot struct {
 	config      *v1.Config
-	identityKey *cryptoutil.PrivateKey
+	identityKey *cryptoutil.PrivateKey // the local instance's identity key, used for signing sync messages
 }
 
 func (m *SyncManager) getSyncConfigSnapshot() *syncConfigSnapshot {

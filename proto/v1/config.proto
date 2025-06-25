@@ -50,14 +50,18 @@ message Multihost {
 
   message Permission {
     enum Type {
-      TYPE_UNKNOWN = 0;
+      PERMISSION_UNKNOWN = 0;
       
-      // When granted to an authorizedClient, the client will be sent the config in scope on connecting. This only applies to repos.
-      PERMISSION_READ_REPO_CONFIG = 1;
+      // When granted to a knownHost the local instance will push local changes to that known host.
+      PERMISSION_READ_OPERATIONS = 1;
 
-      // When granted to a knownHost the local instance will push local changes to the known host regardless of whether they are requested.option
-      // When granted to an authorizedClient, the client will be able to pull operations from the known host.
-      PERMISSION_READ_OPERATIONS = 2;
+      // When granted to an authorizedClient, the client will be able to pull the configuration from the server.
+      // When granted to a knownHost, the known host will be able to pull configuration from the client.
+      PERMISSION_READ_CONFIG = 2; // read configuration for the resource in scope.
+
+      // When granted to an authorizedClient, the client will be able to write the configuration to the server.
+      // When granted to a knownHost, the known host will be able to write configuration.
+      PERMISSION_READ_WRITE_CONFIG = 3; // read and write configuration for the resource in scope.
     }
     // Scopes are any of '*', 'repo:<repo_id>' or 'plan:<plan_id>','-repo:<repo_id>','-plan:<plan_id>'.
     // '*' means all repos and plans, 'repo:<repo_id>' means the repo with the given ID, 'plan:<plan_id>' means the plan with the given ID.

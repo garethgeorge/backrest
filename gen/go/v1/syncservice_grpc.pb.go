@@ -25,6 +25,9 @@ const (
 // BackrestSyncServiceClient is the client API for BackrestSyncService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// BackrestSyncService provides methods to sync data between backrest instances.
+// This service provides its own authentication and authorization.
 type BackrestSyncServiceClient interface {
 	Sync(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[SyncStreamItem, SyncStreamItem], error)
 }
@@ -53,6 +56,9 @@ type BackrestSyncService_SyncClient = grpc.BidiStreamingClient[SyncStreamItem, S
 // BackrestSyncServiceServer is the server API for BackrestSyncService service.
 // All implementations must embed UnimplementedBackrestSyncServiceServer
 // for forward compatibility.
+//
+// BackrestSyncService provides methods to sync data between backrest instances.
+// This service provides its own authentication and authorization.
 type BackrestSyncServiceServer interface {
 	Sync(grpc.BidiStreamingServer[SyncStreamItem, SyncStreamItem]) error
 	mustEmbedUnimplementedBackrestSyncServiceServer()
@@ -122,6 +128,9 @@ const (
 // BackrestSyncStateServiceClient is the client API for BackrestSyncStateService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// BackrestSyncStateService provides methods to query the sync state of known hosts and clients.
+// This service should be served behind authentication and authorization.
 type BackrestSyncStateServiceClient interface {
 	// GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
 	GetKnownHostSyncStateStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SyncStateStreamItem], error)
@@ -178,6 +187,9 @@ type BackrestSyncStateService_GetClientSyncStateStreamClient = grpc.ServerStream
 // BackrestSyncStateServiceServer is the server API for BackrestSyncStateService service.
 // All implementations must embed UnimplementedBackrestSyncStateServiceServer
 // for forward compatibility.
+//
+// BackrestSyncStateService provides methods to query the sync state of known hosts and clients.
+// This service should be served behind authentication and authorization.
 type BackrestSyncStateServiceServer interface {
 	// GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
 	GetKnownHostSyncStateStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[SyncStateStreamItem]) error

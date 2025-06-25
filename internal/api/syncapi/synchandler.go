@@ -12,7 +12,6 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
-	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -25,7 +24,7 @@ type BackrestSyncHandler struct {
 	v1connect.UnimplementedBackrestSyncServiceHandler
 	mgr *SyncManager
 
-	connectedClients map[string]v1.SyncConnectionState
+	PeerStates PeerStateManager
 }
 
 var _ v1connect.BackrestSyncServiceHandler = &BackrestSyncHandler{}
@@ -109,6 +108,22 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("rejected authorization as peer %v: %w", authorizedClientPeer.InstanceId, err))
 	}
 
+	// Configure the state for the connected peer.
+	peerState := &PeerState{}
+	peerState.InstanceID = clientInstanceID
+	peerState.KeyID = authorizedClientPeer.Keyid
+	peerState.ConnectionStateMessage = "connected"
+	peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_CONNECTED
+	peerState.LastHeartbeat = time.Now().UnixMilli()
+	h.PeerStates.SetPeerState(clientInstanceID, peerState)
+	defer func() { // ensure we clean up the peer state on disconnect
+		if peerState.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+			peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+			peerState.ConnectionStateMessage = "disconnected"
+			h.PeerStates.SetPeerState(clientInstanceID, peerState)
+		}
+	}()
+
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
 	opIDLru, _ := lru.New[int64, int64](4096)   // original ID -> local ID
 	flowIDLru, _ := lru.New[int64, int64](1024) // original flow ID -> local flow ID
@@ -176,10 +191,18 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 
 	sendConfigToClient := func(config *v1.Config) error {
 		remoteConfig := &v1.RemoteConfig{}
+		resourceListMsg := &v1.SyncStreamItem_SyncActionListResources{}
 		var allowedRepoIDs []string
 		for _, repo := range config.Repos {
-			if peerPerms.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_REPO) {
-				remoteConfig.Repos = append(remoteConfig.Repos, protoutil.RepoToRemoteRepo(repo))
+			if peerPerms.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
+				remoteConfig.Repos = append(remoteConfig.Repos, repo)
+				resourceListMsg.RepoIds = append(resourceListMsg.RepoIds, repo.Id)
+			}
+		}
+		for _, plan := range config.Plans {
+			if peerPerms.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
+				remoteConfig.Plans = append(remoteConfig.Plans, plan)
+				resourceListMsg.PlanIds = append(resourceListMsg.PlanIds, plan.Id)
 			}
 		}
 		zap.S().Debugf("syncserver determined client %v is allowlisted to read configs for repos %v", clientInstanceID, allowedRepoIDs)
@@ -195,6 +218,15 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		}); err != nil {
 			return fmt.Errorf("sending config to client: %w", err)
 		}
+
+		// Send the updated list of resources that the client can access.
+		if err := stream.Send(&v1.SyncStreamItem{
+			Action: &v1.SyncStreamItem_ListResources{
+				ListResources: resourceListMsg,
+			},
+		}); err != nil {
+			return fmt.Errorf("sending resource list to client: %w", err)
+		}
 		return nil
 	}
 
@@ -202,26 +234,28 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		switch action := item.Action.(type) {
 		case *v1.SyncStreamItem_SendConfig:
 			return errors.New("clients can not push configs to server")
+		case *v1.SyncStreamItem_ListResources:
+			zap.L().Debug("syncserver received resource list from client", zap.String("client_instance_id", clientInstanceID),
+				zap.Any("repos", action.ListResources.GetRepoIds()),
+				zap.Any("plans", action.ListResources.GetPlanIds()))
+			repos := action.ListResources.GetRepoIds()
+			plans := action.ListResources.GetPlanIds()
+			for _, repoID := range repos {
+				peerState.KnownRepos[repoID] = struct{}{}
+			}
+			for _, planID := range plans {
+				peerState.KnownPlans[planID] = struct{}{}
+			}
+			h.PeerStates.SetPeerState(clientInstanceID, peerState)
 		case *v1.SyncStreamItem_DiffOperations:
 			diffSel := action.DiffOperations.GetHaveOperationsSelector()
 			if diffSel == nil {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("action DiffOperations: selector is required"))
 			}
 
-			// The diff selector _must_ be scoped to the instance ID of the client.
-			if diffSel.GetInstanceId() != clientInstanceID {
-				return connect.NewError(connect.CodePermissionDenied, errors.New("action DiffOperations: instance ID mismatch in diff selector"))
-			}
-
-			// The diff selector _must_ specify a repo the client has access to
-			repo := config.FindRepoByGUID(initialConfig, diffSel.GetRepoGuid())
-			if repo == nil {
-				zap.S().Warnf("syncserver action DiffOperations: client %q tried to diff with repo %q that does not exist", clientInstanceID, diffSel.GetRepoGuid())
-				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: repo %q not found", diffSel.GetRepoGuid()))
-			}
-			if !peerPerms.CheckPermissionForRepo(v1.Multihost_Permission_PERMISSION_READ_CONFIG, repo.Id) {
-				zap.S().Warnf("syncserver action DiffOperations: client %q tried to diff with repo %q that they are not allowed to access", clientInstanceID, repo.Id)
-				return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("action DiffOperations: client is not allowed to access repo %q", repo.Id))
+			// The diff selector _must_ select operations owned by the client's keyid, otherwise there are no restrictions.
+			if diffSel.GetOriginalInstanceKeyid() != authorizedClientPeer.Keyid {
+				return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("action DiffOperations: selector must select operations owned by the client's keyid %q, got %q", authorizedClientPeer.Keyid, diffSel.GetOriginalInstanceKeyid()))
 			}
 
 			// These are required to be the same length for a pairwise zip.
@@ -351,6 +385,9 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			default:
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("action SendOperations: unknown event type"))
 			}
+		case *v1.SyncStreamItem_Heartbeat:
+			peerState.LastHeartbeat = time.Now().UnixMilli()
+			h.PeerStates.SetPeerState(clientInstanceID, peerState)
 		default:
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("unknown action type"))
 		}
@@ -358,15 +395,33 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		return nil
 	}
 
+	// start a heartbeat thread
+	go func() {
+		ticker := time.NewTicker(60 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				send <- &v1.SyncStreamItem{
+					Action: &v1.SyncStreamItem_Heartbeat{
+						Heartbeat: &v1.SyncStreamItem_SyncActionHeartbeat{},
+					},
+				}
+			}
+		}
+	}()
+
 	// subscribe to our own configuration for changes
-	configWatchCh := h.mgr.configMgr.Watch()
-	defer h.mgr.configMgr.StopWatching(configWatchCh)
+	configWatchCh := h.mgr.configMgr.OnChange.Subscribe()
+	defer h.mgr.configMgr.OnChange.Unsubscribe(configWatchCh)
 	sendConfigToClient(initialConfig)
 
 	for {
 		select {
 		case err := <-receiveError:
 			zap.S().Debugf("syncserver receive error from client %q: %v", authorizedClientPeer.InstanceId, err)
+			peerState.ConnectionStateMessage = fmt.Sprintf("receive error: %v", err)
+			peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL
 			return err
 		case sendItem, ok := <-send: // note: send channel should only be used when sending from a different goroutine than the main loop
 			if !ok {
@@ -380,6 +435,8 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 				return nil
 			}
 			if err := handleSyncCommand(item); err != nil {
+				peerState.ConnectionStateMessage = fmt.Sprintf("error handling command: %v", err)
+				peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL
 				return err
 			}
 		case <-configWatchCh:

@@ -3,22 +3,20 @@ package config
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"sync"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config/migrations"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
+	"github.com/garethgeorge/backrest/internal/eventemitter"
 	"go.uber.org/zap"
 )
 
 var ErrConfigNotFound = fmt.Errorf("config not found")
 
 type ConfigManager struct {
-	Store ConfigStore
-
-	callbacksMu    sync.Mutex
-	changeNotifyCh []chan struct{}
+	Store    ConfigStore
+	OnChange eventemitter.EventEmitter[struct{}]
 }
 
 var _ ConfigStore = &ConfigManager{}
@@ -32,45 +30,8 @@ func (m *ConfigManager) Update(config *v1.Config) error {
 	if err != nil {
 		return err
 	}
-
-	m.callbacksMu.Lock()
-	changeNotifyCh := slices.Clone(m.changeNotifyCh)
-	m.callbacksMu.Unlock()
-
-	for _, ch := range changeNotifyCh {
-		select {
-		case ch <- struct{}{}:
-		default:
-		}
-	}
-
+	m.OnChange.Emit(struct{}{})
 	return nil
-}
-
-func (m *ConfigManager) Watch() <-chan struct{} {
-	m.callbacksMu.Lock()
-	ch := make(chan struct{}, 1)
-	m.changeNotifyCh = append(m.changeNotifyCh, ch)
-	m.callbacksMu.Unlock()
-	return ch
-}
-
-func (m *ConfigManager) StopWatching(ch <-chan struct{}) bool {
-	m.callbacksMu.Lock()
-	origLen := len(m.changeNotifyCh)
-
-	for i := range m.changeNotifyCh {
-		if m.changeNotifyCh[i] != ch {
-			continue
-		}
-		close(m.changeNotifyCh[i])
-		m.changeNotifyCh[i] = m.changeNotifyCh[len(m.changeNotifyCh)-1]
-		m.changeNotifyCh = m.changeNotifyCh[:len(m.changeNotifyCh)-1]
-		break
-	}
-
-	defer m.callbacksMu.Unlock()
-	return len(m.changeNotifyCh) != origLen
 }
 
 type ConfigStore interface {
