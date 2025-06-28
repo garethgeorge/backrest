@@ -113,7 +113,12 @@ const StatsPanel = ({ selector }: { selector: OpSelector }) => {
                 domain={["dataMin", "dataMax"]}
                 tickFormatter={(v) => formatDate(v as number)}
               />
-              <YAxis yAxisId="left" type="number" dataKey="compressionRatio" />
+              <YAxis
+                yAxisId="left"
+                type="number"
+                dataKey="compressionRatio"
+                domain={[0.95, "dataMax + 0.05"]}
+              />
               <Tooltip labelFormatter={(v) => formatDate(v as number)} />
               <Legend />
               <Line
