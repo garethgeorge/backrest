@@ -261,7 +261,7 @@ func (r *RepoOrchestrator) Prune(ctx context.Context, output io.Writer) error {
 	var opts []restic.GenericOption
 	if policy.MaxUnusedBytes != 0 {
 		opts = append(opts, restic.WithFlags("--max-unused", fmt.Sprintf("%vB", policy.MaxUnusedBytes)))
-	} else if policy.MaxUnusedPercent != 0 {
+	} else {
 		opts = append(opts, restic.WithFlags("--max-unused", fmt.Sprintf("%v%%", policy.MaxUnusedPercent)))
 	}
 
