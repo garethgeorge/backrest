@@ -773,7 +773,7 @@ const RetentionPolicyView = () => {
               </Tooltip>
             </Radio.Button>
             <Radio.Button value={"policyTimeBucketed"}>
-              <Tooltip title="Snapshots older than the specified time period will be dropped by restic. Retention policy is applied to drop older snapshots after each backup run.">
+              <Tooltip title="The last N snapshots for each time period will be kept by restic. Retention policy is applied to drop older snapshots after each backup run.">
                 By Time Period
               </Tooltip>
             </Radio.Button>
