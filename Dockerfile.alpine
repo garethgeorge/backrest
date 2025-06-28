@@ -1,3 +1,8 @@
+FROM golang:1.24-alpine AS builder
+WORKDIR /src
+COPY . .
+RUN go build -o /docker-entrypoint cmd/docker-entrypoint/main.go
+
 FROM alpine:latest
 LABEL org.opencontainers.image.source="https://github.com/garethgeorge/backrest"
 RUN apk --no-cache add tini ca-certificates curl bash rclone openssh tzdata docker-cli
@@ -6,5 +11,7 @@ COPY backrest /backrest
 RUN /backrest --install-deps-only
 RUN mkdir -p /bin && mv /root/.local/share/backrest/restic /bin/restic
 
-ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["/backrest", "--bind-address", ":9898"]
+COPY --from=builder /docker-entrypoint /docker-entrypoint
+
+ENTRYPOINT ["/sbin/tini", "--", "/docker-entrypoint"]
+CMD ["/backrest"]
