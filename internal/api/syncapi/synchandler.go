@@ -23,16 +23,13 @@ const SyncProtocolVersion = 1
 type BackrestSyncHandler struct {
 	v1connect.UnimplementedBackrestSyncServiceHandler
 	mgr *SyncManager
-
-	PeerStates *PeerStateManager
 }
 
 var _ v1connect.BackrestSyncServiceHandler = &BackrestSyncHandler{}
 
 func NewBackrestSyncHandler(mgr *SyncManager) *BackrestSyncHandler {
 	return &BackrestSyncHandler{
-		mgr:        mgr,
-		PeerStates: NewPeerStateManager(),
+		mgr: mgr,
 	}
 }
 
@@ -44,376 +41,131 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		return connect.NewError(connect.CodePermissionDenied, errors.New("sync server is not configured"))
 	}
 
-	initialConfig := snapshot.config
-	identityKey := snapshot.identityKey
+	sessionHandler := newSyncHandlerServer(h.mgr, snapshot)
+	cmdStream := newBidiSyncCommandStream(ctx)
 
-	receiveError := make(chan error)
-	receive := make(chan *v1.SyncStreamItem)
-	send := make(chan *v1.SyncStreamItem, 1)
 	go func() {
-		for {
-			item, err := stream.Receive()
-			if err != nil {
-				receiveError <- err
-				break
+		err := runSync(
+			ctx,
+			snapshot.config.Instance,
+			snapshot.identityKey,
+			cmdStream,
+			sessionHandler,
+			snapshot.config.GetMultihost().GetAuthorizedClients(),
+		)
+		cmdStream.SendErrorAndTerminate(err)
+	}()
+
+	if err := cmdStream.ConnectStream(ctx, stream); err != nil {
+		zap.S().Errorf("sync handler stream error: %v", err)
+		var syncErr *SyncError
+		if errors.As(err, &syncErr) {
+			switch syncErr.State {
+			case v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH:
+				return connect.NewError(connect.CodePermissionDenied, syncErr.Message)
+			case v1.SyncConnectionState_CONNECTION_STATE_ERROR_PROTOCOL:
+				return connect.NewError(connect.CodeInvalidArgument, syncErr.Message)
+			default:
+				return connect.NewError(connect.CodeInternal, syncErr.Message)
 			}
-			receive <- item
 		}
-		close(receive)
-	}()
-
-	// Broadcast initial packet containing the protocol version and instance ID.
-	zap.S().Debugf("syncserver a client connected, broadcast handshake as %v", initialConfig.Instance)
-	handshakePacket, err := createHandshakePacket(initialConfig.Instance, identityKey)
-	if err != nil {
-		zap.S().Warnf("syncserver failed to create handshake packet: %v", err)
-		return connect.NewError(connect.CodeInternal, errors.New("couldn't build handshake packet, check server logs"))
-	}
-	if err := stream.Send(handshakePacket); err != nil {
-		return err
 	}
 
-	// Try to read the handshake packet from the client.
-	// TODO: perform this handshake in a header as a pre-flight before opening the stream.
-	handshakeMsg, err := tryReceiveWithinDuration(ctx, receive, receiveError, 5*time.Second)
-	if err != nil {
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("handshake packet not received: %w", err))
-	}
-	handshake := handshakeMsg.GetHandshake()
-	if _, err := verifyHandshakePacket(handshakeMsg); err != nil {
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify handshake packet: %w", err))
-	}
-	clientInstanceID := string(handshake.GetInstanceId().Payload)
+	return nil
+}
 
-	var authorizedClientPeer *v1.Multihost_Peer
-	authorizedClientPeerIdx := slices.IndexFunc(initialConfig.Multihost.GetAuthorizedClients(), func(peer *v1.Multihost_Peer) bool {
-		return peer.InstanceId == clientInstanceID
-	})
-	if authorizedClientPeerIdx == -1 {
-		// TODO: check the key signature of the handshake message here.
-		zap.S().Warnf("syncserver rejected a connection from client instance ID %q because it is not authorized", clientInstanceID)
-		return connect.NewError(connect.CodePermissionDenied, errors.New("client is not an authorized peer"))
-	} else {
-		authorizedClientPeer = initialConfig.Multihost.AuthorizedClients[authorizedClientPeerIdx]
-	}
+// syncSessionHandlerServer is a syncSessionHandler implementation for servers.
+type syncSessionHandlerServer struct {
+	unimplementedSyncSessionHandler
 
-	peerPerms, err := permissions.NewPermissionSet(authorizedClientPeer.GetPermissions())
-	if err != nil {
-		zap.S().Warnf("syncserver failed to create permission set for client %q: %v", clientInstanceID, err)
-		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to create permission set for client %q: %w", clientInstanceID, err))
-	}
+	mgr      *SyncManager
+	snapshot syncConfigSnapshot
 
-	if !authorizedClientPeer.KeyidVerified {
-		return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("client %q is not visually verified, please verify the key ID %q", clientInstanceID, authorizedClientPeer.Keyid))
-	} else if err := authorizeHandshakeAsPeer(handshakeMsg, authorizedClientPeer); err != nil {
-		return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("rejected authorization as peer %v: %w", authorizedClientPeer.InstanceId, err))
-	}
+	peer        *v1.Multihost_Peer // The authorized client peer this handler is associated with, set during OnConnectionEstablished.
+	permissions *permissions.PermissionSet
+	peerState   *PeerState // The state of the peer, used to track connection state and other metadata.
 
-	// Configure the state for the connected peer.
-	peerState := &PeerState{}
-	peerState.InstanceID = clientInstanceID
-	peerState.KeyID = authorizedClientPeer.Keyid
-	peerState.ConnectionStateMessage = "connected"
-	peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_CONNECTED
-	peerState.LastHeartbeat = time.Now().UnixMilli()
-	h.PeerStates.SetPeerState(clientInstanceID, peerState)
-	defer func() { // ensure we clean up the peer state on disconnect
-		if peerState.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
-			peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
-			peerState.ConnectionStateMessage = "disconnected"
-			h.PeerStates.SetPeerState(clientInstanceID, peerState)
-		}
-	}()
+	opIDLru   *lru.Cache[int64, int64] // original ID -> local ID
+	flowIDLru *lru.Cache[int64, int64] // original flow ID -> local flow ID
 
-	zap.S().Infof("syncserver accepted a connection from client instance ID %q", authorizedClientPeer.InstanceId)
+	configWatchCh chan struct{} // Channel for configuration updates
+}
+
+func newSyncHandlerServer(mgr *SyncManager, snapshot *syncConfigSnapshot) *syncSessionHandlerServer {
 	opIDLru, _ := lru.New[int64, int64](4096)   // original ID -> local ID
 	flowIDLru, _ := lru.New[int64, int64](1024) // original flow ID -> local flow ID
 
-	insertOrUpdate := func(op *v1.Operation) error {
-		op.OriginalInstanceKeyid = authorizedClientPeer.Keyid
-		op.OriginalId = op.Id
-		op.OriginalFlowId = op.FlowId
-		op.Id = 0
-		op.FlowId = 0
+	return &syncSessionHandlerServer{
+		mgr:       mgr,
+		snapshot:  *snapshot,
+		opIDLru:   opIDLru,
+		flowIDLru: flowIDLru,
+	}
+}
 
-		var ok bool
-		if op.Id, ok = opIDLru.Get(op.OriginalId); !ok {
-			var foundOp *v1.Operation
-			if err := h.mgr.oplog.Query(oplog.Query{}.
-				SetOriginalInstanceKeyid(op.OriginalInstanceKeyid).
-				SetOriginalID(op.OriginalId), func(o *v1.Operation) error {
-				foundOp = o
-				return nil
-			}); err != nil {
-				return fmt.Errorf("mapping remote ID to local ID: %w", err)
-			}
-			if foundOp != nil {
-				op.Id = foundOp.Id
-				opIDLru.Add(foundOp.Id, foundOp.Id)
-			}
-		}
-		if op.FlowId, ok = flowIDLru.Get(op.OriginalFlowId); !ok {
-			var flowOp *v1.Operation
-			if err := h.mgr.oplog.Query(oplog.Query{}.
-				SetOriginalInstanceKeyid(op.OriginalInstanceKeyid).
-				SetOriginalFlowID(op.OriginalFlowId), func(o *v1.Operation) error {
-				flowOp = o
-				return nil
-			}); err != nil {
-				return fmt.Errorf("mapping remote flow ID to local ID: %w", err)
-			}
-			if flowOp != nil {
-				op.FlowId = flowOp.FlowId
-				flowIDLru.Add(op.OriginalFlowId, flowOp.FlowId)
-			}
-		}
+var _ syncSessionHandler = (*syncSessionHandlerServer)(nil)
 
-		return h.mgr.oplog.Set(op)
+func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error {
+	// Verify that the peer is in our authorized clients list
+	authorizedClientPeerIdx := slices.IndexFunc(h.snapshot.config.Multihost.GetAuthorizedClients(), func(p *v1.Multihost_Peer) bool {
+		return p.InstanceId == peer.InstanceId && p.Keyid == peer.Keyid
+	})
+	if authorizedClientPeerIdx == -1 {
+		zap.S().Warnf("syncserver rejected a connection from client instance ID %q because it is not authorized", peer.InstanceId)
+		return NewSyncErrorAuth(errors.New("client is not an authorized peer"))
 	}
 
-	deleteByOriginalID := func(originalID int64) error {
-		var foundOp *v1.Operation
-		if err := h.mgr.oplog.Query(oplog.Query{}.
-			SetOriginalInstanceKeyid(authorizedClientPeer.Keyid).
-			SetOriginalID(originalID), func(o *v1.Operation) error {
-			foundOp = o
-			return nil
-		}); err != nil {
-			return fmt.Errorf("mapping remote ID to local ID: %w", err)
-		}
+	h.peer = h.snapshot.config.Multihost.AuthorizedClients[authorizedClientPeerIdx]
 
-		if foundOp == nil {
-			zap.S().Debugf("syncserver received delete for non-existent operation %v", originalID)
-			return nil
-		}
-
-		return h.mgr.oplog.Delete(foundOp.Id)
+	var err error
+	h.permissions, err = permissions.NewPermissionSet(h.peer.GetPermissions())
+	if err != nil {
+		zap.S().Warnf("syncserver failed to create permission set for client %q: %v", peer.InstanceId, err)
+		return NewSyncErrorInternal(fmt.Errorf("failed to create permission set for client %q: %w", peer.InstanceId, err))
 	}
 
-	sendConfigToClient := func(config *v1.Config) error {
-		remoteConfig := &v1.RemoteConfig{
-			Version: config.Version,
-			Modno:   config.Modno,
-		}
-		resourceListMsg := &v1.SyncStreamItem_SyncActionListResources{}
-		var allowedRepoIDs []string
-		var allowedPlanIDs []string
-		for _, repo := range config.Repos {
-			if peerPerms.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
-				remoteConfig.Repos = append(remoteConfig.Repos, repo)
-				resourceListMsg.RepoIds = append(resourceListMsg.RepoIds, repo.Id)
-				allowedRepoIDs = append(allowedRepoIDs, repo.Id)
-			}
-		}
-		for _, plan := range config.Plans {
-			if peerPerms.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
-				remoteConfig.Plans = append(remoteConfig.Plans, plan)
-				resourceListMsg.PlanIds = append(resourceListMsg.PlanIds, plan.Id)
-				allowedPlanIDs = append(allowedPlanIDs, plan.Id)
-			}
-		}
-		zap.S().Debugf("syncserver determined client %v is allowlisted to read configs for repos %v and plans %v", clientInstanceID, allowedRepoIDs, allowedPlanIDs)
-
-		// Send the config, this is the first meaningful packet the client will receive.
-		// Once configuration is received, the client will start sending diffs.
-		if err := stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_SendConfig{
-				SendConfig: &v1.SyncStreamItem_SyncActionSendConfig{
-					Config: remoteConfig,
-				},
-			},
-		}); err != nil {
-			return fmt.Errorf("sending config to client: %w", err)
-		}
-
-		// Send the updated list of resources that the client can access.
-		if err := stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_ListResources{
-				ListResources: resourceListMsg,
-			},
-		}); err != nil {
-			return fmt.Errorf("sending resource list to client: %w", err)
-		}
-		return nil
+	if !h.peer.KeyidVerified {
+		return NewSyncErrorAuth(fmt.Errorf("client %q is not visually verified, please verify the key ID %q", peer.InstanceId, h.peer.Keyid))
 	}
 
-	handleSyncCommand := func(item *v1.SyncStreamItem) error {
-		switch action := item.Action.(type) {
-		case *v1.SyncStreamItem_SendConfig:
-			peerState.Config = action.SendConfig.GetConfig()
-			h.PeerStates.SetPeerState(clientInstanceID, peerState)
-		case *v1.SyncStreamItem_ListResources:
-			zap.L().Debug("syncserver received resource list from client", zap.String("client_instance_id", clientInstanceID),
-				zap.Any("repos", action.ListResources.GetRepoIds()),
-				zap.Any("plans", action.ListResources.GetPlanIds()))
-			repos := action.ListResources.GetRepoIds()
-			plans := action.ListResources.GetPlanIds()
-			for _, repoID := range repos {
-				peerState.KnownRepos[repoID] = struct{}{}
-			}
-			for _, planID := range plans {
-				peerState.KnownPlans[planID] = struct{}{}
-			}
-			h.PeerStates.SetPeerState(clientInstanceID, peerState)
-		case *v1.SyncStreamItem_DiffOperations:
-			diffSel := action.DiffOperations.GetHaveOperationsSelector()
-			if diffSel == nil {
-				return connect.NewError(connect.CodeInvalidArgument, errors.New("action DiffOperations: selector is required"))
-			}
+	// Configure the state for the connected peer.
+	h.peerState = newPeerState(peer.InstanceId, h.peer.Keyid)
+	h.peerState.ConnectionStateMessage = "connected"
+	h.peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_CONNECTED
+	h.peerState.LastHeartbeat = time.Now()
+	h.mgr.authorizedClientPeerStates.SetPeerState(h.peer.Keyid, h.peerState)
 
-			// The diff selector _must_ select operations owned by the client's keyid, otherwise there are no restrictions.
-			if diffSel.GetOriginalInstanceKeyid() != authorizedClientPeer.Keyid {
-				return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("action DiffOperations: selector must select operations owned by the client's keyid %q, got %q", authorizedClientPeer.Keyid, diffSel.GetOriginalInstanceKeyid()))
-			}
-
-			// These are required to be the same length for a pairwise zip.
-			if len(action.DiffOperations.HaveOperationIds) != len(action.DiffOperations.HaveOperationModnos) {
-				return connect.NewError(connect.CodeInvalidArgument, errors.New("action DiffOperations: operation IDs and modnos must be the same length"))
-			}
-
-			diffSelQuery, err := protoutil.OpSelectorToQuery(diffSel)
-			if err != nil {
-				return fmt.Errorf("action DiffOperations: converting diff selector to query: %w", err)
-			}
-
-			localMetadata := []oplog.OpMetadata{}
-			if err := h.mgr.oplog.QueryMetadata(diffSelQuery, func(metadata oplog.OpMetadata) error {
-				if metadata.OriginalID == 0 {
-					return nil // skip operations that didn't come from a remote
-				}
-				localMetadata = append(localMetadata, metadata)
-				return nil
-			}); err != nil {
-				return fmt.Errorf("action DiffOperations: querying local metadata: %w", err)
-			}
-			sort.Slice(localMetadata, func(i, j int) bool {
-				return localMetadata[i].OriginalID < localMetadata[j].OriginalID
-			})
-
-			remoteMetadata := make([]oplog.OpMetadata, len(action.DiffOperations.HaveOperationIds))
-			for i, id := range action.DiffOperations.HaveOperationIds {
-				remoteMetadata[i] = oplog.OpMetadata{
-					ID:    id,
-					Modno: action.DiffOperations.HaveOperationModnos[i],
-				}
-			}
-			sort.Slice(remoteMetadata, func(i, j int) bool {
-				return remoteMetadata[i].ID < remoteMetadata[j].ID
-			})
-
-			requestDueToModno := 0
-			requestMissingRemote := 0
-			requestMissingLocal := 0
-			requestIDs := []int64{}
-
-			// This is a simple O(n) diff algorithm that compares the local and remote metadata vectors.
-			localIndex := 0
-			remoteIndex := 0
-			for localIndex < len(localMetadata) && remoteIndex < len(remoteMetadata) {
-				local := localMetadata[localIndex]
-				remote := remoteMetadata[remoteIndex]
-
-				if local.OriginalID == remote.ID {
-					if local.Modno != remote.Modno {
-						requestIDs = append(requestIDs, local.OriginalID)
-						requestDueToModno++
-					}
-					localIndex++
-					remoteIndex++
-				} else if local.OriginalID < remote.ID {
-					// the ID is found locally not remotely, request it and see if we get a delete event back
-					// from the client indicating that the operation was deleted.
-					requestIDs = append(requestIDs, local.OriginalID)
-					localIndex++
-					requestMissingLocal++
-				} else {
-					// the ID is found remotely not locally, request it for initial sync.
-					requestIDs = append(requestIDs, remote.ID)
-					remoteIndex++
-					requestMissingRemote++
-				}
-			}
-			for localIndex < len(localMetadata) {
-				requestIDs = append(requestIDs, localMetadata[localIndex].OriginalID)
-				localIndex++
-				requestMissingLocal++
-			}
-			for remoteIndex < len(remoteMetadata) {
-				requestIDs = append(requestIDs, remoteMetadata[remoteIndex].ID)
-				remoteIndex++
-				requestMissingRemote++
-			}
-
-			zap.L().Debug("syncserver diff operations with client metadata",
-				zap.String("client_instance_id", clientInstanceID),
-				zap.Any("query", diffSelQuery),
-				zap.Int("request_due_to_modno", requestDueToModno),
-				zap.Int("request_local_but_not_remote", requestMissingLocal),
-				zap.Int("request_remote_but_not_local", requestMissingRemote),
-				zap.Int("request_ids_total", len(requestIDs)),
-			)
-			if len(requestIDs) > 0 {
-				zap.L().Debug("syncserver sending request operations to client", zap.String("client_instance_id", clientInstanceID), zap.Any("request_ids", requestIDs))
-				if err := stream.Send(&v1.SyncStreamItem{
-					Action: &v1.SyncStreamItem_DiffOperations{
-						DiffOperations: &v1.SyncStreamItem_SyncActionDiffOperations{
-							RequestOperations: requestIDs,
-						},
-					},
-				}); err != nil {
-					return fmt.Errorf("sending request operations: %w", err)
-				}
-			}
-
-			return nil
-		case *v1.SyncStreamItem_SendOperations:
-			switch event := action.SendOperations.GetEvent().Event.(type) {
-			case *v1.OperationEvent_CreatedOperations:
-				zap.L().Debug("syncserver received created operations", zap.Any("operations", event.CreatedOperations.GetOperations()))
-				for _, op := range event.CreatedOperations.GetOperations() {
-					if err := insertOrUpdate(op); err != nil {
-						return fmt.Errorf("action SendOperations: operation event create %+v: %w", op, err)
-					}
-				}
-			case *v1.OperationEvent_UpdatedOperations:
-				zap.L().Debug("syncserver received update operations", zap.Any("operations", event.UpdatedOperations.GetOperations()))
-				for _, op := range event.UpdatedOperations.GetOperations() {
-					if err := insertOrUpdate(op); err != nil {
-						return fmt.Errorf("action SendOperations: operation event update %+v: %w", op, err)
-					}
-				}
-			case *v1.OperationEvent_DeletedOperations:
-				zap.L().Debug("syncserver received delete operations", zap.Any("operations", event.DeletedOperations.GetValues()))
-				for _, id := range event.DeletedOperations.GetValues() {
-					if err := deleteByOriginalID(id); err != nil {
-						return fmt.Errorf("action SendOperations: operation event delete %d: %w", id, err)
-					}
-				}
-			case *v1.OperationEvent_KeepAlive:
-			default:
-				return connect.NewError(connect.CodeInvalidArgument, errors.New("action SendOperations: unknown event type"))
-			}
-		case *v1.SyncStreamItem_Heartbeat:
-			peerState.LastHeartbeat = time.Now().UnixMilli()
-			h.PeerStates.SetPeerState(clientInstanceID, peerState)
-		default:
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("unknown action type"))
+	// Set up cleanup when connection is closed
+	go func() {
+		<-ctx.Done()
+		if h.peerState.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+			h.peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+			h.peerState.ConnectionStateMessage = "disconnected"
+			h.mgr.authorizedClientPeerStates.SetPeerState(h.peer.Keyid, h.peerState)
 		}
+	}()
 
-		return nil
-	}
+	zap.S().Infof("syncserver accepted a connection from client instance ID %q", h.peer.InstanceId)
 
 	// start a heartbeat thread
+	go sendHeartbeats(ctx, stream, 60*time.Second)
+
+	// subscribe to our own configuration for changes
+	h.configWatchCh = h.mgr.configMgr.OnChange.Subscribe()
 	go func() {
-		ticker := time.NewTicker(60 * time.Second)
-		defer ticker.Stop()
+		defer h.mgr.configMgr.OnChange.Unsubscribe(h.configWatchCh)
 		for {
 			select {
-			case <-ticker.C:
-				send <- &v1.SyncStreamItem{
-					Action: &v1.SyncStreamItem_Heartbeat{
-						Heartbeat: &v1.SyncStreamItem_SyncActionHeartbeat{},
-					},
+			case <-h.configWatchCh:
+				newConfig, err := h.mgr.configMgr.Get()
+				if err != nil {
+					zap.S().Warnf("syncserver failed to get the newest config: %v", err)
+					continue
+				}
+				if err := h.sendConfigToClient(stream, newConfig); err != nil {
+					zap.S().Errorf("failed to send updated config to client: %v", err)
+					stream.SendErrorAndTerminate(fmt.Errorf("sending updated config: %w", err))
+					return
 				}
 			case <-ctx.Done():
 				return
@@ -421,44 +173,279 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		}
 	}()
 
-	// subscribe to our own configuration for changes
-	configWatchCh := h.mgr.configMgr.OnChange.Subscribe()
-	defer h.mgr.configMgr.OnChange.Unsubscribe(configWatchCh)
-	sendConfigToClient(initialConfig)
+	// Send initial configuration to client
+	return h.sendConfigToClient(stream, h.snapshot.config)
+}
 
-	for {
-		select {
-		case err := <-receiveError:
-			zap.S().Debugf("syncserver receive error from client %q: %v", authorizedClientPeer.InstanceId, err)
-			peerState.ConnectionStateMessage = fmt.Sprintf("receive error: %v", err)
-			peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL
-			return err
-		case sendItem, ok := <-send: // note: send channel should only be used when sending from a different goroutine than the main loop
-			if !ok {
-				return nil
-			}
-			if err := stream.Send(sendItem); err != nil {
-				return err
-			}
-		case item, ok := <-receive:
-			if !ok {
-				return nil
-			}
-			if err := handleSyncCommand(item); err != nil {
-				peerState.ConnectionStateMessage = fmt.Sprintf("error handling command: %v", err)
-				peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL
-				return err
-			}
-		case <-configWatchCh:
-			newConfig, err := h.mgr.configMgr.Get()
-			if err != nil {
-				zap.S().Warnf("syncserver failed to get the newest config: %v", err)
-				continue
-			}
-			sendConfigToClient(newConfig)
-		case <-ctx.Done():
-			zap.S().Infof("syncserver client %q disconnected", authorizedClientPeer.InstanceId)
-			return ctx.Err()
+func (h *syncSessionHandlerServer) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionHeartbeat) error {
+	h.peerState.LastHeartbeat = time.Now()
+	h.mgr.authorizedClientPeerStates.SetPeerState(h.peer.Keyid, h.peerState)
+	return nil
+}
+
+func (h *syncSessionHandlerServer) HandleDiffOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionDiffOperations) error {
+	diffSel := item.GetHaveOperationsSelector()
+	if diffSel == nil {
+		return NewSyncErrorProtocol(errors.New("action DiffOperations: selector is required"))
+	}
+
+	// The diff selector _must_ select operations owned by the client's keyid, otherwise there are no restrictions.
+	if diffSel.GetOriginalInstanceKeyid() != h.peer.Keyid {
+		return NewSyncErrorProtocol(fmt.Errorf("action DiffOperations: selector must select operations owned by the client's keyid %q, got %q", h.peer.Keyid, diffSel.GetOriginalInstanceKeyid()))
+	}
+
+	// These are required to be the same length for a pairwise zip.
+	if len(item.HaveOperationIds) != len(item.HaveOperationModnos) {
+		return NewSyncErrorProtocol(errors.New("action DiffOperations: operation IDs and modnos must be the same length"))
+	}
+
+	diffSelQuery, err := protoutil.OpSelectorToQuery(diffSel)
+	if err != nil {
+		return fmt.Errorf("action DiffOperations: converting diff selector to query: %w", err)
+	}
+
+	localMetadata := []oplog.OpMetadata{}
+	if err := h.mgr.oplog.QueryMetadata(diffSelQuery, func(metadata oplog.OpMetadata) error {
+		if metadata.OriginalID == 0 {
+			return nil // skip operations that didn't come from a remote
+		}
+		localMetadata = append(localMetadata, metadata)
+		return nil
+	}); err != nil {
+		return fmt.Errorf("action DiffOperations: querying local metadata: %w", err)
+	}
+	sort.Slice(localMetadata, func(i, j int) bool {
+		return localMetadata[i].OriginalID < localMetadata[j].OriginalID
+	})
+
+	remoteMetadata := make([]oplog.OpMetadata, len(item.HaveOperationIds))
+	for i, id := range item.HaveOperationIds {
+		remoteMetadata[i] = oplog.OpMetadata{
+			ID:    id,
+			Modno: item.HaveOperationModnos[i],
 		}
 	}
+	sort.Slice(remoteMetadata, func(i, j int) bool {
+		return remoteMetadata[i].ID < remoteMetadata[j].ID
+	})
+
+	requestDueToModno := 0
+	requestMissingRemote := 0
+	requestMissingLocal := 0
+	requestIDs := []int64{}
+
+	// This is a simple O(n) diff algorithm that compares the local and remote metadata vectors.
+	localIndex := 0
+	remoteIndex := 0
+	for localIndex < len(localMetadata) && remoteIndex < len(remoteMetadata) {
+		local := localMetadata[localIndex]
+		remote := remoteMetadata[remoteIndex]
+
+		if local.OriginalID == remote.ID {
+			if local.Modno != remote.Modno {
+				requestIDs = append(requestIDs, local.OriginalID)
+				requestDueToModno++
+			}
+			localIndex++
+			remoteIndex++
+		} else if local.OriginalID < remote.ID {
+			// the ID is found locally not remotely, request it and see if we get a delete event back
+			// from the client indicating that the operation was deleted.
+			requestIDs = append(requestIDs, local.OriginalID)
+			localIndex++
+			requestMissingLocal++
+		} else {
+			// the ID is found remotely not locally, request it for initial sync.
+			requestIDs = append(requestIDs, remote.ID)
+			remoteIndex++
+			requestMissingRemote++
+		}
+	}
+	for localIndex < len(localMetadata) {
+		requestIDs = append(requestIDs, localMetadata[localIndex].OriginalID)
+		localIndex++
+		requestMissingLocal++
+	}
+	for remoteIndex < len(remoteMetadata) {
+		requestIDs = append(requestIDs, remoteMetadata[remoteIndex].ID)
+		remoteIndex++
+		requestMissingRemote++
+	}
+
+	zap.L().Debug("syncserver diff operations with client metadata",
+		zap.String("client_instance_id", h.peer.InstanceId),
+		zap.Any("query", diffSelQuery),
+		zap.Int("request_due_to_modno", requestDueToModno),
+		zap.Int("request_local_but_not_remote", requestMissingLocal),
+		zap.Int("request_remote_but_not_local", requestMissingRemote),
+		zap.Int("request_ids_total", len(requestIDs)),
+	)
+	if len(requestIDs) > 0 {
+		zap.L().Debug("syncserver sending request operations to client", zap.String("client_instance_id", h.peer.InstanceId), zap.Any("request_ids", requestIDs))
+		stream.Send(&v1.SyncStreamItem{
+			Action: &v1.SyncStreamItem_DiffOperations{
+				DiffOperations: &v1.SyncStreamItem_SyncActionDiffOperations{
+					RequestOperations: requestIDs,
+				},
+			},
+		})
+	}
+
+	return nil
+}
+
+func (h *syncSessionHandlerServer) HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendOperations) error {
+	switch event := item.GetEvent().Event.(type) {
+	case *v1.OperationEvent_CreatedOperations:
+		zap.L().Debug("syncserver received created operations", zap.Any("operations", event.CreatedOperations.GetOperations()))
+		for _, op := range event.CreatedOperations.GetOperations() {
+			if err := h.insertOrUpdate(op); err != nil {
+				return fmt.Errorf("action SendOperations: operation event create %+v: %w", op, err)
+			}
+		}
+	case *v1.OperationEvent_UpdatedOperations:
+		zap.L().Debug("syncserver received update operations", zap.Any("operations", event.UpdatedOperations.GetOperations()))
+		for _, op := range event.UpdatedOperations.GetOperations() {
+			if err := h.insertOrUpdate(op); err != nil {
+				return fmt.Errorf("action SendOperations: operation event update %+v: %w", op, err)
+			}
+		}
+	case *v1.OperationEvent_DeletedOperations:
+		zap.L().Debug("syncserver received delete operations", zap.Any("operations", event.DeletedOperations.GetValues()))
+		for _, id := range event.DeletedOperations.GetValues() {
+			if err := h.deleteByOriginalID(id); err != nil {
+				return fmt.Errorf("action SendOperations: operation event delete %d: %w", id, err)
+			}
+		}
+	case *v1.OperationEvent_KeepAlive:
+	default:
+		return NewSyncErrorProtocol(errors.New("action SendOperations: unknown event type"))
+	}
+	return nil
+}
+
+func (h *syncSessionHandlerServer) HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendConfig) error {
+	h.peerState.Config = item.GetConfig()
+	h.mgr.authorizedClientPeerStates.SetPeerState(h.peer.Keyid, h.peerState)
+	return nil
+}
+
+func (h *syncSessionHandlerServer) HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionListResources) error {
+	zap.L().Debug("syncserver received resource list from client", zap.String("client_instance_id", h.peer.InstanceId),
+		zap.Any("repos", item.GetRepoIds()),
+		zap.Any("plans", item.GetPlanIds()))
+	repos := item.GetRepoIds()
+	plans := item.GetPlanIds()
+	for _, repoID := range repos {
+		h.peerState.KnownRepos[repoID] = struct{}{}
+	}
+	for _, planID := range plans {
+		h.peerState.KnownPlans[planID] = struct{}{}
+	}
+	h.mgr.authorizedClientPeerStates.SetPeerState(h.peer.Keyid, h.peerState)
+	return nil
+}
+
+func (h *syncSessionHandlerServer) insertOrUpdate(op *v1.Operation) error {
+	op.OriginalInstanceKeyid = h.peer.Keyid
+	op.OriginalId = op.Id
+	op.OriginalFlowId = op.FlowId
+	op.Id = 0
+	op.FlowId = 0
+
+	var ok bool
+	if op.Id, ok = h.opIDLru.Get(op.OriginalId); !ok {
+		var foundOp *v1.Operation
+		if err := h.mgr.oplog.Query(oplog.Query{}.
+			SetOriginalInstanceKeyid(op.OriginalInstanceKeyid).
+			SetOriginalID(op.OriginalId), func(o *v1.Operation) error {
+			foundOp = o
+			return nil
+		}); err != nil {
+			return fmt.Errorf("mapping remote ID to local ID: %w", err)
+		}
+		if foundOp != nil {
+			op.Id = foundOp.Id
+			h.opIDLru.Add(foundOp.Id, foundOp.Id)
+		}
+	}
+	if op.FlowId, ok = h.flowIDLru.Get(op.OriginalFlowId); !ok {
+		var flowOp *v1.Operation
+		if err := h.mgr.oplog.Query(oplog.Query{}.
+			SetOriginalInstanceKeyid(op.OriginalInstanceKeyid).
+			SetOriginalFlowID(op.OriginalFlowId), func(o *v1.Operation) error {
+			flowOp = o
+			return nil
+		}); err != nil {
+			return fmt.Errorf("mapping remote flow ID to local ID: %w", err)
+		}
+		if flowOp != nil {
+			op.FlowId = flowOp.FlowId
+			h.flowIDLru.Add(op.OriginalFlowId, flowOp.FlowId)
+		}
+	}
+
+	return h.mgr.oplog.Set(op)
+}
+
+func (h *syncSessionHandlerServer) deleteByOriginalID(originalID int64) error {
+	var foundOp *v1.Operation
+	if err := h.mgr.oplog.Query(oplog.Query{}.
+		SetOriginalInstanceKeyid(h.peer.Keyid).
+		SetOriginalID(originalID), func(o *v1.Operation) error {
+		foundOp = o
+		return nil
+	}); err != nil {
+		return fmt.Errorf("mapping remote ID to local ID: %w", err)
+	}
+
+	if foundOp == nil {
+		zap.S().Debugf("syncserver received delete for non-existent operation %v", originalID)
+		return nil
+	}
+
+	return h.mgr.oplog.Delete(foundOp.Id)
+}
+
+func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStream, config *v1.Config) error {
+	remoteConfig := &v1.RemoteConfig{
+		Version: config.Version,
+		Modno:   config.Modno,
+	}
+	resourceListMsg := &v1.SyncStreamItem_SyncActionListResources{}
+	var allowedRepoIDs []string
+	var allowedPlanIDs []string
+	for _, repo := range config.Repos {
+		if h.permissions.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
+			remoteConfig.Repos = append(remoteConfig.Repos, repo)
+			resourceListMsg.RepoIds = append(resourceListMsg.RepoIds, repo.Id)
+			allowedRepoIDs = append(allowedRepoIDs, repo.Id)
+		}
+	}
+	for _, plan := range config.Plans {
+		if h.permissions.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
+			remoteConfig.Plans = append(remoteConfig.Plans, plan)
+			resourceListMsg.PlanIds = append(resourceListMsg.PlanIds, plan.Id)
+			allowedPlanIDs = append(allowedPlanIDs, plan.Id)
+		}
+	}
+	zap.S().Debugf("syncserver determined client %v is allowlisted to read configs for repos %v and plans %v", h.peer.InstanceId, allowedRepoIDs, allowedPlanIDs)
+
+	// Send the config, this is the first meaningful packet the client will receive.
+	// Once configuration is received, the client will start sending diffs.
+	stream.Send(&v1.SyncStreamItem{
+		Action: &v1.SyncStreamItem_SendConfig{
+			SendConfig: &v1.SyncStreamItem_SyncActionSendConfig{
+				Config: remoteConfig,
+			},
+		},
+	})
+
+	// Send the updated list of resources that the client can access.
+	stream.Send(&v1.SyncStreamItem{
+		Action: &v1.SyncStreamItem_ListResources{
+			ListResources: resourceListMsg,
+		},
+	})
+	return nil
 }

@@ -3,7 +3,7 @@ package syncapi
 import (
 	"context"
 	"errors"
-	"sync"
+	"time"
 
 	"connectrpc.com/connect"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -24,59 +24,58 @@ func NewBackrestSyncStateHandler(mgr *SyncManager) *BackrestSyncStateHandler {
 }
 
 func (h *BackrestSyncStateHandler) GetKnownHostSyncStateStream(ctx context.Context, req *connect.Request[v1.SyncStateStreamRequest], stream *connect.ServerStream[v1.SyncStateStreamItem]) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	snapshot := h.mgr.getSyncConfigSnapshot()
 	if snapshot == nil {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("sync is not configured"))
 	}
 
-	messagesToSend := make(chan *v1.SyncStateStreamItem, 1)
+	messagesToSend := make(chan *v1.SyncStateStreamItem, 100) // Buffered channel to allow sending items without blocking
 
-	publishStateForClient := func(client *SyncClient) {
-		if client == nil {
-			return
+	peerStateToMsg := func(peerState *PeerState) *v1.SyncStateStreamItem {
+		return &v1.SyncStateStreamItem{
+			PeerInstanceId: peerState.InstanceID,
+			PeerKeyid:      peerState.KeyID,
+			State:          peerState.ConnectionState,
+			StatusMessage:  peerState.ConnectionStateMessage,
 		}
-
-		state, stateMessage := client.GetConnectionState()
-		item := &v1.SyncStateStreamItem{
-			PeerInstanceId: client.peer.InstanceId,
-			PeerKeyid:      client.peer.Keyid,
-			State:          state,
-			StatusMessage:  stateMessage,
-		}
-
-		messagesToSend <- item
 	}
 
-	syncClients := h.mgr.GetSyncClients()
-
-	var wg sync.WaitGroup
-
-	for _, client := range syncClients {
-		wg.Add(1)
-		go func(c *SyncClient) {
-			defer wg.Done()
-			publishStateForClient(client)
-			if !req.Msg.Subscribe {
-				return
-			}
-
-			ch := c.OnStateChange.Subscribe()
-			defer c.OnStateChange.Unsubscribe(ch)
-			for {
+	// Start a goroutine to listen for state changes and send them to the stream
+	go func() {
+		onStateChangeChan := h.mgr.knownHostPeerStates.onStateChanged.Subscribe()
+		defer h.mgr.knownHostPeerStates.onStateChanged.Unsubscribe(onStateChangeChan)
+		for {
+			select {
+			case <-ctx.Done():
+				return // Exit the goroutine if the context is done
+			case peerState, ok := <-onStateChangeChan:
+				if !ok {
+					return // Channel closed, exit the goroutine
+				}
 				select {
-				case <-ctx.Done():
-					return
-				case <-ch:
-					publishStateForClient(c)
+				case messagesToSend <- peerStateToMsg(peerState):
+				default:
+					// If the channel is full, wait for 100 milliseconds before cancelling
+					select {
+					case messagesToSend <- peerStateToMsg(peerState):
+					case <-time.After(100 * time.Millisecond):
+						cancel()
+						return
+					}
 				}
 			}
-		}(client)
-	}
-
-	go func() {
-		wg.Wait()
-		close(messagesToSend)
+		}
 	}()
+
+	// Send the initial state of all known host peer states
+	for _, peerState := range h.mgr.knownHostPeerStates.GetAllPeerStates() {
+		if err := stream.Send(peerStateToMsg(peerState)); err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+	}
 
 	for {
 		select {
@@ -84,7 +83,7 @@ func (h *BackrestSyncStateHandler) GetKnownHostSyncStateStream(ctx context.Conte
 			return ctx.Err()
 		case item, ok := <-messagesToSend:
 			if !ok {
-				return nil // Channel closed, no more items to send
+				return nil
 			}
 			if err := stream.Send(item); err != nil {
 				return connect.NewError(connect.CodeInternal, err)

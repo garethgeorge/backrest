@@ -3,6 +3,7 @@ package syncapi
 import (
 	"maps"
 	"sync"
+	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/eventemitter"
@@ -10,62 +11,64 @@ import (
 )
 
 type PeerStateManager struct {
-	mu              sync.Mutex
-	peerStates      map[string]*PeerState
-	onChangeHandles map[string]*eventemitter.EventEmitter[struct{}]
+	mu             sync.Mutex
+	peerStates     map[string]*PeerState // keyID -> PeerState
+	onStateChanged eventemitter.BlockingEventEmitter[*PeerState]
 }
 
-func NewPeerStateManager() *PeerStateManager {
+func newPeerStateManager() *PeerStateManager {
 	return &PeerStateManager{
-		peerStates:      make(map[string]*PeerState),
-		onChangeHandles: make(map[string]*eventemitter.EventEmitter[struct{}]),
+		peerStates: make(map[string]*PeerState),
+		onStateChanged: eventemitter.BlockingEventEmitter[*PeerState]{
+			EventEmitter: eventemitter.EventEmitter[*PeerState]{
+				DefaultCapacity: 10, // Default capacity for the event emitter
+			},
+		},
 	}
 }
 
-func (m *PeerStateManager) GetPeerState(instanceID string) *PeerState {
+func (m *PeerStateManager) GetPeerState(keyID string) *PeerState {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if state, exists := m.peerStates[instanceID]; exists {
+	if state, exists := m.peerStates[keyID]; exists {
 		return state
 	}
 	return nil
 }
 
-func (m *PeerStateManager) SetPeerState(instanceID string, state *PeerState) {
+func (m *PeerStateManager) SetPeerState(keyID string, state *PeerState) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if existingState, exists := m.peerStates[instanceID]; exists {
+	if existingState, exists := m.peerStates[keyID]; exists {
 		*existingState = *state // Update existing state
 	} else {
-		m.peerStates[instanceID] = state.Clone() // Add new state
+		m.peerStates[keyID] = state.Clone() // Add new state
 	}
-
-	if handle, exists := m.onChangeHandles[instanceID]; exists {
-		handle.Emit(struct{}{}) // Notify subscribers of the change
-	} else {
-		m.onChangeHandles[instanceID] = &eventemitter.EventEmitter[struct{}]{}
-	}
+	m.onStateChanged.Emit(m.peerStates[keyID])
 }
 
-func (m *PeerStateManager) GetOnChangeForPeer(instanceID string) *eventemitter.EventEmitter[struct{}] {
+func (m *PeerStateManager) ResetStates() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.peerStates = make(map[string]*PeerState)
+}
 
-	if handle, exists := m.onChangeHandles[instanceID]; exists {
-		return handle
+func (m *PeerStateManager) GetAllPeerStates() []*PeerState {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	states := make([]*PeerState, 0, len(m.peerStates))
+	for _, state := range m.peerStates {
+		states = append(states, state)
 	}
-
-	handle := &eventemitter.EventEmitter[struct{}]{}
-	m.onChangeHandles[instanceID] = handle
-	return handle
+	return states
 }
 
 type PeerState struct {
 	InstanceID string
 	KeyID      string
 
-	LastHeartbeat int64 // Timestamp of the last heartbeat received from this peer
+	LastHeartbeat time.Time
 
 	ConnectionState        v1.SyncConnectionState
 	ConnectionStateMessage string
@@ -76,6 +79,21 @@ type PeerState struct {
 
 	// Partial configuration available for this peer
 	Config *v1.RemoteConfig
+
+	manager *PeerStateManager
+}
+
+func newPeerState(instanceID, keyID string) *PeerState {
+	return &PeerState{
+		InstanceID:             instanceID,
+		KeyID:                  keyID,
+		LastHeartbeat:          time.Now(),
+		ConnectionState:        v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED,
+		ConnectionStateMessage: "disconnected",
+		KnownRepos:             make(map[string]struct{}),
+		KnownPlans:             make(map[string]struct{}),
+		Config:                 nil, // Will be set when the config is received
+	}
 }
 
 func (ps *PeerState) Clone() *PeerState {

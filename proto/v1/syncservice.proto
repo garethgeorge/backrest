@@ -63,9 +63,6 @@ message SyncStreamItem {
     SyncActionSetConfig set_config = 24;
     SyncActionListResources list_resources = 25;
 
-    // TODO: Add support for establishing a shared secret for encrypted communication.
-    SyncEstablishSharedSecret establish_shared_secret = 23;
-
     SyncActionThrottle throttle = 1000;
   }
 
