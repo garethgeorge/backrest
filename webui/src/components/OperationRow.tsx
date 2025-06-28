@@ -591,19 +591,19 @@ const ForgetOperationDetails = ({
     } else if (policy.policy.case == "policyTimeBucketed") {
       const val = policy.policy.value;
       if (val.hourly) {
-        policyDesc.push(`Keep hourly for ${val.hourly} hours`);
+        policyDesc.push(`Keep ${val.hourly} hourly snapshots`);
       }
       if (val.daily) {
-        policyDesc.push(`Keep daily for ${val.daily} days`);
+        policyDesc.push(`Keep ${val.daily} daily snapshots`);
       }
       if (val.weekly) {
-        policyDesc.push(`Keep weekly for ${val.weekly} weeks`);
+        policyDesc.push(`Keep ${val.weekly} weekly snapshots`);
       }
       if (val.monthly) {
-        policyDesc.push(`Keep monthly for ${val.monthly} months`);
+        policyDesc.push(`Keep ${val.monthly} monthly snapshots`);
       }
       if (val.yearly) {
-        policyDesc.push(`Keep yearly for ${val.yearly} years`);
+        policyDesc.push(`Keep ${val.yearly} yearly snapshots`);
       }
       if (val.keepLastN) {
         policyDesc.push(
