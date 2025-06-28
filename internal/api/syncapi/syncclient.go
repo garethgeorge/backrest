@@ -567,3 +567,8 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 
 	return nil
 }
+
+func (c *syncSessionHandlerClient) HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionListResources) error {
+	c.l.Sugar().Debugf("received ListResources request from peer %q", c.peer.InstanceId)
+	return nil
+}

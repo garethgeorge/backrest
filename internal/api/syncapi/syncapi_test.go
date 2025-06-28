@@ -8,12 +8,10 @@ import (
 	"net/http"
 	"path/filepath"
 	"slices"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	connect "connectrpc.com/connect"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
@@ -155,7 +153,7 @@ func TestConnectionBadKeyRejected(t *testing.T) {
 	startRunningSyncAPI(t, peerHost, peerHostAddr)
 	startRunningSyncAPI(t, peerClient, peerClientAddr)
 
-	tryExpectConnectionFailure(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], connect.CodePermissionDenied)
+	waitForConnectionState(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH)
 }
 
 func TestSyncConfigChange(t *testing.T) {
@@ -611,7 +609,7 @@ func tryExpectConfigFromHost(t *testing.T, ctx context.Context, peer *peerUnderT
 	})
 }
 
-func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer) {
+func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantState v1.SyncConnectionState) {
 	ctx, cancel := testutil.WithDeadlineFromTest(t, ctx)
 	defer cancel()
 
@@ -633,18 +631,18 @@ func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer
 		case state, ok := <-onStateChanged:
 			if !ok {
 				stop = true
-				break
+				continue
 			}
 			if state.KeyID == hostPeer.Keyid && state.InstanceID == hostPeer.InstanceId {
 				lastState = state
 				if state.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
 					stop = true
-					break
+					continue
 				}
 			}
 		case <-ctx.Done():
 			stop = true
-			break
+			continue
 		}
 	}
 	if lastState == nil {
@@ -654,27 +652,8 @@ func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer
 	}
 }
 
-func tryExpectConnectionFailure(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantCode connect.Code) {
-	t.Helper()
-	testutil.Try(t, ctx, func() error {
-		state := peer.manager.knownHostPeerStates.GetPeerState(hostPeer.Keyid)
-		if state == nil {
-			return fmt.Errorf("no state found for peer %s", hostPeer.InstanceId)
-		}
-		// The state can be either ERROR_AUTH or DISCONNECTED, since there's a race.
-		// The important part is that the reason contains the permission denied error.
-		if state.ConnectionState != v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH && state.ConnectionState != v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED {
-			return fmt.Errorf("expected connection state to be ERROR_AUTH or DISCONNECTED, got %v (reason: %q)", state.ConnectionState, state.ConnectionStateMessage)
-		}
-
-		// The reason is the error string. For connect errors, it's "<code>: <message>".
-		// e.g. "permission_denied: peer ... not authorized"
-		if !strings.Contains(state.ConnectionStateMessage, wantCode.String()) {
-			return fmt.Errorf("expected reason to contain %q, but got %q", wantCode.String(), state.ConnectionStateMessage)
-		}
-
-		return nil
-	})
+func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer) {
+	waitForConnectionState(t, ctx, peer, hostPeer, v1.SyncConnectionState_CONNECTION_STATE_CONNECTED)
 }
 
 func allocBindAddrForTest(t *testing.T) string {

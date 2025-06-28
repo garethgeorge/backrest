@@ -40,12 +40,9 @@ func (m *PeerStateManager) SetPeerState(keyID string, state *PeerState) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if existingState, exists := m.peerStates[keyID]; exists {
-		*existingState = *state // Update existing state
-	} else {
-		m.peerStates[keyID] = state.Clone() // Add new state
-	}
-	m.onStateChanged.Emit(m.peerStates[keyID])
+	copy := state.Clone()
+	m.peerStates[keyID] = copy
+	m.onStateChanged.Emit(copy)
 }
 
 func (m *PeerStateManager) ResetStates() {
@@ -79,8 +76,6 @@ type PeerState struct {
 
 	// Partial configuration available for this peer
 	Config *v1.RemoteConfig
-
-	manager *PeerStateManager
 }
 
 func newPeerState(instanceID, keyID string) *PeerState {
