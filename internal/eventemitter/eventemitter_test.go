@@ -7,6 +7,7 @@ import (
 )
 
 func TestEventEmitter_SubscribeUnsubscribe(t *testing.T) {
+	t.Parallel()
 	em := &EventEmitter[int]{}
 
 	// Test Subscribe
@@ -54,24 +55,28 @@ func TestEventEmitter_SubscribeUnsubscribe(t *testing.T) {
 }
 
 func TestEventEmitter_Emit(t *testing.T) {
-	em := &EventEmitter[string]{}
-	ch := em.Subscribe()
+	t.Parallel()
+	for i := 0; i < 100; i++ {
+		em := &EventEmitter[string]{DefaultCapacity: 1} // Set capacity to ensure the event is buffered even if no subscribers are ready
+		ch := em.Subscribe()
 
-	go func() {
-		em.Emit("hello")
-	}()
+		go func() {
+			em.Emit("hello")
+		}()
 
-	select {
-	case msg := <-ch:
-		if msg != "hello" {
-			t.Errorf("Expected 'hello', got '%s'", msg)
+		select {
+		case msg := <-ch:
+			if msg != "hello" {
+				t.Errorf("Expected 'hello', got '%s'", msg)
+			}
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("Timed out waiting for event")
 		}
-	case <-time.After(100 * time.Millisecond):
-		t.Fatal("Timed out waiting for event")
 	}
 }
 
 func TestEventEmitter_Emit_NoBlock(t *testing.T) {
+	t.Parallel()
 	em := &EventEmitter[int]{}
 	_ = em.Subscribe() // Subscriber with no listener, so channel will be full (capacity 0)
 
@@ -90,6 +95,7 @@ func TestEventEmitter_Emit_NoBlock(t *testing.T) {
 }
 
 func TestEventEmitter_Clear(t *testing.T) {
+	t.Parallel()
 	em := &EventEmitter[bool]{}
 	ch1 := em.Subscribe()
 	ch2 := em.Subscribe()
@@ -112,55 +118,59 @@ func TestEventEmitter_Clear(t *testing.T) {
 }
 
 func TestEventEmitter_ConcurrentAccess(t *testing.T) {
-	em := &EventEmitter[int]{}
-	var wg sync.WaitGroup
-	numGoroutines := 100
+	t.Parallel()
+	for i := 0; i < 100; i++ {
+		em := &EventEmitter[int]{}
+		var wg sync.WaitGroup
+		numGoroutines := 100
 
-	// Concurrent Subscribe
-	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
-		go func() {
-			defer wg.Done()
-			_ = em.Subscribe()
-		}()
-	}
-	wg.Wait()
+		// Concurrent Subscribe
+		wg.Add(numGoroutines)
+		for i := 0; i < numGoroutines; i++ {
+			go func() {
+				defer wg.Done()
+				_ = em.Subscribe()
+			}()
+		}
+		wg.Wait()
 
-	em.mu.Lock()
-	if len(em.subscribers) != numGoroutines {
-		t.Fatalf("Expected %d subscribers, got %d", numGoroutines, len(em.subscribers))
-	}
-	em.mu.Unlock()
+		em.mu.Lock()
+		if len(em.subscribers) != numGoroutines {
+			t.Fatalf("Expected %d subscribers, got %d", numGoroutines, len(em.subscribers))
+		}
+		em.mu.Unlock()
 
-	// Concurrent Emit and Unsubscribe
-	subs := make([]chan int, 0, numGoroutines)
-	em.mu.Lock()
-	for ch := range em.subscribers {
-		subs = append(subs, ch)
-	}
-	em.mu.Unlock()
+		// Concurrent Emit and Unsubscribe
+		subs := make([]chan int, 0, numGoroutines)
+		em.mu.Lock()
+		for ch := range em.subscribers {
+			subs = append(subs, ch)
+		}
+		em.mu.Unlock()
 
-	wg.Add(numGoroutines * 2)
-	for i := 0; i < numGoroutines; i++ {
-		go func(i int) {
-			defer wg.Done()
-			em.Emit(i)
-		}(i)
-		go func(i int) {
-			defer wg.Done()
-			em.Unsubscribe(subs[i])
-		}(i)
-	}
-	wg.Wait()
+		wg.Add(numGoroutines * 2)
+		for i := 0; i < numGoroutines; i++ {
+			go func(i int) {
+				defer wg.Done()
+				em.Emit(i)
+			}(i)
+			go func(i int) {
+				defer wg.Done()
+				em.Unsubscribe(subs[i])
+			}(i)
+		}
+		wg.Wait()
 
-	em.mu.Lock()
-	if len(em.subscribers) != 0 {
-		t.Errorf("Expected 0 subscribers after concurrent unsubscribe, got %d", len(em.subscribers))
+		em.mu.Lock()
+		if len(em.subscribers) != 0 {
+			t.Errorf("Expected 0 subscribers after concurrent unsubscribe, got %d", len(em.subscribers))
+		}
+		em.mu.Unlock()
 	}
-	em.mu.Unlock()
 }
 
 func TestBlockingEventEmitter_Emit(t *testing.T) {
+	t.Parallel()
 	em := &BlockingEventEmitter[int]{}
 	ch1 := em.Subscribe()
 	ch2 := em.Subscribe()
@@ -197,6 +207,7 @@ func TestBlockingEventEmitter_Emit(t *testing.T) {
 }
 
 func TestBlockingEventEmitter_Emit_Blocks(t *testing.T) {
+	t.Parallel()
 	em := &BlockingEventEmitter[int]{}
 	_ = em.Subscribe() // No listener
 

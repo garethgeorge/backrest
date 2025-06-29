@@ -1,7 +1,6 @@
 package eventemitter
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -26,7 +25,7 @@ func (e *EventEmitter[T]) Subscribe() chan T {
 		e.subscribers = make(map[chan T]struct{})
 	}
 	ch := make(chan T, e.DefaultCapacity)
-	e.subscribers[ch] = struct{}{} // use empty struct to avoid memory overhead
+	e.subscribers[ch] = struct{}{}
 	return ch
 }
 
@@ -84,7 +83,6 @@ func (e *BlockingEventEmitter[T]) Emit(event T) {
 	}
 
 	for ch := range e.subscribers {
-		fmt.Printf("Emitting event to channel: %v\n", ch)
 		ch <- event // block until the event is received
 	}
 }
