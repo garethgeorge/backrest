@@ -48,6 +48,8 @@ type Orchestrator struct {
 	taskCancelMu sync.Mutex
 	taskCancel   map[int64]context.CancelFunc
 
+	lastTaskQueueReset time.Time
+
 	// now for the purpose of testing; used by Run() to get the current time.
 	now func() time.Time
 }
@@ -57,7 +59,7 @@ var _ tasks.TaskExecutor = &Orchestrator{}
 type stContainer struct {
 	tasks.ScheduledTask
 	retryCount  int // number of times this task has been retried.
-	configModno int32
+	scheduledAt time.Time
 	callbacks   []func(error)
 }
 
@@ -233,6 +235,9 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 
 	zap.L().Info("scheduling default tasks, waiting for task queue reset.")
 	removedTasks := o.taskQueue.Reset()
+	o.mu.Lock()
+	o.lastTaskQueueReset = o.curTime()
+	o.mu.Unlock()
 
 	ids := []int64{}
 	for _, t := range removedTasks {
@@ -489,10 +494,10 @@ func (o *Orchestrator) prepareOperationForRetry(t *stContainer) {
 func (o *Orchestrator) handleTaskCompletion(t *stContainer, err error, originalOp *v1.Operation) bool {
 	// Check if config has changed since the task was scheduled
 	o.mu.Lock()
-	curCfgModno := o.config.Modno
+	lastReset := o.lastTaskQueueReset
 	o.mu.Unlock()
 
-	if t.configModno != curCfgModno {
+	if t.scheduledAt.Before(lastReset) {
 		// Config has changed, don't reschedule
 		return false
 	}
@@ -529,6 +534,7 @@ func (o *Orchestrator) retryTask(t *stContainer, retryErr *tasks.TaskRetryError,
 
 	// Enqueue the task for retry
 	t.RunAt = time.Now().Add(delay)
+	t.scheduledAt = o.curTime()
 	o.taskQueue.Enqueue(t.RunAt, tasks.TaskPriorityDefault, *t)
 
 	zap.L().Info("retrying task",
@@ -691,7 +697,7 @@ func (o *Orchestrator) ScheduleTask(t tasks.Task, priority int, callbacks ...fun
 
 	stc := stContainer{
 		ScheduledTask: nextRun,
-		configModno:   o.config.Modno,
+		scheduledAt:   o.curTime(),
 		callbacks:     callbacks,
 	}
 
