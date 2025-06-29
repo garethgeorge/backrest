@@ -17,10 +17,9 @@ import (
 )
 
 type SyncManager struct {
-	configMgr         *config.ConfigManager
-	orchestrator      *orchestrator.Orchestrator
-	oplog             *oplog.OpLog
-	remoteConfigStore RemoteConfigStore
+	configMgr    *config.ConfigManager
+	orchestrator *orchestrator.Orchestrator
+	oplog        *oplog.OpLog
 
 	// mutable properties
 	mu sync.Mutex
@@ -31,22 +30,19 @@ type SyncManager struct {
 
 	syncClients map[string]*SyncClient // current sync clients, protected by mu
 
-	knownHostPeerStates        *PeerStateManager // the state of known host peers (e.g. clients run by this instance)
-	authorizedClientPeerStates *PeerStateManager // the state of authorized clients (e.g. clients run by other instances that this instance is aware of)
+	peerStateManager PeerStateManager
 }
 
-func NewSyncManager(configMgr *config.ConfigManager, remoteConfigStore RemoteConfigStore, oplog *oplog.OpLog, orchestrator *orchestrator.Orchestrator) *SyncManager {
+func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchestrator *orchestrator.Orchestrator, peerStateManager PeerStateManager) *SyncManager {
 	return &SyncManager{
-		configMgr:         configMgr,
-		orchestrator:      orchestrator,
-		oplog:             oplog,
-		remoteConfigStore: remoteConfigStore,
+		configMgr:    configMgr,
+		orchestrator: orchestrator,
+		oplog:        oplog,
 
 		syncClientRetryDelay: 60 * time.Second,
 		syncClients:          make(map[string]*SyncClient),
 
-		knownHostPeerStates:        newPeerStateManager(),
-		authorizedClientPeerStates: newPeerStateManager(),
+		peerStateManager: peerStateManager,
 	}
 }
 
@@ -68,8 +64,6 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 	runSyncWithNewConfig := func() {
 		m.mu.Lock()
 		defer m.mu.Unlock()
-
-		m.knownHostPeerStates.ResetStates()
 
 		// TODO: rather than cancel the top level context, something clever e.g. diffing the set of peers could be done here.
 		if cancelLastSync != nil {

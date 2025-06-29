@@ -38,21 +38,17 @@ const (
 	// BackrestSyncServiceSyncProcedure is the fully-qualified name of the BackrestSyncService's Sync
 	// RPC.
 	BackrestSyncServiceSyncProcedure = "/v1.BackrestSyncService/Sync"
-	// BackrestSyncStateServiceGetKnownHostSyncStateStreamProcedure is the fully-qualified name of the
-	// BackrestSyncStateService's GetKnownHostSyncStateStream RPC.
-	BackrestSyncStateServiceGetKnownHostSyncStateStreamProcedure = "/v1.BackrestSyncStateService/GetKnownHostSyncStateStream"
-	// BackrestSyncStateServiceGetClientSyncStateStreamProcedure is the fully-qualified name of the
-	// BackrestSyncStateService's GetClientSyncStateStream RPC.
-	BackrestSyncStateServiceGetClientSyncStateStreamProcedure = "/v1.BackrestSyncStateService/GetClientSyncStateStream"
+	// BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure is the fully-qualified name of the
+	// BackrestSyncStateService's GetPeerSyncStatesStream RPC.
+	BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure = "/v1.BackrestSyncStateService/GetPeerSyncStatesStream"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	backrestSyncServiceServiceDescriptor                                = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncService")
-	backrestSyncServiceSyncMethodDescriptor                             = backrestSyncServiceServiceDescriptor.Methods().ByName("Sync")
-	backrestSyncStateServiceServiceDescriptor                           = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncStateService")
-	backrestSyncStateServiceGetKnownHostSyncStateStreamMethodDescriptor = backrestSyncStateServiceServiceDescriptor.Methods().ByName("GetKnownHostSyncStateStream")
-	backrestSyncStateServiceGetClientSyncStateStreamMethodDescriptor    = backrestSyncStateServiceServiceDescriptor.Methods().ByName("GetClientSyncStateStream")
+	backrestSyncServiceServiceDescriptor                            = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncService")
+	backrestSyncServiceSyncMethodDescriptor                         = backrestSyncServiceServiceDescriptor.Methods().ByName("Sync")
+	backrestSyncStateServiceServiceDescriptor                       = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncStateService")
+	backrestSyncStateServiceGetPeerSyncStatesStreamMethodDescriptor = backrestSyncStateServiceServiceDescriptor.Methods().ByName("GetPeerSyncStatesStream")
 )
 
 // BackrestSyncServiceClient is a client for the v1.BackrestSyncService service.
@@ -125,10 +121,7 @@ func (UnimplementedBackrestSyncServiceHandler) Sync(context.Context, *connect.Bi
 
 // BackrestSyncStateServiceClient is a client for the v1.BackrestSyncStateService service.
 type BackrestSyncStateServiceClient interface {
-	// GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
-	GetKnownHostSyncStateStream(context.Context, *connect.Request[v1.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1.SyncStateStreamItem], error)
-	// GetClientSyncStateStream returns the sync state of clients of the current instance.
-	GetClientSyncStateStream(context.Context, *connect.Request[v1.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1.SyncStateStreamItem], error)
+	GetPeerSyncStatesStream(context.Context, *connect.Request[v1.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1.PeerState], error)
 }
 
 // NewBackrestSyncStateServiceClient constructs a client for the v1.BackrestSyncStateService
@@ -141,16 +134,10 @@ type BackrestSyncStateServiceClient interface {
 func NewBackrestSyncStateServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) BackrestSyncStateServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &backrestSyncStateServiceClient{
-		getKnownHostSyncStateStream: connect.NewClient[v1.SyncStateStreamRequest, v1.SyncStateStreamItem](
+		getPeerSyncStatesStream: connect.NewClient[v1.SyncStateStreamRequest, v1.PeerState](
 			httpClient,
-			baseURL+BackrestSyncStateServiceGetKnownHostSyncStateStreamProcedure,
-			connect.WithSchema(backrestSyncStateServiceGetKnownHostSyncStateStreamMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		getClientSyncStateStream: connect.NewClient[v1.SyncStateStreamRequest, v1.SyncStateStreamItem](
-			httpClient,
-			baseURL+BackrestSyncStateServiceGetClientSyncStateStreamProcedure,
-			connect.WithSchema(backrestSyncStateServiceGetClientSyncStateStreamMethodDescriptor),
+			baseURL+BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure,
+			connect.WithSchema(backrestSyncStateServiceGetPeerSyncStatesStreamMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -158,26 +145,17 @@ func NewBackrestSyncStateServiceClient(httpClient connect.HTTPClient, baseURL st
 
 // backrestSyncStateServiceClient implements BackrestSyncStateServiceClient.
 type backrestSyncStateServiceClient struct {
-	getKnownHostSyncStateStream *connect.Client[v1.SyncStateStreamRequest, v1.SyncStateStreamItem]
-	getClientSyncStateStream    *connect.Client[v1.SyncStateStreamRequest, v1.SyncStateStreamItem]
+	getPeerSyncStatesStream *connect.Client[v1.SyncStateStreamRequest, v1.PeerState]
 }
 
-// GetKnownHostSyncStateStream calls v1.BackrestSyncStateService.GetKnownHostSyncStateStream.
-func (c *backrestSyncStateServiceClient) GetKnownHostSyncStateStream(ctx context.Context, req *connect.Request[v1.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1.SyncStateStreamItem], error) {
-	return c.getKnownHostSyncStateStream.CallServerStream(ctx, req)
-}
-
-// GetClientSyncStateStream calls v1.BackrestSyncStateService.GetClientSyncStateStream.
-func (c *backrestSyncStateServiceClient) GetClientSyncStateStream(ctx context.Context, req *connect.Request[v1.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1.SyncStateStreamItem], error) {
-	return c.getClientSyncStateStream.CallServerStream(ctx, req)
+// GetPeerSyncStatesStream calls v1.BackrestSyncStateService.GetPeerSyncStatesStream.
+func (c *backrestSyncStateServiceClient) GetPeerSyncStatesStream(ctx context.Context, req *connect.Request[v1.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1.PeerState], error) {
+	return c.getPeerSyncStatesStream.CallServerStream(ctx, req)
 }
 
 // BackrestSyncStateServiceHandler is an implementation of the v1.BackrestSyncStateService service.
 type BackrestSyncStateServiceHandler interface {
-	// GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
-	GetKnownHostSyncStateStream(context.Context, *connect.Request[v1.SyncStateStreamRequest], *connect.ServerStream[v1.SyncStateStreamItem]) error
-	// GetClientSyncStateStream returns the sync state of clients of the current instance.
-	GetClientSyncStateStream(context.Context, *connect.Request[v1.SyncStateStreamRequest], *connect.ServerStream[v1.SyncStateStreamItem]) error
+	GetPeerSyncStatesStream(context.Context, *connect.Request[v1.SyncStateStreamRequest], *connect.ServerStream[v1.PeerState]) error
 }
 
 // NewBackrestSyncStateServiceHandler builds an HTTP handler from the service implementation. It
@@ -186,24 +164,16 @@ type BackrestSyncStateServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewBackrestSyncStateServiceHandler(svc BackrestSyncStateServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	backrestSyncStateServiceGetKnownHostSyncStateStreamHandler := connect.NewServerStreamHandler(
-		BackrestSyncStateServiceGetKnownHostSyncStateStreamProcedure,
-		svc.GetKnownHostSyncStateStream,
-		connect.WithSchema(backrestSyncStateServiceGetKnownHostSyncStateStreamMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
-	backrestSyncStateServiceGetClientSyncStateStreamHandler := connect.NewServerStreamHandler(
-		BackrestSyncStateServiceGetClientSyncStateStreamProcedure,
-		svc.GetClientSyncStateStream,
-		connect.WithSchema(backrestSyncStateServiceGetClientSyncStateStreamMethodDescriptor),
+	backrestSyncStateServiceGetPeerSyncStatesStreamHandler := connect.NewServerStreamHandler(
+		BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure,
+		svc.GetPeerSyncStatesStream,
+		connect.WithSchema(backrestSyncStateServiceGetPeerSyncStatesStreamMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/v1.BackrestSyncStateService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case BackrestSyncStateServiceGetKnownHostSyncStateStreamProcedure:
-			backrestSyncStateServiceGetKnownHostSyncStateStreamHandler.ServeHTTP(w, r)
-		case BackrestSyncStateServiceGetClientSyncStateStreamProcedure:
-			backrestSyncStateServiceGetClientSyncStateStreamHandler.ServeHTTP(w, r)
+		case BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure:
+			backrestSyncStateServiceGetPeerSyncStatesStreamHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -213,10 +183,6 @@ func NewBackrestSyncStateServiceHandler(svc BackrestSyncStateServiceHandler, opt
 // UnimplementedBackrestSyncStateServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedBackrestSyncStateServiceHandler struct{}
 
-func (UnimplementedBackrestSyncStateServiceHandler) GetKnownHostSyncStateStream(context.Context, *connect.Request[v1.SyncStateStreamRequest], *connect.ServerStream[v1.SyncStateStreamItem]) error {
-	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.BackrestSyncStateService.GetKnownHostSyncStateStream is not implemented"))
-}
-
-func (UnimplementedBackrestSyncStateServiceHandler) GetClientSyncStateStream(context.Context, *connect.Request[v1.SyncStateStreamRequest], *connect.ServerStream[v1.SyncStateStreamItem]) error {
-	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.BackrestSyncStateService.GetClientSyncStateStream is not implemented"))
+func (UnimplementedBackrestSyncStateServiceHandler) GetPeerSyncStatesStream(context.Context, *connect.Request[v1.SyncStateStreamRequest], *connect.ServerStream[v1.PeerState]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.BackrestSyncStateService.GetPeerSyncStatesStream is not implemented"))
 }

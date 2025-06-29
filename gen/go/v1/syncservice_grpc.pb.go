@@ -121,8 +121,7 @@ var BackrestSyncService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	BackrestSyncStateService_GetKnownHostSyncStateStream_FullMethodName = "/v1.BackrestSyncStateService/GetKnownHostSyncStateStream"
-	BackrestSyncStateService_GetClientSyncStateStream_FullMethodName    = "/v1.BackrestSyncStateService/GetClientSyncStateStream"
+	BackrestSyncStateService_GetPeerSyncStatesStream_FullMethodName = "/v1.BackrestSyncStateService/GetPeerSyncStatesStream"
 )
 
 // BackrestSyncStateServiceClient is the client API for BackrestSyncStateService service.
@@ -132,10 +131,7 @@ const (
 // BackrestSyncStateService provides methods to query the sync state of known hosts and clients.
 // This service should be served behind authentication and authorization.
 type BackrestSyncStateServiceClient interface {
-	// GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
-	GetKnownHostSyncStateStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SyncStateStreamItem], error)
-	// GetClientSyncStateStream returns the sync state of clients of the current instance.
-	GetClientSyncStateStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SyncStateStreamItem], error)
+	GetPeerSyncStatesStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PeerState], error)
 }
 
 type backrestSyncStateServiceClient struct {
@@ -146,13 +142,13 @@ func NewBackrestSyncStateServiceClient(cc grpc.ClientConnInterface) BackrestSync
 	return &backrestSyncStateServiceClient{cc}
 }
 
-func (c *backrestSyncStateServiceClient) GetKnownHostSyncStateStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SyncStateStreamItem], error) {
+func (c *backrestSyncStateServiceClient) GetPeerSyncStatesStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PeerState], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &BackrestSyncStateService_ServiceDesc.Streams[0], BackrestSyncStateService_GetKnownHostSyncStateStream_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &BackrestSyncStateService_ServiceDesc.Streams[0], BackrestSyncStateService_GetPeerSyncStatesStream_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[SyncStateStreamRequest, SyncStateStreamItem]{ClientStream: stream}
+	x := &grpc.GenericClientStream[SyncStateStreamRequest, PeerState]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -163,26 +159,7 @@ func (c *backrestSyncStateServiceClient) GetKnownHostSyncStateStream(ctx context
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type BackrestSyncStateService_GetKnownHostSyncStateStreamClient = grpc.ServerStreamingClient[SyncStateStreamItem]
-
-func (c *backrestSyncStateServiceClient) GetClientSyncStateStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SyncStateStreamItem], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &BackrestSyncStateService_ServiceDesc.Streams[1], BackrestSyncStateService_GetClientSyncStateStream_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[SyncStateStreamRequest, SyncStateStreamItem]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type BackrestSyncStateService_GetClientSyncStateStreamClient = grpc.ServerStreamingClient[SyncStateStreamItem]
+type BackrestSyncStateService_GetPeerSyncStatesStreamClient = grpc.ServerStreamingClient[PeerState]
 
 // BackrestSyncStateServiceServer is the server API for BackrestSyncStateService service.
 // All implementations must embed UnimplementedBackrestSyncStateServiceServer
@@ -191,10 +168,7 @@ type BackrestSyncStateService_GetClientSyncStateStreamClient = grpc.ServerStream
 // BackrestSyncStateService provides methods to query the sync state of known hosts and clients.
 // This service should be served behind authentication and authorization.
 type BackrestSyncStateServiceServer interface {
-	// GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
-	GetKnownHostSyncStateStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[SyncStateStreamItem]) error
-	// GetClientSyncStateStream returns the sync state of clients of the current instance.
-	GetClientSyncStateStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[SyncStateStreamItem]) error
+	GetPeerSyncStatesStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[PeerState]) error
 	mustEmbedUnimplementedBackrestSyncStateServiceServer()
 }
 
@@ -205,11 +179,8 @@ type BackrestSyncStateServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedBackrestSyncStateServiceServer struct{}
 
-func (UnimplementedBackrestSyncStateServiceServer) GetKnownHostSyncStateStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[SyncStateStreamItem]) error {
-	return status.Errorf(codes.Unimplemented, "method GetKnownHostSyncStateStream not implemented")
-}
-func (UnimplementedBackrestSyncStateServiceServer) GetClientSyncStateStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[SyncStateStreamItem]) error {
-	return status.Errorf(codes.Unimplemented, "method GetClientSyncStateStream not implemented")
+func (UnimplementedBackrestSyncStateServiceServer) GetPeerSyncStatesStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[PeerState]) error {
+	return status.Errorf(codes.Unimplemented, "method GetPeerSyncStatesStream not implemented")
 }
 func (UnimplementedBackrestSyncStateServiceServer) mustEmbedUnimplementedBackrestSyncStateServiceServer() {
 }
@@ -233,27 +204,16 @@ func RegisterBackrestSyncStateServiceServer(s grpc.ServiceRegistrar, srv Backres
 	s.RegisterService(&BackrestSyncStateService_ServiceDesc, srv)
 }
 
-func _BackrestSyncStateService_GetKnownHostSyncStateStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _BackrestSyncStateService_GetPeerSyncStatesStream_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(SyncStateStreamRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(BackrestSyncStateServiceServer).GetKnownHostSyncStateStream(m, &grpc.GenericServerStream[SyncStateStreamRequest, SyncStateStreamItem]{ServerStream: stream})
+	return srv.(BackrestSyncStateServiceServer).GetPeerSyncStatesStream(m, &grpc.GenericServerStream[SyncStateStreamRequest, PeerState]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type BackrestSyncStateService_GetKnownHostSyncStateStreamServer = grpc.ServerStreamingServer[SyncStateStreamItem]
-
-func _BackrestSyncStateService_GetClientSyncStateStream_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(SyncStateStreamRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(BackrestSyncStateServiceServer).GetClientSyncStateStream(m, &grpc.GenericServerStream[SyncStateStreamRequest, SyncStateStreamItem]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type BackrestSyncStateService_GetClientSyncStateStreamServer = grpc.ServerStreamingServer[SyncStateStreamItem]
+type BackrestSyncStateService_GetPeerSyncStatesStreamServer = grpc.ServerStreamingServer[PeerState]
 
 // BackrestSyncStateService_ServiceDesc is the grpc.ServiceDesc for BackrestSyncStateService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -264,13 +224,8 @@ var BackrestSyncStateService_ServiceDesc = grpc.ServiceDesc{
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "GetKnownHostSyncStateStream",
-			Handler:       _BackrestSyncStateService_GetKnownHostSyncStateStream_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "GetClientSyncStateStream",
-			Handler:       _BackrestSyncStateService_GetClientSyncStateStream_Handler,
+			StreamName:    "GetPeerSyncStatesStream",
+			Handler:       _BackrestSyncStateService_GetPeerSyncStatesStream_Handler,
 			ServerStreams: true,
 		},
 	},

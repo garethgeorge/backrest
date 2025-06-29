@@ -2,7 +2,6 @@ package syncapi
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"connectrpc.com/connect"
@@ -23,19 +22,17 @@ func NewBackrestSyncStateHandler(mgr *SyncManager) *BackrestSyncStateHandler {
 	}
 }
 
-func (h *BackrestSyncStateHandler) GetKnownHostSyncStateStream(ctx context.Context, req *connect.Request[v1.SyncStateStreamRequest], stream *connect.ServerStream[v1.SyncStateStreamItem]) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+func (h *BackrestSyncStateHandler) GetPeerSyncStatesStream(ctx context.Context, req *connect.Request[v1.SyncStateStreamRequest], stream *connect.ServerStream[v1.PeerState]) error {
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
 
-	snapshot := h.mgr.getSyncConfigSnapshot()
-	if snapshot == nil {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("sync is not configured"))
-	}
+	// Subscribe to the peer state changes
+	onStateChangeChan := h.mgr.peerStateManager.OnStateChanged().Subscribe()
 
-	messagesToSend := make(chan *v1.SyncStateStreamItem, 100) // Buffered channel to allow sending items without blocking
+	messagesToSend := make(chan *v1.PeerState, 100) // Buffered channel to allow sending items without blocking
 
-	peerStateToMsg := func(peerState *PeerState) *v1.SyncStateStreamItem {
-		return &v1.SyncStateStreamItem{
+	peerStateToMsg := func(peerState *PeerState) *v1.PeerState {
+		return &v1.PeerState{
 			PeerInstanceId: peerState.InstanceID,
 			PeerKeyid:      peerState.KeyID,
 			State:          peerState.ConnectionState,
@@ -43,18 +40,45 @@ func (h *BackrestSyncStateHandler) GetKnownHostSyncStateStream(ctx context.Conte
 		}
 	}
 
+	sendAll := func(config *v1.Config) {
+		for _, peer := range config.GetMultihost().GetAuthorizedClients() {
+			peerState := h.mgr.peerStateManager.GetPeerState(peer.Keyid)
+			if peerState == nil {
+				continue // Skip if no state is available for this peer
+			}
+			messagesToSend <- peerStateToMsg(peerState)
+		}
+		for _, peer := range config.GetMultihost().GetKnownHosts() {
+			peerState := h.mgr.peerStateManager.GetPeerState(peer.Keyid)
+			if peerState == nil {
+				continue // Skip if no state is available for this peer
+			}
+			messagesToSend <- peerStateToMsg(peerState)
+		}
+	}
+
 	// Start a goroutine to listen for state changes and send them to the stream
 	go func() {
-		onStateChangeChan := h.mgr.knownHostPeerStates.onStateChanged.Subscribe()
-		defer h.mgr.knownHostPeerStates.onStateChanged.Unsubscribe(onStateChangeChan)
+		config, err := h.mgr.configMgr.Get()
+		if err != nil {
+			cancel(err)
+			return
+		}
+
+		// Send initial states for all known hosts and authorized clients
+		sendAll(config)
+
+		defer h.mgr.peerStateManager.OnStateChanged().Unsubscribe(onStateChangeChan)
 		for {
 			select {
 			case <-ctx.Done():
 				return // Exit the goroutine if the context is done
+
 			case peerState, ok := <-onStateChangeChan:
 				if !ok {
 					return // Channel closed, exit the goroutine
 				}
+
 				select {
 				case messagesToSend <- peerStateToMsg(peerState):
 				default:
@@ -62,20 +86,13 @@ func (h *BackrestSyncStateHandler) GetKnownHostSyncStateStream(ctx context.Conte
 					select {
 					case messagesToSend <- peerStateToMsg(peerState):
 					case <-time.After(100 * time.Millisecond):
-						cancel()
+						cancel(nil)
 						return
 					}
 				}
 			}
 		}
 	}()
-
-	// Send the initial state of all known host peer states
-	for _, peerState := range h.mgr.knownHostPeerStates.GetAllPeerStates() {
-		if err := stream.Send(peerStateToMsg(peerState)); err != nil {
-			return connect.NewError(connect.CodeInternal, err)
-		}
-	}
 
 	for {
 		select {

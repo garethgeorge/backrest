@@ -23,21 +23,24 @@ service BackrestSyncService {
 // BackrestSyncStateService provides methods to query the sync state of known hosts and clients.
 // This service should be served behind authentication and authorization.
 service BackrestSyncStateService {
-  // GetKnownHostSyncState returns the sync state of known hosts that the current instance is connected to.
-  rpc GetKnownHostSyncStateStream(SyncStateStreamRequest) returns (stream SyncStateStreamItem) {}
-  // GetClientSyncStateStream returns the sync state of clients of the current instance.
-  rpc GetClientSyncStateStream(SyncStateStreamRequest) returns (stream SyncStateStreamItem) {}
+  rpc GetPeerSyncStatesStream(SyncStateStreamRequest) returns (stream PeerState) {}
 }
 
 message SyncStateStreamRequest {
   bool subscribe = 1; // If true, the stream will continue to send updates until cancelled.
 }
 
-message SyncStateStreamItem {
+message PeerState {
   string peer_instance_id = 1;
   string peer_keyid = 2;
   SyncConnectionState state = 3;
   string status_message = 4;
+
+  repeated string known_plans = 5; // List of plan IDs that the peer has.
+  repeated string known_repos = 6; // List of repo IDs that the peer has.
+  RemoteConfig remote_config = 7; // The remote config of the peer, if available.
+
+  int64 last_heartbeat_millis = 8; // The last time the peer sent a heartbeat, in milliseconds since epoch.
 }
 
 enum SyncConnectionState {

@@ -15,6 +15,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
+	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
@@ -74,7 +75,7 @@ func NewSyncClient(
 		l:                  zap.L().Named(fmt.Sprintf("syncclient for %q", peer.GetInstanceId())),
 		peerState:          newPeerState(peer.InstanceId, peer.Keyid),
 	}
-	c.mgr.knownHostPeerStates.SetPeerState(peer.Keyid, c.peerState)
+	c.mgr.peerStateManager.SetPeerState(peer.Keyid, c.peerState)
 	return c, nil
 }
 
@@ -117,11 +118,11 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 				if errors.As(err, &syncErr) {
 					c.peerState.ConnectionState = syncErr.State
 					c.peerState.ConnectionStateMessage = syncErr.Message.Error()
-					c.mgr.knownHostPeerStates.SetPeerState(c.peer.Keyid, c.peerState)
+					c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, c.peerState)
 				} else {
 					c.peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
 					c.peerState.ConnectionStateMessage = fmt.Sprintf("disconnected: %v", err)
-					c.mgr.knownHostPeerStates.SetPeerState(c.peer.Keyid, c.peerState)
+					c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, c.peerState)
 				}
 				c.l.Sugar().Infof("sync session ended with peer %q (%s), state: %s, message: %s", c.peer.InstanceId, c.peer.Keyid, c.peerState.ConnectionState, c.peerState.ConnectionStateMessage)
 			}
@@ -182,7 +183,7 @@ func newSyncHandlerClient(
 var _ syncSessionHandler = (*syncSessionHandlerClient)(nil)
 
 func (c *syncSessionHandlerClient) notifyPeerStateChanged() {
-	c.mgr.knownHostPeerStates.SetPeerState(c.peer.Keyid, c.peerState)
+	c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, c.peerState)
 }
 
 func (c *syncSessionHandlerClient) canForwardOperation(op *v1.Operation) bool {
@@ -213,7 +214,7 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 	c.notifyPeerStateChanged()
 
 	// Send a heartbeat every 2 minutes to keep the connection alive.
-	go sendHeartbeats(ctx, stream, 120*time.Second)
+	go sendHeartbeats(ctx, stream, env.MultihostHeartbeatInterval())
 	c.peerState.LastHeartbeat = time.Now()
 
 	localConfig := c.syncConfigSnapshot.config
@@ -469,9 +470,6 @@ func (c *syncSessionHandlerClient) HandleSendConfig(ctx context.Context, stream 
 	newRemoteConfig := item.Config
 	if newRemoteConfig == nil {
 		return NewSyncErrorProtocol(fmt.Errorf("received nil remote config"))
-	}
-	if err := c.mgr.remoteConfigStore.Update(c.peer, newRemoteConfig); err != nil {
-		return fmt.Errorf("update remote config store with latest config: %w", err)
 	}
 	c.peerState.Config = newRemoteConfig
 	c.notifyPeerStateChanged()

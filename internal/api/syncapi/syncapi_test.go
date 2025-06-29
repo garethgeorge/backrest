@@ -28,6 +28,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"zombiezen.com/go/sqlite"
+	"zombiezen.com/go/sqlite/sqlitex"
 )
 
 const (
@@ -598,11 +600,11 @@ func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnd
 
 func tryExpectConfigFromHost(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantCfg *v1.RemoteConfig) {
 	testutil.Try(t, ctx, func() error {
-		cfg, err := peer.manager.remoteConfigStore.Get(hostPeer)
-		if err != nil {
-			return err
+		state := peer.manager.peerStateManager.GetPeerState(hostPeer.Keyid)
+		if state == nil {
+			return fmt.Errorf("no state found for host peer %s", hostPeer.InstanceId)
 		}
-		if diff := cmp.Diff(cfg, wantCfg, protocmp.Transform()); diff != "" {
+		if diff := cmp.Diff(state.Config, wantCfg, protocmp.Transform()); diff != "" {
 			return fmt.Errorf("unexpected diff: %v", diff)
 		}
 		return nil
@@ -614,11 +616,11 @@ func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTe
 	defer cancel()
 
 	// Important that we subscribe to the state change before we try the initial check to avoid races.
-	onStateChanged := peer.manager.knownHostPeerStates.onStateChanged.Subscribe()
-	defer peer.manager.knownHostPeerStates.onStateChanged.Unsubscribe(onStateChanged)
+	onStateChanged := peer.manager.peerStateManager.OnStateChanged().Subscribe()
+	defer peer.manager.peerStateManager.OnStateChanged().Unsubscribe(onStateChanged)
 
 	// First check if the peer is already connected.
-	state := peer.manager.knownHostPeerStates.GetPeerState(hostPeer.Keyid)
+	state := peer.manager.peerStateManager.GetPeerState(hostPeer.Keyid)
 	if state != nil && state.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
 		return // Already connected, nothing to do
 	}
@@ -761,14 +763,26 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 		wg.Done()
 	}()
 
+	dbpool, err := sqlitex.NewPool("file:"+cryptoutil.MustRandomID(64)+"?mode=memory&cache=shared", sqlitex.PoolOptions{
+		PoolSize: 16,
+		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenURI,
+	})
+	if err != nil {
+		t.Fatalf("error creating sqlite pool: %s", err)
+	}
+
 	t.Cleanup(func() {
 		cancel()
 		wg.Wait()
+		dbpool.Close()
 	})
 
-	remoteConfigStore := NewJSONDirRemoteConfigStore(filepath.Join(tempDir, "remoteconfig"))
+	peerStateManager, err := newSqlitePeerStateManager(dbpool)
+	if err != nil {
+		t.Fatalf("failed to create peer state manager: %v", err)
+	}
 
-	manager := NewSyncManager(configMgr, remoteConfigStore, oplog, orchestrator)
+	manager := NewSyncManager(configMgr, oplog, orchestrator, peerStateManager)
 	manager.syncClientRetryDelay = 250 * time.Millisecond
 
 	return &peerUnderTest{

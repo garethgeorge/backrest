@@ -1,8 +1,14 @@
 package eventemitter
 
 import (
+	"fmt"
 	"sync"
 )
+
+type Receiver[T any] interface {
+	Subscribe() chan T
+	Unsubscribe(ch chan T)
+}
 
 // EventEmitter emits events to subscribers, events can be dropped if subscribers are not ready to receive them.
 type EventEmitter[T any] struct {
@@ -11,14 +17,15 @@ type EventEmitter[T any] struct {
 	DefaultCapacity int        // default capacity for channels, can be set to avoid blocking
 }
 
+var _ Receiver[any] = (*EventEmitter[any])(nil) // ensure EventEmitter implements Receiver interface
+
 func (e *EventEmitter[T]) Subscribe() chan T {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.subscribers == nil {
-		e.subscribers = make(map[chan T]struct{}, e.DefaultCapacity)
+		e.subscribers = make(map[chan T]struct{})
 	}
-
-	ch := make(chan T)
+	ch := make(chan T, e.DefaultCapacity)
 	e.subscribers[ch] = struct{}{} // use empty struct to avoid memory overhead
 	return ch
 }
@@ -77,6 +84,7 @@ func (e *BlockingEventEmitter[T]) Emit(event T) {
 	}
 
 	for ch := range e.subscribers {
+		fmt.Printf("Emitting event to channel: %v\n", ch)
 		ch <- event // block until the event is received
 	}
 }

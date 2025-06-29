@@ -12,6 +12,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
+	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -133,7 +134,7 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 	h.peerState.ConnectionStateMessage = "connected"
 	h.peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_CONNECTED
 	h.peerState.LastHeartbeat = time.Now()
-	h.mgr.authorizedClientPeerStates.SetPeerState(h.peer.Keyid, h.peerState)
+	h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, h.peerState)
 
 	// Set up cleanup when connection is closed
 	go func() {
@@ -141,14 +142,14 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 		if h.peerState.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
 			h.peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
 			h.peerState.ConnectionStateMessage = "disconnected"
-			h.mgr.authorizedClientPeerStates.SetPeerState(h.peer.Keyid, h.peerState)
+			h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, h.peerState)
 		}
 	}()
 
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", h.peer.InstanceId)
 
 	// start a heartbeat thread
-	go sendHeartbeats(ctx, stream, 60*time.Second)
+	go sendHeartbeats(ctx, stream, env.MultihostHeartbeatInterval())
 
 	// subscribe to our own configuration for changes
 	h.configWatchCh = h.mgr.configMgr.OnChange.Subscribe()
@@ -179,7 +180,7 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 
 func (h *syncSessionHandlerServer) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionHeartbeat) error {
 	h.peerState.LastHeartbeat = time.Now()
-	h.mgr.authorizedClientPeerStates.SetPeerState(h.peer.Keyid, h.peerState)
+	h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, h.peerState)
 	return nil
 }
 
@@ -326,7 +327,7 @@ func (h *syncSessionHandlerServer) HandleSendOperations(ctx context.Context, str
 
 func (h *syncSessionHandlerServer) HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendConfig) error {
 	h.peerState.Config = item.GetConfig()
-	h.mgr.authorizedClientPeerStates.SetPeerState(h.peer.Keyid, h.peerState)
+	h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, h.peerState)
 	return nil
 }
 
@@ -342,7 +343,7 @@ func (h *syncSessionHandlerServer) HandleListResources(ctx context.Context, stre
 	for _, planID := range plans {
 		h.peerState.KnownPlans[planID] = struct{}{}
 	}
-	h.mgr.authorizedClientPeerStates.SetPeerState(h.peer.Keyid, h.peerState)
+	h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, h.peerState)
 	return nil
 }
 

@@ -1,6 +1,7 @@
 import { SyncStateStreamItem } from "../../gen/ts/v1/syncservice_pb";
 import { syncStateService } from "../api";
 
+
 const subscribeToSyncStates = async (
   requestMethod: () => AsyncIterable<SyncStateStreamItem>,
   callback: (syncStates: SyncStateStreamItem[]) => void,
@@ -51,12 +52,12 @@ export const subscribeToKnownHostSyncStates = (
   }, callback, abortController);
 }
 
-export const subscribeToClientSyncStates = (
+export const subscribeToAuthorizedClientSyncStates = (
   abortController: AbortController,
   callback: (syncStates: SyncStateStreamItem[]) => void,
 ): void => {
   subscribeToSyncStates(() => {
-    return syncStateService.getClientSyncStateStream({ subscribe: true }, {
+    return syncStateService.getAuthorizedClientSyncStateStream({ subscribe: true }, {
       signal: abortController.signal,
     });
   }, callback, abortController);
