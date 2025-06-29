@@ -34,6 +34,31 @@ type SyncManager struct {
 }
 
 func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchestrator *orchestrator.Orchestrator, peerStateManager PeerStateManager) *SyncManager {
+	// Fetch the config, and mark all sync clients and known hosts as disconnected (but preserve other fields).
+	config, err := configMgr.Get()
+	if err == nil {
+		for _, knownHostPeer := range config.GetMultihost().GetKnownHosts() {
+			state := peerStateManager.GetPeerState(knownHostPeer.Keyid)
+			if state == nil {
+				continue
+			}
+			state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+			state.ConnectionStateMessage = "disconnected"
+			peerStateManager.SetPeerState(knownHostPeer.Keyid, state)
+		}
+		for _, authorizedClient := range config.GetMultihost().GetAuthorizedClients() {
+			state := peerStateManager.GetPeerState(authorizedClient.Keyid)
+			if state == nil {
+				continue
+			}
+			state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+			state.ConnectionStateMessage = "disconnected"
+			peerStateManager.SetPeerState(authorizedClient.Keyid, state)
+		}
+	} else {
+		zap.S().Errorf("syncmanager failed to get initial config: %v", err)
+	}
+
 	return &SyncManager{
 		configMgr:    configMgr,
 		orchestrator: orchestrator,
