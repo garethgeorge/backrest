@@ -61,14 +61,16 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		zap.S().Errorf("sync handler stream error: %v", err)
 		var syncErr *SyncError
 		if errors.As(err, &syncErr) {
-			peerState := h.mgr.peerStateManager.GetPeerState(sessionHandler.peer.Keyid).Clone()
-			if peerState == nil {
-				peerState = newPeerState(sessionHandler.peer.InstanceId, sessionHandler.peer.Keyid)
+			if sessionHandler.peer != nil {
+				peerState := h.mgr.peerStateManager.GetPeerState(sessionHandler.peer.Keyid).Clone()
+				if peerState == nil {
+					peerState = newPeerState(sessionHandler.peer.InstanceId, sessionHandler.peer.Keyid)
+				}
+				peerState.ConnectionState = syncErr.State
+				peerState.ConnectionStateMessage = syncErr.Message.Error()
+				peerState.LastHeartbeat = time.Now()
+				h.mgr.peerStateManager.SetPeerState(sessionHandler.peer.Keyid, peerState)
 			}
-			peerState.ConnectionState = syncErr.State
-			peerState.ConnectionStateMessage = syncErr.Message.Error()
-			peerState.LastHeartbeat = time.Now()
-			h.mgr.peerStateManager.SetPeerState(sessionHandler.peer.Keyid, peerState)
 			switch syncErr.State {
 			case v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH:
 				return connect.NewError(connect.CodePermissionDenied, syncErr.Message)
