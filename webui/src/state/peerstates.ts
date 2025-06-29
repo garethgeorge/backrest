@@ -43,16 +43,14 @@ const subscribeToSyncStates = async (
 let peerStates: Map<string, PeerState> = new Map();
 const subscribers: Set<(peerStates: PeerState[]) => void> = new Set();
 
-export const subscribeToKnownHostSyncStates = (
-  requestMethod: () => AsyncIterable<PeerState>,
+export const subscribeToPeerStates = (
   callback: (peerStates: PeerState[]) => void,
-  abortController: AbortController,
 ): void => {
   subscribers.add(callback);
   callback(Array.from(peerStates.values()));
 };
 
-export const unsubscribeFromKnownHostSyncStates = (
+export const unsubscribeFromPeerStates = (
   callback: (peerStates: PeerState[]) => void,
 ): void => {
   subscribers.delete(callback);

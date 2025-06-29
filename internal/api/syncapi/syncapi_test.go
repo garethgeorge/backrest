@@ -777,7 +777,7 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 		dbpool.Close()
 	})
 
-	peerStateManager, err := newSqlitePeerStateManager(dbpool)
+	peerStateManager, err := NewSqlitePeerStateManager(dbpool)
 	if err != nil {
 		t.Fatalf("failed to create peer state manager: %v", err)
 	}

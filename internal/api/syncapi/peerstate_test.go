@@ -15,7 +15,7 @@ func PeerStateManagersForTest(t testing.TB) map[string]PeerStateManager {
 	t.Cleanup(func() {
 		dbpool.Close()
 	})
-	sqlitepsm, err := newSqlitePeerStateManager(dbpool)
+	sqlitepsm, err := NewSqlitePeerStateManager(dbpool)
 	if err != nil {
 		t.Fatalf("error creating sqlite peer state manager: %s", err)
 	}

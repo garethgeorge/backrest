@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"connectrpc.com/connect"
@@ -24,7 +25,7 @@ type bidiSyncCommandStream struct {
 	terminateWithErrChan chan error
 }
 
-func newBidiSyncCommandStream(ctx context.Context) *bidiSyncCommandStream {
+func newBidiSyncCommandStream() *bidiSyncCommandStream {
 	return &bidiSyncCommandStream{
 		sendChan:             make(chan *v1.SyncStreamItem, 64), // Buffered channel to allow sending items without blocking
 		recvChan:             make(chan *v1.SyncStreamItem, 1),
@@ -94,7 +95,10 @@ func (s *bidiSyncCommandStream) ConnectStream(ctx context.Context, stream syncCo
 				continue
 			}
 			if err := stream.Send(item); err != nil {
-				s.SendErrorAndTerminate(fmt.Errorf("sending item: %w", err))
+				if errors.Is(err, io.EOF) {
+					err = fmt.Errorf("connection failed or dropped: %w", err)
+				}
+				s.SendErrorAndTerminate(err)
 				return err
 			}
 		case err := <-s.terminateWithErrChan:

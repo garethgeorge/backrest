@@ -165,7 +165,7 @@ type SqlitePeerStateManager struct {
 	onStateChanged eventemitter.BlockingEventEmitter[*PeerState]
 }
 
-func newSqlitePeerStateManager(dbpool *sqlitex.Pool) (*SqlitePeerStateManager, error) {
+func NewSqlitePeerStateManager(dbpool *sqlitex.Pool) (*SqlitePeerStateManager, error) {
 	m := &SqlitePeerStateManager{
 		dbpool: dbpool,
 		onStateChanged: eventemitter.BlockingEventEmitter[*PeerState]{

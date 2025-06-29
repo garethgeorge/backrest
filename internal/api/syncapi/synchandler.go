@@ -43,7 +43,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	}
 
 	sessionHandler := newSyncHandlerServer(h.mgr, snapshot)
-	cmdStream := newBidiSyncCommandStream(ctx)
+	cmdStream := newBidiSyncCommandStream()
 
 	go func() {
 		err := runSync(

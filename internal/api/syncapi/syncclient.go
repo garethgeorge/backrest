@@ -96,7 +96,7 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 			c.peerState,
 		)
 
-		cmdStream := newBidiSyncCommandStream(ctx)
+		cmdStream := newBidiSyncCommandStream()
 
 		c.l.Sugar().Infof("connecting to peer %q (%s) at %s", c.peer.InstanceId, c.peer.Keyid, c.peer.GetInstanceUrl())
 
@@ -112,25 +112,21 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 				syncSessionHandler,
 				c.syncConfigSnapshot.config.GetMultihost().GetKnownHosts(),
 			)
-			if err != nil {
-				c.l.Sugar().Errorf("sync error: %v", err)
-				var syncErr *SyncError
-				if errors.As(err, &syncErr) {
-					c.peerState.ConnectionState = syncErr.State
-					c.peerState.ConnectionStateMessage = syncErr.Message.Error()
-					c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, c.peerState)
-				} else {
-					c.peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
-					c.peerState.ConnectionStateMessage = fmt.Sprintf("disconnected: %v", err)
-					c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, c.peerState)
-				}
-				c.l.Sugar().Infof("sync session ended with peer %q (%s), state: %s, message: %s", c.peer.InstanceId, c.peer.Keyid, c.peerState.ConnectionState, c.peerState.ConnectionStateMessage)
-			}
 			cmdStream.SendErrorAndTerminate(err)
 		}()
 
 		if err := cmdStream.ConnectStream(ctx, c.client.Sync(ctx)); err != nil {
 			c.l.Sugar().Infof("lost stream connection to peer %q (%s): %v", c.peer.InstanceId, c.peer.Keyid, err)
+			var syncErr *SyncError
+			if errors.As(err, &syncErr) {
+				c.peerState.ConnectionState = syncErr.State
+				c.peerState.ConnectionStateMessage = syncErr.Message.Error()
+				c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, c.peerState)
+			} else {
+				c.peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+				c.peerState.ConnectionStateMessage = fmt.Sprintf("disconnected: %v", err)
+				c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, c.peerState)
+			}
 		}
 
 		wg.Wait()
