@@ -87,7 +87,7 @@ func (s *sqliteKvStoreImpl) Get(key string) ([]byte, error) {
 	defer s.dbpool.Put(conn)
 
 	var value []byte
-	err = sqlitex.ExecuteTransient(conn, s.getSQL, &sqlitex.ExecOptions{
+	err = sqlitex.Execute(conn, s.getSQL, &sqlitex.ExecOptions{
 		Args: []any{key},
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			value = make([]byte, stmt.ColumnLen(0))
@@ -109,7 +109,7 @@ func (s *sqliteKvStoreImpl) Set(key string, value []byte) error {
 	}
 	defer s.dbpool.Put(conn)
 
-	err = sqlitex.ExecuteTransient(conn, s.setSQL, &sqlitex.ExecOptions{
+	err = sqlitex.Execute(conn, s.setSQL, &sqlitex.ExecOptions{
 		Args: []any{key, value},
 	})
 	if err != nil {
@@ -135,7 +135,7 @@ func (s *sqliteKvStoreImpl) ForEach(prefix string, onRow func(key string, value 
 		args = []any{escape(prefix) + "%", escapeChar}
 	}
 
-	err = sqlitex.ExecuteTransient(conn, query, &sqlitex.ExecOptions{
+	err = sqlitex.Execute(conn, query, &sqlitex.ExecOptions{
 		Args: args,
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			key := stmt.ColumnText(0)
