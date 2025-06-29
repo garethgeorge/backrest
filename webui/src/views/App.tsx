@@ -384,6 +384,8 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
 
   if (config.multihost?.authorizedClients?.length) {
     const authorizedClients = config.multihost.authorizedClients;
+
+    // Display authorized client peer statuses
   }
 
   return [

@@ -39,7 +39,7 @@ func (s *bidiSyncCommandStream) Send(item *v1.SyncStreamItem) {
 		// Try again with a timeout, if it fails, send an error to terminate the stream
 		select {
 		case s.sendChan <- item:
-		case <-time.After(500 * time.Millisecond):
+		case <-time.After(100 * time.Millisecond):
 			s.SendErrorAndTerminate(NewSyncErrorDisconnected(errors.New("send channel is full, cannot send item")))
 		}
 	}
