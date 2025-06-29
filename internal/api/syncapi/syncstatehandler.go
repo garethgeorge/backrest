@@ -31,30 +31,19 @@ func (h *BackrestSyncStateHandler) GetPeerSyncStatesStream(ctx context.Context, 
 
 	messagesToSend := make(chan *v1.PeerState, 100) // Buffered channel to allow sending items without blocking
 
-	peerStateToMsg := func(peerState *PeerState) *v1.PeerState {
-		return &v1.PeerState{
-			PeerInstanceId: peerState.InstanceID,
-			PeerKeyid:      peerState.KeyID,
-			State:          peerState.ConnectionState,
-			StatusMessage:  peerState.ConnectionStateMessage,
+	sendAllInList := func(peers []*v1.Multihost_Peer) {
+		for _, peerState := range peers {
+			state := h.mgr.peerStateManager.GetPeerState(peerState.Keyid)
+			if state == nil {
+				continue // Skip if the peer state is not found
+			}
+			messagesToSend <- peerStateToProto(state)
 		}
 	}
 
 	sendAll := func(config *v1.Config) {
-		for _, peer := range config.GetMultihost().GetAuthorizedClients() {
-			peerState := h.mgr.peerStateManager.GetPeerState(peer.Keyid)
-			if peerState == nil {
-				continue // Skip if no state is available for this peer
-			}
-			messagesToSend <- peerStateToMsg(peerState)
-		}
-		for _, peer := range config.GetMultihost().GetKnownHosts() {
-			peerState := h.mgr.peerStateManager.GetPeerState(peer.Keyid)
-			if peerState == nil {
-				continue // Skip if no state is available for this peer
-			}
-			messagesToSend <- peerStateToMsg(peerState)
-		}
+		sendAllInList(config.GetMultihost().GetKnownHosts())
+		sendAllInList(config.GetMultihost().GetAuthorizedClients())
 	}
 
 	// Start a goroutine to listen for state changes and send them to the stream
@@ -84,11 +73,11 @@ func (h *BackrestSyncStateHandler) GetPeerSyncStatesStream(ctx context.Context, 
 				}
 
 				select {
-				case messagesToSend <- peerStateToMsg(peerState):
+				case messagesToSend <- peerStateToProto(peerState):
 				default:
 					// If the channel is full, wait for 100 milliseconds before cancelling
 					select {
-					case messagesToSend <- peerStateToMsg(peerState):
+					case messagesToSend <- peerStateToProto(peerState):
 					case <-time.After(100 * time.Millisecond):
 						cancel(nil)
 						return

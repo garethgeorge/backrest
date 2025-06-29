@@ -14,7 +14,7 @@ type SyncError struct {
 var _ error = (*SyncError)(nil)
 
 func (e *SyncError) Error() string {
-	return fmt.Sprintf("%v: %s", e.State, e.Message.Error())
+	return fmt.Sprintf("syncerror %v: %s", e.State, e.Message.Error())
 }
 
 func (e *SyncError) Unwrap() error {

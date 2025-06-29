@@ -104,6 +104,12 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 			return
 		}
 
+		if config.Multihost.GetIdentity() == nil {
+			zap.S().Info("syncmanager no identity key configured, sync feature is disabled.")
+			m.snapshot = nil // Clear the snapshot to indicate sync is disabled
+			return
+		}
+
 		// Pull out configuration from the new config and cache it for sync handler e.g. the config and identity key.
 		identityKey, err := cryptoutil.NewPrivateKey(config.Multihost.GetIdentity())
 		if err != nil {

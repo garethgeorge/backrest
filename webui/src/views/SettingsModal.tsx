@@ -354,6 +354,17 @@ const MultihostIdentityForm: React.FC<{
 }> = ({ form, config, peerStates }) => {
   return (
     <>
+      <Typography.Paragraph italic>
+        Multihost identity allows you to share repositories between multiple
+        Backrest instances. This is useful for keeping track of the backup
+        status of a collections of systems.
+      </Typography.Paragraph>
+      <Typography.Paragraph italic>
+        This feature is experimental and may be subject to version incompatible
+        changes in the future which will require all instances to be updated at
+        the same time.
+      </Typography.Paragraph>
+
       {/* Show the current instance's identity */}
       <Form.Item
         label="Multihost Identity"
@@ -380,7 +391,7 @@ const MultihostIdentityForm: React.FC<{
             <Button
               type="link"
               onClick={() =>
-                navigator.clipboard.writeText(
+                -navigator.clipboard.writeText(
                   config.multihost?.identity?.keyid || ""
                 )
               }
@@ -401,7 +412,6 @@ const MultihostIdentityForm: React.FC<{
           listName={["multihost", "authorizedClients"]}
           showInstanceUrl={false}
           itemTypeName="Authorized Client"
-          showPeerState={false}
           peerStates={peerStates}
           config={config}
           listType="authorizedClients"
@@ -423,7 +433,6 @@ const MultihostIdentityForm: React.FC<{
           listName={["multihost", "knownHosts"]}
           showInstanceUrl={true}
           itemTypeName="Known Host"
-          showPeerState={true}
           peerStates={peerStates}
           config={config}
           listType="knownHosts"
@@ -442,7 +451,6 @@ const PeerFormList: React.FC<{
   form: FormInstance<FormData>;
   listName: string[];
   showInstanceUrl: boolean;
-  showPeerState: boolean;
   itemTypeName: string;
   peerStates: PeerState[];
   initialValue: any[];
@@ -452,7 +460,6 @@ const PeerFormList: React.FC<{
   form,
   listName,
   showInstanceUrl,
-  showPeerState,
   itemTypeName,
   peerStates,
   initialValue,
@@ -470,8 +477,8 @@ const PeerFormList: React.FC<{
               fieldName={field.name}
               remove={remove}
               showInstanceUrl={showInstanceUrl}
-              showPeerState={showPeerState}
               peerStates={peerStates}
+              isKnownHost={listType === "knownHosts"}
               index={index}
               config={config}
               listType={listType}
@@ -499,8 +506,8 @@ const PeerFormListItem: React.FC<{
   fieldName: number;
   remove: (index: number | number[]) => void;
   showInstanceUrl: boolean;
-  showPeerState: boolean;
   peerStates: PeerState[];
+  isKnownHost?: boolean;
   index: number;
   config: Config;
   listType: "knownHosts" | "authorizedClients";
@@ -509,16 +516,16 @@ const PeerFormListItem: React.FC<{
   fieldName,
   remove,
   showInstanceUrl,
-  showPeerState,
   peerStates,
+  isKnownHost = false,
   index,
   config,
   listType,
 }) => {
   // Get the instance ID from the form to find the matching sync state, its a bit hacky but works reliably.
-  const keyId =
-    form.getFieldValue(["multihost", "knownHosts", index, "keyId"]) ||
-    form.getFieldValue(["multihost", "authorizedClients", index, "keyId"]);
+  const keyId = isKnownHost
+    ? form.getFieldValue(["multihost", "knownHosts", index, "keyId"])
+    : form.getFieldValue(["multihost", "authorizedClients", index, "keyId"]);
 
   const peerState = peerStates.find((state) => state.peerKeyid === keyId);
 
@@ -542,9 +549,7 @@ const PeerFormListItem: React.FC<{
           gap: "8px",
         }}
       >
-        {showPeerState && peerState && (
-          <PeerStateConnectionStatusIcon peerState={peerState} />
-        )}
+        {peerState && <PeerStateConnectionStatusIcon peerState={peerState} />}
         <MinusCircleOutlined
           style={{
             color: "#999",
@@ -632,15 +637,7 @@ const PeerPermissionsTile: React.FC<{
   }));
 
   return (
-    <div
-    // style={{
-    //   marginTop: "16px",
-    //   padding: "12px",
-    //   borderRadius: "6px",
-    //   border: "1px solid #e8e8e8",
-    //   background: "none",
-    // }}
-    >
+    <div>
       <Typography.Text strong style={{ marginBottom: "8px", display: "block" }}>
         Permissions
       </Typography.Text>
@@ -677,10 +674,10 @@ const PeerPermissionsTile: React.FC<{
                       <Select placeholder="Select permission type">
                         <Select.Option
                           value={
-                            Multihost_Permission_Type.PERMISSION_READ_CONFIG
+                            Multihost_Permission_Type.PERMISSION_READ_WRITE_CONFIG
                           }
                         >
-                          Read Repo Config
+                          Edit Repo Configuration
                         </Select.Option>
                         <Select.Option
                           value={

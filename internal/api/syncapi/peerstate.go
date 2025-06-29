@@ -112,7 +112,7 @@ type InMemoryPeerStateManager struct {
 
 var _ PeerStateManager = (*InMemoryPeerStateManager)(nil) // Ensure InMemoryPeerStateManager implements PeerStateManager interface
 
-func newInMemoryPeerStateManager() *InMemoryPeerStateManager {
+func NewInMemoryPeerStateManager() *InMemoryPeerStateManager {
 	return &InMemoryPeerStateManager{
 		peerStates: make(map[string]*PeerState),
 		onStateChanged: eventemitter.BlockingEventEmitter[*PeerState]{
@@ -276,8 +276,6 @@ func (m *SqlitePeerStateManager) GetAll() []*PeerState {
 func (m *SqlitePeerStateManager) SetPeerState(keyID string, state *PeerState) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	fmt.Printf("Setting peer state for key %s: %+v\n", keyID, state)
-
 	stateProto := peerStateToProto(state)
 	stateBytes, err := proto.Marshal(stateProto)
 	if err != nil {

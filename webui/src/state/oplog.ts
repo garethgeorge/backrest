@@ -21,7 +21,7 @@ const subscribers: ((event?: OperationEvent, err?: Error) => void)[] = [];
         subscribers.forEach((subscriber) => subscriber(event, undefined));
       }
     } catch (e: any) {
-      console.error("operations stream died with exception: ", e);
+      console.warn("operations stream died with exception: ", e);
     }
     await new Promise((accept, _) =>
       setTimeout(accept, nextConnWaitUntil - new Date().getTime()),

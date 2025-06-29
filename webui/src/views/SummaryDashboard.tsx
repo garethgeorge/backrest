@@ -46,6 +46,7 @@ import {
 } from "../state/peerstates";
 import { PeerState } from "../../gen/ts/v1/syncservice_pb";
 import { PeerStateConnectionStatusIcon } from "../components/SyncStateIcon";
+import { last } from "lodash";
 
 export const SummaryDashboard = () => {
   const config = useConfig()[0];
@@ -86,7 +87,12 @@ export const SummaryDashboard = () => {
       return;
     }
 
-    if (config.repos.length === 0 && config.plans.length === 0) {
+    if (
+      config.repos.length === 0 &&
+      config.plans.length === 0 &&
+      config.multihost?.knownHosts.length === 0 &&
+      config.multihost?.authorizedClients.length === 0
+    ) {
       navigate("/getting-started");
     }
   }, [config]);
@@ -98,6 +104,10 @@ export const SummaryDashboard = () => {
   return (
     <>
       <Flex gap={16} vertical>
+        {/* Multihost summary if any available */}
+        <MultihostSummary multihostConfig={config?.multihost || null} />
+
+        {/* Repos and plans section */}
         <Typography.Title level={3}>Repos</Typography.Title>
         {summaryData && summaryData.repoSummaries.length > 0 ? (
           summaryData.repoSummaries.map((summary) => (
@@ -114,7 +124,8 @@ export const SummaryDashboard = () => {
         ) : (
           <Empty description="No plans found" />
         )}
-        <MultihostSummary multihostConfig={config?.multihost || null} />
+
+        {/* System Info Section */}
         <Typography.Title level={3}>System Info</Typography.Title>
         <Descriptions
           layout="vertical"
@@ -374,6 +385,15 @@ const MultihostSummary = ({
 };
 
 const PeerStateTile = ({ peerState }: { peerState: PeerState }) => {
+  const state = useState(1);
+  useEffect(() => {
+    // Force rerender every second to update the last heartbeat time
+    const interval = setInterval(() => {
+      state[1]((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [peerState.peerKeyid, peerState.lastHeartbeatMillis, state[1]]);
+
   return (
     <Card
       key={peerState.peerKeyid}
@@ -403,7 +423,7 @@ const PeerStateTile = ({ peerState }: { peerState: PeerState }) => {
           {
             key: 1,
             label: "Instance ID",
-            children: peerState.peerKeyid,
+            children: peerState.peerInstanceId,
           },
           {
             key: 2,
@@ -412,11 +432,36 @@ const PeerStateTile = ({ peerState }: { peerState: PeerState }) => {
           },
           {
             key: 3,
-            label: "Last Heartbeat",
-            children: formatDate(Number(peerState.lastHeartbeatMillis)),
+            label: "Last State Update",
+            children: (
+              <TimeSinceLastHeartbeat
+                lastHeartbeatMillis={Number(peerState.lastHeartbeatMillis)}
+              />
+            ),
           },
         ]}
       />
     </Card>
+  );
+};
+
+const TimeSinceLastHeartbeat = ({
+  lastHeartbeatMillis,
+}: {
+  lastHeartbeatMillis: number;
+}) => {
+  const [timeSince, setTimeSince] = useState(
+    lastHeartbeatMillis ? Date.now() - lastHeartbeatMillis : 0
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeSince(Date.now() - lastHeartbeatMillis);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lastHeartbeatMillis]);
+
+  return (
+    formatTime(lastHeartbeatMillis) + " (" + formatDuration(timeSince) + " ago)"
   );
 };

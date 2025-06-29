@@ -20,7 +20,7 @@ func PeerStateManagersForTest(t testing.TB) map[string]PeerStateManager {
 		t.Fatalf("error creating sqlite peer state manager: %s", err)
 	}
 	return map[string]PeerStateManager{
-		"memory": newInMemoryPeerStateManager(),
+		"memory": NewInMemoryPeerStateManager(),
 		"sqlite": sqlitepsm,
 	}
 }

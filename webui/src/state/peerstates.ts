@@ -27,7 +27,7 @@ const subscribeToSyncStates = async (
         }
       } catch (error) {
         if (!abortController.signal.aborted) {
-          console.error("Error in sync state stream:", error);
+          console.warn("Error in sync state stream:", error);
         }
       }
       await new Promise(resolve => setTimeout(resolve, nextConnWaitUntil - new Date().getTime()));

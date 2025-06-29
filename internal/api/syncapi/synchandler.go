@@ -61,6 +61,12 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		zap.S().Errorf("sync handler stream error: %v", err)
 		var syncErr *SyncError
 		if errors.As(err, &syncErr) {
+			if sessionHandler.peerState != nil {
+				sessionHandler.peerState.ConnectionState = syncErr.State
+				sessionHandler.peerState.ConnectionStateMessage = syncErr.Message.Error()
+				sessionHandler.peerState.LastHeartbeat = time.Now()
+				sessionHandler.mgr.peerStateManager.SetPeerState(sessionHandler.peer.Keyid, sessionHandler.peerState)
+			}
 			switch syncErr.State {
 			case v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH:
 				return connect.NewError(connect.CodePermissionDenied, syncErr.Message)
@@ -135,16 +141,6 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 	h.peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_CONNECTED
 	h.peerState.LastHeartbeat = time.Now()
 	h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, h.peerState)
-
-	// Set up cleanup when connection is closed
-	go func() {
-		<-ctx.Done()
-		if h.peerState.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
-			h.peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
-			h.peerState.ConnectionStateMessage = "disconnected"
-			h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, h.peerState)
-		}
-	}()
 
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", h.peer.InstanceId)
 

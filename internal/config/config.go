@@ -40,7 +40,7 @@ type ConfigStore interface {
 }
 
 func NewDefaultConfig() *v1.Config {
-	return &v1.Config{
+	cfg := &v1.Config{
 		Version:  migrations.CurrentVersion,
 		Instance: "",
 		Repos:    []*v1.Repo{},
@@ -49,6 +49,11 @@ func NewDefaultConfig() *v1.Config {
 			Disabled: true,
 		},
 	}
+	_, err := PopulateRequiredFields(cfg)
+	if err != nil {
+		zap.S().Fatalf("failed to populate required fields in default config: %v", err)
+	}
+	return cfg
 }
 
 func PopulateRequiredFields(config *v1.Config) (mutated bool, err error) {

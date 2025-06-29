@@ -34,7 +34,8 @@ type SyncClient struct {
 	reconnectDelay     time.Duration
 	l                  *zap.Logger
 
-	peerState *PeerState
+	peerState         *PeerState
+	reconnectAttempts int
 }
 
 func newInsecureClient() *http.Client {
@@ -118,21 +119,29 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 		if err := cmdStream.ConnectStream(ctx, c.client.Sync(ctx)); err != nil {
 			c.l.Sugar().Infof("lost stream connection to peer %q (%s): %v", c.peer.InstanceId, c.peer.Keyid, err)
 			var syncErr *SyncError
+			c.peerState.LastHeartbeat = time.Now()
 			if errors.As(err, &syncErr) {
 				c.peerState.ConnectionState = syncErr.State
 				c.peerState.ConnectionStateMessage = syncErr.Message.Error()
 				c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, c.peerState)
 			} else {
-				c.peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
-				c.peerState.ConnectionStateMessage = fmt.Sprintf("disconnected: %v", err)
+				c.peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL
+				c.peerState.ConnectionStateMessage = err.Error()
 				c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, c.peerState)
 			}
+		} else {
+			c.reconnectAttempts = 0
 		}
 
 		wg.Wait()
 
 		delay := c.reconnectDelay - time.Since(lastConnect)
-		c.l.Sugar().Infof("disconnected, will retry after %v", delay)
+		if c.reconnectAttempts > 0 {
+			backoff := time.Duration(1<<min(c.reconnectAttempts, 5)) * c.reconnectDelay // 2^reconnectAttempts, max 32
+			delay += backoff
+		}
+		c.l.Sugar().Infof("disconnected, will retry after %v (attempt %d)", delay, c.reconnectAttempts)
+		c.reconnectAttempts++
 		select {
 		case <-time.After(delay):
 		case <-ctx.Done():
