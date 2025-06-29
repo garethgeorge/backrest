@@ -68,6 +68,10 @@ func (h *BackrestSyncStateHandler) GetPeerSyncStatesStream(ctx context.Context, 
 		// Send initial states for all known hosts and authorized clients
 		sendAll(config)
 
+		if !req.Msg.Subscribe {
+			cancel(nil)
+		}
+
 		defer h.mgr.peerStateManager.OnStateChanged().Unsubscribe(onStateChangeChan)
 		for {
 			select {

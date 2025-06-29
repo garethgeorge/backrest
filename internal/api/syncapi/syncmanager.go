@@ -58,7 +58,6 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 	} else {
 		zap.S().Errorf("syncmanager failed to get initial config: %v", err)
 	}
-
 	return &SyncManager{
 		configMgr:    configMgr,
 		orchestrator: orchestrator,
