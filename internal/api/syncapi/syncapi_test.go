@@ -8,12 +8,10 @@ import (
 	"net/http"
 	"path/filepath"
 	"slices"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	connect "connectrpc.com/connect"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
@@ -30,6 +28,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"zombiezen.com/go/sqlite"
+	"zombiezen.com/go/sqlite/sqlitex"
 )
 
 const (
@@ -52,8 +52,8 @@ var (
 		RepoId:          defaultRepoID,
 		RepoGuid:        defaultRepoGUID,
 		PlanId:          defaultPlanID,
-		UnixTimeStartMs: 1234,
-		UnixTimeEndMs:   5678,
+		UnixTimeStartMs: time.Now().UnixMilli() - 1000, // 1 second ago
+		UnixTimeEndMs:   time.Now().UnixMilli(),
 		Status:          v1.OperationStatus_STATUS_SUCCESS,
 		Op:              &v1.Operation_OperationBackup{},
 	}
@@ -63,8 +63,8 @@ var (
 		RepoId:          defaultRepoID,
 		RepoGuid:        defaultRepoGUID,
 		PlanId:          defaultPlanID,
-		UnixTimeStartMs: 1234,
-		UnixTimeEndMs:   5678,
+		UnixTimeStartMs: time.Now().UnixMilli() - 1000, // 1 second ago
+		UnixTimeEndMs:   time.Now().UnixMilli(),
 		Status:          v1.OperationStatus_STATUS_SUCCESS,
 		Op:              &v1.Operation_OperationBackup{},
 	}
@@ -113,7 +113,7 @@ func TestConnectionSucceeds(t *testing.T) {
 	startRunningSyncAPI(t, peerHost, peerHostAddr)
 	startRunningSyncAPI(t, peerClient, peerClientAddr)
 
-	tryConnect(t, ctx, peerClient, defaultHostID)
+	tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
 }
 
 func TestConnectionBadKeyRejected(t *testing.T) {
@@ -155,7 +155,7 @@ func TestConnectionBadKeyRejected(t *testing.T) {
 	startRunningSyncAPI(t, peerHost, peerHostAddr)
 	startRunningSyncAPI(t, peerClient, peerClientAddr)
 
-	tryExpectConnectionFailure(t, ctx, peerClient, defaultHostID, connect.CodePermissionDenied)
+	waitForConnectionState(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH)
 }
 
 func TestSyncConfigChange(t *testing.T) {
@@ -169,14 +169,12 @@ func TestSyncConfigChange(t *testing.T) {
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
-				Id:                     defaultRepoID,
-				Guid:                   defaultRepoGUID,
-				AllowedPeerInstanceIds: []string{defaultClientID},
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
 			},
 			{
-				Id:                     "do-not-sync",
-				Guid:                   cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
-				AllowedPeerInstanceIds: []string{"some-other-client"},
+				Id:   "do-not-sync",
+				Guid: cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -186,6 +184,14 @@ func TestSyncConfigChange(t *testing.T) {
 					Keyid:         identity2.Keyid,
 					KeyidVerified: true,
 					InstanceId:    defaultClientID,
+					Permissions: []*v1.Multihost_Permission{
+						{
+							Type: v1.Multihost_Permission_PERMISSION_READ_CONFIG,
+							Scopes: []string{
+								"repo:" + defaultRepoID,
+							},
+						},
+					},
 				},
 			},
 		},
@@ -218,11 +224,11 @@ func TestSyncConfigChange(t *testing.T) {
 	startRunningSyncAPI(t, peerHost, peerHostAddr)
 	startRunningSyncAPI(t, peerClient, peerClientAddr)
 
-	tryConnect(t, ctx, peerClient, defaultHostID)
+	tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
 
 	// wait for the initial config to propagate
-	tryExpectConfig(t, ctx, peerClient, defaultHostID, &v1.RemoteConfig{
-		Repos: []*v1.RemoteRepo{
+	tryExpectConfigFromHost(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], &v1.RemoteConfig{
+		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
 				Guid: defaultRepoGUID,
@@ -233,8 +239,8 @@ func TestSyncConfigChange(t *testing.T) {
 	hostConfigChanged.Repos[0].Env = []string{"SOME_ENV=VALUE"}
 	peerHost.configMgr.Update(hostConfigChanged)
 
-	tryExpectConfig(t, ctx, peerClient, defaultHostID, &v1.RemoteConfig{
-		Repos: []*v1.RemoteRepo{
+	tryExpectConfigFromHost(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], &v1.RemoteConfig{
+		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
 				Guid: defaultRepoGUID,
@@ -255,9 +261,8 @@ func TestSimpleOperationSync(t *testing.T) {
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
-				Id:                     defaultRepoID,
-				Guid:                   defaultRepoGUID,
-				AllowedPeerInstanceIds: []string{defaultClientID},
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -288,6 +293,14 @@ func TestSimpleOperationSync(t *testing.T) {
 					Keyid:       identity1.Keyid,
 					InstanceId:  defaultHostID,
 					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
+					Permissions: []*v1.Multihost_Permission{
+						{
+							Type: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
+							Scopes: []string{
+								"repo:" + defaultRepoID,
+							},
+						},
+					},
 				},
 			},
 		},
@@ -328,7 +341,7 @@ func TestSimpleOperationSync(t *testing.T) {
 	startRunningSyncAPI(t, peerHost, peerHostAddr)
 	startRunningSyncAPI(t, peerClient, peerClientAddr)
 
-	tryConnect(t, ctx, peerClient, defaultHostID)
+	tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
 
 	tryExpectOperationsSynced(t, ctx, peerHost, peerClient, oplog.Query{}.SetInstanceID(defaultClientID).SetRepoGUID(defaultRepoGUID), "host and client should be synced")
 	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetInstanceID(defaultClientID).SetRepoGUID(defaultRepoGUID),
@@ -372,9 +385,8 @@ func TestSyncMutations(t *testing.T) {
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
-				Id:                     defaultRepoID,
-				Guid:                   defaultRepoGUID,
-				AllowedPeerInstanceIds: []string{defaultClientID},
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -405,6 +417,14 @@ func TestSyncMutations(t *testing.T) {
 					Keyid:       identity1.Keyid,
 					InstanceId:  defaultHostID,
 					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
+					Permissions: []*v1.Multihost_Permission{
+						{
+							Type: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
+							Scopes: []string{
+								"repo:" + defaultRepoID,
+							},
+						},
+					},
 				},
 			},
 		},
@@ -435,7 +455,7 @@ func TestSyncMutations(t *testing.T) {
 		defer wg.Done()
 		runSyncAPIWithCtx(syncCtx, peerClient, peerClientAddr)
 	}()
-	tryConnect(t, ctx, peerClient, defaultHostID)
+	tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
 
 	tryExpectOperationsSynced(t, ctx, peerClient, peerHost, oplog.Query{}.SetRepoGUID(defaultRepoGUID), "host and client should sync initially")
 
@@ -478,7 +498,7 @@ func TestSyncMutations(t *testing.T) {
 		defer wg.Done()
 		runSyncAPIWithCtx(syncCtx, peerClient, peerClientAddr)
 	}()
-	tryConnect(t, ctx, peerClient, defaultHostID)
+	tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
 
 	// Verify all operations are synced after reconnection
 	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetRepoGUID(defaultRepoGUID),
@@ -578,59 +598,64 @@ func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnd
 	}
 }
 
-func tryExpectConfig(t *testing.T, ctx context.Context, peer *peerUnderTest, instanceID string, wantCfg *v1.RemoteConfig) {
+func tryExpectConfigFromHost(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantCfg *v1.RemoteConfig) {
 	testutil.Try(t, ctx, func() error {
-		cfg, err := peer.manager.remoteConfigStore.Get(instanceID)
-		if err != nil {
-			return err
+		state := peer.manager.peerStateManager.GetPeerState(hostPeer.Keyid)
+		if state == nil {
+			return fmt.Errorf("no state found for host peer %s", hostPeer.InstanceId)
 		}
-		if diff := cmp.Diff(cfg, wantCfg, protocmp.Transform()); diff != "" {
+		if diff := cmp.Diff(state.Config, wantCfg, protocmp.Transform()); diff != "" {
 			return fmt.Errorf("unexpected diff: %v", diff)
 		}
 		return nil
 	})
 }
 
-func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, instanceID string) {
-	testutil.Try(t, ctx, func() error {
-		allClients := peer.manager.GetSyncClients()
-		client, ok := allClients[instanceID]
-		if !ok {
-			return fmt.Errorf("client not found, got %v", allClients)
+func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantState v1.SyncConnectionState) {
+	ctx, cancel := testutil.WithDeadlineFromTest(t, ctx)
+	defer cancel()
+
+	// Important that we subscribe to the state change before we try the initial check to avoid races.
+	onStateChanged := peer.manager.peerStateManager.OnStateChanged().Subscribe()
+	defer peer.manager.peerStateManager.OnStateChanged().Unsubscribe(onStateChanged)
+
+	// First check if the peer is already connected.
+	state := peer.manager.peerStateManager.GetPeerState(hostPeer.Keyid)
+	if state != nil && state.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+		return // Already connected, nothing to do
+	}
+
+	// If not connected, wait for a connection event
+	var lastState *PeerState
+	stop := false
+	for !stop {
+		select {
+		case state, ok := <-onStateChanged:
+			if !ok {
+				stop = true
+				continue
+			}
+			if state.KeyID == hostPeer.Keyid && state.InstanceID == hostPeer.InstanceId {
+				lastState = state
+				if state.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+					stop = true
+					continue
+				}
+			}
+		case <-ctx.Done():
+			stop = true
+			continue
 		}
-		state, _ := client.GetConnectionState()
-		if state != v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
-			return fmt.Errorf("expected connection state to be CONNECTED, got %v", v1.SyncConnectionState.String(state))
-		}
-		return nil
-	})
+	}
+	if lastState == nil {
+		t.Fatalf("timeout waiting for connection to host peer %s", hostPeer.InstanceId)
+	} else if lastState.ConnectionState != v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+		t.Fatalf("expected connection state to be CONNECTED, got %v (reason: %q)", lastState.ConnectionState, lastState.ConnectionStateMessage)
+	}
 }
 
-func tryExpectConnectionFailure(t *testing.T, ctx context.Context, peer *peerUnderTest, instanceID string, wantCode connect.Code) {
-	t.Helper()
-	testutil.Try(t, ctx, func() error {
-		allClients := peer.manager.GetSyncClients()
-		client, ok := allClients[instanceID]
-		if !ok {
-			// It might take a moment for the client to be created.
-			return fmt.Errorf("client for instance %q not found yet", instanceID)
-		}
-
-		state, reason := client.GetConnectionState()
-		// The state can be either ERROR_AUTH or DISCONNECTED, since there's a race.
-		// The important part is that the reason contains the permission denied error.
-		if state != v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH && state != v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED {
-			return fmt.Errorf("expected connection state to be ERROR_AUTH or DISCONNECTED, got %v (reason: %q)", state, reason)
-		}
-
-		// The reason is the error string. For connect errors, it's "<code>: <message>".
-		// e.g. "permission_denied: peer ... not authorized"
-		if !strings.Contains(reason, wantCode.String()) {
-			return fmt.Errorf("expected reason to contain %q, but got %q", wantCode.String(), reason)
-		}
-
-		return nil
-	})
+func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer) {
+	waitForConnectionState(t, ctx, peer, hostPeer, v1.SyncConnectionState_CONNECTION_STATE_CONNECTED)
 }
 
 func allocBindAddrForTest(t *testing.T) string {
@@ -738,14 +763,26 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 		wg.Done()
 	}()
 
+	dbpool, err := sqlitex.NewPool("file:"+cryptoutil.MustRandomID(64)+"?mode=memory&cache=shared", sqlitex.PoolOptions{
+		PoolSize: 16,
+		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenURI,
+	})
+	if err != nil {
+		t.Fatalf("error creating sqlite pool: %s", err)
+	}
+
 	t.Cleanup(func() {
 		cancel()
 		wg.Wait()
+		dbpool.Close()
 	})
 
-	remoteConfigStore := NewJSONDirRemoteConfigStore(filepath.Join(tempDir, "remoteconfig"))
+	peerStateManager, err := NewSqlitePeerStateManager(dbpool)
+	if err != nil {
+		t.Fatalf("failed to create peer state manager: %v", err)
+	}
 
-	manager := NewSyncManager(configMgr, remoteConfigStore, oplog, orchestrator)
+	manager := NewSyncManager(configMgr, oplog, orchestrator, peerStateManager)
 	manager.syncClientRetryDelay = 250 * time.Millisecond
 
 	return &peerUnderTest{

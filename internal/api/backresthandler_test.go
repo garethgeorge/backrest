@@ -1050,7 +1050,7 @@ func createSystemUnderTest(t *testing.T, config *config.ConfigManager) systemUnd
 	if err != nil {
 		t.Fatalf("Failed to get config: %v", err)
 	}
-	remoteConfigStore := syncapi.NewJSONDirRemoteConfigStore(dir)
+	peerStateManager := syncapi.NewInMemoryPeerStateManager()
 	resticBin, err := resticinstaller.FindOrInstallResticBinary()
 	if err != nil {
 		t.Fatalf("Failed to find or install restic binary: %v", err)
@@ -1087,7 +1087,7 @@ func createSystemUnderTest(t *testing.T, config *config.ConfigManager) systemUnd
 		}
 	}
 
-	h := NewBackrestHandler(config, remoteConfigStore, orch, oplog, logStore)
+		h := NewBackrestHandler(config, peerStateManager, orch, oplog, logStore)
 
 	return systemUnderTest{
 		handler:  h,

@@ -212,64 +212,62 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           disabled={confirmLoading}
         >
           {/* Plan.id */}
-          <Tooltip title="Unique ID that identifies this plan in the backrest UI (e.g. s3-myplan). This cannot be changed after creation.">
-            <Form.Item<Plan>
-              hasFeedback
-              name="id"
-              label="Plan Name"
-              initialValue={template ? template.id : ""}
-              validateTrigger={["onChange", "onBlur"]}
-              rules={[
-                {
-                  required: true,
-                  message: "Please input plan name",
+          <Form.Item<Plan>
+            hasFeedback
+            name="id"
+            label="Plan Name"
+            initialValue={template ? template.id : ""}
+            validateTrigger={["onChange", "onBlur"]}
+            tooltip="Unique ID that identifies this plan in the backrest UI (e.g. s3-myplan). This cannot be changed after creation."
+            rules={[
+              {
+                required: true,
+                message: "Please input plan name",
+              },
+              {
+                validator: async (_, value) => {
+                  if (template) return;
+                  if (config?.plans?.find((r) => r.id === value)) {
+                    throw new Error("Plan with name already exists");
+                  }
                 },
-                {
-                  validator: async (_, value) => {
-                    if (template) return;
-                    if (config?.plans?.find((r) => r.id === value)) {
-                      throw new Error("Plan with name already exists");
-                    }
-                  },
-                  message: "Plan with name already exists",
-                },
-                {
-                  pattern: namePattern,
-                  message:
-                    "Name must be alphanumeric with dashes or underscores as separators",
-                },
-              ]}
-            >
-              <Input
-                placeholder={"plan" + ((config?.plans?.length || 0) + 1)}
-                disabled={!!template}
-              />
-            </Form.Item>
-          </Tooltip>
+                message: "Plan with name already exists",
+              },
+              {
+                pattern: namePattern,
+                message:
+                  "Name must be alphanumeric with dashes or underscores as separators",
+              },
+            ]}
+          >
+            <Input
+              placeholder={"plan" + ((config?.plans?.length || 0) + 1)}
+              disabled={!!template}
+            />
+          </Form.Item>
 
           {/* Plan.repo */}
-          <Tooltip title="The repo that backrest will store your snapshots in.">
-            <Form.Item<Plan>
-              name="repo"
-              label="Repository"
-              validateTrigger={["onChange", "onBlur"]}
-              initialValue={template ? template.repo : ""}
-              rules={[
-                {
-                  required: true,
-                  message: "Please select repository",
-                },
-              ]}
-            >
-              <Select
-                // defaultValue={repos.length > 0 ? repos[0].id : undefined}
-                options={repos.map((repo) => ({
-                  value: repo.id,
-                }))}
-                disabled={!!template}
-              />
-            </Form.Item>
-          </Tooltip>
+          <Form.Item<Plan>
+            name="repo"
+            label="Repository"
+            validateTrigger={["onChange", "onBlur"]}
+            initialValue={template ? template.repo : ""}
+            tooltip="The repo that backrest will store your snapshots in."
+            rules={[
+              {
+                required: true,
+                message: "Please select repository",
+              },
+            ]}
+          >
+            <Select
+              // defaultValue={repos.length > 0 ? repos[0].id : undefined}
+              options={repos.map((repo) => ({
+                value: repo.id,
+              }))}
+              disabled={!!template}
+            />
+          </Form.Item>
 
           {/* Plan.paths */}
           <Form.Item label="Paths" required={true}>
@@ -280,31 +278,34 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             >
               {(fields, { add, remove }, { errors }) => (
                 <>
-                  {fields.map((field, index) => (
-                    <Form.Item key={field.key}>
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        initialValue={""}
-                        rules={[
-                          {
-                            required: true,
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <URIAutocomplete
-                          style={{ width: "90%" }}
-                          onBlur={() => form.validateFields()}
+                  {fields.map((field, index) => {
+                    const { key, ...restField } = field;
+                    return (
+                      <Form.Item key={field.key}>
+                        <Form.Item
+                          {...restField}
+                          validateTrigger={["onChange", "onBlur"]}
+                          initialValue={""}
+                          rules={[
+                            {
+                              required: true,
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <URIAutocomplete
+                            style={{ width: "90%" }}
+                            onBlur={() => form.validateFields()}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(field.name)}
+                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(field.name)}
-                        style={{ paddingLeft: "5px" }}
-                      />
-                    </Form.Item>
-                  ))}
+                    );
+                  })}
                   <Form.Item>
                     <Button
                       type="dashed"
@@ -322,8 +323,10 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           </Form.Item>
 
           {/* Plan.excludes */}
-          <Tooltip
-            title={
+          <Form.Item
+            label="Excludes"
+            required={false}
+            tooltip={
               <>
                 Paths to exclude from your backups. See the{" "}
                 <a
@@ -336,18 +339,19 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
               </>
             }
           >
-            <Form.Item label="Excludes" required={false}>
-              <Form.List
-                name="excludes"
-                rules={[]}
-                initialValue={template ? template.excludes : []}
-              >
-                {(fields, { add, remove }, { errors }) => (
-                  <>
-                    {fields.map((field, index) => (
+            <Form.List
+              name="excludes"
+              rules={[]}
+              initialValue={template ? template.excludes : []}
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => {
+                    const { key, ...restField } = field;
+                    return (
                       <Form.Item required={false} key={field.key}>
                         <Form.Item
-                          {...field}
+                          {...restField}
                           validateTrigger={["onChange", "onBlur"]}
                           initialValue={""}
                           rules={[
@@ -369,27 +373,29 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                           style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
-                    ))}
-                    <Form.Item>
-                      <Button
-                        type="dashed"
-                        onClick={() => add()}
-                        style={{ width: "90%" }}
-                        icon={<PlusOutlined />}
-                      >
-                        Add Exclusion Glob
-                      </Button>
-                      <Form.ErrorList errors={errors} />
-                    </Form.Item>
-                  </>
-                )}
-              </Form.List>
-            </Form.Item>
-          </Tooltip>
+                    );
+                  })}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      style={{ width: "90%" }}
+                      icon={<PlusOutlined />}
+                    >
+                      Add Exclusion Glob
+                    </Button>
+                    <Form.ErrorList errors={errors} />
+                  </Form.Item>
+                </>
+              )}
+            </Form.List>
+          </Form.Item>
 
           {/* Plan.iexcludes */}
-          <Tooltip
-            title={
+          <Form.Item
+            label="Excludes (Case Insensitive)"
+            required={false}
+            tooltip={
               <>
                 Case insensitive paths to exclude from your backups. See the{" "}
                 <a
@@ -402,18 +408,19 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
               </>
             }
           >
-            <Form.Item label="Excludes (Case Insensitive)" required={false}>
-              <Form.List
-                name="iexcludes"
-                rules={[]}
-                initialValue={template ? template.iexcludes : []}
-              >
-                {(fields, { add, remove }, { errors }) => (
-                  <>
-                    {fields.map((field, index) => (
+            <Form.List
+              name="iexcludes"
+              rules={[]}
+              initialValue={template ? template.iexcludes : []}
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => {
+                    const { key, ...restField } = field;
+                    return (
                       <Form.Item required={false} key={field.key}>
                         <Form.Item
-                          {...field}
+                          {...restField}
                           validateTrigger={["onChange", "onBlur"]}
                           initialValue={""}
                           rules={[
@@ -435,23 +442,23 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                           style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
-                    ))}
-                    <Form.Item>
-                      <Button
-                        type="dashed"
-                        onClick={() => add()}
-                        style={{ width: "90%" }}
-                        icon={<PlusOutlined />}
-                      >
-                        Add Case Insensitive Exclusion Glob
-                      </Button>
-                      <Form.ErrorList errors={errors} />
-                    </Form.Item>
-                  </>
-                )}
-              </Form.List>
-            </Form.Item>
-          </Tooltip>
+                    );
+                  })}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      style={{ width: "90%" }}
+                      icon={<PlusOutlined />}
+                    >
+                      Add Case Insensitive Exclusion Glob
+                    </Button>
+                    <Form.ErrorList errors={errors} />
+                  </Form.Item>
+                </>
+              )}
+            </Form.List>
+          </Form.Item>
 
           {/* Plan.cron */}
           <Form.Item label="Backup Schedule">
@@ -472,31 +479,37 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             <Form.List name="backup_flags">
               {(fields, { add, remove }, { errors }) => (
                 <>
-                  {fields.map((field, index) => (
-                    <Form.Item required={false} key={field.key}>
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        rules={[
-                          {
-                            required: true,
-                            whitespace: true,
-                            pattern: /^\-\-?.*$/,
-                            message:
-                              "Value should be a CLI flag e.g. see restic backup --help",
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <Input placeholder="--flag" style={{ width: "90%" }} />
+                  {fields.map((field, index) => {
+                    const { key, ...restField } = field;
+                    return (
+                      <Form.Item required={false} key={field.key}>
+                        <Form.Item
+                          {...restField}
+                          validateTrigger={["onChange", "onBlur"]}
+                          rules={[
+                            {
+                              required: true,
+                              whitespace: true,
+                              pattern: /^\-\-?.*$/,
+                              message:
+                                "Value should be a CLI flag e.g. see restic backup --help",
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <Input
+                            placeholder="--flag"
+                            style={{ width: "90%" }}
+                          />
+                        </Form.Item>
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(index)}
+                          style={{ paddingLeft: "5px" }}
+                        />
                       </Form.Item>
-                      <MinusCircleOutlined
-                        className="dynamic-delete-button"
-                        onClick={() => remove(index)}
-                        style={{ paddingLeft: "5px" }}
-                      />
-                    </Form.Item>
-                  ))}
+                    );
+                  })}
                   <Form.Item>
                     <Button
                       type="dashed"

@@ -757,6 +757,7 @@ func TestQueryMetadata(t *testing.T) {
 				FlowId:          5,
 				OriginalId:      3,
 				OriginalFlowId:  4,
+				Status:          v1.OperationStatus_STATUS_INPROGRESS,
 			}); err != nil {
 				t.Fatalf("error adding operation: %s", err)
 			}
@@ -782,6 +783,7 @@ func TestQueryMetadata(t *testing.T) {
 				FlowID:         5,
 				OriginalID:     3,
 				OriginalFlowID: 4,
+				Status:         v1.OperationStatus_STATUS_INPROGRESS,
 			}); diff != "" {
 				t.Errorf("unexpected diff: %v", diff)
 			}

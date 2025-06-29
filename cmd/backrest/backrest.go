@@ -35,6 +35,8 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"gopkg.in/natefinch/lumberjack.v2"
+	"zombiezen.com/go/sqlite"
+	"zombiezen.com/go/sqlite/sqlitex"
 )
 
 var InstallDepsOnly = flag.Bool("install-deps-only", false, "install dependencies and exit")
@@ -124,20 +126,33 @@ func main() {
 		wg.Done()
 	}()
 
+	// Create peerstate manager
+	// Note: we don't have to acquire a lock since the sqlitestore already checks this, elsewise we should here.
+	peerStateDbPath := path.Join(env.DataDir(), "general.sqlite")
+	peerStateDbPool, err := sqlitex.NewPool(peerStateDbPath, sqlitex.PoolOptions{
+		PoolSize: 16,
+		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenWAL,
+	})
+	if err != nil {
+		zap.S().Fatalf("error creating sqlite pool for peer state: %v", err)
+	}
+	peerStateManager, err := syncapi.NewSqlitePeerStateManager(peerStateDbPool)
+	if err != nil {
+		zap.S().Fatalf("error creating peer state manager: %v", err)
+	}
+	defer peerStateDbPool.Close()
+
 	// Create and serve the HTTP gateway
-	remoteConfigStore := syncapi.NewJSONDirRemoteConfigStore(filepath.Join(env.DataDir(), "sync", "remote_configs"))
-	syncMgr := syncapi.NewSyncManager(configMgr, remoteConfigStore, log, orchestrator)
+	syncMgr := syncapi.NewSyncManager(configMgr, log, orchestrator, peerStateManager)
 	wg.Add(1)
 	go func() {
 		syncMgr.RunSync(ctx)
 		wg.Done()
 	}()
 
-	syncHandler := syncapi.NewBackrestSyncHandler(syncMgr)
-
 	apiBackrestHandler := api.NewBackrestHandler(
 		configMgr,
-		remoteConfigStore,
+		peerStateManager,
 		orchestrator,
 		log,
 		logStore,
@@ -147,12 +162,11 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewAuthenticationHandler(apiAuthenticationHandler))
-	if cfg.GetMultihost() != nil {
-		// alpha feature, only available if the user manually enables it in the config.
-		mux.Handle(v1connect.NewBackrestSyncServiceHandler(syncHandler))
-	}
 	backrestHandlerPath, backrestHandler := v1connect.NewBackrestHandler(apiBackrestHandler)
 	mux.Handle(backrestHandlerPath, auth.RequireAuthentication(backrestHandler, authenticator))
+	mux.Handle(v1connect.NewBackrestSyncServiceHandler(syncapi.NewBackrestSyncHandler(syncMgr)))
+	syncStateHandlerPath, syncStateHandler := v1connect.NewBackrestSyncStateServiceHandler(syncapi.NewBackrestSyncStateHandler(syncMgr))
+	mux.Handle(syncStateHandlerPath, auth.RequireAuthentication(syncStateHandler, authenticator))
 	mux.Handle("/", webui.Handler())
 	mux.Handle("/download/", http.StripPrefix("/download", api.NewDownloadHandler(log)))
 	mux.Handle("/metrics", auth.RequireAuthentication(metric.GetRegistry().Handler(), authenticator))

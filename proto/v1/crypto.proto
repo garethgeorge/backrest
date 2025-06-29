@@ -8,15 +8,16 @@ message SignedMessage {
   string keyid = 1; // a unique identifier generated as the SHA256 of the public key used to sign the message.
   bytes payload = 2; // the payload
   bytes signature = 3; // the signature of the payload
+  int64 timestampMillis = 4; // the timestamp in milliseconds since epoch when the message was signed. Must be within 5 minutes of the current time.
 }
 
 message PublicKey {
-  string keyid = 1 [json_name="keyid"]; // a unique identifier generated as the SHA256 of the public key.
+  string keyid = 1 [json_name="keyId"]; // a unique identifier generated as the SHA256 of the public key.
   string ed25519pub = 2 [json_name="ed25519pub"];
 }
 
 message PrivateKey {
-  string keyid = 1 [json_name="keyid"]; // a unique identifier generated as the SHA256 of the public key
+  string keyid = 1 [json_name="keyId"]; // a unique identifier generated as the SHA256 of the public key
   string ed25519priv = 2 [json_name="ed25519priv"]; 
   string ed25519pub = 3 [json_name="ed25519pub"];
 }

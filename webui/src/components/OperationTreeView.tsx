@@ -142,10 +142,10 @@ export const OperationTreeView = ({
       primaryTree = instTree;
     } else {
       otherTrees.push(
-        <>
+        <div key={instance} style={{ marginTop: "20px" }}>
           <Typography.Title level={4}>{instance}</Typography.Title>
           {instTree}
-        </>
+        </div>
       );
     }
   }
@@ -286,7 +286,10 @@ const buildTree = (
       let title: React.ReactNode = key;
       if (title === "_unassociated_") {
         title = (
-          <Tooltip title="_unassociated_ instance ID collects operations that do not specify a `created-by:` tag denoting the backrest install that created them.">
+          <Tooltip
+            key={`tooltip-instance-${key}`}
+            title="_unassociated_ instance ID collects operations that do not specify a `created-by:` tag denoting the backrest install that created them."
+          >
             _unassociated_
           </Tooltip>
         );
@@ -310,13 +313,19 @@ const buildTree = (
       let title: React.ReactNode = value[0].planID;
       if (title === "_unassociated_") {
         title = (
-          <Tooltip title="_unassociated_ plan ID collects operations that do not specify a `plan:` tag denoting the backup plan that created them.">
+          <Tooltip
+            key={`tooltip-plan-unassociated-${key}`}
+            title="_unassociated_ plan ID collects operations that do not specify a `plan:` tag denoting the backup plan that created them."
+          >
             _unassociated_
           </Tooltip>
         );
       } else if (title === "_system_") {
         title = (
-          <Tooltip title="_system_ plan ID collects health operations not associated with any single plan e.g. repo level check or prune runs.">
+          <Tooltip
+            key={`tooltip-plan-system-${key}`}
+            title="_system_ plan ID collects health operations not associated with any single plan e.g. repo level check or prune runs."
+          >
             _system_
           </Tooltip>
         );
