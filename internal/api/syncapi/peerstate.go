@@ -1,7 +1,6 @@
 package syncapi
 
 import (
-	"context"
 	"fmt"
 	"maps"
 	"slices"
@@ -10,9 +9,9 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/eventemitter"
+	"github.com/garethgeorge/backrest/internal/kvstore"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
-	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 )
 
@@ -165,40 +164,24 @@ func (m *InMemoryPeerStateManager) Close() error {
 
 type SqlitePeerStateManager struct {
 	mu             sync.Mutex
-	dbpool         *sqlitex.Pool
 	onStateChanged eventemitter.BlockingEventEmitter[*PeerState]
+	kvstore        kvstore.KvStore
 }
 
 func NewSqlitePeerStateManager(dbpool *sqlitex.Pool) (*SqlitePeerStateManager, error) {
+	kv, err := kvstore.NewSqliteKVStore(dbpool, "peer_states")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kvstore: %v", err)
+	}
 	m := &SqlitePeerStateManager{
-		dbpool: dbpool,
 		onStateChanged: eventemitter.BlockingEventEmitter[*PeerState]{
 			EventEmitter: eventemitter.EventEmitter[*PeerState]{
 				DefaultCapacity: 10, // Default capacity for the event emitter
 			},
 		},
-	}
-	if err := m.init(); err != nil {
-		return nil, err
+		kvstore: kv,
 	}
 	return m, nil
-}
-
-func (m *SqlitePeerStateManager) init() error {
-	conn, err := m.dbpool.Take(context.Background())
-	if err != nil {
-		return fmt.Errorf("init sqlite: %v", err)
-	}
-	defer m.dbpool.Put(conn)
-
-	if err := sqlitex.ExecuteTransient(conn, `CREATE TABLE IF NOT EXISTS peer_states (
-		key_id TEXT PRIMARY KEY,
-		state BLOB
-	);`, nil); err != nil {
-		return fmt.Errorf("create peer_states table: %v", err)
-	}
-
-	return nil
 }
 
 func (m *SqlitePeerStateManager) OnStateChanged() eventemitter.Receiver[*PeerState] {
@@ -209,28 +192,11 @@ func (m *SqlitePeerStateManager) GetPeerState(keyID string) *PeerState {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	conn, err := m.dbpool.Take(context.Background())
+	stateBytes, err := m.kvstore.Get(keyID)
 	if err != nil {
-		zap.S().Warnf("error taking connection from pool: %v", err)
-		return nil
-	}
-	defer m.dbpool.Put(conn)
-
-	var stateBytes []byte
-	if err := sqlitex.ExecuteTransient(conn, "SELECT state FROM peer_states WHERE key_id = ?", &sqlitex.ExecOptions{
-		Args: []any{keyID},
-		ResultFunc: func(stmt *sqlite.Stmt) error {
-			stateBytes = make([]byte, stmt.ColumnLen(0))
-			n := stmt.ColumnBytes(0, stateBytes)
-			stateBytes = stateBytes[:n]
-			return nil
-		},
-	}); err != nil {
 		zap.S().Warnf("error getting peer state for key %s: %v", keyID, err)
 		return nil
-	}
-
-	if stateBytes == nil {
+	} else if stateBytes == nil {
 		return nil
 	}
 
@@ -247,33 +213,19 @@ func (m *SqlitePeerStateManager) GetAll() []*PeerState {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	conn, err := m.dbpool.Take(context.Background())
-	if err != nil {
+	states := make([]*PeerState, 0)
+	m.kvstore.ForEach("", func(key string, value []byte) error {
+		var stateProto v1.PeerState
+		if err := proto.Unmarshal(value, &stateProto); err != nil {
+			zap.S().Warnf("error unmarshalling peer state for key %s: %v", key, err)
+			return nil // Skip this entry
+		}
+		state := peerStateFromProto(&stateProto)
+		if state != nil {
+			states = append(states, state)
+		}
 		return nil
-	}
-	defer m.dbpool.Put(conn)
-
-	var states []*PeerState
-	if err := sqlitex.ExecuteTransient(conn, "SELECT state FROM peer_states", &sqlitex.ExecOptions{
-		ResultFunc: func(stmt *sqlite.Stmt) error {
-			stateBytes := make([]byte, stmt.ColumnLen(0))
-			n := stmt.ColumnBytes(0, stateBytes)
-			stateBytes = stateBytes[:n]
-
-			stateProto := &v1.PeerState{}
-			if err := proto.Unmarshal(stateBytes, stateProto); err != nil {
-				return err
-			}
-			st := peerStateFromProto(stateProto)
-			if st != nil {
-				states = append(states, st)
-			}
-			return nil
-		},
-	}); err != nil {
-		return nil
-	}
-
+	})
 	return states
 }
 
@@ -287,22 +239,13 @@ func (m *SqlitePeerStateManager) SetPeerState(keyID string, state *PeerState) {
 		return
 	}
 
-	conn, err := m.dbpool.Take(context.Background())
-	if err != nil {
-		zap.S().Warnf("error taking connection from pool: %v", err)
+	if err := m.kvstore.Set(keyID, stateBytes); err != nil {
+		zap.S().Warnf("error setting peer state for key %s: %v", keyID, err)
 		return
 	}
-	defer m.dbpool.Put(conn)
-
-	if err := sqlitex.ExecuteTransient(conn, "INSERT OR REPLACE INTO peer_states (key_id, state) VALUES (?, ?)", &sqlitex.ExecOptions{
-		Args: []any{keyID, stateBytes},
-	}); err != nil {
-		zap.S().Warnf("error inserting or replacing peer state %s: %v", keyID, err)
-	}
-	copy := state.Clone()
-	m.onStateChanged.Emit(copy)
+	m.onStateChanged.Emit(state.Clone())
 }
 
 func (m *SqlitePeerStateManager) Close() error {
-	return m.dbpool.Close()
+	return nil
 }
