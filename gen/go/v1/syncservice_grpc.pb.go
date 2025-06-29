@@ -11,7 +11,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -20,16 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	BackrestSyncService_Sync_FullMethodName           = "/v1.BackrestSyncService/Sync"
-	BackrestSyncService_GetRemoteRepos_FullMethodName = "/v1.BackrestSyncService/GetRemoteRepos"
+	BackrestSyncService_Sync_FullMethodName = "/v1.BackrestSyncService/Sync"
 )
 
 // BackrestSyncServiceClient is the client API for BackrestSyncService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// BackrestSyncService provides methods to sync data between backrest instances.
+// This service provides its own authentication and authorization.
 type BackrestSyncServiceClient interface {
 	Sync(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[SyncStreamItem, SyncStreamItem], error)
-	GetRemoteRepos(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetRemoteReposResponse, error)
 }
 
 type backrestSyncServiceClient struct {
@@ -53,22 +53,14 @@ func (c *backrestSyncServiceClient) Sync(ctx context.Context, opts ...grpc.CallO
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type BackrestSyncService_SyncClient = grpc.BidiStreamingClient[SyncStreamItem, SyncStreamItem]
 
-func (c *backrestSyncServiceClient) GetRemoteRepos(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetRemoteReposResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetRemoteReposResponse)
-	err := c.cc.Invoke(ctx, BackrestSyncService_GetRemoteRepos_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // BackrestSyncServiceServer is the server API for BackrestSyncService service.
 // All implementations must embed UnimplementedBackrestSyncServiceServer
 // for forward compatibility.
+//
+// BackrestSyncService provides methods to sync data between backrest instances.
+// This service provides its own authentication and authorization.
 type BackrestSyncServiceServer interface {
 	Sync(grpc.BidiStreamingServer[SyncStreamItem, SyncStreamItem]) error
-	GetRemoteRepos(context.Context, *emptypb.Empty) (*GetRemoteReposResponse, error)
 	mustEmbedUnimplementedBackrestSyncServiceServer()
 }
 
@@ -81,9 +73,6 @@ type UnimplementedBackrestSyncServiceServer struct{}
 
 func (UnimplementedBackrestSyncServiceServer) Sync(grpc.BidiStreamingServer[SyncStreamItem, SyncStreamItem]) error {
 	return status.Errorf(codes.Unimplemented, "method Sync not implemented")
-}
-func (UnimplementedBackrestSyncServiceServer) GetRemoteRepos(context.Context, *emptypb.Empty) (*GetRemoteReposResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetRemoteRepos not implemented")
 }
 func (UnimplementedBackrestSyncServiceServer) mustEmbedUnimplementedBackrestSyncServiceServer() {}
 func (UnimplementedBackrestSyncServiceServer) testEmbeddedByValue()                             {}
@@ -113,42 +102,131 @@ func _BackrestSyncService_Sync_Handler(srv interface{}, stream grpc.ServerStream
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type BackrestSyncService_SyncServer = grpc.BidiStreamingServer[SyncStreamItem, SyncStreamItem]
 
-func _BackrestSyncService_GetRemoteRepos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BackrestSyncServiceServer).GetRemoteRepos(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: BackrestSyncService_GetRemoteRepos_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestSyncServiceServer).GetRemoteRepos(ctx, req.(*emptypb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // BackrestSyncService_ServiceDesc is the grpc.ServiceDesc for BackrestSyncService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var BackrestSyncService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "v1.BackrestSyncService",
 	HandlerType: (*BackrestSyncServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "GetRemoteRepos",
-			Handler:    _BackrestSyncService_GetRemoteRepos_Handler,
-		},
-	},
+	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Sync",
 			Handler:       _BackrestSyncService_Sync_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
+		},
+	},
+	Metadata: "v1/syncservice.proto",
+}
+
+const (
+	BackrestSyncStateService_GetPeerSyncStatesStream_FullMethodName = "/v1.BackrestSyncStateService/GetPeerSyncStatesStream"
+)
+
+// BackrestSyncStateServiceClient is the client API for BackrestSyncStateService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// BackrestSyncStateService provides methods to query the sync state of known hosts and clients.
+// This service should be served behind authentication and authorization.
+type BackrestSyncStateServiceClient interface {
+	GetPeerSyncStatesStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PeerState], error)
+}
+
+type backrestSyncStateServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewBackrestSyncStateServiceClient(cc grpc.ClientConnInterface) BackrestSyncStateServiceClient {
+	return &backrestSyncStateServiceClient{cc}
+}
+
+func (c *backrestSyncStateServiceClient) GetPeerSyncStatesStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PeerState], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &BackrestSyncStateService_ServiceDesc.Streams[0], BackrestSyncStateService_GetPeerSyncStatesStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SyncStateStreamRequest, PeerState]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type BackrestSyncStateService_GetPeerSyncStatesStreamClient = grpc.ServerStreamingClient[PeerState]
+
+// BackrestSyncStateServiceServer is the server API for BackrestSyncStateService service.
+// All implementations must embed UnimplementedBackrestSyncStateServiceServer
+// for forward compatibility.
+//
+// BackrestSyncStateService provides methods to query the sync state of known hosts and clients.
+// This service should be served behind authentication and authorization.
+type BackrestSyncStateServiceServer interface {
+	GetPeerSyncStatesStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[PeerState]) error
+	mustEmbedUnimplementedBackrestSyncStateServiceServer()
+}
+
+// UnimplementedBackrestSyncStateServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedBackrestSyncStateServiceServer struct{}
+
+func (UnimplementedBackrestSyncStateServiceServer) GetPeerSyncStatesStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[PeerState]) error {
+	return status.Errorf(codes.Unimplemented, "method GetPeerSyncStatesStream not implemented")
+}
+func (UnimplementedBackrestSyncStateServiceServer) mustEmbedUnimplementedBackrestSyncStateServiceServer() {
+}
+func (UnimplementedBackrestSyncStateServiceServer) testEmbeddedByValue() {}
+
+// UnsafeBackrestSyncStateServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to BackrestSyncStateServiceServer will
+// result in compilation errors.
+type UnsafeBackrestSyncStateServiceServer interface {
+	mustEmbedUnimplementedBackrestSyncStateServiceServer()
+}
+
+func RegisterBackrestSyncStateServiceServer(s grpc.ServiceRegistrar, srv BackrestSyncStateServiceServer) {
+	// If the following call pancis, it indicates UnimplementedBackrestSyncStateServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&BackrestSyncStateService_ServiceDesc, srv)
+}
+
+func _BackrestSyncStateService_GetPeerSyncStatesStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SyncStateStreamRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(BackrestSyncStateServiceServer).GetPeerSyncStatesStream(m, &grpc.GenericServerStream[SyncStateStreamRequest, PeerState]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type BackrestSyncStateService_GetPeerSyncStatesStreamServer = grpc.ServerStreamingServer[PeerState]
+
+// BackrestSyncStateService_ServiceDesc is the grpc.ServiceDesc for BackrestSyncStateService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var BackrestSyncStateService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "v1.BackrestSyncStateService",
+	HandlerType: (*BackrestSyncStateServiceServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetPeerSyncStatesStream",
+			Handler:       _BackrestSyncStateService_GetPeerSyncStatesStream_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "v1/syncservice.proto",

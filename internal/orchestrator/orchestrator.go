@@ -365,8 +365,8 @@ func (o *Orchestrator) Run(ctx context.Context) {
 	zap.L().Info("starting orchestrator loop")
 
 	// Setup config watching
-	configCh := o.configMgr.Watch()
-	defer o.configMgr.StopWatching(configCh)
+	configCh := o.configMgr.OnChange.Subscribe()
+	defer o.configMgr.OnChange.Unsubscribe(configCh)
 
 	// Start the config watcher goroutine
 	go o.watchConfigChanges(ctx, configCh)

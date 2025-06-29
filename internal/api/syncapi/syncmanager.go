@@ -17,10 +17,9 @@ import (
 )
 
 type SyncManager struct {
-	configMgr         *config.ConfigManager
-	orchestrator      *orchestrator.Orchestrator
-	oplog             *oplog.OpLog
-	remoteConfigStore RemoteConfigStore
+	configMgr    *config.ConfigManager
+	orchestrator *orchestrator.Orchestrator
+	oplog        *oplog.OpLog
 
 	// mutable properties
 	mu sync.Mutex
@@ -30,17 +29,44 @@ type SyncManager struct {
 	syncClientRetryDelay time.Duration // the default retry delay for sync clients, protected by mu
 
 	syncClients map[string]*SyncClient // current sync clients, protected by mu
+
+	peerStateManager PeerStateManager
 }
 
-func NewSyncManager(configMgr *config.ConfigManager, remoteConfigStore RemoteConfigStore, oplog *oplog.OpLog, orchestrator *orchestrator.Orchestrator) *SyncManager {
+func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchestrator *orchestrator.Orchestrator, peerStateManager PeerStateManager) *SyncManager {
+	// Fetch the config, and mark all sync clients and known hosts as disconnected (but preserve other fields).
+	config, err := configMgr.Get()
+	if err == nil {
+		for _, knownHostPeer := range config.GetMultihost().GetKnownHosts() {
+			state := peerStateManager.GetPeerState(knownHostPeer.Keyid)
+			if state == nil {
+				continue
+			}
+			state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+			state.ConnectionStateMessage = "disconnected"
+			peerStateManager.SetPeerState(knownHostPeer.Keyid, state)
+		}
+		for _, authorizedClient := range config.GetMultihost().GetAuthorizedClients() {
+			state := peerStateManager.GetPeerState(authorizedClient.Keyid)
+			if state == nil {
+				continue
+			}
+			state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+			state.ConnectionStateMessage = "disconnected"
+			peerStateManager.SetPeerState(authorizedClient.Keyid, state)
+		}
+	} else {
+		zap.S().Errorf("syncmanager failed to get initial config: %v", err)
+	}
 	return &SyncManager{
-		configMgr:         configMgr,
-		orchestrator:      orchestrator,
-		oplog:             oplog,
-		remoteConfigStore: remoteConfigStore,
+		configMgr:    configMgr,
+		orchestrator: orchestrator,
+		oplog:        oplog,
 
 		syncClientRetryDelay: 60 * time.Second,
 		syncClients:          make(map[string]*SyncClient),
+
+		peerStateManager: peerStateManager,
 	}
 }
 
@@ -56,8 +82,8 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 	var syncWg sync.WaitGroup
 	var cancelLastSync context.CancelFunc
 
-	configWatchCh := m.configMgr.Watch()
-	defer m.configMgr.StopWatching(configWatchCh)
+	configWatchCh := m.configMgr.OnChange.Subscribe()
+	defer m.configMgr.OnChange.Unsubscribe(configWatchCh)
 
 	runSyncWithNewConfig := func() {
 		m.mu.Lock()
@@ -75,6 +101,12 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 		config, err := m.configMgr.Get()
 		if err != nil {
 			zap.S().Errorf("syncmanager failed to refresh config with latest changes so sync is stopped: %v", err)
+			return
+		}
+
+		if config.Multihost.GetIdentity() == nil {
+			zap.S().Info("syncmanager no identity key configured, sync feature is disabled.")
+			m.snapshot = nil // Clear the snapshot to indicate sync is disabled
 			return
 		}
 
@@ -156,7 +188,7 @@ func (m *SyncManager) runSyncWithPeerInternal(ctx context.Context, config *v1.Co
 
 type syncConfigSnapshot struct {
 	config      *v1.Config
-	identityKey *cryptoutil.PrivateKey
+	identityKey *cryptoutil.PrivateKey // the local instance's identity key, used for signing sync messages
 }
 
 func (m *SyncManager) getSyncConfigSnapshot() *syncConfigSnapshot {

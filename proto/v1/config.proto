@@ -42,9 +42,32 @@ message Multihost {
     string instance_id = 1 [json_name="instanceId"]; // a human readable name for the peer, typically the same as its instance ID.
     string keyid = 2 [json_name="keyId"]; // the key ID of the peer. This must match the sha256 of the public key the client provides in handshake.
     bool keyid_verified = 3 [json_name="keyIdVerified"]; // marks whether the key ID was visually verified by the user, this must be done for authorized clients. Not required for known hosts but recommended.
+    repeated Permission permissions = 5 [json_name="permissions"]; // permissions granted to this peer.
 
     // Known host only fields
     string instance_url = 4 [json_name="instanceUrl"]; // instance URL, required for a known host. Otherwise meaningless.
+  }
+
+  message Permission {
+    enum Type {
+      PERMISSION_UNKNOWN = 0;
+      
+      // When granted to a knownHost the local instance will push local changes to that known host.
+      PERMISSION_READ_OPERATIONS = 1;
+
+      // When granted to an authorizedClient, the client will be able to pull the configuration from the server.
+      // When granted to a knownHost, the known host will be able to pull configuration from the client.
+      PERMISSION_READ_CONFIG = 2; // read configuration for the resource in scope.
+
+      // When granted to an authorizedClient, the client will be able to write the configuration to the server.
+      // When granted to a knownHost, the known host will be able to write configuration.
+      PERMISSION_READ_WRITE_CONFIG = 3; // read and write configuration for the resource in scope.
+    }
+    // Scopes are any of '*', 'repo:<repo_id>' or 'plan:<plan_id>','-repo:<repo_id>','-plan:<plan_id>'.
+    // '*' means all repos and plans, 'repo:<repo_id>' means the repo with the given ID, 'plan:<plan_id>' means the plan with the given ID.
+    // '!repo:<repo_id>' means all repos except the one with the given ID, '!plan:<plan_id>' means all plans except the one with the given ID.
+    Type type = 1;
+    repeated string scopes = 2 [json_name="scopes"]; 
   }
 }
 
@@ -61,7 +84,6 @@ message Repo {
   bool auto_unlock = 8 [json_name="autoUnlock"]; // automatically unlock the repo when needed.
   bool auto_initialize = 12 [json_name="autoInitialize"]; // whether the repo should be auto-initialized if not found.
   CommandPrefix command_prefix = 10 [json_name="commandPrefix"]; // modifiers for the restic commands
-  repeated string allowed_peer_instance_ids = 100 [json_name="allowedPeers"]; // list of peer instance IDs allowed to access this repo.
 }
 
 message Plan {

@@ -260,7 +260,7 @@ func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) erro
 	defer m.dbpool.Put(conn)
 
 	where, args := m.buildQueryWhereClause(q, false)
-	if err := sqlitex.ExecuteTransient(conn, "SELECT operations.id, operations.modno, operations.original_id, operations.flow_id, operations.original_flow_id FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+where, &sqlitex.ExecOptions{
+	if err := sqlitex.ExecuteTransient(conn, "SELECT operations.id, operations.modno, operations.original_id, operations.flow_id, operations.original_flow_id, operations.status FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+where, &sqlitex.ExecOptions{
 		Args: args,
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			return f(oplog.OpMetadata{
@@ -269,6 +269,7 @@ func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) erro
 				OriginalID:     stmt.ColumnInt64(2),
 				FlowID:         stmt.ColumnInt64(3),
 				OriginalFlowID: stmt.ColumnInt64(4),
+				Status:         v1.OperationStatus(stmt.ColumnInt64(5)),
 			})
 		},
 	}); err != nil && !errors.Is(err, oplog.ErrStopIteration) {

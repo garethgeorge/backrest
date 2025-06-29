@@ -37,22 +37,22 @@ import (
 
 type BackrestHandler struct {
 	v1connect.UnimplementedBackrestHandler
-	config            config.ConfigStore
-	orchestrator      *orchestrator.Orchestrator
-	oplog             *oplog.OpLog
-	logStore          *logstore.LogStore
-	remoteConfigStore syncapi.RemoteConfigStore
+	config           config.ConfigStore
+	orchestrator     *orchestrator.Orchestrator
+	oplog            *oplog.OpLog
+	logStore         *logstore.LogStore
+	peerStateManager syncapi.PeerStateManager
 }
 
 var _ v1connect.BackrestHandler = &BackrestHandler{}
 
-func NewBackrestHandler(config config.ConfigStore, remoteConfigStore syncapi.RemoteConfigStore, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *logstore.LogStore) *BackrestHandler {
+func NewBackrestHandler(config config.ConfigStore, peerStateManager syncapi.PeerStateManager, orchestrator *orchestrator.Orchestrator, oplog *oplog.OpLog, logStore *logstore.LogStore) *BackrestHandler {
 	s := &BackrestHandler{
-		config:            config,
-		orchestrator:      orchestrator,
-		oplog:             oplog,
-		logStore:          logStore,
-		remoteConfigStore: remoteConfigStore,
+		config:           config,
+		orchestrator:     orchestrator,
+		oplog:            oplog,
+		logStore:         logStore,
+		peerStateManager: peerStateManager,
 	}
 
 	return s
@@ -168,47 +168,27 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 	// Ensure the Repo GUID is set to the correct value.
 	// This is derived from 'restic cat config' for local repos.
 	// For remote repos, the GUID is derived from the remote config's value for the repo.
-	if !syncapi.IsBackrestRemoteRepoURI(newRepo.Uri) {
-		bin, err := resticinstaller.FindOrInstallResticBinary()
-		if err != nil {
-			return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
-		}
-
-		r, err := repo.NewRepoOrchestrator(c, newRepo, bin)
-		if err != nil {
-			return nil, fmt.Errorf("failed to configure repo: %w", err)
-		}
-
-		if err := r.Init(ctx); err != nil {
-			return nil, fmt.Errorf("failed to init repo: %w", err)
-		}
-
-		guid, err := r.RepoGUID()
-		zap.S().Debugf("GUID for repo %q is %q from restic", newRepo.Id, guid)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get repo config: %w", err)
-		}
-
-		newRepo.Guid = guid
-	} else {
-		// It's a remote repo, let's find the configuration and guid for it.
-		instanceID, err := syncapi.InstanceForBackrestURI(newRepo.Uri)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse remote repo URI: %w", err)
-		}
-
-		// fetch the remote config
-		remoteRepo, err := syncapi.GetRepoConfig(s.remoteConfigStore, instanceID, newRepo.Guid)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get remote repo config: %w", err)
-		}
-
-		// set the GUID from the remote config.
-		newRepo.Guid = remoteRepo.Guid
-		if newRepo.Guid == "" {
-			return nil, fmt.Errorf("GUID not found for repo %q", newRepo.Id)
-		}
+	bin, err := resticinstaller.FindOrInstallResticBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
 	}
+
+	r, err := repo.NewRepoOrchestrator(c, newRepo, bin)
+	if err != nil {
+		return nil, fmt.Errorf("failed to configure repo: %w", err)
+	}
+
+	if err := r.Init(ctx); err != nil {
+		return nil, fmt.Errorf("failed to init repo: %w", err)
+	}
+
+	guid, err := r.RepoGUID()
+	zap.S().Debugf("GUID for repo %q is %q from restic", newRepo.Id, guid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repo config: %w", err)
+	}
+
+	newRepo.Guid = guid
 
 	if err := config.ValidateConfig(c); err != nil {
 		return nil, fmt.Errorf("validation error: %w", err)
