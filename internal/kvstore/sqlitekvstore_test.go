@@ -2,16 +2,21 @@ package kvstore
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
 	"zombiezen.com/go/sqlite/sqlitex"
 )
 
-func newTestDB(t *testing.T) *sqlitex.Pool {
+func newTestDB(t testing.TB) *sqlitex.Pool {
+	file := t.TempDir() + "/test.db"
+
 	// Using a named in-memory database "file:test.db?mode=memory&cache=shared"
 	// ensures that all connections in the pool share the same database.
-	dbpool, err := sqlitex.Open("file:test.db?mode=memory&cache=shared", 0, 10)
+	dbpool, err := sqlitex.NewPool("file:"+file+"?mode=memory&cache=shared", sqlitex.PoolOptions{
+		PoolSize: 10,
+	})
 	if err != nil {
 		t.Fatalf("failed to open memory database: %v", err)
 	}
@@ -157,4 +162,63 @@ func TestSqliteKvStore(t *testing.T) {
 			t.Errorf("expected 2 keys, got %d", count)
 		}
 	})
+}
+
+func BenchmarkSqliteKvStore_BulkInsert(b *testing.B) {
+	dbpool := newTestDB(b)
+	store, err := NewSqliteKVStore(dbpool, "benchmark_insert")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	// Pre-generate test data
+	keys := make([]string, b.N)
+	values := make([][]byte, b.N)
+	for i := 0; i < b.N; i++ {
+		keys[i] = fmt.Sprintf("key-%d", i)
+		values[i] = []byte(fmt.Sprintf("value-data-for-key-%d-with-some-longer-content-to-simulate-realistic-data", i))
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		if err := store.Set(keys[i], values[i]); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkSqliteKvStore_BulkRetrieve(b *testing.B) {
+	dbpool := newTestDB(b)
+	store, err := NewSqliteKVStore(dbpool, "benchmark_retrieve")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	// Pre-populate the store with test data
+	numKeys := 10000
+	keys := make([]string, numKeys)
+	expectedValues := make([][]byte, numKeys)
+	for i := 0; i < numKeys; i++ {
+		keys[i] = fmt.Sprintf("key-%d", i)
+		expectedValues[i] = []byte(fmt.Sprintf("value-data-for-key-%d-with-some-longer-content-to-simulate-realistic-data", i))
+		if err := store.Set(keys[i], expectedValues[i]); err != nil {
+			b.Fatal(err)
+		}
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		keyIndex := i % numKeys
+		value, err := store.Get(keys[keyIndex])
+		if err != nil {
+			b.Fatal(err)
+		}
+		if !bytes.Equal(value, expectedValues[keyIndex]) {
+			b.Fatalf("unexpected value for key %s", keys[keyIndex])
+		}
+	}
 }
