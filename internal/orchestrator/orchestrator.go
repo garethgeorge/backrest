@@ -36,14 +36,15 @@ const (
 
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
-	mu        sync.Mutex
-	configMgr *config.ConfigManager
-	config    *v1.Config
-	OpLog     *oplog.OpLog
-	repoPool  *resticRepoPool
-	taskQueue *queue.TimePriorityQueue[stContainer]
-	logStore  *logstore.LogStore
-	resticBin string
+	mu                 sync.Mutex
+	configMgr          *config.ConfigManager
+	config             *v1.Config
+	OpLog              *oplog.OpLog
+	repoPool           *resticRepoPool
+	taskQueue          *queue.TimePriorityQueue[stContainer]
+	lastQueueResetTime time.Time
+	logStore           *logstore.LogStore
+	resticBin          string
 
 	taskCancelMu sync.Mutex
 	taskCancel   map[int64]context.CancelFunc
@@ -57,7 +58,7 @@ var _ tasks.TaskExecutor = &Orchestrator{}
 type stContainer struct {
 	tasks.ScheduledTask
 	retryCount  int // number of times this task has been retried.
-	configModno int32
+	createdTime time.Time
 	callbacks   []func(error)
 }
 
@@ -232,7 +233,10 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 	}
 
 	zap.L().Info("scheduling default tasks, waiting for task queue reset.")
+	o.mu.Lock()
 	removedTasks := o.taskQueue.Reset()
+	o.lastQueueResetTime = o.curTime()
+	o.mu.Unlock()
 
 	ids := []int64{}
 	for _, t := range removedTasks {
@@ -344,7 +348,7 @@ func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationSta
 	} else if !st.Eq(tasks.NeverScheduledTask) {
 		o.taskQueue.Enqueue(st.RunAt, tasks.TaskPriorityDefault, stContainer{
 			ScheduledTask: st,
-			configModno:   o.config.Modno,
+			createdTime:   o.curTime(),
 		})
 	}
 
@@ -365,8 +369,8 @@ func (o *Orchestrator) Run(ctx context.Context) {
 	zap.L().Info("starting orchestrator loop")
 
 	// Setup config watching
-	configCh := o.configMgr.Watch()
-	defer o.configMgr.StopWatching(configCh)
+	configCh := o.configMgr.OnChange.Subscribe()
+	defer o.configMgr.OnChange.Unsubscribe(configCh)
 
 	// Start the config watcher goroutine
 	go o.watchConfigChanges(ctx, configCh)
@@ -489,13 +493,13 @@ func (o *Orchestrator) prepareOperationForRetry(t *stContainer) {
 func (o *Orchestrator) handleTaskCompletion(t *stContainer, err error, originalOp *v1.Operation) bool {
 	// Check if config has changed since the task was scheduled
 	o.mu.Lock()
-	curCfgModno := o.config.Modno
-	o.mu.Unlock()
-
-	if t.configModno != curCfgModno {
-		// Config has changed, don't reschedule
+	lastQueueResetTime := o.lastQueueResetTime
+	if t.createdTime.Before(lastQueueResetTime) {
+		o.mu.Unlock()
+		zap.L().Debug("task was created before last queue reset, skipping reschedule", zap.String("task", t.Task.Name()))
 		return false
 	}
+	o.mu.Unlock()
 
 	// Handle task retry logic if needed
 	var retryErr *tasks.TaskRetryError
@@ -691,8 +695,8 @@ func (o *Orchestrator) ScheduleTask(t tasks.Task, priority int, callbacks ...fun
 
 	stc := stContainer{
 		ScheduledTask: nextRun,
-		configModno:   o.config.Modno,
 		callbacks:     callbacks,
+		createdTime:   o.curTime(),
 	}
 
 	o.taskQueue.Enqueue(nextRun.RunAt, priority, stc)

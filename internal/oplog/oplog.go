@@ -195,4 +195,5 @@ type OpMetadata struct {
 	Modno          int64
 	OriginalID     int64
 	OriginalFlowID int64
+	Status         v1.OperationStatus
 }

@@ -39,7 +39,14 @@ import { OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { isMobile } from "../lib/browserutil";
 import { useNavigate } from "react-router";
 import { toJsonString } from "@bufbuild/protobuf";
-import { ConfigSchema } from "../../gen/ts/v1/config_pb";
+import { ConfigSchema, Multihost } from "../../gen/ts/v1/config_pb";
+import {
+  subscribeToPeerStates,
+  unsubscribeFromPeerStates,
+} from "../state/peerstates";
+import { PeerState } from "../../gen/ts/v1/syncservice_pb";
+import { PeerStateConnectionStatusIcon } from "../components/SyncStateIcon";
+import { last } from "lodash";
 
 export const SummaryDashboard = () => {
   const config = useConfig()[0];
@@ -80,7 +87,12 @@ export const SummaryDashboard = () => {
       return;
     }
 
-    if (config.repos.length === 0 && config.plans.length === 0) {
+    if (
+      config.repos.length === 0 &&
+      config.plans.length === 0 &&
+      config.multihost?.knownHosts.length === 0 &&
+      config.multihost?.authorizedClients.length === 0
+    ) {
       navigate("/getting-started");
     }
   }, [config]);
@@ -92,6 +104,10 @@ export const SummaryDashboard = () => {
   return (
     <>
       <Flex gap={16} vertical>
+        {/* Multihost summary if any available */}
+        <MultihostSummary multihostConfig={config?.multihost || null} />
+
+        {/* Repos and plans section */}
         <Typography.Title level={3}>Repos</Typography.Title>
         {summaryData && summaryData.repoSummaries.length > 0 ? (
           summaryData.repoSummaries.map((summary) => (
@@ -108,7 +124,8 @@ export const SummaryDashboard = () => {
         ) : (
           <Empty description="No plans found" />
         )}
-        <Divider />
+
+        {/* System Info Section */}
         <Typography.Title level={3}>System Info</Typography.Title>
         <Descriptions
           layout="vertical"
@@ -295,5 +312,156 @@ const SummaryPanel = ({
         </Col>
       </Row>
     </Card>
+  );
+};
+
+const MultihostSummary = ({
+  multihostConfig,
+}: {
+  multihostConfig: Multihost | null;
+}) => {
+  const [peerStates, setPeerStates] = useState<Map<string, PeerState>>(
+    new Map()
+  );
+
+  useEffect(() => {
+    const cb = (syncStates: PeerState[]) => {
+      setPeerStates((prev) => {
+        const updated = new Map(prev);
+        for (const state of syncStates) {
+          updated.set(state.peerKeyid, state);
+        }
+        return updated;
+      });
+    };
+    subscribeToPeerStates(cb);
+    return () => {
+      unsubscribeFromPeerStates(cb);
+    };
+  }, []);
+
+  const knownHostTiles: JSX.Element[] = [];
+  for (const cfgPeer of multihostConfig?.knownHosts || []) {
+    const peerState = peerStates.get(cfgPeer.keyid);
+    if (!peerState) {
+      continue;
+    }
+    knownHostTiles.push(
+      <PeerStateTile peerState={peerState} key={peerState.peerKeyid} />
+    );
+  }
+
+  const authorizedClientTiles: JSX.Element[] = [];
+  for (const cfgPeer of multihostConfig?.authorizedClients || []) {
+    const peerState = peerStates.get(cfgPeer.keyid);
+    if (!peerState) {
+      continue;
+    }
+    authorizedClientTiles.push(
+      <PeerStateTile peerState={peerState} key={peerState.peerKeyid} />
+    );
+  }
+
+  return (
+    <>
+      {knownHostTiles.length > 0 ? (
+        <>
+          <Typography.Title level={3}>Remote Hosts</Typography.Title>
+          <Flex gap={16} vertical>
+            {knownHostTiles}
+          </Flex>
+        </>
+      ) : null}
+      {authorizedClientTiles.length > 0 ? (
+        <>
+          <Typography.Title level={3}>Remote Clients</Typography.Title>
+          <Flex gap={16} vertical>
+            {authorizedClientTiles}
+          </Flex>
+        </>
+      ) : null}
+    </>
+  );
+};
+
+const PeerStateTile = ({ peerState }: { peerState: PeerState }) => {
+  const state = useState(1);
+  useEffect(() => {
+    // Force rerender every second to update the last heartbeat time
+    const interval = setInterval(() => {
+      state[1]((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [peerState.peerKeyid, peerState.lastHeartbeatMillis, state[1]]);
+
+  return (
+    <Card
+      key={peerState.peerKeyid}
+      title={
+        <>
+          {peerState.peerInstanceId}
+          <div
+            style={{
+              position: "absolute",
+              top: "8px",
+              right: "8px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <PeerStateConnectionStatusIcon peerState={peerState} />
+          </div>
+        </>
+      }
+      style={{ marginBottom: "16px" }}
+    >
+      <Descriptions
+        layout="vertical"
+        column={2}
+        items={[
+          {
+            key: 1,
+            label: "Instance ID",
+            children: peerState.peerInstanceId,
+          },
+          {
+            key: 2,
+            label: "Public Key ID",
+            children: peerState.peerKeyid,
+          },
+          {
+            key: 3,
+            label: "Last State Update",
+            children: (
+              <TimeSinceLastHeartbeat
+                lastHeartbeatMillis={Number(peerState.lastHeartbeatMillis)}
+              />
+            ),
+          },
+        ]}
+      />
+    </Card>
+  );
+};
+
+const TimeSinceLastHeartbeat = ({
+  lastHeartbeatMillis,
+}: {
+  lastHeartbeatMillis: number;
+}) => {
+  const [timeSince, setTimeSince] = useState(
+    lastHeartbeatMillis ? Date.now() - lastHeartbeatMillis : 0
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeSince(Date.now() - lastHeartbeatMillis);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lastHeartbeatMillis]);
+
+  return (
+    formatTime(lastHeartbeatMillis) + " (" + formatDuration(timeSince) + " ago)"
   );
 };

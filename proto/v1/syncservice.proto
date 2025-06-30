@@ -14,18 +14,33 @@ import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
 
 
+// BackrestSyncService provides methods to sync data between backrest instances.
+// This service provides its own authentication and authorization.
 service BackrestSyncService {
   rpc Sync(stream SyncStreamItem) returns (stream SyncStreamItem) {}
-  rpc GetRemoteRepos(google.protobuf.Empty) returns (GetRemoteReposResponse) {}
 }
 
-message GetRemoteReposResponse {
-  message RemoteRepoMetadata {
-    string instance_id = 1;
-    string repo_id = 2;
-  }
-  
-  repeated RemoteRepoMetadata repos = 1;
+// BackrestSyncStateService provides methods to query the sync state of known hosts and clients.
+// This service should be served behind authentication and authorization.
+service BackrestSyncStateService {
+  rpc GetPeerSyncStatesStream(SyncStateStreamRequest) returns (stream PeerState) {}
+}
+
+message SyncStateStreamRequest {
+  bool subscribe = 1; // If true, the stream will continue to send updates until cancelled.
+}
+
+message PeerState {
+  string peer_instance_id = 1;
+  string peer_keyid = 2;
+  SyncConnectionState state = 3;
+  string status_message = 4;
+
+  repeated string known_plans = 5; // List of plan IDs that the peer has.
+  repeated string known_repos = 6; // List of repo IDs that the peer has.
+  RemoteConfig remote_config = 7; // The remote config of the peer, if available.
+
+  int64 last_heartbeat_millis = 8; // The last time the peer sent a heartbeat, in milliseconds since epoch.
 }
 
 enum SyncConnectionState {
@@ -36,17 +51,20 @@ enum SyncConnectionState {
   CONNECTION_STATE_RETRY_WAIT = 4;
   CONNECTION_STATE_ERROR_AUTH = 10;
   CONNECTION_STATE_ERROR_PROTOCOL = 11;
+  CONNECTION_STATE_ERROR_INTERNAL = 12;
 }
 
 message SyncStreamItem {
   oneof action {
     SignedMessage signed_message = 1;
     SyncActionHandshake handshake = 3;
+    SyncActionHeartbeat heartbeat = 4;
     
     SyncActionDiffOperations diff_operations = 20;
     SyncActionSendOperations send_operations = 21;
     SyncActionSendConfig send_config = 22;
-    SyncEstablishSharedSecret establish_shared_secret = 23;
+    SyncActionSetConfig set_config = 24;
+    SyncActionListResources list_resources = 25;
 
     SyncActionThrottle throttle = 1000;
   }
@@ -57,8 +75,23 @@ message SyncStreamItem {
     SignedMessage instance_id = 3;
   }
 
+  // SyncActionHeartbeat is sent periodically to keep the connection alive.
+  message SyncActionHeartbeat {}
+
   message SyncActionSendConfig {
     RemoteConfig config = 1;
+  }
+
+  message SyncActionSetConfig {
+    repeated Repo repos = 1;
+    repeated Plan plans = 2;
+    repeated string repos_to_delete = 3;
+    repeated string plans_to_delete = 4;
+  }
+
+  message SyncActionListResources {
+    repeated string repo_ids = 1; // List of repo IDs that can be accessed.
+    repeated string plan_ids = 2; // List of plan IDs that can be accessed.
   }
 
   message SyncActionConnectRepo {
@@ -100,14 +133,8 @@ message SyncStreamItem {
 
 // RemoteConfig contains shareable properties from a remote backrest instance.
 message RemoteConfig {
-  repeated RemoteRepo repos = 1;
-}
-
-message RemoteRepo {
-  string id = 1;
-  string guid = 11;
-  string uri = 2;
-  string password = 3;
-  repeated string env = 4;
-  repeated string flags = 5;
+  int32 modno = 1; // The modno of the config.
+  int32 version = 2; // The storage version of the config.
+  repeated Repo repos = 3;
+  repeated Plan plans = 4;
 }

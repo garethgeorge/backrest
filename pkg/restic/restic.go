@@ -141,7 +141,7 @@ func (r *Repo) executeWithJSONOutput(ctx context.Context, args []string, result 
 	}
 
 	return newCmdError(ctx, r.commandWithContext(ctx, args),
-		newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", err), string(output)))
+		newErrorWithOutput(fmt.Errorf("command output is not valid JSON: %w", origErr), string(output)))
 }
 
 // Exists checks if the repository exists.

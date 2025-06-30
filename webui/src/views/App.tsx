@@ -380,6 +380,14 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     }),
   ];
 
+  const authorizedClientRepos: MenuProps["items"] = [];
+
+  if (config.multihost?.authorizedClients?.length) {
+    const authorizedClients = config.multihost.authorizedClients;
+
+    // Display authorized client peer statuses
+  }
+
   return [
     {
       key: "plans",

@@ -9,7 +9,6 @@ import (
 	context "context"
 	errors "errors"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	http "net/http"
 	strings "strings"
 )
@@ -24,6 +23,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// BackrestSyncServiceName is the fully-qualified name of the BackrestSyncService service.
 	BackrestSyncServiceName = "v1.BackrestSyncService"
+	// BackrestSyncStateServiceName is the fully-qualified name of the BackrestSyncStateService service.
+	BackrestSyncStateServiceName = "v1.BackrestSyncStateService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -37,22 +38,22 @@ const (
 	// BackrestSyncServiceSyncProcedure is the fully-qualified name of the BackrestSyncService's Sync
 	// RPC.
 	BackrestSyncServiceSyncProcedure = "/v1.BackrestSyncService/Sync"
-	// BackrestSyncServiceGetRemoteReposProcedure is the fully-qualified name of the
-	// BackrestSyncService's GetRemoteRepos RPC.
-	BackrestSyncServiceGetRemoteReposProcedure = "/v1.BackrestSyncService/GetRemoteRepos"
+	// BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure is the fully-qualified name of the
+	// BackrestSyncStateService's GetPeerSyncStatesStream RPC.
+	BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure = "/v1.BackrestSyncStateService/GetPeerSyncStatesStream"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	backrestSyncServiceServiceDescriptor              = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncService")
-	backrestSyncServiceSyncMethodDescriptor           = backrestSyncServiceServiceDescriptor.Methods().ByName("Sync")
-	backrestSyncServiceGetRemoteReposMethodDescriptor = backrestSyncServiceServiceDescriptor.Methods().ByName("GetRemoteRepos")
+	backrestSyncServiceServiceDescriptor                            = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncService")
+	backrestSyncServiceSyncMethodDescriptor                         = backrestSyncServiceServiceDescriptor.Methods().ByName("Sync")
+	backrestSyncStateServiceServiceDescriptor                       = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncStateService")
+	backrestSyncStateServiceGetPeerSyncStatesStreamMethodDescriptor = backrestSyncStateServiceServiceDescriptor.Methods().ByName("GetPeerSyncStatesStream")
 )
 
 // BackrestSyncServiceClient is a client for the v1.BackrestSyncService service.
 type BackrestSyncServiceClient interface {
 	Sync(context.Context) *connect.BidiStreamForClient[v1.SyncStreamItem, v1.SyncStreamItem]
-	GetRemoteRepos(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.GetRemoteReposResponse], error)
 }
 
 // NewBackrestSyncServiceClient constructs a client for the v1.BackrestSyncService service. By
@@ -71,19 +72,12 @@ func NewBackrestSyncServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(backrestSyncServiceSyncMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		getRemoteRepos: connect.NewClient[emptypb.Empty, v1.GetRemoteReposResponse](
-			httpClient,
-			baseURL+BackrestSyncServiceGetRemoteReposProcedure,
-			connect.WithSchema(backrestSyncServiceGetRemoteReposMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
 // backrestSyncServiceClient implements BackrestSyncServiceClient.
 type backrestSyncServiceClient struct {
-	sync           *connect.Client[v1.SyncStreamItem, v1.SyncStreamItem]
-	getRemoteRepos *connect.Client[emptypb.Empty, v1.GetRemoteReposResponse]
+	sync *connect.Client[v1.SyncStreamItem, v1.SyncStreamItem]
 }
 
 // Sync calls v1.BackrestSyncService.Sync.
@@ -91,15 +85,9 @@ func (c *backrestSyncServiceClient) Sync(ctx context.Context) *connect.BidiStrea
 	return c.sync.CallBidiStream(ctx)
 }
 
-// GetRemoteRepos calls v1.BackrestSyncService.GetRemoteRepos.
-func (c *backrestSyncServiceClient) GetRemoteRepos(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.GetRemoteReposResponse], error) {
-	return c.getRemoteRepos.CallUnary(ctx, req)
-}
-
 // BackrestSyncServiceHandler is an implementation of the v1.BackrestSyncService service.
 type BackrestSyncServiceHandler interface {
 	Sync(context.Context, *connect.BidiStream[v1.SyncStreamItem, v1.SyncStreamItem]) error
-	GetRemoteRepos(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.GetRemoteReposResponse], error)
 }
 
 // NewBackrestSyncServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -114,18 +102,10 @@ func NewBackrestSyncServiceHandler(svc BackrestSyncServiceHandler, opts ...conne
 		connect.WithSchema(backrestSyncServiceSyncMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	backrestSyncServiceGetRemoteReposHandler := connect.NewUnaryHandler(
-		BackrestSyncServiceGetRemoteReposProcedure,
-		svc.GetRemoteRepos,
-		connect.WithSchema(backrestSyncServiceGetRemoteReposMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/v1.BackrestSyncService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case BackrestSyncServiceSyncProcedure:
 			backrestSyncServiceSyncHandler.ServeHTTP(w, r)
-		case BackrestSyncServiceGetRemoteReposProcedure:
-			backrestSyncServiceGetRemoteReposHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -139,6 +119,70 @@ func (UnimplementedBackrestSyncServiceHandler) Sync(context.Context, *connect.Bi
 	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.BackrestSyncService.Sync is not implemented"))
 }
 
-func (UnimplementedBackrestSyncServiceHandler) GetRemoteRepos(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.GetRemoteReposResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.BackrestSyncService.GetRemoteRepos is not implemented"))
+// BackrestSyncStateServiceClient is a client for the v1.BackrestSyncStateService service.
+type BackrestSyncStateServiceClient interface {
+	GetPeerSyncStatesStream(context.Context, *connect.Request[v1.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1.PeerState], error)
+}
+
+// NewBackrestSyncStateServiceClient constructs a client for the v1.BackrestSyncStateService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewBackrestSyncStateServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) BackrestSyncStateServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &backrestSyncStateServiceClient{
+		getPeerSyncStatesStream: connect.NewClient[v1.SyncStateStreamRequest, v1.PeerState](
+			httpClient,
+			baseURL+BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure,
+			connect.WithSchema(backrestSyncStateServiceGetPeerSyncStatesStreamMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// backrestSyncStateServiceClient implements BackrestSyncStateServiceClient.
+type backrestSyncStateServiceClient struct {
+	getPeerSyncStatesStream *connect.Client[v1.SyncStateStreamRequest, v1.PeerState]
+}
+
+// GetPeerSyncStatesStream calls v1.BackrestSyncStateService.GetPeerSyncStatesStream.
+func (c *backrestSyncStateServiceClient) GetPeerSyncStatesStream(ctx context.Context, req *connect.Request[v1.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1.PeerState], error) {
+	return c.getPeerSyncStatesStream.CallServerStream(ctx, req)
+}
+
+// BackrestSyncStateServiceHandler is an implementation of the v1.BackrestSyncStateService service.
+type BackrestSyncStateServiceHandler interface {
+	GetPeerSyncStatesStream(context.Context, *connect.Request[v1.SyncStateStreamRequest], *connect.ServerStream[v1.PeerState]) error
+}
+
+// NewBackrestSyncStateServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewBackrestSyncStateServiceHandler(svc BackrestSyncStateServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	backrestSyncStateServiceGetPeerSyncStatesStreamHandler := connect.NewServerStreamHandler(
+		BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure,
+		svc.GetPeerSyncStatesStream,
+		connect.WithSchema(backrestSyncStateServiceGetPeerSyncStatesStreamMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/v1.BackrestSyncStateService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure:
+			backrestSyncStateServiceGetPeerSyncStatesStreamHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedBackrestSyncStateServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedBackrestSyncStateServiceHandler struct{}
+
+func (UnimplementedBackrestSyncStateServiceHandler) GetPeerSyncStatesStream(context.Context, *connect.Request[v1.SyncStateStreamRequest], *connect.ServerStream[v1.PeerState]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.BackrestSyncStateService.GetPeerSyncStatesStream is not implemented"))
 }
