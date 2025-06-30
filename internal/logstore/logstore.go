@@ -154,7 +154,7 @@ func (ls *LogStore) Create(id string, parentOpID int64, ttl time.Duration) (io.W
 	defer ls.dbpool.Put(conn)
 
 	// potentially prune any expired logs
-	if err := sqlitex.ExecuteTransient(conn, "DELETE FROM logs WHERE expiration_ts_unix < ? AND expiration_ts_unix != 0", &sqlitex.ExecOptions{
+	if err := sqlitex.Execute(conn, "DELETE FROM logs WHERE expiration_ts_unix < ? AND expiration_ts_unix != 0", &sqlitex.ExecOptions{
 		Args: []any{time.Now().Unix()},
 	}); err != nil {
 		return nil, fmt.Errorf("prune expired logs: %v", err)
@@ -171,15 +171,13 @@ func (ls *LogStore) Create(id string, parentOpID int64, ttl time.Duration) (io.W
 		return nil, fmt.Errorf("create temp file: %v", err)
 	}
 
-	expire_ts_unix := time.Unix(0, 0)
+	var expire_ts_unix int64 = 0
 	if ttl != 0 {
-		expire_ts_unix = time.Now().Add(ttl)
+		expire_ts_unix = time.Now().Add(ttl).Unix()
 	}
 
-	// fmt.Printf("INSERT INTO logs (id, expiration_ts_unix, owner_opid, data_fname) VALUES (%v, %v, %v, %v)\n", id, expire_ts_unix.Unix(), parentOpID, fname)
-
-	if err := sqlitex.ExecuteTransient(conn, "INSERT INTO logs (id, expiration_ts_unix, owner_opid, data_fname) VALUES (?, ?, ?, ?)", &sqlitex.ExecOptions{
-		Args: []any{id, expire_ts_unix.Unix(), parentOpID, fname},
+	if err := sqlitex.Execute(conn, "INSERT INTO logs (id, expiration_ts_unix, owner_opid, data_fname) VALUES (?, ?, ?, ?)", &sqlitex.ExecOptions{
+		Args: []any{id, expire_ts_unix, parentOpID, fname},
 	}); err != nil {
 		return nil, fmt.Errorf("insert log: %v", err)
 	}
@@ -210,7 +208,7 @@ func (ls *LogStore) Open(id string) (io.ReadCloser, error) {
 	var found bool
 	var fname string
 	var dataGz []byte
-	if err := sqlitex.ExecuteTransient(conn, "SELECT data_fname, data_gz FROM logs WHERE id = ?", &sqlitex.ExecOptions{
+	if err := sqlitex.Execute(conn, "SELECT data_fname, data_gz FROM logs WHERE id = ?", &sqlitex.ExecOptions{
 		Args: []any{id},
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			found = true
@@ -267,7 +265,7 @@ func (ls *LogStore) Delete(id string) error {
 	}
 	defer ls.dbpool.Put(conn)
 
-	if err := sqlitex.ExecuteTransient(conn, "DELETE FROM logs WHERE id = ?", &sqlitex.ExecOptions{
+	if err := sqlitex.Execute(conn, "DELETE FROM logs WHERE id = ?", &sqlitex.ExecOptions{
 		Args: []any{id},
 	}); err != nil {
 		return fmt.Errorf("delete log: %v", err)
@@ -286,7 +284,7 @@ func (ls *LogStore) DeleteWithParent(parentOpID int64) error {
 	}
 	defer ls.dbpool.Put(conn)
 
-	if err := sqlitex.ExecuteTransient(conn, "DELETE FROM logs WHERE owner_opid = ?", &sqlitex.ExecOptions{
+	if err := sqlitex.Execute(conn, "DELETE FROM logs WHERE owner_opid = ?", &sqlitex.ExecOptions{
 		Args: []any{parentOpID},
 	}); err != nil {
 		return fmt.Errorf("delete log: %v", err)
@@ -302,7 +300,7 @@ func (ls *LogStore) SelectAll(f func(id string, parentID int64)) error {
 	}
 	defer ls.dbpool.Put(conn)
 
-	return sqlitex.ExecuteTransient(conn, "SELECT id, owner_opid FROM logs ORDER BY owner_opid", &sqlitex.ExecOptions{
+	return sqlitex.Execute(conn, "SELECT id, owner_opid FROM logs ORDER BY owner_opid", &sqlitex.ExecOptions{
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			f(stmt.ColumnText(0), stmt.ColumnInt64(1))
 			return nil
@@ -364,7 +362,7 @@ func (ls *LogStore) finalizeLogFile(id string, fname string) error {
 	}); e != nil {
 		return fmt.Errorf("update log: %v", e)
 	} else if conn.Changes() != 1 {
-		return fmt.Errorf("expected 1 row to be updated, got %d", conn.Changes())
+		return fmt.Errorf("expected 1 row to be updated for %q, got %d", id, conn.Changes())
 	}
 
 	return nil

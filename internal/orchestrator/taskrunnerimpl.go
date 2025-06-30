@@ -172,7 +172,7 @@ func (t *taskRunnerImpl) Logger(ctx context.Context) *zap.Logger {
 }
 
 func (t *taskRunnerImpl) LogrefWriter() (string, io.WriteCloser, error) {
-	logID := uuid.New().String()
+	logID := "c-" + uuid.New().String()
 	writer, err := t.orchestrator.logStore.Create(logID, t.op.GetId(), time.Duration(0))
 	return logID, writer, err
 }

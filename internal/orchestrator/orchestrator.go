@@ -572,7 +572,7 @@ func (o *Orchestrator) setupTaskContext(ctx context.Context, op *v1.Operation, c
 		o.taskCancelMu.Unlock()
 
 		// Set up logging
-		logID := uuid.New().String()
+		logID := "t-" + uuid.New().String()
 		var err error
 		logWriter, err = o.logStore.Create(logID, op.Id, defaultTaskLogDuration)
 		if err != nil {
