@@ -58,18 +58,19 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	}()
 
 	if err := cmdStream.ConnectStream(ctx, stream); err != nil {
-		zap.S().Errorf("sync handler stream error: %v", err)
+		zap.S().Errorf("sync handler stream error for client %q: %v", sessionHandler.peer.InstanceId, err)
+		peerState := h.mgr.peerStateManager.GetPeerState(sessionHandler.peer.Keyid).Clone()
+		if peerState == nil {
+			peerState = newPeerState(sessionHandler.peer.InstanceId, sessionHandler.peer.Keyid)
+		}
+		peerState.LastHeartbeat = time.Now()
+		peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+		peerState.ConnectionStateMessage = err.Error()
 		var syncErr *SyncError
 		if errors.As(err, &syncErr) {
 			if sessionHandler.peer != nil {
-				peerState := h.mgr.peerStateManager.GetPeerState(sessionHandler.peer.Keyid).Clone()
-				if peerState == nil {
-					peerState = newPeerState(sessionHandler.peer.InstanceId, sessionHandler.peer.Keyid)
-				}
 				peerState.ConnectionState = syncErr.State
 				peerState.ConnectionStateMessage = syncErr.Message.Error()
-				peerState.LastHeartbeat = time.Now()
-				h.mgr.peerStateManager.SetPeerState(sessionHandler.peer.Keyid, peerState)
 			}
 			switch syncErr.State {
 			case v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH:
@@ -80,6 +81,17 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 				return connect.NewError(connect.CodeInternal, syncErr.Message)
 			}
 		}
+		h.mgr.peerStateManager.SetPeerState(sessionHandler.peer.Keyid, peerState)
+	} else {
+		peerState := h.mgr.peerStateManager.GetPeerState(sessionHandler.peer.Keyid).Clone()
+		if peerState == nil {
+			peerState = newPeerState(sessionHandler.peer.InstanceId, sessionHandler.peer.Keyid)
+		}
+		peerState.LastHeartbeat = time.Now()
+		peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+		peerState.ConnectionStateMessage = "disconnected"
+		h.mgr.peerStateManager.SetPeerState(sessionHandler.peer.Keyid, peerState)
+		zap.S().Infof("sync handler stream closed for client %q", sessionHandler.peer.InstanceId)
 	}
 
 	return nil

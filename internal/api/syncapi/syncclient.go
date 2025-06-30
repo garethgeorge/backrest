@@ -131,6 +131,14 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 			c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, state)
 		} else {
 			c.reconnectAttempts = 0
+			state := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
+			if state == nil {
+				state = newPeerState(c.peer.InstanceId, c.peer.Keyid)
+			}
+			state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+			state.ConnectionStateMessage = "disconnected"
+			state.LastHeartbeat = time.Now()
+			c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, state)
 		}
 
 		wg.Wait()
