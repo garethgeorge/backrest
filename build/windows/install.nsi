@@ -7,8 +7,6 @@
 !define DESCRIPTION "${APP_NAME} installer"
 !define LICENSE_TXT "${BUILD_DIR}\LICENSE"
 !define MAIN_APP_EXE "backrest-windows-tray.exe"
-!define INSTALL_TYPE "SetShellVarContext all"
-!define REG_ROOT "HKLM"
 !define REG_UNINSTALL_PATH "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
 # Extract version from the changelog.
 !searchparse /file "${BUILD_DIR}\CHANGELOG.md" `## [` VERSION `]`
@@ -21,6 +19,10 @@ Var OldVersion
 Var Cmd
 Var InstallMode
 Var InstallModeLower
+Var InstallScope
+Var RegRoot
+Var InstallDirRegKey
+Var ProgramFiles
 
 ######################################################################
 # Installer file properties
@@ -36,7 +38,7 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 ######################################################################
 # Installer settings
 Unicode True
-RequestExecutionLevel admin
+RequestExecutionLevel user
 SetCompressor LZMA
 Name "${APP_NAME}"
 Caption "$(^Name) ${VERSION} Setup"
@@ -47,9 +49,9 @@ OutFile "${OUT_DIR}\Backrest-setup.exe"
 !endif
 XPStyle on
 # Default installation directory.
-InstallDir "$PROGRAMFILES\Backrest"
+InstallDir "$LOCALAPPDATA\Programs\Backrest"
 # If existing installation is detected, use that directory instead.
-InstallDirRegKey "${REG_ROOT}" "${REG_UNINSTALL_PATH}" "UninstallString"
+InstallDirRegKey HKLM "${REG_UNINSTALL_PATH}" "UninstallString"
 ManifestDPIAware true
 ShowInstDetails show
 ShowUninstDetails show
@@ -58,8 +60,10 @@ ShowUninstDetails show
 !include "LogicLib.nsh"
 !include "Memento.nsh"
 !include "WordFunc.nsh"
+!include "UAC.nsh"
+!include "InstallOptions.h"
 # Defines for the Memento macro. 
-!define MEMENTO_REGISTRY_ROOT "${REG_ROOT}"
+!define MEMENTO_REGISTRY_ROOT "${RegRoot}"
 !define MEMENTO_REGISTRY_KEY "${REG_UNINSTALL_PATH}"
 
 ######################################################################
@@ -76,9 +80,7 @@ ShowUninstDetails show
 
 !insertmacro MUI_PAGE_LICENSE "${LICENSE_TXT}"
 
-!define MUI_COMPONENTSPAGE_NODESC
-!define MUI_COMPONENTSPAGE_TEXT_COMPLIST "Select components to install:$\r$\n$\r$\nSelections will be remembered for future upgrades"
-!define MUI_PAGE_CUSTOMFUNCTION_PRE onPreComponents
+Page custom initInstallScope selectInstallScope
 !insertmacro MUI_PAGE_COMPONENTS
 
 !define MUI_PAGE_CUSTOMFUNCTION_PRE onPreDirectory
@@ -133,7 +135,10 @@ ${Else}
 ${EndIf}
 
 # Read the previous Backrest version, if any.
-ReadRegStr $OldVersion ${REG_ROOT} "${REG_UNINSTALL_PATH}" "DisplayVersion"
+ReadRegStr $OldVersion HKLM "${REG_UNINSTALL_PATH}" "DisplayVersion"
+${If} "$OldVersion" == ""
+  ReadRegStr $OldVersion HKCU "${REG_UNINSTALL_PATH}" "DisplayVersion"
+${EndIf}
 ${If} "$OldVersion" == "00.00.00.00"
   # Old pre-1.6.2 installer installed into C:\Program Files; override the default path when upgrading.
   StrCpy $INSTDIR "$LOCALAPPDATA\Programs\Backrest"
@@ -163,7 +168,7 @@ ${Else}
   ${If} "$R4" == "0"
     StrCpy "$InstallMode" "Abort"
     StrCpy $WelcomeTitle "Error"
-    StrCpy $WelcomeText "*** WARNING ***$\r$\nBackrest binds to port $UIPort for web UI. This port is currently in use by another Backrest instance or another application.$\r$\n$\r$\nPerform the following:$\r$\nClick Start - type $\"environment$\", Enter to open System Properties.\r\nClick Environment Variables. Click New in the top section. Enter BACKREST_PORT as the name and 127.0.0.1:port as the value, where $\"port$\" is a number between 1024 and 65535 (avoid known ports; try 9900), then OK 3 times.\r\nExit and re-run this installer to have it pick up the new value.\r\nSee installation documentation for more details.\r\n$\r$\nClick Exit to exit."
+    StrCpy $WelcomeText "*** WARNING ***$\r$\nBackrest binds to port $UIPort for web UI. This port is currently in use by another Backrest instance or another application.\r\n\r\nPerform the following:\r\nClick Start - type $\"environment$\", Enter to open System Properties.\r\nClick Environment Variables. Click New in the top section. Enter BACKREST_PORT as the name and 127.0.0.1:port as the value, where $\"port$\" is a number between 1024 and 65535 (avoid known ports; try 9900), then OK 3 times.\r\nExit and re-run this installer to have it pick up the new value.\r\nSee installation documentation for more details.\r\n$\r$\nClick Exit to exit."
   ${Else}
     StrCpy $WelcomeTitle "Welcome to ${APP_NAME} Setup"
     StrCpy $WelcomeText "Setup will guide you through the installation of ${APP_NAME}.$WelcomePortNote$\r$\n$\r$\nClick Next to continue."
@@ -183,6 +188,29 @@ Function onLeaveWelcome
   ${If} "$InstallMode" == "Abort"
     Quit
   ${EndIf}
+FunctionEnd
+
+Function initInstallScope
+  !insertmacro MUI_HEADER_TEXT "Installation Scope" "Choose whether to install for yourself or for all users."
+  !insertmacro INSTALLOPTIONS_EXTRACT "installoptions.ini"
+  !insertmacro INSTALLOPTIONS_DISPLAY "installoptions.ini"
+FunctionEnd
+
+Function selectInstallScope
+  !insertmacro INSTALLOPTIONS_READ $InstallScope "installoptions.ini" "Field 2" "State"
+  ${If} $InstallScope == "1"
+    StrCpy $RegRoot "HKCU"
+    StrCpy $InstallDirRegKey "HKCU"
+    SetShellVarContext current
+    StrCpy $ProgramFiles "$LOCALAPPDATA\Programs"
+  ${Else}
+    StrCpy $RegRoot "HKLM"
+    StrCpy $InstallDirRegKey "HKLM"
+    SetShellVarContext all
+    StrCpy $ProgramFiles "$PROGRAMFILES"
+    UAC::RunElevated
+  ${EndIf}
+  StrCpy $INSTDIR "$ProgramFiles\Backrest"
 FunctionEnd
 
 Function onPreComponents
@@ -223,14 +251,14 @@ FunctionEnd
 # Sections
 Section "Application files"
 SectionIn RO
-${INSTALL_TYPE}
+SetShellVarContext $InstallScope
 Call KillProcess
 # Clean up remnants from the old installer (except for items in "Program Files" which would require elevation).
 ${If} "$OldVersion" == "00.00.00.00"
   Delete "$DESKTOP\${APP_NAME} Console.lnk"
   Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME} Website.lnk"
   Delete "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk"
-  DeleteRegKey ${REG_ROOT} "Software\Microsoft\Windows\CurrentVersion\App Paths\${MAIN_APP_EXE}"
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${MAIN_APP_EXE}"
 ${EndIf}
 
 # Allow reinstall and downgrade by overwriting the files.
@@ -249,13 +277,13 @@ CreateShortCut "$SMPROGRAMS\${APP_NAME}\${APP_NAME} UI.lnk" "http://localhost:$U
 WriteIniStr "$SMPROGRAMS\${APP_NAME}\${APP_NAME} website.url" "InternetShortcut" "URL" "${WEB_SITE}"
 
 # Registry entries.
-WriteRegStr ${REG_ROOT} "${REG_UNINSTALL_PATH}" "DisplayName" "${APP_NAME}"
-WriteRegStr ${REG_ROOT} "${REG_UNINSTALL_PATH}" "UninstallString" "$INSTDIR\uninstall.exe"
-WriteRegStr ${REG_ROOT} "${REG_UNINSTALL_PATH}" "DisplayIcon" "$INSTDIR\icon.ico"
-WriteRegStr ${REG_ROOT} "${REG_UNINSTALL_PATH}" "DisplayVersion" "${VERSION}"
-WriteRegStr ${REG_ROOT} "${REG_UNINSTALL_PATH}" "Publisher" "${COMP_NAME}"
-WriteRegStr ${REG_ROOT} "${REG_UNINSTALL_PATH}" "URLInfoAbout" "${WEB_SITE}"
-WriteRegStr ${REG_ROOT} "${REG_UNINSTALL_PATH}" "InstallLocation" "$INSTDIR"
+WriteRegStr ${RegRoot} "${REG_UNINSTALL_PATH}" "DisplayName" "${APP_NAME}"
+WriteRegStr ${RegRoot} "${REG_UNINSTALL_PATH}" "UninstallString" "$INSTDIR\uninstall.exe"
+WriteRegStr ${RegRoot} "${REG_UNINSTALL_PATH}" "DisplayIcon" "$INSTDIR\icon.ico"
+WriteRegStr ${RegRoot} "${REG_UNINSTALL_PATH}" "DisplayVersion" "${VERSION}"
+WriteRegStr ${RegRoot} "${REG_UNINSTALL_PATH}" "Publisher" "${COMP_NAME}"
+WriteRegStr ${RegRoot} "${REG_UNINSTALL_PATH}" "URLInfoAbout" "${WEB_SITE}"
+WriteRegStr ${RegRoot} "${REG_UNINSTALL_PATH}" "InstallLocation" "$INSTDIR"
 SectionEnd
 
 ${MementoSection} "Run application at startup (recommended)" sect_startup
@@ -287,7 +315,7 @@ ${EndIf}
 SectionEnd
 
 Section "Uninstall"
-${INSTALL_TYPE}
+SetShellVarContext $InstallScope
 Call un.KillProcess
 Delete "$INSTDIR\LICENSE"
 Delete "$INSTDIR\icon.ico"
@@ -307,5 +335,5 @@ Delete "$SMSTARTUP\${APP_NAME}.lnk"
 Delete "$DESKTOP\${APP_NAME} UI.lnk"
 ExecWait 'schtasks /Delete /TN "Backrest Startup" /F'
 # Registry key.
-DeleteRegKey ${REG_ROOT} "${REG_UNINSTALL_PATH}"
+DeleteRegKey ${RegRoot} "${REG_UNINSTALL_PATH}"
 SectionEnd
