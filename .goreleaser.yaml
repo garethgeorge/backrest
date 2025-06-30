@@ -85,6 +85,8 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--platform=linux/amd64"
+    extra_files:
+      - ./
 
   - image_templates:
       - garethgeorge/backrest:{{ .Tag }}-alpine-arm64
@@ -94,6 +96,8 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--platform=linux/arm64/v8"
+    extra_files:
+      - ./
 
   - image_templates:
       - garethgeorge/backrest:{{ .Tag }}-scratch-arm64
@@ -103,6 +107,8 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--platform=linux/arm64/v8"
+    extra_files:
+      - ./
 
   - image_templates:
       - garethgeorge/backrest:{{ .Tag }}-scratch-amd64
@@ -111,6 +117,8 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--platform=linux/amd64"
+    extra_files:
+      - ./
 
   - image_templates:
       - garethgeorge/backrest:{{ .Tag }}-scratch-armv6
@@ -121,6 +129,8 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--platform=linux/arm/v6"
+    extra_files:
+      - ./
 
 docker_manifests:
   - name_template: "garethgeorge/backrest:latest"
