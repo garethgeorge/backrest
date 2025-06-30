@@ -7,8 +7,8 @@
 !define DESCRIPTION "${APP_NAME} installer"
 !define LICENSE_TXT "${BUILD_DIR}\LICENSE"
 !define MAIN_APP_EXE "backrest-windows-tray.exe"
-!define INSTALL_TYPE "SetShellVarContext current"
-!define REG_ROOT "HKCU"
+!define INSTALL_TYPE "SetShellVarContext all"
+!define REG_ROOT "HKLM"
 !define REG_UNINSTALL_PATH "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
 # Extract version from the changelog.
 !searchparse /file "${BUILD_DIR}\CHANGELOG.md" `## [` VERSION `]`
@@ -36,7 +36,7 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 ######################################################################
 # Installer settings
 Unicode True
-RequestExecutionLevel user
+RequestExecutionLevel admin
 SetCompressor LZMA
 Name "${APP_NAME}"
 Caption "$(^Name) ${VERSION} Setup"
@@ -47,7 +47,7 @@ OutFile "${OUT_DIR}\Backrest-setup.exe"
 !endif
 XPStyle on
 # Default installation directory.
-InstallDir "$LOCALAPPDATA\Programs\Backrest"
+InstallDir "$PROGRAMFILES\Backrest"
 # If existing installation is detected, use that directory instead.
 InstallDirRegKey "${REG_ROOT}" "${REG_UNINSTALL_PATH}" "UninstallString"
 ManifestDPIAware true
@@ -163,7 +163,7 @@ ${Else}
   ${If} "$R4" == "0"
     StrCpy "$InstallMode" "Abort"
     StrCpy $WelcomeTitle "Error"
-    StrCpy $WelcomeText "*** WARNING ***$\r$\nBackrest binds to port $UIPort for web UI. This port is currently in use by another Backrest instance or another application.$\r$\n$\r$\nPerform the following:$\r$\nClick Start - type $\"environment$\", Enter to open System Properties.$\r$\nClick Environment Variables. Click New in the top section. Enter BACKREST_PORT as the name and 127.0.0.1:port as the value, where $\"port$\" is a number between 1024 and 65535 (avoid known ports; try 9900), then OK 3 times.$\r$\nExit and re-run this installer to have it pick up the new value.$\r$\nSee installation documentation for more details.$\r$\n$\r$\nClick Exit to exit."
+    StrCpy $WelcomeText "*** WARNING ***$\r$\nBackrest binds to port $UIPort for web UI. This port is currently in use by another Backrest instance or another application.$\r$\n$\r$\nPerform the following:$\r$\nClick Start - type $\"environment$\", Enter to open System Properties.\r\nClick Environment Variables. Click New in the top section. Enter BACKREST_PORT as the name and 127.0.0.1:port as the value, where $\"port$\" is a number between 1024 and 65535 (avoid known ports; try 9900), then OK 3 times.\r\nExit and re-run this installer to have it pick up the new value.\r\nSee installation documentation for more details.\r\n$\r$\nClick Exit to exit."
   ${Else}
     StrCpy $WelcomeTitle "Welcome to ${APP_NAME} Setup"
     StrCpy $WelcomeText "Setup will guide you through the installation of ${APP_NAME}.$WelcomePortNote$\r$\n$\r$\nClick Next to continue."
@@ -263,6 +263,10 @@ CreateDirectory $SMSTARTUP
 CreateShortcut "$SMSTARTUP\${APP_NAME}.lnk" "$INSTDIR\${MAIN_APP_EXE}" "" "$INSTDIR\icon.ico" 0
 ${MementoSectionEnd}
 
+${MementoSection} "Run application as Administrator at startup (advanced)" sect_startup_admin
+ExecWait 'schtasks /Create /TN "Backrest Startup" /TR "$\"$INSTDIR\${MAIN_APP_EXE}$\"" /SC ONLOGON /RL HIGHEST /F'
+${MementoSectionEnd}
+
 ${MementoSection} "Desktop shortcut" sect_desktop
 CreateShortCut "$DESKTOP\${APP_NAME} UI.lnk" "http://localhost:$UIPort/" "" "$INSTDIR\icon.ico" 0
 ${MementoSectionEnd}
@@ -273,6 +277,9 @@ ${MementoSectionDone}
 Section "-Remove deselected shortcuts"
 ${IfNot} ${SectionIsSelected} ${sect_startup}
   Delete "$SMSTARTUP\${APP_NAME}.lnk"
+${EndIf}
+${IfNot} ${SectionIsSelected} ${sect_startup_admin}
+  ExecWait 'schtasks /Delete /TN "Backrest Startup" /F'
 ${EndIf}
 ${IfNot} ${SectionIsSelected} ${sect_desktop}
   Delete "$DESKTOP\${APP_NAME} UI.lnk"
@@ -298,6 +305,7 @@ RmDir "$SMPROGRAMS\${APP_NAME}"
 # Startup and desktop shortcuts.
 Delete "$SMSTARTUP\${APP_NAME}.lnk"
 Delete "$DESKTOP\${APP_NAME} UI.lnk"
+ExecWait 'schtasks /Delete /TN "Backrest Startup" /F'
 # Registry key.
 DeleteRegKey ${REG_ROOT} "${REG_UNINSTALL_PATH}"
 SectionEnd
