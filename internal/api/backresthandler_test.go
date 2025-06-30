@@ -849,6 +849,7 @@ func TestRestore(t *testing.T) {
 }
 
 func TestRunCommand(t *testing.T) {
+	testutil.InstallZapLogger(t)
 	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
 		Modno:    1234,
 		Instance: "test",
@@ -1087,7 +1088,7 @@ func createSystemUnderTest(t *testing.T, config *config.ConfigManager) systemUnd
 		}
 	}
 
-		h := NewBackrestHandler(config, peerStateManager, orch, oplog, logStore)
+	h := NewBackrestHandler(config, peerStateManager, orch, oplog, logStore)
 
 	return systemUnderTest{
 		handler:  h,

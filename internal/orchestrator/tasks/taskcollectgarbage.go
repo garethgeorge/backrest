@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -212,18 +213,29 @@ func (t *CollectGarbageTask) gcOperations(runner TaskRunner) error {
 		zap.Any("removed_by_unknown_peer_keyid", deletedByUnknownPeerKeyid))
 
 	// cleaning up logstore
-	toDelete := []string{}
+	toDelete := make(map[string]int64)
 	if err := t.logstore.SelectAll(func(id string, parentID int64) {
 		if parentID == 0 {
 			return
 		}
 		if _, ok := validIDs[parentID]; !ok {
-			toDelete = append(toDelete, id)
+			toDelete[id] = parentID // this logstore entry is orphaned, mark it for deletion
 		}
 	}); err != nil {
 		return fmt.Errorf("selecting all logstore entries: %w", err)
 	}
-	for _, id := range toDelete {
+	for id, parentID := range toDelete {
+		// Confirm that the ID is invalid by trying to get it from the oplog
+		if _, err := runner.GetOperation(parentID); !errors.Is(err, oplog.ErrNotExist) {
+			if err != nil {
+				zap.L().Error("getting operation for logstore entry", zap.String("id", id), zap.Int64("parent_id", parentID), zap.Error(err))
+				continue
+			}
+			zap.L().Debug("logstore entry is still valid, skipping deletion", zap.String("id", id), zap.Error(err))
+			continue
+		}
+
+		// The logstore entry is orphaned, delete it
 		if err := t.logstore.Delete(id); err != nil {
 			zap.L().Error("deleting logstore entry", zap.String("id", id), zap.Error(err))
 		}
