@@ -103,6 +103,7 @@ type PeerStateManager interface {
 	GetPeerState(keyID string) *PeerState
 	GetAll() []*PeerState
 	SetPeerState(keyID string, state *PeerState)
+	UpdatePeerState(keyID string, instanceID string, updateFn func(state *PeerState))
 	OnStateChanged() eventemitter.Receiver[*PeerState]
 	Close() error
 }
@@ -156,6 +157,23 @@ func (m *InMemoryPeerStateManager) SetPeerState(keyID string, state *PeerState) 
 	copy := state.Clone()
 	m.peerStates[keyID] = copy
 	m.onStateChanged.Emit(copy)
+}
+
+func (m *InMemoryPeerStateManager) UpdatePeerState(keyID string, instanceID string, updateFn func(state *PeerState)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var state *PeerState
+	if existingState, exists := m.peerStates[keyID]; exists {
+		state = existingState.Clone()
+	} else {
+		state = newPeerState(instanceID, keyID)
+	}
+
+	updateFn(state)
+
+	m.peerStates[keyID] = state
+	m.onStateChanged.Emit(state.Clone())
 }
 
 func (m *InMemoryPeerStateManager) Close() error {
@@ -240,6 +258,43 @@ func (m *SqlitePeerStateManager) SetPeerState(keyID string, state *PeerState) {
 	}
 
 	if err := m.kvstore.Set(keyID, stateBytes); err != nil {
+		zap.S().Warnf("error setting peer state for key %s: %v", keyID, err)
+		return
+	}
+	m.onStateChanged.Emit(state.Clone())
+}
+
+func (m *SqlitePeerStateManager) UpdatePeerState(keyID string, instanceID string, updateFn func(state *PeerState)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var state *PeerState
+	stateBytes, err := m.kvstore.Get(keyID)
+	if err != nil {
+		zap.S().Warnf("error getting peer state for key %s: %v", keyID, err)
+		state = newPeerState(instanceID, keyID)
+	} else if stateBytes == nil {
+		state = newPeerState(instanceID, keyID)
+	} else {
+		var stateProto v1.PeerState
+		if err := proto.Unmarshal(stateBytes, &stateProto); err != nil {
+			zap.S().Warnf("error unmarshalling peer state for key %s: %v", keyID, err)
+			state = newPeerState(instanceID, keyID)
+		} else {
+			state = peerStateFromProto(&stateProto)
+		}
+	}
+
+	updateFn(state)
+
+	stateProto := peerStateToProto(state)
+	newStateBytes, err := proto.Marshal(stateProto)
+	if err != nil {
+		zap.S().Warnf("error marshalling peer state for key %s: %v", keyID, err)
+		return
+	}
+
+	if err := m.kvstore.Set(keyID, newStateBytes); err != nil {
 		zap.S().Warnf("error setting peer state for key %s: %v", keyID, err)
 		return
 	}

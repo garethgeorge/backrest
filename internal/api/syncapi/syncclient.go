@@ -74,7 +74,9 @@ func NewSyncClient(
 		oplog:              oplog,
 		l:                  zap.L().Named(fmt.Sprintf("syncclient for %q", peer.GetInstanceId())),
 	}
-	c.mgr.peerStateManager.SetPeerState(peer.Keyid, newPeerState(peer.InstanceId, peer.Keyid))
+	c.mgr.peerStateManager.UpdatePeerState(peer.Keyid, peer.InstanceId, func(peerState *PeerState) {
+		// this will create a new peer state if one doesn't exist
+	})
 	return c, nil
 }
 
@@ -116,21 +118,23 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 		if err := cmdStream.ConnectStream(ctx, c.client.Sync(ctx)); err != nil {
 			c.l.Sugar().Infof("lost stream connection to peer %q (%s): %v", c.peer.InstanceId, c.peer.Keyid, err)
 			var syncErr *SyncError
-			state := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
-			if state == nil {
-				state = newPeerState(c.peer.InstanceId, c.peer.Keyid)
-			}
-			state.LastHeartbeat = time.Now()
-			if errors.As(err, &syncErr) {
-				state.ConnectionState = syncErr.State
-				state.ConnectionStateMessage = syncErr.Message.Error()
-			} else {
-				state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL
-				state.ConnectionStateMessage = err.Error()
-			}
-			c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, state)
+			c.mgr.peerStateManager.UpdatePeerState(c.peer.Keyid, c.peer.InstanceId, func(state *PeerState) {
+				state.LastHeartbeat = time.Now()
+				if errors.As(err, &syncErr) {
+					state.ConnectionState = syncErr.State
+					state.ConnectionStateMessage = syncErr.Message.Error()
+				} else {
+					state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL
+					state.ConnectionStateMessage = err.Error()
+				}
+			})
 		} else {
 			c.reconnectAttempts = 0
+			c.mgr.peerStateManager.UpdatePeerState(c.peer.Keyid, c.peer.InstanceId, func(state *PeerState) {
+				state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+				state.ConnectionStateMessage = "disconnected"
+				state.LastHeartbeat = time.Now()
+			})
 		}
 
 		wg.Wait()
@@ -206,14 +210,11 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 	}
 
 	c.l.Sugar().Infof("sync connection established with peer %q (%s)", peer.InstanceId, peer.Keyid)
-	peerState := c.mgr.peerStateManager.GetPeerState(peer.Keyid).Clone()
-	if peerState == nil {
-		peerState = newPeerState(c.peer.InstanceId, peer.Keyid)
-	}
-	peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_CONNECTED
-	peerState.ConnectionStateMessage = "connected"
-	peerState.LastHeartbeat = time.Now()
-	c.mgr.peerStateManager.SetPeerState(peer.Keyid, peerState)
+	c.mgr.peerStateManager.UpdatePeerState(peer.Keyid, c.peer.InstanceId, func(peerState *PeerState) {
+		peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_CONNECTED
+		peerState.ConnectionStateMessage = "connected"
+		peerState.LastHeartbeat = time.Now()
+	})
 
 	// Send a heartbeat every 2 minutes to keep the connection alive.
 	go sendHeartbeats(ctx, stream, env.MultihostHeartbeatInterval())
@@ -384,12 +385,12 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 }
 
 func (c *syncSessionHandlerClient) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionHeartbeat) error {
-	peerState := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
-	if peerState == nil {
-		return NewSyncErrorInternal(fmt.Errorf("peer state not found for peer %q", c.peer.InstanceId))
-	}
-	peerState.LastHeartbeat = time.Now()
-	c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, peerState)
+	c.mgr.peerStateManager.UpdatePeerState(c.peer.Keyid, c.peer.InstanceId, func(peerState *PeerState) {
+		if peerState == nil {
+			return // this should not happen
+		}
+		peerState.LastHeartbeat = time.Now()
+	})
 	return nil
 }
 
@@ -472,16 +473,16 @@ func (c *syncSessionHandlerClient) HandleSendOperations(ctx context.Context, str
 
 func (c *syncSessionHandlerClient) HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendConfig) error {
 	c.l.Sugar().Debugf("received remote config update")
-	peerState := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
-	if peerState == nil {
-		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", c.peer.Keyid))
-	}
 	newRemoteConfig := item.Config
 	if newRemoteConfig == nil {
 		return NewSyncErrorProtocol(fmt.Errorf("received nil remote config"))
 	}
-	peerState.Config = newRemoteConfig
-	c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, peerState)
+	c.mgr.peerStateManager.UpdatePeerState(c.peer.Keyid, c.peer.InstanceId, func(peerState *PeerState) {
+		if peerState == nil {
+			return // this should not happen
+		}
+		peerState.Config = newRemoteConfig
+	})
 	return nil
 }
 

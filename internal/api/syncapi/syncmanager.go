@@ -38,22 +38,16 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 	config, err := configMgr.Get()
 	if err == nil {
 		for _, knownHostPeer := range config.GetMultihost().GetKnownHosts() {
-			state := peerStateManager.GetPeerState(knownHostPeer.Keyid).Clone()
-			if state == nil {
-				state = newPeerState(knownHostPeer.InstanceId, knownHostPeer.Keyid)
-			}
-			state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
-			state.ConnectionStateMessage = "disconnected"
-			peerStateManager.SetPeerState(knownHostPeer.Keyid, state)
+			peerStateManager.UpdatePeerState(knownHostPeer.Keyid, knownHostPeer.InstanceId, func(state *PeerState) {
+				state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+				state.ConnectionStateMessage = "disconnected"
+			})
 		}
 		for _, authorizedClient := range config.GetMultihost().GetAuthorizedClients() {
-			state := peerStateManager.GetPeerState(authorizedClient.Keyid).Clone()
-			if state == nil {
-				state = newPeerState(authorizedClient.InstanceId, authorizedClient.Keyid)
-			}
-			state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
-			state.ConnectionStateMessage = "disconnected"
-			peerStateManager.SetPeerState(authorizedClient.Keyid, state)
+			peerStateManager.UpdatePeerState(authorizedClient.Keyid, authorizedClient.InstanceId, func(state *PeerState) {
+				state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+				state.ConnectionStateMessage = "disconnected"
+			})
 		}
 	} else {
 		zap.S().Errorf("syncmanager failed to get initial config: %v", err)
