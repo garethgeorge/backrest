@@ -86,6 +86,7 @@ services:
       - ./backrest/config:/config
       - ./backrest/cache:/cache
       - ./backrest/tmp:/tmp
+      - ./backrest/rclone:/root/.config/rclone # Mount for rclone config (needed when using rclone remotes)
       - /path/to/backup/data:/userdata  # Mount local paths to backup
       - /path/to/local/repos:/repos     # Mount local repos (optional for remote storage)
     environment:
