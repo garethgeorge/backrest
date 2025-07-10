@@ -444,14 +444,14 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 	for _, repo := range config.Repos {
 		if h.permissions.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
 			remoteConfig.Repos = append(remoteConfig.Repos, repo)
-			resourceListMsg.RepoIds = append(resourceListMsg.RepoIds, repo.Id)
+			resourceListMsg.Repos = append(resourceListMsg.Repos, &v1.SyncRepoMetadata{Id: repo.Id, Guid: repo.Guid})
 			allowedRepoIDs = append(allowedRepoIDs, repo.Id)
 		}
 	}
 	for _, plan := range config.Plans {
 		if h.permissions.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
 			remoteConfig.Plans = append(remoteConfig.Plans, plan)
-			resourceListMsg.PlanIds = append(resourceListMsg.PlanIds, plan.Id)
+			resourceListMsg.Plans = append(resourceListMsg.Plans, &v1.SyncPlanMetadata{Id: plan.Id})
 			allowedPlanIDs = append(allowedPlanIDs, plan.Id)
 		}
 	}
