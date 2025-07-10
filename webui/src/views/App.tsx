@@ -7,10 +7,11 @@ import {
   ExclamationOutlined,
   SettingOutlined,
   LoadingOutlined,
+  CloudServerOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { Button, Empty, Layout, Menu, Spin, theme } from "antd";
-import { Config } from "../../gen/ts/v1/config_pb";
+import { Config, Multihost_Peer } from "../../gen/ts/v1/config_pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { uiBuildVersion } from "../state/buildcfg";
@@ -33,6 +34,11 @@ import { getStatusForSelector, matchSelector } from "../state/logstate";
 import { Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { MainContentAreaTemplate } from "./MainContentArea";
 import { create } from "@bufbuild/protobuf";
+import { PeerState } from "../../gen/ts/v1/syncservice_pb";
+import {
+  subscribeToPeerStates,
+  unsubscribeFromPeerStates,
+} from "../state/peerstates";
 
 const { Header, Sider } = Layout;
 
@@ -114,7 +120,20 @@ export const App: React.FC = () => {
   const navigate = useNavigate();
   const [config, setConfig] = useConfig();
 
-  const items = getSidenavItems(config);
+  const [peerStates, setPeerStates] = useState<PeerState[]>([]);
+
+  useEffect(() => {
+    if (!config || !config.multihost) return;
+    const cb = (states: PeerState[]) => {
+      setPeerStates(states);
+    };
+    subscribeToPeerStates(cb);
+    return () => {
+      unsubscribeFromPeerStates(cb);
+    };
+  }, [config]);
+
+  const items = getSidenavItems(config, peerStates);
 
   return (
     <Layout style={{ height: "auto", minHeight: "100vh" }}>
@@ -273,7 +292,10 @@ const AuthenticationBoundary = ({
   return <>{children}</>;
 };
 
-const getSidenavItems = (config: Config | null): MenuProps["items"] => {
+const getSidenavItems = (
+  config: Config | null,
+  peerStates: PeerState[]
+): MenuProps["items"] => {
   const showModal = useShowModal();
   const navigate = useNavigate();
 
@@ -284,6 +306,8 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
   const reposById = _.keyBy(config.repos, (r) => r.id);
   const configPlans = config.plans || [];
   const configRepos = config.repos || [];
+
+  const menu: MenuProps["items"] = [];
 
   const plans: MenuProps["items"] = [
     {
@@ -380,37 +404,83 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     }),
   ];
 
-  const authorizedClientRepos: MenuProps["items"] = [];
-
+  const authorizedClients: MenuProps["items"] = [];
   if (config.multihost?.authorizedClients?.length) {
-    const authorizedClients = config.multihost.authorizedClients;
+    const authorizedClientsConfigs = new Map<string, Multihost_Peer>();
+    for (const client of config.multihost.authorizedClients) {
+      authorizedClientsConfigs.set(client.keyid, client);
+    }
 
-    // Display authorized client peer statuses
+    const createElementForPeerState = (
+      peerState: PeerState,
+      peerConfig: Multihost_Peer
+    ): Required<MenuProps>["items"][0] => {
+      const repos: MenuProps["items"] = peerState.knownRepos.map((repo) => {
+        const sel = create(OpSelectorSchema, {
+          originalInstanceKeyid: peerState.peerKeyid,
+          repoGuid: repo.guid,
+        });
+      });
+
+      return {
+        key: `peer-${peerState.peerKeyid}`,
+        icon: (
+          <IconForResource
+            selector={create(OpSelectorSchema, {
+              originalInstanceKeyid: peerState.peerKeyid,
+            })}
+          />
+        ),
+        label: (
+          <div
+            className="backrest visible-on-hover"
+            style={{ width: "100%", height: "100%" }}
+          >
+            {peerState.peerInstanceId}
+          </div>
+        ),
+      };
+    };
+
+    for (const peerState of peerStates) {
+      const peerConfig = authorizedClientsConfigs.get(peerState.peerKeyid);
+      if (!peerConfig) {
+        continue;
+      }
+      authorizedClients.push(createElementForPeerState(peerState, peerConfig));
+    }
   }
 
-  return [
-    {
-      key: "plans",
-      icon: React.createElement(ScheduleOutlined),
-      label: "Plans",
-      children: plans,
+  menu.push({
+    key: "plans",
+    icon: React.createElement(ScheduleOutlined),
+    label: "Plans",
+    children: plans,
+  });
+  menu.push({
+    key: "repos",
+    icon: React.createElement(DatabaseOutlined),
+    label: "Repositories",
+    children: repos,
+  });
+  if (authorizedClients.length > 0) {
+    menu.push({
+      key: "authorized-clients",
+      icon: React.createElement(CloudServerOutlined),
+      label: "Remote Instances",
+      children: authorizedClients,
+    });
+  }
+  menu.push({
+    key: "settings",
+    icon: React.createElement(SettingOutlined),
+    label: "Settings",
+    onClick: async () => {
+      const { SettingsModal } = await import("./SettingsModal");
+      showModal(<SettingsModal />);
     },
-    {
-      key: "repos",
-      icon: React.createElement(DatabaseOutlined),
-      label: "Repositories",
-      children: repos,
-    },
-    {
-      key: "settings",
-      icon: React.createElement(SettingOutlined),
-      label: "Settings",
-      onClick: async () => {
-        const { SettingsModal } = await import("./SettingsModal");
-        showModal(<SettingsModal />);
-      },
-    },
-  ];
+  });
+  return menu;
 };
 
 const IconForResource = ({ selector }: { selector: OpSelector }) => {

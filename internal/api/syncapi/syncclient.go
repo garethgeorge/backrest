@@ -231,13 +231,22 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 		for _, repo := range localConfig.Repos {
 			if c.permissions.CheckPermissionForRepo(repo.Guid, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
 				remoteConfig.Repos = append(remoteConfig.Repos, repo)
-				resourceList.RepoIds = append(resourceList.RepoIds, repo.Id)
+			}
+			if c.permissions.CheckPermissionForRepo(repo.Guid, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
+				resourceList.Repos = append(resourceList.Repos, &v1.SyncRepoMetadata{
+					Id:   repo.Id,
+					Guid: repo.Guid,
+				})
 			}
 		}
 		for _, plan := range localConfig.Plans {
 			if c.permissions.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
 				remoteConfig.Plans = append(remoteConfig.Plans, plan)
-				resourceList.PlanIds = append(resourceList.PlanIds, plan.Id)
+			}
+			if c.permissions.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
+				resourceList.Plans = append(resourceList.Plans, &v1.SyncPlanMetadata{
+					Id: plan.Id,
+				})
 			}
 		}
 
