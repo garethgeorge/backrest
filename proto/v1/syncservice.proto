@@ -48,14 +48,23 @@ message SyncStateStreamRequest {
   bool subscribe = 1; // If true, the stream will continue to send updates until cancelled.
 }
 
+message SyncRepoMetadata {
+  string id = 1;
+  string guid = 2;
+}
+
+message SyncPlanMetadata {
+  string id = 1;
+}
+
 message PeerState {
   string peer_instance_id = 1;
   string peer_keyid = 2;
   SyncConnectionState state = 3;
   string status_message = 4;
 
-  repeated string known_plans = 5; // List of plan IDs that the peer has.
-  repeated string known_repos = 6; // List of repo IDs that the peer has.
+  repeated SyncPlanMetadata known_plans = 5; // List of plan IDs that the peer has.
+  repeated SyncRepoMetadata known_repos = 6; // List of repo IDs that the peer has.
   RemoteConfig remote_config = 7; // The remote config of the peer, if available.
 
   int64 last_heartbeat_millis = 8; // The last time the peer sent a heartbeat, in milliseconds since epoch.
@@ -108,8 +117,8 @@ message SyncStreamItem {
   }
 
   message SyncActionListResources {
-    repeated string repo_ids = 1; // List of repo IDs that can be accessed.
-    repeated string plan_ids = 2; // List of plan IDs that can be accessed.
+    repeated SyncRepoMetadata repos = 1;
+    repeated SyncPlanMetadata plans = 2;
   }
 
   message SyncActionConnectRepo {

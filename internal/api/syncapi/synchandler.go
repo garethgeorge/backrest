@@ -353,20 +353,20 @@ func (h *syncSessionHandlerServer) HandleSendConfig(ctx context.Context, stream 
 
 func (h *syncSessionHandlerServer) HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionListResources) error {
 	zap.L().Debug("syncserver received resource list from client", zap.String("client_instance_id", h.peer.InstanceId),
-		zap.Any("repos", item.GetRepoIds()),
-		zap.Any("plans", item.GetPlanIds()))
+		zap.Any("repos", item.GetRepos()),
+		zap.Any("plans", item.GetPlans()))
 	h.mgr.peerStateManager.UpdatePeerState(h.peer.Keyid, h.peer.InstanceId, func(peerState *PeerState) {
 		if peerState == nil {
 			return // this should not happen
 		}
 
-		repos := item.GetRepoIds()
-		plans := item.GetPlanIds()
-		for _, repoID := range repos {
-			peerState.KnownRepos[repoID] = struct{}{}
+		repos := item.GetRepos()
+		plans := item.GetPlans()
+		for _, repo := range repos {
+			peerState.KnownRepos[repo.Id] = repo
 		}
-		for _, planID := range plans {
-			peerState.KnownPlans[planID] = struct{}{}
+		for _, plan := range plans {
+			peerState.KnownPlans[plan.Id] = plan
 		}
 	})
 	return nil

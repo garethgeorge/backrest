@@ -25,8 +25,8 @@ type PeerState struct {
 	ConnectionStateMessage string
 
 	// Plans and repos available on this peer
-	KnownRepos map[string]struct{}
-	KnownPlans map[string]struct{}
+	KnownRepos map[string]*v1.SyncRepoMetadata
+	KnownPlans map[string]*v1.SyncPlanMetadata
 
 	// Partial configuration available for this peer
 	Config *v1.RemoteConfig
@@ -39,8 +39,8 @@ func newPeerState(instanceID, keyID string) *PeerState {
 		LastHeartbeat:          time.Now(),
 		ConnectionState:        v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED,
 		ConnectionStateMessage: "disconnected",
-		KnownRepos:             make(map[string]struct{}),
-		KnownPlans:             make(map[string]struct{}),
+		KnownRepos:             make(map[string]*v1.SyncRepoMetadata),
+		KnownPlans:             make(map[string]*v1.SyncPlanMetadata),
 		Config:                 nil, // Will be set when the config is received
 	}
 }
@@ -68,8 +68,8 @@ func peerStateToProto(state *PeerState) *v1.PeerState {
 		LastHeartbeatMillis: state.LastHeartbeat.UnixMilli(),
 		State:               state.ConnectionState,
 		StatusMessage:       state.ConnectionStateMessage,
-		KnownRepos:          slices.Collect(maps.Keys(state.KnownRepos)),
-		KnownPlans:          slices.Collect(maps.Keys(state.KnownPlans)),
+		KnownRepos:          slices.Collect(maps.Values(state.KnownRepos)),
+		KnownPlans:          slices.Collect(maps.Values(state.KnownPlans)),
 		RemoteConfig:        state.Config,
 	}
 }
@@ -78,13 +78,13 @@ func peerStateFromProto(state *v1.PeerState) *PeerState {
 	if state.PeerInstanceId == "" || state.PeerKeyid == "" {
 		return nil
 	}
-	knownRepos := make(map[string]struct{}, len(state.KnownRepos))
+	knownRepos := make(map[string]*v1.SyncRepoMetadata, len(state.KnownRepos))
 	for _, repo := range state.KnownRepos {
-		knownRepos[repo] = struct{}{}
+		knownRepos[repo.Id] = repo
 	}
-	knownPlans := make(map[string]struct{}, len(state.KnownPlans))
+	knownPlans := make(map[string]*v1.SyncPlanMetadata, len(state.KnownPlans))
 	for _, plan := range state.KnownPlans {
-		knownPlans[plan] = struct{}{}
+		knownPlans[plan.Id] = plan
 	}
 
 	return &PeerState{
@@ -269,20 +269,18 @@ func (m *SqlitePeerStateManager) UpdatePeerState(keyID string, instanceID string
 	defer m.mu.Unlock()
 
 	var state *PeerState
-	stateBytes, err := m.kvstore.Get(keyID)
-	if err != nil {
-		zap.S().Warnf("error getting peer state for key %s: %v", keyID, err)
-		state = newPeerState(instanceID, keyID)
-	} else if stateBytes == nil {
-		state = newPeerState(instanceID, keyID)
-	} else {
+	if stateBytes, err := m.kvstore.Get(keyID); err == nil {
 		var stateProto v1.PeerState
 		if err := proto.Unmarshal(stateBytes, &stateProto); err != nil {
 			zap.S().Warnf("error unmarshalling peer state for key %s: %v", keyID, err)
-			state = newPeerState(instanceID, keyID)
 		} else {
 			state = peerStateFromProto(&stateProto)
 		}
+	} else {
+		zap.S().Warnf("error getting peer state for key %s: %v", keyID, err)
+	}
+	if state == nil {
+		state = newPeerState(instanceID, keyID)
 	}
 
 	updateFn(state)
