@@ -39,7 +39,6 @@ import {
   subscribeToPeerStates,
   unsubscribeFromPeerStates,
 } from "../state/peerstates";
-
 const { Header, Sider } = Layout;
 
 const SummaryDashboard = React.lazy(() =>
@@ -63,6 +62,12 @@ const PlanView = React.lazy(() =>
 const RepoView = React.lazy(() =>
   import("./RepoView").then((m) => ({
     default: m.RepoView,
+  }))
+);
+
+const SelectorView = React.lazy(() =>
+  import("./SelectorView").then((m) => ({
+    default: m.SelectorView,
   }))
 );
 
@@ -92,12 +97,10 @@ const RepoViewContainer = () => {
 
 const RemoteRepoViewContainer = () => {
   const { peerInstanceId, repoId } = useParams();
-  const [config, setConfig] = useConfig();
   const [peerStates, setPeerStates] = useState<PeerState[]>([]);
 
   // subscribe to peer states
   useEffect(() => {
-    if (!config || !config.multihost) return;
     const cb = (states: PeerState[]) => {
       setPeerStates(states);
     };
@@ -105,11 +108,7 @@ const RemoteRepoViewContainer = () => {
     return () => {
       unsubscribeFromPeerStates(cb);
     };
-  }, [config]);
-
-  if (!config) {
-    return <Spin />;
-  }
+  }, []);
 
   // Peer state is used to find the right repo
   const peerState = peerStates.find(
@@ -128,7 +127,13 @@ const RemoteRepoViewContainer = () => {
       key={`${peerInstanceId}-${repoId}`}
     >
       {peerRepo ? (
-        <RepoView repo={peerRepo} />
+        <SelectorView
+          title={`Remote Repo: ${peerRepo.id}`}
+          sel={create(OpSelectorSchema, {
+            originalInstanceKeyid: peerState?.peerKeyid,
+            repoGuid: peerRepo.guid,
+          })}
+        />
       ) : (
         <Empty description={`Repo ${repoId} not found`} />
       )}
