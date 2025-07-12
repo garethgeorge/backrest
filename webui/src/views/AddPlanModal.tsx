@@ -370,7 +370,6 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                         <MinusCircleOutlined
                           className="dynamic-delete-button"
                           onClick={() => remove(field.name)}
-                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
                     );
@@ -439,7 +438,6 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                         <MinusCircleOutlined
                           className="dynamic-delete-button"
                           onClick={() => remove(field.name)}
-                          style={{ paddingLeft: "5px" }}
                         />
                       </Form.Item>
                     );
