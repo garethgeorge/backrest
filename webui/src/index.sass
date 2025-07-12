@@ -5,11 +5,9 @@ body
   &.operation-details
     color: grey
     font-family: monospace
-    font-size: 0.7em
   &.file-details
     color: grey
     font-family: monospace
-    font-size: 0.7em
 
 pre
   // force text to wrap on overflow even in 'pre' elements.
@@ -22,8 +20,10 @@ pre
 .visible-on-hover:hover .hidden-child
   visibility: visible
 
-.float-center-right
-  position: absolute
-  right: 0px
-  top: "50%"
-  transform: "translateY(-50%)"
+.flex-between-box
+  display: flex
+  justify-content: space-between
+  align-items: center
+
+.dynamic-delete-button
+  padding-left: 10px

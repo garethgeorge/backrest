@@ -11,6 +11,7 @@ import {
   FormInstance,
   Tooltip,
   Select,
+  Divider,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -24,6 +25,7 @@ import {
   AuthSchema,
   Config,
   ConfigSchema,
+  UiSettingSchema,
   UserSchema,
   MultihostSchema,
   Multihost_PeerSchema,
@@ -35,6 +37,7 @@ import {
   unsubscribeFromPeerStates,
 } from "../state/peerstates";
 import { PeerStateConnectionStatusIcon } from "../components/SyncStateIcon";
+import TextArea from "antd/es/input/TextArea";
 
 interface FormData {
   auth: {
@@ -68,6 +71,10 @@ interface FormData {
         scopes: string[];
       }[];
     }[];
+  };
+  ui: {
+    useCompactUi: boolean;
+    tokens: string;
   };
 }
 
@@ -119,6 +126,9 @@ export const SettingsModal = () => {
         ignoreUnknownFields: false,
       });
       newConfig.instance = formData.instance;
+      newConfig.ui = fromJson(UiSettingSchema, formData.ui, {
+        ignoreUnknownFields: false,
+      });
 
       if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
         throw new Error(
@@ -201,6 +211,23 @@ export const SettingsModal = () => {
               }
               disabled={!!config.instance}
             />
+          </Form.Item>
+
+          <Form.Item
+            label="Use compect ui"
+            name={["ui", "useCompactUi"]}
+            valuePropName="checked"
+            initialValue={config.ui?.useCompactUi || false}
+          >
+            <Checkbox />
+          </Form.Item>
+          <Form.Item
+            label="Ant design theme tokens"
+            extra={<span>Must JSON format !!! <br/><a href="https://ant.design/theme-editor/">Theme Editor - Ant Design</a></span>}
+            name={["ui", "tokens"]}
+            initialValue={config.ui?.tokens}
+          >
+            <TextArea rows={10} />
           </Form.Item>
 
           <Collapse
