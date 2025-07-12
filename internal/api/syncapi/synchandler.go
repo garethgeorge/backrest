@@ -58,19 +58,24 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	}()
 
 	if err := cmdStream.ConnectStream(ctx, stream); err != nil {
-		zap.S().Errorf("sync handler stream error: %v", err)
+		if sessionHandler.peer != nil {
+			zap.S().Errorf("sync handler stream error for client %q: %v", sessionHandler.peer.InstanceId, err)
+			h.mgr.peerStateManager.UpdatePeerState(sessionHandler.peer.Keyid, sessionHandler.peer.InstanceId, func(peerState *PeerState) {
+				peerState.LastHeartbeat = time.Now()
+				peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+				peerState.ConnectionStateMessage = err.Error()
+				var syncErr *SyncError
+				if errors.As(err, &syncErr) {
+					peerState.ConnectionState = syncErr.State
+					peerState.ConnectionStateMessage = syncErr.Message.Error()
+				}
+			})
+		} else {
+			zap.S().Errorf("sync handler stream error for unestablished session: %v", err)
+		}
+
 		var syncErr *SyncError
 		if errors.As(err, &syncErr) {
-			if sessionHandler.peer != nil {
-				peerState := h.mgr.peerStateManager.GetPeerState(sessionHandler.peer.Keyid).Clone()
-				if peerState == nil {
-					peerState = newPeerState(sessionHandler.peer.InstanceId, sessionHandler.peer.Keyid)
-				}
-				peerState.ConnectionState = syncErr.State
-				peerState.ConnectionStateMessage = syncErr.Message.Error()
-				peerState.LastHeartbeat = time.Now()
-				h.mgr.peerStateManager.SetPeerState(sessionHandler.peer.Keyid, peerState)
-			}
 			switch syncErr.State {
 			case v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH:
 				return connect.NewError(connect.CodePermissionDenied, syncErr.Message)
@@ -80,6 +85,14 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 				return connect.NewError(connect.CodeInternal, syncErr.Message)
 			}
 		}
+		return connect.NewError(connect.CodeInternal, err)
+	} else {
+		h.mgr.peerStateManager.UpdatePeerState(sessionHandler.peer.Keyid, sessionHandler.peer.InstanceId, func(peerState *PeerState) {
+			peerState.LastHeartbeat = time.Now()
+			peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+			peerState.ConnectionStateMessage = "disconnected"
+		})
+		zap.S().Infof("sync handler stream closed for client %q", sessionHandler.peer.InstanceId)
 	}
 
 	return nil
@@ -139,11 +152,11 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 	}
 
 	// Configure the state for the connected peer.
-	peerState := newPeerState(peer.InstanceId, h.peer.Keyid)
-	peerState.ConnectionStateMessage = "connected"
-	peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_CONNECTED
-	peerState.LastHeartbeat = time.Now()
-	h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, peerState)
+	h.mgr.peerStateManager.UpdatePeerState(h.peer.Keyid, peer.InstanceId, func(peerState *PeerState) {
+		peerState.ConnectionStateMessage = "connected"
+		peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_CONNECTED
+		peerState.LastHeartbeat = time.Now()
+	})
 
 	zap.S().Infof("syncserver accepted a connection from client instance ID %q", h.peer.InstanceId)
 
@@ -178,12 +191,12 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 }
 
 func (h *syncSessionHandlerServer) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionHeartbeat) error {
-	peerState := h.mgr.peerStateManager.GetPeerState(h.peer.Keyid).Clone()
-	if peerState == nil {
-		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", h.peer.Keyid))
-	}
-	peerState.LastHeartbeat = time.Now()
-	h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, peerState)
+	h.mgr.peerStateManager.UpdatePeerState(h.peer.Keyid, h.peer.InstanceId, func(peerState *PeerState) {
+		if peerState == nil {
+			return // this should not happen
+		}
+		peerState.LastHeartbeat = time.Now()
+	})
 	return nil
 }
 
@@ -329,32 +342,33 @@ func (h *syncSessionHandlerServer) HandleSendOperations(ctx context.Context, str
 }
 
 func (h *syncSessionHandlerServer) HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendConfig) error {
-	peerState := h.mgr.peerStateManager.GetPeerState(h.peer.Keyid).Clone()
-	if peerState == nil {
-		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", h.peer.Keyid))
-	}
-	peerState.Config = item.GetConfig()
-	h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, peerState)
+	h.mgr.peerStateManager.UpdatePeerState(h.peer.Keyid, h.peer.InstanceId, func(peerState *PeerState) {
+		if peerState == nil {
+			return // this should not happen
+		}
+		peerState.Config = item.GetConfig()
+	})
 	return nil
 }
 
 func (h *syncSessionHandlerServer) HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionListResources) error {
 	zap.L().Debug("syncserver received resource list from client", zap.String("client_instance_id", h.peer.InstanceId),
-		zap.Any("repos", item.GetRepoIds()),
-		zap.Any("plans", item.GetPlanIds()))
-	peerState := h.mgr.peerStateManager.GetPeerState(h.peer.Keyid).Clone()
-	if peerState == nil {
-		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", h.peer.Keyid))
-	}
-	repos := item.GetRepoIds()
-	plans := item.GetPlanIds()
-	for _, repoID := range repos {
-		peerState.KnownRepos[repoID] = struct{}{}
-	}
-	for _, planID := range plans {
-		peerState.KnownPlans[planID] = struct{}{}
-	}
-	h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, peerState)
+		zap.Any("repos", item.GetRepos()),
+		zap.Any("plans", item.GetPlans()))
+	h.mgr.peerStateManager.UpdatePeerState(h.peer.Keyid, h.peer.InstanceId, func(peerState *PeerState) {
+		if peerState == nil {
+			return // this should not happen
+		}
+
+		repos := item.GetRepos()
+		plans := item.GetPlans()
+		for _, repo := range repos {
+			peerState.KnownRepos[repo.Id] = repo
+		}
+		for _, plan := range plans {
+			peerState.KnownPlans[plan.Id] = plan
+		}
+	})
 	return nil
 }
 
@@ -430,14 +444,14 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 	for _, repo := range config.Repos {
 		if h.permissions.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
 			remoteConfig.Repos = append(remoteConfig.Repos, repo)
-			resourceListMsg.RepoIds = append(resourceListMsg.RepoIds, repo.Id)
+			resourceListMsg.Repos = append(resourceListMsg.Repos, &v1.SyncRepoMetadata{Id: repo.Id, Guid: repo.Guid})
 			allowedRepoIDs = append(allowedRepoIDs, repo.Id)
 		}
 	}
 	for _, plan := range config.Plans {
 		if h.permissions.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
 			remoteConfig.Plans = append(remoteConfig.Plans, plan)
-			resourceListMsg.PlanIds = append(resourceListMsg.PlanIds, plan.Id)
+			resourceListMsg.Plans = append(resourceListMsg.Plans, &v1.SyncPlanMetadata{Id: plan.Id})
 			allowedPlanIDs = append(allowedPlanIDs, plan.Id)
 		}
 	}
