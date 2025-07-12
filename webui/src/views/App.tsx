@@ -90,6 +90,52 @@ const RepoViewContainer = () => {
   );
 };
 
+const RemoteRepoViewContainer = () => {
+  const { peerInstanceId, repoId } = useParams();
+  const [config, setConfig] = useConfig();
+  const [peerStates, setPeerStates] = useState<PeerState[]>([]);
+
+  // subscribe to peer states
+  useEffect(() => {
+    if (!config || !config.multihost) return;
+    const cb = (states: PeerState[]) => {
+      setPeerStates(states);
+    };
+    subscribeToPeerStates(cb);
+    return () => {
+      unsubscribeFromPeerStates(cb);
+    };
+  }, [config]);
+
+  if (!config) {
+    return <Spin />;
+  }
+
+  // Peer state is used to find the right repo
+  const peerState = peerStates.find(
+    (state) => state.peerInstanceId === peerInstanceId
+  );
+  const peerRepo = (peerState?.knownRepos || []).find((r) => r.id === repoId);
+
+  return (
+    <MainContentAreaTemplate
+      breadcrumbs={[
+        { title: "Peer" },
+        { title: peerInstanceId || "Unknown Peer" },
+        { title: "Repo" },
+        { title: repoId || "Unknown Repo" },
+      ]}
+      key={`${peerInstanceId}-${repoId}`}
+    >
+      {peerRepo ? (
+        <RepoView repo={peerRepo} />
+      ) : (
+        <Empty description={`Repo ${repoId} not found`} />
+      )}
+    </MainContentAreaTemplate>
+  );
+};
+
 const PlanViewContainer = () => {
   const { planId } = useParams();
   const [config, setConfig] = useConfig();
@@ -227,6 +273,10 @@ export const App: React.FC = () => {
               />
               <Route path="/plan/:planId" element={<PlanViewContainer />} />
               <Route path="/repo/:repoId" element={<RepoViewContainer />} />
+              <Route
+                path="/peer/:peerInstanceId/repo/:repoId"
+                element={<RemoteRepoViewContainer />}
+              />
               <Route
                 path="/*"
                 element={
@@ -420,6 +470,22 @@ const getSidenavItems = (
           originalInstanceKeyid: peerState.peerKeyid,
           repoGuid: repo.guid,
         });
+
+        return {
+          key: `repo-${peerState.peerKeyid}-${repo.guid}`,
+          icon: <IconForResource selector={sel} />,
+          label: (
+            <div
+              className="backrest visible-on-hover"
+              style={{ width: "100%", height: "100%" }}
+            >
+              {repo.id}
+            </div>
+          ),
+          onClick: async () => {
+            navigate(`/peer/${peerState.peerInstanceId}/repo/${repo.id}`);
+          },
+        };
       });
 
       return {
@@ -439,6 +505,7 @@ const getSidenavItems = (
             {peerState.peerInstanceId}
           </div>
         ),
+        children: repos.length > 0 ? repos : undefined,
       };
     };
 
