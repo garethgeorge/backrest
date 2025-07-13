@@ -268,6 +268,28 @@ func (ls *LogStore) SelectAll(f func(id string, parentID int64)) error {
 	return rows.Err()
 }
 
+// Find logs owned by a specific operation ID.
+func (ls *LogStore) FindLogsWithParent(parentOpID int64) ([]string, error) {
+	conn, err := ls.dbpool.Take(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("take connection: %v", err)
+	}
+	defer ls.dbpool.Put(conn)
+
+	var logs []string
+	if err := sqlitex.Execute(conn, "SELECT id FROM logs WHERE owner_opid = ?", &sqlitex.ExecOptions{
+		Args: []any{parentOpID},
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			logs = append(logs, stmt.ColumnText(0))
+			return nil
+		},
+	}); err != nil {
+		return nil, fmt.Errorf("select logs: %v", err)
+	}
+
+	return logs, nil
+}
+
 func (ls *LogStore) subscribe(id string) chan struct{} {
 	ls.trackingMu.Lock()
 	defer ls.trackingMu.Unlock()

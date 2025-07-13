@@ -92,6 +92,8 @@ message SyncStreamItem {
     SyncActionSendConfig send_config = 22;
     SyncActionSetConfig set_config = 24;
     SyncActionListResources list_resources = 25;
+    SyncActionGetLog get_log = 26;
+    SyncActionSendLogData send_log_data = 27;
 
     SyncActionThrottle throttle = 1000;
   }
@@ -145,6 +147,22 @@ message SyncStreamItem {
 
   message SyncActionSendOperations {
     OperationEvent event = 1;
+  }
+
+  message SyncActionGetLog {
+    string log_id = 1;
+  }
+
+  message SyncActionSendLogData {
+    string log_id = 1;
+
+    // Required only for first message in a log data stream.
+    int64 owner_opid = 2; // The operation ID of the operation that owns this log data.
+    int64 expiration_ts_unix = 3; // Unix timestamp in seconds when the log data expires.
+
+    // Can be sent repeatedly, must be terminated by a packet with size = 0.
+    repeated int64 size = 4;
+    repeated bytes chunk = 5;
   }
 
   message SyncActionThrottle {

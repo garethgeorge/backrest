@@ -90,6 +90,14 @@ func runSync(
 			if err := handler.HandleThrottle(ctx, commandStream, item.GetThrottle()); err != nil {
 				return fmt.Errorf("handling throttle: %w", err)
 			}
+		case *v1.SyncStreamItem_GetLog:
+			if err := handler.HandleGetLog(ctx, commandStream, item.GetGetLog()); err != nil {
+				return fmt.Errorf("handling get log: %w", err)
+			}
+		case *v1.SyncStreamItem_SendLogData:
+			if err := handler.HandleSendLogData(ctx, commandStream, item.GetSendLogData()); err != nil {
+				return fmt.Errorf("handling send log data: %w", err)
+			}
 		default:
 			return NewSyncErrorProtocol(fmt.Errorf("unknown action type %T in sync stream item", item.GetAction()))
 		}
@@ -270,6 +278,8 @@ type syncSessionHandler interface {
 	HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSetConfig) error
 	HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionListResources) error
 	HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionThrottle) error
+	HandleGetLog(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionGetLog) error
+	HandleSendLogData(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendLogData) error
 }
 
 type unimplementedSyncSessionHandler struct{}
@@ -304,4 +314,12 @@ func (h *unimplementedSyncSessionHandler) HandleListResources(ctx context.Contex
 
 func (h *unimplementedSyncSessionHandler) HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionThrottle) error {
 	return NewSyncErrorProtocol(fmt.Errorf("HandleThrottle not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleGetLog(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionGetLog) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleGetLog not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleSendLogData(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendLogData) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleSendLogData not implemented"))
 }
