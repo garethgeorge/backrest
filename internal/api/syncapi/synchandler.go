@@ -220,13 +220,20 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 	}()
 
 	// Send initial configuration to client
-	return h.sendConfigToClient(stream, h.snapshot.config)
+	if err := h.sendConfigToClient(stream, h.snapshot.config); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (h *syncSessionHandlerServer) OnConnectionClosed(ctx context.Context, stream *bidiSyncCommandStream) error {
-	h.mgr.mu.Lock()
-	delete(h.mgr.sessionHandlerMap, h.peer.Keyid)
-	h.mgr.mu.Unlock()
+	if h.peer != nil {
+		zap.S().Infof("syncserver connection closed for client %q", h.peer.InstanceId)
+		h.mgr.mu.Lock()
+		delete(h.mgr.sessionHandlerMap, h.peer.Keyid)
+		h.mgr.mu.Unlock()
+	}
 
 	// Close any active resources e.g. sinks for active log streams.
 	for logID, logSink := range h.activeLogStreams {
@@ -362,7 +369,7 @@ func (h *syncSessionHandlerServer) HandleDiffOperations(ctx context.Context, str
 func (h *syncSessionHandlerServer) HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendOperations) error {
 	switch event := item.GetEvent().Event.(type) {
 	case *v1.OperationEvent_CreatedOperations:
-		zap.L().Debug("syncserver received created operations", zap.Any("operations", event.CreatedOperations.GetOperations()))
+		zap.L().Debug("syncserver received create operations", zap.Any("operations", event.CreatedOperations.GetOperations()))
 		for _, op := range event.CreatedOperations.GetOperations() {
 			if err := h.insertOrUpdate(op); err != nil {
 				return fmt.Errorf("action SendOperations: operation event create %+v: %w", op, err)

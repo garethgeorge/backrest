@@ -539,6 +539,9 @@ func tryExpectExactOperations(t *testing.T, ctx context.Context, peer *peerUnder
 		for _, op := range ops {
 			op.Modno = 0
 		}
+		for _, op := range wantOps {
+			op.Modno = 0
+		}
 		if diff := cmp.Diff(ops, wantOps, protocmp.Transform()); diff != "" {
 			return fmt.Errorf("unexpected diff: %v", diff)
 		}

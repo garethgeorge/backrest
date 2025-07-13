@@ -25,15 +25,15 @@ func runSync(
 		return NewSyncErrorAuth(fmt.Errorf("peer not found in context, ensure authentication middleware is applied before sync handlers"))
 	}
 
-	if err := handler.OnConnectionEstablished(ctx, commandStream, peer); err != nil {
-		return err
-	}
-
 	defer func() {
 		if err := handler.OnConnectionClosed(ctx, commandStream); err != nil {
 			zap.L().Error("error handling connection closed", zap.Error(err))
 		}
 	}()
+
+	if err := handler.OnConnectionEstablished(ctx, commandStream, peer); err != nil {
+		return err
+	}
 
 	for item := range commandStream.ReadChannel() {
 		switch item.GetAction().(type) {
@@ -143,7 +143,7 @@ func (h *unimplementedSyncSessionHandler) OnConnectionEstablished(ctx context.Co
 }
 
 func (h *unimplementedSyncSessionHandler) OnConnectionClosed(ctx context.Context, stream *bidiSyncCommandStream) error {
-	return nil // no-op by default.
+	panic("must not be unimplemented")
 }
 
 func (h *unimplementedSyncSessionHandler) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionHeartbeat) error {

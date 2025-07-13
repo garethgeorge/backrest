@@ -151,6 +151,7 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			zap.S().Debugf("syncmanager context canceled for instance %q, stopping sync", m.snapshot.config.GetInstance())
 			return
 		case <-configWatchCh:
 			runSyncWithNewConfig()

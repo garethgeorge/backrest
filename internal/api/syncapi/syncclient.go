@@ -182,11 +182,11 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 		// Wait for the thread running the API loop and the thread running the stream connection to finish.
 		wg.Wait()
 
-		delay := c.reconnectDelay - time.Since(lastConnect)
+		reconnectDelayWithBackoff := c.reconnectDelay
 		if c.reconnectAttempts > 0 {
-			backoff := time.Duration(1<<min(c.reconnectAttempts, 5)) * c.reconnectDelay // 2^reconnectAttempts, max 32
-			delay += backoff
+			reconnectDelayWithBackoff *= time.Duration(1 << min(c.reconnectAttempts, 5)) // 2^reconnectAttempts, max 32
 		}
+		delay := reconnectDelayWithBackoff - time.Since(lastConnect)
 		c.l.Sugar().Infof("disconnected, will retry after %v (attempt %d)", delay, c.reconnectAttempts)
 		c.reconnectAttempts++
 		select {
@@ -362,7 +362,7 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 	// This is a slow operation and we don't want to block the main loop waiting for it to complete and potentially forcing incomming messages to buffer or drop.
 	go func() {
 		startSync := func(diffSel *v1.OpSelector) error {
-			c.l.Sugar().Infof("starting sync with diffselector: %v", diffSel)
+			c.l.Sugar().Debugf("starting sync with diffselector: %v", diffSel)
 
 			diffQuery, err := protoutil.OpSelectorToQuery(diffSel)
 			if err != nil {
@@ -433,6 +433,11 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 			reposToSync, plansToSync, c.localInstanceID, c.peer.InstanceId)
 	}()
 
+	return nil
+}
+
+func (c *syncSessionHandlerClient) OnConnectionClosed(ctx context.Context, stream *bidiSyncCommandStream) error {
+	c.l.Sugar().Infof("syncclient connection closed for client %q", c.peer.GetInstanceId())
 	return nil
 }
 

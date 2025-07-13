@@ -39,17 +39,14 @@ func ContextWithPeer(ctx context.Context, peer *v1.Multihost_Peer, publicKey *cr
 // HTTP decorator for authentication middleware.
 func AuthenticationMiddleware(configManager *config.ConfigManager, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		zap.S().Debugf("AuthenticationMiddleware called for %s %s", r.Method, r.URL.Path)
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			zap.S().Error("missing Authorization header in request")
 			http.Error(w, "Unauthorized: missing authentication header", http.StatusUnauthorized)
 			return
 		}
 
 		config, err := configManager.Get()
 		if err != nil {
-			zap.S().Errorf("failed to get authorized clients from config: %v", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
@@ -57,7 +54,6 @@ func AuthenticationMiddleware(configManager *config.ConfigManager, handler http.
 
 		peerKey, instanceID, err := verifyAuthenticationHeader(authHeader)
 		if err != nil {
-			zap.S().Errorf("failed to verify authentication header: %v", err)
 			http.Error(w, fmt.Sprintf("Unauthorized: %v", err), http.StatusUnauthorized)
 			return
 		}
