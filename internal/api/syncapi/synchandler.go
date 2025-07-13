@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"slices"
 	"sort"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -24,6 +26,8 @@ const SyncProtocolVersion = 1
 type BackrestSyncHandler struct {
 	v1connect.UnimplementedBackrestSyncServiceHandler
 	mgr *SyncManager
+
+	mu sync.Mutex
 }
 
 var _ v1connect.BackrestSyncServiceHandler = &BackrestSyncHandler{}
@@ -42,6 +46,17 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		return connect.NewError(connect.CodePermissionDenied, errors.New("sync server is not configured"))
 	}
 
+	// Attach the 'Authorization' header to the sync stream as we create it.
+	if authHeader, err := createAuthenticationHeader(snapshot.config.Instance, snapshot.identityKey); err != nil {
+		zap.S().Errorf("failed to create authentication header: %v", err)
+		return connect.NewError(connect.CodeInternal, fmt.Errorf("creating authentication header: %w", err))
+	} else {
+		stream.ResponseHeader().Set("Authorization", authHeader)
+	}
+
+	// Setup to read from the stream and handle commands
+	// Note that runSync will perform the authentication check, which in this case is asserting that a peer is present.
+	// The peer must be provided in the context by the authentication middleware.
 	sessionHandler := newSyncHandlerServer(h.mgr, snapshot)
 	cmdStream := newBidiSyncCommandStream()
 
@@ -52,7 +67,6 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			snapshot.identityKey,
 			cmdStream,
 			sessionHandler,
-			snapshot.config.GetMultihost().GetAuthorizedClients(),
 		)
 		cmdStream.SendErrorAndTerminate(err)
 	}()
@@ -98,7 +112,6 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	return nil
 }
 
-// syncSessionHandlerServer is a syncSessionHandler implementation for servers.
 type syncSessionHandlerServer struct {
 	unimplementedSyncSessionHandler
 
@@ -110,6 +123,9 @@ type syncSessionHandlerServer struct {
 
 	opIDLru   *lru.Cache[int64, int64] // original ID -> local ID
 	flowIDLru *lru.Cache[int64, int64] // original flow ID -> local flow ID
+
+	requestedLogStreams map[string]struct{}
+	activeLogStreams    map[string]io.WriteCloser
 
 	configWatchCh chan struct{} // Channel for configuration updates
 }
@@ -123,12 +139,24 @@ func newSyncHandlerServer(mgr *SyncManager, snapshot *syncConfigSnapshot) *syncS
 		snapshot:  *snapshot,
 		opIDLru:   opIDLru,
 		flowIDLru: flowIDLru,
+
+		requestedLogStreams: make(map[string]struct{}),
+		activeLogStreams:    make(map[string]io.WriteCloser),
 	}
 }
 
 var _ syncSessionHandler = (*syncSessionHandlerServer)(nil)
 
 func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error {
+	// Check if the peer is already connected, and then store the connection.
+	h.mgr.mu.Lock()
+	if _, exists := h.mgr.sessionHandlerMap[peer.Keyid]; exists {
+		h.mgr.mu.Unlock()
+		return NewSyncErrorAuth(fmt.Errorf("client %q is already connected", peer.InstanceId))
+	}
+	h.mgr.sessionHandlerMap[peer.Keyid] = h
+	h.mgr.mu.Unlock()
+
 	// Verify that the peer is in our authorized clients list
 	authorizedClientPeerIdx := slices.IndexFunc(h.snapshot.config.Multihost.GetAuthorizedClients(), func(p *v1.Multihost_Peer) bool {
 		return p.InstanceId == peer.InstanceId && p.Keyid == peer.Keyid
@@ -188,6 +216,21 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 
 	// Send initial configuration to client
 	return h.sendConfigToClient(stream, h.snapshot.config)
+}
+
+func (h *syncSessionHandlerServer) OnConnectionClosed(ctx context.Context, stream *bidiSyncCommandStream) error {
+	h.mgr.mu.Lock()
+	delete(h.mgr.sessionHandlerMap, h.peer.Keyid)
+	h.mgr.mu.Unlock()
+
+	// Close any active resources e.g. sinks for active log streams.
+	for logID, logSink := range h.activeLogStreams {
+		if err := logSink.Close(); err != nil {
+			return fmt.Errorf("action SendLogData: closing log stream %q: %w", logID, err)
+		}
+	}
+
+	return nil
 }
 
 func (h *syncSessionHandlerServer) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionHeartbeat) error {
@@ -369,6 +412,52 @@ func (h *syncSessionHandlerServer) HandleListResources(ctx context.Context, stre
 			peerState.KnownPlans[plan.Id] = plan
 		}
 	})
+	return nil
+}
+
+func (h *syncSessionHandlerServer) HandleSendLogData(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendLogData) error {
+	h.mgr.mu.Lock()
+	defer h.mgr.mu.Unlock()
+
+	logID := item.GetLogId()
+	if logID == "" {
+		return NewSyncErrorProtocol(errors.New("action SendLogData: log ID is required"))
+	}
+	if _, exists := h.requestedLogStreams[logID]; !exists {
+		return NewSyncErrorProtocol(fmt.Errorf("action SendLogData: log ID %q was not requested", logID))
+	}
+
+	var logSink io.WriteCloser
+	if s, exists := h.activeLogStreams[logID]; !exists {
+		// Check if there are too many active log streams
+		if len(h.activeLogStreams) >= 16 {
+			return NewSyncErrorProtocol(fmt.Errorf("action SendLogData: too many active log streams, limit is 16"))
+		}
+
+		// If the log stream is not active, we need to create a new one.
+		f, err := h.mgr.logStore.Create(logID, 0, 24*3600) // 24 hour retention, will just be re-requested next time it's wanted.
+		if err != nil {
+			return fmt.Errorf("action SendLogData: creating log stream %q: %w", logID, err)
+		}
+		logSink = f
+		h.activeLogStreams[logID] = logSink
+	} else {
+		logSink = s
+	}
+
+	if len(item.GetChunk()) == 0 {
+		delete(h.activeLogStreams, logID)
+		delete(h.requestedLogStreams, logID)
+		if err := logSink.Close(); err != nil {
+			return fmt.Errorf("action SendLogData: closing log stream %q: %w", logID, err)
+		}
+		return nil
+	}
+
+	if _, err := logSink.Write(item.GetChunk()); err != nil {
+		return fmt.Errorf("action SendLogData: writing to log stream %q: %w", logID, err)
+	}
+
 	return nil
 }
 

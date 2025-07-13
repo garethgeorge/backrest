@@ -101,42 +101,79 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 		c.l.Sugar().Infof("connecting to peer %q (%s) at %s", c.peer.InstanceId, c.peer.Keyid, c.peer.GetInstanceUrl())
 
 		var wg sync.WaitGroup
+
+		// Attach the 'Authorization' header to the sync stream as we create it.
+		syncStream := c.client.Sync(ctx)
+		if authHeader, err := createAuthenticationHeader(c.syncConfigSnapshot.config.Instance, c.syncConfigSnapshot.identityKey); err != nil {
+			c.l.Sugar().Errorf("failed to create authentication header: %v", err)
+		} else {
+			syncStream.RequestHeader().Set("Authorization", authHeader)
+		}
+
+		// Start a thread to handle the stream IO e.g. send and receive messages and pass them into the cmdStream stream abstraction.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := runSync(
+			if err := cmdStream.ConnectStream(ctx, syncStream); err != nil {
+				c.l.Sugar().Infof("lost stream connection to peer %q (%s): %v", c.peer.InstanceId, c.peer.Keyid, err)
+				var syncErr *SyncError
+				c.mgr.peerStateManager.UpdatePeerState(c.peer.Keyid, c.peer.InstanceId, func(state *PeerState) {
+					state.LastHeartbeat = time.Now()
+					if errors.As(err, &syncErr) {
+						state.ConnectionState = syncErr.State
+						state.ConnectionStateMessage = syncErr.Message.Error()
+					} else {
+						state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL
+						state.ConnectionStateMessage = err.Error()
+					}
+				})
+			} else {
+				c.reconnectAttempts = 0
+				c.mgr.peerStateManager.UpdatePeerState(c.peer.Keyid, c.peer.InstanceId, func(state *PeerState) {
+					state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+					state.ConnectionStateMessage = "disconnected"
+					state.LastHeartbeat = time.Now()
+				})
+			}
+		}()
+
+		// Start a thread to handle the API loop, this is fundamentally a switch statement operating on incomming commands.
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			// Get the headers from the stream
+			headers := syncStream.ResponseHeader()
+			authHeader := headers.Get("Authorization")
+
+			peerKey, instanceID, err := verifyAuthenticationHeader(authHeader)
+			if err != nil {
+				cmdStream.SendErrorAndTerminate(NewSyncErrorAuth(fmt.Errorf("verifying authentication header: %w", err)))
+				return
+			}
+			if peerKey.KeyID() != c.peer.Keyid {
+				cmdStream.SendErrorAndTerminate(NewSyncErrorAuth(fmt.Errorf("remote peer key ID mismatch: expected %q, got %q", c.peer.Keyid, peerKey.KeyID())))
+				return
+			}
+			if instanceID != c.peer.InstanceId {
+				cmdStream.SendErrorAndTerminate(NewSyncErrorAuth(fmt.Errorf("remote instance ID mismatch: expected %q, got %q", c.peer.InstanceId, instanceID)))
+				return
+			}
+			ctx := ContextWithPeer(context.Background(), c.peer, peerKey)
+
+			// Run sync once the first packet has been received allowing us to read the request headers.
+			// This means it is essential that the server always sends some initial packet, today this is just a heartbeat to start off the connection.
+			err = runSync(
 				ctx,
 				c.localInstanceID,
 				c.syncConfigSnapshot.identityKey,
 				cmdStream,
 				syncSessionHandler,
-				c.syncConfigSnapshot.config.GetMultihost().GetKnownHosts(),
 			)
 			cmdStream.SendErrorAndTerminate(err)
 		}()
 
-		if err := cmdStream.ConnectStream(ctx, c.client.Sync(ctx)); err != nil {
-			c.l.Sugar().Infof("lost stream connection to peer %q (%s): %v", c.peer.InstanceId, c.peer.Keyid, err)
-			var syncErr *SyncError
-			c.mgr.peerStateManager.UpdatePeerState(c.peer.Keyid, c.peer.InstanceId, func(state *PeerState) {
-				state.LastHeartbeat = time.Now()
-				if errors.As(err, &syncErr) {
-					state.ConnectionState = syncErr.State
-					state.ConnectionStateMessage = syncErr.Message.Error()
-				} else {
-					state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL
-					state.ConnectionStateMessage = err.Error()
-				}
-			})
-		} else {
-			c.reconnectAttempts = 0
-			c.mgr.peerStateManager.UpdatePeerState(c.peer.Keyid, c.peer.InstanceId, func(state *PeerState) {
-				state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
-				state.ConnectionStateMessage = "disconnected"
-				state.LastHeartbeat = time.Now()
-			})
-		}
-
+		// Wait for the thread running the API loop and the thread running the stream connection to finish.
 		wg.Wait()
 
 		delay := c.reconnectDelay - time.Since(lastConnect)
@@ -586,5 +623,61 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 
 func (c *syncSessionHandlerClient) HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionListResources) error {
 	c.l.Sugar().Debugf("received ListResources request from peer %q", c.peer.InstanceId)
+	return nil
+}
+
+func (c *syncSessionHandlerClient) HandleGetLog(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionGetLog) error {
+	c.l.Sugar().Debugf("received GetLog request from peer %q for log ID %q", c.peer.InstanceId, item.GetLogId())
+
+	reader, err := c.mgr.logStore.Open(item.GetLogId())
+	if err != nil {
+		c.l.Sugar().Warnf("failed to open log %q: %v", item.GetLogId(), err)
+		return nil
+	}
+
+	// Read everything from the io.ReadCloser respecting context cancellation
+	buf := make([]byte, 128*1024) // 128 KiB buffer, read in large chunks to reduce the number of sends.
+	for {
+		select {
+		case <-ctx.Done():
+			c.l.Sugar().Debugf("context cancelled while reading log %q", item.GetLogId())
+			return nil
+		default:
+
+			// TODO: make this implementation... correct.
+			n, err := reader.Read(buf)
+			if n > 0 {
+				stream.Send(&v1.SyncStreamItem{
+					Action: &v1.SyncStreamItem_SendLogData{
+						SendLogData: &v1.SyncStreamItem_SyncActionSendLogData{
+							LogId: item.GetLogId(),
+							Chunk: buf[:n],
+						},
+					},
+				})
+			}
+			if err != nil {
+				if errors.Is(err, net.ErrClosed) || errors.Is(err, context.Canceled) {
+					c.l.Sugar().Debugf("finished reading log %q, context cancelled or stream closed", item.GetLogId())
+					return nil
+				}
+				c.l.Sugar().Warnf("error reading log %q: %v", item.GetLogId(), err)
+				return fmt.Errorf("reading log %q: %w", item.GetLogId(), err)
+			}
+			if n == 0 {
+				c.l.Sugar().Debugf("finished reading log %q, no more data", item.GetLogId())
+				// No more data to read, we can close the stream.
+				stream.Send(&v1.SyncStreamItem{
+					Action: &v1.SyncStreamItem_SendLogData{
+						SendLogData: &v1.SyncStreamItem_SyncActionSendLogData{
+							LogId: item.GetLogId(),
+							Chunk: nil, // Send an empty chunk to signal the end of the log.
+						},
+					},
+				})
+			}
+		}
+	}
+
 	return nil
 }

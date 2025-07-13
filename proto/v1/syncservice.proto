@@ -84,7 +84,7 @@ enum SyncConnectionState {
 message SyncStreamItem {
   oneof action {
     SignedMessage signed_message = 1;
-    SyncActionHandshake handshake = 3;
+    SyncActionHandshake handshake = 3; // note: mostly deprecated, sent through headers rather than stream.
     SyncActionHeartbeat heartbeat = 4;
     
     SyncActionDiffOperations diff_operations = 20;
@@ -161,8 +161,7 @@ message SyncStreamItem {
     int64 expiration_ts_unix = 3; // Unix timestamp in seconds when the log data expires.
 
     // Can be sent repeatedly, must be terminated by a packet with size = 0.
-    repeated int64 size = 4;
-    repeated bytes chunk = 5;
+    bytes chunk = 4;
   }
 
   message SyncActionThrottle {

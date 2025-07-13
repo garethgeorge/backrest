@@ -11,6 +11,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
+	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"go.uber.org/zap"
@@ -20,6 +21,7 @@ type SyncManager struct {
 	configMgr    *config.ConfigManager
 	orchestrator *orchestrator.Orchestrator
 	oplog        *oplog.OpLog
+	logStore     *logstore.LogStore
 
 	// mutable properties
 	mu sync.Mutex
@@ -28,12 +30,13 @@ type SyncManager struct {
 
 	syncClientRetryDelay time.Duration // the default retry delay for sync clients, protected by mu
 
-	syncClients map[string]*SyncClient // current sync clients, protected by mu
+	syncClients       map[string]*SyncClient               // current sync clients, protected by mu
+	sessionHandlerMap map[string]*syncSessionHandlerServer // handlers for sync sessions keyed by peer KeyID, protected by mu
 
 	peerStateManager PeerStateManager
 }
 
-func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchestrator *orchestrator.Orchestrator, peerStateManager PeerStateManager) *SyncManager {
+func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, logStore *logstore.LogStore, orchestrator *orchestrator.Orchestrator, peerStateManager PeerStateManager) *SyncManager {
 	// Fetch the config, and mark all sync clients and known hosts as disconnected (but preserve other fields).
 	config, err := configMgr.Get()
 	if err == nil {
@@ -56,6 +59,7 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 		configMgr:    configMgr,
 		orchestrator: orchestrator,
 		oplog:        oplog,
+		logStore:     logStore,
 
 		syncClientRetryDelay: 60 * time.Second,
 		syncClients:          make(map[string]*SyncClient),

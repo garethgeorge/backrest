@@ -108,8 +108,13 @@ func runApp() {
 	if err != nil {
 		zap.L().Fatal("error creating peer state manager", zap.Error(err))
 	}
+<<<<<<< HEAD
 	syncMgr := syncapi.NewSyncManager(configMgr, opLog, orch, peerStateManager)
 
+=======
+
+	syncMgr := syncapi.NewSyncManager(configMgr, opLog, logStore, orch, peerStateManager)
+>>>>>>> 9041d3c (improve sync api security by using 'Authorization' headers for initial key exchange)
 	authenticator := newAuthenticator(configMgr)
 
 	// Start background services

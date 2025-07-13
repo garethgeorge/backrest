@@ -633,7 +633,7 @@ type SyncStreamItem_SignedMessage struct {
 }
 
 type SyncStreamItem_Handshake struct {
-	Handshake *SyncStreamItem_SyncActionHandshake `protobuf:"bytes,3,opt,name=handshake,proto3,oneof"`
+	Handshake *SyncStreamItem_SyncActionHandshake `protobuf:"bytes,3,opt,name=handshake,proto3,oneof"` // note: mostly deprecated, sent through headers rather than stream.
 }
 
 type SyncStreamItem_Heartbeat struct {
@@ -1234,8 +1234,7 @@ type SyncStreamItem_SyncActionSendLogData struct {
 	OwnerOpid        int64 `protobuf:"varint,2,opt,name=owner_opid,json=ownerOpid,proto3" json:"owner_opid,omitempty"`                        // The operation ID of the operation that owns this log data.
 	ExpirationTsUnix int64 `protobuf:"varint,3,opt,name=expiration_ts_unix,json=expirationTsUnix,proto3" json:"expiration_ts_unix,omitempty"` // Unix timestamp in seconds when the log data expires.
 	// Can be sent repeatedly, must be terminated by a packet with size = 0.
-	Size          []int64  `protobuf:"varint,4,rep,packed,name=size,proto3" json:"size,omitempty"`
-	Chunk         [][]byte `protobuf:"bytes,5,rep,name=chunk,proto3" json:"chunk,omitempty"`
+	Chunk         []byte `protobuf:"bytes,4,opt,name=chunk,proto3" json:"chunk,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1291,14 +1290,7 @@ func (x *SyncStreamItem_SyncActionSendLogData) GetExpirationTsUnix() int64 {
 	return 0
 }
 
-func (x *SyncStreamItem_SyncActionSendLogData) GetSize() []int64 {
-	if x != nil {
-		return x.Size
-	}
-	return nil
-}
-
-func (x *SyncStreamItem_SyncActionSendLogData) GetChunk() [][]byte {
+func (x *SyncStreamItem_SyncActionSendLogData) GetChunk() []byte {
 	if x != nil {
 		return x.Chunk
 	}
@@ -1425,7 +1417,7 @@ const file_v1_syncservice_proto_rawDesc = "" +
 	"\vknown_repos\x18\x06 \x03(\v2\x14.v1.SyncRepoMetadataR\n" +
 	"knownRepos\x125\n" +
 	"\rremote_config\x18\a \x01(\v2\x10.v1.RemoteConfigR\fremoteConfig\x122\n" +
-	"\x15last_heartbeat_millis\x18\b \x01(\x03R\x13lastHeartbeatMillis\"\xd4\x11\n" +
+	"\x15last_heartbeat_millis\x18\b \x01(\x03R\x13lastHeartbeatMillis\"\xc0\x11\n" +
 	"\x0eSyncStreamItem\x12:\n" +
 	"\x0esigned_message\x18\x01 \x01(\v2\x11.v1.SignedMessageH\x00R\rsignedMessage\x12F\n" +
 	"\thandshake\x18\x03 \x01(\v2&.v1.SyncStreamItem.SyncActionHandshakeH\x00R\thandshake\x12F\n" +
@@ -1467,14 +1459,13 @@ const file_v1_syncservice_proto_rawDesc = "" +
 	"\x18SyncActionSendOperations\x12(\n" +
 	"\x05event\x18\x01 \x01(\v2\x12.v1.OperationEventR\x05event\x1a)\n" +
 	"\x10SyncActionGetLog\x12\x15\n" +
-	"\x06log_id\x18\x01 \x01(\tR\x05logId\x1a\xa5\x01\n" +
+	"\x06log_id\x18\x01 \x01(\tR\x05logId\x1a\x91\x01\n" +
 	"\x15SyncActionSendLogData\x12\x15\n" +
 	"\x06log_id\x18\x01 \x01(\tR\x05logId\x12\x1d\n" +
 	"\n" +
 	"owner_opid\x18\x02 \x01(\x03R\townerOpid\x12,\n" +
-	"\x12expiration_ts_unix\x18\x03 \x01(\x03R\x10expirationTsUnix\x12\x12\n" +
-	"\x04size\x18\x04 \x03(\x03R\x04size\x12\x14\n" +
-	"\x05chunk\x18\x05 \x03(\fR\x05chunk\x1a/\n" +
+	"\x12expiration_ts_unix\x18\x03 \x01(\x03R\x10expirationTsUnix\x12\x14\n" +
+	"\x05chunk\x18\x04 \x01(\fR\x05chunk\x1a/\n" +
 	"\x12SyncActionThrottle\x12\x19\n" +
 	"\bdelay_ms\x18\x01 \x01(\x03R\adelayMs\x1a8\n" +
 	"\x19SyncEstablishSharedSecret\x12\x1b\n" +

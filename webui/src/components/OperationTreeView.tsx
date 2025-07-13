@@ -155,12 +155,12 @@ export const OperationTreeView = ({
 
   if (primaryTree) {
     allTrees.unshift(
-      <>
+      <div key={config!.instance} style={{ marginTop: "20px" }}>
         {allTrees.length > 0 ? (
           <Typography.Title level={4}>{config!.instance}</Typography.Title>
         ) : null}
         {primaryTree}
-      </>
+      </div>
     );
   }
 
