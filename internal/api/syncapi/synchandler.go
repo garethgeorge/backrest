@@ -60,6 +60,11 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 	sessionHandler := newSyncHandlerServer(h.mgr, snapshot)
 	cmdStream := newBidiSyncCommandStream()
 
+	// Send a heartbeat packet to send the initial headers to the client and establish the connection.
+	cmdStream.Send(&v1.SyncStreamItem{
+		Action: &v1.SyncStreamItem_Heartbeat{},
+	})
+
 	go func() {
 		err := runSync(
 			ctx,

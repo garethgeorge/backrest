@@ -39,8 +39,10 @@ func ContextWithPeer(ctx context.Context, peer *v1.Multihost_Peer, publicKey *cr
 // HTTP decorator for authentication middleware.
 func AuthenticationMiddleware(configManager *config.ConfigManager, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		zap.S().Debugf("AuthenticationMiddleware called for %s %s", r.Method, r.URL.Path)
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
+			zap.S().Error("missing Authorization header in request")
 			http.Error(w, "Unauthorized: missing authentication header", http.StatusUnauthorized)
 			return
 		}
@@ -55,6 +57,7 @@ func AuthenticationMiddleware(configManager *config.ConfigManager, handler http.
 
 		peerKey, instanceID, err := verifyAuthenticationHeader(authHeader)
 		if err != nil {
+			zap.S().Errorf("failed to verify authentication header: %v", err)
 			http.Error(w, fmt.Sprintf("Unauthorized: %v", err), http.StatusUnauthorized)
 			return
 		}
@@ -63,11 +66,13 @@ func AuthenticationMiddleware(configManager *config.ConfigManager, handler http.
 			return peer.Keyid == peerKey.KeyID()
 		})
 		if authorizedPeerIdx == -1 {
+			zap.S().Errorf("peer key %q is not listed in authorized clients", peerKey.KeyID())
 			http.Error(w, fmt.Sprintf("Unauthorized: peer key %q is not listed in authorized clients", peerKey.KeyID()), http.StatusUnauthorized)
 			return
 		}
 		authorizedPeer := authorizedClientPeers[authorizedPeerIdx]
 		if authorizedPeer.InstanceId != instanceID {
+			zap.S().Errorf("instance ID mismatch for peer key %q, expected %q, got %q", peerKey.KeyID(), authorizedPeer.InstanceId, instanceID)
 			http.Error(w, fmt.Sprintf("Unauthorized: instance ID mismatch for peer key %q, expected %q, got %q", peerKey.KeyID(), authorizedPeer.InstanceId, instanceID), http.StatusUnauthorized)
 			return
 		}
@@ -187,5 +192,5 @@ func verifyAuthenticationHeader(header string) (*cryptoutil.PublicKey, string, e
 		return nil, "", fmt.Errorf("verifying handshake packet: %w", err)
 	}
 
-		return peerKey, string(handshakePacket.GetInstanceId().GetPayload()), nil
+	return peerKey, string(handshakePacket.GetInstanceId().GetPayload()), nil
 }

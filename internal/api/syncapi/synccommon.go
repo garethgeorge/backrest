@@ -19,13 +19,6 @@ func runSync(
 	commandStream *bidiSyncCommandStream,
 	handler syncSessionHandler,
 ) error {
-	// send an initial heartbeat to the peer to ensure the connection is alive.
-	go func() {
-		commandStream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_Heartbeat{},
-		})
-	}()
-
 	peer := PeerFromContext(ctx)
 	peerPublicKey := PeerPublicKeyFromContext(ctx)
 	if peer == nil || peerPublicKey == nil {

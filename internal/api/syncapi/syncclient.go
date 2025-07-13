@@ -128,6 +128,7 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 					}
 				})
 			} else {
+				c.l.Sugar().Infof("stream connection to peer %q (%s) closed", c.peer.InstanceId, c.peer.Keyid)
 				c.reconnectAttempts = 0
 				c.mgr.peerStateManager.UpdatePeerState(c.peer.Keyid, c.peer.InstanceId, func(state *PeerState) {
 					state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
@@ -172,6 +173,11 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 			)
 			cmdStream.SendErrorAndTerminate(err)
 		}()
+
+		// Send a heartbeat packet to trigger establishing the connection.
+		cmdStream.Send(&v1.SyncStreamItem{
+			Action: &v1.SyncStreamItem_Heartbeat{},
+		})
 
 		// Wait for the thread running the API loop and the thread running the stream connection to finish.
 		wg.Wait()

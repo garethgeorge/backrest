@@ -63,6 +63,7 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, logStor
 
 		syncClientRetryDelay: 60 * time.Second,
 		syncClients:          make(map[string]*SyncClient),
+		sessionHandlerMap:    make(map[string]*syncSessionHandlerServer),
 
 		peerStateManager: peerStateManager,
 	}
