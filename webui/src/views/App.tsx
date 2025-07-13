@@ -35,10 +35,7 @@ import { Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { MainContentAreaTemplate } from "./MainContentArea";
 import { create } from "@bufbuild/protobuf";
 import { PeerState } from "../../gen/ts/v1/syncservice_pb";
-import {
-  subscribeToPeerStates,
-  unsubscribeFromPeerStates,
-} from "../state/peerstates";
+import { useSyncStates } from "../state/peerstates";
 const { Header, Sider } = Layout;
 
 const SummaryDashboard = React.lazy(() =>
@@ -97,18 +94,7 @@ const RepoViewContainer = () => {
 
 const RemoteRepoViewContainer = () => {
   const { peerInstanceId, repoId } = useParams();
-  const [peerStates, setPeerStates] = useState<PeerState[]>([]);
-
-  // subscribe to peer states
-  useEffect(() => {
-    const cb = (states: PeerState[]) => {
-      setPeerStates(states);
-    };
-    subscribeToPeerStates(cb);
-    return () => {
-      unsubscribeFromPeerStates(cb);
-    };
-  }, []);
+  const peerStates = useSyncStates();
 
   // Peer state is used to find the right repo
   const peerState = peerStates.find(
@@ -171,18 +157,7 @@ export const App: React.FC = () => {
   const navigate = useNavigate();
   const [config, setConfig] = useConfig();
 
-  const [peerStates, setPeerStates] = useState<PeerState[]>([]);
-
-  useEffect(() => {
-    if (!config || !config.multihost) return;
-    const cb = (states: PeerState[]) => {
-      setPeerStates(states);
-    };
-    subscribeToPeerStates(cb);
-    return () => {
-      unsubscribeFromPeerStates(cb);
-    };
-  }, [config]);
+  const peerStates = useSyncStates();
 
   const items = getSidenavItems(config, peerStates);
 

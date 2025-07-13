@@ -10,6 +10,7 @@ import { EmptySchema } from "../../gen/ts/types/value_pb";
 import { create } from "@bufbuild/protobuf";
 import _ from "lodash";
 import { backrestService } from "../api";
+import { useEffect, useState } from "react";
 
 const subscribers: ((event?: OperationEvent, err?: Error) => void)[] = [];
 
@@ -56,7 +57,6 @@ export const unsubscribeFromOperations = (
   }
   console.log("unsubscribed from operations, subscriber count: ", subscribers.length);
 };
-
 
 export const shouldHideOperation = (operation: Operation) => {
   return (
