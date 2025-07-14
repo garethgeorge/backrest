@@ -22,7 +22,71 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1/syncservice.proto.
  */
 export const file_v1_syncservice: GenFile = /*@__PURE__*/
-  fileDesc("ChR2MS9zeW5jc2VydmljZS5wcm90bxICdjEiKwoWU3luY1N0YXRlU3RyZWFtUmVxdWVzdBIRCglzdWJzY3JpYmUYASABKAgi6wEKCVBlZXJTdGF0ZRIYChBwZWVyX2luc3RhbmNlX2lkGAEgASgJEhIKCnBlZXJfa2V5aWQYAiABKAkSJgoFc3RhdGUYAyABKA4yFy52MS5TeW5jQ29ubmVjdGlvblN0YXRlEhYKDnN0YXR1c19tZXNzYWdlGAQgASgJEhMKC2tub3duX3BsYW5zGAUgAygJEhMKC2tub3duX3JlcG9zGAYgAygJEicKDXJlbW90ZV9jb25maWcYByABKAsyEC52MS5SZW1vdGVDb25maWcSHQoVbGFzdF9oZWFydGJlYXRfbWlsbGlzGAggASgDIoAMCg5TeW5jU3RyZWFtSXRlbRIrCg5zaWduZWRfbWVzc2FnZRgBIAEoCzIRLnYxLlNpZ25lZE1lc3NhZ2VIABI7CgloYW5kc2hha2UYAyABKAsyJi52MS5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uSGFuZHNoYWtlSAASOwoJaGVhcnRiZWF0GAQgASgLMiYudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvbkhlYXJ0YmVhdEgAEkYKD2RpZmZfb3BlcmF0aW9ucxgUIAEoCzIrLnYxLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25EaWZmT3BlcmF0aW9uc0gAEkYKD3NlbmRfb3BlcmF0aW9ucxgVIAEoCzIrLnYxLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25TZW5kT3BlcmF0aW9uc0gAEj4KC3NlbmRfY29uZmlnGBYgASgLMicudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblNlbmRDb25maWdIABI8CgpzZXRfY29uZmlnGBggASgLMiYudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblNldENvbmZpZ0gAEkQKDmxpc3RfcmVzb3VyY2VzGBkgASgLMioudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvbkxpc3RSZXNvdXJjZXNIABI6Cgh0aHJvdHRsZRjoByABKAsyJS52MS5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uVGhyb3R0bGVIABp6ChNTeW5jQWN0aW9uSGFuZHNoYWtlEhgKEHByb3RvY29sX3ZlcnNpb24YASABKAMSIQoKcHVibGljX2tleRgCIAEoCzINLnYxLlB1YmxpY0tleRImCgtpbnN0YW5jZV9pZBgDIAEoCzIRLnYxLlNpZ25lZE1lc3NhZ2UaFQoTU3luY0FjdGlvbkhlYXJ0YmVhdBo4ChRTeW5jQWN0aW9uU2VuZENvbmZpZxIgCgZjb25maWcYASABKAsyEC52MS5SZW1vdGVDb25maWcaeQoTU3luY0FjdGlvblNldENvbmZpZxIXCgVyZXBvcxgBIAMoCzIILnYxLlJlcG8SFwoFcGxhbnMYAiADKAsyCC52MS5QbGFuEhcKD3JlcG9zX3RvX2RlbGV0ZRgDIAMoCRIXCg9wbGFuc190b19kZWxldGUYBCADKAkaPQoXU3luY0FjdGlvbkxpc3RSZXNvdXJjZXMSEAoIcmVwb19pZHMYASADKAkSEAoIcGxhbl9pZHMYAiADKAkaKAoVU3luY0FjdGlvbkNvbm5lY3RSZXBvEg8KB3JlcG9faWQYASABKAkaowEKGFN5bmNBY3Rpb25EaWZmT3BlcmF0aW9ucxIwChhoYXZlX29wZXJhdGlvbnNfc2VsZWN0b3IYASABKAsyDi52MS5PcFNlbGVjdG9yEhoKEmhhdmVfb3BlcmF0aW9uX2lkcxgCIAMoAxIdChVoYXZlX29wZXJhdGlvbl9tb2Rub3MYAyADKAMSGgoScmVxdWVzdF9vcGVyYXRpb25zGAQgAygDGj0KGFN5bmNBY3Rpb25TZW5kT3BlcmF0aW9ucxIhCgVldmVudBgBIAEoCzISLnYxLk9wZXJhdGlvbkV2ZW50GiYKElN5bmNBY3Rpb25UaHJvdHRsZRIQCghkZWxheV9tcxgBIAEoAxo4ChlTeW5jRXN0YWJsaXNoU2hhcmVkU2VjcmV0EhsKB2VkMjU1MTkYAiABKAlSCmVkMjU1MTlwdWIitAEKE1JlcG9Db25uZWN0aW9uU3RhdGUSHAoYQ09OTkVDVElPTl9TVEFURV9VTktOT1dOEAASHAoYQ09OTkVDVElPTl9TVEFURV9QRU5ESU5HEAESHgoaQ09OTkVDVElPTl9TVEFURV9DT05ORUNURUQQAhIhCh1DT05ORUNUSU9OX1NUQVRFX1VOQVVUSE9SSVpFRBADEh4KGkNPTk5FQ1RJT05fU1RBVEVfTk9UX0ZPVU5EEARCCAoGYWN0aW9uImAKDFJlbW90ZUNvbmZpZxINCgVtb2RubxgBIAEoBRIPCgd2ZXJzaW9uGAIgASgFEhcKBXJlcG9zGAMgAygLMggudjEuUmVwbxIXCgVwbGFucxgEIAMoCzIILnYxLlBsYW4qoAIKE1N5bmNDb25uZWN0aW9uU3RhdGUSHAoYQ09OTkVDVElPTl9TVEFURV9VTktOT1dOEAASHAoYQ09OTkVDVElPTl9TVEFURV9QRU5ESU5HEAESHgoaQ09OTkVDVElPTl9TVEFURV9DT05ORUNURUQQAhIhCh1DT05ORUNUSU9OX1NUQVRFX0RJU0NPTk5FQ1RFRBADEh8KG0NPTk5FQ1RJT05fU1RBVEVfUkVUUllfV0FJVBAEEh8KG0NPTk5FQ1RJT05fU1RBVEVfRVJST1JfQVVUSBAKEiMKH0NPTk5FQ1RJT05fU1RBVEVfRVJST1JfUFJPVE9DT0wQCxIjCh9DT05ORUNUSU9OX1NUQVRFX0VSUk9SX0lOVEVSTkFMEAwySwoTQmFja3Jlc3RTeW5jU2VydmljZRI0CgRTeW5jEhIudjEuU3luY1N0cmVhbUl0ZW0aEi52MS5TeW5jU3RyZWFtSXRlbSIAKAEwATJkChhCYWNrcmVzdFN5bmNTdGF0ZVNlcnZpY2USSAoXR2V0UGVlclN5bmNTdGF0ZXNTdHJlYW0SGi52MS5TeW5jU3RhdGVTdHJlYW1SZXF1ZXN0Gg0udjEuUGVlclN0YXRlIgAwAUIsWipnaXRodWIuY29tL2dhcmV0aGdlb3JnZS9iYWNrcmVzdC9nZW4vZ28vdjFiBnByb3RvMw", [file_v1_config, file_v1_crypto, file_v1_restic, file_v1_service, file_v1_operations, file_types_value, file_google_protobuf_empty, file_google_api_annotations]);
+  fileDesc("ChR2MS9zeW5jc2VydmljZS5wcm90bxICdjEiPQoNVHVubmVsUmVxdWVzdBIPCgdjb25uX2lkGAEgASgDEgwKBGRhdGEYAiABKAwSDQoFY2xvc2UYAyABKAgiPgoOVHVubmVsUmVzcG9uc2USDwoHY29ubl9pZBgBIAEoAxIMCgRkYXRhGAIgASgMEg0KBWNsb3NlGAMgASgIIisKFlN5bmNTdGF0ZVN0cmVhbVJlcXVlc3QSEQoJc3Vic2NyaWJlGAEgASgIIusBCglQZWVyU3RhdGUSGAoQcGVlcl9pbnN0YW5jZV9pZBgBIAEoCRISCgpwZWVyX2tleWlkGAIgASgJEiYKBXN0YXRlGAMgASgOMhcudjEuU3luY0Nvbm5lY3Rpb25TdGF0ZRIWCg5zdGF0dXNfbWVzc2FnZRgEIAEoCRITCgtrbm93bl9wbGFucxgFIAMoCRITCgtrbm93bl9yZXBvcxgGIAMoCRInCg1yZW1vdGVfY29uZmlnGAcgASgLMhAudjEuUmVtb3RlQ29uZmlnEh0KFWxhc3RfaGVhcnRiZWF0X21pbGxpcxgIIAEoAyKADAoOU3luY1N0cmVhbUl0ZW0SKwoOc2lnbmVkX21lc3NhZ2UYASABKAsyES52MS5TaWduZWRNZXNzYWdlSAASOwoJaGFuZHNoYWtlGAMgASgLMiYudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvbkhhbmRzaGFrZUgAEjsKCWhlYXJ0YmVhdBgEIAEoCzImLnYxLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25IZWFydGJlYXRIABJGCg9kaWZmX29wZXJhdGlvbnMYFCABKAsyKy52MS5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uRGlmZk9wZXJhdGlvbnNIABJGCg9zZW5kX29wZXJhdGlvbnMYFSABKAsyKy52MS5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uU2VuZE9wZXJhdGlvbnNIABI+CgtzZW5kX2NvbmZpZxgWIAEoCzInLnYxLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25TZW5kQ29uZmlnSAASPAoKc2V0X2NvbmZpZxgYIAEoCzImLnYxLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25TZXRDb25maWdIABJECg5saXN0X3Jlc291cmNlcxgZIAEoCzIqLnYxLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25MaXN0UmVzb3VyY2VzSAASOgoIdGhyb3R0bGUY6AcgASgLMiUudjEuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblRocm90dGxlSAAaegoTU3luY0FjdGlvbkhhbmRzaGFrZRIYChBwcm90b2NvbF92ZXJzaW9uGAEgASgDEiEKCnB1YmxpY19rZXkYAiABKAsyDS52MS5QdWJsaWNLZXkSJgoLaW5zdGFuY2VfaWQYAyABKAsyES52MS5TaWduZWRNZXNzYWdlGhUKE1N5bmNBY3Rpb25IZWFydGJlYXQaOAoUU3luY0FjdGlvblNlbmRDb25maWcSIAoGY29uZmlnGAEgASgLMhAudjEuUmVtb3RlQ29uZmlnGnkKE1N5bmNBY3Rpb25TZXRDb25maWcSFwoFcmVwb3MYASADKAsyCC52MS5SZXBvEhcKBXBsYW5zGAIgAygLMggudjEuUGxhbhIXCg9yZXBvc190b19kZWxldGUYAyADKAkSFwoPcGxhbnNfdG9fZGVsZXRlGAQgAygJGj0KF1N5bmNBY3Rpb25MaXN0UmVzb3VyY2VzEhAKCHJlcG9faWRzGAEgAygJEhAKCHBsYW5faWRzGAIgAygJGigKFVN5bmNBY3Rpb25Db25uZWN0UmVwbxIPCgdyZXBvX2lkGAEgASgJGqMBChhTeW5jQWN0aW9uRGlmZk9wZXJhdGlvbnMSMAoYaGF2ZV9vcGVyYXRpb25zX3NlbGVjdG9yGAEgASgLMg4udjEuT3BTZWxlY3RvchIaChJoYXZlX29wZXJhdGlvbl9pZHMYAiADKAMSHQoVaGF2ZV9vcGVyYXRpb25fbW9kbm9zGAMgAygDEhoKEnJlcXVlc3Rfb3BlcmF0aW9ucxgEIAMoAxo9ChhTeW5jQWN0aW9uU2VuZE9wZXJhdGlvbnMSIQoFZXZlbnQYASABKAsyEi52MS5PcGVyYXRpb25FdmVudBomChJTeW5jQWN0aW9uVGhyb3R0bGUSEAoIZGVsYXlfbXMYASABKAMaOAoZU3luY0VzdGFibGlzaFNoYXJlZFNlY3JldBIbCgdlZDI1NTE5GAIgASgJUgplZDI1NTE5cHViIrQBChNSZXBvQ29ubmVjdGlvblN0YXRlEhwKGENPTk5FQ1RJT05fU1RBVEVfVU5LTk9XThAAEhwKGENPTk5FQ1RJT05fU1RBVEVfUEVORElORxABEh4KGkNPTk5FQ1RJT05fU1RBVEVfQ09OTkVDVEVEEAISIQodQ09OTkVDVElPTl9TVEFURV9VTkFVVEhPUklaRUQQAxIeChpDT05ORUNUSU9OX1NUQVRFX05PVF9GT1VORBAEQggKBmFjdGlvbiJgCgxSZW1vdGVDb25maWcSDQoFbW9kbm8YASABKAUSDwoHdmVyc2lvbhgCIAEoBRIXCgVyZXBvcxgDIAMoCzIILnYxLlJlcG8SFwoFcGxhbnMYBCADKAsyCC52MS5QbGFuKqACChNTeW5jQ29ubmVjdGlvblN0YXRlEhwKGENPTk5FQ1RJT05fU1RBVEVfVU5LTk9XThAAEhwKGENPTk5FQ1RJT05fU1RBVEVfUEVORElORxABEh4KGkNPTk5FQ1RJT05fU1RBVEVfQ09OTkVDVEVEEAISIQodQ09OTkVDVElPTl9TVEFURV9ESVNDT05ORUNURUQQAxIfChtDT05ORUNUSU9OX1NUQVRFX1JFVFJZX1dBSVQQBBIfChtDT05ORUNUSU9OX1NUQVRFX0VSUk9SX0FVVEgQChIjCh9DT05ORUNUSU9OX1NUQVRFX0VSUk9SX1BST1RPQ09MEAsSIwofQ09OTkVDVElPTl9TVEFURV9FUlJPUl9JTlRFUk5BTBAMMkYKDVR1bm5lbFNlcnZpY2USNQoGVHVubmVsEhEudjEuVHVubmVsUmVxdWVzdBoSLnYxLlR1bm5lbFJlc3BvbnNlIgAoATABMksKE0JhY2tyZXN0U3luY1NlcnZpY2USNAoEU3luYxISLnYxLlN5bmNTdHJlYW1JdGVtGhIudjEuU3luY1N0cmVhbUl0ZW0iACgBMAEyZAoYQmFja3Jlc3RTeW5jU3RhdGVTZXJ2aWNlEkgKF0dldFBlZXJTeW5jU3RhdGVzU3RyZWFtEhoudjEuU3luY1N0YXRlU3RyZWFtUmVxdWVzdBoNLnYxLlBlZXJTdGF0ZSIAMAFCLFoqZ2l0aHViLmNvbS9nYXJldGhnZW9yZ2UvYmFja3Jlc3QvZ2VuL2dvL3YxYgZwcm90bzM", [file_v1_config, file_v1_crypto, file_v1_restic, file_v1_service, file_v1_operations, file_types_value, file_google_protobuf_empty, file_google_api_annotations]);
+
+/**
+ * @generated from message v1.TunnelRequest
+ */
+export type TunnelRequest = Message<"v1.TunnelRequest"> & {
+  /**
+   * The connection ID this request belongs to, enables multiplexing.
+   *
+   * @generated from field: int64 conn_id = 1;
+   */
+  connId: bigint;
+
+  /**
+   * The data to send, this is a raw byte stream.
+   *
+   * @generated from field: bytes data = 2;
+   */
+  data: Uint8Array;
+
+  /**
+   * If true, the write end should be closed after this request.
+   *
+   * @generated from field: bool close = 3;
+   */
+  close: boolean;
+};
+
+/**
+ * Describes the message v1.TunnelRequest.
+ * Use `create(TunnelRequestSchema)` to create a new message.
+ */
+export const TunnelRequestSchema: GenMessage<TunnelRequest> = /*@__PURE__*/
+  messageDesc(file_v1_syncservice, 0);
+
+/**
+ * @generated from message v1.TunnelResponse
+ */
+export type TunnelResponse = Message<"v1.TunnelResponse"> & {
+  /**
+   * @generated from field: int64 conn_id = 1;
+   */
+  connId: bigint;
+
+  /**
+   * The data received, this is a raw byte stream.
+   *
+   * @generated from field: bytes data = 2;
+   */
+  data: Uint8Array;
+
+  /**
+   * If true, the read end is closed after this response.
+   *
+   * @generated from field: bool close = 3;
+   */
+  close: boolean;
+};
+
+/**
+ * Describes the message v1.TunnelResponse.
+ * Use `create(TunnelResponseSchema)` to create a new message.
+ */
+export const TunnelResponseSchema: GenMessage<TunnelResponse> = /*@__PURE__*/
+  messageDesc(file_v1_syncservice, 1);
 
 /**
  * @generated from message v1.SyncStateStreamRequest
@@ -41,7 +105,7 @@ export type SyncStateStreamRequest = Message<"v1.SyncStateStreamRequest"> & {
  * Use `create(SyncStateStreamRequestSchema)` to create a new message.
  */
 export const SyncStateStreamRequestSchema: GenMessage<SyncStateStreamRequest> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 0);
+  messageDesc(file_v1_syncservice, 2);
 
 /**
  * @generated from message v1.PeerState
@@ -101,7 +165,7 @@ export type PeerState = Message<"v1.PeerState"> & {
  * Use `create(PeerStateSchema)` to create a new message.
  */
 export const PeerStateSchema: GenMessage<PeerState> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 1);
+  messageDesc(file_v1_syncservice, 3);
 
 /**
  * @generated from message v1.SyncStreamItem
@@ -172,7 +236,7 @@ export type SyncStreamItem = Message<"v1.SyncStreamItem"> & {
  * Use `create(SyncStreamItemSchema)` to create a new message.
  */
 export const SyncStreamItemSchema: GenMessage<SyncStreamItem> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 2);
+  messageDesc(file_v1_syncservice, 4);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionHandshake
@@ -199,7 +263,7 @@ export type SyncStreamItem_SyncActionHandshake = Message<"v1.SyncStreamItem.Sync
  * Use `create(SyncStreamItem_SyncActionHandshakeSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionHandshakeSchema: GenMessage<SyncStreamItem_SyncActionHandshake> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 2, 0);
+  messageDesc(file_v1_syncservice, 4, 0);
 
 /**
  * SyncActionHeartbeat is sent periodically to keep the connection alive.
@@ -214,7 +278,7 @@ export type SyncStreamItem_SyncActionHeartbeat = Message<"v1.SyncStreamItem.Sync
  * Use `create(SyncStreamItem_SyncActionHeartbeatSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionHeartbeatSchema: GenMessage<SyncStreamItem_SyncActionHeartbeat> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 2, 1);
+  messageDesc(file_v1_syncservice, 4, 1);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionSendConfig
@@ -231,7 +295,7 @@ export type SyncStreamItem_SyncActionSendConfig = Message<"v1.SyncStreamItem.Syn
  * Use `create(SyncStreamItem_SyncActionSendConfigSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionSendConfigSchema: GenMessage<SyncStreamItem_SyncActionSendConfig> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 2, 2);
+  messageDesc(file_v1_syncservice, 4, 2);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionSetConfig
@@ -263,7 +327,7 @@ export type SyncStreamItem_SyncActionSetConfig = Message<"v1.SyncStreamItem.Sync
  * Use `create(SyncStreamItem_SyncActionSetConfigSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionSetConfigSchema: GenMessage<SyncStreamItem_SyncActionSetConfig> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 2, 3);
+  messageDesc(file_v1_syncservice, 4, 3);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionListResources
@@ -289,7 +353,7 @@ export type SyncStreamItem_SyncActionListResources = Message<"v1.SyncStreamItem.
  * Use `create(SyncStreamItem_SyncActionListResourcesSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionListResourcesSchema: GenMessage<SyncStreamItem_SyncActionListResources> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 2, 4);
+  messageDesc(file_v1_syncservice, 4, 4);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionConnectRepo
@@ -306,7 +370,7 @@ export type SyncStreamItem_SyncActionConnectRepo = Message<"v1.SyncStreamItem.Sy
  * Use `create(SyncStreamItem_SyncActionConnectRepoSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionConnectRepoSchema: GenMessage<SyncStreamItem_SyncActionConnectRepo> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 2, 5);
+  messageDesc(file_v1_syncservice, 4, 5);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionDiffOperations
@@ -343,7 +407,7 @@ export type SyncStreamItem_SyncActionDiffOperations = Message<"v1.SyncStreamItem
  * Use `create(SyncStreamItem_SyncActionDiffOperationsSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionDiffOperationsSchema: GenMessage<SyncStreamItem_SyncActionDiffOperations> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 2, 6);
+  messageDesc(file_v1_syncservice, 4, 6);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionSendOperations
@@ -360,7 +424,7 @@ export type SyncStreamItem_SyncActionSendOperations = Message<"v1.SyncStreamItem
  * Use `create(SyncStreamItem_SyncActionSendOperationsSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionSendOperationsSchema: GenMessage<SyncStreamItem_SyncActionSendOperations> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 2, 7);
+  messageDesc(file_v1_syncservice, 4, 7);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncActionThrottle
@@ -377,7 +441,7 @@ export type SyncStreamItem_SyncActionThrottle = Message<"v1.SyncStreamItem.SyncA
  * Use `create(SyncStreamItem_SyncActionThrottleSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionThrottleSchema: GenMessage<SyncStreamItem_SyncActionThrottle> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 2, 8);
+  messageDesc(file_v1_syncservice, 4, 8);
 
 /**
  * @generated from message v1.SyncStreamItem.SyncEstablishSharedSecret
@@ -399,7 +463,7 @@ export type SyncStreamItem_SyncEstablishSharedSecret = Message<"v1.SyncStreamIte
  * Use `create(SyncStreamItem_SyncEstablishSharedSecretSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncEstablishSharedSecretSchema: GenMessage<SyncStreamItem_SyncEstablishSharedSecret> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 2, 9);
+  messageDesc(file_v1_syncservice, 4, 9);
 
 /**
  * @generated from enum v1.SyncStreamItem.RepoConnectionState
@@ -437,7 +501,7 @@ export enum SyncStreamItem_RepoConnectionState {
  * Describes the enum v1.SyncStreamItem.RepoConnectionState.
  */
 export const SyncStreamItem_RepoConnectionStateSchema: GenEnum<SyncStreamItem_RepoConnectionState> = /*@__PURE__*/
-  enumDesc(file_v1_syncservice, 2, 0);
+  enumDesc(file_v1_syncservice, 4, 0);
 
 /**
  * RemoteConfig contains shareable properties from a remote backrest instance.
@@ -475,7 +539,7 @@ export type RemoteConfig = Message<"v1.RemoteConfig"> & {
  * Use `create(RemoteConfigSchema)` to create a new message.
  */
 export const RemoteConfigSchema: GenMessage<RemoteConfig> = /*@__PURE__*/
-  messageDesc(file_v1_syncservice, 3);
+  messageDesc(file_v1_syncservice, 5);
 
 /**
  * @generated from enum v1.SyncConnectionState
@@ -529,6 +593,23 @@ export const SyncConnectionStateSchema: GenEnum<SyncConnectionState> = /*@__PURE
   enumDesc(file_v1_syncservice, 0);
 
 /**
+ * TunnelService allows inverted communicatons from server to client where the server can initiate requests to the client.
+ *
+ * @generated from service v1.TunnelService
+ */
+export const TunnelService: GenService<{
+  /**
+   * @generated from rpc v1.TunnelService.Tunnel
+   */
+  tunnel: {
+    methodKind: "bidi_streaming";
+    input: typeof TunnelRequestSchema;
+    output: typeof TunnelResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_v1_syncservice, 0);
+
+/**
  * BackrestSyncService provides methods to sync data between backrest instances.
  * This service provides its own authentication and authorization.
  *
@@ -544,7 +625,7 @@ export const BackrestSyncService: GenService<{
     output: typeof SyncStreamItemSchema;
   },
 }> = /*@__PURE__*/
-  serviceDesc(file_v1_syncservice, 0);
+  serviceDesc(file_v1_syncservice, 1);
 
 /**
  * BackrestSyncStateService provides methods to query the sync state of known hosts and clients.
@@ -562,5 +643,5 @@ export const BackrestSyncStateService: GenService<{
     output: typeof PeerStateSchema;
   },
 }> = /*@__PURE__*/
-  serviceDesc(file_v1_syncservice, 1);
+  serviceDesc(file_v1_syncservice, 2);
 

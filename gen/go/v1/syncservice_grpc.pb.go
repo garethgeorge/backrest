@@ -19,6 +19,106 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	TunnelService_Tunnel_FullMethodName = "/v1.TunnelService/Tunnel"
+)
+
+// TunnelServiceClient is the client API for TunnelService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// TunnelService allows inverted communicatons from server to client where the server can initiate requests to the client.
+type TunnelServiceClient interface {
+	Tunnel(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[TunnelRequest, TunnelResponse], error)
+}
+
+type tunnelServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewTunnelServiceClient(cc grpc.ClientConnInterface) TunnelServiceClient {
+	return &tunnelServiceClient{cc}
+}
+
+func (c *tunnelServiceClient) Tunnel(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[TunnelRequest, TunnelResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &TunnelService_ServiceDesc.Streams[0], TunnelService_Tunnel_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[TunnelRequest, TunnelResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type TunnelService_TunnelClient = grpc.BidiStreamingClient[TunnelRequest, TunnelResponse]
+
+// TunnelServiceServer is the server API for TunnelService service.
+// All implementations must embed UnimplementedTunnelServiceServer
+// for forward compatibility.
+//
+// TunnelService allows inverted communicatons from server to client where the server can initiate requests to the client.
+type TunnelServiceServer interface {
+	Tunnel(grpc.BidiStreamingServer[TunnelRequest, TunnelResponse]) error
+	mustEmbedUnimplementedTunnelServiceServer()
+}
+
+// UnimplementedTunnelServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedTunnelServiceServer struct{}
+
+func (UnimplementedTunnelServiceServer) Tunnel(grpc.BidiStreamingServer[TunnelRequest, TunnelResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method Tunnel not implemented")
+}
+func (UnimplementedTunnelServiceServer) mustEmbedUnimplementedTunnelServiceServer() {}
+func (UnimplementedTunnelServiceServer) testEmbeddedByValue()                       {}
+
+// UnsafeTunnelServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to TunnelServiceServer will
+// result in compilation errors.
+type UnsafeTunnelServiceServer interface {
+	mustEmbedUnimplementedTunnelServiceServer()
+}
+
+func RegisterTunnelServiceServer(s grpc.ServiceRegistrar, srv TunnelServiceServer) {
+	// If the following call pancis, it indicates UnimplementedTunnelServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&TunnelService_ServiceDesc, srv)
+}
+
+func _TunnelService_Tunnel_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(TunnelServiceServer).Tunnel(&grpc.GenericServerStream[TunnelRequest, TunnelResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type TunnelService_TunnelServer = grpc.BidiStreamingServer[TunnelRequest, TunnelResponse]
+
+// TunnelService_ServiceDesc is the grpc.ServiceDesc for TunnelService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var TunnelService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "v1.TunnelService",
+	HandlerType: (*TunnelServiceServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Tunnel",
+			Handler:       _TunnelService_Tunnel_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
+	Metadata: "v1/syncservice.proto",
+}
+
+const (
 	BackrestSyncService_Sync_FullMethodName = "/v1.BackrestSyncService/Sync"
 )
 

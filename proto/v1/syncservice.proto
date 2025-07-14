@@ -13,6 +13,23 @@ import "types/value.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
 
+// TunnelService allows inverted communicatons from server to client where the server can initiate requests to the client.
+service TunnelService {
+  rpc Tunnel(stream TunnelRequest) returns (stream TunnelResponse) {}
+}
+
+message TunnelRequest {
+  int64 conn_id = 1; // The connection ID this request belongs to, enables multiplexing.
+  bytes data = 2; // The data to send, this is a raw byte stream.
+  bool close = 3; // If true, the write end should be closed after this request.
+}
+
+message TunnelResponse {
+  int64 conn_id = 1;
+  bytes data = 2; // The data received, this is a raw byte stream.
+  bool close = 3; // If true, the read end is closed after this response.
+}
+
 
 // BackrestSyncService provides methods to sync data between backrest instances.
 // This service provides its own authentication and authorization.

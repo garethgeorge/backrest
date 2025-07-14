@@ -21,6 +21,8 @@ import (
 const _ = connect.IsAtLeastVersion1_13_0
 
 const (
+	// TunnelServiceName is the fully-qualified name of the TunnelService service.
+	TunnelServiceName = "v1.TunnelService"
 	// BackrestSyncServiceName is the fully-qualified name of the BackrestSyncService service.
 	BackrestSyncServiceName = "v1.BackrestSyncService"
 	// BackrestSyncStateServiceName is the fully-qualified name of the BackrestSyncStateService service.
@@ -35,6 +37,8 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// TunnelServiceTunnelProcedure is the fully-qualified name of the TunnelService's Tunnel RPC.
+	TunnelServiceTunnelProcedure = "/v1.TunnelService/Tunnel"
 	// BackrestSyncServiceSyncProcedure is the fully-qualified name of the BackrestSyncService's Sync
 	// RPC.
 	BackrestSyncServiceSyncProcedure = "/v1.BackrestSyncService/Sync"
@@ -45,11 +49,81 @@ const (
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
+	tunnelServiceServiceDescriptor                                  = v1.File_v1_syncservice_proto.Services().ByName("TunnelService")
+	tunnelServiceTunnelMethodDescriptor                             = tunnelServiceServiceDescriptor.Methods().ByName("Tunnel")
 	backrestSyncServiceServiceDescriptor                            = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncService")
 	backrestSyncServiceSyncMethodDescriptor                         = backrestSyncServiceServiceDescriptor.Methods().ByName("Sync")
 	backrestSyncStateServiceServiceDescriptor                       = v1.File_v1_syncservice_proto.Services().ByName("BackrestSyncStateService")
 	backrestSyncStateServiceGetPeerSyncStatesStreamMethodDescriptor = backrestSyncStateServiceServiceDescriptor.Methods().ByName("GetPeerSyncStatesStream")
 )
+
+// TunnelServiceClient is a client for the v1.TunnelService service.
+type TunnelServiceClient interface {
+	Tunnel(context.Context) *connect.BidiStreamForClient[v1.TunnelRequest, v1.TunnelResponse]
+}
+
+// NewTunnelServiceClient constructs a client for the v1.TunnelService service. By default, it uses
+// the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and sends
+// uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
+// connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewTunnelServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) TunnelServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &tunnelServiceClient{
+		tunnel: connect.NewClient[v1.TunnelRequest, v1.TunnelResponse](
+			httpClient,
+			baseURL+TunnelServiceTunnelProcedure,
+			connect.WithSchema(tunnelServiceTunnelMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// tunnelServiceClient implements TunnelServiceClient.
+type tunnelServiceClient struct {
+	tunnel *connect.Client[v1.TunnelRequest, v1.TunnelResponse]
+}
+
+// Tunnel calls v1.TunnelService.Tunnel.
+func (c *tunnelServiceClient) Tunnel(ctx context.Context) *connect.BidiStreamForClient[v1.TunnelRequest, v1.TunnelResponse] {
+	return c.tunnel.CallBidiStream(ctx)
+}
+
+// TunnelServiceHandler is an implementation of the v1.TunnelService service.
+type TunnelServiceHandler interface {
+	Tunnel(context.Context, *connect.BidiStream[v1.TunnelRequest, v1.TunnelResponse]) error
+}
+
+// NewTunnelServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewTunnelServiceHandler(svc TunnelServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	tunnelServiceTunnelHandler := connect.NewBidiStreamHandler(
+		TunnelServiceTunnelProcedure,
+		svc.Tunnel,
+		connect.WithSchema(tunnelServiceTunnelMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/v1.TunnelService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case TunnelServiceTunnelProcedure:
+			tunnelServiceTunnelHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedTunnelServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedTunnelServiceHandler struct{}
+
+func (UnimplementedTunnelServiceHandler) Tunnel(context.Context, *connect.BidiStream[v1.TunnelRequest, v1.TunnelResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.TunnelService.Tunnel is not implemented"))
+}
 
 // BackrestSyncServiceClient is a client for the v1.BackrestSyncService service.
 type BackrestSyncServiceClient interface {
