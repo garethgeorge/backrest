@@ -59,7 +59,7 @@ var (
 
 // TunnelServiceClient is a client for the v1.TunnelService service.
 type TunnelServiceClient interface {
-	Tunnel(context.Context) *connect.BidiStreamForClient[v1.TunnelRequest, v1.TunnelResponse]
+	Tunnel(context.Context) *connect.BidiStreamForClient[v1.TunnelMessage, v1.TunnelMessage]
 }
 
 // NewTunnelServiceClient constructs a client for the v1.TunnelService service. By default, it uses
@@ -72,7 +72,7 @@ type TunnelServiceClient interface {
 func NewTunnelServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) TunnelServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &tunnelServiceClient{
-		tunnel: connect.NewClient[v1.TunnelRequest, v1.TunnelResponse](
+		tunnel: connect.NewClient[v1.TunnelMessage, v1.TunnelMessage](
 			httpClient,
 			baseURL+TunnelServiceTunnelProcedure,
 			connect.WithSchema(tunnelServiceTunnelMethodDescriptor),
@@ -83,17 +83,17 @@ func NewTunnelServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 
 // tunnelServiceClient implements TunnelServiceClient.
 type tunnelServiceClient struct {
-	tunnel *connect.Client[v1.TunnelRequest, v1.TunnelResponse]
+	tunnel *connect.Client[v1.TunnelMessage, v1.TunnelMessage]
 }
 
 // Tunnel calls v1.TunnelService.Tunnel.
-func (c *tunnelServiceClient) Tunnel(ctx context.Context) *connect.BidiStreamForClient[v1.TunnelRequest, v1.TunnelResponse] {
+func (c *tunnelServiceClient) Tunnel(ctx context.Context) *connect.BidiStreamForClient[v1.TunnelMessage, v1.TunnelMessage] {
 	return c.tunnel.CallBidiStream(ctx)
 }
 
 // TunnelServiceHandler is an implementation of the v1.TunnelService service.
 type TunnelServiceHandler interface {
-	Tunnel(context.Context, *connect.BidiStream[v1.TunnelRequest, v1.TunnelResponse]) error
+	Tunnel(context.Context, *connect.BidiStream[v1.TunnelMessage, v1.TunnelMessage]) error
 }
 
 // NewTunnelServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -121,7 +121,7 @@ func NewTunnelServiceHandler(svc TunnelServiceHandler, opts ...connect.HandlerOp
 // UnimplementedTunnelServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedTunnelServiceHandler struct{}
 
-func (UnimplementedTunnelServiceHandler) Tunnel(context.Context, *connect.BidiStream[v1.TunnelRequest, v1.TunnelResponse]) error {
+func (UnimplementedTunnelServiceHandler) Tunnel(context.Context, *connect.BidiStream[v1.TunnelMessage, v1.TunnelMessage]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.TunnelService.Tunnel is not implemented"))
 }
 

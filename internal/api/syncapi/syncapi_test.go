@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"path/filepath"
 	"slices"
@@ -74,8 +73,8 @@ func TestConnectionSucceeds(t *testing.T) {
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
-	peerHostAddr := allocBindAddrForTest(t)
-	peerClientAddr := allocBindAddrForTest(t)
+	peerHostAddr := testutil.AllocOpenBindAddr(t)
+	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	peerHostConfig := &v1.Config{
 		Instance: defaultHostID,
@@ -120,8 +119,8 @@ func TestConnectionBadKeyRejected(t *testing.T) {
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
-	peerHostAddr := allocBindAddrForTest(t)
-	peerClientAddr := allocBindAddrForTest(t)
+	peerHostAddr := testutil.AllocOpenBindAddr(t)
+	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	// Host has identity1, and authorizes no one.
 	peerHostConfig := &v1.Config{
@@ -162,8 +161,8 @@ func TestSyncConfigChange(t *testing.T) {
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
-	peerHostAddr := allocBindAddrForTest(t)
-	peerClientAddr := allocBindAddrForTest(t)
+	peerHostAddr := testutil.AllocOpenBindAddr(t)
+	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	peerHostConfig := &v1.Config{
 		Instance: defaultHostID,
@@ -254,8 +253,8 @@ func TestSimpleOperationSync(t *testing.T) {
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
-	peerHostAddr := allocBindAddrForTest(t)
-	peerClientAddr := allocBindAddrForTest(t)
+	peerHostAddr := testutil.AllocOpenBindAddr(t)
+	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	peerHostConfig := &v1.Config{
 		Instance: defaultHostID,
@@ -378,8 +377,8 @@ func TestSyncMutations(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	peerHostAddr := allocBindAddrForTest(t)
-	peerClientAddr := allocBindAddrForTest(t)
+	peerHostAddr := testutil.AllocOpenBindAddr(t)
+	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	peerHostConfig := &v1.Config{
 		Instance: defaultHostID,
@@ -656,24 +655,6 @@ func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTe
 
 func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer) {
 	waitForConnectionState(t, ctx, peer, hostPeer, v1.SyncConnectionState_CONNECTION_STATE_CONNECTED)
-}
-
-func allocBindAddrForTest(t *testing.T) string {
-	t.Helper()
-
-	listener, err := net.Listen("tcp", ":0")
-	if err != nil {
-		t.Fatalf("failed to listen: %v", err)
-	}
-	defer listener.Close()
-
-	// Get the port number from the listener
-	_, port, err := net.SplitHostPort(listener.Addr().String())
-	if err != nil {
-		t.Fatalf("failed to split host and port: %v", err)
-	}
-
-	return "127.0.0.1:" + port
 }
 
 func runSyncAPIWithCtx(ctx context.Context, peer *peerUnderTest, bindAddr string) {

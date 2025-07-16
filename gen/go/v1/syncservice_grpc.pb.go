@@ -28,7 +28,7 @@ const (
 //
 // TunnelService allows inverted communicatons from server to client where the server can initiate requests to the client.
 type TunnelServiceClient interface {
-	Tunnel(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[TunnelRequest, TunnelResponse], error)
+	Tunnel(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[TunnelMessage, TunnelMessage], error)
 }
 
 type tunnelServiceClient struct {
@@ -39,18 +39,18 @@ func NewTunnelServiceClient(cc grpc.ClientConnInterface) TunnelServiceClient {
 	return &tunnelServiceClient{cc}
 }
 
-func (c *tunnelServiceClient) Tunnel(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[TunnelRequest, TunnelResponse], error) {
+func (c *tunnelServiceClient) Tunnel(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[TunnelMessage, TunnelMessage], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &TunnelService_ServiceDesc.Streams[0], TunnelService_Tunnel_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[TunnelRequest, TunnelResponse]{ClientStream: stream}
+	x := &grpc.GenericClientStream[TunnelMessage, TunnelMessage]{ClientStream: stream}
 	return x, nil
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type TunnelService_TunnelClient = grpc.BidiStreamingClient[TunnelRequest, TunnelResponse]
+type TunnelService_TunnelClient = grpc.BidiStreamingClient[TunnelMessage, TunnelMessage]
 
 // TunnelServiceServer is the server API for TunnelService service.
 // All implementations must embed UnimplementedTunnelServiceServer
@@ -58,7 +58,7 @@ type TunnelService_TunnelClient = grpc.BidiStreamingClient[TunnelRequest, Tunnel
 //
 // TunnelService allows inverted communicatons from server to client where the server can initiate requests to the client.
 type TunnelServiceServer interface {
-	Tunnel(grpc.BidiStreamingServer[TunnelRequest, TunnelResponse]) error
+	Tunnel(grpc.BidiStreamingServer[TunnelMessage, TunnelMessage]) error
 	mustEmbedUnimplementedTunnelServiceServer()
 }
 
@@ -69,7 +69,7 @@ type TunnelServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedTunnelServiceServer struct{}
 
-func (UnimplementedTunnelServiceServer) Tunnel(grpc.BidiStreamingServer[TunnelRequest, TunnelResponse]) error {
+func (UnimplementedTunnelServiceServer) Tunnel(grpc.BidiStreamingServer[TunnelMessage, TunnelMessage]) error {
 	return status.Errorf(codes.Unimplemented, "method Tunnel not implemented")
 }
 func (UnimplementedTunnelServiceServer) mustEmbedUnimplementedTunnelServiceServer() {}
@@ -94,11 +94,11 @@ func RegisterTunnelServiceServer(s grpc.ServiceRegistrar, srv TunnelServiceServe
 }
 
 func _TunnelService_Tunnel_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(TunnelServiceServer).Tunnel(&grpc.GenericServerStream[TunnelRequest, TunnelResponse]{ServerStream: stream})
+	return srv.(TunnelServiceServer).Tunnel(&grpc.GenericServerStream[TunnelMessage, TunnelMessage]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type TunnelService_TunnelServer = grpc.BidiStreamingServer[TunnelRequest, TunnelResponse]
+type TunnelService_TunnelServer = grpc.BidiStreamingServer[TunnelMessage, TunnelMessage]
 
 // TunnelService_ServiceDesc is the grpc.ServiceDesc for TunnelService service.
 // It's only intended for direct use with grpc.RegisterService,
