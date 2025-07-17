@@ -3,91 +3,124 @@ package tunnel
 import (
 	"bufio"
 	"context"
+	"io"
+	"net"
 	"net/http"
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/testutil"
+	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
 
-func TestFailsToConnect(t *testing.T) {
-	server := &http.Server{
-		Handler: http.NotFoundHandler(),
-	}
-
-	t.Cleanup(func() {
-		if err := server.Close(); err != nil {
-			t.Errorf("Failed to close server: %v", err)
-		}
+func newHelloHandler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("Hello, World!"))
 	})
-
-	client := NewTunnelClient(server, "helloclient")
-	if client == nil {
-		t.Fatal("Expected NewTunnelClient to return a non-nil client")
-	}
-
-	if err := client.ServeOnce(context.Background(), "localhost:9443"); err == nil {
-		t.Error("Expected Serve to fail with a closed server, but it succeeded")
-	} else {
-		t.Logf("Serve failed as expected: %v", err)
-	}
+	return mux
 }
 
-func TestCanConnect(t *testing.T) {
-	testutil.InstallZapLogger(t)
-	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
-	defer cancel()
+type sampleHandler struct {
+	logger   *zap.Logger
+	streams  []*WrappedStream
+	provider *ConnectionProvider
+}
 
-	handler := NewTunnelHandler()
+var _ v1connect.TunnelServiceHandler = (*sampleHandler)(nil)
 
-	mux := http.NewServeMux()
-	mux.Handle(v1connect.NewTunnelServiceHandler(handler))
+func (sh *sampleHandler) Tunnel(ctx context.Context, stream *connect.BidiStream[v1.TunnelMessage, v1.TunnelMessage]) error {
+	wrapped := NewWrappedStream(stream, WithLogger(sh.logger))
+	wrapped.ProvideConnectionsTo(sh.provider)
+	sh.streams = append(sh.streams, wrapped)
+	return wrapped.HandlePackets(ctx)
+}
 
-	server := &http.Server{
-		Addr:    testutil.AllocOpenBindAddr(t),
-		Handler: h2c.NewHandler(mux, &http2.Server{}), // h2c is HTTP/2 without TLS for grpc-connect support.
-	}
+func serveForTest(t *testing.T, server *http.Server, listener net.Listener) {
+	t.Helper()
+	go func() {
+		t.Log("Starting server with listener")
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			t.Errorf("Server failed to start: %v", err)
+		}
+	}()
 	t.Cleanup(func() {
+		t.Log("Shutting down server")
 		if err := server.Shutdown(context.Background()); err != nil {
 			t.Errorf("Failed to close server: %v", err)
 		}
 	})
+}
 
+func listenAndServeForTest(t *testing.T, server *http.Server) {
+	t.Helper()
 	go func() {
+		t.Logf("Starting server on %s", server.Addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			t.Errorf("Server failed to start: %v", err)
 		}
 	}()
+	t.Cleanup(func() {
+		t.Logf("Shutting down server on %s", server.Addr)
+		if err := server.Shutdown(context.Background()); err != nil {
+			t.Errorf("Failed to close server: %v", err)
+		}
+	})
+}
 
-	clientServer := &http.Server{
-		Addr: server.Addr,
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// OK handler
-			w.WriteHeader(http.StatusOK)
-		}),
+func TestConnect(t *testing.T) {
+	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
+	defer cancel()
+
+	// Construct the service we want to provide
+	provider := NewConnectionProvider(10 /* bufferSize */)
+	sampleHandler := &sampleHandler{
+		logger:   testutil.NewTestLogger(t).Named("sample-handler"),
+		provider: provider,
 	}
 
-	client := NewTunnelClient(clientServer, "helloclient")
-	client.ReconnectDelay = 1000 * time.Millisecond // Set a short delay for testing purposes
+	server := &http.Server{
+		Handler: newHelloHandler(),
+	}
+	serveForTest(t, server, provider)
+
+	// Serve the sample handler
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTunnelServiceHandler(sampleHandler))
+	grpcServer := &http.Server{
+		Addr:    testutil.AllocOpenBindAddr(t),
+		Handler: h2c.NewHandler(mux, &http2.Server{}), // h2c is HTTP/2 without TLS for grpc-connect support.
+	}
+	listenAndServeForTest(t, grpcServer)
+
+	// Create a client and connect to the server
+	client := v1connect.NewTunnelServiceClient(NewInsecureHttpClient(), "http://"+grpcServer.Addr)
+	stream := client.Tunnel(ctx)
+	wrapped := NewWrappedStreamFromClient(stream, WithLogger(testutil.NewTestLogger(t).Named("client")))
 	go func() {
-		if err := client.Serve(ctx, "http://"+server.Addr); err != nil && err != http.ErrServerClosed {
-			t.Errorf("Server failed to serve: %v", err)
+		t.Log("Client stream started")
+		if err := wrapped.HandlePackets(ctx); err != nil {
+			t.Errorf("Failed to handle packets: %v", err)
 		}
+		t.Log("Client stream ended")
 	}()
 
-	time.Sleep(1 * time.Second) // Wait for the client to connect
+	time.Sleep(100 * time.Millisecond) // Allow some time for the connection to be established
 
-	// Now try dialing the client from the server
-	conn, err := handler.Dial("helloclient")
+	// Attempt to connect to the server
+	conn, err := wrapped.Dial()
 	if err != nil {
-		t.Fatalf("Failed to dial client: %v", err)
+		t.Fatalf("Failed to dial server: %v", err)
 	}
 	defer conn.Close()
 
-	// Write an HTTP request to the conn
+	// Write an HTTP request to the connection
 	req, err := http.NewRequest("GET", "http://example.com", nil)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -105,4 +138,10 @@ func TestCanConnect(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("Expected status OK, got %s", resp.Status)
 	}
+	t.Logf("Received response: %s", resp.Status)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read response body: %v", err)
+	}
+	t.Logf("Response body: %s", body)
 }

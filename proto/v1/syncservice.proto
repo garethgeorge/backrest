@@ -12,6 +12,8 @@ import "v1/operations.proto";
 import "types/value.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/any.proto";
+
 
 // TunnelService allows inverted communicatons from server to client where the server can initiate requests to the client.
 service TunnelService {
@@ -20,11 +22,13 @@ service TunnelService {
 
 message TunnelMessage {
   int64 conn_id = 1; // The connection ID this request belongs to, enables multiplexing.
-  bytes data = 2; // The data to send, this is a raw byte stream.
-  bool close = 3; // If true, the write end should be closed after this request.
+  int64 seqno = 2;
+  bytes data = 3; // The data to send, this is a raw byte stream.
+  bool close = 4; // If true, the write end should be closed after this request.
 
-  // Used only by connecting clients to identify themselves in the first packet sent.
-  string client_id = 4;
+  bytes pubkey_ecdh_x25519 = 100; // The public key used for ECDH key exchange, binary encoded.
+
+  google.protobuf.Any any = 1000; // Available to allow sending custom data down the tunnel in the initial handshake.
 }
 
 

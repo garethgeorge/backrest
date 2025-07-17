@@ -17,7 +17,6 @@ import (
 
 var (
 	curve = elliptic.P256() // ed25519
-
 )
 
 type PublicKey struct {
