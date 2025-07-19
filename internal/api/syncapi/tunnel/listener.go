@@ -27,7 +27,7 @@ func (l *ConnectionProvider) Accept() (net.Conn, error) {
 	select {
 	case <-l.isOpen:
 		// If the listener is closed, we don't accept new connections.
-		return nil, net.ErrClosed
+		return nil, &net.OpError{Op: "accept", Net: "tunnel", Err: net.ErrClosed}
 	case conn := <-l.nextConn:
 		return conn, nil
 	}

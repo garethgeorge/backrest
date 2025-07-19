@@ -16,8 +16,6 @@ type stream interface {
 	Send(item *v1.TunnelMessage) error
 	Receive() (*v1.TunnelMessage, error)
 	Close() error
-
-	IsClient() bool
 }
 
 type clientStream struct {
@@ -58,10 +56,6 @@ func (s *clientStream) Close() error {
 	return err
 }
 
-func (s *clientStream) IsClient() bool {
-	return true
-}
-
 type serverStream struct {
 	sendMu    sync.Mutex
 	receiveMu sync.Mutex
@@ -92,8 +86,4 @@ func (s *serverStream) Close() error {
 	s.sendMu.Lock()
 	s.closed.Store(true)
 	return nil
-}
-
-func (s *serverStream) IsClient() bool {
-	return false
 }

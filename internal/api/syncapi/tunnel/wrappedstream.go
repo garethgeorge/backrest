@@ -30,6 +30,8 @@ func WithHeartbeatInterval(interval time.Duration) WrappedStreamOptions {
 }
 
 type WrappedStream struct {
+	isClient bool
+
 	stream stream
 	logger *zap.Logger
 
@@ -45,8 +47,9 @@ type WrappedStream struct {
 	handlingPackets atomic.Bool
 }
 
-func newWrappedStreamInternal(stream stream, opts ...WrappedStreamOptions) *WrappedStream {
+func newWrappedStreamInternal(stream stream, isClient bool, opts ...WrappedStreamOptions) *WrappedStream {
 	ws := &WrappedStream{
+		isClient:          isClient,
 		stream:            stream,
 		heartbeatInterval: 30 * time.Second,
 		conns:             make(map[int64]*connState),
@@ -54,7 +57,7 @@ func newWrappedStreamInternal(stream stream, opts ...WrappedStreamOptions) *Wrap
 	for _, opt := range opts {
 		opt(ws)
 	}
-	if stream.IsClient() {
+	if isClient {
 		ws.lastConnID.Store(1) // Use odd numbered connection IDs for client-initiated connections.
 	} else {
 		ws.lastConnID.Store(2) // Use even numbered connection IDs for server-initiated connections.
@@ -65,13 +68,13 @@ func newWrappedStreamInternal(stream stream, opts ...WrappedStreamOptions) *Wrap
 func NewWrappedStream(stream *connect.BidiStream[v1.TunnelMessage, v1.TunnelMessage], opts ...WrappedStreamOptions) *WrappedStream {
 	return newWrappedStreamInternal(&serverStream{
 		stream: stream,
-	}, opts...)
+	}, false, opts...)
 }
 
 func NewWrappedStreamFromClient(stream *connect.BidiStreamForClient[v1.TunnelMessage, v1.TunnelMessage], opts ...WrappedStreamOptions) *WrappedStream {
 	return newWrappedStreamInternal(&clientStream{
 		stream: stream,
-	}, opts...)
+	}, true, opts...)
 }
 
 func (ws *WrappedStream) allocConnID() int64 {
@@ -99,7 +102,7 @@ func (ws *WrappedStream) ProvideConnectionsTo(provider *ConnectionProvider) {
 }
 
 func (ws *WrappedStream) sendHeartbeats(ctx context.Context) {
-	if ws.heartbeatInterval <= 0 || !ws.stream.IsClient() {
+	if ws.heartbeatInterval <= 0 || !ws.isClient {
 		return
 	}
 
@@ -129,6 +132,9 @@ func (ws *WrappedStream) HandlePackets(ctx context.Context) error {
 	}
 	defer ws.handlingPackets.Store(false)
 
+	// TODO: optimization, it is generally secure and performant have a singleton key that is generated once and reused for all connections.
+	// the only risk w/this approach is if the key were somehow leaked all related connections would be compromised. The risk is low in this case since
+	// the key is only kept in memory for the lifetime of the process, and ideally is a second line of defense after TLS.
 	key, err := ecdh.X25519().GenerateKey(rand.Reader)
 	if err != nil {
 		return fmt.Errorf("generate key for handshake packet: %w", err)
@@ -192,6 +198,9 @@ func (ws *WrappedStream) HandlePackets(ctx context.Context) error {
 		}
 
 		if msg.Close {
+			if ws.logger != nil {
+				ws.logger.Info("closing connection", zap.Int64("connId", connId))
+			}
 			ws.connsMu.Lock()
 			if conn, exists := ws.conns[connId]; exists {
 				if err := conn.Close(); err != nil && ws.logger != nil {
@@ -245,6 +254,9 @@ func (ws *WrappedStream) HandlePackets(ctx context.Context) error {
 		case <-ctx.Done():
 			// Close all open connections when the context is done.
 			ws.connsMu.Lock()
+			if ws.logger != nil {
+				ws.logger.Info("context done, closing all connections")
+			}
 			for _, c := range ws.conns {
 				if err := c.Close(); err != nil && ws.logger != nil {
 					ws.logger.Error("failed to close connection on context done", zap.Int64("connId", c.connId), zap.Error(err))

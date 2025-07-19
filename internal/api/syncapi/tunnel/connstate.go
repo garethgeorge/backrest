@@ -37,7 +37,8 @@ var _ net.Conn = (*connState)(nil)
 
 func newConnState(stream stream, connId int64, logger *zap.Logger) *connState {
 	if logger != nil {
-		logger = logger.With(zap.Int64("connId", connId))
+		logger = logger.Named("connState").With(
+			zap.Int64("connId", connId))
 	}
 	return &connState{
 		connId: connId,
@@ -99,10 +100,6 @@ func (c *connState) Read(b []byte) (int, error) {
 	c.readsMu.Lock()
 	defer c.readsMu.Unlock()
 
-	if c.closed.Load() {
-		return 0, net.ErrClosed
-	}
-
 	if len(c.readsBuf) > 0 {
 		n := copy(b, c.readsBuf)
 		c.readsBuf = c.readsBuf[n:]
@@ -118,6 +115,9 @@ func (c *connState) Read(b []byte) (int, error) {
 		if len(data) == 0 {
 			return 0, net.ErrClosed
 		}
+		if c.logger != nil {
+			c.logger.Debug("conn state c.reads received packet", zap.Int("dataLength", len(data)))
+		}
 		n := copy(b, data)
 		if n < len(data) {
 			c.readsBuf = data[n:]
@@ -125,12 +125,12 @@ func (c *connState) Read(b []byte) (int, error) {
 		return n, nil
 	case <-readDeadlineChan:
 		if c.logger != nil {
-			c.logger.Info("read deadline reached", zap.Int64("connId", c.connId))
+			c.logger.Info("read deadline reached")
 		}
 		return 0, os.ErrDeadlineExceeded
 	case <-c.closedCh:
 		if c.logger != nil {
-			c.logger.Info("connection closed while waiting for read", zap.Int64("connId", c.connId))
+			c.logger.Info("connection closed while waiting for read")
 		}
 		return 0, net.ErrClosed
 	}
@@ -138,17 +138,24 @@ func (c *connState) Read(b []byte) (int, error) {
 
 func (c *connState) Close() error {
 	if !c.closed.Swap(true) {
-		close(c.closedCh)
 		if c.logger != nil {
-			c.logger.Info("closing tunnel connection")
+			c.logger.Info("closing connection")
 		}
-
+		close(c.closedCh)
 		if err := c.stream.Send(&v1.TunnelMessage{
 			ConnId: c.connId,
 			Close:  true,
 		}); err != nil {
+			if c.logger != nil {
+				c.logger.Error("failed to send close message", zap.Error(err))
+			}
 			return fmt.Errorf("send close message: %w", err)
 		}
+		if c.logger != nil {
+			c.logger.Info("connection closed successfully")
+		}
+	} else if c.logger != nil {
+		c.logger.Warn("close called on already closed connection")
 	}
 	return nil
 }
