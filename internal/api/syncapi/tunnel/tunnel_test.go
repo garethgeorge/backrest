@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
+	"github.com/garethgeorge/backrest/gen/go/v1sync/v1syncconnect"
 	"github.com/garethgeorge/backrest/internal/testutil"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
@@ -33,9 +33,9 @@ type sampleHandler struct {
 	provider *ConnectionProvider
 }
 
-var _ v1connect.TunnelServiceHandler = (*sampleHandler)(nil)
+var _ v1syncconnect.TunnelServiceHandler = (*sampleHandler)(nil)
 
-func (sh *sampleHandler) Tunnel(ctx context.Context, stream *connect.BidiStream[v1.TunnelMessage, v1.TunnelMessage]) error {
+func (sh *sampleHandler) Tunnel(ctx context.Context, stream *connect.BidiStream[v1sync.TunnelMessage, v1sync.TunnelMessage]) error {
 	wrapped := NewWrappedStream(stream, WithLogger(sh.logger))
 	wrapped.ProvideConnectionsTo(sh.provider)
 	sh.streams = append(sh.streams, wrapped)
@@ -113,7 +113,7 @@ func TestConnect(t *testing.T) {
 
 	// Serve the sample handler
 	mux := http.NewServeMux()
-	mux.Handle(v1connect.NewTunnelServiceHandler(sampleHandler))
+	mux.Handle(v1syncconnect.NewTunnelServiceHandler(sampleHandler))
 	grpcServer := &http.Server{
 		Addr:    testutil.AllocOpenBindAddr(t),
 		Handler: h2c.NewHandler(mux, &http2.Server{}), // h2c is HTTP/2 without TLS for grpc-connect support.
@@ -121,7 +121,7 @@ func TestConnect(t *testing.T) {
 	listenAndServeForTest("gRPCServer", t, grpcServer)
 
 	// Create a client and connect to the server
-	client := v1connect.NewTunnelServiceClient(NewInsecureHttpClient(), "http://"+grpcServer.Addr)
+	client := v1syncconnect.NewTunnelServiceClient(NewInsecureHttpClient(), "http://"+grpcServer.Addr)
 	stream := client.Tunnel(ctx)
 	wrapped := NewWrappedStreamFromClient(stream, WithLogger(testutil.NewTestLogger(t).Named("client")))
 	go func() {

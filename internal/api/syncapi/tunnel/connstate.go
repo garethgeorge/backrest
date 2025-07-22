@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"os"
@@ -8,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"go.uber.org/zap"
 )
 
@@ -35,15 +36,21 @@ type connState struct {
 
 var _ net.Conn = (*connState)(nil)
 
-func newConnState(stream stream, connId int64, logger *zap.Logger) *connState {
+func newConnState(streamm stream, connId int64, secret []byte, logger *zap.Logger) *connState {
 	if logger != nil {
 		logger = logger.Named("connState").With(
 			zap.Int64("connId", connId))
 	}
+
+	var s stream = streamm
+	// if len(secret) > 0 {
+	// 	s = newCryptedStream(streamm, secret)
+	// }
+
 	return &connState{
 		connId: connId,
 		seqno:  0,
-		stream: stream,
+		stream: s,
 		logger: logger,
 
 		closedCh: make(chan struct{}),
@@ -65,7 +72,7 @@ func (c *connState) sendOpenPacket() error {
 		c.logger.Info("sending open packet")
 	}
 
-	return c.stream.Send(&v1.TunnelMessage{
+	return c.stream.Send(&v1sync.TunnelMessage{
 		ConnId: c.connId,
 		Seqno:  0, // Open packet has Seqno 0
 	})
@@ -82,9 +89,9 @@ func (c *connState) Write(data []byte) (int, error) {
 	if c.logger != nil {
 		c.logger.Debug("writing data", zap.Int("dataLength", len(data)), zap.Int64("seqno", c.seqno))
 	}
-	err := c.stream.Send(&v1.TunnelMessage{
+	err := c.stream.Send(&v1sync.TunnelMessage{
 		ConnId: c.connId,
-		Data:   data,
+		Data:   bytes.Clone(data),
 		Seqno:  c.nextWriteSeqno,
 	})
 	if err != nil {
@@ -142,7 +149,7 @@ func (c *connState) Close() error {
 			c.logger.Info("closing connection")
 		}
 		close(c.closedCh)
-		if err := c.stream.Send(&v1.TunnelMessage{
+		if err := c.stream.Send(&v1sync.TunnelMessage{
 			ConnId: c.connId,
 			Close:  true,
 		}); err != nil {
