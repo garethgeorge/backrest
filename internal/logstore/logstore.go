@@ -270,23 +270,23 @@ func (ls *LogStore) SelectAll(f func(id string, parentID int64)) error {
 
 // Find logs owned by a specific operation ID.
 func (ls *LogStore) FindLogsWithParent(parentOpID int64) ([]string, error) {
-	conn, err := ls.dbpool.Take(context.Background())
+	rows, err := ls.dbpool.QueryContext(context.Background(), "SELECT id FROM logs WHERE owner_opid = ?", parentOpID)
 	if err != nil {
-		return nil, fmt.Errorf("take connection: %v", err)
-	}
-	defer ls.dbpool.Put(conn)
-
-	var logs []string
-	if err := sqlitex.Execute(conn, "SELECT id FROM logs WHERE owner_opid = ?", &sqlitex.ExecOptions{
-		Args: []any{parentOpID},
-		ResultFunc: func(stmt *sqlite.Stmt) error {
-			logs = append(logs, stmt.ColumnText(0))
-			return nil
-		},
-	}); err != nil {
 		return nil, fmt.Errorf("select logs: %v", err)
 	}
+	defer rows.Close()
 
+	var logs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan log id: %v", err)
+		}
+		logs = append(logs, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate logs: %v", err)
+	}
 	return logs, nil
 }
 

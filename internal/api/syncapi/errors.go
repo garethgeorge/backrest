@@ -42,6 +42,20 @@ func NewSyncErrorPending(message error) *SyncError {
 	}
 }
 
+func NewSyncErrorConnected(message error) *SyncError {
+	return &SyncError{
+		State:   v1.SyncConnectionState_CONNECTION_STATE_CONNECTED,
+		Message: message,
+	}
+}
+
+func NewSyncErrorRetryWait(message error) *SyncError {
+	return &SyncError{
+		State:   v1.SyncConnectionState_CONNECTION_STATE_RETRY_WAIT,
+		Message: message,
+	}
+}
+
 func NewSyncErrorAuth(message error) *SyncError {
 	return &SyncError{
 		State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH,

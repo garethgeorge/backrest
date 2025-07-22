@@ -42,10 +42,10 @@ func NewSqliteDbForKvStore(db string) (*sql.DB, error) {
 	return dbpool, nil
 }
 
-func NewInMemorySqliteDbForKvStore(t testing.TB) (*sql.DB, error) {
+func NewInMemorySqliteDbForKvStore(t testing.TB) *sql.DB {
 	dbpool, err := sql.Open("sqlite3", memdb.TestDB(t))
 	if err != nil {
-		return nil, fmt.Errorf("open sqlite pool: %v", err)
+		t.Fatalf("failed to open db: %v", err)
 	}
-	return dbpool, nil
+	return dbpool
 }

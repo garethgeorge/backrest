@@ -539,9 +539,6 @@ func tryExpectExactOperations(t *testing.T, ctx context.Context, peer *peerUnder
 		for _, op := range ops {
 			op.Modno = 0
 		}
-		for _, op := range wantOps {
-			op.Modno = 0
-		}
 		if diff := cmp.Diff(ops, wantOps, protocmp.Transform()); diff != "" {
 			return fmt.Errorf("unexpected diff: %v", diff)
 		}
@@ -626,13 +623,13 @@ func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTe
 	onStateChanged := peer.manager.peerStateManager.OnStateChanged().Subscribe()
 	defer peer.manager.peerStateManager.OnStateChanged().Unsubscribe(onStateChanged)
 
-	// First check if the peer is already in the desired state.
+	// First check if the peer is already connected.
 	state := peer.manager.peerStateManager.GetPeerState(hostPeer.Keyid)
-	if state != nil && state.ConnectionState == wantState {
-		return // Already in desired state, nothing to do
+	if state != nil && state.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+		return // Already connected, nothing to do
 	}
 
-	// If not in desired state, wait for a connection event
+	// If not connected, wait for a connection event
 	var lastState *PeerState
 	stop := false
 	for !stop {
@@ -644,7 +641,7 @@ func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTe
 			}
 			if state.KeyID == hostPeer.Keyid && state.InstanceID == hostPeer.InstanceId {
 				lastState = state
-				if state.ConnectionState == wantState {
+				if state.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
 					stop = true
 					continue
 				}
@@ -656,8 +653,8 @@ func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTe
 	}
 	if lastState == nil {
 		t.Fatalf("timeout waiting for connection to host peer %s", hostPeer.InstanceId)
-	} else if lastState.ConnectionState != wantState {
-		t.Fatalf("expected connection state to be %v, got %v (reason: %q)", wantState, lastState.ConnectionState, lastState.ConnectionStateMessage)
+	} else if lastState.ConnectionState != v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+		t.Fatalf("expected connection state to be CONNECTED, got %v (reason: %q)", lastState.ConnectionState, lastState.ConnectionStateMessage)
 	}
 }
 
@@ -668,8 +665,8 @@ func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer
 func runSyncAPIWithCtx(ctx context.Context, peer *peerUnderTest, bindAddr string) {
 	mux := http.NewServeMux()
 	syncHandler := NewBackrestSyncHandler(peer.manager)
-	endPoint, syncServiceHandler := v1connect.NewBackrestSyncServiceHandler(syncHandler)
-	mux.Handle(endPoint, AuthenticationMiddleware(peer.configMgr, syncServiceHandler))
+	mux.Handle(v1connect.NewBackrestSyncServiceHandler(syncHandler))
+
 	server := &http.Server{
 		Addr:    bindAddr,
 		Handler: h2c.NewHandler(mux, &http2.Server{}), // h2c is HTTP/2 without TLS for grpc-connect support.
@@ -768,7 +765,7 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 		t.Fatalf("failed to create peer state manager: %v", err)
 	}
 
-	manager := NewSyncManager(configMgr, oplog, logStore, orchestrator, peerStateManager)
+	manager := NewSyncManager(configMgr, oplog, orchestrator, peerStateManager)
 	manager.syncClientRetryDelay = 250 * time.Millisecond
 
 	return &peerUnderTest{
