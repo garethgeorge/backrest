@@ -48,10 +48,15 @@ func (s *clientStream) Receive() (*v1.TunnelMessage, error) {
 func (s *clientStream) Close() error {
 	s.closed.Store(true)
 	s.receiveMu.Lock()
-	err := s.stream.CloseResponse()
+	var err error
+	if e := s.stream.CloseResponse(); e != nil {
+		err = multierror.Append(err, e)
+	}
 	s.receiveMu.Unlock()
 	s.sendMu.Lock()
-	err = multierror.Append(err, s.stream.CloseRequest())
+	if e := s.stream.CloseRequest(); e != nil {
+		err = multierror.Append(err, e)
+	}
 	s.sendMu.Unlock()
 	return err
 }

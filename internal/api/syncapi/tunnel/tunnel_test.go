@@ -80,6 +80,20 @@ func listenAndServeForTest(name string, t *testing.T, server *http.Server) {
 	})
 }
 
+func waitForConnectionReady(ctx context.Context, t *testing.T, wrapped *WrappedStream) {
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("timed out waiting for connection to be ready: %v", ctx.Err())
+		default:
+			if wrapped.IsReady() {
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+}
+
 func TestConnect(t *testing.T) {
 	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
@@ -117,7 +131,7 @@ func TestConnect(t *testing.T) {
 		t.Log("Client stream ended")
 	}()
 
-	time.Sleep(100 * time.Millisecond) // Allow some time for the connection to be established
+	waitForConnectionReady(ctx, t, wrapped)
 
 	// Attempt to connect to the server
 	conn, err := wrapped.Dial()
@@ -150,14 +164,13 @@ func TestConnect(t *testing.T) {
 	}
 	t.Logf("Response body: %s", body)
 
+	t.Logf("Closing connection with ID %d", conn.(*connState).connId)
 	if err := conn.Close(); err != nil {
 		t.Fatalf("Failed to close connection: %v", err)
 	}
-
-	if err := stream.CloseRequest(); err != nil {
-		t.Fatalf("Failed to close stream request: %v", err)
+	t.Logf("Calling wrapped.Shutdown()")
+	if err := wrapped.Shutdown(); err != nil {
+		t.Fatalf("Failed to shutdown wrapped stream: %v", err)
 	}
-	if err := stream.CloseResponse(); err != nil {
-		t.Fatalf("Failed to close stream response: %v", err)
-	}
+	t.Log("Test completed successfully")
 }

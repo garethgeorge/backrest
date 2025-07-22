@@ -45,6 +45,7 @@ type WrappedStream struct {
 	lastConnID atomic.Int64
 
 	handlingPackets atomic.Bool
+	streamStopped   atomic.Bool
 }
 
 func newWrappedStreamInternal(stream stream, isClient bool, opts ...WrappedStreamOptions) *WrappedStream {
@@ -79,6 +80,10 @@ func NewWrappedStreamFromClient(stream *connect.BidiStreamForClient[v1.TunnelMes
 
 func (ws *WrappedStream) allocConnID() int64 {
 	return ws.lastConnID.Add(2)
+}
+
+func (ws *WrappedStream) IsReady() bool {
+	return ws.handlingPackets.Load() && !ws.streamStopped.Load()
 }
 
 func (ws *WrappedStream) Dial() (net.Conn, error) {
@@ -131,6 +136,9 @@ func (ws *WrappedStream) HandlePackets(ctx context.Context) error {
 		return fmt.Errorf("already handling packets")
 	}
 	defer ws.handlingPackets.Store(false)
+	if ws.streamStopped.Load() {
+		return fmt.Errorf("stream already stopped")
+	}
 
 	// TODO: optimization, it is generally secure and performant have a singleton key that is generated once and reused for all connections.
 	// the only risk w/this approach is if the key were somehow leaked all related connections would be compromised. The risk is low in this case since
@@ -188,6 +196,9 @@ func (ws *WrappedStream) HandlePackets(ctx context.Context) error {
 	for {
 		msg, err := ws.stream.Receive()
 		if err != nil {
+			if ws.handlingPackets.Load() {
+				return nil
+			}
 			return fmt.Errorf("receive message: %w", err)
 		}
 
@@ -266,4 +277,14 @@ func (ws *WrappedStream) HandlePackets(ctx context.Context) error {
 			return nil
 		}
 	}
+}
+
+func (ws *WrappedStream) Shutdown() error {
+	if ws.streamStopped.Swap(true) {
+		if ws.logger != nil {
+			ws.logger.Warn("wrapped stream already shutdown")
+		}
+		return nil
+	}
+	return ws.stream.Close()
 }
