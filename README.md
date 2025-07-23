@@ -112,11 +112,11 @@ services:
    a) Using the Install Script (Recommended)
    ```sh
    mkdir backrest && tar -xzvf backrest_Linux_x86_64.tar.gz -C backrest
-   cd backrest && sudo ./install.sh
+   cd backrest && ./install.sh
    ```
    This script will:
    - Move the Backrest binary to `/usr/local/bin`
-   - Create and start a systemd service
+   - Create and start a systemd service running as the current user (use `sudo ./install.sh` to install as root)
 
    b) Manual Installation with systemd
    ```sh
