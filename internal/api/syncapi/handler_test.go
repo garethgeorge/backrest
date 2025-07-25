@@ -66,7 +66,6 @@ func TestHandler(t *testing.T) {
 	}
 
 	t.Log("Connection is ready")
-
 	client := v1syncconnect.NewSyncPeerServiceClient(tunnel.NewWrappedStreamClient(wrapped), "https://localhost:80")
 	resp, err := client.GetOperationMetadata(ctx, connect.NewRequest(&v1.OpSelector{
 		OriginalInstanceKeyid: proto.String("test-instance-key-id"),

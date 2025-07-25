@@ -195,8 +195,7 @@ func (c *connState) SetReadDeadline(t time.Time) error {
 	if c.readDeadlineTimer != nil {
 		c.readDeadlineTimer.Stop()
 	}
-	if t.IsZero() {
-		c.readDeadlineTimer = nil
+	if t.Before(time.Now()) {
 		return nil
 	}
 	c.readDeadlineTimer = time.AfterFunc(time.Until(t), func() {
