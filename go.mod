@@ -1,6 +1,19 @@
 module github.com/garethgeorge/backrest
 
+<<<<<<< HEAD
 go 1.24.0
+=======
+go 1.24
+
+// Pin dependencies to specific versions
+replace (
+	modernc.org/libc => modernc.org/libc v1.55.3
+	modernc.org/mathutil => modernc.org/mathutil v1.6.0
+	modernc.org/memory => modernc.org/memory v1.8.0
+	modernc.org/sqlite => modernc.org/sqlite v1.33.1
+	zombiezen.com/go/sqlite => zombiezen.com/go/sqlite v1.4.0
+)
+>>>>>>> 3b17df9 (more progress)
 
 require (
 	al.essio.dev/pkg/shellescape v1.6.0
@@ -17,7 +30,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
 	github.com/mattn/go-colorable v0.1.14
 	github.com/natefinch/atomic v1.0.1
 	github.com/ncruces/go-sqlite3 v0.29.0

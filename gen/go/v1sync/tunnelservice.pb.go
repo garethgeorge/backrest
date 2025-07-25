@@ -24,13 +24,15 @@ const (
 )
 
 type TunnelMessage struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	ConnId           int64                  `protobuf:"varint,1,opt,name=conn_id,json=connId,proto3" json:"conn_id,omitempty"` // The connection ID this request belongs to, enables multiplexing.
-	Seqno            int64                  `protobuf:"varint,2,opt,name=seqno,proto3" json:"seqno,omitempty"`
-	Data             []byte                 `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`                                                     // The data to send, this is a raw byte stream.
-	Close            bool                   `protobuf:"varint,4,opt,name=close,proto3" json:"close,omitempty"`                                                  // If true, the write end should be closed after this request.
-	PubkeyEcdhX25519 []byte                 `protobuf:"bytes,100,opt,name=pubkey_ecdh_x25519,json=pubkeyEcdhX25519,proto3" json:"pubkey_ecdh_x25519,omitempty"` // The public key used for ECDH key exchange, binary encoded.
-	Any              *anypb.Any             `protobuf:"bytes,1000,opt,name=any,proto3" json:"any,omitempty"`                                                    // Available to allow sending custom data down the tunnel in the initial handshake.
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	ConnId int64                  `protobuf:"varint,1,opt,name=conn_id,json=connId,proto3" json:"conn_id,omitempty"` // The connection ID this request belongs to, enables multiplexing.
+	Seqno  int64                  `protobuf:"varint,2,opt,name=seqno,proto3" json:"seqno,omitempty"`
+	Data   []byte                 `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`    // The data to send, this is a raw byte stream.
+	Close  bool                   `protobuf:"varint,4,opt,name=close,proto3" json:"close,omitempty"` // If true, the write end should be closed after this request.
+	// Encrypted data, if the connection is encrypted.
+	Encrypted        []byte     `protobuf:"bytes,5,opt,name=encrypted,proto3" json:"encrypted,omitempty"`
+	PubkeyEcdhX25519 []byte     `protobuf:"bytes,100,opt,name=pubkey_ecdh_x25519,json=pubkeyEcdhX25519,proto3" json:"pubkey_ecdh_x25519,omitempty"` // The public key used for ECDH key exchange, binary encoded.
+	Any              *anypb.Any `protobuf:"bytes,1000,opt,name=any,proto3" json:"any,omitempty"`                                                    // Available to allow sending custom data down the tunnel in the initial handshake.
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -93,6 +95,13 @@ func (x *TunnelMessage) GetClose() bool {
 	return false
 }
 
+func (x *TunnelMessage) GetEncrypted() []byte {
+	if x != nil {
+		return x.Encrypted
+	}
+	return nil
+}
+
 func (x *TunnelMessage) GetPubkeyEcdhX25519() []byte {
 	if x != nil {
 		return x.PubkeyEcdhX25519
@@ -111,12 +120,13 @@ var File_v1sync_tunnelservice_proto protoreflect.FileDescriptor
 
 const file_v1sync_tunnelservice_proto_rawDesc = "" +
 	"\n" +
-	"\x1av1sync/tunnelservice.proto\x12\x06v1sync\x1a\x0fv1/config.proto\x1a\x19google/protobuf/any.proto\"\xbf\x01\n" +
+	"\x1av1sync/tunnelservice.proto\x12\x06v1sync\x1a\x0fv1/config.proto\x1a\x19google/protobuf/any.proto\"\xdd\x01\n" +
 	"\rTunnelMessage\x12\x17\n" +
 	"\aconn_id\x18\x01 \x01(\x03R\x06connId\x12\x14\n" +
 	"\x05seqno\x18\x02 \x01(\x03R\x05seqno\x12\x12\n" +
 	"\x04data\x18\x03 \x01(\fR\x04data\x12\x14\n" +
-	"\x05close\x18\x04 \x01(\bR\x05close\x12,\n" +
+	"\x05close\x18\x04 \x01(\bR\x05close\x12\x1c\n" +
+	"\tencrypted\x18\x05 \x01(\fR\tencrypted\x12,\n" +
 	"\x12pubkey_ecdh_x25519\x18d \x01(\fR\x10pubkeyEcdhX25519\x12'\n" +
 	"\x03any\x18\xe8\a \x01(\v2\x14.google.protobuf.AnyR\x03any2M\n" +
 	"\rTunnelService\x12<\n" +

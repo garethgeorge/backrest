@@ -7,7 +7,7 @@
 package v1sync
 
 import (
-	_ "github.com/garethgeorge/backrest/gen/go/types"
+	types "github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -331,12 +331,13 @@ func (x *GetOperationMetadataResponse) GetModnos() []int64 {
 }
 
 type LogDataEntry struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	LogId         string                 `protobuf:"bytes,1,opt,name=log_id,json=logId,proto3" json:"log_id,omitempty"`              // The ID of the log, only used for the first message in a log data stream.
-	OwnerOpid     int64                  `protobuf:"varint,2,opt,name=owner_opid,json=ownerOpid,proto3" json:"owner_opid,omitempty"` // The operation ID of the operation that owns this log data.
-	Chunk         [][]byte               `protobuf:"bytes,3,rep,name=chunk,proto3" json:"chunk,omitempty"`                           // The log data chunk, can be sent repeatedly, must be terminated by a packet with size = 0.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	LogId            string                 `protobuf:"bytes,1,opt,name=log_id,json=logId,proto3" json:"log_id,omitempty"`                                     // The ID of the log, only used for the first message in a log data stream.
+	OwnerOpid        int64                  `protobuf:"varint,2,opt,name=owner_opid,json=ownerOpid,proto3" json:"owner_opid,omitempty"`                        // The operation ID of the operation that owns this log data.
+	ExpirationTsUnix int64                  `protobuf:"varint,3,opt,name=expiration_ts_unix,json=expirationTsUnix,proto3" json:"expiration_ts_unix,omitempty"` // Unix timestamp in seconds when the log data expires.
+	Chunk            []byte                 `protobuf:"bytes,4,opt,name=chunk,proto3" json:"chunk,omitempty"`                                                  // The log data chunk, can be sent repeatedly, must be terminated by a packet with size = 0.
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *LogDataEntry) Reset() {
@@ -383,7 +384,14 @@ func (x *LogDataEntry) GetOwnerOpid() int64 {
 	return 0
 }
 
-func (x *LogDataEntry) GetChunk() [][]byte {
+func (x *LogDataEntry) GetExpirationTsUnix() int64 {
+	if x != nil {
+		return x.ExpirationTsUnix
+	}
+	return 0
+}
+
+func (x *LogDataEntry) GetChunk() []byte {
 	if x != nil {
 		return x.Chunk
 	}
@@ -674,6 +682,58 @@ func (x *RemoteConfig) GetPlans() []*v1.Plan {
 	return nil
 }
 
+type AuthorizationToken struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PublicKey     *v1.PublicKey          `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	InstanceId    *v1.SignedMessage      `protobuf:"bytes,2,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"` // The ID of the peer instance.
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AuthorizationToken) Reset() {
+	*x = AuthorizationToken{}
+	mi := &file_v1sync_syncservice_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuthorizationToken) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuthorizationToken) ProtoMessage() {}
+
+func (x *AuthorizationToken) ProtoReflect() protoreflect.Message {
+	mi := &file_v1sync_syncservice_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuthorizationToken.ProtoReflect.Descriptor instead.
+func (*AuthorizationToken) Descriptor() ([]byte, []int) {
+	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AuthorizationToken) GetPublicKey() *v1.PublicKey {
+	if x != nil {
+		return x.PublicKey
+	}
+	return nil
+}
+
+func (x *AuthorizationToken) GetInstanceId() *v1.SignedMessage {
+	if x != nil {
+		return x.InstanceId
+	}
+	return nil
+}
+
 var File_v1sync_syncservice_proto protoreflect.FileDescriptor
 
 const file_v1sync_syncservice_proto_rawDesc = "" +
@@ -698,12 +758,13 @@ const file_v1sync_syncservice_proto_rawDesc = "" +
 	"instanceId\"M\n" +
 	"\x1cGetOperationMetadataResponse\x12\x15\n" +
 	"\x06op_ids\x18\x01 \x03(\x03R\x05opIds\x12\x16\n" +
-	"\x06modnos\x18\x02 \x03(\x03R\x06modnos\"Z\n" +
+	"\x06modnos\x18\x02 \x03(\x03R\x06modnos\"\x88\x01\n" +
 	"\fLogDataEntry\x12\x15\n" +
 	"\x06log_id\x18\x01 \x01(\tR\x05logId\x12\x1d\n" +
 	"\n" +
-	"owner_opid\x18\x02 \x01(\x03R\townerOpid\x12\x14\n" +
-	"\x05chunk\x18\x03 \x03(\fR\x05chunk\"v\n" +
+	"owner_opid\x18\x02 \x01(\x03R\townerOpid\x12,\n" +
+	"\x12expiration_ts_unix\x18\x03 \x01(\x03R\x10expirationTsUnix\x12\x14\n" +
+	"\x05chunk\x18\x04 \x01(\fR\x05chunk\"v\n" +
 	"\x1cSetAvailableResourcesRequest\x12*\n" +
 	"\x05repos\x18\x01 \x03(\v2\x14.v1sync.PlanMetadataR\x05repos\x12*\n" +
 	"\x05plans\x18\x02 \x03(\v2\x14.v1sync.RepoMetadataR\x05plans\"2\n" +
@@ -721,7 +782,12 @@ const file_v1sync_syncservice_proto_rawDesc = "" +
 	"\x05modno\x18\x01 \x01(\x05R\x05modno\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x05R\aversion\x12\x1e\n" +
 	"\x05repos\x18\x03 \x03(\v2\b.v1.RepoR\x05repos\x12\x1e\n" +
-	"\x05plans\x18\x04 \x03(\v2\b.v1.PlanR\x05plans*\x9c\x02\n" +
+	"\x05plans\x18\x04 \x03(\v2\b.v1.PlanR\x05plans\"v\n" +
+	"\x12AuthorizationToken\x12,\n" +
+	"\n" +
+	"public_key\x18\x01 \x01(\v2\r.v1.PublicKeyR\tpublicKey\x122\n" +
+	"\vinstance_id\x18\x02 \x01(\v2\x11.v1.SignedMessageR\n" +
+	"instanceId*\x9c\x02\n" +
 	"\x0fConnectionState\x12\x1c\n" +
 	"\x18CONNECTION_STATE_UNKNOWN\x10\x00\x12\x1c\n" +
 	"\x18CONNECTION_STATE_PENDING\x10\x01\x12\x1e\n" +
@@ -733,12 +799,12 @@ const file_v1sync_syncservice_proto_rawDesc = "" +
 	"\x1fCONNECTION_STATE_ERROR_PROTOCOL\x10\v\x12#\n" +
 	"\x1fCONNECTION_STATE_ERROR_INTERNAL\x10\f2l\n" +
 	"\x18BackrestSyncStateService\x12P\n" +
-	"\x17GetPeerSyncStatesStream\x12\x1e.v1sync.SyncStateStreamRequest\x1a\x11.v1sync.PeerState\"\x000\x012\xfa\x03\n" +
+	"\x17GetPeerSyncStatesStream\x12\x1e.v1sync.SyncStateStreamRequest\x1a\x11.v1sync.PeerState\"\x000\x012\xf4\x03\n" +
 	"\x0fSyncPeerService\x12E\n" +
 	"\fAuthenticate\x12\x1b.v1sync.AuthenticateRequest\x1a\x16.google.protobuf.Empty\"\x00\x12N\n" +
 	"\x14GetOperationMetadata\x12\x0e.v1.OpSelector\x1a$.v1sync.GetOperationMetadataResponse\"\x00\x12;\n" +
-	"\x0eSendOperations\x12\r.v1.Operation\x1a\x16.google.protobuf.Empty\"\x00(\x01\x12<\n" +
-	"\bSendLogs\x12\x14.v1sync.LogDataEntry\x1a\x16.google.protobuf.Empty\"\x00(\x01\x12W\n" +
+	"\x0eSendOperations\x12\r.v1.Operation\x1a\x16.google.protobuf.Empty\"\x00(\x01\x126\n" +
+	"\x06GetLog\x12\x12.types.StringValue\x1a\x14.v1sync.LogDataEntry\"\x000\x01\x12W\n" +
 	"\x15SetAvailableResources\x12$.v1sync.SetAvailableResourcesRequest\x1a\x16.google.protobuf.Empty\"\x00\x12?\n" +
 	"\tSetConfig\x12\x18.v1sync.SetConfigRequest\x1a\x16.google.protobuf.Empty\"\x00\x12;\n" +
 	"\tGetConfig\x12\x16.google.protobuf.Empty\x1a\x14.v1sync.RemoteConfig\"\x00B0Z.github.com/garethgeorge/backrest/gen/go/v1syncb\x06proto3"
@@ -756,7 +822,7 @@ func file_v1sync_syncservice_proto_rawDescGZIP() []byte {
 }
 
 var file_v1sync_syncservice_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_v1sync_syncservice_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_v1sync_syncservice_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_v1sync_syncservice_proto_goTypes = []any{
 	(ConnectionState)(0),                 // 0: v1sync.ConnectionState
 	(*SyncStateStreamRequest)(nil),       // 1: v1sync.SyncStateStreamRequest
@@ -769,46 +835,51 @@ var file_v1sync_syncservice_proto_goTypes = []any{
 	(*PlanMetadata)(nil),                 // 8: v1sync.PlanMetadata
 	(*SetConfigRequest)(nil),             // 9: v1sync.SetConfigRequest
 	(*RemoteConfig)(nil),                 // 10: v1sync.RemoteConfig
-	(*v1.SignedMessage)(nil),             // 11: v1.SignedMessage
-	(*v1.Plan)(nil),                      // 12: v1.Plan
-	(*v1.Repo)(nil),                      // 13: v1.Repo
-	(*v1.OpSelector)(nil),                // 14: v1.OpSelector
-	(*v1.Operation)(nil),                 // 15: v1.Operation
-	(*emptypb.Empty)(nil),                // 16: google.protobuf.Empty
+	(*AuthorizationToken)(nil),           // 11: v1sync.AuthorizationToken
+	(*v1.SignedMessage)(nil),             // 12: v1.SignedMessage
+	(*v1.Plan)(nil),                      // 13: v1.Plan
+	(*v1.Repo)(nil),                      // 14: v1.Repo
+	(*v1.PublicKey)(nil),                 // 15: v1.PublicKey
+	(*v1.OpSelector)(nil),                // 16: v1.OpSelector
+	(*v1.Operation)(nil),                 // 17: v1.Operation
+	(*types.StringValue)(nil),            // 18: types.StringValue
+	(*emptypb.Empty)(nil),                // 19: google.protobuf.Empty
 }
 var file_v1sync_syncservice_proto_depIdxs = []int32{
 	0,  // 0: v1sync.PeerState.state:type_name -> v1sync.ConnectionState
 	8,  // 1: v1sync.PeerState.known_plans:type_name -> v1sync.PlanMetadata
 	7,  // 2: v1sync.PeerState.known_repos:type_name -> v1sync.RepoMetadata
 	10, // 3: v1sync.PeerState.remote_config:type_name -> v1sync.RemoteConfig
-	11, // 4: v1sync.AuthenticateRequest.instance_id:type_name -> v1.SignedMessage
+	12, // 4: v1sync.AuthenticateRequest.instance_id:type_name -> v1.SignedMessage
 	8,  // 5: v1sync.SetAvailableResourcesRequest.repos:type_name -> v1sync.PlanMetadata
 	7,  // 6: v1sync.SetAvailableResourcesRequest.plans:type_name -> v1sync.RepoMetadata
-	12, // 7: v1sync.SetConfigRequest.plans:type_name -> v1.Plan
-	13, // 8: v1sync.SetConfigRequest.repos:type_name -> v1.Repo
-	13, // 9: v1sync.RemoteConfig.repos:type_name -> v1.Repo
-	12, // 10: v1sync.RemoteConfig.plans:type_name -> v1.Plan
-	1,  // 11: v1sync.BackrestSyncStateService.GetPeerSyncStatesStream:input_type -> v1sync.SyncStateStreamRequest
-	3,  // 12: v1sync.SyncPeerService.Authenticate:input_type -> v1sync.AuthenticateRequest
-	14, // 13: v1sync.SyncPeerService.GetOperationMetadata:input_type -> v1.OpSelector
-	15, // 14: v1sync.SyncPeerService.SendOperations:input_type -> v1.Operation
-	5,  // 15: v1sync.SyncPeerService.SendLogs:input_type -> v1sync.LogDataEntry
-	6,  // 16: v1sync.SyncPeerService.SetAvailableResources:input_type -> v1sync.SetAvailableResourcesRequest
-	9,  // 17: v1sync.SyncPeerService.SetConfig:input_type -> v1sync.SetConfigRequest
-	16, // 18: v1sync.SyncPeerService.GetConfig:input_type -> google.protobuf.Empty
-	2,  // 19: v1sync.BackrestSyncStateService.GetPeerSyncStatesStream:output_type -> v1sync.PeerState
-	16, // 20: v1sync.SyncPeerService.Authenticate:output_type -> google.protobuf.Empty
-	4,  // 21: v1sync.SyncPeerService.GetOperationMetadata:output_type -> v1sync.GetOperationMetadataResponse
-	16, // 22: v1sync.SyncPeerService.SendOperations:output_type -> google.protobuf.Empty
-	16, // 23: v1sync.SyncPeerService.SendLogs:output_type -> google.protobuf.Empty
-	16, // 24: v1sync.SyncPeerService.SetAvailableResources:output_type -> google.protobuf.Empty
-	16, // 25: v1sync.SyncPeerService.SetConfig:output_type -> google.protobuf.Empty
-	10, // 26: v1sync.SyncPeerService.GetConfig:output_type -> v1sync.RemoteConfig
-	19, // [19:27] is the sub-list for method output_type
-	11, // [11:19] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	13, // 7: v1sync.SetConfigRequest.plans:type_name -> v1.Plan
+	14, // 8: v1sync.SetConfigRequest.repos:type_name -> v1.Repo
+	14, // 9: v1sync.RemoteConfig.repos:type_name -> v1.Repo
+	13, // 10: v1sync.RemoteConfig.plans:type_name -> v1.Plan
+	15, // 11: v1sync.AuthorizationToken.public_key:type_name -> v1.PublicKey
+	12, // 12: v1sync.AuthorizationToken.instance_id:type_name -> v1.SignedMessage
+	1,  // 13: v1sync.BackrestSyncStateService.GetPeerSyncStatesStream:input_type -> v1sync.SyncStateStreamRequest
+	3,  // 14: v1sync.SyncPeerService.Authenticate:input_type -> v1sync.AuthenticateRequest
+	16, // 15: v1sync.SyncPeerService.GetOperationMetadata:input_type -> v1.OpSelector
+	17, // 16: v1sync.SyncPeerService.SendOperations:input_type -> v1.Operation
+	18, // 17: v1sync.SyncPeerService.GetLog:input_type -> types.StringValue
+	6,  // 18: v1sync.SyncPeerService.SetAvailableResources:input_type -> v1sync.SetAvailableResourcesRequest
+	9,  // 19: v1sync.SyncPeerService.SetConfig:input_type -> v1sync.SetConfigRequest
+	19, // 20: v1sync.SyncPeerService.GetConfig:input_type -> google.protobuf.Empty
+	2,  // 21: v1sync.BackrestSyncStateService.GetPeerSyncStatesStream:output_type -> v1sync.PeerState
+	19, // 22: v1sync.SyncPeerService.Authenticate:output_type -> google.protobuf.Empty
+	4,  // 23: v1sync.SyncPeerService.GetOperationMetadata:output_type -> v1sync.GetOperationMetadataResponse
+	19, // 24: v1sync.SyncPeerService.SendOperations:output_type -> google.protobuf.Empty
+	5,  // 25: v1sync.SyncPeerService.GetLog:output_type -> v1sync.LogDataEntry
+	19, // 26: v1sync.SyncPeerService.SetAvailableResources:output_type -> google.protobuf.Empty
+	19, // 27: v1sync.SyncPeerService.SetConfig:output_type -> google.protobuf.Empty
+	10, // 28: v1sync.SyncPeerService.GetConfig:output_type -> v1sync.RemoteConfig
+	21, // [21:29] is the sub-list for method output_type
+	13, // [13:21] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_v1sync_syncservice_proto_init() }
@@ -822,7 +893,7 @@ func file_v1sync_syncservice_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_v1sync_syncservice_proto_rawDesc), len(file_v1sync_syncservice_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

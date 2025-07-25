@@ -8,6 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
+	types "github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	v1sync "github.com/garethgeorge/backrest/gen/go/v1sync"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -49,9 +50,8 @@ const (
 	// SyncPeerServiceSendOperationsProcedure is the fully-qualified name of the SyncPeerService's
 	// SendOperations RPC.
 	SyncPeerServiceSendOperationsProcedure = "/v1sync.SyncPeerService/SendOperations"
-	// SyncPeerServiceSendLogsProcedure is the fully-qualified name of the SyncPeerService's SendLogs
-	// RPC.
-	SyncPeerServiceSendLogsProcedure = "/v1sync.SyncPeerService/SendLogs"
+	// SyncPeerServiceGetLogProcedure is the fully-qualified name of the SyncPeerService's GetLog RPC.
+	SyncPeerServiceGetLogProcedure = "/v1sync.SyncPeerService/GetLog"
 	// SyncPeerServiceSetAvailableResourcesProcedure is the fully-qualified name of the
 	// SyncPeerService's SetAvailableResources RPC.
 	SyncPeerServiceSetAvailableResourcesProcedure = "/v1sync.SyncPeerService/SetAvailableResources"
@@ -141,7 +141,7 @@ type SyncPeerServiceClient interface {
 	// GetOperationMetadata returns a stream of sync items from the peer.
 	GetOperationMetadata(context.Context, *connect.Request[v1.OpSelector]) (*connect.Response[v1sync.GetOperationMetadataResponse], error)
 	SendOperations(context.Context) *connect.ClientStreamForClient[v1.Operation, emptypb.Empty]
-	SendLogs(context.Context) *connect.ClientStreamForClient[v1sync.LogDataEntry, emptypb.Empty]
+	GetLog(context.Context, *connect.Request[types.StringValue]) (*connect.ServerStreamForClient[v1sync.LogDataEntry], error)
 	// Called everytime the set of resources available to the peer changes.
 	SetAvailableResources(context.Context, *connect.Request[v1sync.SetAvailableResourcesRequest]) (*connect.Response[emptypb.Empty], error)
 	// Implements semantics for updating the remote config of the peer.
@@ -178,10 +178,10 @@ func NewSyncPeerServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(syncPeerServiceMethods.ByName("SendOperations")),
 			connect.WithClientOptions(opts...),
 		),
-		sendLogs: connect.NewClient[v1sync.LogDataEntry, emptypb.Empty](
+		getLog: connect.NewClient[types.StringValue, v1sync.LogDataEntry](
 			httpClient,
-			baseURL+SyncPeerServiceSendLogsProcedure,
-			connect.WithSchema(syncPeerServiceMethods.ByName("SendLogs")),
+			baseURL+SyncPeerServiceGetLogProcedure,
+			connect.WithSchema(syncPeerServiceMethods.ByName("GetLog")),
 			connect.WithClientOptions(opts...),
 		),
 		setAvailableResources: connect.NewClient[v1sync.SetAvailableResourcesRequest, emptypb.Empty](
@@ -210,7 +210,7 @@ type syncPeerServiceClient struct {
 	authenticate          *connect.Client[v1sync.AuthenticateRequest, emptypb.Empty]
 	getOperationMetadata  *connect.Client[v1.OpSelector, v1sync.GetOperationMetadataResponse]
 	sendOperations        *connect.Client[v1.Operation, emptypb.Empty]
-	sendLogs              *connect.Client[v1sync.LogDataEntry, emptypb.Empty]
+	getLog                *connect.Client[types.StringValue, v1sync.LogDataEntry]
 	setAvailableResources *connect.Client[v1sync.SetAvailableResourcesRequest, emptypb.Empty]
 	setConfig             *connect.Client[v1sync.SetConfigRequest, emptypb.Empty]
 	getConfig             *connect.Client[emptypb.Empty, v1sync.RemoteConfig]
@@ -231,9 +231,9 @@ func (c *syncPeerServiceClient) SendOperations(ctx context.Context) *connect.Cli
 	return c.sendOperations.CallClientStream(ctx)
 }
 
-// SendLogs calls v1sync.SyncPeerService.SendLogs.
-func (c *syncPeerServiceClient) SendLogs(ctx context.Context) *connect.ClientStreamForClient[v1sync.LogDataEntry, emptypb.Empty] {
-	return c.sendLogs.CallClientStream(ctx)
+// GetLog calls v1sync.SyncPeerService.GetLog.
+func (c *syncPeerServiceClient) GetLog(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.ServerStreamForClient[v1sync.LogDataEntry], error) {
+	return c.getLog.CallServerStream(ctx, req)
 }
 
 // SetAvailableResources calls v1sync.SyncPeerService.SetAvailableResources.
@@ -258,7 +258,7 @@ type SyncPeerServiceHandler interface {
 	// GetOperationMetadata returns a stream of sync items from the peer.
 	GetOperationMetadata(context.Context, *connect.Request[v1.OpSelector]) (*connect.Response[v1sync.GetOperationMetadataResponse], error)
 	SendOperations(context.Context, *connect.ClientStream[v1.Operation]) (*connect.Response[emptypb.Empty], error)
-	SendLogs(context.Context, *connect.ClientStream[v1sync.LogDataEntry]) (*connect.Response[emptypb.Empty], error)
+	GetLog(context.Context, *connect.Request[types.StringValue], *connect.ServerStream[v1sync.LogDataEntry]) error
 	// Called everytime the set of resources available to the peer changes.
 	SetAvailableResources(context.Context, *connect.Request[v1sync.SetAvailableResourcesRequest]) (*connect.Response[emptypb.Empty], error)
 	// Implements semantics for updating the remote config of the peer.
@@ -291,10 +291,10 @@ func NewSyncPeerServiceHandler(svc SyncPeerServiceHandler, opts ...connect.Handl
 		connect.WithSchema(syncPeerServiceMethods.ByName("SendOperations")),
 		connect.WithHandlerOptions(opts...),
 	)
-	syncPeerServiceSendLogsHandler := connect.NewClientStreamHandler(
-		SyncPeerServiceSendLogsProcedure,
-		svc.SendLogs,
-		connect.WithSchema(syncPeerServiceMethods.ByName("SendLogs")),
+	syncPeerServiceGetLogHandler := connect.NewServerStreamHandler(
+		SyncPeerServiceGetLogProcedure,
+		svc.GetLog,
+		connect.WithSchema(syncPeerServiceMethods.ByName("GetLog")),
 		connect.WithHandlerOptions(opts...),
 	)
 	syncPeerServiceSetAvailableResourcesHandler := connect.NewUnaryHandler(
@@ -323,8 +323,8 @@ func NewSyncPeerServiceHandler(svc SyncPeerServiceHandler, opts ...connect.Handl
 			syncPeerServiceGetOperationMetadataHandler.ServeHTTP(w, r)
 		case SyncPeerServiceSendOperationsProcedure:
 			syncPeerServiceSendOperationsHandler.ServeHTTP(w, r)
-		case SyncPeerServiceSendLogsProcedure:
-			syncPeerServiceSendLogsHandler.ServeHTTP(w, r)
+		case SyncPeerServiceGetLogProcedure:
+			syncPeerServiceGetLogHandler.ServeHTTP(w, r)
 		case SyncPeerServiceSetAvailableResourcesProcedure:
 			syncPeerServiceSetAvailableResourcesHandler.ServeHTTP(w, r)
 		case SyncPeerServiceSetConfigProcedure:
@@ -352,8 +352,8 @@ func (UnimplementedSyncPeerServiceHandler) SendOperations(context.Context, *conn
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.SyncPeerService.SendOperations is not implemented"))
 }
 
-func (UnimplementedSyncPeerServiceHandler) SendLogs(context.Context, *connect.ClientStream[v1sync.LogDataEntry]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.SyncPeerService.SendLogs is not implemented"))
+func (UnimplementedSyncPeerServiceHandler) GetLog(context.Context, *connect.Request[types.StringValue], *connect.ServerStream[v1sync.LogDataEntry]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.SyncPeerService.GetLog is not implemented"))
 }
 
 func (UnimplementedSyncPeerServiceHandler) SetAvailableResources(context.Context, *connect.Request[v1sync.SetAvailableResourcesRequest]) (*connect.Response[emptypb.Empty], error) {

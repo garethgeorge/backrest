@@ -6,13 +6,14 @@ import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobu
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Plan, Repo } from "../v1/config_pb";
 import { file_v1_config } from "../v1/config_pb";
-import type { SignedMessage } from "../v1/crypto_pb";
+import type { PublicKey, SignedMessage } from "../v1/crypto_pb";
 import { file_v1_crypto } from "../v1/crypto_pb";
 import { file_v1_restic } from "../v1/restic_pb";
 import type { OpSelectorSchema } from "../v1/service_pb";
 import { file_v1_service } from "../v1/service_pb";
 import type { OperationSchema } from "../v1/operations_pb";
 import { file_v1_operations } from "../v1/operations_pb";
+import type { StringValueSchema } from "../types/value_pb";
 import { file_types_value } from "../types/value_pb";
 import type { EmptySchema } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_any, file_google_protobuf_empty } from "@bufbuild/protobuf/wkt";
@@ -23,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1sync/syncservice.proto.
  */
 export const file_v1sync_syncservice: GenFile = /*@__PURE__*/
-  fileDesc("Chh2MXN5bmMvc3luY3NlcnZpY2UucHJvdG8SBnYxc3luYyIrChZTeW5jU3RhdGVTdHJlYW1SZXF1ZXN0EhEKCXN1YnNjcmliZRgBIAEoCCKbAgoJUGVlclN0YXRlEhgKEHBlZXJfaW5zdGFuY2VfaWQYASABKAkSEgoKcGVlcl9rZXlpZBgCIAEoCRImCgVzdGF0ZRgDIAEoDjIXLnYxc3luYy5Db25uZWN0aW9uU3RhdGUSFgoOc3RhdHVzX21lc3NhZ2UYBCABKAkSKQoLa25vd25fcGxhbnMYBSADKAsyFC52MXN5bmMuUGxhbk1ldGFkYXRhEikKC2tub3duX3JlcG9zGAYgAygLMhQudjFzeW5jLlJlcG9NZXRhZGF0YRIrCg1yZW1vdGVfY29uZmlnGAcgASgLMhQudjFzeW5jLlJlbW90ZUNvbmZpZxIdChVsYXN0X2hlYXJ0YmVhdF9taWxsaXMYCCABKAMiPQoTQXV0aGVudGljYXRlUmVxdWVzdBImCgtpbnN0YW5jZV9pZBgBIAEoCzIRLnYxLlNpZ25lZE1lc3NhZ2UiPgocR2V0T3BlcmF0aW9uTWV0YWRhdGFSZXNwb25zZRIOCgZvcF9pZHMYASADKAMSDgoGbW9kbm9zGAIgAygDIkEKDExvZ0RhdGFFbnRyeRIOCgZsb2dfaWQYASABKAkSEgoKb3duZXJfb3BpZBgCIAEoAxINCgVjaHVuaxgDIAMoDCJoChxTZXRBdmFpbGFibGVSZXNvdXJjZXNSZXF1ZXN0EiMKBXJlcG9zGAEgAygLMhQudjFzeW5jLlBsYW5NZXRhZGF0YRIjCgVwbGFucxgCIAMoCzIULnYxc3luYy5SZXBvTWV0YWRhdGEiKAoMUmVwb01ldGFkYXRhEgoKAmlkGAEgASgJEgwKBGd1aWQYAiABKAkiGgoMUGxhbk1ldGFkYXRhEgoKAmlkGAEgASgJInYKEFNldENvbmZpZ1JlcXVlc3QSFwoFcGxhbnMYASADKAsyCC52MS5QbGFuEhcKBXJlcG9zGAIgAygLMggudjEuUmVwbxIXCg9yZXBvc190b19kZWxldGUYAyADKAkSFwoPcGxhbnNfdG9fZGVsZXRlGAQgAygJImAKDFJlbW90ZUNvbmZpZxINCgVtb2RubxgBIAEoBRIPCgd2ZXJzaW9uGAIgASgFEhcKBXJlcG9zGAMgAygLMggudjEuUmVwbxIXCgVwbGFucxgEIAMoCzIILnYxLlBsYW4qnAIKD0Nvbm5lY3Rpb25TdGF0ZRIcChhDT05ORUNUSU9OX1NUQVRFX1VOS05PV04QABIcChhDT05ORUNUSU9OX1NUQVRFX1BFTkRJTkcQARIeChpDT05ORUNUSU9OX1NUQVRFX0NPTk5FQ1RFRBACEiEKHUNPTk5FQ1RJT05fU1RBVEVfRElTQ09OTkVDVEVEEAMSHwobQ09OTkVDVElPTl9TVEFURV9SRVRSWV9XQUlUEAQSHwobQ09OTkVDVElPTl9TVEFURV9FUlJPUl9BVVRIEAoSIwofQ09OTkVDVElPTl9TVEFURV9FUlJPUl9QUk9UT0NPTBALEiMKH0NPTk5FQ1RJT05fU1RBVEVfRVJST1JfSU5URVJOQUwQDDJsChhCYWNrcmVzdFN5bmNTdGF0ZVNlcnZpY2USUAoXR2V0UGVlclN5bmNTdGF0ZXNTdHJlYW0SHi52MXN5bmMuU3luY1N0YXRlU3RyZWFtUmVxdWVzdBoRLnYxc3luYy5QZWVyU3RhdGUiADABMvoDCg9TeW5jUGVlclNlcnZpY2USRQoMQXV0aGVudGljYXRlEhsudjFzeW5jLkF1dGhlbnRpY2F0ZVJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABJOChRHZXRPcGVyYXRpb25NZXRhZGF0YRIOLnYxLk9wU2VsZWN0b3IaJC52MXN5bmMuR2V0T3BlcmF0aW9uTWV0YWRhdGFSZXNwb25zZSIAEjsKDlNlbmRPcGVyYXRpb25zEg0udjEuT3BlcmF0aW9uGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IgAoARI8CghTZW5kTG9ncxIULnYxc3luYy5Mb2dEYXRhRW50cnkaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiACgBElcKFVNldEF2YWlsYWJsZVJlc291cmNlcxIkLnYxc3luYy5TZXRBdmFpbGFibGVSZXNvdXJjZXNSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IgASPwoJU2V0Q29uZmlnEhgudjFzeW5jLlNldENvbmZpZ1JlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABI7CglHZXRDb25maWcSFi5nb29nbGUucHJvdG9idWYuRW1wdHkaFC52MXN5bmMuUmVtb3RlQ29uZmlnIgBCMFouZ2l0aHViLmNvbS9nYXJldGhnZW9yZ2UvYmFja3Jlc3QvZ2VuL2dvL3Yxc3luY2IGcHJvdG8z", [file_v1_config, file_v1_crypto, file_v1_restic, file_v1_service, file_v1_operations, file_types_value, file_google_protobuf_empty, file_google_api_annotations, file_google_protobuf_any]);
+  fileDesc("Chh2MXN5bmMvc3luY3NlcnZpY2UucHJvdG8SBnYxc3luYyIrChZTeW5jU3RhdGVTdHJlYW1SZXF1ZXN0EhEKCXN1YnNjcmliZRgBIAEoCCKbAgoJUGVlclN0YXRlEhgKEHBlZXJfaW5zdGFuY2VfaWQYASABKAkSEgoKcGVlcl9rZXlpZBgCIAEoCRImCgVzdGF0ZRgDIAEoDjIXLnYxc3luYy5Db25uZWN0aW9uU3RhdGUSFgoOc3RhdHVzX21lc3NhZ2UYBCABKAkSKQoLa25vd25fcGxhbnMYBSADKAsyFC52MXN5bmMuUGxhbk1ldGFkYXRhEikKC2tub3duX3JlcG9zGAYgAygLMhQudjFzeW5jLlJlcG9NZXRhZGF0YRIrCg1yZW1vdGVfY29uZmlnGAcgASgLMhQudjFzeW5jLlJlbW90ZUNvbmZpZxIdChVsYXN0X2hlYXJ0YmVhdF9taWxsaXMYCCABKAMiPQoTQXV0aGVudGljYXRlUmVxdWVzdBImCgtpbnN0YW5jZV9pZBgBIAEoCzIRLnYxLlNpZ25lZE1lc3NhZ2UiPgocR2V0T3BlcmF0aW9uTWV0YWRhdGFSZXNwb25zZRIOCgZvcF9pZHMYASADKAMSDgoGbW9kbm9zGAIgAygDIl0KDExvZ0RhdGFFbnRyeRIOCgZsb2dfaWQYASABKAkSEgoKb3duZXJfb3BpZBgCIAEoAxIaChJleHBpcmF0aW9uX3RzX3VuaXgYAyABKAMSDQoFY2h1bmsYBCABKAwiaAocU2V0QXZhaWxhYmxlUmVzb3VyY2VzUmVxdWVzdBIjCgVyZXBvcxgBIAMoCzIULnYxc3luYy5QbGFuTWV0YWRhdGESIwoFcGxhbnMYAiADKAsyFC52MXN5bmMuUmVwb01ldGFkYXRhIigKDFJlcG9NZXRhZGF0YRIKCgJpZBgBIAEoCRIMCgRndWlkGAIgASgJIhoKDFBsYW5NZXRhZGF0YRIKCgJpZBgBIAEoCSJ2ChBTZXRDb25maWdSZXF1ZXN0EhcKBXBsYW5zGAEgAygLMggudjEuUGxhbhIXCgVyZXBvcxgCIAMoCzIILnYxLlJlcG8SFwoPcmVwb3NfdG9fZGVsZXRlGAMgAygJEhcKD3BsYW5zX3RvX2RlbGV0ZRgEIAMoCSJgCgxSZW1vdGVDb25maWcSDQoFbW9kbm8YASABKAUSDwoHdmVyc2lvbhgCIAEoBRIXCgVyZXBvcxgDIAMoCzIILnYxLlJlcG8SFwoFcGxhbnMYBCADKAsyCC52MS5QbGFuIl8KEkF1dGhvcml6YXRpb25Ub2tlbhIhCgpwdWJsaWNfa2V5GAEgASgLMg0udjEuUHVibGljS2V5EiYKC2luc3RhbmNlX2lkGAIgASgLMhEudjEuU2lnbmVkTWVzc2FnZSqcAgoPQ29ubmVjdGlvblN0YXRlEhwKGENPTk5FQ1RJT05fU1RBVEVfVU5LTk9XThAAEhwKGENPTk5FQ1RJT05fU1RBVEVfUEVORElORxABEh4KGkNPTk5FQ1RJT05fU1RBVEVfQ09OTkVDVEVEEAISIQodQ09OTkVDVElPTl9TVEFURV9ESVNDT05ORUNURUQQAxIfChtDT05ORUNUSU9OX1NUQVRFX1JFVFJZX1dBSVQQBBIfChtDT05ORUNUSU9OX1NUQVRFX0VSUk9SX0FVVEgQChIjCh9DT05ORUNUSU9OX1NUQVRFX0VSUk9SX1BST1RPQ09MEAsSIwofQ09OTkVDVElPTl9TVEFURV9FUlJPUl9JTlRFUk5BTBAMMmwKGEJhY2tyZXN0U3luY1N0YXRlU2VydmljZRJQChdHZXRQZWVyU3luY1N0YXRlc1N0cmVhbRIeLnYxc3luYy5TeW5jU3RhdGVTdHJlYW1SZXF1ZXN0GhEudjFzeW5jLlBlZXJTdGF0ZSIAMAEy9AMKD1N5bmNQZWVyU2VydmljZRJFCgxBdXRoZW50aWNhdGUSGy52MXN5bmMuQXV0aGVudGljYXRlUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIAEk4KFEdldE9wZXJhdGlvbk1ldGFkYXRhEg4udjEuT3BTZWxlY3RvchokLnYxc3luYy5HZXRPcGVyYXRpb25NZXRhZGF0YVJlc3BvbnNlIgASOwoOU2VuZE9wZXJhdGlvbnMSDS52MS5PcGVyYXRpb24aFi5nb29nbGUucHJvdG9idWYuRW1wdHkiACgBEjYKBkdldExvZxISLnR5cGVzLlN0cmluZ1ZhbHVlGhQudjFzeW5jLkxvZ0RhdGFFbnRyeSIAMAESVwoVU2V0QXZhaWxhYmxlUmVzb3VyY2VzEiQudjFzeW5jLlNldEF2YWlsYWJsZVJlc291cmNlc1JlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABI/CglTZXRDb25maWcSGC52MXN5bmMuU2V0Q29uZmlnUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIAEjsKCUdldENvbmZpZxIWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRoULnYxc3luYy5SZW1vdGVDb25maWciAEIwWi5naXRodWIuY29tL2dhcmV0aGdlb3JnZS9iYWNrcmVzdC9nZW4vZ28vdjFzeW5jYgZwcm90bzM", [file_v1_config, file_v1_crypto, file_v1_restic, file_v1_service, file_v1_operations, file_types_value, file_google_protobuf_empty, file_google_api_annotations, file_google_protobuf_any]);
 
 /**
  * @generated from message v1sync.SyncStateStreamRequest
@@ -168,11 +169,18 @@ export type LogDataEntry = Message<"v1sync.LogDataEntry"> & {
   ownerOpid: bigint;
 
   /**
+   * Unix timestamp in seconds when the log data expires.
+   *
+   * @generated from field: int64 expiration_ts_unix = 3;
+   */
+  expirationTsUnix: bigint;
+
+  /**
    * The log data chunk, can be sent repeatedly, must be terminated by a packet with size = 0.
    *
-   * @generated from field: repeated bytes chunk = 3;
+   * @generated from field: bytes chunk = 4;
    */
-  chunk: Uint8Array[];
+  chunk: Uint8Array;
 };
 
 /**
@@ -324,6 +332,30 @@ export const RemoteConfigSchema: GenMessage<RemoteConfig> = /*@__PURE__*/
   messageDesc(file_v1sync_syncservice, 9);
 
 /**
+ * @generated from message v1sync.AuthorizationToken
+ */
+export type AuthorizationToken = Message<"v1sync.AuthorizationToken"> & {
+  /**
+   * @generated from field: v1.PublicKey public_key = 1;
+   */
+  publicKey?: PublicKey;
+
+  /**
+   * The ID of the peer instance.
+   *
+   * @generated from field: v1.SignedMessage instance_id = 2;
+   */
+  instanceId?: SignedMessage;
+};
+
+/**
+ * Describes the message v1sync.AuthorizationToken.
+ * Use `create(AuthorizationTokenSchema)` to create a new message.
+ */
+export const AuthorizationTokenSchema: GenMessage<AuthorizationToken> = /*@__PURE__*/
+  messageDesc(file_v1sync_syncservice, 10);
+
+/**
  * @generated from enum v1sync.ConnectionState
  */
 export enum ConnectionState {
@@ -425,12 +457,12 @@ export const SyncPeerService: GenService<{
     output: typeof EmptySchema;
   },
   /**
-   * @generated from rpc v1sync.SyncPeerService.SendLogs
+   * @generated from rpc v1sync.SyncPeerService.GetLog
    */
-  sendLogs: {
-    methodKind: "client_streaming";
-    input: typeof LogDataEntrySchema;
-    output: typeof EmptySchema;
+  getLog: {
+    methodKind: "server_streaming";
+    input: typeof StringValueSchema;
+    output: typeof LogDataEntrySchema;
   },
   /**
    * Called everytime the set of resources available to the peer changes.

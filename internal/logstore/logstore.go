@@ -25,6 +25,12 @@ var (
 	ErrLogNotFound = fmt.Errorf("log not found")
 )
 
+type LogMetadata struct {
+	ID             string
+	ExpirationTime time.Time // Expiration time of the log, zero if no expiration
+	OwnerOpID      int64     // ID of the operation that owns this log
+}
+
 type LogStore struct {
 	dir           string
 	inprogressDir string
@@ -176,6 +182,35 @@ func (ls *LogStore) Create(id string, parentOpID int64, ttl time.Duration) (io.W
 		fname: fname,
 		id:    id,
 	}, nil
+}
+
+func (ls *LogStore) GetMetadata(id string) (LogMetadata, error) {
+	ls.mu.RLock(id)
+	defer ls.mu.RUnlock(id)
+
+	conn, err := ls.dbpool.Take(context.Background())
+	if err != nil {
+		return LogMetadata{}, fmt.Errorf("take connection: %v", err)
+	}
+	defer ls.dbpool.Put(conn)
+	var metadata LogMetadata
+	if err := sqlitex.Execute(conn, "SELECT expiration_ts_unix, owner_opid FROM logs WHERE id = ?", &sqlitex.ExecOptions{
+		Args: []any{id},
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			metadata.ID = id
+			expireTsUnix := stmt.ColumnInt64(0)
+			if expireTsUnix != 0 {
+				metadata.ExpirationTime = time.Unix(expireTsUnix, 0)
+			}
+			metadata.OwnerOpID = stmt.ColumnInt64(1)
+			return nil
+		},
+	}); err != nil {
+		return LogMetadata{}, fmt.Errorf("select log metadata: %v", err)
+	} else if metadata.ID == "" {
+		return LogMetadata{}, ErrLogNotFound
+	}
+	return metadata, nil
 }
 
 func (ls *LogStore) Open(id string) (io.ReadCloser, error) {

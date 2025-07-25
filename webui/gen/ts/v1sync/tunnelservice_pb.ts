@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1sync/tunnelservice.proto.
  */
 export const file_v1sync_tunnelservice: GenFile = /*@__PURE__*/
-  fileDesc("Chp2MXN5bmMvdHVubmVsc2VydmljZS5wcm90bxIGdjFzeW5jIowBCg1UdW5uZWxNZXNzYWdlEg8KB2Nvbm5faWQYASABKAMSDQoFc2Vxbm8YAiABKAMSDAoEZGF0YRgDIAEoDBINCgVjbG9zZRgEIAEoCBIaChJwdWJrZXlfZWNkaF94MjU1MTkYZCABKAwSIgoDYW55GOgHIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5BbnkyTQoNVHVubmVsU2VydmljZRI8CgZUdW5uZWwSFS52MXN5bmMuVHVubmVsTWVzc2FnZRoVLnYxc3luYy5UdW5uZWxNZXNzYWdlIgAoATABQjBaLmdpdGh1Yi5jb20vZ2FyZXRoZ2VvcmdlL2JhY2tyZXN0L2dlbi9nby92MXN5bmNiBnByb3RvMw", [file_v1_config, file_google_protobuf_any]);
+  fileDesc("Chp2MXN5bmMvdHVubmVsc2VydmljZS5wcm90bxIGdjFzeW5jIp8BCg1UdW5uZWxNZXNzYWdlEg8KB2Nvbm5faWQYASABKAMSDQoFc2Vxbm8YAiABKAMSDAoEZGF0YRgDIAEoDBINCgVjbG9zZRgEIAEoCBIRCgllbmNyeXB0ZWQYBSABKAwSGgoScHVia2V5X2VjZGhfeDI1NTE5GGQgASgMEiIKA2FueRjoByABKAsyFC5nb29nbGUucHJvdG9idWYuQW55Mk0KDVR1bm5lbFNlcnZpY2USPAoGVHVubmVsEhUudjFzeW5jLlR1bm5lbE1lc3NhZ2UaFS52MXN5bmMuVHVubmVsTWVzc2FnZSIAKAEwAUIwWi5naXRodWIuY29tL2dhcmV0aGdlb3JnZS9iYWNrcmVzdC9nZW4vZ28vdjFzeW5jYgZwcm90bzM", [file_v1_config, file_google_protobuf_any]);
 
 /**
  * @generated from message v1sync.TunnelMessage
@@ -44,6 +44,13 @@ export type TunnelMessage = Message<"v1sync.TunnelMessage"> & {
    * @generated from field: bool close = 4;
    */
   close: boolean;
+
+  /**
+   * Encrypted data, if the connection is encrypted.
+   *
+   * @generated from field: bytes encrypted = 5;
+   */
+  encrypted: Uint8Array;
 
   /**
    * The public key used for ECDH key exchange, binary encoded.

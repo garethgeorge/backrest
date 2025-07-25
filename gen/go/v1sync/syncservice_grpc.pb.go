@@ -8,6 +8,7 @@ package v1sync
 
 import (
 	context "context"
+	types "github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -136,7 +137,7 @@ const (
 	SyncPeerService_Authenticate_FullMethodName          = "/v1sync.SyncPeerService/Authenticate"
 	SyncPeerService_GetOperationMetadata_FullMethodName  = "/v1sync.SyncPeerService/GetOperationMetadata"
 	SyncPeerService_SendOperations_FullMethodName        = "/v1sync.SyncPeerService/SendOperations"
-	SyncPeerService_SendLogs_FullMethodName              = "/v1sync.SyncPeerService/SendLogs"
+	SyncPeerService_GetLog_FullMethodName                = "/v1sync.SyncPeerService/GetLog"
 	SyncPeerService_SetAvailableResources_FullMethodName = "/v1sync.SyncPeerService/SetAvailableResources"
 	SyncPeerService_SetConfig_FullMethodName             = "/v1sync.SyncPeerService/SetConfig"
 	SyncPeerService_GetConfig_FullMethodName             = "/v1sync.SyncPeerService/GetConfig"
@@ -151,7 +152,7 @@ type SyncPeerServiceClient interface {
 	// GetOperationMetadata returns a stream of sync items from the peer.
 	GetOperationMetadata(ctx context.Context, in *v1.OpSelector, opts ...grpc.CallOption) (*GetOperationMetadataResponse, error)
 	SendOperations(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[v1.Operation, emptypb.Empty], error)
-	SendLogs(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[LogDataEntry, emptypb.Empty], error)
+	GetLog(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogDataEntry], error)
 	// Called everytime the set of resources available to the peer changes.
 	SetAvailableResources(ctx context.Context, in *SetAvailableResourcesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Implements semantics for updating the remote config of the peer.
@@ -200,18 +201,24 @@ func (c *syncPeerServiceClient) SendOperations(ctx context.Context, opts ...grpc
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type SyncPeerService_SendOperationsClient = grpc.ClientStreamingClient[v1.Operation, emptypb.Empty]
 
-func (c *syncPeerServiceClient) SendLogs(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[LogDataEntry, emptypb.Empty], error) {
+func (c *syncPeerServiceClient) GetLog(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogDataEntry], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &SyncPeerService_ServiceDesc.Streams[1], SyncPeerService_SendLogs_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &SyncPeerService_ServiceDesc.Streams[1], SyncPeerService_GetLog_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[LogDataEntry, emptypb.Empty]{ClientStream: stream}
+	x := &grpc.GenericClientStream[types.StringValue, LogDataEntry]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
 	return x, nil
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type SyncPeerService_SendLogsClient = grpc.ClientStreamingClient[LogDataEntry, emptypb.Empty]
+type SyncPeerService_GetLogClient = grpc.ServerStreamingClient[LogDataEntry]
 
 func (c *syncPeerServiceClient) SetAvailableResources(ctx context.Context, in *SetAvailableResourcesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -252,7 +259,7 @@ type SyncPeerServiceServer interface {
 	// GetOperationMetadata returns a stream of sync items from the peer.
 	GetOperationMetadata(context.Context, *v1.OpSelector) (*GetOperationMetadataResponse, error)
 	SendOperations(grpc.ClientStreamingServer[v1.Operation, emptypb.Empty]) error
-	SendLogs(grpc.ClientStreamingServer[LogDataEntry, emptypb.Empty]) error
+	GetLog(*types.StringValue, grpc.ServerStreamingServer[LogDataEntry]) error
 	// Called everytime the set of resources available to the peer changes.
 	SetAvailableResources(context.Context, *SetAvailableResourcesRequest) (*emptypb.Empty, error)
 	// Implements semantics for updating the remote config of the peer.
@@ -277,8 +284,8 @@ func (UnimplementedSyncPeerServiceServer) GetOperationMetadata(context.Context, 
 func (UnimplementedSyncPeerServiceServer) SendOperations(grpc.ClientStreamingServer[v1.Operation, emptypb.Empty]) error {
 	return status.Errorf(codes.Unimplemented, "method SendOperations not implemented")
 }
-func (UnimplementedSyncPeerServiceServer) SendLogs(grpc.ClientStreamingServer[LogDataEntry, emptypb.Empty]) error {
-	return status.Errorf(codes.Unimplemented, "method SendLogs not implemented")
+func (UnimplementedSyncPeerServiceServer) GetLog(*types.StringValue, grpc.ServerStreamingServer[LogDataEntry]) error {
+	return status.Errorf(codes.Unimplemented, "method GetLog not implemented")
 }
 func (UnimplementedSyncPeerServiceServer) SetAvailableResources(context.Context, *SetAvailableResourcesRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetAvailableResources not implemented")
@@ -353,12 +360,16 @@ func _SyncPeerService_SendOperations_Handler(srv interface{}, stream grpc.Server
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type SyncPeerService_SendOperationsServer = grpc.ClientStreamingServer[v1.Operation, emptypb.Empty]
 
-func _SyncPeerService_SendLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(SyncPeerServiceServer).SendLogs(&grpc.GenericServerStream[LogDataEntry, emptypb.Empty]{ServerStream: stream})
+func _SyncPeerService_GetLog_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(types.StringValue)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(SyncPeerServiceServer).GetLog(m, &grpc.GenericServerStream[types.StringValue, LogDataEntry]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type SyncPeerService_SendLogsServer = grpc.ClientStreamingServer[LogDataEntry, emptypb.Empty]
+type SyncPeerService_GetLogServer = grpc.ServerStreamingServer[LogDataEntry]
 
 func _SyncPeerService_SetAvailableResources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetAvailableResourcesRequest)
@@ -449,9 +460,9 @@ var SyncPeerService_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 		{
-			StreamName:    "SendLogs",
-			Handler:       _SyncPeerService_SendLogs_Handler,
-			ClientStreams: true,
+			StreamName:    "GetLog",
+			Handler:       _SyncPeerService_GetLog_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "v1sync/syncservice.proto",

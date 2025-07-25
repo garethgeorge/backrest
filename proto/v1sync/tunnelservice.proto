@@ -19,6 +19,9 @@ message TunnelMessage {
   bytes data = 3; // The data to send, this is a raw byte stream.
   bool close = 4; // If true, the write end should be closed after this request.
 
+  // Encrypted data, if the connection is encrypted.
+  bytes encrypted = 5;
+  
   bytes pubkey_ecdh_x25519 = 100; // The public key used for ECDH key exchange, binary encoded.
 
   google.protobuf.Any any = 1000; // Available to allow sending custom data down the tunnel in the initial handshake.

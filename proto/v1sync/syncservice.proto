@@ -46,7 +46,7 @@ service SyncPeerService {
   // GetOperationMetadata returns a stream of sync items from the peer.
   rpc GetOperationMetadata(v1.OpSelector) returns (GetOperationMetadataResponse) {}
   rpc SendOperations(stream v1.Operation) returns (google.protobuf.Empty) {}
-  rpc SendLogs(stream LogDataEntry) returns (google.protobuf.Empty) {}
+  rpc GetLog(types.StringValue) returns (stream LogDataEntry) {}
 
   // Called everytime the set of resources available to the peer changes.
   rpc SetAvailableResources(SetAvailableResourcesRequest) returns (google.protobuf.Empty) {}
@@ -68,7 +68,8 @@ message GetOperationMetadataResponse {
 message LogDataEntry {
   string log_id = 1; // The ID of the log, only used for the first message in a log data stream.
   int64 owner_opid = 2; // The operation ID of the operation that owns this log data.
-  repeated bytes chunk = 3; // The log data chunk, can be sent repeatedly, must be terminated by a packet with size = 0.
+  int64 expiration_ts_unix = 3; // Unix timestamp in seconds when the log data expires.
+  bytes chunk = 4; // The log data chunk, can be sent repeatedly, must be terminated by a packet with size = 0.
 }
 
 message SetAvailableResourcesRequest {
@@ -108,6 +109,11 @@ message RemoteConfig {
   int32 version = 2; // The storage version of the config.
   repeated v1.Repo repos = 3;
   repeated v1.Plan plans = 4;
+}
+
+message AuthorizationToken {
+  v1.PublicKey public_key = 1;
+  v1.SignedMessage instance_id = 2; // The ID of the peer instance.
 }
 
 /*SyncStreamItem
