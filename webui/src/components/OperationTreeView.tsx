@@ -76,7 +76,6 @@ export const OperationTreeView = ({
     const logState = new OplogState((op) => !shouldHideOperation(op));
 
     const backupInfoByFlowID = new Map<bigint, FlowDisplayInfo>();
-
     logState.subscribe((ids, flowIDs, event) => {
       if (
         event === OperationEventType.EVENT_CREATED ||
@@ -123,7 +122,7 @@ export const OperationTreeView = ({
   });
 
   let primaryTree: React.ReactNode | null = null;
-  const otherTrees: React.ReactNode[] = [];
+  const allTrees: React.ReactNode[] = [];
 
   for (const instance of Object.keys(backupsByInstance)) {
     const instanceBackups = backupsByInstance[instance];
@@ -141,7 +140,7 @@ export const OperationTreeView = ({
     if (instance === config!.instance) {
       primaryTree = instTree;
     } else {
-      otherTrees.push(
+      allTrees.push(
         <div key={instance} style={{ marginTop: "20px" }}>
           <Typography.Title level={4}>{instance}</Typography.Title>
           {instTree}
@@ -150,17 +149,15 @@ export const OperationTreeView = ({
     }
   }
 
-  let displayTree: React.ReactNode;
-  if (otherTrees.length > 0) {
-    displayTree = (
-      <>
-        <Typography.Title level={4}>{config!.instance}</Typography.Title>
+  if (primaryTree) {
+    allTrees.unshift(
+      <div key={config!.instance} style={{ marginTop: "20px" }}>
+        {allTrees.length > 0 ? (
+          <Typography.Title level={4}>{config!.instance}</Typography.Title>
+        ) : null}
         {primaryTree}
-        {otherTrees}
-      </>
+      </div>
     );
-  } else {
-    displayTree = primaryTree;
   }
 
   if (useMobileLayout) {
@@ -177,7 +174,7 @@ export const OperationTreeView = ({
         >
           <BackupView backup={backup} />
         </Modal>
-        {displayTree}
+        {allTrees}
       </>
     );
   }
@@ -186,7 +183,7 @@ export const OperationTreeView = ({
     <Flex vertical gap="middle">
       <Splitter>
         <Splitter.Panel defaultSize="50%" min="20%" max="70%">
-          {displayTree}
+          {allTrees}
         </Splitter.Panel>
         <Splitter.Panel style={{ paddingLeft: "10px" }}>
           <BackupViewContainer>

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"go.uber.org/zap"
 )
 
@@ -46,6 +46,9 @@ type WrappedStream struct {
 
 	handlingPackets atomic.Bool
 	streamStopped   atomic.Bool
+
+	sharedSecretCh chan struct{}
+	sharedSecret   []byte
 }
 
 func newWrappedStreamInternal(stream stream, isClient bool, opts ...WrappedStreamOptions) *WrappedStream {
@@ -54,6 +57,7 @@ func newWrappedStreamInternal(stream stream, isClient bool, opts ...WrappedStrea
 		stream:            stream,
 		heartbeatInterval: 30 * time.Second,
 		conns:             make(map[int64]*connState),
+		sharedSecretCh:    make(chan struct{}),
 	}
 	for _, opt := range opts {
 		opt(ws)
@@ -66,13 +70,13 @@ func newWrappedStreamInternal(stream stream, isClient bool, opts ...WrappedStrea
 	return ws
 }
 
-func NewWrappedStream(stream *connect.BidiStream[v1.TunnelMessage, v1.TunnelMessage], opts ...WrappedStreamOptions) *WrappedStream {
+func NewWrappedStream(stream *connect.BidiStream[v1sync.TunnelMessage, v1sync.TunnelMessage], opts ...WrappedStreamOptions) *WrappedStream {
 	return newWrappedStreamInternal(&serverStream{
 		stream: stream,
 	}, false, opts...)
 }
 
-func NewWrappedStreamFromClient(stream *connect.BidiStreamForClient[v1.TunnelMessage, v1.TunnelMessage], opts ...WrappedStreamOptions) *WrappedStream {
+func NewWrappedStreamFromClient(stream *connect.BidiStreamForClient[v1sync.TunnelMessage, v1sync.TunnelMessage], opts ...WrappedStreamOptions) *WrappedStream {
 	return newWrappedStreamInternal(&clientStream{
 		stream: stream,
 	}, true, opts...)
@@ -80,6 +84,14 @@ func NewWrappedStreamFromClient(stream *connect.BidiStreamForClient[v1.TunnelMes
 
 func (ws *WrappedStream) allocConnID() int64 {
 	return ws.lastConnID.Add(2)
+}
+
+func (ws *WrappedStream) getSharedSecret() ([]byte, error) {
+	<-ws.sharedSecretCh
+	if ws.sharedSecret == nil {
+		return nil, fmt.Errorf("shared secret not available")
+	}
+	return ws.sharedSecret, nil
 }
 
 func (ws *WrappedStream) IsReady() bool {
@@ -91,8 +103,13 @@ func (ws *WrappedStream) Dial() (net.Conn, error) {
 		return nil, fmt.Errorf("cannot dial before handling packets")
 	}
 
+	secret, err := ws.getSharedSecret()
+	if err != nil {
+		return nil, fmt.Errorf("get shared secret: %w", err)
+	}
+
 	connID := ws.allocConnID()
-	new := newConnState(ws.stream, connID, ws.logger)
+	new := newConnState(ws.stream, connID, secret, ws.logger)
 	if err := new.sendOpenPacket(); err != nil {
 		return nil, fmt.Errorf("send open packet: %w", err)
 	}
@@ -106,7 +123,7 @@ func (ws *WrappedStream) ProvideConnectionsTo(provider *ConnectionProvider) {
 	ws.provider = provider
 }
 
-func (ws *WrappedStream) sendHeartbeats(ctx context.Context) {
+func (ws *WrappedStream) sendHeartbeats(ctx context.Context, stream stream) {
 	if ws.heartbeatInterval <= 0 || !ws.isClient {
 		return
 	}
@@ -122,7 +139,7 @@ func (ws *WrappedStream) sendHeartbeats(ctx context.Context) {
 			if ws.logger != nil {
 				ws.logger.Debug("sending heartbeat")
 			}
-			if err := ws.stream.Send(&v1.TunnelMessage{
+			if err := stream.Send(&v1sync.TunnelMessage{
 				ConnId: -1, // handshake packet
 			}); err != nil && ws.logger != nil {
 				ws.logger.Error("failed to send heartbeat", zap.Error(err))
@@ -148,12 +165,28 @@ func (ws *WrappedStream) HandlePackets(ctx context.Context) error {
 		return fmt.Errorf("generate key for handshake packet: %w", err)
 	}
 
-	if err := ws.stream.Send(&v1.TunnelMessage{
-		ConnId:           -100, // hadnshake packet
+	if err := ws.stream.Send(&v1sync.TunnelMessage{
+		ConnId:           -100, // handshake packet
 		PubkeyEcdhX25519: key.PublicKey().Bytes(),
 	}); err != nil {
 		return fmt.Errorf("send handshake packet: %w", err)
 	}
+
+	go func() {
+		timeoutTimer := time.NewTimer(5 * time.Second)
+		defer timeoutTimer.Stop()
+		select {
+		case <-timeoutTimer.C:
+			if ws.logger != nil {
+				ws.logger.Warn("timeout waiting for handshake response")
+			}
+			ws.Shutdown()
+		case <-ws.sharedSecretCh:
+			if ws.logger != nil {
+				ws.logger.Info("handshake response received, shared secret established")
+			}
+		}
+	}()
 
 	// receive handshake packet
 	handshake, err := ws.stream.Receive()
@@ -170,18 +203,21 @@ func (ws *WrappedStream) HandlePackets(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("parse peer public key: %w", err)
 	}
-
-	_, err = key.ECDH(peerKey)
+	sharedSecret, err := key.ECDH(peerKey)
 	if err != nil {
 		return fmt.Errorf("compute shared key: %w", err)
 	}
-	// TODO: use the key for encryption and decryption of messages.
+	ws.sharedSecret = sharedSecret
+	close(ws.sharedSecretCh)
+
+	// cryptedStream := newCryptedStream(ws.stream, ws.sharedSecret)
+	cryptedStream := ws.stream
 
 	newConn := func(connId int64) *connState {
 		if ws.logger != nil {
 			ws.logger.Info("new tunnel connection", zap.Int64("connId", connId))
 		}
-		new := newConnState(ws.stream, connId, ws.logger)
+		new := newConnState(ws.stream, connId, ws.sharedSecret, ws.logger)
 		ws.conns[connId] = new
 		ws.provider.ProvideConn(new)
 		return new
@@ -191,10 +227,10 @@ func (ws *WrappedStream) HandlePackets(ctx context.Context) error {
 	defer headOfLineBlockingTimer.Stop()
 
 	// send heartbeats in a separate goroutine if heartbeat interval is set
-	go ws.sendHeartbeats(ctx)
+	go ws.sendHeartbeats(ctx, cryptedStream)
 
 	for {
-		msg, err := ws.stream.Receive()
+		msg, err := cryptedStream.Receive()
 		if err != nil {
 			if ws.handlingPackets.Load() {
 				return nil

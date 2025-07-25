@@ -13,6 +13,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/logstore"
@@ -154,7 +155,7 @@ func TestConnectionBadKeyRejected(t *testing.T) {
 	startRunningSyncAPI(t, peerHost, peerHostAddr)
 	startRunningSyncAPI(t, peerClient, peerClientAddr)
 
-	waitForConnectionState(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH)
+	waitForConnectionState(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], v1sync.ConnectionState_CONNECTION_STATE_ERROR_AUTH)
 }
 
 func TestSyncConfigChange(t *testing.T) {
@@ -226,7 +227,7 @@ func TestSyncConfigChange(t *testing.T) {
 	tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
 
 	// wait for the initial config to propagate
-	tryExpectConfigFromHost(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], &v1.RemoteConfig{
+	tryExpectConfigFromHost(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], &v1sync.RemoteConfig{
 		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
@@ -238,7 +239,7 @@ func TestSyncConfigChange(t *testing.T) {
 	hostConfigChanged.Repos[0].Env = []string{"SOME_ENV=VALUE"}
 	peerHost.configMgr.Update(hostConfigChanged)
 
-	tryExpectConfigFromHost(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], &v1.RemoteConfig{
+	tryExpectConfigFromHost(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], &v1sync.RemoteConfig{
 		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
@@ -597,7 +598,7 @@ func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnd
 	}
 }
 
-func tryExpectConfigFromHost(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantCfg *v1.RemoteConfig) {
+func tryExpectConfigFromHost(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantCfg *v1sync.RemoteConfig) {
 	testutil.Try(t, ctx, func() error {
 		state := peer.manager.peerStateManager.GetPeerState(hostPeer.Keyid)
 		if state == nil {
@@ -610,7 +611,7 @@ func tryExpectConfigFromHost(t *testing.T, ctx context.Context, peer *peerUnderT
 	})
 }
 
-func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantState v1.SyncConnectionState) {
+func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantState v1sync.ConnectionState) {
 	ctx, cancel := testutil.WithDeadlineFromTest(t, ctx)
 	defer cancel()
 
@@ -620,7 +621,7 @@ func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTe
 
 	// First check if the peer is already connected.
 	state := peer.manager.peerStateManager.GetPeerState(hostPeer.Keyid)
-	if state != nil && state.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+	if state != nil && state.ConnectionState == v1sync.ConnectionState_CONNECTION_STATE_CONNECTED {
 		return // Already connected, nothing to do
 	}
 
@@ -636,7 +637,7 @@ func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTe
 			}
 			if state.KeyID == hostPeer.Keyid && state.InstanceID == hostPeer.InstanceId {
 				lastState = state
-				if state.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+				if state.ConnectionState == v1sync.ConnectionState_CONNECTION_STATE_CONNECTED {
 					stop = true
 					continue
 				}
@@ -648,13 +649,13 @@ func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTe
 	}
 	if lastState == nil {
 		t.Fatalf("timeout waiting for connection to host peer %s", hostPeer.InstanceId)
-	} else if lastState.ConnectionState != v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+	} else if lastState.ConnectionState != v1sync.ConnectionState_CONNECTION_STATE_CONNECTED {
 		t.Fatalf("expected connection state to be CONNECTED, got %v (reason: %q)", lastState.ConnectionState, lastState.ConnectionStateMessage)
 	}
 }
 
 func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer) {
-	waitForConnectionState(t, ctx, peer, hostPeer, v1.SyncConnectionState_CONNECTION_STATE_CONNECTED)
+	waitForConnectionState(t, ctx, peer, hostPeer, v1sync.ConnectionState_CONNECTION_STATE_CONNECTED)
 }
 
 func runSyncAPIWithCtx(ctx context.Context, peer *peerUnderTest, bindAddr string) {

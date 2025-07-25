@@ -30,10 +30,7 @@ import {
   Multihost_Permission_Type,
 } from "../../gen/ts/v1/config_pb";
 import { PeerState } from "../../gen/ts/v1/syncservice_pb";
-import {
-  subscribeToPeerStates,
-  unsubscribeFromPeerStates,
-} from "../state/peerstates";
+import { useSyncStates } from "../state/peerstates";
 import { PeerStateConnectionStatusIcon } from "../components/SyncStateIcon";
 
 interface FormData {
@@ -76,22 +73,12 @@ export const SettingsModal = () => {
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
   const [form] = Form.useForm<FormData>();
-  const [peerStates, setPeerStates] = useState<PeerState[]>([]);
+  const peerStates = useSyncStates();
   const [reloadOnCancel, setReloadOnCancel] = useState(false);
 
   if (!config) {
     return null;
   }
-
-  useEffect(() => {
-    const cb = (syncStates: PeerState[]) => {
-      setPeerStates(syncStates);
-    };
-    subscribeToPeerStates(cb);
-    return () => {
-      unsubscribeFromPeerStates(cb);
-    };
-  }, []);
 
   const handleOk = async () => {
     try {
