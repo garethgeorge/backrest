@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/internal/eventemitter"
 	"github.com/garethgeorge/backrest/internal/kvstore"
 	"go.uber.org/zap"
@@ -20,15 +20,15 @@ type PeerState struct {
 
 	LastHeartbeat time.Time
 
-	ConnectionState        v1.SyncConnectionState
+	ConnectionState        v1sync.ConnectionState
 	ConnectionStateMessage string
 
 	// Plans and repos available on this peer
-	KnownRepos map[string]struct{}
-	KnownPlans map[string]struct{}
+	KnownRepos map[string]*v1sync.RepoMetadata
+	KnownPlans map[string]*v1sync.PlanMetadata
 
 	// Partial configuration available for this peer
-	Config *v1.RemoteConfig
+	Config *v1sync.RemoteConfig
 }
 
 func newPeerState(instanceID, keyID string) *PeerState {
@@ -36,10 +36,10 @@ func newPeerState(instanceID, keyID string) *PeerState {
 		InstanceID:             instanceID,
 		KeyID:                  keyID,
 		LastHeartbeat:          time.Now(),
-		ConnectionState:        v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED,
+		ConnectionState:        v1sync.ConnectionState_CONNECTION_STATE_DISCONNECTED,
 		ConnectionStateMessage: "disconnected",
-		KnownRepos:             make(map[string]struct{}),
-		KnownPlans:             make(map[string]struct{}),
+		KnownRepos:             make(map[string]*v1sync.RepoMetadata),
+		KnownPlans:             make(map[string]*v1sync.PlanMetadata),
 		Config:                 nil, // Will be set when the config is received
 	}
 }
@@ -53,15 +53,15 @@ func (ps *PeerState) Clone() *PeerState {
 	*clone = *ps                                 // Shallow copy of the PeerState
 	clone.KnownRepos = maps.Clone(ps.KnownRepos) // Clone maps to ensure deep copy
 	clone.KnownPlans = maps.Clone(ps.KnownPlans)
-	clone.Config = proto.Clone(ps.Config).(*v1.RemoteConfig) // Clone the protobuf Config
+	clone.Config = proto.Clone(ps.Config).(*v1sync.RemoteConfig) // Clone the protobuf Config
 	return clone
 }
 
-func peerStateToProto(state *PeerState) *v1.PeerState {
+func peerStateToProto(state *PeerState) *v1sync.PeerState {
 	if state == nil {
-		return &v1.PeerState{}
+		return &v1sync.PeerState{}
 	}
-	return &v1.PeerState{
+	return &v1sync.PeerState{
 		PeerInstanceId:      state.InstanceID,
 		PeerKeyid:           state.KeyID,
 		LastHeartbeatMillis: state.LastHeartbeat.UnixMilli(),
@@ -73,19 +73,18 @@ func peerStateToProto(state *PeerState) *v1.PeerState {
 	}
 }
 
-func peerStateFromProto(state *v1.PeerState) *PeerState {
+func peerStateFromProto(state *v1sync.PeerState) *PeerState {
 	if state.PeerInstanceId == "" || state.PeerKeyid == "" {
 		return nil
 	}
-	knownRepos := make(map[string]struct{}, len(state.KnownRepos))
+	knownRepos := make(map[string]*v1sync.RepoMetadata, len(state.KnownRepos))
 	for _, repo := range state.KnownRepos {
-		knownRepos[repo] = struct{}{}
+		knownRepos[repo.Id] = repo
 	}
-	knownPlans := make(map[string]struct{}, len(state.KnownPlans))
+	knownPlans := make(map[string]*v1sync.PlanMetadata, len(state.KnownPlans))
 	for _, plan := range state.KnownPlans {
-		knownPlans[plan] = struct{}{}
+		knownPlans[plan.Id] = plan
 	}
-
 	return &PeerState{
 		InstanceID:             state.PeerInstanceId,
 		KeyID:                  state.PeerKeyid,
@@ -199,7 +198,7 @@ func (m *SqlitePeerStateManager) GetPeerState(keyID string) *PeerState {
 		return nil
 	}
 
-	var stateProto v1.PeerState
+	var stateProto v1sync.PeerState
 	if err := proto.Unmarshal(stateBytes, &stateProto); err != nil {
 		zap.S().Warnf("error unmarshalling peer state for key %s: %v", keyID, err)
 		return nil
@@ -214,7 +213,7 @@ func (m *SqlitePeerStateManager) GetAll() []*PeerState {
 
 	states := make([]*PeerState, 0)
 	m.kvstore.ForEach("", func(key string, value []byte) error {
-		var stateProto v1.PeerState
+		var stateProto v1sync.PeerState
 		if err := proto.Unmarshal(value, &stateProto); err != nil {
 			zap.S().Warnf("error unmarshalling peer state for key %s: %v", key, err)
 			return nil // Skip this entry

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -42,7 +43,7 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 			if state == nil {
 				state = newPeerState(knownHostPeer.InstanceId, knownHostPeer.Keyid)
 			}
-			state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+			state.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_DISCONNECTED
 			state.ConnectionStateMessage = "disconnected"
 			peerStateManager.SetPeerState(knownHostPeer.Keyid, state)
 		}
@@ -51,7 +52,7 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 			if state == nil {
 				state = newPeerState(authorizedClient.InstanceId, authorizedClient.Keyid)
 			}
-			state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+			state.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_DISCONNECTED
 			state.ConnectionStateMessage = "disconnected"
 			peerStateManager.SetPeerState(authorizedClient.Keyid, state)
 		}
