@@ -4,16 +4,12 @@ import (
 	"bufio"
 	"context"
 	"io"
-	"net"
 	"net/http"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
-	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/gen/go/v1sync/v1syncconnect"
 	"github.com/garethgeorge/backrest/internal/testutil"
-	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
@@ -25,59 +21,6 @@ func newHelloHandler() http.Handler {
 		_, _ = w.Write([]byte("Hello, World!"))
 	})
 	return mux
-}
-
-type sampleHandler struct {
-	logger   *zap.Logger
-	streams  []*WrappedStream
-	provider *ConnectionProvider
-}
-
-var _ v1syncconnect.TunnelServiceHandler = (*sampleHandler)(nil)
-
-func (sh *sampleHandler) Tunnel(ctx context.Context, stream *connect.BidiStream[v1sync.TunnelMessage, v1sync.TunnelMessage]) error {
-	wrapped := NewWrappedStream(stream, WithLogger(sh.logger))
-	wrapped.ProvideConnectionsTo(sh.provider)
-	sh.streams = append(sh.streams, wrapped)
-	return wrapped.HandlePackets(ctx)
-}
-
-func serveForTest(name string, t *testing.T, server *http.Server, listener net.Listener) {
-	t.Helper()
-	go func() {
-		t.Logf("Starting server %s with listener", name)
-		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			t.Errorf("Server %s failed to start: %v", name, err)
-		}
-	}()
-	t.Cleanup(func() {
-		t.Logf("Shutting down server %s", name)
-		deadline, cancel := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
-		defer cancel()
-		if err := server.Shutdown(deadline); err != nil {
-			t.Errorf("Failed to close server %s: %v", name, err)
-		} else {
-			t.Logf("Server %s closed successfully", name)
-		}
-	})
-}
-
-func listenAndServeForTest(name string, t *testing.T, server *http.Server) {
-	t.Helper()
-	go func() {
-		t.Logf("Starting server %s on %s", name, server.Addr)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			t.Errorf("Server %s failed to start: %v", name, err)
-		} else {
-			t.Logf("Server %s closed successfully", name)
-		}
-	}()
-	t.Cleanup(func() {
-		t.Logf("Shutting down server %s on %s", name, server.Addr)
-		if err := server.Shutdown(context.Background()); err != nil {
-			t.Errorf("Failed to close server %s: %v", name, err)
-		}
-	})
 }
 
 func waitForConnectionReady(ctx context.Context, t *testing.T, wrapped *WrappedStream) {
@@ -101,15 +44,12 @@ func TestConnect(t *testing.T) {
 
 	// Construct the service we want to provide
 	provider := NewConnectionProvider(10 /* bufferSize */)
-	sampleHandler := &sampleHandler{
-		logger:   testutil.NewTestLogger(t).Named("sample-handler"),
-		provider: provider,
-	}
+	sampleHandler := NewTunnelHandler(provider).SetLogger(testutil.NewTestLogger(t))
 
 	server := &http.Server{
 		Handler: newHelloHandler(),
 	}
-	serveForTest("HTTPServer", t, server, provider)
+	testutil.ServeForTest("HTTPServer", t, server, provider)
 
 	// Serve the sample handler
 	mux := http.NewServeMux()
@@ -118,7 +58,7 @@ func TestConnect(t *testing.T) {
 		Addr:    testutil.AllocOpenBindAddr(t),
 		Handler: h2c.NewHandler(mux, &http2.Server{}), // h2c is HTTP/2 without TLS for grpc-connect support.
 	}
-	listenAndServeForTest("gRPCServer", t, grpcServer)
+	testutil.ListenAndServeForTest("gRPCServer", t, grpcServer)
 
 	// Create a client and connect to the server
 	client := v1syncconnect.NewTunnelServiceClient(NewInsecureHttpClient(), "http://"+grpcServer.Addr)

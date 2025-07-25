@@ -57,6 +57,14 @@ func NewSyncHandler(oplog *oplog.OpLog, logStore *logstore.LogStore) *syncHandle
 
 var _ v1syncconnect.SyncPeerServiceHandler = (*syncHandler)(nil)
 
+func (sh *syncHandler) SetLogger(logger *zap.Logger) *syncHandler {
+	if logger == nil {
+		logger = zap.NewNop()
+	}
+	sh.logger = logger.Named("synchandler")
+	return sh
+}
+
 // translateSingleID translates a single ID (either opID or flowID) using the provided cache and query
 func (sh *syncHandler) translateSingleID(
 	originalInstanceKeyid string,
