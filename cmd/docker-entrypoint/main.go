@@ -82,12 +82,12 @@ func setupUserAndGroup() (int, int, error) {
 		return 0, 0, nil
 	}
 
-	puid, err := strconv.Atoi(puidStr)
+	puid, err := strconv.ParseUint(puidStr, 10, 32)
 	if err != nil {
 		return 0, 0, fmt.Errorf("invalid PUID: %v", err)
 	}
 
-	pgid, err := strconv.Atoi(pgidStr)
+	pgid, err := strconv.ParseUint(pgidStr, 10, 32)
 	if err != nil {
 		return 0, 0, fmt.Errorf("invalid PGID: %v", err)
 	}
