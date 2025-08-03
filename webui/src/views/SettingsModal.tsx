@@ -211,6 +211,7 @@ export const SettingsModal = () => {
                 forceRender: true,
                 children: <AuthenticationForm form={form} config={config} />,
               },
+              /* Disabled in mainline release until multihost is stable
               {
                 key: "2",
                 label: "Multihost Identity and Sharing",
@@ -223,6 +224,7 @@ export const SettingsModal = () => {
                   />
                 ),
               },
+              */
               {
                 key: "last",
                 label: "Preview",
