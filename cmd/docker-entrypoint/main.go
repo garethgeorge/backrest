@@ -13,8 +13,6 @@ import (
 
 var dockerEnvVarDefaults = map[string]string{
 	"BACKREST_PORT": "0.0.0.0:9898",
-	"PUID":          "1000",
-	"PGID":          "1000",
 }
 
 func main() {
@@ -99,14 +97,14 @@ func setupUserAndGroup() (int, int, error) {
 	if !userExists(username) {
 		// Create group if it doesn't exist
 		if !groupExists(groupname) {
-			if err := createGroup(groupname, pgid); err != nil {
+			if err := createGroup(groupname, int(pgid)); err != nil {
 				return 0, 0, fmt.Errorf("failed to create group %s: %v", groupname, err)
 			}
 			os.Stderr.WriteString(fmt.Sprintf("Created group %s with GID %d\n", groupname, pgid))
 		}
 
 		// Create user
-		if err := createUser(username, groupname, puid); err != nil {
+		if err := createUser(username, groupname, int(puid)); err != nil {
 			return 0, 0, fmt.Errorf("failed to create user %s: %v", username, err)
 		}
 		os.Stderr.WriteString(fmt.Sprintf("Created user %s with UID %d\n", username, puid))
