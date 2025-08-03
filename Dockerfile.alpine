@@ -1,7 +1,8 @@
 FROM golang:1.24-alpine AS builder
 WORKDIR /src
 COPY . .
-RUN go build -o /docker-entrypoint ./cmd/docker-entrypoint
+RUN go build -o /docker-entrypoint -ldflags "-s -w" ./cmd/docker-entrypoint
+
 
 FROM alpine:latest
 LABEL org.opencontainers.image.source="https://github.com/garethgeorge/backrest"

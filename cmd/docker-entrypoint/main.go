@@ -28,9 +28,11 @@ func main() {
 		os.Stderr.WriteString("No command provided to run.\n")
 		os.Exit(1)
 	}
-	os.Stderr.WriteString("Running command: " + os.Args[1] + " " + fmt.Sprint(os.Args[2:]) + "\n")
+	subcommand := os.Args[1]
+	args := os.Args[2:]
+	os.Stderr.WriteString("Running command: " + subcommand + " " + fmt.Sprint(args) + "\n")
 
-	cmd := exec.Command(os.Args[1], os.Args[2:]...)
+	cmd := exec.Command(subcommand, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
