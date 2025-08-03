@@ -32,7 +32,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	cmd := exec.CommandContext(ctx, backrest)
+	cmd := exec.CommandContext(ctx, backrest, os.Args[1:]...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "ENV=production")
