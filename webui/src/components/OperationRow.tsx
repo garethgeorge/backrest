@@ -358,78 +358,81 @@ export const OperationRow = ({
 };
 
 const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
-  const summary: Partial<SnapshotSummary> = snapshot.summary || {};
-
-  const rows: React.ReactNode[] = [
-    <Row gutter={16} key={1}>
-      <Col span={8}>
-        <Typography.Text strong>User and Host</Typography.Text>
-        <br />
-        {snapshot.username}@{snapshot.hostname}
-      </Col>
-      <Col span={12}>
-        <Typography.Text strong>Tags</Typography.Text>
-        <br />
-        {snapshot.tags.join(", ")}
-      </Col>
-    </Row>,
-  ];
-
-  if (
-    summary.filesNew ||
-    summary.filesChanged ||
-    summary.filesUnmodified ||
-    summary.dataAdded ||
-    summary.totalFilesProcessed ||
-    summary.totalBytesProcessed
-  ) {
-    rows.push(
-      <Row gutter={16} key={2}>
-        <Col span={8}>
-          <Typography.Text strong>Files Added</Typography.Text>
-          <br />
-          {"" + summary.filesNew}
-        </Col>
-        <Col span={8}>
-          <Typography.Text strong>Files Changed</Typography.Text>
-          <br />
-          {"" + summary.filesChanged}
-        </Col>
-        <Col span={8}>
-          <Typography.Text strong>Files Unmodified</Typography.Text>
-          <br />
-          {"" + summary.filesUnmodified}
-        </Col>
-      </Row>
-    );
-    rows.push(
-      <Row gutter={16} key={3}>
-        <Col span={8}>
-          <Typography.Text strong>Bytes Added</Typography.Text>
-          <br />
-          {formatBytes(Number(summary.dataAdded))}
-        </Col>
-        <Col span={8}>
-          <Typography.Text strong>Bytes Processed</Typography.Text>
-          <br />
-          {formatBytes(Number(summary.totalBytesProcessed))}
-        </Col>
-        <Col span={8}>
-          <Typography.Text strong>Files Processed</Typography.Text>
-          <br />
-          {"" + summary.totalFilesProcessed}
-        </Col>
-      </Row>
-    );
-  }
+  const summary = snapshot.summary;
 
   return (
     <>
       <Typography.Text>
         <Typography.Text strong>Snapshot ID: </Typography.Text>
-        {normalizeSnapshotId(snapshot.id!)} <br />
-        {rows}
+        {normalizeSnapshotId(snapshot.id!)}
       </Typography.Text>
+      <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
+        <Col span={8}>
+          <Typography.Text strong>User and Host</Typography.Text>
+          <br />
+          <Typography.Text type="secondary">
+            {snapshot.username}@{snapshot.hostname}
+          </Typography.Text>
+        </Col>
+        <Col span={12}>
+          <Typography.Text strong>Tags</Typography.Text>
+          <br />
+          <Typography.Text type="secondary">
+            {snapshot.tags.join(", ")}
+          </Typography.Text>
+        </Col>
+      </Row>
+
+      {summary && (
+        <>
+          <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
+            <Col span={8}>
+              <Typography.Text strong>Files Added</Typography.Text>
+              <br />
+              <Typography.Text type="secondary">
+                {summary.filesNew.toLocaleString()}
+              </Typography.Text>
+            </Col>
+            <Col span={8}>
+              <Typography.Text strong>Files Changed</Typography.Text>
+              <br />
+              <Typography.Text type="secondary">
+                {summary.filesChanged.toLocaleString()}
+              </Typography.Text>
+            </Col>
+            <Col span={8}>
+              <Typography.Text strong>Files Unmodified</Typography.Text>
+              <br />
+              <Typography.Text type="secondary">
+                {summary.filesUnmodified.toLocaleString()}
+              </Typography.Text>
+            </Col>
+          </Row>
+          <Row gutter={[16, 8]}>
+            <Col span={8}>
+              <Typography.Text strong>Bytes Added</Typography.Text>
+              <br />
+              <Typography.Text type="secondary">
+                {formatBytes(Number(summary.dataAdded))}
+              </Typography.Text>
+            </Col>
+            <Col span={8}>
+              <Typography.Text strong>Total Bytes Processed</Typography.Text>
+              <br />
+              <Typography.Text type="secondary">
+                {formatBytes(Number(summary.totalBytesProcessed))}
+              </Typography.Text>
+            </Col>
+            <Col span={8}>
+              <Typography.Text strong>Total Files Processed</Typography.Text>
+              <br />
+              <Typography.Text type="secondary">
+                {summary.totalFilesProcessed.toLocaleString()}
+              </Typography.Text>
+            </Col>
+          </Row>
+        </>
+      )}
     </>
   );
 };
@@ -506,22 +509,40 @@ const BackupOperationStatus = ({
       <>
         <Progress percent={progress} status="active" />
         <br />
-        <Row gutter={16}>
+        <Row gutter={[16, 8]}>
           <Col span={12}>
             <Typography.Text strong>Bytes Done/Total</Typography.Text>
             <br />
-            {formatBytes(Number(st.bytesDone))}/
-            {formatBytes(Number(st.totalBytes))}
+            <Typography.Text type="secondary">
+              {formatBytes(Number(st.bytesDone))} /{" "}
+              {formatBytes(Number(st.totalBytes))}
+            </Typography.Text>
           </Col>
           <Col span={12}>
             <Typography.Text strong>Files Done/Total</Typography.Text>
             <br />
-            {Number(st.filesDone)}/{Number(st.totalFiles)}
+            <Typography.Text type="secondary">
+              {Number(st.filesDone).toLocaleString()} /{" "}
+              {Number(st.totalFiles).toLocaleString()}
+            </Typography.Text>
           </Col>
         </Row>
-        {st.currentFile && st.currentFile.length > 0 ? (
-          <pre>Current file: {st.currentFile.join("\n")}</pre>
-        ) : null}
+        {st.currentFile && st.currentFile.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <Typography.Text strong>Current Files:</Typography.Text>
+            <pre
+              style={{
+                marginTop: 4,
+                padding: 8,
+                borderRadius: 4,
+                borderColor: "#d9d9d9",
+                fontSize: "0.85em",
+              }}
+            >
+              {st.currentFile.join("\n")}
+            </pre>
+          </div>
+        )}
       </>
     );
   } else if (status.entry.case === "summary") {
@@ -534,38 +555,43 @@ const BackupOperationStatus = ({
             ? normalizeSnapshotId(sum.snapshotId!)
             : "No Snapshot Created"}
         </Typography.Text>
-        <Row gutter={16}>
+        <Row gutter={[16, 8]}>
           <Col span={8}>
             <Typography.Text strong>Files Added</Typography.Text>
             <br />
-            {sum.filesNew.toString()}
+            <Typography.Text type="secondary">
+              {sum.filesNew.toString()}
+            </Typography.Text>
           </Col>
           <Col span={8}>
             <Typography.Text strong>Files Changed</Typography.Text>
             <br />
-            {sum.filesChanged.toString()}
+            <Typography.Text type="secondary">
+              {sum.filesChanged.toString()}
+            </Typography.Text>
           </Col>
           <Col span={8}>
             <Typography.Text strong>Files Unmodified</Typography.Text>
             <br />
-            {sum.filesUnmodified.toString()}
+            <Typography.Text type="secondary">
+              {sum.filesUnmodified.toString()}
+            </Typography.Text>
           </Col>
         </Row>
-        <Row gutter={16}>
+        <Row gutter={[16, 8]}>
           <Col span={8}>
             <Typography.Text strong>Bytes Added</Typography.Text>
             <br />
-            {formatBytes(Number(sum.dataAdded))}
+            <Typography.Text type="secondary">
+              {formatBytes(Number(sum.dataAdded))}
+            </Typography.Text>
           </Col>
           <Col span={8}>
             <Typography.Text strong>Total Bytes Processed</Typography.Text>
             <br />
-            {formatBytes(Number(sum.totalBytesProcessed))}
-          </Col>
-          <Col span={8}>
-            <Typography.Text strong>Total Files Processed</Typography.Text>
-            <br />
-            {sum.totalFilesProcessed.toString()}
+            <Typography.Text type="secondary">
+              {formatBytes(Number(sum.totalBytesProcessed))}
+            </Typography.Text>
           </Col>
         </Row>
       </>

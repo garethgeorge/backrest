@@ -27,35 +27,43 @@ export const SpinButton = React.forwardRef<
 
 SpinButton.displayName = "SpinButton";
 
-export const ConfirmButton: React.FC<
+export const ConfirmButton = React.forwardRef<
+  HTMLAnchorElement | HTMLButtonElement,
   ButtonProps & {
     onClickAsync: () => Promise<void>;
     confirmTitle: React.ReactNode;
     confirmTimeout?: number; // milliseconds
   }
-> = ({ onClickAsync, confirmTimeout, confirmTitle, children, ...props }) => {
-  const [clicked, setClicked] = useState(false);
+>(
+  (
+    { onClickAsync, confirmTimeout, confirmTitle, children, ...props },
+    ref
+  ) => {
+    const [clicked, setClicked] = useState(false);
 
-  if (confirmTimeout === undefined) {
-    confirmTimeout = 2000;
-  }
-
-  const onClick = async () => {
-    if (!clicked) {
-      setClicked(true);
-      setTimeout(() => {
-        setClicked(false);
-      }, confirmTimeout);
-      return;
+    if (confirmTimeout === undefined) {
+      confirmTimeout = 2000;
     }
 
-    setClicked(false);
-    await onClickAsync();
-  };
+    const onClick = async () => {
+      if (!clicked) {
+        setClicked(true);
+        setTimeout(() => {
+          setClicked(false);
+        }, confirmTimeout);
+        return;
+      }
 
-  return (
-    <SpinButton {...props} onClickAsync={onClick}>
-      {clicked ? confirmTitle : children}
-    </SpinButton>
-  );
-};
+      setClicked(false);
+      await onClickAsync();
+    };
+
+    return (
+      <SpinButton {...props} ref={ref} onClickAsync={onClick}>
+        {clicked ? confirmTitle : children}
+      </SpinButton>
+    );
+  }
+);
+
+ConfirmButton.displayName = "ConfirmButton";
