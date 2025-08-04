@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.9.0](https://github.com/garethgeorge/backrest/compare/v1.8.1...v1.9.0) (2025-08-04)
+
+
+### Features
+
+* add arg forwarding to docker-entrypoint and backrestmon ([f52275b](https://github.com/garethgeorge/backrest/commit/f52275bab3823e0f91a9cc959b1241b3e0cc4345))
+* add arg forwarding to docker-entrypoint and backrestmon ([42054f4](https://github.com/garethgeorge/backrest/commit/42054f4a22f122955e74d852833a3db217561552))
+* add support for block kit slack body ([#774](https://github.com/garethgeorge/backrest/issues/774)) ([9a4e0c5](https://github.com/garethgeorge/backrest/commit/9a4e0c5c74c5cdfa3ac4d78d910fcf061f560e4c))
+* allow repo url to be set from env with ${RESTIC_REPOSITORY} ([#813](https://github.com/garethgeorge/backrest/issues/813)) ([39f0c09](https://github.com/garethgeorge/backrest/commit/39f0c092e48a7340e84cf1ca5dbb9f2d47deb9b0))
+* multihost sync ui ([#825](https://github.com/garethgeorge/backrest/issues/825)) ([6e0c201](https://github.com/garethgeorge/backrest/commit/6e0c20102541e587494efd49e5bead07c95c3b59))
+* sync api creates and uses cryptographic identity of local instance ([#780](https://github.com/garethgeorge/backrest/issues/780)) ([eb9948b](https://github.com/garethgeorge/backrest/commit/eb9948b993ea4e64b7264446faf950cbf96c2767))
+* ui tweaks to improve backup / snapshot detail readability ([eaa1143](https://github.com/garethgeorge/backrest/commit/eaa1143f57077c7591f749935fd39d19f346be09))
+* **webui:** improve compression graph readability ([90b77db](https://github.com/garethgeorge/backrest/commit/90b77db05a623efe9e25b5d3bd2cc46fce55e78e))
+
+
+### Bug Fixes
+
+* add docker entrypoint to set appropriate defaults for env vars ([5bc63d4](https://github.com/garethgeorge/backrest/commit/5bc63d4b9304b80315cda28dc7246c98e588d36c))
+* improve resiliance to warnings printed by restic when executing JSON commands ([5112b76](https://github.com/garethgeorge/backrest/commit/5112b7676621199517312cce3116cd2c4bdcb198))
+* missing KeepLastN in scheduled retention policy ([#778](https://github.com/garethgeorge/backrest/issues/778)) ([1a9bed2](https://github.com/garethgeorge/backrest/commit/1a9bed21e2b543908dffb705d4a56d0a6b64c4fa))
+* **prune:** correctly handle max-unused 0% ([fe53a60](https://github.com/garethgeorge/backrest/commit/fe53a603da186a462f57f947a091059ff22cd45e))
+* race condition in taskcollectgarbage potentially prematurely deletes logs for tasks currently running ([#828](https://github.com/garethgeorge/backrest/issues/828)) ([cd5814d](https://github.com/garethgeorge/backrest/commit/cd5814d84825a5cf93b1b36de446779cd9a2ac0d))
+* sometimes summary dashboard doesn't load on first viewing ([f512ffe](https://github.com/garethgeorge/backrest/commit/f512ffebe3e3c79b568ab617ece9669472d49e7f))
+* **webui:** clarify retention policy descriptions ([55949a2](https://github.com/garethgeorge/backrest/commit/55949a28c5e3b03d1d06e485f4a5e01d5e734b5e))
+* Windows installer ToolTipIcon Info Enum ([#799](https://github.com/garethgeorge/backrest/issues/799)) ([cd67858](https://github.com/garethgeorge/backrest/commit/cd67858a3414ee42ee0f5a99995432cd7461443c))
+
 ## [1.8.1](https://github.com/garethgeorge/backrest/compare/v1.8.0...v1.8.1) (2025-05-06)
 
 
