@@ -9,6 +9,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/orchestrator/hookvars"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
@@ -30,7 +31,7 @@ func NewOneoffIndexSnapshotsTask(repo *v1.Repo, at time.Time) Task {
 			if err := indexSnapshotsHelper(ctx, st, taskRunner); err != nil {
 				taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 					v1.Hook_CONDITION_ANY_ERROR,
-				}, HookVars{
+				}, hookvars.HookVars{
 					Task:  st.Task.Name(),
 					Error: err.Error(),
 				})

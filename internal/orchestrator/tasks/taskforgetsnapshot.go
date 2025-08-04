@@ -6,6 +6,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/orchestrator/hookvars"
 )
 
 func NewOneoffForgetSnapshotTask(repo *v1.Repo, planID string, flowID int64, at time.Time, snapshotID string) Task {
@@ -33,7 +34,7 @@ func NewOneoffForgetSnapshotTask(repo *v1.Repo, planID string, flowID int64, at 
 			if err := forgetSnapshotHelper(ctx, st, taskRunner, snapshotID); err != nil {
 				taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 					v1.Hook_CONDITION_ANY_ERROR,
-				}, HookVars{
+				}, hookvars.HookVars{
 					Error: err.Error(),
 				})
 				return err

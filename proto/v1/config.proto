@@ -193,6 +193,11 @@ message Hook {
     CONDITION_FORGET_START = 300; // forget started.
     CONDITION_FORGET_ERROR = 301; // forget failed.
     CONDITION_FORGET_SUCCESS = 302; // forget succeeded.
+
+    // task conditions
+    CONDITION_TASK_START = 400;
+    CONDITION_TASK_SUCCESS = 401;
+    CONDITION_TASK_ERROR = 402;
   }
 
   enum OnError {
