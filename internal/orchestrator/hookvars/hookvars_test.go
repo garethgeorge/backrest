@@ -1,4 +1,4 @@
-package tasks
+package hookvars
 
 import (
 	"testing"

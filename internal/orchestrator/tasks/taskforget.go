@@ -7,6 +7,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/orchestrator/hookvars"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
@@ -61,7 +62,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 	// execute hooks
 	if err := taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_FORGET_START,
-	}, HookVars{Plan: plan}); err != nil {
+	}, hookvars.HookVars{Plan: plan}); err != nil {
 		return fmt.Errorf("forget start hook: %w", err)
 	}
 
@@ -115,7 +116,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 		if e := taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 			v1.Hook_CONDITION_FORGET_ERROR,
 			v1.Hook_CONDITION_ANY_ERROR,
-		}, HookVars{
+		}, hookvars.HookVars{
 			Error: err.Error(),
 		}); e != nil {
 			err = multierror.Append(err, fmt.Errorf("forget on error hook: %w", e))
@@ -123,7 +124,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 		return fmt.Errorf("forget: %w", err)
 	} else if e := taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_FORGET_SUCCESS,
-	}, HookVars{}); e != nil {
+	}, hookvars.HookVars{}); e != nil {
 		return fmt.Errorf("forget end hook: %w", e)
 	}
 
