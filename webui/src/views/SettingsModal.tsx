@@ -78,6 +78,7 @@ export const SettingsModal = () => {
   const [form] = Form.useForm<FormData>();
   const [peerStates, setPeerStates] = useState<PeerState[]>([]);
   const [reloadOnCancel, setReloadOnCancel] = useState(false);
+  const [formEdited, setFormEdited] = useState(false);
 
   if (!config) {
     return null;
@@ -129,6 +130,7 @@ export const SettingsModal = () => {
       setConfig(await backrestService.setConfig(newConfig));
       setReloadOnCancel(true);
       alertsApi.success("Settings updated", 5);
+      setFormEdited(false);
     } catch (e: any) {
       alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
     }
@@ -152,7 +154,7 @@ export const SettingsModal = () => {
         width="60vw"
         footer={[
           <Button key="back" onClick={handleCancel}>
-            Cancel
+            {formEdited ? "Cancel" : "Close"}
           </Button>,
           <Button key="submit" type="primary" onClick={handleOk}>
             Save
@@ -164,6 +166,7 @@ export const SettingsModal = () => {
           form={form}
           labelCol={{ span: 4 }}
           wrapperCol={{ span: 20 }}
+          onValuesChange={() => setFormEdited(true)}
         >
           {users.length > 0 || config.auth?.disabled ? null : (
             <>
@@ -211,7 +214,6 @@ export const SettingsModal = () => {
                 forceRender: true,
                 children: <AuthenticationForm form={form} config={config} />,
               },
-              /* Disabled in mainline release until multihost is stable
               {
                 key: "2",
                 label: "Multihost Identity and Sharing",
@@ -223,8 +225,9 @@ export const SettingsModal = () => {
                     peerStates={peerStates}
                   />
                 ),
+                /* hidden until multihost is stable */
+                style: { display: "none" },
               },
-              */
               {
                 key: "last",
                 label: "Preview",
