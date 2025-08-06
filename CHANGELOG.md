@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/garethgeorge/backrest/compare/v1.9.0...v1.9.1) (2025-08-06)
+
+
+### Bug Fixes
+
+* new backrest installs can't set instance ID ([7f51ef5](https://github.com/garethgeorge/backrest/commit/7f51ef51e7ee3519ec22e766007638e7a884f05a))
+
 ## [1.9.0](https://github.com/garethgeorge/backrest/compare/v1.8.1...v1.9.0) (2025-08-04)
 
 
