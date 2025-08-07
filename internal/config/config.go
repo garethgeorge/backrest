@@ -17,12 +17,47 @@ var ErrConfigNotFound = fmt.Errorf("config not found")
 type ConfigManager struct {
 	Store    ConfigStore
 	OnChange eventemitter.EventEmitter[struct{}]
+
+	migrateOnce sync.Once
+	migrateErr  error
 }
 
 var _ ConfigStore = &ConfigManager{}
 
+func (m *ConfigManager) migrate(config *v1.Config) error {
+	// Check if we need to migrate
+	mutated, err := PopulateRequiredFields(config)
+	if err != nil {
+		return fmt.Errorf("populate required fields: %w", err)
+	}
+	if config.Version < migrations.CurrentVersion {
+		zap.S().Infof("migrating config from version %d to %d", config.Version, migrations.CurrentVersion)
+		if err := migrations.ApplyMigrations(config); err != nil {
+			return err
+		}
+		mutated = true
+	}
+	if mutated {
+		// Write back the migrated config.
+		if err := m.Store.Update(config); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (m *ConfigManager) Get() (*v1.Config, error) {
-	return m.Store.Get()
+	config, err := m.Store.Get()
+	if err != nil {
+		return nil, err
+	}
+	m.migrateOnce.Do(func() {
+		m.migrateErr = m.migrate(config)
+	})
+	if m.migrateErr != nil {
+		return nil, m.migrateErr
+	}
+	return config, nil
 }
 
 func (m *ConfigManager) Update(config *v1.Config) error {
@@ -94,25 +129,6 @@ func (c *CachingValidatingStore) Get() (*v1.Config, error) {
 			return c.config, nil
 		}
 		return c.config, err
-	}
-
-	// Check if we need to migrate
-	mutated, err := PopulateRequiredFields(config)
-	if err != nil {
-		return nil, fmt.Errorf("populate required fields: %w", err)
-	}
-	if config.Version < migrations.CurrentVersion {
-		zap.S().Infof("migrating config from version %d to %d", config.Version, migrations.CurrentVersion)
-		if err := migrations.ApplyMigrations(config); err != nil {
-			return nil, err
-		}
-		mutated = true
-	}
-	if mutated {
-		// Write back the migrated config.
-		if err := c.ConfigStore.Update(config); err != nil {
-			return nil, err
-		}
 	}
 
 	// Validate the config
