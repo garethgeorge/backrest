@@ -9,10 +9,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
 	"sync"
+	"time"
 	"unicode"
 
 	"github.com/djherbis/buffer"
@@ -464,6 +466,46 @@ func (r *Repo) Stats(ctx context.Context, opts ...GenericOption) (*RepoStats, er
 		return nil, err
 	}
 	return &stats, nil
+}
+
+func (r *Repo) Mount(ctx context.Context, dir string, opts ...GenericOption) error {
+	// Check if already mounted
+	if info, err := os.Stat(dir); err == nil {
+		if info.IsDir() {
+			// Try to detect if it's already a FUSE mount by checking if we can list it
+			if entries, err := os.ReadDir(dir); err == nil && len(entries) > 0 {
+				return fmt.Errorf("directory %s appears to already be mounted", dir)
+			}
+		}
+	}
+
+	// Start the mount command in background
+	cmd := r.commandWithContext(ctx, []string{"mount", dir}, opts...)
+	if err := cmd.Start(); err != nil {
+		return newCmdError(ctx, cmd, err)
+	}
+
+	// Wait for mount to become available
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			cmd.Process.Kill()
+			return ctx.Err()
+		case <-ticker.C:
+			if _, err := os.Stat(dir); err == nil {
+				if ents, err := os.ReadDir(filepath.Join(dir, "ids")); err == nil && len(ents) > 0 {
+					return nil
+				}
+			}
+
+			if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+				return newCmdError(ctx, cmd, fmt.Errorf("restic mount process exited with code %d", cmd.ProcessState.ExitCode()))
+			}
+		}
+	}
 }
 
 // AddTags adds tags to the specified snapshots.

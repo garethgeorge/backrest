@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"sort"
@@ -30,6 +32,12 @@ type RepoOrchestrator struct {
 	config     *v1.Config
 	repoConfig *v1.Repo
 	repo       *restic.Repo
+
+	mountMu    sync.Mutex
+	mountErr   error
+	mountDir   string
+	mountTimer *time.Timer
+	mountUsers int
 }
 
 // NewRepoOrchestrator accepts a config and a repo that is configured with the properties of that config object.
@@ -84,6 +92,69 @@ func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath stri
 
 func (r *RepoOrchestrator) logger(ctx context.Context) *zap.Logger {
 	return logging.Logger(ctx, "[repo-manager] ").With(zap.String("repo", r.repoConfig.Id))
+}
+
+func (r *RepoOrchestrator) Mount(ctx context.Context) (string, func(), error) {
+	// Ensure that the mount stays alive at least as long as the context of this function call.
+	r.mountMu.Lock()
+	defer r.mountMu.Unlock()
+
+	// If mount has failed in the past, don't retry just return the error.
+	if r.mountErr != nil {
+		return "", func() {}, r.mountErr
+	}
+
+	if r.mountTimer == nil {
+		// Try to mount the repo
+		var err error
+		r.mountDir, err = os.MkdirTemp("", "restic-"+r.repoConfig.Id+"-mount")
+		if err != nil {
+			r.logger(ctx).Warn("failed to create mount directory", zap.Error(err))
+			r.mountErr = fmt.Errorf("create mount directory: %w", err)
+			return "", func() {}, r.mountErr
+		}
+
+		mountCtx, cancel := context.WithCancel(context.Background())
+		if err := r.repo.Mount(mountCtx, r.mountDir); err != nil {
+			r.logger(ctx).Warn("failed to mount repo", zap.Error(err))
+			r.mountErr = fmt.Errorf("mount repo %v: %w", r.repoConfig.Id, err)
+			cancel()
+			os.Remove(r.mountDir)
+			return "", func() {}, r.mountErr
+		}
+		r.mountTimer = time.AfterFunc(1000*time.Hour, func() {
+			r.mountMu.Lock()
+			defer r.mountMu.Unlock()
+			r.mountTimer = nil
+			cancel()
+
+			// Try to remove the mount directory up to 10 times with a 1 second delay between each attempt.
+			for i := 0; i < 10; i++ {
+				if err := os.Remove(r.mountDir); err != nil {
+					r.logger(ctx).Warn("failed to remove mount directory", zap.String("dir", r.mountDir), zap.Error(err))
+					time.Sleep(1 * time.Second)
+					continue
+				} else {
+					r.logger(ctx).Debug("removed mount directory", zap.String("dir", r.mountDir))
+				}
+				break
+			}
+		})
+		r.mountTimer.Stop()
+	}
+	r.mountUsers++
+
+	var once sync.Once
+	return r.mountDir, func() {
+		once.Do(func() {
+			r.mountMu.Lock()
+			defer r.mountMu.Unlock()
+			r.mountUsers--
+			if r.mountUsers == 0 {
+				r.mountTimer.Reset(60 * time.Second)
+			}
+		})
+	}, nil
 }
 
 func (r *RepoOrchestrator) Exists(ctx context.Context) error {
@@ -187,6 +258,52 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId string, path string) ([]*v1.LsEntry, error) {
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
+
+	if runtime.GOOS != "windows" {
+		mountCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+
+		mountDir, releaseMount, mountErr := r.Mount(mountCtx)
+		if mountErr != nil {
+			r.logger(ctx).Warn("failed to mount repo, falling back to restic ls", zap.Error(mountErr))
+		} else {
+			defer releaseMount()
+
+			// List the directory using os.ReadDir
+			readPath := filepath.Join(mountDir, "ids", snapshotId[:8], path)
+			entries, err := os.ReadDir(readPath)
+			if err != nil {
+				r.logger(ctx).Warn("failed to list directory", zap.Error(err), zap.String("path", readPath))
+				return nil, fmt.Errorf("failed to list directory: %w", err)
+			}
+
+			lsEnts := make([]*v1.LsEntry, 0, len(entries))
+			for _, entry := range entries {
+				info, err := entry.Info()
+				if err != nil {
+					continue
+				}
+
+				typeName := "file"
+				if entry.IsDir() {
+					typeName = "directory"
+				}
+
+				lsEnts = append(lsEnts, &v1.LsEntry{
+					Name:  entry.Name(),
+					Type:  typeName,
+					Path:  filepath.Join(path, entry.Name()),
+					Size:  info.Size(),
+					Mode:  int64(info.Mode()),
+					Mtime: info.ModTime().Format(time.RFC3339),
+					Atime: info.ModTime().Format(time.RFC3339),
+					Ctime: info.ModTime().Format(time.RFC3339),
+				})
+			}
+
+			return lsEnts, nil
+		}
+	}
 
 	_, entries, err := r.repo.ListDirectory(ctx, snapshotId, path)
 	if err != nil {
