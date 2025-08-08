@@ -297,7 +297,8 @@ const DisplayOperationTree = ({
               level.groupingFn,
               (groupKey: string, ops: FlowDisplayInfo[]) => {
                 const exemplar = ops[0];
-                const children = new Set(ops.map(childGroupFn)).size;
+                const children = ops.length;
+                const expanded = expandedKeys.has(groupKey);
                 return {
                   key: groupKey,
                   title: (
@@ -305,7 +306,7 @@ const DisplayOperationTree = ({
                       <Typography.Text>
                         {level.titleFn(exemplar)}
                       </Typography.Text>
-                      {!expandedKeys.has(groupKey) && (
+                      {!expanded && (
                         <Typography.Text
                           type="secondary"
                           style={{ fontSize: "12px", marginLeft: "8px" }}
@@ -315,7 +316,7 @@ const DisplayOperationTree = ({
                       )}
                     </>
                   ),
-                  children: expandedKeys.has(groupKey)
+                  children: expanded
                     ? fn(ops, expandedKeys, groupKey)
                     : [{ key: groupKey + "_loading", title: "Loading..." }],
                 };
