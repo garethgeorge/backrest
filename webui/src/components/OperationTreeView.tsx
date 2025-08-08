@@ -12,7 +12,12 @@ import {
 } from "antd";
 import _, { flow } from "lodash";
 import { DataNode } from "antd/es/tree";
-import { formatDate, formatTime, localISOTime } from "../lib/formatting";
+import {
+  formatDate,
+  formatMonth,
+  formatTime,
+  localISOTime,
+} from "../lib/formatting";
 import { ExclamationOutlined, QuestionOutlined } from "@ant-design/icons";
 import {
   OperationEventType,
@@ -134,7 +139,6 @@ export const OperationTreeView = ({
         onSelect={(flow) => {
           setSelectedBackupId(flow ? flow.flowID : null);
         }}
-        expand={instance === config!.instance}
       />
     );
 
@@ -207,12 +211,10 @@ const DisplayOperationTree = ({
   operations,
   isPlanView,
   onSelect,
-  expand,
 }: {
   operations: FlowDisplayInfo[];
   isPlanView?: boolean;
   onSelect?: (flow: FlowDisplayInfo | null) => any;
-  expand?: boolean;
 }) => {
   const [treeData, setTreeData] = useState<OpTreeNode[]>([]);
   const [expandedKeys, setExpandedKeys] = useState<Set<React.Key>>(new Set());
@@ -246,7 +248,6 @@ const DisplayOperationTree = ({
       groupingFn: (op: FlowDisplayInfo) => string,
       nodeFn: (groupKey: string, ops: FlowDisplayInfo[]) => OpTreeNode,
       sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) => boolean,
-      alwaysRender: boolean,
       operations: FlowDisplayInfo[],
       expandedKeys: Set<React.Key>,
       keyPrefix: string = ""
@@ -263,21 +264,8 @@ const DisplayOperationTree = ({
       sortedGroupKeys.forEach((key) => {
         const ops = groups[key];
         const groupKey = keyPrefix + "\0" + key;
-        if (alwaysRender || expandedKeys.has(groupKey)) {
-          const node = nodeFn(groupKey, ops);
-          treeData.push(node);
-        } else {
-          treeData.push({
-            key: groupKey,
-            title: key,
-            children: [
-              {
-                key: groupKey + "_loading",
-                title: "Loading...",
-              },
-            ],
-          });
-        }
+        const node = nodeFn(groupKey, ops);
+        treeData.push(node);
       });
 
       return treeData;
@@ -299,26 +287,47 @@ const DisplayOperationTree = ({
         null,
         leafGroupFn,
         (groupKey: string, ops: FlowDisplayInfo[]) => leafFn(groupKey, ops),
-        sortFn,
-        /* alwaysRender= */ true
+        sortFn
       );
-      levelFn = levels.reduceRight((fn, level) => {
-        return createTreeLevel.bind(
-          null,
-          level.groupingFn,
-          (groupKey: string, ops: FlowDisplayInfo[]) => {
-            const exemplar = ops[0];
-            return {
-              key: groupKey,
-              title: level.titleFn(exemplar),
-              children: fn(ops, expandedKeys, groupKey),
-            };
-          },
-          level.sortFn,
-          /* alwaysRender= */ false
-        );
-      }, levelFn);
-      return levelFn(operations, expandedKeys);
+      const [finalLevelFn, foo] = levels.reduceRight(
+        ([fn, childGroupFn], level) => {
+          return [
+            createTreeLevel.bind(
+              null,
+              level.groupingFn,
+              (groupKey: string, ops: FlowDisplayInfo[]) => {
+                const exemplar = ops[0];
+                const children = new Set(ops.map(childGroupFn)).size;
+                return {
+                  key: groupKey,
+                  title: (
+                    <>
+                      <Typography.Text>
+                        {level.titleFn(exemplar)}
+                      </Typography.Text>
+                      {!expandedKeys.has(groupKey) && (
+                        <Typography.Text
+                          type="secondary"
+                          style={{ fontSize: "12px", marginLeft: "8px" }}
+                        >
+                          {children === 1 ? "1 item" : `${children} items`}
+                        </Typography.Text>
+                      )}
+                    </>
+                  ),
+                  children: expandedKeys.has(groupKey)
+                    ? fn(ops, expandedKeys, groupKey)
+                    : [{ key: groupKey + "_loading", title: "Loading..." }],
+                };
+              },
+              level.sortFn
+            ),
+            level.groupingFn,
+          ];
+        },
+        [levelFn, leafGroupFn]
+      );
+      return finalLevelFn(operations, expandedKeys);
     };
 
     const planLayer = {
@@ -331,8 +340,7 @@ const DisplayOperationTree = ({
     const monthLayer = {
       groupingFn: (op: FlowDisplayInfo) =>
         localISOTime(op.displayTime).slice(0, 7),
-      titleFn: (exemplar: FlowDisplayInfo) =>
-        localISOTime(exemplar.displayTime).slice(0, 7),
+      titleFn: (exemplar: FlowDisplayInfo) => formatMonth(exemplar.displayTime),
       sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
         op1.displayTime > op2.displayTime,
     };
@@ -340,8 +348,7 @@ const DisplayOperationTree = ({
     const dayLayer = {
       groupingFn: (op: FlowDisplayInfo) =>
         localISOTime(op.displayTime).slice(0, 10),
-      titleFn: (exemplar: FlowDisplayInfo) =>
-        localISOTime(exemplar.displayTime).slice(0, 10),
+      titleFn: (exemplar: FlowDisplayInfo) => formatDate(exemplar.displayTime),
       sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
         op1.displayTime > op2.displayTime,
     };
@@ -469,12 +476,19 @@ const DisplayOperationTree = ({
 
           return (
             <>
-              {displayTypeToString(b.type)} {formatTime(b.displayTime)}{" "}
-              {b.subtitleComponents && b.subtitleComponents.length > 0 && (
-                <span className="backrest operation-details">
-                  [{b.subtitleComponents.join(", ")}]
-                </span>
-              )}
+              <Typography.Text style={{ margin: 0, display: "inline" }}>
+                {displayTypeToString(b.type)} {formatTime(b.displayTime)}{" "}
+                {b.subtitleComponents && b.subtitleComponents.length > 0 && (
+                  <Typography.Text
+                    type="secondary"
+                    style={{
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    [{b.subtitleComponents.join(", ")}]
+                  </Typography.Text>
+                )}
+              </Typography.Text>
             </>
           );
         }

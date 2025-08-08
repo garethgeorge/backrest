@@ -47,7 +47,11 @@ export const localISOTime = (time: number | string | Date) => {
   return d.toISOString();
 };
 
-// formatDate formats a time as YYYY-MM-DD
+const fmtDate = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 export const formatDate = (time: number | string | Date) => {
   if (typeof time === "string") {
     time = parseInt(time);
@@ -55,9 +59,23 @@ export const formatDate = (time: number | string | Date) => {
     time = time.getTime();
   }
   let d = new Date();
-  d.setTime(time - timezoneOffsetMs);
-  const isoStr = d.toISOString();
-  return isoStr.substring(0, 10);
+  d.setTime(time);
+  return fmtDate.format(d);
+};
+
+const fmtMonth = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "2-digit",
+});
+export const formatMonth = (time: number | string | Date) => {
+  if (typeof time === "string") {
+    time = parseInt(time);
+  } else if (time instanceof Date) {
+    time = time.getTime();
+  }
+  let d = new Date();
+  d.setTime(time);
+  return fmtMonth.format(d);
 };
 
 const durationSteps = [1000, 60, 60, 24, Number.MAX_VALUE];

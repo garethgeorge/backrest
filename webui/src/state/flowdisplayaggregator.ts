@@ -96,6 +96,7 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
         info.subtitleComponents.push(`${formatBytes(Number(snapshot.summary.totalBytesProcessed))} in ${formatDuration(snapshot.summary.totalDuration * 1000)}`);
       }
       info.subtitleComponents.push(`ID: ${normalizeSnapshotId(snapshot.id)}`);
+      break;
     default:
       switch (firstOp.status) {
         case OperationStatus.STATUS_INPROGRESS:
