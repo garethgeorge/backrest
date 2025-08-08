@@ -202,6 +202,7 @@ export const OperationTreeView = ({
   );
 };
 
+const treeLeafCache = new WeakMap<FlowDisplayInfo, OpTreeNode>();
 const DisplayOperationTree = ({
   operations,
   isPlanView,
@@ -213,34 +214,247 @@ const DisplayOperationTree = ({
   onSelect?: (flow: FlowDisplayInfo | null) => any;
   expand?: boolean;
 }) => {
-  const [treeData, setTreeData] = useState<{
-    tree: OpTreeNode[];
-    expanded: React.Key[];
-  }>({ tree: [], expanded: [] });
+  const [treeData, setTreeData] = useState<OpTreeNode[]>([]);
+  const [expandedKeys, setExpandedKeys] = useState<Set<React.Key>>(new Set());
+  const [defaultExpandedKeys, setDefaultExpandedKeys] = useState<
+    Set<React.Key>
+  >(new Set());
 
-  useEffect(() => {
-    const cancel = setTimeout(
-      () => {
-        const { tree, expanded } = buildTree(operations, isPlanView || false);
-        setTreeData({ tree, expanded });
-      },
-      treeData && treeData.tree.length > 0 ? 100 : 0
-    );
-
-    return () => {
-      clearTimeout(cancel);
+  {
+    const expandFirstN = (
+      n: number,
+      nodes: OpTreeNode[],
+      expandedKeys: Set<React.Key>
+    ) => {
+      let added = 0;
+      for (let i = 0; i < n && i < nodes.length; i++) {
+        expandedKeys.add(nodes[i].key);
+        if (nodes[i].isLeaf) {
+          added++;
+        }
+        if (nodes[i].children) {
+          added += expandFirstN(n - added, nodes[i].children!, expandedKeys);
+        }
+        if (added >= n) {
+          break;
+        }
+      }
+      return added;
     };
-  }, [operations]);
 
-  if (treeData.tree.length === 0) {
+    const createTreeLevel = (
+      groupingFn: (op: FlowDisplayInfo) => string,
+      nodeFn: (groupKey: string, ops: FlowDisplayInfo[]) => OpTreeNode,
+      sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) => boolean,
+      alwaysRender: boolean,
+      operations: FlowDisplayInfo[],
+      expandedKeys: Set<React.Key>,
+      keyPrefix: string = ""
+    ) => {
+      const groups = _.groupBy(operations, groupingFn);
+      const treeData: OpTreeNode[] = [];
+
+      const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+        const opsA = groups[a];
+        const opsB = groups[b];
+        return sortFn(opsA[0], opsB[0]) ? -1 : 1;
+      });
+
+      sortedGroupKeys.forEach((key) => {
+        const ops = groups[key];
+        const groupKey = keyPrefix + "\0" + key;
+        if (alwaysRender || expandedKeys.has(groupKey)) {
+          const node = nodeFn(groupKey, ops);
+          treeData.push(node);
+        } else {
+          treeData.push({
+            key: groupKey,
+            title: key,
+            children: [
+              {
+                key: groupKey + "_loading",
+                title: "Loading...",
+              },
+            ],
+          });
+        }
+      });
+
+      return treeData;
+    };
+
+    const createTree = (
+      operations: FlowDisplayInfo[],
+      levels: {
+        groupingFn: (op: FlowDisplayInfo) => string;
+        titleFn: (exemplar: FlowDisplayInfo) => React.ReactNode;
+        sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) => boolean;
+      }[],
+      leafGroupFn: (op: FlowDisplayInfo) => string,
+      leafFn: (groupKey: string, ops: FlowDisplayInfo[]) => OpTreeNode,
+      sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) => boolean,
+      expandedKeys: Set<React.Key>
+    ) => {
+      let levelFn = createTreeLevel.bind(
+        null,
+        leafGroupFn,
+        (groupKey: string, ops: FlowDisplayInfo[]) => leafFn(groupKey, ops),
+        sortFn,
+        /* alwaysRender= */ true
+      );
+      levelFn = levels.reduceRight((fn, level) => {
+        return createTreeLevel.bind(
+          null,
+          level.groupingFn,
+          (groupKey: string, ops: FlowDisplayInfo[]) => {
+            const exemplar = ops[0];
+            return {
+              key: groupKey,
+              title: level.titleFn(exemplar),
+              children: fn(ops, expandedKeys, groupKey),
+            };
+          },
+          level.sortFn,
+          /* alwaysRender= */ false
+        );
+      }, levelFn);
+      return levelFn(operations, expandedKeys);
+    };
+
+    const planLayer = {
+      groupingFn: (op: FlowDisplayInfo) => op.planID,
+      titleFn: (exemplar: FlowDisplayInfo) => exemplar.planID,
+      sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
+        op1.planID < op2.planID,
+    };
+
+    const monthLayer = {
+      groupingFn: (op: FlowDisplayInfo) =>
+        localISOTime(op.displayTime).slice(0, 7),
+      titleFn: (exemplar: FlowDisplayInfo) =>
+        localISOTime(exemplar.displayTime).slice(0, 7),
+      sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
+        op1.displayTime > op2.displayTime,
+    };
+
+    const dayLayer = {
+      groupingFn: (op: FlowDisplayInfo) =>
+        localISOTime(op.displayTime).slice(0, 10),
+      titleFn: (exemplar: FlowDisplayInfo) =>
+        localISOTime(exemplar.displayTime).slice(0, 10),
+      sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
+        op1.displayTime > op2.displayTime,
+    };
+
+    const leafGroupFn = (op: FlowDisplayInfo) => op.flowID.toString(16);
+    const leafFn = (groupKey: string, ops: FlowDisplayInfo[]) => {
+      const b = ops[0];
+      let cached = treeLeafCache.get(b);
+      if (cached) {
+        return cached;
+      }
+      let iconColor = colorForStatus(b.status);
+      let icon: React.ReactNode | null = <QuestionOutlined />;
+      if (
+        b.status === OperationStatus.STATUS_ERROR ||
+        b.status === OperationStatus.STATUS_WARNING
+      ) {
+        icon = <ExclamationOutlined style={{ color: iconColor }} />;
+      } else {
+        icon = <OperationIcon status={b.status} type={b.type} />;
+      }
+
+      let newLeaf: OpTreeNode = {
+        key: groupKey,
+        backup: b,
+        icon: icon,
+        isLeaf: true,
+      };
+      treeLeafCache.set(b, newLeaf);
+      return newLeaf;
+    };
+    const leafSortFn = (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
+      op1.displayTime > op2.displayTime;
+
+    const createPlanTree = (
+      operations: FlowDisplayInfo[],
+      expandedKeys: Set<React.Key>
+    ) => {
+      return createTree(
+        operations,
+        [planLayer, monthLayer, dayLayer],
+        leafGroupFn,
+        leafFn,
+        leafSortFn,
+        expandedKeys
+      );
+    };
+
+    const createDayTree = (
+      operations: FlowDisplayInfo[],
+      expandedKeys: Set<React.Key>
+    ) => {
+      return createTree(
+        operations,
+        [monthLayer, dayLayer],
+        leafGroupFn,
+        leafFn,
+        leafSortFn,
+        expandedKeys
+      );
+    };
+
+    useEffect(() => {
+      const timeoutId = setTimeout(() => {
+        const getTreeData = (expandedKeys: Set<React.Key>) => {
+          let nodes: OpTreeNode[];
+          if (isPlanView) {
+            nodes = createDayTree(operations, expandedKeys);
+          } else {
+            nodes = createPlanTree(operations, expandedKeys);
+          }
+          return nodes;
+        };
+
+        // Do expansion passes, the algorithm is multipass since each pass may add new nodes eligible for expansion
+        // Bounded at 10 passes which should be deep enough for any tree layout backrest uses.
+        if (expandedKeys.size === 0) {
+          let prevExpanded = new Set<React.Key>();
+          const target = 5;
+          for (let i = 0; i < 10; i++) {
+            let newExpanded = new Set<React.Key>();
+            const added = expandFirstN(
+              target,
+              getTreeData(prevExpanded),
+              newExpanded
+            );
+            prevExpanded = newExpanded;
+            if (added >= target) {
+              break;
+            }
+          }
+          setExpandedKeys(prevExpanded);
+        }
+
+        setTreeData(getTreeData(expandedKeys));
+      }, 10);
+      return () => clearTimeout(timeoutId);
+    }, [operations, expandedKeys]);
+  }
+
+  if (treeData.length === 0) {
     return <></>;
   }
 
   return (
     <Tree<OpTreeNode>
-      treeData={treeData.tree}
+      treeData={treeData}
       showIcon
-      defaultExpandedKeys={expand ? treeData.expanded : []}
+      defaultExpandedKeys={Array.from(expandedKeys)}
+      onExpand={(expandedKeys) => {
+        setExpandedKeys(new Set(expandedKeys));
+      }}
+      expandedKeys={Array.from(expandedKeys)}
       onSelect={(keys, info) => {
         if (info.selectedNodes.length === 0) return;
         const backup = info.selectedNodes[0].backup;
@@ -270,197 +484,6 @@ const DisplayOperationTree = ({
       }}
     />
   );
-};
-
-const treeLeafCache = new WeakMap<FlowDisplayInfo, OpTreeNode>();
-const buildTree = (
-  operations: FlowDisplayInfo[],
-  isForPlanView: boolean
-): { tree: OpTreeNode[]; expanded: React.Key[] } => {
-  const buildTreeInstanceID = (operations: FlowDisplayInfo[]): OpTreeNode[] => {
-    const grouped = _.groupBy(operations, (op) => {
-      return op.instanceID;
-    });
-
-    const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
-      let title: React.ReactNode = key;
-      if (title === "_unassociated_") {
-        title = (
-          <Tooltip
-            key={`tooltip-instance-${key}`}
-            title="_unassociated_ instance ID collects operations that do not specify a `created-by:` tag denoting the backrest install that created them."
-          >
-            _unassociated_
-          </Tooltip>
-        );
-      }
-
-      return {
-        title,
-        key: "i" + value[0].instanceID,
-        children: buildTreePlan(value),
-      };
-    });
-    entries.sort(sortByKeyReverse);
-    return entries;
-  };
-
-  const buildTreePlan = (operations: FlowDisplayInfo[]): OpTreeNode[] => {
-    const grouped = _.groupBy(operations, (op) => {
-      return op.planID;
-    });
-    const entries: OpTreeNode[] = _.map(grouped, (value, key) => {
-      let title: React.ReactNode = value[0].planID;
-      if (title === "_unassociated_") {
-        title = (
-          <Tooltip
-            key={`tooltip-plan-unassociated-${key}`}
-            title="_unassociated_ plan ID collects operations that do not specify a `plan:` tag denoting the backup plan that created them."
-          >
-            _unassociated_
-          </Tooltip>
-        );
-      } else if (title === "_system_") {
-        title = (
-          <Tooltip
-            key={`tooltip-plan-system-${key}`}
-            title="_system_ plan ID collects health operations not associated with any single plan e.g. repo level check or prune runs."
-          >
-            _system_
-          </Tooltip>
-        );
-      }
-      const uniqueKey = value[0].planID + "\x01" + value[0].instanceID + "\x01"; // use \x01 as delimiter
-      return {
-        key: uniqueKey,
-        title,
-        children: buildTreeDay(uniqueKey, value),
-      };
-    });
-    entries.sort(sortByKeyReverse);
-    return entries;
-  };
-
-  const buildTreeDay = (
-    keyPrefix: string,
-    operations: FlowDisplayInfo[]
-  ): OpTreeNode[] => {
-    const grouped = _.groupBy(operations, (op) => {
-      return localISOTime(op.displayTime).substring(0, 10);
-    });
-    const entries = _.map(grouped, (value, key) => {
-      const children = buildTreeLeaf(value);
-      return {
-        key: keyPrefix + key,
-        title: formatDate(value[0].displayTime),
-        children: children,
-      };
-    });
-    entries.sort(sortByKey);
-    return entries;
-  };
-
-  const buildTreeLeaf = (operations: FlowDisplayInfo[]): OpTreeNode[] => {
-    const entries = _.map(operations, (b): OpTreeNode => {
-      let cached = treeLeafCache.get(b);
-      if (cached) {
-        return cached;
-      }
-      let iconColor = colorForStatus(b.status);
-      let icon: React.ReactNode | null = <QuestionOutlined />;
-
-      if (
-        b.status === OperationStatus.STATUS_ERROR ||
-        b.status === OperationStatus.STATUS_WARNING
-      ) {
-        icon = <ExclamationOutlined style={{ color: iconColor }} />;
-      } else {
-        icon = <OperationIcon status={b.status} type={b.type} />;
-      }
-
-      let newLeaf = {
-        key: b.flowID,
-        backup: b,
-        icon: icon,
-      };
-      treeLeafCache.set(b, newLeaf);
-      return newLeaf;
-    });
-    entries.sort((a, b) => {
-      return b.backup!.displayTime - a.backup!.displayTime;
-    });
-    return entries;
-  };
-
-  const expandTree = (
-    entries: OpTreeNode[],
-    budget: number,
-    d1: number,
-    d2: number
-  ) => {
-    let expanded: React.Key[] = [];
-    const h2 = (
-      entries: OpTreeNode[],
-      curDepth: number,
-      budget: number
-    ): number => {
-      if (curDepth >= d2) {
-        for (const entry of entries) {
-          expanded.push(entry.key);
-          budget--;
-          if (budget <= 0) {
-            break;
-          }
-        }
-        return budget;
-      }
-      for (const entry of entries) {
-        if (!entry.children) continue;
-        budget = h2(entry.children, curDepth + 1, budget);
-        if (budget <= 0) {
-          break;
-        }
-      }
-      return budget;
-    };
-    const h1 = (entries: OpTreeNode[], curDepth: number) => {
-      if (curDepth >= d1) {
-        h2(entries, curDepth + 1, budget);
-        return;
-      }
-
-      for (const entry of entries) {
-        if (!entry.children) continue;
-        h1(entry.children, curDepth + 1);
-      }
-    };
-    h1(entries, 0);
-    return expanded;
-  };
-
-  let tree: OpTreeNode[];
-  let expanded: React.Key[];
-  if (isForPlanView) {
-    tree = buildTreeDay("", operations);
-    expanded = expandTree(tree, 5, 0, 2);
-  } else {
-    tree = buildTreePlan(operations);
-    expanded = expandTree(tree, 5, 1, 3);
-  }
-  return { tree, expanded };
-};
-
-const sortByKey = (a: OpTreeNode, b: OpTreeNode) => {
-  if (a.key < b.key) {
-    return 1;
-  } else if (a.key > b.key) {
-    return -1;
-  }
-  return 0;
-};
-
-const sortByKeyReverse = (a: OpTreeNode, b: OpTreeNode) => {
-  return -sortByKey(a, b);
 };
 
 const BackupViewContainer = ({ children }: { children: React.ReactNode }) => {
