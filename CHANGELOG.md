@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.2](https://github.com/garethgeorge/backrest/compare/v1.9.1...v1.9.2) (2025-08-08)
+
+
+### Bug Fixes
+
+* 'items' shows the total number of flows under the parent node rather than immediate decendents ([16e6ede](https://github.com/garethgeorge/backrest/commit/16e6edef9dc2af29430520caad503ca0a476cd78))
+* further improve tree view layout and display preview item counts for hidden subtrees ([fe78df3](https://github.com/garethgeorge/backrest/commit/fe78df34c6d89b4a75620e46df6a53e0b6a758da))
+* improve optree view layout and performance with lazy rendering ([c84a084](https://github.com/garethgeorge/backrest/commit/c84a08475f8a55d1e7c531e596653801ba2c0225))
+
 ## [1.9.1](https://github.com/garethgeorge/backrest/compare/v1.9.0...v1.9.1) (2025-08-06)
 
 
