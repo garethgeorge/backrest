@@ -11,7 +11,7 @@ import {
   Spin,
   Typography,
 } from "antd";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useConfig } from "../components/ConfigProvider";
 import {
   SummaryDashboardResponse,
@@ -40,10 +40,7 @@ import { isMobile } from "../lib/browserutil";
 import { useNavigate } from "react-router";
 import { toJsonString } from "@bufbuild/protobuf";
 import { ConfigSchema, Multihost } from "../../gen/ts/v1/config_pb";
-import {
-  subscribeToPeerStates,
-  unsubscribeFromPeerStates,
-} from "../state/peerstates";
+import { useSyncStates } from "../state/peerstates";
 import { PeerState } from "../../gen/ts/v1/syncservice_pb";
 import { PeerStateConnectionStatusIcon } from "../components/SyncStateIcon";
 import { last } from "lodash";
@@ -320,25 +317,14 @@ const MultihostSummary = ({
 }: {
   multihostConfig: Multihost | null;
 }) => {
-  const [peerStates, setPeerStates] = useState<Map<string, PeerState>>(
-    new Map()
-  );
-
-  useEffect(() => {
-    const cb = (syncStates: PeerState[]) => {
-      setPeerStates((prev) => {
-        const updated = new Map(prev);
-        for (const state of syncStates) {
-          updated.set(state.peerKeyid, state);
-        }
-        return updated;
-      });
-    };
-    subscribeToPeerStates(cb);
-    return () => {
-      unsubscribeFromPeerStates(cb);
-    };
-  }, []);
+  const allPeerStates = useSyncStates();
+  const peerStates = useMemo(() => {
+    const map = new Map<string, PeerState>();
+    for (const state of allPeerStates) {
+      map.set(state.peerKeyid, state);
+    }
+    return map;
+  }, [allPeerStates]);
 
   const knownHostTiles: JSX.Element[] = [];
   for (const cfgPeer of multihostConfig?.knownHosts || []) {

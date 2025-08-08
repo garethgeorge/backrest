@@ -8,6 +8,7 @@ import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
 import { BackupProgressEntry, ResticSnapshot, RestoreProgressEntry } from "../../gen/ts/v1/restic_pb";
 import _ from "lodash";
 import { backrestService } from "../api";
+import { useEffect, useState } from "react";
 
 const subscribers: ((event?: OperationEvent, err?: Error) => void)[] = [];
 
@@ -54,7 +55,6 @@ export const unsubscribeFromOperations = (
   }
   console.log("unsubscribed from operations, subscriber count: ", subscribers.length);
 };
-
 
 export const shouldHideOperation = (operation: Operation) => {
   return (

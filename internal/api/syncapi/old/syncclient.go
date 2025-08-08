@@ -14,6 +14,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -125,7 +126,7 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 				state.ConnectionState = syncErr.State
 				state.ConnectionStateMessage = syncErr.Message.Error()
 			} else {
-				state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL
+				state.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_ERROR_INTERNAL
 				state.ConnectionStateMessage = err.Error()
 			}
 			c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, state)
@@ -210,7 +211,7 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 	if peerState == nil {
 		peerState = newPeerState(c.peer.InstanceId, peer.Keyid)
 	}
-	peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_CONNECTED
+	peerState.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_CONNECTED
 	peerState.ConnectionStateMessage = "connected"
 	peerState.LastHeartbeat = time.Now()
 	c.mgr.peerStateManager.SetPeerState(peer.Keyid, peerState)
@@ -222,7 +223,7 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 
 	// start by forwarding the configuration and the resource lists the peer is allowed to see.
 	{
-		remoteConfig := &v1.RemoteConfig{
+		remoteConfig := &v1sync.RemoteConfig{
 			Version: localConfig.Version,
 			Modno:   localConfig.Modno,
 		}

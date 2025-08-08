@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -72,9 +73,9 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 				h.mgr.peerStateManager.SetPeerState(sessionHandler.peer.Keyid, peerState)
 			}
 			switch syncErr.State {
-			case v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH:
+			case v1sync.ConnectionState_CONNECTION_STATE_ERROR_AUTH:
 				return connect.NewError(connect.CodePermissionDenied, syncErr.Message)
-			case v1.SyncConnectionState_CONNECTION_STATE_ERROR_PROTOCOL:
+			case v1sync.ConnectionState_CONNECTION_STATE_ERROR_PROTOCOL:
 				return connect.NewError(connect.CodeInvalidArgument, syncErr.Message)
 			default:
 				return connect.NewError(connect.CodeInternal, syncErr.Message)
@@ -141,7 +142,7 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 	// Configure the state for the connected peer.
 	peerState := newPeerState(peer.InstanceId, h.peer.Keyid)
 	peerState.ConnectionStateMessage = "connected"
-	peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_CONNECTED
+	peerState.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_CONNECTED
 	peerState.LastHeartbeat = time.Now()
 	h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, peerState)
 
@@ -420,7 +421,7 @@ func (h *syncSessionHandlerServer) deleteByOriginalID(originalID int64) error {
 }
 
 func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStream, config *v1.Config) error {
-	remoteConfig := &v1.RemoteConfig{
+	remoteConfig := &v1sync.RemoteConfig{
 		Version: config.Version,
 		Modno:   config.Modno,
 	}

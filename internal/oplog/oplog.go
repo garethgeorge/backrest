@@ -20,6 +20,7 @@ var (
 	ErrStopIteration = errors.New("stop iteration")
 	ErrNotExist      = errors.New("operation does not exist")
 	ErrExist         = errors.New("operation already exists")
+	ErrNoResults     = errors.New("no results found")
 
 	NullOPID = int64(0)
 )
@@ -74,8 +75,44 @@ func (o *OpLog) Query(q Query, f func(*v1.Operation) error) error {
 	return o.store.Query(q, f)
 }
 
+func (o *OpLog) FindOne(q Query) (*v1.Operation, error) {
+	var found *v1.Operation
+	err := o.store.Query(q, func(op *v1.Operation) error {
+		if found != nil {
+			return errors.New("more than one operation found")
+		}
+		found = op
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if found == nil {
+		return nil, ErrNoResults
+	}
+	return found, nil
+}
+
 func (o *OpLog) QueryMetadata(q Query, f func(OpMetadata) error) error {
 	return o.store.QueryMetadata(q, f)
+}
+
+func (o *OpLog) FindOneMetadata(q Query) (OpMetadata, error) {
+	var found OpMetadata
+	err := o.store.QueryMetadata(q, func(op OpMetadata) error {
+		if found.ID != 0 {
+			return errors.New("more than one operation found")
+		}
+		found = op
+		return nil
+	})
+	if err != nil {
+		return OpMetadata{}, err
+	}
+	if found.ID == 0 {
+		return OpMetadata{}, ErrNoResults
+	}
+	return found, nil
 }
 
 func (o *OpLog) Subscribe(q Query, f *Subscription) {

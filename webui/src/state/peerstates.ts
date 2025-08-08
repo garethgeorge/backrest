@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { PeerState } from "../../gen/ts/v1/syncservice_pb";
 import { syncStateService } from "../api";
 
@@ -43,18 +44,19 @@ const subscribeToSyncStates = async (
 let peerStates: Map<string, PeerState> = new Map();
 const subscribers: Set<(peerStates: PeerState[]) => void> = new Set();
 
-export const subscribeToPeerStates = (
+const subscribeToPeerStates = (
   callback: (peerStates: PeerState[]) => void,
 ): void => {
   subscribers.add(callback);
   callback(Array.from(peerStates.values()));
 };
 
-export const unsubscribeFromPeerStates = (
+const unsubscribeFromPeerStates = (
   callback: (peerStates: PeerState[]) => void,
 ): void => {
   subscribers.delete(callback);
 };
+
 
 (async () => {
   const abortController = new AbortController(); // never aborts at the moment.
@@ -73,3 +75,23 @@ export const unsubscribeFromPeerStates = (
     }
   }, abortController);
 })();
+
+export const useSyncStates = (): PeerState[] => {
+  const [syncStates, setSyncStates] = useState<PeerState[]>(() =>
+    Array.from(peerStates.values())
+  );
+
+  useEffect(() => {
+    const handleStateUpdate = (states: PeerState[]) => {
+      setSyncStates(states);
+    };
+
+    subscribeToPeerStates(handleStateUpdate);
+
+    return () => {
+      unsubscribeFromPeerStates(handleStateUpdate);
+    };
+  }, []);
+
+  return syncStates;
+};
