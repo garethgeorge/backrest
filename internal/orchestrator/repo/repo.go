@@ -114,21 +114,14 @@ func (r *RepoOrchestrator) Mount(ctx context.Context) (string, func(), error) {
 			return "", func() {}, r.mountErr
 		}
 
-		// Give mount 60 seconds to succeed, but if it succeeds allow it to run indefinitely in the background.
-		mountCtx, cancel := context.WithCancel(context.Background())
-		cancelMounting := time.AfterFunc(60*time.Second, func() {
-			cancel()
-		})
-
-		if err := r.repo.Mount(mountCtx, r.mountDir); err != nil {
+		mountCtx, cancel := context.WithCancel(ctx)
+		if err := r.repo.Mount(mountCtx, r.mountDir, 60*time.Second); err != nil {
 			r.logger(ctx).Warn("failed to mount repo", zap.Error(err))
 			r.mountErr = fmt.Errorf("mount repo %v: %w", r.repoConfig.Id, err)
 			cancel()
-			cancelMounting.Stop()
 			os.Remove(r.mountDir)
 			return "", func() {}, r.mountErr
 		}
-		cancelMounting.Stop()
 		r.mountTimer = time.AfterFunc(1000*time.Hour, func() {
 			r.mountMu.Lock()
 			defer r.mountMu.Unlock()

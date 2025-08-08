@@ -468,7 +468,7 @@ func (r *Repo) Stats(ctx context.Context, opts ...GenericOption) (*RepoStats, er
 	return &stats, nil
 }
 
-func (r *Repo) Mount(ctx context.Context, dir string, opts ...GenericOption) error {
+func (r *Repo) Mount(ctx context.Context, dir string, mountTimeout time.Duration, opts ...GenericOption) error {
 	// Check if already mounted
 	if info, err := os.Stat(dir); err == nil {
 		if info.IsDir() {
@@ -489,11 +489,17 @@ func (r *Repo) Mount(ctx context.Context, dir string, opts ...GenericOption) err
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
+	timeout := time.NewTimer(mountTimeout)
+	defer timeout.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			cmd.Process.Kill()
 			return ctx.Err()
+		case <-timeout.C:
+			cmd.Process.Kill()
+			return fmt.Errorf("mount timeout")
 		case <-ticker.C:
 			if _, err := os.Stat(dir); err == nil {
 				if ents, err := os.ReadDir(filepath.Join(dir, "ids")); err == nil && len(ents) > 0 {
