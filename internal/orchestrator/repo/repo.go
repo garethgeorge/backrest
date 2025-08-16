@@ -114,7 +114,7 @@ func (r *RepoOrchestrator) Mount(ctx context.Context) (string, func(), error) {
 			return "", func() {}, r.mountErr
 		}
 
-		mountCtx, cancel := context.WithCancel(ctx)
+		mountCtx, cancel := context.WithCancel(context.Background())
 		if err := r.repo.Mount(mountCtx, r.mountDir, 60*time.Second); err != nil {
 			r.logger(ctx).Warn("failed to mount repo", zap.Error(err))
 			r.mountErr = fmt.Errorf("mount repo %v: %w", r.repoConfig.Id, err)
