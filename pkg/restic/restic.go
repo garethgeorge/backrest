@@ -71,7 +71,7 @@ func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...Ge
 		sw := &ioutil.SynchronizedWriter{W: logger}
 		cmd.Stderr = sw
 		cmd.Stdout = sw
-		fmt.Fprintf(logger, "\ncommand: %q\n", fullCmd)
+		fmt.Fprintf(logger, "command: %q\n", fullCmd)
 	}
 
 	return cmd
