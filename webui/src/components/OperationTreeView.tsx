@@ -271,25 +271,30 @@ const DisplayOperationTree = ({
       return treeData;
     };
 
-    const createTree = (
-      operations: FlowDisplayInfo[],
+    interface treeSpec {
       levels: {
         groupingFn: (op: FlowDisplayInfo) => string;
         titleFn: (exemplar: FlowDisplayInfo) => React.ReactNode;
         sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) => boolean;
-      }[],
-      leafGroupFn: (op: FlowDisplayInfo) => string,
-      leafFn: (groupKey: string, ops: FlowDisplayInfo[]) => OpTreeNode,
-      sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) => boolean,
+      }[];
+      leafGroupFn: (op: FlowDisplayInfo) => string;
+      leafFn: (groupKey: string, ops: FlowDisplayInfo[]) => OpTreeNode;
+      leafSortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) => boolean;
+    }
+
+    const createTree = (
+      operations: FlowDisplayInfo[],
+      spec: treeSpec,
       expandedKeys: Set<React.Key>
     ) => {
       let levelFn = createTreeLevel.bind(
         null,
-        leafGroupFn,
-        (groupKey: string, ops: FlowDisplayInfo[]) => leafFn(groupKey, ops),
-        sortFn
+        spec.leafGroupFn,
+        (groupKey: string, ops: FlowDisplayInfo[]) =>
+          spec.leafFn(groupKey, ops),
+        spec.leafSortFn
       );
-      const [finalLevelFn, foo] = levels.reduceRight(
+      const [finalLevelFn, foo] = spec.levels.reduceRight(
         ([fn, childGroupFn], level) => {
           return [
             createTreeLevel.bind(
@@ -326,7 +331,7 @@ const DisplayOperationTree = ({
             level.groupingFn,
           ];
         },
-        [levelFn, leafGroupFn]
+        [levelFn, spec.leafGroupFn]
       );
       return finalLevelFn(operations, expandedKeys);
     };
@@ -384,45 +389,40 @@ const DisplayOperationTree = ({
     const leafSortFn = (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
       op1.displayTime > op2.displayTime;
 
-    const createPlanTree = (
-      operations: FlowDisplayInfo[],
-      expandedKeys: Set<React.Key>
-    ) => {
-      return createTree(
-        operations,
-        [planLayer, monthLayer, dayLayer],
-        leafGroupFn,
-        leafFn,
-        leafSortFn,
-        expandedKeys
-      );
+    const planTreeSpec: treeSpec = {
+      levels: [planLayer, monthLayer, dayLayer],
+      leafGroupFn,
+      leafFn,
+      leafSortFn,
     };
 
-    const createDayTree = (
-      operations: FlowDisplayInfo[],
+    const dayTreeSpec: treeSpec = {
+      levels: [monthLayer, dayLayer],
+      leafGroupFn,
+      leafFn,
+      leafSortFn,
+    };
+
+    const expandOperation = (
+      treeSpec: treeSpec,
+      op: FlowDisplayInfo,
       expandedKeys: Set<React.Key>
     ) => {
-      return createTree(
-        operations,
-        [monthLayer, dayLayer],
-        leafGroupFn,
-        leafFn,
-        leafSortFn,
-        expandedKeys
-      );
+      let finalPrefix = treeSpec.levels.reduce((keyPrefix, level) => {
+        let groupKey = level.groupingFn(op);
+        let newKey = keyPrefix + "\0" + groupKey;
+        expandedKeys.add(newKey);
+        return newKey;
+      }, "");
+      let groupKey = treeSpec.leafGroupFn(op);
+      let newKey = finalPrefix + "\0" + groupKey;
+      expandedKeys.add(newKey);
     };
 
     useEffect(() => {
       const timeoutId = setTimeout(() => {
-        const getTreeData = (expandedKeys: Set<React.Key>) => {
-          let nodes: OpTreeNode[];
-          if (isPlanView) {
-            nodes = createDayTree(operations, expandedKeys);
-          } else {
-            nodes = createPlanTree(operations, expandedKeys);
-          }
-          return nodes;
-        };
+        let spec = isPlanView ? dayTreeSpec : planTreeSpec;
+        let expandedKeysCopy = new Set(expandedKeys);
 
         // Do expansion passes, the algorithm is multipass since each pass may add new nodes eligible for expansion
         // Bounded at 10 passes which should be deep enough for any tree layout backrest uses.
@@ -433,7 +433,7 @@ const DisplayOperationTree = ({
             let newExpanded = new Set<React.Key>();
             const added = expandFirstN(
               target,
-              getTreeData(prevExpanded),
+              createTree(operations, spec, prevExpanded),
               newExpanded
             );
             prevExpanded = newExpanded;
@@ -441,10 +441,24 @@ const DisplayOperationTree = ({
               break;
             }
           }
-          setExpandedKeys(prevExpanded);
+          expandedKeysCopy = prevExpanded;
+          setExpandedKeys(expandedKeysCopy);
         }
 
-        setTreeData(getTreeData(expandedKeys));
+        // Expand in-progress or pending operations.
+        for (let op of operations) {
+          if (
+            op.status === OperationStatus.STATUS_INPROGRESS ||
+            op.status === OperationStatus.STATUS_PENDING
+          ) {
+            expandOperation(planTreeSpec, op, expandedKeysCopy);
+          }
+        }
+        if (expandedKeysCopy.size > expandedKeys.size) {
+          setExpandedKeys(expandedKeysCopy);
+        }
+
+        setTreeData(createTree(operations, spec, expandedKeysCopy));
       }, 10);
       return () => clearTimeout(timeoutId);
     }, [operations, expandedKeys]);
