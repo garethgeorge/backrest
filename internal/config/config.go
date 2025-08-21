@@ -41,6 +41,11 @@ func (m *ConfigManager) migrate(config *v1.Config) error {
 		mutated = true
 	}
 	if mutated {
+		// Check validations
+		if err := ValidateConfig(config); err != nil {
+			return fmt.Errorf("validation after migration: %v", err)
+		}
+
 		// Write back the migrated config.
 		if err := m.Store.Update(config); err != nil {
 			return err
