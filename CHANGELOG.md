@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.2](https://github.com/garethgeorge/backrest/compare/v1.9.1...v1.9.2) (2025-08-21)
+
+
+### Bug Fixes
+
+* 'items' shows the total number of flows under the parent node rather than immediate decendents ([16e6ede](https://github.com/garethgeorge/backrest/commit/16e6edef9dc2af29430520caad503ca0a476cd78))
+* auto expand parents of pending and in-progress operations in tree view ([3d97894](https://github.com/garethgeorge/backrest/commit/3d978948bb04805481d3f1fc5bfd32457924bccf))
+* further improve tree view layout and display preview item counts for hidden subtrees ([fe78df3](https://github.com/garethgeorge/backrest/commit/fe78df34c6d89b4a75620e46df6a53e0b6a758da))
+* improve optree view layout and performance with lazy rendering ([c84a084](https://github.com/garethgeorge/backrest/commit/c84a08475f8a55d1e7c531e596653801ba2c0225))
+* modernize windows installer with Inno Setup ([#867](https://github.com/garethgeorge/backrest/issues/867)) ([dc481e5](https://github.com/garethgeorge/backrest/commit/dc481e55c8b5ded17009dc2f57eaa8946467f1f0))
+* use zap logger for restic log formatting ([8c3d7ef](https://github.com/garethgeorge/backrest/commit/8c3d7ef55dde1c69f662e94f56ffa5bcc7654bb2))
+
 ## [1.9.1](https://github.com/garethgeorge/backrest/compare/v1.9.0...v1.9.1) (2025-08-06)
 
 
