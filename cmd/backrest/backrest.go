@@ -205,9 +205,7 @@ func main() {
 }
 
 func createConfigProvider() config.ConfigStore {
-	return &config.CachingValidatingStore{
-		ConfigStore: &config.JsonFileStore{Path: env.ConfigFilePath()},
-	}
+	return &config.JsonFileStore{Path: env.ConfigFilePath()}
 }
 
 func onterm(s os.Signal, callback func()) {

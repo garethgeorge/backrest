@@ -20,6 +20,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/config/migrations"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -33,6 +34,7 @@ import (
 )
 
 func createConfigManager(cfg *v1.Config) *config.ConfigManager {
+	cfg.Version = migrations.CurrentVersion
 	return &config.ConfigManager{
 		Store: &config.MemoryStore{
 			Config: cfg,

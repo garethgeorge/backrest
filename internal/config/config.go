@@ -20,6 +20,9 @@ type ConfigManager struct {
 
 	migrateOnce sync.Once
 	migrateErr  error
+
+	cachedMu sync.Mutex
+	cached   *v1.Config
 }
 
 var _ ConfigStore = &ConfigManager{}
@@ -47,24 +50,54 @@ func (m *ConfigManager) migrate(config *v1.Config) error {
 }
 
 func (m *ConfigManager) Get() (*v1.Config, error) {
+	m.cachedMu.Lock()
+	defer m.cachedMu.Unlock()
+
+	if m.cached != nil {
+		return m.cached, nil
+	}
+
 	config, err := m.Store.Get()
 	if err != nil {
+		if errors.Is(err, ErrConfigNotFound) {
+			m.cached = NewDefaultConfig()
+			return m.cached, nil
+		}
 		return nil, err
 	}
+
+	// Try to apply migrations
 	m.migrateOnce.Do(func() {
 		m.migrateErr = m.migrate(config)
 	})
 	if m.migrateErr != nil {
 		return nil, m.migrateErr
 	}
-	return config, nil
+
+	// Validate the config
+	if err := ValidateConfig(config); err != nil {
+		return nil, err
+	}
+
+	// Finally cache it for performance
+	m.cached = config
+
+	return config, err
 }
 
 func (m *ConfigManager) Update(config *v1.Config) error {
+	m.cachedMu.Lock()
+	defer m.cachedMu.Unlock()
+
+	if err := ValidateConfig(config); err != nil {
+		return err
+	}
+
 	err := m.Store.Update(config)
 	if err != nil {
 		return err
 	}
+	m.cached = config
 	m.OnChange.Emit(struct{}{})
 	return nil
 }
@@ -105,53 +138,4 @@ func PopulateRequiredFields(config *v1.Config) (mutated bool, err error) {
 		mutated = true
 	}
 	return
-}
-
-// TODO: merge caching validating store functions into config manager
-type CachingValidatingStore struct {
-	ConfigStore
-	mu     sync.Mutex
-	config *v1.Config
-}
-
-func (c *CachingValidatingStore) Get() (*v1.Config, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.config != nil {
-		return c.config, nil
-	}
-
-	config, err := c.ConfigStore.Get()
-	if err != nil {
-		if errors.Is(err, ErrConfigNotFound) {
-			c.config = NewDefaultConfig()
-			return c.config, nil
-		}
-		return c.config, err
-	}
-
-	// Validate the config
-	if err := ValidateConfig(config); err != nil {
-		return nil, err
-	}
-
-	c.config = config
-	return config, nil
-}
-
-func (c *CachingValidatingStore) Update(config *v1.Config) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if err := ValidateConfig(config); err != nil {
-		return err
-	}
-
-	if err := c.ConfigStore.Update(config); err != nil {
-		return err
-	}
-
-	c.config = config
-	return nil
 }
