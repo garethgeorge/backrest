@@ -2,12 +2,15 @@ package kvstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 )
+
+var ErrNotExist = errors.New("key does not exist")
 
 const (
 	escapeChar = "\\"
@@ -86,6 +89,7 @@ func (s *sqliteKvStoreImpl) Get(key string) ([]byte, error) {
 	}
 	defer s.dbpool.Put(conn)
 
+	found := false
 	var value []byte
 	err = sqlitex.Execute(conn, s.getSQL, &sqlitex.ExecOptions{
 		Args: []any{key},
@@ -93,11 +97,15 @@ func (s *sqliteKvStoreImpl) Get(key string) ([]byte, error) {
 			value = make([]byte, stmt.ColumnLen(0))
 			n := stmt.ColumnBytes(0, value)
 			value = value[:n]
+			found = true
 			return nil
 		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get from kvstore: %v", err)
+	}
+	if !found {
+		return nil, ErrNotExist
 	}
 	return value, nil
 }
