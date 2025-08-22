@@ -2,6 +2,7 @@ package sqlitestore
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
@@ -41,7 +42,8 @@ type SqliteStore struct {
 
 	tidyGroupsOnce sync.Once
 
-	kvstore kvstore.KvStore
+	kvstore      kvstore.KvStore
+	highestModno atomic.Int64
 }
 
 var _ oplog.OpStore = (*SqliteStore)(nil)
@@ -89,10 +91,17 @@ func NewMemorySqliteStore() (*SqliteStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
 	}
+
+	kvstore, err := kvstore.NewSqliteKVStore(dbpool, "oplog_metadata")
+	if err != nil {
+		return nil, fmt.Errorf("create kvstore: %v", err)
+	}
+
 	ogidCache, _ := lru.New2Q[opGroupInfo, int64](128)
 	store := &SqliteStore{
 		dbpool:    dbpool,
 		ogidCache: ogidCache,
+		kvstore:   kvstore,
 	}
 	if err := store.init(); err != nil {
 		return nil, err
@@ -129,41 +138,38 @@ func (m *SqliteStore) init() error {
 		return fmt.Errorf("init sqlite: %v", err)
 	}
 
-	return nil
-}
-
-func (m *SqliteStore) Version() (int64, error) {
-	conn, err := m.dbpool.Take(context.Background())
-	if err != nil {
-		return 0, fmt.Errorf("get version: %v", err)
-	}
-	defer m.dbpool.Put(conn)
-
-	var version int64
-	if err := sqlitex.ExecuteTransient(conn, "SELECT version FROM system_info", &sqlitex.ExecOptions{
+	if err := sqlitex.ExecuteTransient(conn, "SELECT operations.modno FROM operations ORDER BY operations.modno DESC LIMIT 1", &sqlitex.ExecOptions{
 		ResultFunc: func(stmt *sqlite.Stmt) error {
-			version = stmt.GetInt64("version")
+			m.highestModno.Store(stmt.GetInt64("modno"))
 			return nil
 		},
 	}); err != nil {
-		return 0, fmt.Errorf("get version: %v", err)
+		return fmt.Errorf("init sqlite: %v", err)
 	}
-	return version, nil
+
+	return nil
+}
+
+func (m *SqliteStore) nextModno() int64 {
+	return m.highestModno.Add(1)
+}
+
+func (m *SqliteStore) Version() (int64, error) {
+	versionBytes, err := m.kvstore.Get(metadataKeyVersion)
+	if err != nil {
+		if errors.Is(err, kvstore.ErrNotExist) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	if len(versionBytes) != 8 {
+		return 0, fmt.Errorf("version bytes length is not 8: %d", len(versionBytes))
+	}
+	return int64(binary.LittleEndian.Uint64(versionBytes)), nil
 }
 
 func (m *SqliteStore) SetVersion(version int64) error {
-	conn, err := m.dbpool.Take(context.Background())
-	if err != nil {
-		return fmt.Errorf("set version: %v", err)
-	}
-	defer m.dbpool.Put(conn)
-
-	if err := sqlitex.ExecuteTransient(conn, "UPDATE system_info SET version = ?", &sqlitex.ExecOptions{
-		Args: []any{version},
-	}); err != nil {
-		return fmt.Errorf("set version: %v", err)
-	}
-	return nil
+	return m.kvstore.Set(metadataKeyVersion, binary.LittleEndian.AppendUint64(nil, uint64(version)))
 }
 
 func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses bool) (string, []any) {
@@ -365,7 +371,7 @@ func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operat
 					return nil
 				}
 
-				newOp.Modno = oplog.NewRandomModno(op.Modno)
+				newOp.Modno = m.nextModno()
 
 				return m.updateInternal(conn, newOp)
 			},
@@ -413,6 +419,7 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 	return withImmediateSqliteTransaction(conn, func() error {
 		for _, o := range op {
 			o.Id = m.lastIDVal.Add(1)
+			o.Modno = m.nextModno()
 			if o.FlowId == 0 {
 				o.FlowId = o.Id
 			}
@@ -439,6 +446,7 @@ func (m *SqliteStore) Update(op ...*v1.Operation) error {
 
 func (m *SqliteStore) updateInternal(conn *sqlite.Conn, op ...*v1.Operation) error {
 	for _, o := range op {
+		o.Modno = m.nextModno()
 		if err := protoutil.ValidateOperation(o); err != nil {
 			return err
 		}

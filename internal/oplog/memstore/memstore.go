@@ -14,6 +14,7 @@ type MemStore struct {
 	mu         sync.Mutex
 	operations map[int64]*v1.Operation
 	nextID     int64
+	nextModno  int64
 }
 
 var _ oplog.OpStore = &MemStore{}
@@ -112,7 +113,8 @@ func (m *MemStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operation
 			}
 			return err
 		} else if op != nil {
-			op.Modno = oplog.NewRandomModno(m.operations[id].Modno)
+			m.nextModno++
+			op.Modno = m.nextModno
 			changes[id] = op
 		}
 	}
@@ -132,6 +134,8 @@ func (m *MemStore) Add(op ...*v1.Operation) error {
 	for _, o := range op {
 		m.nextID++
 		o.Id = m.nextID
+		m.nextModno++
+		o.Modno = m.nextModno
 		if o.FlowId == 0 {
 			o.FlowId = o.Id
 		}
@@ -171,6 +175,8 @@ func (m *MemStore) Update(op ...*v1.Operation) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, o := range op {
+		m.nextModno++
+		o.Modno = m.nextModno
 		if err := protoutil.ValidateOperation(o); err != nil {
 			return err
 		}
