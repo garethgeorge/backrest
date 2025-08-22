@@ -15,10 +15,6 @@ const sqlSchemaVersion = 5
 var sqlSchema = fmt.Sprintf(`
 PRAGMA user_version = %d;
 
-CREATE TABLE IF NOT EXISTS system_info (version INTEGER NOT NULL);
-INSERT INTO system_info (version)
-SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM system_info);
-
 CREATE TABLE operations (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	ogid INTEGER NOT NULL,
@@ -52,7 +48,42 @@ CREATE INDEX group_repo_guid ON operation_groups (repo_guid);
 CREATE INDEX group_instance ON operation_groups (instance_id);
 `, sqlSchemaVersion)
 
+func migrateSystemInfoTable(store *SqliteStore, conn *sqlite.Conn) error {
+	// Check if system_info table exists, if it does convert it to fields in kvstore
+	var hasSystemInfoTable bool
+	if err := sqlitex.ExecuteTransient(conn, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='system_info'", &sqlitex.ExecOptions{
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			hasSystemInfoTable = stmt.ColumnInt(0) > 0
+			return nil
+		},
+	}); err != nil {
+		return fmt.Errorf("checking for system_info table: %w", err)
+	}
+
+	if hasSystemInfoTable {
+		var version int
+		if err := sqlitex.ExecuteTransient(conn, "SELECT version FROM system_info", &sqlitex.ExecOptions{
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				version = stmt.ColumnInt(0)
+				return nil
+			},
+		}); err != nil {
+			return fmt.Errorf("getting database schema version: %w", err)
+		}
+
+		if err := store.SetVersion(int64(version)); err != nil {
+			return fmt.Errorf("setting database schema version: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func applySqliteMigrations(store *SqliteStore, conn *sqlite.Conn) error {
+	if err := migrateSystemInfoTable(store, conn); err != nil {
+		return err
+	}
+
 	var version int
 	if err := sqlitex.ExecuteTransient(conn, "PRAGMA user_version", &sqlitex.ExecOptions{
 		ResultFunc: func(stmt *sqlite.Stmt) error {

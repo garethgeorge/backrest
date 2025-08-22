@@ -14,6 +14,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/ioutil"
+	"github.com/garethgeorge/backrest/internal/kvstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -27,6 +28,10 @@ import (
 
 var ErrLocked = errors.New("sqlite db is locked")
 
+const (
+	metadataKeyVersion = "version"
+)
+
 type SqliteStore struct {
 	dbpool    *sqlitex.Pool
 	lastIDVal atomic.Int64
@@ -35,6 +40,8 @@ type SqliteStore struct {
 	ogidCache *lru.TwoQueueCache[opGroupInfo, int64]
 
 	tidyGroupsOnce sync.Once
+
+	kvstore kvstore.KvStore
 }
 
 var _ oplog.OpStore = (*SqliteStore)(nil)
@@ -50,11 +57,18 @@ func NewSqliteStore(db string) (*SqliteStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
 	}
+
+	kvstore, err := kvstore.NewSqliteKVStore(dbpool, "oplog_metadata")
+	if err != nil {
+		return nil, fmt.Errorf("create kvstore: %v", err)
+	}
+
 	ogidCache, _ := lru.New2Q[opGroupInfo, int64](128)
 	store := &SqliteStore{
 		dbpool:    dbpool,
 		dblock:    flock.New(db + ".lock"),
 		ogidCache: ogidCache,
+		kvstore:   kvstore,
 	}
 	if locked, err := store.dblock.TryLock(); err != nil {
 		return nil, fmt.Errorf("lock sqlite db: %v", err)
