@@ -14,6 +14,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/metric"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/orchestrator/hookvars"
 	"github.com/garethgeorge/backrest/internal/orchestrator/logging"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
@@ -632,15 +633,38 @@ func (o *Orchestrator) cleanupTaskContext(ctx context.Context, op *v1.Operation,
 func (o *Orchestrator) executeTask(ctx context.Context, st tasks.ScheduledTask) error {
 	start := time.Now()
 	runner := newTaskRunnerImpl(o, st.Task, st.Op)
+
+	// Execute task start hook type
+	vars := hookvars.HookVars{
+		Task:    st.Task.Name(),
+		Event:   v1.Hook_CONDITION_TASK_START,
+		CurTime: start,
+	}
+	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{v1.Hook_CONDITION_TASK_START}, vars); err != nil {
+		return err
+	}
+
 	err := st.Task.Run(ctx, st, runner)
+
+	vars.CurTime = time.Now()
+	vars.Duration = time.Since(vars.CurTime)
 
 	// Record metrics based on task result
 	if err != nil {
+		vars.Event = v1.Hook_CONDITION_TASK_ERROR
+		vars.Error = err.Error()
 		runner.Logger(ctx).Error("task failed", zap.Error(err), zap.Duration("duration", time.Since(start)))
 		metric.GetRegistry().RecordTaskRun(st.Task.RepoID(), st.Task.PlanID(), st.Task.Type(), time.Since(start).Seconds(), "failed")
+		if e := runner.ExecuteHooks(ctx, []v1.Hook_Condition{v1.Hook_CONDITION_TASK_ERROR}, vars); e != nil {
+			err = multierr.Append(err, e)
+		}
 	} else {
+		vars.Event = v1.Hook_CONDITION_TASK_SUCCESS
 		runner.Logger(ctx).Info("task finished", zap.Duration("duration", time.Since(start)))
 		metric.GetRegistry().RecordTaskRun(st.Task.RepoID(), st.Task.PlanID(), st.Task.Type(), time.Since(start).Seconds(), "success")
+		if e := runner.ExecuteHooks(ctx, []v1.Hook_Condition{v1.Hook_CONDITION_TASK_SUCCESS}, vars); e != nil {
+			err = e
+		}
 	}
 
 	return err

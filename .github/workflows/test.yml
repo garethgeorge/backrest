@@ -42,6 +42,32 @@ jobs:
       - name: Test
         run: PATH=$(pwd):$PATH gotestsum ./... -- --race
 
+  test-ui-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: cd webui && pnpm install
+
+      - name: Build UI
+        run: cd webui && pnpm build
+
+      - name: Check UI
+        run: pnpm run check
+
+      - name: Run tests
+
   test-win:
     runs-on: windows-latest
     steps:
