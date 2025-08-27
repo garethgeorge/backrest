@@ -218,7 +218,7 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan, tags []str
 		restic.WithFlags("--group-by", ""),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
+		return nil, fmt.Errorf("forget snapshots for repo %v: %w", r.repoConfig.Id, err)
 	}
 
 	var forgotten []*v1.ResticSnapshot
