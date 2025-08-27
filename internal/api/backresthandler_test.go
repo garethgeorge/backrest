@@ -46,7 +46,8 @@ func TestUpdateConfig(t *testing.T) {
 	t.Parallel()
 
 	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
-		Modno: 1234,
+		Version: 4,
+		Modno:   1234,
 	}))
 
 	tests := []struct {
@@ -109,6 +110,7 @@ func TestRemoveRepo(t *testing.T) {
 	t.Parallel()
 
 	mgr := createConfigManager(&v1.Config{
+		Version:  4,
 		Modno:    1234,
 		Instance: "test",
 		Repos: []*v1.Repo{
@@ -153,6 +155,7 @@ func TestBackup(t *testing.T) {
 	t.Parallel()
 
 	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
 		Modno:    1234,
 		Instance: "test",
 		Repos: []*v1.Repo{
@@ -249,6 +252,7 @@ func TestMultipleBackup(t *testing.T) {
 	t.Parallel()
 
 	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
 		Modno:    1234,
 		Instance: "test",
 		Repos: []*v1.Repo{
@@ -324,6 +328,7 @@ func TestHookExecution(t *testing.T) {
 	}
 
 	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
 		Modno:    1234,
 		Instance: "test",
 		Repos: []*v1.Repo{
@@ -414,6 +419,7 @@ func TestHookOnErrorHandling(t *testing.T) {
 	}
 
 	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
 		Modno:    1234,
 		Instance: "test",
 		Repos: []*v1.Repo{
@@ -633,6 +639,7 @@ func TestCancelBackup(t *testing.T) {
 	}
 
 	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
 		Modno:    1234,
 		Instance: "test",
 		Repos: []*v1.Repo{
@@ -730,6 +737,7 @@ func TestRestore(t *testing.T) {
 	}
 
 	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
 		Modno:    1234,
 		Instance: "test",
 		Repos: []*v1.Repo{
@@ -853,6 +861,7 @@ func TestRestore(t *testing.T) {
 func TestRunCommand(t *testing.T) {
 	testutil.InstallZapLogger(t)
 	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
 		Modno:    1234,
 		Instance: "test",
 		Repos: []*v1.Repo{
@@ -947,6 +956,7 @@ func TestMultihostIndexSnapshots(t *testing.T) {
 	plan2.Repo = "local2"
 
 	host1 := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
 		Modno:    1234,
 		Instance: "test1",
 		Repos: []*v1.Repo{
@@ -961,6 +971,7 @@ func TestMultihostIndexSnapshots(t *testing.T) {
 	}()
 
 	host2 := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
 		Modno:    1234,
 		Instance: "test2",
 		Repos: []*v1.Repo{
