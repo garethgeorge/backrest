@@ -7,7 +7,11 @@ import (
 )
 
 var dockerEnvVarDefaults = map[string]string{
-	"BACKREST_PORT": "0.0.0.0:9898",
+	"BACKREST_PORT":   "0.0.0.0:9898",
+	"BACKREST_DATA":   "/data",
+	"BACKREST_CONFIG": "/config/config.json",
+	"XDG_CACHE_HOME":  "/cache",
+	"TMPDIR":          "/tmp",
 }
 
 func main() {
