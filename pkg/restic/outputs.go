@@ -216,8 +216,8 @@ func processProgressOutput[T ProgressEntryValidator](
 		captureNonJSON = io.MultiWriter(nonJSONOutput, logger)
 	}
 
-	var summary *T
-	var nullT T
+	var summary T
+	var gotSummary bool
 
 	for scanner.Scan() {
 		line := scanner.Bytes()
@@ -230,7 +230,7 @@ func processProgressOutput[T ProgressEntryValidator](
 		}
 
 		if err := event.IsFatalError(); err != nil {
-			return nullT, newErrorWithOutput(fmt.Errorf("restic died with error: %v", err), nonJSONOutput.String())
+			return summary, newErrorWithOutput(fmt.Errorf("restic died with error: %v", err), nonJSONOutput.String())
 		}
 
 		if err := event.Validate(); err != nil {
@@ -239,27 +239,25 @@ func processProgressOutput[T ProgressEntryValidator](
 			continue
 		}
 
-		if callback != nil {
-			callback(event)
+		if event.IsSummary() {
+			gotSummary = true
+			summary = event
 		}
 
-		if event.IsSummary() {
-			captureNonJSON.Write(line)
-			captureNonJSON.Write([]byte("\n"))
-			eventCopy := event // Make a copy to avoid issues with loop variable
-			summary = &eventCopy
+		if callback != nil {
+			callback(event)
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nullT, newErrorWithOutput(err, nonJSONOutput.String())
+		return summary, newErrorWithOutput(err, nonJSONOutput.String())
 	}
 
-	if summary == nil {
-		return nullT, newErrorWithOutput(errors.New("no summary event found"), nonJSONOutput.String())
+	if !gotSummary {
+		return summary, newErrorWithOutput(errors.New("no summary event found"), nonJSONOutput.String())
 	}
 
-	return *summary, nil
+	return summary, nil
 }
 
 type LsEntry struct {
