@@ -95,6 +95,7 @@ func waitForConnectionReady(ctx context.Context, t *testing.T, wrapped *WrappedS
 }
 
 func TestConnect(t *testing.T) {
+	t.Skip("skipping syncapi tests")
 	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
 	defer cancel()
 

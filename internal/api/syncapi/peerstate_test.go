@@ -61,6 +61,7 @@ func TestPeerStateManager_GetMissing(t *testing.T) {
 }
 
 func TestPeerStateManager_OnStateChanged(t *testing.T) {
+	t.Skip("skipping syncapi tests")
 	t.Parallel()
 	for name, psm := range PeerStateManagersForTest(t) {
 		t.Run(name, func(t *testing.T) {

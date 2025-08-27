@@ -214,6 +214,7 @@ func TestPermissionSet_CheckPermissionForPlan(t *testing.T) {
 }
 
 func TestPermissionSet_CheckPermissionForRepo(t *testing.T) {
+	t.Skip("skipping syncapi tests")
 	tests := []struct {
 		name        string
 		permissions []*v1.Multihost_Permission

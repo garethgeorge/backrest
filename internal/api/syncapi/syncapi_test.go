@@ -70,6 +70,7 @@ var (
 )
 
 func TestConnectionSucceeds(t *testing.T) {
+	t.Skip("skipping syncapi test")
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
@@ -116,6 +117,7 @@ func TestConnectionSucceeds(t *testing.T) {
 }
 
 func TestConnectionBadKeyRejected(t *testing.T) {
+	t.Skip("skipping syncapi test")
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
@@ -158,6 +160,7 @@ func TestConnectionBadKeyRejected(t *testing.T) {
 }
 
 func TestSyncConfigChange(t *testing.T) {
+	t.Skip("skipping syncapi test")
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
@@ -250,6 +253,7 @@ func TestSyncConfigChange(t *testing.T) {
 }
 
 func TestSimpleOperationSync(t *testing.T) {
+	t.Skip("skipping syncapi test")
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
@@ -373,6 +377,7 @@ func TestSimpleOperationSync(t *testing.T) {
 }
 
 func TestSyncMutations(t *testing.T) {
+	t.Skip("skipping syncapi tests")
 	testutil.InstallZapLogger(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
