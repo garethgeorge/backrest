@@ -170,7 +170,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 				return
 			}
 			backupOp.OperationBackup.Errors = append(backupOp.OperationBackup.Errors, backupError)
-		} else if entry.MessageType != "summary" {
+		} else if entry.MessageType != "summary" && entry.MessageType != "verbose_status" {
 			zap.S().Warnf("unexpected message type %q in backup progress entry", entry.MessageType)
 		}
 

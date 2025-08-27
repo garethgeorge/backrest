@@ -84,12 +84,12 @@ func (s *Snapshot) Validate() error {
 
 type BackupProgressEntry struct {
 	// Common fields
-	MessageType string `json:"message_type"` // "summary" or "status" or "error"
+	MessageType string `json:"message_type"` // "summary" or "status" or "error" or "verbose_status" or "exit_error"
 
 	// Error fields
 	Error  any    `json:"error"`
 	During string `json:"during"`
-	Item   string `json:"item"`
+	Item   string `json:"item"` // also present for verbose_status for some actions
 
 	// Summary fields
 	FilesNew            int64   `json:"files_new"`
@@ -113,9 +113,27 @@ type BackupProgressEntry struct {
 	TotalBytes   int64    `json:"total_bytes"`
 	BytesDone    int64    `json:"bytes_done"`
 	CurrentFiles []string `json:"current_files"`
+
+	// Verbose status fields
+	Action string `json:"action"`
+
+	// Exit error fields
+	ExitError string `json:"exit_error"`
+	Message   string `json:"message"`
+}
+
+var validBackupMessageTypes = map[string]struct{}{
+	"summary":        {},
+	"status":         {},
+	"verbose_status": {},
+	"error":          {}, // Errors are not fatal, they are just logged.
 }
 
 func (b *BackupProgressEntry) Validate() error {
+	if _, ok := validBackupMessageTypes[b.MessageType]; !ok {
+		return fmt.Errorf("invalid message type: %v", b.MessageType)
+	}
+
 	if b.MessageType == "summary" && b.SnapshotId != "" {
 		if err := ValidateSnapshotId(b.SnapshotId); err != nil {
 			return err
@@ -125,8 +143,11 @@ func (b *BackupProgressEntry) Validate() error {
 	return nil
 }
 
-func (b *BackupProgressEntry) IsError() bool {
-	return b.MessageType == "error"
+func (b *BackupProgressEntry) IsFatalError() error {
+	if b.MessageType == "exit_error" {
+		return errors.New(b.Message)
+	}
+	return nil
 }
 
 func (b *BackupProgressEntry) IsSummary() bool {
@@ -134,24 +155,40 @@ func (b *BackupProgressEntry) IsSummary() bool {
 }
 
 type RestoreProgressEntry struct {
-	MessageType    string  `json:"message_type"` // "summary" or "status"
+	MessageType    string  `json:"message_type"` // "summary" or "status" or "verbose_status" or "error" or "exit_error"
 	SecondsElapsed float64 `json:"seconds_elapsed"`
 	TotalBytes     int64   `json:"total_bytes"`
 	BytesRestored  int64   `json:"bytes_restored"`
 	TotalFiles     int64   `json:"total_files"`
 	FilesRestored  int64   `json:"files_restored"`
 	PercentDone    float64 `json:"percent_done"`
+
+	// Verbose status fields
+	Action string `json:"action"`
+
+	// Exit error fields
+	ExitError string `json:"exit_error"`
+	Message   string `json:"message"`
+}
+
+var validRestoreMessageTypes = map[string]struct{}{
+	"summary":        {},
+	"status":         {},
+	"verbose_status": {},
+	"error":          {}, // Errors are not fatal, they are just logged.
 }
 
 func (e *RestoreProgressEntry) Validate() error {
-	if e.MessageType != "summary" && e.MessageType != "status" {
-		return fmt.Errorf("message_type must be 'summary' or 'status', got %v", e.MessageType)
+	if _, ok := validRestoreMessageTypes[e.MessageType]; !ok {
+		return fmt.Errorf("invalid message type: %v", e.MessageType)
 	}
 	return nil
 }
-
-func (r *RestoreProgressEntry) IsError() bool {
-	return r.MessageType == "error"
+func (e *RestoreProgressEntry) IsFatalError() error {
+	if e.MessageType == "exit_error" {
+		return errors.New(e.Message)
+	}
+	return nil
 }
 
 func (r *RestoreProgressEntry) IsSummary() bool {
@@ -160,7 +197,7 @@ func (r *RestoreProgressEntry) IsSummary() bool {
 
 type ProgressEntryValidator interface {
 	Validate() error
-	IsError() bool
+	IsFatalError() error
 	IsSummary() bool
 }
 
@@ -192,15 +229,14 @@ func processProgressOutput[T ProgressEntryValidator](
 			continue
 		}
 
+		if err := event.IsFatalError(); err != nil {
+			return nullT, newErrorWithOutput(fmt.Errorf("restic died with error: %v", err), nonJSONOutput.String())
+		}
+
 		if err := event.Validate(); err != nil {
 			captureNonJSON.Write(line)
 			captureNonJSON.Write([]byte("\n"))
 			continue
-		}
-
-		if event.IsError() && logger != nil {
-			captureNonJSON.Write(line)
-			captureNonJSON.Write([]byte("\n"))
 		}
 
 		if callback != nil {

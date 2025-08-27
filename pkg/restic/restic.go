@@ -211,6 +211,19 @@ type cmdRunnerWithProgress[T ProgressEntryValidator] struct {
 	failureErr error
 }
 
+// handleExitError processes a command exit error and converts it to an appropriate error type
+func (cr *cmdRunnerWithProgress[T]) handleExitError(err error) error {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		if exitErr.ExitCode() == 3 {
+			return ErrPartialBackup
+		} else {
+			return fmt.Errorf("exit code %d: %w", exitErr.ExitCode(), cr.failureErr)
+		}
+	}
+	return err
+}
+
 func (cr *cmdRunnerWithProgress[T]) Run(ctx context.Context, args []string, opts ...GenericOption) (T, error) {
 	logger := LoggerFromContext(ctx)
 	cmdCtx, cancel := context.WithCancel(ctx)
@@ -237,7 +250,7 @@ func (cr *cmdRunnerWithProgress[T]) Run(ctx context.Context, args []string, opts
 		result, err := processProgressOutput[T](reader, logger, cr.callback)
 		summary = result
 		if err != nil {
-			readErr = fmt.Errorf("processing command output: %w", err)
+			readErr = fmt.Errorf("output processing: %w", err)
 		}
 	}()
 
@@ -247,7 +260,7 @@ func (cr *cmdRunnerWithProgress[T]) Run(ctx context.Context, args []string, opts
 
 	if cmdErr != nil || readErr != nil {
 		if cmdErr != nil {
-			cmdErr = cr.repo.handleExitError(cmdErr, cr.failureErr)
+			cmdErr = cr.handleExitError(cmdErr)
 		}
 		return summary, newCmdError(ctx, cmd, errors.Join(cmdErr, readErr))
 	}
@@ -284,19 +297,6 @@ func (r *Repo) Restore(ctx context.Context, snapshot string, callback func(*Rest
 		failureErr: ErrRestoreFailed,
 	}
 	return cr.Run(ctx, args, opts...)
-}
-
-// handleExitError processes a command exit error and converts it to an appropriate error type
-func (r *Repo) handleExitError(err error, failureErr error) error {
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
-		if exitErr.ExitCode() == 3 {
-			return ErrPartialBackup
-		} else {
-			return fmt.Errorf("exit code %d: %w", exitErr.ExitCode(), failureErr)
-		}
-	}
-	return err
 }
 
 func (r *Repo) Snapshots(ctx context.Context, opts ...GenericOption) ([]*Snapshot, error) {

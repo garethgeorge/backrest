@@ -608,6 +608,36 @@ func TestResticCheck(t *testing.T) {
 	}
 }
 
+func TestResticExitError(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on windows")
+	}
+
+	// Create a directory that isn't writable
+	tmpDir := t.TempDir()
+	os.Chmod(tmpDir, 0000)
+	defer os.Chmod(tmpDir, 0755)
+
+	// Test data
+	testData := helpers.CreateTestData(t)
+
+	repo := t.TempDir()
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test", "TMPDIR="+tmpDir))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	_, err := r.Backup(context.Background(), []string{testData}, nil)
+	if err == nil {
+		t.Fatal("expected backup to fail, got nil error")
+	}
+	if !strings.Contains(err.Error(), "unable to save snapshot") {
+		t.Errorf("expected error to contain 'unable to save snapshot', got: %v", err)
+	}
+}
+
 func TestJSONCommandResilantToBeginningWarnings(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
