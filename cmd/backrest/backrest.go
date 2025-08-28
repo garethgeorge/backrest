@@ -64,12 +64,11 @@ func main() {
 	go onterm(os.Interrupt, newForceKillHandler())
 
 	// Load the configuration
-	configStore := createConfigProvider()
-	cfg, err := configStore.Get()
+	configMgr := &config.ConfigManager{Store: createConfigProvider()}
+	cfg, err := configMgr.Get()
 	if err != nil {
 		zap.S().Fatalf("error loading config: %v", err)
 	}
-	configMgr := &config.ConfigManager{Store: configStore}
 
 	var wg sync.WaitGroup
 
