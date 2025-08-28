@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -24,6 +25,7 @@ import (
 var icon []byte
 
 func main() {
+	flag.Parse()
 	backrest, err := findBackrest()
 	if err != nil {
 		reportError(err)
