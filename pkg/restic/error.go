@@ -1,7 +1,7 @@
 package restic
 
 import (
-	"context"
+	"bytes"
 	"fmt"
 	"os/exec"
 )
@@ -28,7 +28,7 @@ func (e *CmdError) Is(target error) bool {
 }
 
 // newCmdError creates a new error indicating that running a command failed.
-func newCmdError(ctx context.Context, cmd *exec.Cmd, err error) *CmdError {
+func newCmdError(cmd *exec.Cmd, err error) *CmdError {
 	shortCmd := cmd.String()
 	if len(shortCmd) > 100 {
 		shortCmd = shortCmd[:100] + "..."
@@ -59,18 +59,38 @@ func (e *ErrorWithOutput) Is(target error) bool {
 	return ok
 }
 
-// newErrorWithOutput creates a new error with the given output.
-func newErrorWithOutput(err error, output string) error {
-	if output == "" {
+type errorMessageCollector struct {
+	Output       *bytes.Buffer
+	DroppedBytes int
+}
+
+func (e *errorMessageCollector) Write(p []byte) (int, error) {
+	if e.Output == nil {
+		e.Output = &bytes.Buffer{}
+	}
+	if e.Output.Len() >= outputBufferLimit {
+		e.DroppedBytes += len(p)
+		return len(p), nil
+	}
+	return e.Output.Write(p)
+}
+
+func (e *errorMessageCollector) AddOutputToError(err error) error {
+	if e.Output == nil {
 		return err
 	}
-
-	if len(output) > outputBufferLimit {
-		output = output[:outputBufferLimit] + fmt.Sprintf("\n... %d bytes truncated ...\n", len(output)-outputBufferLimit)
+	if e.DroppedBytes > 0 {
+		return &ErrorWithOutput{
+			Err:    err,
+			Output: fmt.Sprintf("%s\n... %d bytes truncated ...", e.Output.String(), e.DroppedBytes),
+		}
 	}
-
 	return &ErrorWithOutput{
 		Err:    err,
-		Output: output,
+		Output: e.Output.String(),
 	}
+}
+
+func (e *errorMessageCollector) AddCmdOutputToError(cmd *exec.Cmd, err error) error {
+	return newCmdError(cmd, e.AddOutputToError(err))
 }

@@ -2,6 +2,8 @@ package restic
 
 import (
 	"bytes"
+	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -26,11 +28,53 @@ func TestReadBackupProgressEntries(t *testing.T) {
 	}
 }
 
+func TestReadVerboseBackupProgressEntries(t *testing.T) {
+	t.Parallel()
+
+	testInput := `{"message_type":"status","seconds_elapsed":8,"percent_done":0,"total_files":10,"files_done":1,"total_bytes":27557,"current_files":["/cur/file.txt"]}
+{"message_type":"verbose_status","action":"modified","item":"/foo/bar.txt","duration":0.024449704,"data_size":0,"data_size_in_repo":0,"metadata_size":0,"metadata_size_in_repo":0,"total_files":0}
+{"message_type":"exit_error","code":1,"message":"my sentinel error message"}`
+
+	events := []BackupProgressEntry{}
+	_, err := processProgressOutput[*BackupProgressEntry](bytes.NewBuffer([]byte(testInput)), nil, func(event *BackupProgressEntry) {
+		events = append(events, *event)
+	})
+	if err == nil || !strings.Contains(err.Error(), "my sentinel error message") {
+		t.Fatalf("wanted error containing 'my sentinel error message', got: %v", err)
+	}
+	// Assert that we get exactly the expected set of events.
+	wantEvents := []BackupProgressEntry{
+		{
+			MessageType:  "status",
+			PercentDone:  0,
+			TotalFiles:   10,
+			FilesDone:    1,
+			TotalBytes:   27557,
+			CurrentFiles: []string{"/cur/file.txt"},
+		},
+		{
+			MessageType: "verbose_status",
+			Action:      "modified",
+			Item:        "/foo/bar.txt",
+		},
+	}
+
+	if len(events) != len(wantEvents) {
+		t.Fatalf("wanted %d events, got: %d", len(wantEvents), len(events))
+	}
+
+	for i, event := range events {
+		if !reflect.DeepEqual(event, wantEvents[i]) {
+			t.Errorf("event %d: wanted %v, got %v", i, wantEvents[i], event)
+		}
+	}
+}
+
 func TestReadLs(t *testing.T) {
 	testInput := `{"time":"2023-11-10T19:14:17.053824063-08:00","tree":"3e2918b261948e69602ee9504b8f475bcc7cdc4dcec0b3f34ecdb014287d07b2","paths":["/backrest"],"hostname":"pop-os","username":"dontpanic","uid":1000,"gid":1000,"id":"db155169d788e6e432e320aedbdff5a54cc439653093bb56944a67682528aa52","short_id":"db155169","struct_type":"snapshot"}
-	{"name":".git","type":"dir","path":"/.git","uid":1000,"gid":1000,"mode":2147484157,"mtime":"2023-11-10T18:32:38.156599473-08:00","atime":"2023-11-10T18:32:38.156599473-08:00","ctime":"2023-11-10T18:32:38.156599473-08:00","struct_type":"node"}
-	{"name":".gitignore","type":"file","path":"/.gitignore","uid":1000,"gid":1000,"size":22,"mode":436,"mtime":"2023-11-10T00:41:26.611346634-08:00","atime":"2023-11-10T00:41:26.611346634-08:00","ctime":"2023-11-10T00:41:26.611346634-08:00","struct_type":"node"}
-	{"name":"README.md","type":"file","path":"/README.md","uid":1000,"gid":1000,"size":762,"mode":436,"mtime":"2023-11-10T00:59:06.842538768-08:00","atime":"2023-11-10T00:59:06.842538768-08:00","ctime":"2023-11-10T00:59:06.842538768-08:00","struct_type":"node"}`
+{"name":".git","type":"dir","path":"/.git","uid":1000,"gid":1000,"mode":2147484157,"mtime":"2023-11-10T18:32:38.156599473-08:00","atime":"2023-11-10T18:32:38.156599473-08:00","ctime":"2023-11-10T18:32:38.156599473-08:00","struct_type":"node"}
+{"name":".gitignore","type":"file","path":"/.gitignore","uid":1000,"gid":1000,"size":22,"mode":436,"mtime":"2023-11-10T00:41:26.611346634-08:00","atime":"2023-11-10T00:41:26.611346634-08:00","ctime":"2023-11-10T00:41:26.611346634-08:00","struct_type":"node"}
+{"name":"README.md","type":"file","path":"/README.md","uid":1000,"gid":1000,"size":762,"mode":436,"mtime":"2023-11-10T00:59:06.842538768-08:00","atime":"2023-11-10T00:59:06.842538768-08:00","ctime":"2023-11-10T00:59:06.842538768-08:00","struct_type":"node"}`
 
 	b := bytes.NewBuffer([]byte(testInput))
 

@@ -19,7 +19,7 @@ func (l *LimitWriter) Write(p []byte) (rnw int, err error) {
 	rnw = len(p)
 	if l.N <= 0 {
 		l.D += len(p)
-		return 0, nil
+		return
 	}
 	if len(p) > l.N {
 		l.D += len(p) - l.N

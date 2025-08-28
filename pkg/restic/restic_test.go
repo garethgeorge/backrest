@@ -638,62 +638,76 @@ func TestResticExitError(t *testing.T) {
 	}
 }
 
-func TestJSONCommandResilantToBeginningWarnings(t *testing.T) {
+func TestJSONCommand(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("this test is designed to run on Linux, as it uses bash")
 	}
 
-	r := NewRepo("bash", "")
-	var result struct {
-		Foo string `json:"foo"`
-	}
-	if err := r.executeWithJSONOutput(context.Background(), []string{"-c", "echo 'warning: this is a warning' >&2; echo '{\"foo\": \"bar\"}';"}, &result); err != nil {
-		t.Fatalf("expected command to succeed, got error: %v", err)
-	}
-
-	if result.Foo != "bar" {
-		t.Errorf("expected foo to be 'bar', got: %s", result.Foo)
-	}
-}
-
-func TestJSONCommandFailsWithWarningsAtEnd(t *testing.T) {
-	t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Skip("this test is designed to run on Linux, as it uses bash")
-	}
-
-	r := NewRepo("bash", "")
-	var result struct {
-		Foo string `json:"foo"`
-	}
-	err := r.executeWithJSONOutput(context.Background(), []string{"-c", "echo '{\"foo\": \"bar\"}'; echo 'warning: this is a warning' >&2;"}, &result)
-	if err == nil {
-		t.Fatal("expected command to fail with warnings after JSON output, but it succeeded")
-	}
-
-	if !strings.Contains(err.Error(), "command output is not valid JSON") {
-		t.Errorf("expected error to contain 'command output is not valid JSON', got: %v", err)
-	}
-}
-
-func TestJSONCommandFailsIfNoValidJSON(t *testing.T) {
-	t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Skip("this test is designed to run on Linux, as it uses bash")
-	}
-
-	r := NewRepo("bash", "")
-	var result struct {
-		Foo string `json:"foo"`
-	}
-	err := r.executeWithJSONOutput(context.Background(), []string{"-c", "echo 'not really any valid\njson here\n'"}, &result)
-	if err == nil {
-		t.Fatal("expected command to fail with empty JSON output, but it succeeded")
+	tests := []struct {
+		name           string
+		command        string
+		expectedResult string
+		expectError    bool
+		errorContains  string
+	}{
+		{
+			name:           "resilient to beginning prints",
+			command:        "echo 'warning: this is a warning' >&1; echo '{\"foo\": \"bar\"}';",
+			expectedResult: "bar",
+			expectError:    false,
+		},
+		{
+			name:           "resilient to beginning warnings",
+			command:        "echo 'warning: this is a warning' >&2; echo '{\"foo\": \"bar\"}';",
+			expectedResult: "bar",
+			expectError:    false,
+		},
+		{
+			name:          "fails with prints after JSON",
+			command:       "echo '{\"foo\": \"bar\"}'; echo 'warning: this is a warning' >&1;",
+			expectError:   true,
+			errorContains: "command output is not valid JSON",
+		},
+		{
+			name:           "succeeds with warnings after JSON",
+			command:        "echo '{\"foo\": \"bar\"}'; echo 'warning: this is a warning' >&2;",
+			expectError:    false,
+			expectedResult: "bar",
+		},
+		{
+			name:          "fails if no valid JSON",
+			command:       "echo 'not really any valid\njson here\n'",
+			expectError:   true,
+			errorContains: "command output is not valid JSON",
+		},
 	}
 
-	if !strings.Contains(err.Error(), "command output is not valid JSON") {
-		t.Errorf("expected error to contain 'command output is not valid JSON', got: %v", err)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r := NewRepo("bash", "")
+			var result struct {
+				Foo string `json:"foo"`
+			}
+			err := r.executeWithJSONOutput(context.Background(), []string{"-c", tc.command}, &result)
+
+			if tc.expectError {
+				if err == nil {
+					t.Fatal("expected command to fail, but it succeeded")
+				}
+				if !strings.Contains(err.Error(), tc.errorContains) {
+					t.Errorf("expected error to contain '%s', got: %v", tc.errorContains, err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("expected command to succeed, got error: %v", err)
+				}
+				if result.Foo != tc.expectedResult {
+					t.Errorf("expected foo to be '%s', got: '%s'", tc.expectedResult, result.Foo)
+				}
+			}
+		})
 	}
 }
 

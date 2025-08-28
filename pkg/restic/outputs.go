@@ -2,7 +2,6 @@ package restic
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -210,7 +209,7 @@ func processProgressOutput[T ProgressEntryValidator](
 	scanner := bufio.NewScanner(output)
 	scanner.Split(bufio.ScanLines)
 
-	nonJSONOutput := bytes.NewBuffer(nil)
+	nonJSONOutput := &errorMessageCollector{}
 	var captureNonJSON io.Writer = nonJSONOutput
 	if logger != nil {
 		captureNonJSON = io.MultiWriter(nonJSONOutput, logger)
@@ -230,7 +229,7 @@ func processProgressOutput[T ProgressEntryValidator](
 		}
 
 		if err := event.IsFatalError(); err != nil {
-			return summary, newErrorWithOutput(fmt.Errorf("restic died with error: %v", err), nonJSONOutput.String())
+			return summary, nonJSONOutput.AddOutputToError(err)
 		}
 
 		if err := event.Validate(); err != nil {
@@ -250,11 +249,10 @@ func processProgressOutput[T ProgressEntryValidator](
 	}
 
 	if err := scanner.Err(); err != nil {
-		return summary, newErrorWithOutput(err, nonJSONOutput.String())
+		return summary, nonJSONOutput.AddOutputToError(err)
 	}
-
 	if !gotSummary {
-		return summary, newErrorWithOutput(errors.New("no summary event found"), nonJSONOutput.String())
+		return summary, nonJSONOutput.AddOutputToError(errors.New("no summary event found"))
 	}
 
 	return summary, nil
