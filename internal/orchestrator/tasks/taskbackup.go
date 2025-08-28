@@ -156,11 +156,11 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 
 			backupOp.OperationBackup.LastStatus = protoutil.BackupProgressEntryToProto(entry)
 		} else if entry.MessageType == "error" {
-			l.Sugar().Warnf("an unknown error was encountered in processing item: %v", entry.Item)
+			l.Warn("error processing item", zap.String("item", entry.Item), zap.Any("error", entry.Error))
 			fileErrorCount++
 			backupError, err := protoutil.BackupProgressEntryToBackupError(entry)
 			if err != nil {
-				l.Sugar().Errorf("failed to convert backup progress entry to backup error: %v", err)
+				l.Error("failed to convert backup progress entry to backup error", zap.Error(err))
 				return
 			}
 			if len(backupOp.OperationBackup.Errors) > maxBackupErrorHistoryLength ||

@@ -34,11 +34,19 @@ func Logger(ctx context.Context, prefix string) *zap.Logger {
 	if writer == nil {
 		return zap.L()
 	}
+
+	// Create a console logger from the default global logger at at least warn level
+	warnCore, err := zapcore.NewIncreaseLevelCore(zap.L().Core(), zapcore.WarnLevel)
+	if err != nil {
+		warnCore = zap.L().Core()
+	}
+
+	// Additionally, write logs to the writer at debug level.
 	p := zap.NewProductionEncoderConfig()
 	p.EncodeTime = zapcore.TimeEncoderOfLayout("15:04:05.000Z")
 	fe := zapcore.NewConsoleEncoder(p)
 	l := zap.New(zapcore.NewTee(
-		zap.L().Core(),
+		warnCore,
 		zapcore.NewCore(fe, zapcore.AddSync(&ioutil.LinePrefixer{W: writer, Prefix: []byte(prefix)}), zapcore.DebugLevel),
 	))
 	return l
