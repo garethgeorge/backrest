@@ -1,4 +1,10 @@
-<p align="center"><img src="./webui/assets/logo-black.svg" width="400px"/></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./webui/assets/logo.svg" width="400px">
+    <source media="(prefers-color-scheme: light)" srcset="./webui/assets/logo-black.svg" width="400px">
+    <img src="./webui/assets/logo.svg" width="400px">
+  </picture>
+</p>
 
 <p align="center">
   <img src="https://github.com/garethgeorge/backrest/actions/workflows/test.yml/badge.svg" />
