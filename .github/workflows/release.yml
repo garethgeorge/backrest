@@ -60,31 +60,37 @@ jobs:
           path: dist/*
 
   tagged-release-installers:
-    name: "Tagged Release Installers"
-    runs-on: "ubuntu-latest"
+    name: Windows installers
     needs: tagged-release
+    runs-on: windows-2022
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # download dist artifacts from previous job
-      - name: Download Artifacts
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: release-artifacts
-          path: dist
+          path: .
 
-      - name: Generate Installers
+      - name: Unzip artifacts and compile Inno Setup installers
+        shell: powershell
         run: |
-          mkdir -p dist-installers
-          ./scripts/generate-installers.sh ./dist-installers
+          mkdir windows_installers
+          foreach ($arch in "x86_64", "arm64") {
+            $src = "backrest_Windows_$arch"
+            Expand-Archive ".\${src}.zip"
+            cp build\windows\* $src
+            & "c:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DArch=$arch ${src}\installer.iss
+            cp "$src\Output\*" windows_installers
+          }
 
       - name: Upload Assets
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            ./dist-installers/Backrest-setup-x86_64.exe
-            ./dist-installers/Backrest-setup-arm64.exe
+            ./windows_installers/*

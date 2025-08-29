@@ -57,34 +57,34 @@ jobs:
 
   installer:
     name: Windows installers
-    needs: [ build ]
+    needs: [build]
     runs-on: windows-2022
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: backrest-snapshot-builds
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: backrest-snapshot-builds
 
-    - name: Unzip artifacts and compile Inno Setup installers
-      shell: powershell
-      run: |
-        mkdir windows_installers
-        foreach ($arch in "x86_64", "arm64") {
-          $src = "backrest_Windows_$arch"
-          Expand-Archive ".\${src}.zip"
-          cp build\windows\* $src
-          & "c:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DArch=$arch ${src}\installer.iss
-          cp "$src\Output\*" windows_installers
-        }
+      - name: Unzip artifacts and compile Inno Setup installers
+        shell: powershell
+        run: |
+          mkdir windows_installers
+          foreach ($arch in "x86_64", "arm64") {
+            $src = "backrest_Windows_$arch"
+            Expand-Archive ".\${src}.zip"
+            cp build\windows\* $src
+            & "c:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DArch=$arch ${src}\installer.iss
+            cp "$src\Output\*" windows_installers
+          }
 
-    - name: Upload installers
-      uses: actions/upload-artifact@v4
-      with:
-        name: backrest-snapshot-installers
-        path: windows_installers\*.exe
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: backrest-snapshot-installers
+          path: windows_installers\*.exe
