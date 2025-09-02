@@ -7,6 +7,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/orchestrator/hookvars"
 )
 
 type StatsTask struct {
@@ -77,7 +78,7 @@ func (t *StatsTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 	if err := statsHelper(ctx, st, runner); err != nil {
 		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 			v1.Hook_CONDITION_ANY_ERROR,
-		}, HookVars{
+		}, hookvars.HookVars{
 			Task:  st.Task.Name(),
 			Error: err.Error(),
 		})
