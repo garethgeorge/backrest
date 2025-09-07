@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/testutil"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -110,8 +110,9 @@ func TestFirstRun(t *testing.T) {
 		)
 
 		req := connect.NewRequest(&v1.Repo{
-			Id:  "test-repo",
-			Uri: filepath.Join(tmpDir, "test-repo"),
+			Id:       "test-repo",
+			Uri:      filepath.Join(tmpDir, "test-repo"),
+			Password: "1234",
 		})
 		_, err := client.AddRepo(context.Background(), req)
 		if err != nil {
@@ -119,18 +120,40 @@ func TestFirstRun(t *testing.T) {
 		}
 	})
 
-	t.Run("trigger backup", func(t *testing.T) {
+	t.Run("trigger check", func(t *testing.T) {
 		client := v1connect.NewBackrestClient(
 			http.DefaultClient,
 			fmt.Sprintf("http://%s", addr),
 		)
 
-		req := connect.NewRequest(&types.StringValue{
-			Value: "test-repo",
+		req := connect.NewRequest(&v1.DoRepoTaskRequest{
+			RepoId: "test-repo",
+			Task:   v1.DoRepoTaskRequest_TASK_CHECK,
 		})
-		_, err := client.Backup(context.Background(), req)
+		_, err := client.DoRepoTask(context.Background(), req)
 		if err != nil {
-			t.Fatalf("Backup failed: %v", err)
+			t.Fatalf("DoRepoTask failed: %v", err)
+		}
+	})
+
+	t.Run("get operations", func(t *testing.T) {
+		client := v1connect.NewBackrestClient(
+			http.DefaultClient,
+			fmt.Sprintf("http://%s", addr),
+		)
+
+		req := connect.NewRequest(&v1.GetOperationsRequest{
+			Selector: &v1.OpSelector{
+				InstanceId: proto.String("TestInstance"),
+			},
+		})
+		resp, err := client.GetOperations(context.Background(), req)
+		if err != nil {
+			t.Fatalf("GetOperations failed: %v", err)
+		}
+
+		if len(resp.Msg.Operations) == 0 {
+			t.Errorf("expected at least 1 operation, got %d", len(resp.Msg.Operations))
 		}
 	})
 }
