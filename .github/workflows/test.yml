@@ -42,6 +42,8 @@ jobs:
       - name: Test
         run: PATH=$(pwd):$PATH gotestsum ./... -- --race
 
+  test-webui: runs-on
+
   test-win:
     runs-on: windows-latest
     steps:
