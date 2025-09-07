@@ -46,6 +46,7 @@ require (
 require (
 	github.com/akavel/rsrc v0.10.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bufbuild/connect-go v1.10.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dchest/jsmin v1.0.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
