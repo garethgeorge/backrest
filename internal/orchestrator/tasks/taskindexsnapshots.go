@@ -55,7 +55,7 @@ func indexSnapshotsHelper(ctx context.Context, st ScheduledTask, taskRunner Task
 	}
 
 	// collect all tracked snapshots for the plan.
-	snapshots, err := repo.Snapshots(ctx)
+	snapshots, err := repo.Snapshots(ctx, restic.WithFlags("--no-lock"))
 	if err != nil {
 		return fmt.Errorf("get snapshots for repo %q: %w", t.RepoID(), err)
 	}

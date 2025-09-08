@@ -97,11 +97,11 @@ func (r *RepoOrchestrator) Init(ctx context.Context) error {
 	return r.repo.Init(ctx)
 }
 
-func (r *RepoOrchestrator) Snapshots(ctx context.Context) ([]*restic.Snapshot, error) {
+func (r *RepoOrchestrator) Snapshots(ctx context.Context, opts ...restic.GenericOption) ([]*restic.Snapshot, error) {
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
 
-	snapshots, err := r.repo.Snapshots(ctx)
+	snapshots, err := r.repo.Snapshots(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
 	}

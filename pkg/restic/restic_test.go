@@ -290,6 +290,11 @@ func TestSnapshot(t *testing.T) {
 			count:               1,
 			checkSnapshotFields: true,
 		},
+		{
+			name:  "with no-lock flag",
+			opts:  []GenericOption{WithFlags("--no-lock")},
+			count: 10,
+		},
 	}
 
 	for _, tc := range tests {
