@@ -15,6 +15,7 @@ var migrations = []func(*OpLog) error{
 	migrationNoop,
 	migration002InstanceID, // re-run migration002InstanceID to fix improperly set instance IDs
 	migration003DeduplicateIndexedSnapshots,
+	migration004MonotonicModnos,
 }
 
 var CurrentVersion = int64(len(migrations))
@@ -126,6 +127,18 @@ func migration003DeduplicateIndexedSnapshots(oplog *OpLog) error {
 		if _, err := oplog.store.Delete(batch...); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// migration004MonotonicModnos sets the modno to 0 for all operations. Going forward, modnos will always be increasing.
+func migration004MonotonicModnos(oplog *OpLog) error {
+	err := oplog.store.Transform(SelectAll, func(op *v1.Operation) (*v1.Operation, error) {
+		op.Modno = 0
+		return op, nil
+	})
+	if err != nil {
+		return err
 	}
 	return nil
 }
