@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,6 +18,61 @@ import (
 )
 
 var maxBackupErrorHistoryLength = 20 // arbitrary limit on the number of file read errors recorded in a backup operation to prevent it from growing too large.
+
+// isNetworkError checks if an error is likely due to network connectivity issues
+// that might be resolved by retrying (e.g., after system wake-up)
+func isNetworkError(err error) bool {
+	if err == nil {
+		return false
+	}
+	
+	// Check for restic repository not found error (exit code 10)
+	if errors.Is(err, restic.ErrRepoNotFound) {
+		return true
+	}
+	
+	// Check for common network-related error messages
+	errStr := strings.ToLower(err.Error())
+	networkIndicators := []string{
+		"network path was not found",
+		"network is unreachable",
+		"no such host",
+		"connection refused",
+		"connection timed out",
+		"network is down",
+		"host is down",
+		"no route to host",
+		"connection reset",
+		"dial tcp",
+		"i/o timeout",
+	}
+	
+	for _, indicator := range networkIndicators {
+		if strings.Contains(errStr, indicator) {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// networkRetryBackoffPolicy creates a backoff policy suitable for network connectivity issues
+// Starts with a short delay (2 seconds) since network usually comes up quickly after wake-up
+func networkRetryBackoffPolicy(attempt int) time.Duration {
+	if attempt <= 0 {
+		return 2 * time.Second
+	}
+	
+	// Exponential backoff: 2s, 4s, 8s, 16s, 30s (capped)
+	delay := time.Duration(1<<uint(attempt)) * 2 * time.Second
+	
+	// Cap at 30 seconds to avoid very long delays
+	if delay > 30*time.Second {
+		delay = 30 * time.Second
+	}
+	
+	return delay
+}
 
 // BackupTask is a scheduled backup operation.
 type BackupTask struct {
@@ -122,10 +178,24 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 
 	repo, err := runner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
+		// Check if this is a network-related error that should be retried
+		if isNetworkError(err) {
+			return &TaskRetryError{
+				Err:     fmt.Errorf("repository access failed, retrying due to potential network issue: %w", err),
+				Backoff: networkRetryBackoffPolicy,
+			}
+		}
 		return err
 	}
 
 	if err := repo.UnlockIfAutoEnabled(ctx); err != nil {
+		// Check if unlock failure is due to network issues
+		if isNetworkError(err) {
+			return &TaskRetryError{
+				Err:     fmt.Errorf("repository unlock failed, retrying due to potential network issue: %w", err),
+				Backoff: networkRetryBackoffPolicy,
+			}
+		}
 		return fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err)
 	}
 
@@ -206,6 +276,13 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 	if err != nil {
 		vars.Error = err.Error()
 		if !errors.Is(err, restic.ErrPartialBackup) {
+			// Check if this is a network-related error that should be retried
+			if isNetworkError(err) {
+				return &TaskRetryError{
+					Err:     fmt.Errorf("backup operation failed, retrying due to potential network issue: %w", err),
+					Backoff: networkRetryBackoffPolicy,
+				}
+			}
 			runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 				v1.Hook_CONDITION_SNAPSHOT_ERROR,
 				v1.Hook_CONDITION_ANY_ERROR,
