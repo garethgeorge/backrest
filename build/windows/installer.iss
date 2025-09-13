@@ -1,5 +1,4 @@
 #define B "Backrest"
-#define TrayExe "backrest-windows-tray.exe"
 #define Website "https://github.com/garethgeorge/backrest/"
 ; The following is needed to extract the version from the change log.
 ; If the application executable had the version info, then could use built-in GetVersion* functions.
@@ -65,13 +64,12 @@ Name: "port9902"; Description: "9902"; GroupDescription: "{#PortDesc}"; Flags: e
 ; but doing it the same way in all cases for consistency.
 Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion; BeforeInstall: StopBackrest
 Source: "icon.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#TrayExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "backrest.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 ; For user install mode only.
-Name: "{autostartup}\{#B} systray"; Filename: "{app}\{#TrayExe}"; Parameters: "{code:GetPortParam}"; IconFilename: "{app}\icon.ico"; Check: IsUserInstallMode
-Name: "{group}\{#B} systray"; Filename: "{app}\{#TrayExe}"; Parameters: "{code:GetPortParam}"; IconFilename: "{app}\icon.ico"; Check: IsUserInstallMode
+Name: "{autostartup}\{#B} systray"; Filename: "{app}\backrest.exe"; Parameters: "--windows-tray {code:GetPortParam}"; IconFilename: "{app}\icon.ico"; Check: IsUserInstallMode
+Name: "{group}\{#B} systray"; Filename: "{app}\backrest.exe"; Parameters: "--windows-tray {code:GetPortParam}"; IconFilename: "{app}\icon.ico"; Check: IsUserInstallMode
 ; For both modes.
 Name: "{group}\{#B}{code:GetIconSuffix}"; Filename: "http://localhost:{code:GetPort}/"; IconFilename: "{app}\icon.ico"
 Name: "{group}\{#B} website"; Filename: "{#Website}"
@@ -84,7 +82,7 @@ PrivilegesRequiredOverrideAllUsers=Install &system-wide with administrative priv
 [Run]
 ; Use Task Scheduler to run Backrest elevated. The 30s delay is needed to avoid an issue with tray icon being broken.
 ; The double-quotes escape double-quotes inside the parameter. The backslash escapes double-quotes inside the -Command block.
-Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -Command ""$t = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME ; $t.Delay = 'PT30S'; $s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries; $s.ExecutionTimeLimit = 'PT0S'; Register-ScheduledTask -Force -TaskName '{#B}' -RunLevel Highest -Trigger $t -Action $(New-ScheduledTaskAction -Execute \""{app}\{#TrayExe}\"" -Argument '--bind-address 127.0.0.1:9897' -WorkingDirectory '{app}') -Settings $s ; Start-ScheduledTask -TaskName '{#B}'"" "; Flags: runascurrentuser logoutput runhidden; Tasks: adminstartcurrent; Check: IsAdminInstallMode
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -Command ""$t = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME ; $t.Delay = 'PT30S'; $s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries; $s.ExecutionTimeLimit = 'PT0S'; Register-ScheduledTask -Force -TaskName '{#B}' -RunLevel Highest -Trigger $t -Action $(New-ScheduledTaskAction -Execute \""{app}\backrest.exe\"" -Argument '--windows-tray --bind-address 127.0.0.1:9897' -WorkingDirectory '{app}') -Settings $s ; Start-ScheduledTask -TaskName '{#B}'"" "; Flags: runascurrentuser logoutput runhidden; Tasks: adminstartcurrent; Check: IsAdminInstallMode
 ; System user task. No need for systray here, and running it without returning control is the only way to stop it gracefully later.
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -Command ""$s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries; $s.ExecutionTimeLimit = 'PT0S'; Register-ScheduledTask -Force -TaskName '{#B}' -RunLevel Highest -User System -Trigger $(New-ScheduledTaskTrigger -AtStartup) -Action $(New-ScheduledTaskAction -Execute \""{app}\backrest.exe\"" -Argument '--bind-address 127.0.0.1:9897' -WorkingDirectory '{app}') -Settings $s ; Start-ScheduledTask -TaskName '{#B}'"" "; Flags: runascurrentuser logoutput runhidden; Tasks: adminstartsystem; Check: IsAdminInstallMode
 ; PATH
@@ -94,7 +92,7 @@ Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -Command ""$new
 #define PathDelCmd "-ExecutionPolicy Bypass -Command """"$newp = '{app}'; $a = [Environment]::GetEnvironmentVariable('PATH', '{code:GetEnvTarget}') -split ';' ; if ($a -contains $newp) {{ echo 'Removing from PATH'; $path = ($a | Where-Object {{ $_ -ne $newp }) -join ';' ; [Environment]::SetEnvironmentVariable('PATH', $path, '{code:GetEnvTarget}') }"""" "
 Filename: "powershell.exe"; Parameters: "{#PathDelCmd}"; Flags: logoutput runhidden; Tasks: not addtopath; Check: IsExistingInstallation
 
-Filename: "{app}\{#TrayExe}"; Parameters: "{code:GetPortParam}"; Description: "Start {#B} (runs in the system tray)"; Flags: postinstall waituntilidle; Check: IsUserInstallMode
+Filename: "{app}\backrest.exe"; Parameters: "--windows-tray {code:GetPortParam}"; Description: "Start {#B} (runs in the system tray)"; Flags: postinstall waituntilidle; Check: IsUserInstallMode
 Filename: "http://localhost:{code:GetPort}/"; Description: "Open {#B} user interface"; Flags: postinstall shellexec
 
 [UninstallRun]
@@ -184,13 +182,13 @@ begin
   // Attempt to terminate Backrest gracefully for the current user, wait for a second (since taskkill returns immediately),
   // then check and kill forcefully if it's still running.
   if IsUserInstallMode then
-    ExecAndLogOutput(Cmd, '/C "taskkill /FI "USERNAME eq %USERNAME%" /IM "backrest-windows-tray.exe" & ping -n 2 127.0.0.1 >nul & tasklist /FI "USERNAME eq %USERNAME%" | findstr /I /V "setup" | findstr "backrest" && (echo Forcing & taskkill /FI "USERNAME eq %USERNAME%" /IM "backrest-windows-tray.exe" /F & taskkill /FI "USERNAME eq %USERNAME%" /IM "backrest.exe" /F)" ',
+    ExecAndLogOutput(Cmd, '/C "taskkill /FI "USERNAME eq %USERNAME%" /IM "backrest.exe" & ping -n 2 127.0.0.1 >nul & tasklist /FI "USERNAME eq %USERNAME%" | findstr /I /V "setup" | findstr "backrest" && (echo Forcing & taskkill /FI "USERNAME eq %USERNAME%" /IM "backrest.exe" /F)" ',
     '', SW_HIDE, ewWaitUntilTerminated, ResultCode, nil)
   // For admin installs stop through the task scheduler. For the SYSTEM or non-current user this is the only way to stop gracefully.
   // Ending the scheduled task makes a gracefull attempt, then force kills.
   else if IsAdminInstallMode then
   begin
-    ExecAndLogOutput(Cmd, '/C schtasks /End /TN ' + AppName + ' || (taskkill /FI "USERNAME eq %USERNAME%" /IM "backrest-windows-tray.exe" /F & taskkill /FI "USERNAME eq %USERNAME%" /IM "backrest.exe" /F)',
+    ExecAndLogOutput(Cmd, '/C schtasks /End /TN ' + AppName + ' || (taskkill /FI "USERNAME eq %USERNAME%" /IM "backrest.exe" /F)',
     '', SW_HIDE, ewWaitUntilTerminated, ResultCode, nil);
     // Remove the task when uninstalling.
     if IsUninstaller then
