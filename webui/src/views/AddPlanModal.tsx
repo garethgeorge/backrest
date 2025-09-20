@@ -65,18 +65,28 @@ const planDefaults = create(PlanSchema, {
   },
 });
 
-export const AddPlanModal = ({ template }: { template: Plan | null }) => {
+export const AddPlanModal = ({ template, templateClone }: { template: Plan | null, templateClone?: Plan | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
   const [config, setConfig] = useConfig();
   const [form] = Form.useForm();
+
+  // This sets the default values for the form
   useEffect(() => {
-    form.setFieldsValue(
-      template
-        ? toJson(PlanSchema, template, { alwaysEmitImplicit: true })
-        : toJson(PlanSchema, planDefaults, { alwaysEmitImplicit: true })
-    );
+    if (templateClone) { // If the user is cloning an existing plan
+      form.setFieldsValue(
+        templateClone
+          ? toJson(PlanSchema, templateClone, { alwaysEmitImplicit: true })
+          : toJson(PlanSchema, planDefaults, { alwaysEmitImplicit: true })
+      );
+    } else { // If the user is opening an existing plan or creating a new one
+      form.setFieldsValue(
+        template
+          ? toJson(PlanSchema, template, { alwaysEmitImplicit: true })
+          : toJson(PlanSchema, planDefaults, { alwaysEmitImplicit: true })
+      );
+    }
   }, [template]);
 
   if (!config) {
@@ -114,6 +124,24 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       setConfirmLoading(false);
     }
   };
+
+  const handleClone = async () => {
+    setConfirmLoading(true);
+
+    try {
+      if (!template) {
+        throw new Error("template not found");
+      }
+
+      // Reopen the modal with the cloned template as the default values
+      showModal(<AddPlanModal template={null} templateClone={template} />);
+
+    } catch (e: any) {
+      alertsApi.error(formatErrorAlert(e, "Clone error:"), 15);
+    } finally {
+      setConfirmLoading(false);
+    }
+  }
 
   const handleOk = async () => {
     setConfirmLoading(true);
@@ -177,7 +205,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             Cancel
           </Button>,
           template != null ? (
-            <ConfirmButton
+            <><ConfirmButton
               key="delete"
               type="primary"
               danger
@@ -186,6 +214,9 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             >
               Delete
             </ConfirmButton>
+            <Button loading={confirmLoading} key="clone" onClick={handleClone}>
+              Clone Plan
+            </Button></>
           ) : null,
           <SpinButton key="submit" type="primary" onClickAsync={handleOk}>
             Submit
