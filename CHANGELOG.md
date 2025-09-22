@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.3](https://github.com/garethgeorge/backrest/compare/v1.9.2...v1.9.3) (2025-09-22)
+
+
+### Bug Fixes
+
+* remove scheduled task time limit for Windows 2012 ([#899](https://github.com/garethgeorge/backrest/issues/899)) ([6cf7df2](https://github.com/garethgeorge/backrest/commit/6cf7df23b89c4317ec75f6b3a271a6b9c19aae78))
+* update restic version to 0.18.1 ([#910](https://github.com/garethgeorge/backrest/issues/910)) ([b34ea4c](https://github.com/garethgeorge/backrest/commit/b34ea4c5987d9c93f36e37bcf4d8cd517b4420ac))
+
 ## [1.9.2](https://github.com/garethgeorge/backrest/compare/v1.9.1...v1.9.2) (2025-08-28)
 
 
