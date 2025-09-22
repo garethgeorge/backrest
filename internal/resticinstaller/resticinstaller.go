@@ -21,7 +21,7 @@ var (
 )
 
 var (
-	RequiredResticVersion = "0.18.0"
+	RequiredResticVersion = "0.18.1"
 
 	requiredVersionSemver = mustParseSemVer(RequiredResticVersion)
 
