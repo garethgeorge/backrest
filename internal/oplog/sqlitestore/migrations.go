@@ -130,9 +130,9 @@ func applySqliteMigrations(store *SqliteStore, conn *sqlite.Conn) error {
 				}
 			}
 
-			// drop all indexes
+			// drop all user-created indexes (exclude auto-generated ones)
 			indexes := []string{}
-			if err := sqlitex.ExecuteTransient(conn, "SELECT name FROM sqlite_master WHERE type='index'", &sqlitex.ExecOptions{
+			if err := sqlitex.ExecuteTransient(conn, "SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_autoindex_%'", &sqlitex.ExecOptions{
 				ResultFunc: func(stmt *sqlite.Stmt) error {
 					indexes = append(indexes, stmt.ColumnText(0))
 					return nil
