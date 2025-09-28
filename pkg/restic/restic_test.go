@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -605,6 +606,40 @@ func TestResticCheck(t *testing.T) {
 	wantStr := "no errors were found"
 	if !bytes.Contains(output.Bytes(), []byte(wantStr)) {
 		t.Errorf("wanted output to contain 'no errors were found', got: %s", output.String())
+	}
+}
+
+func TestResticDump(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on windows")
+	}
+
+	repo := t.TempDir()
+	r := NewRepo(helpers.ResticBinary(t), repo, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	testDataDir := t.TempDir()
+	if err := os.WriteFile(path.Join(testDataDir, "test.txt"), []byte("test data"), 0644); err != nil {
+		t.Fatalf("failed to create test data: %v", err)
+	}
+
+	_, err := r.Backup(context.Background(), []string{testDataDir}, nil)
+	if err != nil {
+		t.Fatalf("failed to backup and create new snapshot: %v", err)
+	}
+
+	// dump all files
+	output := bytes.NewBuffer(nil)
+	if err := r.Dump(context.Background(), "latest", path.Join(testDataDir, "test.txt"), output); err != nil {
+		t.Fatalf("failed to dump repo: %v", err)
+	}
+
+	if !bytes.Contains(output.Bytes(), []byte("test data")) {
+		t.Errorf("wanted output to contain 'test data', got: %s", output.String())
 	}
 }
 

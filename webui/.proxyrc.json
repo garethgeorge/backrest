@@ -6,5 +6,9 @@
   "/v1.Authentication": {
     "target": "http://localhost:9898",
     "secure": false
+  },
+  "/download": {
+    "target": "http://localhost:9898",
+    "secure": false
   }
 }
