@@ -10,14 +10,10 @@ import (
 	"zombiezen.com/go/sqlite/sqlitex"
 )
 
-const sqlSchemaVersion = 5
+const sqlSchemaVersion = 6
 
 var sqlSchema = fmt.Sprintf(`
 PRAGMA user_version = %d;
-
-CREATE TABLE IF NOT EXISTS system_info (version INTEGER NOT NULL);
-INSERT INTO system_info (version)
-SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM system_info);
 
 CREATE TABLE operations (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,6 +34,7 @@ CREATE INDEX operation_flow_id ON operations (flow_id);
 CREATE INDEX operation_start_time_ms ON operations (start_time_ms);
 CREATE INDEX operation_original_id ON operations (ogid, original_id);
 CREATE INDEX operation_original_flow_id ON operations (ogid, original_flow_id);
+CREATE INDEX operation_modno ON operations (modno);
 
 CREATE TABLE operation_groups (
 	ogid INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +49,42 @@ CREATE INDEX group_repo_guid ON operation_groups (repo_guid);
 CREATE INDEX group_instance ON operation_groups (instance_id);
 `, sqlSchemaVersion)
 
+func migrateSystemInfoTable(store *SqliteStore, conn *sqlite.Conn) error {
+	// Check if system_info table exists, if it does convert it to fields in kvstore
+	var hasSystemInfoTable bool
+	if err := sqlitex.ExecuteTransient(conn, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='system_info'", &sqlitex.ExecOptions{
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			hasSystemInfoTable = stmt.ColumnInt(0) > 0
+			return nil
+		},
+	}); err != nil {
+		return fmt.Errorf("checking for system_info table: %w", err)
+	}
+
+	if hasSystemInfoTable {
+		var version int
+		if err := sqlitex.ExecuteTransient(conn, "SELECT version FROM system_info", &sqlitex.ExecOptions{
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				version = stmt.ColumnInt(0)
+				return nil
+			},
+		}); err != nil {
+			return fmt.Errorf("getting database schema version: %w", err)
+		}
+
+		if err := store.SetVersion(int64(version)); err != nil {
+			return fmt.Errorf("setting database schema version: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func applySqliteMigrations(store *SqliteStore, conn *sqlite.Conn) error {
+	if err := migrateSystemInfoTable(store, conn); err != nil {
+		return err
+	}
+
 	var version int
 	if err := sqlitex.ExecuteTransient(conn, "PRAGMA user_version", &sqlitex.ExecOptions{
 		ResultFunc: func(stmt *sqlite.Stmt) error {
@@ -98,9 +130,9 @@ func applySqliteMigrations(store *SqliteStore, conn *sqlite.Conn) error {
 				}
 			}
 
-			// drop all indexes
+			// drop all user-created indexes (exclude auto-generated ones)
 			indexes := []string{}
-			if err := sqlitex.ExecuteTransient(conn, "SELECT name FROM sqlite_master WHERE type='index'", &sqlitex.ExecOptions{
+			if err := sqlitex.ExecuteTransient(conn, "SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_autoindex_%'", &sqlitex.ExecOptions{
 				ResultFunc: func(stmt *sqlite.Stmt) error {
 					indexes = append(indexes, stmt.ColumnText(0))
 					return nil
