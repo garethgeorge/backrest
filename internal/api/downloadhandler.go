@@ -98,7 +98,7 @@ func handleIndexSnapshotDownload(w http.ResponseWriter, r *http.Request, orchest
 	default:
 	}
 
-	if IsTarArchive(bytes.NewReader(firstBytesBuffer.Bytes())) {
+	if IsTarArchive(bytes.NewReader(firstBytesBuffer.Bytes())) && filepath.Ext(filePath) != ".tar" {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v.tar", filePath))
 	} else {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filePath))
