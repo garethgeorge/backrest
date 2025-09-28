@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -98,8 +99,10 @@ func handleIndexSnapshotDownload(w http.ResponseWriter, r *http.Request, orchest
 	default:
 	}
 
-	if IsTarArchive(bytes.NewReader(firstBytesBuffer.Bytes())) && filepath.Ext(filePath) != ".tar" {
+	if runtime.GOOS != "windows" && IsTarArchive(bytes.NewReader(firstBytesBuffer.Bytes())) && filepath.Ext(filePath) != ".tar" {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v.tar", filePath))
+	} else if runtime.GOOS == "windows" && IsZipArchive(bytes.NewReader(firstBytesBuffer.Bytes())) && filepath.Ext(filePath) != ".zip" {
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v.zip", filePath))
 	} else {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filePath))
 	}
@@ -227,4 +230,14 @@ func IsTarArchive(r io.Reader) bool {
 	tr := tar.NewReader(r)
 	_, err := tr.Next()
 	return err == nil
+}
+
+func IsZipArchive(r io.Reader) bool {
+	// Use magic number
+	var b [4]byte
+	_, err := r.Read(b[:])
+	if err != nil {
+		return false
+	}
+	return bytes.Equal([]byte{0x50, 0x4B, 0x03, 0x04}, b[:])
 }
