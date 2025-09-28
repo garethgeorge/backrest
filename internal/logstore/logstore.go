@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -15,9 +16,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	_ "github.com/ncruces/go-sqlite3/driver"
+	_ "github.com/ncruces/go-sqlite3/embed"
 	"go.uber.org/zap"
-	"zombiezen.com/go/sqlite"
-	"zombiezen.com/go/sqlite/sqlitex"
 )
 
 var (
@@ -28,7 +29,7 @@ type LogStore struct {
 	dir           string
 	inprogressDir string
 	mu            shardedRWMutex
-	dbpool        *sqlitex.Pool
+	dbpool        *sql.DB
 
 	trackingMu  sync.Mutex     // guards refcount and subscribers
 	refcount    map[string]int // id : refcount
@@ -41,10 +42,7 @@ func NewLogStore(dir string) (*LogStore, error) {
 	}
 
 	dbpath := filepath.Join(dir, "logs.sqlite")
-	dbpool, err := sqlitex.NewPool(dbpath, sqlitex.PoolOptions{
-		PoolSize: 16,
-		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenWAL,
-	})
+	dbpool, err := sql.Open("sqlite3", dbpath)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
 	}
@@ -69,36 +67,31 @@ func (ls *LogStore) init() error {
 		return fmt.Errorf("create inprogress dir: %v", err)
 	}
 
-	conn, err := ls.dbpool.Take(context.Background())
-	if err != nil {
-		return fmt.Errorf("take connection: %v", err)
-	}
-	defer ls.dbpool.Put(conn)
-
-	if err := sqlitex.ExecuteScript(conn, `
-		PRAGMA auto_vacuum = 1;
-		PRAGMA journal_mode=WAL;
-
-		CREATE TABLE IF NOT EXISTS logs (
+	// The script from the original implementation is broken out into individual statements
+	// so that it can be executed with the standard database/sql ExecContext.
+	initializationStatements := []string{
+		`PRAGMA auto_vacuum = 1;`,
+		`PRAGMA journal_mode=WAL;`,
+		`CREATE TABLE IF NOT EXISTS logs (
 			id TEXT PRIMARY KEY,
 			expiration_ts_unix INTEGER DEFAULT 0, -- unix timestamp of when the log will expire
 			owner_opid INTEGER DEFAULT 0, -- id of the operation that owns this log; will be used for cleanup.
 			data_fname TEXT, -- relative path to the file containing the log data
 			data_gz BLOB -- compressed log data as an alternative to data_fname
-		);
-		
-		CREATE INDEX IF NOT EXISTS logs_data_fname_idx ON logs (data_fname);
-		CREATE INDEX IF NOT EXISTS logs_expiration_ts_unix_idx ON logs (expiration_ts_unix);
-
-		CREATE TABLE IF NOT EXISTS version_info (
+		);`,
+		`CREATE INDEX IF NOT EXISTS logs_data_fname_idx ON logs (data_fname);`,
+		`CREATE INDEX IF NOT EXISTS logs_expiration_ts_unix_idx ON logs (expiration_ts_unix);`,
+		`CREATE TABLE IF NOT EXISTS version_info (
 			version INTEGER NOT NULL
-		);
-		
-		-- Create a table to store the schema version, will be used for migrations in the future
-		INSERT INTO version_info (version)
-		SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM version_info);
-	`, nil); err != nil {
-		return fmt.Errorf("execute init script: %v", err)
+		);`,
+		`INSERT INTO version_info (version)
+		SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM version_info);`,
+	}
+
+	for _, stmt := range initializationStatements {
+		if _, err := ls.dbpool.ExecContext(context.Background(), stmt); err != nil {
+			return fmt.Errorf("execute init statement: %v", err)
+		}
 	}
 
 	// loop through all inprogress files and finalize them if they are in the database
@@ -114,14 +107,14 @@ func (ls *LogStore) init() error {
 
 		fname := file.Name()
 		var id string
-		if err := sqlitex.ExecuteTransient(conn, "SELECT id FROM logs WHERE data_fname = ?", &sqlitex.ExecOptions{
-			Args: []any{fname},
-			ResultFunc: func(stmt *sqlite.Stmt) error {
-				id = stmt.ColumnText(0)
-				return nil
-			},
-		}); err != nil {
-			return fmt.Errorf("select log: %v", err)
+		err := ls.dbpool.QueryRowContext(context.Background(), "SELECT id FROM logs WHERE data_fname = ?", fname).Scan(&id)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				// This is not an error, it just means the inprogress file is not in the database
+				// and can be safely removed.
+			} else {
+				return fmt.Errorf("select log: %v", err)
+			}
 		}
 
 		if id != "" {
@@ -147,16 +140,8 @@ func (ls *LogStore) Create(id string, parentOpID int64, ttl time.Duration) (io.W
 	ls.mu.Lock(id)
 	defer ls.mu.Unlock(id)
 
-	conn, err := ls.dbpool.Take(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("take connection: %v", err)
-	}
-	defer ls.dbpool.Put(conn)
-
 	// potentially prune any expired logs
-	if err := sqlitex.Execute(conn, "DELETE FROM logs WHERE expiration_ts_unix < ? AND expiration_ts_unix != 0", &sqlitex.ExecOptions{
-		Args: []any{time.Now().Unix()},
-	}); err != nil {
+	if _, err := ls.dbpool.ExecContext(context.Background(), "DELETE FROM logs WHERE expiration_ts_unix < ? AND expiration_ts_unix != 0", time.Now().Unix()); err != nil {
 		return nil, fmt.Errorf("prune expired logs: %v", err)
 	}
 
@@ -176,9 +161,7 @@ func (ls *LogStore) Create(id string, parentOpID int64, ttl time.Duration) (io.W
 		expire_ts_unix = time.Now().Add(ttl).Unix()
 	}
 
-	if err := sqlitex.Execute(conn, "INSERT INTO logs (id, expiration_ts_unix, owner_opid, data_fname) VALUES (?, ?, ?, ?)", &sqlitex.ExecOptions{
-		Args: []any{id, expire_ts_unix, parentOpID, fname},
-	}); err != nil {
+	if _, err := ls.dbpool.ExecContext(context.Background(), "INSERT INTO logs (id, expiration_ts_unix, owner_opid, data_fname) VALUES (?, ?, ?, ?)", id, expire_ts_unix, parentOpID, fname); err != nil {
 		return nil, fmt.Errorf("insert log: %v", err)
 	}
 
@@ -199,36 +182,18 @@ func (ls *LogStore) Open(id string) (io.ReadCloser, error) {
 	ls.mu.Lock(id)
 	defer ls.mu.Unlock(id)
 
-	conn, err := ls.dbpool.Take(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("take connection: %v", err)
-	}
-	defer ls.dbpool.Put(conn)
-
-	var found bool
-	var fname string
+	var fname sql.NullString
 	var dataGz []byte
-	if err := sqlitex.Execute(conn, "SELECT data_fname, data_gz FROM logs WHERE id = ?", &sqlitex.ExecOptions{
-		Args: []any{id},
-		ResultFunc: func(stmt *sqlite.Stmt) error {
-			found = true
-			if !stmt.ColumnIsNull(0) {
-				fname = stmt.ColumnText(0)
-			}
-			if !stmt.ColumnIsNull(1) {
-				dataGz = make([]byte, stmt.ColumnLen(1))
-				stmt.ColumnBytes(1, dataGz)
-			}
-			return nil
-		},
-	}); err != nil {
+	err := ls.dbpool.QueryRowContext(context.Background(), "SELECT data_fname, data_gz FROM logs WHERE id = ?", id).Scan(&fname, &dataGz)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrLogNotFound
+		}
 		return nil, fmt.Errorf("select log: %v", err)
-	} else if !found {
-		return nil, ErrLogNotFound
 	}
 
-	if fname != "" {
-		f, err := os.Open(filepath.Join(ls.inprogressDir, fname))
+	if fname.Valid {
+		f, err := os.Open(filepath.Join(ls.inprogressDir, fname.String))
 		if err != nil {
 			return nil, fmt.Errorf("open data file: %v", err)
 		}
@@ -240,7 +205,7 @@ func (ls *LogStore) Open(id string) (io.ReadCloser, error) {
 			ls:     ls,
 			f:      f,
 			id:     id,
-			fname:  fname,
+			fname:  fname.String,
 			closed: make(chan struct{}),
 		}, nil
 	} else if dataGz != nil {
@@ -259,34 +224,25 @@ func (ls *LogStore) Delete(id string) error {
 	ls.mu.Lock(id)
 	defer ls.mu.Unlock(id)
 
-	conn, err := ls.dbpool.Take(context.Background())
+	res, err := ls.dbpool.ExecContext(context.Background(), "DELETE FROM logs WHERE id = ?", id)
 	if err != nil {
-		return fmt.Errorf("take connection: %v", err)
-	}
-	defer ls.dbpool.Put(conn)
-
-	if err := sqlitex.Execute(conn, "DELETE FROM logs WHERE id = ?", &sqlitex.ExecOptions{
-		Args: []any{id},
-	}); err != nil {
 		return fmt.Errorf("delete log: %v", err)
 	}
 
-	if conn.Changes() == 0 {
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete log: get rows affected: %v", err)
+	}
+
+	if rowsAffected == 0 {
 		return ErrLogNotFound
 	}
 	return nil
 }
 
 func (ls *LogStore) DeleteWithParent(parentOpID int64) error {
-	conn, err := ls.dbpool.Take(context.Background())
+	_, err := ls.dbpool.ExecContext(context.Background(), "DELETE FROM logs WHERE owner_opid = ?", parentOpID)
 	if err != nil {
-		return fmt.Errorf("take connection: %v", err)
-	}
-	defer ls.dbpool.Put(conn)
-
-	if err := sqlitex.Execute(conn, "DELETE FROM logs WHERE owner_opid = ?", &sqlitex.ExecOptions{
-		Args: []any{parentOpID},
-	}); err != nil {
 		return fmt.Errorf("delete log: %v", err)
 	}
 
@@ -294,18 +250,22 @@ func (ls *LogStore) DeleteWithParent(parentOpID int64) error {
 }
 
 func (ls *LogStore) SelectAll(f func(id string, parentID int64)) error {
-	conn, err := ls.dbpool.Take(context.Background())
+	rows, err := ls.dbpool.QueryContext(context.Background(), "SELECT id, owner_opid FROM logs ORDER BY owner_opid")
 	if err != nil {
-		return fmt.Errorf("take connection: %v", err)
+		return err
 	}
-	defer ls.dbpool.Put(conn)
+	defer rows.Close()
 
-	return sqlitex.Execute(conn, "SELECT id, owner_opid FROM logs ORDER BY owner_opid", &sqlitex.ExecOptions{
-		ResultFunc: func(stmt *sqlite.Stmt) error {
-			f(stmt.ColumnText(0), stmt.ColumnInt64(1))
-			return nil
-		},
-	})
+	for rows.Next() {
+		var id string
+		var parentID int64
+		if err := rows.Scan(&id, &parentID); err != nil {
+			return err
+		}
+		f(id, parentID)
+	}
+
+	return rows.Err()
 }
 
 func (ls *LogStore) subscribe(id string) chan struct{} {
@@ -336,12 +296,6 @@ func (ls *LogStore) notify(id string) {
 }
 
 func (ls *LogStore) finalizeLogFile(id string, fname string) error {
-	conn, err := ls.dbpool.Take(context.Background())
-	if err != nil {
-		return fmt.Errorf("take connection: %v", err)
-	}
-	defer ls.dbpool.Put(conn)
-
 	f, err := os.Open(filepath.Join(ls.inprogressDir, fname))
 	if err != nil {
 		return err
@@ -357,12 +311,16 @@ func (ls *LogStore) finalizeLogFile(id string, fname string) error {
 		return fmt.Errorf("close gzip writer: %v", err)
 	}
 
-	if e := sqlitex.ExecuteTransient(conn, "UPDATE logs SET data_fname = NULL, data_gz = ? WHERE id = ?", &sqlitex.ExecOptions{
-		Args: []any{dataGz.Bytes(), id},
-	}); e != nil {
-		return fmt.Errorf("update log: %v", e)
-	} else if conn.Changes() != 1 {
-		return fmt.Errorf("expected 1 row to be updated for %q, got %d", id, conn.Changes())
+	res, err := ls.dbpool.ExecContext(context.Background(), "UPDATE logs SET data_fname = NULL, data_gz = ? WHERE id = ?", dataGz.Bytes(), id)
+	if err != nil {
+		return fmt.Errorf("update log: %v", err)
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update log: get rows affected: %v", err)
+	}
+	if rowsAffected != 1 {
+		return fmt.Errorf("expected 1 row to be updated for %q, got %d", id, rowsAffected)
 	}
 
 	return nil

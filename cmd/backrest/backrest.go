@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"errors"
 	"flag"
 	"net/http"
@@ -35,8 +36,6 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"zombiezen.com/go/sqlite"
-	"zombiezen.com/go/sqlite/sqlitex"
 )
 
 var InstallDepsOnly = flag.Bool("install-deps-only", false, "install dependencies and exit")
@@ -128,10 +127,7 @@ func main() {
 	// Create peerstate manager
 	// Note: we don't have to acquire a lock since the sqlitestore already checks this, elsewise we should here.
 	peerStateDbPath := path.Join(env.DataDir(), "general.sqlite")
-	peerStateDbPool, err := sqlitex.NewPool(peerStateDbPath, sqlitex.PoolOptions{
-		PoolSize: 16,
-		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenWAL,
-	})
+	peerStateDbPool, err := sql.Open("sqlite3", peerStateDbPath)
 	if err != nil {
 		zap.S().Fatalf("error creating sqlite pool for peer state: %v", err)
 	}
