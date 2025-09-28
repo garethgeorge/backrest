@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -73,14 +72,11 @@ func handleIndexSnapshotDownload(w http.ResponseWriter, r *http.Request, orchest
 		return
 	}
 
-	var dumpErrMu sync.Mutex
-	var dumpErr error
+	dumpErrCh := make(chan error, 1)
 	piper, pipew := io.Pipe()
 
 	go func() {
-		dumpErrMu.Lock()
-		dumpErr = repo.Dump(r.Context(), indexOp.OperationIndexSnapshot.Snapshot.GetId(), filePath, pipew)
-		dumpErrMu.Unlock()
+		dumpErrCh <- repo.Dump(r.Context(), indexOp.OperationIndexSnapshot.Snapshot.GetId(), filePath, pipew)
 		pipew.Close()
 	}()
 
@@ -92,14 +88,15 @@ func handleIndexSnapshotDownload(w http.ResponseWriter, r *http.Request, orchest
 		return
 	}
 
-	dumpErrMu.Lock()
-	if dumpErr != nil {
-		zap.S().Errorf("error dumping snapshot: %v", dumpErr)
-		http.Error(w, fmt.Sprintf("error dumping snapshot: %v", dumpErr), http.StatusInternalServerError)
-		dumpErrMu.Unlock()
-		return
+	select {
+	case dumpErr := <-dumpErrCh:
+		if dumpErr != nil {
+			zap.S().Errorf("error dumping snapshot: %v", dumpErr)
+			http.Error(w, fmt.Sprintf("error dumping snapshot: %v", dumpErr), http.StatusInternalServerError)
+			return
+		}
+	default:
 	}
-	dumpErrMu.Unlock()
 
 	if IsTarArchive(bytes.NewReader(firstBytesBuffer.Bytes())) {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v.tar", filePath))
