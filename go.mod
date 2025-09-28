@@ -2,14 +2,6 @@ module github.com/garethgeorge/backrest
 
 go 1.24.0
 
-replace (
-	modernc.org/libc => modernc.org/libc v1.55.3
-	modernc.org/mathutil => modernc.org/mathutil v1.6.0
-	modernc.org/memory => modernc.org/memory v1.8.0
-	modernc.org/sqlite => modernc.org/sqlite v1.33.1
-	zombiezen.com/go/sqlite => zombiezen.com/go/sqlite v1.4.0
-)
-
 require (
 	al.essio.dev/pkg/shellescape v1.6.0
 	connectrpc.com/connect v1.18.1
