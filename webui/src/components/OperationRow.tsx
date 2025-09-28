@@ -227,6 +227,7 @@ export const OperationRow = ({
       children: (
         <SnapshotBrowser
           snapshotId={snapshotOp.snapshot!.id}
+          snapshotOpId={operation.id}
           repoId={operation.repoId}
           planId={operation.planId}
         />

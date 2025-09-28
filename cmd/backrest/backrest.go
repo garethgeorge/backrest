@@ -167,7 +167,7 @@ func main() {
 	syncStateHandlerPath, syncStateHandler := v1connect.NewBackrestSyncStateServiceHandler(syncapi.NewBackrestSyncStateHandler(syncMgr))
 	mux.Handle(syncStateHandlerPath, auth.RequireAuthentication(syncStateHandler, authenticator))
 	mux.Handle("/", webui.Handler())
-	mux.Handle("/download/", http.StripPrefix("/download", api.NewDownloadHandler(log)))
+	mux.Handle("/download/", http.StripPrefix("/download", api.NewDownloadHandler(log, orchestrator)))
 	mux.Handle("/metrics", auth.RequireAuthentication(metric.GetRegistry().Handler(), authenticator))
 
 	// Serve the HTTP gateway

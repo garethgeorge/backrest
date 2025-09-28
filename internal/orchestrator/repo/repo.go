@@ -336,6 +336,17 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, snaps
 	return protoutil.RestoreProgressEntryToProto(summary), nil
 }
 
+func (r *RepoOrchestrator) Dump(ctx context.Context, snapshotId string, snapshotPath string, output io.Writer) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
+
+	r.logger(ctx).Debug("dump snapshot", zap.String("snapshot", snapshotId), zap.String("path", snapshotPath))
+
+	return r.repo.Dump(ctx, snapshotId, snapshotPath, output)
+}
+
 // UnlockIfAutoEnabled unlocks the repo if the auto unlock feature is enabled.
 func (r *RepoOrchestrator) UnlockIfAutoEnabled(ctx context.Context) error {
 	if !r.repoConfig.AutoUnlock {

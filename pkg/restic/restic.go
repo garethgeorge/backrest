@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -369,6 +370,29 @@ func (r *Repo) ForgetSnapshot(ctx context.Context, snapshotId string, opts ...Ge
 	if err := cmd.Run(); err != nil {
 		return errorCollector.AddCmdOutputToError(cmd, err)
 	}
+	return nil
+}
+
+func (r *Repo) Dump(ctx context.Context, snapshotID string, file string, dumpOutput io.Writer, opts ...GenericOption) error {
+	args := []string{"dump", snapshotID, file}
+	if runtime.GOOS == "windows" {
+		args = append(args, "--archive", "zip")
+	} else {
+		args = append(args, "--archive", "tar")
+	}
+	cmd := r.commandWithContext(ctx, args, opts...)
+	logWriter := LoggerFromContext(ctx)
+	if logWriter == nil {
+		logWriter = io.Discard
+	}
+	errorCollector := errorMessageCollector{}
+
+	// Dump writes binary output to stdout, we should only ever capture and print stderr
+	r.handleOutput(cmd, withStdOutTo(dumpOutput), withStdErrTo(logWriter), withStdErrTo(&errorCollector))
+	if err := cmd.Run(); err != nil {
+		return errorCollector.AddCmdOutputToError(cmd, err)
+	}
+
 	return nil
 }
 
