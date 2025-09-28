@@ -181,6 +181,9 @@ func applySqliteMigrations(store *SqliteStore, db *sql.DB) error {
 			}
 		}
 
+		if err := oldOpsFile.Close(); err != nil {
+			return fmt.Errorf("closing old operations file: %w", err)
+		}
 		if err := os.Remove(oldOpsFilePath); err != nil {
 			return fmt.Errorf("removing old operations file: %w", err)
 		}
