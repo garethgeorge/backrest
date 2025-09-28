@@ -2,6 +2,7 @@ package syncapi
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -27,8 +28,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
-	"zombiezen.com/go/sqlite"
-	"zombiezen.com/go/sqlite/sqlitex"
 )
 
 const (
@@ -749,12 +748,9 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 		wg.Done()
 	}()
 
-	dbpool, err := sqlitex.NewPool("file:"+cryptoutil.MustRandomID(64)+"?mode=memory&cache=shared", sqlitex.PoolOptions{
-		PoolSize: 16,
-		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenURI,
-	})
+	dbpool, err := sql.Open("sqlite3", "file:"+cryptoutil.MustRandomID(64)+"?mode=memory&cache=shared")
 	if err != nil {
-		t.Fatalf("error creating sqlite pool: %s", err)
+		t.Fatalf("failed to open sqlite pool: %v", err)
 	}
 
 	t.Cleanup(func() {

@@ -2,12 +2,13 @@ package kvstore
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
 
-	"zombiezen.com/go/sqlite"
-	"zombiezen.com/go/sqlite/sqlitex"
+	_ "github.com/ncruces/go-sqlite3/driver"
+	_ "github.com/ncruces/go-sqlite3/embed"
 )
 
 var ErrNotExist = errors.New("key does not exist")
@@ -24,7 +25,7 @@ func escape(s string) string {
 }
 
 type sqliteKvStoreImpl struct {
-	dbpool    *sqlitex.Pool
+	dbpool    *sql.DB
 	tableName string
 	indexName string
 
@@ -39,7 +40,7 @@ type sqliteKvStoreImpl struct {
 
 var _ KvStore = (*sqliteKvStoreImpl)(nil)
 
-func NewSqliteKVStore(dbpool *sqlitex.Pool, basename string) (*sqliteKvStoreImpl, error) {
+func NewSqliteKVStore(dbpool *sql.DB, basename string) (*sqliteKvStoreImpl, error) {
 	store := &sqliteKvStoreImpl{
 		dbpool:    dbpool,
 		tableName: basename,
@@ -63,18 +64,12 @@ func NewSqliteKVStore(dbpool *sqlitex.Pool, basename string) (*sqliteKvStoreImpl
 }
 
 func (s *sqliteKvStoreImpl) init() error {
-	conn, err := s.dbpool.Take(context.Background())
-	if err != nil {
-		return fmt.Errorf("init sqlite: %v", err)
-	}
-	defer s.dbpool.Put(conn)
-
-	err = sqlitex.ExecuteTransient(conn, s.createTableSQL, nil)
+	_, err := s.dbpool.ExecContext(context.Background(), s.createTableSQL)
 	if err != nil {
 		return fmt.Errorf("create %s table: %v", s.tableName, err)
 	}
 
-	err = sqlitex.ExecuteTransient(conn, s.createIndexSQL, nil)
+	_, err = s.dbpool.ExecContext(context.Background(), s.createIndexSQL)
 	if err != nil {
 		return fmt.Errorf("create %s index: %v", s.indexName, err)
 	}
@@ -83,43 +78,19 @@ func (s *sqliteKvStoreImpl) init() error {
 }
 
 func (s *sqliteKvStoreImpl) Get(key string) ([]byte, error) {
-	conn, err := s.dbpool.Take(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("get from kvstore: %v", err)
-	}
-	defer s.dbpool.Put(conn)
-
-	found := false
 	var value []byte
-	err = sqlitex.Execute(conn, s.getSQL, &sqlitex.ExecOptions{
-		Args: []any{key},
-		ResultFunc: func(stmt *sqlite.Stmt) error {
-			value = make([]byte, stmt.ColumnLen(0))
-			n := stmt.ColumnBytes(0, value)
-			value = value[:n]
-			found = true
-			return nil
-		},
-	})
+	err := s.dbpool.QueryRowContext(context.Background(), s.getSQL, key).Scan(&value)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotExist
+		}
 		return nil, fmt.Errorf("get from kvstore: %v", err)
-	}
-	if !found {
-		return nil, ErrNotExist
 	}
 	return value, nil
 }
 
 func (s *sqliteKvStoreImpl) Set(key string, value []byte) error {
-	conn, err := s.dbpool.Take(context.Background())
-	if err != nil {
-		return fmt.Errorf("set to kvstore: %v", err)
-	}
-	defer s.dbpool.Put(conn)
-
-	err = sqlitex.Execute(conn, s.setSQL, &sqlitex.ExecOptions{
-		Args: []any{key, value},
-	})
+	_, err := s.dbpool.ExecContext(context.Background(), s.setSQL, key, value)
 	if err != nil {
 		return fmt.Errorf("set to kvstore: %v", err)
 	}
@@ -127,12 +98,6 @@ func (s *sqliteKvStoreImpl) Set(key string, value []byte) error {
 }
 
 func (s *sqliteKvStoreImpl) ForEach(prefix string, onRow func(key string, value []byte) error) error {
-	conn, err := s.dbpool.Take(context.Background())
-	if err != nil {
-		return fmt.Errorf("foreach from kvstore: %v", err)
-	}
-	defer s.dbpool.Put(conn)
-
 	var query string
 	var args []any
 
@@ -143,18 +108,26 @@ func (s *sqliteKvStoreImpl) ForEach(prefix string, onRow func(key string, value 
 		args = []any{escape(prefix) + "%", escapeChar}
 	}
 
-	err = sqlitex.Execute(conn, query, &sqlitex.ExecOptions{
-		Args: args,
-		ResultFunc: func(stmt *sqlite.Stmt) error {
-			key := stmt.ColumnText(0)
-			value := make([]byte, stmt.ColumnLen(1))
-			n := stmt.ColumnBytes(1, value)
-			value = value[:n]
-			return onRow(key, value)
-		},
-	})
+	rows, err := s.dbpool.QueryContext(context.Background(), query, args...)
 	if err != nil {
 		return fmt.Errorf("foreach from kvstore: %v", err)
 	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var key string
+		var value []byte
+		if err := rows.Scan(&key, &value); err != nil {
+			return fmt.Errorf("foreach from kvstore: %v", err)
+		}
+		if err := onRow(key, value); err != nil {
+			return err
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("foreach from kvstore: %v", err)
+	}
+
 	return nil
 }

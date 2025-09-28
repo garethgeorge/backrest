@@ -1,6 +1,7 @@
 package syncapi
 
 import (
+	"database/sql"
 	"fmt"
 	"maps"
 	"slices"
@@ -12,7 +13,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/kvstore"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
-	"zombiezen.com/go/sqlite/sqlitex"
 )
 
 type PeerState struct {
@@ -168,7 +168,7 @@ type SqlitePeerStateManager struct {
 	kvstore        kvstore.KvStore
 }
 
-func NewSqlitePeerStateManager(dbpool *sqlitex.Pool) (*SqlitePeerStateManager, error) {
+func NewSqlitePeerStateManager(dbpool *sql.DB) (*SqlitePeerStateManager, error) {
 	kv, err := kvstore.NewSqliteKVStore(dbpool, "peer_states")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kvstore: %v", err)

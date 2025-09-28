@@ -1,13 +1,13 @@
 package syncapi
 
 import (
+	"database/sql"
 	"testing"
 	"time"
 
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/google/go-cmp/cmp"
-	"zombiezen.com/go/sqlite"
-	"zombiezen.com/go/sqlite/sqlitex"
+	_ "github.com/ncruces/go-sqlite3/driver"
 )
 
 func PeerStateManagersForTest(t testing.TB) map[string]PeerStateManager {
@@ -90,12 +90,9 @@ func TestPeerStateManager_OnStateChanged(t *testing.T) {
 	}
 }
 
-func newDbForTest(t testing.TB) *sqlitex.Pool {
+func newDbForTest(t testing.TB) *sql.DB {
 	t.Helper()
-	dbpool, err := sqlitex.NewPool("file:"+cryptoutil.MustRandomID(64)+"?mode=memory&cache=shared", sqlitex.PoolOptions{
-		PoolSize: 16,
-		Flags:    sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenURI,
-	})
+	dbpool, err := sql.Open("sqlite3", "file:"+cryptoutil.MustRandomID(64)+"?mode=memory&cache=shared")
 	if err != nil {
 		t.Fatalf("error creating sqlite pool: %s", err)
 	}
