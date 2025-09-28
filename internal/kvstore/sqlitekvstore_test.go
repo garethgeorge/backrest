@@ -37,8 +37,8 @@ func TestSqliteKvStore(t *testing.T) {
 
 	t.Run("Get non-existent", func(t *testing.T) {
 		value, err := store.Get("non-existent")
-		if err != nil {
-			t.Fatal(err)
+		if err != ErrNotExist {
+			t.Errorf("expected ErrNotExist, got %v", err)
 		}
 		if value != nil {
 			t.Errorf("expected nil, got %v", value)
