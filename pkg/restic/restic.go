@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -374,12 +373,7 @@ func (r *Repo) ForgetSnapshot(ctx context.Context, snapshotId string, opts ...Ge
 }
 
 func (r *Repo) Dump(ctx context.Context, snapshotID string, file string, dumpOutput io.Writer, opts ...GenericOption) error {
-	args := []string{"dump", snapshotID, file}
-	if runtime.GOOS == "windows" {
-		args = append(args, "--archive", "zip")
-	} else {
-		args = append(args, "--archive", "tar")
-	}
+	args := []string{"dump", snapshotID, file, "--archive", "tar"}
 	cmd := r.commandWithContext(ctx, args, opts...)
 	logWriter := LoggerFromContext(ctx)
 	if logWriter == nil {

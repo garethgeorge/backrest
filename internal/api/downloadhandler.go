@@ -12,15 +12,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
-	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
 )
 
@@ -45,63 +44,65 @@ func NewDownloadHandler(oplog *oplog.OpLog, orchestrator *orchestrator.Orchestra
 			return
 		}
 
-		switch op := op.Op.(type) {
+		switch typedOp := op.Op.(type) {
 		case *v1.Operation_OperationIndexSnapshot:
-			handleIndexSnapshotDownload(w, r, orchestrator, op, filePath)
+			handleIndexSnapshotDownload(w, r, orchestrator, op, typedOp, filePath)
 		case *v1.Operation_OperationRestore:
-			handleRestoreDownload(w, r, op, filePath)
+			handleRestoreDownload(w, r, typedOp, filePath)
 		default:
 			http.Error(w, "restore not found", http.StatusNotFound)
 		}
 	})
 }
 
-func handleIndexSnapshotDownload(w http.ResponseWriter, r *http.Request, orchestrator *orchestrator.Orchestrator, op *v1.Operation_OperationIndexSnapshot, filePath string) {
-	repoCfg, err := orchestrator.GetRepo(op.OperationIndexSnapshot.Snapshot.GetRepoId())
+func handleIndexSnapshotDownload(w http.ResponseWriter, r *http.Request, orchestrator *orchestrator.Orchestrator, op *v1.Operation, indexOp *v1.Operation_OperationIndexSnapshot, filePath string) {
+	repoCfg, err := orchestrator.GetRepo(op.RepoId)
 	if err != nil {
 		http.Error(w, "error getting repo", http.StatusInternalServerError)
 		return
 	}
 
-	if repoCfg.Guid != op.OperationIndexSnapshot.Snapshot.GetRepoGuid() {
+	if repoCfg.Guid != op.RepoGuid {
 		http.Error(w, "repo GUID does not match", http.StatusNotFound)
 		return
 	}
 
-	repo, err := orchestrator.GetRepoOrchestrator(op.OperationIndexSnapshot.Snapshot.GetRepoId())
+	repo, err := orchestrator.GetRepoOrchestrator(op.RepoId)
 	if err != nil {
 		http.Error(w, "error getting repo", http.StatusInternalServerError)
 		return
 	}
 
+	var dumpErrMu sync.Mutex
 	var dumpErr error
-	cmdLog := bytes.NewBuffer(nil)
 	piper, pipew := io.Pipe()
 
 	go func() {
-		defer pipew.Close()
-		dumpCtx := restic.ContextWithLogger(r.Context(), cmdLog)
-		dumpErr = repo.Dump(dumpCtx, op.OperationIndexSnapshot.Snapshot.GetId(), filePath, pipew)
+		dumpErrMu.Lock()
+		dumpErr = repo.Dump(r.Context(), indexOp.OperationIndexSnapshot.Snapshot.GetId(), filePath, pipew)
+		dumpErrMu.Unlock()
+		pipew.Close()
 	}()
 
 	firstBytesBuffer := bytes.NewBuffer(nil)
 	_, err = io.CopyN(firstBytesBuffer, piper, 32*1024)
 	if err != nil && !errors.Is(err, io.EOF) {
+		zap.S().Errorf("error copying snapshot: %v", err)
 		http.Error(w, fmt.Sprintf("error copying snapshot: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	dumpErrMu.Lock()
 	if dumpErr != nil {
+		zap.S().Errorf("error dumping snapshot: %v", dumpErr)
 		http.Error(w, fmt.Sprintf("error dumping snapshot: %v", dumpErr), http.StatusInternalServerError)
+		dumpErrMu.Unlock()
 		return
 	}
+	dumpErrMu.Unlock()
 
-	if filepath.Ext(filePath) == "" {
-		if runtime.GOOS == "windows" {
-			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v.zip", filePath))
-		} else {
-			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v.tar.gz", filePath))
-		}
+	if IsTarArchive(bytes.NewReader(firstBytesBuffer.Bytes())) {
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v.tar", filePath))
 	} else {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filePath))
 	}
@@ -219,4 +220,14 @@ func tarDirectory(w io.Writer, dirpath string) error {
 
 		return nil
 	})
+}
+
+func IsTarArchive(r io.Reader) bool {
+	if r == nil {
+		return false
+	}
+
+	tr := tar.NewReader(r)
+	_, err := tr.Next()
+	return err == nil
 }
