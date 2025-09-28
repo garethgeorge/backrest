@@ -337,13 +337,9 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, snaps
 }
 
 func (r *RepoOrchestrator) Dump(ctx context.Context, snapshotId string, snapshotPath string, output io.Writer) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
-
 	r.logger(ctx).Debug("dump snapshot", zap.String("snapshot", snapshotId), zap.String("path", snapshotPath))
-
 	return r.repo.Dump(ctx, snapshotId, snapshotPath, output)
 }
 
