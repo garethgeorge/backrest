@@ -44,8 +44,7 @@ var (
 	commit  = "unknown"
 )
 
-func main() {
-	flag.Parse()
+func runApp() {
 	installLoggers()
 
 	resticPath, err := resticinstaller.FindOrInstallResticBinary()

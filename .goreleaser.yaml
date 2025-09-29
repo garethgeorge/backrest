@@ -25,7 +25,6 @@ builds:
       - CGO_ENABLED=0
     goos:
       - darwin
-      - windows
       - freebsd
     goarch:
       - amd64
@@ -44,18 +43,17 @@ builds:
       - arm
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
-  - id: backrestmon
-    main: ./cmd/backrestmon
-    binary: backrest-windows-tray
+  - id: windows
+    main: ./cmd/backrest
     env:
       - CGO_ENABLED=1
-      - GO111MODULE=on
-    ldflags: -H=windowsgui
     goos:
       - windows
     goarch:
       - amd64
       - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -H windowsgui
 
 archives:
   - format: tar.gz

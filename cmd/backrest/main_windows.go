@@ -4,15 +4,11 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"net"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
-	"syscall"
 
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/getlantern/systray"
@@ -24,26 +20,19 @@ import (
 //go:embed icon.ico
 var icon []byte
 
+var windowsTray = flag.Bool("windows-tray", false, "run the windows tray application")
+
 func main() {
 	flag.Parse()
-	backrest, err := findBackrest()
-	if err != nil {
-		reportError(err)
-		return
+	if *windowsTray {
+		startTray()
+	} else {
+		runApp()
 	}
+}
 
-	ctx, cancel := context.WithCancel(context.Background())
-
-	cmd := exec.CommandContext(ctx, backrest, os.Args[1:]...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "ENV=production")
-
-	if err := cmd.Start(); err != nil {
-		reportError(err)
-		cancel()
-		return
-	}
+func startTray() {
+	go runApp()
 
 	systray.Run(func() {
 		systray.SetTitle("Backrest Tray")
@@ -85,44 +74,10 @@ func main() {
 		mQuit.ClickedCh = make(chan struct{})
 		go func() {
 			<-mQuit.ClickedCh
-			cancel()
 			systray.Quit()
 		}()
 	}, func() {
-		cancel()
 	})
-
-	if err := cmd.Wait(); err != nil {
-		systray.Quit()
-		if ctx.Err() != context.Canceled {
-			reportError(fmt.Errorf("backrest process exited unexpectedly with error: %w", err))
-		}
-		return
-	}
-}
-
-func findBackrest() (string, error) {
-	// Backrest binary must be installed in the same directory as the backresttray binary.
-	ex, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	dir := filepath.Dir(ex)
-
-	wantPath := filepath.Join(dir, backrestBinName())
-
-	if stat, err := os.Stat(wantPath); err == nil && !stat.IsDir() {
-		return wantPath, nil
-	}
-	return "", fmt.Errorf("backrest binary not found at %s", wantPath)
-}
-
-func backrestBinName() string {
-	if runtime.GOOS == "windows" {
-		return "backrest.exe"
-	} else {
-		return "backrest"
-	}
 }
 
 func openBrowser(url string) error {
