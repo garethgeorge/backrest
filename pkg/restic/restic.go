@@ -158,32 +158,39 @@ func (r *Repo) executeWithJSONOutput(ctx context.Context, args []string, result 
 
 	stdOutBytes := stdoutOutput.Bytes()
 
-	// Try to parse the entire output first
-	origErr := json.Unmarshal(stdOutBytes, result)
-	if origErr == nil {
+	parsedOutput, skippedWarnings, err := parseJSONSkippingWarnings(stdOutBytes, result)
+	if err == nil {
+		if skippedWarnings {
+			zap.S().Warnf("Command %v output may have contained a skipped warning from restic that was not valid JSON: %s", args, string(parsedOutput))
+		}
 		return nil
 	}
 
-	// Find the index afterwhich everything is whitespace
-	allWhitespaceAfterIdx := len(stdoutOutput.Bytes())
-	for i, b := range stdoutOutput.Bytes() {
-		if unicode.IsSpace(rune(b)) {
-			allWhitespaceAfterIdx = i
-		}
+	return errorCollector.AddCmdOutputToError(cmd, fmt.Errorf("command output is not valid JSON: %w", err))
+}
+
+func parseJSONSkippingWarnings(stdOutBytes []byte, result interface{}) ([]byte, bool, error) {
+	firstErr := json.Unmarshal(stdOutBytes, result)
+	if firstErr == nil {
+		return stdOutBytes, false, nil
 	}
 
-	// If that fails, try by skipping bytes until a newline is found
-	start := 0
-	for start < allWhitespaceAfterIdx {
-		if err := json.Unmarshal(stdOutBytes[start:], result); err == nil {
-			zap.S().Warnf("Command %v output may have contained a skipped warning from restic that was not valid JSON: %s", args, string(stdOutBytes[start:]))
-			return nil
+	trimmed := bytes.TrimRightFunc(stdOutBytes, unicode.IsSpace)
+	skipped := false
+	for len(trimmed) > 0 {
+		if err := json.Unmarshal(trimmed, result); err == nil {
+			return trimmed, skipped, nil
 		}
-		start = start + bytes.IndexRune(stdOutBytes[start:], '\n')
-		start++ // skip the newline itself
+
+		newlineIdx := bytes.IndexByte(trimmed, '\n')
+		if newlineIdx == -1 {
+			break
+		}
+		trimmed = trimmed[newlineIdx+1:]
+		skipped = true
 	}
 
-	return errorCollector.AddCmdOutputToError(cmd, fmt.Errorf("command output is not valid JSON: %w", origErr))
+	return nil, skipped, firstErr
 }
 
 // Exists checks if the repository exists.
