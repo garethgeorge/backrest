@@ -161,6 +161,10 @@ func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, log *oplog.
 	return o, nil
 }
 
+func (o *Orchestrator) ResticBinary() string {
+	return o.resticBin
+}
+
 func (o *Orchestrator) autoInitReposIfNeeded(resticBin string) error {
 	var fullErr error
 	cfg, err := o.configMgr.Get()
