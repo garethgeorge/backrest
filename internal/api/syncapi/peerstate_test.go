@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/google/go-cmp/cmp"
 	_ "github.com/ncruces/go-sqlite3/driver"
+	"github.com/ncruces/go-sqlite3/vfs/memdb"
 )
 
 func PeerStateManagersForTest(t testing.TB) map[string]PeerStateManager {
@@ -92,7 +92,7 @@ func TestPeerStateManager_OnStateChanged(t *testing.T) {
 
 func newDbForTest(t testing.TB) *sql.DB {
 	t.Helper()
-	dbpool, err := sql.Open("sqlite3", "file:"+cryptoutil.MustRandomID(64)+"?mode=memory&cache=shared")
+	dbpool, err := sql.Open("sqlite3", memdb.TestDB(t))
 	if err != nil {
 		t.Fatalf("error creating sqlite pool: %s", err)
 	}

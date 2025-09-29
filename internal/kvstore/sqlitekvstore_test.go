@@ -8,18 +8,15 @@ import (
 	"testing"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
+	"github.com/ncruces/go-sqlite3/vfs/memdb"
 )
 
 func newTestDB(t testing.TB) *sql.DB {
-	db, err := sql.Open("sqlite3", "file::memory:?cache=shared")
+	t.Helper()
+	db, err := sql.Open("sqlite3", memdb.TestDB(t))
 	if err != nil {
 		t.Fatalf("failed to open memory database: %v", err)
 	}
-	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
-			t.Logf("failed to close db: %v", err)
-		}
-	})
 	return db
 }
 
