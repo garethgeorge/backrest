@@ -27,6 +27,7 @@ import (
 var ErrRepoNotFound = errors.New("repo not found")
 var ErrRepoInitializationFailed = errors.New("repo initialization failed")
 var ErrPlanNotFound = errors.New("plan not found")
+var startTime = time.Now()
 
 const (
 	defaultTaskLogDuration = 14 * 24 * time.Hour
@@ -163,6 +164,10 @@ func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, log *oplog.
 
 func (o *Orchestrator) ResticBinary() string {
 	return o.resticBin
+}
+
+func (o *Orchestrator) Uptime() time.Duration {
+	return time.Since(startTime)
 }
 
 func (o *Orchestrator) autoInitReposIfNeeded(resticBin string) error {

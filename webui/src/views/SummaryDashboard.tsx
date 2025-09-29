@@ -161,6 +161,11 @@ export const SummaryDashboard = () => {
               label: "OS Version",
               children: summaryData.osVersion || "Unknown",
             },
+            {
+              key: 7,
+              label: "Uptime",
+              children: summaryData.uptime || "Unknown",
+            },
           ]}
         />
         <Collapse
