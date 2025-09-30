@@ -8,13 +8,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/kvstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -26,6 +25,8 @@ import (
 	"github.com/gofrs/flock"
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
+	"github.com/ncruces/go-sqlite3/vfs"
+	"github.com/ncruces/go-sqlite3/vfs/memdb"
 	_ "github.com/ncruces/go-sqlite3/vfs/memdb"
 )
 
@@ -42,8 +43,6 @@ type SqliteStore struct {
 
 	ogidCache *lru.TwoQueueCache[opGroupInfo, int64]
 
-	tidyGroupsOnce sync.Once
-
 	kvstore      kvstore.KvStore
 	highestModno atomic.Int64
 }
@@ -54,9 +53,27 @@ func NewSqliteStore(db string) (*SqliteStore, error) {
 	if err := os.MkdirAll(filepath.Dir(db), 0700); err != nil {
 		return nil, fmt.Errorf("create sqlite db directory: %v", err)
 	}
+	if !vfs.SupportsFileLocking {
+		return nil, fmt.Errorf("file locking not supported")
+	}
 	dbpool, err := sql.Open("sqlite3", db)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
+	}
+	if vfs.SupportsSharedMemory {
+		_, err = dbpool.ExecContext(context.Background(), `
+			PRAGMA journal_mode = WAL;
+			PRAGMA synchronous = NORMAL;
+		`)
+		if err != nil {
+			return nil, fmt.Errorf("run multiline query: %v", err)
+		}
+	}
+	if runtime.GOOS == "darwin" {
+		_, err = dbpool.ExecContext(context.Background(), "PRAGMA checkpoint_fullfsync = 1")
+		if err != nil {
+			return nil, fmt.Errorf("run multiline query: %v", err)
+		}
 	}
 
 	kvstore, err := kvstore.NewSqliteKVStore(dbpool, "oplog_metadata")
@@ -82,8 +99,8 @@ func NewSqliteStore(db string) (*SqliteStore, error) {
 	return store, nil
 }
 
-func NewMemorySqliteStore() (*SqliteStore, error) {
-	dbpool, err := sql.Open("sqlite3", "file:/"+cryptoutil.MustRandomID(64)+"?vfs=memdb")
+func NewMemorySqliteStore(t testing.TB) (*SqliteStore, error) {
+	dbpool, err := sql.Open("sqlite3", memdb.TestDB(t))
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite pool: %v", err)
 	}
