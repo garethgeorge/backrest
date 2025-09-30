@@ -880,7 +880,7 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 		}
 	}
 
-	response.Uptime = humanTime(s.orchestrator.Uptime())
+	response.Uptime = s.orchestrator.Uptime().Milliseconds()
 
 	for _, repo := range config.Repos {
 		resp, err := generateSummaryHelper(repo.Id, oplog.Query{}.
@@ -909,21 +909,6 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	}
 
 	return connect.NewResponse(response), nil
-}
-
-func humanTime(d time.Duration) string {
-	d = d.Round(time.Second)
-	days := d / (24 * time.Hour)
-	d -= days * 24 * time.Hour
-	h := d / time.Hour
-	d -= h * time.Hour
-	m := d / time.Minute
-	d -= m * time.Minute
-	s := d / time.Second
-	if days > 0 {
-		return fmt.Sprintf("%dd %02dh:%02dm:%02ds", days, h, m, s)
-	}
-	return fmt.Sprintf("%02dh:%02dm:%02ds", h, m, s)
 }
 
 func systemOSVersion() string {

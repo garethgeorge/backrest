@@ -144,12 +144,12 @@ export const SummaryDashboard = () => {
             {
               key: 3,
               label: "Restic Version",
-              children: summaryData.resticVersion || "Unknown",
+              children: summaryData.resticVersion,
             },
             {
               key: 4,
               label: "Restic Binary",
-              children: summaryData.resticPath || "Unknown",
+              children: summaryData.resticPath,
             },
             {
               key: 5,
@@ -164,7 +164,7 @@ export const SummaryDashboard = () => {
             {
               key: 7,
               label: "Uptime",
-              children: summaryData.uptime || "Unknown",
+              children: formatDuration(Number(summaryData.uptime)),
             },
           ]}
         />
