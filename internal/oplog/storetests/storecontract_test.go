@@ -26,7 +26,7 @@ func StoresForTest(t testing.TB) map[string]oplog.OpStore {
 	}
 	t.Cleanup(func() { sqlitestoreinst.Close() })
 
-	sqlitememstore, err := sqlitestore.NewMemorySqliteStore()
+	sqlitememstore, err := sqlitestore.NewMemorySqliteStore(t)
 	if err != nil {
 		t.Fatalf("error creating sqlite store: %s", err)
 	}

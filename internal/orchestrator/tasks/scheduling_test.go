@@ -412,7 +412,7 @@ func TestScheduling(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			opstore, err := sqlitestore.NewMemorySqliteStore()
+			opstore, err := sqlitestore.NewMemorySqliteStore(t)
 			if err != nil {
 				t.Fatalf("failed to create opstore: %v", err)
 			}

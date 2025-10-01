@@ -716,7 +716,7 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	configMgr := &config.ConfigManager{Store: &config.MemoryStore{Config: initialConfig}}
-	opstore, err := sqlitestore.NewMemorySqliteStore()
+	opstore, err := sqlitestore.NewMemorySqliteStore(t)
 	t.Cleanup(func() { opstore.Close() })
 	if err != nil {
 		t.Fatalf("failed to create opstore: %v", err)
