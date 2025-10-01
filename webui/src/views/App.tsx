@@ -9,8 +9,8 @@ import {
   LoadingOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Button, Empty, Layout, Menu, Spin, theme } from "antd";
-import { Config } from "../../gen/ts/v1/config_pb";
+import { Button, Empty, Layout, Menu, Spin, theme, Tooltip } from "antd";
+import { Config, Schedule } from "../../gen/ts/v1/config_pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { uiBuildVersion } from "../state/buildcfg";
@@ -59,6 +59,35 @@ const RepoView = React.lazy(() =>
     default: m.RepoView,
   }))
 );
+
+// Sets the schedule string to something more readable 
+const getScheduleString = (schedule: Schedule | undefined) => {
+  switch (schedule?.schedule?.case) {
+    case "disabled":
+      return "Disabled"
+
+    // Just display the cron string
+    case "cron":
+      return schedule?.schedule?.value
+
+    // Running once per day, return 'Every day' instead of 'Every 1 days'
+    case "maxFrequencyDays":
+      return schedule?.schedule?.value == 1 ? "Every day" : `Every ${schedule?.schedule?.value} days`
+
+    // Running once per hour, return 'Every hour' instead of 'Every 1 hours'
+    case "maxFrequencyHours":
+      return schedule?.schedule?.value == 1 ? "Every hour" : `Every ${schedule?.schedule?.value} hours`
+  }
+  return "Schedule Unavailable" // Defensive: In case there's an error with the schedule variable
+}
+
+// Generate the text for the tooltip
+const generatePlanHoverDetails = (repo: string, paths: any[], schedule: Schedule | undefined) => {
+  return `Repository: ${repo}
+          Schedule: ${getScheduleString(schedule)}
+          Paths: \n${paths.map(p => `  - ${p}`).join("\n")}`; // List paths on their own new line
+  };
+
 
 const RepoViewContainer = () => {
   const { repoId } = useParams();
@@ -306,24 +335,26 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
         key: "p-" + plan.id,
         icon: <IconForResource selector={sel} />,
         label: (
-          <div
-            className="backrest visible-on-hover"
-            style={{ width: "100%", height: "100%" }}
-          >
-            {plan.id}{" "}
-            <Button
-              className="hidden-child float-center-right"
-              type="text"
-              size="small"
-              shape="circle"
-              style={{ width: "30px", height: "30px" }}
-              icon={<SettingOutlined />}
-              onClick={async () => {
-                const { AddPlanModal } = await import("./AddPlanModal");
-                showModal(<AddPlanModal template={plan} />);
-              }}
-            />
-          </div>
+          <Tooltip style={{ width: "auto" }} placement="right" title={<span style={{ whiteSpace: "pre-line"}}> {generatePlanHoverDetails(plan.repo, plan.paths, plan.schedule)}</span>}>
+            <div
+              className="backrest visible-on-hover"
+              style={{ width: "100%", height: "100%" }}
+            >
+              {plan.id}{" "}
+              <Button
+                className="hidden-child float-center-right"
+                type="text"
+                size="small"
+                shape="circle"
+                style={{ width: "30px", height: "30px" }}
+                icon={<SettingOutlined />}
+                onClick={async () => {
+                  const { AddPlanModal } = await import("./AddPlanModal");
+                  showModal(<AddPlanModal template={plan} />);
+                }}
+              />
+            </div>
+          </Tooltip>
         ),
         onClick: async () => {
           navigate(`/plan/${plan.id}`);
