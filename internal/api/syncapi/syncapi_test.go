@@ -23,6 +23,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"github.com/garethgeorge/backrest/internal/testutil"
 	"github.com/google/go-cmp/cmp"
+	"github.com/ncruces/go-sqlite3/vfs/memdb"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -748,7 +749,7 @@ func newPeerUnderTest(t *testing.T, initialConfig *v1.Config) *peerUnderTest {
 		wg.Done()
 	}()
 
-	dbpool, err := sql.Open("sqlite3", "file:"+cryptoutil.MustRandomID(64)+"?mode=memory&cache=shared")
+	dbpool, err := sql.Open("sqlite3", memdb.TestDB(t))
 	if err != nil {
 		t.Fatalf("failed to open sqlite pool: %v", err)
 	}
