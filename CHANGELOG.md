@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.10.0](https://github.com/garethgeorge/backrest/compare/v1.9.2...v1.10.0) (2025-10-05)
+
+
+### Features
+
+* allow direct downloading files and folders through backrest webui without restoring first ([#921](https://github.com/garethgeorge/backrest/issues/921)) ([d9b7715](https://github.com/garethgeorge/backrest/commit/d9b77155f3ea8b4bd44d78d3f2489e53fd4a0e6d))
+
+
+### Bug Fixes
+
+* avoid shared cache memory databases ([#926](https://github.com/garethgeorge/backrest/issues/926)) ([e8e9429](https://github.com/garethgeorge/backrest/commit/e8e94295ccc8890c048b9d8808f1ca9a5de775ce))
+* improve JSON parsing resilience ([#928](https://github.com/garethgeorge/backrest/issues/928)) ([e41c357](https://github.com/garethgeorge/backrest/commit/e41c357d30bd8aa16a1ee209e3fdc42f1d3dc87a))
+* merge windows tray functionality into backrest.exe for single binary install on windows ([#903](https://github.com/garethgeorge/backrest/issues/903)) ([3ccb883](https://github.com/garethgeorge/backrest/commit/3ccb883b2f47880017dcb0dd3383cfdf58836929))
+* remove scheduled task time limit for Windows 2012 ([#899](https://github.com/garethgeorge/backrest/issues/899)) ([6cf7df2](https://github.com/garethgeorge/backrest/commit/6cf7df23b89c4317ec75f6b3a271a6b9c19aae78))
+* update css to actually center elements having class `.float-center-right` ([#931](https://github.com/garethgeorge/backrest/issues/931)) ([2ced790](https://github.com/garethgeorge/backrest/commit/2ced7903402c5346c9dc6189fe083ff3fc493ef0))
+* update restic version to 0.18.1 ([#910](https://github.com/garethgeorge/backrest/issues/910)) ([b34ea4c](https://github.com/garethgeorge/backrest/commit/b34ea4c5987d9c93f36e37bcf4d8cd517b4420ac))
+
 ## [1.9.2](https://github.com/garethgeorge/backrest/compare/v1.9.1...v1.9.2) (2025-08-28)
 
 
