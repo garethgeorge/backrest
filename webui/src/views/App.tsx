@@ -83,9 +83,10 @@ const getScheduleString = (schedule: Schedule | undefined) => {
 
 // Generate the text for the tooltip
 const generatePlanHoverDetails = (repo: string, paths: any[], schedule: Schedule | undefined) => {
+  const maxPaths = 6;
   return `Repository: ${repo}
           Schedule: ${getScheduleString(schedule)}
-          Paths: \n${paths.map(p => `  - ${p}`).join("\n")}`; // List paths on their own new line
+          Paths: \n${paths.slice(0, maxPaths).map(p => `  - ${p}`).join("\n") + (paths.length > maxPaths ? `\n + ${paths.length - 6} more` : '')}`;
   };
 
 
