@@ -8,11 +8,6 @@ uninstall_unix() {
 }
 
 remove_systemd_service() {
-  if [ ! -d /etc/systemd/system ]; then
-    echo "Systemd not found. This script is only for systemd based systems."
-    exit 1
-  fi
-
   echo "Removing systemd service at /etc/systemd/system/backrest.service"
   sudo systemctl stop backrest
   sudo systemctl disable backrest
@@ -20,6 +15,13 @@ remove_systemd_service() {
 
   echo "Reloading systemd daemon"
   sudo systemctl daemon-reload
+}
+
+remove_openrc_service() {
+  echo "Removing openrc service at /etc/init.d/backrest"
+  sudo rc-service backrest --ifstarted stop
+  sudo rc-update del backrest default
+  sudo rm -f /etc/init.d/backrest
 }
 
 remove_launchd_plist() {
@@ -39,9 +41,20 @@ if [ "$OS" = "Darwin" ]; then
 elif [ "$OS" = "Linux" ]; then
   echo "Unnstalling on Linux"
   uninstall_unix
-  remove_systemd_service
 
-  echo "Done -- run 'systemctl status backrest' to check the status of the service."
+  systemctl --version
+  systemd_=$?
+  rc-status --version
+  openrc_=$?
+
+  if [ $systemd_ -eq 0 ]; then
+    remove_systemd_service
+    echo "Done -- run 'systemctl status backrest' to check the status of the service."
+  elif [ $openrc_ -eq 0 ]; then
+    remove_openrc_service
+    echo "Done -- run 'rc-service backrest status' to check the status of the service."
+  fi
+
 else
   echo "Unknown OS: $OS. This script only supports Darwin and Linux."
   exit 1
