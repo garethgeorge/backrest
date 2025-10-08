@@ -28,12 +28,16 @@ else
   echo "Local access only: Backrest will bind to 127.0.0.1:9898, run ./install.sh --allow-remote-access to enable remote access"
 fi
 
-install_or_update_unix() {
+stop_systemd_service() {
   if systemctl is-active --quiet backrest; then
     sudo systemctl stop backrest
     echo "Paused backrest for update"
   fi
-  install_unix
+}
+
+stop_openrc_service() {
+  sudo rc-service backrest --ifstarted stop
+  echo "Paused backrest for update (if started)"
 }
 
 install_unix() {
@@ -44,11 +48,6 @@ install_unix() {
 }
 
 create_systemd_service() {
-  if [ ! -d /etc/systemd/system ]; then
-    echo "Systemd not found. This script is only for systemd based systems."
-    exit 1
-  fi
-
   if [ -f /etc/systemd/system/backrest.service ]; then
     echo "Systemd unit already exists. Skipping creation."
     return 0
@@ -74,6 +73,41 @@ EOM
 
   echo "Reloading systemd daemon"
   sudo systemctl daemon-reload
+
+  echo "Enabling systemd service backrest.service"
+  sudo systemctl enable backrest
+  sudo systemctl start backrest
+}
+
+create_openrc_service() {
+  if [ -f /etc/init.d/backrest ]; then
+    echo "Openrc service already exists. Skipping creation."
+    return 0
+  fi
+
+  echo "Creating openrc service at /etc/init.d/backrest"
+
+  sudo tee /etc/init.d/backrest > /dev/null <<- EOM
+#!/sbin/openrc-run
+description="Backrest Service"
+
+depend() {
+    need loopback
+    use net logger
+}
+
+command=/usr/local/bin/backrest
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
+
+export BACKREST_PORT=$BACKREST_PORT
+EOM
+
+  sudo chmod 755 /etc/init.d/backrest
+  echo "Adding backrest to runlevel default"
+  sudo rc-update add backrest default
+  echo "Reloading openrc service"
+  sudo rc-service backrest start
 }
 
 create_launchd_plist() {
@@ -120,11 +154,28 @@ if [ "$OS" = "Darwin" ]; then
   sudo xattr -d com.apple.quarantine /usr/local/bin/backrest # remove quarantine flag
 elif [ "$OS" = "Linux" ]; then
   echo "Installing on Linux"
-  install_or_update_unix
-  create_systemd_service
-  echo "Enabling systemd service backrest.service"
-  sudo systemctl enable backrest
-  sudo systemctl start backrest
+
+  systemctl --version
+  systemd_=$?
+  rc-status --version
+  openrc_=$?
+
+  if [ $systemd_ -eq 0 ]; then
+    echo "Systemd found."
+
+    stop_systemd_service
+    install_unix
+    create_systemd_service
+  elif [ $openrc_ -eq 0 ]; then
+    echo "Openrc found."
+
+    stop_openrc_service
+    install_unix
+    create_openrc_service
+  else
+    echo "neither systemd nor openrc were found"
+  fi
+
 else
   echo "Unknown OS: $OS. This script only supports Darwin and Linux."
   exit 1
