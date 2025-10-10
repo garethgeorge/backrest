@@ -10,6 +10,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/orchestrator/hookvars"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -46,7 +47,7 @@ type TaskRunner interface {
 	// QueryOperations queries the operation log.
 	QueryOperations(oplog.Query, func(*v1.Operation) error) error
 	// ExecuteHooks
-	ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars HookVars) error
+	ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars hookvars.HookVars) error
 	// GetRepo returns the repo with the given ID.
 	GetRepo(repoID string) (*v1.Repo, error)
 	// GetPlan returns the plan with the given ID.
@@ -223,7 +224,7 @@ func (t *testTaskRunner) DeleteOperation(id ...int64) error {
 	return t.oplog.Delete(id...)
 }
 
-func (t *testTaskRunner) ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars HookVars) error {
+func (t *testTaskRunner) ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars hookvars.HookVars) error {
 	panic("not implemented")
 }
 
