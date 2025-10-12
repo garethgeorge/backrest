@@ -98,7 +98,8 @@ depend() {
 
 command=/usr/local/bin/backrest
 command_background=true
-pidfile="/run/${RC_SVCNAME}.pid"
+pidfile="/run/\${RC_SVCNAME}.pid"
+command_user="$(whoami):$(whoami)"
 
 export BACKREST_PORT=$BACKREST_PORT
 EOM
