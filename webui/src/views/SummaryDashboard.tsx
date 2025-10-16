@@ -17,6 +17,8 @@ import {
   SummaryDashboardResponse,
   SummaryDashboardResponse_Summary,
 } from "../../gen/ts/v1/service_pb";
+import { EmptySchema } from "../../gen/ts/types/value_pb";
+import { create } from "@bufbuild/protobuf";
 import { backrestService } from "../api";
 import { useAlertApi } from "../components/Alerts";
 import {
@@ -65,7 +67,7 @@ export const SummaryDashboard = () => {
       }
 
       try {
-        const data = await backrestService.getSummaryDashboard({});
+        const data = await backrestService.getSummaryDashboard(create(EmptySchema, {}));
         setSummaryData(data);
       } catch (e) {
         alertApi.error("Failed to fetch summary data: " + e);
