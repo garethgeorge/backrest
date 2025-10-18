@@ -47,7 +47,7 @@ export const localISOTime = (time: number | string | Date) => {
   return d.toISOString();
 };
 
-const fmtDate = new Intl.DateTimeFormat("en-US", {
+const fmtDate = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
