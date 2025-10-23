@@ -8,6 +8,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/orchestrator/hookvars"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
 )
@@ -103,7 +104,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 
 	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_PRUNE_START,
-	}, HookVars{}); err != nil {
+	}, hookvars.HookVars{}); err != nil {
 		return fmt.Errorf("prune start hook: %w", err)
 	}
 
@@ -133,7 +134,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 			v1.Hook_CONDITION_PRUNE_ERROR,
 			v1.Hook_CONDITION_ANY_ERROR,
-		}, HookVars{
+		}, hookvars.HookVars{
 			Error: err.Error(),
 		})
 
@@ -151,7 +152,7 @@ func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 
 	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_PRUNE_SUCCESS,
-	}, HookVars{}); err != nil {
+	}, hookvars.HookVars{}); err != nil {
 		return fmt.Errorf("execute prune end hooks: %w", err)
 	}
 

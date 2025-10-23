@@ -11,6 +11,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/metric"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/orchestrator/hookvars"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
@@ -136,7 +137,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 
 	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_START,
-	}, HookVars{}); err != nil {
+	}, hookvars.HookVars{}); err != nil {
 		return fmt.Errorf("snapshot start hook: %w", err)
 	}
 
@@ -195,7 +196,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 
 	metric.GetRegistry().RecordBackupSummary(t.RepoID(), t.PlanID(), summary.TotalBytesProcessed, summary.DataAdded, int64(fileErrorCount))
 
-	vars := HookVars{
+	vars := hookvars.HookVars{
 		Task:          t.Name(),
 		SnapshotStats: summary,
 		SnapshotId:    summary.SnapshotId,

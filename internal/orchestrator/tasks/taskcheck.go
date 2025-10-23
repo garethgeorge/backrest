@@ -8,6 +8,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/orchestrator/hookvars"
 	"github.com/garethgeorge/backrest/internal/protoutil"
 )
 
@@ -103,7 +104,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 
 	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_CHECK_START,
-	}, HookVars{}); err != nil {
+	}, hookvars.HookVars{}); err != nil {
 		return fmt.Errorf("check start hook: %w", err)
 	}
 
@@ -133,7 +134,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 			v1.Hook_CONDITION_CHECK_ERROR,
 			v1.Hook_CONDITION_ANY_ERROR,
-		}, HookVars{
+		}, hookvars.HookVars{
 			Error: err.Error(),
 		})
 
@@ -146,7 +147,7 @@ func (t *CheckTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner
 
 	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_CHECK_SUCCESS,
-	}, HookVars{}); err != nil {
+	}, hookvars.HookVars{}); err != nil {
 		return fmt.Errorf("execute check success hooks: %w", err)
 	}
 
