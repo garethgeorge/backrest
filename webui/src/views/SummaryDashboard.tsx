@@ -143,6 +143,31 @@ export const SummaryDashboard = () => {
               label: "Data Directory",
               children: summaryData.dataPath,
             },
+            {
+              key: 3,
+              label: "Restic Version",
+              children: summaryData.resticVersion,
+            },
+            {
+              key: 4,
+              label: "Restic Binary",
+              children: summaryData.resticPath,
+            },
+            {
+              key: 5,
+              label: "Hostname",
+              children: summaryData.hostname || "Unknown",
+            },
+            {
+              key: 6,
+              label: "OS Version",
+              children: summaryData.osVersion || "Unknown",
+            },
+            {
+              key: 7,
+              label: "Uptime",
+              children: formatDuration(Number(summaryData.uptime)),
+            },
           ]}
         />
         <Collapse

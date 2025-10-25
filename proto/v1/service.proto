@@ -156,6 +156,11 @@ message SummaryDashboardResponse {
 
   string config_path = 10;
   string data_path = 11;
+  string restic_path = 12;
+  string restic_version = 13;
+  string hostname = 14;
+  string os_version = 15;
+  int64 uptime = 16;
 
   message Summary {
     string id = 1;
