@@ -84,6 +84,9 @@ message Repo {
   bool auto_unlock = 8 [json_name="autoUnlock"]; // automatically unlock the repo when needed.
   bool auto_initialize = 12 [json_name="autoInitialize"]; // whether the repo should be auto-initialized if not found.
   CommandPrefix command_prefix = 10 [json_name="commandPrefix"]; // modifiers for the restic commands
+  bool sftp_auto_add_to_known_hosts = 13 [json_name="sftpAutoAddToKnownHosts"]; // automatically add new SFTP hosts to known_hosts.
+  string sftp_identity_file = 14 [json_name="sftpIdentityFile"]; // Filename of the SSH identity key in the .ssh directory.
+  uint32 sftp_port = 15 [json_name="sftpPort"]; // Custom SFTP port. Defaults to 22 if not set.
 }
 
 message Plan {

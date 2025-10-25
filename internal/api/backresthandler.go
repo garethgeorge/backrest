@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
+	"os/exec"
 	"path"
 	"slices"
 	"strings"
@@ -82,6 +84,12 @@ func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1
 	// Rehydrate the network sanitized config
 	rehydratedConfig := config.RehydrateNetworkSanitizedConfig(req.Msg, existing)
 
+	for _, repo := range rehydratedConfig.Repos {
+		if err := ensureSftpFlags(repo); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := config.ValidateConfig(rehydratedConfig); err != nil {
 		return nil, fmt.Errorf("validation error: %w", err)
 	}
@@ -105,6 +113,18 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
+	if req.Msg.GetSftpAutoAddToKnownHosts() {
+		if err := s.addSftpHostKey(req.Msg.GetUri()); err != nil {
+			zap.S().Warnf("failed to automatically add SFTP host key for %s: %v", req.Msg.GetUri(), err)
+		}
+	}
+
+	// We need to build the repo with the correct flags for this one-off check.
+	repoForCheck := proto.Clone(req.Msg).(*v1.Repo)
+	if err := ensureSftpFlags(repoForCheck); err != nil {
+		return nil, err
+	}
+
 	c = proto.Clone(c).(*v1.Config)
 	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == req.Msg.Id }); idx != -1 {
 		c.Repos[idx] = req.Msg
@@ -125,7 +145,7 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 		return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
 	}
 
-	r, err := repo.NewRepoOrchestrator(c, req.Msg, bin)
+	r, err := repo.NewRepoOrchestrator(c, repoForCheck, bin)
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure repo: %w", err)
 	}
@@ -152,6 +172,16 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 	}
 
 	newRepo := req.Msg
+
+	if newRepo.GetSftpAutoAddToKnownHosts() {
+		if err := s.addSftpHostKey(newRepo.GetUri()); err != nil {
+			zap.S().Warnf("failed to automatically add SFTP host key for %s: %v", newRepo.GetUri(), err)
+		}
+	}
+
+	if err := ensureSftpFlags(newRepo); err != nil {
+		return nil, err
+	}
 
 	// Deep copy the configuration
 	c = proto.Clone(c).(*v1.Config)
@@ -266,6 +296,107 @@ func (s *BackrestHandler) RemoveRepo(ctx context.Context, req *connect.Request[t
 	}
 
 	return connect.NewResponse(cfg), nil
+}
+
+// addSftpHostKey parses an SFTP URI and adds the host's public key to the user's known_hosts file.
+// This is equivalent to what `ssh-keyscan` does.
+func (s *BackrestHandler) addSftpHostKey(uri string) error {
+	if !strings.HasPrefix(uri, "sftp:") {
+		return nil
+	}
+	uri = strings.TrimPrefix(uri, "sftp:")
+
+	slashIdx := strings.Index(uri, "/")
+	if slashIdx == -1 {
+		slashIdx = len(uri)
+	}
+
+	authority := uri[:slashIdx]
+	hostPart := authority
+	if atIdx := strings.LastIndex(authority, "@"); atIdx != -1 {
+		hostPart = authority[atIdx+1:]
+	}
+
+	host, _, err := net.SplitHostPort(hostPart)
+	if err != nil {
+		host = hostPart
+	}
+
+	if host == "" {
+		return errors.New("could not parse host from sftp uri")
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("could not get home directory: %w", err)
+	}
+	knownHostsPath := path.Join(home, ".ssh", "known_hosts")
+
+	if err := os.MkdirAll(path.Dir(knownHostsPath), 0700); err != nil {
+		return err
+	}
+
+	checkCmd := exec.Command("ssh-keygen", "-F", host)
+	if err := checkCmd.Run(); err == nil {
+		zap.S().Debugf("SFTP host %s already in known_hosts", host)
+		return nil
+	}
+
+	keyscanCmd := exec.Command("ssh-keyscan", "-H", host)
+	keyOutput, err := keyscanCmd.Output()
+	if err != nil {
+		return fmt.Errorf("ssh-keyscan for host %s failed: %w", host, err)
+	}
+
+	f, err := os.OpenFile(knownHostsPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to open known_hosts file: %w", err)
+	}
+	defer f.Close()
+
+	if _, err := f.Write(keyOutput); err != nil {
+		return fmt.Errorf("failed to write to known_hosts file: %w", err)
+	}
+
+	zap.S().Infof("Added SFTP host %s to known_hosts file at %s", host, knownHostsPath)
+	return nil
+}
+
+func ensureSftpFlags(repo *v1.Repo) error {
+	if !strings.HasPrefix(repo.GetUri(), "sftp:") {
+		return nil
+	}
+
+	// Remove any existing sftp.args flags to avoid duplicates.
+	repo.Flags = slices.DeleteFunc(repo.Flags, func(f string) bool {
+		return strings.HasPrefix(f, "--option=sftp.args")
+	})
+
+	sftpArgs := "-oBatchMode=yes"
+	argsChanged := false
+
+	if repo.GetSftpIdentityFile() != "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("could not get home directory: %w", err)
+		}
+		keyPath := path.Join(home, ".ssh", repo.GetSftpIdentityFile())
+		// We don't check for file existence here, because the config might be edited on a different machine.
+		// Restic will fail later if the path is invalid, which is acceptable.
+		sftpArgs += fmt.Sprintf(" -i %s", keyPath)
+		argsChanged = true
+	}
+
+	if repo.GetSftpPort() != 0 && repo.GetSftpPort() != 22 {
+		sftpArgs += fmt.Sprintf(" -p %d", repo.GetSftpPort())
+		argsChanged = true
+	}
+
+	if argsChanged {
+		repo.Flags = append(repo.Flags, fmt.Sprintf("--option=sftp.args='%s'", sftpArgs))
+	}
+
+	return nil
 }
 
 // ListSnapshots implements POST /v1/snapshots

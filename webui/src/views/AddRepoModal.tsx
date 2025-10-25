@@ -336,6 +336,46 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             </Form.Item>
           </Tooltip>
 
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, currentValues) =>
+              prevValues.uri !== currentValues.uri
+            }
+          >
+            {({ getFieldValue }) =>
+              getFieldValue("uri")?.startsWith("sftp:") ? (
+                <>
+                  <Form.Item
+                    label={
+                      <Tooltip title="When enabled, this will automatically add new SFTP server host keys to the known_hosts file. This is insecure as it is vulnerable to man-in-the-middle attacks.">
+                        Auto-add SFTP host key
+                      </Tooltip>
+                    }
+                    name="sftpAutoAddToKnownHosts"
+                    valuePropName="checked"
+                  >
+                    <Checkbox />
+                  </Form.Item>
+                  <Form.Item
+                    label="SFTP Port"
+                    name="sftpPort"
+                    tooltip="Custom port for the SFTP server. Defaults to 22."
+                    initialValue={22}
+                  >
+                    <InputNumber min={1} max={65535} />
+                  </Form.Item>
+                  <Form.Item
+                    label="SFTP Identity File"
+                    name="sftpIdentityFile"
+                    tooltip="Name of the private key file in your .ssh directory (e.g. id_rsa)."
+                  >
+                    <Input placeholder="id_rsa" />
+                  </Form.Item>
+                </>
+              ) : null
+            }
+          </Form.Item>
+
           {/* Repo.password */}
           <Tooltip
             title={
