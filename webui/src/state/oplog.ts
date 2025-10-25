@@ -6,6 +6,8 @@ import {
 } from "../../gen/ts/v1/operations_pb";
 import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
 import { BackupProgressEntry, ResticSnapshot, RestoreProgressEntry } from "../../gen/ts/v1/restic_pb";
+import { EmptySchema } from "../../gen/ts/types/value_pb";
+import { create } from "@bufbuild/protobuf";
 import _ from "lodash";
 import { backrestService } from "../api";
 
@@ -16,7 +18,7 @@ const subscribers: ((event?: OperationEvent, err?: Error) => void)[] = [];
   while (true) {
     let nextConnWaitUntil = new Date().getTime() + 5000;
     try {
-      for await (const event of backrestService.getOperationEvents({})) {
+      for await (const event of backrestService.getOperationEvents(create(EmptySchema, {}))) {
         console.log("operation event", event);
         subscribers.forEach((subscriber) => subscriber(event, undefined));
       }
