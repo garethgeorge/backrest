@@ -31,6 +31,7 @@ message Config {
   repeated Plan plans = 4 [json_name="plans"];
   Auth auth = 5 [json_name="auth"];
   Multihost multihost = 7 [json_name="sync"];
+  UiSetting ui = 8 [json_name="ui"];
 }
 
 message Multihost {
@@ -271,4 +272,9 @@ message User {
   oneof password {
     string password_bcrypt = 2 [json_name="passwordBcrypt"];
   }
+}
+
+message UiSetting {
+  bool useCompactUi = 1 [json_name="useCompactUi"];
+  string tokens = 2 [json_name="tokens"];
 }

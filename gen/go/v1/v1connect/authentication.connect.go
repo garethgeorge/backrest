@@ -41,13 +41,6 @@ const (
 	AuthenticationHashPasswordProcedure = "/v1.Authentication/HashPassword"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	authenticationServiceDescriptor            = v1.File_v1_authentication_proto.Services().ByName("Authentication")
-	authenticationLoginMethodDescriptor        = authenticationServiceDescriptor.Methods().ByName("Login")
-	authenticationHashPasswordMethodDescriptor = authenticationServiceDescriptor.Methods().ByName("HashPassword")
-)
-
 // AuthenticationClient is a client for the v1.Authentication service.
 type AuthenticationClient interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
@@ -63,17 +56,18 @@ type AuthenticationClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewAuthenticationClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AuthenticationClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	authenticationMethods := v1.File_v1_authentication_proto.Services().ByName("Authentication").Methods()
 	return &authenticationClient{
 		login: connect.NewClient[v1.LoginRequest, v1.LoginResponse](
 			httpClient,
 			baseURL+AuthenticationLoginProcedure,
-			connect.WithSchema(authenticationLoginMethodDescriptor),
+			connect.WithSchema(authenticationMethods.ByName("Login")),
 			connect.WithClientOptions(opts...),
 		),
 		hashPassword: connect.NewClient[types.StringValue, types.StringValue](
 			httpClient,
 			baseURL+AuthenticationHashPasswordProcedure,
-			connect.WithSchema(authenticationHashPasswordMethodDescriptor),
+			connect.WithSchema(authenticationMethods.ByName("HashPassword")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -107,16 +101,17 @@ type AuthenticationHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewAuthenticationHandler(svc AuthenticationHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	authenticationMethods := v1.File_v1_authentication_proto.Services().ByName("Authentication").Methods()
 	authenticationLoginHandler := connect.NewUnaryHandler(
 		AuthenticationLoginProcedure,
 		svc.Login,
-		connect.WithSchema(authenticationLoginMethodDescriptor),
+		connect.WithSchema(authenticationMethods.ByName("Login")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authenticationHashPasswordHandler := connect.NewUnaryHandler(
 		AuthenticationHashPasswordProcedure,
 		svc.HashPassword,
-		connect.WithSchema(authenticationHashPasswordMethodDescriptor),
+		connect.WithSchema(authenticationMethods.ByName("HashPassword")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/v1.Authentication/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

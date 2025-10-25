@@ -24,6 +24,7 @@ import {
   AuthSchema,
   Config,
   ConfigSchema,
+  UiSettingSchema,
   UserSchema,
   MultihostSchema,
   Multihost_PeerSchema,
@@ -35,6 +36,7 @@ import {
   unsubscribeFromPeerStates,
 } from "../state/peerstates";
 import { PeerStateConnectionStatusIcon } from "../components/SyncStateIcon";
+import TextArea from "antd/es/input/TextArea";
 
 interface FormData {
   auth: {
@@ -69,6 +71,10 @@ interface FormData {
       }[];
     }[];
   };
+  ui: {
+    useCompactUi: boolean;
+    tokens: string;
+  }
 }
 
 export const SettingsModal = () => {
@@ -120,6 +126,9 @@ export const SettingsModal = () => {
         ignoreUnknownFields: false,
       });
       newConfig.instance = formData.instance;
+      newConfig.ui = fromJson(UiSettingSchema, formData.ui, {
+        ignoreUnknownFields: false,
+      });
 
       if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
         throw new Error(
@@ -229,6 +238,12 @@ export const SettingsModal = () => {
                 style: { display: "none" },
               },
               {
+                key: "3",
+                label: "UI Settings",
+                forceRender: true,
+                children: <UiSettingsForm form={form} config={config} />,
+              },
+              {
                 key: "last",
                 label: "Preview",
                 children: (
@@ -249,6 +264,30 @@ export const SettingsModal = () => {
       </Modal>
     </>
   );
+};
+
+const UiSettingsForm: React.FC<{
+  config: Config;
+  form: FormInstance<FormData>;
+}> = ({ form, config }) => {
+  return <>
+    <Form.Item
+      label="Use compect ui"
+      name={["ui", "useCompactUi"]}
+      valuePropName="checked"
+      initialValue={config.ui?.useCompactUi || false}
+    >
+      <Checkbox />
+    </Form.Item>
+    <Form.Item
+      label="Ant design theme tokens"
+      extra={<span>Must JSON format !!! <br /><a href="https://ant.design/theme-editor/">Theme Editor - Ant Design</a></span>}
+      name={["ui", "tokens"]}
+      initialValue={config.ui?.tokens}
+    >
+      <TextArea rows={10} />
+    </Form.Item>
+  </>;
 };
 
 const AuthenticationForm: React.FC<{
@@ -471,40 +510,40 @@ const PeerFormList: React.FC<{
   config,
   listType,
 }) => {
-  return (
-    <Form.List name={listName} initialValue={initialValue}>
-      {(fields, { add, remove }, { errors }) => (
-        <>
-          {fields.map((field, index) => (
-            <PeerFormListItem
-              key={field.key}
-              form={form}
-              fieldName={field.name}
-              remove={remove}
-              showInstanceUrl={showInstanceUrl}
-              peerStates={peerStates}
-              isKnownHost={listType === "knownHosts"}
-              index={index}
-              config={config}
-              listType={listType}
-            />
-          ))}
-          <Form.Item>
-            <Button
-              type="dashed"
-              onClick={() => add({})}
-              block
-              icon={<PlusOutlined />}
-            >
-              Add {itemTypeName || "Peer"}
-            </Button>
-            <Form.ErrorList errors={errors} />
-          </Form.Item>
-        </>
-      )}
-    </Form.List>
-  );
-};
+    return (
+      <Form.List name={listName} initialValue={initialValue}>
+        {(fields, { add, remove }, { errors }) => (
+          <>
+            {fields.map((field, index) => (
+              <PeerFormListItem
+                key={field.key}
+                form={form}
+                fieldName={field.name}
+                remove={remove}
+                showInstanceUrl={showInstanceUrl}
+                peerStates={peerStates}
+                isKnownHost={listType === "knownHosts"}
+                index={index}
+                config={config}
+                listType={listType}
+              />
+            ))}
+            <Form.Item>
+              <Button
+                type="dashed"
+                onClick={() => add({})}
+                block
+                icon={<PlusOutlined />}
+              >
+                Add {itemTypeName || "Peer"}
+              </Button>
+              <Form.ErrorList errors={errors} />
+            </Form.Item>
+          </>
+        )}
+      </Form.List>
+    );
+  };
 
 const PeerFormListItem: React.FC<{
   form: FormInstance<FormData>;
@@ -527,108 +566,108 @@ const PeerFormListItem: React.FC<{
   config,
   listType,
 }) => {
-  // Get the instance ID from the form to find the matching sync state, its a bit hacky but works reliably.
-  const keyId = isKnownHost
-    ? form.getFieldValue(["multihost", "knownHosts", index, "keyId"])
-    : form.getFieldValue(["multihost", "authorizedClients", index, "keyId"]);
+    // Get the instance ID from the form to find the matching sync state, its a bit hacky but works reliably.
+    const keyId = isKnownHost
+      ? form.getFieldValue(["multihost", "knownHosts", index, "keyId"])
+      : form.getFieldValue(["multihost", "authorizedClients", index, "keyId"]);
 
-  const peerState = peerStates.find((state) => state.peerKeyid === keyId);
+    const peerState = peerStates.find((state) => state.peerKeyid === keyId);
 
-  return (
-    <div
-      style={{
-        border: "1px solid #d9d9d9",
-        borderRadius: "6px",
-        padding: "16px",
-        marginBottom: "16px",
-        position: "relative",
-      }}
-    >
+    return (
       <div
         style={{
-          position: "absolute",
-          top: "8px",
-          right: "8px",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
+          border: "1px solid #d9d9d9",
+          borderRadius: "6px",
+          padding: "16px",
+          marginBottom: "16px",
+          position: "relative",
         }}
       >
-        {peerState && <PeerStateConnectionStatusIcon peerState={peerState} />}
-        <MinusCircleOutlined
+        <div
           style={{
-            color: "#999",
-            cursor: "pointer",
+            position: "absolute",
+            top: "8px",
+            right: "8px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
           }}
-          onClick={() => remove(fieldName)}
-        />
-      </div>
+        >
+          {peerState && <PeerStateConnectionStatusIcon peerState={peerState} />}
+          <MinusCircleOutlined
+            style={{
+              color: "#999",
+              cursor: "pointer",
+            }}
+            onClick={() => remove(fieldName)}
+          />
+        </div>
 
-      <Row gutter={16}>
-        <Col span={10}>
-          <Form.Item
-            name={[fieldName, "instanceId"]}
-            label="Instance ID"
-            rules={[
-              { required: true, message: "Instance ID is required" },
-              {
-                pattern: namePattern,
-                message:
-                  "Instance ID must be alphanumeric with '_-.' allowed as separators",
-              },
-            ]}
-          >
-            <Input placeholder="e.g. my-backup-server" />
-          </Form.Item>
-        </Col>
-        <Col span={10}>
-          <Form.Item
-            name={[fieldName, "keyId"]}
-            label="Key ID"
-            rules={[{ required: true, message: "Key ID is required" }]}
-          >
-            <Input placeholder="Public key identifier" />
-          </Form.Item>
-        </Col>
-        <Col span={4}>
-          <Form.Item
-            name={[fieldName, "keyIdVerified"]}
-            valuePropName="checked"
-          >
-            <Checkbox>Verified</Checkbox>
-          </Form.Item>
-        </Col>
-      </Row>
-
-      {showInstanceUrl && (
         <Row gutter={16}>
-          <Col span={24}>
+          <Col span={10}>
             <Form.Item
-              name={[fieldName, "instanceUrl"]}
-              label="Instance URL"
+              name={[fieldName, "instanceId"]}
+              label="Instance ID"
               rules={[
+                { required: true, message: "Instance ID is required" },
                 {
-                  required: showInstanceUrl,
-                  message: "Instance URL is required for known hosts",
+                  pattern: namePattern,
+                  message:
+                    "Instance ID must be alphanumeric with '_-.' allowed as separators",
                 },
-                { type: "url", message: "Please enter a valid URL" },
               ]}
             >
-              <Input placeholder="https://example.com:9898" />
+              <Input placeholder="e.g. my-backup-server" />
+            </Form.Item>
+          </Col>
+          <Col span={10}>
+            <Form.Item
+              name={[fieldName, "keyId"]}
+              label="Key ID"
+              rules={[{ required: true, message: "Key ID is required" }]}
+            >
+              <Input placeholder="Public key identifier" />
+            </Form.Item>
+          </Col>
+          <Col span={4}>
+            <Form.Item
+              name={[fieldName, "keyIdVerified"]}
+              valuePropName="checked"
+            >
+              <Checkbox>Verified</Checkbox>
             </Form.Item>
           </Col>
         </Row>
-      )}
 
-      <PeerPermissionsTile
-        form={form}
-        fieldName={fieldName}
-        listType={listType}
-        config={config}
-      />
-    </div>
-  );
-};
+        {showInstanceUrl && (
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item
+                name={[fieldName, "instanceUrl"]}
+                label="Instance URL"
+                rules={[
+                  {
+                    required: showInstanceUrl,
+                    message: "Instance URL is required for known hosts",
+                  },
+                  { type: "url", message: "Please enter a valid URL" },
+                ]}
+              >
+                <Input placeholder="https://example.com:9898" />
+              </Form.Item>
+            </Col>
+          </Row>
+        )}
+
+        <PeerPermissionsTile
+          form={form}
+          fieldName={fieldName}
+          listType={listType}
+          config={config}
+        />
+      </div>
+    );
+  };
 
 const PeerPermissionsTile: React.FC<{
   form: FormInstance<FormData>;
