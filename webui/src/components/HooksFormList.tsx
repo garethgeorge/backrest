@@ -33,6 +33,7 @@ export interface HookFields {
   actionSlack?: any;
   actionShoutrrr?: any;
   actionHealthchecks?: any;
+  actionTelegram?: any;
 }
 
 export const hooksListTooltipText = (
@@ -382,6 +383,80 @@ const hookTypes: {
           </Form.Item>
           Text Template:
           <Form.Item name={[field.name, "actionHealthchecks", "template"]}>
+            <Input.TextArea
+              style={{ width: "100%", fontFamily: "monospace" }}
+            />
+          </Form.Item>
+        </>
+      );
+    },
+  },
+  {
+    name: "Telegram",
+    template: {
+      actionTelegram: {
+        botToken: "",
+        chatId: "",
+        template: "{{ .Summary }}",
+      },
+      conditions: [],
+    },
+    oneofKey: "actionTelegram",
+    component: ({ field }: { field: FormListFieldData }) => {
+      return (
+        <>
+          <Form.Item
+            name={[field.name, "actionTelegram", "botToken"]}
+            rules={[requiredField("bot token is required")]}
+          >
+            <Input
+              addonBefore={
+                <Tooltip
+                  title={
+                    <>
+                      Create a bot with{" "}
+                      <a
+                        href="https://t.me/botfather"
+                        target="_blank"
+                      >
+                        @BotFather
+                      </a>{" "}
+                      and use the token provided
+                    </>
+                  }
+                >
+                  <div style={{ width: "8em" }}>Bot Token</div>
+                </Tooltip>
+              }
+            />
+          </Form.Item>
+          <Form.Item
+            name={[field.name, "actionTelegram", "chatId"]}
+            rules={[requiredField("chat ID is required")]}
+          >
+            <Input
+              addonBefore={
+                <Tooltip
+                  title={
+                    <>
+                      Chat ID can be a user ID, group ID, or channel ID. Use{" "}
+                      <a
+                        href="https://t.me/userinfobot"
+                        target="_blank"
+                      >
+                        @userinfobot
+                      </a>{" "}
+                      to find your user ID
+                    </>
+                  }
+                >
+                  <div style={{ width: "8em" }}>Chat ID</div>
+                </Tooltip>
+              }
+            />
+          </Form.Item>
+          Text Template:
+          <Form.Item name={[field.name, "actionTelegram", "template"]}>
             <Input.TextArea
               style={{ width: "100%", fontFamily: "monospace" }}
             />

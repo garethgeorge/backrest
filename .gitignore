@@ -6,3 +6,4 @@ cmd/backrest/backrest
 .DS_Store
 .idea/
 .pnpm-store/
+webui/dist-backup/
