@@ -82,31 +82,6 @@ const (
 	BackrestGetSummaryDashboardProcedure = "/v1.Backrest/GetSummaryDashboard"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	backrestServiceDescriptor                   = v1.File_v1_service_proto.Services().ByName("Backrest")
-	backrestGetConfigMethodDescriptor           = backrestServiceDescriptor.Methods().ByName("GetConfig")
-	backrestSetConfigMethodDescriptor           = backrestServiceDescriptor.Methods().ByName("SetConfig")
-	backrestCheckRepoExistsMethodDescriptor     = backrestServiceDescriptor.Methods().ByName("CheckRepoExists")
-	backrestAddRepoMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("AddRepo")
-	backrestRemoveRepoMethodDescriptor          = backrestServiceDescriptor.Methods().ByName("RemoveRepo")
-	backrestGetOperationEventsMethodDescriptor  = backrestServiceDescriptor.Methods().ByName("GetOperationEvents")
-	backrestGetOperationsMethodDescriptor       = backrestServiceDescriptor.Methods().ByName("GetOperations")
-	backrestListSnapshotsMethodDescriptor       = backrestServiceDescriptor.Methods().ByName("ListSnapshots")
-	backrestListSnapshotFilesMethodDescriptor   = backrestServiceDescriptor.Methods().ByName("ListSnapshotFiles")
-	backrestBackupMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Backup")
-	backrestDoRepoTaskMethodDescriptor          = backrestServiceDescriptor.Methods().ByName("DoRepoTask")
-	backrestForgetMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Forget")
-	backrestRestoreMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("Restore")
-	backrestCancelMethodDescriptor              = backrestServiceDescriptor.Methods().ByName("Cancel")
-	backrestGetLogsMethodDescriptor             = backrestServiceDescriptor.Methods().ByName("GetLogs")
-	backrestRunCommandMethodDescriptor          = backrestServiceDescriptor.Methods().ByName("RunCommand")
-	backrestGetDownloadURLMethodDescriptor      = backrestServiceDescriptor.Methods().ByName("GetDownloadURL")
-	backrestClearHistoryMethodDescriptor        = backrestServiceDescriptor.Methods().ByName("ClearHistory")
-	backrestPathAutocompleteMethodDescriptor    = backrestServiceDescriptor.Methods().ByName("PathAutocomplete")
-	backrestGetSummaryDashboardMethodDescriptor = backrestServiceDescriptor.Methods().ByName("GetSummaryDashboard")
-)
-
 // BackrestClient is a client for the v1.Backrest service.
 type BackrestClient interface {
 	GetConfig(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.Config], error)
@@ -151,125 +126,126 @@ type BackrestClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) BackrestClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	backrestMethods := v1.File_v1_service_proto.Services().ByName("Backrest").Methods()
 	return &backrestClient{
 		getConfig: connect.NewClient[emptypb.Empty, v1.Config](
 			httpClient,
 			baseURL+BackrestGetConfigProcedure,
-			connect.WithSchema(backrestGetConfigMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("GetConfig")),
 			connect.WithClientOptions(opts...),
 		),
 		setConfig: connect.NewClient[v1.Config, v1.Config](
 			httpClient,
 			baseURL+BackrestSetConfigProcedure,
-			connect.WithSchema(backrestSetConfigMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("SetConfig")),
 			connect.WithClientOptions(opts...),
 		),
 		checkRepoExists: connect.NewClient[v1.Repo, types.BoolValue](
 			httpClient,
 			baseURL+BackrestCheckRepoExistsProcedure,
-			connect.WithSchema(backrestCheckRepoExistsMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("CheckRepoExists")),
 			connect.WithClientOptions(opts...),
 		),
 		addRepo: connect.NewClient[v1.Repo, v1.Config](
 			httpClient,
 			baseURL+BackrestAddRepoProcedure,
-			connect.WithSchema(backrestAddRepoMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("AddRepo")),
 			connect.WithClientOptions(opts...),
 		),
 		removeRepo: connect.NewClient[types.StringValue, v1.Config](
 			httpClient,
 			baseURL+BackrestRemoveRepoProcedure,
-			connect.WithSchema(backrestRemoveRepoMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("RemoveRepo")),
 			connect.WithClientOptions(opts...),
 		),
 		getOperationEvents: connect.NewClient[emptypb.Empty, v1.OperationEvent](
 			httpClient,
 			baseURL+BackrestGetOperationEventsProcedure,
-			connect.WithSchema(backrestGetOperationEventsMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("GetOperationEvents")),
 			connect.WithClientOptions(opts...),
 		),
 		getOperations: connect.NewClient[v1.GetOperationsRequest, v1.OperationList](
 			httpClient,
 			baseURL+BackrestGetOperationsProcedure,
-			connect.WithSchema(backrestGetOperationsMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("GetOperations")),
 			connect.WithClientOptions(opts...),
 		),
 		listSnapshots: connect.NewClient[v1.ListSnapshotsRequest, v1.ResticSnapshotList](
 			httpClient,
 			baseURL+BackrestListSnapshotsProcedure,
-			connect.WithSchema(backrestListSnapshotsMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("ListSnapshots")),
 			connect.WithClientOptions(opts...),
 		),
 		listSnapshotFiles: connect.NewClient[v1.ListSnapshotFilesRequest, v1.ListSnapshotFilesResponse](
 			httpClient,
 			baseURL+BackrestListSnapshotFilesProcedure,
-			connect.WithSchema(backrestListSnapshotFilesMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("ListSnapshotFiles")),
 			connect.WithClientOptions(opts...),
 		),
 		backup: connect.NewClient[types.StringValue, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestBackupProcedure,
-			connect.WithSchema(backrestBackupMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("Backup")),
 			connect.WithClientOptions(opts...),
 		),
 		doRepoTask: connect.NewClient[v1.DoRepoTaskRequest, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestDoRepoTaskProcedure,
-			connect.WithSchema(backrestDoRepoTaskMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("DoRepoTask")),
 			connect.WithClientOptions(opts...),
 		),
 		forget: connect.NewClient[v1.ForgetRequest, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestForgetProcedure,
-			connect.WithSchema(backrestForgetMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("Forget")),
 			connect.WithClientOptions(opts...),
 		),
 		restore: connect.NewClient[v1.RestoreSnapshotRequest, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestRestoreProcedure,
-			connect.WithSchema(backrestRestoreMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("Restore")),
 			connect.WithClientOptions(opts...),
 		),
 		cancel: connect.NewClient[types.Int64Value, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestCancelProcedure,
-			connect.WithSchema(backrestCancelMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("Cancel")),
 			connect.WithClientOptions(opts...),
 		),
 		getLogs: connect.NewClient[v1.LogDataRequest, types.BytesValue](
 			httpClient,
 			baseURL+BackrestGetLogsProcedure,
-			connect.WithSchema(backrestGetLogsMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("GetLogs")),
 			connect.WithClientOptions(opts...),
 		),
 		runCommand: connect.NewClient[v1.RunCommandRequest, types.Int64Value](
 			httpClient,
 			baseURL+BackrestRunCommandProcedure,
-			connect.WithSchema(backrestRunCommandMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("RunCommand")),
 			connect.WithClientOptions(opts...),
 		),
 		getDownloadURL: connect.NewClient[types.Int64Value, types.StringValue](
 			httpClient,
 			baseURL+BackrestGetDownloadURLProcedure,
-			connect.WithSchema(backrestGetDownloadURLMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("GetDownloadURL")),
 			connect.WithClientOptions(opts...),
 		),
 		clearHistory: connect.NewClient[v1.ClearHistoryRequest, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestClearHistoryProcedure,
-			connect.WithSchema(backrestClearHistoryMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("ClearHistory")),
 			connect.WithClientOptions(opts...),
 		),
 		pathAutocomplete: connect.NewClient[types.StringValue, types.StringList](
 			httpClient,
 			baseURL+BackrestPathAutocompleteProcedure,
-			connect.WithSchema(backrestPathAutocompleteMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("PathAutocomplete")),
 			connect.WithClientOptions(opts...),
 		),
 		getSummaryDashboard: connect.NewClient[emptypb.Empty, v1.SummaryDashboardResponse](
 			httpClient,
 			baseURL+BackrestGetSummaryDashboardProcedure,
-			connect.WithSchema(backrestGetSummaryDashboardMethodDescriptor),
+			connect.WithSchema(backrestMethods.ByName("GetSummaryDashboard")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -440,124 +416,125 @@ type BackrestHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	backrestMethods := v1.File_v1_service_proto.Services().ByName("Backrest").Methods()
 	backrestGetConfigHandler := connect.NewUnaryHandler(
 		BackrestGetConfigProcedure,
 		svc.GetConfig,
-		connect.WithSchema(backrestGetConfigMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("GetConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestSetConfigHandler := connect.NewUnaryHandler(
 		BackrestSetConfigProcedure,
 		svc.SetConfig,
-		connect.WithSchema(backrestSetConfigMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("SetConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestCheckRepoExistsHandler := connect.NewUnaryHandler(
 		BackrestCheckRepoExistsProcedure,
 		svc.CheckRepoExists,
-		connect.WithSchema(backrestCheckRepoExistsMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("CheckRepoExists")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestAddRepoHandler := connect.NewUnaryHandler(
 		BackrestAddRepoProcedure,
 		svc.AddRepo,
-		connect.WithSchema(backrestAddRepoMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("AddRepo")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestRemoveRepoHandler := connect.NewUnaryHandler(
 		BackrestRemoveRepoProcedure,
 		svc.RemoveRepo,
-		connect.WithSchema(backrestRemoveRepoMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("RemoveRepo")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestGetOperationEventsHandler := connect.NewServerStreamHandler(
 		BackrestGetOperationEventsProcedure,
 		svc.GetOperationEvents,
-		connect.WithSchema(backrestGetOperationEventsMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("GetOperationEvents")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestGetOperationsHandler := connect.NewUnaryHandler(
 		BackrestGetOperationsProcedure,
 		svc.GetOperations,
-		connect.WithSchema(backrestGetOperationsMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("GetOperations")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestListSnapshotsHandler := connect.NewUnaryHandler(
 		BackrestListSnapshotsProcedure,
 		svc.ListSnapshots,
-		connect.WithSchema(backrestListSnapshotsMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("ListSnapshots")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestListSnapshotFilesHandler := connect.NewUnaryHandler(
 		BackrestListSnapshotFilesProcedure,
 		svc.ListSnapshotFiles,
-		connect.WithSchema(backrestListSnapshotFilesMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("ListSnapshotFiles")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestBackupHandler := connect.NewUnaryHandler(
 		BackrestBackupProcedure,
 		svc.Backup,
-		connect.WithSchema(backrestBackupMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("Backup")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestDoRepoTaskHandler := connect.NewUnaryHandler(
 		BackrestDoRepoTaskProcedure,
 		svc.DoRepoTask,
-		connect.WithSchema(backrestDoRepoTaskMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("DoRepoTask")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestForgetHandler := connect.NewUnaryHandler(
 		BackrestForgetProcedure,
 		svc.Forget,
-		connect.WithSchema(backrestForgetMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("Forget")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestRestoreHandler := connect.NewUnaryHandler(
 		BackrestRestoreProcedure,
 		svc.Restore,
-		connect.WithSchema(backrestRestoreMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("Restore")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestCancelHandler := connect.NewUnaryHandler(
 		BackrestCancelProcedure,
 		svc.Cancel,
-		connect.WithSchema(backrestCancelMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("Cancel")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestGetLogsHandler := connect.NewServerStreamHandler(
 		BackrestGetLogsProcedure,
 		svc.GetLogs,
-		connect.WithSchema(backrestGetLogsMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("GetLogs")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestRunCommandHandler := connect.NewUnaryHandler(
 		BackrestRunCommandProcedure,
 		svc.RunCommand,
-		connect.WithSchema(backrestRunCommandMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("RunCommand")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestGetDownloadURLHandler := connect.NewUnaryHandler(
 		BackrestGetDownloadURLProcedure,
 		svc.GetDownloadURL,
-		connect.WithSchema(backrestGetDownloadURLMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("GetDownloadURL")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestClearHistoryHandler := connect.NewUnaryHandler(
 		BackrestClearHistoryProcedure,
 		svc.ClearHistory,
-		connect.WithSchema(backrestClearHistoryMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("ClearHistory")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestPathAutocompleteHandler := connect.NewUnaryHandler(
 		BackrestPathAutocompleteProcedure,
 		svc.PathAutocomplete,
-		connect.WithSchema(backrestPathAutocompleteMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("PathAutocomplete")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestGetSummaryDashboardHandler := connect.NewUnaryHandler(
 		BackrestGetSummaryDashboardProcedure,
 		svc.GetSummaryDashboard,
-		connect.WithSchema(backrestGetSummaryDashboardMethodDescriptor),
+		connect.WithSchema(backrestMethods.ByName("GetSummaryDashboard")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/v1.Backrest/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
