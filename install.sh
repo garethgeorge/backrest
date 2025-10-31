@@ -48,11 +48,6 @@ install_unix() {
 }
 
 create_systemd_service() {
-  if [ -f /etc/systemd/system/backrest.service ]; then
-    echo "Systemd unit already exists. Skipping creation."
-    return 0
-  fi
-
   echo "Creating systemd service at /etc/systemd/system/backrest.service"
 
   sudo tee /etc/systemd/system/backrest.service > /dev/null <<- EOM
@@ -80,11 +75,6 @@ EOM
 }
 
 create_openrc_service() {
-  if [ -f /etc/init.d/backrest ]; then
-    echo "Openrc service already exists. Skipping creation."
-    return 0
-  fi
-
   echo "Creating openrc service at /etc/init.d/backrest"
 
   sudo tee /etc/init.d/backrest > /dev/null <<- EOM
@@ -92,8 +82,8 @@ create_openrc_service() {
 description="Backrest Service"
 
 depend() {
-    need loopback
-    use net logger
+  need loopback
+  use net logger
 }
 
 command=/usr/local/bin/backrest
