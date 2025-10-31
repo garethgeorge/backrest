@@ -1,8 +1,10 @@
 package migrations
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/cryptoutil"
 )
 
 var migration004RepoGuid = func(config *v1.Config) {
@@ -10,6 +12,8 @@ var migration004RepoGuid = func(config *v1.Config) {
 		if repo.Guid != "" {
 			continue
 		}
-		repo.Guid = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+		h := sha256.New()
+		h.Write([]byte(repo.Id))
+		repo.Guid = hex.EncodeToString(h.Sum(nil))
 	}
 }

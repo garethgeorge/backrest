@@ -43,10 +43,6 @@ func NewOpLog(store OpStore) (*OpLog, error) {
 		store: store,
 	}
 
-	if err := ApplyMigrations(o); err != nil {
-		return nil, err
-	}
-
 	return o, nil
 }
 

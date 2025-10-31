@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"net/http"
@@ -86,6 +88,9 @@ func runApp() {
 		zap.S().Fatalf("error creating oplog: %v", err)
 	}
 	migratePopulateGuids(opstore, cfg)
+	if err := oplog.ApplyMigrations(log); err != nil {
+		zap.S().Fatalf("error applying oplog migrations: %v", err)
+	}
 
 	// Create rotating log storage
 	logStore, err := logstore.NewLogStore(filepath.Join(env.DataDir(), "tasklogs"))
@@ -296,18 +301,27 @@ func migratePopulateGuids(logstore oplog.OpStore, cfg *v1.Config) {
 			repoToGUID[repo.Id] = repo.Guid
 		}
 	}
+	getGuid := func(id string) string {
+		if guid, ok := repoToGUID[id]; ok {
+			return guid
+		}
+		h := sha256.New()
+		h.Write([]byte(id))
+		newGuid := hex.EncodeToString(h.Sum(nil))
+		repoToGUID[id] = newGuid
+		return newGuid
+	}
 
 	migratedOpCount := 0
+	inscopeOperations := 0
 	if err := logstore.Transform(oplog.Query{}.SetRepoGUID(""), func(op *v1.Operation) (*v1.Operation, error) {
+		inscopeOperations++
 		if op.RepoGuid != "" {
 			return nil, nil
 		}
-		if guid, ok := repoToGUID[op.RepoId]; ok {
-			op.RepoGuid = guid
-			migratedOpCount++
-			return op, nil
-		}
-		return nil, nil
+		op.RepoGuid = getGuid(op.RepoId)
+		migratedOpCount++
+		return op, nil
 	}); err != nil {
 		zap.S().Fatalf("error populating repo GUIDs for existing operations: %v", err)
 	} else if migratedOpCount > 0 {

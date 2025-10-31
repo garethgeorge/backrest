@@ -126,6 +126,7 @@ func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, log *oplog.
 							zap.L().Warn("repo not found for incomplete operation. Possibly just deleted.", zap.String("repo", repoId))
 						}
 						zap.L().Error("failed to unlock repo", zap.String("repo", repoId), zap.Error(err))
+						continue
 					}
 
 					if err := repo.Unlock(context.Background()); err != nil {
