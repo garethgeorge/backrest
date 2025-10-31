@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.1](https://github.com/garethgeorge/backrest/compare/v1.10.0...v1.10.1) (2025-10-31)
+
+
+### Bug Fixes
+
+* database migration fails for some users due to legacy repo_guids ([3a58090](https://github.com/garethgeorge/backrest/commit/3a58090646d0fd00c5485864d3462cf6158824c8))
+* set --windows-tray=true by default ([5b3d23b](https://github.com/garethgeorge/backrest/commit/5b3d23b42276f23180728695fbc23f94a840a103))
+
 ## [1.10.0](https://github.com/garethgeorge/backrest/compare/v1.9.2...v1.10.0) (2025-10-31)
 
 
