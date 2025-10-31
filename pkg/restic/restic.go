@@ -65,6 +65,7 @@ func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...Ge
 	fullCmd = append(fullCmd, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, fullCmd[0], fullCmd[1:]...)
+	setPlatformOptions(cmd)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	return cmd
