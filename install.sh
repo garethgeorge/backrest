@@ -90,6 +90,7 @@ command=/usr/local/bin/backrest
 command_background=true
 pidfile="/run/\${RC_SVCNAME}.pid"
 command_user="$(whoami):$(whoami)"
+supervisor=supervise-daemon
 
 export BACKREST_PORT=$BACKREST_PORT
 EOM
