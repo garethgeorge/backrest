@@ -20,7 +20,7 @@ import (
 //go:embed icon.ico
 var icon []byte
 
-var windowsTray = flag.Bool("windows-tray", false, "run the windows tray application")
+var windowsTray = flag.Bool("windows-tray", true, "run the windows tray application")
 
 func main() {
 	flag.Parse()
