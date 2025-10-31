@@ -231,7 +231,15 @@ const FileNode = ({
                     backrestService
                       .getDownloadURL({ value: snapshotOpId })
                       .then((resp) => {
-                        window.open(resp.value + entry.path, "_blank");
+                        const encodePathKeepSlashes = (p: string) =>
+                          p
+                            .split("/")
+                            .map((seg) => encodeURIComponent(seg))
+                            .join("/");
+                        window.open(
+                          resp.value + encodePathKeepSlashes(entry.path!),
+                          "_blank"
+                        );
                       })
                       .catch((e) => {
                         alert("Failed to fetch download URL: " + e.message);
