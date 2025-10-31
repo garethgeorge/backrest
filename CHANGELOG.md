@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.10.0](https://github.com/garethgeorge/backrest/compare/v1.9.2...v1.10.0) (2025-10-31)
+
+
+### Features
+
+* add telegram notification hook ([#963](https://github.com/garethgeorge/backrest/issues/963)) ([b2b206e](https://github.com/garethgeorge/backrest/commit/b2b206e5351a39c9ea0323803728b0f4bcc442cc))
+* allow direct downloading files and folders through backrest webui without restoring first ([#921](https://github.com/garethgeorge/backrest/issues/921)) ([d9b7715](https://github.com/garethgeorge/backrest/commit/d9b77155f3ea8b4bd44d78d3f2489e53fd4a0e6d))
+
+
+### Bug Fixes
+
+* avoid shared cache memory databases ([#926](https://github.com/garethgeorge/backrest/issues/926)) ([e8e9429](https://github.com/garethgeorge/backrest/commit/e8e94295ccc8890c048b9d8808f1ca9a5de775ce))
+* getOperationEvents use create EmptySchema not javascript empty object ([#951](https://github.com/garethgeorge/backrest/issues/951)) ([ecf74f9](https://github.com/garethgeorge/backrest/commit/ecf74f9112ee51268c56f82ccb68798c37633a73))
+* improve JSON parsing resilience ([#928](https://github.com/garethgeorge/backrest/issues/928)) ([e41c357](https://github.com/garethgeorge/backrest/commit/e41c357d30bd8aa16a1ee209e3fdc42f1d3dc87a))
+* merge windows tray functionality into backrest.exe for single binary install on windows ([#903](https://github.com/garethgeorge/backrest/issues/903)) ([3ccb883](https://github.com/garethgeorge/backrest/commit/3ccb883b2f47880017dcb0dd3383cfdf58836929))
+* remove scheduled task time limit for Windows 2012 ([#899](https://github.com/garethgeorge/backrest/issues/899)) ([6cf7df2](https://github.com/garethgeorge/backrest/commit/6cf7df23b89c4317ec75f6b3a271a6b9c19aae78))
+* restic process should run in the background on windows ([20bd9a4](https://github.com/garethgeorge/backrest/commit/20bd9a49e4ed4dc64176b581f1210d80400acded))
+* support backrest installation as an openrc service ([#947](https://github.com/garethgeorge/backrest/issues/947)) ([32ead81](https://github.com/garethgeorge/backrest/commit/32ead816229cf748c783fef9eed03a8407841450))
+* update css to actually center elements having class `.float-center-right` ([#931](https://github.com/garethgeorge/backrest/issues/931)) ([2ced790](https://github.com/garethgeorge/backrest/commit/2ced7903402c5346c9dc6189fe083ff3fc493ef0))
+* update restic version to 0.18.1 ([#910](https://github.com/garethgeorge/backrest/issues/910)) ([b34ea4c](https://github.com/garethgeorge/backrest/commit/b34ea4c5987d9c93f36e37bcf4d8cd517b4420ac))
+* use default locale for formatting dates ([#950](https://github.com/garethgeorge/backrest/issues/950)) ([c4d333e](https://github.com/garethgeorge/backrest/commit/c4d333e0ed2e299be7c6e6f6692b0da01900d142))
+
 ## [1.9.2](https://github.com/garethgeorge/backrest/compare/v1.9.1...v1.9.2) (2025-08-28)
 
 
