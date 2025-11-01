@@ -8,10 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	types "github.com/garethgeorge/backrest/gen/go/types"
-	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	v1sync "github.com/garethgeorge/backrest/gen/go/v1sync"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	http "net/http"
 	strings "strings"
 )
@@ -24,10 +21,10 @@ import (
 const _ = connect.IsAtLeastVersion1_13_0
 
 const (
+	// BackrestSyncServiceName is the fully-qualified name of the BackrestSyncService service.
+	BackrestSyncServiceName = "v1sync.BackrestSyncService"
 	// BackrestSyncStateServiceName is the fully-qualified name of the BackrestSyncStateService service.
 	BackrestSyncStateServiceName = "v1sync.BackrestSyncStateService"
-	// SyncPeerServiceName is the fully-qualified name of the SyncPeerService service.
-	SyncPeerServiceName = "v1sync.SyncPeerService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -38,30 +35,83 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// BackrestSyncServiceSyncProcedure is the fully-qualified name of the BackrestSyncService's Sync
+	// RPC.
+	BackrestSyncServiceSyncProcedure = "/v1sync.BackrestSyncService/Sync"
 	// BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure is the fully-qualified name of the
 	// BackrestSyncStateService's GetPeerSyncStatesStream RPC.
 	BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure = "/v1sync.BackrestSyncStateService/GetPeerSyncStatesStream"
-	// SyncPeerServiceAuthenticateProcedure is the fully-qualified name of the SyncPeerService's
-	// Authenticate RPC.
-	SyncPeerServiceAuthenticateProcedure = "/v1sync.SyncPeerService/Authenticate"
-	// SyncPeerServiceGetOperationMetadataProcedure is the fully-qualified name of the SyncPeerService's
-	// GetOperationMetadata RPC.
-	SyncPeerServiceGetOperationMetadataProcedure = "/v1sync.SyncPeerService/GetOperationMetadata"
-	// SyncPeerServiceSendOperationsProcedure is the fully-qualified name of the SyncPeerService's
-	// SendOperations RPC.
-	SyncPeerServiceSendOperationsProcedure = "/v1sync.SyncPeerService/SendOperations"
-	// SyncPeerServiceGetLogProcedure is the fully-qualified name of the SyncPeerService's GetLog RPC.
-	SyncPeerServiceGetLogProcedure = "/v1sync.SyncPeerService/GetLog"
-	// SyncPeerServiceSetAvailableResourcesProcedure is the fully-qualified name of the
-	// SyncPeerService's SetAvailableResources RPC.
-	SyncPeerServiceSetAvailableResourcesProcedure = "/v1sync.SyncPeerService/SetAvailableResources"
-	// SyncPeerServiceSetConfigProcedure is the fully-qualified name of the SyncPeerService's SetConfig
-	// RPC.
-	SyncPeerServiceSetConfigProcedure = "/v1sync.SyncPeerService/SetConfig"
-	// SyncPeerServiceGetConfigProcedure is the fully-qualified name of the SyncPeerService's GetConfig
-	// RPC.
-	SyncPeerServiceGetConfigProcedure = "/v1sync.SyncPeerService/GetConfig"
 )
+
+// BackrestSyncServiceClient is a client for the v1sync.BackrestSyncService service.
+type BackrestSyncServiceClient interface {
+	Sync(context.Context) *connect.BidiStreamForClient[v1sync.SyncStreamItem, v1sync.SyncStreamItem]
+}
+
+// NewBackrestSyncServiceClient constructs a client for the v1sync.BackrestSyncService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewBackrestSyncServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) BackrestSyncServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	backrestSyncServiceMethods := v1sync.File_v1sync_syncservice_proto.Services().ByName("BackrestSyncService").Methods()
+	return &backrestSyncServiceClient{
+		sync: connect.NewClient[v1sync.SyncStreamItem, v1sync.SyncStreamItem](
+			httpClient,
+			baseURL+BackrestSyncServiceSyncProcedure,
+			connect.WithSchema(backrestSyncServiceMethods.ByName("Sync")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// backrestSyncServiceClient implements BackrestSyncServiceClient.
+type backrestSyncServiceClient struct {
+	sync *connect.Client[v1sync.SyncStreamItem, v1sync.SyncStreamItem]
+}
+
+// Sync calls v1sync.BackrestSyncService.Sync.
+func (c *backrestSyncServiceClient) Sync(ctx context.Context) *connect.BidiStreamForClient[v1sync.SyncStreamItem, v1sync.SyncStreamItem] {
+	return c.sync.CallBidiStream(ctx)
+}
+
+// BackrestSyncServiceHandler is an implementation of the v1sync.BackrestSyncService service.
+type BackrestSyncServiceHandler interface {
+	Sync(context.Context, *connect.BidiStream[v1sync.SyncStreamItem, v1sync.SyncStreamItem]) error
+}
+
+// NewBackrestSyncServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewBackrestSyncServiceHandler(svc BackrestSyncServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	backrestSyncServiceMethods := v1sync.File_v1sync_syncservice_proto.Services().ByName("BackrestSyncService").Methods()
+	backrestSyncServiceSyncHandler := connect.NewBidiStreamHandler(
+		BackrestSyncServiceSyncProcedure,
+		svc.Sync,
+		connect.WithSchema(backrestSyncServiceMethods.ByName("Sync")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/v1sync.BackrestSyncService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case BackrestSyncServiceSyncProcedure:
+			backrestSyncServiceSyncHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedBackrestSyncServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedBackrestSyncServiceHandler struct{}
+
+func (UnimplementedBackrestSyncServiceHandler) Sync(context.Context, *connect.BidiStream[v1sync.SyncStreamItem, v1sync.SyncStreamItem]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.BackrestSyncService.Sync is not implemented"))
+}
 
 // BackrestSyncStateServiceClient is a client for the v1sync.BackrestSyncStateService service.
 type BackrestSyncStateServiceClient interface {
@@ -132,238 +182,4 @@ type UnimplementedBackrestSyncStateServiceHandler struct{}
 
 func (UnimplementedBackrestSyncStateServiceHandler) GetPeerSyncStatesStream(context.Context, *connect.Request[v1sync.SyncStateStreamRequest], *connect.ServerStream[v1sync.PeerState]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.BackrestSyncStateService.GetPeerSyncStatesStream is not implemented"))
-}
-
-// SyncPeerServiceClient is a client for the v1sync.SyncPeerService service.
-type SyncPeerServiceClient interface {
-	// Authenticate authenticates the peer with the sync service, must be called before any other methods.
-	Authenticate(context.Context, *connect.Request[v1sync.AuthenticateRequest]) (*connect.Response[emptypb.Empty], error)
-	// GetOperationMetadata returns a stream of sync items from the peer.
-	GetOperationMetadata(context.Context, *connect.Request[v1.OpSelector]) (*connect.Response[v1sync.GetOperationMetadataResponse], error)
-	SendOperations(context.Context) *connect.ClientStreamForClient[v1.Operation, emptypb.Empty]
-	GetLog(context.Context, *connect.Request[types.StringValue]) (*connect.ServerStreamForClient[v1sync.LogDataEntry], error)
-	// Called everytime the set of resources available to the peer changes.
-	SetAvailableResources(context.Context, *connect.Request[v1sync.SetAvailableResourcesRequest]) (*connect.Response[emptypb.Empty], error)
-	// Implements semantics for updating the remote config of the peer.
-	SetConfig(context.Context, *connect.Request[v1sync.SetConfigRequest]) (*connect.Response[emptypb.Empty], error)
-	GetConfig(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1sync.RemoteConfig], error)
-}
-
-// NewSyncPeerServiceClient constructs a client for the v1sync.SyncPeerService service. By default,
-// it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and
-// sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC()
-// or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewSyncPeerServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SyncPeerServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	syncPeerServiceMethods := v1sync.File_v1sync_syncservice_proto.Services().ByName("SyncPeerService").Methods()
-	return &syncPeerServiceClient{
-		authenticate: connect.NewClient[v1sync.AuthenticateRequest, emptypb.Empty](
-			httpClient,
-			baseURL+SyncPeerServiceAuthenticateProcedure,
-			connect.WithSchema(syncPeerServiceMethods.ByName("Authenticate")),
-			connect.WithClientOptions(opts...),
-		),
-		getOperationMetadata: connect.NewClient[v1.OpSelector, v1sync.GetOperationMetadataResponse](
-			httpClient,
-			baseURL+SyncPeerServiceGetOperationMetadataProcedure,
-			connect.WithSchema(syncPeerServiceMethods.ByName("GetOperationMetadata")),
-			connect.WithClientOptions(opts...),
-		),
-		sendOperations: connect.NewClient[v1.Operation, emptypb.Empty](
-			httpClient,
-			baseURL+SyncPeerServiceSendOperationsProcedure,
-			connect.WithSchema(syncPeerServiceMethods.ByName("SendOperations")),
-			connect.WithClientOptions(opts...),
-		),
-		getLog: connect.NewClient[types.StringValue, v1sync.LogDataEntry](
-			httpClient,
-			baseURL+SyncPeerServiceGetLogProcedure,
-			connect.WithSchema(syncPeerServiceMethods.ByName("GetLog")),
-			connect.WithClientOptions(opts...),
-		),
-		setAvailableResources: connect.NewClient[v1sync.SetAvailableResourcesRequest, emptypb.Empty](
-			httpClient,
-			baseURL+SyncPeerServiceSetAvailableResourcesProcedure,
-			connect.WithSchema(syncPeerServiceMethods.ByName("SetAvailableResources")),
-			connect.WithClientOptions(opts...),
-		),
-		setConfig: connect.NewClient[v1sync.SetConfigRequest, emptypb.Empty](
-			httpClient,
-			baseURL+SyncPeerServiceSetConfigProcedure,
-			connect.WithSchema(syncPeerServiceMethods.ByName("SetConfig")),
-			connect.WithClientOptions(opts...),
-		),
-		getConfig: connect.NewClient[emptypb.Empty, v1sync.RemoteConfig](
-			httpClient,
-			baseURL+SyncPeerServiceGetConfigProcedure,
-			connect.WithSchema(syncPeerServiceMethods.ByName("GetConfig")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// syncPeerServiceClient implements SyncPeerServiceClient.
-type syncPeerServiceClient struct {
-	authenticate          *connect.Client[v1sync.AuthenticateRequest, emptypb.Empty]
-	getOperationMetadata  *connect.Client[v1.OpSelector, v1sync.GetOperationMetadataResponse]
-	sendOperations        *connect.Client[v1.Operation, emptypb.Empty]
-	getLog                *connect.Client[types.StringValue, v1sync.LogDataEntry]
-	setAvailableResources *connect.Client[v1sync.SetAvailableResourcesRequest, emptypb.Empty]
-	setConfig             *connect.Client[v1sync.SetConfigRequest, emptypb.Empty]
-	getConfig             *connect.Client[emptypb.Empty, v1sync.RemoteConfig]
-}
-
-// Authenticate calls v1sync.SyncPeerService.Authenticate.
-func (c *syncPeerServiceClient) Authenticate(ctx context.Context, req *connect.Request[v1sync.AuthenticateRequest]) (*connect.Response[emptypb.Empty], error) {
-	return c.authenticate.CallUnary(ctx, req)
-}
-
-// GetOperationMetadata calls v1sync.SyncPeerService.GetOperationMetadata.
-func (c *syncPeerServiceClient) GetOperationMetadata(ctx context.Context, req *connect.Request[v1.OpSelector]) (*connect.Response[v1sync.GetOperationMetadataResponse], error) {
-	return c.getOperationMetadata.CallUnary(ctx, req)
-}
-
-// SendOperations calls v1sync.SyncPeerService.SendOperations.
-func (c *syncPeerServiceClient) SendOperations(ctx context.Context) *connect.ClientStreamForClient[v1.Operation, emptypb.Empty] {
-	return c.sendOperations.CallClientStream(ctx)
-}
-
-// GetLog calls v1sync.SyncPeerService.GetLog.
-func (c *syncPeerServiceClient) GetLog(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.ServerStreamForClient[v1sync.LogDataEntry], error) {
-	return c.getLog.CallServerStream(ctx, req)
-}
-
-// SetAvailableResources calls v1sync.SyncPeerService.SetAvailableResources.
-func (c *syncPeerServiceClient) SetAvailableResources(ctx context.Context, req *connect.Request[v1sync.SetAvailableResourcesRequest]) (*connect.Response[emptypb.Empty], error) {
-	return c.setAvailableResources.CallUnary(ctx, req)
-}
-
-// SetConfig calls v1sync.SyncPeerService.SetConfig.
-func (c *syncPeerServiceClient) SetConfig(ctx context.Context, req *connect.Request[v1sync.SetConfigRequest]) (*connect.Response[emptypb.Empty], error) {
-	return c.setConfig.CallUnary(ctx, req)
-}
-
-// GetConfig calls v1sync.SyncPeerService.GetConfig.
-func (c *syncPeerServiceClient) GetConfig(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1sync.RemoteConfig], error) {
-	return c.getConfig.CallUnary(ctx, req)
-}
-
-// SyncPeerServiceHandler is an implementation of the v1sync.SyncPeerService service.
-type SyncPeerServiceHandler interface {
-	// Authenticate authenticates the peer with the sync service, must be called before any other methods.
-	Authenticate(context.Context, *connect.Request[v1sync.AuthenticateRequest]) (*connect.Response[emptypb.Empty], error)
-	// GetOperationMetadata returns a stream of sync items from the peer.
-	GetOperationMetadata(context.Context, *connect.Request[v1.OpSelector]) (*connect.Response[v1sync.GetOperationMetadataResponse], error)
-	SendOperations(context.Context, *connect.ClientStream[v1.Operation]) (*connect.Response[emptypb.Empty], error)
-	GetLog(context.Context, *connect.Request[types.StringValue], *connect.ServerStream[v1sync.LogDataEntry]) error
-	// Called everytime the set of resources available to the peer changes.
-	SetAvailableResources(context.Context, *connect.Request[v1sync.SetAvailableResourcesRequest]) (*connect.Response[emptypb.Empty], error)
-	// Implements semantics for updating the remote config of the peer.
-	SetConfig(context.Context, *connect.Request[v1sync.SetConfigRequest]) (*connect.Response[emptypb.Empty], error)
-	GetConfig(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1sync.RemoteConfig], error)
-}
-
-// NewSyncPeerServiceHandler builds an HTTP handler from the service implementation. It returns the
-// path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewSyncPeerServiceHandler(svc SyncPeerServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	syncPeerServiceMethods := v1sync.File_v1sync_syncservice_proto.Services().ByName("SyncPeerService").Methods()
-	syncPeerServiceAuthenticateHandler := connect.NewUnaryHandler(
-		SyncPeerServiceAuthenticateProcedure,
-		svc.Authenticate,
-		connect.WithSchema(syncPeerServiceMethods.ByName("Authenticate")),
-		connect.WithHandlerOptions(opts...),
-	)
-	syncPeerServiceGetOperationMetadataHandler := connect.NewUnaryHandler(
-		SyncPeerServiceGetOperationMetadataProcedure,
-		svc.GetOperationMetadata,
-		connect.WithSchema(syncPeerServiceMethods.ByName("GetOperationMetadata")),
-		connect.WithHandlerOptions(opts...),
-	)
-	syncPeerServiceSendOperationsHandler := connect.NewClientStreamHandler(
-		SyncPeerServiceSendOperationsProcedure,
-		svc.SendOperations,
-		connect.WithSchema(syncPeerServiceMethods.ByName("SendOperations")),
-		connect.WithHandlerOptions(opts...),
-	)
-	syncPeerServiceGetLogHandler := connect.NewServerStreamHandler(
-		SyncPeerServiceGetLogProcedure,
-		svc.GetLog,
-		connect.WithSchema(syncPeerServiceMethods.ByName("GetLog")),
-		connect.WithHandlerOptions(opts...),
-	)
-	syncPeerServiceSetAvailableResourcesHandler := connect.NewUnaryHandler(
-		SyncPeerServiceSetAvailableResourcesProcedure,
-		svc.SetAvailableResources,
-		connect.WithSchema(syncPeerServiceMethods.ByName("SetAvailableResources")),
-		connect.WithHandlerOptions(opts...),
-	)
-	syncPeerServiceSetConfigHandler := connect.NewUnaryHandler(
-		SyncPeerServiceSetConfigProcedure,
-		svc.SetConfig,
-		connect.WithSchema(syncPeerServiceMethods.ByName("SetConfig")),
-		connect.WithHandlerOptions(opts...),
-	)
-	syncPeerServiceGetConfigHandler := connect.NewUnaryHandler(
-		SyncPeerServiceGetConfigProcedure,
-		svc.GetConfig,
-		connect.WithSchema(syncPeerServiceMethods.ByName("GetConfig")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/v1sync.SyncPeerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case SyncPeerServiceAuthenticateProcedure:
-			syncPeerServiceAuthenticateHandler.ServeHTTP(w, r)
-		case SyncPeerServiceGetOperationMetadataProcedure:
-			syncPeerServiceGetOperationMetadataHandler.ServeHTTP(w, r)
-		case SyncPeerServiceSendOperationsProcedure:
-			syncPeerServiceSendOperationsHandler.ServeHTTP(w, r)
-		case SyncPeerServiceGetLogProcedure:
-			syncPeerServiceGetLogHandler.ServeHTTP(w, r)
-		case SyncPeerServiceSetAvailableResourcesProcedure:
-			syncPeerServiceSetAvailableResourcesHandler.ServeHTTP(w, r)
-		case SyncPeerServiceSetConfigProcedure:
-			syncPeerServiceSetConfigHandler.ServeHTTP(w, r)
-		case SyncPeerServiceGetConfigProcedure:
-			syncPeerServiceGetConfigHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
-}
-
-// UnimplementedSyncPeerServiceHandler returns CodeUnimplemented from all methods.
-type UnimplementedSyncPeerServiceHandler struct{}
-
-func (UnimplementedSyncPeerServiceHandler) Authenticate(context.Context, *connect.Request[v1sync.AuthenticateRequest]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.SyncPeerService.Authenticate is not implemented"))
-}
-
-func (UnimplementedSyncPeerServiceHandler) GetOperationMetadata(context.Context, *connect.Request[v1.OpSelector]) (*connect.Response[v1sync.GetOperationMetadataResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.SyncPeerService.GetOperationMetadata is not implemented"))
-}
-
-func (UnimplementedSyncPeerServiceHandler) SendOperations(context.Context, *connect.ClientStream[v1.Operation]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.SyncPeerService.SendOperations is not implemented"))
-}
-
-func (UnimplementedSyncPeerServiceHandler) GetLog(context.Context, *connect.Request[types.StringValue], *connect.ServerStream[v1sync.LogDataEntry]) error {
-	return connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.SyncPeerService.GetLog is not implemented"))
-}
-
-func (UnimplementedSyncPeerServiceHandler) SetAvailableResources(context.Context, *connect.Request[v1sync.SetAvailableResourcesRequest]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.SyncPeerService.SetAvailableResources is not implemented"))
-}
-
-func (UnimplementedSyncPeerServiceHandler) SetConfig(context.Context, *connect.Request[v1sync.SetConfigRequest]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.SyncPeerService.SetConfig is not implemented"))
-}
-
-func (UnimplementedSyncPeerServiceHandler) GetConfig(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1sync.RemoteConfig], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.SyncPeerService.GetConfig is not implemented"))
 }

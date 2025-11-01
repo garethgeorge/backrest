@@ -8,18 +8,117 @@ package v1sync
 
 import (
 	context "context"
-	types "github.com/garethgeorge/backrest/gen/go/types"
-	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
 // Requires gRPC-Go v1.64.0 or later.
 const _ = grpc.SupportPackageIsVersion9
+
+const (
+	BackrestSyncService_Sync_FullMethodName = "/v1sync.BackrestSyncService/Sync"
+)
+
+// BackrestSyncServiceClient is the client API for BackrestSyncService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// BackrestSyncService provides methods to sync data between backrest instances.
+// This service provides its own authentication and authorization.
+type BackrestSyncServiceClient interface {
+	Sync(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[SyncStreamItem, SyncStreamItem], error)
+}
+
+type backrestSyncServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewBackrestSyncServiceClient(cc grpc.ClientConnInterface) BackrestSyncServiceClient {
+	return &backrestSyncServiceClient{cc}
+}
+
+func (c *backrestSyncServiceClient) Sync(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[SyncStreamItem, SyncStreamItem], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &BackrestSyncService_ServiceDesc.Streams[0], BackrestSyncService_Sync_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SyncStreamItem, SyncStreamItem]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type BackrestSyncService_SyncClient = grpc.BidiStreamingClient[SyncStreamItem, SyncStreamItem]
+
+// BackrestSyncServiceServer is the server API for BackrestSyncService service.
+// All implementations must embed UnimplementedBackrestSyncServiceServer
+// for forward compatibility.
+//
+// BackrestSyncService provides methods to sync data between backrest instances.
+// This service provides its own authentication and authorization.
+type BackrestSyncServiceServer interface {
+	Sync(grpc.BidiStreamingServer[SyncStreamItem, SyncStreamItem]) error
+	mustEmbedUnimplementedBackrestSyncServiceServer()
+}
+
+// UnimplementedBackrestSyncServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedBackrestSyncServiceServer struct{}
+
+func (UnimplementedBackrestSyncServiceServer) Sync(grpc.BidiStreamingServer[SyncStreamItem, SyncStreamItem]) error {
+	return status.Errorf(codes.Unimplemented, "method Sync not implemented")
+}
+func (UnimplementedBackrestSyncServiceServer) mustEmbedUnimplementedBackrestSyncServiceServer() {}
+func (UnimplementedBackrestSyncServiceServer) testEmbeddedByValue()                             {}
+
+// UnsafeBackrestSyncServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to BackrestSyncServiceServer will
+// result in compilation errors.
+type UnsafeBackrestSyncServiceServer interface {
+	mustEmbedUnimplementedBackrestSyncServiceServer()
+}
+
+func RegisterBackrestSyncServiceServer(s grpc.ServiceRegistrar, srv BackrestSyncServiceServer) {
+	// If the following call pancis, it indicates UnimplementedBackrestSyncServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&BackrestSyncService_ServiceDesc, srv)
+}
+
+func _BackrestSyncService_Sync_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(BackrestSyncServiceServer).Sync(&grpc.GenericServerStream[SyncStreamItem, SyncStreamItem]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type BackrestSyncService_SyncServer = grpc.BidiStreamingServer[SyncStreamItem, SyncStreamItem]
+
+// BackrestSyncService_ServiceDesc is the grpc.ServiceDesc for BackrestSyncService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var BackrestSyncService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "v1sync.BackrestSyncService",
+	HandlerType: (*BackrestSyncServiceServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Sync",
+			Handler:       _BackrestSyncService_Sync_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
+	Metadata: "v1sync/syncservice.proto",
+}
 
 const (
 	BackrestSyncStateService_GetPeerSyncStatesStream_FullMethodName = "/v1sync.BackrestSyncStateService/GetPeerSyncStatesStream"
@@ -127,341 +226,6 @@ var BackrestSyncStateService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "GetPeerSyncStatesStream",
 			Handler:       _BackrestSyncStateService_GetPeerSyncStatesStream_Handler,
-			ServerStreams: true,
-		},
-	},
-	Metadata: "v1sync/syncservice.proto",
-}
-
-const (
-	SyncPeerService_Authenticate_FullMethodName          = "/v1sync.SyncPeerService/Authenticate"
-	SyncPeerService_GetOperationMetadata_FullMethodName  = "/v1sync.SyncPeerService/GetOperationMetadata"
-	SyncPeerService_SendOperations_FullMethodName        = "/v1sync.SyncPeerService/SendOperations"
-	SyncPeerService_GetLog_FullMethodName                = "/v1sync.SyncPeerService/GetLog"
-	SyncPeerService_SetAvailableResources_FullMethodName = "/v1sync.SyncPeerService/SetAvailableResources"
-	SyncPeerService_SetConfig_FullMethodName             = "/v1sync.SyncPeerService/SetConfig"
-	SyncPeerService_GetConfig_FullMethodName             = "/v1sync.SyncPeerService/GetConfig"
-)
-
-// SyncPeerServiceClient is the client API for SyncPeerService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type SyncPeerServiceClient interface {
-	// Authenticate authenticates the peer with the sync service, must be called before any other methods.
-	Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// GetOperationMetadata returns a stream of sync items from the peer.
-	GetOperationMetadata(ctx context.Context, in *v1.OpSelector, opts ...grpc.CallOption) (*GetOperationMetadataResponse, error)
-	SendOperations(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[v1.Operation, emptypb.Empty], error)
-	GetLog(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogDataEntry], error)
-	// Called everytime the set of resources available to the peer changes.
-	SetAvailableResources(ctx context.Context, in *SetAvailableResourcesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Implements semantics for updating the remote config of the peer.
-	SetConfig(ctx context.Context, in *SetConfigRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RemoteConfig, error)
-}
-
-type syncPeerServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewSyncPeerServiceClient(cc grpc.ClientConnInterface) SyncPeerServiceClient {
-	return &syncPeerServiceClient{cc}
-}
-
-func (c *syncPeerServiceClient) Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, SyncPeerService_Authenticate_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *syncPeerServiceClient) GetOperationMetadata(ctx context.Context, in *v1.OpSelector, opts ...grpc.CallOption) (*GetOperationMetadataResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetOperationMetadataResponse)
-	err := c.cc.Invoke(ctx, SyncPeerService_GetOperationMetadata_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *syncPeerServiceClient) SendOperations(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[v1.Operation, emptypb.Empty], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &SyncPeerService_ServiceDesc.Streams[0], SyncPeerService_SendOperations_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[v1.Operation, emptypb.Empty]{ClientStream: stream}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type SyncPeerService_SendOperationsClient = grpc.ClientStreamingClient[v1.Operation, emptypb.Empty]
-
-func (c *syncPeerServiceClient) GetLog(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogDataEntry], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &SyncPeerService_ServiceDesc.Streams[1], SyncPeerService_GetLog_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[types.StringValue, LogDataEntry]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type SyncPeerService_GetLogClient = grpc.ServerStreamingClient[LogDataEntry]
-
-func (c *syncPeerServiceClient) SetAvailableResources(ctx context.Context, in *SetAvailableResourcesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, SyncPeerService_SetAvailableResources_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *syncPeerServiceClient) SetConfig(ctx context.Context, in *SetConfigRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, SyncPeerService_SetConfig_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *syncPeerServiceClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RemoteConfig, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RemoteConfig)
-	err := c.cc.Invoke(ctx, SyncPeerService_GetConfig_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// SyncPeerServiceServer is the server API for SyncPeerService service.
-// All implementations must embed UnimplementedSyncPeerServiceServer
-// for forward compatibility.
-type SyncPeerServiceServer interface {
-	// Authenticate authenticates the peer with the sync service, must be called before any other methods.
-	Authenticate(context.Context, *AuthenticateRequest) (*emptypb.Empty, error)
-	// GetOperationMetadata returns a stream of sync items from the peer.
-	GetOperationMetadata(context.Context, *v1.OpSelector) (*GetOperationMetadataResponse, error)
-	SendOperations(grpc.ClientStreamingServer[v1.Operation, emptypb.Empty]) error
-	GetLog(*types.StringValue, grpc.ServerStreamingServer[LogDataEntry]) error
-	// Called everytime the set of resources available to the peer changes.
-	SetAvailableResources(context.Context, *SetAvailableResourcesRequest) (*emptypb.Empty, error)
-	// Implements semantics for updating the remote config of the peer.
-	SetConfig(context.Context, *SetConfigRequest) (*emptypb.Empty, error)
-	GetConfig(context.Context, *emptypb.Empty) (*RemoteConfig, error)
-	mustEmbedUnimplementedSyncPeerServiceServer()
-}
-
-// UnimplementedSyncPeerServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedSyncPeerServiceServer struct{}
-
-func (UnimplementedSyncPeerServiceServer) Authenticate(context.Context, *AuthenticateRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Authenticate not implemented")
-}
-func (UnimplementedSyncPeerServiceServer) GetOperationMetadata(context.Context, *v1.OpSelector) (*GetOperationMetadataResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetOperationMetadata not implemented")
-}
-func (UnimplementedSyncPeerServiceServer) SendOperations(grpc.ClientStreamingServer[v1.Operation, emptypb.Empty]) error {
-	return status.Errorf(codes.Unimplemented, "method SendOperations not implemented")
-}
-func (UnimplementedSyncPeerServiceServer) GetLog(*types.StringValue, grpc.ServerStreamingServer[LogDataEntry]) error {
-	return status.Errorf(codes.Unimplemented, "method GetLog not implemented")
-}
-func (UnimplementedSyncPeerServiceServer) SetAvailableResources(context.Context, *SetAvailableResourcesRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetAvailableResources not implemented")
-}
-func (UnimplementedSyncPeerServiceServer) SetConfig(context.Context, *SetConfigRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetConfig not implemented")
-}
-func (UnimplementedSyncPeerServiceServer) GetConfig(context.Context, *emptypb.Empty) (*RemoteConfig, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetConfig not implemented")
-}
-func (UnimplementedSyncPeerServiceServer) mustEmbedUnimplementedSyncPeerServiceServer() {}
-func (UnimplementedSyncPeerServiceServer) testEmbeddedByValue()                         {}
-
-// UnsafeSyncPeerServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to SyncPeerServiceServer will
-// result in compilation errors.
-type UnsafeSyncPeerServiceServer interface {
-	mustEmbedUnimplementedSyncPeerServiceServer()
-}
-
-func RegisterSyncPeerServiceServer(s grpc.ServiceRegistrar, srv SyncPeerServiceServer) {
-	// If the following call pancis, it indicates UnimplementedSyncPeerServiceServer was
-	// embedded by pointer and is nil.  This will cause panics if an
-	// unimplemented method is ever invoked, so we test this at initialization
-	// time to prevent it from happening at runtime later due to I/O.
-	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
-		t.testEmbeddedByValue()
-	}
-	s.RegisterService(&SyncPeerService_ServiceDesc, srv)
-}
-
-func _SyncPeerService_Authenticate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AuthenticateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SyncPeerServiceServer).Authenticate(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SyncPeerService_Authenticate_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SyncPeerServiceServer).Authenticate(ctx, req.(*AuthenticateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SyncPeerService_GetOperationMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v1.OpSelector)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SyncPeerServiceServer).GetOperationMetadata(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SyncPeerService_GetOperationMetadata_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SyncPeerServiceServer).GetOperationMetadata(ctx, req.(*v1.OpSelector))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SyncPeerService_SendOperations_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(SyncPeerServiceServer).SendOperations(&grpc.GenericServerStream[v1.Operation, emptypb.Empty]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type SyncPeerService_SendOperationsServer = grpc.ClientStreamingServer[v1.Operation, emptypb.Empty]
-
-func _SyncPeerService_GetLog_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(types.StringValue)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(SyncPeerServiceServer).GetLog(m, &grpc.GenericServerStream[types.StringValue, LogDataEntry]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type SyncPeerService_GetLogServer = grpc.ServerStreamingServer[LogDataEntry]
-
-func _SyncPeerService_SetAvailableResources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetAvailableResourcesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SyncPeerServiceServer).SetAvailableResources(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SyncPeerService_SetAvailableResources_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SyncPeerServiceServer).SetAvailableResources(ctx, req.(*SetAvailableResourcesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SyncPeerService_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetConfigRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SyncPeerServiceServer).SetConfig(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SyncPeerService_SetConfig_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SyncPeerServiceServer).SetConfig(ctx, req.(*SetConfigRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SyncPeerService_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SyncPeerServiceServer).GetConfig(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SyncPeerService_GetConfig_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SyncPeerServiceServer).GetConfig(ctx, req.(*emptypb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// SyncPeerService_ServiceDesc is the grpc.ServiceDesc for SyncPeerService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var SyncPeerService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "v1sync.SyncPeerService",
-	HandlerType: (*SyncPeerServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Authenticate",
-			Handler:    _SyncPeerService_Authenticate_Handler,
-		},
-		{
-			MethodName: "GetOperationMetadata",
-			Handler:    _SyncPeerService_GetOperationMetadata_Handler,
-		},
-		{
-			MethodName: "SetAvailableResources",
-			Handler:    _SyncPeerService_SetAvailableResources_Handler,
-		},
-		{
-			MethodName: "SetConfig",
-			Handler:    _SyncPeerService_SetConfig_Handler,
-		},
-		{
-			MethodName: "GetConfig",
-			Handler:    _SyncPeerService_GetConfig_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "SendOperations",
-			Handler:       _SyncPeerService_SendOperations_Handler,
-			ClientStreams: true,
-		},
-		{
-			StreamName:    "GetLog",
-			Handler:       _SyncPeerService_GetLog_Handler,
 			ServerStreams: true,
 		},
 	},

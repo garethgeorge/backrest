@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/internal/kvstore"
 	"github.com/google/go-cmp/cmp"
 )
@@ -33,8 +34,21 @@ func TestPeerStateManager_GetSet(t *testing.T) {
 				InstanceID:    "testInstance",
 				KeyID:         keyID,
 				LastHeartbeat: time.Now().Round(time.Millisecond),
-				KnownRepos:    map[string]struct{}{"repo1": {}, "repo2": {}},
-				KnownPlans:    map[string]struct{}{"plan1": {}, "plan2": {}},
+				KnownRepos: map[string]*v1sync.RepoMetadata{
+					"repo1": {
+						Id:   "repo1",
+						Guid: "guid1",
+					},
+					"repo2": {
+						Id:   "repo2",
+						Guid: "guid2",
+					},
+				},
+				KnownPlans: map[string]*v1sync.PlanMetadata{
+					"plan1": {
+						Id: "plan1",
+					},
+				},
 			}
 			psm.SetPeerState(keyID, state)
 			gotState := psm.GetPeerState(keyID)

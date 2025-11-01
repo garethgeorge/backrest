@@ -15,6 +15,13 @@ import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
 
 
+
+// BackrestSyncService provides methods to sync data between backrest instances.
+// This service provides its own authentication and authorization.
+service BackrestSyncService {
+  rpc Sync(stream SyncStreamItem) returns (stream SyncStreamItem) {}
+}
+
 // BackrestSyncStateService provides methods to query the sync state of known hosts and clients.
 // This service should be served behind authentication and authorization.
 service BackrestSyncStateService {
@@ -37,23 +44,6 @@ message PeerState {
   RemoteConfig remote_config = 7; // The remote config of the peer, if available.
 
   int64 last_heartbeat_millis = 8; // The last time the peer sent a heartbeat, in milliseconds since epoch.
-}
-
-service SyncPeerService {
-  // Authenticate authenticates the peer with the sync service, must be called before any other methods.
-  rpc Authenticate(AuthenticateRequest) returns (google.protobuf.Empty) {}
-
-  // GetOperationMetadata returns a stream of sync items from the peer.
-  rpc GetOperationMetadata(v1.OpSelector) returns (GetOperationMetadataResponse) {}
-  rpc SendOperations(stream v1.Operation) returns (google.protobuf.Empty) {}
-  rpc GetLog(types.StringValue) returns (stream LogDataEntry) {}
-
-  // Called everytime the set of resources available to the peer changes.
-  rpc SetAvailableResources(SetAvailableResourcesRequest) returns (google.protobuf.Empty) {}
-
-  // Implements semantics for updating the remote config of the peer.
-  rpc SetConfig(SetConfigRequest) returns (google.protobuf.Empty) {}
-  rpc GetConfig(google.protobuf.Empty) returns (RemoteConfig) {}
 }
 
 message AuthenticateRequest {
@@ -116,7 +106,6 @@ message AuthorizationToken {
   v1.SignedMessage instance_id = 2; // The ID of the peer instance.
 }
 
-/*SyncStreamItem
 message SyncStreamItem {
   oneof action {
     v1.SignedMessage signed_message = 1;
@@ -136,8 +125,8 @@ message SyncStreamItem {
 
   message SyncActionHandshake {
     int64 protocol_version = 1;
-    PublicKey public_key = 2;
-    SignedMessage instance_id = 3;
+    v1.PublicKey public_key = 2;
+    v1.SignedMessage instance_id = 3;
   }
 
   // SyncActionHeartbeat is sent periodically to keep the connection alive.
@@ -148,15 +137,15 @@ message SyncStreamItem {
   }
 
   message SyncActionSetConfig {
-    repeated Repo repos = 1;
-    repeated Plan plans = 2;
+    repeated v1.Repo repos = 1;
+    repeated v1.Plan plans = 2;
     repeated string repos_to_delete = 3;
     repeated string plans_to_delete = 4;
   }
 
   message SyncActionListResources {
-    repeated SyncRepoMetadata repos = 1;
-    repeated SyncPlanMetadata plans = 2;
+    repeated RepoMetadata repos = 1;
+    repeated PlanMetadata plans = 2;
   }
 
   message SyncActionConnectRepo {
@@ -174,7 +163,7 @@ message SyncStreamItem {
   message SyncActionDiffOperations {
     // Client connects and sends a list of "have_operations" that exist in its log.
     // have_operation_ids and have_operation_modnos are the operation IDs and modnos that the client has when zip'd pairwise.
-    OpSelector have_operations_selector = 1;
+    v1.OpSelector have_operations_selector = 1;
     repeated int64 have_operation_ids = 2;
     repeated int64 have_operation_modnos = 3;
     // Server sends a list of "request_operations" for any operations that it doesn't have.
@@ -182,7 +171,7 @@ message SyncStreamItem {
   }
 
   message SyncActionSendOperations {
-    OperationEvent event = 1;
+    v1.OperationEvent event = 1;
   }
 
   message SyncActionGetLog {
@@ -210,12 +199,3 @@ message SyncStreamItem {
     string ed25519 = 2 [json_name="ed25519pub"]; // base64 encoded public key
   }
 }
-
-// RemoteConfig contains shareable properties from a remote backrest instance.
-message RemoteConfig {
-  int32 modno = 1; // The modno of the config.
-  int32 version = 2; // The storage version of the config.
-  repeated Repo repos = 3;
-  repeated Plan plans = 4;
-}
-*/
