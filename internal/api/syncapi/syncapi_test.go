@@ -26,6 +26,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/ncruces/go-sqlite3/vfs/memdb"
+	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -172,6 +173,7 @@ func TestSyncConfigChange(t *testing.T) {
 
 	peerHostConfig := &v1.Config{
 		Version:  migrations.CurrentVersion,
+		Modno:    0,
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
@@ -247,13 +249,16 @@ func TestSyncConfigChange(t *testing.T) {
 		},
 	})
 	hostConfigChanged := proto.Clone(peerHostConfig).(*v1.Config)
-	hostConfigChanged.Repos[0].Env = []string{"SOME_ENV=VALUE"}
+	hostConfigChanged.Repos[1].Env = []string{"SOME_ENV=VALUE"}
+	hostConfigChanged.Modno += 1
+	zap.S().Infof("updating host config to: %s", protojson.Format(hostConfigChanged))
 	peerHost.configMgr.Update(hostConfigChanged)
 
 	tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
 
 	tryExpectConfigFromHost(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], &v1sync.RemoteConfig{
 		Version: migrations.CurrentVersion,
+		Modno:   1,
 		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,

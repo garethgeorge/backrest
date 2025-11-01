@@ -85,16 +85,20 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 
 	configWatchCh := m.configMgr.OnChange.Subscribe()
 	defer m.configMgr.OnChange.Unsubscribe(configWatchCh)
+	defer func() {
+		zap.L().Info("syncmanager exited")
+	}()
 
 	runSyncWithNewConfig := func() {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
-		// TODO: rather than cancel the top level context, something clever e.g. diffing the set of peers could be done here.
 		if cancelLastSync != nil {
 			cancelLastSync()
 			zap.L().Info("syncmanager applying new config, waiting for existing sync goroutines to exit")
 			syncWg.Wait()
+		} else {
+			zap.L().Info("syncmanager applying new config, starting sync goroutines")
 		}
 		syncCtx, cancel := context.WithCancel(ctx)
 		cancelLastSync = cancel
@@ -129,7 +133,7 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 			return
 		}
 
-		zap.S().Infof("syncmanager applying new config, starting sync with identity %v, spawning goroutines for %d known peers",
+		zap.S().Infof("sync using identity %v, spawning goroutines for %d known peers",
 			config.Multihost.GetIdentity().GetKeyid(), len(config.Multihost.GetKnownHosts()))
 		for _, knownHostPeer := range config.Multihost.KnownHosts {
 			if knownHostPeer.InstanceId == "" {
