@@ -65,6 +65,7 @@ Type=simple
 User=$(whoami)
 Group=$(whoami)
 ExecStart=/usr/local/bin/backrest
+Restart=on-failure
 Environment="BACKREST_PORT=$BACKREST_PORT"
 
 [Install]
