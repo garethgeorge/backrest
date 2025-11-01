@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.2](https://github.com/garethgeorge/backrest/compare/v1.10.1...v1.10.2) (2025-11-01)
+
+
+### Bug Fixes
+
+* snapshot browser can download paths conaining spaces and special chars ([5585c20](https://github.com/garethgeorge/backrest/commit/5585c207c957cd3a821c0dc069032c77e136579e))
+
 ## [1.10.1](https://github.com/garethgeorge/backrest/compare/v1.10.0...v1.10.1) (2025-10-31)
 
 
