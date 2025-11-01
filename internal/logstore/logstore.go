@@ -187,28 +187,23 @@ func (ls *LogStore) Create(id string, parentOpID int64, ttl time.Duration) (io.W
 func (ls *LogStore) GetMetadata(id string) (LogMetadata, error) {
 	ls.mu.RLock(id)
 	defer ls.mu.RUnlock(id)
-
-	conn, err := ls.dbpool.Take(context.Background())
+	ctx := context.Background()
+	var expireTsUnix int64
+	var ownerOpID int64
+	err := ls.dbpool.QueryRowContext(ctx, "SELECT expiration_ts_unix, owner_opid FROM logs WHERE id = ?", id).Scan(&expireTsUnix, &ownerOpID)
 	if err != nil {
-		return LogMetadata{}, fmt.Errorf("take connection: %v", err)
-	}
-	defer ls.dbpool.Put(conn)
-	var metadata LogMetadata
-	if err := sqlitex.Execute(conn, "SELECT expiration_ts_unix, owner_opid FROM logs WHERE id = ?", &sqlitex.ExecOptions{
-		Args: []any{id},
-		ResultFunc: func(stmt *sqlite.Stmt) error {
-			metadata.ID = id
-			expireTsUnix := stmt.ColumnInt64(0)
-			if expireTsUnix != 0 {
-				metadata.ExpirationTime = time.Unix(expireTsUnix, 0)
-			}
-			metadata.OwnerOpID = stmt.ColumnInt64(1)
-			return nil
-		},
-	}); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return LogMetadata{}, ErrLogNotFound
+		}
 		return LogMetadata{}, fmt.Errorf("select log metadata: %v", err)
-	} else if metadata.ID == "" {
-		return LogMetadata{}, ErrLogNotFound
+	}
+
+	metadata := LogMetadata{
+		ID:        id,
+		OwnerOpID: ownerOpID,
+	}
+	if expireTsUnix != 0 {
+		metadata.ExpirationTime = time.Unix(expireTsUnix, 0)
 	}
 	return metadata, nil
 }
