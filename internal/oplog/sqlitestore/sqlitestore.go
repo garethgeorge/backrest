@@ -37,14 +37,14 @@ const (
 )
 
 type SqliteStore struct {
-	dbpool    *sql.DB
-	lastIDVal atomic.Int64
-	dblock    *flock.Flock
+	dbpool *sql.DB
+	dblock *flock.Flock
 
 	ogidCache *lru.TwoQueueCache[opGroupInfo, int64]
 
 	kvstore      kvstore.KvStore
 	highestModno atomic.Int64
+	highestOpID  atomic.Int64
 }
 
 var _ oplog.OpStore = (*SqliteStore)(nil)
@@ -136,25 +136,13 @@ func (m *SqliteStore) init() error {
 		return err
 	}
 
-	var lastID int64
-	err := m.dbpool.QueryRowContext(context.Background(), "SELECT operations.id FROM operations ORDER BY operations.id DESC LIMIT 1").Scan(&lastID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("init sqlite: %v", err)
+	highestID, highestModno, err := m.GetHighestOpIDAndModno(oplog.Query{}.SetOriginalInstanceKeyid(""))
+	if err != nil {
+		return err
 	}
-	m.lastIDVal.Store(lastID)
-
-	var highestModno int64
-	err = m.dbpool.QueryRowContext(context.Background(), "SELECT operations.modno FROM operations ORDER BY operations.modno DESC LIMIT 1").Scan(&highestModno)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("init sqlite: %v", err)
-	}
+	m.highestOpID.Store(highestID)
 	m.highestModno.Store(highestModno)
-
 	return nil
-}
-
-func (m *SqliteStore) nextModno() int64 {
-	return m.highestModno.Add(1)
 }
 
 func (m *SqliteStore) GetHighestOpIDAndModno(q oplog.Query) (int64, int64, error) {
@@ -383,8 +371,6 @@ func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operat
 			continue
 		}
 
-		newOp.Modno = m.nextModno()
-
 		if err := m.updateInternal(tx, newOp); err != nil {
 			return err
 		}
@@ -431,8 +417,8 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 	defer tx.Rollback()
 
 	for _, o := range op {
-		o.Id = m.lastIDVal.Add(1)
-		o.Modno = m.nextModno()
+		o.Id = m.highestOpID.Add(1)
+		o.Modno = m.highestModno.Add(1)
 		if o.FlowId == 0 {
 			o.FlowId = o.Id
 		}
@@ -464,7 +450,7 @@ func (m *SqliteStore) Update(op ...*v1.Operation) error {
 
 func (m *SqliteStore) updateInternal(tx *sql.Tx, op ...*v1.Operation) error {
 	for _, o := range op {
-		o.Modno = m.nextModno()
+		o.Modno = m.highestModno.Add(1)
 		if err := protoutil.ValidateOperation(o); err != nil {
 			return err
 		}
@@ -595,7 +581,8 @@ func (m *SqliteStore) ResetForTest(t *testing.T) error {
 	if err != nil {
 		return fmt.Errorf("reset for test: %v", err)
 	}
-	m.lastIDVal.Store(0)
+	m.highestOpID.Store(0)
+	m.highestModno.Store(0)
 	return nil
 }
 

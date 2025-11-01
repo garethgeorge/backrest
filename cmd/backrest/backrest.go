@@ -19,6 +19,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	"github.com/garethgeorge/backrest/gen/go/v1sync/v1syncconnect"
 	"github.com/garethgeorge/backrest/internal/api"
 	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/auth"
@@ -68,12 +69,11 @@ func runApp() {
 	go onterm(os.Interrupt, newForceKillHandler())
 
 	// Create dependency components
-	configStore := createConfigStore()
-	cfg, err := configStore.Get()
+	configMgr := &config.ConfigManager{Store: createConfigStore()}
+	cfg, err := configMgr.Get()
 	if err != nil {
 		zap.L().Fatal("error loading config", zap.Error(err))
 	}
-	configMgr := &config.ConfigManager{Store: configStore}
 
 	opLog, opLogStore, err := newOpLog(cfg)
 	if err != nil {
@@ -108,13 +108,7 @@ func runApp() {
 	if err != nil {
 		zap.L().Fatal("error creating peer state manager", zap.Error(err))
 	}
-<<<<<<< HEAD
 	syncMgr := syncapi.NewSyncManager(configMgr, opLog, orch, peerStateManager)
-
-=======
-
-	syncMgr := syncapi.NewSyncManager(configMgr, opLog, logStore, orch, peerStateManager)
->>>>>>> 9041d3c (improve sync api security by using 'Authorization' headers for initial key exchange)
 	authenticator := newAuthenticator(configMgr)
 
 	// Start background services
@@ -251,8 +245,8 @@ func newServer(
 func newRootMux(
 	apiBackrestHandler v1connect.BackrestHandler,
 	apiAuthenticationHandler v1connect.AuthenticationHandler,
-	syncHandler v1connect.BackrestSyncServiceHandler,
-	syncStateHandler v1connect.BackrestSyncStateServiceHandler,
+	syncHandler v1syncconnect.BackrestSyncServiceHandler,
+	syncStateHandler v1syncconnect.BackrestSyncStateServiceHandler,
 	downloadHandler http.Handler,
 	authenticator *auth.Authenticator,
 ) *http.ServeMux {
@@ -260,7 +254,7 @@ func newRootMux(
 	authedMux := http.NewServeMux()
 	backrestPath, backrestHandler := v1connect.NewBackrestHandler(apiBackrestHandler)
 	authedMux.Handle(backrestPath, backrestHandler)
-	syncStatePath, syncStateHandlerUnauthed := v1connect.NewBackrestSyncStateServiceHandler(syncStateHandler)
+	syncStatePath, syncStateHandlerUnauthed := v1syncconnect.NewBackrestSyncStateServiceHandler(syncStateHandler)
 	authedMux.Handle(syncStatePath, syncStateHandlerUnauthed)
 	authedMux.Handle("/download/", http.StripPrefix("/download", downloadHandler))
 	authedMux.Handle("/metrics", metric.GetRegistry().Handler())
@@ -269,7 +263,7 @@ func newRootMux(
 	unauthedMux := http.NewServeMux()
 	authPath, authHandler := v1connect.NewAuthenticationHandler(apiAuthenticationHandler)
 	unauthedMux.Handle(authPath, authHandler)
-	syncPath, syncHandlerUnauthed := v1connect.NewBackrestSyncServiceHandler(syncHandler)
+	syncPath, syncHandlerUnauthed := v1syncconnect.NewBackrestSyncServiceHandler(syncHandler)
 	unauthedMux.Handle(syncPath, syncHandlerUnauthed)
 
 	// Root mux to dispatch to authenticated or unauthenticated handlers

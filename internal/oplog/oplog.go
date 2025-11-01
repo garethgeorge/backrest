@@ -135,14 +135,10 @@ func (o *OpLog) Get(opID int64) (*v1.Operation, error) {
 
 func (o *OpLog) Add(ops ...*v1.Operation) error {
 	for _, o := range ops {
-		if o.Id != 0 {
-			return errors.New("operation already has an ID, OpLog.Add is expected to set the ID")
-		}
-		if o.Modno == 0 {
-			o.Modno = NewRandomModno(0)
+		if o.Id != 0 || o.Modno != 0 {
+			return errors.New("operation already has an ID or Modno, OpLog.Add is expected to set the ID/Modno")
 		}
 	}
-
 	if err := o.store.Add(ops...); err != nil {
 		return err
 	}
@@ -156,7 +152,6 @@ func (o *OpLog) Update(ops ...*v1.Operation) error {
 		if o.Id == 0 {
 			return errors.New("operation does not have an ID, OpLog.Update is expected to have an ID")
 		}
-		o.Modno = NewRandomModno(o.Modno)
 	}
 
 	if err := o.store.Update(ops...); err != nil {

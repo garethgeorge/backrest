@@ -290,29 +290,61 @@ func newRemoteOpIDMapper(oplog *oplog.OpLog, cacheSize int) (*remoteOpIDMapper, 
 	}, nil
 }
 
-// translateSingleID translates a single ID (either opID or flowID) using the provided cache and query
-func (sh *remoteOpIDMapper) translateSingleID(
-	originalInstanceKeyid string,
-	originalID int64,
-	cache *lru.Cache[remoteOpIdCacheKey, int64],
-	query oplog.Query,
-) (int64, error) {
-	if originalID == 0 {
+// translateOpID translates a remote operation ID to a local one.
+func (om *remoteOpIDMapper) translateOpID(originalInstanceKeyid string, originalOpId int64) (int64, error) {
+	if originalOpId == 0 {
 		return 0, nil
 	}
 
 	cacheKey := remoteOpIdCacheKey{
 		OriginalInstanceKeyid: unique.Make(originalInstanceKeyid),
-		ID:                    originalID,
+		ID:                    originalOpId,
 	}
 
 	// Check cache first
-	if translatedID, ok := cache.Get(cacheKey); ok {
+	if translatedID, ok := om.opIDLru.Get(cacheKey); ok {
 		return translatedID, nil
 	}
 
 	// Cache miss - query the database
-	op, err := sh.oplog.FindOneMetadata(query)
+	op, err := om.oplog.FindOneMetadata(oplog.Query{
+		OriginalInstanceKeyid: &originalInstanceKeyid,
+		OriginalID:            &originalOpId,
+	})
+	if err != nil {
+		if errors.Is(err, oplog.ErrNoResults) {
+			return 0, nil // No results means the ID is not found
+		}
+		return 0, err // Other errors should be propagated
+	}
+
+	// Cache the result and return
+	translatedID := op.ID
+	om.opIDLru.Add(cacheKey, translatedID)
+	return translatedID, nil
+}
+
+// translateFlowID translates a remote flow ID to a local one.
+func (om *remoteOpIDMapper) translateFlowID(originalInstanceKeyid string, originalFlowId int64) (int64, error) {
+	if originalFlowId == 0 {
+		return 0, nil
+	}
+
+	cacheKey := remoteOpIdCacheKey{
+		OriginalInstanceKeyid: unique.Make(originalInstanceKeyid),
+		ID:                    originalFlowId,
+	}
+
+	// Check cache first
+	if translatedID, ok := om.flowIDLru.Get(cacheKey); ok {
+		return translatedID, nil
+	}
+
+	// Cache miss - query the database
+	op, err := om.oplog.FindOneMetadata(oplog.Query{
+		OriginalInstanceKeyid: &originalInstanceKeyid,
+		OriginalFlowID:        &originalFlowId,
+	})
 	if err != nil {
 		if errors.Is(err, oplog.ErrNoResults) {
 			return 0, nil // No results means the ID is not found
@@ -322,7 +354,7 @@ func (sh *remoteOpIDMapper) translateSingleID(
 
 	// Cache the result and return
 	translatedID := op.FlowID
-	cache.Add(cacheKey, translatedID)
+	om.flowIDLru.Add(cacheKey, translatedID)
 	return translatedID, nil
 }
 
@@ -331,29 +363,13 @@ func (om *remoteOpIDMapper) TranslateOpIdAndFlowID(originalInstanceKeyid string,
 	defer om.opCacheMu.Unlock()
 
 	// Translate opID
-	opID, err := om.translateSingleID(
-		originalInstanceKeyid,
-		originalOpId,
-		om.opIDLru,
-		oplog.Query{
-			OriginalInstanceKeyid: &originalInstanceKeyid,
-			OriginalID:            &originalOpId,
-		},
-	)
+	opID, err := om.translateOpID(originalInstanceKeyid, originalOpId)
 	if err != nil {
 		return 0, 0, err
 	}
 
 	// Translate flowID
-	flowID, err := om.translateSingleID(
-		originalInstanceKeyid,
-		originalFlowId,
-		om.flowIDLru,
-		oplog.Query{
-			OriginalInstanceKeyid: &originalInstanceKeyid,
-			OriginalFlowID:        &originalFlowId,
-		},
-	)
+	flowID, err := om.translateFlowID(originalInstanceKeyid, originalFlowId)
 	if err != nil {
 		return 0, 0, err
 	}

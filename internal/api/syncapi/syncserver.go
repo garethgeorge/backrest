@@ -248,7 +248,7 @@ func (h *syncSessionHandlerServer) HandleReceiveResources(ctx context.Context, s
 
 func (h *syncSessionHandlerServer) insertOrUpdate(op *v1.Operation, isUpdate bool) error {
 	// Returns a localOpID and localFlowID or 0 if not found in which case a new ID will be assigned by the insert.
-	localOpID, localFlowID, err := h.mapper.TranslateOpIdAndFlowID(op.OriginalInstanceKeyid, op.Id, op.FlowId)
+	localOpID, localFlowID, err := h.mapper.TranslateOpIdAndFlowID(h.peer.Keyid, op.Id, op.FlowId)
 	if err != nil {
 		return fmt.Errorf("translating operation ID and flow ID: %w", err)
 	}
@@ -257,13 +257,11 @@ func (h *syncSessionHandlerServer) insertOrUpdate(op *v1.Operation, isUpdate boo
 	op.OriginalFlowId = op.FlowId
 	op.Id = localOpID
 	op.FlowId = localFlowID
-	if (op.Id == 0) != (op.FlowId == 0) {
-		return fmt.Errorf("inconsistent operation and flow ID mapping results: op.ID=%d, flow.ID=%d expected both to be 0 or both to be non-zero", op.Id, op.FlowId)
-	}
 	if op.Id == 0 {
 		if isUpdate {
 			h.l.Sugar().Warnf("received update for non-existent operation %+v, inserting instead", op)
 		}
+		op.Modno = 0
 		return h.mgr.oplog.Add(op)
 	} else {
 		if !isUpdate {
