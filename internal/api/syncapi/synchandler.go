@@ -10,8 +10,8 @@ import (
 
 	"connectrpc.com/connect"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/gen/go/v1sync"
+	"github.com/garethgeorge/backrest/gen/go/v1sync/v1syncconnect"
 	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -23,11 +23,11 @@ import (
 const SyncProtocolVersion = 1
 
 type BackrestSyncHandler struct {
-	v1connect.UnimplementedBackrestSyncServiceHandler
+	v1syncconnect.UnimplementedBackrestSyncServiceHandler
 	mgr *SyncManager
 }
 
-var _ v1connect.BackrestSyncServiceHandler = &BackrestSyncHandler{}
+var _ v1syncconnect.BackrestSyncServiceHandler = &BackrestSyncHandler{}
 
 func NewBackrestSyncHandler(mgr *SyncManager) *BackrestSyncHandler {
 	return &BackrestSyncHandler{
@@ -35,7 +35,7 @@ func NewBackrestSyncHandler(mgr *SyncManager) *BackrestSyncHandler {
 	}
 }
 
-func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStream[v1.SyncStreamItem, v1.SyncStreamItem]) error {
+func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStream[v1sync.SyncStreamItem, v1sync.SyncStreamItem]) error {
 	// TODO: this request can be very long lived, we must periodically refresh the config
 	// e.g. to disconnect a client if its access is revoked.
 	snapshot := h.mgr.getSyncConfigSnapshot()
@@ -178,7 +178,7 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 	return h.sendConfigToClient(stream, h.snapshot.config)
 }
 
-func (h *syncSessionHandlerServer) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionHeartbeat) error {
+func (h *syncSessionHandlerServer) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error {
 	peerState := h.mgr.peerStateManager.GetPeerState(h.peer.Keyid).Clone()
 	if peerState == nil {
 		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", h.peer.Keyid))
@@ -188,7 +188,7 @@ func (h *syncSessionHandlerServer) HandleHeartbeat(ctx context.Context, stream *
 	return nil
 }
 
-func (h *syncSessionHandlerServer) HandleDiffOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionDiffOperations) error {
+func (h *syncSessionHandlerServer) HandleDiffOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionDiffOperations) error {
 	diffSel := item.GetHaveOperationsSelector()
 	if diffSel == nil {
 		return NewSyncErrorProtocol(errors.New("action DiffOperations: selector is required"))
@@ -287,9 +287,9 @@ func (h *syncSessionHandlerServer) HandleDiffOperations(ctx context.Context, str
 	)
 	if len(requestIDs) > 0 {
 		zap.L().Debug("syncserver sending request operations to client", zap.String("client_instance_id", h.peer.InstanceId), zap.Any("request_ids", requestIDs))
-		stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_DiffOperations{
-				DiffOperations: &v1.SyncStreamItem_SyncActionDiffOperations{
+		stream.Send(&v1sync.SyncStreamItem{
+			Action: &v1sync.SyncStreamItem_DiffOperations{
+				DiffOperations: &v1sync.SyncStreamItem_SyncActionDiffOperations{
 					RequestOperations: requestIDs,
 				},
 			},
@@ -299,7 +299,7 @@ func (h *syncSessionHandlerServer) HandleDiffOperations(ctx context.Context, str
 	return nil
 }
 
-func (h *syncSessionHandlerServer) HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendOperations) error {
+func (h *syncSessionHandlerServer) HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSendOperations) error {
 	switch event := item.GetEvent().Event.(type) {
 	case *v1.OperationEvent_CreatedOperations:
 		zap.L().Debug("syncserver received created operations", zap.Any("operations", event.CreatedOperations.GetOperations()))
@@ -329,7 +329,7 @@ func (h *syncSessionHandlerServer) HandleSendOperations(ctx context.Context, str
 	return nil
 }
 
-func (h *syncSessionHandlerServer) HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendConfig) error {
+func (h *syncSessionHandlerServer) HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSendConfig) error {
 	peerState := h.mgr.peerStateManager.GetPeerState(h.peer.Keyid).Clone()
 	if peerState == nil {
 		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", h.peer.Keyid))
@@ -339,21 +339,21 @@ func (h *syncSessionHandlerServer) HandleSendConfig(ctx context.Context, stream 
 	return nil
 }
 
-func (h *syncSessionHandlerServer) HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionListResources) error {
+func (h *syncSessionHandlerServer) HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionListResources) error {
 	zap.L().Debug("syncserver received resource list from client", zap.String("client_instance_id", h.peer.InstanceId),
-		zap.Any("repos", item.GetRepoIds()),
-		zap.Any("plans", item.GetPlanIds()))
+		zap.Any("repos", item.GetRepos()),
+		zap.Any("plans", item.GetPlans()))
 	peerState := h.mgr.peerStateManager.GetPeerState(h.peer.Keyid).Clone()
 	if peerState == nil {
 		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", h.peer.Keyid))
 	}
-	repos := item.GetRepoIds()
-	plans := item.GetPlanIds()
-	for _, repoID := range repos {
-		peerState.KnownRepos[repoID] = struct{}{}
+	repos := item.GetRepos()
+	plans := item.GetPlans()
+	for _, repo := range repos {
+		peerState.KnownRepos[repo.Id] = repo
 	}
-	for _, planID := range plans {
-		peerState.KnownPlans[planID] = struct{}{}
+	for _, plan := range plans {
+		peerState.KnownPlans[plan.Id] = plan
 	}
 	h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, peerState)
 	return nil
@@ -425,20 +425,25 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 		Version: config.Version,
 		Modno:   config.Modno,
 	}
-	resourceListMsg := &v1.SyncStreamItem_SyncActionListResources{}
+	resourceListMsg := &v1sync.SyncStreamItem_SyncActionListResources{}
 	var allowedRepoIDs []string
 	var allowedPlanIDs []string
 	for _, repo := range config.Repos {
 		if h.permissions.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
 			remoteConfig.Repos = append(remoteConfig.Repos, repo)
-			resourceListMsg.RepoIds = append(resourceListMsg.RepoIds, repo.Id)
+			resourceListMsg.Repos = append(resourceListMsg.Repos, &v1sync.RepoMetadata{
+				Id:   repo.Id,
+				Guid: repo.Guid,
+			})
 			allowedRepoIDs = append(allowedRepoIDs, repo.Id)
 		}
 	}
 	for _, plan := range config.Plans {
 		if h.permissions.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
 			remoteConfig.Plans = append(remoteConfig.Plans, plan)
-			resourceListMsg.PlanIds = append(resourceListMsg.PlanIds, plan.Id)
+			resourceListMsg.Plans = append(resourceListMsg.Plans, &v1sync.PlanMetadata{
+				Id: plan.Id,
+			})
 			allowedPlanIDs = append(allowedPlanIDs, plan.Id)
 		}
 	}
@@ -446,17 +451,17 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 
 	// Send the config, this is the first meaningful packet the client will receive.
 	// Once configuration is received, the client will start sending diffs.
-	stream.Send(&v1.SyncStreamItem{
-		Action: &v1.SyncStreamItem_SendConfig{
-			SendConfig: &v1.SyncStreamItem_SyncActionSendConfig{
+	stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_SendConfig{
+			SendConfig: &v1sync.SyncStreamItem_SyncActionSendConfig{
 				Config: remoteConfig,
 			},
 		},
 	})
 
 	// Send the updated list of resources that the client can access.
-	stream.Send(&v1.SyncStreamItem{
-		Action: &v1.SyncStreamItem_ListResources{
+	stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_ListResources{
 			ListResources: resourceListMsg,
 		},
 	})

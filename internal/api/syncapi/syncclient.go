@@ -13,8 +13,8 @@ import (
 
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/gen/go/v1sync"
+	"github.com/garethgeorge/backrest/gen/go/v1sync/v1syncconnect"
 	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -31,7 +31,7 @@ type SyncClient struct {
 	localInstanceID    string
 	peer               *v1.Multihost_Peer
 	oplog              *oplog.OpLog
-	client             v1connect.BackrestSyncServiceClient
+	client             v1syncconnect.BackrestSyncServiceClient
 	reconnectDelay     time.Duration
 	l                  *zap.Logger
 
@@ -61,7 +61,7 @@ func NewSyncClient(
 		return nil, errors.New("peer instance URL is required")
 	}
 
-	client := v1connect.NewBackrestSyncServiceClient(
+	client := v1syncconnect.NewBackrestSyncServiceClient(
 		newInsecureClient(),
 		peer.GetInstanceUrl(),
 	)
@@ -227,29 +227,34 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 			Version: localConfig.Version,
 			Modno:   localConfig.Modno,
 		}
-		resourceList := &v1.SyncStreamItem_SyncActionListResources{}
+		resourceList := &v1sync.SyncStreamItem_SyncActionListResources{}
 		for _, repo := range localConfig.Repos {
 			if c.permissions.CheckPermissionForRepo(repo.Guid, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
 				remoteConfig.Repos = append(remoteConfig.Repos, repo)
-				resourceList.RepoIds = append(resourceList.RepoIds, repo.Id)
+				resourceList.Repos = append(resourceList.Repos, &v1sync.RepoMetadata{
+					Id:   repo.Id,
+					Guid: repo.Guid,
+				})
 			}
 		}
 		for _, plan := range localConfig.Plans {
 			if c.permissions.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
 				remoteConfig.Plans = append(remoteConfig.Plans, plan)
-				resourceList.PlanIds = append(resourceList.PlanIds, plan.Id)
+				resourceList.Plans = append(resourceList.Plans, &v1sync.PlanMetadata{
+					Id: plan.Id,
+				})
 			}
 		}
 
-		stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_SendConfig{
-				SendConfig: &v1.SyncStreamItem_SyncActionSendConfig{
+		stream.Send(&v1sync.SyncStreamItem{
+			Action: &v1sync.SyncStreamItem_SendConfig{
+				SendConfig: &v1sync.SyncStreamItem_SyncActionSendConfig{
 					Config: remoteConfig,
 				},
 			},
 		})
-		stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_ListResources{
+		stream.Send(&v1sync.SyncStreamItem{
+			Action: &v1sync.SyncStreamItem_ListResources{
 				ListResources: resourceList,
 			},
 		})
@@ -292,9 +297,9 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 			}
 		}
 
-		stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_SendOperations{
-				SendOperations: &v1.SyncStreamItem_SyncActionSendOperations{
+		stream.Send(&v1sync.SyncStreamItem{
+			Action: &v1sync.SyncStreamItem_SendOperations{
+				SendOperations: &v1sync.SyncStreamItem_SyncActionSendOperations{
 					Event: eventProto,
 				},
 			},
@@ -328,9 +333,9 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 			}
 
 			diffSel.OriginalInstanceKeyid = proto.String(c.syncConfigSnapshot.identityKey.KeyID())
-			stream.Send(&v1.SyncStreamItem{
-				Action: &v1.SyncStreamItem_DiffOperations{
-					DiffOperations: &v1.SyncStreamItem_SyncActionDiffOperations{
+			stream.Send(&v1sync.SyncStreamItem{
+				Action: &v1sync.SyncStreamItem_DiffOperations{
+					DiffOperations: &v1sync.SyncStreamItem_SyncActionDiffOperations{
 						HaveOperationsSelector: diffSel,
 						HaveOperationIds:       opIds,
 						HaveOperationModnos:    opModnos,
@@ -384,7 +389,7 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 	return nil
 }
 
-func (c *syncSessionHandlerClient) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionHeartbeat) error {
+func (c *syncSessionHandlerClient) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error {
 	peerState := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
 	if peerState == nil {
 		return NewSyncErrorInternal(fmt.Errorf("peer state not found for peer %q", c.peer.InstanceId))
@@ -394,7 +399,7 @@ func (c *syncSessionHandlerClient) HandleHeartbeat(ctx context.Context, stream *
 	return nil
 }
 
-func (c *syncSessionHandlerClient) HandleDiffOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionDiffOperations) error {
+func (c *syncSessionHandlerClient) HandleDiffOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionDiffOperations) error {
 	requestedOperations := item.GetRequestOperations()
 	c.l.Sugar().Debugf("received operation request for operations: %v", requestedOperations)
 
@@ -402,9 +407,9 @@ func (c *syncSessionHandlerClient) HandleDiffOperations(ctx context.Context, str
 	var sendOps []*v1.Operation
 
 	sendOpsFunc := func() error {
-		stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_SendOperations{
-				SendOperations: &v1.SyncStreamItem_SyncActionSendOperations{
+		stream.Send(&v1sync.SyncStreamItem{
+			Action: &v1sync.SyncStreamItem_SendOperations{
+				SendOperations: &v1sync.SyncStreamItem_SyncActionSendOperations{
 					Event: &v1.OperationEvent{
 						Event: &v1.OperationEvent_CreatedOperations{
 							CreatedOperations: &v1.OperationList{Operations: sendOps},
@@ -450,9 +455,9 @@ func (c *syncSessionHandlerClient) HandleDiffOperations(ctx context.Context, str
 	}
 
 	if len(deletedIDs) > 0 {
-		stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_SendOperations{
-				SendOperations: &v1.SyncStreamItem_SyncActionSendOperations{
+		stream.Send(&v1sync.SyncStreamItem{
+			Action: &v1sync.SyncStreamItem_SendOperations{
+				SendOperations: &v1sync.SyncStreamItem_SyncActionSendOperations{
 					Event: &v1.OperationEvent{
 						Event: &v1.OperationEvent_DeletedOperations{
 							DeletedOperations: &types.Int64List{Values: deletedIDs},
@@ -467,11 +472,11 @@ func (c *syncSessionHandlerClient) HandleDiffOperations(ctx context.Context, str
 	return nil
 }
 
-func (c *syncSessionHandlerClient) HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendOperations) error {
+func (c *syncSessionHandlerClient) HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSendOperations) error {
 	return NewSyncErrorProtocol(errors.New("client should not receive SendOperations messages, this is a host-only message"))
 }
 
-func (c *syncSessionHandlerClient) HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendConfig) error {
+func (c *syncSessionHandlerClient) HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSendConfig) error {
 	c.l.Sugar().Debugf("received remote config update")
 	peerState := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
 	if peerState == nil {
@@ -486,7 +491,7 @@ func (c *syncSessionHandlerClient) HandleSendConfig(ctx context.Context, stream 
 	return nil
 }
 
-func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSetConfig) error {
+func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSetConfig) error {
 	// Log the received config updates
 	c.l.Sugar().Debugf("received SetConfig request from peer %q")
 
@@ -575,7 +580,7 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 	return nil
 }
 
-func (c *syncSessionHandlerClient) HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionListResources) error {
+func (c *syncSessionHandlerClient) HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionListResources) error {
 	c.l.Sugar().Debugf("received ListResources request from peer %q", c.peer.InstanceId)
 	return nil
 }

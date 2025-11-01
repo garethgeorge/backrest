@@ -23,7 +23,7 @@ func NewBackrestSyncStateHandler(mgr *SyncManager) *BackrestSyncStateHandler {
 	}
 }
 
-func (h *BackrestSyncStateHandler) GetPeerSyncStatesStream(ctx context.Context, req *connect.Request[v1sync.SyncStateStreamRequest], stream *connect.ServerStream[v1.PeerState]) error {
+func (h *BackrestSyncStateHandler) GetPeerSyncStatesStream(ctx context.Context, req *connect.Request[v1sync.SyncStateStreamRequest], stream *connect.ServerStream[v1sync.PeerState]) error {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
 
