@@ -181,8 +181,8 @@ func (o *OpLog) Transform(q Query, f func(*v1.Operation) (*v1.Operation, error))
 	return o.store.Transform(q, f)
 }
 
-func (o *OpLog) GetHighestOpIDAndModno() (int64, int64, error) {
-	return o.store.GetHighestOpIDAndModno()
+func (o *OpLog) GetHighestOpIDAndModno(q Query) (int64, int64, error) {
+	return o.store.GetHighestOpIDAndModno(q)
 }
 
 type OpStore interface {
@@ -194,7 +194,7 @@ type OpStore interface {
 	// Get returns the operation with the given ID.
 	Get(opID int64) (*v1.Operation, error)
 	// GetHighestOpIDAndModno returns the highest operation ID and modno in the store, used for synchronization.
-	GetHighestOpIDAndModno() (int64, int64, error)
+	GetHighestOpIDAndModno(q Query) (int64, int64, error)
 	// Add adds the given operations to the store.
 	Add(op ...*v1.Operation) error
 	// Update updates the given operations in the store.

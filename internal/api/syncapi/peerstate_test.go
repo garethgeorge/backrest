@@ -7,6 +7,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/internal/kvstore"
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func PeerStateManagersForTest(t testing.TB) map[string]PeerStateManager {
@@ -31,9 +32,11 @@ func TestPeerStateManager_GetSet(t *testing.T) {
 			t.Parallel()
 			keyID := "testKey"
 			state := &PeerState{
-				InstanceID:    "testInstance",
-				KeyID:         keyID,
-				LastHeartbeat: time.Now().Round(time.Millisecond),
+				InstanceID:             "testInstance",
+				KeyID:                  keyID,
+				LastHeartbeat:          time.Now().Round(time.Millisecond),
+				ConnectionState:        v1sync.ConnectionState_CONNECTION_STATE_CONNECTED,
+				ConnectionStateMessage: "hello world!",
 				KnownRepos: map[string]*v1sync.RepoMetadata{
 					"repo1": {
 						Id:   "repo1",
@@ -52,7 +55,7 @@ func TestPeerStateManager_GetSet(t *testing.T) {
 			}
 			psm.SetPeerState(keyID, state)
 			gotState := psm.GetPeerState(keyID)
-			if diff := cmp.Diff(state, gotState, cmp.AllowUnexported(PeerState{})); diff != "" {
+			if diff := cmp.Diff(state, gotState, cmp.AllowUnexported(PeerState{}), protocmp.Transform()); diff != "" {
 				t.Errorf("unexpected diff: %v", diff)
 			}
 		})

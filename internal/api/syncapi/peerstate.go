@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"maps"
+	"slices"
 	"sync"
 	"time"
 
@@ -67,9 +68,9 @@ func peerStateToProto(state *PeerState) *v1sync.PeerState {
 		LastHeartbeatMillis: state.LastHeartbeat.UnixMilli(),
 		State:               state.ConnectionState,
 		StatusMessage:       state.ConnectionStateMessage,
-		// KnownRepos:          slices.Collect(maps.Keys(state.KnownRepos)),
-		// KnownPlans:          slices.Collect(maps.Keys(state.KnownPlans)),
-		RemoteConfig: state.Config,
+		KnownRepos:          slices.Collect(maps.Values(state.KnownRepos)),
+		KnownPlans:          slices.Collect(maps.Values(state.KnownPlans)),
+		RemoteConfig:        state.Config,
 	}
 }
 
@@ -234,12 +235,10 @@ func (m *SqlitePeerStateManager) SetPeerState(keyID string, state *PeerState) {
 	stateBytes, err := proto.Marshal(stateProto)
 	if err != nil {
 		zap.S().Warnf("error marshalling peer state for key %s: %v", keyID, err)
-		return
 	}
 
 	if err := m.kvstore.Set(keyID, stateBytes); err != nil {
 		zap.S().Warnf("error setting peer state for key %s: %v", keyID, err)
-		return
 	}
 	m.onStateChanged.Emit(state.Clone())
 }

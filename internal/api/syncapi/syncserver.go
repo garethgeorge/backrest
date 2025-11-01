@@ -335,7 +335,7 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 }
 
 func (h *syncSessionHandlerServer) sendOperationSyncRequest(stream *bidiSyncCommandStream) error {
-	highestID, highestModno, err := h.mgr.oplog.GetHighestOpIDAndModno()
+	highestID, highestModno, err := h.mgr.oplog.GetHighestOpIDAndModno(oplog.Query{}.SetOriginalInstanceKeyid(h.peer.Keyid))
 	if err != nil {
 		return fmt.Errorf("getting highest opid and modno: %w", err)
 	}

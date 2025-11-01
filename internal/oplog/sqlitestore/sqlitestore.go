@@ -157,8 +157,15 @@ func (m *SqliteStore) nextModno() int64 {
 	return m.highestModno.Add(1)
 }
 
-func (m *SqliteStore) GetHighestOpIDAndModno() (int64, int64, error) {
-	return m.lastIDVal.Load(), m.highestModno.Load(), nil
+func (m *SqliteStore) GetHighestOpIDAndModno(q oplog.Query) (int64, int64, error) {
+	var highestID sql.NullInt64
+	var highestModno sql.NullInt64
+	where, args := m.buildQueryWhereClause(q, false)
+	row := m.dbpool.QueryRowContext(context.Background(), "SELECT MAX(operations.id), MAX(operations.modno) FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+where, args...)
+	if err := row.Scan(&highestID, &highestModno); err != nil {
+		return 0, 0, err
+	}
+	return highestID.Int64, highestModno.Int64, nil
 }
 
 func (m *SqliteStore) Version() (int64, error) {

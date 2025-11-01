@@ -47,5 +47,12 @@ func NewInMemorySqliteDbForKvStore(t testing.TB) *sql.DB {
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
+	_, err = dbpool.ExecContext(context.Background(), `
+			PRAGMA journal_mode = WAL;
+			PRAGMA synchronous = NORMAL;
+		`)
+	if err != nil {
+		t.Fatalf("failed to set pragmas: %v", err)
+	}
 	return dbpool
 }

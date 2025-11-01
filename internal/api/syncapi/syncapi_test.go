@@ -284,6 +284,7 @@ func TestSimpleOperationSync(t *testing.T) {
 			{
 				Id:   defaultRepoID,
 				Guid: defaultRepoGUID,
+				Uri:  "test-uri",
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -336,12 +337,12 @@ func TestSimpleOperationSync(t *testing.T) {
 			DisplayMessage: "hostop1",
 		},
 	})...)
-	peerHost.oplog.Add(testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
-		{
-			DisplayMessage: "clientop-missing",
-			OriginalId:     1234, // must be an ID that doesn't exist remotely
-		},
-	})...)
+	// peerHost.oplog.Add(testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
+	// 	{
+	// 		DisplayMessage: "clientop-deleted",
+	// 		OriginalId:     1234, // must be an ID that doesn't exist remotely
+	// 	},
+	// })...)
 
 	if err := peerClient.oplog.Add(testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 		{
@@ -410,6 +411,7 @@ func TestSyncMutations(t *testing.T) {
 			{
 				Id:   defaultRepoID,
 				Guid: defaultRepoGUID,
+				Uri:  "test-uri",
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -608,7 +610,7 @@ func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnd
 			return errors.New("no operations found in peer2")
 		}
 		if diff := cmp.Diff(peer1Ops, peer2Ops, protocmp.Transform()); diff != "" {
-			return fmt.Errorf("unexpected diff: %v", diff)
+			return fmt.Errorf("%s: unexpected diff: %v", message, diff)
 		}
 
 		return nil

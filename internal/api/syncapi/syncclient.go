@@ -196,7 +196,7 @@ func (c *syncSessionHandlerClient) applyPermissions() {
 		}
 	}
 	for _, repo := range c.syncConfigSnapshot.config.Repos {
-		if c.permissions.CheckPermissionForRepo(repo.Guid, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
+		if c.permissions.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
 			c.canForwardReposSet[repo.Guid] = struct{}{}
 		}
 	}
@@ -429,7 +429,7 @@ func (c *syncSessionHandlerClient) HandleReceiveResources(ctx context.Context, s
 
 // Note unused: there isn't a situation where the host would send its config for information, the host will only call 'SetConfig' to update the config.
 func (c *syncSessionHandlerClient) HandleReceiveConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveConfig) error {
-	c.l.Sugar().Debugf("received remote config update", zap.Any("config", item.GetConfig()))
+	c.l.Sugar().Debugf("received remote config update")
 	peerState := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
 	if peerState == nil {
 		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", c.peer.Keyid))
@@ -506,20 +506,20 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 		}
 	}
 
-	for _, repo := range item.GetReposToDelete() {
-		c.l.Sugar().Debugf("received repo deletion request: %s", repo)
-		if !c.permissions.CheckPermissionForRepo(repo, permissions.PermsCanWriteConfiguration...) {
-			return NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to delete repo %q", c.peer.InstanceId, repo))
+	for _, repoID := range item.GetReposToDelete() {
+		c.l.Sugar().Debugf("received repo deletion request: %s", repoID)
+		if !c.permissions.CheckPermissionForRepo(repoID, permissions.PermsCanWriteConfiguration...) {
+			return NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to delete repo %q", c.peer.InstanceId, repoID))
 		}
 
 		// Remove the repo from the local config
 		idx := slices.IndexFunc(latestConfig.Repos, func(r *v1.Repo) bool {
-			return r.Id == repo
+			return r.Id == repoID
 		})
 		if idx >= 0 {
 			latestConfig.Repos = append(latestConfig.Repos[:idx], latestConfig.Repos[idx+1:]...)
 		} else {
-			c.l.Sugar().Warnf("received repo deletion request for non-existent repo %q, ignoring", repo)
+			c.l.Sugar().Warnf("received repo deletion request for non-existent repo %q, ignoring", repoID)
 		}
 	}
 
@@ -567,7 +567,7 @@ func (c *syncSessionHandlerClient) sendResourceList(ctx context.Context, stream 
 	planMetadatas := []*v1sync.PlanMetadata{}
 
 	for _, repo := range c.syncConfigSnapshot.config.Repos {
-		if c.permissions.CheckPermissionForRepo(repo.Guid, permissions.PermsCanViewResources...) {
+		if c.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanViewResources...) {
 			repoMetadatas = append(repoMetadatas, &v1sync.RepoMetadata{
 				Id:   repo.Id,
 				Guid: repo.Guid,
