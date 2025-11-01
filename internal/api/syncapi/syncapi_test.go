@@ -15,6 +15,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/config/migrations"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -70,7 +71,6 @@ var (
 )
 
 func TestConnectionSucceeds(t *testing.T) {
-	t.Skip("skipping syncapi test")
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
@@ -78,6 +78,7 @@ func TestConnectionSucceeds(t *testing.T) {
 	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	peerHostConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultHostID,
 		Repos:    []*v1.Repo{},
 		Multihost: &v1.Multihost{
@@ -93,6 +94,7 @@ func TestConnectionSucceeds(t *testing.T) {
 	}
 
 	peerClientConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultClientID,
 		Repos:    []*v1.Repo{},
 		Multihost: &v1.Multihost{
@@ -117,7 +119,6 @@ func TestConnectionSucceeds(t *testing.T) {
 }
 
 func TestConnectionBadKeyRejected(t *testing.T) {
-	t.Skip("skipping syncapi test")
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
@@ -126,6 +127,7 @@ func TestConnectionBadKeyRejected(t *testing.T) {
 
 	// Host has identity1, and authorizes no one.
 	peerHostConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultHostID,
 		Repos:    []*v1.Repo{},
 		Multihost: &v1.Multihost{
@@ -136,6 +138,7 @@ func TestConnectionBadKeyRejected(t *testing.T) {
 
 	// Client has identity2 and tries to connect to host.
 	peerClientConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultClientID,
 		Repos:    []*v1.Repo{},
 		Multihost: &v1.Multihost{
@@ -160,7 +163,6 @@ func TestConnectionBadKeyRejected(t *testing.T) {
 }
 
 func TestSyncConfigChange(t *testing.T) {
-	t.Skip("skipping syncapi test")
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
@@ -168,14 +170,17 @@ func TestSyncConfigChange(t *testing.T) {
 	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	peerHostConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
+				Uri:  "local:foo",
 				Guid: defaultRepoGUID,
 			},
 			{
 				Id:   "do-not-sync",
+				Uri:  "local:bar",
 				Guid: cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 			},
 		},
@@ -200,6 +205,7 @@ func TestSyncConfigChange(t *testing.T) {
 	}
 
 	peerClientConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultClientID,
 		Repos: []*v1.Repo{
 			{
@@ -233,6 +239,7 @@ func TestSyncConfigChange(t *testing.T) {
 		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
+				Uri:  "local:foo",
 				Guid: defaultRepoGUID,
 			},
 		},
@@ -253,7 +260,6 @@ func TestSyncConfigChange(t *testing.T) {
 }
 
 func TestSimpleOperationSync(t *testing.T) {
-	t.Skip("skipping syncapi test")
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
@@ -261,6 +267,7 @@ func TestSimpleOperationSync(t *testing.T) {
 	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	peerHostConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
@@ -281,6 +288,7 @@ func TestSimpleOperationSync(t *testing.T) {
 	}
 
 	peerClientConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultClientID,
 		Repos: []*v1.Repo{
 			{
@@ -377,7 +385,6 @@ func TestSimpleOperationSync(t *testing.T) {
 }
 
 func TestSyncMutations(t *testing.T) {
-	t.Skip("skipping syncapi tests")
 	testutil.InstallZapLogger(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -386,10 +393,12 @@ func TestSyncMutations(t *testing.T) {
 	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	peerHostConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
+				Uri:  "local:" + t.TempDir(),
 				Guid: defaultRepoGUID,
 			},
 		},
@@ -406,6 +415,7 @@ func TestSyncMutations(t *testing.T) {
 	}
 
 	peerClientConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultClientID,
 		Repos: []*v1.Repo{
 			{
