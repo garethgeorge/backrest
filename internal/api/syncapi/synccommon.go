@@ -65,25 +65,37 @@ func runSync(
 			if err := handler.HandleHeartbeat(ctx, commandStream, item.GetHeartbeat()); err != nil {
 				return fmt.Errorf("handling heartbeat: %w", err)
 			}
-		case *v1sync.SyncStreamItem_DiffOperations:
-			if err := handler.HandleDiffOperations(ctx, commandStream, item.GetDiffOperations()); err != nil {
-				return fmt.Errorf("handling diff operations: %w", err)
+		case *v1sync.SyncStreamItem_RequestOperations:
+			if err := handler.HandleRequestOperations(ctx, commandStream, item.GetRequestOperations()); err != nil {
+				return fmt.Errorf("handling request operations: %w", err)
 			}
-		case *v1sync.SyncStreamItem_SendOperations:
-			if err := handler.HandleSendOperations(ctx, commandStream, item.GetSendOperations()); err != nil {
-				return fmt.Errorf("handling send operations: %w", err)
+		case *v1sync.SyncStreamItem_ReceiveOperations:
+			if err := handler.HandleReceiveOperations(ctx, commandStream, item.GetReceiveOperations()); err != nil {
+				return fmt.Errorf("handling receive operations: %w", err)
 			}
-		case *v1sync.SyncStreamItem_SendConfig:
-			if err := handler.HandleSendConfig(ctx, commandStream, item.GetSendConfig()); err != nil {
-				return fmt.Errorf("handling send config: %w", err)
+		case *v1sync.SyncStreamItem_ReceiveConfig:
+			if err := handler.HandleReceiveConfig(ctx, commandStream, item.GetReceiveConfig()); err != nil {
+				return fmt.Errorf("handling receive config: %w", err)
 			}
 		case *v1sync.SyncStreamItem_SetConfig:
 			if err := handler.HandleSetConfig(ctx, commandStream, item.GetSetConfig()); err != nil {
 				return fmt.Errorf("handling set config: %w", err)
 			}
-		case *v1sync.SyncStreamItem_ListResources:
-			if err := handler.HandleListResources(ctx, commandStream, item.GetListResources()); err != nil {
-				return fmt.Errorf("handling list resources: %w", err)
+		case *v1sync.SyncStreamItem_RequestResources:
+			if err := handler.HandleRequestResources(ctx, commandStream, item.GetRequestResources()); err != nil {
+				return fmt.Errorf("handling request resources: %w", err)
+			}
+		case *v1sync.SyncStreamItem_ReceiveResources:
+			if err := handler.HandleReceiveResources(ctx, commandStream, item.GetReceiveResources()); err != nil {
+				return fmt.Errorf("handling receive resources: %w", err)
+			}
+		case *v1sync.SyncStreamItem_RequestLog:
+			if err := handler.HandleRequestLog(ctx, commandStream, item.GetRequestLog()); err != nil {
+				return fmt.Errorf("handling request log: %w", err)
+			}
+		case *v1sync.SyncStreamItem_ReceiveLogData:
+			if err := handler.HandleReceiveLogData(ctx, commandStream, item.GetReceiveLogData()); err != nil {
+				return fmt.Errorf("handling receive log data: %w", err)
 			}
 		case *v1sync.SyncStreamItem_Throttle:
 			if err := handler.HandleThrottle(ctx, commandStream, item.GetThrottle()); err != nil {
@@ -94,23 +106,6 @@ func runSync(
 		}
 	}
 	return nil
-}
-
-func tryReceiveWithinDuration(ctx context.Context, receiveChan chan *v1sync.SyncStreamItem, receiveErrChan chan error, timeout time.Duration) (*v1sync.SyncStreamItem, error) {
-	if timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout)
-		defer cancel()
-	}
-
-	select {
-	case item := <-receiveChan:
-		return item, nil
-	case err := <-receiveErrChan:
-		return nil, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
 }
 
 func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey) (*v1sync.SyncStreamItem, error) {
@@ -207,10 +202,13 @@ type syncSessionHandler interface {
 	OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error
 	HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error
 	HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error
-	HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSendOperations) error
-	HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSendConfig) error
+	HandleReceiveOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveOperations) error
+	HandleReceiveConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveConfig) error
 	HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSetConfig) error
-	HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionListResources) error
+	HandleRequestResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestResources) error
+	HandleReceiveResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveResources) error
+	HandleRequestLog(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestLog) error
+	HandleReceiveLogData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveLogData) error
 	HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionThrottle) error
 }
 
@@ -226,24 +224,36 @@ func (h *unimplementedSyncSessionHandler) HandleHeartbeat(ctx context.Context, s
 	return NewSyncErrorProtocol(fmt.Errorf("HandleHeartbeat not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSendOperations) error {
-	return NewSyncErrorProtocol(fmt.Errorf("HandleSendOperations not implemented"))
-}
-
 func (h *unimplementedSyncSessionHandler) HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error {
 	return NewSyncErrorProtocol(fmt.Errorf("HandleRequestOperations not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSendConfig) error {
-	return NewSyncErrorProtocol(fmt.Errorf("HandleSendConfig not implemented"))
+func (h *unimplementedSyncSessionHandler) HandleReceiveOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveOperations) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleReceiveOperations not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleReceiveConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveConfig) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleReceiveConfig not implemented"))
 }
 
 func (h *unimplementedSyncSessionHandler) HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSetConfig) error {
 	return NewSyncErrorProtocol(fmt.Errorf("HandleSetConfig not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionListResources) error {
-	return NewSyncErrorProtocol(fmt.Errorf("HandleListResources not implemented"))
+func (h *unimplementedSyncSessionHandler) HandleRequestResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestResources) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleRequestResources not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleReceiveResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveResources) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleReceiveResources not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleRequestLog(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestLog) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleRequestLog not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleReceiveLogData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveLogData) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleReceiveLogData not implemented"))
 }
 
 func (h *unimplementedSyncSessionHandler) HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionThrottle) error {
@@ -256,16 +266,32 @@ type remoteOpIdCacheKey struct {
 }
 
 // operationIdMapper
-type remoteOpIdMapper struct {
-	oplog oplog.OpLog
+type remoteOpIDMapper struct {
+	oplog *oplog.OpLog
 
 	opCacheMu sync.Mutex
 	opIDLru   *lru.Cache[remoteOpIdCacheKey, int64]
 	flowIDLru *lru.Cache[remoteOpIdCacheKey, int64]
 }
 
+func newRemoteOpIDMapper(oplog *oplog.OpLog, cacheSize int) (*remoteOpIDMapper, error) {
+	opIDLru, err := lru.New[remoteOpIdCacheKey, int64](cacheSize)
+	if err != nil {
+		return nil, fmt.Errorf("creating opID LRU cache: %w", err)
+	}
+	flowIDLru, err := lru.New[remoteOpIdCacheKey, int64](cacheSize)
+	if err != nil {
+		return nil, fmt.Errorf("creating flowID LRU cache: %w", err)
+	}
+	return &remoteOpIDMapper{
+		oplog:     oplog,
+		opIDLru:   opIDLru,
+		flowIDLru: flowIDLru,
+	}, nil
+}
+
 // translateSingleID translates a single ID (either opID or flowID) using the provided cache and query
-func (sh *remoteOpIdMapper) translateSingleID(
+func (sh *remoteOpIDMapper) translateSingleID(
 	originalInstanceKeyid string,
 	originalID int64,
 	cache *lru.Cache[remoteOpIdCacheKey, int64],
@@ -300,7 +326,7 @@ func (sh *remoteOpIdMapper) translateSingleID(
 	return translatedID, nil
 }
 
-func (om *remoteOpIdMapper) TranslateOpIdAndFlowID(originalInstanceKeyid string, originalOpId int64, originalFlowId int64) (int64, int64, error) {
+func (om *remoteOpIDMapper) TranslateOpIdAndFlowID(originalInstanceKeyid string, originalOpId int64, originalFlowId int64) (int64, int64, error) {
 	om.opCacheMu.Lock()
 	defer om.opCacheMu.Unlock()
 

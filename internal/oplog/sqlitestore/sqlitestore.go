@@ -157,6 +157,10 @@ func (m *SqliteStore) nextModno() int64 {
 	return m.highestModno.Add(1)
 }
 
+func (m *SqliteStore) GetHighestOpIDAndModno() (int64, int64, error) {
+	return m.lastIDVal.Load(), m.highestModno.Load(), nil
+}
+
 func (m *SqliteStore) Version() (int64, error) {
 	versionBytes, err := m.kvstore.Get(metadataKeyVersion)
 	if err != nil {

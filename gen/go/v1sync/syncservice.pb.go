@@ -797,12 +797,13 @@ type SyncStreamItem struct {
 	//	*SyncStreamItem_Handshake
 	//	*SyncStreamItem_Heartbeat
 	//	*SyncStreamItem_RequestOperations
-	//	*SyncStreamItem_SendOperations
-	//	*SyncStreamItem_SendConfig
+	//	*SyncStreamItem_ReceiveOperations
+	//	*SyncStreamItem_ReceiveConfig
 	//	*SyncStreamItem_SetConfig
-	//	*SyncStreamItem_ListResources
-	//	*SyncStreamItem_GetLog
-	//	*SyncStreamItem_SendLogData
+	//	*SyncStreamItem_RequestResources
+	//	*SyncStreamItem_ReceiveResources
+	//	*SyncStreamItem_RequestLog
+	//	*SyncStreamItem_ReceiveLogData
 	//	*SyncStreamItem_Throttle
 	Action        isSyncStreamItem_Action `protobuf_oneof:"action"`
 	unknownFields protoimpl.UnknownFields
@@ -882,19 +883,19 @@ func (x *SyncStreamItem) GetRequestOperations() *SyncStreamItem_SyncActionReques
 	return nil
 }
 
-func (x *SyncStreamItem) GetSendOperations() *SyncStreamItem_SyncActionSendOperations {
+func (x *SyncStreamItem) GetReceiveOperations() *SyncStreamItem_SyncActionReceiveOperations {
 	if x != nil {
-		if x, ok := x.Action.(*SyncStreamItem_SendOperations); ok {
-			return x.SendOperations
+		if x, ok := x.Action.(*SyncStreamItem_ReceiveOperations); ok {
+			return x.ReceiveOperations
 		}
 	}
 	return nil
 }
 
-func (x *SyncStreamItem) GetSendConfig() *SyncStreamItem_SyncActionSendConfig {
+func (x *SyncStreamItem) GetReceiveConfig() *SyncStreamItem_SyncActionReceiveConfig {
 	if x != nil {
-		if x, ok := x.Action.(*SyncStreamItem_SendConfig); ok {
-			return x.SendConfig
+		if x, ok := x.Action.(*SyncStreamItem_ReceiveConfig); ok {
+			return x.ReceiveConfig
 		}
 	}
 	return nil
@@ -909,28 +910,37 @@ func (x *SyncStreamItem) GetSetConfig() *SyncStreamItem_SyncActionSetConfig {
 	return nil
 }
 
-func (x *SyncStreamItem) GetListResources() *SyncStreamItem_SyncActionListResources {
+func (x *SyncStreamItem) GetRequestResources() *SyncStreamItem_SyncActionRequestResources {
 	if x != nil {
-		if x, ok := x.Action.(*SyncStreamItem_ListResources); ok {
-			return x.ListResources
+		if x, ok := x.Action.(*SyncStreamItem_RequestResources); ok {
+			return x.RequestResources
 		}
 	}
 	return nil
 }
 
-func (x *SyncStreamItem) GetGetLog() *SyncStreamItem_SyncActionGetLog {
+func (x *SyncStreamItem) GetReceiveResources() *SyncStreamItem_SyncActionReceiveResources {
 	if x != nil {
-		if x, ok := x.Action.(*SyncStreamItem_GetLog); ok {
-			return x.GetLog
+		if x, ok := x.Action.(*SyncStreamItem_ReceiveResources); ok {
+			return x.ReceiveResources
 		}
 	}
 	return nil
 }
 
-func (x *SyncStreamItem) GetSendLogData() *SyncStreamItem_SyncActionSendLogData {
+func (x *SyncStreamItem) GetRequestLog() *SyncStreamItem_SyncActionRequestLog {
 	if x != nil {
-		if x, ok := x.Action.(*SyncStreamItem_SendLogData); ok {
-			return x.SendLogData
+		if x, ok := x.Action.(*SyncStreamItem_RequestLog); ok {
+			return x.RequestLog
+		}
+	}
+	return nil
+}
+
+func (x *SyncStreamItem) GetReceiveLogData() *SyncStreamItem_SyncActionReceiveLogData {
+	if x != nil {
+		if x, ok := x.Action.(*SyncStreamItem_ReceiveLogData); ok {
+			return x.ReceiveLogData
 		}
 	}
 	return nil
@@ -965,28 +975,32 @@ type SyncStreamItem_RequestOperations struct {
 	RequestOperations *SyncStreamItem_SyncActionRequestOperations `protobuf:"bytes,20,opt,name=request_operations,json=requestOperations,proto3,oneof"`
 }
 
-type SyncStreamItem_SendOperations struct {
-	SendOperations *SyncStreamItem_SyncActionSendOperations `protobuf:"bytes,21,opt,name=send_operations,json=sendOperations,proto3,oneof"`
+type SyncStreamItem_ReceiveOperations struct {
+	ReceiveOperations *SyncStreamItem_SyncActionReceiveOperations `protobuf:"bytes,21,opt,name=receive_operations,json=receiveOperations,proto3,oneof"`
 }
 
-type SyncStreamItem_SendConfig struct {
-	SendConfig *SyncStreamItem_SyncActionSendConfig `protobuf:"bytes,22,opt,name=send_config,json=sendConfig,proto3,oneof"`
+type SyncStreamItem_ReceiveConfig struct {
+	ReceiveConfig *SyncStreamItem_SyncActionReceiveConfig `protobuf:"bytes,22,opt,name=receive_config,json=receiveConfig,proto3,oneof"`
 }
 
 type SyncStreamItem_SetConfig struct {
 	SetConfig *SyncStreamItem_SyncActionSetConfig `protobuf:"bytes,24,opt,name=set_config,json=setConfig,proto3,oneof"`
 }
 
-type SyncStreamItem_ListResources struct {
-	ListResources *SyncStreamItem_SyncActionListResources `protobuf:"bytes,25,opt,name=list_resources,json=listResources,proto3,oneof"`
+type SyncStreamItem_RequestResources struct {
+	RequestResources *SyncStreamItem_SyncActionRequestResources `protobuf:"bytes,25,opt,name=request_resources,json=requestResources,proto3,oneof"` // request a list of available resources. Only used by the server.
 }
 
-type SyncStreamItem_GetLog struct {
-	GetLog *SyncStreamItem_SyncActionGetLog `protobuf:"bytes,26,opt,name=get_log,json=getLog,proto3,oneof"`
+type SyncStreamItem_ReceiveResources struct {
+	ReceiveResources *SyncStreamItem_SyncActionReceiveResources `protobuf:"bytes,26,opt,name=receive_resources,json=receiveResources,proto3,oneof"` // receiving a list of available resources.
 }
 
-type SyncStreamItem_SendLogData struct {
-	SendLogData *SyncStreamItem_SyncActionSendLogData `protobuf:"bytes,27,opt,name=send_log_data,json=sendLogData,proto3,oneof"`
+type SyncStreamItem_RequestLog struct {
+	RequestLog *SyncStreamItem_SyncActionRequestLog `protobuf:"bytes,30,opt,name=request_log,json=requestLog,proto3,oneof"`
+}
+
+type SyncStreamItem_ReceiveLogData struct {
+	ReceiveLogData *SyncStreamItem_SyncActionReceiveLogData `protobuf:"bytes,31,opt,name=receive_log_data,json=receiveLogData,proto3,oneof"`
 }
 
 type SyncStreamItem_Throttle struct {
@@ -1001,17 +1015,19 @@ func (*SyncStreamItem_Heartbeat) isSyncStreamItem_Action() {}
 
 func (*SyncStreamItem_RequestOperations) isSyncStreamItem_Action() {}
 
-func (*SyncStreamItem_SendOperations) isSyncStreamItem_Action() {}
+func (*SyncStreamItem_ReceiveOperations) isSyncStreamItem_Action() {}
 
-func (*SyncStreamItem_SendConfig) isSyncStreamItem_Action() {}
+func (*SyncStreamItem_ReceiveConfig) isSyncStreamItem_Action() {}
 
 func (*SyncStreamItem_SetConfig) isSyncStreamItem_Action() {}
 
-func (*SyncStreamItem_ListResources) isSyncStreamItem_Action() {}
+func (*SyncStreamItem_RequestResources) isSyncStreamItem_Action() {}
 
-func (*SyncStreamItem_GetLog) isSyncStreamItem_Action() {}
+func (*SyncStreamItem_ReceiveResources) isSyncStreamItem_Action() {}
 
-func (*SyncStreamItem_SendLogData) isSyncStreamItem_Action() {}
+func (*SyncStreamItem_RequestLog) isSyncStreamItem_Action() {}
+
+func (*SyncStreamItem_ReceiveLogData) isSyncStreamItem_Action() {}
 
 func (*SyncStreamItem_Throttle) isSyncStreamItem_Action() {}
 
@@ -1112,27 +1128,27 @@ func (*SyncStreamItem_SyncActionHeartbeat) Descriptor() ([]byte, []int) {
 	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 1}
 }
 
-type SyncStreamItem_SyncActionSendConfig struct {
+type SyncStreamItem_SyncActionReceiveConfig struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Config        *RemoteConfig          `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SyncStreamItem_SyncActionSendConfig) Reset() {
-	*x = SyncStreamItem_SyncActionSendConfig{}
+func (x *SyncStreamItem_SyncActionReceiveConfig) Reset() {
+	*x = SyncStreamItem_SyncActionReceiveConfig{}
 	mi := &file_v1sync_syncservice_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SyncStreamItem_SyncActionSendConfig) String() string {
+func (x *SyncStreamItem_SyncActionReceiveConfig) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SyncStreamItem_SyncActionSendConfig) ProtoMessage() {}
+func (*SyncStreamItem_SyncActionReceiveConfig) ProtoMessage() {}
 
-func (x *SyncStreamItem_SyncActionSendConfig) ProtoReflect() protoreflect.Message {
+func (x *SyncStreamItem_SyncActionReceiveConfig) ProtoReflect() protoreflect.Message {
 	mi := &file_v1sync_syncservice_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1144,12 +1160,12 @@ func (x *SyncStreamItem_SyncActionSendConfig) ProtoReflect() protoreflect.Messag
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SyncStreamItem_SyncActionSendConfig.ProtoReflect.Descriptor instead.
-func (*SyncStreamItem_SyncActionSendConfig) Descriptor() ([]byte, []int) {
+// Deprecated: Use SyncStreamItem_SyncActionReceiveConfig.ProtoReflect.Descriptor instead.
+func (*SyncStreamItem_SyncActionReceiveConfig) Descriptor() ([]byte, []int) {
 	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 2}
 }
 
-func (x *SyncStreamItem_SyncActionSendConfig) GetConfig() *RemoteConfig {
+func (x *SyncStreamItem_SyncActionReceiveConfig) GetConfig() *RemoteConfig {
 	if x != nil {
 		return x.Config
 	}
@@ -1224,28 +1240,26 @@ func (x *SyncStreamItem_SyncActionSetConfig) GetPlansToDelete() []string {
 	return nil
 }
 
-type SyncStreamItem_SyncActionListResources struct {
+type SyncStreamItem_SyncActionRequestResources struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Repos         []*RepoMetadata        `protobuf:"bytes,1,rep,name=repos,proto3" json:"repos,omitempty"`
-	Plans         []*PlanMetadata        `protobuf:"bytes,2,rep,name=plans,proto3" json:"plans,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SyncStreamItem_SyncActionListResources) Reset() {
-	*x = SyncStreamItem_SyncActionListResources{}
+func (x *SyncStreamItem_SyncActionRequestResources) Reset() {
+	*x = SyncStreamItem_SyncActionRequestResources{}
 	mi := &file_v1sync_syncservice_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SyncStreamItem_SyncActionListResources) String() string {
+func (x *SyncStreamItem_SyncActionRequestResources) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SyncStreamItem_SyncActionListResources) ProtoMessage() {}
+func (*SyncStreamItem_SyncActionRequestResources) ProtoMessage() {}
 
-func (x *SyncStreamItem_SyncActionListResources) ProtoReflect() protoreflect.Message {
+func (x *SyncStreamItem_SyncActionRequestResources) ProtoReflect() protoreflect.Message {
 	mi := &file_v1sync_syncservice_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1257,19 +1271,57 @@ func (x *SyncStreamItem_SyncActionListResources) ProtoReflect() protoreflect.Mes
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SyncStreamItem_SyncActionListResources.ProtoReflect.Descriptor instead.
-func (*SyncStreamItem_SyncActionListResources) Descriptor() ([]byte, []int) {
+// Deprecated: Use SyncStreamItem_SyncActionRequestResources.ProtoReflect.Descriptor instead.
+func (*SyncStreamItem_SyncActionRequestResources) Descriptor() ([]byte, []int) {
 	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 4}
 }
 
-func (x *SyncStreamItem_SyncActionListResources) GetRepos() []*RepoMetadata {
+type SyncStreamItem_SyncActionReceiveResources struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Repos         []*RepoMetadata        `protobuf:"bytes,1,rep,name=repos,proto3" json:"repos,omitempty"`
+	Plans         []*PlanMetadata        `protobuf:"bytes,2,rep,name=plans,proto3" json:"plans,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SyncStreamItem_SyncActionReceiveResources) Reset() {
+	*x = SyncStreamItem_SyncActionReceiveResources{}
+	mi := &file_v1sync_syncservice_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SyncStreamItem_SyncActionReceiveResources) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SyncStreamItem_SyncActionReceiveResources) ProtoMessage() {}
+
+func (x *SyncStreamItem_SyncActionReceiveResources) ProtoReflect() protoreflect.Message {
+	mi := &file_v1sync_syncservice_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SyncStreamItem_SyncActionReceiveResources.ProtoReflect.Descriptor instead.
+func (*SyncStreamItem_SyncActionReceiveResources) Descriptor() ([]byte, []int) {
+	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 5}
+}
+
+func (x *SyncStreamItem_SyncActionReceiveResources) GetRepos() []*RepoMetadata {
 	if x != nil {
 		return x.Repos
 	}
 	return nil
 }
 
-func (x *SyncStreamItem_SyncActionListResources) GetPlans() []*PlanMetadata {
+func (x *SyncStreamItem_SyncActionReceiveResources) GetPlans() []*PlanMetadata {
 	if x != nil {
 		return x.Plans
 	}
@@ -1285,7 +1337,7 @@ type SyncStreamItem_SyncActionConnectRepo struct {
 
 func (x *SyncStreamItem_SyncActionConnectRepo) Reset() {
 	*x = SyncStreamItem_SyncActionConnectRepo{}
-	mi := &file_v1sync_syncservice_proto_msgTypes[17]
+	mi := &file_v1sync_syncservice_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1297,7 +1349,7 @@ func (x *SyncStreamItem_SyncActionConnectRepo) String() string {
 func (*SyncStreamItem_SyncActionConnectRepo) ProtoMessage() {}
 
 func (x *SyncStreamItem_SyncActionConnectRepo) ProtoReflect() protoreflect.Message {
-	mi := &file_v1sync_syncservice_proto_msgTypes[17]
+	mi := &file_v1sync_syncservice_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1310,7 +1362,7 @@ func (x *SyncStreamItem_SyncActionConnectRepo) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use SyncStreamItem_SyncActionConnectRepo.ProtoReflect.Descriptor instead.
 func (*SyncStreamItem_SyncActionConnectRepo) Descriptor() ([]byte, []int) {
-	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 5}
+	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 6}
 }
 
 func (x *SyncStreamItem_SyncActionConnectRepo) GetRepoId() string {
@@ -1322,14 +1374,15 @@ func (x *SyncStreamItem_SyncActionConnectRepo) GetRepoId() string {
 
 type SyncStreamItem_SyncActionRequestOperations struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Selector      *v1.OpSelector         `protobuf:"bytes,1,opt,name=selector,proto3" json:"selector,omitempty"`
+	HighOpid      int64                  `protobuf:"varint,1,opt,name=high_opid,json=highOpid,proto3" json:"high_opid,omitempty"`    // The highest operation ID the requester has.
+	HighModno     int64                  `protobuf:"varint,2,opt,name=high_modno,json=highModno,proto3" json:"high_modno,omitempty"` // The highest modno the requester has.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SyncStreamItem_SyncActionRequestOperations) Reset() {
 	*x = SyncStreamItem_SyncActionRequestOperations{}
-	mi := &file_v1sync_syncservice_proto_msgTypes[18]
+	mi := &file_v1sync_syncservice_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1341,7 +1394,7 @@ func (x *SyncStreamItem_SyncActionRequestOperations) String() string {
 func (*SyncStreamItem_SyncActionRequestOperations) ProtoMessage() {}
 
 func (x *SyncStreamItem_SyncActionRequestOperations) ProtoReflect() protoreflect.Message {
-	mi := &file_v1sync_syncservice_proto_msgTypes[18]
+	mi := &file_v1sync_syncservice_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1354,38 +1407,45 @@ func (x *SyncStreamItem_SyncActionRequestOperations) ProtoReflect() protoreflect
 
 // Deprecated: Use SyncStreamItem_SyncActionRequestOperations.ProtoReflect.Descriptor instead.
 func (*SyncStreamItem_SyncActionRequestOperations) Descriptor() ([]byte, []int) {
-	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 6}
+	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 7}
 }
 
-func (x *SyncStreamItem_SyncActionRequestOperations) GetSelector() *v1.OpSelector {
+func (x *SyncStreamItem_SyncActionRequestOperations) GetHighOpid() int64 {
 	if x != nil {
-		return x.Selector
+		return x.HighOpid
 	}
-	return nil
+	return 0
 }
 
-type SyncStreamItem_SyncActionSendOperations struct {
+func (x *SyncStreamItem_SyncActionRequestOperations) GetHighModno() int64 {
+	if x != nil {
+		return x.HighModno
+	}
+	return 0
+}
+
+type SyncStreamItem_SyncActionReceiveOperations struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Event         *v1.OperationEvent     `protobuf:"bytes,1,opt,name=event,proto3" json:"event,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SyncStreamItem_SyncActionSendOperations) Reset() {
-	*x = SyncStreamItem_SyncActionSendOperations{}
-	mi := &file_v1sync_syncservice_proto_msgTypes[19]
+func (x *SyncStreamItem_SyncActionReceiveOperations) Reset() {
+	*x = SyncStreamItem_SyncActionReceiveOperations{}
+	mi := &file_v1sync_syncservice_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SyncStreamItem_SyncActionSendOperations) String() string {
+func (x *SyncStreamItem_SyncActionReceiveOperations) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SyncStreamItem_SyncActionSendOperations) ProtoMessage() {}
+func (*SyncStreamItem_SyncActionReceiveOperations) ProtoMessage() {}
 
-func (x *SyncStreamItem_SyncActionSendOperations) ProtoReflect() protoreflect.Message {
-	mi := &file_v1sync_syncservice_proto_msgTypes[19]
+func (x *SyncStreamItem_SyncActionReceiveOperations) ProtoReflect() protoreflect.Message {
+	mi := &file_v1sync_syncservice_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1396,40 +1456,40 @@ func (x *SyncStreamItem_SyncActionSendOperations) ProtoReflect() protoreflect.Me
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SyncStreamItem_SyncActionSendOperations.ProtoReflect.Descriptor instead.
-func (*SyncStreamItem_SyncActionSendOperations) Descriptor() ([]byte, []int) {
-	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 7}
+// Deprecated: Use SyncStreamItem_SyncActionReceiveOperations.ProtoReflect.Descriptor instead.
+func (*SyncStreamItem_SyncActionReceiveOperations) Descriptor() ([]byte, []int) {
+	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 8}
 }
 
-func (x *SyncStreamItem_SyncActionSendOperations) GetEvent() *v1.OperationEvent {
+func (x *SyncStreamItem_SyncActionReceiveOperations) GetEvent() *v1.OperationEvent {
 	if x != nil {
 		return x.Event
 	}
 	return nil
 }
 
-type SyncStreamItem_SyncActionGetLog struct {
+type SyncStreamItem_SyncActionRequestLog struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	LogId         string                 `protobuf:"bytes,1,opt,name=log_id,json=logId,proto3" json:"log_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SyncStreamItem_SyncActionGetLog) Reset() {
-	*x = SyncStreamItem_SyncActionGetLog{}
-	mi := &file_v1sync_syncservice_proto_msgTypes[20]
+func (x *SyncStreamItem_SyncActionRequestLog) Reset() {
+	*x = SyncStreamItem_SyncActionRequestLog{}
+	mi := &file_v1sync_syncservice_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SyncStreamItem_SyncActionGetLog) String() string {
+func (x *SyncStreamItem_SyncActionRequestLog) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SyncStreamItem_SyncActionGetLog) ProtoMessage() {}
+func (*SyncStreamItem_SyncActionRequestLog) ProtoMessage() {}
 
-func (x *SyncStreamItem_SyncActionGetLog) ProtoReflect() protoreflect.Message {
-	mi := &file_v1sync_syncservice_proto_msgTypes[20]
+func (x *SyncStreamItem_SyncActionRequestLog) ProtoReflect() protoreflect.Message {
+	mi := &file_v1sync_syncservice_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1440,45 +1500,47 @@ func (x *SyncStreamItem_SyncActionGetLog) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SyncStreamItem_SyncActionGetLog.ProtoReflect.Descriptor instead.
-func (*SyncStreamItem_SyncActionGetLog) Descriptor() ([]byte, []int) {
-	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 8}
+// Deprecated: Use SyncStreamItem_SyncActionRequestLog.ProtoReflect.Descriptor instead.
+func (*SyncStreamItem_SyncActionRequestLog) Descriptor() ([]byte, []int) {
+	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 9}
 }
 
-func (x *SyncStreamItem_SyncActionGetLog) GetLogId() string {
+func (x *SyncStreamItem_SyncActionRequestLog) GetLogId() string {
 	if x != nil {
 		return x.LogId
 	}
 	return ""
 }
 
-type SyncStreamItem_SyncActionSendLogData struct {
+type SyncStreamItem_SyncActionReceiveLogData struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	LogId string                 `protobuf:"bytes,1,opt,name=log_id,json=logId,proto3" json:"log_id,omitempty"`
 	// Required only for first message in a log data stream.
 	OwnerOpid        int64 `protobuf:"varint,2,opt,name=owner_opid,json=ownerOpid,proto3" json:"owner_opid,omitempty"`                        // The operation ID of the operation that owns this log data.
 	ExpirationTsUnix int64 `protobuf:"varint,3,opt,name=expiration_ts_unix,json=expirationTsUnix,proto3" json:"expiration_ts_unix,omitempty"` // Unix timestamp in seconds when the log data expires.
 	// Can be sent repeatedly, must be terminated by a packet with size = 0.
-	Chunk         []byte `protobuf:"bytes,4,opt,name=chunk,proto3" json:"chunk,omitempty"`
+	Chunk []byte `protobuf:"bytes,4,opt,name=chunk,proto3" json:"chunk,omitempty"`
+	// If set, indicates an error occurred while fetching the log data.
+	ErrorMessage  string `protobuf:"bytes,5,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SyncStreamItem_SyncActionSendLogData) Reset() {
-	*x = SyncStreamItem_SyncActionSendLogData{}
-	mi := &file_v1sync_syncservice_proto_msgTypes[21]
+func (x *SyncStreamItem_SyncActionReceiveLogData) Reset() {
+	*x = SyncStreamItem_SyncActionReceiveLogData{}
+	mi := &file_v1sync_syncservice_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SyncStreamItem_SyncActionSendLogData) String() string {
+func (x *SyncStreamItem_SyncActionReceiveLogData) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SyncStreamItem_SyncActionSendLogData) ProtoMessage() {}
+func (*SyncStreamItem_SyncActionReceiveLogData) ProtoMessage() {}
 
-func (x *SyncStreamItem_SyncActionSendLogData) ProtoReflect() protoreflect.Message {
-	mi := &file_v1sync_syncservice_proto_msgTypes[21]
+func (x *SyncStreamItem_SyncActionReceiveLogData) ProtoReflect() protoreflect.Message {
+	mi := &file_v1sync_syncservice_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1489,37 +1551,44 @@ func (x *SyncStreamItem_SyncActionSendLogData) ProtoReflect() protoreflect.Messa
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SyncStreamItem_SyncActionSendLogData.ProtoReflect.Descriptor instead.
-func (*SyncStreamItem_SyncActionSendLogData) Descriptor() ([]byte, []int) {
-	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 9}
+// Deprecated: Use SyncStreamItem_SyncActionReceiveLogData.ProtoReflect.Descriptor instead.
+func (*SyncStreamItem_SyncActionReceiveLogData) Descriptor() ([]byte, []int) {
+	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 10}
 }
 
-func (x *SyncStreamItem_SyncActionSendLogData) GetLogId() string {
+func (x *SyncStreamItem_SyncActionReceiveLogData) GetLogId() string {
 	if x != nil {
 		return x.LogId
 	}
 	return ""
 }
 
-func (x *SyncStreamItem_SyncActionSendLogData) GetOwnerOpid() int64 {
+func (x *SyncStreamItem_SyncActionReceiveLogData) GetOwnerOpid() int64 {
 	if x != nil {
 		return x.OwnerOpid
 	}
 	return 0
 }
 
-func (x *SyncStreamItem_SyncActionSendLogData) GetExpirationTsUnix() int64 {
+func (x *SyncStreamItem_SyncActionReceiveLogData) GetExpirationTsUnix() int64 {
 	if x != nil {
 		return x.ExpirationTsUnix
 	}
 	return 0
 }
 
-func (x *SyncStreamItem_SyncActionSendLogData) GetChunk() []byte {
+func (x *SyncStreamItem_SyncActionReceiveLogData) GetChunk() []byte {
 	if x != nil {
 		return x.Chunk
 	}
 	return nil
+}
+
+func (x *SyncStreamItem_SyncActionReceiveLogData) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
 }
 
 type SyncStreamItem_SyncActionThrottle struct {
@@ -1531,7 +1600,7 @@ type SyncStreamItem_SyncActionThrottle struct {
 
 func (x *SyncStreamItem_SyncActionThrottle) Reset() {
 	*x = SyncStreamItem_SyncActionThrottle{}
-	mi := &file_v1sync_syncservice_proto_msgTypes[22]
+	mi := &file_v1sync_syncservice_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1543,7 +1612,7 @@ func (x *SyncStreamItem_SyncActionThrottle) String() string {
 func (*SyncStreamItem_SyncActionThrottle) ProtoMessage() {}
 
 func (x *SyncStreamItem_SyncActionThrottle) ProtoReflect() protoreflect.Message {
-	mi := &file_v1sync_syncservice_proto_msgTypes[22]
+	mi := &file_v1sync_syncservice_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1556,7 +1625,7 @@ func (x *SyncStreamItem_SyncActionThrottle) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use SyncStreamItem_SyncActionThrottle.ProtoReflect.Descriptor instead.
 func (*SyncStreamItem_SyncActionThrottle) Descriptor() ([]byte, []int) {
-	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 10}
+	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 11}
 }
 
 func (x *SyncStreamItem_SyncActionThrottle) GetDelayMs() int64 {
@@ -1577,7 +1646,7 @@ type SyncStreamItem_SyncEstablishSharedSecret struct {
 
 func (x *SyncStreamItem_SyncEstablishSharedSecret) Reset() {
 	*x = SyncStreamItem_SyncEstablishSharedSecret{}
-	mi := &file_v1sync_syncservice_proto_msgTypes[23]
+	mi := &file_v1sync_syncservice_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1589,7 +1658,7 @@ func (x *SyncStreamItem_SyncEstablishSharedSecret) String() string {
 func (*SyncStreamItem_SyncEstablishSharedSecret) ProtoMessage() {}
 
 func (x *SyncStreamItem_SyncEstablishSharedSecret) ProtoReflect() protoreflect.Message {
-	mi := &file_v1sync_syncservice_proto_msgTypes[23]
+	mi := &file_v1sync_syncservice_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1602,7 +1671,7 @@ func (x *SyncStreamItem_SyncEstablishSharedSecret) ProtoReflect() protoreflect.M
 
 // Deprecated: Use SyncStreamItem_SyncEstablishSharedSecret.ProtoReflect.Descriptor instead.
 func (*SyncStreamItem_SyncEstablishSharedSecret) Descriptor() ([]byte, []int) {
-	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 11}
+	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{11, 12}
 }
 
 func (x *SyncStreamItem_SyncEstablishSharedSecret) GetEd25519() string {
@@ -1665,20 +1734,21 @@ const file_v1sync_syncservice_proto_rawDesc = "" +
 	"\n" +
 	"public_key\x18\x01 \x01(\v2\r.v1.PublicKeyR\tpublicKey\x122\n" +
 	"\vinstance_id\x18\x02 \x01(\v2\x11.v1.SignedMessageR\n" +
-	"instanceId\"\xc8\x10\n" +
+	"instanceId\"\xbd\x12\n" +
 	"\x0eSyncStreamItem\x12:\n" +
 	"\x0esigned_message\x18\x01 \x01(\v2\x11.v1.SignedMessageH\x00R\rsignedMessage\x12J\n" +
 	"\thandshake\x18\x03 \x01(\v2*.v1sync.SyncStreamItem.SyncActionHandshakeH\x00R\thandshake\x12J\n" +
 	"\theartbeat\x18\x04 \x01(\v2*.v1sync.SyncStreamItem.SyncActionHeartbeatH\x00R\theartbeat\x12c\n" +
-	"\x12request_operations\x18\x14 \x01(\v22.v1sync.SyncStreamItem.SyncActionRequestOperationsH\x00R\x11requestOperations\x12Z\n" +
-	"\x0fsend_operations\x18\x15 \x01(\v2/.v1sync.SyncStreamItem.SyncActionSendOperationsH\x00R\x0esendOperations\x12N\n" +
-	"\vsend_config\x18\x16 \x01(\v2+.v1sync.SyncStreamItem.SyncActionSendConfigH\x00R\n" +
-	"sendConfig\x12K\n" +
+	"\x12request_operations\x18\x14 \x01(\v22.v1sync.SyncStreamItem.SyncActionRequestOperationsH\x00R\x11requestOperations\x12c\n" +
+	"\x12receive_operations\x18\x15 \x01(\v22.v1sync.SyncStreamItem.SyncActionReceiveOperationsH\x00R\x11receiveOperations\x12W\n" +
+	"\x0ereceive_config\x18\x16 \x01(\v2..v1sync.SyncStreamItem.SyncActionReceiveConfigH\x00R\rreceiveConfig\x12K\n" +
 	"\n" +
-	"set_config\x18\x18 \x01(\v2*.v1sync.SyncStreamItem.SyncActionSetConfigH\x00R\tsetConfig\x12W\n" +
-	"\x0elist_resources\x18\x19 \x01(\v2..v1sync.SyncStreamItem.SyncActionListResourcesH\x00R\rlistResources\x12B\n" +
-	"\aget_log\x18\x1a \x01(\v2'.v1sync.SyncStreamItem.SyncActionGetLogH\x00R\x06getLog\x12R\n" +
-	"\rsend_log_data\x18\x1b \x01(\v2,.v1sync.SyncStreamItem.SyncActionSendLogDataH\x00R\vsendLogData\x12H\n" +
+	"set_config\x18\x18 \x01(\v2*.v1sync.SyncStreamItem.SyncActionSetConfigH\x00R\tsetConfig\x12`\n" +
+	"\x11request_resources\x18\x19 \x01(\v21.v1sync.SyncStreamItem.SyncActionRequestResourcesH\x00R\x10requestResources\x12`\n" +
+	"\x11receive_resources\x18\x1a \x01(\v21.v1sync.SyncStreamItem.SyncActionReceiveResourcesH\x00R\x10receiveResources\x12N\n" +
+	"\vrequest_log\x18\x1e \x01(\v2+.v1sync.SyncStreamItem.SyncActionRequestLogH\x00R\n" +
+	"requestLog\x12[\n" +
+	"\x10receive_log_data\x18\x1f \x01(\v2/.v1sync.SyncStreamItem.SyncActionReceiveLogDataH\x00R\x0ereceiveLogData\x12H\n" +
 	"\bthrottle\x18\xe8\a \x01(\v2).v1sync.SyncStreamItem.SyncActionThrottleH\x00R\bthrottle\x1a\xa2\x01\n" +
 	"\x13SyncActionHandshake\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\x03R\x0fprotocolVersion\x12,\n" +
@@ -1686,31 +1756,35 @@ const file_v1sync_syncservice_proto_rawDesc = "" +
 	"public_key\x18\x02 \x01(\v2\r.v1.PublicKeyR\tpublicKey\x122\n" +
 	"\vinstance_id\x18\x03 \x01(\v2\x11.v1.SignedMessageR\n" +
 	"instanceId\x1a\x15\n" +
-	"\x13SyncActionHeartbeat\x1aD\n" +
-	"\x14SyncActionSendConfig\x12,\n" +
+	"\x13SyncActionHeartbeat\x1aG\n" +
+	"\x17SyncActionReceiveConfig\x12,\n" +
 	"\x06config\x18\x01 \x01(\v2\x14.v1sync.RemoteConfigR\x06config\x1a\xa5\x01\n" +
 	"\x13SyncActionSetConfig\x12\x1e\n" +
 	"\x05repos\x18\x01 \x03(\v2\b.v1.RepoR\x05repos\x12\x1e\n" +
 	"\x05plans\x18\x02 \x03(\v2\b.v1.PlanR\x05plans\x12&\n" +
 	"\x0frepos_to_delete\x18\x03 \x03(\tR\rreposToDelete\x12&\n" +
-	"\x0fplans_to_delete\x18\x04 \x03(\tR\rplansToDelete\x1aq\n" +
-	"\x17SyncActionListResources\x12*\n" +
+	"\x0fplans_to_delete\x18\x04 \x03(\tR\rplansToDelete\x1a\x1c\n" +
+	"\x1aSyncActionRequestResources\x1at\n" +
+	"\x1aSyncActionReceiveResources\x12*\n" +
 	"\x05repos\x18\x01 \x03(\v2\x14.v1sync.RepoMetadataR\x05repos\x12*\n" +
 	"\x05plans\x18\x02 \x03(\v2\x14.v1sync.PlanMetadataR\x05plans\x1a0\n" +
 	"\x15SyncActionConnectRepo\x12\x17\n" +
-	"\arepo_id\x18\x01 \x01(\tR\x06repoId\x1aI\n" +
-	"\x1bSyncActionRequestOperations\x12*\n" +
-	"\bselector\x18\x01 \x01(\v2\x0e.v1.OpSelectorR\bselector\x1aD\n" +
-	"\x18SyncActionSendOperations\x12(\n" +
-	"\x05event\x18\x01 \x01(\v2\x12.v1.OperationEventR\x05event\x1a)\n" +
-	"\x10SyncActionGetLog\x12\x15\n" +
-	"\x06log_id\x18\x01 \x01(\tR\x05logId\x1a\x91\x01\n" +
-	"\x15SyncActionSendLogData\x12\x15\n" +
+	"\arepo_id\x18\x01 \x01(\tR\x06repoId\x1aY\n" +
+	"\x1bSyncActionRequestOperations\x12\x1b\n" +
+	"\thigh_opid\x18\x01 \x01(\x03R\bhighOpid\x12\x1d\n" +
+	"\n" +
+	"high_modno\x18\x02 \x01(\x03R\thighModno\x1aG\n" +
+	"\x1bSyncActionReceiveOperations\x12(\n" +
+	"\x05event\x18\x01 \x01(\v2\x12.v1.OperationEventR\x05event\x1a-\n" +
+	"\x14SyncActionRequestLog\x12\x15\n" +
+	"\x06log_id\x18\x01 \x01(\tR\x05logId\x1a\xb9\x01\n" +
+	"\x18SyncActionReceiveLogData\x12\x15\n" +
 	"\x06log_id\x18\x01 \x01(\tR\x05logId\x12\x1d\n" +
 	"\n" +
 	"owner_opid\x18\x02 \x01(\x03R\townerOpid\x12,\n" +
 	"\x12expiration_ts_unix\x18\x03 \x01(\x03R\x10expirationTsUnix\x12\x14\n" +
-	"\x05chunk\x18\x04 \x01(\fR\x05chunk\x1a/\n" +
+	"\x05chunk\x18\x04 \x01(\fR\x05chunk\x12#\n" +
+	"\rerror_message\x18\x05 \x01(\tR\ferrorMessage\x1a/\n" +
 	"\x12SyncActionThrottle\x12\x19\n" +
 	"\bdelay_ms\x18\x01 \x01(\x03R\adelayMs\x1a8\n" +
 	"\x19SyncEstablishSharedSecret\x12\x1b\n" +
@@ -1751,7 +1825,7 @@ func file_v1sync_syncservice_proto_rawDescGZIP() []byte {
 }
 
 var file_v1sync_syncservice_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_v1sync_syncservice_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_v1sync_syncservice_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_v1sync_syncservice_proto_goTypes = []any{
 	(ConnectionState)(0),                               // 0: v1sync.ConnectionState
 	(SyncStreamItem_RepoConnectionState)(0),            // 1: v1sync.SyncStreamItem.RepoConnectionState
@@ -1769,21 +1843,21 @@ var file_v1sync_syncservice_proto_goTypes = []any{
 	(*SyncStreamItem)(nil),                             // 13: v1sync.SyncStreamItem
 	(*SyncStreamItem_SyncActionHandshake)(nil),         // 14: v1sync.SyncStreamItem.SyncActionHandshake
 	(*SyncStreamItem_SyncActionHeartbeat)(nil),         // 15: v1sync.SyncStreamItem.SyncActionHeartbeat
-	(*SyncStreamItem_SyncActionSendConfig)(nil),        // 16: v1sync.SyncStreamItem.SyncActionSendConfig
+	(*SyncStreamItem_SyncActionReceiveConfig)(nil),     // 16: v1sync.SyncStreamItem.SyncActionReceiveConfig
 	(*SyncStreamItem_SyncActionSetConfig)(nil),         // 17: v1sync.SyncStreamItem.SyncActionSetConfig
-	(*SyncStreamItem_SyncActionListResources)(nil),     // 18: v1sync.SyncStreamItem.SyncActionListResources
-	(*SyncStreamItem_SyncActionConnectRepo)(nil),       // 19: v1sync.SyncStreamItem.SyncActionConnectRepo
-	(*SyncStreamItem_SyncActionRequestOperations)(nil), // 20: v1sync.SyncStreamItem.SyncActionRequestOperations
-	(*SyncStreamItem_SyncActionSendOperations)(nil),    // 21: v1sync.SyncStreamItem.SyncActionSendOperations
-	(*SyncStreamItem_SyncActionGetLog)(nil),            // 22: v1sync.SyncStreamItem.SyncActionGetLog
-	(*SyncStreamItem_SyncActionSendLogData)(nil),       // 23: v1sync.SyncStreamItem.SyncActionSendLogData
-	(*SyncStreamItem_SyncActionThrottle)(nil),          // 24: v1sync.SyncStreamItem.SyncActionThrottle
-	(*SyncStreamItem_SyncEstablishSharedSecret)(nil),   // 25: v1sync.SyncStreamItem.SyncEstablishSharedSecret
-	(*v1.SignedMessage)(nil),                           // 26: v1.SignedMessage
-	(*v1.Plan)(nil),                                    // 27: v1.Plan
-	(*v1.Repo)(nil),                                    // 28: v1.Repo
-	(*v1.PublicKey)(nil),                               // 29: v1.PublicKey
-	(*v1.OpSelector)(nil),                              // 30: v1.OpSelector
+	(*SyncStreamItem_SyncActionRequestResources)(nil),  // 18: v1sync.SyncStreamItem.SyncActionRequestResources
+	(*SyncStreamItem_SyncActionReceiveResources)(nil),  // 19: v1sync.SyncStreamItem.SyncActionReceiveResources
+	(*SyncStreamItem_SyncActionConnectRepo)(nil),       // 20: v1sync.SyncStreamItem.SyncActionConnectRepo
+	(*SyncStreamItem_SyncActionRequestOperations)(nil), // 21: v1sync.SyncStreamItem.SyncActionRequestOperations
+	(*SyncStreamItem_SyncActionReceiveOperations)(nil), // 22: v1sync.SyncStreamItem.SyncActionReceiveOperations
+	(*SyncStreamItem_SyncActionRequestLog)(nil),        // 23: v1sync.SyncStreamItem.SyncActionRequestLog
+	(*SyncStreamItem_SyncActionReceiveLogData)(nil),    // 24: v1sync.SyncStreamItem.SyncActionReceiveLogData
+	(*SyncStreamItem_SyncActionThrottle)(nil),          // 25: v1sync.SyncStreamItem.SyncActionThrottle
+	(*SyncStreamItem_SyncEstablishSharedSecret)(nil),   // 26: v1sync.SyncStreamItem.SyncEstablishSharedSecret
+	(*v1.SignedMessage)(nil),                           // 27: v1.SignedMessage
+	(*v1.Plan)(nil),                                    // 28: v1.Plan
+	(*v1.Repo)(nil),                                    // 29: v1.Repo
+	(*v1.PublicKey)(nil),                               // 30: v1.PublicKey
 	(*v1.OperationEvent)(nil),                          // 31: v1.OperationEvent
 }
 var file_v1sync_syncservice_proto_depIdxs = []int32{
@@ -1791,35 +1865,35 @@ var file_v1sync_syncservice_proto_depIdxs = []int32{
 	9,  // 1: v1sync.PeerState.known_plans:type_name -> v1sync.PlanMetadata
 	8,  // 2: v1sync.PeerState.known_repos:type_name -> v1sync.RepoMetadata
 	11, // 3: v1sync.PeerState.remote_config:type_name -> v1sync.RemoteConfig
-	26, // 4: v1sync.AuthenticateRequest.instance_id:type_name -> v1.SignedMessage
+	27, // 4: v1sync.AuthenticateRequest.instance_id:type_name -> v1.SignedMessage
 	9,  // 5: v1sync.SetAvailableResourcesRequest.repos:type_name -> v1sync.PlanMetadata
 	8,  // 6: v1sync.SetAvailableResourcesRequest.plans:type_name -> v1sync.RepoMetadata
-	27, // 7: v1sync.SetConfigRequest.plans:type_name -> v1.Plan
-	28, // 8: v1sync.SetConfigRequest.repos:type_name -> v1.Repo
-	28, // 9: v1sync.RemoteConfig.repos:type_name -> v1.Repo
-	27, // 10: v1sync.RemoteConfig.plans:type_name -> v1.Plan
-	29, // 11: v1sync.AuthorizationToken.public_key:type_name -> v1.PublicKey
-	26, // 12: v1sync.AuthorizationToken.instance_id:type_name -> v1.SignedMessage
-	26, // 13: v1sync.SyncStreamItem.signed_message:type_name -> v1.SignedMessage
+	28, // 7: v1sync.SetConfigRequest.plans:type_name -> v1.Plan
+	29, // 8: v1sync.SetConfigRequest.repos:type_name -> v1.Repo
+	29, // 9: v1sync.RemoteConfig.repos:type_name -> v1.Repo
+	28, // 10: v1sync.RemoteConfig.plans:type_name -> v1.Plan
+	30, // 11: v1sync.AuthorizationToken.public_key:type_name -> v1.PublicKey
+	27, // 12: v1sync.AuthorizationToken.instance_id:type_name -> v1.SignedMessage
+	27, // 13: v1sync.SyncStreamItem.signed_message:type_name -> v1.SignedMessage
 	14, // 14: v1sync.SyncStreamItem.handshake:type_name -> v1sync.SyncStreamItem.SyncActionHandshake
 	15, // 15: v1sync.SyncStreamItem.heartbeat:type_name -> v1sync.SyncStreamItem.SyncActionHeartbeat
-	20, // 16: v1sync.SyncStreamItem.request_operations:type_name -> v1sync.SyncStreamItem.SyncActionRequestOperations
-	21, // 17: v1sync.SyncStreamItem.send_operations:type_name -> v1sync.SyncStreamItem.SyncActionSendOperations
-	16, // 18: v1sync.SyncStreamItem.send_config:type_name -> v1sync.SyncStreamItem.SyncActionSendConfig
+	21, // 16: v1sync.SyncStreamItem.request_operations:type_name -> v1sync.SyncStreamItem.SyncActionRequestOperations
+	22, // 17: v1sync.SyncStreamItem.receive_operations:type_name -> v1sync.SyncStreamItem.SyncActionReceiveOperations
+	16, // 18: v1sync.SyncStreamItem.receive_config:type_name -> v1sync.SyncStreamItem.SyncActionReceiveConfig
 	17, // 19: v1sync.SyncStreamItem.set_config:type_name -> v1sync.SyncStreamItem.SyncActionSetConfig
-	18, // 20: v1sync.SyncStreamItem.list_resources:type_name -> v1sync.SyncStreamItem.SyncActionListResources
-	22, // 21: v1sync.SyncStreamItem.get_log:type_name -> v1sync.SyncStreamItem.SyncActionGetLog
-	23, // 22: v1sync.SyncStreamItem.send_log_data:type_name -> v1sync.SyncStreamItem.SyncActionSendLogData
-	24, // 23: v1sync.SyncStreamItem.throttle:type_name -> v1sync.SyncStreamItem.SyncActionThrottle
-	29, // 24: v1sync.SyncStreamItem.SyncActionHandshake.public_key:type_name -> v1.PublicKey
-	26, // 25: v1sync.SyncStreamItem.SyncActionHandshake.instance_id:type_name -> v1.SignedMessage
-	11, // 26: v1sync.SyncStreamItem.SyncActionSendConfig.config:type_name -> v1sync.RemoteConfig
-	28, // 27: v1sync.SyncStreamItem.SyncActionSetConfig.repos:type_name -> v1.Repo
-	27, // 28: v1sync.SyncStreamItem.SyncActionSetConfig.plans:type_name -> v1.Plan
-	8,  // 29: v1sync.SyncStreamItem.SyncActionListResources.repos:type_name -> v1sync.RepoMetadata
-	9,  // 30: v1sync.SyncStreamItem.SyncActionListResources.plans:type_name -> v1sync.PlanMetadata
-	30, // 31: v1sync.SyncStreamItem.SyncActionRequestOperations.selector:type_name -> v1.OpSelector
-	31, // 32: v1sync.SyncStreamItem.SyncActionSendOperations.event:type_name -> v1.OperationEvent
+	18, // 20: v1sync.SyncStreamItem.request_resources:type_name -> v1sync.SyncStreamItem.SyncActionRequestResources
+	19, // 21: v1sync.SyncStreamItem.receive_resources:type_name -> v1sync.SyncStreamItem.SyncActionReceiveResources
+	23, // 22: v1sync.SyncStreamItem.request_log:type_name -> v1sync.SyncStreamItem.SyncActionRequestLog
+	24, // 23: v1sync.SyncStreamItem.receive_log_data:type_name -> v1sync.SyncStreamItem.SyncActionReceiveLogData
+	25, // 24: v1sync.SyncStreamItem.throttle:type_name -> v1sync.SyncStreamItem.SyncActionThrottle
+	30, // 25: v1sync.SyncStreamItem.SyncActionHandshake.public_key:type_name -> v1.PublicKey
+	27, // 26: v1sync.SyncStreamItem.SyncActionHandshake.instance_id:type_name -> v1.SignedMessage
+	11, // 27: v1sync.SyncStreamItem.SyncActionReceiveConfig.config:type_name -> v1sync.RemoteConfig
+	29, // 28: v1sync.SyncStreamItem.SyncActionSetConfig.repos:type_name -> v1.Repo
+	28, // 29: v1sync.SyncStreamItem.SyncActionSetConfig.plans:type_name -> v1.Plan
+	8,  // 30: v1sync.SyncStreamItem.SyncActionReceiveResources.repos:type_name -> v1sync.RepoMetadata
+	9,  // 31: v1sync.SyncStreamItem.SyncActionReceiveResources.plans:type_name -> v1sync.PlanMetadata
+	31, // 32: v1sync.SyncStreamItem.SyncActionReceiveOperations.event:type_name -> v1.OperationEvent
 	13, // 33: v1sync.BackrestSyncService.Sync:input_type -> v1sync.SyncStreamItem
 	2,  // 34: v1sync.BackrestSyncStateService.GetPeerSyncStatesStream:input_type -> v1sync.SyncStateStreamRequest
 	13, // 35: v1sync.BackrestSyncService.Sync:output_type -> v1sync.SyncStreamItem
@@ -1841,12 +1915,13 @@ func file_v1sync_syncservice_proto_init() {
 		(*SyncStreamItem_Handshake)(nil),
 		(*SyncStreamItem_Heartbeat)(nil),
 		(*SyncStreamItem_RequestOperations)(nil),
-		(*SyncStreamItem_SendOperations)(nil),
-		(*SyncStreamItem_SendConfig)(nil),
+		(*SyncStreamItem_ReceiveOperations)(nil),
+		(*SyncStreamItem_ReceiveConfig)(nil),
 		(*SyncStreamItem_SetConfig)(nil),
-		(*SyncStreamItem_ListResources)(nil),
-		(*SyncStreamItem_GetLog)(nil),
-		(*SyncStreamItem_SendLogData)(nil),
+		(*SyncStreamItem_RequestResources)(nil),
+		(*SyncStreamItem_ReceiveResources)(nil),
+		(*SyncStreamItem_RequestLog)(nil),
+		(*SyncStreamItem_ReceiveLogData)(nil),
 		(*SyncStreamItem_Throttle)(nil),
 	}
 	type x struct{}
@@ -1855,7 +1930,7 @@ func file_v1sync_syncservice_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_v1sync_syncservice_proto_rawDesc), len(file_v1sync_syncservice_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   24,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

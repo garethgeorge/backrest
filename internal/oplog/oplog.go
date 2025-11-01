@@ -167,24 +167,6 @@ func (o *OpLog) Update(ops ...*v1.Operation) error {
 	return nil
 }
 
-// Set is an alias for Update that does not increment the modno, provided for use by the syncapi.
-func (o *OpLog) Set(op *v1.Operation) error {
-	var err error
-	if op.Id == 0 {
-		err = o.store.Add(op)
-	} else {
-		err = o.store.Update(op)
-		if errors.Is(err, ErrNotExist) {
-			err = o.store.Add(op)
-		}
-	}
-	if err != nil {
-		return err
-	}
-	o.notify([]*v1.Operation{op}, OPERATION_UPDATED)
-	return nil
-}
-
 func (o *OpLog) Delete(opID ...int64) error {
 	removedOps, err := o.store.Delete(opID...)
 	if err != nil {
@@ -199,6 +181,10 @@ func (o *OpLog) Transform(q Query, f func(*v1.Operation) (*v1.Operation, error))
 	return o.store.Transform(q, f)
 }
 
+func (o *OpLog) GetHighestOpIDAndModno() (int64, int64, error) {
+	return o.store.GetHighestOpIDAndModno()
+}
+
 type OpStore interface {
 	// Query returns all operations that match the query.
 	Query(q Query, f func(*v1.Operation) error) error
@@ -207,6 +193,8 @@ type OpStore interface {
 	QueryMetadata(q Query, f func(OpMetadata) error) error
 	// Get returns the operation with the given ID.
 	Get(opID int64) (*v1.Operation, error)
+	// GetHighestOpIDAndModno returns the highest operation ID and modno in the store, used for synchronization.
+	GetHighestOpIDAndModno() (int64, int64, error)
 	// Add adds the given operations to the store.
 	Add(op ...*v1.Operation) error
 	// Update updates the given operations in the store.
