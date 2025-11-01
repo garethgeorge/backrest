@@ -92,6 +92,7 @@ type OpSelector struct {
 	PlanId                *string                `protobuf:"bytes,3,opt,name=plan_id,json=planId,proto3,oneof" json:"plan_id,omitempty"`
 	SnapshotId            *string                `protobuf:"bytes,4,opt,name=snapshot_id,json=snapshotId,proto3,oneof" json:"snapshot_id,omitempty"`
 	FlowId                *int64                 `protobuf:"varint,5,opt,name=flow_id,json=flowId,proto3,oneof" json:"flow_id,omitempty"`
+	ModnoGte              *int64                 `protobuf:"varint,9,opt,name=modno_gte,json=modnoGte,proto3,oneof" json:"modno_gte,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -171,6 +172,13 @@ func (x *OpSelector) GetSnapshotId() string {
 func (x *OpSelector) GetFlowId() int64 {
 	if x != nil && x.FlowId != nil {
 		return *x.FlowId
+	}
+	return 0
+}
+
+func (x *OpSelector) GetModnoGte() int64 {
+	if x != nil && x.ModnoGte != nil {
+		return *x.ModnoGte
 	}
 	return 0
 }
@@ -1116,7 +1124,7 @@ var File_v1_service_proto protoreflect.FileDescriptor
 
 const file_v1_service_proto_rawDesc = "" +
 	"\n" +
-	"\x10v1/service.proto\x12\x02v1\x1a\x0fv1/config.proto\x1a\x0fv1/restic.proto\x1a\x13v1/operations.proto\x1a\x11types/value.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/api/annotations.proto\"\xe7\x02\n" +
+	"\x10v1/service.proto\x12\x02v1\x1a\x0fv1/config.proto\x1a\x0fv1/restic.proto\x1a\x13v1/operations.proto\x1a\x11types/value.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/api/annotations.proto\"\x97\x03\n" +
 	"\n" +
 	"OpSelector\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\x03R\x03ids\x12$\n" +
@@ -1127,7 +1135,8 @@ const file_v1_service_proto_rawDesc = "" +
 	"\aplan_id\x18\x03 \x01(\tH\x03R\x06planId\x88\x01\x01\x12$\n" +
 	"\vsnapshot_id\x18\x04 \x01(\tH\x04R\n" +
 	"snapshotId\x88\x01\x01\x12\x1c\n" +
-	"\aflow_id\x18\x05 \x01(\x03H\x05R\x06flowId\x88\x01\x01B\x0e\n" +
+	"\aflow_id\x18\x05 \x01(\x03H\x05R\x06flowId\x88\x01\x01\x12 \n" +
+	"\tmodno_gte\x18\t \x01(\x03H\x06R\bmodnoGte\x88\x01\x01B\x0e\n" +
 	"\f_instance_idB\x1a\n" +
 	"\x18_original_instance_keyidB\f\n" +
 	"\n" +
@@ -1136,7 +1145,9 @@ const file_v1_service_proto_rawDesc = "" +
 	"\b_plan_idB\x0e\n" +
 	"\f_snapshot_idB\n" +
 	"\n" +
-	"\b_flow_id\"\xce\x01\n" +
+	"\b_flow_idB\f\n" +
+	"\n" +
+	"_modno_gte\"\xce\x01\n" +
 	"\x11DoRepoTaskRequest\x12\x17\n" +
 	"\arepo_id\x18\x01 \x01(\tR\x06repoId\x12.\n" +
 	"\x04task\x18\x02 \x01(\x0e2\x1a.v1.DoRepoTaskRequest.TaskR\x04task\"p\n" +

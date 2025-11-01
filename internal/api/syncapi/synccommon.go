@@ -5,11 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"sync"
 	"time"
+	"unique"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
+	"github.com/garethgeorge/backrest/internal/oplog"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 func runSync(
@@ -202,7 +206,7 @@ func sendHeartbeats(ctx context.Context, stream *bidiSyncCommandStream, interval
 type syncSessionHandler interface {
 	OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error
 	HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error
-	HandleDiffOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionDiffOperations) error
+	HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error
 	HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSendOperations) error
 	HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSendConfig) error
 	HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSetConfig) error
@@ -212,6 +216,8 @@ type syncSessionHandler interface {
 
 type unimplementedSyncSessionHandler struct{}
 
+var _ syncSessionHandler = (*unimplementedSyncSessionHandler)(nil)
+
 func (h *unimplementedSyncSessionHandler) OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error {
 	return NewSyncErrorProtocol(fmt.Errorf("OnConnectionEstablished not implemented"))
 }
@@ -220,12 +226,12 @@ func (h *unimplementedSyncSessionHandler) HandleHeartbeat(ctx context.Context, s
 	return NewSyncErrorProtocol(fmt.Errorf("HandleHeartbeat not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleDiffOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionDiffOperations) error {
-	return NewSyncErrorProtocol(fmt.Errorf("HandleDiffOperations not implemented"))
-}
-
 func (h *unimplementedSyncSessionHandler) HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSendOperations) error {
 	return NewSyncErrorProtocol(fmt.Errorf("HandleSendOperations not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleRequestOperations not implemented"))
 }
 
 func (h *unimplementedSyncSessionHandler) HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSendConfig) error {
@@ -242,4 +248,88 @@ func (h *unimplementedSyncSessionHandler) HandleListResources(ctx context.Contex
 
 func (h *unimplementedSyncSessionHandler) HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionThrottle) error {
 	return NewSyncErrorProtocol(fmt.Errorf("HandleThrottle not implemented"))
+}
+
+type remoteOpIdCacheKey struct {
+	OriginalInstanceKeyid unique.Handle[string]
+	ID                    int64
+}
+
+// operationIdMapper
+type remoteOpIdMapper struct {
+	oplog oplog.OpLog
+
+	opCacheMu sync.Mutex
+	opIDLru   *lru.Cache[remoteOpIdCacheKey, int64]
+	flowIDLru *lru.Cache[remoteOpIdCacheKey, int64]
+}
+
+// translateSingleID translates a single ID (either opID or flowID) using the provided cache and query
+func (sh *remoteOpIdMapper) translateSingleID(
+	originalInstanceKeyid string,
+	originalID int64,
+	cache *lru.Cache[remoteOpIdCacheKey, int64],
+	query oplog.Query,
+) (int64, error) {
+	if originalID == 0 {
+		return 0, nil
+	}
+
+	cacheKey := remoteOpIdCacheKey{
+		OriginalInstanceKeyid: unique.Make(originalInstanceKeyid),
+		ID:                    originalID,
+	}
+
+	// Check cache first
+	if translatedID, ok := cache.Get(cacheKey); ok {
+		return translatedID, nil
+	}
+
+	// Cache miss - query the database
+	op, err := sh.oplog.FindOneMetadata(query)
+	if err != nil {
+		if errors.Is(err, oplog.ErrNoResults) {
+			return 0, nil // No results means the ID is not found
+		}
+		return 0, err // Other errors should be propagated
+	}
+
+	// Cache the result and return
+	translatedID := op.FlowID
+	cache.Add(cacheKey, translatedID)
+	return translatedID, nil
+}
+
+func (om *remoteOpIdMapper) TranslateOpIdAndFlowID(originalInstanceKeyid string, originalOpId int64, originalFlowId int64) (int64, int64, error) {
+	om.opCacheMu.Lock()
+	defer om.opCacheMu.Unlock()
+
+	// Translate opID
+	opID, err := om.translateSingleID(
+		originalInstanceKeyid,
+		originalOpId,
+		om.opIDLru,
+		oplog.Query{
+			OriginalInstanceKeyid: &originalInstanceKeyid,
+			OriginalID:            &originalOpId,
+		},
+	)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Translate flowID
+	flowID, err := om.translateSingleID(
+		originalInstanceKeyid,
+		originalFlowId,
+		om.flowIDLru,
+		oplog.Query{
+			OriginalInstanceKeyid: &originalInstanceKeyid,
+			OriginalFlowID:        &originalFlowId,
+		},
+	)
+	if err != nil {
+		return 0, 0, err
+	}
+	return opID, flowID, nil
 }

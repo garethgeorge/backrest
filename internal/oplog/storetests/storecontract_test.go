@@ -335,6 +335,11 @@ func TestListOperation(t *testing.T) {
 				"foo-op",
 			},
 		},
+		{
+			name:     "list modno gte",
+			query:    oplog.Query{}.SetModnoGte(3),
+			expected: []string{"op3", "foo-op"},
+		},
 	}
 
 	for name, store := range StoresForTest(t) {

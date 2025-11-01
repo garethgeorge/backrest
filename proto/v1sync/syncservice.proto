@@ -112,7 +112,7 @@ message SyncStreamItem {
     SyncActionHandshake handshake = 3; // note: mostly deprecated, sent through headers rather than stream.
     SyncActionHeartbeat heartbeat = 4;
     
-    SyncActionDiffOperations diff_operations = 20;
+    SyncActionRequestOperations request_operations = 20;
     SyncActionSendOperations send_operations = 21;
     SyncActionSendConfig send_config = 22;
     SyncActionSetConfig set_config = 24;
@@ -160,14 +160,8 @@ message SyncStreamItem {
     CONNECTION_STATE_NOT_FOUND = 4;
   }
 
-  message SyncActionDiffOperations {
-    // Client connects and sends a list of "have_operations" that exist in its log.
-    // have_operation_ids and have_operation_modnos are the operation IDs and modnos that the client has when zip'd pairwise.
-    v1.OpSelector have_operations_selector = 1;
-    repeated int64 have_operation_ids = 2;
-    repeated int64 have_operation_modnos = 3;
-    // Server sends a list of "request_operations" for any operations that it doesn't have.
-    repeated int64 request_operations = 4;
+  message SyncActionRequestOperations {
+    v1.OpSelector selector = 1;
   }
 
   message SyncActionSendOperations {

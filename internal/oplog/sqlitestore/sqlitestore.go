@@ -217,6 +217,10 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 		query = append(query, " AND operations.original_flow_id = ?")
 		args = append(args, *q.OriginalFlowID)
 	}
+	if q.ModnoGte != nil {
+		query = append(query, " AND operations.modno >= ?")
+		args = append(args, *q.ModnoGte)
+	}
 	if q.OpIDs != nil {
 		query = append(query, " AND operations.id IN (")
 		for i, id := range q.OpIDs {

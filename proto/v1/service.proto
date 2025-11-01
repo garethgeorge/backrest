@@ -73,6 +73,7 @@ message OpSelector {
   optional string plan_id = 3;
   optional string snapshot_id = 4;
   optional int64 flow_id = 5;
+  optional int64 modno_gte = 9;
 }
 
 message DoRepoTaskRequest {
