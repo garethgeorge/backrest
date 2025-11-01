@@ -407,9 +407,29 @@ func (c *syncSessionHandlerClient) HandleReceiveOperations(ctx context.Context, 
 	return NewSyncErrorProtocol(errors.New("client should not receive ReceiveOperations messages, this is a host-only message"))
 }
 
+func (c *syncSessionHandlerClient) HandleReceiveResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveResources) error {
+	c.l.Debug("received resource list from server",
+		zap.Any("repos", item.GetRepos()),
+		zap.Any("plans", item.GetPlans()))
+	peerState := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
+	if peerState == nil {
+		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", c.peer.Keyid))
+	}
+	repos := item.GetRepos()
+	plans := item.GetPlans()
+	for _, repo := range repos {
+		peerState.KnownRepos[repo.Id] = repo
+	}
+	for _, plan := range plans {
+		peerState.KnownPlans[plan.Id] = plan
+	}
+	c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, peerState)
+	return nil
+}
+
 // Note unused: there isn't a situation where the host would send its config for information, the host will only call 'SetConfig' to update the config.
 func (c *syncSessionHandlerClient) HandleReceiveConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveConfig) error {
-	c.l.Sugar().Debugf("received remote config update")
+	c.l.Sugar().Debugf("received remote config update", zap.Any("config", item.GetConfig()))
 	peerState := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
 	if peerState == nil {
 		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", c.peer.Keyid))

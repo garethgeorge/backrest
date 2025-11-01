@@ -49,9 +49,6 @@ func (s *bidiSyncCommandStream) Send(item *v1sync.SyncStreamItem) {
 // SendErrorAndTerminate sends an error to the termination channel.
 // If the error is nil, it terminates only.
 func (s *bidiSyncCommandStream) SendErrorAndTerminate(err error) {
-	if err == nil {
-		return
-	}
 	select {
 	case s.terminateWithErrChan <- err:
 	default:
