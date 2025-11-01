@@ -11,6 +11,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/config/migrations"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,6 +29,7 @@ func TestAuthMiddleware(t *testing.T) {
 	cfgManager := &config.ConfigManager{
 		Store: &config.MemoryStore{
 			Config: &v1.Config{
+				Version:  migrations.CurrentVersion,
 				Instance: "test-instance",
 				Multihost: &v1.Multihost{
 					Identity: serverPrivKey,
