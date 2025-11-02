@@ -10,6 +10,7 @@ import (
 
 var (
 	errIDRequired              = errors.New("id is required")
+	errModnoRequired           = errors.New("modno is required")
 	errFlowIDRequired          = errors.New("flow_id is required")
 	errRepoIDRequired          = errors.New("repo_id is required")
 	errRepoGUIDRequired        = errors.New("repo_guid is required")
@@ -22,6 +23,9 @@ var (
 func ValidateOperation(op *v1.Operation) error {
 	if op.Id == 0 {
 		return errIDRequired
+	}
+	if op.Modno == 0 {
+		return errModnoRequired
 	}
 	if op.RepoGuid == "" {
 		return errRepoGUIDRequired

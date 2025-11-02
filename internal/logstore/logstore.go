@@ -25,6 +25,12 @@ var (
 	ErrLogNotFound = fmt.Errorf("log not found")
 )
 
+type LogMetadata struct {
+	ID             string
+	ExpirationTime time.Time // Expiration time of the log, zero if no expiration
+	OwnerOpID      int64     // ID of the operation that owns this log
+}
+
 type LogStore struct {
 	dir           string
 	inprogressDir string
@@ -178,6 +184,30 @@ func (ls *LogStore) Create(id string, parentOpID int64, ttl time.Duration) (io.W
 	}, nil
 }
 
+func (ls *LogStore) GetMetadata(id string) (LogMetadata, error) {
+	ls.mu.RLock(id)
+	defer ls.mu.RUnlock(id)
+	ctx := context.Background()
+	var expireTsUnix int64
+	var ownerOpID int64
+	err := ls.dbpool.QueryRowContext(ctx, "SELECT expiration_ts_unix, owner_opid FROM logs WHERE id = ?", id).Scan(&expireTsUnix, &ownerOpID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return LogMetadata{}, ErrLogNotFound
+		}
+		return LogMetadata{}, fmt.Errorf("select log metadata: %v", err)
+	}
+
+	metadata := LogMetadata{
+		ID:        id,
+		OwnerOpID: ownerOpID,
+	}
+	if expireTsUnix != 0 {
+		metadata.ExpirationTime = time.Unix(expireTsUnix, 0)
+	}
+	return metadata, nil
+}
+
 func (ls *LogStore) Open(id string) (io.ReadCloser, error) {
 	ls.mu.Lock(id)
 	defer ls.mu.Unlock(id)
@@ -266,6 +296,28 @@ func (ls *LogStore) SelectAll(f func(id string, parentID int64)) error {
 	}
 
 	return rows.Err()
+}
+
+// Find logs owned by a specific operation ID.
+func (ls *LogStore) FindLogsWithParent(parentOpID int64) ([]string, error) {
+	rows, err := ls.dbpool.QueryContext(context.Background(), "SELECT id FROM logs WHERE owner_opid = ?", parentOpID)
+	if err != nil {
+		return nil, fmt.Errorf("select logs: %v", err)
+	}
+	defer rows.Close()
+
+	var logs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan log id: %v", err)
+		}
+		logs = append(logs, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate logs: %v", err)
+	}
+	return logs, nil
 }
 
 func (ls *LogStore) subscribe(id string) chan struct{} {

@@ -6,15 +6,16 @@ import (
 
 	"connectrpc.com/connect"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
+	"github.com/garethgeorge/backrest/gen/go/v1sync/v1syncconnect"
 )
 
 type BackrestSyncStateHandler struct {
-	v1connect.UnimplementedBackrestSyncStateServiceHandler
+	v1syncconnect.UnimplementedBackrestSyncStateServiceHandler
 	mgr *SyncManager
 }
 
-var _ v1connect.BackrestSyncStateServiceHandler = &BackrestSyncStateHandler{}
+var _ v1syncconnect.BackrestSyncStateServiceHandler = &BackrestSyncStateHandler{}
 
 func NewBackrestSyncStateHandler(mgr *SyncManager) *BackrestSyncStateHandler {
 	return &BackrestSyncStateHandler{
@@ -22,14 +23,14 @@ func NewBackrestSyncStateHandler(mgr *SyncManager) *BackrestSyncStateHandler {
 	}
 }
 
-func (h *BackrestSyncStateHandler) GetPeerSyncStatesStream(ctx context.Context, req *connect.Request[v1.SyncStateStreamRequest], stream *connect.ServerStream[v1.PeerState]) error {
+func (h *BackrestSyncStateHandler) GetPeerSyncStatesStream(ctx context.Context, req *connect.Request[v1sync.SyncStateStreamRequest], stream *connect.ServerStream[v1sync.PeerState]) error {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
 
 	// Subscribe to the peer state changes
 	onStateChangeChan := h.mgr.peerStateManager.OnStateChanged().Subscribe()
 
-	messagesToSend := make(chan *v1.PeerState, 100) // Buffered channel to allow sending items without blocking
+	messagesToSend := make(chan *v1sync.PeerState, 100) // Buffered channel to allow sending items without blocking
 
 	sendAllInList := func(peers []*v1.Multihost_Peer) {
 		for _, peerState := range peers {

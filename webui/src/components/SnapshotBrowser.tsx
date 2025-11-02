@@ -150,7 +150,7 @@ export const SnapshotBrowser = ({
       }
 
       const toUpdateCopy = { ...toUpdate };
-      toUpdateCopy.children = respToNodes(resp, snapshotOpId);
+      toUpdateCopy.children = respToNodes(resp);
 
       return treeData.map((node) => {
         const didUpdate = replaceKeyInTree(node, key as string, toUpdateCopy);

@@ -3,6 +3,7 @@ package permissions
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
@@ -92,12 +93,21 @@ func (s *ScopeSet) Merge(other *ScopeSet) {
 }
 
 type PermissionSet struct {
+	// immutable after construction
 	perms map[v1.Multihost_Permission_Type]ScopeSet
+
+	// caches store computed permission checks per scope id and permission type
+	// cache is best-effort and not bounded; PermissionSet is expected to be short-lived (per connection/request)
+	mu        sync.RWMutex
+	planCache map[string]map[v1.Multihost_Permission_Type]bool
+	repoCache map[string]map[v1.Multihost_Permission_Type]bool
 }
 
 func NewPermissionSet(perms []*v1.Multihost_Permission) (*PermissionSet, error) {
 	permSet := &PermissionSet{
-		perms: make(map[v1.Multihost_Permission_Type]ScopeSet),
+		perms:     make(map[v1.Multihost_Permission_Type]ScopeSet),
+		planCache: make(map[string]map[v1.Multihost_Permission_Type]bool),
+		repoCache: make(map[string]map[v1.Multihost_Permission_Type]bool),
 	}
 
 	for _, perm := range perms {
@@ -116,10 +126,8 @@ func NewPermissionSet(perms []*v1.Multihost_Permission) (*PermissionSet, error) 
 
 func (p *PermissionSet) CheckPermissionForPlan(planID string, permType ...v1.Multihost_Permission_Type) bool {
 	for _, pt := range permType {
-		if scopeSet, ok := p.perms[pt]; ok {
-			if scopeSet.ContainsPlan(planID) {
-				return true
-			}
+		if p.checkPlanSingle(planID, pt) {
+			return true
 		}
 	}
 	return false
@@ -127,11 +135,52 @@ func (p *PermissionSet) CheckPermissionForPlan(planID string, permType ...v1.Mul
 
 func (p *PermissionSet) CheckPermissionForRepo(repoID string, permType ...v1.Multihost_Permission_Type) bool {
 	for _, pt := range permType {
-		if scopeSet, ok := p.perms[pt]; ok {
-			if scopeSet.ContainsRepo(repoID) {
-				return true
-			}
+		if p.checkRepoSingle(repoID, pt) {
+			return true
 		}
 	}
 	return false
+}
+
+// cachedCheck is a generic helper for cached scope checks
+func (p *PermissionSet) cachedCheck(
+	id string,
+	pt v1.Multihost_Permission_Type,
+	cache map[string]map[v1.Multihost_Permission_Type]bool,
+	contains func(ScopeSet, string) bool,
+) bool {
+	// fast-path: read from cache
+	p.mu.RLock()
+	if m, ok := cache[id]; ok {
+		if v, ok2 := m[pt]; ok2 {
+			p.mu.RUnlock()
+			return v
+		}
+	}
+	p.mu.RUnlock()
+
+	// compute without locks (perms is immutable; ScopeSet methods are read-only)
+	var res bool
+	if scopeSet, ok := p.perms[pt]; ok {
+		res = contains(scopeSet, id)
+	}
+
+	// write to cache
+	p.mu.Lock()
+	if _, ok := cache[id]; !ok {
+		cache[id] = make(map[v1.Multihost_Permission_Type]bool)
+	}
+	cache[id][pt] = res
+	p.mu.Unlock()
+	return res
+}
+
+// checkPlanSingle checks a single permission type against a plan id with caching
+func (p *PermissionSet) checkPlanSingle(planID string, pt v1.Multihost_Permission_Type) bool {
+	return p.cachedCheck(planID, pt, p.planCache, func(ss ScopeSet, id string) bool { return ss.ContainsPlan(id) })
+}
+
+// checkRepoSingle checks a single permission type against a repo id with caching
+func (p *PermissionSet) checkRepoSingle(repoID string, pt v1.Multihost_Permission_Type) bool {
+	return p.cachedCheck(repoID, pt, p.repoCache, func(ss ScopeSet, id string) bool { return ss.ContainsRepo(id) })
 }

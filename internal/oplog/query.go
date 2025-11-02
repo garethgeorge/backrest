@@ -14,6 +14,7 @@ type Query struct {
 	OriginalInstanceKeyid *string
 	OriginalID            *int64
 	OriginalFlowID        *int64
+	ModnoGte              *int64
 
 	// Pagination
 	Limit    int
@@ -65,6 +66,11 @@ func (q Query) SetOriginalID(originalID int64) Query {
 
 func (q Query) SetOriginalFlowID(originalFlowID int64) Query {
 	q.OriginalFlowID = &originalFlowID
+	return q
+}
+
+func (q Query) SetModnoGte(modnoGte int64) Query {
+	q.ModnoGte = &modnoGte
 	return q
 }
 
@@ -127,6 +133,10 @@ func (q *Query) Match(op *v1.Operation) bool {
 	}
 
 	if q.OriginalFlowID != nil && op.OriginalFlowId != *q.OriginalFlowID {
+		return false
+	}
+
+	if q.ModnoGte != nil && op.Modno < *q.ModnoGte {
 		return false
 	}
 

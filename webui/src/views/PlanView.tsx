@@ -55,6 +55,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           selector: {
             planId: plan.id,
             repoGuid: repo!.guid,
+            originalInstanceKeyid: "",
           },
           onlyFailed: true,
         })

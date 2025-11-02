@@ -1,0 +1,202 @@
+syntax = "proto3";
+
+package v1sync;
+
+option go_package = "github.com/garethgeorge/backrest/gen/go/v1sync";
+
+import "v1/config.proto";
+import "v1/crypto.proto";
+import "v1/restic.proto";
+import "v1/service.proto";
+import "v1/operations.proto";
+import "types/value.proto";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/any.proto";
+
+
+
+// BackrestSyncService provides methods to sync data between backrest instances.
+// This service provides its own authentication and authorization.
+service BackrestSyncService {
+  rpc Sync(stream SyncStreamItem) returns (stream SyncStreamItem) {}
+}
+
+// BackrestSyncStateService provides methods to query the sync state of known hosts and clients.
+// This service should be served behind authentication and authorization.
+service BackrestSyncStateService {
+  rpc GetPeerSyncStatesStream(SyncStateStreamRequest) returns (stream PeerState) {}
+}
+
+
+message SyncStateStreamRequest {
+  bool subscribe = 1; // If true, the stream will continue to send updates until cancelled.
+}
+
+message PeerState {
+  string peer_instance_id = 1;
+  string peer_keyid = 2;
+  ConnectionState state = 3;
+  string status_message = 4;
+
+  repeated PlanMetadata known_plans = 5; // List of plan IDs that the peer has.
+  repeated RepoMetadata known_repos = 6; // List of repo IDs that the peer has.
+  RemoteConfig remote_config = 7; // The remote config of the peer, if available.
+
+  int64 last_heartbeat_millis = 8; // The last time the peer sent a heartbeat, in milliseconds since epoch.
+}
+
+message AuthenticateRequest {
+  v1.SignedMessage instance_id = 1; // The ID of the peer instance.
+}
+
+message GetOperationMetadataResponse {
+  repeated int64 op_ids = 1; // The IDs of the operations.
+  repeated int64 modnos = 2; // The modnos of the operations.
+}
+
+message LogDataEntry {
+  string log_id = 1; // The ID of the log, only used for the first message in a log data stream.
+  int64 owner_opid = 2; // The operation ID of the operation that owns this log data.
+  int64 expiration_ts_unix = 3; // Unix timestamp in seconds when the log data expires.
+  bytes chunk = 4; // The log data chunk, can be sent repeatedly, must be terminated by a packet with size = 0.
+}
+
+message SetAvailableResourcesRequest {
+  repeated PlanMetadata repos = 1; // The repos that are available.
+  repeated RepoMetadata plans = 2; // The plans that are available.
+}
+
+message RepoMetadata {
+  string id = 1;
+  string guid = 2;
+}
+
+message PlanMetadata {
+  string id = 1;
+}
+
+enum ConnectionState {
+  CONNECTION_STATE_UNKNOWN = 0;
+  CONNECTION_STATE_PENDING = 1;
+  CONNECTION_STATE_CONNECTED = 2;
+  CONNECTION_STATE_DISCONNECTED = 3;
+  CONNECTION_STATE_RETRY_WAIT = 4;
+  CONNECTION_STATE_ERROR_AUTH = 10;
+  CONNECTION_STATE_ERROR_PROTOCOL = 11;
+  CONNECTION_STATE_ERROR_INTERNAL = 12;
+}
+
+message SetConfigRequest {
+  repeated v1.Plan plans = 1; // The plans to set.
+  repeated v1.Repo repos = 2; // The repos to set.
+  repeated string repos_to_delete = 3; // The repo IDs to delete.
+  repeated string plans_to_delete = 4; // The plan IDs to delete.
+}
+
+message RemoteConfig {
+  int32 modno = 1; // The modno of the config.
+  int32 version = 2; // The storage version of the config.
+  repeated v1.Repo repos = 3;
+  repeated v1.Plan plans = 4;
+}
+
+message AuthorizationToken {
+  v1.PublicKey public_key = 1;
+  v1.SignedMessage instance_id = 2; // The ID of the peer instance.
+}
+
+message SyncStreamItem {
+  oneof action {
+    v1.SignedMessage signed_message = 1;
+    SyncActionHandshake handshake = 3; // note: mostly deprecated, sent through headers rather than stream.
+    SyncActionHeartbeat heartbeat = 4;
+    
+    SyncActionRequestOperations request_operations = 20;
+    SyncActionReceiveOperations receive_operations = 21;
+    SyncActionReceiveConfig receive_config = 22;
+    SyncActionSetConfig set_config = 24;
+    SyncActionRequestResources request_resources = 25; // request a list of available resources. Only used by the server.
+    SyncActionReceiveResources receive_resources = 26; // receiving a list of available resources.
+    SyncActionRequestLog request_log = 30;
+    SyncActionReceiveLogData receive_log_data = 31;
+
+    SyncActionThrottle throttle = 1000;
+  }
+
+  message SyncActionHandshake {
+    int64 protocol_version = 1;
+    v1.PublicKey public_key = 2;
+    v1.SignedMessage instance_id = 3;
+  }
+
+  // SyncActionHeartbeat is sent periodically to keep the connection alive.
+  message SyncActionHeartbeat {}
+
+  message SyncActionReceiveConfig {
+    RemoteConfig config = 1;
+  }
+
+  message SyncActionSetConfig {
+    repeated v1.Repo repos = 1;
+    repeated v1.Plan plans = 2;
+    repeated string repos_to_delete = 3;
+    repeated string plans_to_delete = 4;
+  }
+
+  message SyncActionRequestResources {}
+
+  message SyncActionReceiveResources {
+    repeated RepoMetadata repos = 1;
+    repeated PlanMetadata plans = 2;
+  }
+
+  message SyncActionConnectRepo {
+    string repo_id = 1;
+  }
+
+  enum RepoConnectionState {
+    CONNECTION_STATE_UNKNOWN = 0;
+    CONNECTION_STATE_PENDING = 1; // queried, response not yet received.
+    CONNECTION_STATE_CONNECTED = 2;
+    CONNECTION_STATE_UNAUTHORIZED = 3;
+    CONNECTION_STATE_NOT_FOUND = 4;
+  }
+
+  message SyncActionRequestOperations {
+    int64 high_opid = 1; // The highest operation ID the requester has.
+    int64 high_modno = 2; // The highest modno the requester has.
+  }
+
+  message SyncActionReceiveOperations {
+    v1.OperationEvent event = 1;
+  }
+
+  message SyncActionRequestLog {
+    string log_id = 1;
+  }
+
+  message SyncActionReceiveLogData {
+    string log_id = 1;
+
+    // Required only for first message in a log data stream.
+    int64 owner_opid = 2; // The operation ID of the operation that owns this log data.
+    int64 expiration_ts_unix = 3; // Unix timestamp in seconds when the log data expires.
+
+    // Can be sent repeatedly, must be terminated by a packet with size = 0.
+    bytes chunk = 4;
+
+    // If set, indicates an error occurred while fetching the log data.
+    string error_message = 5; 
+  }
+
+  message SyncActionThrottle {
+    int64 delay_ms = 1;
+  }
+
+  message SyncEstablishSharedSecret {
+    // a one-time-use ed25519 public key with a matching unshared private key. Used to perform a key exchange.
+    // See https://pkg.go.dev/crypto/ecdh#PrivateKey.ECDH .
+    string ed25519 = 2 [json_name="ed25519pub"]; // base64 encoded public key
+  }
+}

@@ -10,6 +10,7 @@ import { EmptySchema } from "../../gen/ts/types/value_pb";
 import { create } from "@bufbuild/protobuf";
 import _ from "lodash";
 import { backrestService } from "../api";
+import { useEffect, useState } from "react";
 
 const subscribers: ((event?: OperationEvent, err?: Error) => void)[] = [];
 
@@ -18,7 +19,7 @@ const subscribers: ((event?: OperationEvent, err?: Error) => void)[] = [];
   while (true) {
     let nextConnWaitUntil = new Date().getTime() + 5000;
     try {
-      for await (const event of backrestService.getOperationEvents(create(EmptySchema, {}))) {
+      for await (const event of backrestService.getOperationEvents({})) {
         console.log("operation event", event);
         subscribers.forEach((subscriber) => subscriber(event, undefined));
       }
@@ -56,7 +57,6 @@ export const unsubscribeFromOperations = (
   }
   console.log("unsubscribed from operations, subscriber count: ", subscribers.length);
 };
-
 
 export const shouldHideOperation = (operation: Operation) => {
   return (

@@ -3,11 +3,11 @@ package syncapi
 import (
 	"fmt"
 
-	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
 )
 
 type SyncError struct {
-	State   v1.SyncConnectionState
+	State   v1sync.ConnectionState
 	Message error
 }
 
@@ -23,56 +23,56 @@ func (e *SyncError) Unwrap() error {
 
 func NewSyncErrorDisconnected(message error) *SyncError {
 	return &SyncError{
-		State:   v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED,
+		State:   v1sync.ConnectionState_CONNECTION_STATE_DISCONNECTED,
 		Message: message,
 	}
 }
 
 func NewSyncErrorUnknown(message error) *SyncError {
 	return &SyncError{
-		State:   v1.SyncConnectionState_CONNECTION_STATE_UNKNOWN,
+		State:   v1sync.ConnectionState_CONNECTION_STATE_UNKNOWN,
 		Message: message,
 	}
 }
 
 func NewSyncErrorPending(message error) *SyncError {
 	return &SyncError{
-		State:   v1.SyncConnectionState_CONNECTION_STATE_PENDING,
+		State:   v1sync.ConnectionState_CONNECTION_STATE_PENDING,
 		Message: message,
 	}
 }
 
 func NewSyncErrorConnected(message error) *SyncError {
 	return &SyncError{
-		State:   v1.SyncConnectionState_CONNECTION_STATE_CONNECTED,
+		State:   v1sync.ConnectionState_CONNECTION_STATE_CONNECTED,
 		Message: message,
 	}
 }
 
 func NewSyncErrorRetryWait(message error) *SyncError {
 	return &SyncError{
-		State:   v1.SyncConnectionState_CONNECTION_STATE_RETRY_WAIT,
+		State:   v1sync.ConnectionState_CONNECTION_STATE_RETRY_WAIT,
 		Message: message,
 	}
 }
 
 func NewSyncErrorAuth(message error) *SyncError {
 	return &SyncError{
-		State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH,
+		State:   v1sync.ConnectionState_CONNECTION_STATE_ERROR_AUTH,
 		Message: message,
 	}
 }
 
 func NewSyncErrorProtocol(message error) *SyncError {
 	return &SyncError{
-		State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_PROTOCOL,
+		State:   v1sync.ConnectionState_CONNECTION_STATE_ERROR_PROTOCOL,
 		Message: message,
 	}
 }
 
 func NewSyncErrorInternal(message error) *SyncError {
 	return &SyncError{
-		State:   v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL,
+		State:   v1sync.ConnectionState_CONNECTION_STATE_ERROR_INTERNAL,
 		Message: message,
 	}
 }

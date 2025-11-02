@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { PeerState, SyncConnectionState } from "../../gen/ts/v1/syncservice_pb";
+import { PeerState, ConnectionState } from "../../gen/ts/v1sync/syncservice_pb";
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -19,42 +19,42 @@ export const PeerStateConnectionStatusIcon = ({
 }) => {
   const getStatusIcon = () => {
     switch (peerState.state) {
-      case SyncConnectionState.CONNECTION_STATE_CONNECTED:
+      case ConnectionState.CONNECTED:
         return (
           <CheckCircleOutlined style={{ color: "#52c41a", fontSize: "16px" }} />
         );
 
-      case SyncConnectionState.CONNECTION_STATE_PENDING:
+      case ConnectionState.PENDING:
         return (
           <LoadingOutlined style={{ color: "#1890ff", fontSize: "16px" }} />
         );
 
-      case SyncConnectionState.CONNECTION_STATE_RETRY_WAIT:
+      case ConnectionState.RETRY_WAIT:
         return (
           <ClockCircleOutlined style={{ color: "#faad14", fontSize: "16px" }} />
         );
 
-      case SyncConnectionState.CONNECTION_STATE_DISCONNECTED:
+      case ConnectionState.DISCONNECTED:
         return (
           <DisconnectOutlined style={{ color: "#d9d9d9", fontSize: "16px" }} />
         );
 
-      case SyncConnectionState.CONNECTION_STATE_ERROR_AUTH:
+      case ConnectionState.ERROR_AUTH:
         return <KeyOutlined style={{ color: "#ff4d4f", fontSize: "16px" }} />;
 
-      case SyncConnectionState.CONNECTION_STATE_ERROR_PROTOCOL:
+      case ConnectionState.ERROR_PROTOCOL:
         return (
           <ExclamationCircleOutlined
             style={{ color: "#ff4d4f", fontSize: "16px" }}
           />
         );
 
-      case SyncConnectionState.CONNECTION_STATE_ERROR_INTERNAL:
+      case ConnectionState.ERROR_INTERNAL:
         return (
           <CloseCircleOutlined style={{ color: "#ff4d4f", fontSize: "16px" }} />
         );
 
-      case SyncConnectionState.CONNECTION_STATE_UNKNOWN:
+      case ConnectionState.UNKNOWN:
       default:
         return (
           <QuestionCircleOutlined
@@ -68,55 +68,55 @@ export const PeerStateConnectionStatusIcon = ({
     const baseMessage = `${peerState.peerInstanceId}: `;
 
     switch (peerState.state) {
-      case SyncConnectionState.CONNECTION_STATE_CONNECTED:
+      case ConnectionState.CONNECTED:
         return (
           baseMessage +
           "Connected" +
           (peerState.statusMessage ? ` - ${peerState.statusMessage}` : "")
         );
-      case SyncConnectionState.CONNECTION_STATE_PENDING:
+      case ConnectionState.PENDING:
         return (
           baseMessage +
           "Connecting..." +
           (peerState.statusMessage ? ` - ${peerState.statusMessage}` : "")
         );
 
-      case SyncConnectionState.CONNECTION_STATE_RETRY_WAIT:
+      case ConnectionState.RETRY_WAIT:
         return (
           baseMessage +
           "Retrying connection" +
           (peerState.statusMessage ? ` - ${peerState.statusMessage}` : "")
         );
 
-      case SyncConnectionState.CONNECTION_STATE_DISCONNECTED:
+      case ConnectionState.DISCONNECTED:
         return (
           baseMessage +
           "Disconnected" +
           (peerState.statusMessage ? ` - ${peerState.statusMessage}` : "")
         );
 
-      case SyncConnectionState.CONNECTION_STATE_ERROR_AUTH:
+      case ConnectionState.ERROR_AUTH:
         return (
           baseMessage +
           "Authentication error" +
           (peerState.statusMessage ? ` - ${peerState.statusMessage}` : "")
         );
 
-      case SyncConnectionState.CONNECTION_STATE_ERROR_PROTOCOL:
+      case ConnectionState.ERROR_PROTOCOL:
         return (
           baseMessage +
           "Protocol error" +
           (peerState.statusMessage ? ` - ${peerState.statusMessage}` : "")
         );
 
-      case SyncConnectionState.CONNECTION_STATE_ERROR_INTERNAL:
+      case ConnectionState.ERROR_INTERNAL:
         return (
           baseMessage +
           "Internal error" +
           (peerState.statusMessage ? ` - ${peerState.statusMessage}` : "")
         );
 
-      case SyncConnectionState.CONNECTION_STATE_UNKNOWN:
+      case ConnectionState.UNKNOWN:
       default:
         return (
           baseMessage +

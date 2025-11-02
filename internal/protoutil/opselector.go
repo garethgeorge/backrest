@@ -20,6 +20,7 @@ func OpSelectorToQuery(sel *v1.OpSelector) (oplog.Query, error) {
 		FlowID:                sel.FlowId,
 		InstanceID:            sel.InstanceId,
 		OriginalInstanceKeyid: sel.OriginalInstanceKeyid,
+		ModnoGte:              sel.ModnoGte,
 	}
 	if len(sel.Ids) > 0 && !reflect.DeepEqual(q, oplog.Query{}) {
 		return oplog.Query{}, errors.New("cannot specify both query and ids")

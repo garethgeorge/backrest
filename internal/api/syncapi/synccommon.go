@@ -2,17 +2,19 @@ package syncapi
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"slices"
+	"sync"
 	"time"
+	"unique"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
+	"github.com/garethgeorge/backrest/internal/oplog"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
-
-var maxSignatureAge = 5 * time.Minute
 
 func runSync(
 	ctx context.Context,
@@ -23,14 +25,11 @@ func runSync(
 	knownPeers []*v1.Multihost_Peer, // could be known hosts or authorized clients, doesn't matter. This is used to verify the handshake packet, authorization comes later.
 ) error {
 	// send the initial handshake packet to the peer to establish the connection.
-	go func() {
-		handshakePacket, err := createHandshakePacket(localInstanceID, localKey)
-		if err != nil {
-			commandStream.SendErrorAndTerminate(fmt.Errorf("creating handshake packet: %w", err))
-			return
-		}
-		commandStream.Send(handshakePacket)
-	}()
+	handshakePacket, err := createHandshakePacket(localInstanceID, localKey)
+	if err != nil {
+		return NewSyncErrorAuth(fmt.Errorf("creating handshake packet: %w", err))
+	}
+	commandStream.Send(handshakePacket)
 
 	// Wait for the handshake packet to be acknowledged by the peer.
 	handshake := commandStream.ReceiveWithinDuration(15 * time.Second)
@@ -62,31 +61,43 @@ func runSync(
 
 	for item := range commandStream.ReadChannel() {
 		switch item.GetAction().(type) {
-		case *v1.SyncStreamItem_Heartbeat:
+		case *v1sync.SyncStreamItem_Heartbeat:
 			if err := handler.HandleHeartbeat(ctx, commandStream, item.GetHeartbeat()); err != nil {
 				return fmt.Errorf("handling heartbeat: %w", err)
 			}
-		case *v1.SyncStreamItem_DiffOperations:
-			if err := handler.HandleDiffOperations(ctx, commandStream, item.GetDiffOperations()); err != nil {
-				return fmt.Errorf("handling diff operations: %w", err)
+		case *v1sync.SyncStreamItem_RequestOperations:
+			if err := handler.HandleRequestOperations(ctx, commandStream, item.GetRequestOperations()); err != nil {
+				return fmt.Errorf("handling request operations: %w", err)
 			}
-		case *v1.SyncStreamItem_SendOperations:
-			if err := handler.HandleSendOperations(ctx, commandStream, item.GetSendOperations()); err != nil {
-				return fmt.Errorf("handling send operations: %w", err)
+		case *v1sync.SyncStreamItem_ReceiveOperations:
+			if err := handler.HandleReceiveOperations(ctx, commandStream, item.GetReceiveOperations()); err != nil {
+				return fmt.Errorf("handling receive operations: %w", err)
 			}
-		case *v1.SyncStreamItem_SendConfig:
-			if err := handler.HandleSendConfig(ctx, commandStream, item.GetSendConfig()); err != nil {
-				return fmt.Errorf("handling send config: %w", err)
+		case *v1sync.SyncStreamItem_ReceiveConfig:
+			if err := handler.HandleReceiveConfig(ctx, commandStream, item.GetReceiveConfig()); err != nil {
+				return fmt.Errorf("handling receive config: %w", err)
 			}
-		case *v1.SyncStreamItem_SetConfig:
+		case *v1sync.SyncStreamItem_SetConfig:
 			if err := handler.HandleSetConfig(ctx, commandStream, item.GetSetConfig()); err != nil {
 				return fmt.Errorf("handling set config: %w", err)
 			}
-		case *v1.SyncStreamItem_ListResources:
-			if err := handler.HandleListResources(ctx, commandStream, item.GetListResources()); err != nil {
-				return fmt.Errorf("handling list resources: %w", err)
+		case *v1sync.SyncStreamItem_RequestResources:
+			if err := handler.HandleRequestResources(ctx, commandStream, item.GetRequestResources()); err != nil {
+				return fmt.Errorf("handling request resources: %w", err)
 			}
-		case *v1.SyncStreamItem_Throttle:
+		case *v1sync.SyncStreamItem_ReceiveResources:
+			if err := handler.HandleReceiveResources(ctx, commandStream, item.GetReceiveResources()); err != nil {
+				return fmt.Errorf("handling receive resources: %w", err)
+			}
+		case *v1sync.SyncStreamItem_RequestLog:
+			if err := handler.HandleRequestLog(ctx, commandStream, item.GetRequestLog()); err != nil {
+				return fmt.Errorf("handling request log: %w", err)
+			}
+		case *v1sync.SyncStreamItem_ReceiveLogData:
+			if err := handler.HandleReceiveLogData(ctx, commandStream, item.GetReceiveLogData()); err != nil {
+				return fmt.Errorf("handling receive log data: %w", err)
+			}
+		case *v1sync.SyncStreamItem_Throttle:
 			if err := handler.HandleThrottle(ctx, commandStream, item.GetThrottle()); err != nil {
 				return fmt.Errorf("handling throttle: %w", err)
 			}
@@ -97,89 +108,15 @@ func runSync(
 	return nil
 }
 
-func tryReceiveWithinDuration(ctx context.Context, receiveChan chan *v1.SyncStreamItem, receiveErrChan chan error, timeout time.Duration) (*v1.SyncStreamItem, error) {
-	if timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout)
-		defer cancel()
-	}
-
-	select {
-	case item := <-receiveChan:
-		return item, nil
-	case err := <-receiveErrChan:
-		return nil, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-}
-
-func createSignedMessage(payload []byte, identity *cryptoutil.PrivateKey) (*v1.SignedMessage, error) {
-	if len(payload) == 0 {
-		return nil, errors.New("payload must not be empty")
-	}
-
-	timestampMillis := time.Now().UnixMilli()
-
-	payloadWithTimestamp := make([]byte, 0, len(payload)+8)
-	binary.BigEndian.AppendUint64(payloadWithTimestamp, uint64(timestampMillis))
-	payloadWithTimestamp = append(payloadWithTimestamp, payload...)
-
-	signature, err := identity.Sign(payloadWithTimestamp)
-	if err != nil {
-		return nil, fmt.Errorf("signing payload: %w", err)
-	}
-
-	return &v1.SignedMessage{
-		Payload:         payload,
-		Signature:       signature,
-		Keyid:           identity.KeyID(),
-		TimestampMillis: timestampMillis,
-	}, nil
-}
-
-func verifySignedMessage(msg *v1.SignedMessage, publicKey *cryptoutil.PublicKey) error {
-	if msg == nil {
-		return errors.New("signed message must not be nil")
-	}
-	if len(msg.GetPayload()) == 0 {
-		return errors.New("signed message payload must not be empty")
-	}
-	if len(msg.GetSignature()) == 0 {
-		return errors.New("signed message signature must not be empty")
-	}
-	if len(msg.GetKeyid()) == 0 {
-		return errors.New("signed message key ID must not be empty")
-	}
-
-	if publicKey.KeyID() != msg.GetKeyid() {
-		return fmt.Errorf("public key ID mismatch: expected %s, got %s", publicKey.KeyID(), msg.GetKeyid())
-	}
-
-	payloadWithTimestamp := make([]byte, 0, len(msg.GetPayload())+8)
-	binary.BigEndian.AppendUint64(payloadWithTimestamp, uint64(msg.GetTimestampMillis()))
-	payloadWithTimestamp = append(payloadWithTimestamp, msg.GetPayload()...)
-
-	if err := publicKey.Verify(payloadWithTimestamp, msg.GetSignature()); err != nil {
-		return fmt.Errorf("verifying signed message: %w", err)
-	}
-
-	if time.Since(time.UnixMilli(msg.GetTimestampMillis())) > maxSignatureAge {
-		return fmt.Errorf("signature is too old, max age is %s. Is the clock out of sync?", maxSignatureAge)
-	}
-
-	return nil
-}
-
-func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey) (*v1.SyncStreamItem, error) {
+func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey) (*v1sync.SyncStreamItem, error) {
 	signedMessage, err := createSignedMessage([]byte(instanceID), identity)
 	if err != nil {
 		return nil, fmt.Errorf("signing instance ID: %w", err)
 	}
 
-	return &v1.SyncStreamItem{
-		Action: &v1.SyncStreamItem_Handshake{
-			Handshake: &v1.SyncStreamItem_SyncActionHandshake{
+	return &v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_Handshake{
+			Handshake: &v1sync.SyncStreamItem_SyncActionHandshake{
 				ProtocolVersion: SyncProtocolVersion,
 				InstanceId:      signedMessage,
 				PublicKey:       identity.PublicKeyProto(),
@@ -193,7 +130,7 @@ func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey) (
 //   - that the public key's ID is as attested in the handshake packet e.g. matches handshake.PublicKey.Keyid
 //
 // To authenticate, the caller must then check that the public key is trusted by checking the key ID against a local list.
-func verifyHandshakePacket(item *v1.SyncStreamItem) (*cryptoutil.PublicKey, error) {
+func verifyHandshakePacket(item *v1sync.SyncStreamItem) (*cryptoutil.PublicKey, error) {
 	handshake := item.GetHandshake()
 	if handshake == nil {
 		return nil, fmt.Errorf("empty or nil handshake, handshake packet must be sent first")
@@ -225,7 +162,7 @@ func verifyHandshakePacket(item *v1.SyncStreamItem) (*cryptoutil.PublicKey, erro
 
 // authorizeHandshakeAsPeer checks that the handshake packet has the expected key ID and instance ID.
 // If this succeeds and the handshake is verified, then it is safe to assume the identity we are talking to.
-func authorizeHandshakeAsPeer(item *v1.SyncStreamItem, peer *v1.Multihost_Peer) error {
+func authorizeHandshakeAsPeer(item *v1sync.SyncStreamItem, peer *v1.Multihost_Peer) error {
 	handshake := item.GetHandshake()
 	if handshake == nil {
 		return fmt.Errorf("empty or nil handshake, handshake packet must be sent first")
@@ -248,9 +185,9 @@ func sendHeartbeats(ctx context.Context, stream *bidiSyncCommandStream, interval
 	for {
 		select {
 		case <-ticker.C:
-			stream.Send(&v1.SyncStreamItem{
-				Action: &v1.SyncStreamItem_Heartbeat{
-					Heartbeat: &v1.SyncStreamItem_SyncActionHeartbeat{},
+			stream.Send(&v1sync.SyncStreamItem{
+				Action: &v1sync.SyncStreamItem_Heartbeat{
+					Heartbeat: &v1sync.SyncStreamItem_SyncActionHeartbeat{},
 				},
 			})
 		case <-ctx.Done():
@@ -263,45 +200,178 @@ func sendHeartbeats(ctx context.Context, stream *bidiSyncCommandStream, interval
 // the handler does not need to be thread safe as it is guaranteed to be called from a single thread.
 type syncSessionHandler interface {
 	OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error
-	HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionHeartbeat) error
-	HandleDiffOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionDiffOperations) error
-	HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendOperations) error
-	HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendConfig) error
-	HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSetConfig) error
-	HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionListResources) error
-	HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionThrottle) error
+	HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error
+	HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error
+	HandleReceiveOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveOperations) error
+	HandleReceiveConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveConfig) error
+	HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSetConfig) error
+	HandleRequestResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestResources) error
+	HandleReceiveResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveResources) error
+	HandleRequestLog(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestLog) error
+	HandleReceiveLogData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveLogData) error
+	HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionThrottle) error
 }
 
 type unimplementedSyncSessionHandler struct{}
+
+var _ syncSessionHandler = (*unimplementedSyncSessionHandler)(nil)
 
 func (h *unimplementedSyncSessionHandler) OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error {
 	return NewSyncErrorProtocol(fmt.Errorf("OnConnectionEstablished not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionHeartbeat) error {
+func (h *unimplementedSyncSessionHandler) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error {
 	return NewSyncErrorProtocol(fmt.Errorf("HandleHeartbeat not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleDiffOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionDiffOperations) error {
-	return NewSyncErrorProtocol(fmt.Errorf("HandleDiffOperations not implemented"))
+func (h *unimplementedSyncSessionHandler) HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleRequestOperations not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendOperations) error {
-	return NewSyncErrorProtocol(fmt.Errorf("HandleSendOperations not implemented"))
+func (h *unimplementedSyncSessionHandler) HandleReceiveOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveOperations) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleReceiveOperations not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendConfig) error {
-	return NewSyncErrorProtocol(fmt.Errorf("HandleSendConfig not implemented"))
+func (h *unimplementedSyncSessionHandler) HandleReceiveConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveConfig) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleReceiveConfig not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSetConfig) error {
+func (h *unimplementedSyncSessionHandler) HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSetConfig) error {
 	return NewSyncErrorProtocol(fmt.Errorf("HandleSetConfig not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionListResources) error {
-	return NewSyncErrorProtocol(fmt.Errorf("HandleListResources not implemented"))
+func (h *unimplementedSyncSessionHandler) HandleRequestResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestResources) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleRequestResources not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionThrottle) error {
+func (h *unimplementedSyncSessionHandler) HandleReceiveResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveResources) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleReceiveResources not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleRequestLog(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestLog) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleRequestLog not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleReceiveLogData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveLogData) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleReceiveLogData not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionThrottle) error {
 	return NewSyncErrorProtocol(fmt.Errorf("HandleThrottle not implemented"))
+}
+
+type remoteOpIdCacheKey struct {
+	OriginalInstanceKeyid unique.Handle[string]
+	ID                    int64
+}
+
+// operationIdMapper
+type remoteOpIDMapper struct {
+	oplog *oplog.OpLog
+
+	opCacheMu sync.Mutex
+	opIDLru   *lru.Cache[remoteOpIdCacheKey, int64]
+	flowIDLru *lru.Cache[remoteOpIdCacheKey, int64]
+}
+
+func newRemoteOpIDMapper(oplog *oplog.OpLog, cacheSize int) (*remoteOpIDMapper, error) {
+	opIDLru, err := lru.New[remoteOpIdCacheKey, int64](cacheSize)
+	if err != nil {
+		return nil, fmt.Errorf("creating opID LRU cache: %w", err)
+	}
+	flowIDLru, err := lru.New[remoteOpIdCacheKey, int64](cacheSize)
+	if err != nil {
+		return nil, fmt.Errorf("creating flowID LRU cache: %w", err)
+	}
+	return &remoteOpIDMapper{
+		oplog:     oplog,
+		opIDLru:   opIDLru,
+		flowIDLru: flowIDLru,
+	}, nil
+}
+
+// translateOpID translates a remote operation ID to a local one.
+func (om *remoteOpIDMapper) translateOpID(originalInstanceKeyid string, originalOpId int64) (int64, error) {
+	if originalOpId == 0 {
+		return 0, nil
+	}
+
+	cacheKey := remoteOpIdCacheKey{
+		OriginalInstanceKeyid: unique.Make(originalInstanceKeyid),
+		ID:                    originalOpId,
+	}
+
+	// Check cache first
+	if translatedID, ok := om.opIDLru.Get(cacheKey); ok {
+		return translatedID, nil
+	}
+
+	// Cache miss - query the database
+	op, err := om.oplog.FindOneMetadata(oplog.Query{
+		OriginalInstanceKeyid: &originalInstanceKeyid,
+		OriginalID:            &originalOpId,
+	})
+	if err != nil {
+		if errors.Is(err, oplog.ErrNoResults) {
+			return 0, nil // No results means the ID is not found
+		}
+		return 0, err // Other errors should be propagated
+	}
+
+	// Cache the result and return
+	translatedID := op.ID
+	om.opIDLru.Add(cacheKey, translatedID)
+	return translatedID, nil
+}
+
+// translateFlowID translates a remote flow ID to a local one.
+func (om *remoteOpIDMapper) translateFlowID(originalInstanceKeyid string, originalFlowId int64) (int64, error) {
+	if originalFlowId == 0 {
+		return 0, nil
+	}
+
+	cacheKey := remoteOpIdCacheKey{
+		OriginalInstanceKeyid: unique.Make(originalInstanceKeyid),
+		ID:                    originalFlowId,
+	}
+
+	// Check cache first
+	if translatedID, ok := om.flowIDLru.Get(cacheKey); ok {
+		return translatedID, nil
+	}
+
+	// Cache miss - query the database
+	op, err := om.oplog.FindOneMetadata(oplog.Query{
+		OriginalInstanceKeyid: &originalInstanceKeyid,
+		OriginalFlowID:        &originalFlowId,
+	})
+	if err != nil {
+		if errors.Is(err, oplog.ErrNoResults) {
+			return 0, nil // No results means the ID is not found
+		}
+		return 0, err // Other errors should be propagated
+	}
+
+	// Cache the result and return
+	translatedID := op.FlowID
+	om.flowIDLru.Add(cacheKey, translatedID)
+	return translatedID, nil
+}
+
+func (om *remoteOpIDMapper) TranslateOpIdAndFlowID(originalInstanceKeyid string, originalOpId int64, originalFlowId int64) (int64, int64, error) {
+	om.opCacheMu.Lock()
+	defer om.opCacheMu.Unlock()
+
+	// Translate opID
+	opID, err := om.translateOpID(originalInstanceKeyid, originalOpId)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Translate flowID
+	flowID, err := om.translateFlowID(originalInstanceKeyid, originalFlowId)
+	if err != nil {
+		return 0, 0, err
+	}
+	return opID, flowID, nil
 }

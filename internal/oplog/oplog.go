@@ -20,6 +20,7 @@ var (
 	ErrStopIteration = errors.New("stop iteration")
 	ErrNotExist      = errors.New("operation does not exist")
 	ErrExist         = errors.New("operation already exists")
+	ErrNoResults     = errors.New("no results found")
 
 	NullOPID = int64(0)
 )
@@ -70,8 +71,44 @@ func (o *OpLog) Query(q Query, f func(*v1.Operation) error) error {
 	return o.store.Query(q, f)
 }
 
+func (o *OpLog) FindOne(q Query) (*v1.Operation, error) {
+	var found *v1.Operation
+	err := o.store.Query(q, func(op *v1.Operation) error {
+		if found != nil {
+			return errors.New("more than one operation found")
+		}
+		found = op
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if found == nil {
+		return nil, ErrNoResults
+	}
+	return found, nil
+}
+
 func (o *OpLog) QueryMetadata(q Query, f func(OpMetadata) error) error {
 	return o.store.QueryMetadata(q, f)
+}
+
+func (o *OpLog) FindOneMetadata(q Query) (OpMetadata, error) {
+	var found OpMetadata
+	err := o.store.QueryMetadata(q, func(op OpMetadata) error {
+		if found.ID != 0 {
+			return errors.New("more than one operation found")
+		}
+		found = op
+		return nil
+	})
+	if err != nil {
+		return OpMetadata{}, err
+	}
+	if found.ID == 0 {
+		return OpMetadata{}, ErrNoResults
+	}
+	return found, nil
 }
 
 func (o *OpLog) Subscribe(q Query, f *Subscription) {
@@ -98,14 +135,10 @@ func (o *OpLog) Get(opID int64) (*v1.Operation, error) {
 
 func (o *OpLog) Add(ops ...*v1.Operation) error {
 	for _, o := range ops {
-		if o.Id != 0 {
-			return errors.New("operation already has an ID, OpLog.Add is expected to set the ID")
-		}
-		if o.Modno == 0 {
-			o.Modno = NewRandomModno(0)
+		if o.Id != 0 || o.Modno != 0 {
+			return errors.New("operation already has an ID or Modno, OpLog.Add is expected to set the ID/Modno")
 		}
 	}
-
 	if err := o.store.Add(ops...); err != nil {
 		return err
 	}
@@ -119,7 +152,6 @@ func (o *OpLog) Update(ops ...*v1.Operation) error {
 		if o.Id == 0 {
 			return errors.New("operation does not have an ID, OpLog.Update is expected to have an ID")
 		}
-		o.Modno = NewRandomModno(o.Modno)
 	}
 
 	if err := o.store.Update(ops...); err != nil {
@@ -127,24 +159,6 @@ func (o *OpLog) Update(ops ...*v1.Operation) error {
 	}
 
 	o.notify(ops, OPERATION_UPDATED)
-	return nil
-}
-
-// Set is an alias for Update that does not increment the modno, provided for use by the syncapi.
-func (o *OpLog) Set(op *v1.Operation) error {
-	var err error
-	if op.Id == 0 {
-		err = o.store.Add(op)
-	} else {
-		err = o.store.Update(op)
-		if errors.Is(err, ErrNotExist) {
-			err = o.store.Add(op)
-		}
-	}
-	if err != nil {
-		return err
-	}
-	o.notify([]*v1.Operation{op}, OPERATION_UPDATED)
 	return nil
 }
 
@@ -162,6 +176,10 @@ func (o *OpLog) Transform(q Query, f func(*v1.Operation) (*v1.Operation, error))
 	return o.store.Transform(q, f)
 }
 
+func (o *OpLog) GetHighestOpIDAndModno(q Query) (int64, int64, error) {
+	return o.store.GetHighestOpIDAndModno(q)
+}
+
 type OpStore interface {
 	// Query returns all operations that match the query.
 	Query(q Query, f func(*v1.Operation) error) error
@@ -170,6 +188,8 @@ type OpStore interface {
 	QueryMetadata(q Query, f func(OpMetadata) error) error
 	// Get returns the operation with the given ID.
 	Get(opID int64) (*v1.Operation, error)
+	// GetHighestOpIDAndModno returns the highest operation ID and modno in the store, used for synchronization.
+	GetHighestOpIDAndModno(q Query) (int64, int64, error)
 	// Add adds the given operations to the store.
 	Add(op ...*v1.Operation) error
 	// Update updates the given operations in the store.

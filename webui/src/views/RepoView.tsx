@@ -16,10 +16,13 @@ import { useConfig } from "../components/ConfigProvider";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { create } from "@bufbuild/protobuf";
+import { RepoProps } from "../state/peerstates";
 
 const StatsPanel = React.lazy(() => import("../components/StatsPanel"));
 
-export const RepoView = ({ repo }: React.PropsWithChildren<{ repo: Repo }>) => {
+export const RepoView = ({
+  repo,
+}: React.PropsWithChildren<{ repo: RepoProps }>) => {
   const [config, _] = useConfig();
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;

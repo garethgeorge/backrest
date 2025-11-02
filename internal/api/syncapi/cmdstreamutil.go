@@ -8,32 +8,32 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
 )
 
 type syncCommandStreamTrait interface {
-	Send(item *v1.SyncStreamItem) error
-	Receive() (*v1.SyncStreamItem, error)
+	Send(item *v1sync.SyncStreamItem) error
+	Receive() (*v1sync.SyncStreamItem, error)
 }
 
-var _ syncCommandStreamTrait = (*connect.BidiStream[v1.SyncStreamItem, v1.SyncStreamItem])(nil)          // Ensure that connect.BidiStream implements syncCommandStreamTrait
-var _ syncCommandStreamTrait = (*connect.BidiStreamForClient[v1.SyncStreamItem, v1.SyncStreamItem])(nil) // Ensure that connect.BidiStreamForClient implements syncCommandStreamTrait
+var _ syncCommandStreamTrait = (*connect.BidiStream[v1sync.SyncStreamItem, v1sync.SyncStreamItem])(nil)          // Ensure that connect.BidiStream implements syncCommandStreamTrait
+var _ syncCommandStreamTrait = (*connect.BidiStreamForClient[v1sync.SyncStreamItem, v1sync.SyncStreamItem])(nil) // Ensure that connect.BidiStreamForClient implements syncCommandStreamTrait
 
 type bidiSyncCommandStream struct {
-	sendChan             chan *v1.SyncStreamItem
-	recvChan             chan *v1.SyncStreamItem
+	sendChan             chan *v1sync.SyncStreamItem
+	recvChan             chan *v1sync.SyncStreamItem
 	terminateWithErrChan chan error
 }
 
 func newBidiSyncCommandStream() *bidiSyncCommandStream {
 	return &bidiSyncCommandStream{
-		sendChan:             make(chan *v1.SyncStreamItem, 64), // Buffered channel to allow sending items without blocking
-		recvChan:             make(chan *v1.SyncStreamItem, 1),
+		sendChan:             make(chan *v1sync.SyncStreamItem, 64), // Buffered channel to allow sending items without blocking
+		recvChan:             make(chan *v1sync.SyncStreamItem, 1),
 		terminateWithErrChan: make(chan error, 1),
 	}
 }
 
-func (s *bidiSyncCommandStream) Send(item *v1.SyncStreamItem) {
+func (s *bidiSyncCommandStream) Send(item *v1sync.SyncStreamItem) {
 	select {
 	case s.sendChan <- item:
 	default:
@@ -49,9 +49,6 @@ func (s *bidiSyncCommandStream) Send(item *v1.SyncStreamItem) {
 // SendErrorAndTerminate sends an error to the termination channel.
 // If the error is nil, it terminates only.
 func (s *bidiSyncCommandStream) SendErrorAndTerminate(err error) {
-	if err == nil {
-		return
-	}
 	select {
 	case s.terminateWithErrChan <- err:
 	default:
@@ -60,11 +57,11 @@ func (s *bidiSyncCommandStream) SendErrorAndTerminate(err error) {
 	}
 }
 
-func (s *bidiSyncCommandStream) ReadChannel() chan *v1.SyncStreamItem {
+func (s *bidiSyncCommandStream) ReadChannel() chan *v1sync.SyncStreamItem {
 	return s.recvChan
 }
 
-func (s *bidiSyncCommandStream) ReceiveWithinDuration(d time.Duration) *v1.SyncStreamItem {
+func (s *bidiSyncCommandStream) ReceiveWithinDuration(d time.Duration) *v1sync.SyncStreamItem {
 	select {
 	case item := <-s.recvChan:
 		return item

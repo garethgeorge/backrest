@@ -1,17 +1,17 @@
 package syncapi
 
 import (
-	"database/sql"
 	"testing"
 	"time"
 
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
+	"github.com/garethgeorge/backrest/internal/kvstore"
 	"github.com/google/go-cmp/cmp"
-	_ "github.com/ncruces/go-sqlite3/driver"
-	"github.com/ncruces/go-sqlite3/vfs/memdb"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func PeerStateManagersForTest(t testing.TB) map[string]PeerStateManager {
-	dbpool := newDbForTest(t)
+	dbpool := kvstore.NewInMemorySqliteDbForKvStore(t)
 	t.Cleanup(func() {
 		dbpool.Close()
 	})
@@ -32,15 +32,30 @@ func TestPeerStateManager_GetSet(t *testing.T) {
 			t.Parallel()
 			keyID := "testKey"
 			state := &PeerState{
-				InstanceID:    "testInstance",
-				KeyID:         keyID,
-				LastHeartbeat: time.Now().Round(time.Millisecond),
-				KnownRepos:    map[string]struct{}{"repo1": {}, "repo2": {}},
-				KnownPlans:    map[string]struct{}{"plan1": {}, "plan2": {}},
+				InstanceID:             "testInstance",
+				KeyID:                  keyID,
+				LastHeartbeat:          time.Now().Round(time.Millisecond),
+				ConnectionState:        v1sync.ConnectionState_CONNECTION_STATE_CONNECTED,
+				ConnectionStateMessage: "hello world!",
+				KnownRepos: map[string]*v1sync.RepoMetadata{
+					"repo1": {
+						Id:   "repo1",
+						Guid: "guid1",
+					},
+					"repo2": {
+						Id:   "repo2",
+						Guid: "guid2",
+					},
+				},
+				KnownPlans: map[string]*v1sync.PlanMetadata{
+					"plan1": {
+						Id: "plan1",
+					},
+				},
 			}
 			psm.SetPeerState(keyID, state)
 			gotState := psm.GetPeerState(keyID)
-			if diff := cmp.Diff(state, gotState, cmp.AllowUnexported(PeerState{})); diff != "" {
+			if diff := cmp.Diff(state, gotState, cmp.AllowUnexported(PeerState{}), protocmp.Transform()); diff != "" {
 				t.Errorf("unexpected diff: %v", diff)
 			}
 		})
@@ -88,13 +103,4 @@ func TestPeerStateManager_OnStateChanged(t *testing.T) {
 			}
 		})
 	}
-}
-
-func newDbForTest(t testing.TB) *sql.DB {
-	t.Helper()
-	dbpool, err := sql.Open("sqlite3", memdb.TestDB(t))
-	if err != nil {
-		t.Fatalf("error creating sqlite pool: %s", err)
-	}
-	return dbpool
 }

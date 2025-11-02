@@ -187,3 +187,22 @@ func (m *MemStore) Update(op ...*v1.Operation) error {
 	}
 	return nil
 }
+
+func (m *MemStore) GetHighestOpIDAndModno(q oplog.Query) (int64, int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var highestID int64
+	var highestModno int64
+	for id, op := range m.operations {
+		if !q.Match(op) {
+			continue
+		}
+		if id > highestID {
+			highestID = id
+		}
+		if op.Modno > highestModno {
+			highestModno = op.Modno
+		}
+	}
+	return highestID, highestModno, nil
+}

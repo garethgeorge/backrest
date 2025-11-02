@@ -286,6 +286,108 @@ func TestReopenStore(t *testing.T) {
 	}
 }
 
+func TestFindLogsWithParent(t *testing.T) {
+	t.Parallel()
+
+	ls, err := NewLogStore(t.TempDir())
+	if err != nil {
+		t.Fatalf("new log store failed: %v", err)
+	}
+	defer ls.Close()
+
+	// Setup: Create logs with different parent operation IDs
+	type logEntry struct {
+		id       string
+		parentID int64
+		content  string
+	}
+
+	logs := []logEntry{
+		{"log1", 100, "content for log1"},
+		{"log2", 100, "content for log2"},
+		{"log3", 100, "content for log3"},
+		{"log4", 200, "content for log4"},
+		{"log5", 200, "content for log5"},
+		{"log6", 0, "content for log6"},
+		{"log7", 300, "content for log7"},
+	}
+
+	// Create all the logs
+	for _, entry := range logs {
+		w, err := ls.Create(entry.id, entry.parentID, 0)
+		if err != nil {
+			t.Fatalf("create log %q failed: %v", entry.id, err)
+		}
+		if _, err := w.Write([]byte(entry.content)); err != nil {
+			t.Fatalf("write to log %q failed: %v", entry.id, err)
+		}
+		if err := w.Close(); err != nil {
+			t.Fatalf("close log %q failed: %v", entry.id, err)
+		}
+	}
+
+	// Test cases
+	tests := []struct {
+		name         string
+		parentOpID   int64
+		expectedLogs []string
+	}{
+		{
+			name:         "find logs for parent 100",
+			parentOpID:   100,
+			expectedLogs: []string{"log1", "log2", "log3"},
+		},
+		{
+			name:         "find logs for parent 200",
+			parentOpID:   200,
+			expectedLogs: []string{"log4", "log5"},
+		},
+		{
+			name:         "find logs for parent 0",
+			parentOpID:   0,
+			expectedLogs: []string{"log6"},
+		},
+		{
+			name:         "find logs for parent 300",
+			parentOpID:   300,
+			expectedLogs: []string{"log7"},
+		},
+		{
+			name:         "find logs for non-existent parent",
+			parentOpID:   999,
+			expectedLogs: []string{},
+		},
+		{
+			name:         "find logs for negative parent ID",
+			parentOpID:   -1,
+			expectedLogs: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			foundLogs, err := ls.FindLogsWithParent(tt.parentOpID)
+			if err != nil {
+				t.Fatalf("FindLogsWithParent failed: %v", err)
+			}
+
+			if len(foundLogs) != len(tt.expectedLogs) {
+				t.Fatalf("expected %d logs for parent %d, got %d", len(tt.expectedLogs), tt.parentOpID, len(foundLogs))
+			}
+
+			// Sort both slices for comparison
+			slices.Sort(foundLogs)
+			expectedSorted := make([]string, len(tt.expectedLogs))
+			copy(expectedSorted, tt.expectedLogs)
+			slices.Sort(expectedSorted)
+
+			if !slices.Equal(foundLogs, expectedSorted) {
+				t.Fatalf("expected logs %v for parent %d, got %v", expectedSorted, tt.parentOpID, foundLogs)
+			}
+		})
+	}
+}
+
 func getInprogressEntries(t *testing.T, ls *LogStore) []os.DirEntry {
 	entries, err := os.ReadDir(ls.inprogressDir)
 	if err != nil {

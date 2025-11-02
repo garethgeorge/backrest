@@ -335,6 +335,11 @@ func TestListOperation(t *testing.T) {
 				"foo-op",
 			},
 		},
+		{
+			name:     "list modno gte",
+			query:    oplog.Query{}.SetModnoGte(3),
+			expected: []string{"op3", "foo-op"},
+		},
 	}
 
 	for name, store := range StoresForTest(t) {
@@ -787,6 +792,117 @@ func TestQueryMetadata(t *testing.T) {
 			}); diff != "" {
 				t.Errorf("unexpected diff: %v", diff)
 			}
+		})
+	}
+}
+
+func TestGetHighestOpIDAndModno(t *testing.T) {
+	t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			log, err := oplog.NewOpLog(store)
+			if err != nil {
+				t.Fatalf("error creating oplog: %v", err)
+			}
+
+			t.Run("empty store", func(t *testing.T) {
+				highestID, highestModno, err := store.GetHighestOpIDAndModno(oplog.Query{})
+				if err != nil {
+					t.Fatalf("error getting highest ID and modno: %v", err)
+				}
+				if highestID != 0 {
+					t.Errorf("expected highest ID 0, got %d", highestID)
+				}
+				if highestModno != 0 {
+					t.Errorf("expected highest modno 0, got %d", highestModno)
+				}
+			})
+
+			// Add operations with different plans and repos
+			ops := []*v1.Operation{
+				{
+					UnixTimeStartMs: 1000,
+					PlanId:          "plan1",
+					RepoId:          "repo1",
+					RepoGuid:        "repo1-guid",
+					InstanceId:      "instance1",
+					Op:              &v1.Operation_OperationBackup{},
+				},
+				{
+					UnixTimeStartMs: 2000,
+					PlanId:          "plan1",
+					RepoId:          "repo1",
+					RepoGuid:        "repo1-guid",
+					InstanceId:      "instance1",
+					Op:              &v1.Operation_OperationBackup{},
+				},
+				{
+					UnixTimeStartMs: 3000,
+					PlanId:          "plan2",
+					RepoId:          "repo2",
+					RepoGuid:        "repo2-guid",
+					InstanceId:      "instance2",
+					Op:              &v1.Operation_OperationBackup{},
+				},
+			}
+
+			for _, op := range ops {
+				if err := log.Add(op); err != nil {
+					t.Fatalf("error adding operation: %v", err)
+				}
+			}
+
+			t.Run("all operations", func(t *testing.T) {
+				highestID, highestModno, err := store.GetHighestOpIDAndModno(oplog.Query{})
+				if err != nil {
+					t.Fatalf("error getting highest ID and modno: %v", err)
+				}
+				if highestID != ops[2].Id {
+					t.Errorf("expected highest ID %d, got %d", ops[2].Id, highestID)
+				}
+				if highestModno != ops[2].Modno {
+					t.Errorf("expected highest modno %d, got %d", ops[2].Modno, highestModno)
+				}
+			})
+
+			t.Run("filtered by plan", func(t *testing.T) {
+				highestID, highestModno, err := store.GetHighestOpIDAndModno(oplog.Query{}.SetPlanID("plan1"))
+				if err != nil {
+					t.Fatalf("error getting highest ID and modno: %v", err)
+				}
+				if highestID != ops[1].Id {
+					t.Errorf("expected highest ID %d, got %d", ops[1].Id, highestID)
+				}
+				if highestModno != ops[1].Modno {
+					t.Errorf("expected highest modno %d, got %d", ops[1].Modno, highestModno)
+				}
+			})
+
+			t.Run("filtered by repo", func(t *testing.T) {
+				highestID, highestModno, err := store.GetHighestOpIDAndModno(oplog.Query{}.SetRepoGUID("repo2-guid"))
+				if err != nil {
+					t.Fatalf("error getting highest ID and modno: %v", err)
+				}
+				if highestID != ops[2].Id {
+					t.Errorf("expected highest ID %d, got %d", ops[2].Id, highestID)
+				}
+				if highestModno != ops[2].Modno {
+					t.Errorf("expected highest modno %d, got %d", ops[2].Modno, highestModno)
+				}
+			})
+
+			t.Run("no matching operations", func(t *testing.T) {
+				highestID, highestModno, err := store.GetHighestOpIDAndModno(oplog.Query{}.SetPlanID("nonexistent"))
+				if err != nil {
+					t.Fatalf("error getting highest ID and modno: %v", err)
+				}
+				if highestID != 0 {
+					t.Errorf("expected highest ID 0, got %d", highestID)
+				}
+				if highestModno != 0 {
+					t.Errorf("expected highest modno 0, got %d", highestModno)
+				}
+			})
 		})
 	}
 }
