@@ -17,6 +17,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
+	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
 	github.com/mattn/go-colorable v0.1.14
 	github.com/natefinch/atomic v1.0.1
 	github.com/ncruces/go-sqlite3 v0.29.0
