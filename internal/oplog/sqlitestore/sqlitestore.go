@@ -135,13 +135,17 @@ func (m *SqliteStore) init() error {
 	if err := applySqliteMigrations(m, m.dbpool); err != nil {
 		return err
 	}
-
-	highestID, highestModno, err := m.GetHighestOpIDAndModno(oplog.Query{}.SetOriginalInstanceKeyid(""))
+	// highestOpID from all instances
+	highestID, _, err := m.GetHighestOpIDAndModno(oplog.Query{})
 	if err != nil {
 		return err
 	}
-	m.highestOpID.Store(highestID)
+	_, highestModno, err := m.GetHighestOpIDAndModno(oplog.Query{}.SetOriginalInstanceKeyid(""))
+	if err != nil {
+		return err
+	}
 	m.highestModno.Store(highestModno)
+	m.highestOpID.Store(highestID)
 	return nil
 }
 

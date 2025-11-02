@@ -351,7 +351,7 @@ const getSidenavItems = (
     },
     ...configPlans.map((plan) => {
       const sel = create(OpSelectorSchema, {
-        instanceId: config.instance,
+        originalInstanceKeyid: "",
         planId: plan.id,
         repoGuid: reposById[plan.repo]?.guid,
       });
@@ -535,10 +535,6 @@ const getSidenavItems = (
 const IconForResource = ({ selector }: { selector: OpSelector }) => {
   const [status, setStatus] = useState(OperationStatus.STATUS_UNKNOWN);
   useEffect(() => {
-    if (!selector || !selector.instanceId || !selector.repoGuid) {
-      return;
-    }
-
     const load = async () => {
       setStatus(await getStatusForSelector(selector));
     };
