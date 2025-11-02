@@ -225,7 +225,7 @@ const selectorFieldMatchers: { [K in keyof OpSelector]: (op: Operation, sel: OpS
   instanceId: (op, sel) => op.instanceId === sel.instanceId,
   snapshotId: (op, sel) => op.snapshotId === sel.snapshotId,
   originalInstanceKeyid: (op, sel) => op.originalInstanceKeyid === sel.originalInstanceKeyid,
-  ids: (op: Operation, sel: OpSelector) => sel.ids.includes(op.id),
+  ids: (op: Operation, sel: OpSelector) => sel.ids.length === 0 || sel.ids.includes(op.id),
   ["$typeName"]: (op: Operation, sel: OpSelector): boolean => true, // $typeName is a proto property that isn't used for matching
 };
 
