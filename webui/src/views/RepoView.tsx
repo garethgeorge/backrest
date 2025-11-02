@@ -16,15 +16,9 @@ import { useConfig } from "../components/ConfigProvider";
 import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { create } from "@bufbuild/protobuf";
-import { SyncRepoMetadata } from "../../gen/ts/v1/syncservice_pb";
+import { RepoProps } from "../state/peerstates";
 
 const StatsPanel = React.lazy(() => import("../components/StatsPanel"));
-
-// Type intersection to combine properties from Repo and SyncRepoMetadata
-interface RepoProps {
-  id: string;
-  guid: string;
-}
 
 export const RepoView = ({
   repo,

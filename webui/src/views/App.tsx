@@ -34,7 +34,7 @@ import { getStatusForSelector, matchSelector } from "../state/logstate";
 import { Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { MainContentAreaTemplate } from "./MainContentArea";
 import { create } from "@bufbuild/protobuf";
-import { PeerState } from "../../gen/ts/v1/syncservice_pb";
+import { PeerState, RepoMetadata } from "../../gen/ts/v1sync/syncservice_pb";
 import { useSyncStates } from "../state/peerstates";
 const { Header, Sider } = Layout;
 
@@ -445,28 +445,30 @@ const getSidenavItems = (
       peerState: PeerState,
       peerConfig: Multihost_Peer
     ): Required<MenuProps>["items"][0] => {
-      const repos: MenuProps["items"] = peerState.knownRepos.map((repo) => {
-        const sel = create(OpSelectorSchema, {
-          originalInstanceKeyid: peerState.peerKeyid,
-          repoGuid: repo.guid,
-        });
+      const repos: MenuProps["items"] = peerState.knownRepos.map(
+        (repo: RepoMetadata) => {
+          const sel = create(OpSelectorSchema, {
+            originalInstanceKeyid: peerState.peerKeyid,
+            repoGuid: repo.guid,
+          });
 
-        return {
-          key: `repo-${peerState.peerKeyid}-${repo.guid}`,
-          icon: <IconForResource selector={sel} />,
-          label: (
-            <div
-              className="backrest visible-on-hover"
-              style={{ width: "100%", height: "100%" }}
-            >
-              {repo.id}
-            </div>
-          ),
-          onClick: async () => {
-            navigate(`/peer/${peerState.peerInstanceId}/repo/${repo.id}`);
-          },
-        };
-      });
+          return {
+            key: `repo-${peerState.peerKeyid}-${repo.guid}`,
+            icon: <IconForResource selector={sel} />,
+            label: (
+              <div
+                className="backrest visible-on-hover"
+                style={{ width: "100%", height: "100%" }}
+              >
+                {repo.id}
+              </div>
+            ),
+            onClick: async () => {
+              navigate(`/peer/${peerState.peerInstanceId}/repo/${repo.id}`);
+            },
+          };
+        }
+      );
 
       return {
         key: `peer-${peerState.peerKeyid}`,

@@ -17,7 +17,6 @@ import {
   SummaryDashboardResponse,
   SummaryDashboardResponse_Summary,
 } from "../../gen/ts/v1/service_pb";
-import { EmptySchema } from "../../gen/ts/types/value_pb";
 import { create } from "@bufbuild/protobuf";
 import { backrestService } from "../api";
 import { useAlertApi } from "../components/Alerts";
@@ -43,7 +42,7 @@ import { useNavigate } from "react-router";
 import { toJsonString } from "@bufbuild/protobuf";
 import { ConfigSchema, Multihost } from "../../gen/ts/v1/config_pb";
 import { useSyncStates } from "../state/peerstates";
-import { PeerState } from "../../gen/ts/v1/syncservice_pb";
+import { PeerState } from "../../gen/ts/v1sync/syncservice_pb";
 import { PeerStateConnectionStatusIcon } from "../components/SyncStateIcon";
 import { last } from "lodash";
 
@@ -64,7 +63,7 @@ export const SummaryDashboard = () => {
       }
 
       try {
-        const data = await backrestService.getSummaryDashboard(create(EmptySchema, {}));
+        const data = await backrestService.getSummaryDashboard({});
         setSummaryData(data);
       } catch (e) {
         alertApi.error("Failed to fetch summary data: " + e);

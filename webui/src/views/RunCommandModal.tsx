@@ -15,6 +15,7 @@ import { Repo } from "../../gen/ts/v1/config_pb";
 import { OperationListView } from "../components/OperationListView";
 import { create } from "@bufbuild/protobuf";
 import { useConfig } from "../components/ConfigProvider";
+import { RepoProps } from "../state/peerstates";
 
 interface Invocation {
   command: string;
@@ -22,7 +23,7 @@ interface Invocation {
   error: string;
 }
 
-export const RunCommandModal = ({ repo }: { repo: Repo }) => {
+export const RunCommandModal = ({ repo }: { repo: RepoProps }) => {
   const [config, _] = useConfig();
   const showModal = useShowModal();
   const alertApi = useAlertApi()!;

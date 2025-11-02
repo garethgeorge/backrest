@@ -29,7 +29,7 @@ import {
   Multihost_PeerSchema,
   Multihost_Permission_Type,
 } from "../../gen/ts/v1/config_pb";
-import { PeerState } from "../../gen/ts/v1/syncservice_pb";
+import { PeerState } from "../../gen/ts/v1sync/syncservice_pb";
 import { useSyncStates } from "../state/peerstates";
 import { PeerStateConnectionStatusIcon } from "../components/SyncStateIcon";
 
@@ -212,8 +212,7 @@ export const SettingsModal = () => {
                     peerStates={peerStates}
                   />
                 ),
-                /* hidden until multihost is stable */
-                style: { display: "none" },
+                // style: { display: "none" },
               },
               {
                 key: "last",
@@ -568,7 +567,7 @@ const PeerFormListItem: React.FC<{
             <Input placeholder="e.g. my-backup-server" />
           </Form.Item>
         </Col>
-        <Col span={10}>
+        <Col span={12}>
           <Form.Item
             name={[fieldName, "keyId"]}
             label="Key ID"
@@ -577,12 +576,15 @@ const PeerFormListItem: React.FC<{
             <Input placeholder="Public key identifier" />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col span={0}>
           <Form.Item
             name={[fieldName, "keyIdVerified"]}
             valuePropName="checked"
+            // At the moment, we require clients to explicitly provide keys so there's nothing implicit. Manually checking the box doesn't add much value.
+            // It will be more useful if we automate fetching keyids from known hosts in the future / provide a "connection token" like mechanism for easier setup.
+            hidden={true}
           >
-            <Checkbox>Verified</Checkbox>
+            <Checkbox defaultChecked={true}>Verified</Checkbox>
           </Form.Item>
         </Col>
       </Row>
@@ -607,12 +609,15 @@ const PeerFormListItem: React.FC<{
         </Row>
       )}
 
-      <PeerPermissionsTile
-        form={form}
-        fieldName={fieldName}
-        listType={listType}
-        config={config}
-      />
+      {/* No meaningful permissions to grant to clients today, only show permissions UI for known hosts */}
+      {isKnownHost ? (
+        <PeerPermissionsTile
+          form={form}
+          fieldName={fieldName}
+          listType={listType}
+          config={config}
+        />
+      ) : null}
     </div>
   );
 };

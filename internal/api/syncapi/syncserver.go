@@ -62,16 +62,6 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		zap.S().Errorf("sync handler stream error: %v", err)
 		var syncErr *SyncError
 		if errors.As(err, &syncErr) {
-			if sessionHandler.peer != nil {
-				peerState := h.mgr.peerStateManager.GetPeerState(sessionHandler.peer.Keyid).Clone()
-				if peerState == nil {
-					peerState = newPeerState(sessionHandler.peer.InstanceId, sessionHandler.peer.Keyid)
-				}
-				peerState.ConnectionState = syncErr.State
-				peerState.ConnectionStateMessage = syncErr.Message.Error()
-				peerState.LastHeartbeat = time.Now()
-				h.mgr.peerStateManager.SetPeerState(sessionHandler.peer.Keyid, peerState)
-			}
 			switch syncErr.State {
 			case v1sync.ConnectionState_CONNECTION_STATE_ERROR_AUTH:
 				return connect.NewError(connect.CodePermissionDenied, syncErr.Message)
@@ -80,6 +70,25 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			default:
 				return connect.NewError(connect.CodeInternal, syncErr.Message)
 			}
+		}
+
+		if sessionHandler.peer != nil {
+			peerState := h.mgr.peerStateManager.GetPeerState(sessionHandler.peer.Keyid).Clone()
+			if peerState == nil {
+				peerState = newPeerState(sessionHandler.peer.InstanceId, sessionHandler.peer.Keyid)
+			}
+			if syncErr != nil {
+				peerState.ConnectionState = syncErr.State
+				peerState.ConnectionStateMessage = syncErr.Message.Error()
+			} else if errors.Is(err, context.Canceled) {
+				peerState.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_DISCONNECTED
+				peerState.ConnectionStateMessage = "lost connection"
+			} else {
+				peerState.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_DISCONNECTED
+				peerState.ConnectionStateMessage = fmt.Sprintf("disconnected: %v", err)
+			}
+			peerState.LastHeartbeat = time.Now()
+			h.mgr.peerStateManager.SetPeerState(sessionHandler.peer.Keyid, peerState)
 		}
 	}
 

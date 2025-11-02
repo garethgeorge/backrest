@@ -19,7 +19,7 @@ const subscribers: ((event?: OperationEvent, err?: Error) => void)[] = [];
   while (true) {
     let nextConnWaitUntil = new Date().getTime() + 5000;
     try {
-      for await (const event of backrestService.getOperationEvents(create(EmptySchema, {}))) {
+      for await (const event of backrestService.getOperationEvents({})) {
         console.log("operation event", event);
         subscribers.forEach((subscriber) => subscriber(event, undefined));
       }
