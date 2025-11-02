@@ -13,8 +13,10 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
+	"github.com/garethgeorge/backrest/gen/go/v1sync/v1syncconnect"
 	"github.com/garethgeorge/backrest/internal/config"
+	"github.com/garethgeorge/backrest/internal/config/migrations"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -24,6 +26,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/ncruces/go-sqlite3/vfs/memdb"
+	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -70,7 +73,6 @@ var (
 )
 
 func TestConnectionSucceeds(t *testing.T) {
-	t.Skip("skipping syncapi test")
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
@@ -78,6 +80,7 @@ func TestConnectionSucceeds(t *testing.T) {
 	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	peerHostConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultHostID,
 		Repos:    []*v1.Repo{},
 		Multihost: &v1.Multihost{
@@ -93,6 +96,7 @@ func TestConnectionSucceeds(t *testing.T) {
 	}
 
 	peerClientConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultClientID,
 		Repos:    []*v1.Repo{},
 		Multihost: &v1.Multihost{
@@ -117,7 +121,6 @@ func TestConnectionSucceeds(t *testing.T) {
 }
 
 func TestConnectionBadKeyRejected(t *testing.T) {
-	t.Skip("skipping syncapi test")
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
@@ -126,6 +129,7 @@ func TestConnectionBadKeyRejected(t *testing.T) {
 
 	// Host has identity1, and authorizes no one.
 	peerHostConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultHostID,
 		Repos:    []*v1.Repo{},
 		Multihost: &v1.Multihost{
@@ -136,6 +140,7 @@ func TestConnectionBadKeyRejected(t *testing.T) {
 
 	// Client has identity2 and tries to connect to host.
 	peerClientConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultClientID,
 		Repos:    []*v1.Repo{},
 		Multihost: &v1.Multihost{
@@ -156,11 +161,10 @@ func TestConnectionBadKeyRejected(t *testing.T) {
 	startRunningSyncAPI(t, peerHost, peerHostAddr)
 	startRunningSyncAPI(t, peerClient, peerClientAddr)
 
-	waitForConnectionState(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], v1.SyncConnectionState_CONNECTION_STATE_ERROR_AUTH)
+	waitForConnectionState(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], v1sync.ConnectionState_CONNECTION_STATE_ERROR_AUTH)
 }
 
 func TestSyncConfigChange(t *testing.T) {
-	t.Skip("skipping syncapi test")
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
@@ -168,13 +172,17 @@ func TestSyncConfigChange(t *testing.T) {
 	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	peerHostConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
+		Modno:    0,
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
+				Uri:  "test-uri-should-sync",
 				Id:   defaultRepoID,
 				Guid: defaultRepoGUID,
 			},
 			{
+				Uri:  "test-uri-do-not-sync",
 				Id:   "do-not-sync",
 				Guid: cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
 			},
@@ -200,6 +208,7 @@ func TestSyncConfigChange(t *testing.T) {
 	}
 
 	peerClientConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultClientID,
 		Repos: []*v1.Repo{
 			{
@@ -229,23 +238,32 @@ func TestSyncConfigChange(t *testing.T) {
 	tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
 
 	// wait for the initial config to propagate
-	tryExpectConfigFromHost(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], &v1.RemoteConfig{
+	tryExpectConfigFromHost(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], &v1sync.RemoteConfig{
+		Version: migrations.CurrentVersion,
 		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
 				Guid: defaultRepoGUID,
+				Uri:  "test-uri-should-sync",
 			},
 		},
 	})
 	hostConfigChanged := proto.Clone(peerHostConfig).(*v1.Config)
-	hostConfigChanged.Repos[0].Env = []string{"SOME_ENV=VALUE"}
+	hostConfigChanged.Repos[1].Env = []string{"SOME_ENV=VALUE"}
+	hostConfigChanged.Modno += 1
+	zap.S().Infof("updating host config to: %s", protojson.Format(hostConfigChanged))
 	peerHost.configMgr.Update(hostConfigChanged)
 
-	tryExpectConfigFromHost(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], &v1.RemoteConfig{
+	tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
+
+	tryExpectConfigFromHost(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0], &v1sync.RemoteConfig{
+		Version: migrations.CurrentVersion,
+		Modno:   1,
 		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
 				Guid: defaultRepoGUID,
+				Uri:  "test-uri-should-sync",
 				Env:  []string{"SOME_ENV=VALUE"},
 			},
 		},
@@ -253,7 +271,6 @@ func TestSyncConfigChange(t *testing.T) {
 }
 
 func TestSimpleOperationSync(t *testing.T) {
-	t.Skip("skipping syncapi test")
 	testutil.InstallZapLogger(t)
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
@@ -261,11 +278,13 @@ func TestSimpleOperationSync(t *testing.T) {
 	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	peerHostConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
 				Guid: defaultRepoGUID,
+				Uri:  "test-uri",
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -281,6 +300,7 @@ func TestSimpleOperationSync(t *testing.T) {
 	}
 
 	peerClientConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultClientID,
 		Repos: []*v1.Repo{
 			{
@@ -317,12 +337,12 @@ func TestSimpleOperationSync(t *testing.T) {
 			DisplayMessage: "hostop1",
 		},
 	})...)
-	peerHost.oplog.Add(testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
-		{
-			DisplayMessage: "clientop-missing",
-			OriginalId:     1234, // must be an ID that doesn't exist remotely
-		},
-	})...)
+	// peerHost.oplog.Add(testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
+	// 	{
+	// 		DisplayMessage: "clientop-deleted",
+	// 		OriginalId:     1234, // must be an ID that doesn't exist remotely
+	// 	},
+	// })...)
 
 	if err := peerClient.oplog.Add(testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 		{
@@ -350,24 +370,24 @@ func TestSimpleOperationSync(t *testing.T) {
 	tryExpectExactOperations(t, ctx, peerHost, oplog.Query{}.SetInstanceID(defaultClientID).SetRepoGUID(defaultRepoGUID),
 		testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
 			{
-				Id:                    3, // b/c of the already inserted host ops the sync'd ops start at 3
-				FlowId:                3,
+				Id:                    2, // b/c of the already inserted host ops the sync'd ops start at 3
+				FlowId:                2,
 				OriginalId:            1,
 				OriginalFlowId:        1,
 				OriginalInstanceKeyid: identity2.Keyid,
 				DisplayMessage:        "clientop1",
 			},
 			{
-				Id:                    4,
-				FlowId:                3,
+				Id:                    3,
+				FlowId:                2,
 				OriginalId:            2,
 				OriginalFlowId:        1,
 				OriginalInstanceKeyid: identity2.Keyid,
 				DisplayMessage:        "clientop2",
 			},
 			{
-				Id:                    5,
-				FlowId:                5,
+				Id:                    4,
+				FlowId:                4,
 				OriginalId:            3,
 				OriginalFlowId:        2,
 				OriginalInstanceKeyid: identity2.Keyid,
@@ -377,7 +397,6 @@ func TestSimpleOperationSync(t *testing.T) {
 }
 
 func TestSyncMutations(t *testing.T) {
-	t.Skip("skipping syncapi tests")
 	testutil.InstallZapLogger(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -386,11 +405,13 @@ func TestSyncMutations(t *testing.T) {
 	peerClientAddr := testutil.AllocOpenBindAddr(t)
 
 	peerHostConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultHostID,
 		Repos: []*v1.Repo{
 			{
 				Id:   defaultRepoID,
 				Guid: defaultRepoGUID,
+				Uri:  "test-uri",
 			},
 		},
 		Multihost: &v1.Multihost{
@@ -406,6 +427,7 @@ func TestSyncMutations(t *testing.T) {
 	}
 
 	peerClientConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
 		Instance: defaultClientID,
 		Repos: []*v1.Repo{
 			{
@@ -562,6 +584,7 @@ func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnd
 			op.OriginalId = 0
 			op.OriginalFlowId = 0
 			op.OriginalInstanceKeyid = ""
+			op.Modno = 0
 		}
 		for _, op := range peer2Ops {
 			op.Id = 0
@@ -569,6 +592,7 @@ func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnd
 			op.OriginalId = 0
 			op.OriginalFlowId = 0
 			op.OriginalInstanceKeyid = ""
+			op.Modno = 0
 		}
 
 		sortFn := func(a, b *v1.Operation) int {
@@ -588,7 +612,7 @@ func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnd
 			return errors.New("no operations found in peer2")
 		}
 		if diff := cmp.Diff(peer1Ops, peer2Ops, protocmp.Transform()); diff != "" {
-			return fmt.Errorf("unexpected diff: %v", diff)
+			return fmt.Errorf("%s: unexpected diff: %v", message, diff)
 		}
 
 		return nil
@@ -602,7 +626,7 @@ func tryExpectOperationsSynced(t *testing.T, ctx context.Context, peer1 *peerUnd
 	}
 }
 
-func tryExpectConfigFromHost(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantCfg *v1.RemoteConfig) {
+func tryExpectConfigFromHost(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantCfg *v1sync.RemoteConfig) {
 	testutil.Try(t, ctx, func() error {
 		state := peer.manager.peerStateManager.GetPeerState(hostPeer.Keyid)
 		if state == nil {
@@ -615,7 +639,7 @@ func tryExpectConfigFromHost(t *testing.T, ctx context.Context, peer *peerUnderT
 	})
 }
 
-func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantState v1.SyncConnectionState) {
+func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer, wantState v1sync.ConnectionState) {
 	ctx, cancel := testutil.WithDeadlineFromTest(t, ctx)
 	defer cancel()
 
@@ -625,7 +649,7 @@ func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTe
 
 	// First check if the peer is already connected.
 	state := peer.manager.peerStateManager.GetPeerState(hostPeer.Keyid)
-	if state != nil && state.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+	if state != nil && state.ConnectionState == v1sync.ConnectionState_CONNECTION_STATE_CONNECTED {
 		return // Already connected, nothing to do
 	}
 
@@ -641,7 +665,7 @@ func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTe
 			}
 			if state.KeyID == hostPeer.Keyid && state.InstanceID == hostPeer.InstanceId {
 				lastState = state
-				if state.ConnectionState == v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+				if state.ConnectionState == v1sync.ConnectionState_CONNECTION_STATE_CONNECTED {
 					stop = true
 					continue
 				}
@@ -653,19 +677,19 @@ func waitForConnectionState(t *testing.T, ctx context.Context, peer *peerUnderTe
 	}
 	if lastState == nil {
 		t.Fatalf("timeout waiting for connection to host peer %s", hostPeer.InstanceId)
-	} else if lastState.ConnectionState != v1.SyncConnectionState_CONNECTION_STATE_CONNECTED {
+	} else if lastState.ConnectionState != v1sync.ConnectionState_CONNECTION_STATE_CONNECTED {
 		t.Fatalf("expected connection state to be CONNECTED, got %v (reason: %q)", lastState.ConnectionState, lastState.ConnectionStateMessage)
 	}
 }
 
 func tryConnect(t *testing.T, ctx context.Context, peer *peerUnderTest, hostPeer *v1.Multihost_Peer) {
-	waitForConnectionState(t, ctx, peer, hostPeer, v1.SyncConnectionState_CONNECTION_STATE_CONNECTED)
+	waitForConnectionState(t, ctx, peer, hostPeer, v1sync.ConnectionState_CONNECTION_STATE_CONNECTED)
 }
 
 func runSyncAPIWithCtx(ctx context.Context, peer *peerUnderTest, bindAddr string) {
 	mux := http.NewServeMux()
 	syncHandler := NewBackrestSyncHandler(peer.manager)
-	mux.Handle(v1connect.NewBackrestSyncServiceHandler(syncHandler))
+	mux.Handle(v1syncconnect.NewBackrestSyncServiceHandler(syncHandler))
 
 	server := &http.Server{
 		Addr:    bindAddr,

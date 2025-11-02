@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -42,7 +43,7 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 			if state == nil {
 				state = newPeerState(knownHostPeer.InstanceId, knownHostPeer.Keyid)
 			}
-			state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+			state.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_DISCONNECTED
 			state.ConnectionStateMessage = "disconnected"
 			peerStateManager.SetPeerState(knownHostPeer.Keyid, state)
 		}
@@ -51,7 +52,7 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 			if state == nil {
 				state = newPeerState(authorizedClient.InstanceId, authorizedClient.Keyid)
 			}
-			state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_DISCONNECTED
+			state.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_DISCONNECTED
 			state.ConnectionStateMessage = "disconnected"
 			peerStateManager.SetPeerState(authorizedClient.Keyid, state)
 		}
@@ -84,16 +85,20 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 
 	configWatchCh := m.configMgr.OnChange.Subscribe()
 	defer m.configMgr.OnChange.Unsubscribe(configWatchCh)
+	defer func() {
+		zap.L().Info("syncmanager exited")
+	}()
 
 	runSyncWithNewConfig := func() {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
-		// TODO: rather than cancel the top level context, something clever e.g. diffing the set of peers could be done here.
 		if cancelLastSync != nil {
 			cancelLastSync()
 			zap.L().Info("syncmanager applying new config, waiting for existing sync goroutines to exit")
 			syncWg.Wait()
+		} else {
+			zap.L().Info("syncmanager applying new config, starting sync goroutines")
 		}
 		syncCtx, cancel := context.WithCancel(ctx)
 		cancelLastSync = cancel
@@ -128,7 +133,7 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 			return
 		}
 
-		zap.S().Infof("syncmanager applying new config, starting sync with identity %v, spawning goroutines for %d known peers",
+		zap.S().Infof("sync using identity %v, spawning goroutines for %d known peers",
 			config.Multihost.GetIdentity().GetKeyid(), len(config.Multihost.GetKnownHosts()))
 		for _, knownHostPeer := range config.Multihost.KnownHosts {
 			if knownHostPeer.InstanceId == "" {

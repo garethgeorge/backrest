@@ -6,7 +6,7 @@ import (
 	"path"
 	"testing"
 
-	acl "github.com/hectane/go-acl"
+	"github.com/hectane/go-acl"
 )
 
 func CreateTestData(t *testing.T) string {

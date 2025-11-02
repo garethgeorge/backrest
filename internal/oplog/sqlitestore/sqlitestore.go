@@ -37,14 +37,14 @@ const (
 )
 
 type SqliteStore struct {
-	dbpool    *sql.DB
-	lastIDVal atomic.Int64
-	dblock    *flock.Flock
+	dbpool *sql.DB
+	dblock *flock.Flock
 
 	ogidCache *lru.TwoQueueCache[opGroupInfo, int64]
 
 	kvstore      kvstore.KvStore
 	highestModno atomic.Int64
+	highestOpID  atomic.Int64
 }
 
 var _ oplog.OpStore = (*SqliteStore)(nil)
@@ -135,26 +135,29 @@ func (m *SqliteStore) init() error {
 	if err := applySqliteMigrations(m, m.dbpool); err != nil {
 		return err
 	}
-
-	var lastID int64
-	err := m.dbpool.QueryRowContext(context.Background(), "SELECT operations.id FROM operations ORDER BY operations.id DESC LIMIT 1").Scan(&lastID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("init sqlite: %v", err)
+	// highestOpID from all instances
+	highestID, _, err := m.GetHighestOpIDAndModno(oplog.Query{})
+	if err != nil {
+		return err
 	}
-	m.lastIDVal.Store(lastID)
-
-	var highestModno int64
-	err = m.dbpool.QueryRowContext(context.Background(), "SELECT operations.modno FROM operations ORDER BY operations.modno DESC LIMIT 1").Scan(&highestModno)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("init sqlite: %v", err)
+	_, highestModno, err := m.GetHighestOpIDAndModno(oplog.Query{}.SetOriginalInstanceKeyid(""))
+	if err != nil {
+		return err
 	}
 	m.highestModno.Store(highestModno)
-
+	m.highestOpID.Store(highestID)
 	return nil
 }
 
-func (m *SqliteStore) nextModno() int64 {
-	return m.highestModno.Add(1)
+func (m *SqliteStore) GetHighestOpIDAndModno(q oplog.Query) (int64, int64, error) {
+	var highestID sql.NullInt64
+	var highestModno sql.NullInt64
+	where, args := m.buildQueryWhereClause(q, false)
+	row := m.dbpool.QueryRowContext(context.Background(), "SELECT MAX(operations.id), MAX(operations.modno) FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+where, args...)
+	if err := row.Scan(&highestID, &highestModno); err != nil {
+		return 0, 0, err
+	}
+	return highestID.Int64, highestModno.Int64, nil
 }
 
 func (m *SqliteStore) Version() (int64, error) {
@@ -197,6 +200,10 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 		query = append(query, " AND operation_groups.instance_id = ?")
 		args = append(args, *q.InstanceID)
 	}
+	if q.OriginalInstanceKeyid != nil {
+		query = append(query, " AND operation_groups.original_instance_keyid = ?")
+		args = append(args, *q.OriginalInstanceKeyid)
+	}
 	if q.SnapshotID != nil {
 		query = append(query, " AND operations.snapshot_id = ?")
 		args = append(args, *q.SnapshotID)
@@ -212,6 +219,10 @@ func (m *SqliteStore) buildQueryWhereClause(q oplog.Query, includeSelectClauses 
 	if q.OriginalFlowID != nil {
 		query = append(query, " AND operations.original_flow_id = ?")
 		args = append(args, *q.OriginalFlowID)
+	}
+	if q.ModnoGte != nil {
+		query = append(query, " AND operations.modno >= ?")
+		args = append(args, *q.ModnoGte)
 	}
 	if q.OpIDs != nil {
 		query = append(query, " AND operations.id IN (")
@@ -364,8 +375,6 @@ func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operat
 			continue
 		}
 
-		newOp.Modno = m.nextModno()
-
 		if err := m.updateInternal(tx, newOp); err != nil {
 			return err
 		}
@@ -412,8 +421,8 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 	defer tx.Rollback()
 
 	for _, o := range op {
-		o.Id = m.lastIDVal.Add(1)
-		o.Modno = m.nextModno()
+		o.Id = m.highestOpID.Add(1)
+		o.Modno = m.highestModno.Add(1)
 		if o.FlowId == 0 {
 			o.FlowId = o.Id
 		}
@@ -445,7 +454,7 @@ func (m *SqliteStore) Update(op ...*v1.Operation) error {
 
 func (m *SqliteStore) updateInternal(tx *sql.Tx, op ...*v1.Operation) error {
 	for _, o := range op {
-		o.Modno = m.nextModno()
+		o.Modno = m.highestModno.Add(1)
 		if err := protoutil.ValidateOperation(o); err != nil {
 			return err
 		}
@@ -576,7 +585,8 @@ func (m *SqliteStore) ResetForTest(t *testing.T) error {
 	if err != nil {
 		return fmt.Errorf("reset for test: %v", err)
 	}
-	m.lastIDVal.Store(0)
+	m.highestOpID.Store(0)
+	m.highestModno.Store(0)
 	return nil
 }
 

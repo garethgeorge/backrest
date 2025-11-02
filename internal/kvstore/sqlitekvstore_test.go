@@ -214,3 +214,44 @@ func BenchmarkSqliteKvStore_BulkRetrieve(b *testing.B) {
 		}
 	}
 }
+
+// Implement a benchmark that uses range scans with a filter that should only match a subset of keys
+func BenchmarkSqliteKvStore_RangeScanWithFilter(b *testing.B) {
+	dbpool := newTestDB(b)
+	store, err := NewSqliteKVStore(dbpool, "benchmark_range_scan")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	// Pre-populate the store with test data
+	numKeys := 10000
+	for i := 0; i < numKeys; i++ {
+		key := fmt.Sprintf("key-%04d", i)
+		value := []byte(fmt.Sprintf("value-data-for-key-%d", i))
+		if err := store.Set(key, value); err != nil {
+			b.Fatal(err)
+		}
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		count := 0
+		// pick a random block of keys in the range 0-9
+		key := fmt.Sprintf("key-%d", i%10)
+		err := store.ForEach(key, func(key string, value []byte) error {
+			if !strings.HasPrefix(key, "key-") {
+				return fmt.Errorf("unexpected key: %s", key)
+			}
+			count++
+			return nil
+		})
+		if err != nil {
+			b.Fatal(err)
+		}
+		if count != numKeys/10 {
+			b.Fatalf("expected %d keys, got %d", numKeys/10, count)
+		}
+	}
+}

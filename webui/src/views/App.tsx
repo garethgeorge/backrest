@@ -7,10 +7,11 @@ import {
   ExclamationOutlined,
   SettingOutlined,
   LoadingOutlined,
+  CloudServerOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { Button, Empty, Layout, Menu, Spin, theme } from "antd";
-import { Config } from "../../gen/ts/v1/config_pb";
+import { Config, Multihost_Peer } from "../../gen/ts/v1/config_pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { uiBuildVersion } from "../state/buildcfg";
@@ -33,7 +34,8 @@ import { getStatusForSelector, matchSelector } from "../state/logstate";
 import { Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { MainContentAreaTemplate } from "./MainContentArea";
 import { create } from "@bufbuild/protobuf";
-
+import { PeerState, RepoMetadata } from "../../gen/ts/v1sync/syncservice_pb";
+import { useSyncStates } from "../state/peerstates";
 const { Header, Sider } = Layout;
 
 const SummaryDashboard = React.lazy(() =>
@@ -60,6 +62,12 @@ const RepoView = React.lazy(() =>
   }))
 );
 
+const SelectorView = React.lazy(() =>
+  import("./SelectorView").then((m) => ({
+    default: m.SelectorView,
+  }))
+);
+
 const RepoViewContainer = () => {
   const { repoId } = useParams();
   const [config, setConfig] = useConfig();
@@ -77,6 +85,41 @@ const RepoViewContainer = () => {
     >
       {repo ? (
         <RepoView repo={repo} />
+      ) : (
+        <Empty description={`Repo ${repoId} not found`} />
+      )}
+    </MainContentAreaTemplate>
+  );
+};
+
+const RemoteRepoViewContainer = () => {
+  const { peerInstanceId, repoId } = useParams();
+  const peerStates = useSyncStates();
+
+  // Peer state is used to find the right repo
+  const peerState = peerStates.find(
+    (state) => state.peerInstanceId === peerInstanceId
+  );
+  const peerRepo = (peerState?.knownRepos || []).find((r) => r.id === repoId);
+
+  return (
+    <MainContentAreaTemplate
+      breadcrumbs={[
+        { title: "Peer" },
+        { title: peerInstanceId || "Unknown Peer" },
+        { title: "Repo" },
+        { title: repoId || "Unknown Repo" },
+      ]}
+      key={`${peerInstanceId}-${repoId}`}
+    >
+      {peerRepo ? (
+        <SelectorView
+          title={`Remote Repo: ${peerRepo.id}`}
+          sel={create(OpSelectorSchema, {
+            originalInstanceKeyid: peerState?.peerKeyid,
+            repoGuid: peerRepo.guid,
+          })}
+        />
       ) : (
         <Empty description={`Repo ${repoId} not found`} />
       )}
@@ -114,7 +157,9 @@ export const App: React.FC = () => {
   const navigate = useNavigate();
   const [config, setConfig] = useConfig();
 
-  const items = getSidenavItems(config);
+  const peerStates = useSyncStates();
+
+  const items = getSidenavItems(config, peerStates);
 
   return (
     <Layout style={{ height: "auto", minHeight: "100vh" }}>
@@ -209,6 +254,10 @@ export const App: React.FC = () => {
               <Route path="/plan/:planId" element={<PlanViewContainer />} />
               <Route path="/repo/:repoId" element={<RepoViewContainer />} />
               <Route
+                path="/peer/:peerInstanceId/repo/:repoId"
+                element={<RemoteRepoViewContainer />}
+              />
+              <Route
                 path="/*"
                 element={
                   <MainContentAreaTemplate breadcrumbs={[]}>
@@ -273,7 +322,10 @@ const AuthenticationBoundary = ({
   return <>{children}</>;
 };
 
-const getSidenavItems = (config: Config | null): MenuProps["items"] => {
+const getSidenavItems = (
+  config: Config | null,
+  peerStates: PeerState[]
+): MenuProps["items"] => {
   const showModal = useShowModal();
   const navigate = useNavigate();
 
@@ -284,6 +336,8 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
   const reposById = _.keyBy(config.repos, (r) => r.id);
   const configPlans = config.plans || [];
   const configRepos = config.repos || [];
+
+  const menu: MenuProps["items"] = [];
 
   const plans: MenuProps["items"] = [
     {
@@ -297,7 +351,7 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     },
     ...configPlans.map((plan) => {
       const sel = create(OpSelectorSchema, {
-        instanceId: config.instance,
+        originalInstanceKeyid: "",
         planId: plan.id,
         repoGuid: reposById[plan.repo]?.guid,
       });
@@ -380,46 +434,107 @@ const getSidenavItems = (config: Config | null): MenuProps["items"] => {
     }),
   ];
 
-  const authorizedClientRepos: MenuProps["items"] = [];
-
+  const authorizedClients: MenuProps["items"] = [];
   if (config.multihost?.authorizedClients?.length) {
-    const authorizedClients = config.multihost.authorizedClients;
+    const authorizedClientsConfigs = new Map<string, Multihost_Peer>();
+    for (const client of config.multihost.authorizedClients) {
+      authorizedClientsConfigs.set(client.keyid, client);
+    }
 
-    // Display authorized client peer statuses
+    const createElementForPeerState = (
+      peerState: PeerState,
+      peerConfig: Multihost_Peer
+    ): Required<MenuProps>["items"][0] => {
+      const repos: MenuProps["items"] = peerState.knownRepos.map(
+        (repo: RepoMetadata) => {
+          const sel = create(OpSelectorSchema, {
+            originalInstanceKeyid: peerState.peerKeyid,
+            repoGuid: repo.guid,
+          });
+
+          return {
+            key: `repo-${peerState.peerKeyid}-${repo.guid}`,
+            icon: <IconForResource selector={sel} />,
+            label: (
+              <div
+                className="backrest visible-on-hover"
+                style={{ width: "100%", height: "100%" }}
+              >
+                {repo.id}
+              </div>
+            ),
+            onClick: async () => {
+              navigate(`/peer/${peerState.peerInstanceId}/repo/${repo.id}`);
+            },
+          };
+        }
+      );
+
+      return {
+        key: `peer-${peerState.peerKeyid}`,
+        icon: (
+          <IconForResource
+            selector={create(OpSelectorSchema, {
+              originalInstanceKeyid: peerState.peerKeyid,
+            })}
+          />
+        ),
+        label: (
+          <div
+            className="backrest visible-on-hover"
+            style={{ width: "100%", height: "100%" }}
+          >
+            {peerState.peerInstanceId}
+          </div>
+        ),
+        children: repos.length > 0 ? repos : undefined,
+      };
+    };
+
+    for (const peerState of peerStates) {
+      const peerConfig = authorizedClientsConfigs.get(peerState.peerKeyid);
+      if (!peerConfig) {
+        continue;
+      }
+      authorizedClients.push(createElementForPeerState(peerState, peerConfig));
+    }
   }
 
-  return [
-    {
-      key: "plans",
-      icon: React.createElement(ScheduleOutlined),
-      label: "Plans",
-      children: plans,
+  menu.push({
+    key: "plans",
+    icon: React.createElement(ScheduleOutlined),
+    label: "Plans",
+    children: plans,
+  });
+  menu.push({
+    key: "repos",
+    icon: React.createElement(DatabaseOutlined),
+    label: "Repositories",
+    children: repos,
+  });
+  if (authorizedClients.length > 0) {
+    menu.push({
+      key: "authorized-clients",
+      icon: React.createElement(CloudServerOutlined),
+      label: "Remote Instances",
+      children: authorizedClients,
+    });
+  }
+  menu.push({
+    key: "settings",
+    icon: React.createElement(SettingOutlined),
+    label: "Settings",
+    onClick: async () => {
+      const { SettingsModal } = await import("./SettingsModal");
+      showModal(<SettingsModal />);
     },
-    {
-      key: "repos",
-      icon: React.createElement(DatabaseOutlined),
-      label: "Repositories",
-      children: repos,
-    },
-    {
-      key: "settings",
-      icon: React.createElement(SettingOutlined),
-      label: "Settings",
-      onClick: async () => {
-        const { SettingsModal } = await import("./SettingsModal");
-        showModal(<SettingsModal />);
-      },
-    },
-  ];
+  });
+  return menu;
 };
 
 const IconForResource = ({ selector }: { selector: OpSelector }) => {
   const [status, setStatus] = useState(OperationStatus.STATUS_UNKNOWN);
   useEffect(() => {
-    if (!selector || !selector.instanceId || !selector.repoGuid) {
-      return;
-    }
-
     const load = async () => {
       setStatus(await getStatusForSelector(selector));
     };

@@ -1,10 +1,6 @@
 import { Operation, OperationEvent, OperationEventType, OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { GetOperationsRequest, GetOperationsRequestSchema, OpSelector } from "../../gen/ts/v1/service_pb";
 import { getOperations, subscribeToOperations, unsubscribeFromOperations } from "./oplog";
-import {
-  STATS_OPERATION_HISTORY,
-  STATUS_OPERATION_HISTORY,
-} from "../constants";
 import { create } from "@bufbuild/protobuf";
 
 type Subscriber = (ids: bigint[], flowIDs: bigint[], event: OperationEventType) => void;
@@ -89,7 +85,6 @@ export const getStatusForSelector = async (sel: OpSelector) => {
   });
   return await getStatus(req);
 };
-
 
 export class OplogState {
   private byID: Map<bigint, Operation> = new Map();
@@ -220,15 +215,26 @@ export class OplogState {
 }
 
 
-export const matchSelector = (selector: OpSelector, op: Operation) => {
-  if (selector.planId && selector.planId !== op.planId) {
-    return false;
-  }
-  if (selector.repoGuid && selector.repoGuid !== op.repoGuid) {
-    return false;
-  }
-  if (selector.flowId && selector.flowId !== op.flowId) {
-    return false;
+
+// Defining matchers for each field in OpSelector to determine if an operation matches the selector.
+// Type system asserts that a check must exist for each field in OpSelector.
+const selectorFieldMatchers: { [K in keyof OpSelector]: (op: Operation, sel: OpSelector) => boolean } = {
+  planId: (op, sel) => op.planId === sel.planId,
+  repoGuid: (op, sel) => op.repoGuid === sel.repoGuid,
+  flowId: (op, sel) => op.flowId === sel.flowId,
+  instanceId: (op, sel) => op.instanceId === sel.instanceId,
+  snapshotId: (op, sel) => op.snapshotId === sel.snapshotId,
+  originalInstanceKeyid: (op, sel) => op.originalInstanceKeyid === sel.originalInstanceKeyid,
+  ids: (op: Operation, sel: OpSelector) => sel.ids.length === 0 || sel.ids.includes(op.id),
+  ["$typeName"]: (op: Operation, sel: OpSelector): boolean => true, // $typeName is a proto property that isn't used for matching
+};
+
+export const matchSelector = (selector: OpSelector, op: Operation): boolean => {
+  for (const key in selector) {
+    const matcher = selectorFieldMatchers[key as keyof OpSelector];
+    if (matcher && !matcher(op, selector)) {
+      return false;
+    }
   }
   return true;
-}
+};

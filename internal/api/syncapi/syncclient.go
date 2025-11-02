@@ -13,11 +13,11 @@ import (
 
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	"github.com/garethgeorge/backrest/gen/go/v1sync"
+	"github.com/garethgeorge/backrest/gen/go/v1sync/v1syncconnect"
 	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/protoutil"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
@@ -30,7 +30,7 @@ type SyncClient struct {
 	localInstanceID    string
 	peer               *v1.Multihost_Peer
 	oplog              *oplog.OpLog
-	client             v1connect.BackrestSyncServiceClient
+	client             v1syncconnect.BackrestSyncServiceClient
 	reconnectDelay     time.Duration
 	l                  *zap.Logger
 
@@ -60,7 +60,7 @@ func NewSyncClient(
 		return nil, errors.New("peer instance URL is required")
 	}
 
-	client := v1connect.NewBackrestSyncServiceClient(
+	client := v1syncconnect.NewBackrestSyncServiceClient(
 		newInsecureClient(),
 		peer.GetInstanceUrl(),
 	)
@@ -125,7 +125,7 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 				state.ConnectionState = syncErr.State
 				state.ConnectionStateMessage = syncErr.Message.Error()
 			} else {
-				state.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_ERROR_INTERNAL
+				state.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_ERROR_INTERNAL
 				state.ConnectionStateMessage = err.Error()
 			}
 			c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, state)
@@ -162,6 +162,9 @@ type syncSessionHandlerClient struct {
 
 	peer        *v1.Multihost_Peer // The peer this handler is associated with, unset until OnConnectionEstablished is called.
 	permissions *permissions.PermissionSet
+
+	canForwardReposSet map[string]struct{}
+	canForwardPlansSet map[string]struct{}
 }
 
 func newSyncHandlerClient(
@@ -178,18 +181,40 @@ func newSyncHandlerClient(
 		localInstanceID:    snapshot.config.Instance,
 		oplog:              oplog,
 		peer:               peer,
+
+		canForwardReposSet: make(map[string]struct{}),
+		canForwardPlansSet: make(map[string]struct{}),
 	}
 }
 
 var _ syncSessionHandler = (*syncSessionHandlerClient)(nil)
 
+func (c *syncSessionHandlerClient) applyPermissions() {
+	for _, plan := range c.syncConfigSnapshot.config.Plans {
+		if c.permissions.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
+			c.canForwardPlansSet[plan.Id] = struct{}{}
+		}
+	}
+	for _, repo := range c.syncConfigSnapshot.config.Repos {
+		if c.permissions.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
+			c.canForwardReposSet[repo.Guid] = struct{}{}
+		}
+	}
+}
+
 func (c *syncSessionHandlerClient) canForwardOperation(op *v1.Operation) bool {
 	if op.GetOriginalInstanceKeyid() != "" || op.GetInstanceId() != c.localInstanceID {
 		return false // only forward operations that were created by this instance
 	}
-
-	return (op.GetPlanId() != "" && c.permissions.CheckPermissionForPlan(op.GetPlanId(), v1.Multihost_Permission_PERMISSION_READ_OPERATIONS)) ||
-		(op.GetRepoId() != "" && c.permissions.CheckPermissionForRepo(op.GetRepoId(), v1.Multihost_Permission_PERMISSION_READ_OPERATIONS))
+	if _, ok := c.canForwardReposSet[op.GetRepoGuid()]; ok {
+		return true
+	}
+	if op.GetPlanId() != "" {
+		if _, ok := c.canForwardPlansSet[op.GetPlanId()]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error {
@@ -198,62 +223,39 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 		return NewSyncErrorAuth(fmt.Errorf("peer mismatch: expected %s (%s), got %s (%s)", c.peer.Keyid, c.peer.InstanceId, peer.Keyid, peer.InstanceId))
 	}
 
+	// Set the peer and permissions for this connection.
 	var err error
 	c.peer = peer
 	c.permissions, err = permissions.NewPermissionSet(peer.Permissions)
 	if err != nil {
 		return NewSyncErrorAuth(fmt.Errorf("creating permission set for peer %q: %w", peer.InstanceId, err))
 	}
+	c.applyPermissions()
 
 	c.l.Sugar().Infof("sync connection established with peer %q (%s)", peer.InstanceId, peer.Keyid)
 	peerState := c.mgr.peerStateManager.GetPeerState(peer.Keyid).Clone()
 	if peerState == nil {
 		peerState = newPeerState(c.peer.InstanceId, peer.Keyid)
 	}
-	peerState.ConnectionState = v1.SyncConnectionState_CONNECTION_STATE_CONNECTED
+	peerState.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_CONNECTED
 	peerState.ConnectionStateMessage = "connected"
 	peerState.LastHeartbeat = time.Now()
 	c.mgr.peerStateManager.SetPeerState(peer.Keyid, peerState)
 
-	// Send a heartbeat every 2 minutes to keep the connection alive.
+	// Send a heartbeat every interval to keep the connection alive.
 	go sendHeartbeats(ctx, stream, env.MultihostHeartbeatInterval())
 
-	localConfig := c.syncConfigSnapshot.config
-
-	// start by forwarding the configuration and the resource lists the peer is allowed to see.
-	{
-		remoteConfig := &v1.RemoteConfig{
-			Version: localConfig.Version,
-			Modno:   localConfig.Modno,
-		}
-		resourceList := &v1.SyncStreamItem_SyncActionListResources{}
-		for _, repo := range localConfig.Repos {
-			if c.permissions.CheckPermissionForRepo(repo.Guid, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
-				remoteConfig.Repos = append(remoteConfig.Repos, repo)
-				resourceList.RepoIds = append(resourceList.RepoIds, repo.Id)
-			}
-		}
-		for _, plan := range localConfig.Plans {
-			if c.permissions.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_CONFIG) {
-				remoteConfig.Plans = append(remoteConfig.Plans, plan)
-				resourceList.PlanIds = append(resourceList.PlanIds, plan.Id)
-			}
-		}
-
-		stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_SendConfig{
-				SendConfig: &v1.SyncStreamItem_SyncActionSendConfig{
-					Config: remoteConfig,
-				},
-			},
-		})
-		stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_ListResources{
-				ListResources: resourceList,
-			},
-		})
+	// Forward a view of our config (if the peer is allowed to see it).
+	if err := c.sendConfig(ctx, stream); err != nil {
+		return fmt.Errorf("send config to peer %q: %w", peer.InstanceId, err)
 	}
 
+	// Forward a list of the resources we're making available to the peer
+	if err := c.sendResourceList(ctx, stream); err != nil {
+		return fmt.Errorf("send resource list to peer %q: %w", peer.InstanceId, err)
+	}
+
+	// Subscribe to oplog updates and forward relevant operations to the peer.
 	oplogSubscription := func(ops []*v1.Operation, event oplog.OperationEvent) {
 		var opsToForward []*v1.Operation
 		for _, op := range ops {
@@ -267,19 +269,20 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 		}
 
 		var eventProto *v1.OperationEvent
-		if event == oplog.OPERATION_ADDED {
+		switch event {
+		case oplog.OPERATION_ADDED:
 			eventProto = &v1.OperationEvent{
 				Event: &v1.OperationEvent_CreatedOperations{
 					CreatedOperations: &v1.OperationList{Operations: opsToForward},
 				},
 			}
-		} else if event == oplog.OPERATION_UPDATED {
+		case oplog.OPERATION_UPDATED:
 			eventProto = &v1.OperationEvent{
 				Event: &v1.OperationEvent_UpdatedOperations{
 					UpdatedOperations: &v1.OperationList{Operations: opsToForward},
 				},
 			}
-		} else if event == oplog.OPERATION_DELETED {
+		case oplog.OPERATION_DELETED:
 			ids := make([]int64, len(opsToForward))
 			for i, op := range opsToForward {
 				ids[i] = op.GetId()
@@ -289,11 +292,14 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 					DeletedOperations: &types.Int64List{Values: ids},
 				},
 			}
+		default:
+			stream.SendErrorAndTerminate(fmt.Errorf("unknown oplog event type: %v", event))
+			return
 		}
 
-		stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_SendOperations{
-				SendOperations: &v1.SyncStreamItem_SyncActionSendOperations{
+		stream.Send(&v1sync.SyncStreamItem{
+			Action: &v1sync.SyncStreamItem_ReceiveOperations{
+				ReceiveOperations: &v1sync.SyncStreamItem_SyncActionReceiveOperations{
 					Event: eventProto,
 				},
 			},
@@ -304,86 +310,14 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 		<-ctx.Done()
 		c.oplog.Unsubscribe(&oplogSubscription)
 	}()
-
-	// Initiate sync on a background thread, this allows us to handle responses while still sending the initial diff state.
-	// This is a slow operation and we don't want to block the main loop waiting for it to complete and potentially forcing incomming messages to buffer or drop.
-	go func() {
-		startSync := func(diffSel *v1.OpSelector) error {
-			c.l.Sugar().Infof("starting sync with diffselector: %v", diffSel)
-
-			diffQuery, err := protoutil.OpSelectorToQuery(diffSel)
-			if err != nil {
-				return fmt.Errorf("convert operation selector to query: %w", err)
-			}
-			// Load operation metadata and send the initial diff state.
-			var opIds []int64
-			var opModnos []int64
-			if err := c.oplog.QueryMetadata(diffQuery, func(op oplog.OpMetadata) error {
-				opIds = append(opIds, op.ID)
-				opModnos = append(opModnos, op.Modno)
-				return nil
-			}); err != nil {
-				return fmt.Errorf("query oplog with selector %v: %w", diffSel, err)
-			}
-
-			diffSel.OriginalInstanceKeyid = proto.String(c.syncConfigSnapshot.identityKey.KeyID())
-			stream.Send(&v1.SyncStreamItem{
-				Action: &v1.SyncStreamItem_DiffOperations{
-					DiffOperations: &v1.SyncStreamItem_SyncActionDiffOperations{
-						HaveOperationsSelector: diffSel,
-						HaveOperationIds:       opIds,
-						HaveOperationModnos:    opModnos,
-					},
-				},
-			})
-			return nil
-		}
-
-		reposToSync := []string{}
-		plansToSync := []string{}
-
-		// Start syncing operations for all repos and plans that the peer is allowed to read.
-		for _, repo := range localConfig.Repos {
-			if !c.permissions.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
-				continue // skip repos that the peer is not allowed to read
-			}
-			diffSel := &v1.OpSelector{
-				RepoGuid: proto.String(repo.Guid),
-			}
-			if err := startSync(diffSel); err != nil {
-				c.l.Sugar().Errorf("failed to start sync for repo %q: %v", repo.Guid, err)
-				stream.SendErrorAndTerminate(fmt.Errorf("start sync for repo %q: %w", repo.Guid, err))
-				return
-			}
-			reposToSync = append(reposToSync, repo.Id)
-		}
-
-		for _, plan := range localConfig.Plans {
-			if !c.permissions.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
-				continue // skip plans that the peer is not allowed to read
-			}
-			if c.permissions.CheckPermissionForPlan(plan.Repo, v1.Multihost_Permission_PERMISSION_READ_OPERATIONS) {
-				continue // skip the sync if we're already syncing the whole repo that it belongs to
-			}
-			diffSel := &v1.OpSelector{
-				PlanId:   proto.String(plan.Id),
-				RepoGuid: proto.String(plan.Repo),
-			}
-			if err := startSync(diffSel); err != nil {
-				c.l.Sugar().Errorf("failed to start sync for plan %q: %v", plan.Id, err)
-				stream.SendErrorAndTerminate(fmt.Errorf("start sync for plan %q: %w", plan.Id, err))
-				return
-			}
-			plansToSync = append(plansToSync, plan.Id)
-		}
-		c.l.Sugar().Infof("triggered sync for repos %v and plans %v for local instance ID: %q, peer instance ID: %q",
-			reposToSync, plansToSync, c.localInstanceID, c.peer.InstanceId)
-	}()
-
 	return nil
 }
 
-func (c *syncSessionHandlerClient) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionHeartbeat) error {
+func (c *syncSessionHandlerClient) HandleRequestResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestResources) error {
+	return c.sendResourceList(ctx, stream)
+}
+
+func (c *syncSessionHandlerClient) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error {
 	peerState := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
 	if peerState == nil {
 		return NewSyncErrorInternal(fmt.Errorf("peer state not found for peer %q", c.peer.InstanceId))
@@ -393,84 +327,108 @@ func (c *syncSessionHandlerClient) HandleHeartbeat(ctx context.Context, stream *
 	return nil
 }
 
-func (c *syncSessionHandlerClient) HandleDiffOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionDiffOperations) error {
-	requestedOperations := item.GetRequestOperations()
-	c.l.Sugar().Debugf("received operation request for operations: %v", requestedOperations)
+func (c *syncSessionHandlerClient) HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error {
+	highModno := item.GetHighModno()
+	highOpid := item.GetHighOpid()
+	c.l.Sugar().Debugf("received operation request for high_modno: %d, high_opid: %d", highModno, highOpid)
 
-	var deletedIDs []int64
-	var sendOps []*v1.Operation
+	var batch []*v1.Operation
 
-	sendOpsFunc := func() error {
-		stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_SendOperations{
-				SendOperations: &v1.SyncStreamItem_SyncActionSendOperations{
-					Event: &v1.OperationEvent{
-						Event: &v1.OperationEvent_CreatedOperations{
-							CreatedOperations: &v1.OperationList{Operations: sendOps},
+	send := func() error {
+		if len(batch) == 0 {
+			return nil
+		}
+
+		// find new and updated operations
+		var newOps []*v1.Operation
+		var updatedOps []*v1.Operation
+		for _, op := range batch {
+			if op.GetId() > highOpid {
+				newOps = append(newOps, op)
+			} else {
+				updatedOps = append(updatedOps, op)
+			}
+		}
+
+		// send new and updated operations
+		if len(newOps) > 0 {
+			stream.Send(&v1sync.SyncStreamItem{
+				Action: &v1sync.SyncStreamItem_ReceiveOperations{
+					ReceiveOperations: &v1sync.SyncStreamItem_SyncActionReceiveOperations{
+						Event: &v1.OperationEvent{
+							Event: &v1.OperationEvent_CreatedOperations{
+								CreatedOperations: &v1.OperationList{Operations: batch},
+							},
 						},
 					},
 				},
-			},
-		})
-		c.l.Sugar().Debugf("sent %d operations", len(sendOps))
-		sendOps = sendOps[:0]
+			})
+		}
+		if len(updatedOps) > 0 {
+			stream.Send(&v1sync.SyncStreamItem{
+				Action: &v1sync.SyncStreamItem_ReceiveOperations{
+					ReceiveOperations: &v1sync.SyncStreamItem_SyncActionReceiveOperations{
+						Event: &v1.OperationEvent{
+							Event: &v1.OperationEvent_UpdatedOperations{
+								UpdatedOperations: &v1.OperationList{Operations: updatedOps},
+							},
+						},
+					},
+				},
+			})
+		}
+
+		batch = batch[:0]
 		return nil
 	}
 
-	sentOps := 0
-	for _, opID := range requestedOperations {
-		op, err := c.oplog.Get(opID)
-		if err != nil {
-			if errors.Is(err, oplog.ErrNotExist) {
-				deletedIDs = append(deletedIDs, opID)
-				continue
-			}
-			c.l.Sugar().Warnf("action diff operations, failed to fetch a requested operation %d: %v", opID, err)
-			continue // skip this operation
-		}
+	c.oplog.Query(oplog.Query{}.SetModnoGte(highModno), func(op *v1.Operation) error {
 		if !c.canForwardOperation(op) {
-			c.l.Sugar().Warnf("skipping operation %d for repo %q, plan %q, not allowed to read by peer %q",
-				op.GetId(), op.GetRepoGuid(), op.GetPlanId(), c.peer.InstanceId)
-			continue // skip operations that the peer is not allowed to read
+			return nil // skip operations that the peer is not allowed to read
 		}
-		sendOps = append(sendOps, op)
-		sentOps += 1
-		if len(sendOps) >= 256 {
-			if err := sendOpsFunc(); err != nil {
+
+		batch = append(batch, op)
+		if len(batch) >= 256 {
+			if err := send(); err != nil {
 				return err
 			}
 		}
+		return nil
+	})
+
+	if err := send(); err != nil {
+		return err
 	}
 
-	if len(sendOps) > 0 {
-		if err := sendOpsFunc(); err != nil {
-			return err
-		}
-	}
-
-	if len(deletedIDs) > 0 {
-		stream.Send(&v1.SyncStreamItem{
-			Action: &v1.SyncStreamItem_SendOperations{
-				SendOperations: &v1.SyncStreamItem_SyncActionSendOperations{
-					Event: &v1.OperationEvent{
-						Event: &v1.OperationEvent_DeletedOperations{
-							DeletedOperations: &types.Int64List{Values: deletedIDs},
-						},
-					},
-				},
-			},
-		})
-	}
-
-	c.l.Debug("replied to an operations request", zap.Int("num_ops_requested", len(requestedOperations)), zap.Int("num_ops_sent", sentOps), zap.Int("num_ops_deleted", len(deletedIDs)))
 	return nil
 }
 
-func (c *syncSessionHandlerClient) HandleSendOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendOperations) error {
-	return NewSyncErrorProtocol(errors.New("client should not receive SendOperations messages, this is a host-only message"))
+func (c *syncSessionHandlerClient) HandleReceiveOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveOperations) error {
+	return NewSyncErrorProtocol(errors.New("client should not receive ReceiveOperations messages, this is a host-only message"))
 }
 
-func (c *syncSessionHandlerClient) HandleSendConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSendConfig) error {
+func (c *syncSessionHandlerClient) HandleReceiveResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveResources) error {
+	c.l.Debug("received resource list from server",
+		zap.Any("repos", item.GetRepos()),
+		zap.Any("plans", item.GetPlans()))
+	peerState := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
+	if peerState == nil {
+		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", c.peer.Keyid))
+	}
+	repos := item.GetRepos()
+	plans := item.GetPlans()
+	for _, repo := range repos {
+		peerState.KnownRepos[repo.Id] = repo
+	}
+	for _, plan := range plans {
+		peerState.KnownPlans[plan.Id] = plan
+	}
+	c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, peerState)
+	return nil
+}
+
+// Note unused: there isn't a situation where the host would send its config for information, the host will only call 'SetConfig' to update the config.
+func (c *syncSessionHandlerClient) HandleReceiveConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveConfig) error {
 	c.l.Sugar().Debugf("received remote config update")
 	peerState := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
 	if peerState == nil {
@@ -485,7 +443,7 @@ func (c *syncSessionHandlerClient) HandleSendConfig(ctx context.Context, stream 
 	return nil
 }
 
-func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionSetConfig) error {
+func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSetConfig) error {
 	// Log the received config updates
 	c.l.Sugar().Debugf("received SetConfig request from peer %q")
 
@@ -499,7 +457,7 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 
 	for _, plan := range item.GetPlans() {
 		c.l.Sugar().Debugf("received plan update: %s", plan.Id)
-		if !c.permissions.CheckPermissionForPlan(plan.Id, v1.Multihost_Permission_PERMISSION_READ_WRITE_CONFIG) {
+		if !c.permissions.CheckPermissionForPlan(plan.Id, permissions.PermsCanWriteConfiguration...) {
 			return NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to update plan %q", c.peer.InstanceId, plan.Id))
 		}
 
@@ -516,7 +474,7 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 
 	for _, repo := range item.GetRepos() {
 		c.l.Sugar().Debugf("received repo update: %s", repo.Guid)
-		if !c.permissions.CheckPermissionForRepo(repo.Id, v1.Multihost_Permission_PERMISSION_READ_WRITE_CONFIG) {
+		if !c.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanWriteConfiguration...) {
 			return NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to update repo %q", c.peer.InstanceId, repo.Id))
 		}
 
@@ -533,7 +491,7 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 
 	for _, plan := range item.GetPlansToDelete() {
 		c.l.Sugar().Debugf("received plan deletion request: %s", plan)
-		if !c.permissions.CheckPermissionForPlan(plan, v1.Multihost_Permission_PERMISSION_READ_WRITE_CONFIG) {
+		if !c.permissions.CheckPermissionForPlan(plan, permissions.PermsCanWriteConfiguration...) {
 			return NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to delete plan %q", c.peer.InstanceId, plan))
 		}
 
@@ -548,20 +506,20 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 		}
 	}
 
-	for _, repo := range item.GetReposToDelete() {
-		c.l.Sugar().Debugf("received repo deletion request: %s", repo)
-		if !c.permissions.CheckPermissionForRepo(repo, v1.Multihost_Permission_PERMISSION_READ_WRITE_CONFIG) {
-			return NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to delete repo %q", c.peer.InstanceId, repo))
+	for _, repoID := range item.GetReposToDelete() {
+		c.l.Sugar().Debugf("received repo deletion request: %s", repoID)
+		if !c.permissions.CheckPermissionForRepo(repoID, permissions.PermsCanWriteConfiguration...) {
+			return NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to delete repo %q", c.peer.InstanceId, repoID))
 		}
 
 		// Remove the repo from the local config
 		idx := slices.IndexFunc(latestConfig.Repos, func(r *v1.Repo) bool {
-			return r.Id == repo
+			return r.Id == repoID
 		})
 		if idx >= 0 {
 			latestConfig.Repos = append(latestConfig.Repos[:idx], latestConfig.Repos[idx+1:]...)
 		} else {
-			c.l.Sugar().Warnf("received repo deletion request for non-existent repo %q, ignoring", repo)
+			c.l.Sugar().Warnf("received repo deletion request for non-existent repo %q, ignoring", repoID)
 		}
 	}
 
@@ -574,7 +532,65 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 	return nil
 }
 
-func (c *syncSessionHandlerClient) HandleListResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1.SyncStreamItem_SyncActionListResources) error {
-	c.l.Sugar().Debugf("received ListResources request from peer %q", c.peer.InstanceId)
+func (c *syncSessionHandlerClient) sendConfig(ctx context.Context, stream *bidiSyncCommandStream) error {
+	localConfig := c.syncConfigSnapshot.config
+	remoteConfig := &v1sync.RemoteConfig{
+		Version: localConfig.Version,
+		Modno:   localConfig.Modno,
+	}
+
+	for _, repo := range localConfig.Repos {
+		if c.permissions.CheckPermissionForRepo(repo.Guid, permissions.PermsCanViewConfiguration...) {
+			remoteConfig.Repos = append(remoteConfig.Repos, repo)
+		}
+	}
+
+	for _, plan := range localConfig.Plans {
+		if c.permissions.CheckPermissionForPlan(plan.Id, permissions.PermsCanViewConfiguration...) {
+			remoteConfig.Plans = append(remoteConfig.Plans, plan)
+		}
+	}
+
+	stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_ReceiveConfig{
+			ReceiveConfig: &v1sync.SyncStreamItem_SyncActionReceiveConfig{
+				Config: remoteConfig,
+			},
+		},
+	})
+
+	return nil
+}
+
+func (c *syncSessionHandlerClient) sendResourceList(ctx context.Context, stream *bidiSyncCommandStream) error {
+	repoMetadatas := []*v1sync.RepoMetadata{}
+	planMetadatas := []*v1sync.PlanMetadata{}
+
+	for _, repo := range c.syncConfigSnapshot.config.Repos {
+		if c.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanViewResources...) {
+			repoMetadatas = append(repoMetadatas, &v1sync.RepoMetadata{
+				Id:   repo.Id,
+				Guid: repo.Guid,
+			})
+		}
+	}
+
+	for _, plan := range c.syncConfigSnapshot.config.Plans {
+		if c.permissions.CheckPermissionForPlan(plan.Id, permissions.PermsCanViewResources...) {
+			planMetadatas = append(planMetadatas, &v1sync.PlanMetadata{
+				Id: plan.Id,
+			})
+		}
+	}
+
+	stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_ReceiveResources{
+			ReceiveResources: &v1sync.SyncStreamItem_SyncActionReceiveResources{
+				Repos: repoMetadatas,
+				Plans: planMetadatas,
+			},
+		},
+	})
+
 	return nil
 }

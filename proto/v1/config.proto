@@ -7,15 +7,6 @@ option go_package = "github.com/garethgeorge/backrest/gen/go/v1";
 import "google/protobuf/empty.proto";
 import "v1/crypto.proto";
 
-message HubConfig {
-  repeated InstanceInfo instances = 1 [json_name="instances"];
-  
-  message InstanceInfo {
-    string id = 1 [json_name="id"];
-    string secret = 2 [json_name="secret"]; // secret used to authenticate with the hub.
-  }
-}
-
 
 // Config is the top level config object for restic UI.
 message Config {
