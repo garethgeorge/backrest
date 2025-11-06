@@ -529,7 +529,7 @@ func (x *RestoreSnapshotRequest) GetTarget() string {
 
 type ListSnapshotFilesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	RepoId        string                 `protobuf:"bytes,1,opt,name=repo_id,json=repoId,proto3" json:"repo_id,omitempty"`
+	RepoGuid      string                 `protobuf:"bytes,1,opt,name=repo_guid,json=repoGuid,proto3" json:"repo_guid,omitempty"`
 	SnapshotId    string                 `protobuf:"bytes,2,opt,name=snapshot_id,json=snapshotId,proto3" json:"snapshot_id,omitempty"`
 	Path          string                 `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -566,9 +566,9 @@ func (*ListSnapshotFilesRequest) Descriptor() ([]byte, []int) {
 	return file_v1_service_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *ListSnapshotFilesRequest) GetRepoId() string {
+func (x *ListSnapshotFilesRequest) GetRepoGuid() string {
 	if x != nil {
-		return x.RepoId
+		return x.RepoGuid
 	}
 	return ""
 }
@@ -1182,9 +1182,9 @@ const file_v1_service_proto_rawDesc = "" +
 	"\vsnapshot_id\x18\x02 \x01(\tR\n" +
 	"snapshotId\x12\x12\n" +
 	"\x04path\x18\x03 \x01(\tR\x04path\x12\x16\n" +
-	"\x06target\x18\x04 \x01(\tR\x06target\"h\n" +
-	"\x18ListSnapshotFilesRequest\x12\x17\n" +
-	"\arepo_id\x18\x01 \x01(\tR\x06repoId\x12\x1f\n" +
+	"\x06target\x18\x04 \x01(\tR\x06target\"l\n" +
+	"\x18ListSnapshotFilesRequest\x12\x1b\n" +
+	"\trepo_guid\x18\x01 \x01(\tR\brepoGuid\x12\x1f\n" +
 	"\vsnapshot_id\x18\x02 \x01(\tR\n" +
 	"snapshotId\x12\x12\n" +
 	"\x04path\x18\x03 \x01(\tR\x04path\"V\n" +

@@ -119,7 +119,7 @@ message RestoreSnapshotRequest {
 }
 
 message ListSnapshotFilesRequest {
-  string repo_id = 1;
+  string repo_guid = 1;
   string snapshot_id = 2;
   string path = 3;
 }

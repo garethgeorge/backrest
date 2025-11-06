@@ -229,6 +229,7 @@ export const OperationRow = ({
           snapshotId={snapshotOp.snapshot!.id}
           snapshotOpId={operation.id}
           repoId={operation.repoId}
+          repoGuid={operation.repoGuid}
           planId={operation.planId}
         />
       ),

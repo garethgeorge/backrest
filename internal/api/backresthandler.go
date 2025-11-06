@@ -305,7 +305,19 @@ func (s *BackrestHandler) ListSnapshots(ctx context.Context, req *connect.Reques
 
 func (s *BackrestHandler) ListSnapshotFiles(ctx context.Context, req *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error) {
 	query := req.Msg
-	repo, err := s.orchestrator.GetRepoOrchestrator(query.RepoId)
+
+	// Lookup the repo by GUID to handle reimports correctly.
+	cfg, err := s.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %w", err)
+	}
+	repoCfg := config.FindRepoByGUID(cfg, query.RepoGuid)
+	if repoCfg == nil {
+		return nil, fmt.Errorf("repo not found: %q", query.RepoGuid)
+	}
+
+	// Get the orchestrator for the repo if its configuration is available.
+	repo, err := s.orchestrator.GetRepoOrchestrator(repoCfg.Id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get repo: %w", err)
 	}

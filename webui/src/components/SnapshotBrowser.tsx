@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Button, Dropdown, Form, Input, Modal, Space, Spin, Tree } from "antd";
 import type { DataNode, EventDataNode } from "antd/es/tree";
 import {
+  ListSnapshotFilesRequestSchema,
   ListSnapshotFilesResponse,
   ListSnapshotFilesResponseSchema,
   LsEntry,
@@ -74,6 +75,7 @@ const findInTree = (curNode: DataNode, key: string): DataNode | null => {
 
 export const SnapshotBrowser = ({
   repoId,
+  repoGuid,
   planId, // optional: purely to link restore operations to the right plan.
   snapshotId,
   snapshotOpId,
@@ -81,6 +83,7 @@ export const SnapshotBrowser = ({
   snapshotId: string;
   snapshotOpId?: bigint;
   repoId: string;
+  repoGuid: string;
   planId?: string;
 }>) => {
   const alertApi = useAlertApi();
@@ -118,7 +121,7 @@ export const SnapshotBrowser = ({
         })
       )
     );
-  }, [repoId, snapshotId]);
+  }, [repoId, repoGuid, snapshotId]);
 
   const onLoadData = async ({ key, children }: EventDataNode<DataNode>) => {
     if (children) {
@@ -130,11 +133,13 @@ export const SnapshotBrowser = ({
       path += "/";
     }
 
-    const resp = await backrestService.listSnapshotFiles({
-      path,
-      repoId,
-      snapshotId,
-    });
+    const resp = await backrestService.listSnapshotFiles(
+      create(ListSnapshotFilesRequestSchema, {
+        path,
+        repoGuid,
+        snapshotId,
+      })
+    );
 
     setTreeData((treeData) => {
       let toUpdate: DataNode | null = null;
