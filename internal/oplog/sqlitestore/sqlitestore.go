@@ -27,7 +27,6 @@ import (
 	_ "github.com/ncruces/go-sqlite3/embed"
 	"github.com/ncruces/go-sqlite3/vfs"
 	"github.com/ncruces/go-sqlite3/vfs/memdb"
-	_ "github.com/ncruces/go-sqlite3/vfs/memdb"
 )
 
 var ErrLocked = errors.New("sqlite db is locked")
@@ -446,6 +445,55 @@ func (m *SqliteStore) Update(op ...*v1.Operation) error {
 	defer tx.Rollback()
 
 	if err := m.updateInternal(tx, op...); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (m *SqliteStore) setInternal(tx *sql.Tx, op ...*v1.Operation) error {
+	for _, o := range op {
+		ogid, err := m.findOrCreateGroup(tx, o)
+		if err != nil {
+			return fmt.Errorf("find ogid: %v", err)
+		}
+
+		query := `INSERT OR REPLACE INTO operations 
+			(id, ogid, original_id, original_flow_id, modno, flow_id, start_time_ms, status, snapshot_id, operation)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		bytes, err := proto.Marshal(o)
+		if err != nil {
+			return fmt.Errorf("marshal operation: %v", err)
+		}
+
+		_, err = tx.ExecContext(context.Background(), query, o.Id, ogid, o.OriginalId, o.OriginalFlowId, o.Modno, o.FlowId, o.UnixTimeStartMs, int64(o.Status), o.SnapshotId, bytes)
+		if err != nil {
+			return fmt.Errorf("set operation: %v", err)
+		}
+	}
+	return nil
+}
+
+func (m *SqliteStore) Set(op ...*v1.Operation) error {
+	tx, err := m.dbpool.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return fmt.Errorf("set operation: begin tx: %v", err)
+	}
+	defer tx.Rollback()
+
+	for _, o := range op {
+		if o.Id == 0 {
+			o.Id = m.highestOpID.Add(1)
+		}
+		if o.FlowId == 0 {
+			o.FlowId = o.Id
+		}
+		if err := protoutil.ValidateOperation(o); err != nil {
+			return err
+		}
+	}
+
+	if err := m.setInternal(tx, op...); err != nil {
 		return err
 	}
 

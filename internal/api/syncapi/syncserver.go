@@ -270,13 +270,12 @@ func (h *syncSessionHandlerServer) insertOrUpdate(op *v1.Operation, isUpdate boo
 		if isUpdate {
 			h.l.Sugar().Warnf("received update for non-existent operation %+v, inserting instead", op)
 		}
-		op.Modno = 0
-		return h.mgr.oplog.Add(op)
+		return h.mgr.oplog.Set(oplog.OPERATION_ADDED, op)
 	} else {
 		if !isUpdate {
 			h.l.Sugar().Warnf("received insert for existing operation %+v, updating instead", op)
 		}
-		return h.mgr.oplog.Update(op)
+		return h.mgr.oplog.Set(oplog.OPERATION_UPDATED, op)
 	}
 }
 

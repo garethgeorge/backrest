@@ -1016,6 +1016,390 @@ func BenchmarkList(b *testing.B) {
 	}
 }
 
+func TestSet_NewOperation(t *testing.T) {
+	// t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			// Create a new operation without ID
+			op := &v1.Operation{
+				Modno:           1,
+				UnixTimeStartMs: 1234,
+				PlanId:          "plan1",
+				RepoId:          "repo1",
+				RepoGuid:        "repo1",
+				InstanceId:      "instance1",
+				Status:          v1.OperationStatus_STATUS_SUCCESS,
+				Op:              &v1.Operation_OperationBackup{},
+			}
+
+			// Set should assign an ID and FlowID
+			if err := store.Set(op); err != nil {
+				t.Fatalf("error setting operation: %s", err)
+			}
+
+			if op.Id == 0 {
+				t.Error("expected Set to assign an ID")
+			}
+			if op.FlowId == 0 {
+				t.Error("expected Set to assign a FlowID")
+			}
+			if op.FlowId != op.Id {
+				t.Errorf("expected FlowID to equal ID, got FlowID=%d, ID=%d", op.FlowId, op.Id)
+			}
+			if op.Modno != 1 {
+				t.Errorf("expected Modno to remain 1, got %d", op.Modno)
+			}
+
+			// Verify the operation was stored
+			gotOp, err := store.Get(op.Id)
+			if err != nil {
+				t.Fatalf("error getting operation: %s", err)
+			}
+
+			if diff := cmp.Diff(op, gotOp, protocmp.Transform()); diff != "" {
+				t.Errorf("unexpected diff in operation: %v", diff)
+			}
+		})
+	}
+}
+
+func TestSet_ExistingID(t *testing.T) {
+	// t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			// Create an operation with a specific ID
+			op := &v1.Operation{
+				Id:              100,
+				Modno:           50,
+				FlowId:          100,
+				UnixTimeStartMs: 1234,
+				PlanId:          "plan1",
+				RepoId:          "repo1",
+				RepoGuid:        "repo1",
+				InstanceId:      "instance1",
+				Status:          v1.OperationStatus_STATUS_SUCCESS,
+				Op:              &v1.Operation_OperationBackup{},
+			}
+
+			// Set should use the provided ID and Modno
+			if err := store.Set(op); err != nil {
+				t.Fatalf("error setting operation: %s", err)
+			}
+
+			if op.Id != 100 {
+				t.Errorf("expected ID to be 100, got %d", op.Id)
+			}
+			if op.Modno != 50 {
+				t.Errorf("expected Modno to be 50, got %d", op.Modno)
+			}
+
+			// Verify the operation was stored with exact values
+			gotOp, err := store.Get(100)
+			if err != nil {
+				t.Fatalf("error getting operation: %s", err)
+			}
+
+			if diff := cmp.Diff(op, gotOp, protocmp.Transform()); diff != "" {
+				t.Errorf("unexpected diff in operation: %v", diff)
+			}
+		})
+	}
+}
+
+func TestSet_ReplaceExisting(t *testing.T) {
+	// t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			// Add an initial operation
+			op1 := &v1.Operation{
+				Id:              200,
+				Modno:           10,
+				FlowId:          200,
+				UnixTimeStartMs: 1234,
+				PlanId:          "plan1",
+				RepoId:          "repo1",
+				RepoGuid:        "repo1",
+				InstanceId:      "instance1",
+				Status:          v1.OperationStatus_STATUS_PENDING,
+				Op:              &v1.Operation_OperationBackup{},
+			}
+
+			if err := store.Set(op1); err != nil {
+				t.Fatalf("error setting first operation: %s", err)
+			}
+
+			// Replace with a different operation with the same ID but different Modno
+			op2 := &v1.Operation{
+				Id:              200,
+				Modno:           20,
+				FlowId:          200,
+				UnixTimeStartMs: 5678,
+				PlanId:          "plan1",
+				RepoId:          "repo1",
+				RepoGuid:        "repo1",
+				InstanceId:      "instance1",
+				Status:          v1.OperationStatus_STATUS_SUCCESS,
+				Op:              &v1.Operation_OperationBackup{},
+			}
+
+			if err := store.Set(op2); err != nil {
+				t.Fatalf("error setting second operation: %s", err)
+			}
+
+			// Verify the operation was replaced
+			gotOp, err := store.Get(200)
+			if err != nil {
+				t.Fatalf("error getting operation: %s", err)
+			}
+
+			if gotOp.UnixTimeStartMs != 5678 {
+				t.Errorf("expected UnixTimeStartMs to be 5678, got %d", gotOp.UnixTimeStartMs)
+			}
+			if gotOp.Status != v1.OperationStatus_STATUS_SUCCESS {
+				t.Errorf("expected status to be SUCCESS, got %v", gotOp.Status)
+			}
+			if gotOp.Modno != 20 {
+				t.Errorf("expected Modno to be 20, got %d", gotOp.Modno)
+			}
+
+			if diff := cmp.Diff(op2, gotOp, protocmp.Transform()); diff != "" {
+				t.Errorf("unexpected diff in operation: %v", diff)
+			}
+		})
+	}
+}
+
+func TestSet_PreservesExactModno(t *testing.T) {
+	// t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			// Create operations with specific Modno values
+			ops := []*v1.Operation{
+				{
+					Id:              1,
+					Modno:           100,
+					FlowId:          1,
+					UnixTimeStartMs: 1000,
+					PlanId:          "plan1",
+					RepoId:          "repo1",
+					RepoGuid:        "repo1",
+					InstanceId:      "instance1",
+					Status:          v1.OperationStatus_STATUS_SUCCESS,
+					Op:              &v1.Operation_OperationBackup{},
+				},
+				{
+					Id:              2,
+					Modno:           50, // Lower Modno than previous
+					FlowId:          2,
+					UnixTimeStartMs: 2000,
+					PlanId:          "plan2",
+					RepoId:          "repo2",
+					RepoGuid:        "repo2",
+					InstanceId:      "instance2",
+					Status:          v1.OperationStatus_STATUS_SUCCESS,
+					Op:              &v1.Operation_OperationBackup{},
+				},
+				{
+					Id:              3,
+					Modno:           200,
+					FlowId:          3,
+					UnixTimeStartMs: 3000,
+					PlanId:          "plan3",
+					RepoId:          "repo3",
+					RepoGuid:        "repo3",
+					InstanceId:      "instance3",
+					Status:          v1.OperationStatus_STATUS_SUCCESS,
+					Op:              &v1.Operation_OperationBackup{},
+				},
+			}
+
+			for _, op := range ops {
+				if err := store.Set(op); err != nil {
+					t.Fatalf("error setting operation: %s", err)
+				}
+			}
+
+			// Verify each operation has its exact Modno
+			for _, expectedOp := range ops {
+				gotOp, err := store.Get(expectedOp.Id)
+				if err != nil {
+					t.Fatalf("error getting operation %d: %s", expectedOp.Id, err)
+				}
+
+				if gotOp.Modno != expectedOp.Modno {
+					t.Errorf("operation %d: expected Modno %d, got %d", expectedOp.Id, expectedOp.Modno, gotOp.Modno)
+				}
+
+				if diff := cmp.Diff(expectedOp, gotOp, protocmp.Transform()); diff != "" {
+					t.Errorf("operation %d: unexpected diff: %v", expectedOp.Id, diff)
+				}
+			}
+		})
+	}
+}
+
+func TestSet_MultipleOperations(t *testing.T) {
+	// t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			// Create multiple operations to set in one call
+			ops := make([]*v1.Operation, 10)
+			for i := 0; i < 10; i++ {
+				ops[i] = &v1.Operation{
+					Id:              int64(i + 1),
+					Modno:           int64(i*10 + 5),
+					FlowId:          int64(i + 1),
+					UnixTimeStartMs: int64(1000 + i),
+					PlanId:          "plan1",
+					RepoId:          "repo1",
+					RepoGuid:        "repo1",
+					InstanceId:      "instance1",
+					Status:          v1.OperationStatus_STATUS_SUCCESS,
+					Op:              &v1.Operation_OperationBackup{},
+				}
+			}
+
+			// Set all operations at once
+			if err := store.Set(ops...); err != nil {
+				t.Fatalf("error setting multiple operations: %s", err)
+			}
+
+			// Verify all operations were stored correctly
+			for i, expectedOp := range ops {
+				gotOp, err := store.Get(expectedOp.Id)
+				if err != nil {
+					t.Fatalf("error getting operation %d: %s", i, err)
+				}
+
+				if diff := cmp.Diff(expectedOp, gotOp, protocmp.Transform()); diff != "" {
+					t.Errorf("operation %d: unexpected diff: %v", i, diff)
+				}
+			}
+		})
+	}
+}
+
+func TestSet_WithoutFlowID(t *testing.T) {
+	// t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			// Create an operation with ID but without FlowID
+			op := &v1.Operation{
+				Id:              300,
+				Modno:           10,
+				UnixTimeStartMs: 1234,
+				PlanId:          "plan1",
+				RepoId:          "repo1",
+				RepoGuid:        "repo1",
+				InstanceId:      "instance1",
+				Status:          v1.OperationStatus_STATUS_SUCCESS,
+				Op:              &v1.Operation_OperationBackup{},
+			}
+
+			if err := store.Set(op); err != nil {
+				t.Fatalf("error setting operation: %s", err)
+			}
+
+			// FlowID should be set to ID
+			if op.FlowId != 300 {
+				t.Errorf("expected FlowID to be 300, got %d", op.FlowId)
+			}
+
+			// Verify the operation was stored correctly
+			gotOp, err := store.Get(300)
+			if err != nil {
+				t.Fatalf("error getting operation: %s", err)
+			}
+
+			if gotOp.FlowId != 300 {
+				t.Errorf("stored operation: expected FlowID to be 300, got %d", gotOp.FlowId)
+			}
+		})
+	}
+}
+
+func TestSet_DifferentFlowID(t *testing.T) {
+	// t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			// Create an operation with a different FlowID
+			op := &v1.Operation{
+				Id:              400,
+				Modno:           10,
+				FlowId:          500, // Different from ID
+				UnixTimeStartMs: 1234,
+				PlanId:          "plan1",
+				RepoId:          "repo1",
+				RepoGuid:        "repo1",
+				InstanceId:      "instance1",
+				Status:          v1.OperationStatus_STATUS_SUCCESS,
+				Op:              &v1.Operation_OperationBackup{},
+			}
+
+			if err := store.Set(op); err != nil {
+				t.Fatalf("error setting operation: %s", err)
+			}
+
+			// FlowID should remain 500
+			if op.FlowId != 500 {
+				t.Errorf("expected FlowID to be 500, got %d", op.FlowId)
+			}
+
+			// Verify the operation was stored correctly
+			gotOp, err := store.Get(400)
+			if err != nil {
+				t.Fatalf("error getting operation: %s", err)
+			}
+
+			if gotOp.FlowId != 500 {
+				t.Errorf("stored operation: expected FlowID to be 500, got %d", gotOp.FlowId)
+			}
+
+			if diff := cmp.Diff(op, gotOp, protocmp.Transform()); diff != "" {
+				t.Errorf("unexpected diff in operation: %v", diff)
+			}
+		})
+	}
+}
+
+func TestSet_Validation(t *testing.T) {
+	// t.Parallel()
+	for name, store := range StoresForTest(t) {
+		t.Run(name, func(t *testing.T) {
+			// Try to set an invalid operation (missing required fields)
+			op := &v1.Operation{
+				Id:    600,
+				Modno: 10,
+				// Missing required fields like PlanId, RepoId, etc.
+			}
+
+			err := store.Set(op)
+			if err == nil {
+				t.Error("expected Set to return validation error for invalid operation")
+			}
+
+			// Try to set an operation without Modno
+			op2 := &v1.Operation{
+				Id:              601,
+				FlowId:          601,
+				UnixTimeStartMs: 1234,
+				PlanId:          "plan1",
+				RepoId:          "repo1",
+				RepoGuid:        "repo1",
+				InstanceId:      "instance1",
+				Status:          v1.OperationStatus_STATUS_SUCCESS,
+				Op:              &v1.Operation_OperationBackup{},
+				// Missing Modno
+			}
+
+			err = store.Set(op2)
+			if err == nil {
+				t.Error("expected Set to return validation error for operation without Modno")
+			}
+		})
+	}
+}
+
 func BenchmarkGetLastItem(b *testing.B) {
 	for _, count := range []int{100, 1000, 10000} {
 		b.Run(fmt.Sprintf("%d", count), func(b *testing.B) {

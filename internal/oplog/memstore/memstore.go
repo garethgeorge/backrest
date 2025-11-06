@@ -150,6 +150,29 @@ func (m *MemStore) Add(op ...*v1.Operation) error {
 	return nil
 }
 
+func (m *MemStore) Set(op ...*v1.Operation) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, o := range op {
+		if o.Id == 0 {
+			m.nextID++
+			o.Id = m.nextID
+		}
+		if o.FlowId == 0 {
+			o.FlowId = o.Id
+		}
+		if err := protoutil.ValidateOperation(o); err != nil {
+			return err
+		}
+	}
+
+	for _, o := range op {
+		m.operations[o.Id] = o
+	}
+	return nil
+}
+
 func (m *MemStore) Get(opID int64) (*v1.Operation, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

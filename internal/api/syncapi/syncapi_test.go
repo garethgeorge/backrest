@@ -544,6 +544,189 @@ func TestSyncMutations(t *testing.T) {
 	wg.Wait()
 }
 
+func TestMultistageRandomSync(t *testing.T) {
+	testutil.InstallZapLogger(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	peerHostAddr := testutil.AllocOpenBindAddr(t)
+	peerClientAddr := testutil.AllocOpenBindAddr(t)
+
+	peerHostConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
+		Instance: defaultHostID,
+		Repos: []*v1.Repo{
+			{
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
+				Uri:  "test-uri",
+			},
+		},
+		Multihost: &v1.Multihost{
+			Identity: identity1,
+			AuthorizedClients: []*v1.Multihost_Peer{
+				{
+					Keyid:         identity2.Keyid,
+					KeyidVerified: true,
+					InstanceId:    defaultClientID,
+				},
+			},
+		},
+	}
+
+	peerClientConfig := &v1.Config{
+		Version:  migrations.CurrentVersion,
+		Instance: defaultClientID,
+		Repos: []*v1.Repo{
+			{
+				Id:   defaultRepoID,
+				Guid: defaultRepoGUID,
+				Uri:  "backrest://" + defaultHostID,
+			},
+		},
+		Multihost: &v1.Multihost{
+			Identity: identity2,
+			KnownHosts: []*v1.Multihost_Peer{
+				{
+					Keyid:       identity1.Keyid,
+					InstanceId:  defaultHostID,
+					InstanceUrl: fmt.Sprintf("http://%s", peerHostAddr),
+					Permissions: []*v1.Multihost_Permission{
+						{
+							Type: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
+							Scopes: []string{
+								"repo:" + defaultRepoID,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	peerHost := newPeerUnderTest(t, peerHostConfig)
+	peerClient := newPeerUnderTest(t, peerClientConfig)
+
+	// Track all operations added to client to verify sync at the end
+	var clientOps []*v1.Operation
+	var mu sync.Mutex
+
+	// Start with the sync APIs running
+	var syncCtx context.Context
+	var cancelSyncCtx context.CancelFunc
+	var wg sync.WaitGroup
+	isConnected := false
+
+	startSyncAPIs := func() {
+		syncCtx, cancelSyncCtx = context.WithCancel(ctx)
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			runSyncAPIWithCtx(syncCtx, peerHost, peerHostAddr)
+		}()
+		go func() {
+			defer wg.Done()
+			runSyncAPIWithCtx(syncCtx, peerClient, peerClientAddr)
+		}()
+		isConnected = true
+	}
+
+	stopSyncAPIs := func() {
+		cancelSyncCtx()
+		wg.Wait()
+		isConnected = false
+	}
+
+	// Start initially connected
+	startSyncAPIs()
+	tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
+
+	// Give the sync some time to fully establish
+	time.Sleep(100 * time.Millisecond)
+
+	// Run 50 random steps
+	for step := 0; step < 50; step++ {
+		action := step % 3 // Cycle through actions deterministically for reproducibility
+		// In a real random test, you could use: action := rand.Intn(3)
+
+		switch action {
+		case 0: // Add an operation
+			op := testutil.OperationsWithDefaults(basicClientOperationTempl, []*v1.Operation{
+				{
+					DisplayMessage: fmt.Sprintf("multistage-op-%d", step),
+				},
+			})[0]
+
+			if err := peerClient.oplog.Add(op); err != nil {
+				t.Fatalf("step %d: failed to add operation: %v", step, err)
+			}
+
+			mu.Lock()
+			clientOps = append(clientOps, op)
+			mu.Unlock()
+			zap.S().Infof("step %d: added operation %q", step, op.DisplayMessage)
+
+		case 1: // Mutate a random existing operation
+			mu.Lock()
+			if len(clientOps) > 0 {
+				// Pick a random operation to mutate
+				idx := step % len(clientOps)
+				op := clientOps[idx]
+				op.DisplayMessage = fmt.Sprintf("mutated-at-step-%d", step)
+
+				if err := peerClient.oplog.Update(op); err != nil {
+					mu.Unlock()
+					t.Fatalf("step %d: failed to update operation: %v", step, err)
+				}
+				zap.S().Infof("step %d: mutated operation %d to %q", step, idx, op.DisplayMessage)
+			} else {
+				zap.S().Infof("step %d: skipped mutation (no operations exist)", step)
+			}
+			mu.Unlock()
+
+		case 2: // Randomly disconnect or reconnect
+			if isConnected {
+				zap.S().Infof("step %d: disconnecting client", step)
+				stopSyncAPIs()
+				// Wait a bit to ensure shutdown completes
+				time.Sleep(100 * time.Millisecond)
+			} else {
+				zap.S().Infof("step %d: reconnecting client", step)
+				startSyncAPIs()
+				tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
+			}
+		}
+
+		// Small delay between steps to allow sync to process
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// Ensure we're connected at the end
+	if !isConnected {
+		zap.S().Info("final connection: reconnecting client")
+		startSyncAPIs()
+		tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
+	}
+
+	// Give sync some time to complete
+	time.Sleep(500 * time.Millisecond)
+
+	// Assert that all operations are synced correctly
+	mu.Lock()
+	expectedOps := make([]*v1.Operation, len(clientOps))
+	copy(expectedOps, clientOps)
+	mu.Unlock()
+
+	zap.S().Infof("verifying sync of %d operations", len(expectedOps))
+	tryExpectOperationsSynced(t, ctx, peerHost, peerClient,
+		oplog.Query{}.SetInstanceID(defaultClientID).SetRepoGUID(defaultRepoGUID),
+		"host and client should be synced after multistage test")
+
+	// Clean up
+	cancelSyncCtx()
+	wg.Wait()
+}
+
 func getOperations(t *testing.T, oplog *oplog.OpLog, query oplog.Query) []*v1.Operation {
 	ops := []*v1.Operation{}
 	if err := oplog.Query(query, func(op *v1.Operation) error {

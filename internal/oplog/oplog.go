@@ -133,6 +133,14 @@ func (o *OpLog) Get(opID int64) (*v1.Operation, error) {
 	return o.store.Get(opID)
 }
 
+func (o *OpLog) Set(eventType OperationEvent, ops ...*v1.Operation) error {
+	if err := o.store.Set(ops...); err != nil {
+		return err
+	}
+	o.notify(ops, eventType)
+	return nil
+}
+
 func (o *OpLog) Add(ops ...*v1.Operation) error {
 	for _, o := range ops {
 		if o.Id != 0 || o.Modno != 0 {
@@ -181,6 +189,8 @@ func (o *OpLog) GetHighestOpIDAndModno(q Query) (int64, int64, error) {
 }
 
 type OpStore interface {
+	// SetVersion sets the data version
+	SetVersion(version int64) error
 	// Query returns all operations that match the query.
 	Query(q Query, f func(*v1.Operation) error) error
 	// QueryMetadata is like Query, but only returns metadata about the operations.
@@ -192,6 +202,8 @@ type OpStore interface {
 	GetHighestOpIDAndModno(q Query) (int64, int64, error)
 	// Add adds the given operations to the store.
 	Add(op ...*v1.Operation) error
+	// Set sets the given operations in the store exactly as provided. It will assign Id and FlowId if not set, but otherwise stores the operation as-is.
+	Set(op ...*v1.Operation) error
 	// Update updates the given operations in the store.
 	Update(op ...*v1.Operation) error
 	// Delete removes the operations with the given IDs from the store, and returns the removed operations.
@@ -200,8 +212,6 @@ type OpStore interface {
 	Transform(q Query, f func(*v1.Operation) (*v1.Operation, error)) error
 	// Version returns the current data version
 	Version() (int64, error)
-	// SetVersion sets the data version
-	SetVersion(version int64) error
 }
 
 // OpMetadata is a struct that contains metadata about an operation without fetching the operation itself.
