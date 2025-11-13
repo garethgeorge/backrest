@@ -37,10 +37,10 @@ jobs:
           gzip -c /dev/null > webui/dist/index.html.gz
 
       - name: Build
-        run: go build ./...
+        run: go build -tags=sqlite3_dotlk ./...
 
       - name: Test
-        run: PATH=$(pwd):$PATH gotestsum ./... -- --race
+        run: PATH=$(pwd):$PATH gotestsum ./... -- --race -tags=sqlite3_dotlk
 
   test-win:
     runs-on: windows-latest

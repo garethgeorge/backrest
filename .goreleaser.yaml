@@ -31,6 +31,8 @@ builds:
       - arm64
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+    tags:
+      - sqlite3_dotlk
   - id: linux
     main: ./cmd/backrest
     env:
@@ -43,6 +45,8 @@ builds:
       - arm
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+    tags:
+      - sqlite3_dotlk
   - id: windows
     main: ./cmd/backrest
     env:
