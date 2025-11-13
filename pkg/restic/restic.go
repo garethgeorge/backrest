@@ -18,6 +18,7 @@ import (
 	"github.com/djherbis/buffer"
 	nio "github.com/djherbis/nio/v3"
 	"github.com/garethgeorge/backrest/internal/ioutil"
+	"github.com/garethgeorge/backrest/internal/platformutil"
 	"go.uber.org/zap"
 )
 
@@ -65,7 +66,7 @@ func (r *Repo) commandWithContext(ctx context.Context, args []string, opts ...Ge
 	fullCmd = append(fullCmd, opt.extraArgs...)
 
 	cmd := exec.CommandContext(ctx, fullCmd[0], fullCmd[1:]...)
-	setPlatformOptions(cmd)
+	platformutil.SetPlatformOptions(cmd)
 	cmd.Env = append(cmd.Env, opt.extraEnv...)
 
 	return cmd

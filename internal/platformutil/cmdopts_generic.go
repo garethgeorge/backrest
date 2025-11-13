@@ -1,12 +1,12 @@
 //go:build !windows
 // +build !windows
 
-package restic
+package platformutil
 
 import (
 	"os/exec"
 )
 
-func setPlatformOptions(cmd *exec.Cmd) {
+func SetPlatformOptions(cmd *exec.Cmd) {
 	// No special options needed for non-Windows platforms
 }
