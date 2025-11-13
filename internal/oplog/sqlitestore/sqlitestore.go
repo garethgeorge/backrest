@@ -168,11 +168,7 @@ func (m *SqliteStore) backup(to string, keepCount int, force bool) error {
 	}
 	sort.Strings(matches)
 
-	// Create a suffix indicating the schema, this way we can always create a new backup
-	// if the schema of the last backup doesn't match the current schema implying we're about to run a migration.
 	backupSuffix := fmt.Sprintf("s%02dm%02d.backup", sqlSchemaVersion, migrations.CurrentVersion)
-
-	// Skip creating a new backup if the latest is less than an hour old OR if the schema suffix doesn't match
 	if !force && len(matches) > 0 {
 		latestBackup := matches[len(matches)-1]
 		info, err := os.Stat(latestBackup)
@@ -192,16 +188,9 @@ func (m *SqliteStore) backup(to string, keepCount int, force bool) error {
 		return fmt.Errorf("backup sqlite db: %v", err)
 	}
 
-	// Refresh the list of backups after creating the new one
-	matches, err = filepath.Glob(filepath.Join(dir, pattern))
-	if err != nil {
-		return fmt.Errorf("glob for backups after creation: %v", err)
-	}
-	sort.Strings(matches)
-
 	// Delete old backups, keeping only the specified number
-	if len(matches) > keepCount {
-		toDelete := matches[:len(matches)-keepCount]
+	if len(matches) > keepCount-1 {
+		toDelete := matches[:len(matches)-keepCount+1]
 		for _, f := range toDelete {
 			if err := os.Remove(f); err != nil {
 				return fmt.Errorf("delete old backup %q: %w", f, err)

@@ -20,7 +20,7 @@ func TestBackup_NewDatabaseCreatesValidBackup(t *testing.T) {
 	defer store.Close()
 
 	// NewSqliteStore should have created an initial backup
-	matches, err := filepath.Glob(filepath.Join(tempDir, "test.db-*.bak"))
+	matches, err := filepath.Glob(filepath.Join(tempDir, "test.db-*.backup"))
 	if err != nil {
 		t.Fatalf("failed to glob for backups: %v", err)
 	}
