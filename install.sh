@@ -65,6 +65,7 @@ Type=simple
 User=$(whoami)
 Group=$(whoami)
 ExecStart=/usr/local/bin/backrest
+Restart=on-failure
 Environment="BACKREST_PORT=$BACKREST_PORT"
 
 [Install]
@@ -75,8 +76,7 @@ EOM
   sudo systemctl daemon-reload
 
   echo "Enabling systemd service backrest.service"
-  sudo systemctl enable backrest
-  sudo systemctl start backrest
+  sudo systemctl enable backrest  
 }
 
 create_openrc_service() {
@@ -100,6 +100,7 @@ command=/usr/local/bin/backrest
 command_background=true
 pidfile="/run/\${RC_SVCNAME}.pid"
 command_user="$(whoami):$(whoami)"
+supervisor=supervise-daemon
 
 export BACKREST_PORT=$BACKREST_PORT
 EOM
@@ -107,8 +108,6 @@ EOM
   sudo chmod 755 /etc/init.d/backrest
   echo "Adding backrest to runlevel default"
   sudo rc-update add backrest default
-  echo "Reloading openrc service"
-  sudo rc-service backrest start
 }
 
 create_launchd_plist() {
@@ -167,12 +166,16 @@ elif [ "$OS" = "Linux" ]; then
     stop_systemd_service
     install_unix
     create_systemd_service
+    echo "Reloading systemd service"
+    sudo systemctl start backrest
   elif [ $openrc_ -eq 0 ]; then
     echo "Openrc found."
 
     stop_openrc_service
     install_unix
     create_openrc_service
+    echo "Reloading openrc service"
+    sudo rc-service backrest start
   else
     echo "neither systemd nor openrc were found"
   fi
