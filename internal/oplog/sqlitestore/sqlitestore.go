@@ -9,11 +9,14 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/config/migrations"
 	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/kvstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
@@ -93,6 +96,9 @@ func NewSqliteStore(db string) (*SqliteStore, error) {
 	} else if !locked {
 		return nil, ErrLocked
 	}
+	if err := store.backup(db, 3, false); err != nil {
+		return nil, fmt.Errorf("backup sqlite db: %v", err)
+	}
 	if err := store.init(); err != nil {
 		return nil, err
 	}
@@ -146,6 +152,63 @@ func (m *SqliteStore) init() error {
 	}
 	m.highestModno.Store(highestModno)
 	m.highestOpID.Store(highestID)
+	return nil
+}
+
+// backup creates a backup of the database using VACUUM INTO.
+// keepCount specifies how many old backups to keep (older ones are deleted).
+// force skips the time check and creates a backup even if the latest is recent.
+func (m *SqliteStore) backup(to string, keepCount int, force bool) error {
+	dir := filepath.Dir(to)
+	base := filepath.Base(to)
+	pattern := fmt.Sprintf("%s-*.backup", base)
+	matches, err := filepath.Glob(filepath.Join(dir, pattern))
+	if err != nil {
+		return fmt.Errorf("glob for old backups: %v", err)
+	}
+	sort.Strings(matches)
+
+	// Create a suffix indicating the schema, this way we can always create a new backup
+	// if the schema of the last backup doesn't match the current schema implying we're about to run a migration.
+	backupSuffix := fmt.Sprintf("s%02dm%02d.backup", sqlSchemaVersion, migrations.CurrentVersion)
+
+	// Skip creating a new backup if the latest is less than an hour old OR if the schema suffix doesn't match
+	if !force && len(matches) > 0 {
+		latestBackup := matches[len(matches)-1]
+		info, err := os.Stat(latestBackup)
+		if err != nil {
+			return fmt.Errorf("stat latest backup %q: %w", latestBackup, err)
+		}
+		if strings.HasSuffix(latestBackup, backupSuffix) && time.Since(info.ModTime()) < 7*24*time.Hour {
+			// Don't create a new backup more than once a week if the last one matches the schema.
+			return nil
+		}
+	}
+
+	// Create the backup using VACUUM INTO
+	backupPath := fmt.Sprintf("%s-%s-%s", to, time.Now().Format("20060102.150405.000"), backupSuffix)
+	_, err = m.dbpool.ExecContext(context.Background(), "VACUUM INTO ?", backupPath)
+	if err != nil {
+		return fmt.Errorf("backup sqlite db: %v", err)
+	}
+
+	// Refresh the list of backups after creating the new one
+	matches, err = filepath.Glob(filepath.Join(dir, pattern))
+	if err != nil {
+		return fmt.Errorf("glob for backups after creation: %v", err)
+	}
+	sort.Strings(matches)
+
+	// Delete old backups, keeping only the specified number
+	if len(matches) > keepCount {
+		toDelete := matches[:len(matches)-keepCount]
+		for _, f := range toDelete {
+			if err := os.Remove(f); err != nil {
+				return fmt.Errorf("delete old backup %q: %w", f, err)
+			}
+		}
+	}
+
 	return nil
 }
 
