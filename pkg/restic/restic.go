@@ -480,9 +480,11 @@ func (r *Repo) Mount(ctx context.Context, dir string, mountTimeout time.Duration
 	}
 
 	// Start the mount command in background
+	errorCollector := errorMessageCollector{}
 	cmd := r.commandWithContext(ctx, []string{"mount", dir}, opts...)
+	r.handleOutput(cmd, withAllTo(&errorCollector), withLogWriterFromContext(ctx))
 	if err := cmd.Start(); err != nil {
-		return newCmdError(ctx, cmd, err)
+		return errorCollector.AddCmdOutputToError(cmd, err)
 	}
 
 	// Wait for mount to become available
@@ -508,7 +510,7 @@ func (r *Repo) Mount(ctx context.Context, dir string, mountTimeout time.Duration
 			}
 
 			if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
-				return newCmdError(ctx, cmd, fmt.Errorf("restic mount process exited with code %d", cmd.ProcessState.ExitCode()))
+				return errorCollector.AddCmdOutputToError(cmd, fmt.Errorf("restic mount process exited with code %d", cmd.ProcessState.ExitCode()))
 			}
 		}
 	}
