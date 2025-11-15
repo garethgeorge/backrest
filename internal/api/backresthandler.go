@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
+	"os/exec"
 	"path"
 	"slices"
 	"strings"
@@ -114,6 +116,10 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 
 	if req.Msg.Guid == "" {
 		req.Msg.Guid = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+	}
+
+	if err := s.addSftpHostKey(req.Msg.GetUri()); err != nil {
+		return nil, fmt.Errorf("failed to add sftp host key: %w", err)
 	}
 
 	if err := config.ValidateConfig(c); err != nil {
@@ -266,6 +272,70 @@ func (s *BackrestHandler) RemoveRepo(ctx context.Context, req *connect.Request[t
 	}
 
 	return connect.NewResponse(cfg), nil
+}
+
+// addSftpHostKey parses an SFTP URI and adds the host's public key to the user's known_hosts file.
+// This is equivalent to what `ssh-keyscan` does.
+func (s *BackrestHandler) addSftpHostKey(uri string) error {
+	if !strings.HasPrefix(uri, "sftp:") {
+		return nil
+	}
+	uri = strings.TrimPrefix(uri, "sftp:")
+
+	slashIdx := strings.Index(uri, "/")
+	if slashIdx == -1 {
+		slashIdx = len(uri)
+	}
+
+	authority := uri[:slashIdx]
+	hostPart := authority
+	if atIdx := strings.LastIndex(authority, "@"); atIdx != -1 {
+		hostPart = authority[atIdx+1:]
+	}
+
+	host, _, err := net.SplitHostPort(hostPart)
+	if err != nil {
+		host = hostPart
+	}
+
+	if host == "" {
+		return errors.New("could not parse host from sftp uri")
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("could not get home directory: %w", err)
+	}
+	knownHostsPath := path.Join(home, ".ssh", "known_hosts")
+
+	if err := os.MkdirAll(path.Dir(knownHostsPath), 0700); err != nil {
+		return err
+	}
+
+	checkCmd := exec.Command("ssh-keygen", "-F", host)
+	if err := checkCmd.Run(); err == nil {
+		zap.S().Debugf("SFTP host %s already in known_hosts", host)
+		return nil
+	}
+
+	keyscanCmd := exec.Command("ssh-keyscan", "-H", host)
+	keyOutput, err := keyscanCmd.Output()
+	if err != nil {
+		return fmt.Errorf("ssh-keyscan for host %s failed: %w", host, err)
+	}
+
+	f, err := os.OpenFile(knownHostsPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to open known_hosts file: %w", err)
+	}
+	defer f.Close()
+
+	if _, err := f.Write(keyOutput); err != nil {
+		return fmt.Errorf("failed to write to known_hosts file: %w", err)
+	}
+
+	zap.S().Infof("Added SFTP host %s to known_hosts file at %s", host, knownHostsPath)
+	return nil
 }
 
 // ListSnapshots implements POST /v1/snapshots

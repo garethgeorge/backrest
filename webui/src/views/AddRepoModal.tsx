@@ -79,6 +79,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const alertsApi = useAlertApi()!;
   const [config, setConfig] = useConfig();
   const [form] = Form.useForm<JsonValue>();
+  const uri = Form.useWatch("uri", form);
+  const [sftpIdentityFile, setSftpIdentityFile] = useState("");
+  const [sftpPort, setSftpPort] = useState<number | null>(null);
+
   useEffect(() => {
     const initVal = template
       ? toJson(RepoSchema, template, {
@@ -86,7 +90,59 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         })
       : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true });
     form.setFieldsValue(initVal);
+
+    // When creating a new repo, reset the SFTP fields.
+    if (!template) {
+      setSftpIdentityFile("");
+      setSftpPort(null);
+    }
   }, [template]);
+
+  useEffect(() => {
+    if (!uri?.startsWith("sftp:")) {
+      setSftpIdentityFile("");
+      setSftpPort(null);
+    }
+  }, [uri]);
+
+  // This effect now only runs for NEW repos to build the flag.
+  useEffect(() => {
+    // If we are editing, we don't touch the flags. The user can edit them manually.
+    if (template) {
+      return;
+    }
+
+    const currentFlags = form.getFieldValue("flags") || [];
+    const newFlags = currentFlags.filter(
+      (f: string) => f && !f.startsWith("--option=sftp.args")
+    );
+
+    if (uri?.startsWith("sftp:")) {
+      let sftpArgs = "-oBatchMode=yes";
+      let argsChanged = false;
+
+      if (sftpIdentityFile) {
+        sftpArgs += ` -i ${sftpIdentityFile}`;
+        argsChanged = true;
+      }
+
+      if (sftpPort && sftpPort !== 0 && sftpPort !== 22) {
+        sftpArgs += ` -p ${sftpPort}`;
+        argsChanged = true;
+      }
+
+      if (argsChanged) {
+        newFlags.push(`--option=sftp.args='${sftpArgs}'`);
+      }
+    }
+
+    const sortedCurrent = [...(currentFlags || [])].sort();
+    const sortedNew = [...newFlags].sort();
+
+    if (JSON.stringify(sortedCurrent) !== JSON.stringify(sortedNew)) {
+      form.setFieldsValue({ flags: newFlags });
+    }
+  }, [uri, sftpIdentityFile, sftpPort, template]);
 
   if (!config) {
     return null;
@@ -335,6 +391,31 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               <URIAutocomplete disabled={!!template} />
             </Form.Item>
           </Tooltip>
+
+          {uri?.startsWith("sftp:") && !template && (
+            <>
+              <Tooltip title="Optional: Path to an SSH identity file for SFTP authentication. This path must be accessible on the machine running backrest.">
+                <Form.Item label="SFTP Identity File">
+                  <Input
+                    placeholder="/home/user/.ssh/id_rsa"
+                    value={sftpIdentityFile}
+                    onChange={(e) => setSftpIdentityFile(e.target.value)}
+                  />
+                </Form.Item>
+              </Tooltip>
+              <Tooltip title="Optional: Specify a custom port for SFTP connection. Defaults to 22.">
+                <Form.Item label="SFTP Port">
+                  <InputNumber
+                    min={1}
+                    max={65535}
+                    placeholder="22"
+                    value={sftpPort}
+                    onChange={(value) => setSftpPort(value)}
+                  />
+                </Form.Item>
+              </Tooltip>
+            </>
+          )}
 
           {/* Repo.password */}
           <Tooltip
