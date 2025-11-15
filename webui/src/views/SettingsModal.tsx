@@ -32,6 +32,7 @@ import {
 import { PeerState } from "../../gen/ts/v1sync/syncservice_pb";
 import { useSyncStates } from "../state/peerstates";
 import { PeerStateConnectionStatusIcon } from "../components/SyncStateIcon";
+import { isMultihostSyncEnabled } from "../state/buildcfg";
 
 interface FormData {
   auth: {
@@ -212,7 +213,7 @@ export const SettingsModal = () => {
                     peerStates={peerStates}
                   />
                 ),
-                // style: { display: "none" },
+                style: isMultihostSyncEnabled ? undefined : { display: "none" },
               },
               {
                 key: "last",
@@ -351,9 +352,9 @@ const MultihostIdentityForm: React.FC<{
         status of a collections of systems.
       </Typography.Paragraph>
       <Typography.Paragraph italic>
-        This feature is experimental and may be subject to version incompatible
-        changes in the future which will require all instances to be updated at
-        the same time.
+        Warning: this feature is very experimental and may be subject to version
+        incompatible changes in the future which will require all instances to
+        be updated at the same time.
       </Typography.Paragraph>
 
       {/* Show the current instance's identity */}
