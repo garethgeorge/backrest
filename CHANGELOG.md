@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.10.2](https://github.com/garethgeorge/backrest/compare/v1.10.1...v1.10.2) (2025-11-15)
+
+
+### Bug Fixes
+
+* can't browse snapshots of repos removed and readded under a different name ([259af2e](https://github.com/garethgeorge/backrest/commit/259af2e4290a32459a3e8dd94b6dc9cd7c2e0882))
+* don't open a visible shell when running hooks on windows ([39e0b23](https://github.com/garethgeorge/backrest/commit/39e0b23f0d3ae8bb359c70eb14d55b16f06df357))
+* install.sh should start the systemd / openrc services after installation ([#975](https://github.com/garethgeorge/backrest/issues/975)) ([039274e](https://github.com/garethgeorge/backrest/commit/039274e1f2c8928626de4e308d353914e2b07e2e))
+* multihost sync refinements ([#830](https://github.com/garethgeorge/backrest/issues/830)) ([93becf3](https://github.com/garethgeorge/backrest/commit/93becf3e328be1ae132a3c386c204c97648fa6cd))
+* snapshot browser can download paths conaining spaces and special chars ([5585c20](https://github.com/garethgeorge/backrest/commit/5585c207c957cd3a821c0dc069032c77e136579e))
+* sqlitestore creates backups periodically and prior to running database migrations or schema migrations ([5c93d99](https://github.com/garethgeorge/backrest/commit/5c93d99a404fa028a7a5a37ec39b19d13d34b736))
+* use .dotlk build tag for github.com/ncruces/go-sqlite3 to expand platform compatibility ([3d4cc38](https://github.com/garethgeorge/backrest/commit/3d4cc3806c6145650d1dd08e1343ae7ab8b62fca))
+
 ## [1.10.1](https://github.com/garethgeorge/backrest/compare/v1.10.0...v1.10.1) (2025-10-31)
 
 
