@@ -88,16 +88,14 @@ func (v HookVars) number(n any) int {
 }
 
 func (v HookVars) FormatSizeBytes(val any) string {
-	size := v.number(val)
+	size := float64(v.number(val))
 	sizes := []string{"B", "KB", "MB", "GB", "TB", "PB"}
 	i := 0
-	prev := size
 	for size > 1000 {
 		size /= 1000
-		prev = size
 		i++
 	}
-	return fmt.Sprintf("%d.%03d %s", size, prev, sizes[i])
+	return fmt.Sprintf("%.3f %s", size, sizes[i])
 }
 
 func (v HookVars) IsError(cond v1.Hook_Condition) bool {
