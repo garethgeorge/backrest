@@ -238,7 +238,7 @@ Download the Windows installer for your architecture from the [releases page](ht
 | Variable                  | Description                 | Default                                                                                    |
 | ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------ |
 | `BACKREST_PORT`           | Port to bind to             | 127.0.0.1:9898                                                                             |
-| `BACKREST_CONFIG`         | Path to config file         | `%appdata%\backrest`                                                                       |
+| `BACKREST_CONFIG`         | Path to config file         | `%appdata%\backrest\config.json`                                                           |
 | `BACKREST_DATA`           | Path to the data directory  | `%appdata%\backrest\data`                                                                  |
 | `BACKREST_RESTIC_COMMAND` | Path to restic binary       | Defaults to a Backrest managed version of restic in `C:\Program Files\restic\restic-x.x.x` |
 | `XDG_CACHE_HOME`          | Path to the cache directory |                                                                                            |
