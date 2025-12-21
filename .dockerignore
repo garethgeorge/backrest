@@ -1,0 +1,5 @@
+webui/node_modules
+dist
+.git
+.github
+.vscode
