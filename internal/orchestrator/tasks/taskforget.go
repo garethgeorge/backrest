@@ -43,31 +43,36 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 	t := st.Task
 	l := taskRunner.Logger(ctx)
 
+	// Helper to notify of errors
+	notifyError := func(err error) error {
+		return NotifyError(ctx, taskRunner, t.Name(), err, v1.Hook_CONDITION_FORGET_ERROR)
+	}
+
 	r, err := taskRunner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
-		return fmt.Errorf("get repo %q: %w", t.RepoID(), err)
+		return notifyError(fmt.Errorf("get repo %q: %w", t.RepoID(), err))
 	}
 
 	err = r.UnlockIfAutoEnabled(ctx)
 	if err != nil {
-		return fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err)
+		return notifyError(fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err))
 	}
 
 	plan, err := taskRunner.GetPlan(t.PlanID())
 	if err != nil {
-		return fmt.Errorf("get plan %q: %w", t.PlanID(), err)
+		return notifyError(fmt.Errorf("get plan %q: %w", t.PlanID(), err))
 	}
 
 	// execute hooks
 	if err := taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_FORGET_START,
 	}, HookVars{Plan: plan}); err != nil {
-		return fmt.Errorf("forget start hook: %w", err)
+		return notifyError(fmt.Errorf("forget start hook: %w", err))
 	}
 
 	tags := []string{repo.TagForPlan(t.PlanID())}
 	if compat, err := useLegacyCompatMode(l, taskRunner, t.Repo().GetGuid(), t.PlanID()); err != nil {
-		return fmt.Errorf("check legacy compat mode: %w", err)
+		return notifyError(fmt.Errorf("check legacy compat mode: %w", err))
 	} else if !compat {
 		tags = append(tags, repo.TagForInstance(taskRunner.Config().Instance))
 	} else {
@@ -112,15 +117,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 	}
 
 	if err != nil {
-		if e := taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
-			v1.Hook_CONDITION_FORGET_ERROR,
-			v1.Hook_CONDITION_ANY_ERROR,
-		}, HookVars{
-			Error: err.Error(),
-		}); e != nil {
-			err = multierror.Append(err, fmt.Errorf("forget on error hook: %w", e))
-		}
-		return fmt.Errorf("forget: %w", err)
+		return notifyError(fmt.Errorf("forget: %w", err))
 	} else if e := taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_FORGET_SUCCESS,
 	}, HookVars{}); e != nil {

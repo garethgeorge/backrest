@@ -30,15 +30,7 @@ func NewOneoffForgetSnapshotTask(repo *v1.Repo, planID string, flowID int64, at 
 				panic("forget task with non-forget operation")
 			}
 
-			if err := forgetSnapshotHelper(ctx, st, taskRunner, snapshotID); err != nil {
-				taskRunner.ExecuteHooks(ctx, []v1.Hook_Condition{
-					v1.Hook_CONDITION_ANY_ERROR,
-				}, HookVars{
-					Error: err.Error(),
-				})
-				return err
-			}
-			return nil
+			return NotifyError(ctx, taskRunner, st.Task.Name(), forgetSnapshotHelper(ctx, st, taskRunner, snapshotID))
 		},
 	}
 }

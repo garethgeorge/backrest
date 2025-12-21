@@ -96,20 +96,25 @@ func (t *PruneTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 func (t *PruneTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
 	op := st.Op
 
+	// Helper to notify of errors during the setup phase
+	notifyError := func(err error) error {
+		return NotifyError(ctx, runner, t.Name(), err, v1.Hook_CONDITION_PRUNE_ERROR)
+	}
+
 	repo, err := runner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
-		return fmt.Errorf("couldn't get repo %q: %w", t.RepoID(), err)
+		return notifyError(fmt.Errorf("couldn't get repo %q: %w", t.RepoID(), err))
 	}
 
 	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_PRUNE_START,
 	}, HookVars{}); err != nil {
-		return fmt.Errorf("prune start hook: %w", err)
+		return notifyError(fmt.Errorf("prune start hook: %w", err))
 	}
 
 	err = repo.UnlockIfAutoEnabled(ctx)
 	if err != nil {
-		return fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err)
+		return notifyError(fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err))
 	}
 
 	opPrune := &v1.Operation_OperationPrune{

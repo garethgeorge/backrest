@@ -74,13 +74,7 @@ func (t *StatsTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 }
 
 func (t *StatsTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
-	if err := statsHelper(ctx, st, runner); err != nil {
-		runner.ExecuteHooks(ctx, []v1.Hook_Condition{
-			v1.Hook_CONDITION_ANY_ERROR,
-		}, HookVars{
-			Task:  st.Task.Name(),
-			Error: err.Error(),
-		})
+	if err := NotifyError(ctx, runner, st.Task.Name(), statsHelper(ctx, st, runner)); err != nil {
 		return err
 	}
 

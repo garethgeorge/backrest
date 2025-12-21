@@ -120,24 +120,29 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 	}
 	op.Op = backupOp
 
+	// Helper to notify of errors during the setup phase
+	notifyError := func(err error) error {
+		return NotifyError(ctx, runner, t.Name(), err, v1.Hook_CONDITION_SNAPSHOT_ERROR)
+	}
+
 	repo, err := runner.GetRepoOrchestrator(t.RepoID())
 	if err != nil {
-		return err
+		return notifyError(err)
 	}
 
 	if err := repo.UnlockIfAutoEnabled(ctx); err != nil {
-		return fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err)
+		return notifyError(fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err))
 	}
 
 	plan, err := runner.GetPlan(t.PlanID())
 	if err != nil {
-		return err
+		return notifyError(err)
 	}
 
 	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_START,
 	}, HookVars{}); err != nil {
-		return fmt.Errorf("snapshot start hook: %w", err)
+		return notifyError(fmt.Errorf("snapshot start hook: %w", err))
 	}
 
 	var sendWg sync.WaitGroup

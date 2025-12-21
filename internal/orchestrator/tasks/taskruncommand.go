@@ -37,7 +37,7 @@ func NewOneoffRunCommandTask(repo *v1.Repo, planID string, flowID int64, at time
 				panic("run command task with non-forget operation")
 			}
 
-			return runCommandHelper(ctx, st, taskRunner, command)
+			return NotifyError(ctx, taskRunner, st.Task.Name(), runCommandHelper(ctx, st, taskRunner, command))
 		},
 	}
 }
