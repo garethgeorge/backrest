@@ -458,7 +458,7 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
             type="link"
             onClick={() => {
               backrestService
-                .getDownloadURL({ value: operation.id })
+                .getDownloadURL({ opId: operation.id!, filePath: "" })
                 .then((resp) => {
                   window.open(resp.value, "_blank");
                 })

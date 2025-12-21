@@ -256,7 +256,6 @@ func newRootMux(
 	authedMux.Handle(backrestPath, backrestHandler)
 	syncStatePath, syncStateHandlerUnauthed := v1syncconnect.NewBackrestSyncStateServiceHandler(syncStateHandler)
 	authedMux.Handle(syncStatePath, syncStateHandlerUnauthed)
-	authedMux.Handle("/download/", http.StripPrefix("/download", downloadHandler))
 	authedMux.Handle("/metrics", metric.GetRegistry().Handler())
 
 	// Unauthenticated routes
@@ -265,6 +264,7 @@ func newRootMux(
 	unauthedMux.Handle(authPath, authHandler)
 	syncPath, syncHandlerUnauthed := v1syncconnect.NewBackrestSyncServiceHandler(syncHandler)
 	unauthedMux.Handle(syncPath, syncHandlerUnauthed)
+	unauthedMux.Handle("/download/", http.StripPrefix("/download", downloadHandler))
 
 	// Root mux to dispatch to authenticated or unauthenticated handlers
 	rootMux := http.NewServeMux()

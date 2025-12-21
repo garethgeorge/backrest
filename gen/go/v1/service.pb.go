@@ -683,6 +683,58 @@ func (x *LogDataRequest) GetRef() string {
 	return ""
 }
 
+type GetDownloadURLRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OpId          int64                  `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	FilePath      string                 `protobuf:"bytes,2,opt,name=file_path,json=filePath,proto3" json:"file_path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDownloadURLRequest) Reset() {
+	*x = GetDownloadURLRequest{}
+	mi := &file_v1_service_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDownloadURLRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDownloadURLRequest) ProtoMessage() {}
+
+func (x *GetDownloadURLRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_v1_service_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDownloadURLRequest.ProtoReflect.Descriptor instead.
+func (*GetDownloadURLRequest) Descriptor() ([]byte, []int) {
+	return file_v1_service_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetDownloadURLRequest) GetOpId() int64 {
+	if x != nil {
+		return x.OpId
+	}
+	return 0
+}
+
+func (x *GetDownloadURLRequest) GetFilePath() string {
+	if x != nil {
+		return x.FilePath
+	}
+	return ""
+}
+
 type LsEntry struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -701,7 +753,7 @@ type LsEntry struct {
 
 func (x *LsEntry) Reset() {
 	*x = LsEntry{}
-	mi := &file_v1_service_proto_msgTypes[10]
+	mi := &file_v1_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -713,7 +765,7 @@ func (x *LsEntry) String() string {
 func (*LsEntry) ProtoMessage() {}
 
 func (x *LsEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_service_proto_msgTypes[10]
+	mi := &file_v1_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -726,7 +778,7 @@ func (x *LsEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LsEntry.ProtoReflect.Descriptor instead.
 func (*LsEntry) Descriptor() ([]byte, []int) {
-	return file_v1_service_proto_rawDescGZIP(), []int{10}
+	return file_v1_service_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *LsEntry) GetName() string {
@@ -809,7 +861,7 @@ type RunCommandRequest struct {
 
 func (x *RunCommandRequest) Reset() {
 	*x = RunCommandRequest{}
-	mi := &file_v1_service_proto_msgTypes[11]
+	mi := &file_v1_service_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -821,7 +873,7 @@ func (x *RunCommandRequest) String() string {
 func (*RunCommandRequest) ProtoMessage() {}
 
 func (x *RunCommandRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_service_proto_msgTypes[11]
+	mi := &file_v1_service_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -834,7 +886,7 @@ func (x *RunCommandRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunCommandRequest.ProtoReflect.Descriptor instead.
 func (*RunCommandRequest) Descriptor() ([]byte, []int) {
-	return file_v1_service_proto_rawDescGZIP(), []int{11}
+	return file_v1_service_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RunCommandRequest) GetRepoId() string {
@@ -863,7 +915,7 @@ type SummaryDashboardResponse struct {
 
 func (x *SummaryDashboardResponse) Reset() {
 	*x = SummaryDashboardResponse{}
-	mi := &file_v1_service_proto_msgTypes[12]
+	mi := &file_v1_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -875,7 +927,7 @@ func (x *SummaryDashboardResponse) String() string {
 func (*SummaryDashboardResponse) ProtoMessage() {}
 
 func (x *SummaryDashboardResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_service_proto_msgTypes[12]
+	mi := &file_v1_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -888,7 +940,7 @@ func (x *SummaryDashboardResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummaryDashboardResponse.ProtoReflect.Descriptor instead.
 func (*SummaryDashboardResponse) Descriptor() ([]byte, []int) {
-	return file_v1_service_proto_rawDescGZIP(), []int{12}
+	return file_v1_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SummaryDashboardResponse) GetRepoSummaries() []*SummaryDashboardResponse_Summary {
@@ -939,7 +991,7 @@ type SummaryDashboardResponse_Summary struct {
 
 func (x *SummaryDashboardResponse_Summary) Reset() {
 	*x = SummaryDashboardResponse_Summary{}
-	mi := &file_v1_service_proto_msgTypes[13]
+	mi := &file_v1_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -951,7 +1003,7 @@ func (x *SummaryDashboardResponse_Summary) String() string {
 func (*SummaryDashboardResponse_Summary) ProtoMessage() {}
 
 func (x *SummaryDashboardResponse_Summary) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_service_proto_msgTypes[13]
+	mi := &file_v1_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -964,7 +1016,7 @@ func (x *SummaryDashboardResponse_Summary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummaryDashboardResponse_Summary.ProtoReflect.Descriptor instead.
 func (*SummaryDashboardResponse_Summary) Descriptor() ([]byte, []int) {
-	return file_v1_service_proto_rawDescGZIP(), []int{12, 0}
+	return file_v1_service_proto_rawDescGZIP(), []int{13, 0}
 }
 
 func (x *SummaryDashboardResponse_Summary) GetId() string {
@@ -1057,7 +1109,7 @@ type SummaryDashboardResponse_BackupChart struct {
 
 func (x *SummaryDashboardResponse_BackupChart) Reset() {
 	*x = SummaryDashboardResponse_BackupChart{}
-	mi := &file_v1_service_proto_msgTypes[14]
+	mi := &file_v1_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1069,7 +1121,7 @@ func (x *SummaryDashboardResponse_BackupChart) String() string {
 func (*SummaryDashboardResponse_BackupChart) ProtoMessage() {}
 
 func (x *SummaryDashboardResponse_BackupChart) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_service_proto_msgTypes[14]
+	mi := &file_v1_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1082,7 +1134,7 @@ func (x *SummaryDashboardResponse_BackupChart) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use SummaryDashboardResponse_BackupChart.ProtoReflect.Descriptor instead.
 func (*SummaryDashboardResponse_BackupChart) Descriptor() ([]byte, []int) {
-	return file_v1_service_proto_rawDescGZIP(), []int{12, 1}
+	return file_v1_service_proto_rawDescGZIP(), []int{13, 1}
 }
 
 func (x *SummaryDashboardResponse_BackupChart) GetFlowId() []int64 {
@@ -1192,7 +1244,10 @@ const file_v1_service_proto_rawDesc = "" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12%\n" +
 	"\aentries\x18\x02 \x03(\v2\v.v1.LsEntryR\aentries\"\"\n" +
 	"\x0eLogDataRequest\x12\x10\n" +
-	"\x03ref\x18\x01 \x01(\tR\x03ref\"\xd3\x01\n" +
+	"\x03ref\x18\x01 \x01(\tR\x03ref\"I\n" +
+	"\x15GetDownloadURLRequest\x12\x13\n" +
+	"\x05op_id\x18\x01 \x01(\x03R\x04opId\x12\x1b\n" +
+	"\tfile_path\x18\x02 \x01(\tR\bfilePath\"\xd3\x01\n" +
 	"\aLsEntry\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x12\n" +
@@ -1235,7 +1290,7 @@ const file_v1_service_proto_rawDesc = "" +
 	"durationMs\x12+\n" +
 	"\x06status\x18\x04 \x03(\x0e2\x13.v1.OperationStatusR\x06status\x12\x1f\n" +
 	"\vbytes_added\x18\x05 \x03(\x03R\n" +
-	"bytesAdded2\xa7\t\n" +
+	"bytesAdded2\xaf\t\n" +
 	"\bBackrest\x121\n" +
 	"\tGetConfig\x12\x16.google.protobuf.Empty\x1a\n" +
 	".v1.Config\"\x00\x12%\n" +
@@ -1260,8 +1315,8 @@ const file_v1_service_proto_rawDesc = "" +
 	"\x06Cancel\x12\x11.types.Int64Value\x1a\x16.google.protobuf.Empty\"\x00\x124\n" +
 	"\aGetLogs\x12\x12.v1.LogDataRequest\x1a\x11.types.BytesValue\"\x000\x01\x128\n" +
 	"\n" +
-	"RunCommand\x12\x15.v1.RunCommandRequest\x1a\x11.types.Int64Value\"\x00\x129\n" +
-	"\x0eGetDownloadURL\x12\x11.types.Int64Value\x1a\x12.types.StringValue\"\x00\x12A\n" +
+	"RunCommand\x12\x15.v1.RunCommandRequest\x1a\x11.types.Int64Value\"\x00\x12A\n" +
+	"\x0eGetDownloadURL\x12\x19.v1.GetDownloadURLRequest\x1a\x12.types.StringValue\"\x00\x12A\n" +
 	"\fClearHistory\x12\x17.v1.ClearHistoryRequest\x1a\x16.google.protobuf.Empty\"\x00\x12;\n" +
 	"\x10PathAutocomplete\x12\x12.types.StringValue\x1a\x11.types.StringList\"\x00\x12M\n" +
 	"\x13GetSummaryDashboard\x12\x16.google.protobuf.Empty\x1a\x1c.v1.SummaryDashboardResponse\"\x00B,Z*github.com/garethgeorge/backrest/gen/go/v1b\x06proto3"
@@ -1279,7 +1334,7 @@ func file_v1_service_proto_rawDescGZIP() []byte {
 }
 
 var file_v1_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_v1_service_proto_goTypes = []any{
 	(DoRepoTaskRequest_Task)(0),                  // 0: v1.DoRepoTaskRequest.Task
 	(*OpSelector)(nil),                           // 1: v1.OpSelector
@@ -1292,73 +1347,74 @@ var file_v1_service_proto_goTypes = []any{
 	(*ListSnapshotFilesRequest)(nil),             // 8: v1.ListSnapshotFilesRequest
 	(*ListSnapshotFilesResponse)(nil),            // 9: v1.ListSnapshotFilesResponse
 	(*LogDataRequest)(nil),                       // 10: v1.LogDataRequest
-	(*LsEntry)(nil),                              // 11: v1.LsEntry
-	(*RunCommandRequest)(nil),                    // 12: v1.RunCommandRequest
-	(*SummaryDashboardResponse)(nil),             // 13: v1.SummaryDashboardResponse
-	(*SummaryDashboardResponse_Summary)(nil),     // 14: v1.SummaryDashboardResponse.Summary
-	(*SummaryDashboardResponse_BackupChart)(nil), // 15: v1.SummaryDashboardResponse.BackupChart
-	(OperationStatus)(0),                         // 16: v1.OperationStatus
-	(*emptypb.Empty)(nil),                        // 17: google.protobuf.Empty
-	(*Config)(nil),                               // 18: v1.Config
-	(*Repo)(nil),                                 // 19: v1.Repo
-	(*types.StringValue)(nil),                    // 20: types.StringValue
-	(*types.Int64Value)(nil),                     // 21: types.Int64Value
-	(*types.BoolValue)(nil),                      // 22: types.BoolValue
-	(*OperationEvent)(nil),                       // 23: v1.OperationEvent
-	(*OperationList)(nil),                        // 24: v1.OperationList
-	(*ResticSnapshotList)(nil),                   // 25: v1.ResticSnapshotList
-	(*types.BytesValue)(nil),                     // 26: types.BytesValue
-	(*types.StringList)(nil),                     // 27: types.StringList
+	(*GetDownloadURLRequest)(nil),                // 11: v1.GetDownloadURLRequest
+	(*LsEntry)(nil),                              // 12: v1.LsEntry
+	(*RunCommandRequest)(nil),                    // 13: v1.RunCommandRequest
+	(*SummaryDashboardResponse)(nil),             // 14: v1.SummaryDashboardResponse
+	(*SummaryDashboardResponse_Summary)(nil),     // 15: v1.SummaryDashboardResponse.Summary
+	(*SummaryDashboardResponse_BackupChart)(nil), // 16: v1.SummaryDashboardResponse.BackupChart
+	(OperationStatus)(0),                         // 17: v1.OperationStatus
+	(*emptypb.Empty)(nil),                        // 18: google.protobuf.Empty
+	(*Config)(nil),                               // 19: v1.Config
+	(*Repo)(nil),                                 // 20: v1.Repo
+	(*types.StringValue)(nil),                    // 21: types.StringValue
+	(*types.Int64Value)(nil),                     // 22: types.Int64Value
+	(*types.BoolValue)(nil),                      // 23: types.BoolValue
+	(*OperationEvent)(nil),                       // 24: v1.OperationEvent
+	(*OperationList)(nil),                        // 25: v1.OperationList
+	(*ResticSnapshotList)(nil),                   // 26: v1.ResticSnapshotList
+	(*types.BytesValue)(nil),                     // 27: types.BytesValue
+	(*types.StringList)(nil),                     // 28: types.StringList
 }
 var file_v1_service_proto_depIdxs = []int32{
 	0,  // 0: v1.DoRepoTaskRequest.task:type_name -> v1.DoRepoTaskRequest.Task
 	1,  // 1: v1.ClearHistoryRequest.selector:type_name -> v1.OpSelector
 	1,  // 2: v1.GetOperationsRequest.selector:type_name -> v1.OpSelector
-	11, // 3: v1.ListSnapshotFilesResponse.entries:type_name -> v1.LsEntry
-	14, // 4: v1.SummaryDashboardResponse.repo_summaries:type_name -> v1.SummaryDashboardResponse.Summary
-	14, // 5: v1.SummaryDashboardResponse.plan_summaries:type_name -> v1.SummaryDashboardResponse.Summary
-	15, // 6: v1.SummaryDashboardResponse.Summary.recent_backups:type_name -> v1.SummaryDashboardResponse.BackupChart
-	16, // 7: v1.SummaryDashboardResponse.BackupChart.status:type_name -> v1.OperationStatus
-	17, // 8: v1.Backrest.GetConfig:input_type -> google.protobuf.Empty
-	18, // 9: v1.Backrest.SetConfig:input_type -> v1.Config
-	19, // 10: v1.Backrest.CheckRepoExists:input_type -> v1.Repo
-	19, // 11: v1.Backrest.AddRepo:input_type -> v1.Repo
-	20, // 12: v1.Backrest.RemoveRepo:input_type -> types.StringValue
-	17, // 13: v1.Backrest.GetOperationEvents:input_type -> google.protobuf.Empty
+	12, // 3: v1.ListSnapshotFilesResponse.entries:type_name -> v1.LsEntry
+	15, // 4: v1.SummaryDashboardResponse.repo_summaries:type_name -> v1.SummaryDashboardResponse.Summary
+	15, // 5: v1.SummaryDashboardResponse.plan_summaries:type_name -> v1.SummaryDashboardResponse.Summary
+	16, // 6: v1.SummaryDashboardResponse.Summary.recent_backups:type_name -> v1.SummaryDashboardResponse.BackupChart
+	17, // 7: v1.SummaryDashboardResponse.BackupChart.status:type_name -> v1.OperationStatus
+	18, // 8: v1.Backrest.GetConfig:input_type -> google.protobuf.Empty
+	19, // 9: v1.Backrest.SetConfig:input_type -> v1.Config
+	20, // 10: v1.Backrest.CheckRepoExists:input_type -> v1.Repo
+	20, // 11: v1.Backrest.AddRepo:input_type -> v1.Repo
+	21, // 12: v1.Backrest.RemoveRepo:input_type -> types.StringValue
+	18, // 13: v1.Backrest.GetOperationEvents:input_type -> google.protobuf.Empty
 	6,  // 14: v1.Backrest.GetOperations:input_type -> v1.GetOperationsRequest
 	5,  // 15: v1.Backrest.ListSnapshots:input_type -> v1.ListSnapshotsRequest
 	8,  // 16: v1.Backrest.ListSnapshotFiles:input_type -> v1.ListSnapshotFilesRequest
-	20, // 17: v1.Backrest.Backup:input_type -> types.StringValue
+	21, // 17: v1.Backrest.Backup:input_type -> types.StringValue
 	2,  // 18: v1.Backrest.DoRepoTask:input_type -> v1.DoRepoTaskRequest
 	4,  // 19: v1.Backrest.Forget:input_type -> v1.ForgetRequest
 	7,  // 20: v1.Backrest.Restore:input_type -> v1.RestoreSnapshotRequest
-	21, // 21: v1.Backrest.Cancel:input_type -> types.Int64Value
+	22, // 21: v1.Backrest.Cancel:input_type -> types.Int64Value
 	10, // 22: v1.Backrest.GetLogs:input_type -> v1.LogDataRequest
-	12, // 23: v1.Backrest.RunCommand:input_type -> v1.RunCommandRequest
-	21, // 24: v1.Backrest.GetDownloadURL:input_type -> types.Int64Value
+	13, // 23: v1.Backrest.RunCommand:input_type -> v1.RunCommandRequest
+	11, // 24: v1.Backrest.GetDownloadURL:input_type -> v1.GetDownloadURLRequest
 	3,  // 25: v1.Backrest.ClearHistory:input_type -> v1.ClearHistoryRequest
-	20, // 26: v1.Backrest.PathAutocomplete:input_type -> types.StringValue
-	17, // 27: v1.Backrest.GetSummaryDashboard:input_type -> google.protobuf.Empty
-	18, // 28: v1.Backrest.GetConfig:output_type -> v1.Config
-	18, // 29: v1.Backrest.SetConfig:output_type -> v1.Config
-	22, // 30: v1.Backrest.CheckRepoExists:output_type -> types.BoolValue
-	18, // 31: v1.Backrest.AddRepo:output_type -> v1.Config
-	18, // 32: v1.Backrest.RemoveRepo:output_type -> v1.Config
-	23, // 33: v1.Backrest.GetOperationEvents:output_type -> v1.OperationEvent
-	24, // 34: v1.Backrest.GetOperations:output_type -> v1.OperationList
-	25, // 35: v1.Backrest.ListSnapshots:output_type -> v1.ResticSnapshotList
+	21, // 26: v1.Backrest.PathAutocomplete:input_type -> types.StringValue
+	18, // 27: v1.Backrest.GetSummaryDashboard:input_type -> google.protobuf.Empty
+	19, // 28: v1.Backrest.GetConfig:output_type -> v1.Config
+	19, // 29: v1.Backrest.SetConfig:output_type -> v1.Config
+	23, // 30: v1.Backrest.CheckRepoExists:output_type -> types.BoolValue
+	19, // 31: v1.Backrest.AddRepo:output_type -> v1.Config
+	19, // 32: v1.Backrest.RemoveRepo:output_type -> v1.Config
+	24, // 33: v1.Backrest.GetOperationEvents:output_type -> v1.OperationEvent
+	25, // 34: v1.Backrest.GetOperations:output_type -> v1.OperationList
+	26, // 35: v1.Backrest.ListSnapshots:output_type -> v1.ResticSnapshotList
 	9,  // 36: v1.Backrest.ListSnapshotFiles:output_type -> v1.ListSnapshotFilesResponse
-	17, // 37: v1.Backrest.Backup:output_type -> google.protobuf.Empty
-	17, // 38: v1.Backrest.DoRepoTask:output_type -> google.protobuf.Empty
-	17, // 39: v1.Backrest.Forget:output_type -> google.protobuf.Empty
-	17, // 40: v1.Backrest.Restore:output_type -> google.protobuf.Empty
-	17, // 41: v1.Backrest.Cancel:output_type -> google.protobuf.Empty
-	26, // 42: v1.Backrest.GetLogs:output_type -> types.BytesValue
-	21, // 43: v1.Backrest.RunCommand:output_type -> types.Int64Value
-	20, // 44: v1.Backrest.GetDownloadURL:output_type -> types.StringValue
-	17, // 45: v1.Backrest.ClearHistory:output_type -> google.protobuf.Empty
-	27, // 46: v1.Backrest.PathAutocomplete:output_type -> types.StringList
-	13, // 47: v1.Backrest.GetSummaryDashboard:output_type -> v1.SummaryDashboardResponse
+	18, // 37: v1.Backrest.Backup:output_type -> google.protobuf.Empty
+	18, // 38: v1.Backrest.DoRepoTask:output_type -> google.protobuf.Empty
+	18, // 39: v1.Backrest.Forget:output_type -> google.protobuf.Empty
+	18, // 40: v1.Backrest.Restore:output_type -> google.protobuf.Empty
+	18, // 41: v1.Backrest.Cancel:output_type -> google.protobuf.Empty
+	27, // 42: v1.Backrest.GetLogs:output_type -> types.BytesValue
+	22, // 43: v1.Backrest.RunCommand:output_type -> types.Int64Value
+	21, // 44: v1.Backrest.GetDownloadURL:output_type -> types.StringValue
+	18, // 45: v1.Backrest.ClearHistory:output_type -> google.protobuf.Empty
+	28, // 46: v1.Backrest.PathAutocomplete:output_type -> types.StringList
+	14, // 47: v1.Backrest.GetSummaryDashboard:output_type -> v1.SummaryDashboardResponse
 	28, // [28:48] is the sub-list for method output_type
 	8,  // [8:28] is the sub-list for method input_type
 	8,  // [8:8] is the sub-list for extension type_name
@@ -1381,7 +1437,7 @@ func file_v1_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_v1_service_proto_rawDesc), len(file_v1_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   15,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

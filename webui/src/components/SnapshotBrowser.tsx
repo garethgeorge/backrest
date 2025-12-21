@@ -133,13 +133,19 @@ export const SnapshotBrowser = ({
       path += "/";
     }
 
-    const resp = await backrestService.listSnapshotFiles(
-      create(ListSnapshotFilesRequestSchema, {
-        path,
-        repoGuid,
-        snapshotId,
-      })
-    );
+    let resp: ListSnapshotFilesResponse;
+    try {
+      resp = await backrestService.listSnapshotFiles(
+        create(ListSnapshotFilesRequestSchema, {
+          path,
+          repoGuid,
+          snapshotId,
+        })
+      );
+    } catch (e: any) {
+      alertApi?.error("Failed to load snapshot files: " + e.message);
+      return;
+    }
 
     setTreeData((treeData) => {
       let toUpdate: DataNode | null = null;
@@ -234,15 +240,10 @@ const FileNode = ({
                   label: "Download",
                   onClick: () => {
                     backrestService
-                      .getDownloadURL({ value: snapshotOpId })
+                      .getDownloadURL({ opId: snapshotOpId!, filePath: entry.path! })
                       .then((resp) => {
-                        const encodePathKeepSlashes = (p: string) =>
-                          p
-                            .split("/")
-                            .map((seg) => encodeURIComponent(seg))
-                            .join("/");
                         window.open(
-                          resp.value + encodePathKeepSlashes(entry.path!),
+                          resp.value,
                           "_blank"
                         );
                       })

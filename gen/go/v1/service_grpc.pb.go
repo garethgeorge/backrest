@@ -70,8 +70,8 @@ type BackrestClient interface {
 	GetLogs(ctx context.Context, in *LogDataRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[types.BytesValue], error)
 	// RunCommand executes a generic restic command on the repository.
 	RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (*types.Int64Value, error)
-	// GetDownloadURL returns a signed download URL given a forget operation ID.
-	GetDownloadURL(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*types.StringValue, error)
+	// GetDownloadURL returns a signed download URL given an operation ID and file path.
+	GetDownloadURL(ctx context.Context, in *GetDownloadURLRequest, opts ...grpc.CallOption) (*types.StringValue, error)
 	// Clears the history of operations
 	ClearHistory(ctx context.Context, in *ClearHistoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
@@ -266,7 +266,7 @@ func (c *backrestClient) RunCommand(ctx context.Context, in *RunCommandRequest, 
 	return out, nil
 }
 
-func (c *backrestClient) GetDownloadURL(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*types.StringValue, error) {
+func (c *backrestClient) GetDownloadURL(ctx context.Context, in *GetDownloadURLRequest, opts ...grpc.CallOption) (*types.StringValue, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(types.StringValue)
 	err := c.cc.Invoke(ctx, Backrest_GetDownloadURL_FullMethodName, in, out, cOpts...)
@@ -333,8 +333,8 @@ type BackrestServer interface {
 	GetLogs(*LogDataRequest, grpc.ServerStreamingServer[types.BytesValue]) error
 	// RunCommand executes a generic restic command on the repository.
 	RunCommand(context.Context, *RunCommandRequest) (*types.Int64Value, error)
-	// GetDownloadURL returns a signed download URL given a forget operation ID.
-	GetDownloadURL(context.Context, *types.Int64Value) (*types.StringValue, error)
+	// GetDownloadURL returns a signed download URL given an operation ID and file path.
+	GetDownloadURL(context.Context, *GetDownloadURLRequest) (*types.StringValue, error)
 	// Clears the history of operations
 	ClearHistory(context.Context, *ClearHistoryRequest) (*emptypb.Empty, error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
@@ -399,7 +399,7 @@ func (UnimplementedBackrestServer) GetLogs(*LogDataRequest, grpc.ServerStreaming
 func (UnimplementedBackrestServer) RunCommand(context.Context, *RunCommandRequest) (*types.Int64Value, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunCommand not implemented")
 }
-func (UnimplementedBackrestServer) GetDownloadURL(context.Context, *types.Int64Value) (*types.StringValue, error) {
+func (UnimplementedBackrestServer) GetDownloadURL(context.Context, *GetDownloadURLRequest) (*types.StringValue, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDownloadURL not implemented")
 }
 func (UnimplementedBackrestServer) ClearHistory(context.Context, *ClearHistoryRequest) (*emptypb.Empty, error) {
@@ -707,7 +707,7 @@ func _Backrest_RunCommand_Handler(srv interface{}, ctx context.Context, dec func
 }
 
 func _Backrest_GetDownloadURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(types.Int64Value)
+	in := new(GetDownloadURLRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -719,7 +719,7 @@ func _Backrest_GetDownloadURL_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: Backrest_GetDownloadURL_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).GetDownloadURL(ctx, req.(*types.Int64Value))
+		return srv.(BackrestServer).GetDownloadURL(ctx, req.(*GetDownloadURLRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

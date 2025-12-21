@@ -4,8 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"crypto/hmac"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -13,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -25,20 +22,20 @@ import (
 
 func NewDownloadHandler(oplog *oplog.OpLog, orchestrator *orchestrator.Orchestrator) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p := r.URL.Path[1:]
-
-		opID, signature, filePath, err := parseDownloadPath(p)
-		if err != nil {
-			http.Error(w, "invalid path", http.StatusBadRequest)
-			return
+		tokenStr := strings.TrimSuffix(r.URL.Path[1:], "/")
+		// The URL might have trailing path which we ignore for token verification but might use for validation.
+		if sep := strings.Index(tokenStr, "/"); sep != -1 {
+			tokenStr = tokenStr[:sep]
 		}
 
-		if ok, err := checkDownloadURLSignature(opID, signature); err != nil || !ok {
+		payload, err := verifyDownloadToken(tokenStr)
+		if err != nil {
 			http.Error(w, fmt.Sprintf("invalid signature: %v", err), http.StatusForbidden)
 			return
 		}
 
-		op, err := oplog.Get(int64(opID))
+		filePath := payload.FilePath
+		op, err := oplog.Get(payload.OpID)
 		if err != nil {
 			http.Error(w, "restore not found", http.StatusNotFound)
 			return
@@ -142,38 +139,6 @@ func handleRestoreDownload(w http.ResponseWriter, r *http.Request, op *v1.Operat
 		zap.S().Errorf("error creating tar archive: %v", err)
 		http.Error(w, "error creating tar archive", http.StatusInternalServerError)
 	}
-}
-
-func parseDownloadPath(p string) (int64, string, string, error) {
-	sep := strings.Index(p, "/")
-	if sep == -1 {
-		return 0, "", "", fmt.Errorf("invalid path")
-	}
-	restoreID := p[:sep]
-	filePath := p[sep+1:]
-
-	dash := strings.Index(restoreID, "-")
-	if dash == -1 {
-		return 0, "", "", fmt.Errorf("invalid restore ID")
-	}
-	opID, err := strconv.ParseInt(restoreID[:dash], 16, 64)
-	if err != nil {
-		return 0, "", "", fmt.Errorf("invalid restore ID: %w", err)
-	}
-	signature := restoreID[dash+1:]
-	return opID, signature, filePath, nil
-}
-
-func checkDownloadURLSignature(id int64, signature string) (bool, error) {
-	wantSignatureBytes, err := signInt64(id)
-	if err != nil {
-		return false, err
-	}
-	signatureBytes, err := hex.DecodeString(signature)
-	if err != nil {
-		return false, err
-	}
-	return hmac.Equal(wantSignatureBytes, signatureBytes), nil
 }
 
 func tarDirectory(w io.Writer, dirpath string) error {

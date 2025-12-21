@@ -51,8 +51,8 @@ service Backrest {
   // RunCommand executes a generic restic command on the repository.
   rpc RunCommand(RunCommandRequest) returns (types.Int64Value) {}
 
-  // GetDownloadURL returns a signed download URL given a forget operation ID.
-  rpc GetDownloadURL(types.Int64Value) returns (types.StringValue) {}
+  // GetDownloadURL returns a signed download URL given an operation ID and file path.
+  rpc GetDownloadURL(GetDownloadURLRequest) returns (types.StringValue) {}
 
   // Clears the history of operations
   rpc ClearHistory(ClearHistoryRequest) returns (google.protobuf.Empty) {}
@@ -131,6 +131,11 @@ message ListSnapshotFilesResponse {
 
 message LogDataRequest {
   string ref = 1;
+}
+
+message GetDownloadURLRequest {
+  int64 op_id = 1;
+  string file_path = 2;
 }
 
 message LsEntry {

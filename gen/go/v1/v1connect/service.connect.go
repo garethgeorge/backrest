@@ -107,8 +107,8 @@ type BackrestClient interface {
 	GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.ServerStreamForClient[types.BytesValue], error)
 	// RunCommand executes a generic restic command on the repository.
 	RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error)
-	// GetDownloadURL returns a signed download URL given a forget operation ID.
-	GetDownloadURL(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error)
+	// GetDownloadURL returns a signed download URL given an operation ID and file path.
+	GetDownloadURL(context.Context, *connect.Request[v1.GetDownloadURLRequest]) (*connect.Response[types.StringValue], error)
 	// Clears the history of operations
 	ClearHistory(context.Context, *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
@@ -224,7 +224,7 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestMethods.ByName("RunCommand")),
 			connect.WithClientOptions(opts...),
 		),
-		getDownloadURL: connect.NewClient[types.Int64Value, types.StringValue](
+		getDownloadURL: connect.NewClient[v1.GetDownloadURLRequest, types.StringValue](
 			httpClient,
 			baseURL+BackrestGetDownloadURLProcedure,
 			connect.WithSchema(backrestMethods.ByName("GetDownloadURL")),
@@ -269,7 +269,7 @@ type backrestClient struct {
 	cancel              *connect.Client[types.Int64Value, emptypb.Empty]
 	getLogs             *connect.Client[v1.LogDataRequest, types.BytesValue]
 	runCommand          *connect.Client[v1.RunCommandRequest, types.Int64Value]
-	getDownloadURL      *connect.Client[types.Int64Value, types.StringValue]
+	getDownloadURL      *connect.Client[v1.GetDownloadURLRequest, types.StringValue]
 	clearHistory        *connect.Client[v1.ClearHistoryRequest, emptypb.Empty]
 	pathAutocomplete    *connect.Client[types.StringValue, types.StringList]
 	getSummaryDashboard *connect.Client[emptypb.Empty, v1.SummaryDashboardResponse]
@@ -356,7 +356,7 @@ func (c *backrestClient) RunCommand(ctx context.Context, req *connect.Request[v1
 }
 
 // GetDownloadURL calls v1.Backrest.GetDownloadURL.
-func (c *backrestClient) GetDownloadURL(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error) {
+func (c *backrestClient) GetDownloadURL(ctx context.Context, req *connect.Request[v1.GetDownloadURLRequest]) (*connect.Response[types.StringValue], error) {
 	return c.getDownloadURL.CallUnary(ctx, req)
 }
 
@@ -400,8 +400,8 @@ type BackrestHandler interface {
 	GetLogs(context.Context, *connect.Request[v1.LogDataRequest], *connect.ServerStream[types.BytesValue]) error
 	// RunCommand executes a generic restic command on the repository.
 	RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error)
-	// GetDownloadURL returns a signed download URL given a forget operation ID.
-	GetDownloadURL(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error)
+	// GetDownloadURL returns a signed download URL given an operation ID and file path.
+	GetDownloadURL(context.Context, *connect.Request[v1.GetDownloadURLRequest]) (*connect.Response[types.StringValue], error)
 	// Clears the history of operations
 	ClearHistory(context.Context, *connect.Request[v1.ClearHistoryRequest]) (*connect.Response[emptypb.Empty], error)
 	// PathAutocomplete provides path autocompletion options for a given filesystem path.
@@ -652,7 +652,7 @@ func (UnimplementedBackrestHandler) RunCommand(context.Context, *connect.Request
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.RunCommand is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) GetDownloadURL(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[types.StringValue], error) {
+func (UnimplementedBackrestHandler) GetDownloadURL(context.Context, *connect.Request[v1.GetDownloadURLRequest]) (*connect.Response[types.StringValue], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetDownloadURL is not implemented"))
 }
 
