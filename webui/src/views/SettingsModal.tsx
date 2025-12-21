@@ -40,6 +40,7 @@ interface FormData {
       name: string;
       passwordBcrypt: string;
       needsBcrypt?: boolean;
+      isExisting?: boolean;
     }[];
   };
   instance: string;
@@ -257,9 +258,10 @@ const AuthenticationForm: React.FC<{
         <Form.List
           name={["auth", "users"]}
           initialValue={
-            config.auth?.users?.map((u) =>
-              toJson(UserSchema, u, { alwaysEmitImplicit: true })
-            ) || []
+            config.auth?.users?.map((u) => ({
+              ...(toJson(UserSchema, u, { alwaysEmitImplicit: true }) as any),
+              isExisting: true,
+            })) || []
           }
         >
           {(fields, { add, remove }) => (
@@ -269,20 +271,42 @@ const AuthenticationForm: React.FC<{
                   <Row key={field.key} gutter={16}>
                     <Col span={11}>
                       <Form.Item
-                        name={[field.name, "name"]}
-                        rules={[
-                          {
-                            required: true,
-                            message: "Name is required",
-                          },
-                          {
-                            pattern: namePattern,
-                            message:
-                              "Name must be alphanumeric with dashes or underscores as separators",
-                          },
-                        ]}
+                        name={[field.name, "isExisting"]}
+                        hidden={true}
+                        initialValue={false}
                       >
-                        <Input placeholder="Username" />
+                        <Input />
+                      </Form.Item>
+                      <Form.Item shouldUpdate noStyle>
+                        {(form) => {
+                          const isExisting = form.getFieldValue([
+                            "auth",
+                            "users",
+                            field.name,
+                            "isExisting",
+                          ]);
+                          return (
+                            <Form.Item
+                              name={[field.name, "name"]}
+                              rules={[
+                                {
+                                  required: true,
+                                  message: "Name is required",
+                                },
+                                {
+                                  pattern: namePattern,
+                                  message:
+                                    "Name must be alphanumeric with dashes or underscores as separators",
+                                },
+                              ]}
+                            >
+                              <Input
+                                placeholder="Username"
+                                disabled={isExisting}
+                              />
+                            </Form.Item>
+                          );
+                        }}
                       </Form.Item>
                     </Col>
                     <Col span={11}>
