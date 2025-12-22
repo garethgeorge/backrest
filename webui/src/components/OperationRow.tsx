@@ -28,7 +28,6 @@ import {
   formatTime,
   normalizeSnapshotId,
 } from "../lib/formatting";
-import _ from "lodash";
 import { ClearHistoryRequestSchema } from "../../gen/ts/v1/service_pb";
 import { MessageInstance } from "antd/es/message/interface";
 import { backrestService } from "../api";

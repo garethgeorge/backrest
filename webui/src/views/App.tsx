@@ -21,8 +21,8 @@ import {
   subscribeToOperations,
   unsubscribeFromOperations,
 } from "../state/oplog";
-import LogoSvg from "url:../../assets/logo.svg";
-import _ from "lodash";
+import LogoSvg from "../../assets/logo.svg";
+import { debounce, keyBy } from "../lib/util";
 import { Code } from "@connectrpc/connect";
 import { LoginModal } from "./LoginModal";
 import { backrestService, setAuthToken } from "../api";
@@ -333,7 +333,7 @@ const getSidenavItems = (
     return;
   }
 
-  const reposById = _.keyBy(config.repos, (r) => r.id);
+  const reposById = keyBy(config.repos, (r) => r.id);
   const configPlans = config.plans || [];
   const configRepos = config.repos || [];
 
@@ -539,7 +539,7 @@ const IconForResource = ({ selector }: { selector: OpSelector }) => {
       setStatus(await getStatusForSelector(selector));
     };
     load();
-    const refresh = _.debounce(load, 1000, { maxWait: 10000, trailing: true });
+    const refresh = debounce(load, 1000, { maxWait: 10000, trailing: true });
     const callback = (event?: OperationEvent, err?: Error) => {
       if (!event || !event.event) return;
       switch (event.event.case) {

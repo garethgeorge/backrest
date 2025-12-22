@@ -18,7 +18,6 @@ import {
   GetOperationsRequestSchema,
   OpSelector,
 } from "../../gen/ts/v1/service_pb";
-import _ from "lodash";
 import { create } from "@bufbuild/protobuf";
 
 const StatsPanel = ({ selector }: { selector: OpSelector }) => {

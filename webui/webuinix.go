@@ -3,7 +3,6 @@
 
 //go:generate npm run clean
 //go:generate npm run build
-//go:generate gzip -r dist
 
 package webui
 

@@ -8,7 +8,6 @@ import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
 import { BackupProgressEntry, ResticSnapshot, RestoreProgressEntry } from "../../gen/ts/v1/restic_pb";
 import { EmptySchema } from "../../gen/ts/types/value_pb";
 import { create } from "@bufbuild/protobuf";
-import _ from "lodash";
 import { backrestService } from "../api";
 import { useEffect, useState } from "react";
 

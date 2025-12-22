@@ -44,7 +44,6 @@ import { ConfigSchema, Multihost } from "../../gen/ts/v1/config_pb";
 import { useSyncStates } from "../state/peerstates";
 import { PeerState } from "../../gen/ts/v1sync/syncservice_pb";
 import { PeerStateConnectionStatusIcon } from "../components/SyncStateIcon";
-import { last } from "lodash";
 
 export const SummaryDashboard = () => {
   const config = useConfig()[0];

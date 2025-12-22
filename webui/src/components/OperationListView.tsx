@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Operation } from "../../gen/ts/v1/operations_pb";
 import { Empty, List } from "antd";
-import _ from "lodash";
 import {
   GetOperationsRequestSchema,
   type GetOperationsRequest,

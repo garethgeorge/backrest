@@ -14,7 +14,7 @@ import {
   Checkbox,
   AutoComplete,
 } from "antd";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
 import {
   ConfigSchema,
@@ -45,7 +45,7 @@ import {
 import { clone, create, equals, fromJson, toJson } from "@bufbuild/protobuf";
 import { formatDuration } from "../lib/formatting";
 import { getMinimumCronDuration } from "../lib/cronutil";
-import _ from "lodash";
+import { debounce } from "../lib/util";
 import { StringList } from "../../gen/ts/types/value_pb";
 import { isWindows } from "../state/buildcfg";
 
@@ -56,8 +56,14 @@ const PathsTextArea = ({ value, onChange, ...props }: any) => {
   const [options, setOptions] = useState<{ value: string }[]>([]);
   const [currentLine, setCurrentLine] = useState("");
   const [cursorPosition, setCursorPosition] = useState(0);
+  // selectingRef acts as a lock to prevent the AutoComplete's default behavior (replacing the entire value)
+  // from overwriting the multi-line merge logic in onSelect.
+  const selectingRef = useRef(false);
 
-  const handleSearch = _.debounce((searchValue: string) => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleSearch = useMemo(
+    () =>
+      debounce((searchValue: string) => {
     if (!searchValue) {
       setOptions([]);
       return;
@@ -85,9 +91,18 @@ const PathsTextArea = ({ value, onChange, ...props }: any) => {
       .catch((e) => {
         console.log("Path autocomplete error: ", e);
       });
-  }, 200);
+      }, 200),
+    []
+  );
 
   const handleTextAreaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    // If we are currently handling a selection, ignore the change event that AutoComplete triggers
+    // to replace the text with the selected item.
+    if (selectingRef.current) {
+      selectingRef.current = false;
+      return;
+    }
+
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart || 0;
 
@@ -108,6 +123,9 @@ const PathsTextArea = ({ value, onChange, ...props }: any) => {
   };
 
   const onSelect = (selectedValue: string) => {
+    // Set the flag to ignore the next onChange event (which contains the raw selected value)
+    selectingRef.current = true;
+
     const lines = (value || "").split("\n");
     const beforeCursor = (value || "").substring(0, cursorPosition);
     const afterCursor = (value || "").substring(cursorPosition);

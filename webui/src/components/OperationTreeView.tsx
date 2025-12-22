@@ -10,7 +10,7 @@ import {
   Tree,
   Typography,
 } from "antd";
-import _, { flow } from "lodash";
+import { groupBy } from "../lib/util";
 import { DataNode } from "antd/es/tree";
 import {
   formatDate,
@@ -122,7 +122,7 @@ export const OperationTreeView = ({
 
   const useMobileLayout = isMobile();
 
-  const backupsByInstance = _.groupBy(backups, (b) => {
+  const backupsByInstance = groupBy(backups, (b) => {
     return b.instanceID;
   });
 
@@ -249,7 +249,7 @@ const DisplayOperationTree = ({
       expandedKeys: Set<React.Key>,
       keyPrefix: string = ""
     ) => {
-      const groups = _.groupBy(operations, groupingFn);
+      const groups = groupBy(operations, groupingFn);
       const treeData: OpTreeNode[] = [];
 
       const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
