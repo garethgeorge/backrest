@@ -44,6 +44,7 @@ import { ConfigSchema, Multihost } from "../../gen/ts/v1/config_pb";
 import { useSyncStates } from "../state/peerstates";
 import { PeerState } from "../../gen/ts/v1sync/syncservice_pb";
 import { PeerStateConnectionStatusIcon } from "../components/SyncStateIcon";
+import * as m from "../paraglide/messages";
 
 export const SummaryDashboard = () => {
   const config = useConfig()[0];
@@ -65,7 +66,7 @@ export const SummaryDashboard = () => {
         const data = await backrestService.getSummaryDashboard({});
         setSummaryData(data);
       } catch (e) {
-        alertApi.error("Failed to fetch summary data: " + e);
+        alertApi.error(m.dashboard_error_fetch() + e);
       }
     };
 
@@ -105,37 +106,37 @@ export const SummaryDashboard = () => {
         <MultihostSummary multihostConfig={config?.multihost || null} />
 
         {/* Repos and plans section */}
-        <Typography.Title level={3}>Repos</Typography.Title>
+        <Typography.Title level={3}>{m.dashboard_repos_title()}</Typography.Title>
         {summaryData && summaryData.repoSummaries.length > 0 ? (
           summaryData.repoSummaries.map((summary) => (
             <SummaryPanel summary={summary} key={summary.id} />
           ))
         ) : (
-          <Empty description="No repos found" />
+          <Empty description={m.dashboard_repos_empty()} />
         )}
-        <Typography.Title level={3}>Plans</Typography.Title>
+        <Typography.Title level={3}>{m.dashboard_plans_title()}</Typography.Title>
         {summaryData && summaryData.planSummaries.length > 0 ? (
           summaryData.planSummaries.map((summary) => (
             <SummaryPanel summary={summary} key={summary.id} />
           ))
         ) : (
-          <Empty description="No plans found" />
+          <Empty description={m.dashboard_plans_empty()} />
         )}
 
         {/* System Info Section */}
-        <Typography.Title level={3}>System Info</Typography.Title>
+        <Typography.Title level={3}>{m.dashboard_system_info_title()}</Typography.Title>
         <Descriptions
           layout="vertical"
           column={2}
           items={[
             {
               key: 1,
-              label: "Config Path",
+              label: m.dashboard_config_path(),
               children: summaryData.configPath,
             },
             {
               key: 2,
-              label: "Data Directory",
+              label: m.dashboard_data_dir(),
               children: summaryData.dataPath,
             },
           ]}
@@ -144,7 +145,7 @@ export const SummaryDashboard = () => {
           size="small"
           items={[
             {
-              label: "Config as JSON",
+              label: m.dashboard_config_json(),
               children: (
                 <pre>
                   {config &&
@@ -205,16 +206,15 @@ const SummaryPanel = ({
 
     return (
       <Card style={{ opacity: 0.9 }} size="small" key={label}>
-        <Typography.Text>Backup at {formatTime(entry.time)}</Typography.Text>{" "}
+        <Typography.Text>{m.dashboard_backup_tooltip_time({ time: formatTime(entry.time) })}</Typography.Text>{" "}
         <br />
         {isPending ? (
           <Typography.Text type="secondary">
-            Scheduled, waiting.
+            {m.dashboard_backup_tooltip_pending()}
           </Typography.Text>
         ) : (
           <Typography.Text type="secondary">
-            Took {formatDuration(entry.durationMs)}, added{" "}
-            {formatBytes(entry.bytesAdded)}
+            {m.dashboard_backup_tooltip_finished({ duration: formatDuration(entry.durationMs), bytes: formatBytes(entry.bytesAdded) })}
           </Typography.Text>
         )}
       </Card>
@@ -227,22 +227,22 @@ const SummaryPanel = ({
   cardInfo.push(
     {
       key: 1,
-      label: "Backups (30d)",
+      label: m.dashboard_card_backups_30d(),
       children: (
         <>
           {summary.backupsSuccessLast30days ? (
             <Typography.Text type="success" style={{ marginRight: "5px" }}>
-              {summary.backupsSuccessLast30days + ""} ok
+              {summary.backupsSuccessLast30days + " " + m.dashboard_card_backups_ok()}
             </Typography.Text>
           ) : undefined}
           {summary.backupsFailed30days ? (
             <Typography.Text type="danger" style={{ marginRight: "5px" }}>
-              {summary.backupsFailed30days + ""} failed
+              {summary.backupsFailed30days + " " + m.dashboard_card_backups_failed()}
             </Typography.Text>
           ) : undefined}
           {summary.backupsWarningLast30days ? (
             <Typography.Text type="warning" style={{ marginRight: "5px" }}>
-              {summary.backupsWarningLast30days + ""} warning
+              {summary.backupsWarningLast30days + " " + m.dashboard_card_backups_warning()}
             </Typography.Text>
           ) : undefined}
         </>
@@ -250,12 +250,12 @@ const SummaryPanel = ({
     },
     {
       key: 2,
-      label: "Bytes Scanned (30d)",
+      label: m.dashboard_card_bytes_scanned_30d(),
       children: formatBytes(Number(summary.bytesScannedLast30days)),
     },
     {
       key: 3,
-      label: "Bytes Added (30d)",
+      label: m.dashboard_card_bytes_added_30d(),
       children: formatBytes(Number(summary.bytesAddedLast30days)),
     }
   );
@@ -265,19 +265,19 @@ const SummaryPanel = ({
     cardInfo.push(
       {
         key: 4,
-        label: "Next Scheduled Backup",
+        label: m.dashboard_card_next_backup(),
         children: summary.nextBackupTimeMs
           ? formatTime(Number(summary.nextBackupTimeMs))
-          : "None Scheduled",
+          : m.dashboard_card_none_scheduled(),
       },
       {
         key: 5,
-        label: "Bytes Scanned Avg",
+        label: m.dashboard_card_bytes_scanned_avg(),
         children: formatBytes(Number(summary.bytesScannedAvg)),
       },
       {
         key: 6,
-        label: "Bytes Added Avg",
+        label: m.dashboard_card_bytes_added_avg(),
         children: formatBytes(Number(summary.bytesAddedAvg)),
       }
     );
@@ -352,7 +352,7 @@ const MultihostSummary = ({
     <>
       {knownHostTiles.length > 0 ? (
         <>
-          <Typography.Title level={3}>Remote Hosts</Typography.Title>
+          <Typography.Title level={3}>{m.dashboard_remote_hosts_title()}</Typography.Title>
           <Flex gap={16} vertical>
             {knownHostTiles}
           </Flex>
@@ -360,7 +360,7 @@ const MultihostSummary = ({
       ) : null}
       {authorizedClientTiles.length > 0 ? (
         <>
-          <Typography.Title level={3}>Remote Clients</Typography.Title>
+          <Typography.Title level={3}>{m.dashboard_remote_clients_title()}</Typography.Title>
           <Flex gap={16} vertical>
             {authorizedClientTiles}
           </Flex>
@@ -408,17 +408,17 @@ const PeerStateTile = ({ peerState }: { peerState: PeerState }) => {
         items={[
           {
             key: 1,
-            label: "Instance ID",
+            label: m.dashboard_peer_instance_id(),
             children: peerState.peerInstanceId,
           },
           {
             key: 2,
-            label: "Public Key ID",
+            label: m.dashboard_peer_public_key_id(),
             children: peerState.peerKeyid,
           },
           {
             key: 3,
-            label: "Last State Update",
+            label: m.dashboard_peer_last_state_update(),
             children: (
               <TimeSinceLastHeartbeat
                 lastHeartbeatMillis={Number(peerState.lastHeartbeatMillis)}
@@ -448,6 +448,6 @@ const TimeSinceLastHeartbeat = ({
   }, [lastHeartbeatMillis]);
 
   return (
-    formatTime(lastHeartbeatMillis) + " (" + formatDuration(timeSince) + " ago)"
+    formatTime(lastHeartbeatMillis) + " (" + formatDuration(timeSince) + " " + m.dashboard_peer_ago() + ")"
   );
 };

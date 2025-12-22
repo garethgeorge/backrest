@@ -33,15 +33,20 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    plugins: [paraglideVitePlugin({ project: './project.inlang', outdir: './src/paraglide' }),
-      react(),
-      viteCompression({ algorithm: 'gzip', ext: '.gz', deleteOriginFile: true }),
-      // viteCompression({ algorithm: 'brotliCompress', ext: '.br' }),
-      visualizer({
-        open: false,
-        gzipSize: true,
-        // brotliSize: true,
-      }) as PluginOption,
+    plugins: [paraglideVitePlugin({
+      project: './project.inlang', outdir: './src/paraglide', strategy: [
+        'preferredLanguage',
+        'baseLocale',
+      ]
+    }),
+    react(),
+    viteCompression({ algorithm: 'gzip', ext: '.gz', deleteOriginFile: true }),
+    // viteCompression({ algorithm: 'brotliCompress', ext: '.br' }),
+    visualizer({
+      open: false,
+      gzipSize: true,
+      // brotliSize: true,
+    }) as PluginOption,
     ],
     base: './',
     build: {

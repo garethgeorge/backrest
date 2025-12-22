@@ -46,6 +46,7 @@ import {
 } from "../components/ScheduleFormItem";
 import { isWindows } from "../state/buildcfg";
 import { create, fromJson, JsonValue, toJson } from "@bufbuild/protobuf";
+import * as m from "../paraglide/messages";
 
 const repoDefaults = create(RepoSchema, {
   prunePolicy: {
@@ -104,13 +105,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
       );
       showModal(null);
       alertsApi.success(
-        "Deleted repo " +
-          template!.id! +
-          " from config but files remain. To release storage delete the files manually. URI: " +
-          template!.uri
+        m.add_repo_modal_success_deleted({ id: template!.id!, uri: template!.uri })
       );
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
+      alertsApi.error(formatErrorAlert(e, m.add_plan_modal_error_destroy_prefix()), 15);
     } finally {
       setConfirmLoading(false);
     }
@@ -129,12 +127,12 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         // We are in the update repo flow, update the repo via the service
         setConfig(await backrestService.addRepo(repo));
         showModal(null);
-        alertsApi.success("Updated repo configuration " + repo.uri);
+        alertsApi.success(m.add_repo_modal_success_updated({ uri: repo.uri }));
       } else {
         // We are in the create repo flow, create the new repo via the service
         setConfig(await backrestService.addRepo(repo));
         showModal(null);
-        alertsApi.success("Added repo " + repo.uri);
+        alertsApi.success(m.add_repo_modal_success_added({ uri: repo.uri }));
       }
 
       try {
@@ -145,13 +143,13 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         alertsApi.error(
           formatErrorAlert(
             e,
-            "Failed to list snapshots for updated/added repo: "
+            m.add_repo_modal_error_list_snapshots()
           ),
           10
         );
       }
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, "Operation error: "), 10);
+      alertsApi.error(formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()), 10);
     } finally {
       setConfirmLoading(false);
     }
@@ -166,25 +164,25 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
       <Modal
         open={true}
         onCancel={handleCancel}
-        title={template ? "Edit Restic Repository" : "Add Restic Repository"}
+        title={template ? m.add_repo_modal_title_edit() : m.add_repo_modal_title_add()}
         width="60vw"
         footer={[
           <Button loading={confirmLoading} key="back" onClick={handleCancel}>
-            Cancel
+            {m.add_plan_modal_button_cancel()}
           </Button>,
           template != null ? (
             <Tooltip
               key="delete-tooltip"
-              title="Removes the repo from the config but will not delete the restic repository"
+              title={m.add_repo_modal_delete_tooltip()}
             >
               <ConfirmButton
                 key="delete"
                 type="primary"
                 danger
                 onClickAsync={handleDestroy}
-                confirmTitle="Confirm Delete"
+                confirmTitle={m.add_plan_modal_button_confirm_delete()}
               >
-                Delete
+                {m.add_plan_modal_button_delete()}
               </ConfirmButton>
             </Tooltip>
           ) : null,
@@ -200,25 +198,21 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 const exists = await backrestService.checkRepoExists(repo);
                 if (exists.value) {
                   alertsApi.success(
-                    "Connected successfully to " +
-                      repo.uri +
-                      " and found an existing repo.",
+                    m.add_repo_modal_test_success_existing({ uri: repo.uri }),
                     10
                   );
                 } else {
                   alertsApi.success(
-                    "Connected successfully to " +
-                      repo.uri +
-                      ". No existing repo found at this location, a new one will be initialized",
+                    m.add_repo_modal_test_success_new({ uri: repo.uri }),
                     10
                   );
                 }
               } catch (e: any) {
-                alertsApi.error(formatErrorAlert(e, "Check error: "), 10);
+                alertsApi.error(formatErrorAlert(e, m.add_repo_modal_test_error()), 10);
               }
             }}
           >
-            Test Configuration
+            {m.add_repo_modal_test_config()}
           </SpinButton>,
           <Button
             key="submit"
@@ -226,24 +220,24 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             loading={confirmLoading}
             onClick={handleOk}
           >
-            Submit
+            {m.add_plan_modal_button_submit()}
           </Button>,
         ]}
         maskClosable={false}
       >
         <p>
-          See{" "}
+          {m.add_repo_modal_guide_text_p1()}
           <a
             href="https://garethgeorge.github.io/backrest/introduction/getting-started"
             target="_blank"
           >
-            backrest getting started guide
+            {m.add_repo_modal_guide_link_text()}
           </a>{" "}
-          for repository configuration instructions or check the{" "}
+          {m.add_repo_modal_guide_text_p2()}
           <a href="https://restic.readthedocs.io/" target="_blank">
-            restic documentation
+            {m.add_repo_modal_guide_restic_link_text()}
           </a>{" "}
-          for more details about repositories.
+          {m.add_repo_modal_guide_text_p3()}
         </p>
         <br />
         <Form
@@ -256,18 +250,18 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           {/* Repo.id */}
           <Tooltip
             title={
-              "Unique ID that identifies this repo in the backrest UI (e.g. s3-mybucket). This cannot be changed after creation."
+              m.add_repo_modal_field_repo_name_tooltip()
             }
           >
             <Form.Item<Repo>
               hasFeedback
               name="id"
-              label="Repo Name"
+              label={m.add_repo_modal_field_repo_name()}
               validateTrigger={["onChange", "onBlur"]}
               rules={[
                 {
                   required: true,
-                  message: "Please input repo name",
+                  message: m.add_repo_modal_error_repo_name_required(),
                 },
                 {
                   validator: async (_, value) => {
@@ -276,12 +270,12 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                       throw new Error();
                     }
                   },
-                  message: "Repo with name already exists",
+                  message: m.add_repo_modal_error_repo_exists(),
                 },
                 {
                   pattern: namePattern,
                   message:
-                    "Name must be alphanumeric with dashes or underscores as separators",
+                    m.add_plan_modal_validation_plan_name_pattern(),
                 },
               ]}
             >
@@ -301,20 +295,20 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           <Tooltip
             title={
               <>
-                Valid Repo URIs are:
+                {m.add_repo_modal_field_uri_tooltip_title()}
                 <ul>
-                  <li>Local filesystem path</li>
-                  <li>S3 e.g. s3:// ...</li>
-                  <li>SFTP e.g. sftp:user@host:/repo-path</li>
+                  <li>{m.add_repo_modal_field_uri_tooltip_local()}</li>
+                  <li>{m.add_repo_modal_field_uri_tooltip_s3()}</li>
+                  <li>{m.add_repo_modal_field_uri_tooltip_sftp()}</li>
                   <li>
-                    See{" "}
+                    {m.add_repo_modal_field_uri_tooltip_see()}
                     <a
                       href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository"
                       target="_blank"
                     >
-                      restic docs
+                      {m.add_repo_modal_field_uri_tooltip_restic_docs()}
                     </a>{" "}
-                    for more info.
+                    {m.add_repo_modal_field_uri_tooltip_info()}
                   </li>
                 </ul>
               </>
@@ -323,12 +317,12 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             <Form.Item<Repo>
               hasFeedback
               name="uri"
-              label="Repository URI"
+              label={m.add_repo_modal_field_uri()}
               validateTrigger={["onChange", "onBlur"]}
               rules={[
                 {
                   required: true,
-                  message: "Please input repo URI",
+                  message: m.add_repo_modal_error_uri_required(),
                 },
               ]}
             >
@@ -340,26 +334,22 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           <Tooltip
             title={
               <>
-                This password that encrypts data in your repository.
+                {m.add_repo_modal_field_password_tooltip_intro()}
                 <ul>
                   <li>
-                    Recommended to pick a value that is 128 bits of entropy (20
-                    chars or longer)
+                    {m.add_repo_modal_field_password_tooltip_entropy()}
                   </li>
                   <li>
-                    You may alternatively provide env variable credentials e.g.
-                    RESTIC_PASSWORD, RESTIC_PASSWORD_FILE, or
-                    RESTIC_PASSWORD_COMMAND.
+                    {m.add_repo_modal_field_password_tooltip_env()}
                   </li>
                   <li>
-                    Click [Generate] to seed a random password from your
-                    browser's crypto random API.
+                    {m.add_repo_modal_field_password_tooltip_generate()}
                   </li>
                 </ul>
               </>
             }
           >
-            <Form.Item label="Password">
+            <Form.Item label={m.add_repo_modal_field_password()}>
               <Row>
                 <Col span={16}>
                   <Form.Item<Repo>
@@ -384,7 +374,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                       });
                     }}
                   >
-                    [Generate]
+                    {m.add_repo_modal_button_generate()}
                   </Button>
                 </Col>
               </Row>
@@ -394,10 +384,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           {/* Repo.env */}
           <Tooltip
             title={
-              "Environment variables that are passed to restic (e.g. to provide S3 or B2 credentials). References to parent-process env variables are supported as FOO=${MY_FOO_VAR}."
+              m.add_repo_modal_field_env_vars_tooltip()
             }
           >
-            <Form.Item label="Env Vars">
+            <Form.Item label={m.add_repo_modal_field_env_vars()}>
               <Form.List
                 name="env"
                 rules={[
@@ -423,7 +413,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                                 whitespace: true,
                                 pattern: /^[\w-]+=.*$/,
                                 message:
-                                  "Environment variable must be in format KEY=VALUE",
+                                  m.add_repo_modal_error_env_format(),
                               },
                             ]}
                             noStyle
@@ -449,7 +439,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                         style={{ width: "90%" }}
                         icon={<PlusOutlined />}
                       >
-                        Set Environment Variable
+                        {m.add_repo_modal_button_set_env()}
                       </Button>
                       <Form.ErrorList errors={errors} />
                     </Form.Item>
@@ -460,7 +450,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           </Tooltip>
 
           {/* Repo.flags */}
-          <Form.Item label="Flags">
+          <Form.Item label={m.add_repo_modal_field_flags()}>
             <Form.List name="flags">
               {(fields, { add, remove }, { errors }) => (
                 <>
@@ -477,7 +467,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                               whitespace: true,
                               pattern: /^\-\-?.*$/,
                               message:
-                                "Value should be a CLI flag e.g. see restic --help",
+                                m.add_repo_modal_error_flag_format(),
                             },
                           ]}
                           noStyle
@@ -502,7 +492,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                       style={{ width: "90%" }}
                       icon={<PlusOutlined />}
                     >
-                      Set Flag
+                      {m.add_repo_modal_button_set_flag()}
                     </Button>
                     <Form.ErrorList errors={errors} />
                   </Form.Item>
@@ -517,19 +507,18 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               <Tooltip
                 title={
                   <span>
-                    The schedule on which prune operations are run for this
-                    repository. Read{" "}
+                    {m.add_repo_modal_field_prune_policy_tooltip_p1()}
                     <a
                       href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
                       target="_blank"
                     >
-                      the restic docs on customizing prune operations
+                      {m.add_repo_modal_field_prune_policy_tooltip_link()}
                     </a>{" "}
-                    for more details.
+                    {m.add_repo_modal_field_prune_policy_tooltip_p2()}
                   </span>
                 }
               >
-                Prune Policy
+                {m.add_repo_modal_field_prune_policy()}
               </Tooltip>
             }
           >
@@ -540,8 +529,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             >
               <InputPercent
                 addonBefore={
-                  <Tooltip title="The maximum percentage of the repo size that may be unused after a prune operation completes. High values reduce copying at the expense of storage.">
-                    <div style={{ width: "12" }}>Max Unused After Prune</div>
+                  <Tooltip title={m.add_repo_modal_field_max_unused_tooltip()}>
+                    <div style={{ width: "12" }}>{m.add_repo_modal_field_max_unused()}</div>
                   </Tooltip>
                 }
               />
@@ -558,17 +547,11 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               <Tooltip
                 title={
                   <span>
-                    The schedule on which check operations are run for this
-                    repository. Restic check operations verify the integrity of
-                    your repository by scanning the on-disk structures that make
-                    up your backup data. Check can optionally be configured to
-                    re-read and re-hash data, this is slow and can be bandwidth
-                    expensive but will catch any bitrot or silent corruption in
-                    the storage medium.
+                    {m.add_repo_modal_field_check_policy_tooltip()}
                   </span>
                 }
               >
-                Check Policy
+                {m.add_repo_modal_field_check_policy()}
               </Tooltip>
             }
           >
@@ -579,8 +562,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             >
               <InputPercent
                 addonBefore={
-                  <Tooltip title="The percentage of pack data in this repository that will be read and verified. Higher values will use more bandwidth (e.g. 100% will re-read the entire repository on each check).">
-                    <div style={{ width: "12" }}>Read Data %</div>
+                  <Tooltip title={m.add_repo_modal_field_read_data_tooltip()}>
+                    <div style={{ width: "12" }}>{m.add_repo_modal_field_read_data()}</div>
                   </Tooltip>
                 }
               />
@@ -598,12 +581,11 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 <Tooltip
                   title={
                     <span>
-                      Modifiers for the backup operation e.g. set the CPU or IO
-                      priority.
+                      {m.add_repo_modal_field_command_modifiers_tooltip()}
                     </span>
                   }
                 >
-                  Command Modifiers
+                  {m.add_repo_modal_field_command_modifiers()}
                 </Tooltip>
               }
               colon={false}
@@ -613,25 +595,22 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                   <Tooltip
                     title={
                       <>
-                        Available IO priority modes
+                         {m.add_repo_modal_field_io_priority_tooltip_intro()}
                         <ul>
                           <li>
-                            IO_BEST_EFFORT_LOW - runs at lower than default disk
-                            priority (will prioritize other processes)
+                            {m.add_repo_modal_field_io_priority_low()}
                           </li>
                           <li>
-                            IO_BEST_EFFORT_HIGH - runs at higher than default
-                            disk priority (top of disk IO queue)
+                            {m.add_repo_modal_field_io_priority_high()}
                           </li>
                           <li>
-                            IO_IDLE - only runs when disk bandwidth is idle
-                            (e.g. no other operations are queued)
+                            {m.add_repo_modal_field_io_priority_idle()}
                           </li>
                         </ul>
                       </>
                     }
                   >
-                    IO Priority:
+                    {m.add_repo_modal_field_io_priority()}
                     <br />
                     <Form.Item
                       name={["commandPrefix", "ioNice"]}
@@ -640,7 +619,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                       <Select
                         allowClear
                         style={{ width: "100%" }}
-                        placeholder="Select an IO priority"
+                        placeholder={m.add_repo_modal_field_io_priority_placeholder()}
                         options={CommandPrefix_IONiceLevelSchema.values.map(
                           (v) => ({
                             label: v.name,
@@ -655,19 +634,18 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                   <Tooltip
                     title={
                       <>
-                        Available CPU priority modes:
+                         {m.add_repo_modal_field_cpu_priority_tooltip_intro()}
                         <ul>
-                          <li>CPU_DEFAULT - no change in priority</li>
+                          <li>{m.add_repo_modal_field_cpu_priority_default()}</li>
                           <li>
-                            CPU_HIGH - higher than default priority (backrest
-                            must be running as root)
+                             {m.add_repo_modal_field_cpu_priority_high()}
                           </li>
-                          <li>CPU_LOW - lower than default priority</li>
+                          <li>{m.add_repo_modal_field_cpu_priority_low()}</li>
                         </ul>
                       </>
                     }
                   >
-                    CPU Priority:
+                    {m.add_repo_modal_field_cpu_priority()}
                     <br />
                     <Form.Item
                       name={["commandPrefix", "cpuNice"]}
@@ -676,7 +654,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                       <Select
                         allowClear
                         style={{ width: "100%" }}
-                        placeholder="Select a CPU priority"
+                        placeholder={m.add_repo_modal_field_cpu_priority_placeholder()}
                         options={CommandPrefix_CPUNiceLevelSchema.values.map(
                           (v) => ({
                             label: v.name,
@@ -695,11 +673,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             label={
               <Tooltip
                 title={
-                  "Auto-unlock will remove lockfiles at the start of forget and prune operations. " +
-                  "This is potentially unsafe if the repo is shared by multiple client devices. Disabled by default."
+                  m.add_repo_modal_field_auto_unlock_tooltip()
                 }
               >
-                Auto Unlock
+                {m.add_repo_modal_field_auto_unlock()}
               </Tooltip>
             }
             name="autoUnlock"
@@ -709,7 +686,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           </Form.Item>
 
           <Form.Item
-            label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>}
+            label={<Tooltip title={hooksListTooltipText}>{m.add_plan_modal_field_hooks()}</Tooltip>}
           >
             <HooksFormList />
           </Form.Item>
@@ -721,7 +698,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 items={[
                   {
                     key: "1",
-                    label: "Repo Config as JSON",
+                    label: m.add_repo_modal_preview_json(),
                     children: (
                       <Typography>
                         <pre>
@@ -787,7 +764,7 @@ const envVarSetValidator = (form: FormInstance<any>, envVars: string[]) => {
   ) {
     return Promise.reject(
       new Error(
-        "Missing repo password. Either provide a password or set one of the env variables RESTIC_PASSWORD, RESTIC_PASSWORD_COMMAND, RESTIC_PASSWORD_FILE."
+        m.add_repo_modal_error_missing_password()
       )
     );
   }
