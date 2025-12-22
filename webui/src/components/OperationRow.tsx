@@ -43,6 +43,7 @@ import { LogView } from "./LogView";
 import { ConfirmButton } from "./SpinButton";
 import { create } from "@bufbuild/protobuf";
 import { OperationListView } from "./OperationListView";
+import * as m from "../paraglide/messages";
 
 export const OperationRow = ({
   operation,
@@ -80,18 +81,18 @@ export const OperationRow = ({
           onlyFailed: false,
         })
       );
-      alertApi?.success("Deleted operation");
+      alertApi?.success(m.op_row_deleted_success());
     } catch (e: any) {
-      alertApi?.error("Failed to delete operation: " + e.message);
+      alertApi?.error(m.op_row_deleted_error() + e.message);
     }
   };
 
   const doCancel = async () => {
     try {
       await backrestService.cancel({ value: operation.id! });
-      alertApi?.success("Requested to cancel operation");
+      alertApi?.success(m.op_row_cancel_success());
     } catch (e: any) {
-      alertApi?.error("Failed to cancel operation: " + e.message);
+      alertApi?.error(m.op_row_cancel_error() + e.message);
     }
   };
 
@@ -99,12 +100,10 @@ export const OperationRow = ({
     showModal(
       <Modal
         width="70%"
-        title={
-          "Logs for operation " +
-          opName +
-          " at " +
-          formatTime(Number(operation.unixTimeStartMs))
-        }
+        title={m.op_row_logs_title({
+          name: opName,
+          time: formatTime(Number(operation.unixTimeStartMs)),
+        })}
         open={true}
         footer={null}
         onCancel={() => {
@@ -149,7 +148,7 @@ export const OperationRow = ({
         className="backrest operation-details"
         onClick={doShowLogs}
       >
-        [View Logs]
+        {m.op_row_view_logs()}
       </Button>
     );
   }
@@ -164,10 +163,10 @@ export const OperationRow = ({
         type="link"
         size="small"
         className="backrest operation-details"
-        confirmTitle="[Confirm Cancel?]"
+        confirmTitle={m.op_row_confirm_cancel()}
         onClickAsync={doCancel}
       >
-        [Cancel Operation]
+        {m.op_row_cancel_op()}
       </ConfirmButton>
     );
   } else if (showDelete) {
@@ -177,10 +176,10 @@ export const OperationRow = ({
         type="link"
         size="small"
         className="backrest operation-details hidden-child"
-        confirmTitle="[Confirm Delete?]"
+        confirmTitle={m.op_row_confirm_delete()}
         onClickAsync={doDelete}
       >
-        [Delete]
+        {m.op_row_delete()}
       </ConfirmButton>
     );
   }
@@ -197,17 +196,19 @@ export const OperationRow = ({
     const backupOp = operation.op.value;
     bodyItems.push({
       key: "details",
-      label: "Backup Details",
+      label: m.op_row_backup_details(),
       children: <BackupOperationStatus status={backupOp.lastStatus} />,
     });
 
     if (backupOp.errors.length > 0) {
       bodyItems.push({
         key: "errors",
-        label: "Item Errors",
+        label: m.op_row_item_errors(),
         children: (
           <pre>
-            {backupOp.errors.map((e) => "Error on item: " + e.item).join("\n")}
+            {backupOp.errors
+              .map((e) => m.op_row_error_on_item({ item: e.item }))
+              .join("\n")}
           </pre>
         ),
       });
@@ -217,12 +218,12 @@ export const OperationRow = ({
     const snapshotOp = operation.op.value;
     bodyItems.push({
       key: "details",
-      label: "Details",
+      label: m.op_row_details(),
       children: <SnapshotDetails snapshot={snapshotOp.snapshot!} />,
     });
     bodyItems.push({
       key: "browser",
-      label: "Snapshot Browser",
+      label: m.op_row_snapshot_browser(),
       children: (
         <SnapshotBrowser
           snapshotId={snapshotOp.snapshot!.id}
@@ -237,7 +238,9 @@ export const OperationRow = ({
     const forgetOp = operation.op.value;
     bodyItems.push({
       key: "forgot",
-      label: "Removed " + forgetOp.forget?.length + " Snapshots",
+      label: m.op_row_removed_snapshots({
+        count: forgetOp.forget?.length || 0,
+      }),
       children: <ForgetOperationDetails forgetOp={forgetOp} />,
     });
   } else if (operation.op.case === "operationPrune") {
@@ -245,7 +248,7 @@ export const OperationRow = ({
     expandedBodyItems.push("prune");
     bodyItems.push({
       key: "prune",
-      label: "Prune Output",
+      label: m.op_row_prune_output(),
       children: prune.outputLogref ? (
         <LogView logref={prune.outputLogref} />
       ) : (
@@ -257,7 +260,7 @@ export const OperationRow = ({
     expandedBodyItems.push("check");
     bodyItems.push({
       key: "check",
-      label: "Check Output",
+      label: m.op_row_check_output(),
       children: check.outputLogref ? (
         <LogView logref={check.outputLogref} />
       ) : (
@@ -272,7 +275,7 @@ export const OperationRow = ({
     bodyItems.push({
       key: "run",
       label:
-        "Command Output" +
+        m.op_row_command_output() +
         (run.outputSizeBytes > 0
           ? ` (${formatBytes(Number(run.outputSizeBytes))})`
           : ""),
@@ -286,7 +289,7 @@ export const OperationRow = ({
     expandedBodyItems.push("restore");
     bodyItems.push({
       key: "restore",
-      label: "Restore Details",
+      label: m.op_row_restore_details(),
       children: <RestoreOperationStatus operation={operation} />,
     });
   } else if (operation.op.case === "operationRunHook") {
@@ -297,7 +300,7 @@ export const OperationRow = ({
       }
       bodyItems.push({
         key: "logref",
-        label: "Hook Output",
+        label: m.op_row_hook_output(),
         children: <LogView logref={operation.logref} />,
       });
     }
@@ -306,7 +309,7 @@ export const OperationRow = ({
   if (hookOperations) {
     bodyItems.push({
       key: "hookOperations",
-      label: "Hooks Triggered",
+      label: m.op_row_hooks_triggered(),
       children: (
         <OperationListView
           useOperations={hookOperations}
@@ -364,19 +367,19 @@ const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
   return (
     <>
       <Typography.Text>
-        <Typography.Text strong>Snapshot ID: </Typography.Text>
+        <Typography.Text strong>{m.op_row_snapshot_id()}</Typography.Text>
         {normalizeSnapshotId(snapshot.id!)}
       </Typography.Text>
       <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
         <Col span={8}>
-          <Typography.Text strong>User and Host</Typography.Text>
+          <Typography.Text strong>{m.op_row_user_host()}</Typography.Text>
           <br />
           <Typography.Text type="secondary">
             {snapshot.username}@{snapshot.hostname}
           </Typography.Text>
         </Col>
         <Col span={12}>
-          <Typography.Text strong>Tags</Typography.Text>
+          <Typography.Text strong>{m.op_row_tags()}</Typography.Text>
           <br />
           <Typography.Text type="secondary">
             {snapshot.tags.join(", ")}
@@ -388,21 +391,23 @@ const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
         <>
           <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
             <Col span={8}>
-              <Typography.Text strong>Files Added</Typography.Text>
+              <Typography.Text strong>{m.op_row_files_added()}</Typography.Text>
               <br />
               <Typography.Text type="secondary">
                 {summary.filesNew.toLocaleString()}
               </Typography.Text>
             </Col>
             <Col span={8}>
-              <Typography.Text strong>Files Changed</Typography.Text>
+              <Typography.Text strong>{m.op_row_files_changed()}</Typography.Text>
               <br />
               <Typography.Text type="secondary">
                 {summary.filesChanged.toLocaleString()}
               </Typography.Text>
             </Col>
             <Col span={8}>
-              <Typography.Text strong>Files Unmodified</Typography.Text>
+              <Typography.Text strong>
+                {m.op_row_files_unmodified()}
+              </Typography.Text>
               <br />
               <Typography.Text type="secondary">
                 {summary.filesUnmodified.toLocaleString()}
@@ -411,21 +416,21 @@ const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
           </Row>
           <Row gutter={[16, 8]}>
             <Col span={8}>
-              <Typography.Text strong>Bytes Added</Typography.Text>
+              <Typography.Text strong>{m.op_row_bytes_added()}</Typography.Text>
               <br />
               <Typography.Text type="secondary">
                 {formatBytes(Number(summary.dataAdded))}
               </Typography.Text>
             </Col>
             <Col span={8}>
-              <Typography.Text strong>Total Bytes Processed</Typography.Text>
+              <Typography.Text strong>{m.op_row_total_bytes()}</Typography.Text>
               <br />
               <Typography.Text type="secondary">
                 {formatBytes(Number(summary.totalBytesProcessed))}
               </Typography.Text>
             </Col>
             <Col span={8}>
-              <Typography.Text strong>Total Files Processed</Typography.Text>
+              <Typography.Text strong>{m.op_row_total_files()}</Typography.Text>
               <br />
               <Typography.Text type="secondary">
                 {summary.totalFilesProcessed.toLocaleString()}
@@ -447,7 +452,10 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
 
   return (
     <>
-      Restore {restoreOp.path} to {restoreOp.target}
+      {m.op_row_restore_desc({
+        path: restoreOp.path,
+        target: restoreOp.target,
+      })}
       {!isDone ? (
         <Progress percent={Math.round(progress * 1000) / 10} status="active" />
       ) : null}
@@ -462,26 +470,34 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
                   window.open(resp.value, "_blank");
                 })
                 .catch((e) => {
-                  alertApi?.error("Failed to fetch download URL: " + e.message);
+                  alertApi?.error(
+                    m.op_row_fetch_download_error() + e.message
+                  );
                 });
             }}
           >
-            Download File(s)
+            {m.op_row_download_files()}
           </Button>
         </>
       ) : null}
       <br />
-      Restored Snapshot ID: {normalizeSnapshotId(operation.snapshotId!)}
+      {m.op_row_restored_snapshot_id({
+        id: normalizeSnapshotId(operation.snapshotId!),
+      })}
       {lastStatus && (
         <Row gutter={16}>
           <Col span={12}>
-            <Typography.Text strong>Bytes Done/Total</Typography.Text>
+            <Typography.Text strong>
+              {m.op_row_bytes_done_total()}
+            </Typography.Text>
             <br />
             {formatBytes(Number(lastStatus.bytesRestored))}/
             {formatBytes(Number(lastStatus.totalBytes))}
           </Col>
           <Col span={12}>
-            <Typography.Text strong>Files Done/Total</Typography.Text>
+            <Typography.Text strong>
+              {m.op_row_files_done_total()}
+            </Typography.Text>
             <br />
             {Number(lastStatus.filesRestored)}/{Number(lastStatus.totalFiles)}
           </Col>
@@ -497,7 +513,7 @@ const BackupOperationStatus = ({
   status?: BackupProgressEntry;
 }) => {
   if (!status) {
-    return <>No status yet.</>;
+    return <>{m.op_row_no_status()}</>;
   }
 
   if (status.entry.case === "status") {
@@ -512,7 +528,9 @@ const BackupOperationStatus = ({
         <br />
         <Row gutter={[16, 8]}>
           <Col span={12}>
-            <Typography.Text strong>Bytes Done/Total</Typography.Text>
+            <Typography.Text strong>
+              {m.op_row_bytes_done_total()}
+            </Typography.Text>
             <br />
             <Typography.Text type="secondary">
               {formatBytes(Number(st.bytesDone))} /{" "}
@@ -520,7 +538,9 @@ const BackupOperationStatus = ({
             </Typography.Text>
           </Col>
           <Col span={12}>
-            <Typography.Text strong>Files Done/Total</Typography.Text>
+            <Typography.Text strong>
+              {m.op_row_files_done_total()}
+            </Typography.Text>
             <br />
             <Typography.Text type="secondary">
               {Number(st.filesDone).toLocaleString()} /{" "}
@@ -530,7 +550,7 @@ const BackupOperationStatus = ({
         </Row>
         {st.currentFile && st.currentFile.length > 0 && (
           <div style={{ marginTop: 8 }}>
-            <Typography.Text strong>Current Files:</Typography.Text>
+            <Typography.Text strong>{m.op_row_current_files()}</Typography.Text>
             <pre
               style={{
                 marginTop: 4,
@@ -551,28 +571,30 @@ const BackupOperationStatus = ({
     return (
       <>
         <Typography.Text>
-          <Typography.Text strong>Snapshot ID: </Typography.Text>
+          <Typography.Text strong>{m.op_row_snapshot_id()}</Typography.Text>
           {sum.snapshotId !== ""
             ? normalizeSnapshotId(sum.snapshotId!)
-            : "No Snapshot Created"}
+            : m.op_row_no_snapshot()}
         </Typography.Text>
         <Row gutter={[16, 8]}>
           <Col span={8}>
-            <Typography.Text strong>Files Added</Typography.Text>
+            <Typography.Text strong>{m.op_row_files_added()}</Typography.Text>
             <br />
             <Typography.Text type="secondary">
               {sum.filesNew.toString()}
             </Typography.Text>
           </Col>
           <Col span={8}>
-            <Typography.Text strong>Files Changed</Typography.Text>
+            <Typography.Text strong>{m.op_row_files_changed()}</Typography.Text>
             <br />
             <Typography.Text type="secondary">
               {sum.filesChanged.toString()}
             </Typography.Text>
           </Col>
           <Col span={8}>
-            <Typography.Text strong>Files Unmodified</Typography.Text>
+            <Typography.Text strong>
+              {m.op_row_files_unmodified()}
+            </Typography.Text>
             <br />
             <Typography.Text type="secondary">
               {sum.filesUnmodified.toString()}
@@ -581,14 +603,14 @@ const BackupOperationStatus = ({
         </Row>
         <Row gutter={[16, 8]}>
           <Col span={8}>
-            <Typography.Text strong>Bytes Added</Typography.Text>
+            <Typography.Text strong>{m.op_row_bytes_added()}</Typography.Text>
             <br />
             <Typography.Text type="secondary">
               {formatBytes(Number(sum.dataAdded))}
             </Typography.Text>
           </Col>
           <Col span={8}>
-            <Typography.Text strong>Total Bytes Processed</Typography.Text>
+            <Typography.Text strong>{m.op_row_total_bytes()}</Typography.Text>
             <br />
             <Typography.Text type="secondary">
               {formatBytes(Number(sum.totalBytesProcessed))}
@@ -599,7 +621,11 @@ const BackupOperationStatus = ({
     );
   } else {
     console.error("GOT UNEXPECTED STATUS: ", status);
-    return <>No fields set. This shouldn't happen</>;
+    return (
+      <>
+        {m.op_row_unexpected_status} {status}
+      </>
+    );
   }
 };
 
@@ -612,29 +638,31 @@ const ForgetOperationDetails = ({
   const policyDesc = [];
   if (policy.policy) {
     if (policy.policy.case === "policyKeepAll") {
-      policyDesc.push("Keep all.");
+      policyDesc.push(m.op_row_policy_keep_all());
     } else if (policy.policy.case === "policyKeepLastN") {
-      policyDesc.push(`Keep last ${policy.policy.value} snapshots`);
+      policyDesc.push(
+        m.op_row_policy_keep_last_n({ value: policy.policy.value })
+      );
     } else if (policy.policy.case == "policyTimeBucketed") {
       const val = policy.policy.value;
       if (val.hourly) {
-        policyDesc.push(`Keep ${val.hourly} hourly snapshots`);
+        policyDesc.push(m.op_row_policy_hourly({ count: val.hourly }));
       }
       if (val.daily) {
-        policyDesc.push(`Keep ${val.daily} daily snapshots`);
+        policyDesc.push(m.op_row_policy_daily({ count: val.daily }));
       }
       if (val.weekly) {
-        policyDesc.push(`Keep ${val.weekly} weekly snapshots`);
+        policyDesc.push(m.op_row_policy_weekly({ count: val.weekly }));
       }
       if (val.monthly) {
-        policyDesc.push(`Keep ${val.monthly} monthly snapshots`);
+        policyDesc.push(m.op_row_policy_monthly({ count: val.monthly }));
       }
       if (val.yearly) {
-        policyDesc.push(`Keep ${val.yearly} yearly snapshots`);
+        policyDesc.push(m.op_row_policy_yearly({ count: val.yearly }));
       }
       if (val.keepLastN) {
         policyDesc.push(
-          `Keep latest ${val.keepLastN} snapshots regardless of age`
+          m.op_row_policy_keep_latest({ count: val.keepLastN })
         );
       }
     }
@@ -646,15 +674,15 @@ const ForgetOperationDetails = ({
       <pre>
         {forgetOp.forget?.map((f) => (
           <div key={f.id}>
-            {"removed snapshot " +
-              normalizeSnapshotId(f.id!) +
-              " taken at " +
-              formatTime(Number(f.unixTimeMs))}{" "}
+            {m.op_row_removed_snapshot_desc({
+              id: normalizeSnapshotId(f.id!),
+              time: formatTime(Number(f.unixTimeMs)),
+            })}{" "}
             <br />
           </div>
         ))}
       </pre>
-      Policy:
+      {m.op_row_policy_header()}
       <ul>
         {policyDesc.map((desc, idx) => (
           <li key={idx}>{desc}</li>

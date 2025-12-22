@@ -284,3 +284,9 @@ You can also use VSCode with [Dev Containers](https://marketplace.visualstudio.c
 
 > [!NOTE]
 > Provided launch configuration has hot reload for typescript frontend.
+
+## Translations
+
+Translations are stored in [./webui/messages](./webui/messages) and are generated using [inlang](https://inlang.com/). Machine translations can be updated by running `npx @inlang/cli machine translate --project ./project.inlang`. 
+
+Text is translated on a best-effort basis and is not guaranteed to be accurate. If you find any translations that are incorrect, please submit a pull request to fix them. Contributions here are greatly appreciated!
