@@ -36,6 +36,7 @@ import { MainContentAreaTemplate } from "./MainContentArea";
 import { create } from "@bufbuild/protobuf";
 import { PeerState, RepoMetadata } from "../../gen/ts/v1sync/syncservice_pb";
 import { useSyncStates } from "../state/peerstates";
+import * as m from "../paraglide/messages";
 const { Header, Sider } = Layout;
 
 const SummaryDashboard = React.lazy(() =>
@@ -80,13 +81,13 @@ const RepoViewContainer = () => {
 
   return (
     <MainContentAreaTemplate
-      breadcrumbs={[{ title: "Repo" }, { title: repoId! }]}
+      breadcrumbs={[{ title: m.app_breadcrumb_repo() }, { title: repoId! }]}
       key={repoId}
     >
       {repo ? (
         <RepoView repo={repo} />
       ) : (
-        <Empty description={`Repo ${repoId} not found`} />
+        <Empty description={m.app_repo_not_found({ repoId: repoId || "" })} />
       )}
     </MainContentAreaTemplate>
   );
@@ -105,23 +106,23 @@ const RemoteRepoViewContainer = () => {
   return (
     <MainContentAreaTemplate
       breadcrumbs={[
-        { title: "Peer" },
-        { title: peerInstanceId || "Unknown Peer" },
-        { title: "Repo" },
-        { title: repoId || "Unknown Repo" },
+        { title: m.app_breadcrumb_peer() },
+        { title: peerInstanceId || m.app_unknown_peer() },
+        { title: m.app_breadcrumb_repo() },
+        { title: repoId || m.app_unknown_repo() },
       ]}
       key={`${peerInstanceId}-${repoId}`}
     >
       {peerRepo ? (
         <SelectorView
-          title={`Remote Repo: ${peerRepo.id}`}
+          title={m.app_remote_repo_title({ id: peerRepo.id })}
           sel={create(OpSelectorSchema, {
             originalInstanceKeyid: peerState?.peerKeyid,
             repoGuid: peerRepo.guid,
           })}
         />
       ) : (
-        <Empty description={`Repo ${repoId} not found`} />
+        <Empty description={m.app_repo_not_found({ repoId: repoId || "" })} />
       )}
     </MainContentAreaTemplate>
   );
@@ -138,13 +139,13 @@ const PlanViewContainer = () => {
   const plan = config.plans.find((p) => p.id === planId);
   return (
     <MainContentAreaTemplate
-      breadcrumbs={[{ title: "Plan" }, { title: planId! }]}
+      breadcrumbs={[{ title: m.app_breadcrumb_plan() }, { title: planId! }]}
       key={planId}
     >
       {plan ? (
         <PlanView plan={plan} />
       ) : (
-        <Empty description={`Plan ${planId} not found`} />
+        <Empty description={m.app_plan_not_found({ planId: planId || "" })} />
       )}
     </MainContentAreaTemplate>
   );
@@ -216,7 +217,7 @@ export const App: React.FC = () => {
               window.location.reload();
             }}
           >
-            Logout
+            {m.app_logout()}
           </Button>
         </h1>
       </Header>
@@ -236,7 +237,7 @@ export const App: React.FC = () => {
               <Route
                 path="/"
                 element={
-                  <MainContentAreaTemplate breadcrumbs={[{ title: "Summary" }]}>
+                  <MainContentAreaTemplate breadcrumbs={[{ title: m.app_breadcrumb_summary() }]}>
                     <SummaryDashboard />
                   </MainContentAreaTemplate>
                 }
@@ -245,7 +246,7 @@ export const App: React.FC = () => {
                 path="/getting-started"
                 element={
                   <MainContentAreaTemplate
-                    breadcrumbs={[{ title: "Getting Started" }]}
+                    breadcrumbs={[{ title: m.app_breadcrumb_getting_started() }]}
                   >
                     <GettingStartedGuide />
                   </MainContentAreaTemplate>
@@ -261,7 +262,7 @@ export const App: React.FC = () => {
                 path="/*"
                 element={
                   <MainContentAreaTemplate breadcrumbs={[]}>
-                    <Empty description="Page not found" />
+                    <Empty description={m.app_page_not_found()} />
                   </MainContentAreaTemplate>
                 }
               />
@@ -309,7 +310,7 @@ const AuthenticationBoundary = ({
         }
 
         alertApi.error(
-          "Failed to fetch initial config, typically this means the UI could not connect to the backend",
+          m.app_error_initial_config(),
           0
         );
       });
@@ -343,7 +344,7 @@ const getSidenavItems = (
     {
       key: "add-plan",
       icon: <PlusOutlined />,
-      label: "Add Plan",
+      label: m.app_menu_add_plan(),
       onClick: async () => {
         const { AddPlanModal } = await import("./AddPlanModal");
         showModal(<AddPlanModal template={null} />);
@@ -390,7 +391,7 @@ const getSidenavItems = (
     {
       key: "add-repo",
       icon: <PlusOutlined />,
-      label: "Add Repo",
+      label: m.app_menu_add_repo(),
       onClick: async () => {
         const { AddRepoModal } = await import("./AddRepoModal");
         showModal(<AddRepoModal template={null} />);
@@ -503,27 +504,27 @@ const getSidenavItems = (
   menu.push({
     key: "plans",
     icon: React.createElement(ScheduleOutlined),
-    label: "Plans",
+    label: m.app_menu_plans(),
     children: plans,
   });
   menu.push({
     key: "repos",
     icon: React.createElement(DatabaseOutlined),
-    label: "Repositories",
+    label: m.app_menu_repos(),
     children: repos,
   });
   if (authorizedClients.length > 0) {
     menu.push({
       key: "authorized-clients",
       icon: React.createElement(CloudServerOutlined),
-      label: "Remote Instances",
+      label: m.app_menu_remote_instances(),
       children: authorizedClients,
     });
   }
   menu.push({
     key: "settings",
     icon: React.createElement(SettingOutlined),
-    label: "Settings",
+    label: m.app_menu_settings(),
     onClick: async () => {
       const { SettingsModal } = await import("./SettingsModal");
       showModal(<SettingsModal />);

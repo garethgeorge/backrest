@@ -48,6 +48,7 @@ import { getMinimumCronDuration } from "../lib/cronutil";
 import { debounce } from "../lib/util";
 import { StringList } from "../../gen/ts/types/value_pb";
 import { isWindows } from "../state/buildcfg";
+import * as m from "../paraglide/messages";
 
 const { TextArea } = Input;
 const sep = isWindows ? "\\" : "/";
@@ -151,7 +152,7 @@ const PathsTextArea = ({ value, onChange, ...props }: any) => {
       <TextArea
         value={value}
         onChange={handleTextAreaChange}
-        placeholder="Enter paths, one per line&#10;e.g.&#10;/home/user/documents&#10;/home/user/photos"
+        placeholder={m.add_plan_modal_field_paths_placeholder()}
         style={{ minHeight: 100 }}
         autoSize={{ minRows: 3, maxRows: 10 }}
       />
@@ -210,7 +211,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
     try {
       if (!template) {
-        throw new Error("template not found");
+        throw new Error(m.add_plan_modal_error_template_not_found());
       }
 
       const configCopy = clone(ConfigSchema, config);
@@ -218,7 +219,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       // Remove the plan from the config
       const idx = configCopy.plans.findIndex((r) => r.id === template.id);
       if (idx === -1) {
-        throw new Error("failed to update config, plan to delete not found");
+        throw new Error(m.add_plan_modal_error_plan_delete_not_found());
       }
       configCopy.plans.splice(idx, 1);
 
@@ -227,11 +228,11 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       showModal(null);
 
       alertsApi.success(
-        "Plan deleted from config, but not from restic repo. Snapshots will remain in storage and operations will be tracked until manually deleted. Reusing a deleted plan ID is not recommended if backups have already been performed.",
+        m.add_plan_modal_success_plan_deleted(),
         30
       );
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, "Destroy error:"), 15);
+      alertsApi.error(formatErrorAlert(e, m.add_plan_modal_error_destroy_prefix()), 15);
     } finally {
       setConfirmLoading(false);
     }
@@ -286,7 +287,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       setConfig(await backrestService.setConfig(configCopy));
       showModal(null);
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, "Operation error: "), 15);
+      alertsApi.error(formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()), 15);
       console.error(e);
     } finally {
       setConfirmLoading(false);
@@ -304,11 +305,11 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       <Modal
         open={true}
         onCancel={handleCancel}
-        title={template ? "Update Plan" : "Add Plan"}
+        title={template ? m.add_plan_modal_title_update() : m.add_plan_modal_title_add()}
         width="60vw"
         footer={[
           <Button loading={confirmLoading} key="back" onClick={handleCancel}>
-            Cancel
+            {m.add_plan_modal_button_cancel()}
           </Button>,
           template != null ? (
             <ConfirmButton
@@ -316,26 +317,26 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
               type="primary"
               danger
               onClickAsync={handleDestroy}
-              confirmTitle="Confirm Delete"
+              confirmTitle={m.add_plan_modal_button_confirm_delete()}
             >
-              Delete
+              {m.add_plan_modal_button_delete()}
             </ConfirmButton>
           ) : null,
           <SpinButton key="submit" type="primary" onClickAsync={handleOk}>
-            Submit
+            {m.add_plan_modal_button_submit()}
           </SpinButton>,
         ]}
         maskClosable={false}
       >
         <p>
-          See{" "}
+          {m.add_plan_modal_see_guide_prefix()}{" "}
           <a
             href="https://garethgeorge.github.io/backrest/introduction/getting-started"
             target="_blank"
           >
-            backrest getting started guide
+            {m.add_plan_modal_see_guide_link()}
           </a>{" "}
-          for plan configuration instructions.
+          {m.add_plan_modal_see_guide_suffix()}
         </p>
         <br />
         <Form
@@ -349,28 +350,28 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           <Form.Item<Plan>
             hasFeedback
             name="id"
-            label="Plan Name"
+            label={m.add_plan_modal_field_plan_name()}
             initialValue={template ? template.id : ""}
             validateTrigger={["onChange", "onBlur"]}
-            tooltip="Unique ID that identifies this plan in the backrest UI (e.g. s3-myplan). This cannot be changed after creation."
+            tooltip={m.add_plan_modal_field_plan_name_tooltip()}
             rules={[
               {
                 required: true,
-                message: "Please input plan name",
+                message: m.add_plan_modal_validation_plan_name_required(),
               },
               {
                 validator: async (_, value) => {
                   if (template) return;
                   if (config?.plans?.find((r) => r.id === value)) {
-                    throw new Error("Plan with name already exists");
+                    throw new Error(m.add_plan_modal_validation_plan_exists());
                   }
                 },
-                message: "Plan with name already exists",
+                message: m.add_plan_modal_validation_plan_exists(),
               },
               {
                 pattern: namePattern,
                 message:
-                  "Name must be alphanumeric with dashes or underscores as separators",
+                  m.add_plan_modal_validation_plan_name_pattern(),
               },
             ]}
           >
@@ -383,14 +384,14 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           {/* Plan.repo */}
           <Form.Item<Plan>
             name="repo"
-            label="Repository"
+            label={m.add_plan_modal_field_repository()}
             validateTrigger={["onChange", "onBlur"]}
             initialValue={template ? template.repo : ""}
-            tooltip="The repo that backrest will store your snapshots in."
+            tooltip={m.add_plan_modal_field_repository_tooltip()}
             rules={[
               {
                 required: true,
-                message: "Please select repository",
+                message: m.add_plan_modal_validation_repository_required(),
               },
             ]}
           >
@@ -406,14 +407,14 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           {/* Plan.paths */}
           <Form.Item
             name="pathsText"
-            label="Paths"
+            label={m.add_plan_modal_field_paths()}
             required={true}
-            tooltip="Enter file paths to backup, one per line. Autocomplete is available as you type."
+            tooltip={m.add_plan_modal_field_paths_tooltip()}
             rules={[
               {
                 validator: async (_, value) => {
                   if (!value || !value.trim()) {
-                    throw new Error("Please enter at least one path to backup");
+                    throw new Error(m.add_plan_modal_validation_paths_required());
                   }
                   const paths = value
                     .split("\n")
@@ -421,7 +422,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                     .filter((p: string) => p.length > 0);
                   if (paths.length === 0) {
                     throw new Error(
-                      "Please enter at least one valid path to backup"
+                      m.add_plan_modal_validation_paths_valid_required()
                     );
                   }
                 },
@@ -433,18 +434,18 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
           {/* Plan.excludes */}
           <Form.Item
-            label="Excludes"
+            label={m.add_plan_modal_field_excludes()}
             required={false}
             tooltip={
               <>
-                Paths to exclude from your backups. See the{" "}
+                {m.add_plan_modal_field_excludes_tooltip_prefix()}{" "}
                 <a
                   href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
                   target="_blank"
                 >
-                  restic docs
+                  {m.add_plan_modal_field_excludes_tooltip_link()}
                 </a>{" "}
-                for more info.
+                {m.add_plan_modal_field_excludes_tooltip_suffix()}
               </>
             }
           >
@@ -491,7 +492,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                       style={{ width: "90%" }}
                       icon={<PlusOutlined />}
                     >
-                      Add Exclusion Glob
+                      {m.add_plan_modal_field_excludes_add()}
                     </Button>
                     <Form.ErrorList errors={errors} />
                   </Form.Item>
@@ -502,18 +503,18 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
           {/* Plan.iexcludes */}
           <Form.Item
-            label="Excludes (Case Insensitive)"
+            label={m.add_plan_modal_field_iexcludes()}
             required={false}
             tooltip={
               <>
-                Case insensitive paths to exclude from your backups. See the{" "}
+                {m.add_plan_modal_field_iexcludes_tooltip_prefix()}{" "}
                 <a
                   href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
                   target="_blank"
                 >
-                  restic docs
+                  {m.add_plan_modal_field_excludes_tooltip_link()}
                 </a>{" "}
-                for more info.
+                {m.add_plan_modal_field_excludes_tooltip_suffix()}
               </>
             }
           >
@@ -560,7 +561,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                       style={{ width: "90%" }}
                       icon={<PlusOutlined />}
                     >
-                      Add Case Insensitive Exclusion Glob
+                      {m.add_plan_modal_field_iexcludes_add()}
                     </Button>
                     <Form.ErrorList errors={errors} />
                   </Form.Item>
@@ -570,7 +571,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           </Form.Item>
 
           {/* Plan.cron */}
-          <Form.Item label="Backup Schedule">
+          <Form.Item label={m.add_plan_modal_field_schedule()}>
             <ScheduleFormItem
               name={["schedule"]}
               defaults={ScheduleDefaultsDaily}
@@ -580,8 +581,8 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           {/* Plan.backup_flags */}
           <Form.Item
             label={
-              <Tooltip title="Extra flags to add to the 'restic backup' command">
-                Backup Flags
+              <Tooltip title={m.add_plan_modal_field_backup_flags_tooltip()}>
+                {m.add_plan_modal_field_backup_flags()}
               </Tooltip>
             }
           >
@@ -601,7 +602,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                               whitespace: true,
                               pattern: /^\-\-?.*$/,
                               message:
-                                "Value should be a CLI flag e.g. see restic backup --help",
+                                m.add_plan_modal_validation_flag_pattern(),
                             },
                           ]}
                           noStyle
@@ -626,7 +627,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                       style={{ width: "90%" }}
                       icon={<PlusOutlined />}
                     >
-                      Set Flag
+                      {m.add_plan_modal_field_backup_flags_add()}
                     </Button>
                     <Form.ErrorList errors={errors} />
                   </Form.Item>
@@ -640,7 +641,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
           {/* Plan.hooks */}
           <Form.Item
-            label={<Tooltip title={hooksListTooltipText}>Hooks</Tooltip>}
+            label={<Tooltip title={hooksListTooltipText}>{m.add_plan_modal_field_hooks()}</Tooltip>}
           >
             <HooksFormList />
           </Form.Item>
@@ -652,7 +653,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                 items={[
                   {
                     key: "1",
-                    label: "Plan Config as JSON",
+                    label: m.add_plan_modal_preview_json(),
                     children: (
                       <Typography>
                         <pre>

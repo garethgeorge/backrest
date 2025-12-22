@@ -17,6 +17,7 @@ import { formatErrorAlert, useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
 import { create } from "@bufbuild/protobuf";
 import { RepoProps } from "../state/peerstates";
+import * as m from "../paraglide/messages";
 
 const StatsPanel = React.lazy(() => import("../components/StatsPanel"));
 
@@ -37,22 +38,22 @@ export const RepoView = ({
         })
       );
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, "Failed to index snapshots: "));
+      alertsApi.error(formatErrorAlert(e, m.repo_error_index()));
     }
   };
 
   const handleUnlockNow = async () => {
     try {
-      alertsApi.info("Unlocking repo...");
+      alertsApi.info(m.repo_info_unlocking());
       await backrestService.doRepoTask(
         create(DoRepoTaskRequestSchema, {
           repoId: repo.id!,
           task: DoRepoTaskRequest_Task.UNLOCK,
         })
       );
-      alertsApi.success("Repo unlocked.");
+      alertsApi.success(m.repo_success_unlocked());
     } catch (e: any) {
-      alertsApi.error("Failed to unlock repo: " + e.message);
+      alertsApi.error(m.repo_error_unlock() + e.message);
     }
   };
 
@@ -65,7 +66,7 @@ export const RepoView = ({
         })
       );
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, "Failed to compute stats: "));
+      alertsApi.error(formatErrorAlert(e, m.repo_error_stats()));
     }
   };
 
@@ -78,7 +79,7 @@ export const RepoView = ({
         })
       );
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, "Failed to prune: "));
+      alertsApi.error(formatErrorAlert(e, m.repo_error_prune()));
     }
   };
 
@@ -91,7 +92,7 @@ export const RepoView = ({
         })
       );
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, "Failed to check: "));
+      alertsApi.error(formatErrorAlert(e, m.repo_error_check()));
     }
   };
 
@@ -100,7 +101,7 @@ export const RepoView = ({
   if (!repoInConfig) {
     return (
       <>
-        Repo was deleted
+        {m.repo_deleted_message()}
         <pre>{JSON.stringify(config, null, 2)}</pre>
       </>
     );
@@ -110,7 +111,7 @@ export const RepoView = ({
   const items = [
     {
       key: "1",
-      label: "Tree View",
+      label: m.repo_tab_tree(),
       children: (
         <>
           <OperationTreeView
@@ -127,10 +128,10 @@ export const RepoView = ({
     },
     {
       key: "2",
-      label: "List View",
+      label: m.repo_tab_list(),
       children: (
         <>
-          <h3>Backup Action History</h3>
+           <h3>{m.repo_history_title()}</h3>
           <OperationListView
             req={create(GetOperationsRequestSchema, {
               selector: {
@@ -147,9 +148,9 @@ export const RepoView = ({
     },
     {
       key: "3",
-      label: "Stats",
+      label: m.repo_tab_stats(),
       children: (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div>{m.loading()}</div>}>
           <StatsPanel
             selector={create(OpSelectorSchema, {
               repoGuid: repo.guid,
@@ -167,7 +168,7 @@ export const RepoView = ({
         <Typography.Title>{repo.id}</Typography.Title>
       </Flex>
       <Flex gap="small" align="center" wrap="wrap">
-        <Tooltip title="Advanced users: open a restic shell to run commands on the repository. Re-index snapshots to reflect any changes in Backrest.">
+        <Tooltip title={m.repo_tooltip_run_command()}>
           <Button
             type="default"
             onClick={async () => {
@@ -175,37 +176,37 @@ export const RepoView = ({
               showModal(<RunCommandModal repo={repo} />);
             }}
           >
-            Run Command
+            {m.repo_button_run_command()}
           </Button>
         </Tooltip>
 
-        <Tooltip title="Indexes the snapshots in the repository. Snapshots are also indexed automatically after each backup.">
+        <Tooltip title={m.repo_tooltip_index()}>
           <SpinButton type="default" onClickAsync={handleIndexNow}>
-            Index Snapshots
+            {m.repo_button_index()}
           </SpinButton>
         </Tooltip>
 
-        <Tooltip title="Removes lockfiles and checks the repository for errors. Only run if you are sure the repo is not being accessed by another system">
+        <Tooltip title={m.repo_tooltip_unlock()}>
           <SpinButton type="default" onClickAsync={handleUnlockNow}>
-            Unlock Repo
+            {m.repo_button_unlock()}
           </SpinButton>
         </Tooltip>
 
-        <Tooltip title="Runs a prune operation on the repository that will remove old snapshots and free up space">
+        <Tooltip title={m.repo_tooltip_prune()}>
           <SpinButton type="default" onClickAsync={handlePruneNow}>
-            Prune Now
+            {m.repo_button_prune()}
           </SpinButton>
         </Tooltip>
 
-        <Tooltip title="Runs a check operation on the repository that will verify the integrity of the repository">
+        <Tooltip title={m.repo_tooltip_check()}>
           <SpinButton type="default" onClickAsync={handleCheckNow}>
-            Check Now
+            {m.repo_button_check()}
           </SpinButton>
         </Tooltip>
 
-        <Tooltip title="Runs restic stats on the repository, this may be a slow operation">
+        <Tooltip title={m.repo_tooltip_stats()}>
           <SpinButton type="default" onClickAsync={handleStatsNow}>
-            Compute Stats
+            {m.repo_button_stats()}
           </SpinButton>
         </Tooltip>
       </Flex>

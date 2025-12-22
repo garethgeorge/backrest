@@ -1,5 +1,6 @@
 import { Operation, OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { formatBytes, formatDuration, normalizeSnapshotId } from "../lib/formatting";
+import * as m from "../paraglide/messages";
 
 export enum DisplayType {
   UNKNOWN,
@@ -49,7 +50,7 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
   const duration = Number(firstOp.unixTimeEndMs - firstOp.unixTimeStartMs);
 
   if (firstOp.status === OperationStatus.STATUS_PENDING) {
-    info.subtitleComponents.push("scheduled, waiting");
+    info.subtitleComponents.push(m.op_subtitle_scheduled());
   }
 
   switch (firstOp.op.case) {
@@ -61,12 +62,12 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
             const percentage = lastStatus.entry.value.percentDone * 100;
             const bytesDone = formatBytes(Number(lastStatus.entry.value.bytesDone));
             const totalBytes = formatBytes(Number(lastStatus.entry.value.totalBytes));
-            info.subtitleComponents.push(`${percentage.toFixed(2)}% processed`);
-            info.subtitleComponents.push(`${bytesDone}/${totalBytes}`);
+            info.subtitleComponents.push(m.op_subtitle_processed({ percentage: percentage.toFixed(2) }));
+            info.subtitleComponents.push(m.op_subtitle_bytes_total({ bytes: bytesDone, total: totalBytes }));
           } else if (lastStatus.entry.case === "summary") {
             const totalBytes = formatBytes(Number(lastStatus.entry.value.totalBytesProcessed));
-            info.subtitleComponents.push(`${totalBytes} in ${formatDuration(duration)}`);
-            info.subtitleComponents.push(`ID: ${normalizeSnapshotId(lastStatus.entry.value.snapshotId)}`);
+            info.subtitleComponents.push(m.op_subtitle_summary({ bytes: totalBytes, duration: formatDuration(duration) }));
+            info.subtitleComponents.push(m.op_subtitle_id({ id: normalizeSnapshotId(lastStatus.entry.value.snapshotId) }));
           }
         }
       }
@@ -77,40 +78,40 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
         if (lastStatus) {
           if (lastStatus.messageType === "summary") {
             const totalBytes = formatBytes(Number(lastStatus.totalBytes));
-            info.subtitleComponents.push(`${totalBytes} in ${formatDuration(duration)}`);
+            info.subtitleComponents.push(m.op_subtitle_summary({ bytes: totalBytes, duration: formatDuration(duration) }));
           } else if (lastStatus.messageType === "status") {
             const percentage = lastStatus.percentDone * 100;
             const bytesDone = formatBytes(Number(lastStatus.bytesRestored));
             const totalBytes = formatBytes(Number(lastStatus.totalBytes));
-            info.subtitleComponents.push(`${percentage.toFixed(2)}% processed`);
-            info.subtitleComponents.push(`${bytesDone}/${totalBytes}`);
+            info.subtitleComponents.push(m.op_subtitle_processed({ percentage: percentage.toFixed(2) }));
+            info.subtitleComponents.push(m.op_subtitle_bytes_total({ bytes: bytesDone, total: totalBytes }));
           }
         }
-        info.subtitleComponents.push(`ID: ${normalizeSnapshotId(firstOp.snapshotId)}`);
+        info.subtitleComponents.push(m.op_subtitle_id({ id: normalizeSnapshotId(firstOp.snapshotId) }));
       }
       break;
     case "operationIndexSnapshot":
       const snapshot = firstOp.op.value.snapshot;
       if (!snapshot) break;
       if (snapshot.summary && snapshot.summary.totalBytesProcessed) {
-        info.subtitleComponents.push(`${formatBytes(Number(snapshot.summary.totalBytesProcessed))} in ${formatDuration(snapshot.summary.totalDuration * 1000)}`);
+        info.subtitleComponents.push(m.op_subtitle_summary({ bytes: formatBytes(Number(snapshot.summary.totalBytesProcessed)), duration: formatDuration(snapshot.summary.totalDuration * 1000) }));
       }
-      info.subtitleComponents.push(`ID: ${normalizeSnapshotId(snapshot.id)}`);
+      info.subtitleComponents.push(m.op_subtitle_id({ id: normalizeSnapshotId(snapshot.id) }));
       break;
     default:
       switch (firstOp.status) {
         case OperationStatus.STATUS_INPROGRESS:
-          info.subtitleComponents.push("running");
+          info.subtitleComponents.push(m.op_subtitle_running());
           break;
         case OperationStatus.STATUS_USER_CANCELLED:
-          info.subtitleComponents.push("cancelled by user");
+          info.subtitleComponents.push(m.op_subtitle_cancelled_user());
           break;
         case OperationStatus.STATUS_SYSTEM_CANCELLED:
-          info.subtitleComponents.push("cancelled by system");
+          info.subtitleComponents.push(m.op_subtitle_cancelled_system());
           break;
         default:
           if (duration > 100) {
-            info.subtitleComponents.push(`took ${formatDuration(duration)}`);
+            info.subtitleComponents.push(m.op_subtitle_took({ duration: formatDuration(duration) }));
           }
           break;
       }
@@ -172,25 +173,25 @@ export const getTypeForDisplay = (op: Operation) => {
 export const displayTypeToString = (type: DisplayType) => {
   switch (type) {
     case DisplayType.BACKUP:
-      return "Backup";
+      return m.op_type_backup();
     case DisplayType.SNAPSHOT:
-      return "Snapshot";
+      return m.op_type_snapshot();
     case DisplayType.FORGET:
-      return "Forget";
+      return m.op_type_forget();
     case DisplayType.PRUNE:
-      return "Prune";
+      return m.op_type_prune();
     case DisplayType.CHECK:
-      return "Check";
+      return m.op_type_check();
     case DisplayType.RESTORE:
-      return "Restore";
+      return m.op_type_restore();
     case DisplayType.STATS:
-      return "Stats";
+      return m.op_type_stats();
     case DisplayType.RUNHOOK:
-      return "Run Hook";
+      return m.op_type_run_hook();
     case DisplayType.RUNCOMMAND:
-      return "Run Command";
+      return m.op_type_run_command();
     default:
-      return "Unknown";
+      return m.op_type_unknown();
   }
 };
 
@@ -216,20 +217,20 @@ export const colorForStatus = (status: OperationStatus) => {
 export const nameForStatus = (status: OperationStatus) => {
   switch (status) {
     case OperationStatus.STATUS_PENDING:
-      return "pending";
+      return m.op_status_pending();
     case OperationStatus.STATUS_INPROGRESS:
-      return "in progress";
+      return m.op_status_in_progress();
     case OperationStatus.STATUS_ERROR:
-      return "error";
+      return m.op_status_error();
     case OperationStatus.STATUS_WARNING:
-      return "warning";
+      return m.op_status_warning();
     case OperationStatus.STATUS_SUCCESS:
-      return "success";
+      return m.op_status_success();
     case OperationStatus.STATUS_USER_CANCELLED:
-      return "cancelled";
+      return m.op_status_cancelled();
     case OperationStatus.STATUS_SYSTEM_CANCELLED:
-      return "cancelled";
+      return m.op_status_cancelled();
     default:
-      return "Unknown";
+      return m.op_status_unknown();
   }
 }

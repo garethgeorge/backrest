@@ -16,6 +16,7 @@ import { create } from "@bufbuild/protobuf";
 import { useConfig } from "../components/ConfigProvider";
 import { OperationListView } from "../components/OperationListView";
 import { OperationTreeView } from "../components/OperationTreeView";
+import * as m from "../paraglide/messages";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const [config, _] = useConfig();
@@ -26,30 +27,30 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const handleBackupNow = async () => {
     try {
       await backrestService.backup({ value: plan.id });
-      alertsApi.success("Backup scheduled.");
+      alertsApi.success(m.plan_backup_scheduled());
     } catch (e: any) {
-      alertsApi.error("Failed to schedule backup: " + e.message);
+      alertsApi.error(m.plan_error_backup() + e.message);
     }
   };
 
   const handleUnlockNow = async () => {
     try {
-      alertsApi.info("Unlocking repo...");
+      alertsApi.info(m.repo_info_unlocking());
       await backrestService.doRepoTask(
         create(DoRepoTaskRequestSchema, {
           repoId: plan.repo!,
           task: DoRepoTaskRequest_Task.UNLOCK,
         })
       );
-      alertsApi.success("Repo unlocked.");
+      alertsApi.success(m.repo_success_unlocked());
     } catch (e: any) {
-      alertsApi.error("Failed to unlock repo: " + e.message);
+      alertsApi.error(m.repo_error_unlock() + e.message);
     }
   };
 
   const handleClearErrorHistory = async () => {
     try {
-      alertsApi.info("Clearing error history...");
+      alertsApi.info(m.plan_clearing_history());
       await backrestService.clearHistory(
         create(ClearHistoryRequestSchema, {
           selector: {
@@ -60,9 +61,9 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           onlyFailed: true,
         })
       );
-      alertsApi.success("Error history cleared.");
+      alertsApi.success(m.plan_history_cleared());
     } catch (e: any) {
-      alertsApi.error("Failed to clear error history: " + e.message);
+      alertsApi.error(m.plan_error_clear_history() + e.message);
     }
   };
 
@@ -70,7 +71,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
     return (
       <>
         <Typography.Title>
-          Repo {plan.repo} for plan {plan.id} not found
+          {m.plan_repo_not_found({ repo: plan.repo!, planId: plan.id! })}
         </Typography.Title>
       </>
     );
@@ -83,9 +84,9 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
       </Flex>
       <Flex gap="small" align="center" wrap="wrap">
         <SpinButton type="primary" onClickAsync={handleBackupNow}>
-          Backup Now
+          {m.plan_button_backup()}
         </SpinButton>
-        <Tooltip title="Advanced users: open a restic shell to run commands on the repository. Re-index snapshots to reflect any changes in Backrest.">
+        <Tooltip title={m.repo_tooltip_run_command()}>
           <Button
             type="default"
             onClick={async () => {
@@ -93,17 +94,17 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
               showModal(<RunCommandModal repo={repo} />);
             }}
           >
-            Run Command
+            {m.repo_button_run_command()}
           </Button>
         </Tooltip>
-        <Tooltip title="Removes lockfiles and checks the repository for errors. Only run if you are sure the repo is not being accessed by another system">
+        <Tooltip title={m.repo_tooltip_unlock()}>
           <SpinButton type="default" onClickAsync={handleUnlockNow}>
-            Unlock Repo
+            {m.repo_button_unlock()}
           </SpinButton>
         </Tooltip>
-        <Tooltip title="Removes failed operations from the list">
+        <Tooltip title={m.plan_tooltip_clear_history()}>
           <SpinButton type="default" onClickAsync={handleClearErrorHistory}>
-            Clear Error History
+            {m.plan_button_clear_history()}
           </SpinButton>
         </Tooltip>
       </Flex>
@@ -112,7 +113,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         items={[
           {
             key: "1",
-            label: "Tree View",
+            label: m.repo_tab_tree(),
             children: (
               <>
                 <OperationTreeView
@@ -132,10 +133,10 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           },
           {
             key: "2",
-            label: "List View",
+            label: m.repo_tab_list(),
             children: (
               <>
-                <h2>Backup Action History</h2>
+                <h2>{m.repo_history_title()}</h2>
                 <OperationListView
                   req={create(GetOperationsRequestSchema, {
                     selector: {
