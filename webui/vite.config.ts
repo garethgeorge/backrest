@@ -1,3 +1,4 @@
+import { paraglideVitePlugin } from '@inlang/paraglide-js'
 import { defineConfig, loadEnv, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import viteCompression from 'vite-plugin-compression';
@@ -32,7 +33,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    plugins: [
+    plugins: [paraglideVitePlugin({ project: './project.inlang', outdir: './src/paraglide' }),
       react(),
       viteCompression({ algorithm: 'gzip', ext: '.gz', deleteOriginFile: true }),
       // viteCompression({ algorithm: 'brotliCompress', ext: '.br' }),
