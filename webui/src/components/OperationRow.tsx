@@ -623,7 +623,7 @@ const BackupOperationStatus = ({
     console.error("GOT UNEXPECTED STATUS: ", status);
     return (
       <>
-        {m.op_row_unexpected_status} {status}
+        {m.op_row_unexpected_status() + JSON.stringify(status)}
       </>
     );
   }

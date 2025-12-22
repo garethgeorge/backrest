@@ -13,6 +13,7 @@ import {
   Collapse,
   Checkbox,
   AutoComplete,
+  Flex,
 } from "antd";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -53,112 +54,7 @@ import * as m from "../paraglide/messages";
 const { TextArea } = Input;
 const sep = isWindows ? "\\" : "/";
 
-const PathsTextArea = ({ value, onChange, ...props }: any) => {
-  const [options, setOptions] = useState<{ value: string }[]>([]);
-  const [currentLine, setCurrentLine] = useState("");
-  const [cursorPosition, setCursorPosition] = useState(0);
-  // selectingRef acts as a lock to prevent the AutoComplete's default behavior (replacing the entire value)
-  // from overwriting the multi-line merge logic in onSelect.
-  const selectingRef = useRef(false);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const handleSearch = useMemo(
-    () =>
-      debounce((searchValue: string) => {
-    if (!searchValue) {
-      setOptions([]);
-      return;
-    }
-
-    const lastSlash = searchValue.lastIndexOf(sep);
-    let searchPath = searchValue;
-    if (lastSlash !== -1) {
-      searchPath = searchValue.substring(0, lastSlash);
-    }
-
-    backrestService
-      .pathAutocomplete({ value: searchPath + sep })
-      .then((res: StringList) => {
-        if (!res.values) {
-          return;
-        }
-        const vals = res.values.map((v) => {
-          return {
-            value: searchPath + sep + v,
-          };
-        });
-        setOptions(vals.filter((o) => o.value.indexOf(searchValue) !== -1));
-      })
-      .catch((e) => {
-        console.log("Path autocomplete error: ", e);
-      });
-      }, 200),
-    []
-  );
-
-  const handleTextAreaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // If we are currently handling a selection, ignore the change event that AutoComplete triggers
-    // to replace the text with the selected item.
-    if (selectingRef.current) {
-      selectingRef.current = false;
-      return;
-    }
-
-    const newValue = e.target.value;
-    const cursorPos = e.target.selectionStart || 0;
-
-    // Find the current line based on cursor position
-    const lines = newValue.substring(0, cursorPos).split("\n");
-    const currentLineValue = lines[lines.length - 1];
-
-    setCurrentLine(currentLineValue);
-    setCursorPosition(cursorPos);
-
-    // Trigger autocomplete for the current line
-    handleSearch(currentLineValue);
-
-    // Update the form value
-    if (onChange) {
-      onChange(newValue);
-    }
-  };
-
-  const onSelect = (selectedValue: string) => {
-    // Set the flag to ignore the next onChange event (which contains the raw selected value)
-    selectingRef.current = true;
-
-    const lines = (value || "").split("\n");
-    const beforeCursor = (value || "").substring(0, cursorPosition);
-    const afterCursor = (value || "").substring(cursorPosition);
-    const linesBeforeCursor = beforeCursor.split("\n");
-
-    // Replace the current line with the selected value
-    linesBeforeCursor[linesBeforeCursor.length - 1] = selectedValue;
-    const newValue = linesBeforeCursor.join("\n") + afterCursor;
-
-    if (onChange) {
-      onChange(newValue);
-    }
-    setOptions([]);
-  };
-
-  return (
-    <AutoComplete
-      options={options}
-      onSelect={onSelect}
-      onSearch={() => {}} // We handle search in textarea change
-      {...props}
-    >
-      <TextArea
-        value={value}
-        onChange={handleTextAreaChange}
-        placeholder={m.add_plan_modal_field_paths_placeholder()}
-        style={{ minHeight: 100 }}
-        autoSize={{ minRows: 3, maxRows: 10 }}
-      />
-    </AutoComplete>
-  );
-};
 
 const planDefaults = create(PlanSchema, {
   schedule: {
@@ -191,15 +87,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       ? toJson(PlanSchema, template, { alwaysEmitImplicit: true })
       : toJson(PlanSchema, planDefaults, { alwaysEmitImplicit: true });
 
-    // Convert paths array to newline-separated string for the textarea
-    const formDataObj = formData as any;
-    if (formDataObj?.paths && Array.isArray(formDataObj.paths)) {
-      formDataObj.pathsText = formDataObj.paths.join("\n");
-    } else {
-      formDataObj.pathsText = "";
-    }
-
-    form.setFieldsValue(formDataObj);
+    form.setFieldsValue(formData);
   }, [template]);
 
   if (!config) {
@@ -243,17 +131,6 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
     try {
       let planFormData = await validateForm(form);
-
-      // Convert pathsText back to paths array
-      if (planFormData.pathsText) {
-        planFormData.paths = planFormData.pathsText
-          .split("\n")
-          .map((path: string) => path.trim())
-          .filter((path: string) => path.length > 0);
-        delete planFormData.pathsText;
-      } else {
-        planFormData.paths = [];
-      }
 
       const plan = fromJson(PlanSchema, planFormData, {
         ignoreUnknownFields: false,
@@ -342,8 +219,8 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         <Form
           autoComplete="off"
           form={form}
-          labelCol={{ span: 6 }}
-          wrapperCol={{ span: 16 }}
+          labelCol={{ flex: "160px" }}
+          wrapperCol={{ flex: "auto" }}
           disabled={confirmLoading}
         >
           {/* Plan.id */}
@@ -406,30 +283,73 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
           {/* Plan.paths */}
           <Form.Item
-            name="pathsText"
             label={m.add_plan_modal_field_paths()}
             required={true}
             tooltip={m.add_plan_modal_field_paths_tooltip()}
-            rules={[
-              {
-                validator: async (_, value) => {
-                  if (!value || !value.trim()) {
-                    throw new Error(m.add_plan_modal_validation_paths_required());
-                  }
-                  const paths = value
-                    .split("\n")
-                    .map((p: string) => p.trim())
-                    .filter((p: string) => p.length > 0);
-                  if (paths.length === 0) {
-                    throw new Error(
-                      m.add_plan_modal_validation_paths_valid_required()
-                    );
-                  }
-                },
-              },
-            ]}
           >
-            <PathsTextArea />
+            <Form.List
+              name="paths"
+              rules={[
+                {
+                  validator: async (_, paths) => {
+                    if (!paths || paths.length === 0) {
+                      throw new Error(
+                        m.add_plan_modal_validation_paths_required()
+                      );
+                    }
+                  },
+                },
+              ]}
+              initialValue={template ? template.paths : []}
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => {
+                    const { key, ...restField } = field;
+                    return (
+                      <Form.Item required={false} key={field.key}>
+                        <Flex gap="small" align="center">
+                          <Form.Item
+                            {...restField}
+                            validateTrigger={["onChange", "onBlur"]}
+                            initialValue={""}
+                            rules={[
+                              {
+                                required: true,
+                                message:
+                                  m.add_plan_modal_validation_paths_valid_required(),
+                              },
+                            ]}
+                            noStyle
+                          >
+                            <URIAutocomplete
+                              style={{ flex: 1 }}
+                              onBlur={() => form.validateFields()}
+                              globAllowed={true}
+                            />
+                          </Form.Item>
+                          <MinusCircleOutlined
+                            className="dynamic-delete-button"
+                            onClick={() => remove(field.name)}
+                          />
+                        </Flex>
+                      </Form.Item>
+                    );
+                  })}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      block
+                      icon={<PlusOutlined />}
+                    >
+                      Add Path
+                    </Button>
+                    <Form.ErrorList errors={errors} />
+                  </Form.Item>
+                </>
+              )}
+            </Form.List>
           </Form.Item>
 
           {/* Plan.excludes */}
@@ -460,28 +380,29 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                     const { key, ...restField } = field;
                     return (
                       <Form.Item required={false} key={field.key}>
-                        <Form.Item
-                          {...restField}
-                          validateTrigger={["onChange", "onBlur"]}
-                          initialValue={""}
-                          rules={[
-                            {
-                              required: true,
-                            },
-                          ]}
-                          noStyle
-                        >
-                          <URIAutocomplete
-                            style={{ width: "90%" }}
-                            onBlur={() => form.validateFields()}
-                            globAllowed={true}
+                        <Flex gap="small" align="center">
+                          <Form.Item
+                            {...restField}
+                            validateTrigger={["onChange", "onBlur"]}
+                            initialValue={""}
+                            rules={[
+                              {
+                                required: true,
+                              },
+                            ]}
+                            noStyle
+                          >
+                            <URIAutocomplete
+                              style={{ flex: 1 }}
+                              onBlur={() => form.validateFields()}
+                              globAllowed={true}
+                            />
+                          </Form.Item>
+                          <MinusCircleOutlined
+                            className="dynamic-delete-button"
+                            onClick={() => remove(field.name)}
                           />
-                        </Form.Item>
-                        <MinusCircleOutlined
-                          className="dynamic-delete-button"
-                          onClick={() => remove(field.name)}
-                          style={{ paddingLeft: "5px" }}
-                        />
+                        </Flex>
                       </Form.Item>
                     );
                   })}
@@ -489,7 +410,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                     <Button
                       type="dashed"
                       onClick={() => add()}
-                      style={{ width: "90%" }}
+                      block
                       icon={<PlusOutlined />}
                     >
                       {m.add_plan_modal_field_excludes_add()}
@@ -529,28 +450,29 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                     const { key, ...restField } = field;
                     return (
                       <Form.Item required={false} key={field.key}>
-                        <Form.Item
-                          {...restField}
-                          validateTrigger={["onChange", "onBlur"]}
-                          initialValue={""}
-                          rules={[
-                            {
-                              required: true,
-                            },
-                          ]}
-                          noStyle
-                        >
-                          <URIAutocomplete
-                            style={{ width: "90%" }}
-                            onBlur={() => form.validateFields()}
-                            globAllowed={true}
+                        <Flex gap="small" align="center">
+                          <Form.Item
+                            {...restField}
+                            validateTrigger={["onChange", "onBlur"]}
+                            initialValue={""}
+                            rules={[
+                              {
+                                required: true,
+                              },
+                            ]}
+                            noStyle
+                          >
+                            <URIAutocomplete
+                              style={{ flex: 1 }}
+                              onBlur={() => form.validateFields()}
+                              globAllowed={true}
+                            />
+                          </Form.Item>
+                          <MinusCircleOutlined
+                            className="dynamic-delete-button"
+                            onClick={() => remove(field.name)}
                           />
-                        </Form.Item>
-                        <MinusCircleOutlined
-                          className="dynamic-delete-button"
-                          onClick={() => remove(field.name)}
-                          style={{ paddingLeft: "5px" }}
-                        />
+                        </Flex>
                       </Form.Item>
                     );
                   })}
@@ -558,7 +480,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                     <Button
                       type="dashed"
                       onClick={() => add()}
-                      style={{ width: "90%" }}
+                      block
                       icon={<PlusOutlined />}
                     >
                       {m.add_plan_modal_field_iexcludes_add()}
@@ -593,30 +515,31 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                     const { key, ...restField } = field;
                     return (
                       <Form.Item required={false} key={field.key}>
-                        <Form.Item
-                          {...restField}
-                          validateTrigger={["onChange", "onBlur"]}
-                          rules={[
-                            {
-                              required: true,
-                              whitespace: true,
-                              pattern: /^\-\-?.*$/,
-                              message:
-                                m.add_plan_modal_validation_flag_pattern(),
-                            },
-                          ]}
-                          noStyle
-                        >
-                          <Input
-                            placeholder="--flag"
-                            style={{ width: "90%" }}
+                        <Flex gap="small" align="center">
+                          <Form.Item
+                            {...restField}
+                            validateTrigger={["onChange", "onBlur"]}
+                            rules={[
+                              {
+                                required: true,
+                                whitespace: true,
+                                pattern: /^\-\-?.*$/,
+                                message:
+                                  m.add_plan_modal_validation_flag_pattern(),
+                              },
+                            ]}
+                            noStyle
+                          >
+                            <Input
+                              placeholder="--flag"
+                              style={{ flex: 1 }}
+                            />
+                          </Form.Item>
+                          <MinusCircleOutlined
+                            className="dynamic-delete-button"
+                            onClick={() => remove(index)}
                           />
-                        </Form.Item>
-                        <MinusCircleOutlined
-                          className="dynamic-delete-button"
-                          onClick={() => remove(index)}
-                          style={{ paddingLeft: "5px" }}
-                        />
+                        </Flex>
                       </Form.Item>
                     );
                   })}
@@ -624,7 +547,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                     <Button
                       type="dashed"
                       onClick={() => add()}
-                      style={{ width: "90%" }}
+                      block
                       icon={<PlusOutlined />}
                     >
                       {m.add_plan_modal_field_backup_flags_add()}

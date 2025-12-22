@@ -15,6 +15,7 @@ import {
   Checkbox,
   Select,
   Space,
+  Flex,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../components/ModalManager";
@@ -243,8 +244,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         <Form
           autoComplete="off"
           form={form}
-          labelCol={{ span: 4 }}
-          wrapperCol={{ span: 18 }}
+          labelCol={{ flex: "160px" }}
+          wrapperCol={{ flex: "auto" }}
           disabled={confirmLoading}
         >
           {/* Repo.id */}
@@ -350,41 +351,34 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             }
           >
             <Form.Item label={m.add_repo_modal_field_password()}>
-              <Row>
-                <Col span={16}>
-                  <Form.Item<Repo>
-                    hasFeedback
-                    name="password"
-                    validateTrigger={["onChange", "onBlur"]}
-                  >
-                    <Input disabled={!!template} />
-                  </Form.Item>
-                </Col>
-                <Col
-                  span={7}
-                  offset={1}
-                  style={{ display: "flex", justifyContent: "left" }}
+              <Flex gap="small">
+                <Form.Item<Repo>
+                  hasFeedback
+                  name="password"
+                  validateTrigger={["onChange", "onBlur"]}
+                  noStyle
                 >
-                  <Button
-                    type="text"
-                    onClick={() => {
-                      if (template) return;
-                      form.setFieldsValue({
-                        password: cryptoRandomPassword(),
-                      });
-                    }}
-                  >
-                    {m.add_repo_modal_button_generate()}
-                  </Button>
-                </Col>
-              </Row>
+                  <Input disabled={!!template} style={{ flex: 1 }} />
+                </Form.Item>
+                <Button
+                  type="text"
+                  onClick={() => {
+                    if (template) return;
+                    form.setFieldsValue({
+                      password: cryptoRandomPassword(),
+                    });
+                  }}
+                >
+                  {m.add_repo_modal_button_generate()}
+                </Button>
+              </Flex>
             </Form.Item>
           </Tooltip>
 
           {/* Repo.env */}
           <Tooltip
             title={
-              m.add_repo_modal_field_env_vars_tooltip()
+              m.add_repo_modal_field_env_vars_tooltip({ MY_FOO_VAR: "$MY_FOO_VAR" })
             }
           >
             <Form.Item label={m.add_repo_modal_field_env_vars()}>
@@ -404,31 +398,31 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                       const { key, ...restField } = field;
                       return (
                         <Form.Item key={field.key}>
-                          <Form.Item
-                            {...restField}
-                            validateTrigger={["onChange", "onBlur"]}
-                            rules={[
-                              {
-                                required: true,
-                                whitespace: true,
-                                pattern: /^[\w-]+=.*$/,
-                                message:
-                                  m.add_repo_modal_error_env_format(),
-                              },
-                            ]}
-                            noStyle
-                          >
-                            <Input
-                              placeholder="KEY=VALUE"
-                              onBlur={() => form.validateFields()}
-                              style={{ width: "90%" }}
+                          <Flex gap="small" align="center">
+                            <Form.Item
+                              {...restField}
+                              validateTrigger={["onChange", "onBlur"]}
+                              rules={[
+                                {
+                                  required: true,
+                                  whitespace: true,
+                                  pattern: /^[\w-]+=.*$/,
+                                  message: m.add_repo_modal_error_env_format(),
+                                },
+                              ]}
+                              noStyle
+                            >
+                              <Input
+                                placeholder="KEY=VALUE"
+                                onBlur={() => form.validateFields()}
+                                style={{ flex: 1 }}
+                              />
+                            </Form.Item>
+                            <MinusCircleOutlined
+                              className="dynamic-delete-button"
+                              onClick={() => remove(index)}
                             />
-                          </Form.Item>
-                          <MinusCircleOutlined
-                            className="dynamic-delete-button"
-                            onClick={() => remove(index)}
-                            style={{ paddingLeft: "5px" }}
-                          />
+                          </Flex>
                         </Form.Item>
                       );
                     })}
@@ -436,7 +430,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                       <Button
                         type="dashed"
                         onClick={() => add("")}
-                        style={{ width: "90%" }}
+                        block
                         icon={<PlusOutlined />}
                       >
                         {m.add_repo_modal_button_set_env()}
@@ -458,30 +452,30 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                     const { key, ...restField } = field;
                     return (
                       <Form.Item required={false} key={field.key}>
-                        <Form.Item
-                          {...restField}
-                          validateTrigger={["onChange", "onBlur"]}
-                          rules={[
-                            {
-                              required: true,
-                              whitespace: true,
-                              pattern: /^\-\-?.*$/,
-                              message:
-                                m.add_repo_modal_error_flag_format(),
-                            },
-                          ]}
-                          noStyle
-                        >
-                          <Input
-                            placeholder="--flag"
-                            style={{ width: "90%" }}
+                        <Flex gap="small" align="center">
+                          <Form.Item
+                            {...restField}
+                            validateTrigger={["onChange", "onBlur"]}
+                            rules={[
+                              {
+                                required: true,
+                                whitespace: true,
+                                pattern: /^\-\-?.*$/,
+                                message: m.add_repo_modal_error_flag_format(),
+                              },
+                            ]}
+                            noStyle
+                          >
+                            <Input
+                              placeholder="--flag"
+                              style={{ flex: 1 }}
+                            />
+                          </Form.Item>
+                          <MinusCircleOutlined
+                            className="dynamic-delete-button"
+                            onClick={() => remove(index)}
                           />
-                        </Form.Item>
-                        <MinusCircleOutlined
-                          className="dynamic-delete-button"
-                          onClick={() => remove(index)}
-                          style={{ paddingLeft: "5px" }}
-                        />
+                        </Flex>
                       </Form.Item>
                     );
                   })}
@@ -489,7 +483,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                     <Button
                       type="dashed"
                       onClick={() => add()}
-                      style={{ width: "90%" }}
+                      block
                       icon={<PlusOutlined />}
                     >
                       {m.add_repo_modal_button_set_flag()}
@@ -499,6 +493,23 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 </>
               )}
             </Form.List>
+          </Form.Item>
+
+          {/* Repo.autoUnlock */}
+          <Form.Item
+            label={
+              <Tooltip
+                title={
+                  m.add_repo_modal_field_auto_unlock_tooltip()
+                }
+              >
+                {m.add_repo_modal_field_auto_unlock()}
+              </Tooltip>
+            }
+            name="autoUnlock"
+            valuePropName="checked"
+          >
+            <Checkbox />
           </Form.Item>
 
           {/* Repo.prunePolicy */}
@@ -668,22 +679,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               </Row>
             </Form.Item>
           )}
-
-          <Form.Item
-            label={
-              <Tooltip
-                title={
-                  m.add_repo_modal_field_auto_unlock_tooltip()
-                }
-              >
-                {m.add_repo_modal_field_auto_unlock()}
-              </Tooltip>
-            }
-            name="autoUnlock"
-            valuePropName="checked"
-          >
-            <Checkbox />
-          </Form.Item>
 
           <Form.Item
             label={<Tooltip title={hooksListTooltipText}>{m.add_plan_modal_field_hooks()}</Tooltip>}

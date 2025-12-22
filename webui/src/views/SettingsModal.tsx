@@ -98,6 +98,7 @@ export const SettingsModal = () => {
             user.passwordBcrypt = hash.value;
             delete user.needsBcrypt;
           }
+          delete user.isExisting;
         }
       }
 
