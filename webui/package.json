@@ -8,7 +8,8 @@
     "clean-windows": "rimraf dist-windows",
     "build": "cross-env UI_OS=unix vite build",
     "build-windows": "cross-env UI_OS=windows vite build --outDir dist-windows",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "translate": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide && inlang machine translate --project ./project.inlang"
   },
   "author": "",
   "license": "ISC",
@@ -34,6 +35,8 @@
     "packageExports": true
   },
   "devDependencies": {
+    "@inlang/cli": "^3.0.12",
+    "@inlang/paraglide-js": "2.7.0",
     "@types/node": "^20.19.1",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
@@ -45,7 +48,6 @@
     "sass": "^1.97.1",
     "typescript": "^5.8.3",
     "vite": "^7.3.0",
-    "vite-plugin-compression": "^0.5.1",
-    "@inlang/paraglide-js": "2.7.0"
+    "vite-plugin-compression": "^0.5.1"
   }
 }
