@@ -68,7 +68,7 @@ import { OperationIcon } from "./OperationIcon";
 import { shouldHideOperation } from "../state/oplog";
 import { create, toJsonString } from "@bufbuild/protobuf";
 import { useConfig } from "./ConfigProvider";
-import { SelectionChangeDetails } from "@chakra-ui/react/dist/types/components/tree-view/namespace";
+
 
 interface OpTreeNode {
   id: string;
@@ -418,7 +418,7 @@ const DisplayOperationTree = ({
       expandFirst(nodes[0]);
     }
 
-    setExpandedValue(Array.from(toExpand));
+    setExpandedValue(Array.from([...expandedValue, ...toExpand]));
   }, [operations, isPlanView]);
 
   if (!treeCollection) return <></>;
@@ -427,16 +427,15 @@ const DisplayOperationTree = ({
     <TreeViewRoot
       collection={treeCollection}
       expandedValue={expandedValue}
-      onExpandedChange={(details: any) => setExpandedValue(details.value)}
       selectedValue={selectedValue}
-      onSelectionChange={(details: SelectionChangeDetails<OpTreeNode>) => {
+      onSelectionChange={(details: any) => {
         const values = details?.selectedValue ?? [];
         setSelectedValue(values);
+        setExpandedValue((prev) => Array.from(new Set([...prev, ...values])));
 
-        if (details.selectedNodes.length === 0) return;
+        if (!details.selectedNodes || details.selectedNodes.length === 0) return;
         onSelect && onSelect(details.selectedNodes[0].backup);
       }}
-
     >
 
 

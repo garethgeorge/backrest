@@ -12,6 +12,9 @@ export const TreeViewItemText = ChakraTreeView.ItemText
 export const TreeViewBranchIndentGuide = ChakraTreeView.BranchIndentGuide
 export const TreeViewBranchContent = ChakraTreeView.BranchContent
 export const TreeViewBranchTrigger = ChakraTreeView.BranchTrigger
+export const TreeViewBranchIndicator = ChakraTreeView.BranchIndicator
+export const TreeViewBranch = ChakraTreeView.Branch
+export const TreeViewNodeProvider = ChakraTreeView.NodeProvider
 
 export interface TreeViewNodeProps<T = any> extends ChakraTreeView.NodeProps<T> {}
 export interface TreeViewRootProps extends ChakraTreeView.RootProps {}

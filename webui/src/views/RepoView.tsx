@@ -106,7 +106,7 @@ export const RepoView = ({
       <Box>
         {m.repo_deleted_message()}
         <Box as="pre" p={2} bg="gray.100" borderRadius="md" overflowX="auto">
-            {JSON.stringify(config, null, 2)}
+          {JSON.stringify(config, null, 2)}
         </Box>
       </Box>
     );
@@ -160,48 +160,48 @@ export const RepoView = ({
           </SpinButton>
         </Tooltip>
       </Flex>
-      
-      <TabsRoot defaultValue="tree" lazyMount unmountOnExit>
+
+      <TabsRoot defaultValue="tree" lazyMount>
         <TabsList>
-            <TabsTrigger value="tree">{m.repo_tab_tree()}</TabsTrigger>
-            <TabsTrigger value="list">{m.repo_tab_list()}</TabsTrigger>
-            <TabsTrigger value="stats">{m.repo_tab_stats()}</TabsTrigger>
+          <TabsTrigger value="tree">{m.repo_tab_tree()}</TabsTrigger>
+          <TabsTrigger value="list">{m.repo_tab_list()}</TabsTrigger>
+          <TabsTrigger value="stats">{m.repo_tab_stats()}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tree">
-            <OperationTreeView
+          <OperationTreeView
             req={create(GetOperationsRequestSchema, {
-                selector: {
+              selector: {
                 repoGuid: repo.guid,
-                },
-                lastN: BigInt(MAX_OPERATION_HISTORY),
+              },
+              lastN: BigInt(MAX_OPERATION_HISTORY),
             })}
-            />
+          />
         </TabsContent>
 
         <TabsContent value="list">
-            <Heading size="md" mb={4}>{m.repo_history_title()}</Heading>
-             <OperationListView
-                req={create(GetOperationsRequestSchema, {
-                  selector: {
-                    repoGuid: repo.guid,
-                  },
-                  lastN: BigInt(MAX_OPERATION_HISTORY),
-                })}
-                showPlan={true}
-                showDelete={true}
-            />
+          <Heading size="md" mb={4}>{m.repo_history_title()}</Heading>
+          <OperationListView
+            req={create(GetOperationsRequestSchema, {
+              selector: {
+                repoGuid: repo.guid,
+              },
+              lastN: BigInt(MAX_OPERATION_HISTORY),
+            })}
+            showPlan={true}
+            showDelete={true}
+          />
         </TabsContent>
 
         <TabsContent value="stats">
-             <Suspense fallback={<div>{m.loading()}</div>}>
-                <StatsPanel
-                    selector={create(OpSelectorSchema, {
-                    repoGuid: repo.guid,
-                    instanceId: config?.instance,
-                    })}
-                />
-            </Suspense>
+          <Suspense fallback={<div>{m.loading()}</div>}>
+            <StatsPanel
+              selector={create(OpSelectorSchema, {
+                repoGuid: repo.guid,
+                instanceId: config?.instance,
+              })}
+            />
+          </Suspense>
         </TabsContent>
       </TabsRoot>
     </Box>

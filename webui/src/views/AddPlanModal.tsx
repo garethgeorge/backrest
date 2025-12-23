@@ -51,6 +51,7 @@ import { ScheduleFormItem, ScheduleDefaultsDaily } from "../components/ScheduleF
 import { URIAutocomplete } from "../components/URIAutocomplete";
 
 import { HooksFormList, hooksListTooltipText } from "../components/HooksFormList";
+import { DynamicList } from "../components/DynamicList";
 
 // Default Plan
 const planDefaults = create(PlanSchema, {
@@ -244,6 +245,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             tooltip={m.add_plan_modal_field_paths_tooltip()}
             placeholder="File Path (e.g. /home/user/data)"
             required
+            autocompleteType="uri"
         />
 
         {/* Excludes */}
@@ -280,6 +282,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             onUpdate={(items: string[]) => updateField(['backup_flags'], items)}
             tooltip={m.add_plan_modal_field_backup_flags_tooltip()}
             placeholder="--flag"
+            autocompleteType="flag"
         />
 
         {/* Retention Policy */}
@@ -303,45 +306,6 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
 // --- Subcomponents ---
 
-const DynamicList = ({ label, items, onUpdate, tooltip, placeholder, required }: any) => {
-    const handleChange = (index: number, val: string) => {
-        const newItems = [...items];
-        newItems[index] = val;
-        onUpdate(newItems);
-    };
-
-    const handleAdd = () => {
-        onUpdate([...items, ""]);
-    };
-
-    const handleRemove = (index: number) => {
-        const newItems = [...items];
-        newItems.splice(index, 1);
-        onUpdate(newItems);
-    };
-
-    return (
-        <Field label={label} helperText={tooltip} required={required}>
-            <Stack gap={2}>
-                {items.map((item: string, index: number) => (
-                    <Flex key={index} gap={2}>
-                        <URIAutocomplete 
-                            value={item} 
-                            onChange={(val: string) => handleChange(index, val)} 
-                            placeholder={placeholder}
-                        />
-                        <IconButton size="sm" variant="ghost" onClick={() => handleRemove(index)} aria-label="Remove">
-                            <Minus size={16} />
-                        </IconButton>
-                    </Flex>
-                ))}
-                <Button size="sm" variant="outline" onClick={handleAdd}>
-                    <Plus size={16} /> Add
-                </Button>
-            </Stack>
-        </Field>
-    );
-};
 
 // Retention View
 const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {

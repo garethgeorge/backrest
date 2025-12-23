@@ -340,5 +340,9 @@
 	"op_row_policy_keep_latest": "Die neuesten {count} Snapshots werden unabhängig vom Alter gespeichert",
 	"op_row_removed_snapshot_desc": "Der Snapshot {id} wurde entfernt. Erstellt am {time}",
 	"op_row_policy_header": "Politik:",
-	"op_row_fetch_download_error": "Download-URL konnte nicht abgerufen werden: "
+	"op_row_fetch_download_error": "Download-URL konnte nicht abgerufen werden: ",
+	"op_row_removed_header": "Snapshots entfernt",
+	"op_row_removed_none": "Es wurden keine Snapshots entfernt.",
+	"op_row_removed_id_col": "Snapshot-ID",
+	"op_row_removed_time_col": "Zeit"
 }

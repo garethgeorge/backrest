@@ -3,7 +3,7 @@ import { FiChevronLeft, FiChevronRight } from "react-icons/fi"
 import * as React from "react"
 
 export interface PaginationRootProps extends ChakraPagination.RootProps {
-    
+
 }
 
 export const PaginationRoot = React.forwardRef<HTMLDivElement, PaginationRootProps>(
@@ -11,7 +11,7 @@ export const PaginationRoot = React.forwardRef<HTMLDivElement, PaginationRootPro
     return (
       <ChakraPagination.Root {...props} ref={ref}>
         <Flex gap={2} alignItems="center">
-            {props.children}
+          {props.children}
         </Flex>
       </ChakraPagination.Root>
     )
@@ -24,7 +24,7 @@ export const PaginationPrevTrigger = React.forwardRef<HTMLButtonElement, ChakraP
       // @ts-ignore
       <ChakraPagination.PrevTrigger {...props} asChild ref={ref}>
         <IconButton variant="ghost" aria-label="Previous Page" size="sm">
-           <FiChevronLeft />
+          <FiChevronLeft />
         </IconButton>
       </ChakraPagination.PrevTrigger>
     )
@@ -37,7 +37,7 @@ export const PaginationNextTrigger = React.forwardRef<HTMLButtonElement, ChakraP
       // @ts-ignore
       <ChakraPagination.NextTrigger {...props} asChild ref={ref}>
         <IconButton variant="ghost" aria-label="Next Page" size="sm">
-           <FiChevronRight />
+          <FiChevronRight />
         </IconButton>
       </ChakraPagination.NextTrigger>
     )
@@ -45,31 +45,28 @@ export const PaginationNextTrigger = React.forwardRef<HTMLButtonElement, ChakraP
 )
 
 export const PaginationItems = (props: any) => {
-    return (
-        <ChakraPagination.Items 
-            {...props} 
-            // @ts-ignore
-            count={props.count}
-        >
-             {/* @ts-ignore */}
-            {({ page }: any) => (
-               // @ts-ignore
-               <ChakraPagination.Item key={page.value} value={page.value} asChild type={page.type}>
-                  <Button variant={page.type === "page" ? "ghost" : "plain"} size="sm" px={2} minW={8}>
-                    {page.value}
-                  </Button>
-               </ChakraPagination.Item>
-            )}
-        </ChakraPagination.Items>
-    ) 
+  return (
+    <ChakraPagination.Items
+      {...props}
+      // @ts-ignore
+      render={(page: any) => (
+        // @ts-ignore
+        <ChakraPagination.Item key={page.value} value={page.value} asChild type={page.type}>
+          <Button variant={page.type === "page" ? "ghost" : "plain"} size="sm" px={2} minW={8}>
+            {page.value}
+          </Button>
+        </ChakraPagination.Item>
+      )}
+    />
+  )
 }
 
 export const PaginationPageText = React.forwardRef<HTMLParagraphElement, ChakraPagination.PageTextProps>(
-    function PaginationPageText(props, ref) {
-        return (
-            <ChakraPagination.PageText {...props} ref={ref} asChild>
-                <Text fontSize="sm" />
-            </ChakraPagination.PageText>
-        )
-    }
+  function PaginationPageText(props, ref) {
+    return (
+      <ChakraPagination.PageText {...props} ref={ref} asChild>
+        <Text fontSize="sm" />
+      </ChakraPagination.PageText>
+    )
+  }
 )

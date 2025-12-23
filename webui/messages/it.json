@@ -340,5 +340,9 @@
 	"op_row_policy_keep_latest": "Conserva gli ultimi {count} snapshot indipendentemente dall'età",
 	"op_row_removed_snapshot_desc": "rimosso snapshot {id} eseguito alle {time}",
 	"op_row_policy_header": "Politica:",
-	"op_row_fetch_download_error": "Impossibile recuperare l'URL per il download: "
+	"op_row_fetch_download_error": "Impossibile recuperare l'URL per il download: ",
+	"op_row_removed_header": "Istantanee rimosse",
+	"op_row_removed_none": "Nessuna istantanea è stata rimossa.",
+	"op_row_removed_id_col": "ID istantanea",
+	"op_row_removed_time_col": "Tempo"
 }

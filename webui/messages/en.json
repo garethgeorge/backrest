@@ -340,5 +340,9 @@
   "dashboard_peer_instance_id": "Instance ID",
   "dashboard_peer_public_key_id": "Public Key ID",
   "dashboard_peer_last_state_update": "Last State Update",
-  "dashboard_peer_ago": "ago"
+  "dashboard_peer_ago": "ago",
+  "op_row_removed_header": "Removed snapshots",
+  "op_row_removed_none": "No snapshots were removed.",
+  "op_row_removed_id_col": "Snapshot ID",
+  "op_row_removed_time_col": "Time"
 }

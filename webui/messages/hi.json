@@ -340,5 +340,9 @@
 	"op_row_policy_keep_latest": "उम्र की परवाह किए बिना नवीनतम {count} स्नैपशॉट रखें",
 	"op_row_removed_snapshot_desc": "हटाई गई स्नैपशॉट {id} जो {time} पर ली गई थी",
 	"op_row_policy_header": "नीति:",
-	"op_row_fetch_download_error": "डाउनलोड यूआरएल प्राप्त करने में विफल: "
+	"op_row_fetch_download_error": "डाउनलोड यूआरएल प्राप्त करने में विफल: ",
+	"op_row_removed_header": "स्नैपशॉट हटा दिए गए",
+	"op_row_removed_none": "कोई भी स्नैपशॉट नहीं हटाया गया।",
+	"op_row_removed_id_col": "स्नैपशॉट आईडी",
+	"op_row_removed_time_col": "समय"
 }

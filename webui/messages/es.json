@@ -340,5 +340,9 @@
 	"op_row_policy_keep_latest": "Conservar las últimas {count} instantáneas independientemente de su antigüedad",
 	"op_row_removed_snapshot_desc": "instantánea eliminada {id} tomada a las {time}",
 	"op_row_policy_header": "Política:",
-	"op_row_fetch_download_error": "No se pudo obtener la URL de descarga: "
+	"op_row_fetch_download_error": "No se pudo obtener la URL de descarga: ",
+	"op_row_removed_header": "Instantáneas eliminadas",
+	"op_row_removed_none": "No se eliminaron instantáneas.",
+	"op_row_removed_id_col": "ID de instantánea",
+	"op_row_removed_time_col": "Tiempo"
 }

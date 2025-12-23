@@ -340,5 +340,9 @@
 	"op_row_policy_keep_latest": "Сохраняйте последние снимки {count} независимо от их возраста.",
 	"op_row_removed_snapshot_desc": "Удалён снимок {id} сделанный в {time}",
 	"op_row_policy_header": "Политика:",
-	"op_row_fetch_download_error": "Не удалось получить URL-адрес для скачивания: "
+	"op_row_fetch_download_error": "Не удалось получить URL-адрес для скачивания: ",
+	"op_row_removed_header": "Удалены снимки экрана",
+	"op_row_removed_none": "Никакие снимки не были удалены.",
+	"op_row_removed_id_col": "Идентификатор снимка",
+	"op_row_removed_time_col": "Время"
 }

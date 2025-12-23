@@ -340,5 +340,9 @@
 	"op_row_policy_keep_latest": "বয়স নির্বিশেষে সর্বশেষ {count} স্ন্যাপশট রাখুন",
 	"op_row_removed_snapshot_desc": "{id} স্ন্যাপশটটি {time} এ তোলা হয়েছে।",
 	"op_row_policy_header": "নীতি:",
-	"op_row_fetch_download_error": "ডাউনলোড URL আনতে ব্যর্থ হয়েছে: "
+	"op_row_fetch_download_error": "ডাউনলোড URL আনতে ব্যর্থ হয়েছে: ",
+	"op_row_removed_header": "স্ন্যাপশটগুলি সরানো হয়েছে",
+	"op_row_removed_none": "কোনও স্ন্যাপশট সরানো হয়নি।",
+	"op_row_removed_id_col": "স্ন্যাপশট আইডি",
+	"op_row_removed_time_col": "সময়"
 }

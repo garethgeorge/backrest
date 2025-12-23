@@ -340,5 +340,9 @@
 	"op_row_policy_keep_latest": "Mantenha os snapshots mais recentes {count} independentemente da idade.",
 	"op_row_removed_snapshot_desc": "instantâneo removido {id} tirado em {time}",
 	"op_row_policy_header": "Política:",
-	"op_row_fetch_download_error": "Não foi possível obter o URL de download: "
+	"op_row_fetch_download_error": "Não foi possível obter o URL de download: ",
+	"op_row_removed_header": "Capturas de tela removidas",
+	"op_row_removed_none": "Nenhuma captura de tela foi removida.",
+	"op_row_removed_id_col": "ID do instantâneo",
+	"op_row_removed_time_col": "Tempo"
 }

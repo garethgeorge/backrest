@@ -41,6 +41,7 @@ import {
   displayTypeToString,
   getTypeForDisplay,
   nameForStatus,
+  colorForStatus,
 } from "../state/flowdisplayaggregator";
 import { OperationIcon } from "./OperationIcon";
 import { LogView } from "./LogView";
@@ -238,8 +239,10 @@ export const OperationRow = ({
         />
       ),
     });
+
   } else if (operation.op.case === "operationForget") {
     const forgetOp = operation.op.value;
+    expandedBodyItems.push("forgot");
     bodyItems.push({
       key: "forgot",
       label: m.op_row_removed_snapshots({
@@ -331,51 +334,61 @@ export const OperationRow = ({
   }
 
   return (
-    <Box 
-        className="backrest visible-on-hover" 
-        mb={2} 
-        borderWidth="1px" 
-        borderRadius="md" 
-        bg="bg.panel"
-        _hover={{ borderColor: "border.emphasized" }}
+    <Box
+      className="backrest visible-on-hover"
+      mb={2}
+      borderWidth="1px"
+      borderRadius="md"
+      bg="bg.panel"
+      _hover={{ borderColor: "border.emphasized" }}
     >
-        <Box p={3}>
-            <Flex align="center" gap={3}>
-                <OperationIcon type={displayType} status={operation.status} />
-                <Box flex={1}>
-                    <Flex wrap="wrap" align="baseline" gap={2}>
-                        {title}
-                    </Flex>
-                </Box>
+      <Box p={3}>
+        <Flex align="center" gap={3}>
+          <OperationIcon type={displayType} status={operation.status} />
+          <Box flex={1}>
+            <Flex wrap="wrap" align="baseline" gap={2}>
+              {title}
             </Flex>
-            
-            {operation.displayMessage && (
-                <Box mt={2} pl={10}>
-                    <Code width="full" p={2} borderRadius="md" fontSize="xs">
-                        {operation.status !== OperationStatus.STATUS_SUCCESS &&
-                            nameForStatus(operation.status) + ": "}
-                        {displayMessage}
-                    </Code>
-                </Box>
-            )}
+          </Box>
+        </Flex>
 
-            {bodyItems.length > 0 && (
-                <Box mt={2} pl={2}>
-                     <AccordionRoot collapsible multiple defaultValue={expandedBodyItems} variant="plain">
-                        {bodyItems.map((item) => (
-                            <AccordionItem key={item.key} value={item.key} border="none">
-                                <AccordionItemTrigger py={2}>
-                                    <Text fontSize="sm" fontWeight="medium">{item.label}</Text>
-                                </AccordionItemTrigger>
-                                <AccordionItemContent pb={4}>
-                                    {item.children}
-                                </AccordionItemContent>
-                            </AccordionItem>
-                        ))}
-                     </AccordionRoot>
-                </Box>
-            )}
-        </Box>
+        {operation.displayMessage && (
+          <Box mt={2}>
+            <Box
+              pl={3}
+              borderLeftWidth="4px"
+              borderLeftColor={colorForStatus(operation.status)}
+              py={1}
+            >
+              <Text fontSize="xs" whiteSpace="pre-wrap">
+                {operation.status !== OperationStatus.STATUS_SUCCESS && (
+                  <Text as="span" fontWeight="bold">
+                    {nameForStatus(operation.status)}:{" "}
+                  </Text>
+                )}
+                {operation.displayMessage}
+              </Text>
+            </Box>
+          </Box>
+        )}
+
+        {bodyItems.length > 0 && (
+          <Box mt={2} pl={2}>
+            <AccordionRoot collapsible multiple defaultValue={expandedBodyItems} variant="plain">
+              {bodyItems.map((item) => (
+                <AccordionItem key={item.key} value={item.key} border="none">
+                  <AccordionItemTrigger py={2}>
+                    <Text fontSize="sm" fontWeight="medium">{item.label}</Text>
+                  </AccordionItemTrigger>
+                  <AccordionItemContent pb={4}>
+                    {item.children}
+                  </AccordionItemContent>
+                </AccordionItem>
+              ))}
+            </AccordionRoot>
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 };
@@ -468,9 +481,9 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
         target: restoreOp.target,
       })}
       {!isDone ? (
-          <ProgressRoot value={progress * 100} max={100} size="sm">
-             <ProgressBar />
-          </ProgressRoot>
+        <ProgressRoot value={progress * 100} max={100} size="sm">
+          <ProgressBar />
+        </ProgressRoot>
       ) : null}
       {operation.status == OperationStatus.STATUS_SUCCESS ? (
         <>
@@ -503,8 +516,8 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
               {m.op_row_bytes_done_total()}
             </Text>
             <Text>
-                {formatBytes(Number(lastStatus.bytesRestored))}/
-                {formatBytes(Number(lastStatus.totalBytes))}
+              {formatBytes(Number(lastStatus.bytesRestored))}/
+              {formatBytes(Number(lastStatus.totalBytes))}
             </Text>
           </Box>
           <Box>
@@ -512,7 +525,7 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
               {m.op_row_files_done_total()}
             </Text>
             <Text>
-                {Number(lastStatus.filesRestored)}/{Number(lastStatus.totalFiles)}
+              {Number(lastStatus.filesRestored)}/{Number(lastStatus.totalFiles)}
             </Text>
           </Box>
         </SimpleGrid>
@@ -539,7 +552,7 @@ const BackupOperationStatus = ({
     return (
       <>
         <ProgressRoot value={progress} max={100} size="sm" mb={4}>
-            <ProgressBar />
+          <ProgressBar />
         </ProgressRoot>
         <SimpleGrid columns={2} gap={4}>
           <Box>
@@ -636,67 +649,45 @@ const BackupOperationStatus = ({
   }
 };
 
+import { Table, TableBody, TableCell, TableColumnHeader, TableHeader, TableRow } from "@chakra-ui/react";
+
 const ForgetOperationDetails = ({
   forgetOp,
 }: {
   forgetOp: OperationForget;
 }) => {
-  const policy = forgetOp.policy! || {};
-  const policyDesc = [];
-  if (policy.policy) {
-    if (policy.policy.case === "policyKeepAll") {
-      policyDesc.push(m.op_row_policy_keep_all());
-    } else if (policy.policy.case === "policyKeepLastN") {
-      policyDesc.push(
-        m.op_row_policy_keep_last_n({ value: policy.policy.value })
-      );
-    } else if (policy.policy.case == "policyTimeBucketed") {
-      const val = policy.policy.value;
-      if (val.hourly) {
-        policyDesc.push(m.op_row_policy_hourly({ count: val.hourly }));
-      }
-      if (val.daily) {
-        policyDesc.push(m.op_row_policy_daily({ count: val.daily }));
-      }
-      if (val.weekly) {
-        policyDesc.push(m.op_row_policy_weekly({ count: val.weekly }));
-      }
-      if (val.monthly) {
-        policyDesc.push(m.op_row_policy_monthly({ count: val.monthly }));
-      }
-      if (val.yearly) {
-        policyDesc.push(m.op_row_policy_yearly({ count: val.yearly }));
-      }
-      if (val.keepLastN) {
-        policyDesc.push(
-          m.op_row_policy_keep_latest({ count: val.keepLastN })
-        );
-      }
-    }
+  const removedSnapshots = forgetOp.forget || [];
+
+  if (removedSnapshots.length === 0) {
+    return (
+      <Text color="fg.muted" fontStyle="italic">
+        {m.op_row_removed_none()}
+      </Text>
+    );
   }
 
   return (
     <>
-      <Text>Removed snapshots:</Text>
-      <Code display="block" p={2} borderRadius="md" mt={1}>
-        {forgetOp.forget?.map((f) => (
-          <div key={f.id}>
-            {m.op_row_removed_snapshot_desc({
-              id: normalizeSnapshotId(f.id!),
-              time: formatTime(Number(f.unixTimeMs)),
-            })}{" "}
-            <br />
-          </div>
-        ))}
-      </Code>
-      <Heading size="xs" mt={4} mb={2}>{m.op_row_policy_header()}</Heading>
-      <Box as="ul" pl={5}>
-        {policyDesc.map((desc, idx) => (
-          <li key={idx}>
-             <Text as="span">{desc}</Text>
-          </li>
-        ))}
-      </Box>
+      <Table.Root size="sm" variant="outline">
+        <Table.Header>
+          <Table.Row>
+            <Table.ColumnHeader>{m.op_row_removed_id_col()}</Table.ColumnHeader>
+            <Table.ColumnHeader>{m.op_row_removed_time_col()}</Table.ColumnHeader>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          {removedSnapshots.map((f) => (
+            <Table.Row key={f.id}>
+              <Table.Cell fontFamily="mono">
+                {normalizeSnapshotId(f.id!)}
+              </Table.Cell>
+              <Table.Cell>
+                {formatTime(Number(f.unixTimeMs))}
+              </Table.Cell>
+            </Table.Row>
+          ))}
+        </Table.Body>
+      </Table.Root>
     </>
   );
 };

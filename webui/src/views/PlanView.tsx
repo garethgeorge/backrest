@@ -84,67 +84,67 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         <Heading size="xl">{plan.id}</Heading>
 
         <SpinButton type="primary" onClickAsync={handleBackupNow}>
-            {m.plan_button_backup()}
+          {m.plan_button_backup()}
         </SpinButton>
 
         <Tooltip content={m.repo_tooltip_run_command()}>
-            <Button
+          <Button
             variant="outline"
             onClick={async () => {
-                const { RunCommandModal } = await import("./RunCommandModal");
-                showModal(<RunCommandModal repo={repo} />);
+              const { RunCommandModal } = await import("./RunCommandModal");
+              showModal(<RunCommandModal repo={repo} />);
             }}
-            >
+          >
             {m.repo_button_run_command()}
-            </Button>
+          </Button>
         </Tooltip>
 
         <Tooltip content={m.repo_tooltip_unlock()}>
-            <SpinButton type="default" onClickAsync={handleUnlockNow}>
+          <SpinButton type="default" onClickAsync={handleUnlockNow}>
             {m.repo_button_unlock()}
-            </SpinButton>
+          </SpinButton>
         </Tooltip>
-        
+
         <Tooltip content={m.plan_tooltip_clear_history()}>
-            <SpinButton type="default" onClickAsync={handleClearErrorHistory}>
+          <SpinButton type="default" onClickAsync={handleClearErrorHistory}>
             {m.plan_button_clear_history()}
-            </SpinButton>
+          </SpinButton>
         </Tooltip>
       </Flex>
 
-      <TabsRoot defaultValue="tree" lazyMount unmountOnExit>
+      <TabsRoot defaultValue="tree" lazyMount>
         <TabsList>
-            <TabsTrigger value="tree">{m.repo_tab_tree()}</TabsTrigger>
-            <TabsTrigger value="list">{m.repo_tab_list()}</TabsTrigger>
+          <TabsTrigger value="tree">{m.repo_tab_tree()}</TabsTrigger>
+          <TabsTrigger value="list">{m.repo_tab_list()}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tree">
-            <OperationTreeView
-                req={create(GetOperationsRequestSchema, {
-                selector: {
-                    instanceId: config?.instance,
-                    repoGuid: repo.guid,
-                    planId: plan.id!,
-                },
-                lastN: BigInt(MAX_OPERATION_HISTORY),
-                })}
-                isPlanView={true}
-            />
+          <OperationTreeView
+            req={create(GetOperationsRequestSchema, {
+              selector: {
+                instanceId: config?.instance,
+                repoGuid: repo.guid,
+                planId: plan.id!,
+              },
+              lastN: BigInt(MAX_OPERATION_HISTORY),
+            })}
+            isPlanView={true}
+          />
         </TabsContent>
 
         <TabsContent value="list">
-             <Heading size="md" mb={4}>{m.repo_history_title()}</Heading>
-             <OperationListView
-                  req={create(GetOperationsRequestSchema, {
-                    selector: {
-                      instanceId: config?.instance,
-                      repoGuid: repo.guid,
-                      planId: plan.id!,
-                    },
-                    lastN: BigInt(MAX_OPERATION_HISTORY),
-                  })}
-                  showDelete={true}
-                />
+          <Heading size="md" mb={4}>{m.repo_history_title()}</Heading>
+          <OperationListView
+            req={create(GetOperationsRequestSchema, {
+              selector: {
+                instanceId: config?.instance,
+                repoGuid: repo.guid,
+                planId: plan.id!,
+              },
+              lastN: BigInt(MAX_OPERATION_HISTORY),
+            })}
+            showDelete={true}
+          />
         </TabsContent>
       </TabsRoot>
     </Box>

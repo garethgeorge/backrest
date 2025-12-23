@@ -49,7 +49,8 @@ export const OperationListView = ({
       );
 
       logState.subscribe((ids, flowIDs, event) => {
-        setOperations(logState.getAll());
+        const ops = logState.getAll();
+        setOperations(ops);
       });
 
       return syncStateFromRequest(logState, req, (e) => {
@@ -60,7 +61,7 @@ export const OperationListView = ({
 
   const hookExecutionsForOperation: Map<bigint, Operation[]> = new Map();
   let operationsForDisplay: Operation[] = [];
-  
+
   // Local variable to hold the source operations
   let sourceOperations = operations;
   if (useOperations) {
@@ -82,7 +83,7 @@ export const OperationListView = ({
   } else {
     operationsForDisplay = sourceOperations;
   }
-  
+
   operationsForDisplay.sort((a, b) => {
     return Number(b.unixTimeStartMs - a.unixTimeStartMs);
   });
@@ -112,7 +113,7 @@ export const OperationListView = ({
           showDelete={showDelete}
         />
       ))}
-      
+
       {total > pageSize && (
         <Flex justify="center" mt={4}>
           <PaginationRoot
@@ -121,9 +122,9 @@ export const OperationListView = ({
             page={page}
             onPageChange={(e: any) => setPage(e.page)}
           >
-             <PaginationPrevTrigger />
-             <PaginationItems />
-             <PaginationNextTrigger />
+            <PaginationPrevTrigger />
+            <PaginationItems />
+            <PaginationNextTrigger />
           </PaginationRoot>
         </Flex>
       )}

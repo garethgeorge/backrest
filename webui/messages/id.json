@@ -340,5 +340,9 @@
 	"op_row_policy_keep_latest": "Simpan snapshot {count} terbaru tanpa memandang usianya.",
 	"op_row_removed_snapshot_desc": "snapshot {id} dihapus yang diambil pada {time}",
 	"op_row_policy_header": "Kebijakan:",
-	"op_row_fetch_download_error": "Gagal mengambil URL unduhan: "
+	"op_row_fetch_download_error": "Gagal mengambil URL unduhan: ",
+	"op_row_removed_header": "Cuplikan layar dihapus",
+	"op_row_removed_none": "Tidak ada foto yang dihapus.",
+	"op_row_removed_id_col": "ID Cuplikan",
+	"op_row_removed_time_col": "Waktu"
 }

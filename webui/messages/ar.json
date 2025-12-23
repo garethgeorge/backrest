@@ -340,5 +340,9 @@
 	"op_row_policy_keep_latest": "احتفظ بأحدث لقطات {count} بغض النظر عن عمرها",
 	"op_row_removed_snapshot_desc": "تمت إزالة اللقطة {id} التي تم التقاطها في {time}",
 	"op_row_policy_header": "سياسة:",
-	"op_row_fetch_download_error": "فشل في جلب رابط التنزيل: "
+	"op_row_fetch_download_error": "فشل في جلب رابط التنزيل: ",
+	"op_row_removed_header": "تمت إزالة اللقطات",
+	"op_row_removed_none": "لم يتم حذف أي لقطات.",
+	"op_row_removed_id_col": "معرف اللقطة",
+	"op_row_removed_time_col": "وقت"
 }
