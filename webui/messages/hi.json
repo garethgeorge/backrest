@@ -344,5 +344,9 @@
 	"op_row_removed_header": "स्नैपशॉट हटा दिए गए",
 	"op_row_removed_none": "कोई भी स्नैपशॉट नहीं हटाया गया।",
 	"op_row_removed_id_col": "स्नैपशॉट आईडी",
-	"op_row_removed_time_col": "समय"
+	"op_row_removed_time_col": "समय",
+	"op_row_restore_source": "स्रोत पथ",
+	"op_row_restore_target": "गंतव्य पथ",
+	"op_row_error_path": "पथ",
+	"op_row_error_message": "गलती"
 }

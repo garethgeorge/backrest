@@ -344,5 +344,9 @@
 	"op_row_removed_header": "Удалены снимки экрана",
 	"op_row_removed_none": "Никакие снимки не были удалены.",
 	"op_row_removed_id_col": "Идентификатор снимка",
-	"op_row_removed_time_col": "Время"
+	"op_row_removed_time_col": "Время",
+	"op_row_restore_source": "Путь к источнику",
+	"op_row_restore_target": "Путь назначения",
+	"op_row_error_path": "Путь",
+	"op_row_error_message": "Ошибка"
 }

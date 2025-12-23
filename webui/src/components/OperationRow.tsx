@@ -210,11 +210,26 @@ export const OperationRow = ({
         key: "errors",
         label: m.op_row_item_errors(),
         children: (
-          <pre>
-            {backupOp.errors
-              .map((e) => m.op_row_error_on_item({ item: e.item }))
-              .join("\n")}
-          </pre>
+          <Table.Root size="sm" variant="outline">
+            <Table.Header>
+              <Table.Row>
+                <Table.ColumnHeader>{m.op_row_error_path()}</Table.ColumnHeader>
+                <Table.ColumnHeader>{m.op_row_error_message()}</Table.ColumnHeader>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {backupOp.errors.map((e, idx) => (
+                <Table.Row key={idx}>
+                  <Table.Cell fontFamily="mono" verticalAlign="top">
+                    {e.item}
+                  </Table.Cell>
+                  <Table.Cell verticalAlign="top">
+                    {e.message || "Unknown error"}
+                  </Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table.Root>
         ),
       });
     }
@@ -476,19 +491,31 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
 
   return (
     <>
-      {m.op_row_restore_desc({
-        path: restoreOp.path,
-        target: restoreOp.target,
-      })}
+      <Stack gap={4} mb={4}>
+        <Box>
+          <Text fontWeight="bold" fontSize="xs" color="fg.muted" mb={1}>{m.op_row_restore_source()}</Text>
+          <Code p={2} borderRadius="md" width="full" display="block" whiteSpace="pre-wrap">
+            {restoreOp.path}
+          </Code>
+        </Box>
+        <Box>
+          <Text fontWeight="bold" fontSize="xs" color="fg.muted" mb={1}>{m.op_row_restore_target()}</Text>
+          <Code p={2} borderRadius="md" width="full" display="block" whiteSpace="pre-wrap">
+            {restoreOp.target}
+          </Code>
+        </Box>
+      </Stack>
+
       {!isDone ? (
-        <ProgressRoot value={progress * 100} max={100} size="sm">
+        <ProgressRoot value={progress * 100} max={100} size="sm" mb={4}>
           <ProgressBar />
         </ProgressRoot>
       ) : null}
+
       {operation.status == OperationStatus.STATUS_SUCCESS ? (
-        <>
+        <Box mb={4}>
           <Button
-            variant="plain"
+            variant="outline"
             size="sm"
             onClick={() => {
               backrestService
@@ -503,33 +530,38 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
           >
             {m.op_row_download_files()}
           </Button>
-        </>
+        </Box>
       ) : null}
-      <br />
-      {m.op_row_restored_snapshot_id({
-        id: normalizeSnapshotId(operation.snapshotId!),
-      })}
-      {lastStatus && (
-        <SimpleGrid columns={2} gap={4}>
-          <Box>
-            <Text fontWeight="bold">
-              {m.op_row_bytes_done_total()}
-            </Text>
-            <Text>
-              {formatBytes(Number(lastStatus.bytesRestored))}/
-              {formatBytes(Number(lastStatus.totalBytes))}
-            </Text>
-          </Box>
-          <Box>
-            <Text fontWeight="bold">
-              {m.op_row_files_done_total()}
-            </Text>
-            <Text>
-              {Number(lastStatus.filesRestored)}/{Number(lastStatus.totalFiles)}
-            </Text>
-          </Box>
-        </SimpleGrid>
-      )}
+
+      <SimpleGrid columns={2} gap={4}>
+        <Box>
+          <Text fontWeight="bold">{m.op_row_snapshot_id()}</Text>
+          <Text fontFamily="mono">
+            {normalizeSnapshotId(operation.snapshotId!)}
+          </Text>
+        </Box>
+        {lastStatus && (
+          <>
+            <Box>
+              <Text fontWeight="bold">
+                {m.op_row_bytes_done_total()}
+              </Text>
+              <Text color="fg.muted">
+                {formatBytes(Number(lastStatus.bytesRestored))}/
+                {formatBytes(Number(lastStatus.totalBytes))}
+              </Text>
+            </Box>
+            <Box>
+              <Text fontWeight="bold">
+                {m.op_row_files_done_total()}
+              </Text>
+              <Text color="fg.muted">
+                {Number(lastStatus.filesRestored)}/{Number(lastStatus.totalFiles)}
+              </Text>
+            </Box>
+          </>
+        )}
+      </SimpleGrid>
     </>
   );
 };
@@ -601,17 +633,17 @@ const BackupOperationStatus = ({
             ? normalizeSnapshotId(sum.snapshotId!)
             : m.op_row_no_snapshot()}
         </Text>
-        <SimpleGrid columns={3} gap={4} mt={2}>
+        <SimpleGrid columns={{ base: 1, md: 3 }} gap={4} mt={2}>
           <Box>
             <Text fontWeight="bold">{m.op_row_files_added()}</Text>
             <Text color="fg.muted">
-              {sum.filesNew.toString()}
+              {Number(sum.filesNew).toLocaleString()}
             </Text>
           </Box>
           <Box>
             <Text fontWeight="bold">{m.op_row_files_changed()}</Text>
             <Text color="fg.muted">
-              {sum.filesChanged.toString()}
+              {Number(sum.filesChanged).toLocaleString()}
             </Text>
           </Box>
           <Box>
@@ -619,11 +651,11 @@ const BackupOperationStatus = ({
               {m.op_row_files_unmodified()}
             </Text>
             <Text color="fg.muted">
-              {sum.filesUnmodified.toString()}
+              {Number(sum.filesUnmodified).toLocaleString()}
             </Text>
           </Box>
         </SimpleGrid>
-        <SimpleGrid columns={2} gap={4} mt={2}>
+        <SimpleGrid columns={{ base: 1, md: 3 }} gap={4} mt={2}>
           <Box>
             <Text fontWeight="bold">{m.op_row_bytes_added()}</Text>
             <Text color="fg.muted">
@@ -634,6 +666,12 @@ const BackupOperationStatus = ({
             <Text fontWeight="bold">{m.op_row_total_bytes()}</Text>
             <Text color="fg.muted">
               {formatBytes(Number(sum.totalBytesProcessed))}
+            </Text>
+          </Box>
+          <Box>
+            <Text fontWeight="bold">{m.op_row_total_files()}</Text>
+            <Text color="fg.muted">
+              {Number(sum.totalFilesProcessed).toLocaleString()}
             </Text>
           </Box>
         </SimpleGrid>

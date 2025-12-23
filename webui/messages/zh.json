@@ -344,5 +344,9 @@
 	"op_row_removed_header": "已删除快照",
 	"op_row_removed_none": "没有删除任何快照。",
 	"op_row_removed_id_col": "快照 ID",
-	"op_row_removed_time_col": "时间"
+	"op_row_removed_time_col": "时间",
+	"op_row_restore_source": "源路径",
+	"op_row_restore_target": "目标路径",
+	"op_row_error_path": "小路",
+	"op_row_error_message": "错误"
 }

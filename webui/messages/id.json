@@ -344,5 +344,9 @@
 	"op_row_removed_header": "Cuplikan layar dihapus",
 	"op_row_removed_none": "Tidak ada foto yang dihapus.",
 	"op_row_removed_id_col": "ID Cuplikan",
-	"op_row_removed_time_col": "Waktu"
+	"op_row_removed_time_col": "Waktu",
+	"op_row_restore_source": "Jalur Sumber",
+	"op_row_restore_target": "Jalur Tujuan",
+	"op_row_error_path": "Jalur",
+	"op_row_error_message": "Kesalahan"
 }

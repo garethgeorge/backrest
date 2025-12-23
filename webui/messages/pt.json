@@ -344,5 +344,9 @@
 	"op_row_removed_header": "Capturas de tela removidas",
 	"op_row_removed_none": "Nenhuma captura de tela foi removida.",
 	"op_row_removed_id_col": "ID do instantâneo",
-	"op_row_removed_time_col": "Tempo"
+	"op_row_removed_time_col": "Tempo",
+	"op_row_restore_source": "Caminho de origem",
+	"op_row_restore_target": "Caminho de destino",
+	"op_row_error_path": "Caminho",
+	"op_row_error_message": "Erro"
 }

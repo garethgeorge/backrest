@@ -344,5 +344,9 @@
 	"op_row_removed_header": "تمت إزالة اللقطات",
 	"op_row_removed_none": "لم يتم حذف أي لقطات.",
 	"op_row_removed_id_col": "معرف اللقطة",
-	"op_row_removed_time_col": "وقت"
+	"op_row_removed_time_col": "وقت",
+	"op_row_restore_source": "مسار المصدر",
+	"op_row_restore_target": "مسار الوجهة",
+	"op_row_error_path": "طريق",
+	"op_row_error_message": "خطأ"
 }

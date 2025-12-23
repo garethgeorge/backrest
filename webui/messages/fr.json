@@ -344,5 +344,9 @@
 	"op_row_removed_header": "Suppression des instantanés",
 	"op_row_removed_none": "Aucune capture d'écran n'a été supprimée.",
 	"op_row_removed_id_col": "ID de l'instantané",
-	"op_row_removed_time_col": "Temps"
+	"op_row_removed_time_col": "Temps",
+	"op_row_restore_source": "Chemin source",
+	"op_row_restore_target": "Chemin de destination",
+	"op_row_error_path": "Chemin",
+	"op_row_error_message": "Erreur"
 }
