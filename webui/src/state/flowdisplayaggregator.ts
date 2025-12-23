@@ -58,6 +58,9 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
       {
         const lastStatus = firstOp.op.value.lastStatus;
         if (lastStatus) {
+          if (lastStatus.entry.case === "summary") {
+            info.subtitleComponents.push(m.op_subtitle_id({ id: normalizeSnapshotId(lastStatus.entry.value.snapshotId) }));
+          }
           if (lastStatus.entry.case === "status") {
             const percentage = lastStatus.entry.value.percentDone * 100;
             const bytesDone = formatBytes(Number(lastStatus.entry.value.bytesDone));
@@ -67,13 +70,13 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
           } else if (lastStatus.entry.case === "summary") {
             const totalBytes = formatBytes(Number(lastStatus.entry.value.totalBytesProcessed));
             info.subtitleComponents.push(m.op_subtitle_summary({ bytes: totalBytes, duration: formatDuration(duration) }));
-            info.subtitleComponents.push(m.op_subtitle_id({ id: normalizeSnapshotId(lastStatus.entry.value.snapshotId) }));
           }
         }
       }
       break;
     case "operationRestore":
       {
+        info.subtitleComponents.push(m.op_subtitle_id({ id: normalizeSnapshotId(firstOp.snapshotId) }));
         const lastStatus = firstOp.op.value.lastStatus;
         if (lastStatus) {
           if (lastStatus.messageType === "summary") {
@@ -87,16 +90,17 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
             info.subtitleComponents.push(m.op_subtitle_bytes_total({ bytes: bytesDone, total: totalBytes }));
           }
         }
-        info.subtitleComponents.push(m.op_subtitle_id({ id: normalizeSnapshotId(firstOp.snapshotId) }));
       }
       break;
     case "operationIndexSnapshot":
-      const snapshot = firstOp.op.value.snapshot;
-      if (!snapshot) break;
-      if (snapshot.summary && snapshot.summary.totalBytesProcessed) {
-        info.subtitleComponents.push(m.op_subtitle_summary({ bytes: formatBytes(Number(snapshot.summary.totalBytesProcessed)), duration: formatDuration(snapshot.summary.totalDuration * 1000) }));
+      {
+        const snapshot = firstOp.op.value.snapshot;
+        if (!snapshot) break;
+        info.subtitleComponents.push(m.op_subtitle_id({ id: normalizeSnapshotId(snapshot.id) }));
+        if (snapshot.summary && snapshot.summary.totalBytesProcessed) {
+          info.subtitleComponents.push(m.op_subtitle_summary({ bytes: formatBytes(Number(snapshot.summary.totalBytesProcessed)), duration: formatDuration(snapshot.summary.totalDuration * 1000) }));
+        }
       }
-      info.subtitleComponents.push(m.op_subtitle_id({ id: normalizeSnapshotId(snapshot.id) }));
       break;
     default:
       switch (firstOp.status) {

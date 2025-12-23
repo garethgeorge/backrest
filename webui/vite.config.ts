@@ -3,7 +3,7 @@ import { defineConfig, loadEnv, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import viteCompression from 'vite-plugin-compression';
-import { visualizer } from 'rollup-plugin-visualizer';
+// import { visualizer } from 'rollup-plugin-visualizer';
 
 function renderChunks(id: string) {
   if (id.includes('node_modules')) {
@@ -43,12 +43,12 @@ export default defineConfig(({ mode }) => {
     react(),
     tsconfigPaths(),
     viteCompression({ algorithm: 'gzip', ext: '.gz', deleteOriginFile: true }),
-    // viteCompression({ algorithm: 'brotliCompress', ext: '.br' }),
-    visualizer({
-      open: false,
-      gzipSize: true,
-      // brotliSize: true,
-    }) as PluginOption,
+      // viteCompression({ algorithm: 'brotliCompress', ext: '.br' }),
+      // visualizer({
+      //   open: false,
+      //   gzipSize: true,
+      //   // brotliSize: true,
+      // }) as PluginOption,
     ],
     base: './',
     build: {
