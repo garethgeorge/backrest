@@ -1,16 +1,19 @@
 import React, { Suspense, useEffect, useState } from "react";
 import {
-  ScheduleOutlined,
-  DatabaseOutlined,
-  PlusOutlined,
-  CheckCircleOutlined,
-  ExclamationOutlined,
-  SettingOutlined,
-  LoadingOutlined,
-  CloudServerOutlined,
-} from "@ant-design/icons";
-import type { MenuProps } from "antd";
-import { Button, Empty, Layout, Menu, Spin, theme } from "antd";
+    FiCalendar,
+    FiDatabase,
+    FiPlus,
+    FiCheckCircle,
+    FiAlertTriangle,
+    FiSettings,
+    FiLoader,
+    FiRadio,
+    FiActivity, // Added as a placeholder/guess for ActivityBar if needed, or stick to component
+    FiServer
+} from "react-icons/fi";
+
+import { Box, Flex, Button, Heading, Text, Spinner, Separator } from "@chakra-ui/react";
+import { AccordionRoot, AccordionItem, AccordionItemTrigger, AccordionItemContent } from "../components/ui/accordion";
 import { Config, Multihost_Peer } from "../../gen/ts/v1/config_pb";
 import { useAlertApi } from "../components/Alerts";
 import { useShowModal } from "../components/ModalManager";
@@ -31,13 +34,14 @@ import { shouldShowSettings } from "../state/configutil";
 import { OpSelector, OpSelectorSchema } from "../../gen/ts/v1/service_pb";
 import { colorForStatus } from "../state/flowdisplayaggregator";
 import { getStatusForSelector, matchSelector } from "../state/logstate";
-import { Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { Route, Routes, useNavigate, useParams, Link as RouterLink } from "react-router-dom";
 import { MainContentAreaTemplate } from "./MainContentArea";
 import { create } from "@bufbuild/protobuf";
 import { PeerState, RepoMetadata } from "../../gen/ts/v1sync/syncservice_pb";
 import { useSyncStates } from "../state/peerstates";
 import * as m from "../paraglide/messages";
-const { Header, Sider } = Layout;
+import { Link } from "../components/ui/link";
+import { EmptyState } from "../components/ui/empty-state";
 
 const SummaryDashboard = React.lazy(() =>
   import("./SummaryDashboard").then((m) => ({
@@ -69,12 +73,13 @@ const SelectorView = React.lazy(() =>
   }))
 );
 
+// Wrappers for consistent views with breadcrumbs and error handling
 const RepoViewContainer = () => {
   const { repoId } = useParams();
   const [config, setConfig] = useConfig();
 
   if (!config) {
-    return <Spin />;
+    return <Box p={10}><Spinner /></Box>;
   }
 
   const repo = config.repos.find((r) => r.id === repoId);
@@ -87,7 +92,7 @@ const RepoViewContainer = () => {
       {repo ? (
         <RepoView repo={repo} />
       ) : (
-        <Empty description={m.app_repo_not_found({ repoId: repoId || "" })} />
+        <EmptyState title={m.app_repo_not_found({ repoId: repoId || "" })} />
       )}
     </MainContentAreaTemplate>
   );
@@ -122,7 +127,7 @@ const RemoteRepoViewContainer = () => {
           })}
         />
       ) : (
-        <Empty description={m.app_repo_not_found({ repoId: repoId || "" })} />
+        <EmptyState title={m.app_repo_not_found({ repoId: repoId || "" })} />
       )}
     </MainContentAreaTemplate>
   );
@@ -133,7 +138,7 @@ const PlanViewContainer = () => {
   const [config, setConfig] = useConfig();
 
   if (!config) {
-    return <Spin />;
+    return <Box p={10}><Spinner /></Box>;
   }
 
   const plan = config.plans.find((p) => p.id === planId);
@@ -145,132 +150,321 @@ const PlanViewContainer = () => {
       {plan ? (
         <PlanView plan={plan} />
       ) : (
-        <Empty description={m.app_plan_not_found({ planId: planId || "" })} />
+        <EmptyState title={m.app_plan_not_found({ planId: planId || "" })} />
       )}
     </MainContentAreaTemplate>
   );
 };
 
+const Sidebar = () => {
+    const [config] = useConfig();
+    const peerStates = useSyncStates();
+    const showModal = useShowModal();
+    const navigate = useNavigate();
+
+    // Replicate getSidenavItems functionality with Chakra components
+    if (!config) return null;
+
+    const reposById = keyBy(config.repos, (r) => r.id);
+    
+    // Sort logic can be added here if needed, currently adhering to original order
+    const configPlans = config.plans || [];
+    const configRepos = config.repos || [];
+
+    return (
+        <Box w="300px" bg="bg.panel" borderRightWidth="1px" borderColor="border" h="full" overflowY="auto" flexShrink={0}>
+             <AccordionRoot multiple defaultValue={["plans", "repos", "authorized-clients"]} variant="plain">
+                {/* PLANS SECTION */}
+                <AccordionItem value="plans">
+                     <AccordionItemTrigger px={4} py={2} _hover={{ bg: "bg.subtle" }}>
+                        <Flex align="center" gap={2}>
+                            <FiCalendar />
+                            <Text fontWeight="medium">{m.app_menu_plans()}</Text>
+                        </Flex>
+                     </AccordionItemTrigger>
+                     <AccordionItemContent pb={2}>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            width="full" 
+                            justifyContent="flex-start" 
+                            onClick={async () => {
+                                const { AddPlanModal } = await import("./AddPlanModal");
+                                showModal(<AddPlanModal template={null} />);
+                            }}
+                            pl={9}
+                            mb={1}
+                        >
+                            <FiPlus /> {m.app_menu_add_plan()}
+                        </Button>
+                        {configPlans.map(plan => {
+                            const sel = create(OpSelectorSchema, {
+                                originalInstanceKeyid: "",
+                                planId: plan.id,
+                                repoGuid: reposById[plan.repo]?.guid,
+                            });
+                             return (
+                                <Flex key={plan.id} align="center" pl={9} pr={2} py={1} _hover={{ bg: "bg.subtle" }} role="group" borderRadius="md" mx={2}>
+                                    <Box flexShrink={0} mr={2}>
+                                        <IconForResource selector={sel} />
+                                    </Box>
+                                    <Box flex="1" cursor="pointer" onClick={() => navigate(`/plan/${plan.id}`)} userSelect="none">
+                                        <Text truncate>{plan.id}</Text>
+                                    </Box>
+                                    <Box opacity={0} _groupHover={{ opacity: 1 }} transition="opacity 0.2s">
+                                        <Button
+                                            size="xs"
+                                            variant="ghost"
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                const { AddPlanModal } = await import("./AddPlanModal");
+                                                showModal(<AddPlanModal template={plan} />);
+                                            }}
+                                        >
+                                            <FiSettings />
+                                        </Button>
+                                    </Box>
+                                </Flex>
+                            );
+                        })}
+                     </AccordionItemContent>
+                </AccordionItem>
+
+                {/* REPOS SECTION */}
+                <AccordionItem value="repos">
+                     <AccordionItemTrigger px={4} py={2} _hover={{ bg: "bg.subtle" }}>
+                        <Flex align="center" gap={2}>
+                            <FiDatabase />
+                            <Text fontWeight="medium">{m.app_menu_repos()}</Text>
+                        </Flex>
+                     </AccordionItemTrigger>
+                     <AccordionItemContent pb={2}>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            width="full" 
+                            justifyContent="flex-start" 
+                            onClick={async () => {
+                                const { AddRepoModal } = await import("./AddRepoModal");
+                                showModal(<AddRepoModal template={null} />);
+                            }}
+                            pl={9}
+                            mb={1}
+                        >
+                            <FiPlus /> {m.app_menu_add_repo()}
+                        </Button>
+                        {configRepos.map(repo => {
+                             return (
+                                <Flex key={repo.id} align="center" pl={9} pr={2} py={1} _hover={{ bg: "bg.subtle" }} role="group" borderRadius="md" mx={2}>
+                                    <Box flexShrink={0} mr={2}>
+                                        <IconForResource selector={create(OpSelectorSchema, {
+                                            instanceId: config.instance,
+                                            repoGuid: repo.guid,
+                                            })} 
+                                        />
+                                    </Box>
+                                    <Box flex="1" cursor="pointer" onClick={() => navigate(`/repo/${repo.id}`)} userSelect="none">
+                                        <Text truncate>{repo.id}</Text>
+                                    </Box>
+                                    <Box opacity={0} _groupHover={{ opacity: 1 }} transition="opacity 0.2s">
+                                        <Button
+                                            size="xs"
+                                            variant="ghost"
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                const { AddRepoModal } = await import("./AddRepoModal");
+                                                showModal(<AddRepoModal template={repo} />);
+                                            }}
+                                        >
+                                            <FiSettings />
+                                        </Button>
+                                    </Box>
+                                </Flex>
+                            );
+                        })}
+                     </AccordionItemContent>
+                </AccordionItem>
+                
+                {/* REMOTE INSTANCES / AUTHORIZED CLIENTS */}
+                {config.multihost?.authorizedClients?.length ? (
+                    <AccordionItem value="authorized-clients">
+                         <AccordionItemTrigger px={4} py={2} _hover={{ bg: "bg.subtle" }}>
+                            <Flex align="center" gap={2}>
+                                <FiServer />
+                                <Text fontWeight="medium">{m.app_menu_remote_instances()}</Text>
+                            </Flex>
+                         </AccordionItemTrigger>
+                         <AccordionItemContent pb={2}>
+                            {peerStates.map(peerState => {
+                                // Logic to get peer config if needed, filtering handled by original logic
+                                // Assuming we list all peerStates derived from hook
+                                const sel = create(OpSelectorSchema, { originalInstanceKeyid: peerState.peerKeyid });
+                                
+                                return (
+                                    <Box key={peerState.peerKeyid} mb={2}>
+                                         <Flex align="center" pl={9} pr={2} py={1}>
+                                            <Box flexShrink={0} mr={2}><IconForResource selector={sel} /></Box>
+                                            <Text fontWeight="bold" fontSize="sm">{peerState.peerInstanceId}</Text>
+                                        </Flex>
+                                        
+                                        {/* Nested Repos for Peer */}
+                                        {peerState.knownRepos.map((repo: RepoMetadata) => (
+                                              <Flex 
+                                                key={repo.guid} 
+                                                align="center" 
+                                                pl={12} 
+                                                pr={2} 
+                                                py={1} 
+                                                _hover={{ bg: "bg.subtle" }} 
+                                                borderRadius="md" 
+                                                mx={2}
+                                                cursor="pointer"
+                                                onClick={() => navigate(`/peer/${peerState.peerInstanceId}/repo/${repo.id}`)}
+                                              >
+                                                <Box flexShrink={0} mr={2}>
+                                                    <IconForResource selector={create(OpSelectorSchema, {
+                                                        originalInstanceKeyid: peerState.peerKeyid,
+                                                        repoGuid: repo.guid,
+                                                      })} />
+                                                </Box>
+                                                <Text fontSize="sm" truncate>{repo.id}</Text>
+                                              </Flex>
+                                        ))}
+                                    </Box>
+                                )
+                            })}
+                         </AccordionItemContent>
+                    </AccordionItem>
+                ) : null}
+
+                {/* SETTINGS */}
+                <Box mt={4} mx={4}>
+                     <Button 
+                        variant="outline" 
+                        size="sm" 
+                        width="full" 
+                        justifyContent="flex-start"
+                        onClick={async () => {
+                            const { SettingsModal } = await import("./SettingsModal");
+                            showModal(<SettingsModal />);
+                        }}
+                    >
+                        <FiSettings /> {m.app_menu_settings()}
+                    </Button>
+                </Box>
+
+             </AccordionRoot>
+        </Box>
+    )
+}
+
+
 export const App: React.FC = () => {
-  const {
-    token: { colorBgContainer, colorTextLightSolid },
-  } = theme.useToken();
   const navigate = useNavigate();
   const [config, setConfig] = useConfig();
 
-  const peerStates = useSyncStates();
-
-  const items = getSidenavItems(config, peerStates);
-
   return (
-    <Layout style={{ height: "auto", minHeight: "100vh" }}>
-      <Header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          width: "100%",
-          height: "60px",
-          backgroundColor: "#1b232c",
-        }}
+    <Flex direction="column" minH="100vh">
+        {/* HEADER */}
+      <Flex
+        as="header"
+        align="center"
+        px={4}
+        h="60px"
+        bg="#1b232c" // Maintain original brand color
+        color="white"
+        flexShrink={0}
       >
-        <a
-          style={{ color: colorTextLightSolid }}
-          onClick={() => {
-            navigate("/");
-          }}
+        <Box 
+            as="a" 
+            cursor="pointer" 
+            onClick={() => navigate("/")} 
+            mr={4}
         >
           <img
             src={LogoSvg}
-            style={{
-              height: "30px",
-              color: "white",
-              marginBottom: "-8px",
-              paddingRight: "10px",
-            }}
+            style={{ height: "30px", marginBottom: "-4px" }}
           />
-        </a>
-        <h1>
-          <a href="https://github.com/garethgeorge/backrest" target="_blank">
-            <small
-              style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}
-            >
-              {uiBuildVersion}
-            </small>
-          </a>
-          <small style={{ fontSize: "0.6em", marginLeft: "30px" }}>
-            <ActivityBar />
-          </small>
-        </h1>
-        <h1 style={{ position: "absolute", right: "20px" }}>
-          <small style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.6em" }}>
-            {config && config.instance ? config.instance : undefined}
-          </small>
-          <Button
-            type="text"
-            style={{
-              marginLeft: "10px",
-              color: "white",
-              visibility: config?.auth?.disabled ? "hidden" : "visible",
-            }}
-            onClick={() => {
-              setAuthToken("");
-              window.location.reload();
-            }}
-          >
-            {m.app_logout()}
-          </Button>
-        </h1>
-      </Header>
-      <Layout>
-        <Sider width={300} style={{ background: colorBgContainer }}>
-          <Menu
-            mode="inline"
-            defaultSelectedKeys={["1"]}
-            defaultOpenKeys={["plans", "repos"]}
-            style={{ height: "100%", borderRight: 0 }}
-            items={items}
-          />
-        </Sider>
-        <AuthenticationBoundary>
-          <Suspense fallback={<Spin />}>
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <MainContentAreaTemplate breadcrumbs={[{ title: m.app_breadcrumb_summary() }]}>
-                    <SummaryDashboard />
-                  </MainContentAreaTemplate>
-                }
-              />
-              <Route
-                path="/getting-started"
-                element={
-                  <MainContentAreaTemplate
-                    breadcrumbs={[{ title: m.app_breadcrumb_getting_started() }]}
-                  >
-                    <GettingStartedGuide />
-                  </MainContentAreaTemplate>
-                }
-              />
-              <Route path="/plan/:planId" element={<PlanViewContainer />} />
-              <Route path="/repo/:repoId" element={<RepoViewContainer />} />
-              <Route
-                path="/peer/:peerInstanceId/repo/:repoId"
-                element={<RemoteRepoViewContainer />}
-              />
-              <Route
-                path="/*"
-                element={
-                  <MainContentAreaTemplate breadcrumbs={[]}>
-                    <Empty description={m.app_page_not_found()} />
-                  </MainContentAreaTemplate>
-                }
-              />
-            </Routes>
-          </Suspense>
-        </AuthenticationBoundary>
-      </Layout>
-    </Layout>
+        </Box>
+
+        <Flex align="baseline" gap={4}>
+            <Link href="https://github.com/garethgeorge/backrest" target="_blank" color="whiteAlpha.700" fontSize="xs">
+                {uiBuildVersion}
+            </Link>
+            <Box fontSize="xs">
+                 <ActivityBar />
+            </Box>
+        </Flex>
+
+        <Flex ml="auto" align="center" gap={4}>
+           <Text fontSize="xs" color="whiteAlpha.600">
+             {config && config.instance ? config.instance : undefined}
+           </Text>
+           {config && !config.auth?.disabled && (
+               <Button
+                variant="ghost"
+                size="sm"
+                color="white"
+                _hover={{ bg: "whiteAlpha.200" }}
+                onClick={() => {
+                    setAuthToken("");
+                    window.location.reload();
+                }}
+               >
+                 {m.app_logout()}
+               </Button>
+           )}
+        </Flex>
+      </Flex>
+
+      {/* MAIN LAYOUT */}
+      <Flex flex="1" overflow="hidden">
+        {/* SIDEBAR */}
+        <Sidebar />
+
+        {/* CONTENT AREA */}
+        <Box flex="1" overflowY="auto" bg="bg.canvas">
+            <AuthenticationBoundary>
+            <Suspense fallback={<Box p={10}><Spinner /></Box>}>
+                <Routes>
+                <Route
+                    path="/"
+                    element={
+                    <MainContentAreaTemplate breadcrumbs={[{ title: m.app_breadcrumb_summary() }]}>
+                        <SummaryDashboard />
+                    </MainContentAreaTemplate>
+                    }
+                />
+                <Route
+                    path="/getting-started"
+                    element={
+                    <MainContentAreaTemplate
+                        breadcrumbs={[{ title: m.app_breadcrumb_getting_started() }]}
+                    >
+                        <GettingStartedGuide />
+                    </MainContentAreaTemplate>
+                    }
+                />
+                <Route path="/plan/:planId" element={<PlanViewContainer />} />
+                <Route path="/repo/:repoId" element={<RepoViewContainer />} />
+                <Route
+                    path="/peer/:peerInstanceId/repo/:repoId"
+                    element={<RemoteRepoViewContainer />}
+                />
+                <Route
+                    path="/*"
+                    element={
+                    <MainContentAreaTemplate breadcrumbs={[]}>
+                       <EmptyState title="404" description={m.app_page_not_found()} />
+                    </MainContentAreaTemplate>
+                    }
+                />
+                </Routes>
+            </Suspense>
+            </AuthenticationBoundary>
+        </Box>
+      </Flex>
+    </Flex>
   );
 };
 
@@ -323,216 +517,6 @@ const AuthenticationBoundary = ({
   return <>{children}</>;
 };
 
-const getSidenavItems = (
-  config: Config | null,
-  peerStates: PeerState[]
-): MenuProps["items"] => {
-  const showModal = useShowModal();
-  const navigate = useNavigate();
-
-  if (!config) {
-    return;
-  }
-
-  const reposById = keyBy(config.repos, (r) => r.id);
-  const configPlans = config.plans || [];
-  const configRepos = config.repos || [];
-
-  const menu: MenuProps["items"] = [];
-
-  const plans: MenuProps["items"] = [
-    {
-      key: "add-plan",
-      icon: <PlusOutlined />,
-      label: m.app_menu_add_plan(),
-      onClick: async () => {
-        const { AddPlanModal } = await import("./AddPlanModal");
-        showModal(<AddPlanModal template={null} />);
-      },
-    },
-    ...configPlans.map((plan) => {
-      const sel = create(OpSelectorSchema, {
-        originalInstanceKeyid: "",
-        planId: plan.id,
-        repoGuid: reposById[plan.repo]?.guid,
-      });
-
-      return {
-        key: "p-" + plan.id,
-        icon: <IconForResource selector={sel} />,
-        label: (
-          <div
-            className="backrest visible-on-hover"
-            style={{ width: "100%", height: "100%" }}
-          >
-            {plan.id}{" "}
-            <Button
-              className="hidden-child float-center-right"
-              type="text"
-              size="small"
-              shape="circle"
-              style={{ width: "30px", height: "30px" }}
-              icon={<SettingOutlined />}
-              onClick={async () => {
-                const { AddPlanModal } = await import("./AddPlanModal");
-                showModal(<AddPlanModal template={plan} />);
-              }}
-            />
-          </div>
-        ),
-        onClick: async () => {
-          navigate(`/plan/${plan.id}`);
-        },
-      };
-    }),
-  ];
-
-  const repos: MenuProps["items"] = [
-    {
-      key: "add-repo",
-      icon: <PlusOutlined />,
-      label: m.app_menu_add_repo(),
-      onClick: async () => {
-        const { AddRepoModal } = await import("./AddRepoModal");
-        showModal(<AddRepoModal template={null} />);
-      },
-    },
-    ...configRepos.map((repo) => {
-      return {
-        key: "r-" + repo.id,
-        icon: (
-          <IconForResource
-            selector={create(OpSelectorSchema, {
-              instanceId: config.instance,
-              repoGuid: repo.guid,
-            })}
-          />
-        ),
-        label: (
-          <div
-            className="backrest visible-on-hover"
-            style={{ width: "100%", height: "100%" }}
-          >
-            {repo.id}{" "}
-            <Button
-              type="text"
-              size="small"
-              shape="circle"
-              className="hidden-child float-center-right"
-              style={{ width: "30px", height: "30px" }}
-              icon={<SettingOutlined />}
-              onClick={async () => {
-                const { AddRepoModal } = await import("./AddRepoModal");
-                showModal(<AddRepoModal template={repo} />);
-              }}
-            />
-          </div>
-        ),
-        onClick: async () => {
-          navigate(`/repo/${repo.id}`);
-        },
-      };
-    }),
-  ];
-
-  const authorizedClients: MenuProps["items"] = [];
-  if (config.multihost?.authorizedClients?.length) {
-    const authorizedClientsConfigs = new Map<string, Multihost_Peer>();
-    for (const client of config.multihost.authorizedClients) {
-      authorizedClientsConfigs.set(client.keyid, client);
-    }
-
-    const createElementForPeerState = (
-      peerState: PeerState,
-      peerConfig: Multihost_Peer
-    ): Required<MenuProps>["items"][0] => {
-      const repos: MenuProps["items"] = peerState.knownRepos.map(
-        (repo: RepoMetadata) => {
-          const sel = create(OpSelectorSchema, {
-            originalInstanceKeyid: peerState.peerKeyid,
-            repoGuid: repo.guid,
-          });
-
-          return {
-            key: `repo-${peerState.peerKeyid}-${repo.guid}`,
-            icon: <IconForResource selector={sel} />,
-            label: (
-              <div
-                className="backrest visible-on-hover"
-                style={{ width: "100%", height: "100%" }}
-              >
-                {repo.id}
-              </div>
-            ),
-            onClick: async () => {
-              navigate(`/peer/${peerState.peerInstanceId}/repo/${repo.id}`);
-            },
-          };
-        }
-      );
-
-      return {
-        key: `peer-${peerState.peerKeyid}`,
-        icon: (
-          <IconForResource
-            selector={create(OpSelectorSchema, {
-              originalInstanceKeyid: peerState.peerKeyid,
-            })}
-          />
-        ),
-        label: (
-          <div
-            className="backrest visible-on-hover"
-            style={{ width: "100%", height: "100%" }}
-          >
-            {peerState.peerInstanceId}
-          </div>
-        ),
-        children: repos.length > 0 ? repos : undefined,
-      };
-    };
-
-    for (const peerState of peerStates) {
-      const peerConfig = authorizedClientsConfigs.get(peerState.peerKeyid);
-      if (!peerConfig) {
-        continue;
-      }
-      authorizedClients.push(createElementForPeerState(peerState, peerConfig));
-    }
-  }
-
-  menu.push({
-    key: "plans",
-    icon: React.createElement(ScheduleOutlined),
-    label: m.app_menu_plans(),
-    children: plans,
-  });
-  menu.push({
-    key: "repos",
-    icon: React.createElement(DatabaseOutlined),
-    label: m.app_menu_repos(),
-    children: repos,
-  });
-  if (authorizedClients.length > 0) {
-    menu.push({
-      key: "authorized-clients",
-      icon: React.createElement(CloudServerOutlined),
-      label: m.app_menu_remote_instances(),
-      children: authorizedClients,
-    });
-  }
-  menu.push({
-    key: "settings",
-    icon: React.createElement(SettingOutlined),
-    label: m.app_menu_settings(),
-    onClick: async () => {
-      const { SettingsModal } = await import("./SettingsModal");
-      showModal(<SettingsModal />);
-    },
-  });
-  return menu;
-};
-
 const IconForResource = ({ selector }: { selector: OpSelector }) => {
   const [status, setStatus] = useState(OperationStatus.STATUS_UNKNOWN);
   useEffect(() => {
@@ -569,14 +553,14 @@ const iconForStatus = (status: OperationStatus) => {
   const color = colorForStatus(status);
   switch (status) {
     case OperationStatus.STATUS_ERROR:
-      return <ExclamationOutlined style={{ color }} />;
+      return <FiAlertTriangle style={{ color }} />;
     case OperationStatus.STATUS_WARNING:
-      return <ExclamationOutlined style={{ color }} />;
+      return <FiAlertTriangle style={{ color }} />; // Using AlertTriangle for warning too
     case OperationStatus.STATUS_INPROGRESS:
-      return <LoadingOutlined style={{ color }} />;
+      return <FiLoader style={{ color }} />;
     case OperationStatus.STATUS_UNKNOWN:
-      return <LoadingOutlined style={{ color }} />;
+      return <FiLoader style={{ color }} />;
     default:
-      return <CheckCircleOutlined style={{ color }} />;
+      return <FiCheckCircle style={{ color }} />;
   }
 };

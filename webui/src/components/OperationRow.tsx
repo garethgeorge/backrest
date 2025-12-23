@@ -7,15 +7,20 @@ import {
 } from "../../gen/ts/v1/operations_pb";
 import {
   Button,
-  Col,
-  Collapse,
-  List,
-  Modal,
-  Progress,
-  Row,
-  Typography,
-} from "antd";
-import type { ItemType } from "rc-collapse/es/interface";
+  GridItem,
+  Collapsible,
+  Box,
+  Flex,
+  Text,
+  Stack,
+  SimpleGrid,
+  Heading,
+  Code
+} from "@chakra-ui/react";
+import { ProgressCircle } from "./ui/progress-circle";
+import { ProgressBar, ProgressRoot } from "./ui/progress";
+import { toaster } from "./ui/toaster";
+import { AccordionItem, AccordionItemTrigger, AccordionItemContent, AccordionRoot } from "./ui/accordion";
 import {
   BackupProgressEntry,
   ResticSnapshot,
@@ -29,7 +34,6 @@ import {
   normalizeSnapshotId,
 } from "../lib/formatting";
 import { ClearHistoryRequestSchema } from "../../gen/ts/v1/service_pb";
-import { MessageInstance } from "antd/es/message/interface";
 import { backrestService } from "../api";
 import { useShowModal } from "./ModalManager";
 import { useAlertApi } from "./Alerts";
@@ -44,16 +48,16 @@ import { ConfirmButton } from "./SpinButton";
 import { create } from "@bufbuild/protobuf";
 import { OperationListView } from "./OperationListView";
 import * as m from "../paraglide/messages";
+import { FormModal } from "./FormModal";
 
 export const OperationRow = ({
   operation,
-  alertApi,
   showPlan,
   hookOperations,
   showDelete,
 }: React.PropsWithoutRef<{
   operation: Operation;
-  alertApi?: MessageInstance;
+  alertApi?: any; // Toaster doesn't need passing, but keeping for compatibility for now
   showPlan?: boolean;
   hookOperations?: Operation[];
   showDelete?: boolean;
@@ -81,37 +85,37 @@ export const OperationRow = ({
           onlyFailed: false,
         })
       );
-      alertApi?.success(m.op_row_deleted_success());
+      toaster.create({ description: m.op_row_deleted_success(), type: "success" });
     } catch (e: any) {
-      alertApi?.error(m.op_row_deleted_error() + e.message);
+      toaster.create({ description: m.op_row_deleted_error() + e.message, type: "error" });
     }
   };
 
   const doCancel = async () => {
     try {
       await backrestService.cancel({ value: operation.id! });
-      alertApi?.success(m.op_row_cancel_success());
+      toaster.create({ description: m.op_row_cancel_success(), type: "success" });
     } catch (e: any) {
-      alertApi?.error(m.op_row_cancel_error() + e.message);
+      toaster.create({ description: m.op_row_cancel_error() + e.message, type: "error" });
     }
   };
 
   const doShowLogs = () => {
     showModal(
-      <Modal
-        width="70%"
+      <FormModal
+        size="large"
         title={m.op_row_logs_title({
           name: opName,
           time: formatTime(Number(operation.unixTimeStartMs)),
         })}
-        open={true}
-        footer={null}
-        onCancel={() => {
+        isOpen={true}
+        onClose={() => {
           showModal(null);
         }}
+        footer={null}
       >
         <LogView logref={operation.logref!} />
-      </Modal>
+      </FormModal>
     );
   };
 
@@ -143,8 +147,8 @@ export const OperationRow = ({
     title.push(
       <Button
         key="logs"
-        type="link"
-        size="small"
+        variant="plain"
+        size="sm"
         className="backrest operation-details"
         onClick={doShowLogs}
       >
@@ -186,7 +190,7 @@ export const OperationRow = ({
 
   let displayMessage = operation.displayMessage;
 
-  const bodyItems: ItemType[] = [];
+  const bodyItems: { key: string; label: string; children: React.ReactNode }[] = [];
   const expandedBodyItems: string[] = [];
 
   if (operation.op.case === "operationBackup") {
@@ -327,37 +331,52 @@ export const OperationRow = ({
   }
 
   return (
-    <div className="backrest visible-on-hover">
-      <List.Item key={operation.id}>
-        <List.Item.Meta
-          title={
-            <div style={{ display: "flex", flexDirection: "row" }}>{title}</div>
-          }
-          avatar={
-            <OperationIcon type={displayType} status={operation.status} />
-          }
-          description={
-            <div className="backrest" style={{ width: "100%", height: "100%" }}>
-              {operation.displayMessage && (
-                <div key="message">
-                  <pre>
-                    {operation.status !== OperationStatus.STATUS_SUCCESS &&
-                      nameForStatus(operation.status) + ": "}
-                    {displayMessage}
-                  </pre>
-                </div>
-              )}
-              <Collapse
-                size="small"
-                destroyOnHidden={true}
-                items={bodyItems}
-                defaultActiveKey={expandedBodyItems}
-              />
-            </div>
-          }
-        />
-      </List.Item>
-    </div>
+    <Box 
+        className="backrest visible-on-hover" 
+        mb={2} 
+        borderWidth="1px" 
+        borderRadius="md" 
+        bg="bg.panel"
+        _hover={{ borderColor: "border.emphasized" }}
+    >
+        <Box p={3}>
+            <Flex align="center" gap={3}>
+                <OperationIcon type={displayType} status={operation.status} />
+                <Box flex={1}>
+                    <Flex wrap="wrap" align="baseline" gap={2}>
+                        {title}
+                    </Flex>
+                </Box>
+            </Flex>
+            
+            {operation.displayMessage && (
+                <Box mt={2} pl={10}>
+                    <Code width="full" p={2} borderRadius="md" fontSize="xs">
+                        {operation.status !== OperationStatus.STATUS_SUCCESS &&
+                            nameForStatus(operation.status) + ": "}
+                        {displayMessage}
+                    </Code>
+                </Box>
+            )}
+
+            {bodyItems.length > 0 && (
+                <Box mt={2} pl={2}>
+                     <AccordionRoot collapsible multiple defaultValue={expandedBodyItems} variant="plain">
+                        {bodyItems.map((item) => (
+                            <AccordionItem key={item.key} value={item.key} border="none">
+                                <AccordionItemTrigger py={2}>
+                                    <Text fontSize="sm" fontWeight="medium">{item.label}</Text>
+                                </AccordionItemTrigger>
+                                <AccordionItemContent pb={4}>
+                                    {item.children}
+                                </AccordionItemContent>
+                            </AccordionItem>
+                        ))}
+                     </AccordionRoot>
+                </Box>
+            )}
+        </Box>
+    </Box>
   );
 };
 
@@ -366,77 +385,69 @@ const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
 
   return (
     <>
-      <Typography.Text>
-        <Typography.Text strong>{m.op_row_snapshot_id()}</Typography.Text>
+      <Text>
+        <Text as="span" fontWeight="bold">{m.op_row_snapshot_id()}</Text>
         {normalizeSnapshotId(snapshot.id!)}
-      </Typography.Text>
-      <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
-        <Col span={8}>
-          <Typography.Text strong>{m.op_row_user_host()}</Typography.Text>
-          <br />
-          <Typography.Text type="secondary">
+      </Text>
+      <SimpleGrid columns={3} gap={4} mt={2}>
+        <GridItem colSpan={1}>
+          <Text fontWeight="bold">{m.op_row_user_host()}</Text>
+          <Text color="fg.muted">
             {snapshot.username}@{snapshot.hostname}
-          </Typography.Text>
-        </Col>
-        <Col span={12}>
-          <Typography.Text strong>{m.op_row_tags()}</Typography.Text>
-          <br />
-          <Typography.Text type="secondary">
+          </Text>
+        </GridItem>
+        <GridItem colSpan={2}>
+          <Text fontWeight="bold">{m.op_row_tags()}</Text>
+          <Text color="fg.muted">
             {snapshot.tags.join(", ")}
-          </Typography.Text>
-        </Col>
-      </Row>
+          </Text>
+        </GridItem>
+      </SimpleGrid>
 
       {summary && (
         <>
-          <Row gutter={[16, 8]} style={{ marginTop: 8 }}>
-            <Col span={8}>
-              <Typography.Text strong>{m.op_row_files_added()}</Typography.Text>
-              <br />
-              <Typography.Text type="secondary">
+          <SimpleGrid columns={3} gap={4} mt={2}>
+            <Box>
+              <Text fontWeight="bold">{m.op_row_files_added()}</Text>
+              <Text color="fg.muted">
                 {summary.filesNew.toLocaleString()}
-              </Typography.Text>
-            </Col>
-            <Col span={8}>
-              <Typography.Text strong>{m.op_row_files_changed()}</Typography.Text>
-              <br />
-              <Typography.Text type="secondary">
+              </Text>
+            </Box>
+            <Box>
+              <Text fontWeight="bold">{m.op_row_files_changed()}</Text>
+              <Text color="fg.muted">
                 {summary.filesChanged.toLocaleString()}
-              </Typography.Text>
-            </Col>
-            <Col span={8}>
-              <Typography.Text strong>
+              </Text>
+            </Box>
+            <Box>
+              <Text fontWeight="bold">
                 {m.op_row_files_unmodified()}
-              </Typography.Text>
-              <br />
-              <Typography.Text type="secondary">
+              </Text>
+              <Text color="fg.muted">
                 {summary.filesUnmodified.toLocaleString()}
-              </Typography.Text>
-            </Col>
-          </Row>
-          <Row gutter={[16, 8]}>
-            <Col span={8}>
-              <Typography.Text strong>{m.op_row_bytes_added()}</Typography.Text>
-              <br />
-              <Typography.Text type="secondary">
+              </Text>
+            </Box>
+          </SimpleGrid>
+          <SimpleGrid columns={3} gap={4}>
+            <Box>
+              <Text fontWeight="bold">{m.op_row_bytes_added()}</Text>
+              <Text color="fg.muted">
                 {formatBytes(Number(summary.dataAdded))}
-              </Typography.Text>
-            </Col>
-            <Col span={8}>
-              <Typography.Text strong>{m.op_row_total_bytes()}</Typography.Text>
-              <br />
-              <Typography.Text type="secondary">
+              </Text>
+            </Box>
+            <Box>
+              <Text fontWeight="bold">{m.op_row_total_bytes()}</Text>
+              <Text color="fg.muted">
                 {formatBytes(Number(summary.totalBytesProcessed))}
-              </Typography.Text>
-            </Col>
-            <Col span={8}>
-              <Typography.Text strong>{m.op_row_total_files()}</Typography.Text>
-              <br />
-              <Typography.Text type="secondary">
+              </Text>
+            </Box>
+            <Box>
+              <Text fontWeight="bold">{m.op_row_total_files()}</Text>
+              <Text color="fg.muted">
                 {summary.totalFilesProcessed.toLocaleString()}
-              </Typography.Text>
-            </Col>
-          </Row>
+              </Text>
+            </Box>
+          </SimpleGrid>
         </>
       )}
     </>
@@ -457,12 +468,15 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
         target: restoreOp.target,
       })}
       {!isDone ? (
-        <Progress percent={Math.round(progress * 1000) / 10} status="active" />
+          <ProgressRoot value={progress * 100} max={100} size="sm">
+             <ProgressBar />
+          </ProgressRoot>
       ) : null}
       {operation.status == OperationStatus.STATUS_SUCCESS ? (
         <>
           <Button
-            type="link"
+            variant="plain"
+            size="sm"
             onClick={() => {
               backrestService
                 .getDownloadURL({ opId: operation.id!, filePath: "" })
@@ -470,9 +484,7 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
                   window.open(resp.value, "_blank");
                 })
                 .catch((e) => {
-                  alertApi?.error(
-                    m.op_row_fetch_download_error() + e.message
-                  );
+                  toaster.create({ description: m.op_row_fetch_download_error() + e.message, type: "error" });
                 });
             }}
           >
@@ -485,23 +497,25 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
         id: normalizeSnapshotId(operation.snapshotId!),
       })}
       {lastStatus && (
-        <Row gutter={16}>
-          <Col span={12}>
-            <Typography.Text strong>
+        <SimpleGrid columns={2} gap={4}>
+          <Box>
+            <Text fontWeight="bold">
               {m.op_row_bytes_done_total()}
-            </Typography.Text>
-            <br />
-            {formatBytes(Number(lastStatus.bytesRestored))}/
-            {formatBytes(Number(lastStatus.totalBytes))}
-          </Col>
-          <Col span={12}>
-            <Typography.Text strong>
+            </Text>
+            <Text>
+                {formatBytes(Number(lastStatus.bytesRestored))}/
+                {formatBytes(Number(lastStatus.totalBytes))}
+            </Text>
+          </Box>
+          <Box>
+            <Text fontWeight="bold">
               {m.op_row_files_done_total()}
-            </Typography.Text>
-            <br />
-            {Number(lastStatus.filesRestored)}/{Number(lastStatus.totalFiles)}
-          </Col>
-        </Row>
+            </Text>
+            <Text>
+                {Number(lastStatus.filesRestored)}/{Number(lastStatus.totalFiles)}
+            </Text>
+          </Box>
+        </SimpleGrid>
       )}
     </>
   );
@@ -524,45 +538,43 @@ const BackupOperationStatus = ({
       ) / 10;
     return (
       <>
-        <Progress percent={progress} status="active" />
-        <br />
-        <Row gutter={[16, 8]}>
-          <Col span={12}>
-            <Typography.Text strong>
+        <ProgressRoot value={progress} max={100} size="sm" mb={4}>
+            <ProgressBar />
+        </ProgressRoot>
+        <SimpleGrid columns={2} gap={4}>
+          <Box>
+            <Text fontWeight="bold">
               {m.op_row_bytes_done_total()}
-            </Typography.Text>
-            <br />
-            <Typography.Text type="secondary">
+            </Text>
+            <Text color="fg.muted">
               {formatBytes(Number(st.bytesDone))} /{" "}
               {formatBytes(Number(st.totalBytes))}
-            </Typography.Text>
-          </Col>
-          <Col span={12}>
-            <Typography.Text strong>
+            </Text>
+          </Box>
+          <Box>
+            <Text fontWeight="bold">
               {m.op_row_files_done_total()}
-            </Typography.Text>
-            <br />
-            <Typography.Text type="secondary">
+            </Text>
+            <Text color="fg.muted">
               {Number(st.filesDone).toLocaleString()} /{" "}
               {Number(st.totalFiles).toLocaleString()}
-            </Typography.Text>
-          </Col>
-        </Row>
+            </Text>
+          </Box>
+        </SimpleGrid>
         {st.currentFile && st.currentFile.length > 0 && (
-          <div style={{ marginTop: 8 }}>
-            <Typography.Text strong>{m.op_row_current_files()}</Typography.Text>
-            <pre
-              style={{
-                marginTop: 4,
-                padding: 8,
-                borderRadius: 4,
-                borderColor: "#d9d9d9",
-                fontSize: "0.85em",
-              }}
+          <Box mt={2}>
+            <Text fontWeight="bold">{m.op_row_current_files()}</Text>
+            <Code
+              display="block"
+              mt={1}
+              p={2}
+              borderRadius="md"
+              fontSize="xs"
+              whiteSpace="pre"
             >
               {st.currentFile.join("\n")}
-            </pre>
-          </div>
+            </Code>
+          </Box>
         )}
       </>
     );
@@ -570,53 +582,48 @@ const BackupOperationStatus = ({
     const sum = status.entry.value;
     return (
       <>
-        <Typography.Text>
-          <Typography.Text strong>{m.op_row_snapshot_id()}</Typography.Text>
+        <Text>
+          <Text as="span" fontWeight="bold">{m.op_row_snapshot_id()}</Text>
           {sum.snapshotId !== ""
             ? normalizeSnapshotId(sum.snapshotId!)
             : m.op_row_no_snapshot()}
-        </Typography.Text>
-        <Row gutter={[16, 8]}>
-          <Col span={8}>
-            <Typography.Text strong>{m.op_row_files_added()}</Typography.Text>
-            <br />
-            <Typography.Text type="secondary">
+        </Text>
+        <SimpleGrid columns={3} gap={4} mt={2}>
+          <Box>
+            <Text fontWeight="bold">{m.op_row_files_added()}</Text>
+            <Text color="fg.muted">
               {sum.filesNew.toString()}
-            </Typography.Text>
-          </Col>
-          <Col span={8}>
-            <Typography.Text strong>{m.op_row_files_changed()}</Typography.Text>
-            <br />
-            <Typography.Text type="secondary">
+            </Text>
+          </Box>
+          <Box>
+            <Text fontWeight="bold">{m.op_row_files_changed()}</Text>
+            <Text color="fg.muted">
               {sum.filesChanged.toString()}
-            </Typography.Text>
-          </Col>
-          <Col span={8}>
-            <Typography.Text strong>
+            </Text>
+          </Box>
+          <Box>
+            <Text fontWeight="bold">
               {m.op_row_files_unmodified()}
-            </Typography.Text>
-            <br />
-            <Typography.Text type="secondary">
+            </Text>
+            <Text color="fg.muted">
               {sum.filesUnmodified.toString()}
-            </Typography.Text>
-          </Col>
-        </Row>
-        <Row gutter={[16, 8]}>
-          <Col span={8}>
-            <Typography.Text strong>{m.op_row_bytes_added()}</Typography.Text>
-            <br />
-            <Typography.Text type="secondary">
+            </Text>
+          </Box>
+        </SimpleGrid>
+        <SimpleGrid columns={2} gap={4} mt={2}>
+          <Box>
+            <Text fontWeight="bold">{m.op_row_bytes_added()}</Text>
+            <Text color="fg.muted">
               {formatBytes(Number(sum.dataAdded))}
-            </Typography.Text>
-          </Col>
-          <Col span={8}>
-            <Typography.Text strong>{m.op_row_total_bytes()}</Typography.Text>
-            <br />
-            <Typography.Text type="secondary">
+            </Text>
+          </Box>
+          <Box>
+            <Text fontWeight="bold">{m.op_row_total_bytes()}</Text>
+            <Text color="fg.muted">
               {formatBytes(Number(sum.totalBytesProcessed))}
-            </Typography.Text>
-          </Col>
-        </Row>
+            </Text>
+          </Box>
+        </SimpleGrid>
       </>
     );
   } else {
@@ -670,8 +677,8 @@ const ForgetOperationDetails = ({
 
   return (
     <>
-      Removed snapshots:
-      <pre>
+      <Text>Removed snapshots:</Text>
+      <Code display="block" p={2} borderRadius="md" mt={1}>
         {forgetOp.forget?.map((f) => (
           <div key={f.id}>
             {m.op_row_removed_snapshot_desc({
@@ -681,13 +688,15 @@ const ForgetOperationDetails = ({
             <br />
           </div>
         ))}
-      </pre>
-      {m.op_row_policy_header()}
-      <ul>
+      </Code>
+      <Heading size="xs" mt={4} mb={2}>{m.op_row_policy_header()}</Heading>
+      <Box as="ul" pl={5}>
         {policyDesc.map((desc, idx) => (
-          <li key={idx}>{desc}</li>
+          <li key={idx}>
+             <Text as="span">{desc}</Text>
+          </li>
         ))}
-      </ul>
+      </Box>
     </>
   );
 };

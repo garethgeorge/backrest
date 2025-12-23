@@ -4,7 +4,8 @@ import {
   LogDataRequestSchema,
 } from "../../gen/ts/v1/service_pb";
 import { backrestService } from "../api";
-import { Button } from "antd";
+import { Button } from "./ui/button";
+import { Box } from "@chakra-ui/react";
 import { create } from "@bufbuild/protobuf";
 
 // TODO: refactor this to use the provider pattern
@@ -53,11 +54,14 @@ export const LogView = ({ logref }: { logref: string }) => {
   }
 
   return (
-    <div
-      style={{
-        overflowX: "scroll",
-        width: "100%",
-      }}
+    <Box
+      overflowX="scroll"
+      width="100%"
+      bg="bg.muted"
+      p={2}
+      borderRadius="md"
+      fontFamily="mono"
+      fontSize="xs"
     >
       {displayLines.map((line, i) => (
         <pre
@@ -70,15 +74,16 @@ export const LogView = ({ logref }: { logref: string }) => {
       {lines.length > limit ? (
         <>
           <Button
-            color="default"
-            type="link"
+            variant="ghost"
+            size="xs"
             onClick={() => setLimit(limit * 10)}
+            mt={2}
           >
             Show {Math.min(limit * 9, lines.length - limit)} more lines out of{" "}
             {lines.length} available...
           </Button>
         </>
       ) : null}
-    </div>
+    </Box>
   );
 };

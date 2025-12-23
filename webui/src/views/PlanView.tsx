@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Plan } from "../../gen/ts/v1/config_pb";
-import { Button, Flex, Tabs, Tooltip, Typography } from "antd";
+import { Button } from "../components/ui/button";
+import { Flex, Heading, Text, Box } from "@chakra-ui/react";
+import { Tabs, TabsList, TabsTrigger, TabsContent, TabsRoot } from "../components/ui/tabs";
+import { Tooltip } from "../components/ui/tooltip";
 import { useAlertApi } from "../components/Alerts";
 import { MAX_OPERATION_HISTORY } from "../constants";
 import { backrestService } from "../api";
@@ -69,75 +72,69 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
   if (!repo) {
     return (
-      <>
-        <Typography.Title>
-          {m.plan_repo_not_found({ repo: plan.repo!, planId: plan.id! })}
-        </Typography.Title>
-      </>
+      <Heading size="lg" color="red.500">
+        {m.plan_repo_not_found({ repo: plan.repo!, planId: plan.id! })}
+      </Heading>
     );
   }
 
   return (
-    <>
-      <Flex gap="small" align="center" wrap="wrap">
-        <Typography.Title>{plan.id}</Typography.Title>
-      </Flex>
-      <Flex gap="small" align="center" wrap="wrap">
+    <Box>
+      <Flex gap={4} align="center" wrap="wrap" mb={4}>
+        <Heading size="xl">{plan.id}</Heading>
+
         <SpinButton type="primary" onClickAsync={handleBackupNow}>
-          {m.plan_button_backup()}
+            {m.plan_button_backup()}
         </SpinButton>
-        <Tooltip title={m.repo_tooltip_run_command()}>
-          <Button
-            type="default"
+
+        <Tooltip content={m.repo_tooltip_run_command()}>
+            <Button
+            variant="outline"
             onClick={async () => {
-              const { RunCommandModal } = await import("./RunCommandModal");
-              showModal(<RunCommandModal repo={repo} />);
+                const { RunCommandModal } = await import("./RunCommandModal");
+                showModal(<RunCommandModal repo={repo} />);
             }}
-          >
+            >
             {m.repo_button_run_command()}
-          </Button>
+            </Button>
         </Tooltip>
-        <Tooltip title={m.repo_tooltip_unlock()}>
-          <SpinButton type="default" onClickAsync={handleUnlockNow}>
+
+        <Tooltip content={m.repo_tooltip_unlock()}>
+            <SpinButton type="default" onClickAsync={handleUnlockNow}>
             {m.repo_button_unlock()}
-          </SpinButton>
+            </SpinButton>
         </Tooltip>
-        <Tooltip title={m.plan_tooltip_clear_history()}>
-          <SpinButton type="default" onClickAsync={handleClearErrorHistory}>
+        
+        <Tooltip content={m.plan_tooltip_clear_history()}>
+            <SpinButton type="default" onClickAsync={handleClearErrorHistory}>
             {m.plan_button_clear_history()}
-          </SpinButton>
+            </SpinButton>
         </Tooltip>
       </Flex>
-      <Tabs
-        defaultActiveKey="1"
-        items={[
-          {
-            key: "1",
-            label: m.repo_tab_tree(),
-            children: (
-              <>
-                <OperationTreeView
-                  req={create(GetOperationsRequestSchema, {
-                    selector: {
-                      instanceId: config?.instance,
-                      repoGuid: repo.guid,
-                      planId: plan.id!,
-                    },
-                    lastN: BigInt(MAX_OPERATION_HISTORY),
-                  })}
-                  isPlanView={true}
-                />
-              </>
-            ),
-            destroyOnHidden: true,
-          },
-          {
-            key: "2",
-            label: m.repo_tab_list(),
-            children: (
-              <>
-                <h2>{m.repo_history_title()}</h2>
-                <OperationListView
+
+      <TabsRoot defaultValue="tree" lazyMount unmountOnExit>
+        <TabsList>
+            <TabsTrigger value="tree">{m.repo_tab_tree()}</TabsTrigger>
+            <TabsTrigger value="list">{m.repo_tab_list()}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tree">
+            <OperationTreeView
+                req={create(GetOperationsRequestSchema, {
+                selector: {
+                    instanceId: config?.instance,
+                    repoGuid: repo.guid,
+                    planId: plan.id!,
+                },
+                lastN: BigInt(MAX_OPERATION_HISTORY),
+                })}
+                isPlanView={true}
+            />
+        </TabsContent>
+
+        <TabsContent value="list">
+             <Heading size="md" mb={4}>{m.repo_history_title()}</Heading>
+             <OperationListView
                   req={create(GetOperationsRequestSchema, {
                     selector: {
                       instanceId: config?.instance,
@@ -148,12 +145,8 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                   })}
                   showDelete={true}
                 />
-              </>
-            ),
-            destroyOnHidden: true,
-          },
-        ]}
-      />
-    </>
+        </TabsContent>
+      </TabsRoot>
+    </Box>
   );
 };

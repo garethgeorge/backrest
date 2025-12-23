@@ -1,28 +1,30 @@
 import {
-  Button,
   Card,
-  Col,
-  Collapse,
-  Descriptions,
-  Divider,
-  Empty,
   Flex,
-  Row,
-  Spin,
-  Typography,
-} from "antd";
+  Stack,
+  Heading,
+  Text,
+  Box,
+  SimpleGrid,
+  Spinner,
+  Center,
+} from "@chakra-ui/react";
+import {
+  AccordionRoot,
+  AccordionItem,
+  AccordionItemTrigger,
+  AccordionItemContent,
+} from "../components/ui/accordion";
 import React, { useEffect, useState, useMemo } from "react";
 import { useConfig } from "../components/ConfigProvider";
 import {
   SummaryDashboardResponse,
   SummaryDashboardResponse_Summary,
 } from "../../gen/ts/v1/service_pb";
-import { create } from "@bufbuild/protobuf";
 import { backrestService } from "../api";
 import { useAlertApi } from "../components/Alerts";
 import {
   formatBytes,
-  formatDate,
   formatDuration,
   formatTime,
 } from "../lib/formatting";
@@ -45,9 +47,12 @@ import { useSyncStates } from "../state/peerstates";
 import { PeerState } from "../../gen/ts/v1sync/syncservice_pb";
 import { PeerStateConnectionStatusIcon } from "../components/SyncStateIcon";
 import * as m from "../paraglide/messages";
+import { DataListRoot, DataListItem } from "../components/ui/data-list";
+import { EmptyState } from "../components/ui/empty-state";
+import { FiDatabase, FiServer } from "react-icons/fi";
 
 export const SummaryDashboard = () => {
-  const config = useConfig()[0];
+  const [config] = useConfig();
   const alertApi = useAlertApi()!;
   const navigate = useNavigate();
 
@@ -65,7 +70,7 @@ export const SummaryDashboard = () => {
       try {
         const data = await backrestService.getSummaryDashboard({});
         setSummaryData(data);
-      } catch (e) {
+      } catch (e: any) {
         alertApi.error(m.dashboard_error_fetch() + e);
       }
     };
@@ -96,67 +101,61 @@ export const SummaryDashboard = () => {
   }, [config]);
 
   if (!summaryData) {
-    return <Spin className="summary-dashboard-spin" />;
+    return (
+        <Center h="200px">
+            <Spinner size="lg" />
+        </Center>
+    );
   }
 
   return (
-    <>
-      <Flex gap={16} vertical>
+    <Stack gap={8} width="full">
         {/* Multihost summary if any available */}
         <MultihostSummary multihostConfig={config?.multihost || null} />
 
         {/* Repos and plans section */}
-        <Typography.Title level={3}>{m.dashboard_repos_title()}</Typography.Title>
-        {summaryData && summaryData.repoSummaries.length > 0 ? (
-          summaryData.repoSummaries.map((summary) => (
-            <SummaryPanel summary={summary} key={summary.id} />
-          ))
-        ) : (
-          <Empty description={m.dashboard_repos_empty()} />
-        )}
-        <Typography.Title level={3}>{m.dashboard_plans_title()}</Typography.Title>
-        {summaryData && summaryData.planSummaries.length > 0 ? (
-          summaryData.planSummaries.map((summary) => (
-            <SummaryPanel summary={summary} key={summary.id} />
-          ))
-        ) : (
-          <Empty description={m.dashboard_plans_empty()} />
-        )}
+        <Stack gap={4}>
+            <Heading size="md">{m.dashboard_repos_title()}</Heading>
+            {summaryData && summaryData.repoSummaries.length > 0 ? (
+                summaryData.repoSummaries.map((summary) => (
+                    <SummaryPanel summary={summary} key={summary.id} />
+                ))
+            ) : (
+                <EmptyState title={m.dashboard_repos_empty()} icon={<FiDatabase />} />
+            )}
+        </Stack>
+        
+        <Stack gap={4}>
+            <Heading size="md">{m.dashboard_plans_title()}</Heading>
+            {summaryData && summaryData.planSummaries.length > 0 ? (
+                summaryData.planSummaries.map((summary) => (
+                    <SummaryPanel summary={summary} key={summary.id} />
+                ))
+            ) : (
+                <EmptyState title={m.dashboard_plans_empty()} icon={<FiServer />} />
+            )}
+        </Stack>
 
         {/* System Info Section */}
-        <Typography.Title level={3}>{m.dashboard_system_info_title()}</Typography.Title>
-        <Descriptions
-          layout="vertical"
-          column={2}
-          items={[
-            {
-              key: 1,
-              label: m.dashboard_config_path(),
-              children: summaryData.configPath,
-            },
-            {
-              key: 2,
-              label: m.dashboard_data_dir(),
-              children: summaryData.dataPath,
-            },
-          ]}
-        />
-        <Collapse
-          size="small"
-          items={[
-            {
-              label: m.dashboard_config_json(),
-              children: (
-                <pre>
-                  {config &&
-                    toJsonString(ConfigSchema, config, { prettySpaces: 2 })}
-                </pre>
-              ),
-            },
-          ]}
-        />
-      </Flex>
-    </>
+        <Stack gap={4}>
+            <Heading size="md">{m.dashboard_system_info_title()}</Heading>
+            <DataListRoot orientation="horizontal">
+                <DataListItem label={m.dashboard_config_path()} value={summaryData.configPath} />
+                <DataListItem label={m.dashboard_data_dir()} value={summaryData.dataPath} />
+            </DataListRoot>
+
+            <AccordionRoot collapsible variant="plain">
+                <AccordionItem value="config">
+                    <AccordionItemTrigger>{m.dashboard_config_json()}</AccordionItemTrigger>
+                    <AccordionItemContent>
+                        <Box as="pre" p={2} bg="gray.900" color="white" borderRadius="md" fontSize="xs" overflowX="auto">
+                            {config && toJsonString(ConfigSchema, config, { prettySpaces: 2 })}
+                        </Box>
+                    </AccordionItemContent>
+                </AccordionItem>
+            </AccordionRoot>
+        </Stack>
+    </Stack>
   );
 };
 
@@ -188,7 +187,7 @@ const SummaryPanel = ({
       idx: recentBackupsChart.length,
       time: 0,
       durationMs: 0,
-      color: "white",
+      color: "transparent", // transparent instead of white for dark mode support
       bytesAdded: 0,
     });
   }
@@ -205,110 +204,98 @@ const SummaryPanel = ({
       recentBackups.status[idx] === OperationStatus.STATUS_PENDING;
 
     return (
-      <Card style={{ opacity: 0.9 }} size="small" key={label}>
-        <Typography.Text>{m.dashboard_backup_tooltip_time({ time: formatTime(entry.time) })}</Typography.Text>{" "}
+      <Box bg="bg.panel" p={2} boxShadow="md" borderRadius="md" opacity={0.9}>
+        <Text fontSize="sm">{m.dashboard_backup_tooltip_time({ time: formatTime(entry.time) })}</Text>
         <br />
         {isPending ? (
-          <Typography.Text type="secondary">
+          <Text fontSize="xs" color="gray.500">
             {m.dashboard_backup_tooltip_pending()}
-          </Typography.Text>
+          </Text>
         ) : (
-          <Typography.Text type="secondary">
+          <Text fontSize="xs" color="gray.500">
             {m.dashboard_backup_tooltip_finished({ duration: formatDuration(entry.durationMs), bytes: formatBytes(entry.bytesAdded) })}
-          </Typography.Text>
+          </Text>
         )}
-      </Card>
+      </Box>
     );
   };
 
-  const cardInfo: { key: number; label: string; children: React.ReactNode }[] =
-    [];
+  const DataValue = ({ children }: {children: React.ReactNode}) => <Text fontWeight="medium">{children}</Text>;
 
-  cardInfo.push(
-    {
-      key: 1,
-      label: m.dashboard_card_backups_30d(),
-      children: (
-        <>
-          {summary.backupsSuccessLast30days ? (
-            <Typography.Text type="success" style={{ marginRight: "5px" }}>
-              {summary.backupsSuccessLast30days + " " + m.dashboard_card_backups_ok()}
-            </Typography.Text>
-          ) : undefined}
-          {summary.backupsFailed30days ? (
-            <Typography.Text type="danger" style={{ marginRight: "5px" }}>
-              {summary.backupsFailed30days + " " + m.dashboard_card_backups_failed()}
-            </Typography.Text>
-          ) : undefined}
-          {summary.backupsWarningLast30days ? (
-            <Typography.Text type="warning" style={{ marginRight: "5px" }}>
-              {summary.backupsWarningLast30days + " " + m.dashboard_card_backups_warning()}
-            </Typography.Text>
-          ) : undefined}
-        </>
-      ),
-    },
-    {
-      key: 2,
-      label: m.dashboard_card_bytes_scanned_30d(),
-      children: formatBytes(Number(summary.bytesScannedLast30days)),
-    },
-    {
-      key: 3,
-      label: m.dashboard_card_bytes_added_30d(),
-      children: formatBytes(Number(summary.bytesAddedLast30days)),
-    }
+  const CardInfo = () => (
+      <DataListRoot orientation="vertical" size="sm">
+          <DataListItem 
+            label={m.dashboard_card_backups_30d()} 
+            value={
+                <Flex gap={2}>
+                    {summary.backupsSuccessLast30days ? (
+                        <Text color="green.500">
+                        {summary.backupsSuccessLast30days + " " + m.dashboard_card_backups_ok()}
+                        </Text>
+                    ) : undefined}
+                    {summary.backupsFailed30days ? (
+                        <Text color="red.500">
+                        {summary.backupsFailed30days + " " + m.dashboard_card_backups_failed()}
+                        </Text>
+                    ) : undefined}
+                    {summary.backupsWarningLast30days ? (
+                        <Text color="orange.500">
+                        {summary.backupsWarningLast30days + " " + m.dashboard_card_backups_warning()}
+                        </Text>
+                    ) : undefined}
+                </Flex>
+            } 
+          />
+          <DataListItem label={m.dashboard_card_bytes_scanned_30d()} value={<DataValue>{formatBytes(Number(summary.bytesScannedLast30days))}</DataValue>} />
+          <DataListItem label={m.dashboard_card_bytes_added_30d()} value={<DataValue>{formatBytes(Number(summary.bytesAddedLast30days))}</DataValue>} />
+          
+          {!isMobile() && (
+              <>
+                <DataListItem 
+                    label={m.dashboard_card_next_backup()} 
+                    value={
+                        <DataValue>
+                            {summary.nextBackupTimeMs
+                            ? formatTime(Number(summary.nextBackupTimeMs))
+                            : m.dashboard_card_none_scheduled()}
+                        </DataValue>
+                    } 
+                />
+                <DataListItem label={m.dashboard_card_bytes_scanned_avg()} value={<DataValue>{formatBytes(Number(summary.bytesScannedAvg))}</DataValue>} />
+                <DataListItem label={m.dashboard_card_bytes_added_avg()} value={<DataValue>{formatBytes(Number(summary.bytesAddedAvg))}</DataValue>} />
+              </>
+          )}
+      </DataListRoot>
   );
 
-  // check if mobile layout
-  if (!isMobile()) {
-    cardInfo.push(
-      {
-        key: 4,
-        label: m.dashboard_card_next_backup(),
-        children: summary.nextBackupTimeMs
-          ? formatTime(Number(summary.nextBackupTimeMs))
-          : m.dashboard_card_none_scheduled(),
-      },
-      {
-        key: 5,
-        label: m.dashboard_card_bytes_scanned_avg(),
-        children: formatBytes(Number(summary.bytesScannedAvg)),
-      },
-      {
-        key: 6,
-        label: m.dashboard_card_bytes_added_avg(),
-        children: formatBytes(Number(summary.bytesAddedAvg)),
-      }
-    );
-  }
 
   return (
-    <Card title={summary.id} style={{ width: "100%" }}>
-      <Row gutter={16} key={1}>
-        <Col span={10}>
-          <Descriptions
-            layout="vertical"
-            column={3}
-            items={cardInfo}
-          ></Descriptions>
-        </Col>
-        <Col span={14}>
-          <ResponsiveContainer width="100%" height={140}>
-            <BarChart data={recentBackupsChart}>
-              <Bar dataKey="durationMs">
-                {recentBackupsChart.map((entry, index) => (
-                  <Cell cursor="pointer" fill={entry.color} key={`${index}`} />
-                ))}
-              </Bar>
-              <YAxis dataKey="durationMs" hide />
-              <XAxis dataKey="idx" hide />
-              <Tooltip content={<BackupChartTooltip />} cursor={false} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Col>
-      </Row>
-    </Card>
+    <Card.Root width="full">
+        <Card.Header>
+            <Card.Title>{summary.id}</Card.Title>
+        </Card.Header>
+        <Card.Body>
+             <SimpleGrid columns={[1, 1, 2]} gap={4}>
+                 <Box>
+                     <CardInfo />
+                 </Box>
+                 <Box height="140px">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={recentBackupsChart}>
+                        <Bar dataKey="durationMs">
+                            {recentBackupsChart.map((entry, index) => (
+                            <Cell cursor="pointer" fill={entry.color} key={`${index}`} />
+                            ))}
+                        </Bar>
+                        <YAxis dataKey="durationMs" hide />
+                        <XAxis dataKey="idx" hide />
+                        <Tooltip content={<BackupChartTooltip />} cursor={false} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                 </Box>
+             </SimpleGrid>
+        </Card.Body>
+    </Card.Root>
   );
 };
 
@@ -349,24 +336,24 @@ const MultihostSummary = ({
   }
 
   return (
-    <>
+    <Stack gap={8}>
       {knownHostTiles.length > 0 ? (
-        <>
-          <Typography.Title level={3}>{m.dashboard_remote_hosts_title()}</Typography.Title>
-          <Flex gap={16} vertical>
+        <Stack gap={4}>
+          <Heading size="md">{m.dashboard_remote_hosts_title()}</Heading>
+          <Stack gap={4}>
             {knownHostTiles}
-          </Flex>
-        </>
+          </Stack>
+        </Stack>
       ) : null}
       {authorizedClientTiles.length > 0 ? (
-        <>
-          <Typography.Title level={3}>{m.dashboard_remote_clients_title()}</Typography.Title>
-          <Flex gap={16} vertical>
+        <Stack gap={4}>
+          <Heading size="md">{m.dashboard_remote_clients_title()}</Heading>
+          <Stack gap={4}>
             {authorizedClientTiles}
-          </Flex>
-        </>
+          </Stack>
+        </Stack>
       ) : null}
-    </>
+    </Stack>
   );
 };
 
@@ -381,53 +368,33 @@ const PeerStateTile = ({ peerState }: { peerState: PeerState }) => {
   }, [peerState.peerKeyid, peerState.lastHeartbeatMillis, state[1]]);
 
   return (
-    <Card
-      key={peerState.peerKeyid}
-      title={
-        <>
-          {peerState.peerInstanceId}
-          <div
-            style={{
-              position: "absolute",
-              top: "8px",
-              right: "8px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <PeerStateConnectionStatusIcon peerState={peerState} />
-          </div>
-        </>
-      }
-      style={{ marginBottom: "16px" }}
-    >
-      <Descriptions
-        layout="vertical"
-        column={2}
-        items={[
-          {
-            key: 1,
-            label: m.dashboard_peer_instance_id(),
-            children: peerState.peerInstanceId,
-          },
-          {
-            key: 2,
-            label: m.dashboard_peer_public_key_id(),
-            children: peerState.peerKeyid,
-          },
-          {
-            key: 3,
-            label: m.dashboard_peer_last_state_update(),
-            children: (
-              <TimeSinceLastHeartbeat
-                lastHeartbeatMillis={Number(peerState.lastHeartbeatMillis)}
-              />
-            ),
-          },
-        ]}
-      />
-    </Card>
+    <Card.Root key={peerState.peerKeyid} width="full">
+        <Card.Header>
+            <Flex justify="space-between" align="center">
+                <Card.Title>
+                    {peerState.peerInstanceId}
+                </Card.Title>
+                 <Flex align="center" gap={2}>
+                    <PeerStateConnectionStatusIcon peerState={peerState} />
+                </Flex>
+            </Flex>
+           
+        </Card.Header>
+        <Card.Body>
+             <DataListRoot orientation="horizontal">
+                <DataListItem label={m.dashboard_peer_instance_id()} value={peerState.peerInstanceId} />
+                <DataListItem label={m.dashboard_peer_public_key_id()} value={peerState.peerKeyid} />
+                <DataListItem 
+                    label={m.dashboard_peer_last_state_update()} 
+                    value={
+                        <TimeSinceLastHeartbeat
+                            lastHeartbeatMillis={Number(peerState.lastHeartbeatMillis)}
+                        />
+                    } 
+                />
+             </DataListRoot>
+        </Card.Body>
+    </Card.Root>
   );
 };
 
@@ -448,6 +415,6 @@ const TimeSinceLastHeartbeat = ({
   }, [lastHeartbeatMillis]);
 
   return (
-    formatTime(lastHeartbeatMillis) + " (" + formatDuration(timeSince) + " " + m.dashboard_peer_ago() + ")"
+    <Text>{formatTime(lastHeartbeatMillis)} ({formatDuration(timeSince)} {m.dashboard_peer_ago()})</Text>
   );
 };

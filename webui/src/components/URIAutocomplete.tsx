@@ -1,80 +1,93 @@
-import { AutoComplete } from "antd";
-import React, { useEffect, useState } from "react";
-import { StringList } from "../../gen/ts/types/value_pb";
-import { isWindows } from "../state/buildcfg";
-import { backrestService } from "../api";
+import React, { useEffect, useState, useMemo } from "react";
+import { createListCollection } from "@chakra-ui/react";
+import {
+  ComboboxRoot,
+  ComboboxInput,
+  ComboboxContent,
+  ComboboxItem,
+  ComboboxControl,
+  ComboboxEmpty
+} from "./ui/combobox";
 import { debounce } from "../lib/util";
+import { backrestService } from "../api";
+import { isWindows } from "../state/buildcfg";
+import { StringList } from "../../gen/ts/types/value_pb";
 
 const sep = isWindows ? "\\" : "/";
 
-export const URIAutocomplete = (props: React.PropsWithChildren<any>) => {
-  const [value, setValue] = useState("");
-  const [options, setOptions] = useState<{ value: string }[]>([]);
-  const [showOptions, setShowOptions] = useState<{ value: string }[]>([]);
+export const URIAutocomplete = (props: any) => {
+  const { value, onChange, placeholder, disabled } = props;
+  // value is string
+  const [items, setItems] = useState<{ label: string; value: string }[]>([]);
+  
+  // Create collection for Combobox
+  const collection = createListCollection({ items });
 
-  useEffect(() => {
-    setShowOptions(options.filter((o) => o.value.indexOf(value) !== -1));
-  }, [options]);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const onChange = React.useMemo(
+  // Debounced fetch
+  const fetchOptions = useMemo(
     () =>
-      debounce((value: string) => {
-        setValue(value);
-
-        const lastSlash = value.lastIndexOf(sep);
+      debounce((inputVal: string) => {
+        // Only fetch if input has path separators or is long enough?
+        // Logic from original: 
+        const lastSlash = inputVal.lastIndexOf(sep);
+        let searchVal = inputVal;
         if (lastSlash !== -1) {
-          value = value.substring(0, lastSlash);
+            searchVal = inputVal.substring(0, lastSlash);
+        } else if (searchVal === "") {
+             return; // Don't fetch root on empty?
         }
 
         backrestService
-          .pathAutocomplete({ value: value + sep })
+          .pathAutocomplete({ value: searchVal + sep })
           .then((res: StringList) => {
-            if (!res.values) {
-              return;
-            }
-            const vals = res.values.map((v) => {
-              return {
-                value: value + sep + v,
-              };
-            });
-            setOptions(vals);
+            if (!res.values) return;
+            const newItems = res.values.map((v) => ({
+                label: searchVal + sep + v,
+                value: searchVal + sep + v
+            }));
+            setItems(newItems);
           })
-          .catch((e) => {
-            console.log("Path autocomplete error: ", e);
-          });
-      }, 200),
+          .catch((e) => console.error("Path autocomplete error:", e));
+      }, 300),
     []
   );
 
+  const handleInputChange = (e: any) => {
+      const val = e.target.value;
+      if (onChange) onChange(val);
+      fetchOptions(val);
+  };
+
+  const handleOpenChange = (e: any) => {
+      if (e.open) {
+          fetchOptions(value || "");
+      }
+  }
+
   return (
-    (<AutoComplete
-        options={showOptions}
-        onSearch={onChange}
-        rules={[
-          {
-            validator: async (_: any, value: string) => {
-              if (props.globAllowed) {
-                return Promise.resolve();
-              }
-              if (isWindows) {
-                if (value.match(/^[a-zA-Z]:\\$/)) {
-                  return Promise.reject(
-                    new Error("Path must start with a drive letter e.g. C:\\")
-                  );
-                } else if (value.includes("/")) {
-                  return Promise.reject(
-                    new Error(
-                      "Path must use backslashes e.g. C:\\Users\\MyUsers\\Documents"
-                    )
-                  );
-                }
-              }
-              return Promise.resolve();
-            },
-          },
-        ]}
-        {...props}
-      />)
+      <ComboboxRoot
+        collection={collection}
+        inputBehavior="autocomplete" // allows nice typing
+        disabled={disabled}
+        inputValue={value}
+        onInputValueChange={(e: any) => {
+             // Combobox updates inputValue when typing
+             if (onChange) onChange(e.inputValue);
+             fetchOptions(e.inputValue);
+        }}
+        onOpenChange={handleOpenChange}
+      >
+          <ComboboxControl>
+              <ComboboxInput placeholder={placeholder} />
+          </ComboboxControl>
+          <ComboboxContent>
+              {items.length === 0 && <ComboboxEmpty>No paths found</ComboboxEmpty>}
+              {items.map(item => (
+                  <ComboboxItem key={item.value} item={item}>
+                      {item.label}
+                  </ComboboxItem>
+              ))}
+          </ComboboxContent>
+      </ComboboxRoot>
   );
 };

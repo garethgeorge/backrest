@@ -1,6 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, Dropdown, Form, Input, Modal, Space, Spin, Tree } from "antd";
-import type { DataNode, EventDataNode } from "antd/es/tree";
 import {
   ListSnapshotFilesRequestSchema,
   ListSnapshotFilesResponse,
@@ -10,35 +8,55 @@ import {
   RestoreSnapshotRequest,
   RestoreSnapshotRequestSchema,
 } from "../../gen/ts/v1/service_pb";
-import { useAlertApi } from "./Alerts";
-import {
-  DownloadOutlined,
-  FileOutlined,
-  FolderOutlined,
-} from "@ant-design/icons";
+import { FiFile, FiFolder, FiDownload, FiInfo, FiRefreshCw, FiMoreHorizontal } from "react-icons/fi";
 import { useShowModal } from "./ModalManager";
 import { formatBytes, normalizeSnapshotId } from "../lib/formatting";
 import { URIAutocomplete } from "./URIAutocomplete";
-import { validateForm } from "../lib/formutil";
 import { backrestService } from "../api";
 import { ConfirmButton } from "./SpinButton";
-import { StringValueSchema } from "../../gen/ts/types/value_pb";
 import { pathSeparator } from "../state/buildcfg";
 import { create, toJsonString } from "@bufbuild/protobuf";
+import {
+    TreeView,
+    createTreeCollection,
+    Flex,
+    Box,
+    Text,
+    Button,
+    Stack
+} from "@chakra-ui/react";
+import { 
+    MenuRoot, 
+    MenuTrigger, 
+    MenuContent, 
+    MenuItem, 
+    MenuItemText 
+} from "./ui/menu";
+import { FormModal } from "./FormModal";
+import { Field } from "./ui/field";
+import { toaster } from "./ui/toaster";
 
 const SnapshotBrowserContext = React.createContext<{
   snapshotId: string;
   planId?: string;
   repoId: string;
-  showModal: (modal: React.ReactNode) => void; // slight performance hack.
+  showModal: (modal: React.ReactNode) => void;
 } | null>(null);
+
+interface SnapshotNode {
+    key: string;
+    title: React.ReactNode;
+    children?: SnapshotNode[];
+    isLeaf?: boolean;
+    entry: LsEntry;
+}
 
 // replaceKeyInTree returns a value only if changes are made.
 const replaceKeyInTree = (
-  curNode: DataNode,
+  curNode: SnapshotNode,
   setKey: string,
-  setValue: DataNode
-): DataNode | null => {
+  setValue: SnapshotNode
+): SnapshotNode | null => {
   if (curNode.key === setKey) {
     return setValue;
   }
@@ -57,7 +75,8 @@ const replaceKeyInTree = (
   }
   return null;
 };
-const findInTree = (curNode: DataNode, key: string): DataNode | null => {
+
+const findInTree = (curNode: SnapshotNode, key: string): SnapshotNode | null => {
   if (curNode.key === key) {
     return curNode;
   }
@@ -76,7 +95,7 @@ const findInTree = (curNode: DataNode, key: string): DataNode | null => {
 export const SnapshotBrowser = ({
   repoId,
   repoGuid,
-  planId, // optional: purely to link restore operations to the right plan.
+  planId,
   snapshotId,
   snapshotOpId,
 }: React.PropsWithoutRef<{
@@ -86,24 +105,20 @@ export const SnapshotBrowser = ({
   repoGuid: string;
   planId?: string;
 }>) => {
-  const alertApi = useAlertApi();
   const showModal = useShowModal();
-  const [treeData, setTreeData] = useState<DataNode[]>([]);
+  const [treeData, setTreeData] = useState<SnapshotNode[]>([]);
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
-  const respToNodes = (resp: ListSnapshotFilesResponse): DataNode[] => {
-    const nodes = resp
-      .entries!.filter((entry) => entry.path!.length >= resp.path!.length)
-      .map((entry) => {
-        const node: DataNode = {
+  const respToNodes = (resp: ListSnapshotFilesResponse): SnapshotNode[] => {
+    return resp.entries!
+      .filter((entry) => entry.path!.length >= resp.path!.length)
+      .map((entry) => ({
           key: entry.path!,
           title: <FileNode entry={entry} snapshotOpId={snapshotOpId} />,
           isLeaf: entry.type === "file",
-          icon: entry.type === "file" ? <FileOutlined /> : <FolderOutlined />,
-        };
-        return node;
-      });
-
-    return nodes;
+          children: entry.type === "directory" ? [] : undefined, // Initialize empty children for dirs
+          entry: entry
+      }));
   };
 
   useEffect(() => {
@@ -121,63 +136,137 @@ export const SnapshotBrowser = ({
         })
       )
     );
+     // Auto-load root?
+     loadData("/");
   }, [repoId, repoGuid, snapshotId]);
 
-  const onLoadData = async ({ key, children }: EventDataNode<DataNode>) => {
-    if (children) {
-      return;
+  const loadData = async (key: string) => {
+    // Find node, if children populated (and not empty array created initially??), skip?
+    // Actually our initial creation makes empty children array.
+    // Logic: check if we have fetched? 
+    // We can assume if we call loadData we want to refresh or fetch.
+    
+    // Check if node exists first
+    let exists = false;
+    for (const node of treeData) {
+        if (findInTree(node, key)) {
+            exists = true;
+            break;
+        }
     }
-
-    let path = key as string;
+    // If root (/) it might be the only node.
+    
+    let path = key;
     if (!path.endsWith("/")) {
       path += "/";
     }
 
-    let resp: ListSnapshotFilesResponse;
     try {
-      resp = await backrestService.listSnapshotFiles(
+      const resp = await backrestService.listSnapshotFiles(
         create(ListSnapshotFilesRequestSchema, {
           path,
           repoGuid,
           snapshotId,
         })
       );
-    } catch (e: any) {
-      alertApi?.error("Failed to load snapshot files: " + e.message);
-      return;
-    }
 
-    setTreeData((treeData) => {
-      let toUpdate: DataNode | null = null;
-      for (const node of treeData) {
-        toUpdate = findInTree(node, key as string);
-        if (toUpdate) {
-          break;
-        }
-      }
+      setTreeData((prev) => {
+          let toUpdate: SnapshotNode | null = null;
+          for (const node of prev) {
+            toUpdate = findInTree(node, key);
+            if (toUpdate) break;
+          }
 
-      if (!toUpdate) {
-        return treeData;
-      }
+          if (!toUpdate) return prev;
 
-      const toUpdateCopy = { ...toUpdate };
-      toUpdateCopy.children = respToNodes(resp);
+          const toUpdateCopy = { ...toUpdate };
+          toUpdateCopy.children = respToNodes(resp);
 
-      return treeData.map((node) => {
-        const didUpdate = replaceKeyInTree(node, key as string, toUpdateCopy);
-        if (didUpdate) {
-          return didUpdate;
-        }
-        return node;
+          return prev.map((node) => {
+             const didUpdate = replaceKeyInTree(node, key, toUpdateCopy);
+             return didUpdate || node;
+          });
       });
-    });
+    } catch (e: any) {
+      toaster.create({ description: "Failed to load snapshot files: " + e.message, type: "error" });
+    }
+  };
+  
+ const collection = useMemo(() => {
+     return createTreeCollection<SnapshotNode>({
+         nodeToValue: (node: SnapshotNode) => node.key,
+         nodeToString: (node: SnapshotNode) => node.key,
+         rootNode: {
+             key: "root",
+             title: "root",
+             children: treeData,
+             entry: create(LsEntrySchema, {}),
+             isLeaf: false
+         } 
+     })
+  }, [treeData]);
+
+  const handleExpandedChange = (e: any) => {
+      // @ts-ignore
+      const newExpanded = new Set(e.expandedIds as string[]);
+      setExpandedKeys(newExpanded);
+      
+      // Find which key was added?
+      // Or just iterate new keys and load if needed.
+      // Easiest: checking which keys in newExpanded were NOT in expandedKeys
+      for (const key of Array.from(newExpanded)) {
+          if (!expandedKeys.has(key as string)) {
+               // Newly expanded
+               loadData(key as string);
+          }
+      }
   };
 
   return (
     <SnapshotBrowserContext.Provider
       value={{ snapshotId, repoId, planId, showModal }}
     >
-      <Tree<DataNode> loadData={onLoadData} treeData={treeData} />
+       <Box minH="200px" overflow="auto">
+        {/* @ts-ignore */}
+        <TreeView.Root 
+            collection={collection}
+            // @ts-ignore
+            expandedIds={Array.from(expandedKeys)}
+            onExpandedChange={handleExpandedChange}
+        >
+            <TreeView.Tree>
+                {/* @ts-ignore */}
+                <TreeView.Node
+                    render={({ node, nodeState }: any) => {
+                         const isBranch = !!node.children;
+                         if (isBranch) {
+                             return (
+                                 <TreeView.Branch>
+                                    <TreeView.BranchControl>
+                                        <Box mr={2}><FiFolder /></Box>
+                                        <TreeView.BranchText>{node.title}</TreeView.BranchText>
+                                        <TreeView.BranchIndicator>
+                                            <FiInfo /> 
+                                            {/* Note: Icon is managed in title? No title is component. */}
+                                        </TreeView.BranchIndicator>
+                                    </TreeView.BranchControl>
+                                    <TreeView.BranchContent>
+                                        <TreeView.NodeProvider />
+                                    </TreeView.BranchContent>
+                                 </TreeView.Branch>
+                             )
+                         }
+                         return (
+                             <TreeView.Item>
+                                 <Box mr={2}><FiFile /></Box>
+                                 <TreeView.ItemText>{node.title}</TreeView.ItemText>
+                             </TreeView.Item>
+                         )
+                    }}
+                />
+            </TreeView.Tree>
+        </TreeView.Root>
+       </Box>
     </SnapshotBrowserContext.Provider>
   );
 };
@@ -189,41 +278,39 @@ const FileNode = ({
   entry: LsEntry;
   snapshotOpId?: bigint;
 }) => {
-  const [dropdown, setDropdown] = useState<React.ReactNode>(null);
   const { snapshotId, repoId, planId, showModal } = React.useContext(
     SnapshotBrowserContext
   )!;
 
-  const showDropdown = () => {
-    setDropdown(
-      <Dropdown
-        menu={{
-          items: [
-            {
-              key: "info",
-              label: "Info",
-              onClick: () => {
-                showModal(
-                  <Modal
-                    title={"Path Info for " + entry.path}
-                    open={true}
-                    cancelButtonProps={{ style: { display: "none" } }}
-                    onCancel={() => showModal(null)}
-                    onOk={() => showModal(null)}
-                  >
-                    <pre>
-                      {toJsonString(LsEntrySchema, entry, {
-                        prettySpaces: 2,
-                      })}
-                    </pre>
-                  </Modal>
-                );
-              },
-            },
-            {
-              key: "restore",
-              label: "Restore to path",
-              onClick: () => {
+  const doDownload = () => {
+    backrestService
+      .getDownloadURL({ opId: snapshotOpId!, filePath: entry.path! })
+      .then((resp) => {
+        window.open(resp.value, "_blank");
+      })
+      .catch((e) => {
+        toaster.create({ description: "Failed to fetch download URL: " + e.message, type: "error" });
+      });
+  };
+
+  const showInfo = () => {
+      showModal(
+        <FormModal
+            title={"Path Info for " + entry.path}
+            isOpen={true}
+            onClose={() => showModal(null)}
+            footer={null}
+        >
+            <Box as="pre" overflow="auto" p={2} bg="bg.muted" borderRadius="md">
+                {toJsonString(LsEntrySchema, entry, {
+                    prettySpaces: 2,
+                })}
+            </Box>
+        </FormModal>
+      );
+  };
+  
+     const restore = () => {
                 showModal(
                   <RestoreModal
                     path={entry.path!}
@@ -232,45 +319,53 @@ const FileNode = ({
                     snapshotId={snapshotId}
                   />
                 );
-              },
-            },
-            snapshotOpId
-              ? {
-                  key: "download",
-                  label: "Download",
-                  onClick: () => {
-                    backrestService
-                      .getDownloadURL({ opId: snapshotOpId!, filePath: entry.path! })
-                      .then((resp) => {
-                        window.open(
-                          resp.value,
-                          "_blank"
-                        );
-                      })
-                      .catch((e) => {
-                        alert("Failed to fetch download URL: " + e.message);
-                      });
-                  },
-                }
-              : null,
-          ],
-        }}
-      >
-        <DownloadOutlined />
-      </Dropdown>
-    );
-  };
+     };
 
   return (
-    <Space onMouseEnter={showDropdown} onMouseLeave={() => setDropdown(null)}>
-      {entry.name}
-      {entry.type === "file" ? (
-        <span className="backrest file-details">
-          ({formatBytes(Number(entry.size))})
-        </span>
-      ) : null}
-      {dropdown || <div style={{ width: 16 }}></div>}
-    </Space>
+    <Flex align="center" justify="space-between" width="full">
+      <Text>
+          {entry.name}
+          {entry.type === "file" && (
+            <Text as="span" color="fg.muted" ml={2} fontSize="sm">
+              ({formatBytes(Number(entry.size))})
+            </Text>
+          )}
+      </Text>
+      
+      <Box onClick={(e: any) => e.stopPropagation()}>
+          <MenuRoot>
+            {/* @ts-ignore */}
+            <MenuTrigger asChild>
+                <Button size="xs" variant="ghost">
+                    <FiMoreHorizontal />
+                </Button>
+            </MenuTrigger>
+            {/* @ts-ignore */}
+            <MenuContent>
+                {/* @ts-ignore */}
+                <MenuItem value="info" onClick={showInfo}>
+                    <FiInfo /> 
+                    {/* @ts-ignore */}
+                    <MenuItemText>Info</MenuItemText>
+                </MenuItem>
+                {/* @ts-ignore */}
+                <MenuItem value="restore" onClick={restore}>
+                    <FiRefreshCw /> 
+                    {/* @ts-ignore */}
+                    <MenuItemText>Restore to path</MenuItemText>
+                </MenuItem>
+                {snapshotOpId && (
+                    // @ts-ignore
+                    <MenuItem value="download" onClick={doDownload}>
+                        <FiDownload /> 
+                        {/* @ts-ignore */}
+                        <MenuItemText>Download</MenuItemText>
+                    </MenuItem>
+                )}
+            </MenuContent>
+          </MenuRoot>
+      </Box>
+    </Flex>
   );
 };
 
@@ -281,12 +376,13 @@ const RestoreModal = ({
   path,
 }: {
   repoId: string;
-  planId?: string; // optional: purely to link restore operations to the right plan.
+  planId?: string;
   snapshotId: string;
   path: string;
 }) => {
-  const [form] = Form.useForm<RestoreSnapshotRequest>();
   const showModal = useShowModal();
+  const [target, setTarget] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const defaultPath = useMemo(() => {
     if (path === pathSeparator) {
@@ -296,125 +392,75 @@ const RestoreModal = ({
   }, [path]);
 
   useEffect(() => {
-    form.setFieldsValue({ target: defaultPath });
+    setTarget(defaultPath);
   }, [defaultPath]);
 
-  const handleCancel = () => {
-    showModal(null);
+  const handleValid = () => {
+      // Basic validation
+      if (target) {
+            let p = target;
+            if (p.endsWith(pathSeparator)) {
+              p = p.slice(0, -1);
+            }
+            const dirname = basename(p);
+      }
+      return true;
   };
 
   const handleOk = async () => {
     try {
-      const values = await validateForm(form);
       await backrestService.restore(
         create(RestoreSnapshotRequestSchema, {
           repoId,
           planId,
           snapshotId,
           path,
-          target: values.target,
+          target,
         })
       );
+      toaster.create({ description: "Restore started successfully.", type: "success" });
+      showModal(null);
     } catch (e: any) {
-      alert("Failed to restore snapshot: " + e.message);
-    } finally {
-      showModal(null); // close.
+      toaster.create({ description: "Failed to restore: " + e.message, type: "error" });
     }
   };
 
-  let targetPath = Form.useWatch("target", form);
-  useEffect(() => {
-    if (!targetPath) {
-      return;
-    }
-    (async () => {
-      try {
-        let p = targetPath;
-        if (p.endsWith(pathSeparator)) {
-          p = p.slice(0, -1);
-        }
-
-        const dirname = basename(p);
-        const files = await backrestService.pathAutocomplete(
-          create(StringValueSchema, { value: dirname })
-        );
-
-        for (const file of files.values) {
-          if (dirname + file === p) {
-            form.setFields([
-              {
-                name: "target",
-                errors: [
-                  "target path already exists, you must pick an empty path.",
-                ],
-              },
-            ]);
-            return;
-          }
-        }
-        form.setFields([
-          {
-            name: "target",
-            value: targetPath,
-            errors: [],
-          },
-        ]);
-      } catch (e: any) {
-        form.setFields([
-          {
-            name: "target",
-            errors: [e.message],
-          },
-        ]);
-      }
-    })();
-  }, [targetPath]);
-
   return (
-    <Modal
-      open={true}
-      onCancel={handleCancel}
-      title={
-        "Restore " + path + " from snapshot " + normalizeSnapshotId(snapshotId)
+    <FormModal
+      title={"Restore " + path}
+      isOpen={true}
+      onClose={() => showModal(null)}
+      footer={
+          <>
+            <Button variant="ghost" onClick={() => showModal(null)}>Cancel</Button>
+            <ConfirmButton 
+                onClickAsync={handleOk}
+                confirmTitle="Confirm Restore?"
+            >
+                Restore
+            </ConfirmButton>
+          </>
       }
-      width="40vw"
-      footer={[
-        <Button key="back" onClick={handleCancel}>
-          Cancel
-        </Button>,
-        <ConfirmButton
-          key="submit"
-          type="primary"
-          confirmTitle="Confirm Restore?"
-          onClickAsync={handleOk}
-        >
-          Restore
-        </ConfirmButton>,
-      ]}
     >
-      <Form
-        autoComplete="off"
-        form={form}
-        labelCol={{ span: 6 }}
-        wrapperCol={{ span: 16 }}
-      >
-        <p>
-          If restoring to a specific path, ensure that the path does not already
-          exist or that you are comfortable overwriting the data at that
-          location.
-        </p>
-        <p>
-          You may set the path to an empty string to restore to your Downloads
-          folder.
-        </p>
-        <Form.Item label="Restore to path" name="target" rules={[]}>
-          <URIAutocomplete
-            placeholder="Restoring to Downloads"
-            defaultValue={defaultPath}
-          />
-        </Form.Item>
-      </Form>
-    </Modal>
+        <Stack gap={4}>
+            <Text>
+            If restoring to a specific path, ensure that the path does not already
+            exist or that you are comfortable overwriting the data at that
+            location.
+            </Text>
+            <Text>
+            You may set the path to an empty string to restore to your Downloads folder.
+            </Text>
+            
+            <Field label="Restore to path" errorText={error}>
+                <URIAutocomplete
+                    placeholder="Restoring to Downloads"
+                    value={target}
+                    onChange={(val: string) => setTarget(val || "")}
+                />
+            </Field>
+        </Stack>
+    </FormModal>
   );
 };
 

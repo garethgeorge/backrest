@@ -1,6 +1,9 @@
 import React, { Suspense, useContext, useEffect, useState } from "react";
 import { Repo } from "../../gen/ts/v1/config_pb";
-import { Flex, Tabs, Tooltip, Typography, Button } from "antd";
+import { Button } from "../components/ui/button";
+import { Flex, Heading, Box } from "@chakra-ui/react";
+import { Tabs, TabsRoot, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
+import { Tooltip } from "../components/ui/tooltip";
 import { OperationListView } from "../components/OperationListView";
 import { OperationTreeView } from "../components/OperationTreeView";
 import { MAX_OPERATION_HISTORY, STATS_OPERATION_HISTORY } from "../constants";
@@ -100,77 +103,24 @@ export const RepoView = ({
   let repoInConfig = config?.repos?.find((r) => r.id === repo.id);
   if (!repoInConfig) {
     return (
-      <>
+      <Box>
         {m.repo_deleted_message()}
-        <pre>{JSON.stringify(config, null, 2)}</pre>
-      </>
+        <Box as="pre" p={2} bg="gray.100" borderRadius="md" overflowX="auto">
+            {JSON.stringify(config, null, 2)}
+        </Box>
+      </Box>
     );
   }
   repo = repoInConfig;
 
-  const items = [
-    {
-      key: "1",
-      label: m.repo_tab_tree(),
-      children: (
-        <>
-          <OperationTreeView
-            req={create(GetOperationsRequestSchema, {
-              selector: {
-                repoGuid: repo.guid,
-              },
-              lastN: BigInt(MAX_OPERATION_HISTORY),
-            })}
-          />
-        </>
-      ),
-      destroyOnHidden: true,
-    },
-    {
-      key: "2",
-      label: m.repo_tab_list(),
-      children: (
-        <>
-           <h3>{m.repo_history_title()}</h3>
-          <OperationListView
-            req={create(GetOperationsRequestSchema, {
-              selector: {
-                repoGuid: repo.guid,
-              },
-              lastN: BigInt(MAX_OPERATION_HISTORY),
-            })}
-            showPlan={true}
-            showDelete={true}
-          />
-        </>
-      ),
-      destroyOnHidden: true,
-    },
-    {
-      key: "3",
-      label: m.repo_tab_stats(),
-      children: (
-        <Suspense fallback={<div>{m.loading()}</div>}>
-          <StatsPanel
-            selector={create(OpSelectorSchema, {
-              repoGuid: repo.guid,
-              instanceId: config?.instance,
-            })}
-          />
-        </Suspense>
-      ),
-      destroyOnHidden: true,
-    },
-  ];
   return (
-    <>
-      <Flex gap="small" align="center" wrap="wrap">
-        <Typography.Title>{repo.id}</Typography.Title>
-      </Flex>
-      <Flex gap="small" align="center" wrap="wrap">
-        <Tooltip title={m.repo_tooltip_run_command()}>
+    <Box>
+      <Flex gap={4} align="center" wrap="wrap" mb={4}>
+        <Heading size="xl">{repo.id}</Heading>
+
+        <Tooltip content={m.repo_tooltip_run_command()}>
           <Button
-            type="default"
+            variant="outline"
             onClick={async () => {
               const { RunCommandModal } = await import("./RunCommandModal");
               showModal(<RunCommandModal repo={repo} />);
@@ -180,37 +130,80 @@ export const RepoView = ({
           </Button>
         </Tooltip>
 
-        <Tooltip title={m.repo_tooltip_index()}>
+        <Tooltip content={m.repo_tooltip_index()}>
           <SpinButton type="default" onClickAsync={handleIndexNow}>
             {m.repo_button_index()}
           </SpinButton>
         </Tooltip>
 
-        <Tooltip title={m.repo_tooltip_unlock()}>
+        <Tooltip content={m.repo_tooltip_unlock()}>
           <SpinButton type="default" onClickAsync={handleUnlockNow}>
             {m.repo_button_unlock()}
           </SpinButton>
         </Tooltip>
 
-        <Tooltip title={m.repo_tooltip_prune()}>
+        <Tooltip content={m.repo_tooltip_prune()}>
           <SpinButton type="default" onClickAsync={handlePruneNow}>
             {m.repo_button_prune()}
           </SpinButton>
         </Tooltip>
 
-        <Tooltip title={m.repo_tooltip_check()}>
+        <Tooltip content={m.repo_tooltip_check()}>
           <SpinButton type="default" onClickAsync={handleCheckNow}>
             {m.repo_button_check()}
           </SpinButton>
         </Tooltip>
 
-        <Tooltip title={m.repo_tooltip_stats()}>
+        <Tooltip content={m.repo_tooltip_stats()}>
           <SpinButton type="default" onClickAsync={handleStatsNow}>
             {m.repo_button_stats()}
           </SpinButton>
         </Tooltip>
       </Flex>
-      <Tabs defaultActiveKey={items[0].key} items={items} />
-    </>
+      
+      <TabsRoot defaultValue="tree" lazyMount unmountOnExit>
+        <TabsList>
+            <TabsTrigger value="tree">{m.repo_tab_tree()}</TabsTrigger>
+            <TabsTrigger value="list">{m.repo_tab_list()}</TabsTrigger>
+            <TabsTrigger value="stats">{m.repo_tab_stats()}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tree">
+            <OperationTreeView
+            req={create(GetOperationsRequestSchema, {
+                selector: {
+                repoGuid: repo.guid,
+                },
+                lastN: BigInt(MAX_OPERATION_HISTORY),
+            })}
+            />
+        </TabsContent>
+
+        <TabsContent value="list">
+            <Heading size="md" mb={4}>{m.repo_history_title()}</Heading>
+             <OperationListView
+                req={create(GetOperationsRequestSchema, {
+                  selector: {
+                    repoGuid: repo.guid,
+                  },
+                  lastN: BigInt(MAX_OPERATION_HISTORY),
+                })}
+                showPlan={true}
+                showDelete={true}
+            />
+        </TabsContent>
+
+        <TabsContent value="stats">
+             <Suspense fallback={<div>{m.loading()}</div>}>
+                <StatsPanel
+                    selector={create(OpSelectorSchema, {
+                    repoGuid: repo.guid,
+                    instanceId: config?.instance,
+                    })}
+                />
+            </Suspense>
+        </TabsContent>
+      </TabsRoot>
+    </Box>
   );
 };

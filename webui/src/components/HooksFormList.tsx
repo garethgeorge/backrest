@@ -1,31 +1,37 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Hook_Condition,
   Hook_ConditionSchema,
-  Hook_OnError,
   Hook_OnErrorSchema,
 } from "../../gen/ts/v1/config_pb";
 import {
+  Box,
   Button,
-  Card,
-  Form,
-  FormListFieldData,
+  Stack,
   Input,
-  Popover,
-  Select,
-  Tooltip,
-} from "antd";
-import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import { Rule } from "antd/es/form";
+  Text,
+  Badge,
+  IconButton,
+  Card,
+  Textarea
+} from "@chakra-ui/react";
+import {
+    FiPlus,
+    FiTrash2,
+    FiInfo
+} from "react-icons/fi";
+import { SelectRoot, SelectTrigger, SelectValueText, SelectContent, SelectItem } from "./ui/select";
+import { Tooltip } from "./ui/tooltip";
+import { createListCollection } from "@chakra-ui/react";
+import { Link } from "./ui/link";
 
 export interface HookFormData {
-  hooks: {
-    conditions: string[];
-  }[];
+  hooks: HookFields[];
 }
 
 export interface HookFields {
   conditions: string[];
+  onError?: string;
   actionCommand?: any;
   actionGotify?: any;
   actionDiscord?: any;
@@ -37,128 +43,168 @@ export interface HookFields {
 }
 
 export const hooksListTooltipText = (
-  <>
+  <Text as="span">
     Hooks let you configure actions e.g. notifications and scripts that run in
     response to the backup lifecycle. See{" "}
-    <a
+    <Link
       href="https://garethgeorge.github.io/backrest/docs/hooks"
       target="_blank"
+      color="blue.500"
     >
       the hook documentation
-    </a>{" "}
-    for available options, or
-    <a
+    </Link>{" "}
+    for available options, or{" "}
+    <Link
       href="https://garethgeorge.github.io/backrest/cookbooks/command-hook-examples"
       target="_blank"
+      color="blue.500"
     >
       the cookbook
-    </a>
+    </Link>{" "}
     for scripting examples.
-  </>
+  </Text>
 );
+
+const conditionCollection = createListCollection({
+    items: Hook_ConditionSchema.values.map((v) => ({
+        label: v.name,
+        value: v.name,
+    })),
+});
+
+const onErrorCollection = createListCollection({
+    items: Hook_OnErrorSchema.values.map((v) => ({
+        label: v.name,
+        value: v.name,
+    })),
+});
+
+
+interface HooksFormListProps {
+    value?: HookFields[];
+    onChange?: (value: HookFields[]) => void;
+}
 
 /**
  * HooksFormList is a UI component for editing a list of hooks that can apply either at the repo level or at the plan level.
  */
-export const HooksFormList = () => {
-  const form = Form.useFormInstance();
+export const HooksFormList = ({ value = [], onChange }: HooksFormListProps) => {
+  const hooks = value || [];
+
+  const addHook = (template: HookFields) => {
+      onChange?.([...hooks, template]);
+  };
+
+  const removeHook = (index: number) => {
+      const newHooks = [...hooks];
+      newHooks.splice(index, 1);
+      onChange?.(newHooks);
+  };
+
+  const updateHook = (index: number, newHook: HookFields) => {
+      const newHooks = [...hooks];
+      newHooks[index] = newHook;
+      onChange?.(newHooks);
+  };
 
   return (
-    <Form.List name="hooks">
-      {(fields, { add, remove }, { errors }) => (
-        <>
-          {fields.map((field, index) => {
-            const hookData = form.getFieldValue([
-              "hooks",
-              field.name,
-            ]) as HookFields;
+    <Stack gap={4}>
+        {hooks.map((hook, index) => (
+            <HookItem 
+                key={index} 
+                index={index} 
+                hook={hook} 
+                onRemove={() => removeHook(index)} 
+                onChange={(updated) => updateHook(index, updated)}
+            />
+        ))}
 
-            return (
-              <Card
-                key={index}
-                title={
-                  <>
-                    Hook {index} {findHookTypeName(hookData)}
-                    <MinusCircleOutlined
-                      className="dynamic-delete-button"
-                      onClick={() => remove(field.name)}
-                      style={{
-                        marginRight: "5px",
-                        marginTop: "2px",
-                        float: "right",
-                      }}
-                    />
-                  </>
-                }
-                size="small"
-                style={{ marginBottom: "5px" }}
-              >
-                <HookConditionsTooltip>
-                  <Form.Item name={[field.name, "conditions"]}>
-                    <Select
-                      mode="multiple"
-                      allowClear
-                      style={{ width: "100%" }}
-                      placeholder="Runs when..."
-                      options={Hook_ConditionSchema.values.map((v) => ({
-                        label: v.name,
-                        value: v.name,
-                      }))}
-                    />
-                  </Form.Item>
-                </HookConditionsTooltip>
-                <Form.Item
-                  shouldUpdate={(prevValues, curValues) => {
-                    return prevValues.hooks[index] !== curValues.hooks[index];
-                  }}
-                >
-                  <HookBuilder field={field} />
-                </Form.Item>
-              </Card>
-            );
-          })}
-          <Form.Item>
-            <Popover
-              content={
-                <>
-                  {hookTypes.map((hookType, index) => {
-                    return (
-                      <Button
-                        key={index}
-                        onClick={() => {
-                          add(structuredClone(hookType.template));
-                        }}
-                      >
-                        {hookType.name}
-                      </Button>
-                    );
-                  })}
-                </>
-              }
-              style={{ width: "60%" }}
-              placement="bottom"
+        <Box>
+            <SelectRoot
+                collection={createListCollection({ items: hookTypes.map(t => ({ label: t.name, value: t.name })) })}
+// @ts-ignore
+                onValueChange={(e) => {
+                    // @ts-ignore
+                    const type = hookTypes.find(t => t.name === e.value[0]);
+                    if (type) {
+                        addHook(JSON.parse(JSON.stringify(type.template))); // Deep clone
+                    }
+                }}
             >
-              <Button
-                type="dashed"
-                icon={<PlusOutlined />}
-                style={{ width: "100%" }}
-              >
-                Add Hook
-              </Button>
-            </Popover>
-            <Form.ErrorList errors={errors} />
-          </Form.Item>
-        </>
-      )}
-    </Form.List>
+                <SelectTrigger>
+                    {/* @ts-ignore */}
+                    <SelectValueText placeholder="Add Hook..." />
+                </SelectTrigger>
+                <SelectContent>
+                    {hookTypes.map((type) => (
+                         // @ts-ignore
+                        <SelectItem item={type} key={type.name} cursor="pointer">
+                            {type.name}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </SelectRoot>
+        </Box>
+    </Stack>
   );
 };
+
+const HookItem = ({ index, hook, onRemove, onChange }: { index: number, hook: HookFields, onRemove: () => void, onChange: (h: HookFields) => void }) => {
+    const typeName = findHookTypeName(hook);
+
+    // @ts-ignore
+    const handleConditionChange = (details: { value: string[] }) => {
+        onChange({ ...hook, conditions: details.value });
+    };
+
+    return (
+        <Card.Root size="sm" variant="outline">
+            <Card.Header pb={2}>
+                <Flex align="center" justify="space-between">
+                    <Text fontWeight="bold">Hook {index + 1}: {typeName}</Text>
+                    <IconButton size="xs" variant="ghost" colorPalette="red" onClick={onRemove} aria-label="Remove hook">
+                        <FiTrash2 />
+                    </IconButton>
+                </Flex>
+            </Card.Header>
+            <Card.Body gap={3}>
+                <HookConditionsTooltip>
+                    <SelectRoot
+                        multiple
+                        collection={conditionCollection}
+                        value={hook.conditions}
+                        // @ts-ignore
+                        onValueChange={handleConditionChange}
+                        size="sm"
+                    >
+                         <SelectTrigger>
+                             {/* @ts-ignore */}
+                             <SelectValueText placeholder="Runs when..." />
+                         </SelectTrigger>
+                         <SelectContent>
+                             {conditionCollection.items.map((item: any) => (
+                                 // @ts-ignore
+                                 <SelectItem item={item} key={item.value}>
+                                     {item.label}
+                                 </SelectItem>
+                             ))}
+                         </SelectContent>
+                    </SelectRoot>
+                </HookConditionsTooltip>
+
+                <HookBuilder hook={hook} onChange={onChange} />
+            </Card.Body>
+        </Card.Root>
+    )
+}
+
+import { Flex, For } from "@chakra-ui/react"; // Import missing Flex
 
 const hookTypes: {
   name: string;
   template: HookFields;
   oneofKey: string;
-  component: ({ field }: { field: FormListFieldData }) => React.ReactNode;
+  component: ({ hook, onChange }: { hook: HookFields; onChange: (h: HookFields) => void }) => React.ReactNode;
 }[] = [
   {
     name: "Command",
@@ -169,20 +215,24 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionCommand",
-    component: ({ field }: { field: FormListFieldData }) => {
+    component: ({ hook, onChange }) => {
+      const updateCommand = (val: string) => {
+          onChange({
+              ...hook,
+              actionCommand: { ...hook.actionCommand, command: val }
+          });
+      };
       return (
-        <>
-          <Tooltip title="Script to execute.">Script:</Tooltip>
-          <Form.Item
-            name={[field.name, "actionCommand", "command"]}
-            rules={[requiredField("command is required")]}
-          >
-            <Input.TextArea
-              style={{ width: "100%", fontFamily: "monospace" }}
-            />
-          </Form.Item>
-          <ItemOnErrorSelector field={field} />
-        </>
+        <Stack gap={2}>
+          <Text fontSize="sm" fontWeight="medium">Script:</Text>
+          <Textarea
+             fontFamily="monospace"
+             value={hook.actionCommand?.command || ""}
+             onChange={(e) => updateCommand(e.target.value)}
+             size="sm"
+          />
+          <ItemOnErrorSelector hook={hook} onChange={onChange} />
+        </Stack>
       );
     },
   },
@@ -195,45 +245,33 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionShoutrrr",
-    component: ({ field }: { field: FormListFieldData }) => {
+    component: ({ hook, onChange }) => {
+       const updateShoutrrr = (field: string, val: string) => {
+           onChange({
+               ...hook,
+               actionShoutrrr: { ...hook.actionShoutrrr, [field]: val }
+           });
+       };
       return (
-        <>
-          <Form.Item
-            name={[field.name, "actionShoutrrr", "shoutrrrUrl"]}
-            rules={[requiredField("shoutrrr URL is required")]}
-          >
-            <Input
-              addonBefore={
-                <Tooltip
-                  title={
-                    <>
-                      Shoutrrr is a multi-platform notification service,{" "}
-                      <a
-                        href="https://containrrr.dev/shoutrrr/v0.8/services/overview/"
-                        target="_blank"
-                      >
-                        see docs
-                      </a>{" "}
-                      to learn more about supported services
-                    </>
-                  }
-                >
-                  <div style={{ width: "8em" }}>Shoutrrr URL</div>
-                </Tooltip>
-              }
-            />
-          </Form.Item>
-          Text Template:
-          <Form.Item name={[field.name, "actionShoutrrr", "template"]}>
-            <Input.TextArea
-              style={{ width: "100%", fontFamily: "monospace" }}
-            />
-          </Form.Item>
-        </>
+        <Stack gap={2}>
+           <Input 
+            placeholder="Shoutrrr URL"
+            value={hook.actionShoutrrr?.shoutrrrUrl || ""}
+            onChange={(e) => updateShoutrrr("shoutrrrUrl", e.target.value)}
+            size="sm"
+          />
+          <Text fontSize="sm" mt={1}>Text Template:</Text>
+          <Textarea
+            fontFamily="monospace"
+            value={hook.actionShoutrrr?.template || ""}
+            onChange={(e) => updateShoutrrr("template", e.target.value)}
+            size="sm"
+          />
+        </Stack>
       );
     },
   },
-  {
+    {
     name: "Discord",
     template: {
       actionDiscord: {
@@ -243,24 +281,29 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionDiscord",
-    component: ({ field }: { field: FormListFieldData }) => {
+    component: ({ hook, onChange }) => {
+        const updateDiscord = (field: string, val: string) => {
+           onChange({
+               ...hook,
+               actionDiscord: { ...hook.actionDiscord, [field]: val }
+           });
+       };
       return (
-        <>
-          <Form.Item
-            name={[field.name, "actionDiscord", "webhookUrl"]}
-            rules={[requiredField("webhook URL is required")]}
-          >
-            <Input
-              addonBefore={<div style={{ width: "8em" }}>Discord Webhook</div>}
-            />
-          </Form.Item>
-          Text Template:
-          <Form.Item name={[field.name, "actionDiscord", "template"]}>
-            <Input.TextArea
-              style={{ width: "100%", fontFamily: "monospace" }}
-            />
-          </Form.Item>
-        </>
+        <Stack gap={2}>
+           <Input 
+            placeholder="Discord Webhook URL"
+            value={hook.actionDiscord?.webhookUrl || ""}
+            onChange={(e) => updateDiscord("webhookUrl", e.target.value)}
+            size="sm"
+          />
+          <Text fontSize="sm" mt={1}>Text Template:</Text>
+          <Textarea
+             fontFamily="monospace"
+             value={hook.actionDiscord?.template || ""}
+             onChange={(e) => updateDiscord("template", e.target.value)}
+             size="sm"
+          />
+        </Stack>
       );
     },
   },
@@ -278,56 +321,71 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionGotify",
-    component: ({ field }: { field: FormListFieldData }) => {
+    component: ({ hook, onChange }) => {
+        const updateGotify = (field: string, val: any) => {
+           onChange({
+               ...hook,
+               actionGotify: { ...hook.actionGotify, [field]: val }
+           });
+       };
       return (
-        <>
-          <Form.Item
-            name={[field.name, "actionGotify", "baseUrl"]}
-            rules={[
-              requiredField("gotify base URL is required"),
-              { type: "string" },
-            ]}
-          >
-            <Input
-              addonBefore={<div style={{ width: "8em" }}>Gotify Base URL</div>}
-            />
-          </Form.Item>
-          <Form.Item
-            name={[field.name, "actionGotify", "token"]}
-            rules={[requiredField("gotify token is required")]}
-          >
-            <Input
-              addonBefore={<div style={{ width: "8em" }}>Gotify Token</div>}
-            />
-          </Form.Item>
-          <Form.Item
-            name={[field.name, "actionGotify", "titleTemplate"]}
-            rules={[requiredField("gotify title template is required")]}
-          >
-            <Input
-              addonBefore={<div style={{ width: "8em" }}>Title Template</div>}
-            />
-          </Form.Item>
-          Text Template:
-          <Form.Item name={[field.name, "actionGotify", "template"]}>
-            <Input.TextArea
-              style={{ width: "100%", fontFamily: "monospace" }}
-            />
-          </Form.Item>
-          <Form.Item name={[field.name, "actionGotify", "priority"]}>
-            <Select
-              allowClear
-              style={{ width: "100%" }}
-              placeholder={"Set priority"}
-              options={[
-                  {label: "0 - No notification", value: 0},
-                  {label: "1 - Icon in notification bar", value: 1},
-                  {label: "4 - Icon in notification bar + Sound", value: 4},
-                  {label: "8 - Icon in notification bar + Sound + Vibration", value: 8},
-              ]}
-            />
-          </Form.Item>
-        </>
+        <Stack gap={2}>
+           <Input 
+            placeholder="Gotify Base URL"
+            value={hook.actionGotify?.baseUrl || ""}
+            onChange={(e) => updateGotify("baseUrl", e.target.value)}
+            size="sm"
+          />
+           <Input 
+            placeholder="Gotify Token"
+            value={hook.actionGotify?.token || ""}
+            onChange={(e) => updateGotify("token", e.target.value)}
+            size="sm"
+          />
+          <Input 
+            placeholder="Title Template"
+            value={hook.actionGotify?.titleTemplate || ""}
+            onChange={(e) => updateGotify("titleTemplate", e.target.value)}
+            size="sm"
+          />
+          <Text fontSize="sm" mt={1}>Text Template:</Text>
+          <Textarea
+             fontFamily="monospace"
+             value={hook.actionGotify?.template || ""}
+             onChange={(e) => updateGotify("template", e.target.value)}
+             size="sm"
+          />
+           <SelectRoot
+                collection={createListCollection({ items: [
+                  {label: "0 - No notification", value: "0"},
+                  {label: "1 - Icon in notification bar", value: "1"},
+                  {label: "4 - Icon in notification bar + Sound", value: "4"},
+                  {label: "8 - Icon in notification bar + Sound + Vibration", value: "8"},
+                ]})}
+                value={[String(hook.actionGotify?.priority ?? 5)]}
+                // @ts-ignore
+                onValueChange={(e) => updateGotify("priority", parseInt(e.value[0]))}
+                size="sm"
+            >
+                <SelectTrigger>
+                    {/* @ts-ignore */}
+                    <SelectValueText placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                    {[
+                  {label: "0 - No notification", value: "0"},
+                  {label: "1 - Icon in notification bar", value: "1"},
+                  {label: "4 - Icon in notification bar + Sound", value: "4"},
+                  {label: "8 - Icon in notification bar + Sound + Vibration", value: "8"},
+                ].map((item) => (
+                    // @ts-ignore
+                         <SelectItem item={item} key={item.value}>
+                             {item.label}
+                         </SelectItem>
+                    ))}
+                </SelectContent>
+            </SelectRoot>
+        </Stack>
       );
     },
   },
@@ -341,24 +399,29 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionSlack",
-    component: ({ field }: { field: FormListFieldData }) => {
+    component: ({ hook, onChange }) => {
+        const updateSlack = (field: string, val: string) => {
+           onChange({
+               ...hook,
+               actionSlack: { ...hook.actionSlack, [field]: val }
+           });
+       };
       return (
-        <>
-          <Form.Item
-            name={[field.name, "actionSlack", "webhookUrl"]}
-            rules={[requiredField("webhook URL is required")]}
-          >
-            <Input
-              addonBefore={<div style={{ width: "8em" }}>Slack Webhook</div>}
-            />
-          </Form.Item>
-          Text Template:
-          <Form.Item name={[field.name, "actionSlack", "template"]}>
-            <Input.TextArea
-              style={{ width: "100%", fontFamily: "monospace" }}
-            />
-          </Form.Item>
-        </>
+        <Stack gap={2}>
+           <Input 
+            placeholder="Slack Webhook URL"
+            value={hook.actionSlack?.webhookUrl || ""}
+            onChange={(e) => updateSlack("webhookUrl", e.target.value)}
+            size="sm"
+          />
+          <Text fontSize="sm" mt={1}>Text Template:</Text>
+           <Textarea
+             fontFamily="monospace"
+             value={hook.actionSlack?.template || ""}
+             onChange={(e) => updateSlack("template", e.target.value)}
+             size="sm"
+          />
+        </Stack>
       );
     },
   },
@@ -372,22 +435,29 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionHealthchecks",
-    component: ({ field }: { field: FormListFieldData }) => {
+    component: ({ hook, onChange }) => {
+         const updateHealthchecks = (field: string, val: string) => {
+           onChange({
+               ...hook,
+               actionHealthchecks: { ...hook.actionHealthchecks, [field]: val }
+           });
+       };
       return (
-        <>
-          <Form.Item
-            name={[field.name, "actionHealthchecks", "webhookUrl"]}
-            rules={[requiredField("Ping URL is required")]}
-          >
-            <Input addonBefore={<div style={{ width: "8em" }}>Ping URL</div>} />
-          </Form.Item>
-          Text Template:
-          <Form.Item name={[field.name, "actionHealthchecks", "template"]}>
-            <Input.TextArea
-              style={{ width: "100%", fontFamily: "monospace" }}
-            />
-          </Form.Item>
-        </>
+        <Stack gap={2}>
+           <Input 
+            placeholder="Ping URL"
+            value={hook.actionHealthchecks?.webhookUrl || ""}
+            onChange={(e) => updateHealthchecks("webhookUrl", e.target.value)}
+            size="sm"
+          />
+          <Text fontSize="sm" mt={1}>Text Template:</Text>
+           <Textarea
+             fontFamily="monospace"
+             value={hook.actionHealthchecks?.template || ""}
+             onChange={(e) => updateHealthchecks("template", e.target.value)}
+             size="sm"
+          />
+        </Stack>
       );
     },
   },
@@ -402,66 +472,35 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionTelegram",
-    component: ({ field }: { field: FormListFieldData }) => {
+    component: ({ hook, onChange }) => {
+         const updateTelegram = (field: string, val: string) => {
+           onChange({
+               ...hook,
+               actionTelegram: { ...hook.actionTelegram, [field]: val }
+           });
+       };
       return (
-        <>
-          <Form.Item
-            name={[field.name, "actionTelegram", "botToken"]}
-            rules={[requiredField("bot token is required")]}
-          >
-            <Input
-              addonBefore={
-                <Tooltip
-                  title={
-                    <>
-                      Create a bot with{" "}
-                      <a
-                        href="https://t.me/botfather"
-                        target="_blank"
-                      >
-                        @BotFather
-                      </a>{" "}
-                      and use the token provided
-                    </>
-                  }
-                >
-                  <div style={{ width: "8em" }}>Bot Token</div>
-                </Tooltip>
-              }
-            />
-          </Form.Item>
-          <Form.Item
-            name={[field.name, "actionTelegram", "chatId"]}
-            rules={[requiredField("chat ID is required")]}
-          >
-            <Input
-              addonBefore={
-                <Tooltip
-                  title={
-                    <>
-                      Chat ID can be a user ID, group ID, or channel ID. Use{" "}
-                      <a
-                        href="https://t.me/userinfobot"
-                        target="_blank"
-                      >
-                        @userinfobot
-                      </a>{" "}
-                      to find your user ID
-                    </>
-                  }
-                >
-                  <div style={{ width: "8em" }}>Chat ID</div>
-                </Tooltip>
-              }
-            />
-          </Form.Item>
-          Text Template:
-          <Form.Item name={[field.name, "actionTelegram", "template"]}>
-            <Input.TextArea
-              style={{ width: "100%", fontFamily: "monospace" }}
-            />
-          </Form.Item>
-        </>
+        <Stack gap={2}>
+           <Input 
+            placeholder="Bot Token"
+            value={hook.actionTelegram?.botToken || ""}
+            onChange={(e) => updateTelegram("botToken", e.target.value)}
+            size="sm"
+          />
+           <Input 
+            placeholder="Chat ID"
+            value={hook.actionTelegram?.chatId || ""}
+            onChange={(e) => updateTelegram("chatId", e.target.value)}
+            size="sm"
+          />
+          <Text fontSize="sm" mt={1}>Text Template:</Text>
+           <Textarea
+             fontFamily="monospace"
+             value={hook.actionTelegram?.template || ""}
+             onChange={(e) => updateTelegram("template", e.target.value)}
+             size="sm"
+          />
+        </Stack>
       );
     },
   },
@@ -479,103 +518,82 @@ const findHookTypeName = (field: HookFields): string => {
   return "Unknown";
 };
 
-const HookBuilder = ({ field }: { field: FormListFieldData }) => {
-  const form = Form.useFormInstance();
-  const hookData = form.getFieldValue(["hooks", field.name]) as HookFields;
-
-  if (!hookData) {
-    return <p>Unknown hook type</p>;
+const HookBuilder = ({ hook, onChange }: { hook: HookFields, onChange: (h: HookFields) => void }) => {
+  if (!hook) {
+    return <Text>Unknown hook type</Text>;
   }
 
   for (const hookType of hookTypes) {
-    if (hookType.oneofKey in hookData) {
-      return hookType.component({ field });
+    if (hookType.oneofKey in hook) {
+      return hookType.component({ hook, onChange });
     }
   }
 
-  return <p>Unknown hook type</p>;
+  return <Text>Unknown hook type</Text>;
 };
 
-const ItemOnErrorSelector = ({ field }: { field: FormListFieldData }) => {
+const ItemOnErrorSelector = ({ hook, onChange }: { hook: HookFields, onChange: (h: HookFields) => void }) => {
   return (
-    <>
-      <Tooltip
-        title={
-          <>
-            What happens when the hook fails (only effective on start hooks e.g.
-            backup start, prune start, check start)
-            <ul>
-              <li>
-                IGNORE - the failure is ignored, subsequent hooks and the backup
-                operation will run as normal.
-              </li>
-              <li>
-                FATAL - stops the backup with an error status (triggers an error
-                notification). Skips running all subsequent hooks.
-              </li>
-              <li>
-                CANCEL - marks the backup as cancelled but does not trigger any
-                error notification. Skips running all subsequent hooks.
-              </li>
-            </ul>
-          </>
-        }
-      >
-        Error Behavior:
-      </Tooltip>
-      <Form.Item name={[field.name, "onError"]}>
-        <Select
-          allowClear
-          style={{ width: "100%" }}
-          placeholder={"Specify what happens when this hook fails..."}
-          options={Hook_OnErrorSchema.values.map((v) => ({
-            label: v.name,
-            value: v.name,
-          }))}
-        />
-      </Form.Item>
-    </>
+    <Stack gap={2}>
+       <Flex align="center" gap={1}>
+           <Text fontSize="sm" fontWeight="medium">Error Behavior:</Text>
+            <Tooltip
+                content={
+                <Box>
+                    <Text fontWeight="bold">What happens when the hook fails</Text>
+                    <Text fontSize="xs">(only effective on start hooks e.g. backup start)</Text>
+                    <Stack gap={1} mt={1} fontSize="xs">
+                        <Text>• IGNORE - failure is ignored</Text>
+                        <Text>• FATAL - stops operation with error</Text>
+                        <Text>• CANCEL - stops operation (cancelled)</Text>
+                    </Stack>
+                </Box>
+                }
+            >
+                <IconButton aria-label="info" size="xs" variant="ghost"><FiInfo /></IconButton>
+            </Tooltip>
+       </Flex>
+       <SelectRoot
+            collection={onErrorCollection}
+            value={[hook.onError || ""]}
+            // @ts-ignore
+            onValueChange={(e) => onChange({ ...hook, onError: e.value[0] })}
+            size="sm"
+        >
+            <SelectTrigger>
+                {/* @ts-ignore */}
+                <SelectValueText placeholder="Error behavior..." />
+            </SelectTrigger>
+            <SelectContent>
+                {onErrorCollection.items.map((item: any) => (
+                    // @ts-ignore
+                    <SelectItem item={item} key={item.value}>
+                        {item.label}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </SelectRoot>
+    </Stack>
   );
 };
-
-const requiredField = (message: string, extra?: Rule) => ({
-  required: true,
-  message: message,
-});
 
 const HookConditionsTooltip = ({ children }: { children: React.ReactNode }) => {
   return (
     <Tooltip
-      title={
-        <div>
-          Available conditions
-          <ul>
-            <li>CONDITION_ANY_ERROR - error executing any task</li>
-            <li>CONDITION_SNAPSHOT_START - start of a backup operation</li>
-            <li>
-              CONDITION_SNAPSHOT_END - end of backup operation (success or
-              failure)
-            </li>
-            <li>
-              CONDITION_SNAPSHOT_SUCCESS - end of successful backup operation
-            </li>
-            <li>CONDITION_SNAPSHOT_ERROR - end of failed backup</li>
-            <li>CONDITION_SNAPSHOT_WARNING - end of partial backup</li>
-            <li>CONDITION_PRUNE_START - start of prune operation</li>
-            <li>CONDITION_PRUNE_SUCCESS - end of successful prune</li>
-            <li>CONDITION_PRUNE_ERROR - end of failed prune</li>
-            <li>CONDITION_CHECK_START - start of check operation</li>
-            <li>CONDITION_CHECK_SUCCESS - end of successful check</li>
-            <li>CONDITION_CHECK_ERROR - end of failed check</li>
-          </ul>
-          for more info see the{" "}
-          <a
-            href="https://garethgeorge.github.io/backrest/docs/hooks"
-            target="_blank"
-          >
-            documentation
-          </a>
-        </div>
+      content={
+        <Box>
+          <Text fontWeight="bold">Available conditions</Text>
+          <Stack gap={0} fontSize="xs">
+            <Text>• CONDITION_ANY_ERROR - error executing any task</Text>
+            <Text>• CONDITION_SNAPSHOT_START - start of a backup operation</Text>
+            <Text>• CONDITION_SNAPSHOT_END - end of backup operation</Text>
+            <Text>• CONDITION_SNAPSHOT_SUCCESS - end of successful backup</Text>
+            <Text>• CONDITION_SNAPSHOT_ERROR - end of failed backup</Text>
+            <Text>• CONDITION_SNAPSHOT_WARNING - end of partial backup</Text>
+            <Text>• CONDITION_PRUNE_START - start of prune operation</Text>
+             <Text>• ... see docs for more</Text>
+          </Stack>
+        </Box>
       }
     >
       {children}

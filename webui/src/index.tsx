@@ -21,23 +21,27 @@ const Root = ({ children }: { children: React.ReactNode }) => {
 
 const darkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
+import { Provider } from "@/components/ui/provider"
+
 const el = document.querySelector("#app");
 el &&
   createRoot(el).render(
-    <AntdConfigProvider
-      theme={{
-        algorithm: [
-          darkTheme ? theme.darkAlgorithm : theme.defaultAlgorithm,
-          theme.compactAlgorithm,
-        ],
-      }}
-    >
-      <React.StrictMode>
-        <Root>
-          <HashRouter>
-            <App />
-          </HashRouter>
-        </Root>
-      </React.StrictMode>
-    </AntdConfigProvider>
+    <React.StrictMode>
+      <Provider>
+        <AntdConfigProvider
+          theme={{
+            algorithm: [
+              darkTheme ? theme.darkAlgorithm : theme.defaultAlgorithm,
+              theme.compactAlgorithm,
+            ],
+          }}
+        >
+          <Root>
+            <HashRouter>
+              <App />
+            </HashRouter>
+          </Root>
+        </AntdConfigProvider>
+      </Provider>
+    </React.StrictMode>
   );

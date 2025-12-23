@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Operation } from "../../gen/ts/v1/operations_pb";
-import { Empty, List } from "antd";
 import {
   GetOperationsRequestSchema,
   type GetOperationsRequest,
@@ -10,6 +9,16 @@ import { OperationRow } from "./OperationRow";
 import { OplogState, syncStateFromRequest } from "../state/logstate";
 import { shouldHideStatus } from "../state/oplog";
 import { toJsonString } from "@bufbuild/protobuf";
+import { Stack, Box, Flex } from "@chakra-ui/react";
+import { EmptyState } from "./ui/empty-state";
+import { FiList } from "react-icons/fi";
+import {
+  PaginationRoot,
+  PaginationItems,
+  PaginationNextTrigger,
+  PaginationPrevTrigger,
+} from "./ui/pagination";
+import { toaster } from "./ui/toaster";
 
 // OperationList displays a list of operations that are either fetched based on 'req' or passed in via 'useBackups'.
 // If showPlan is provided the planId will be displayed next to each operation in the operation list.
@@ -29,8 +38,9 @@ export const OperationListView = ({
   showDelete?: boolean; // allows deleting individual operation rows, useful for the list view in the plan / repo panels.
 }>) => {
   const alertApi = useAlertApi();
-
-  let [operations, setOperations] = useState<Operation[]>([]);
+  const [operations, setOperations] = useState<Operation[]>([]);
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
 
   if (req) {
     useEffect(() => {
@@ -43,26 +53,22 @@ export const OperationListView = ({
       });
 
       return syncStateFromRequest(logState, req, (e) => {
-        alertApi!.error("Failed to fetch operations: " + e.message);
+        toaster.create({ description: "Failed to fetch operations: " + e.message, type: "error" });
       });
     }, [toJsonString(GetOperationsRequestSchema, req)]);
   }
-  if (!operations) {
-    return (
-      <Empty
-        description="No operations yet."
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-      ></Empty>
-    );
+
+  const hookExecutionsForOperation: Map<bigint, Operation[]> = new Map();
+  let operationsForDisplay: Operation[] = [];
+  
+  // Local variable to hold the source operations
+  let sourceOperations = operations;
+  if (useOperations) {
+    sourceOperations = [...useOperations];
   }
 
-  const hookExecutionsForOperation: Map<BigInt, Operation[]> = new Map();
-  let operationsForDisplay: Operation[] = [];
-  if (useOperations) {
-    operations = [...useOperations];
-  }
   if (!displayHooksInline) {
-    operationsForDisplay = operations.filter((op) => {
+    operationsForDisplay = sourceOperations.filter((op) => {
       if (op.op.case === "operationRunHook") {
         const parentOp = op.op.value.parentOp;
         if (!hookExecutionsForOperation.has(parentOp)) {
@@ -74,33 +80,53 @@ export const OperationListView = ({
       return true;
     });
   } else {
-    operationsForDisplay = operations;
+    operationsForDisplay = sourceOperations;
   }
+  
   operationsForDisplay.sort((a, b) => {
     return Number(b.unixTimeStartMs - a.unixTimeStartMs);
   });
+
+  if (!operationsForDisplay || operationsForDisplay.length === 0) {
+    return (
+      <EmptyState
+        title="No operations yet"
+        description="Operations will appear here once they start."
+        icon={<FiList />}
+      />
+    );
+  }
+
+  const total = operationsForDisplay.length;
+  const start = (page - 1) * pageSize;
+  const pagedOperations = operationsForDisplay.slice(start, start + pageSize);
+
   return (
-    <List
-      itemLayout="horizontal"
-      size="small"
-      dataSource={operationsForDisplay}
-      renderItem={(op) => {
-        return (
-          <OperationRow
-            alertApi={alertApi!}
-            key={op.id}
-            operation={op}
-            showPlan={showPlan || false}
-            hookOperations={hookExecutionsForOperation.get(op.id)}
-            showDelete={showDelete}
-          />
-        );
-      }}
-      pagination={
-        operationsForDisplay.length > 25
-          ? { position: "both", align: "center", defaultPageSize: 25 }
-          : undefined
-      }
-    />
+    <Stack gap={4}>
+      {pagedOperations.map((op) => (
+        <OperationRow
+          key={op.id}
+          operation={op}
+          showPlan={showPlan || false}
+          hookOperations={hookExecutionsForOperation.get(op.id)}
+          showDelete={showDelete}
+        />
+      ))}
+      
+      {total > pageSize && (
+        <Flex justify="center" mt={4}>
+          <PaginationRoot
+            count={total}
+            pageSize={pageSize}
+            page={page}
+            onPageChange={(e: any) => setPage(e.page)}
+          >
+             <PaginationPrevTrigger />
+             <PaginationItems />
+             <PaginationNextTrigger />
+          </PaginationRoot>
+        </Flex>
+      )}
+    </Stack>
   );
 };

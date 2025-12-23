@@ -1,5 +1,5 @@
-import { Breadcrumb, Layout, Spin, theme } from "antd";
-import { Content } from "antd/es/layout/layout";
+import { Box, Container } from "@chakra-ui/react";
+import { BreadcrumbRoot, BreadcrumbLink, BreadcrumbCurrentLink } from "../components/ui/breadcrumb";
 import React from "react";
 
 interface BreadcrumbItem {
@@ -14,26 +14,36 @@ export const MainContentAreaTemplate = ({
   breadcrumbs: BreadcrumbItem[];
   children: React.ReactNode;
 }) => {
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken();
-
   return (
-    <Layout style={{ padding: "0 24px 24px" }}>
-      <Breadcrumb
-        style={{ margin: "16px 0" }}
-        items={breadcrumbs.map((b) => ({ title: b.title, onClick: b.onClick }))}
-      ></Breadcrumb>
-      <Content
-        style={{
-          padding: 24,
-          margin: 0,
-          minHeight: 280,
-          background: colorBgContainer,
-        }}
+    <Box px={6} pb={6}>
+      <BreadcrumbRoot my={4}>
+        {breadcrumbs.map((b, i) => {
+            const isLast = i === breadcrumbs.length - 1;
+            if (isLast) {
+                return <BreadcrumbCurrentLink key={i}>{b.title}</BreadcrumbCurrentLink>
+            }
+            return (
+                 <BreadcrumbLink 
+                    key={i} 
+                    onClick={b.onClick} 
+                    cursor={b.onClick ? "pointer" : "default"}
+                    color={b.onClick ? "blue.500" : "inherit"}
+                 >
+                    {b.title}
+                </BreadcrumbLink>
+            )
+        })}
+      </BreadcrumbRoot>
+      <Box
+        p={6}
+        m={0}
+        minH={280}
+        bg="bg.panel" // Using semantic token for generic background
+        borderRadius="md"
+        boxShadow="none" // Antd usually has no shadow on content bg, but Chakra Cards do. Keeping simple for now.
       >
         {children}
-      </Content>
-    </Layout>
+      </Box>
+    </Box>
   );
 };
