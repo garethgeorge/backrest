@@ -23,11 +23,7 @@ import {
 } from "../../../gen/ts/v1/service_pb";
 import { backrestService } from "../../api/client";
 import { useAlertApi } from "../../components/common/Alerts";
-import {
-  formatBytes,
-  formatDuration,
-  formatTime,
-} from "../../lib/formatting";
+import { formatBytes, formatDuration, formatTime } from "../../lib/formatting";
 import {
   Bar,
   BarChart,
@@ -140,16 +136,33 @@ export const SummaryDashboard = () => {
       <Stack gap={4}>
         <Heading size="md">{m.dashboard_system_info_title()}</Heading>
         <DataListRoot orientation="horizontal">
-          <DataListItem label={m.dashboard_config_path()} value={summaryData.configPath} />
-          <DataListItem label={m.dashboard_data_dir()} value={summaryData.dataPath} />
+          <DataListItem
+            label={m.dashboard_config_path()}
+            value={summaryData.configPath}
+          />
+          <DataListItem
+            label={m.dashboard_data_dir()}
+            value={summaryData.dataPath}
+          />
         </DataListRoot>
 
         <AccordionRoot collapsible variant="plain">
           <AccordionItem value="config">
-            <AccordionItemTrigger>{m.dashboard_config_json()}</AccordionItemTrigger>
+            <AccordionItemTrigger>
+              {m.dashboard_config_json()}
+            </AccordionItemTrigger>
             <AccordionItemContent>
-              <Box as="pre" p={2} bg="gray.900" color="white" borderRadius="md" fontSize="xs" overflowX="auto">
-                {config && toJsonString(ConfigSchema, config, { prettySpaces: 2 })}
+              <Box
+                as="pre"
+                p={2}
+                bg="gray.900"
+                color="white"
+                borderRadius="md"
+                fontSize="xs"
+                overflowX="auto"
+              >
+                {config &&
+                  toJsonString(ConfigSchema, config, { prettySpaces: 2 })}
               </Box>
             </AccordionItemContent>
           </AccordionItem>
@@ -205,7 +218,9 @@ const SummaryPanel = ({
 
     return (
       <Box bg="bg.panel" p={2} boxShadow="md" borderRadius="md" opacity={0.9}>
-        <Text fontSize="sm">{m.dashboard_backup_tooltip_time({ time: formatTime(entry.time) })}</Text>
+        <Text fontSize="sm">
+          {m.dashboard_backup_tooltip_time({ time: formatTime(entry.time) })}
+        </Text>
         <br />
         {isPending ? (
           <Text fontSize="xs" color="gray.500">
@@ -213,14 +228,19 @@ const SummaryPanel = ({
           </Text>
         ) : (
           <Text fontSize="xs" color="gray.500">
-            {m.dashboard_backup_tooltip_finished({ duration: formatDuration(entry.durationMs), bytes: formatBytes(entry.bytesAdded) })}
+            {m.dashboard_backup_tooltip_finished({
+              duration: formatDuration(entry.durationMs),
+              bytes: formatBytes(entry.bytesAdded),
+            })}
           </Text>
         )}
       </Box>
     );
   };
 
-  const DataValue = ({ children }: { children: React.ReactNode }) => <Text fontWeight="medium">{children}</Text>;
+  const DataValue = ({ children }: { children: React.ReactNode }) => (
+    <Text fontWeight="medium">{children}</Text>
+  );
 
   const CardInfo = () => (
     <DataListRoot orientation="vertical" size="sm">
@@ -230,24 +250,44 @@ const SummaryPanel = ({
           <Flex gap={2}>
             {summary.backupsSuccessLast30days ? (
               <Text color="green.500">
-                {summary.backupsSuccessLast30days + " " + m.dashboard_card_backups_ok()}
+                {summary.backupsSuccessLast30days +
+                  " " +
+                  m.dashboard_card_backups_ok()}
               </Text>
             ) : undefined}
             {summary.backupsFailed30days ? (
               <Text color="red.500">
-                {summary.backupsFailed30days + " " + m.dashboard_card_backups_failed()}
+                {summary.backupsFailed30days +
+                  " " +
+                  m.dashboard_card_backups_failed()}
               </Text>
             ) : undefined}
             {summary.backupsWarningLast30days ? (
               <Text color="orange.500">
-                {summary.backupsWarningLast30days + " " + m.dashboard_card_backups_warning()}
+                {summary.backupsWarningLast30days +
+                  " " +
+                  m.dashboard_card_backups_warning()}
               </Text>
             ) : undefined}
           </Flex>
         }
       />
-      <DataListItem label={m.dashboard_card_bytes_scanned_30d()} value={<DataValue>{formatBytes(Number(summary.bytesScannedLast30days))}</DataValue>} />
-      <DataListItem label={m.dashboard_card_bytes_added_30d()} value={<DataValue>{formatBytes(Number(summary.bytesAddedLast30days))}</DataValue>} />
+      <DataListItem
+        label={m.dashboard_card_bytes_scanned_30d()}
+        value={
+          <DataValue>
+            {formatBytes(Number(summary.bytesScannedLast30days))}
+          </DataValue>
+        }
+      />
+      <DataListItem
+        label={m.dashboard_card_bytes_added_30d()}
+        value={
+          <DataValue>
+            {formatBytes(Number(summary.bytesAddedLast30days))}
+          </DataValue>
+        }
+      />
 
       {!isMobile() && (
         <>
@@ -261,13 +301,26 @@ const SummaryPanel = ({
               </DataValue>
             }
           />
-          <DataListItem label={m.dashboard_card_bytes_scanned_avg()} value={<DataValue>{formatBytes(Number(summary.bytesScannedAvg))}</DataValue>} />
-          <DataListItem label={m.dashboard_card_bytes_added_avg()} value={<DataValue>{formatBytes(Number(summary.bytesAddedAvg))}</DataValue>} />
+          <DataListItem
+            label={m.dashboard_card_bytes_scanned_avg()}
+            value={
+              <DataValue>
+                {formatBytes(Number(summary.bytesScannedAvg))}
+              </DataValue>
+            }
+          />
+          <DataListItem
+            label={m.dashboard_card_bytes_added_avg()}
+            value={
+              <DataValue>
+                {formatBytes(Number(summary.bytesAddedAvg))}
+              </DataValue>
+            }
+          />
         </>
       )}
     </DataListRoot>
   );
-
 
   return (
     <Card.Root width="full">
@@ -284,7 +337,11 @@ const SummaryPanel = ({
               <BarChart data={recentBackupsChart}>
                 <Bar dataKey="durationMs">
                   {recentBackupsChart.map((entry, index) => (
-                    <Cell cursor="pointer" fill={entry.color} key={`${index}`} />
+                    <Cell
+                      cursor="pointer"
+                      fill={entry.color}
+                      key={`${index}`}
+                    />
                   ))}
                 </Bar>
                 <YAxis dataKey="durationMs" hide />
@@ -320,7 +377,7 @@ const MultihostSummary = ({
       continue;
     }
     knownHostTiles.push(
-      <PeerStateTile peerState={peerState} key={peerState.peerKeyid} />
+      <PeerStateTile peerState={peerState} key={peerState.peerKeyid} />,
     );
   }
 
@@ -331,7 +388,7 @@ const MultihostSummary = ({
       continue;
     }
     authorizedClientTiles.push(
-      <PeerStateTile peerState={peerState} key={peerState.peerKeyid} />
+      <PeerStateTile peerState={peerState} key={peerState.peerKeyid} />,
     );
   }
 
@@ -340,17 +397,13 @@ const MultihostSummary = ({
       {knownHostTiles.length > 0 ? (
         <Stack gap={4}>
           <Heading size="md">{m.dashboard_remote_hosts_title()}</Heading>
-          <Stack gap={4}>
-            {knownHostTiles}
-          </Stack>
+          <Stack gap={4}>{knownHostTiles}</Stack>
         </Stack>
       ) : null}
       {authorizedClientTiles.length > 0 ? (
         <Stack gap={4}>
           <Heading size="md">{m.dashboard_remote_clients_title()}</Heading>
-          <Stack gap={4}>
-            {authorizedClientTiles}
-          </Stack>
+          <Stack gap={4}>{authorizedClientTiles}</Stack>
         </Stack>
       ) : null}
     </Stack>
@@ -371,19 +424,22 @@ const PeerStateTile = ({ peerState }: { peerState: PeerState }) => {
     <Card.Root key={peerState.peerKeyid} width="full">
       <Card.Header>
         <Flex justify="space-between" align="center">
-          <Card.Title>
-            {peerState.peerInstanceId}
-          </Card.Title>
+          <Card.Title>{peerState.peerInstanceId}</Card.Title>
           <Flex align="center" gap={2}>
             <PeerStateConnectionStatusIcon peerState={peerState} />
           </Flex>
         </Flex>
-
       </Card.Header>
       <Card.Body>
         <DataListRoot orientation="horizontal">
-          <DataListItem label={m.dashboard_peer_instance_id()} value={peerState.peerInstanceId} />
-          <DataListItem label={m.dashboard_peer_public_key_id()} value={peerState.peerKeyid} />
+          <DataListItem
+            label={m.dashboard_peer_instance_id()}
+            value={peerState.peerInstanceId}
+          />
+          <DataListItem
+            label={m.dashboard_peer_public_key_id()}
+            value={peerState.peerKeyid}
+          />
           <DataListItem
             label={m.dashboard_peer_last_state_update()}
             value={
@@ -404,7 +460,7 @@ const TimeSinceLastHeartbeat = ({
   lastHeartbeatMillis: number;
 }) => {
   const [timeSince, setTimeSince] = useState(
-    lastHeartbeatMillis ? Date.now() - lastHeartbeatMillis : 0
+    lastHeartbeatMillis ? Date.now() - lastHeartbeatMillis : 0,
   );
 
   useEffect(() => {
@@ -415,6 +471,9 @@ const TimeSinceLastHeartbeat = ({
   }, [lastHeartbeatMillis]);
 
   return (
-    <Text>{formatTime(lastHeartbeatMillis)} ({formatDuration(timeSince)} {m.dashboard_peer_ago()})</Text>
+    <Text>
+      {formatTime(lastHeartbeatMillis)} ({formatDuration(timeSince)}{" "}
+      {m.dashboard_peer_ago()})
+    </Text>
   );
 };

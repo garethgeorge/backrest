@@ -6,7 +6,7 @@ import {
   ComboboxContent,
   ComboboxItem,
   ComboboxControl,
-  ComboboxEmpty
+  ComboboxEmpty,
 } from "../ui/combobox";
 import { debounce } from "../../lib/util";
 import { backrestService } from "../../api/client";
@@ -28,7 +28,7 @@ export const URIAutocomplete = (props: any) => {
     () =>
       debounce((inputVal: string) => {
         // Only fetch if input has path separators or is long enough?
-        // Logic from original: 
+        // Logic from original:
         const lastSlash = inputVal.lastIndexOf(sep);
         let searchVal = inputVal;
         if (lastSlash !== -1) {
@@ -43,13 +43,13 @@ export const URIAutocomplete = (props: any) => {
             if (!res.values) return;
             const newItems = res.values.map((v) => ({
               label: searchVal + sep + v,
-              value: searchVal + sep + v
+              value: searchVal + sep + v,
             }));
             setItems(newItems);
           })
           .catch((e) => console.error("Path autocomplete error:", e));
       }, 300),
-    []
+    [],
   );
 
   const handleInputChange = (e: any) => {
@@ -62,7 +62,7 @@ export const URIAutocomplete = (props: any) => {
     if (e.open) {
       fetchOptions(value || "");
     }
-  }
+  };
 
   return (
     <ComboboxRoot
@@ -82,7 +82,7 @@ export const URIAutocomplete = (props: any) => {
       </ComboboxControl>
       <ComboboxContent>
         {items.length === 0 && <ComboboxEmpty>No paths found</ComboboxEmpty>}
-        {items.map(item => (
+        {items.map((item) => (
           <ComboboxItem key={item.value} item={item}>
             {item.label}
           </ComboboxItem>

@@ -1,18 +1,41 @@
-import { Operation, OperationEvent, OperationEventType, OperationStatus } from "../../gen/ts/v1/operations_pb";
-import { GetOperationsRequest, GetOperationsRequestSchema, OpSelector } from "../../gen/ts/v1/service_pb";
-import { getOperations, subscribeToOperations, unsubscribeFromOperations } from "./oplog";
+import {
+  Operation,
+  OperationEvent,
+  OperationEventType,
+  OperationStatus,
+} from "../../gen/ts/v1/operations_pb";
+import {
+  GetOperationsRequest,
+  GetOperationsRequestSchema,
+  OpSelector,
+} from "../../gen/ts/v1/service_pb";
+import {
+  getOperations,
+  subscribeToOperations,
+  unsubscribeFromOperations,
+} from "./oplog";
 import { create } from "@bufbuild/protobuf";
 
-type Subscriber = (ids: bigint[], flowIDs: bigint[], event: OperationEventType) => void;
+type Subscriber = (
+  ids: bigint[],
+  flowIDs: bigint[],
+  event: OperationEventType,
+) => void;
 
-export const syncStateFromRequest = (state: OplogState, req: GetOperationsRequest, onError?: (e: Error) => void): () => void => {
-  getOperations(req).then((res) => {
-    state.add(...res);
-  }).catch((e) => {
-    if (onError) {
-      onError(e);
-    }
-  });
+export const syncStateFromRequest = (
+  state: OplogState,
+  req: GetOperationsRequest,
+  onError?: (e: Error) => void,
+): (() => void) => {
+  getOperations(req)
+    .then((res) => {
+      state.add(...res);
+    })
+    .catch((e) => {
+      if (onError) {
+        onError(e);
+      }
+    });
 
   const cbHelper = (event?: OperationEvent, err?: Error) => {
     if (err) {
@@ -21,13 +44,15 @@ export const syncStateFromRequest = (state: OplogState, req: GetOperationsReques
       }
       state.reset();
 
-      getOperations(req).then((res) => {
-        state.add(...res);
-      }).catch((e) => {
-        if (onError) {
-          onError(e);
-        }
-      });
+      getOperations(req)
+        .then((res) => {
+          state.add(...res);
+        })
+        .catch((e) => {
+          if (onError) {
+            onError(e);
+          }
+        });
     } else if (event) {
       switch (event.event.case) {
         case "createdOperations":
@@ -46,9 +71,10 @@ export const syncStateFromRequest = (state: OplogState, req: GetOperationsReques
   };
 
   subscribeToOperations(cbHelper);
-  return () => { unsubscribeFromOperations(cbHelper); };
+  return () => {
+    unsubscribeFromOperations(cbHelper);
+  };
 };
-
 
 // getStatus returns the status of the last N operations that belong to a single snapshot.
 const getStatus = async (req: GetOperationsRequest) => {
@@ -92,8 +118,7 @@ export class OplogState {
 
   private subscribers: Set<Subscriber> = new Set();
 
-  constructor(private filter: (op: Operation) => boolean = () => true) {
-  }
+  constructor(private filter: (op: Operation) => boolean = () => true) {}
 
   public subscribe(subscriber: Subscriber) {
     this.subscribers.add(subscriber);
@@ -138,8 +163,16 @@ export class OplogState {
         this.removeHelper(op);
       } else {
         const flow = this.byFlowID.get(op.flowId);
-        if (op.op.case === "operationIndexSnapshot" && flow &&
-          flow.find((o) => o.id !== op.id && o.op.case === "operationIndexSnapshot" && o.snapshotId === op.snapshotId)) {
+        if (
+          op.op.case === "operationIndexSnapshot" &&
+          flow &&
+          flow.find(
+            (o) =>
+              o.id !== op.id &&
+              o.op.case === "operationIndexSnapshot" &&
+              o.snapshotId === op.snapshotId,
+          )
+        ) {
           // don't add a second index snapshot for the same flow, this can happen in multihost mode
           continue;
         }
@@ -152,7 +185,11 @@ export class OplogState {
 
     if (idsRemoved.length > 0) {
       for (let subscriber of this.subscribers) {
-        subscriber(idsRemoved, Array.from(flowIDsRemoved), OperationEventType.EVENT_DELETED);
+        subscriber(
+          idsRemoved,
+          Array.from(flowIDsRemoved),
+          OperationEventType.EVENT_DELETED,
+        );
       }
     }
     if (ids.length > 0) {
@@ -214,18 +251,20 @@ export class OplogState {
   }
 }
 
-
-
 // Defining matchers for each field in OpSelector to determine if an operation matches the selector.
 // Type system asserts that a check must exist for each field in OpSelector.
-const selectorFieldMatchers: { [K in keyof OpSelector]: (op: Operation, sel: OpSelector) => boolean } = {
+const selectorFieldMatchers: {
+  [K in keyof OpSelector]: (op: Operation, sel: OpSelector) => boolean;
+} = {
   planId: (op, sel) => op.planId === sel.planId,
   repoGuid: (op, sel) => op.repoGuid === sel.repoGuid,
   flowId: (op, sel) => op.flowId === sel.flowId,
   instanceId: (op, sel) => op.instanceId === sel.instanceId,
   snapshotId: (op, sel) => op.snapshotId === sel.snapshotId,
-  originalInstanceKeyid: (op, sel) => op.originalInstanceKeyid === sel.originalInstanceKeyid,
-  ids: (op: Operation, sel: OpSelector) => sel.ids.length === 0 || sel.ids.includes(op.id),
+  originalInstanceKeyid: (op, sel) =>
+    op.originalInstanceKeyid === sel.originalInstanceKeyid,
+  ids: (op: Operation, sel: OpSelector) =>
+    sel.ids.length === 0 || sel.ids.includes(op.id),
   ["$typeName"]: (op: Operation, sel: OpSelector): boolean => true, // $typeName is a proto property that isn't used for matching
 };
 

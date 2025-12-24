@@ -1,5 +1,9 @@
 import { Operation, OperationStatus } from "../../gen/ts/v1/operations_pb";
-import { formatBytes, formatDuration, normalizeSnapshotId } from "../lib/formatting";
+import {
+  formatBytes,
+  formatDuration,
+  normalizeSnapshotId,
+} from "../lib/formatting";
 import * as m from "../paraglide/messages";
 
 export enum DisplayType {
@@ -16,13 +20,13 @@ export enum DisplayType {
 }
 
 export interface FlowDisplayInfo {
-  displayTime: number,
-  flowID: bigint,
-  planID: string,
-  repoID: string,
-  instanceID: string,
-  snapshotID: string,
-  status: OperationStatus,
+  displayTime: number;
+  flowID: bigint;
+  planID: string;
+  repoID: string;
+  instanceID: string;
+  snapshotID: string;
+  status: OperationStatus;
   type: DisplayType;
   subtitleComponents: string[];
   hidden: boolean;
@@ -59,35 +63,71 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
         const lastStatus = firstOp.op.value.lastStatus;
         if (lastStatus) {
           if (lastStatus.entry.case === "summary") {
-            info.subtitleComponents.push(m.op_subtitle_id({ id: normalizeSnapshotId(lastStatus.entry.value.snapshotId) }));
+            info.subtitleComponents.push(
+              m.op_subtitle_id({
+                id: normalizeSnapshotId(lastStatus.entry.value.snapshotId),
+              }),
+            );
           }
           if (lastStatus.entry.case === "status") {
             const percentage = lastStatus.entry.value.percentDone * 100;
-            const bytesDone = formatBytes(Number(lastStatus.entry.value.bytesDone));
-            const totalBytes = formatBytes(Number(lastStatus.entry.value.totalBytes));
-            info.subtitleComponents.push(m.op_subtitle_processed({ percentage: percentage.toFixed(2) }));
-            info.subtitleComponents.push(m.op_subtitle_bytes_total({ bytes: bytesDone, total: totalBytes }));
+            const bytesDone = formatBytes(
+              Number(lastStatus.entry.value.bytesDone),
+            );
+            const totalBytes = formatBytes(
+              Number(lastStatus.entry.value.totalBytes),
+            );
+            info.subtitleComponents.push(
+              m.op_subtitle_processed({ percentage: percentage.toFixed(2) }),
+            );
+            info.subtitleComponents.push(
+              m.op_subtitle_bytes_total({
+                bytes: bytesDone,
+                total: totalBytes,
+              }),
+            );
           } else if (lastStatus.entry.case === "summary") {
-            const totalBytes = formatBytes(Number(lastStatus.entry.value.totalBytesProcessed));
-            info.subtitleComponents.push(m.op_subtitle_summary({ bytes: totalBytes, duration: formatDuration(duration) }));
+            const totalBytes = formatBytes(
+              Number(lastStatus.entry.value.totalBytesProcessed),
+            );
+            info.subtitleComponents.push(
+              m.op_subtitle_summary({
+                bytes: totalBytes,
+                duration: formatDuration(duration),
+              }),
+            );
           }
         }
       }
       break;
     case "operationRestore":
       {
-        info.subtitleComponents.push(m.op_subtitle_id({ id: normalizeSnapshotId(firstOp.snapshotId) }));
+        info.subtitleComponents.push(
+          m.op_subtitle_id({ id: normalizeSnapshotId(firstOp.snapshotId) }),
+        );
         const lastStatus = firstOp.op.value.lastStatus;
         if (lastStatus) {
           if (lastStatus.messageType === "summary") {
             const totalBytes = formatBytes(Number(lastStatus.totalBytes));
-            info.subtitleComponents.push(m.op_subtitle_summary({ bytes: totalBytes, duration: formatDuration(duration) }));
+            info.subtitleComponents.push(
+              m.op_subtitle_summary({
+                bytes: totalBytes,
+                duration: formatDuration(duration),
+              }),
+            );
           } else if (lastStatus.messageType === "status") {
             const percentage = lastStatus.percentDone * 100;
             const bytesDone = formatBytes(Number(lastStatus.bytesRestored));
             const totalBytes = formatBytes(Number(lastStatus.totalBytes));
-            info.subtitleComponents.push(m.op_subtitle_processed({ percentage: percentage.toFixed(2) }));
-            info.subtitleComponents.push(m.op_subtitle_bytes_total({ bytes: bytesDone, total: totalBytes }));
+            info.subtitleComponents.push(
+              m.op_subtitle_processed({ percentage: percentage.toFixed(2) }),
+            );
+            info.subtitleComponents.push(
+              m.op_subtitle_bytes_total({
+                bytes: bytesDone,
+                total: totalBytes,
+              }),
+            );
           }
         }
       }
@@ -96,9 +136,16 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
       {
         const snapshot = firstOp.op.value.snapshot;
         if (!snapshot) break;
-        info.subtitleComponents.push(m.op_subtitle_id({ id: normalizeSnapshotId(snapshot.id) }));
+        info.subtitleComponents.push(
+          m.op_subtitle_id({ id: normalizeSnapshotId(snapshot.id) }),
+        );
         if (snapshot.summary && snapshot.summary.totalBytesProcessed) {
-          info.subtitleComponents.push(m.op_subtitle_summary({ bytes: formatBytes(Number(snapshot.summary.totalBytesProcessed)), duration: formatDuration(snapshot.summary.totalDuration * 1000) }));
+          info.subtitleComponents.push(
+            m.op_subtitle_summary({
+              bytes: formatBytes(Number(snapshot.summary.totalBytesProcessed)),
+              duration: formatDuration(snapshot.summary.totalDuration * 1000),
+            }),
+          );
         }
       }
       break;
@@ -115,7 +162,9 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
           break;
         default:
           if (duration > 100) {
-            info.subtitleComponents.push(m.op_subtitle_took({ duration: formatDuration(duration) }));
+            info.subtitleComponents.push(
+              m.op_subtitle_took({ duration: formatDuration(duration) }),
+            );
           }
           break;
       }
@@ -127,22 +176,28 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
         info.hidden = true;
       }
     }
-    if (op.op.case === "operationRunHook" && op.status === OperationStatus.STATUS_ERROR) {
+    if (
+      op.op.case === "operationRunHook" &&
+      op.status === OperationStatus.STATUS_ERROR
+    ) {
       if (info.status === OperationStatus.STATUS_SUCCESS) {
         info.status = OperationStatus.STATUS_WARNING;
       }
-    } else if (op.status === OperationStatus.STATUS_INPROGRESS || op.status === OperationStatus.STATUS_ERROR || op.status === OperationStatus.STATUS_WARNING) {
+    } else if (
+      op.status === OperationStatus.STATUS_INPROGRESS ||
+      op.status === OperationStatus.STATUS_ERROR ||
+      op.status === OperationStatus.STATUS_WARNING
+    ) {
       info.status = op.status;
     }
   }
 
   return info;
-}
+};
 
 export const shouldHideOperation = (operation: Operation) => {
   return (
-    operation.op.case === "operationStats" ||
-    shouldHideStatus(operation.status)
+    operation.op.case === "operationStats" || shouldHideStatus(operation.status)
   );
 };
 export const shouldHideStatus = (status: OperationStatus) => {
@@ -237,4 +292,4 @@ export const nameForStatus = (status: OperationStatus) => {
     default:
       return m.op_status_unknown();
   }
-}
+};

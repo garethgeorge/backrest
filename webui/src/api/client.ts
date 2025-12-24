@@ -31,11 +31,11 @@ const transport = createConnectTransport({
   fetch: fetch as typeof globalThis.fetch,
 });
 
-export const authenticationService = createClient(
-  Authentication,
-  transport,
-);
+export const authenticationService = createClient(Authentication, transport);
 
 export const backrestService = createClient(Backrest, transport);
 
-export const syncStateService = createClient(BackrestSyncStateService, transport);
+export const syncStateService = createClient(
+  BackrestSyncStateService,
+  transport,
+);

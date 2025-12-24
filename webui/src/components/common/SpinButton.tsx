@@ -9,46 +9,66 @@ export const SpinButton = React.forwardRef<
     danger?: boolean;
     size?: string;
   }
->(({ onClickAsync, onClick: _onClick, type, variant, danger, size, ...props }, ref) => {
-  const [loading, setLoading] = useState(false);
+>(
+  (
+    { onClickAsync, onClick: _onClick, type, variant, danger, size, ...props },
+    ref,
+  ) => {
+    const [loading, setLoading] = useState(false);
 
-  const onClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (loading) {
-      return;
+    const onClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (loading) {
+        return;
+      }
+      try {
+        setLoading(true);
+        await onClickAsync();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    let mappedVariant = variant;
+    if (!variant) {
+      if (type === "primary")
+        mappedVariant = "subtle"; // or solid? Backrest uses blue for primary? Chakra default solid is usually black/white. Subtle might be better or solid with colorPalette.
+      else if (type === "default") mappedVariant = "outline";
+      else if (type === "text" || type === "link") mappedVariant = "ghost";
+      else if (type === "dashed") mappedVariant = "outline";
     }
-    try {
-      setLoading(true);
-      await onClickAsync();
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  let mappedVariant = variant;
-  if (!variant) {
-    if (type === "primary") mappedVariant = "subtle"; // or solid? Backrest uses blue for primary? Chakra default solid is usually black/white. Subtle might be better or solid with colorPalette.
-    else if (type === "default") mappedVariant = "outline";
-    else if (type === "text" || type === "link") mappedVariant = "ghost";
-    else if (type === "dashed") mappedVariant = "outline";
-  }
+    // AntD uses type="primary" implies blue/branded.
+    // danger implies red
+    let colorPalette = props.colorPalette;
+    if (danger) colorPalette = "red";
+    else if (type === "primary") colorPalette = "blue";
 
-  // AntD uses type="primary" implies blue/branded.
-  // danger implies red
-  let colorPalette = props.colorPalette;
-  if (danger) colorPalette = "red";
-  else if (type === "primary") colorPalette = "blue";
+    // Determine HTML type
+    const htmlType =
+      type === "submit" || type === "reset" || type === "button"
+        ? (type as "submit" | "reset" | "button")
+        : "button";
 
-  // Determine HTML type
-  const htmlType = (type === "submit" || type === "reset" || type === "button") ? (type as "submit" | "reset" | "button") : "button";
+    // Map legacy size
+    let mappedSize = size;
+    if (size === "small") mappedSize = "sm";
+    else if (size === "large") mappedSize = "lg";
+    else if (size === "middle") mappedSize = "md";
 
-  // Map legacy size
-  let mappedSize = size;
-  if (size === "small") mappedSize = "sm";
-  else if (size === "large") mappedSize = "lg";
-  else if (size === "middle") mappedSize = "md";
-
-  return <Button {...props} ref={ref} loading={loading} onClick={onClick} variant={mappedVariant} colorPalette={colorPalette} type={htmlType} size={mappedSize as any} />;
-});
+    return (
+      <Button
+        {...props}
+        ref={ref}
+        loading={loading}
+        onClick={onClick}
+        variant={mappedVariant}
+        colorPalette={colorPalette}
+        type={htmlType}
+        size={mappedSize as any}
+      />
+    );
+  },
+);
 
 SpinButton.displayName = "SpinButton";
 
@@ -64,8 +84,16 @@ export const ConfirmButton = React.forwardRef<
   }
 >(
   (
-    { onClickAsync, confirmTimeout, confirmTitle, children, danger, size, ...props },
-    ref
+    {
+      onClickAsync,
+      confirmTimeout,
+      confirmTitle,
+      children,
+      danger,
+      size,
+      ...props
+    },
+    ref,
   ) => {
     const [clicked, setClicked] = useState(false);
 
@@ -87,11 +115,17 @@ export const ConfirmButton = React.forwardRef<
     };
 
     return (
-      <SpinButton {...props} ref={ref} onClickAsync={onClick} danger={danger} size={size}>
+      <SpinButton
+        {...props}
+        ref={ref}
+        onClickAsync={onClick}
+        danger={danger}
+        size={size}
+      >
         {clicked ? confirmTitle : children}
       </SpinButton>
     );
-  }
+  },
 );
 
 ConfirmButton.displayName = "ConfirmButton";

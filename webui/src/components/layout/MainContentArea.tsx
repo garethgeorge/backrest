@@ -1,5 +1,9 @@
 import { Box, Container } from "@chakra-ui/react";
-import { BreadcrumbRoot, BreadcrumbLink, BreadcrumbCurrentLink } from "../ui/breadcrumb";
+import {
+  BreadcrumbRoot,
+  BreadcrumbLink,
+  BreadcrumbCurrentLink,
+} from "../ui/breadcrumb";
 import React from "react";
 
 interface BreadcrumbItem {
@@ -20,7 +24,9 @@ export const MainContentAreaTemplate = ({
         {breadcrumbs.map((b, i) => {
           const isLast = i === breadcrumbs.length - 1;
           if (isLast) {
-            return <BreadcrumbCurrentLink key={i}>{b.title}</BreadcrumbCurrentLink>
+            return (
+              <BreadcrumbCurrentLink key={i}>{b.title}</BreadcrumbCurrentLink>
+            );
           }
           return (
             <BreadcrumbLink
@@ -31,7 +37,7 @@ export const MainContentAreaTemplate = ({
             >
               {b.title}
             </BreadcrumbLink>
-          )
+          );
         })}
       </BreadcrumbRoot>
       <Box

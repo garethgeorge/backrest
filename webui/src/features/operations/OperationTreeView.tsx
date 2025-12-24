@@ -27,7 +27,11 @@ import {
   DialogBody,
   DialogCloseTrigger,
 } from "../../components/ui/dialog";
-import { Splitter, SplitterPanel, SplitterResizeTrigger } from "../../components/ui/splitter";
+import {
+  Splitter,
+  SplitterPanel,
+  SplitterResizeTrigger,
+} from "../../components/ui/splitter";
 import { groupBy } from "../../lib/util";
 import {
   formatDate,
@@ -68,7 +72,6 @@ import { OperationIcon } from "./OperationIcon";
 import { shouldHideOperation } from "../../api/oplog";
 import { create, toJsonString } from "@bufbuild/protobuf";
 import { useConfig } from "../../app/provider";
-
 
 interface OpTreeNode {
   id: string;
@@ -186,9 +189,11 @@ export const OperationTreeView = ({
     } else {
       allTrees.push(
         <Box key={instance} marginTop="4">
-          <Heading size="md" marginBottom="2">{instance}</Heading>
+          <Heading size="md" marginBottom="2">
+            {instance}
+          </Heading>
           {instTree}
-        </Box>
+        </Box>,
       );
     }
   }
@@ -197,10 +202,12 @@ export const OperationTreeView = ({
     allTrees.unshift(
       <Box key={config!.instance} marginTop="4">
         {allTrees.length > 0 ? (
-          <Heading size="md" marginBottom="2">{config!.instance}</Heading>
+          <Heading size="md" marginBottom="2">
+            {config!.instance}
+          </Heading>
         ) : null}
         {primaryTree}
-      </Box>
+      </Box>,
     );
   }
 
@@ -215,7 +222,6 @@ export const OperationTreeView = ({
           }}
           size="lg"
         >
-
           <DialogContent>
             <DialogCloseTrigger />
             <DialogBody p={0}>
@@ -268,7 +274,8 @@ const DisplayOperationTree = ({
   isPlanView?: boolean;
   onSelect?: (flow: FlowDisplayInfo | null) => any;
 }) => {
-  const [treeCollection, setTreeCollection] = useState<TreeCollection<OpTreeNode>>(null);
+  const [treeCollection, setTreeCollection] =
+    useState<TreeCollection<OpTreeNode>>(null);
   const [expandedValue, setExpandedValue] = useState<string[]>([]);
   const [selectedValue, setSelectedValue] = useState<string[]>([]);
 
@@ -300,21 +307,23 @@ const DisplayOperationTree = ({
     const buildLevel = (
       ops: FlowDisplayInfo[],
       levels: any[],
-      prefix: string
+      prefix: string,
     ): OpTreeNode[] => {
       if (levels.length === 0) {
         const groups = groupBy(ops, leafGroupFn);
         const sortedKeys = Object.keys(groups).sort((a, b) =>
-          leafSortFn(groups[a][0], groups[b][0]) ? -1 : 1
+          leafSortFn(groups[a][0], groups[b][0]) ? -1 : 1,
         );
-        return sortedKeys.map((key) => leafFn(prefix + "\0" + key, groups[key]));
+        return sortedKeys.map((key) =>
+          leafFn(prefix + "\0" + key, groups[key]),
+        );
       }
 
       const currentLevel = levels[0];
       const nextLevels = levels.slice(1);
       const groups = groupBy(ops, currentLevel.groupingFn);
       const sortedKeys = Object.keys(groups).sort((a, b) =>
-        currentLevel.sortFn(groups[a][0], groups[b][0]) ? -1 : 1
+        currentLevel.sortFn(groups[a][0], groups[b][0]) ? -1 : 1,
       );
 
       return sortedKeys.map((key) => {
@@ -433,12 +442,11 @@ const DisplayOperationTree = ({
         setSelectedValue(values);
         setExpandedValue((prev) => Array.from(new Set([...prev, ...values])));
 
-        if (!details.selectedNodes || details.selectedNodes.length === 0) return;
+        if (!details.selectedNodes || details.selectedNodes.length === 0)
+          return;
         onSelect && onSelect(details.selectedNodes[0].backup);
       }}
     >
-
-
       <TreeViewTree>
         <TreeViewNode<OpTreeNode>
           render={({ node, nodeState }) =>
@@ -449,11 +457,10 @@ const DisplayOperationTree = ({
                   setExpandedValue((prev) =>
                     prev.includes(node.id)
                       ? prev.filter((id) => id !== node.id)
-                      : [...prev, node.id]
+                      : [...prev, node.id],
                   );
                 }}
               >
-
                 <Box
                   transform={nodeState.expanded ? "rotate(90deg)" : undefined}
                   transition="transform 0.2s"
@@ -508,19 +515,16 @@ const DisplayOperationTree = ({
                           >
                             {node.backup.subtitleComponents.join(", ")}
                           </Text>
-
                         )}
                     </VStack>
                   ) : (
                     node.label
                   )}
                 </TreeViewItemText>
-
               </TreeViewItem>
             )
           }
         />
-
       </TreeViewTree>
     </TreeViewRoot>
   );
@@ -550,7 +554,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
             planId: backup.planID!,
             repoId: backup.repoID!,
             snapshotId: backup.snapshotID!,
-          })
+          }),
         );
         alertApi!.success("Snapshot forgotten.");
       } catch (e: any) {
@@ -559,7 +563,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
     };
 
     const snapshotInFlow = backup?.operations.find(
-      (op) => op.op.case === "operationIndexSnapshot"
+      (op) => op.op.case === "operationIndexSnapshot",
     );
 
     const deleteButton =
@@ -583,7 +587,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
                 selector: {
                   flowId: backup.flowID,
                 },
-              })
+              }),
             );
           }}
         >
@@ -603,7 +607,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
           <Heading size="md">{formatTime(backup.displayTime)}</Heading>
           <Box position="absolute" right="20px">
             {backup.status !== OperationStatus.STATUS_PENDING &&
-              backup.status !== OperationStatus.STATUS_INPROGRESS
+            backup.status !== OperationStatus.STATUS_INPROGRESS
               ? deleteButton
               : null}
           </Box>

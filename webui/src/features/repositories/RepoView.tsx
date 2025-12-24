@@ -2,11 +2,20 @@ import React, { Suspense, useContext, useEffect, useState } from "react";
 import { Repo } from "../../../gen/ts/v1/config_pb";
 import { Button } from "../../components/ui/button";
 import { Flex, Heading, Box } from "@chakra-ui/react";
-import { Tabs, TabsRoot, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
+import {
+  Tabs,
+  TabsRoot,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "../../components/ui/tabs";
 import { Tooltip } from "../../components/ui/tooltip";
 import { OperationListView } from "../operations/OperationListView";
 import { OperationTreeView } from "../operations/OperationTreeView";
-import { MAX_OPERATION_HISTORY, STATS_OPERATION_HISTORY } from "../../constants";
+import {
+  MAX_OPERATION_HISTORY,
+  STATS_OPERATION_HISTORY,
+} from "../../constants";
 import {
   DoRepoTaskRequest_Task,
   DoRepoTaskRequestSchema,
@@ -38,7 +47,7 @@ export const RepoView = ({
         create(DoRepoTaskRequestSchema, {
           repoId: repo.id!,
           task: DoRepoTaskRequest_Task.INDEX_SNAPSHOTS,
-        })
+        }),
       );
     } catch (e: any) {
       alertsApi.error(formatErrorAlert(e, m.repo_error_index()));
@@ -52,7 +61,7 @@ export const RepoView = ({
         create(DoRepoTaskRequestSchema, {
           repoId: repo.id!,
           task: DoRepoTaskRequest_Task.UNLOCK,
-        })
+        }),
       );
       alertsApi.success(m.repo_success_unlocked());
     } catch (e: any) {
@@ -66,7 +75,7 @@ export const RepoView = ({
         create(DoRepoTaskRequestSchema, {
           repoId: repo.id!,
           task: DoRepoTaskRequest_Task.STATS,
-        })
+        }),
       );
     } catch (e: any) {
       alertsApi.error(formatErrorAlert(e, m.repo_error_stats()));
@@ -79,7 +88,7 @@ export const RepoView = ({
         create(DoRepoTaskRequestSchema, {
           repoId: repo.id!,
           task: DoRepoTaskRequest_Task.PRUNE,
-        })
+        }),
       );
     } catch (e: any) {
       alertsApi.error(formatErrorAlert(e, m.repo_error_prune()));
@@ -92,7 +101,7 @@ export const RepoView = ({
         create(DoRepoTaskRequestSchema, {
           repoId: repo.id!,
           task: DoRepoTaskRequest_Task.CHECK,
-        })
+        }),
       );
     } catch (e: any) {
       alertsApi.error(formatErrorAlert(e, m.repo_error_check()));
@@ -122,7 +131,8 @@ export const RepoView = ({
           <Button
             variant="outline"
             onClick={async () => {
-              const { RunCommandModal } = await import("../operations/RunCommandModal");
+              const { RunCommandModal } =
+                await import("../operations/RunCommandModal");
               showModal(<RunCommandModal repo={repo} />);
             }}
           >
@@ -180,7 +190,9 @@ export const RepoView = ({
         </TabsContent>
 
         <TabsContent value="list">
-          <Heading size="md" mb={4}>{m.repo_history_title()}</Heading>
+          <Heading size="md" mb={4}>
+            {m.repo_history_title()}
+          </Heading>
           <OperationListView
             req={create(GetOperationsRequestSchema, {
               selector: {

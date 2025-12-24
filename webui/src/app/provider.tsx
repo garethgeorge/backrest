@@ -1,11 +1,11 @@
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react"
-import { ThemeProvider } from "next-themes"
+import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { ThemeProvider } from "next-themes";
 import React, { useContext, useState } from "react";
 import { Config } from "../../gen/ts/v1/config_pb";
 
 // Config Context Logic
 type ConfigCtx = [Config | null, (config: Config) => void];
-const ConfigContext = React.createContext<ConfigCtx>([null, () => { }]);
+const ConfigContext = React.createContext<ConfigCtx>([null, () => {}]);
 
 export const useConfig = (): ConfigCtx => {
   const context = useContext(ConfigContext);
@@ -23,5 +23,5 @@ export function AppProvider(props: { children: React.ReactNode }) {
         </ConfigContext.Provider>
       </ThemeProvider>
     </ChakraProvider>
-  )
+  );
 }

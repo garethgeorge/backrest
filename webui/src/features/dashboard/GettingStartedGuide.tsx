@@ -1,5 +1,18 @@
-import { Heading, Text, Separator, Box, HStack, List, Spinner } from "@chakra-ui/react";
-import { AccordionRoot, AccordionItem, AccordionItemTrigger, AccordionItemContent } from "../../components/ui/accordion";
+import {
+  Heading,
+  Text,
+  Separator,
+  Box,
+  HStack,
+  List,
+  Spinner,
+} from "@chakra-ui/react";
+import {
+  AccordionRoot,
+  AccordionItem,
+  AccordionItemTrigger,
+  AccordionItemContent,
+} from "../../components/ui/accordion";
 import { Link } from "../../components/ui/link";
 import React from "react";
 import { useConfig } from "../../app/provider";
@@ -21,10 +34,16 @@ export const GettingStartedGuide = () => {
 
   return (
     <Box>
-      <Heading size="xl" mb={4}>Getting Started</Heading>
+      <Heading size="xl" mb={4}>
+        Getting Started
+      </Heading>
 
       <Text mb={4}>
-        <Link href="https://github.com/garethgeorge/backrest" target="_blank" colorPalette="blue">
+        <Link
+          href="https://github.com/garethgeorge/backrest"
+          target="_blank"
+          colorPalette="blue"
+        >
           Check for new Backrest releases on GitHub
         </Link>
       </Text>
@@ -54,7 +73,11 @@ export const GettingStartedGuide = () => {
         </List.Item>
         <List.Item>
           See{" "}
-          <Link href="https://garethgeorge.github.io/backrest" target="_blank" colorPalette="blue">
+          <Link
+            href="https://garethgeorge.github.io/backrest"
+            target="_blank"
+            colorPalette="blue"
+          >
             the Backrest wiki
           </Link>{" "}
           for instructions on how to configure Backrest.
@@ -65,18 +88,18 @@ export const GettingStartedGuide = () => {
 
       <List.Root gap={2} ml={5} as="ul" listStyleType="disc">
         <List.Item>
-          Backup your Backrest configuration: your Backrest config holds all
-          of your repos, plans, and the passwords to decrypt them. When you
-          have Backrest configured to your liking make sure to store a copy of
-          your config (or minimally a copy of your passwords) in a safe
-          location e.g. a secure note in your password manager.
+          Backup your Backrest configuration: your Backrest config holds all of
+          your repos, plans, and the passwords to decrypt them. When you have
+          Backrest configured to your liking make sure to store a copy of your
+          config (or minimally a copy of your passwords) in a safe location e.g.
+          a secure note in your password manager.
         </List.Item>
         <List.Item>
           Configure hooks: Backrest can deliver notifications about backup
-          events. It's strongly recommended that you configure an on error
-          hook that will notify you in the event that backups start failing
-          (e.g. an issue with storage or network connectivity). Hooks can be
-          configured either at the plan or repo level.
+          events. It's strongly recommended that you configure an on error hook
+          that will notify you in the event that backups start failing (e.g. an
+          issue with storage or network connectivity). Hooks can be configured
+          either at the plan or repo level.
         </List.Item>
       </List.Root>
 
@@ -85,10 +108,20 @@ export const GettingStartedGuide = () => {
           <DividerWithText>Config View</DividerWithText>
           <AccordionRoot collapsible variant="plain">
             <AccordionItem value="config">
-              <AccordionItemTrigger>Config JSON hidden for security</AccordionItemTrigger>
+              <AccordionItemTrigger>
+                Config JSON hidden for security
+              </AccordionItemTrigger>
               <AccordionItemContent>
                 {config ? (
-                  <Box as="pre" p={2} bg="gray.900" color="white" borderRadius="md" fontSize="xs" overflowX="auto">
+                  <Box
+                    as="pre"
+                    p={2}
+                    bg="gray.900"
+                    color="white"
+                    borderRadius="md"
+                    fontSize="xs"
+                    overflowX="auto"
+                  >
                     {toJsonString(ConfigSchema, config, { prettySpaces: 2 })}
                   </Box>
                 ) : (

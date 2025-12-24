@@ -33,7 +33,10 @@ import { backrestService } from "../../api/client";
 // import { HooksFormList } from "../components/HooksFormList"; // TODO: Migrate
 import { ConfirmButton } from "../../components/common/SpinButton";
 import { useConfig } from "../../app/provider";
-import { ScheduleFormItem, ScheduleDefaultsDaily } from "../../components/common/ScheduleFormItem";
+import {
+  ScheduleFormItem,
+  ScheduleDefaultsDaily,
+} from "../../components/common/ScheduleFormItem";
 import { isWindows } from "../../state/buildcfg";
 import { create, fromJson, toJson, JsonValue } from "@bufbuild/protobuf";
 import * as m from "../../paraglide/messages";
@@ -45,7 +48,10 @@ import { Tooltip } from "../../components/ui/tooltip";
 import { toaster } from "../../components/ui/toaster";
 import { NumberInputField } from "../../components/common/NumberInput";
 
-import { HooksFormList, hooksListTooltipText } from "../../components/common/HooksFormList";
+import {
+  HooksFormList,
+  hooksListTooltipText,
+} from "../../components/common/HooksFormList";
 
 const repoDefaults = create(RepoSchema, {
   prunePolicy: {
@@ -84,7 +90,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [formData, setFormData] = useState<any>(
     template
       ? toJson(RepoSchema, template, { alwaysEmitImplicit: true })
-      : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true })
+      : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true }),
   );
 
   const updateField = (path: string[], value: any) => {
@@ -116,15 +122,21 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     try {
       setConfig(
         await backrestService.removeRepo(
-          create(StringValueSchema, { value: template!.id })
-        )
+          create(StringValueSchema, { value: template!.id }),
+        ),
       );
       showModal(null);
       alertsApi.success(
-        m.add_repo_modal_success_deleted({ id: template!.id!, uri: template!.uri })
+        m.add_repo_modal_success_deleted({
+          id: template!.id!,
+          uri: template!.uri,
+        }),
       );
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, m.add_plan_modal_error_destroy_prefix()), 15);
+      alertsApi.error(
+        formatErrorAlert(e, m.add_plan_modal_error_destroy_prefix()),
+        15,
+      );
     } finally {
       setConfirmLoading(false);
     }
@@ -134,7 +146,9 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     setConfirmLoading(true);
     try {
       // Validation logic would go here
-      const repo = fromJson(RepoSchema, formData, { ignoreUnknownFields: true });
+      const repo = fromJson(RepoSchema, formData, {
+        ignoreUnknownFields: true,
+      });
 
       if (template !== null) {
         setConfig(await backrestService.addRepo(repo));
@@ -150,33 +164,50 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
       try {
         await backrestService.listSnapshots({ repoId: repo.id });
       } catch (e: any) {
-        alertsApi.error(formatErrorAlert(e, m.add_repo_modal_error_list_snapshots()), 10);
+        alertsApi.error(
+          formatErrorAlert(e, m.add_repo_modal_error_list_snapshots()),
+          10,
+        );
       }
-
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()), 10);
+      alertsApi.error(
+        formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()),
+        10,
+      );
     } finally {
       setConfirmLoading(false);
     }
   };
 
   const ioNiceOptions = createListCollection({
-    items: CommandPrefix_IONiceLevelSchema.values.map(v => ({ label: v.name, value: v.name }))
+    items: CommandPrefix_IONiceLevelSchema.values.map((v) => ({
+      label: v.name,
+      value: v.name,
+    })),
   });
 
   const cpuNiceOptions = createListCollection({
-    items: CommandPrefix_CPUNiceLevelSchema.values.map(v => ({ label: v.name, value: v.name }))
+    items: CommandPrefix_CPUNiceLevelSchema.values.map((v) => ({
+      label: v.name,
+      value: v.name,
+    })),
   });
 
   return (
     <FormModal
       isOpen={true}
       onClose={() => showModal(null)}
-      title={template ? m.add_repo_modal_title_edit() : m.add_repo_modal_title_add()}
+      title={
+        template ? m.add_repo_modal_title_edit() : m.add_repo_modal_title_add()
+      }
       size="large"
       footer={
         <Flex gap={2} justify="flex-end" width="full">
-          <Button variant="outline" disabled={confirmLoading} onClick={() => showModal(null)}>
+          <Button
+            variant="outline"
+            disabled={confirmLoading}
+            onClick={() => showModal(null)}
+          >
             {m.add_plan_modal_button_cancel()}
           </Button>
           {template && (
@@ -201,8 +232,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           required
         >
           <Input
-            value={getField(['id'])}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField(['id'], e.target.value)}
+            value={getField(["id"])}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              updateField(["id"], e.target.value)
+            }
             disabled={!!template}
             placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
           />
@@ -215,8 +248,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         >
           <URIAutocomplete
             disabled={!!template}
-            value={getField(['uri'])}
-            onChange={(val: string) => updateField(['uri'], val)}
+            value={getField(["uri"])}
+            onChange={(val: string) => updateField(["uri"], val)}
           />
         </Field>
 
@@ -226,13 +259,20 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         >
           <Flex gap={2}>
             <PasswordInput
-              value={getField(['password'])}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField(['password'], e.target.value)}
+              value={getField(["password"])}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                updateField(["password"], e.target.value)
+              }
               disabled={!!template}
               flex={1}
             />
             {!template && (
-              <Button variant="ghost" onClick={() => updateField(['password'], cryptoRandomPassword())}>
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  updateField(["password"], cryptoRandomPassword())
+                }
+              >
                 {m.add_repo_modal_button_generate()}
               </Button>
             )}
@@ -243,15 +283,17 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         <Field label={m.add_repo_modal_field_env_vars()}>
           <Textarea
             placeholder="KEY=VALUE (One per line)"
-            value={getField(['env']) || ""}
-            onChange={(e) => updateField(['env'], e.target.value)}
+            value={getField(["env"]) || ""}
+            onChange={(e) => updateField(["env"], e.target.value)}
           />
         </Field>
 
         <Field label={m.add_repo_modal_field_auto_unlock()}>
           <Checkbox
-            checked={getField(['autoUnlock'])}
-            onCheckedChange={(e: { checked: boolean | 'indeterminate' }) => updateField(['autoUnlock'], !!e.checked)}
+            checked={getField(["autoUnlock"])}
+            onCheckedChange={(e: { checked: boolean | "indeterminate" }) =>
+              updateField(["autoUnlock"], !!e.checked)
+            }
           >
             {m.add_repo_modal_field_auto_unlock()}
           </Checkbox>
@@ -261,13 +303,20 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           <Stack gap={4} p={4} borderWidth="1px" borderRadius="md">
             <NumberInputField
               label={m.add_repo_modal_field_max_unused()}
-              value={getField(['prunePolicy', 'maxUnusedPercent'])}
-              onValueChange={(e: { value: string; valueAsNumber: number }) => updateField(['prunePolicy', 'maxUnusedPercent'], e.valueAsNumber)}
+              value={getField(["prunePolicy", "maxUnusedPercent"])}
+              onValueChange={(e: { value: string; valueAsNumber: number }) =>
+                updateField(
+                  ["prunePolicy", "maxUnusedPercent"],
+                  e.valueAsNumber,
+                )
+              }
             />
             <Field label="Prune Schedule">
               <ScheduleFormItem
-                value={getField(['prunePolicy', 'schedule'])}
-                onChange={(val: any) => updateField(['prunePolicy', 'schedule'], val)}
+                value={getField(["prunePolicy", "schedule"])}
+                onChange={(val: any) =>
+                  updateField(["prunePolicy", "schedule"], val)
+                }
                 defaults={ScheduleDefaultsDaily}
               />
             </Field>
@@ -278,8 +327,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           <Stack gap={4} p={4} borderWidth="1px" borderRadius="md">
             <Field label="Check Schedule">
               <ScheduleFormItem
-                value={getField(['checkPolicy', 'schedule'])}
-                onChange={(val: any) => updateField(['checkPolicy', 'schedule'], val)}
+                value={getField(["checkPolicy", "schedule"])}
+                onChange={(val: any) =>
+                  updateField(["checkPolicy", "schedule"], val)
+                }
                 defaults={ScheduleDefaultsDaily}
               />
             </Field>
@@ -289,9 +340,13 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         {!isWindows && (
           <Flex gap={4}>
             <Field label={m.add_repo_modal_field_io_priority()} flex={1}>
-              <SelectRoot collection={ioNiceOptions} size="sm"
-                value={[getField(['commandPrefix', 'ioNice'])]}
-                onValueChange={(e: any) => updateField(['commandPrefix', 'ioNice'], e.value[0])}
+              <SelectRoot
+                collection={ioNiceOptions}
+                size="sm"
+                value={[getField(["commandPrefix", "ioNice"])]}
+                onValueChange={(e: any) =>
+                  updateField(["commandPrefix", "ioNice"], e.value[0])
+                }
               >
                 {/* @ts-ignore */}
                 <SelectTrigger>
@@ -310,9 +365,13 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               </SelectRoot>
             </Field>
             <Field label={m.add_repo_modal_field_cpu_priority()} flex={1}>
-              <SelectRoot collection={cpuNiceOptions} size="sm"
-                value={[getField(['commandPrefix', 'cpuNice'])]}
-                onValueChange={(e: any) => updateField(['commandPrefix', 'cpuNice'], e.value[0])}
+              <SelectRoot
+                collection={cpuNiceOptions}
+                size="sm"
+                value={[getField(["commandPrefix", "cpuNice"])]}
+                onValueChange={(e: any) =>
+                  updateField(["commandPrefix", "cpuNice"], e.value[0])
+                }
               >
                 {/* @ts-ignore */}
                 <SelectTrigger>
@@ -332,17 +391,19 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             </Field>
           </Flex>
         )}
-        <Field label={m.add_repo_modal_field_hooks()} helperText={hooksListTooltipText}>
+        <Field
+          label={m.add_repo_modal_field_hooks()}
+          helperText={hooksListTooltipText}
+        >
           <HooksFormList
-            value={getField(['hooks'])}
-            onChange={(v: any) => updateField(['hooks'], v)}
+            value={getField(["hooks"])}
+            onChange={(v: any) => updateField(["hooks"], v)}
           />
         </Field>
       </Stack>
     </FormModal>
   );
 };
-
 
 // Utils
 const cryptoRandomPassword = (): string => {

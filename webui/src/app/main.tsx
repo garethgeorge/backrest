@@ -9,7 +9,6 @@ import { ConfigProvider as AntdConfigProvider, theme } from "antd";
 import { HashRouter } from "react-router-dom";
 import { AppProvider } from "./provider";
 
-
 const Root = ({ children }: { children: React.ReactNode }) => {
   return (
     <AppProvider>
@@ -40,5 +39,5 @@ el &&
           </HashRouter>
         </Root>
       </AntdConfigProvider>
-    </React.StrictMode>
+    </React.StrictMode>,
   );

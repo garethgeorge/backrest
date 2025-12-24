@@ -3,7 +3,7 @@ import {
   Stack,
   Input,
   Text,
-  createListCollection
+  createListCollection,
 } from "@chakra-ui/react";
 import { Checkbox } from "../ui/checkbox";
 import { Radio, RadioGroup } from "../ui/radio";
@@ -95,17 +95,19 @@ export const ScheduleFormItem = ({
     const valStr = newClockVals[0]; // if using standard CheckboxGroup generic logic or just val
     // Actually standard RadioGroup onValueChange gives string
     // But let's check basic RadioGroup usage
-  }
+  };
 
   // Helper for clock
-  const currentClockName = clockEnumValueToString(schedule.clock || defaults.clock);
+  const currentClockName = clockEnumValueToString(
+    schedule.clock || defaults.clock,
+  );
 
   return (
     <Stack gap={4}>
       {/* Schedule Mode */}
       <Field label="Schedule Type">
         <RadioGroup
-          value={mode as string || "disabled"}
+          value={(mode as string) || "disabled"}
           onValueChange={(e: { value: string }) => handleModeChange(e.value)}
         >
           <Stack direction="row" gap={4} wrap="wrap">
@@ -119,7 +121,10 @@ export const ScheduleFormItem = ({
 
       {/* Mode Specific Input */}
       {mode === "cron" && (
-        <Field label="Cron Expression" helperText="Standard cron syntax (e.g. 0 0 * * *)">
+        <Field
+          label="Cron Expression"
+          helperText="Standard cron syntax (e.g. 0 0 * * *)"
+        >
           <Input
             value={schedule.cron || ""}
             onChange={(e) => onChange({ ...schedule, cron: e.target.value })}
@@ -132,7 +137,9 @@ export const ScheduleFormItem = ({
         <NumberInputField
           label="Interval in Days"
           value={schedule.maxFrequencyDays || 0}
-          onValueChange={(e: any) => onChange({ ...schedule, maxFrequencyDays: e.valueAsNumber })}
+          onValueChange={(e: any) =>
+            onChange({ ...schedule, maxFrequencyDays: e.valueAsNumber })
+          }
           min={1}
         />
       )}
@@ -141,18 +148,25 @@ export const ScheduleFormItem = ({
         <NumberInputField
           label="Interval in Hours"
           value={schedule.maxFrequencyHours || 0}
-          onValueChange={(e: any) => onChange({ ...schedule, maxFrequencyHours: e.valueAsNumber })}
+          onValueChange={(e: any) =>
+            onChange({ ...schedule, maxFrequencyHours: e.valueAsNumber })
+          }
           min={1}
         />
       )}
 
       {/* Clock Selection */}
-      <Field label="Reference Clock" helperText="Time zone or reference point for the schedule.">
+      <Field
+        label="Reference Clock"
+        helperText="Time zone or reference point for the schedule."
+      >
         <RadioGroup
           value={clockEnumValueToString(schedule.clock)}
           onValueChange={(e: { value: string }) => {
             // find enum value
-            const clk = Schedule_ClockSchema.values.find(v => v.name === e.value);
+            const clk = Schedule_ClockSchema.values.find(
+              (v) => v.name === e.value,
+            );
             if (clk) onChange({ ...schedule, clock: clk.number });
           }}
         >

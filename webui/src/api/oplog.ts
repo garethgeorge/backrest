@@ -5,7 +5,11 @@ import {
   OperationStatus,
 } from "../../gen/ts/v1/operations_pb";
 import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
-import { BackupProgressEntry, ResticSnapshot, RestoreProgressEntry } from "../../gen/ts/v1/restic_pb";
+import {
+  BackupProgressEntry,
+  ResticSnapshot,
+  RestoreProgressEntry,
+} from "../../gen/ts/v1/restic_pb";
 import { EmptySchema } from "../../gen/ts/types/value_pb";
 import { create } from "@bufbuild/protobuf";
 import { backrestService } from "./client";
@@ -28,7 +32,9 @@ const subscribers: ((event?: OperationEvent, err?: Error) => void)[] = [];
     await new Promise((accept, _) =>
       setTimeout(accept, nextConnWaitUntil - new Date().getTime()),
     );
-    subscribers.forEach((subscriber) => subscriber(undefined, new Error("reconnecting")));
+    subscribers.forEach((subscriber) =>
+      subscriber(undefined, new Error("reconnecting")),
+    );
   }
 })();
 
@@ -43,7 +49,10 @@ export const subscribeToOperations = (
   callback: (event?: OperationEvent, err?: Error) => void,
 ) => {
   subscribers.push(callback);
-  console.log("subscribed to operations, subscriber count: ", subscribers.length);
+  console.log(
+    "subscribed to operations, subscriber count: ",
+    subscribers.length,
+  );
 };
 
 export const unsubscribeFromOperations = (
@@ -54,13 +63,18 @@ export const unsubscribeFromOperations = (
     subscribers[index] = subscribers[subscribers.length - 1];
     subscribers.pop();
   }
-  console.log("unsubscribed from operations, subscriber count: ", subscribers.length);
+  console.log(
+    "unsubscribed from operations, subscriber count: ",
+    subscribers.length,
+  );
 };
 
 export const shouldHideOperation = (operation: Operation) => {
   return (
     operation.op.case === "operationStats" ||
-    (operation.status === OperationStatus.STATUS_SUCCESS && operation.op.case === "operationBackup" && !operation.snapshotId) ||
+    (operation.status === OperationStatus.STATUS_SUCCESS &&
+      operation.op.case === "operationBackup" &&
+      !operation.snapshotId) ||
     shouldHideStatus(operation.status)
   );
 };

@@ -1,8 +1,7 @@
-
 export function debounce<T extends (...args: any[]) => void>(
   func: T,
   wait: number,
-  options: { maxWait?: number; trailing?: boolean } = {}
+  options: { maxWait?: number; trailing?: boolean } = {},
 ): T & { cancel: () => void } {
   let timeoutId: any | null = null;
   let maxWaitTimeoutId: any | null = null;
@@ -59,7 +58,7 @@ export function debounce<T extends (...args: any[]) => void>(
 
 export function groupBy<T>(
   array: T[],
-  iteratee: (item: T) => string | number
+  iteratee: (item: T) => string | number,
 ): Record<string, T[]> {
   const result: Record<string, T[]> = {};
   for (const item of array) {
@@ -74,7 +73,7 @@ export function groupBy<T>(
 
 export function keyBy<T>(
   array: T[],
-  iteratee: (item: T) => string | number
+  iteratee: (item: T) => string | number,
 ): Record<string, T> {
   const result: Record<string, T> = {};
   for (const item of array) {

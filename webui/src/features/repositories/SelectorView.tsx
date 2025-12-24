@@ -1,6 +1,11 @@
 import React from "react";
 import { Flex, Heading } from "@chakra-ui/react";
-import { TabsRoot, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
+import {
+  TabsRoot,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "../../components/ui/tabs";
 import { OperationListView } from "../operations/OperationListView";
 import { OperationTreeView } from "../operations/OperationTreeView";
 import { MAX_OPERATION_HISTORY } from "../../constants";
@@ -38,7 +43,9 @@ export const SelectorView = ({
         </TabsContent>
 
         <TabsContent value="list">
-          <Heading size="md" mb={4}>Backup Action History</Heading>
+          <Heading size="md" mb={4}>
+            Backup Action History
+          </Heading>
           <OperationListView
             req={create(GetOperationsRequestSchema, {
               selector: sel,

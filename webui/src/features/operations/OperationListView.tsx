@@ -45,7 +45,7 @@ export const OperationListView = ({
   if (req) {
     useEffect(() => {
       const logState = new OplogState(
-        (op) => !shouldHideStatus(op.status) && (!filter || filter(op))
+        (op) => !shouldHideStatus(op.status) && (!filter || filter(op)),
       );
 
       logState.subscribe((ids, flowIDs, event) => {
@@ -54,7 +54,10 @@ export const OperationListView = ({
       });
 
       return syncStateFromRequest(logState, req, (e) => {
-        toaster.create({ description: "Failed to fetch operations: " + e.message, type: "error" });
+        toaster.create({
+          description: "Failed to fetch operations: " + e.message,
+          type: "error",
+        });
       });
     }, [toJsonString(GetOperationsRequestSchema, req)]);
   }

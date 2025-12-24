@@ -6,8 +6,7 @@ export const validateForm = async <T>(form: FormInstance<T>) => {
     return sanitizeUndefinedFields(form.getFieldsValue());
   } catch (e: any) {
     if (e.errorFields) {
-      const firstError = (e as any).errorFields?.[0]
-        ?.errors?.[0];
+      const firstError = (e as any).errorFields?.[0]?.errors?.[0];
       throw new Error(firstError);
     }
     throw e;
@@ -28,7 +27,7 @@ const sanitizeUndefinedFields = <T>(obj: T): T => {
     }
   }
   return newObj;
-}
+};
 
 // regex allows alphanumeric, underscore, dash, and dot
 // this should be kept in sync with values permitted by SanitizeID on the backend

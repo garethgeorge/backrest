@@ -1,5 +1,8 @@
 import React, { useState } from "react";
-import { PeerState, ConnectionState } from "../../../gen/ts/v1sync/syncservice_pb";
+import {
+  PeerState,
+  ConnectionState,
+} from "../../../gen/ts/v1sync/syncservice_pb";
 import {
   FiCheckCircle,
   FiClock,
@@ -21,33 +24,72 @@ export const PeerStateConnectionStatusIcon = ({
   const getStatusIcon = () => {
     switch (peerState.state) {
       case ConnectionState.CONNECTED:
-        return <FiCheckCircle style={{ color: "var(--chakra-colors-green-500)", fontSize: "16px" }} />;
+        return (
+          <FiCheckCircle
+            style={{
+              color: "var(--chakra-colors-green-500)",
+              fontSize: "16px",
+            }}
+          />
+        );
 
       case ConnectionState.PENDING:
         return (
           <Box animation="spin 1s linear infinite">
-            <FiLoader style={{ color: "var(--chakra-colors-blue-500)", fontSize: "16px" }} />
+            <FiLoader
+              style={{
+                color: "var(--chakra-colors-blue-500)",
+                fontSize: "16px",
+              }}
+            />
           </Box>
         );
 
       case ConnectionState.RETRY_WAIT:
-        return <FiClock style={{ color: "var(--chakra-colors-orange-400)", fontSize: "16px" }} />;
+        return (
+          <FiClock
+            style={{
+              color: "var(--chakra-colors-orange-400)",
+              fontSize: "16px",
+            }}
+          />
+        );
 
       case ConnectionState.DISCONNECTED:
-        return <FiWifiOff style={{ color: "var(--chakra-colors-gray-400)", fontSize: "16px" }} />;
+        return (
+          <FiWifiOff
+            style={{ color: "var(--chakra-colors-gray-400)", fontSize: "16px" }}
+          />
+        );
 
       case ConnectionState.ERROR_AUTH:
-        return <FiKey style={{ color: "var(--chakra-colors-red-500)", fontSize: "16px" }} />;
+        return (
+          <FiKey
+            style={{ color: "var(--chakra-colors-red-500)", fontSize: "16px" }}
+          />
+        );
 
       case ConnectionState.ERROR_PROTOCOL:
-        return <FiAlertCircle style={{ color: "var(--chakra-colors-red-500)", fontSize: "16px" }} />;
+        return (
+          <FiAlertCircle
+            style={{ color: "var(--chakra-colors-red-500)", fontSize: "16px" }}
+          />
+        );
 
       case ConnectionState.ERROR_INTERNAL:
-        return <FiXCircle style={{ color: "var(--chakra-colors-red-500)", fontSize: "16px" }} />;
+        return (
+          <FiXCircle
+            style={{ color: "var(--chakra-colors-red-500)", fontSize: "16px" }}
+          />
+        );
 
       case ConnectionState.UNKNOWN:
       default:
-        return <FiHelpCircle style={{ color: "var(--chakra-colors-gray-500)", fontSize: "16px" }} />;
+        return (
+          <FiHelpCircle
+            style={{ color: "var(--chakra-colors-gray-500)", fontSize: "16px" }}
+          />
+        );
     }
   };
 
@@ -83,7 +125,11 @@ export const PeerStateConnectionStatusIcon = ({
         break;
     }
 
-    return baseMessage + statusText + (peerState.statusMessage ? ` - ${peerState.statusMessage}` : "");
+    return (
+      baseMessage +
+      statusText +
+      (peerState.statusMessage ? ` - ${peerState.statusMessage}` : "")
+    );
   };
 
   return (

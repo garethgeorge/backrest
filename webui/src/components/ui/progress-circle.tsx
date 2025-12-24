@@ -1,16 +1,16 @@
-import { ProgressCircle as ChakraProgressCircle } from "@chakra-ui/react"
-import * as React from "react"
+import { ProgressCircle as ChakraProgressCircle } from "@chakra-ui/react";
+import * as React from "react";
 
 export interface ProgressCircleProps extends ChakraProgressCircle.RootProps {
-  trackColor?: string
-  rangeColor?: string
+  trackColor?: string;
+  rangeColor?: string;
 }
 
 export const ProgressCircle = React.forwardRef<
   HTMLDivElement,
   ProgressCircleProps
 >(function ProgressCircle(props, ref) {
-  const { trackColor, rangeColor, children, ...rest } = props
+  const { trackColor, rangeColor, children, ...rest } = props;
   return (
     <ChakraProgressCircle.Root {...rest} ref={ref}>
       {/* @ts-ignore */}
@@ -20,11 +20,11 @@ export const ProgressCircle = React.forwardRef<
       </ChakraProgressCircle.Circle>
       {children}
     </ChakraProgressCircle.Root>
-  )
-})
+  );
+});
 
-export const ProgressCircleRoot = ChakraProgressCircle.Root
-export const ProgressCircleRing = ChakraProgressCircle.Circle
-export const ProgressCircleTrack = ChakraProgressCircle.Track
-export const ProgressCircleRange = ChakraProgressCircle.Range
-export const ProgressCircleValueText = ChakraProgressCircle.ValueText
+export const ProgressCircleRoot = ChakraProgressCircle.Root;
+export const ProgressCircleRing = ChakraProgressCircle.Circle;
+export const ProgressCircleTrack = ChakraProgressCircle.Track;
+export const ProgressCircleRange = ChakraProgressCircle.Range;
+export const ProgressCircleValueText = ChakraProgressCircle.ValueText;

@@ -38,7 +38,7 @@ export const RunCommandModal = ({ repo }: { repo: RepoProps }) => {
         create(RunCommandRequestSchema, {
           repoId: repo.id!,
           command: toRun,
-        })
+        }),
       );
     } catch (e: any) {
       alertApi.error("Command failed: " + e.message);

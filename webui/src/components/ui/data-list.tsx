@@ -1,20 +1,20 @@
-import { DataList as ChakraDataList, IconButton } from "@chakra-ui/react"
-import { HiOutlineInformationCircle } from "react-icons/hi"
-import { Tooltip } from "./tooltip"
-import * as React from "react"
+import { DataList as ChakraDataList, IconButton } from "@chakra-ui/react";
+import { HiOutlineInformationCircle } from "react-icons/hi";
+import { Tooltip } from "./tooltip";
+import * as React from "react";
 
-export const DataListRoot = ChakraDataList.Root
+export const DataListRoot = ChakraDataList.Root;
 
 interface ItemProps extends ChakraDataList.ItemProps {
-  label: React.ReactNode
-  value: React.ReactNode
-  info?: React.ReactNode
-  grow?: boolean
+  label: React.ReactNode;
+  value: React.ReactNode;
+  info?: React.ReactNode;
+  grow?: boolean;
 }
 
 export const DataListItem = React.forwardRef<HTMLDivElement, ItemProps>(
   function DataListItem(props, ref) {
-    const { label, info, value, children, grow, ...rest } = props
+    const { label, info, value, children, grow, ...rest } = props;
     return (
       <ChakraDataList.Item ref={ref} {...rest}>
         <ChakraDataList.ItemLabel flex={grow ? "1" : undefined}>
@@ -32,6 +32,6 @@ export const DataListItem = React.forwardRef<HTMLDivElement, ItemProps>(
         </ChakraDataList.ItemValue>
         {children}
       </ChakraDataList.Item>
-    )
+    );
   },
-)
+);

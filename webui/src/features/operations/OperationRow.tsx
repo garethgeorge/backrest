@@ -15,12 +15,17 @@ import {
   Stack,
   SimpleGrid,
   Heading,
-  Code
+  Code,
 } from "@chakra-ui/react";
 import { ProgressCircle } from "../../components/ui/progress-circle";
 import { ProgressBar, ProgressRoot } from "../../components/ui/progress";
 import { toaster } from "../../components/ui/toaster";
-import { AccordionItem, AccordionItemTrigger, AccordionItemContent, AccordionRoot } from "../../components/ui/accordion";
+import {
+  AccordionItem,
+  AccordionItemTrigger,
+  AccordionItemContent,
+  AccordionRoot,
+} from "../../components/ui/accordion";
 import {
   BackupProgressEntry,
   ResticSnapshot,
@@ -84,20 +89,32 @@ export const OperationRow = ({
             ids: [operation.id!],
           },
           onlyFailed: false,
-        })
+        }),
       );
-      toaster.create({ description: m.op_row_deleted_success(), type: "success" });
+      toaster.create({
+        description: m.op_row_deleted_success(),
+        type: "success",
+      });
     } catch (e: any) {
-      toaster.create({ description: m.op_row_deleted_error() + e.message, type: "error" });
+      toaster.create({
+        description: m.op_row_deleted_error() + e.message,
+        type: "error",
+      });
     }
   };
 
   const doCancel = async () => {
     try {
       await backrestService.cancel({ value: operation.id! });
-      toaster.create({ description: m.op_row_cancel_success(), type: "success" });
+      toaster.create({
+        description: m.op_row_cancel_success(),
+        type: "success",
+      });
     } catch (e: any) {
-      toaster.create({ description: m.op_row_cancel_error() + e.message, type: "error" });
+      toaster.create({
+        description: m.op_row_cancel_error() + e.message,
+        type: "error",
+      });
     }
   };
 
@@ -116,7 +133,7 @@ export const OperationRow = ({
         footer={null}
       >
         <LogView logref={operation.logref!} />
-      </FormModal>
+      </FormModal>,
     );
   };
 
@@ -128,7 +145,7 @@ export const OperationRow = ({
     details +=
       " in " +
       formatDuration(
-        Number(operation.unixTimeEndMs - operation.unixTimeStartMs)
+        Number(operation.unixTimeEndMs - operation.unixTimeStartMs),
       );
   }
 
@@ -154,7 +171,7 @@ export const OperationRow = ({
         onClick={doShowLogs}
       >
         {m.op_row_view_logs()}
-      </Button>
+      </Button>,
     );
   }
 
@@ -172,7 +189,7 @@ export const OperationRow = ({
         onClickAsync={doCancel}
       >
         {m.op_row_cancel_op()}
-      </ConfirmButton>
+      </ConfirmButton>,
     );
   } else if (showDelete) {
     title.push(
@@ -185,13 +202,14 @@ export const OperationRow = ({
         onClickAsync={doDelete}
       >
         {m.op_row_delete()}
-      </ConfirmButton>
+      </ConfirmButton>,
     );
   }
 
   let displayMessage = operation.displayMessage;
 
-  const bodyItems: { key: string; label: string; children: React.ReactNode }[] = [];
+  const bodyItems: { key: string; label: string; children: React.ReactNode }[] =
+    [];
   const expandedBodyItems: string[] = [];
 
   if (operation.op.case === "operationBackup") {
@@ -214,7 +232,9 @@ export const OperationRow = ({
             <Table.Header>
               <Table.Row>
                 <Table.ColumnHeader>{m.op_row_error_path()}</Table.ColumnHeader>
-                <Table.ColumnHeader>{m.op_row_error_message()}</Table.ColumnHeader>
+                <Table.ColumnHeader>
+                  {m.op_row_error_message()}
+                </Table.ColumnHeader>
               </Table.Row>
             </Table.Header>
             <Table.Body>
@@ -254,7 +274,6 @@ export const OperationRow = ({
         />
       ),
     });
-
   } else if (operation.op.case === "operationForget") {
     const forgetOp = operation.op.value;
     expandedBodyItems.push("forgot");
@@ -389,11 +408,18 @@ export const OperationRow = ({
 
         {bodyItems.length > 0 && (
           <Box mt={2} pl={2}>
-            <AccordionRoot collapsible multiple defaultValue={expandedBodyItems} variant="plain">
+            <AccordionRoot
+              collapsible
+              multiple
+              defaultValue={expandedBodyItems}
+              variant="plain"
+            >
               {bodyItems.map((item) => (
                 <AccordionItem key={item.key} value={item.key} border="none">
                   <AccordionItemTrigger py={2}>
-                    <Text fontSize="sm" fontWeight="medium">{item.label}</Text>
+                    <Text fontSize="sm" fontWeight="medium">
+                      {item.label}
+                    </Text>
                   </AccordionItemTrigger>
                   <AccordionItemContent pb={4}>
                     {item.children}
@@ -414,7 +440,9 @@ const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
   return (
     <>
       <Text>
-        <Text as="span" fontWeight="bold">{m.op_row_snapshot_id()}</Text>
+        <Text as="span" fontWeight="bold">
+          {m.op_row_snapshot_id()}
+        </Text>
         {normalizeSnapshotId(snapshot.id!)}
       </Text>
       <SimpleGrid columns={3} gap={4} mt={2}>
@@ -426,9 +454,7 @@ const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
         </GridItem>
         <GridItem colSpan={2}>
           <Text fontWeight="bold">{m.op_row_tags()}</Text>
-          <Text color="fg.muted">
-            {snapshot.tags.join(", ")}
-          </Text>
+          <Text color="fg.muted">{snapshot.tags.join(", ")}</Text>
         </GridItem>
       </SimpleGrid>
 
@@ -437,9 +463,7 @@ const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
           <SimpleGrid columns={3} gap={4} mt={2}>
             <Box>
               <Text fontWeight="bold">{m.op_row_files_added()}</Text>
-              <Text color="fg.muted">
-                {summary.filesNew.toLocaleString()}
-              </Text>
+              <Text color="fg.muted">{summary.filesNew.toLocaleString()}</Text>
             </Box>
             <Box>
               <Text fontWeight="bold">{m.op_row_files_changed()}</Text>
@@ -448,9 +472,7 @@ const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
               </Text>
             </Box>
             <Box>
-              <Text fontWeight="bold">
-                {m.op_row_files_unmodified()}
-              </Text>
+              <Text fontWeight="bold">{m.op_row_files_unmodified()}</Text>
               <Text color="fg.muted">
                 {summary.filesUnmodified.toLocaleString()}
               </Text>
@@ -493,14 +515,30 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
     <>
       <Stack gap={4} mb={4}>
         <Box>
-          <Text fontWeight="bold" fontSize="xs" color="fg.muted" mb={1}>{m.op_row_restore_source()}</Text>
-          <Code p={2} borderRadius="md" width="full" display="block" whiteSpace="pre-wrap">
+          <Text fontWeight="bold" fontSize="xs" color="fg.muted" mb={1}>
+            {m.op_row_restore_source()}
+          </Text>
+          <Code
+            p={2}
+            borderRadius="md"
+            width="full"
+            display="block"
+            whiteSpace="pre-wrap"
+          >
             {restoreOp.path}
           </Code>
         </Box>
         <Box>
-          <Text fontWeight="bold" fontSize="xs" color="fg.muted" mb={1}>{m.op_row_restore_target()}</Text>
-          <Code p={2} borderRadius="md" width="full" display="block" whiteSpace="pre-wrap">
+          <Text fontWeight="bold" fontSize="xs" color="fg.muted" mb={1}>
+            {m.op_row_restore_target()}
+          </Text>
+          <Code
+            p={2}
+            borderRadius="md"
+            width="full"
+            display="block"
+            whiteSpace="pre-wrap"
+          >
             {restoreOp.target}
           </Code>
         </Box>
@@ -524,7 +562,10 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
                   window.open(resp.value, "_blank");
                 })
                 .catch((e) => {
-                  toaster.create({ description: m.op_row_fetch_download_error() + e.message, type: "error" });
+                  toaster.create({
+                    description: m.op_row_fetch_download_error() + e.message,
+                    type: "error",
+                  });
                 });
             }}
           >
@@ -543,20 +584,17 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
         {lastStatus && (
           <>
             <Box>
-              <Text fontWeight="bold">
-                {m.op_row_bytes_done_total()}
-              </Text>
+              <Text fontWeight="bold">{m.op_row_bytes_done_total()}</Text>
               <Text color="fg.muted">
                 {formatBytes(Number(lastStatus.bytesRestored))}/
                 {formatBytes(Number(lastStatus.totalBytes))}
               </Text>
             </Box>
             <Box>
-              <Text fontWeight="bold">
-                {m.op_row_files_done_total()}
-              </Text>
+              <Text fontWeight="bold">{m.op_row_files_done_total()}</Text>
               <Text color="fg.muted">
-                {Number(lastStatus.filesRestored)}/{Number(lastStatus.totalFiles)}
+                {Number(lastStatus.filesRestored)}/
+                {Number(lastStatus.totalFiles)}
               </Text>
             </Box>
           </>
@@ -579,7 +617,7 @@ const BackupOperationStatus = ({
     const st = status.entry.value;
     const progress =
       Math.round(
-        (Number(st.bytesDone) / Math.max(Number(st.totalBytes), 1)) * 1000
+        (Number(st.bytesDone) / Math.max(Number(st.totalBytes), 1)) * 1000,
       ) / 10;
     return (
       <>
@@ -588,18 +626,14 @@ const BackupOperationStatus = ({
         </ProgressRoot>
         <SimpleGrid columns={2} gap={4}>
           <Box>
-            <Text fontWeight="bold">
-              {m.op_row_bytes_done_total()}
-            </Text>
+            <Text fontWeight="bold">{m.op_row_bytes_done_total()}</Text>
             <Text color="fg.muted">
               {formatBytes(Number(st.bytesDone))} /{" "}
               {formatBytes(Number(st.totalBytes))}
             </Text>
           </Box>
           <Box>
-            <Text fontWeight="bold">
-              {m.op_row_files_done_total()}
-            </Text>
+            <Text fontWeight="bold">{m.op_row_files_done_total()}</Text>
             <Text color="fg.muted">
               {Number(st.filesDone).toLocaleString()} /{" "}
               {Number(st.totalFiles).toLocaleString()}
@@ -628,7 +662,9 @@ const BackupOperationStatus = ({
     return (
       <>
         <Text>
-          <Text as="span" fontWeight="bold">{m.op_row_snapshot_id()}</Text>
+          <Text as="span" fontWeight="bold">
+            {m.op_row_snapshot_id()}
+          </Text>
           {sum.snapshotId !== ""
             ? normalizeSnapshotId(sum.snapshotId!)
             : m.op_row_no_snapshot()}
@@ -647,9 +683,7 @@ const BackupOperationStatus = ({
             </Text>
           </Box>
           <Box>
-            <Text fontWeight="bold">
-              {m.op_row_files_unmodified()}
-            </Text>
+            <Text fontWeight="bold">{m.op_row_files_unmodified()}</Text>
             <Text color="fg.muted">
               {Number(sum.filesUnmodified).toLocaleString()}
             </Text>
@@ -658,9 +692,7 @@ const BackupOperationStatus = ({
         <SimpleGrid columns={{ base: 1, md: 3 }} gap={4} mt={2}>
           <Box>
             <Text fontWeight="bold">{m.op_row_bytes_added()}</Text>
-            <Text color="fg.muted">
-              {formatBytes(Number(sum.dataAdded))}
-            </Text>
+            <Text color="fg.muted">{formatBytes(Number(sum.dataAdded))}</Text>
           </Box>
           <Box>
             <Text fontWeight="bold">{m.op_row_total_bytes()}</Text>
@@ -679,15 +711,18 @@ const BackupOperationStatus = ({
     );
   } else {
     console.error("GOT UNEXPECTED STATUS: ", status);
-    return (
-      <>
-        {m.op_row_unexpected_status() + JSON.stringify(status)}
-      </>
-    );
+    return <>{m.op_row_unexpected_status() + JSON.stringify(status)}</>;
   }
 };
 
-import { Table, TableBody, TableCell, TableColumnHeader, TableHeader, TableRow } from "@chakra-ui/react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumnHeader,
+  TableHeader,
+  TableRow,
+} from "@chakra-ui/react";
 
 const ForgetOperationDetails = ({
   forgetOp,
@@ -710,7 +745,9 @@ const ForgetOperationDetails = ({
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{m.op_row_removed_id_col()}</Table.ColumnHeader>
-            <Table.ColumnHeader>{m.op_row_removed_time_col()}</Table.ColumnHeader>
+            <Table.ColumnHeader>
+              {m.op_row_removed_time_col()}
+            </Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -719,9 +756,7 @@ const ForgetOperationDetails = ({
               <Table.Cell fontFamily="mono">
                 {normalizeSnapshotId(f.id!)}
               </Table.Cell>
-              <Table.Cell>
-                {formatTime(Number(f.unixTimeMs))}
-              </Table.Cell>
+              <Table.Cell>{formatTime(Number(f.unixTimeMs))}</Table.Cell>
             </Table.Row>
           ))}
         </Table.Body>

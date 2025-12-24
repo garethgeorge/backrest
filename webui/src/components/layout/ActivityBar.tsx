@@ -31,10 +31,10 @@ export const ActivityBar = () => {
           const ops = event.event.value.operations;
           setActiveOperations((oldOps) => {
             oldOps = oldOps.filter(
-              (op) => !ops.find((newOp) => newOp.id === op.id)
+              (op) => !ops.find((newOp) => newOp.id === op.id),
             );
             const newOps = ops.filter(
-              (newOp) => newOp.status === OperationStatus.STATUS_INPROGRESS
+              (newOp) => newOp.status === OperationStatus.STATUS_INPROGRESS,
             );
             return [...oldOps, ...newOps];
           });
@@ -42,7 +42,7 @@ export const ActivityBar = () => {
         case "deletedOperations":
           const opIDs = event.event.value.values;
           setActiveOperations((ops) =>
-            ops.filter((op) => !opIDs.includes(op.id))
+            ops.filter((op) => !opIDs.includes(op.id)),
           );
           break;
       }

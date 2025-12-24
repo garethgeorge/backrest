@@ -37,7 +37,9 @@ const subscribeToSyncStates = async (
           console.warn("Error in sync state stream:", error);
         }
       }
-      await new Promise(resolve => setTimeout(resolve, nextConnWaitUntil - new Date().getTime()));
+      await new Promise((resolve) =>
+        setTimeout(resolve, nextConnWaitUntil - new Date().getTime()),
+      );
     }
     if (updateTimeout) {
       clearTimeout(updateTimeout);
@@ -63,28 +65,34 @@ const unsubscribeFromPeerStates = (
   subscribers.delete(callback);
 };
 
-
 (async () => {
   const abortController = new AbortController(); // never aborts at the moment.
-  subscribeToSyncStates(() => {
-    return syncStateService.getPeerSyncStatesStream({ subscribe: true }, {
-      signal: abortController.signal,
-    });
-  }, (updatedStates) => {
-    console.log("Received updated states for peers: ", updatedStates);
-    for (const state of updatedStates) {
-      peerStates.set(state.peerKeyid, state);
-    }
-    const curStates = Array.from(peerStates.values());
-    for (const subscriber of subscribers) {
-      subscriber(curStates);
-    }
-  }, abortController);
+  subscribeToSyncStates(
+    () => {
+      return syncStateService.getPeerSyncStatesStream(
+        { subscribe: true },
+        {
+          signal: abortController.signal,
+        },
+      );
+    },
+    (updatedStates) => {
+      console.log("Received updated states for peers: ", updatedStates);
+      for (const state of updatedStates) {
+        peerStates.set(state.peerKeyid, state);
+      }
+      const curStates = Array.from(peerStates.values());
+      for (const subscriber of subscribers) {
+        subscriber(curStates);
+      }
+    },
+    abortController,
+  );
 })();
 
 export const useSyncStates = (): PeerState[] => {
   const [syncStates, setSyncStates] = useState<PeerState[]>(() =>
-    Array.from(peerStates.values())
+    Array.from(peerStates.values()),
   );
 
   useEffect(() => {

@@ -2,7 +2,13 @@ import React, { useEffect, useState } from "react";
 import { Plan } from "../../../gen/ts/v1/config_pb";
 import { Button } from "../../components/ui/button";
 import { Flex, Heading, Text, Box } from "@chakra-ui/react";
-import { Tabs, TabsList, TabsTrigger, TabsContent, TabsRoot } from "../../components/ui/tabs";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  TabsRoot,
+} from "../../components/ui/tabs";
 import { Tooltip } from "../../components/ui/tooltip";
 import { useAlertApi } from "../../components/common/Alerts";
 import { MAX_OPERATION_HISTORY } from "../../constants";
@@ -43,7 +49,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         create(DoRepoTaskRequestSchema, {
           repoId: plan.repo!,
           task: DoRepoTaskRequest_Task.UNLOCK,
-        })
+        }),
       );
       alertsApi.success(m.repo_success_unlocked());
     } catch (e: any) {
@@ -62,7 +68,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             originalInstanceKeyid: "",
           },
           onlyFailed: true,
-        })
+        }),
       );
       alertsApi.success(m.plan_history_cleared());
     } catch (e: any) {
@@ -91,7 +97,8 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           <Button
             variant="outline"
             onClick={async () => {
-              const { RunCommandModal } = await import("../operations/RunCommandModal");
+              const { RunCommandModal } =
+                await import("../operations/RunCommandModal");
               showModal(<RunCommandModal repo={repo} />);
             }}
           >
@@ -133,7 +140,9 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         </TabsContent>
 
         <TabsContent value="list">
-          <Heading size="md" mb={4}>{m.repo_history_title()}</Heading>
+          <Heading size="md" mb={4}>
+            {m.repo_history_title()}
+          </Heading>
           <OperationListView
             req={create(GetOperationsRequestSchema, {
               selector: {

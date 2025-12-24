@@ -32,7 +32,7 @@ export const LogView = ({ logref }: { logref: string }) => {
           create(LogDataRequestSchema, {
             ref: logref,
           }),
-          { signal: controller.signal }
+          { signal: controller.signal },
         )) {
           // If we receive data, we are no longer "loading" in the sense of waiting for connection
           setLoading(false);
@@ -49,7 +49,10 @@ export const LogView = ({ logref }: { logref: string }) => {
           });
         }
       } catch (e: any) {
-        if (e.name !== 'AbortError' && !e.message?.includes("signal is aborted without reason")) {
+        if (
+          e.name !== "AbortError" &&
+          !e.message?.includes("signal is aborted without reason")
+        ) {
           setError(e.message || "Failed to fetch logs");
         }
       } finally {

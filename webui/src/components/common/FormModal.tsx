@@ -55,15 +55,9 @@ export const FormModal: React.FC<FormModalProps> = ({
             </DialogHeader>
             <DialogCloseTrigger />
 
-            <DialogBody>
-              {children}
-            </DialogBody>
+            <DialogBody>{children}</DialogBody>
 
-            {footer && (
-              <DialogFooter>
-                {footer}
-              </DialogFooter>
-            )}
+            {footer && <DialogFooter>{footer}</DialogFooter>}
           </DialogContent>
         </DialogPositioner>
       </Portal>

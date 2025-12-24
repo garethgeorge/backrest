@@ -8,7 +8,14 @@ import {
   RestoreSnapshotRequest,
   RestoreSnapshotRequestSchema,
 } from "../../../gen/ts/v1/service_pb";
-import { FiFile, FiFolder, FiDownload, FiInfo, FiRefreshCw, FiMoreHorizontal } from "react-icons/fi";
+import {
+  FiFile,
+  FiFolder,
+  FiDownload,
+  FiInfo,
+  FiRefreshCw,
+  FiMoreHorizontal,
+} from "react-icons/fi";
 import { useShowModal } from "../../components/common/ModalManager";
 import { formatBytes, normalizeSnapshotId } from "../../lib/formatting";
 import { URIAutocomplete } from "../../components/common/URIAutocomplete";
@@ -23,7 +30,7 @@ import {
   Text,
   Button,
   Stack,
-  Spinner
+  Spinner,
 } from "@chakra-ui/react";
 import {
   TreeViewRoot,
@@ -43,7 +50,7 @@ import {
   MenuTrigger,
   MenuContent,
   MenuItem,
-  MenuItemText
+  MenuItemText,
 } from "../../components/ui/menu";
 import { FormModal } from "../../components/common/FormModal";
 import { Field } from "../../components/ui/field";
@@ -68,7 +75,7 @@ interface SnapshotNode {
 const replaceKeyInTree = (
   curNode: SnapshotNode,
   setKey: string,
-  setValue: SnapshotNode
+  setValue: SnapshotNode,
 ): SnapshotNode | null => {
   if (curNode.key === setKey) {
     return setValue;
@@ -89,7 +96,10 @@ const replaceKeyInTree = (
   return null;
 };
 
-const findInTree = (curNode: SnapshotNode, key: string): SnapshotNode | null => {
+const findInTree = (
+  curNode: SnapshotNode,
+  key: string,
+): SnapshotNode | null => {
   if (curNode.key === key) {
     return curNode;
   }
@@ -124,18 +134,20 @@ export const SnapshotBrowser = ({
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
 
   const respToNodes = (resp: ListSnapshotFilesResponse): SnapshotNode[] => {
-    return resp.entries!
-      // Strictly filter children that are longer than the parent path to avoid self-references.
-      // This is crucial for fixing the infinite recursion / display issues, while ensuring
-      // we don't accidentally filter the root node in other contexts (though root is manually init now).
-      .filter((entry) => entry.path!.length > resp.path!.length)
-      .map((entry) => ({
-        key: entry.path!,
-        title: <FileNode entry={entry} snapshotOpId={snapshotOpId} />,
-        isLeaf: entry.type === "file",
-        children: entry.type !== "file" ? [] : undefined,
-        entry: entry
-      }));
+    return (
+      resp
+        .entries!// Strictly filter children that are longer than the parent path to avoid self-references.
+        // This is crucial for fixing the infinite recursion / display issues, while ensuring
+        // we don't accidentally filter the root node in other contexts (though root is manually init now).
+        .filter((entry) => entry.path!.length > resp.path!.length)
+        .map((entry) => ({
+          key: entry.path!,
+          title: <FileNode entry={entry} snapshotOpId={snapshotOpId} />,
+          isLeaf: entry.type === "file",
+          children: entry.type !== "file" ? [] : undefined,
+          entry: entry,
+        }))
+    );
   };
 
   useEffect(() => {
@@ -191,7 +203,7 @@ export const SnapshotBrowser = ({
           path,
           repoGuid,
           snapshotId,
-        })
+        }),
       );
 
       setTreeData((prev) => {
@@ -212,7 +224,10 @@ export const SnapshotBrowser = ({
         });
       });
     } catch (e: any) {
-      toaster.create({ description: "Failed to load snapshot files: " + e.message, type: "error" });
+      toaster.create({
+        description: "Failed to load snapshot files: " + e.message,
+        type: "error",
+      });
     } finally {
       setLoadingKeys((prev) => {
         const next = new Set(prev);
@@ -232,12 +247,10 @@ export const SnapshotBrowser = ({
         title: "root",
         children: treeData,
         entry: create(LsEntrySchema, {}),
-        isLeaf: false
-      }
-    })
+        isLeaf: false,
+      },
+    });
   }, [treeData]);
-
-
 
   return (
     <SnapshotBrowserContext.Provider
@@ -283,15 +296,17 @@ export const SnapshotBrowser = ({
                       </TreeViewBranchControl>
                       <TreeViewBranchContent />
                     </TreeViewBranch>
-                  )
+                  );
                 }
                 return (
                   // @ts-ignore
                   <TreeViewItem value={node.key}>
-                    <Box mr={2}><FiFile /></Box>
+                    <Box mr={2}>
+                      <FiFile />
+                    </Box>
                     <TreeViewItemText>{node.title}</TreeViewItemText>
                   </TreeViewItem>
-                )
+                );
               }}
             />
           </TreeViewTree>
@@ -309,7 +324,7 @@ const FileNode = ({
   snapshotOpId?: bigint;
 }) => {
   const { snapshotId, repoId, planId, showModal } = React.useContext(
-    SnapshotBrowserContext
+    SnapshotBrowserContext,
   )!;
 
   const doDownload = () => {
@@ -319,7 +334,10 @@ const FileNode = ({
         window.open(resp.value, "_blank");
       })
       .catch((e) => {
-        toaster.create({ description: "Failed to fetch download URL: " + e.message, type: "error" });
+        toaster.create({
+          description: "Failed to fetch download URL: " + e.message,
+          type: "error",
+        });
       });
   };
 
@@ -336,7 +354,7 @@ const FileNode = ({
             prettySpaces: 2,
           })}
         </Box>
-      </FormModal>
+      </FormModal>,
     );
   };
 
@@ -347,7 +365,7 @@ const FileNode = ({
         repoId={repoId}
         planId={planId}
         snapshotId={snapshotId}
-      />
+      />,
     );
   };
 
@@ -446,12 +464,18 @@ const RestoreModal = ({
           snapshotId,
           path,
           target,
-        })
+        }),
       );
-      toaster.create({ description: "Restore started successfully.", type: "success" });
+      toaster.create({
+        description: "Restore started successfully.",
+        type: "success",
+      });
       showModal(null);
     } catch (e: any) {
-      toaster.create({ description: "Failed to restore: " + e.message, type: "error" });
+      toaster.create({
+        description: "Failed to restore: " + e.message,
+        type: "error",
+      });
     }
   };
 
@@ -462,7 +486,9 @@ const RestoreModal = ({
       onClose={() => showModal(null)}
       footer={
         <>
-          <Button variant="ghost" onClick={() => showModal(null)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => showModal(null)}>
+            Cancel
+          </Button>
           <ConfirmButton
             onClickAsync={handleOk}
             confirmTitle="Confirm Restore?"
@@ -479,7 +505,8 @@ const RestoreModal = ({
           location.
         </Text>
         <Text>
-          You may set the path to an empty string to restore to your Downloads folder.
+          You may set the path to an empty string to restore to your Downloads
+          folder.
         </Text>
 
         <Field label="Restore to path" errorText={error}>
