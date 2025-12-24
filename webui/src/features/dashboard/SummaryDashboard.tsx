@@ -22,7 +22,7 @@ import {
   SummaryDashboardResponse_Summary,
 } from "../../../gen/ts/v1/service_pb";
 import { backrestService } from "../../api/client";
-import { useAlertApi } from "../../components/common/Alerts";
+import { alerts } from "../../components/common/Alerts";
 import { formatBytes, formatDuration, formatTime } from "../../lib/formatting";
 import {
   Bar,
@@ -49,7 +49,6 @@ import { FiDatabase, FiServer } from "react-icons/fi";
 
 export const SummaryDashboard = () => {
   const [config] = useConfig();
-  const alertApi = useAlertApi()!;
   const navigate = useNavigate();
 
   const [summaryData, setSummaryData] =
@@ -67,7 +66,7 @@ export const SummaryDashboard = () => {
         const data = await backrestService.getSummaryDashboard({});
         setSummaryData(data);
       } catch (e: any) {
-        alertApi.error(m.dashboard_error_fetch() + e);
+        alerts.error(m.dashboard_error_fetch() + e);
       }
     };
 

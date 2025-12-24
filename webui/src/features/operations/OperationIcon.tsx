@@ -1,15 +1,15 @@
 import React from "react";
 import { DisplayType, colorForStatus } from "../../api/flowDisplayAggregator";
 import {
-  CodeOutlined,
-  DeleteOutlined,
-  DownloadOutlined,
-  FileSearchOutlined,
-  InfoCircleOutlined,
-  PaperClipOutlined,
-  RobotOutlined,
-  SaveOutlined,
-} from "@ant-design/icons";
+  FaCode,
+  FaTrash,
+  FaDownload,
+  FaSearch,
+  FaInfoCircle,
+  FaPaperclip,
+  FaRobot,
+  FaSave,
+} from "react-icons/fa";
 import { OperationStatus } from "../../../gen/ts/v1/operations_pb";
 
 export const OperationIcon = ({
@@ -20,34 +20,36 @@ export const OperationIcon = ({
   status: OperationStatus;
 }) => {
   const color = colorForStatus(status);
+  const style = { color: color };
 
   let avatar: React.ReactNode;
   switch (type) {
     case DisplayType.BACKUP:
-      avatar = <SaveOutlined style={{ color: color }} />;
+      avatar = <FaSave style={style} />;
       break;
     case DisplayType.FORGET:
-      avatar = <DeleteOutlined style={{ color: color }} />;
+      avatar = <FaTrash style={style} />;
       break;
     case DisplayType.SNAPSHOT:
-      avatar = <PaperClipOutlined style={{ color: color }} />;
+      avatar = <FaPaperclip style={style} />;
       break;
     case DisplayType.RESTORE:
-      avatar = <DownloadOutlined style={{ color: color }} />;
+      avatar = <FaDownload style={style} />;
       break;
     case DisplayType.PRUNE:
-      avatar = <DeleteOutlined style={{ color: color }} />;
+      avatar = <FaTrash style={style} />;
       break;
     case DisplayType.CHECK:
-      avatar = <FileSearchOutlined style={{ color: color }} />;
+      avatar = <FaSearch style={style} />;
+      break;
     case DisplayType.RUNHOOK:
-      avatar = <RobotOutlined style={{ color: color }} />;
+      avatar = <FaRobot style={style} />;
       break;
     case DisplayType.STATS:
-      avatar = <InfoCircleOutlined style={{ color: color }} />;
+      avatar = <FaInfoCircle style={style} />;
       break;
     case DisplayType.RUNCOMMAND:
-      avatar = <CodeOutlined style={{ color: color }} />;
+      avatar = <FaCode style={style} />;
       break;
   }
 

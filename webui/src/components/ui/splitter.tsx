@@ -16,7 +16,8 @@ export const Splitter = React.forwardRef<HTMLDivElement, SplitterProps>(
   },
 );
 
-export interface SplitterPanelProps extends ChakraSplitter.PanelProps {
+export interface SplitterPanelProps
+  extends Omit<ChakraSplitter.PanelProps, "id"> {
   children?: React.ReactNode;
   id?: string;
 }
@@ -29,7 +30,7 @@ export const SplitterPanel = React.forwardRef<
 });
 
 export interface SplitterResizeTriggerProps
-  extends ChakraSplitter.ResizeTriggerProps {
+  extends Omit<ChakraSplitter.ResizeTriggerProps, "id"> {
   id?: string;
 }
 

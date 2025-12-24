@@ -16,10 +16,11 @@ export const NumberInputField = React.forwardRef<
   const { label, helperText, errorText, ...rest } = props;
   return (
     <Field label={label} helperText={helperText} errorText={errorText}>
-      <NumberInput.Root ref={ref} {...rest}>
-        <HStack gap="2">
+      <NumberInput.Root ref={ref} {...rest} width="full">
+        <HStack gap="2" width="full">
           <NumberInput.Scrubber />
-          <NumberInput.Input />
+          {/* @ts-ignore */}
+          <NumberInput.Input style={{ flex: 1 }} />
         </HStack>
       </NumberInput.Root>
     </Field>

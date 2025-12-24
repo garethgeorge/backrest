@@ -344,5 +344,9 @@
   "op_row_removed_header": "Istantanee rimosse",
   "op_row_removed_none": "Nessuna istantanea è stata rimossa.",
   "op_row_removed_id_col": "ID istantanea",
-  "op_row_removed_time_col": "Tempo"
+  "op_row_removed_time_col": "Tempo",
+  "op_row_restore_source": "Percorso di origine",
+  "op_row_restore_target": "Percorso di destinazione",
+  "op_row_error_path": "Sentiero",
+  "op_row_error_message": "Messaggio"
 }

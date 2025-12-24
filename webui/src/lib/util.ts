@@ -82,3 +82,7 @@ export function keyBy<T>(
   }
   return result;
 }
+
+// regex allows alphanumeric, underscore, dash, and dot
+// this should be kept in sync with values permitted by SanitizeID on the backend
+export const namePattern = /^[a-zA-Z0-9_\-\.]+$/;

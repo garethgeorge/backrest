@@ -346,5 +346,7 @@
   "op_row_removed_id_col": "Snapshot ID",
   "op_row_removed_time_col": "Time",
   "op_row_restore_source": "Source Path",
-  "op_row_restore_target": "Destination Path"
+  "op_row_restore_target": "Destination Path",
+  "op_row_error_path": "Path",
+  "op_row_error_message": "Message"
 }

@@ -108,7 +108,7 @@ export const ScheduleFormItem = ({
       <Field label="Schedule Type">
         <RadioGroup
           value={(mode as string) || "disabled"}
-          onValueChange={(e: { value: string }) => handleModeChange(e.value)}
+          onValueChange={(e) => e.value && handleModeChange(e.value)}
         >
           <Stack direction="row" gap={4} wrap="wrap">
             <Radio value="disabled">Disabled</Radio>
@@ -162,7 +162,7 @@ export const ScheduleFormItem = ({
       >
         <RadioGroup
           value={clockEnumValueToString(schedule.clock)}
-          onValueChange={(e: { value: string }) => {
+          onValueChange={(e) => {
             // find enum value
             const clk = Schedule_ClockSchema.values.find(
               (v) => v.name === e.value,

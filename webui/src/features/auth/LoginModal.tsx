@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { authenticationService, setAuthToken } from "../../api/client";
 import { LoginRequestSchema } from "../../../gen/ts/v1/authentication_pb";
-import { useAlertApi } from "../../components/common/Alerts";
+import { alerts } from "../../components/common/Alerts";
 import { create } from "@bufbuild/protobuf";
 import * as m from "../../paraglide/messages";
 import { FormModal } from "../../components/common/FormModal";
@@ -17,7 +17,7 @@ export const LoginModal = () => {
   const [password, setPassword] = useState(defaultCreds.password);
   const [loading, setLoading] = useState(false);
 
-  const alertApi = useAlertApi()!;
+
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -38,12 +38,12 @@ export const LoginModal = () => {
     try {
       const loginResponse = await authenticationService.login(loginReq);
       setAuthToken(loginResponse.token);
-      alertApi.success(m.login_success(), 5);
+      alerts.success(m.login_success(), 5);
       setTimeout(() => {
         window.location.reload();
       }, 500);
     } catch (e: any) {
-      alertApi.error(m.login_error() + (e.message ? e.message : "" + e), 10);
+      alerts.error(m.login_error() + (e.message ? e.message : "" + e), 10);
       setLoading(false);
     }
   };
@@ -51,7 +51,7 @@ export const LoginModal = () => {
   return (
     <FormModal
       isOpen={true}
-      onClose={() => {}} // Non-closable
+      onClose={() => { }} // Non-closable
       title={m.login_title()}
       footer={
         <Button

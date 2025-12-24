@@ -1,30 +1,48 @@
-import React, { useContext } from "react";
+import React from "react";
+import { toaster } from "../ui/toaster";
 
-import { message } from "antd";
-import { MessageInstance } from "antd/es/message/interface";
-
-const MessageContext = React.createContext<MessageInstance | null>(null);
-
-export const AlertContextProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  const [messageApi, contextHolder] = message.useMessage();
-
-  return (
-    <>
-      {contextHolder}
-      <MessageContext.Provider value={messageApi}>
-        {children}
-      </MessageContext.Provider>
-    </>
-  );
+export const alerts = {
+  error: (content: any, duration = 5000) => {
+    const title =
+      typeof content === "string" ? content : formatErrorAlert(content);
+    toaster.create({
+      title: title,
+      type: "error",
+      duration,
+    });
+  },
+  success: (content: string, duration = 3000) => {
+    toaster.create({
+      title: content,
+      type: "success",
+      duration,
+    });
+  },
+  info: (content: string, duration = 3000) => {
+    toaster.create({
+      title: content,
+      type: "info",
+      duration,
+    });
+  },
+  warning: (content: string, duration = 4000) => {
+    toaster.create({
+      title: content,
+      type: "warning",
+      duration,
+    });
+  },
+  loading: (content: string) => {
+    return toaster.create({
+      title: content,
+      type: "loading",
+    });
+  },
+  destroy: (key?: string) => {
+    if (key) toaster.dismiss(key);
+  },
 };
 
-export const useAlertApi = () => {
-  return useContext(MessageContext);
-};
 
 export const formatErrorAlert = (error: any, prefix?: string) => {
   prefix = prefix ? prefix.trim() + " " : "Error: ";

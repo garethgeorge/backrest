@@ -344,5 +344,9 @@
   "op_row_removed_header": "Instantáneas eliminadas",
   "op_row_removed_none": "No se eliminaron instantáneas.",
   "op_row_removed_id_col": "ID de instantánea",
-  "op_row_removed_time_col": "Tiempo"
+  "op_row_removed_time_col": "Tiempo",
+  "op_row_restore_source": "Ruta de origen",
+  "op_row_restore_target": "Ruta de destino",
+  "op_row_error_path": "Camino",
+  "op_row_error_message": "Mensaje"
 }

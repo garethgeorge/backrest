@@ -4,8 +4,9 @@ import { Combobox as ChakraCombobox, Portal } from "@chakra-ui/react";
 import { CloseButton } from "./close-button";
 import * as React from "react";
 
-interface ComboboxControlProps extends ChakraCombobox.ControlProps {
+export interface ComboboxControlProps extends ChakraCombobox.ControlProps {
   clearable?: boolean;
+  hideTrigger?: boolean;
   children?: React.ReactNode;
 }
 
@@ -13,14 +14,14 @@ export const ComboboxControl = React.forwardRef<
   HTMLDivElement,
   ComboboxControlProps
 >(function ComboboxControl(props, ref) {
-  const { children, clearable, ...rest } = props;
+  const { children, clearable, hideTrigger, ...rest } = props;
   return (
     // @ts-ignore
     <ChakraCombobox.Control {...rest} ref={ref}>
       {children}
       <ChakraCombobox.IndicatorGroup>
         {clearable && <ComboboxClearTrigger />}
-        <ChakraCombobox.Trigger />
+        {!hideTrigger && <ChakraCombobox.Trigger />}
       </ChakraCombobox.IndicatorGroup>
     </ChakraCombobox.Control>
   );

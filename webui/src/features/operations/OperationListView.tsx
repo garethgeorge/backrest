@@ -4,7 +4,7 @@ import {
   GetOperationsRequestSchema,
   type GetOperationsRequest,
 } from "../../../gen/ts/v1/service_pb";
-import { useAlertApi } from "../../components/common/Alerts";
+import { alerts } from "../../components/common/Alerts";
 import { OperationRow } from "./OperationRow";
 import { OplogState, syncStateFromRequest } from "../../api/logState";
 import { shouldHideStatus } from "../../api/oplog";
@@ -18,7 +18,7 @@ import {
   PaginationNextTrigger,
   PaginationPrevTrigger,
 } from "../../components/ui/pagination";
-import { toaster } from "../../components/ui/toaster";
+
 
 // OperationList displays a list of operations that are either fetched based on 'req' or passed in via 'useBackups'.
 // If showPlan is provided the planId will be displayed next to each operation in the operation list.
@@ -37,7 +37,6 @@ export const OperationListView = ({
   filter?: (op: Operation) => boolean;
   showDelete?: boolean; // allows deleting individual operation rows, useful for the list view in the plan / repo panels.
 }>) => {
-  const alertApi = useAlertApi();
   const [operations, setOperations] = useState<Operation[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 25;
@@ -54,10 +53,7 @@ export const OperationListView = ({
       });
 
       return syncStateFromRequest(logState, req, (e) => {
-        toaster.create({
-          description: "Failed to fetch operations: " + e.message,
-          type: "error",
-        });
+        alerts.error("Failed to fetch operations: " + e.message);
       });
     }, [toJsonString(GetOperationsRequestSchema, req)]);
   }

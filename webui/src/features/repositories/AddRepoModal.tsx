@@ -27,8 +27,8 @@ import {
 } from "../../../gen/ts/v1/config_pb";
 import { StringValueSchema } from "../../../gen/ts/types/value_pb";
 import { URIAutocomplete } from "../../components/common/URIAutocomplete";
-import { formatErrorAlert, useAlertApi } from "../../components/common/Alerts";
-import { namePattern } from "../../lib/formUtil";
+import { alerts, formatErrorAlert } from "../../components/common/Alerts";
+import { namePattern } from "../../lib/util";
 import { backrestService } from "../../api/client";
 // import { HooksFormList } from "../components/HooksFormList"; // TODO: Migrate
 import { ConfirmButton } from "../../components/common/SpinButton";
@@ -82,7 +82,6 @@ const repoDefaults = create(RepoSchema, {
 export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
-  const alertsApi = useAlertApi()!;
   const [config, setConfig] = useConfig();
 
   // Local state for form fields
@@ -126,14 +125,14 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         ),
       );
       showModal(null);
-      alertsApi.success(
+      alerts.success(
         m.add_repo_modal_success_deleted({
           id: template!.id!,
           uri: template!.uri,
         }),
       );
     } catch (e: any) {
-      alertsApi.error(
+      alerts.error(
         formatErrorAlert(e, m.add_plan_modal_error_destroy_prefix()),
         15,
       );
@@ -153,24 +152,24 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
       if (template !== null) {
         setConfig(await backrestService.addRepo(repo));
         showModal(null);
-        alertsApi.success(m.add_repo_modal_success_updated({ uri: repo.uri }));
+        alerts.success(m.add_repo_modal_success_updated({ uri: repo.uri }));
       } else {
         setConfig(await backrestService.addRepo(repo));
         showModal(null);
-        alertsApi.success(m.add_repo_modal_success_added({ uri: repo.uri }));
+        alerts.success(m.add_repo_modal_success_added({ uri: repo.uri }));
       }
 
       // Trigger generic "check" or "list snapshots" to verify
       try {
         await backrestService.listSnapshots({ repoId: repo.id });
       } catch (e: any) {
-        alertsApi.error(
+        alerts.error(
           formatErrorAlert(e, m.add_repo_modal_error_list_snapshots()),
           10,
         );
       }
     } catch (e: any) {
-      alertsApi.error(
+      alerts.error(
         formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()),
         10,
       );
@@ -392,7 +391,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           </Flex>
         )}
         <Field
-          label={m.add_repo_modal_field_hooks()}
+          label={m.add_plan_modal_field_hooks()}
           helperText={hooksListTooltipText}
         >
           <HooksFormList

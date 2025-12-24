@@ -10,7 +10,7 @@ import {
   TabsRoot,
 } from "../../components/ui/tabs";
 import { Tooltip } from "../../components/ui/tooltip";
-import { useAlertApi } from "../../components/common/Alerts";
+import { alerts } from "../../components/common/Alerts";
 import { MAX_OPERATION_HISTORY } from "../../constants";
 import { backrestService } from "../../api/client";
 import {
@@ -29,37 +29,36 @@ import * as m from "../../paraglide/messages";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const [config, _] = useConfig();
-  const alertsApi = useAlertApi()!;
   const showModal = useShowModal();
   const repo = config?.repos.find((r) => r.id === plan.repo);
 
   const handleBackupNow = async () => {
     try {
       await backrestService.backup({ value: plan.id });
-      alertsApi.success(m.plan_backup_scheduled());
+      alerts.success(m.plan_backup_scheduled());
     } catch (e: any) {
-      alertsApi.error(m.plan_error_backup() + e.message);
+      alerts.error(m.plan_error_backup() + e.message);
     }
   };
 
   const handleUnlockNow = async () => {
     try {
-      alertsApi.info(m.repo_info_unlocking());
+      alerts.info(m.repo_info_unlocking());
       await backrestService.doRepoTask(
         create(DoRepoTaskRequestSchema, {
           repoId: plan.repo!,
           task: DoRepoTaskRequest_Task.UNLOCK,
         }),
       );
-      alertsApi.success(m.repo_success_unlocked());
+      alerts.success(m.repo_success_unlocked());
     } catch (e: any) {
-      alertsApi.error(m.repo_error_unlock() + e.message);
+      alerts.error(m.repo_error_unlock() + e.message);
     }
   };
 
   const handleClearErrorHistory = async () => {
     try {
-      alertsApi.info(m.plan_clearing_history());
+      alerts.info(m.plan_clearing_history());
       await backrestService.clearHistory(
         create(ClearHistoryRequestSchema, {
           selector: {
@@ -70,9 +69,9 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           onlyFailed: true,
         }),
       );
-      alertsApi.success(m.plan_history_cleared());
+      alerts.success(m.plan_history_cleared());
     } catch (e: any) {
-      alertsApi.error(m.plan_error_clear_history() + e.message);
+      alerts.error(m.plan_error_clear_history() + e.message);
     }
   };
 

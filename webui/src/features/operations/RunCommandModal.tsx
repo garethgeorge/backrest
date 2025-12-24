@@ -1,7 +1,7 @@
 import React from "react";
 import { useShowModal } from "../../components/common/ModalManager";
 import { backrestService } from "../../api/client";
-import { useAlertApi } from "../../components/common/Alerts";
+import { alerts } from "../../components/common/Alerts";
 import {
   GetOperationsRequestSchema,
   RunCommandRequestSchema,
@@ -18,7 +18,6 @@ import * as m from "../../paraglide/messages";
 export const RunCommandModal = ({ repo }: { repo: RepoProps }) => {
   const [config] = useConfig();
   const showModal = useShowModal();
-  const alertApi = useAlertApi()!;
   const [command, setCommand] = React.useState("");
   const [running, setRunning] = React.useState(false);
 
@@ -41,7 +40,7 @@ export const RunCommandModal = ({ repo }: { repo: RepoProps }) => {
         }),
       );
     } catch (e: any) {
-      alertApi.error("Command failed: " + e.message);
+      alerts.error("Command failed: " + e.message);
     } finally {
       setRunning(false);
     }

@@ -50,7 +50,7 @@ import {
   OperationEventType,
   OperationStatus,
 } from "../../../gen/ts/v1/operations_pb";
-import { useAlertApi } from "../../components/common/Alerts";
+import { alerts } from "../../components/common/Alerts";
 import { OperationListView } from "./OperationListView";
 import {
   ClearHistoryRequestSchema,
@@ -89,7 +89,6 @@ export const OperationTreeView = ({
   isPlanView?: boolean;
 }>) => {
   const config = useConfig()[0];
-  const alertApi = useAlertApi();
   const setScreenWidth = useState(window.innerWidth)[1];
   const [backups, setBackups] = useState<FlowDisplayInfo[]>([]);
   const [selectedBackupId, setSelectedBackupId] = useState<bigint | null>(null);
@@ -141,7 +140,7 @@ export const OperationTreeView = ({
     });
 
     return syncStateFromRequest(logState, req, (err) => {
-      alertApi!.error("API error: " + err.message);
+      alerts.error("API error: " + err.message);
     });
   }, [toJsonString(GetOperationsRequestSchema, req)]);
 
@@ -224,7 +223,7 @@ export const OperationTreeView = ({
         >
           <DialogContent>
             <DialogCloseTrigger />
-            <DialogBody p={0}>
+            <DialogBody>
               <BackupView backup={backup} />
             </DialogBody>
           </DialogContent>
@@ -239,7 +238,7 @@ export const OperationTreeView = ({
     <Flex direction="column" gap="4" height="100%">
       <Splitter
         panels={[
-          { id: "tree", size: 50, minSize: 20, maxSize: 70 },
+          { id: "tree", minSize: 20, maxSize: 70 },
           { id: "view" },
         ]}
       >
@@ -261,7 +260,7 @@ export const OperationTreeView = ({
           </Box>
         </SplitterPanel>
       </Splitter>
-    </Flex>
+    </Flex >
   );
 };
 
@@ -275,7 +274,7 @@ const DisplayOperationTree = ({
   onSelect?: (flow: FlowDisplayInfo | null) => any;
 }) => {
   const [treeCollection, setTreeCollection] =
-    useState<TreeCollection<OpTreeNode>>(null);
+    useState<TreeCollection<OpTreeNode> | null>(null);
   const [expandedValue, setExpandedValue] = useState<string[]>([]);
   const [selectedValue, setSelectedValue] = useState<string[]>([]);
 
@@ -539,7 +538,6 @@ const BackupViewContainer = ({ children }: { children: React.ReactNode }) => {
 };
 
 const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
-  const alertApi = useAlertApi();
   if (!backup) {
     return (
       <EmptyState.Root>
@@ -556,9 +554,9 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
             snapshotId: backup.snapshotID!,
           }),
         );
-        alertApi!.success("Snapshot forgotten.");
+        alerts.success("Snapshot forgotten.");
       } catch (e: any) {
-        alertApi!.error("Failed to forget snapshot: " + e);
+        alerts.error("Failed to forget snapshot: " + e);
       }
     };
 
@@ -607,7 +605,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
           <Heading size="md">{formatTime(backup.displayTime)}</Heading>
           <Box position="absolute" right="20px">
             {backup.status !== OperationStatus.STATUS_PENDING &&
-            backup.status !== OperationStatus.STATUS_INPROGRESS
+              backup.status !== OperationStatus.STATUS_INPROGRESS
               ? deleteButton
               : null}
           </Box>

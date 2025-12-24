@@ -5,33 +5,6 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 import viteCompression from 'vite-plugin-compression';
 // import { visualizer } from 'rollup-plugin-visualizer';
 
-function renderChunks(id: string) {
-  if (id.includes('node_modules')) {
-    if (
-      id.includes('node_modules/react/') ||
-      id.includes('node_modules/react-dom/') ||
-      id.includes('node_modules/react-router/') ||
-      id.includes('node_modules/scheduler/')
-    ) {
-      return 'react-vendor';
-    }
-    if (
-      id.includes('node_modules/antd/') ||
-      id.includes('node_modules/@ant-design/') ||
-      id.includes('node_modules/rc-')
-    ) {
-      return 'antd';
-    }
-    if (id.includes('node_modules/@connectrpc/') || id.includes('node_modules/@bufbuild/')) {
-      return 'connectrpc';
-    }
-    if (id.includes('node_modules/recharts/') || id.includes('node_modules/d3-')) {
-      return 'recharts';
-    }
-    return 'vendor';
-  }
-}
-
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
@@ -57,11 +30,6 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       target: 'esnext',
       minify: 'esbuild',
-      rollupOptions: {
-        output: {
-          manualChunks: renderChunks,
-        },
-      },
     },
     define: {
       'process.env.UI_OS': JSON.stringify(env.UI_OS),

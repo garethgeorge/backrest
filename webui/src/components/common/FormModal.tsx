@@ -43,14 +43,10 @@ export const FormModal: React.FC<FormModalProps> = ({
       scrollBehavior="inside"
     >
       <Portal>
-        {/* @ts-ignore */}
         <DialogBackdrop />
-        {/* @ts-ignore */}
         <DialogPositioner>
-          {/* @ts-ignore */}
           <DialogContent>
             <DialogHeader>
-              {/* @ts-ignore */}
               <DialogTitle>{title}</DialogTitle>
             </DialogHeader>
             <DialogCloseTrigger />

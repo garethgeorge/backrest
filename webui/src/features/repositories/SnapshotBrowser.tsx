@@ -54,7 +54,7 @@ import {
 } from "../../components/ui/menu";
 import { FormModal } from "../../components/common/FormModal";
 import { Field } from "../../components/ui/field";
-import { toaster } from "../../components/ui/toaster";
+import { alerts } from "../../components/common/Alerts";
 
 const SnapshotBrowserContext = React.createContext<{
   snapshotId: string;
@@ -224,10 +224,7 @@ export const SnapshotBrowser = ({
         });
       });
     } catch (e: any) {
-      toaster.create({
-        description: "Failed to load snapshot files: " + e.message,
-        type: "error",
-      });
+      alerts.error("Failed to load snapshot files: " + e.message);
     } finally {
       setLoadingKeys((prev) => {
         const next = new Set(prev);
@@ -334,10 +331,7 @@ const FileNode = ({
         window.open(resp.value, "_blank");
       })
       .catch((e) => {
-        toaster.create({
-          description: "Failed to fetch download URL: " + e.message,
-          type: "error",
-        });
+        alerts.error("Failed to fetch download URL: " + e.message);
       });
   };
 
@@ -402,14 +396,14 @@ const FileNode = ({
               {/* @ts-ignore */}
               <MenuItemText>Restore to path</MenuItemText>
             </MenuItem>
-            {snapshotOpId && (
+            {snapshotOpId ? (
               // @ts-ignore
               <MenuItem value="download" onClick={doDownload}>
                 <FiDownload />
                 {/* @ts-ignore */}
                 <MenuItemText>Download</MenuItemText>
               </MenuItem>
-            )}
+            ) : null}
           </MenuContent>
         </MenuRoot>
       </Box>
@@ -466,16 +460,10 @@ const RestoreModal = ({
           target,
         }),
       );
-      toaster.create({
-        description: "Restore started successfully.",
-        type: "success",
-      });
+      alerts.success("Restore started successfully.");
       showModal(null);
     } catch (e: any) {
-      toaster.create({
-        description: "Failed to restore: " + e.message,
-        type: "error",
-      });
+      alerts.error("Failed to restore: " + e.message);
     }
   };
 

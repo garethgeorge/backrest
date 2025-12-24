@@ -25,7 +25,7 @@ import {
 import { backrestService } from "../../api/client";
 import { SpinButton } from "../../components/common/SpinButton";
 import { useConfig } from "../../app/provider";
-import { formatErrorAlert, useAlertApi } from "../../components/common/Alerts";
+import { formatErrorAlert, alerts } from "../../components/common/Alerts";
 import { useShowModal } from "../../components/common/ModalManager";
 import { create } from "@bufbuild/protobuf";
 import { RepoProps } from "../../state/peerStates";
@@ -38,7 +38,6 @@ export const RepoView = ({
 }: React.PropsWithChildren<{ repo: RepoProps }>) => {
   const [config, _] = useConfig();
   const showModal = useShowModal();
-  const alertsApi = useAlertApi()!;
 
   // Task handlers
   const handleIndexNow = async () => {
@@ -50,22 +49,22 @@ export const RepoView = ({
         }),
       );
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, m.repo_error_index()));
+      alerts.error(formatErrorAlert(e, m.repo_error_index()));
     }
   };
 
   const handleUnlockNow = async () => {
     try {
-      alertsApi.info(m.repo_info_unlocking());
+      alerts.info(m.repo_info_unlocking());
       await backrestService.doRepoTask(
         create(DoRepoTaskRequestSchema, {
           repoId: repo.id!,
           task: DoRepoTaskRequest_Task.UNLOCK,
         }),
       );
-      alertsApi.success(m.repo_success_unlocked());
+      alerts.success(m.repo_success_unlocked());
     } catch (e: any) {
-      alertsApi.error(m.repo_error_unlock() + e.message);
+      alerts.error(m.repo_error_unlock() + e.message);
     }
   };
 
@@ -78,7 +77,7 @@ export const RepoView = ({
         }),
       );
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, m.repo_error_stats()));
+      alerts.error(formatErrorAlert(e, m.repo_error_stats()));
     }
   };
 
@@ -91,7 +90,7 @@ export const RepoView = ({
         }),
       );
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, m.repo_error_prune()));
+      alerts.error(formatErrorAlert(e, m.repo_error_prune()));
     }
   };
 
@@ -104,7 +103,7 @@ export const RepoView = ({
         }),
       );
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, m.repo_error_check()));
+      alerts.error(formatErrorAlert(e, m.repo_error_check()));
     }
   };
 

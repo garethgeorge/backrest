@@ -12,6 +12,9 @@ import {
   SelectValueText,
   IconButton,
   Card,
+  Box,
+  HStack,
+  Text as CText,
 } from "@chakra-ui/react";
 import { Checkbox } from "../../components/ui/checkbox";
 import React, { useEffect, useState, useMemo } from "react";
@@ -27,8 +30,8 @@ import {
 } from "../../../gen/ts/v1/config_pb";
 import { FiPlus as Plus, FiMinus as Minus } from "react-icons/fi";
 import { BsCalculator as Calculator } from "react-icons/bs";
-import { formatErrorAlert, useAlertApi } from "../../components/common/Alerts";
-import { namePattern } from "../../lib/formUtil";
+import { alerts, formatErrorAlert } from "../../components/common/Alerts";
+import { namePattern } from "../../lib/util";
 import { ConfirmButton } from "../../components/common/SpinButton";
 import { useConfig } from "../../app/provider";
 import { backrestService } from "../../api/client";
@@ -86,7 +89,6 @@ const planDefaults = create(PlanSchema, {
 export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
-  const alertsApi = useAlertApi()!;
   const [config, setConfig] = useConfig();
 
   // Local State
@@ -95,6 +97,15 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       ? toJson(PlanSchema, template, { alwaysEmitImplicit: true })
       : toJson(PlanSchema, planDefaults, { alwaysEmitImplicit: true }),
   );
+
+  // Sync state with template prop
+  useEffect(() => {
+    setFormData(
+      template
+        ? toJson(PlanSchema, template, { alwaysEmitImplicit: true })
+        : toJson(PlanSchema, planDefaults, { alwaysEmitImplicit: true }),
+    );
+  }, [template]);
 
   // Helper to update fields
   const updateField = (path: string[], value: any) => {
@@ -135,9 +146,9 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       configCopy.plans.splice(idx, 1);
       setConfig(await backrestService.setConfig(configCopy));
       showModal(null);
-      alertsApi.success(m.add_plan_modal_success_plan_deleted(), 30);
+      alerts.success(m.add_plan_modal_success_plan_deleted(), 30);
     } catch (e: any) {
-      alertsApi.error(
+      alerts.error(
         formatErrorAlert(e, m.add_plan_modal_error_destroy_prefix()),
         15,
       );
@@ -179,7 +190,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       setConfig(await backrestService.setConfig(configCopy));
       showModal(null);
     } catch (e: any) {
-      alertsApi.error(
+      alerts.error(
         formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()),
         15,
       );
@@ -267,6 +278,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             value={[getField(["repo"])]}
             onValueChange={(e: any) => updateField(["repo"], e.value[0])}
             disabled={!!template}
+            width="full"
           >
             {/* @ts-ignore */}
             <SelectTrigger>
@@ -380,15 +392,23 @@ const DynamicList = ({
   };
 
   return (
-    <Field label={label} helperText={tooltip} required={required}>
-      <Stack gap={2}>
+    <Stack gap={1.5} width="full">
+      {label && (
+        <CText fontSize="sm" fontWeight="medium">
+          {label} {required && <CText as="span" color="red.500">*</CText>}
+        </CText>
+      )}
+      <Stack gap={2} width="full">
         {items.map((item: string, index: number) => (
-          <Flex key={index} gap={2}>
-            <URIAutocomplete
-              value={item}
-              onChange={(val: string) => handleChange(index, val)}
-              placeholder={placeholder}
-            />
+          <HStack key={index} gap={2} width="full">
+            <Box flex={1}>
+              <URIAutocomplete
+                id={`${label}-${index}`}
+                value={item}
+                onChange={(val: string) => handleChange(index, val)}
+                placeholder={placeholder}
+              />
+            </Box>
             <IconButton
               size="sm"
               variant="ghost"
@@ -397,13 +417,18 @@ const DynamicList = ({
             >
               <Minus size={16} />
             </IconButton>
-          </Flex>
+          </HStack>
         ))}
-        <Button size="sm" variant="outline" onClick={handleAdd}>
+        <Button size="sm" variant="ghost" onClick={handleAdd} width="full">
           <Plus size={16} /> Add
         </Button>
       </Stack>
-    </Field>
+      {tooltip && (
+        <CText fontSize="xs" color="fg.muted">
+          {tooltip}
+        </CText>
+      )}
+    </Stack>
   );
 };
 
@@ -503,59 +528,69 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
 
             {mode === "policyTimeBucketed" && (
               <Stack gap={2}>
-                <Flex gap={2}>
-                  <NumberInputField
-                    label="Hourly"
-                    value={retention?.policyTimeBucketed?.hourly || 0}
-                    onValueChange={(e: any) =>
-                      updateRetentionField(
-                        ["policyTimeBucketed", "hourly"],
-                        e.valueAsNumber,
-                      )
-                    }
-                  />
-                  <NumberInputField
-                    label="Daily"
-                    value={retention?.policyTimeBucketed?.daily || 0}
-                    onValueChange={(e: any) =>
-                      updateRetentionField(
-                        ["policyTimeBucketed", "daily"],
-                        e.valueAsNumber,
-                      )
-                    }
-                  />
+                <Flex gap={2} width="full">
+                  <Box flex="1">
+                    <NumberInputField
+                      label="Hourly"
+                      value={retention?.policyTimeBucketed?.hourly || 0}
+                      onValueChange={(e: any) =>
+                        updateRetentionField(
+                          ["policyTimeBucketed", "hourly"],
+                          e.valueAsNumber,
+                        )
+                      }
+                    />
+                  </Box>
+                  <Box flex="1">
+                    <NumberInputField
+                      label="Daily"
+                      value={retention?.policyTimeBucketed?.daily || 0}
+                      onValueChange={(e: any) =>
+                        updateRetentionField(
+                          ["policyTimeBucketed", "daily"],
+                          e.valueAsNumber,
+                        )
+                      }
+                    />
+                  </Box>
                 </Flex>
-                <Flex gap={2}>
-                  <NumberInputField
-                    label="Weekly"
-                    value={retention?.policyTimeBucketed?.weekly || 0}
-                    onValueChange={(e: any) =>
-                      updateRetentionField(
-                        ["policyTimeBucketed", "weekly"],
-                        e.valueAsNumber,
-                      )
-                    }
-                  />
-                  <NumberInputField
-                    label="Monthly"
-                    value={retention?.policyTimeBucketed?.monthly || 0}
-                    onValueChange={(e: any) =>
-                      updateRetentionField(
-                        ["policyTimeBucketed", "monthly"],
-                        e.valueAsNumber,
-                      )
-                    }
-                  />
-                  <NumberInputField
-                    label="Yearly"
-                    value={retention?.policyTimeBucketed?.yearly || 0}
-                    onValueChange={(e: any) =>
-                      updateRetentionField(
-                        ["policyTimeBucketed", "yearly"],
-                        e.valueAsNumber,
-                      )
-                    }
-                  />
+                <Flex gap={2} width="full">
+                  <Box flex="1">
+                    <NumberInputField
+                      label="Weekly"
+                      value={retention?.policyTimeBucketed?.weekly || 0}
+                      onValueChange={(e: any) =>
+                        updateRetentionField(
+                          ["policyTimeBucketed", "weekly"],
+                          e.valueAsNumber,
+                        )
+                      }
+                    />
+                  </Box>
+                  <Box flex="1">
+                    <NumberInputField
+                      label="Monthly"
+                      value={retention?.policyTimeBucketed?.monthly || 0}
+                      onValueChange={(e: any) =>
+                        updateRetentionField(
+                          ["policyTimeBucketed", "monthly"],
+                          e.valueAsNumber,
+                        )
+                      }
+                    />
+                  </Box>
+                  <Box flex="1">
+                    <NumberInputField
+                      label="Yearly"
+                      value={retention?.policyTimeBucketed?.yearly || 0}
+                      onValueChange={(e: any) =>
+                        updateRetentionField(
+                          ["policyTimeBucketed", "yearly"],
+                          e.valueAsNumber,
+                        )
+                      }
+                    />
+                  </Box>
                 </Flex>
                 <Field
                   label="Latest snapshots to keep regardless of age"

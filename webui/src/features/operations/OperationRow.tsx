@@ -16,7 +16,20 @@ import {
   SimpleGrid,
   Heading,
   Code,
+  IconButton,
 } from "@chakra-ui/react";
+import {
+  MenuRoot,
+  MenuTrigger,
+  MenuContent,
+  MenuItem,
+} from "../../components/ui/menu";
+import {
+  FiFileText,
+  FiMoreVertical,
+  FiTrash2,
+  FiX,
+} from "react-icons/fi";
 import { ProgressCircle } from "../../components/ui/progress-circle";
 import { ProgressBar, ProgressRoot } from "../../components/ui/progress";
 import { toaster } from "../../components/ui/toaster";
@@ -41,7 +54,7 @@ import {
 import { ClearHistoryRequestSchema } from "../../../gen/ts/v1/service_pb";
 import { backrestService } from "../../api/client";
 import { useShowModal } from "../../components/common/ModalManager";
-import { useAlertApi } from "../../components/common/Alerts";
+import { alerts } from "../../components/common/Alerts";
 import {
   displayTypeToString,
   getTypeForDisplay,
@@ -50,11 +63,47 @@ import {
 } from "../../api/flowDisplayAggregator";
 import { OperationIcon } from "./OperationIcon";
 import { LogView } from "../../components/common/LogView";
-import { ConfirmButton } from "../../components/common/SpinButton";
+
 import { create } from "@bufbuild/protobuf";
 import { OperationListView } from "./OperationListView";
 import * as m from "../../paraglide/messages";
 import { FormModal } from "../../components/common/FormModal";
+
+const ConfirmMenuItem = ({
+  onConfirm,
+  confirmText,
+  children,
+  ...props
+}: {
+  onConfirm: () => void;
+  confirmText: React.ReactNode;
+  children: React.ReactNode;
+} & React.ComponentProps<typeof MenuItem>) => {
+  const [needsConfirm, setNeedsConfirm] = useState(false);
+
+  useEffect(() => {
+    if (needsConfirm) {
+      const timer = setTimeout(() => setNeedsConfirm(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [needsConfirm]);
+
+  return (
+    <MenuItem
+      {...props}
+      onClick={(e) => {
+        if (!needsConfirm) {
+          e.preventDefault();
+          setNeedsConfirm(true);
+        } else {
+          onConfirm();
+        }
+      }}
+    >
+      {needsConfirm ? confirmText : children}
+    </MenuItem>
+  );
+};
 
 export const OperationRow = ({
   operation,
@@ -91,30 +140,18 @@ export const OperationRow = ({
           onlyFailed: false,
         }),
       );
-      toaster.create({
-        description: m.op_row_deleted_success(),
-        type: "success",
-      });
+      alerts.success(m.op_row_deleted_success());
     } catch (e: any) {
-      toaster.create({
-        description: m.op_row_deleted_error() + e.message,
-        type: "error",
-      });
+      alerts.error(m.op_row_deleted_error() + e.message);
     }
   };
 
   const doCancel = async () => {
     try {
       await backrestService.cancel({ value: operation.id! });
-      toaster.create({
-        description: m.op_row_cancel_success(),
-        type: "success",
-      });
+      alerts.success(m.op_row_cancel_success());
     } catch (e: any) {
-      toaster.create({
-        description: m.op_row_cancel_error() + e.message,
-        type: "error",
-      });
+      alerts.error(m.op_row_cancel_error() + e.message);
     }
   };
 
@@ -161,17 +198,16 @@ export const OperationRow = ({
     </div>,
   ];
 
+
+
+  // --- Menu Items Logic ---
+  const menuItems: React.ReactNode[] = [];
+
   if (operation.logref) {
-    title.push(
-      <Button
-        key="logs"
-        variant="plain"
-        size="sm"
-        className="backrest operation-details"
-        onClick={doShowLogs}
-      >
-        {m.op_row_view_logs()}
-      </Button>,
+    menuItems.push(
+      <MenuItem key="logs" value="logs" onClick={doShowLogs}>
+        <FiFileText /> {m.op_row_view_logs()}
+      </MenuItem>,
     );
   }
 
@@ -179,30 +215,28 @@ export const OperationRow = ({
     operation.status === OperationStatus.STATUS_INPROGRESS ||
     operation.status === OperationStatus.STATUS_PENDING
   ) {
-    title.push(
-      <ConfirmButton
+    menuItems.push(
+      <ConfirmMenuItem
         key="cancel"
-        type="link"
-        size="small"
-        className="backrest operation-details"
-        confirmTitle={m.op_row_confirm_cancel()}
-        onClickAsync={doCancel}
+        value="cancel"
+        onConfirm={doCancel}
+        confirmText={m.op_row_confirm_cancel()}
+        color="fg.error"
       >
-        {m.op_row_cancel_op()}
-      </ConfirmButton>,
+        <FiX /> {m.op_row_cancel_op()}
+      </ConfirmMenuItem>,
     );
   } else if (showDelete) {
-    title.push(
-      <ConfirmButton
+    menuItems.push(
+      <ConfirmMenuItem
         key="delete"
-        type="link"
-        size="small"
-        className="backrest operation-details hidden-child"
-        confirmTitle={m.op_row_confirm_delete()}
-        onClickAsync={doDelete}
+        value="delete"
+        onConfirm={doDelete}
+        confirmText={m.op_row_confirm_delete()}
+        color="fg.error"
       >
-        {m.op_row_delete()}
-      </ConfirmButton>,
+        <FiTrash2 /> {m.op_row_delete()}
+      </ConfirmMenuItem>,
     );
   }
 
@@ -384,6 +418,16 @@ export const OperationRow = ({
               {title}
             </Flex>
           </Box>
+          {menuItems.length > 0 && (
+            <MenuRoot>
+              <MenuTrigger asChild>
+                <IconButton variant="ghost" size="sm" aria-label="Actions">
+                  <FiMoreVertical />
+                </IconButton>
+              </MenuTrigger>
+              <MenuContent>{menuItems}</MenuContent>
+            </MenuRoot>
+          )}
         </Flex>
 
         {operation.displayMessage && (
@@ -508,7 +552,6 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
   const restoreOp = operation.op.value as OperationRestore;
   const isDone = restoreOp.lastStatus?.messageType === "summary";
   const progress = restoreOp.lastStatus?.percentDone || 0;
-  const alertApi = useAlertApi();
   const lastStatus = restoreOp.lastStatus;
 
   return (
@@ -562,10 +605,7 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
                   window.open(resp.value, "_blank");
                 })
                 .catch((e) => {
-                  toaster.create({
-                    description: m.op_row_fetch_download_error() + e.message,
-                    type: "error",
-                  });
+                  alerts.error(m.op_row_fetch_download_error() + e.message);
                 });
             }}
           >

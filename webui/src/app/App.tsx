@@ -21,6 +21,8 @@ import {
   Spinner,
   Separator,
 } from "@chakra-ui/react";
+import { keyframes } from "@emotion/react";
+
 import {
   AccordionRoot,
   AccordionItem,
@@ -28,7 +30,7 @@ import {
   AccordionItemContent,
 } from "../components/ui/accordion";
 import { Config, Multihost_Peer } from "../../gen/ts/v1/config_pb";
-import { useAlertApi } from "../components/common/Alerts";
+import { alerts } from "../components/common/Alerts";
 import { useShowModal } from "../components/common/ModalManager";
 import { uiBuildVersion } from "../state/buildcfg";
 import { ActivityBar } from "../components/layout/ActivityBar";
@@ -59,6 +61,11 @@ import * as m from "../paraglide/messages";
 import { Link } from "../components/ui/link";
 import { EmptyState } from "../components/ui/empty-state";
 import { ColorModeButton } from "../components/ui/color-mode";
+
+const spin = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+`;
 
 const SummaryDashboard = React.lazy(() =>
   import("../features/dashboard/SummaryDashboard").then((m) => ({
@@ -578,7 +585,6 @@ const AuthenticationBoundary = ({
   children: React.ReactNode;
 }) => {
   const [config, setConfig] = useConfig();
-  const alertApi = useAlertApi()!;
   const showModal = useShowModal();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -618,12 +624,12 @@ const AuthenticationBoundary = ({
           err.code !== Code.DeadlineExceeded
         ) {
           setError(err.message);
-          alertApi.error(err.message, 0);
+          alerts.error(err.message, 0);
           return;
         }
 
         setError(m.app_error_initial_config());
-        alertApi.error(m.app_error_initial_config(), 0);
+        alerts.error(m.app_error_initial_config(), 0);
       });
   }, []);
 
@@ -694,7 +700,11 @@ const iconForStatus = (status: OperationStatus) => {
     case OperationStatus.STATUS_WARNING:
       return <FiAlertTriangle style={{ color }} />; // Using AlertTriangle for warning too
     case OperationStatus.STATUS_INPROGRESS:
-      return <FiLoader style={{ color }} />;
+      return (
+        <Box animation={`${spin} 2s linear infinite`} lineHeight={0}>
+          <FiLoader style={{ color }} />
+        </Box>
+      );
     case OperationStatus.STATUS_UNKNOWN:
       return <FiLoader style={{ color }} />;
     default:

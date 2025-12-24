@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { createListCollection } from "@chakra-ui/react";
 import {
   ComboboxRoot,
@@ -16,71 +16,101 @@ import { StringList } from "../../../gen/ts/types/value_pb";
 const sep = isWindows ? "\\" : "/";
 
 export const URIAutocomplete = (props: any) => {
-  const { value, onChange, placeholder, disabled } = props;
+  // Extract specific props we handle manually, pass rest to Root
+  const { value, onChange, placeholder, disabled, ...rest } = props;
+
   // value is string
   const [items, setItems] = useState<{ label: string; value: string }[]>([]);
+  const lastQueryRef = useRef<string>("");
 
   // Create collection for Combobox
-  const collection = createListCollection({ items });
+  const collection = useMemo(() => createListCollection({ items }), [items]);
 
-  // Debounced fetch
-  const fetchOptions = useMemo(
-    () =>
-      debounce((inputVal: string) => {
-        // Only fetch if input has path separators or is long enough?
-        // Logic from original:
-        const lastSlash = inputVal.lastIndexOf(sep);
-        let searchVal = inputVal;
-        if (lastSlash !== -1) {
-          searchVal = inputVal.substring(0, lastSlash);
-        } else if (searchVal === "") {
-          return; // Don't fetch root on empty?
-        }
+  const doFetch = useCallback(
+    (inputVal: string) => {
+      const lastSlash = inputVal.lastIndexOf(sep);
+      let searchVal = inputVal;
+      if (lastSlash !== -1) {
+        searchVal = inputVal.substring(0, lastSlash);
+      } else if (searchVal === "") {
+        // preserve behavior for relative/empty inputs if needed
+        if (inputVal !== "") return;
+      }
 
-        backrestService
-          .pathAutocomplete({ value: searchVal + sep })
-          .then((res: StringList) => {
-            if (!res.values) return;
-            const newItems = res.values.map((v) => ({
-              label: searchVal + sep + v,
-              value: searchVal + sep + v,
-            }));
-            setItems(newItems);
-          })
-          .catch((e) => console.error("Path autocomplete error:", e));
-      }, 300),
+      // Special handling for root on unix
+      if (searchVal === "" && inputVal.startsWith("/")) {
+        searchVal = "";
+      }
+
+      const query = searchVal + sep;
+      lastQueryRef.current = query;
+
+      backrestService
+        .pathAutocomplete({ value: query })
+        .then((res: StringList) => {
+          // Prevent race conditions: ignore if query has changed since this request
+          if (lastQueryRef.current !== query) return;
+
+          if (!res.values) {
+            setItems([]);
+            return;
+          }
+          const newItems = res.values.map((v) => ({
+            label: searchVal + sep + v,
+            value: searchVal + sep + v,
+          }));
+          setItems(newItems);
+        })
+        .catch((e) => console.error("Path autocomplete error:", e));
+    },
     [],
   );
 
-  const handleInputChange = (e: any) => {
-    const val = e.target.value;
+  // Debounced fetch
+  const debouncedFetch = useMemo(() => debounce(doFetch, 300), [doFetch]);
+
+  const handleInputValueChange = (e: any) => {
+    const val = e.inputValue;
     if (onChange) onChange(val);
-    fetchOptions(val);
+
+    // If typing a separator, fetch immediately. Otherwise debounce.
+    if (val.endsWith(sep)) {
+      debouncedFetch.cancel();
+      doFetch(val);
+    } else {
+      debouncedFetch(val);
+    }
   };
 
   const handleOpenChange = (e: any) => {
     if (e.open) {
-      fetchOptions(value || "");
+      debouncedFetch.cancel();
+      doFetch(value || "");
     }
   };
 
   return (
     <ComboboxRoot
       collection={collection}
-      inputBehavior="autocomplete" // allows nice typing
       disabled={disabled}
-      inputValue={value}
-      onInputValueChange={(e: any) => {
-        // Combobox updates inputValue when typing
-        if (onChange) onChange(e.inputValue);
-        fetchOptions(e.inputValue);
-      }}
+      inputValue={value || ""}
+      onInputValueChange={handleInputValueChange}
       onOpenChange={handleOpenChange}
+      allowCustomValue
+      inputBehavior="autocomplete"
+      // @ts-ignore
+      width="full"
+      style={{ width: "100%" }}
+      {...rest}
     >
-      <ComboboxControl>
-        <ComboboxInput placeholder={placeholder} />
+      <ComboboxControl hideTrigger>
+        {/* @ts-ignore */}
+        <ComboboxInput
+          placeholder={placeholder}
+          style={{ width: "100%" }}
+        />
       </ComboboxControl>
-      <ComboboxContent>
+      <ComboboxContent zIndex={2000}>
         {items.length === 0 && <ComboboxEmpty>No paths found</ComboboxEmpty>}
         {items.map((item) => (
           <ComboboxItem key={item.value} item={item}>

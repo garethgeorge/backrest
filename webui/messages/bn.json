@@ -344,5 +344,9 @@
   "op_row_removed_header": "স্ন্যাপশটগুলি সরানো হয়েছে",
   "op_row_removed_none": "কোনও স্ন্যাপশট সরানো হয়নি।",
   "op_row_removed_id_col": "স্ন্যাপশট আইডি",
-  "op_row_removed_time_col": "সময়"
+  "op_row_removed_time_col": "সময়",
+  "op_row_restore_source": "উৎস পথ",
+  "op_row_restore_target": "গন্তব্য পথ",
+  "op_row_error_path": "পথ",
+  "op_row_error_message": "বার্তা"
 }

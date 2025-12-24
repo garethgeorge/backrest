@@ -344,5 +344,9 @@
   "op_row_removed_header": "Snapshots entfernt",
   "op_row_removed_none": "Es wurden keine Snapshots entfernt.",
   "op_row_removed_id_col": "Snapshot-ID",
-  "op_row_removed_time_col": "Zeit"
+  "op_row_removed_time_col": "Zeit",
+  "op_row_restore_source": "Quellpfad",
+  "op_row_restore_target": "Zielpfad",
+  "op_row_error_path": "Weg",
+  "op_row_error_message": "Nachricht"
 }

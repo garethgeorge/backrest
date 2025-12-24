@@ -18,8 +18,8 @@ import {
   FiMinus as Minus,
   FiCopy as Copy,
 } from "react-icons/fi";
-import { formatErrorAlert, useAlertApi } from "../../components/common/Alerts";
-import { namePattern } from "../../lib/formUtil";
+import { formatErrorAlert, alerts } from "../../components/common/Alerts";
+import { namePattern } from "../../lib/util";
 import { backrestService, authenticationService } from "../../api/client";
 import { clone, fromJson, toJson } from "@bufbuild/protobuf";
 import {
@@ -80,7 +80,6 @@ interface FormData {
 export const SettingsModal = () => {
   const [config, setConfig] = useConfig();
   const showModal = useShowModal();
-  const alertsApi = useAlertApi()!;
   const peerStates = useSyncStates();
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [reloadOnCancel, setReloadOnCancel] = useState(false);
@@ -173,9 +172,9 @@ export const SettingsModal = () => {
 
       setConfig(await backrestService.setConfig(newConfig));
       setReloadOnCancel(true);
-      alertsApi.success(m.settings_success_updated(), 5);
+      alerts.success(m.settings_success_updated(), 5);
     } catch (e: any) {
-      alertsApi.error(formatErrorAlert(e, m.settings_error_operation()), 15);
+      alerts.error(formatErrorAlert(e, m.settings_error_operation()), 15);
     } finally {
       setConfirmLoading(false);
     }
