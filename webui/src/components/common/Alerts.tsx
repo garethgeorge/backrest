@@ -43,7 +43,6 @@ export const alerts = {
   },
 };
 
-
 export const formatErrorAlert = (error: any, prefix?: string) => {
   prefix = prefix ? prefix.trim() + " " : "Error: ";
   const contents = (error.message || "" + error) as string;

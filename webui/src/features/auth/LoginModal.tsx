@@ -17,8 +17,6 @@ export const LoginModal = () => {
   const [password, setPassword] = useState(defaultCreds.password);
   const [loading, setLoading] = useState(false);
 
-
-
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
@@ -51,7 +49,7 @@ export const LoginModal = () => {
   return (
     <FormModal
       isOpen={true}
-      onClose={() => { }} // Non-closable
+      onClose={() => {}} // Non-closable
       title={m.login_title()}
       footer={
         <Button

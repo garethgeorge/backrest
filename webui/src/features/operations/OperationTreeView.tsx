@@ -237,10 +237,7 @@ export const OperationTreeView = ({
   return (
     <Flex direction="column" gap="4" height="100%">
       <Splitter
-        panels={[
-          { id: "tree", minSize: 20, maxSize: 70 },
-          { id: "view" },
-        ]}
+        panels={[{ id: "tree", minSize: 20, maxSize: 70 }, { id: "view" }]}
       >
         <SplitterPanel id="tree">
           <Box overflowY="auto" height="100%">
@@ -260,7 +257,7 @@ export const OperationTreeView = ({
           </Box>
         </SplitterPanel>
       </Splitter>
-    </Flex >
+    </Flex>
   );
 };
 
@@ -605,7 +602,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
           <Heading size="md">{formatTime(backup.displayTime)}</Heading>
           <Box position="absolute" right="20px">
             {backup.status !== OperationStatus.STATUS_PENDING &&
-              backup.status !== OperationStatus.STATUS_INPROGRESS
+            backup.status !== OperationStatus.STATUS_INPROGRESS
               ? deleteButton
               : null}
           </Box>

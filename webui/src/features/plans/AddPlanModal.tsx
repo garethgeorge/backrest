@@ -395,7 +395,12 @@ const DynamicList = ({
     <Stack gap={1.5} width="full">
       {label && (
         <CText fontSize="sm" fontWeight="medium">
-          {label} {required && <CText as="span" color="red.500">*</CText>}
+          {label}{" "}
+          {required && (
+            <CText as="span" color="red.500">
+              *
+            </CText>
+          )}
         </CText>
       )}
       <Stack gap={2} width="full">

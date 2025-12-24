@@ -43,7 +43,10 @@ export const StatsPanel = ({ selector }: { selector: OpSelector }) => {
 
   if (operations.length === 0) {
     return (
-      <EmptyState title="No stats available" description="Have you run a stats operation yet?" />
+      <EmptyState
+        title="No stats available"
+        description="Have you run a stats operation yet?"
+      />
     );
   }
 

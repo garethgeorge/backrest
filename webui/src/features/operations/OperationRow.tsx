@@ -24,12 +24,7 @@ import {
   MenuContent,
   MenuItem,
 } from "../../components/ui/menu";
-import {
-  FiFileText,
-  FiMoreVertical,
-  FiTrash2,
-  FiX,
-} from "react-icons/fi";
+import { FiFileText, FiMoreVertical, FiTrash2, FiX } from "react-icons/fi";
 import { ProgressCircle } from "../../components/ui/progress-circle";
 import { ProgressBar, ProgressRoot } from "../../components/ui/progress";
 import { toaster } from "../../components/ui/toaster";
@@ -197,8 +192,6 @@ export const OperationRow = ({
       <span className="backrest operation-details">{details}</span>
     </div>,
   ];
-
-
 
   // --- Menu Items Logic ---
   const menuItems: React.ReactNode[] = [];

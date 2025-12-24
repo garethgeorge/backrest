@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { createListCollection } from "@chakra-ui/react";
 import {
   ComboboxRoot,
@@ -24,47 +30,50 @@ export const URIAutocomplete = (props: any) => {
   const lastQueryRef = useRef<string>("");
 
   // Create collection for Combobox
-  const collection = useMemo(() => createListCollection({ items }), [items]);
-
-  const doFetch = useCallback(
-    (inputVal: string) => {
-      const lastSlash = inputVal.lastIndexOf(sep);
-      let searchVal = inputVal;
-      if (lastSlash !== -1) {
-        searchVal = inputVal.substring(0, lastSlash);
-      } else if (searchVal === "") {
-        // preserve behavior for relative/empty inputs if needed
-        if (inputVal !== "") return;
-      }
-
-      // Special handling for root on unix
-      if (searchVal === "" && inputVal.startsWith("/")) {
-        searchVal = "";
-      }
-
-      const query = searchVal + sep;
-      lastQueryRef.current = query;
-
-      backrestService
-        .pathAutocomplete({ value: query })
-        .then((res: StringList) => {
-          // Prevent race conditions: ignore if query has changed since this request
-          if (lastQueryRef.current !== query) return;
-
-          if (!res.values) {
-            setItems([]);
-            return;
-          }
-          const newItems = res.values.map((v) => ({
-            label: searchVal + sep + v,
-            value: searchVal + sep + v,
-          }));
-          setItems(newItems);
-        })
-        .catch((e) => console.error("Path autocomplete error:", e));
-    },
-    [],
+  const collection = useMemo(
+    () =>
+      createListCollection({
+        items: items.filter((i) => i.value.startsWith(value)),
+      }),
+    [items],
   );
+
+  const doFetch = useCallback((inputVal: string) => {
+    const lastSlash = inputVal.lastIndexOf(sep);
+    let searchVal = inputVal;
+    if (lastSlash !== -1) {
+      searchVal = inputVal.substring(0, lastSlash);
+    } else if (searchVal === "") {
+      // preserve behavior for relative/empty inputs if needed
+      if (inputVal !== "") return;
+    }
+
+    // Special handling for root on unix
+    if (searchVal === "" && inputVal.startsWith("/")) {
+      searchVal = "";
+    }
+
+    const query = searchVal + sep;
+    lastQueryRef.current = query;
+
+    backrestService
+      .pathAutocomplete({ value: query })
+      .then((res: StringList) => {
+        // Prevent race conditions: ignore if query has changed since this request
+        if (lastQueryRef.current !== query) return;
+
+        if (!res.values) {
+          setItems([]);
+          return;
+        }
+        const newItems = res.values.map((v) => ({
+          label: searchVal + sep + v,
+          value: searchVal + sep + v,
+        }));
+        setItems(newItems);
+      })
+      .catch((e) => console.error("Path autocomplete error:", e));
+  }, []);
 
   // Debounced fetch
   const debouncedFetch = useMemo(() => debounce(doFetch, 300), [doFetch]);
@@ -105,10 +114,7 @@ export const URIAutocomplete = (props: any) => {
     >
       <ComboboxControl hideTrigger>
         {/* @ts-ignore */}
-        <ComboboxInput
-          placeholder={placeholder}
-          style={{ width: "100%" }}
-        />
+        <ComboboxInput placeholder={placeholder} style={{ width: "100%" }} />
       </ComboboxControl>
       <ComboboxContent zIndex={2000}>
         {items.length === 0 && <ComboboxEmpty>No paths found</ComboboxEmpty>}

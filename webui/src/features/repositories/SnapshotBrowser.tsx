@@ -136,7 +136,7 @@ export const SnapshotBrowser = ({
   const respToNodes = (resp: ListSnapshotFilesResponse): SnapshotNode[] => {
     return (
       resp
-        .entries!// Strictly filter children that are longer than the parent path to avoid self-references.
+        .entries! // Strictly filter children that are longer than the parent path to avoid self-references.
         // This is crucial for fixing the infinite recursion / display issues, while ensuring
         // we don't accidentally filter the root node in other contexts (though root is manually init now).
         .filter((entry) => entry.path!.length > resp.path!.length)

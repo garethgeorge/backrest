@@ -14,7 +14,7 @@
   },
   "author": "",
   "license": "ISC",
-    "dependencies": {
+  "dependencies": {
     "@bufbuild/protobuf": "^2.5.2",
     "@chakra-ui/react": "^3.30.0",
     "@connectrpc/connect": "^2.0.2",

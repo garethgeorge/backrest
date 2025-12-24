@@ -19,7 +19,6 @@ import {
   PaginationPrevTrigger,
 } from "../../components/ui/pagination";
 
-
 // OperationList displays a list of operations that are either fetched based on 'req' or passed in via 'useBackups'.
 // If showPlan is provided the planId will be displayed next to each operation in the operation list.
 export const OperationListView = ({
