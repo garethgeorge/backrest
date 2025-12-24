@@ -3,7 +3,8 @@ import {
   Stack,
   Input,
   Text,
-  createListCollection,
+  Card,
+  Button,
 } from "@chakra-ui/react";
 import { Checkbox } from "../ui/checkbox";
 import { Radio, RadioGroup } from "../ui/radio";
@@ -14,6 +15,7 @@ import {
   Schedule_Clock,
   Schedule_ClockSchema,
 } from "../../../gen/ts/v1/config_pb";
+import cronstrue from "cronstrue";
 
 interface ScheduleDefaults {
   maxFrequencyDays: number;
@@ -106,76 +108,109 @@ export const ScheduleFormItem = ({
     <Stack gap={4}>
       {/* Schedule Mode */}
       <Field label="Schedule Type">
-        <RadioGroup
-          value={(mode as string) || "disabled"}
-          onValueChange={(e) => e.value && handleModeChange(e.value)}
-        >
-          <Stack direction="row" gap={4} wrap="wrap">
-            <Radio value="disabled">Disabled</Radio>
-            <Radio value="maxFrequencyHours">Interval (Hours)</Radio>
-            <Radio value="maxFrequencyDays">Interval (Days)</Radio>
-            <Radio value="cron">Cron</Radio>
-          </Stack>
-        </RadioGroup>
-      </Field>
+        <Card.Root variant="subtle" width="fit-content">
+          <Card.Header pb={0}>
+            <Flex gap={2} wrap="wrap">
+              {[
+                { value: "disabled", label: "Disabled" },
+                { value: "maxFrequencyHours", label: "Interval (Hours)" },
+                { value: "maxFrequencyDays", label: "Interval (Days)" },
+                { value: "cron", label: "Cron" },
+              ].map((option) => (
+                <Button
+                  key={option.value}
+                  size="sm"
+                  variant={mode === option.value ? "solid" : "outline"}
+                  onClick={() => handleModeChange(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </Flex>
+          </Card.Header>
 
-      {/* Mode Specific Input */}
-      {mode === "cron" && (
-        <Field
-          label="Cron Expression"
-          helperText="Standard cron syntax (e.g. 0 0 * * *)"
-        >
-          <Input
-            value={schedule.cron || ""}
-            onChange={(e) => onChange({ ...schedule, cron: e.target.value })}
-            fontFamily="mono"
-          />
-        </Field>
-      )}
+          <Card.Body>
+            {/* Mode Specific Input */}
+            {mode === "cron" && (
+              <Field
+                label="Cron Expression"
+                helperText={(() => {
+                  try {
+                    return schedule.cron
+                      ? cronstrue.toString(schedule.cron)
+                      : "Standard cron syntax (e.g. 0 0 * * *)";
+                  } catch (e) {
+                    return "Invalid cron expression";
+                  }
+                })()}
+              >
+                <Input
+                  value={schedule.cron || ""}
+                  onChange={(e) =>
+                    onChange({ ...schedule, cron: e.target.value })
+                  }
+                  fontFamily="mono"
+                  width="sm"
+                />
+              </Field>
+            )}
 
-      {mode === "maxFrequencyDays" && (
-        <NumberInputField
-          label="Interval in Days"
-          value={schedule.maxFrequencyDays || 0}
-          onValueChange={(e: any) =>
-            onChange({ ...schedule, maxFrequencyDays: e.valueAsNumber })
-          }
-          min={1}
-        />
-      )}
+            {mode === "maxFrequencyDays" && (
+              <NumberInputField
+                label="Interval in Days"
+                value={schedule.maxFrequencyDays || 0}
+                onValueChange={(e: any) =>
+                  onChange({ ...schedule, maxFrequencyDays: e.valueAsNumber })
+                }
+                min={1}
+                width="sm"
+              />
+            )}
 
-      {mode === "maxFrequencyHours" && (
-        <NumberInputField
-          label="Interval in Hours"
-          value={schedule.maxFrequencyHours || 0}
-          onValueChange={(e: any) =>
-            onChange({ ...schedule, maxFrequencyHours: e.valueAsNumber })
-          }
-          min={1}
-        />
-      )}
+            {mode === "maxFrequencyHours" && (
+              <NumberInputField
+                label="Interval in Hours"
+                value={schedule.maxFrequencyHours || 0}
+                onValueChange={(e: any) =>
+                  onChange({ ...schedule, maxFrequencyHours: e.valueAsNumber })
+                }
+                min={1}
+                width="sm"
+              />
+            )}
 
-      {/* Clock Selection */}
-      <Field
-        label="Reference Clock"
-        helperText="Time zone or reference point for the schedule."
-      >
-        <RadioGroup
-          value={clockEnumValueToString(schedule.clock)}
-          onValueChange={(e) => {
-            // find enum value
-            const clk = Schedule_ClockSchema.values.find(
-              (v) => v.name === e.value,
-            );
-            if (clk) onChange({ ...schedule, clock: clk.number });
-          }}
-        >
-          <Stack direction="row" gap={4}>
-            <Radio value="LOCAL">Local</Radio>
-            <Radio value="UTC">UTC</Radio>
-            <Radio value="LAST_RUN_TIME">Last Run Time</Radio>
-          </Stack>
-        </RadioGroup>
+            {mode !== "disabled" && (
+              /* Clock Selection */
+              <Field
+                label="Reference Clock"
+                helperText="Time zone or reference point for the schedule."
+              >
+                <RadioGroup
+                  value={clockEnumValueToString(schedule.clock)}
+                  onValueChange={(e) => {
+                    // find enum value
+                    const clk = Schedule_ClockSchema.values.find(
+                      (v) => v.name === e.value,
+                    );
+                    if (clk) onChange({ ...schedule, clock: clk.number });
+                  }}
+                >
+                  <Stack direction="row" gap={4}>
+                    <Radio value="LOCAL">Local</Radio>
+                    <Radio value="UTC">UTC</Radio>
+                    <Radio value="LAST_RUN_TIME">Last Run Time</Radio>
+                  </Stack>
+                </RadioGroup>
+              </Field>
+            )}
+            {mode === "disabled" && (
+              <Text color="fg.muted" fontSize="sm">
+                Automatic snapshots are disabled for this plan. You can still
+                run backups manually.
+              </Text>
+            )}
+          </Card.Body>
+        </Card.Root>
       </Field>
     </Stack>
   );

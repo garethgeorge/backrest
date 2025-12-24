@@ -15,8 +15,16 @@ import {
   Box,
   HStack,
   Text as CText,
+  Grid,
+  Code,
 } from "@chakra-ui/react";
 import { Checkbox } from "../../components/ui/checkbox";
+import {
+  AccordionItem,
+  AccordionItemContent,
+  AccordionItemTrigger,
+  AccordionRoot,
+} from "../../components/ui/accordion";
 import React, { useEffect, useState, useMemo } from "react";
 import { useShowModal } from "../../components/common/ModalManager";
 import {
@@ -28,13 +36,34 @@ import {
   type RetentionPolicy,
   type Schedule,
 } from "../../../gen/ts/v1/config_pb";
-import { FiPlus as Plus, FiMinus as Minus } from "react-icons/fi";
+import {
+  FiPlus as Plus,
+  FiMinus as Minus,
+  FiMenu,
+} from "react-icons/fi";
 import { BsCalculator as Calculator } from "react-icons/bs";
 import { alerts, formatErrorAlert } from "../../components/common/Alerts";
 import { namePattern } from "../../lib/util";
 import { ConfirmButton } from "../../components/common/SpinButton";
 import { useConfig } from "../../app/provider";
 import { backrestService } from "../../api/client";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   clone,
   create,
@@ -43,27 +72,23 @@ import {
   toJson,
   JsonValue,
 } from "@bufbuild/protobuf";
-import { formatDuration } from "../../lib/formatting";
-import { getMinimumCronDuration } from "../../lib/cronUtil";
 import * as m from "../../paraglide/messages";
 import { FormModal } from "../../components/common/FormModal";
 import { Button } from "../../components/ui/button";
 import { Field } from "../../components/ui/field";
 import { Tooltip } from "../../components/ui/tooltip";
-import { toaster } from "../../components/ui/toaster";
 import { NumberInputField } from "../../components/common/NumberInput"; // Assuming I migrated this or will check
-import { isWindows } from "../../state/buildcfg";
 import {
   ScheduleFormItem,
   ScheduleDefaultsDaily,
 } from "../../components/common/ScheduleFormItem";
 // Use the real implementation
 import { URIAutocomplete } from "../../components/common/URIAutocomplete";
-
 import {
   HooksFormList,
   hooksListTooltipText,
 } from "../../components/common/HooksFormList";
+import { DynamicList } from "../../components/common/DynamicList";
 
 // Default Plan
 const planDefaults = create(PlanSchema, {
@@ -113,7 +138,8 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       const next = { ...prev };
       let curr = next;
       for (let i = 0; i < path.length - 1; i++) {
-        if (curr[path[i]] === undefined) curr[path[i]] = {};
+        // Create shallow copy of the next level if it exists, or new object if not
+        curr[path[i]] = curr[path[i]] ? { ...curr[path[i]] } : {};
         curr = curr[path[i]];
       }
       curr[path[path.length - 1]] = value;
@@ -253,6 +279,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         </p>
 
         {/* Plan ID */}
+        {/* Plan ID */}
         <Field
           label={m.add_plan_modal_field_plan_name()}
           helperText={m.add_plan_modal_field_plan_name_tooltip()}
@@ -266,6 +293,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           />
         </Field>
 
+        {/* Repository */}
         {/* Repository */}
         <Field
           label={m.add_plan_modal_field_repository()}
@@ -300,10 +328,9 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         {/* Paths */}
         <DynamicList
           label={m.add_plan_modal_field_paths()}
+          tooltip={"Paths to include in snapshots created by this plan"}
           items={getField(["paths"]) || []}
           onUpdate={(items: string[]) => updateField(["paths"], items)}
-          tooltip={m.add_plan_modal_field_paths_tooltip()}
-          placeholder="File Path (e.g. /home/user/data)"
           required
         />
 
@@ -312,7 +339,19 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           label={m.add_plan_modal_field_excludes()}
           items={getField(["excludes"]) || []}
           onUpdate={(items: string[]) => updateField(["excludes"], items)}
-          tooltip={m.add_plan_modal_field_excludes_tooltip_link()}
+          tooltip={
+            <>
+              {m.add_plan_modal_field_excludes_tooltip_prefix()}{" "}
+              <a
+                href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
+                target="_blank"
+                style={{ textDecoration: "underline" }}
+              >
+                {m.add_plan_modal_field_excludes_tooltip_link()}
+              </a>{" "}
+              {m.add_plan_modal_field_excludes_tooltip_suffix()}
+            </>
+          }
           placeholder="Exclude Pattern"
         />
 
@@ -321,10 +360,23 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           label={m.add_plan_modal_field_iexcludes()}
           items={getField(["iexcludes"]) || []}
           onUpdate={(items: string[]) => updateField(["iexcludes"], items)}
-          tooltip="Case-insensitive excludes"
+          tooltip={
+            <>
+              {m.add_plan_modal_field_iexcludes_tooltip_prefix()}{" "}
+              <a
+                href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
+                target="_blank"
+                style={{ textDecoration: "underline" }}
+              >
+                {m.add_plan_modal_field_excludes_tooltip_link()}
+              </a>{" "}
+              {m.add_plan_modal_field_excludes_tooltip_suffix()}
+            </>
+          }
           placeholder="Case-insensitive Exclude Pattern"
         />
 
+        {/* Schedule */}
         {/* Schedule */}
         <Field label={m.add_plan_modal_field_schedule()}>
           <ScheduleFormItem
@@ -351,6 +403,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         />
 
         {/* Hooks */}
+        {/* Hooks */}
         <Field
           label={m.add_plan_modal_field_hooks()}
           helperText={hooksListTooltipText}
@@ -360,80 +413,31 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             onChange={(v: any) => updateField(["hooks"], v)}
           />
         </Field>
+
+        {/* JSON Preview */}
+        <AccordionRoot collapsible variant="plain">
+          <AccordionItem value="json-preview">
+            <AccordionItemTrigger>
+              <CText fontSize="sm" color="fg.muted">
+                Show JSON Preview
+              </CText>
+            </AccordionItemTrigger>
+            <AccordionItemContent>
+              <Code
+                display="block"
+                whiteSpace="pre"
+                overflowX="auto"
+                p={2}
+                borderRadius="md"
+                fontSize="xs"
+              >
+                {JSON.stringify(formData, null, 2)}
+              </Code>
+            </AccordionItemContent>
+          </AccordionItem>
+        </AccordionRoot>
       </Stack>
     </FormModal>
-  );
-};
-
-// --- Subcomponents ---
-
-const DynamicList = ({
-  label,
-  items,
-  onUpdate,
-  tooltip,
-  placeholder,
-  required,
-}: any) => {
-  const handleChange = (index: number, val: string) => {
-    const newItems = [...items];
-    newItems[index] = val;
-    onUpdate(newItems);
-  };
-
-  const handleAdd = () => {
-    onUpdate([...items, ""]);
-  };
-
-  const handleRemove = (index: number) => {
-    const newItems = [...items];
-    newItems.splice(index, 1);
-    onUpdate(newItems);
-  };
-
-  return (
-    <Stack gap={1.5} width="full">
-      {label && (
-        <CText fontSize="sm" fontWeight="medium">
-          {label}{" "}
-          {required && (
-            <CText as="span" color="red.500">
-              *
-            </CText>
-          )}
-        </CText>
-      )}
-      <Stack gap={2} width="full">
-        {items.map((item: string, index: number) => (
-          <HStack key={index} gap={2} width="full">
-            <Box flex={1}>
-              <URIAutocomplete
-                id={`${label}-${index}`}
-                value={item}
-                onChange={(val: string) => handleChange(index, val)}
-                placeholder={placeholder}
-              />
-            </Box>
-            <IconButton
-              size="sm"
-              variant="ghost"
-              onClick={() => handleRemove(index)}
-              aria-label="Remove"
-            >
-              <Minus size={16} />
-            </IconButton>
-          </HStack>
-        ))}
-        <Button size="sm" variant="ghost" onClick={handleAdd} width="full">
-          <Plus size={16} /> Add
-        </Button>
-      </Stack>
-      {tooltip && (
-        <CText fontSize="xs" color="fg.muted">
-          {tooltip}
-        </CText>
-      )}
-    </Stack>
   );
 };
 
@@ -482,7 +486,8 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
     const next = { ...retention };
     let curr = next;
     for (let i = 0; i < path.length - 1; i++) {
-      if (!curr[path[i]]) curr[path[i]] = {};
+      // Create shallow copy of the next level to ensure immutability
+      curr[path[i]] = curr[path[i]] ? { ...curr[path[i]] } : {};
       curr = curr[path[i]];
     }
     curr[path[path.length - 1]] = val;
@@ -490,136 +495,138 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
   };
 
   return (
-    <Field label="Retention Policy">
+    <Field
+      label="Retention Policy"
+      helperText="Set a retention policy to limit the number of backups you keep, retention is enforced after each backup removing snapshot records. Prune operations delete the data."
+    >
       <Stack gap={4}>
-        {/* Mode Selector */}
-        {/* Using a simple Button group or similar since RadioGroup might be complex to style perfectly immediately */}
-        <Flex gap={2}>
-          {["policyKeepLastN", "policyTimeBucketed", "policyKeepAll"].map(
-            (m) => (
-              <Button
-                key={m}
-                size="sm"
-                variant={mode === m ? "solid" : "outline"}
-                onClick={() => handleModeChange(m)}
-              >
-                {m === "policyKeepLastN" && "By Count"}
-                {m === "policyTimeBucketed" && "By Time Period"}
-                {m === "policyKeepAll" && "None"}
-              </Button>
-            ),
+        <Card.Root variant="subtle" width="fit-content">
+          <Card.Header pb={0}>
+            {/* Mode Selector */}
+            <Flex gap={2} wrap="wrap">
+            {[
+              {
+                value: "policyKeepLastN",
+                label: "By Count",
+                tooltip:
+                  "The last N snapshots will be kept by restic. Retention policy is applied to drop older snapshots after each backup run.",
+              },
+              {
+                value: "policyTimeBucketed",
+                label: "By Time Period",
+                tooltip:
+                  "The last N snapshots for each time period will be kept by restic. Retention policy is applied to drop older snapshots after each backup run.",
+              },
+              {
+                value: "policyKeepAll",
+                label: "None",
+                tooltip:
+                  "All backups will be retained. Note that this may result in slow backups if the set of snapshots grows very large.",
+              },
+            ].map((option) => (
+              <Tooltip key={option.value} content={option.tooltip}>
+                <Button
+                  size="sm"
+                  variant={mode === option.value ? "solid" : "outline"}
+                  onClick={() => handleModeChange(option.value)}
+                >
+                  {option.label}
+                </Button>
+              </Tooltip>
+            ))}
+          </Flex>
+        </Card.Header>
+
+        <Card.Body>
+          {/* Mode Content */}
+          {mode === "policyKeepAll" && (
+            <p>
+              All backups are retained. Warning: this may result in slow backups
+              if the repo grows very large.
+            </p>
           )}
-        </Flex>
 
-        {/* Mode Content */}
-        <Card.Root variant="subtle">
-          <Card.Body>
-            {mode === "policyKeepAll" && (
-              <p>
-                All backups are retained. Warning: this may result in slow
-                backups if the repo grows very large.
-              </p>
-            )}
+          {mode === "policyKeepLastN" && (
+            <NumberInputField
+              label="Keep Last N Snapshots"
+              value={retention?.policyKeepLastN || 0}
+              onValueChange={(e: any) =>
+                onChange({ policyKeepLastN: e.valueAsNumber })
+              }
+            />
+          )}
 
-            {mode === "policyKeepLastN" && (
+          {mode === "policyTimeBucketed" && (
+            <Grid templateColumns="repeat(3, 180px)" gap={4}>
               <NumberInputField
-                label="Keep Last N Snapshots"
-                value={retention?.policyKeepLastN || 0}
+                label="Hourly"
+                value={retention?.policyTimeBucketed?.hourly || 0}
                 onValueChange={(e: any) =>
-                  onChange({ policyKeepLastN: e.valueAsNumber })
+                  updateRetentionField(
+                    ["policyTimeBucketed", "hourly"],
+                    e.valueAsNumber,
+                  )
                 }
               />
-            )}
-
-            {mode === "policyTimeBucketed" && (
-              <Stack gap={2}>
-                <Flex gap={2} width="full">
-                  <Box flex="1">
-                    <NumberInputField
-                      label="Hourly"
-                      value={retention?.policyTimeBucketed?.hourly || 0}
-                      onValueChange={(e: any) =>
-                        updateRetentionField(
-                          ["policyTimeBucketed", "hourly"],
-                          e.valueAsNumber,
-                        )
-                      }
-                    />
-                  </Box>
-                  <Box flex="1">
-                    <NumberInputField
-                      label="Daily"
-                      value={retention?.policyTimeBucketed?.daily || 0}
-                      onValueChange={(e: any) =>
-                        updateRetentionField(
-                          ["policyTimeBucketed", "daily"],
-                          e.valueAsNumber,
-                        )
-                      }
-                    />
-                  </Box>
-                </Flex>
-                <Flex gap={2} width="full">
-                  <Box flex="1">
-                    <NumberInputField
-                      label="Weekly"
-                      value={retention?.policyTimeBucketed?.weekly || 0}
-                      onValueChange={(e: any) =>
-                        updateRetentionField(
-                          ["policyTimeBucketed", "weekly"],
-                          e.valueAsNumber,
-                        )
-                      }
-                    />
-                  </Box>
-                  <Box flex="1">
-                    <NumberInputField
-                      label="Monthly"
-                      value={retention?.policyTimeBucketed?.monthly || 0}
-                      onValueChange={(e: any) =>
-                        updateRetentionField(
-                          ["policyTimeBucketed", "monthly"],
-                          e.valueAsNumber,
-                        )
-                      }
-                    />
-                  </Box>
-                  <Box flex="1">
-                    <NumberInputField
-                      label="Yearly"
-                      value={retention?.policyTimeBucketed?.yearly || 0}
-                      onValueChange={(e: any) =>
-                        updateRetentionField(
-                          ["policyTimeBucketed", "yearly"],
-                          e.valueAsNumber,
-                        )
-                      }
-                    />
-                  </Box>
-                </Flex>
-                <Field
-                  label="Latest snapshots to keep regardless of age"
-                  required={cronIsSubHourly}
-                  helperText={
-                    cronIsSubHourly
-                      ? "Schedule runs frequently; keep some recent snapshots."
-                      : undefined
-                  }
-                >
-                  <NumberInputField
-                    value={retention?.policyTimeBucketed?.keepLastN || 0}
-                    onValueChange={(e: any) =>
-                      updateRetentionField(
-                        ["policyTimeBucketed", "keepLastN"],
-                        e.valueAsNumber,
-                      )
-                    }
-                  />
-                </Field>
-              </Stack>
-            )}
-          </Card.Body>
-        </Card.Root>
+              <NumberInputField
+                label="Daily"
+                value={retention?.policyTimeBucketed?.daily || 0}
+                onValueChange={(e: any) =>
+                  updateRetentionField(
+                    ["policyTimeBucketed", "daily"],
+                    e.valueAsNumber,
+                  )
+                }
+              />
+              <NumberInputField
+                label="Weekly"
+                value={retention?.policyTimeBucketed?.weekly || 0}
+                onValueChange={(e: any) =>
+                  updateRetentionField(
+                    ["policyTimeBucketed", "weekly"],
+                    e.valueAsNumber,
+                  )
+                }
+              />
+              <NumberInputField
+                label="Monthly"
+                value={retention?.policyTimeBucketed?.monthly || 0}
+                onValueChange={(e: any) =>
+                  updateRetentionField(
+                    ["policyTimeBucketed", "monthly"],
+                    e.valueAsNumber,
+                  )
+                }
+              />
+              <NumberInputField
+                label="Yearly"
+                value={retention?.policyTimeBucketed?.yearly || 0}
+                onValueChange={(e: any) =>
+                  updateRetentionField(
+                    ["policyTimeBucketed", "yearly"],
+                    e.valueAsNumber,
+                  )
+                }
+              />
+              <NumberInputField
+                label="Latest (Count)"
+                helperText={
+                  cronIsSubHourly
+                    ? "Keep recent snapshots (High-frequency schedule detected)"
+                    : "Latest snapshots to keep regardless of age"
+                }
+                value={retention?.policyTimeBucketed?.keepLastN || 0}
+                onValueChange={(e: any) =>
+                  updateRetentionField(
+                    ["policyTimeBucketed", "keepLastN"],
+                    e.valueAsNumber,
+                  )
+                }
+              />
+            </Grid>
+          )}
+        </Card.Body>
+      </Card.Root>
       </Stack>
     </Field>
   );

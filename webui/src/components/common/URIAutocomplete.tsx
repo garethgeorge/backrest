@@ -33,9 +33,9 @@ export const URIAutocomplete = (props: any) => {
   const collection = useMemo(
     () =>
       createListCollection({
-        items: items.filter((i) => i.value.startsWith(value)),
+        items: items.filter((i) => i.value.startsWith(value || "")),
       }),
-    [items],
+    [items, value],
   );
 
   const doFetch = useCallback((inputVal: string) => {
@@ -117,8 +117,7 @@ export const URIAutocomplete = (props: any) => {
         <ComboboxInput placeholder={placeholder} style={{ width: "100%" }} />
       </ComboboxControl>
       <ComboboxContent zIndex={2000}>
-        {items.length === 0 && <ComboboxEmpty>No paths found</ComboboxEmpty>}
-        {items.map((item) => (
+        {collection.items.map((item) => (
           <ComboboxItem key={item.value} item={item}>
             {item.label}
           </ComboboxItem>
