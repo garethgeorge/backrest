@@ -8,6 +8,7 @@ The project is transitioning from a flat file structure to a **Feature-Based Arc
 
 ### Directory Structure
 
+```text
 .
 ├── dist/                       # Build artifacts (embed target)
 ├── gen/                        # Generated Protobuf/gRPC code (READ-ONLY)
@@ -39,6 +40,7 @@ The project is transitioning from a flat file structure to a **Feature-Based Arc
 ├── assets/                     # Source assets imported in code (svgs, logos)
 ├── vite.config.ts
 └── tsconfig.json
+```
 
 ---
 

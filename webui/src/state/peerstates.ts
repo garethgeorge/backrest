@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { PeerState } from "../../gen/ts/v1sync/syncservice_pb";
-import { syncStateService } from "../api";
+import { syncStateService } from "../api/client";
 
 // Type intersection to combine properties from Repo and RepoMetadata
 export interface RepoProps {
