@@ -104,6 +104,12 @@ services:
     ports:
       - "9898:9898"
     restart: unless-stopped
+    # Optional, these are required for fast repo browsing mode using FUSE
+    # but are not required for the default repo browsing mode using `restic ls`
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse:/dev/fuse
 ```
 
 ## Running on Linux
