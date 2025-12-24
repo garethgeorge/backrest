@@ -75,20 +75,32 @@ const repoDefaults = create(RepoSchema, {
   },
 });
 
-export const AddRepoModal = ({ template }: { template: Repo | null }) => {
+export const AddRepoModal = ({ template, templateClone }: { template: Repo | null, templateClone?: Repo | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const alertsApi = useAlertApi()!;
   const [config, setConfig] = useConfig();
   const [form] = Form.useForm<JsonValue>();
-  useEffect(() => {
-    const initVal = template
-      ? toJson(RepoSchema, template, {
-          alwaysEmitImplicit: true,
-        })
-      : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true });
-    form.setFieldsValue(initVal);
-  }, [template]);
+  // This sets the default values for the form
+  if (templateClone) { // If the user is cloning an existing repository config
+    useEffect(() => {
+      const initVal = templateClone
+        ? toJson(RepoSchema, templateClone, {
+            alwaysEmitImplicit: true,
+          })
+        : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true });
+      form.setFieldsValue(initVal);
+    }, [templateClone]);
+  } else {
+    useEffect(() => { // If the user is opening an existing repository config or creating a new one
+      const initVal = template
+        ? toJson(RepoSchema, template, {
+            alwaysEmitImplicit: true,
+          })
+        : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true });
+      form.setFieldsValue(initVal);
+    }, [template]);
+  }
 
   if (!config) {
     return null;
@@ -156,6 +168,20 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     }
   };
 
+  const handleClone = async () => {
+    setConfirmLoading(true);
+
+    try {
+
+      showModal(<AddRepoModal template={null} templateClone={template} />)
+
+    } catch (e: any) {
+      alertsApi.error(formatErrorAlert(e, "Operation error: "), 10);
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
   const handleCancel = () => {
     showModal(null);
   };
@@ -172,7 +198,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             {m.add_plan_modal_button_cancel()}
           </Button>,
           template != null ? (
-            <Tooltip
+            <><Tooltip
               key="delete-tooltip"
               title={m.add_repo_modal_delete_tooltip()}
             >
@@ -186,6 +212,9 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 {m.add_plan_modal_button_delete()}
               </ConfirmButton>
             </Tooltip>
+            <Button loading={confirmLoading} key="clone" onClick={handleClone}>
+                Clone Repository Config
+            </Button></>
           ) : null,
           <SpinButton
             key="check"
