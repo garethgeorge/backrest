@@ -222,7 +222,6 @@
   "add_repo_modal_field_cpu_priority_low": "CPU_LOW - 优先级低于默认优先级",
   "add_repo_modal_field_cpu_priority_placeholder": "选择 CPU 优先级",
   "add_repo_modal_field_auto_unlock": "自动解锁",
-  "add_repo_modal_field_auto_unlock_tooltip": "自动解锁功能会在执行遗忘和清理操作时移除锁定文件。如果多个客户端设备共享同一个仓库，这可能存在安全隐患。此功能默认禁用。",
   "add_repo_modal_preview_json": "仓库配置（JSON 格式）",
   "add_repo_modal_error_missing_password": "缺少仓库密码。请提供密码或设置环境变量 RESTIC_PASSWORD、RESTIC_PASSWORD_COMMAND 或 RESTIC_PASSWORD_FILE 之一。",
   "dashboard_error_fetch": "获取摘要数据失败： ",
@@ -294,10 +293,6 @@
   "op_row_cancel_error": "取消操作失败： ",
   "op_row_logs_title": "操作{name}在{time}",
   "op_row_view_logs": "[查看日志]",
-  "op_row_confirm_cancel": "[确认取消？]",
-  "op_row_cancel_op": "【取消操作】",
-  "op_row_confirm_delete": "[确认删除？]",
-  "op_row_delete": "[删除]",
   "op_row_backup_details": "备份详情",
   "op_row_item_errors": "项目错误",
   "op_row_error_on_item": "错误项： {item}",
@@ -363,5 +358,12 @@
   "add_plan_modal_retention_policy_daily_label": "日常的",
   "add_plan_modal_retention_policy_hourly_label": "按小时",
   "add_plan_modal_retention_policy_keep_regardless_label": "无论年龄大小，都要保留最新的快照。",
-  "add_plan_modal_retention_policy_subhourly_helper": "计划程序会频繁运行；请保留一些最近的快照。"
+  "add_plan_modal_retention_policy_subhourly_helper": "计划程序会频繁运行；请保留一些最近的快照。",
+  "add_repo_modal_env_vars_placeholder": "键=值（每行一个）",
+  "app_menu_edit_plan": "app_menu_edit_plan",
+  "add_repo_modal_field_auto_unlock_tooltip": "自动解锁功能会在大多数操作开始时移除锁定文件。如果多个客户端设备共享同一个仓库，这可能存在安全隐患；否则，建议在单客户端环境下启用此功能。",
+  "op_row_cancel_op": "取消操作",
+  "op_row_confirm_cancel": "确认取消？",
+  "op_row_delete": "删除操作",
+  "op_row_confirm_delete": "确认删除？"
 }

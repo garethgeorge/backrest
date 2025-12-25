@@ -1,7 +1,8 @@
 import React, { Suspense, useContext, useEffect, useState } from "react";
 import { Repo } from "../../../gen/ts/v1/config_pb";
 import { Button } from "../../components/ui/button";
-import { Flex, Heading, Box } from "@chakra-ui/react";
+import { Flex, Heading, Box, Group, IconButton } from "@chakra-ui/react";
+import { FiChevronDown } from "react-icons/fi";
 import {
   Tabs,
   TabsRoot,
@@ -9,6 +10,12 @@ import {
   TabsTrigger,
   TabsContent,
 } from "../../components/ui/tabs";
+import {
+  MenuContent,
+  MenuItem,
+  MenuRoot,
+  MenuTrigger,
+} from "../../components/ui/menu";
 import { Tooltip } from "../../components/ui/tooltip";
 import { OperationListView } from "../operations/OperationListView";
 import { OperationTreeView } from "../operations/OperationTreeView";
@@ -125,49 +132,48 @@ export const RepoView = ({
     <Box>
       <Flex gap={4} align="center" wrap="wrap" mb={4}>
         <Heading size="xl">{repo.id}</Heading>
+        <Box flex="1" />
 
-        <Tooltip content={m.repo_tooltip_run_command()}>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              const { RunCommandModal } =
-                await import("../operations/RunCommandModal");
-              showModal(<RunCommandModal repo={repo} />);
-            }}
-          >
-            {m.repo_button_run_command()}
-          </Button>
-        </Tooltip>
-
-        <Tooltip content={m.repo_tooltip_index()}>
-          <SpinButton type="default" onClickAsync={handleIndexNow}>
+        <Group attached>
+          <SpinButton type="primary" onClickAsync={handleIndexNow}>
             {m.repo_button_index()}
           </SpinButton>
-        </Tooltip>
-
-        <Tooltip content={m.repo_tooltip_unlock()}>
-          <SpinButton type="default" onClickAsync={handleUnlockNow}>
-            {m.repo_button_unlock()}
-          </SpinButton>
-        </Tooltip>
-
-        <Tooltip content={m.repo_tooltip_prune()}>
-          <SpinButton type="default" onClickAsync={handlePruneNow}>
-            {m.repo_button_prune()}
-          </SpinButton>
-        </Tooltip>
-
-        <Tooltip content={m.repo_tooltip_check()}>
-          <SpinButton type="default" onClickAsync={handleCheckNow}>
-            {m.repo_button_check()}
-          </SpinButton>
-        </Tooltip>
-
-        <Tooltip content={m.repo_tooltip_stats()}>
-          <SpinButton type="default" onClickAsync={handleStatsNow}>
-            {m.repo_button_stats()}
-          </SpinButton>
-        </Tooltip>
+          <MenuRoot>
+            <MenuTrigger asChild>
+              <IconButton
+                variant="subtle"
+                colorPalette="blue"
+                aria-label="More actions"
+              >
+                <FiChevronDown />
+              </IconButton>
+            </MenuTrigger>
+            <MenuContent>
+              <MenuItem
+                value="run-command"
+                onClick={async () => {
+                  const { RunCommandModal } =
+                    await import("../operations/RunCommandModal");
+                  showModal(<RunCommandModal repo={repo} />);
+                }}
+              >
+                {m.repo_button_run_command()}
+              </MenuItem>
+              <MenuItem value="unlock" onClick={handleUnlockNow}>
+                {m.repo_button_unlock()}
+              </MenuItem>
+              <MenuItem value="prune" onClick={handlePruneNow}>
+                {m.repo_button_prune()}
+              </MenuItem>
+              <MenuItem value="check" onClick={handleCheckNow}>
+                {m.repo_button_check()}
+              </MenuItem>
+              <MenuItem value="stats" onClick={handleStatsNow}>
+                {m.repo_button_stats()}
+              </MenuItem>
+            </MenuContent>
+          </MenuRoot>
+        </Group>
       </Flex>
 
       <TabsRoot defaultValue="tree" lazyMount>

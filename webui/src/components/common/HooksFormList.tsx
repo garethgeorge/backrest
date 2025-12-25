@@ -19,23 +19,15 @@ import {
 } from "@chakra-ui/react";
 import { FiPlus, FiTrash2, FiInfo } from "react-icons/fi";
 import {
-  SelectRoot,
-  SelectTrigger,
-  SelectValueText,
-  SelectContent,
-  SelectItem,
-  SelectHiddenSelect,
-} from "../ui/select";
-import {
+  MenuTrigger,
   MenuContent,
   MenuItem,
   MenuItemText,
   MenuRoot,
-  MenuTrigger,
 } from "../ui/menu";
 import { Tooltip } from "../ui/tooltip";
-import { createListCollection } from "@chakra-ui/react";
 import { Link } from "../ui/link";
+import { EnumSelector, EnumOption } from "./EnumSelector";
 
 export interface HookFields {
   conditions: string[];
@@ -98,20 +90,20 @@ const hookConditionDescriptions: Record<string, string> = {
   CONDITION_ANY_ERROR: "Triggered when any operation fails",
 };
 
-const conditionCollection = createListCollection({
-  items: Hook_ConditionSchema.values.map((v) => ({
+const conditionOptions: EnumOption<string>[] = Hook_ConditionSchema.values.map(
+  (v) => ({
     label: v.name,
     value: v.name,
     description: hookConditionDescriptions[v.name],
-  })),
-});
+  }),
+);
 
-const onErrorCollection = createListCollection({
-  items: Hook_OnErrorSchema.values.map((v) => ({
+const onErrorOptions: EnumOption<string>[] = Hook_OnErrorSchema.values.map(
+  (v) => ({
     label: v.name,
     value: v.name,
-  })),
-});
+  }),
+);
 
 interface HooksFormListProps {
   value?: HookFields[];
@@ -205,8 +197,11 @@ const HookItem = ({
   const typeName = findHookTypeName(hook);
 
   // @ts-ignore
-  const handleConditionChange = (details: { value: string[] }) => {
-    onChange({ ...hook, conditions: details.value });
+  const handleConditionChange = (value: string | string[]) => {
+    onChange({
+      ...hook,
+      conditions: Array.isArray(value) ? value : [value],
+    });
   };
 
   return (
@@ -229,41 +224,16 @@ const HookItem = ({
       </Card.Header>
       <Card.Body gap={3}>
         <HookConditionsTooltip>
-          <SelectRoot
-            multiple
-            collection={conditionCollection}
-            value={hook.conditions}
-            // @ts-ignore
-            onValueChange={handleConditionChange}
-            size="sm"
-          >
-            {/* @ts-ignore */}
-            <SelectHiddenSelect />
-            <SelectTrigger>
-              <Box flex="1" textAlign="left">
-                {hook.conditions && hook.conditions.length > 0 ? (
-                  hook.conditions.join(", ")
-                ) : (
-                  <Text color="fg.muted">Runs when...</Text>
-                )}
-              </Box>
-            </SelectTrigger>
-            <SelectContent zIndex={2000}>
-              {conditionCollection.items.map((item: any) => (
-                // @ts-ignore
-                <SelectItem item={item} key={item.value}>
-                  <span>
-                    {item.label}
-                    {item.description && (
-                      <Text as="span" color="fg.muted" ml={2}>
-                        - {item.description}
-                      </Text>
-                    )}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </SelectRoot>
+          <Box width="full">
+            <EnumSelector
+              multiSelect
+              options={conditionOptions}
+              value={hook.conditions}
+              onChange={handleConditionChange}
+              placeholder="Runs when..."
+              size="sm"
+            />
+          </Box>
         </HookConditionsTooltip>
 
         <HookBuilder hook={hook} onChange={onChange} />
@@ -441,48 +411,23 @@ const hookTypes: {
             onChange={(e) => updateGotify("template", e.target.value)}
             size="sm"
           />
-          <SelectRoot
-            collection={createListCollection({
-              items: [
-                { label: "0 - No notification", value: "0" },
-                { label: "1 - Icon in notification bar", value: "1" },
-                { label: "4 - Icon in notification bar + Sound", value: "4" },
-                {
-                  label: "8 - Icon in notification bar + Sound + Vibration",
-                  value: "8",
-                },
-              ],
-            })}
-            value={[String(hook.actionGotify?.priority ?? 5)]}
-            // @ts-ignore
-            onValueChange={(e) =>
-              updateGotify("priority", parseInt(e.value[0]))
+          <EnumSelector
+            options={[
+              { label: "0 - No notification", value: "0" },
+              { label: "1 - Icon in notification bar", value: "1" },
+              { label: "4 - Icon in notification bar + Sound", value: "4" },
+              {
+                label: "8 - Icon in notification bar + Sound + Vibration",
+                value: "8",
+              },
+            ]}
+            value={String(hook.actionGotify?.priority ?? 5)}
+            onChange={(val) =>
+              updateGotify("priority", parseInt(val as string))
             }
+            placeholder="Priority"
             size="sm"
-          >
-            {/* @ts-ignore */}
-            <SelectHiddenSelect />
-            <SelectTrigger>
-              {/* @ts-ignore */}
-              <SelectValueText placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent zIndex={2000}>
-              {[
-                { label: "0 - No notification", value: "0" },
-                { label: "1 - Icon in notification bar", value: "1" },
-                { label: "4 - Icon in notification bar + Sound", value: "4" },
-                {
-                  label: "8 - Icon in notification bar + Sound + Vibration",
-                  value: "8",
-                },
-              ].map((item) => (
-                // @ts-ignore
-                <SelectItem item={item} key={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </SelectRoot>
+          />
         </Stack>
       );
     },
@@ -675,28 +620,13 @@ const ItemOnErrorSelector = ({
           </IconButton>
         </Tooltip>
       </Flex>
-      <SelectRoot
-        collection={onErrorCollection}
-        value={[hook.onError || ""]}
-        // @ts-ignore
-        onValueChange={(e) => onChange({ ...hook, onError: e.value[0] })}
+      <EnumSelector
+        options={onErrorOptions}
+        value={hook.onError || ""}
+        onChange={(val) => onChange({ ...hook, onError: val as string })}
+        placeholder="Error behavior..."
         size="sm"
-      >
-        {/* @ts-ignore */}
-        <SelectHiddenSelect />
-        <SelectTrigger>
-          {/* @ts-ignore */}
-          <SelectValueText placeholder="Error behavior..." />
-        </SelectTrigger>
-        <SelectContent zIndex={2000}>
-          {onErrorCollection.items.map((item: any) => (
-            // @ts-ignore
-            <SelectItem item={item} key={item.value}>
-              {item.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </SelectRoot>
+      />
     </Stack>
   );
 };

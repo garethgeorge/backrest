@@ -56,5 +56,8 @@ export const formatErrorAlert = (error: any, prefix?: string) => {
       </>
     );
   }
-  return `${prefix}: ${contents}`;
+  if (prefix.indexOf(":") === -1) {
+    prefix += ":";
+  }
+  return `${prefix} ${contents}`;
 };

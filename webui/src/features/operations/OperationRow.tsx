@@ -216,7 +216,7 @@ export const OperationRow = ({
         confirmText={m.op_row_confirm_cancel()}
         color="fg.error"
       >
-        <FiX /> {m.op_row_cancel_op()}
+        {m.op_row_cancel_op()}
       </ConfirmMenuItem>,
     );
   } else if (showDelete) {
@@ -271,7 +271,7 @@ export const OperationRow = ({
                     {e.item}
                   </Table.Cell>
                   <Table.Cell verticalAlign="top">
-                    {e.message || "Unknown error"}
+                    {e.message || e.item}
                   </Table.Cell>
                 </Table.Row>
               ))}

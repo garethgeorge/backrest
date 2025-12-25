@@ -36,12 +36,12 @@ export const LoginModal = () => {
     try {
       const loginResponse = await authenticationService.login(loginReq);
       setAuthToken(loginResponse.token);
-      alerts.success(m.login_success(), 5);
+      alerts.success(m.login_success());
       setTimeout(() => {
         window.location.reload();
       }, 500);
     } catch (e: any) {
-      alerts.error(m.login_error() + (e.message ? e.message : "" + e), 10);
+      alerts.error(m.login_error() + (e.message ? e.message : "" + e));
       setLoading(false);
     }
   };

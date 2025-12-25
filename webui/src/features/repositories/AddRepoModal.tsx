@@ -1,21 +1,23 @@
 import {
-  Flex,
   Stack,
+  Flex,
   Input,
-  Textarea,
-  createListCollection,
-  SelectContent,
-  SelectItem,
-  SelectLabel,
-  SelectRoot,
-  SelectTrigger,
-  SelectValueText,
+  Card,
+  Text as CText,
+  Grid,
+  Code,
+  Box,
 } from "@chakra-ui/react";
+import { EnumSelector, EnumOption } from "../../components/common/EnumSelector";
 import { Checkbox } from "../../components/ui/checkbox";
+import {
+  AccordionItem,
+  AccordionItemContent,
+  AccordionItemTrigger,
+  AccordionRoot,
+} from "../../components/ui/accordion";
 import React, { useEffect, useState } from "react";
 import { useShowModal } from "../../components/common/ModalManager";
-// removed ../state/repo_state import
-// valid imports
 import {
   CommandPrefix_CPUNiceLevel,
   CommandPrefix_CPUNiceLevelSchema,
@@ -30,12 +32,11 @@ import { URIAutocomplete } from "../../components/common/URIAutocomplete";
 import { alerts, formatErrorAlert } from "../../components/common/Alerts";
 import { namePattern } from "../../lib/util";
 import { backrestService } from "../../api/client";
-// import { HooksFormList } from "../components/HooksFormList"; // TODO: Migrate
-import { ConfirmButton } from "../../components/common/SpinButton";
+import { ConfirmButton, SpinButton } from "../../components/common/SpinButton";
 import { useConfig } from "../../app/provider";
 import {
   ScheduleFormItem,
-  ScheduleDefaultsDaily,
+  ScheduleDefaultsInfrequent,
 } from "../../components/common/ScheduleFormItem";
 import { isWindows } from "../../state/buildcfg";
 import { create, fromJson, toJson, JsonValue } from "@bufbuild/protobuf";
@@ -45,13 +46,12 @@ import { Button } from "../../components/ui/button";
 import { Field } from "../../components/ui/field";
 import { PasswordInput } from "../../components/ui/password-input";
 import { Tooltip } from "../../components/ui/tooltip";
-import { toaster } from "../../components/ui/toaster";
 import { NumberInputField } from "../../components/common/NumberInput";
-
 import {
   HooksFormList,
   hooksListTooltipText,
 } from "../../components/common/HooksFormList";
+import { DynamicList } from "../../components/common/DynamicList";
 
 const repoDefaults = create(RepoSchema, {
   prunePolicy: {
@@ -59,7 +59,7 @@ const repoDefaults = create(RepoSchema, {
     schedule: {
       schedule: {
         case: "cron",
-        value: "0 0 1 * *",
+        value: "0 0 1 * *", // 1st of the month
       },
       clock: Schedule_Clock.LAST_RUN_TIME,
     },
@@ -68,7 +68,7 @@ const repoDefaults = create(RepoSchema, {
     schedule: {
       schedule: {
         case: "cron",
-        value: "0 0 1 * *",
+        value: "0 0 1 * *", // 1st of the month
       },
       clock: Schedule_Clock.LAST_RUN_TIME,
     },
@@ -85,19 +85,26 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [config, setConfig] = useConfig();
 
   // Local state for form fields
-  // Using a simple object state to mimic the form values
   const [formData, setFormData] = useState<any>(
     template
       ? toJson(RepoSchema, template, { alwaysEmitImplicit: true })
       : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true }),
   );
 
+  useEffect(() => {
+    setFormData(
+      template
+        ? toJson(RepoSchema, template, { alwaysEmitImplicit: true })
+        : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true }),
+    );
+  }, [template]);
+
   const updateField = (path: string[], value: any) => {
     setFormData((prev: any) => {
       const next = { ...prev };
       let curr = next;
       for (let i = 0; i < path.length - 1; i++) {
-        if (!curr[path[i]]) curr[path[i]] = {};
+        curr[path[i]] = curr[path[i]] ? { ...curr[path[i]] } : {};
         curr = curr[path[i]];
       }
       curr[path[path.length - 1]] = value;
@@ -115,6 +122,33 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   };
 
   if (!config) return null;
+
+  const validateLocal = async () => {
+    const id = getField(["id"]);
+    if (!id?.trim()) {
+      throw new Error(m.add_repo_modal_error_repo_name_required());
+    }
+    if (!namePattern.test(id)) {
+      throw new Error(m.add_plan_modal_validation_plan_name_pattern());
+    }
+    if (!template && config.repos.find((r) => r.id === id)) {
+      throw new Error(m.add_repo_modal_error_repo_exists());
+    }
+
+    const uri = getField(["uri"]);
+    if (!uri?.trim()) {
+      throw new Error(m.add_repo_modal_error_uri_required());
+    }
+
+    // Env and Password validation
+    await envVarSetValidator(formData);
+
+    // Flags validation
+    const flags = getField(["flags"]);
+    if (flags && flags.some((f: string) => !/^\-\-?.*$/.test(f))) {
+      throw new Error(m.add_repo_modal_error_flag_format());
+    }
+  };
 
   const handleDestroy = async () => {
     setConfirmLoading(true);
@@ -134,7 +168,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     } catch (e: any) {
       alerts.error(
         formatErrorAlert(e, m.add_plan_modal_error_destroy_prefix()),
-        15,
       );
     } finally {
       setConfirmLoading(false);
@@ -144,7 +177,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const handleOk = async () => {
     setConfirmLoading(true);
     try {
-      // Validation logic would go here
+      await validateLocal();
+
       const repo = fromJson(RepoSchema, formData, {
         ignoreUnknownFields: true,
       });
@@ -159,38 +193,81 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         alerts.success(m.add_repo_modal_success_added({ uri: repo.uri }));
       }
 
-      // Trigger generic "check" or "list snapshots" to verify
       try {
         await backrestService.listSnapshots({ repoId: repo.id });
       } catch (e: any) {
         alerts.error(
           formatErrorAlert(e, m.add_repo_modal_error_list_snapshots()),
-          10,
         );
       }
     } catch (e: any) {
       alerts.error(
         formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()),
-        10,
       );
     } finally {
       setConfirmLoading(false);
     }
   };
 
-  const ioNiceOptions = createListCollection({
-    items: CommandPrefix_IONiceLevelSchema.values.map((v) => ({
-      label: v.name,
-      value: v.name,
-    })),
-  });
+  const handleTest = async () => {
+    try {
+      await validateLocal();
+      const repo = fromJson(RepoSchema, formData, {
+        ignoreUnknownFields: true,
+      });
+      const exists = await backrestService.checkRepoExists(repo);
+      if (exists.value) {
+        alerts.success(
+          m.add_repo_modal_test_success_existing({ uri: repo.uri }),
+        );
+      } else {
+        alerts.success(m.add_repo_modal_test_success_new({ uri: repo.uri }));
+      }
+    } catch (e: any) {
+      alerts.error(formatErrorAlert(e, m.add_repo_modal_test_error()));
+    }
+  };
 
-  const cpuNiceOptions = createListCollection({
-    items: CommandPrefix_CPUNiceLevelSchema.values.map((v) => ({
-      label: v.name,
-      value: v.name,
-    })),
-  });
+  const ioNiceOptions: EnumOption<string>[] = [
+    {
+      label: "IO_BEST_EFFORT_LOW",
+      value: "IO_BEST_EFFORT_LOW",
+      description: m.add_repo_modal_field_io_priority_low(),
+    },
+    {
+      label: "IO_BEST_EFFORT_HIGH",
+      value: "IO_BEST_EFFORT_HIGH",
+      description: m.add_repo_modal_field_io_priority_high(),
+    },
+    {
+      label: "IO_IDLE",
+      value: "IO_IDLE",
+      description: m.add_repo_modal_field_io_priority_idle(),
+    },
+    {
+      label: "IO_DEFAULT",
+      value: "IO_DEFAULT",
+      description: "Default system priority",
+    },
+  ];
+
+  const cpuNiceOptions: EnumOption<string>[] = [
+    {
+      label: "CPU_DEFAULT",
+      value: "CPU_DEFAULT",
+      description: m.add_repo_modal_field_cpu_priority_default(),
+    },
+    {
+      label: "CPU_HIGH",
+      value: "CPU_HIGH",
+      description: m.add_repo_modal_field_cpu_priority_high(),
+    },
+    {
+      label: "CPU_LOW",
+      value: "CPU_LOW",
+      description: m.add_repo_modal_field_cpu_priority_low(),
+    },
+  ];
 
   return (
     <FormModal
@@ -211,13 +288,16 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           </Button>
           {template && (
             <ConfirmButton
-              colorPalette="red"
+              danger
               onClickAsync={handleDestroy}
               confirmTitle={m.add_plan_modal_button_confirm_delete()}
             >
               {m.add_plan_modal_button_delete()}
             </ConfirmButton>
           )}
+          <SpinButton onClickAsync={handleTest}>
+            {m.add_repo_modal_test_config()}
+          </SpinButton>
           <Button loading={confirmLoading} onClick={handleOk}>
             {m.add_plan_modal_button_submit()}
           </Button>
@@ -225,187 +305,467 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
       }
     >
       <Stack gap={6}>
-        <Field
-          label={m.add_repo_modal_field_repo_name()}
-          helperText={m.add_repo_modal_field_repo_name_tooltip()}
-          required
-        >
-          <Input
-            value={getField(["id"])}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              updateField(["id"], e.target.value)
-            }
-            disabled={!!template}
-            placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
-          />
-        </Field>
-
-        <Field
-          label={m.add_repo_modal_field_uri()}
-          helperText="Supports local paths, sftp, s3, etc."
-          required
-        >
-          <URIAutocomplete
-            disabled={!!template}
-            value={getField(["uri"])}
-            onChange={(val: string) => updateField(["uri"], val)}
-          />
-        </Field>
-
-        <Field
-          label={m.add_repo_modal_field_password()}
-          helperText={m.add_repo_modal_field_password_tooltip_intro()}
-        >
-          <Flex gap={2}>
-            <PasswordInput
-              value={getField(["password"])}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                updateField(["password"], e.target.value)
-              }
-              disabled={!!template}
-              flex={1}
-            />
-            {!template && (
-              <Button
-                variant="ghost"
-                onClick={() =>
-                  updateField(["password"], cryptoRandomPassword())
-                }
-              >
-                {m.add_repo_modal_button_generate()}
-              </Button>
-            )}
-          </Flex>
-        </Field>
-
-        {/* Env Vars Placeholder */}
-        <Field label={m.add_repo_modal_field_env_vars()}>
-          <Textarea
-            placeholder="KEY=VALUE (One per line)"
-            value={getField(["env"]) || ""}
-            onChange={(e) => updateField(["env"], e.target.value)}
-          />
-        </Field>
-
-        <Field label={m.add_repo_modal_field_auto_unlock()}>
-          <Checkbox
-            checked={getField(["autoUnlock"])}
-            onCheckedChange={(e: { checked: boolean | "indeterminate" }) =>
-              updateField(["autoUnlock"], !!e.checked)
-            }
+        <p>
+          {m.add_repo_modal_guide_text_p1()}{" "}
+          <a
+            href="https://garethgeorge.github.io/backrest/introduction/getting-started"
+            target="_blank"
+            style={{ textDecoration: "underline" }}
           >
-            {m.add_repo_modal_field_auto_unlock()}
-          </Checkbox>
-        </Field>
+            {m.add_repo_modal_guide_link_text()}
+          </a>{" "}
+          {m.add_repo_modal_guide_text_p2()}{" "}
+          <a
+            href="https://restic.readthedocs.io/"
+            target="_blank"
+            style={{ textDecoration: "underline" }}
+          >
+            {m.add_repo_modal_guide_restic_link_text()}
+          </a>{" "}
+          {m.add_repo_modal_guide_text_p3()}
+        </p>
 
-        <Field label={m.add_repo_modal_field_prune_policy()}>
-          <Stack gap={4} p={4} borderWidth="1px" borderRadius="md">
-            <NumberInputField
-              label={m.add_repo_modal_field_max_unused()}
-              value={getField(["prunePolicy", "maxUnusedPercent"])}
-              onValueChange={(e: { value: string; valueAsNumber: number }) =>
-                updateField(
-                  ["prunePolicy", "maxUnusedPercent"],
-                  e.valueAsNumber,
-                )
+        <Section title="Repo Details">
+          <Card.Root variant="subtle">
+            <Card.Body>
+              <Stack gap={4}>
+                <Field
+                  label={m.add_repo_modal_field_repo_name()}
+                  helperText={
+                    !template
+                      ? m.add_repo_modal_field_repo_name_tooltip()
+                      : undefined
+                  }
+                  required
+                  invalid={
+                    !!getField(["id"]) &&
+                    (!namePattern.test(getField(["id"])) ||
+                      (!template &&
+                        !!config.repos.find((r) => r.id === getField(["id"]))))
+                  }
+                  errorText={
+                    !!getField(["id"]) && !namePattern.test(getField(["id"]))
+                      ? m.add_plan_modal_validation_plan_name_pattern()
+                      : m.add_repo_modal_error_repo_exists()
+                  }
+                >
+                  <Input
+                    value={getField(["id"])}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      updateField(["id"], e.target.value)
+                    }
+                    disabled={!!template}
+                    placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
+                  />
+                </Field>
+
+                <Field
+                  label={m.add_repo_modal_field_uri()}
+                  helperText={
+                    <>
+                      {m.add_repo_modal_field_uri_tooltip_title()}
+                      <Box as="ul" ml={4} mt={1}>
+                        <li>{m.add_repo_modal_field_uri_tooltip_local()}</li>
+                        <li>{m.add_repo_modal_field_uri_tooltip_s3()}</li>
+                        <li>{m.add_repo_modal_field_uri_tooltip_sftp()}</li>
+                        <li>
+                          {m.add_repo_modal_field_uri_tooltip_see()}{" "}
+                          <a
+                            href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository"
+                            target="_blank"
+                            style={{ textDecoration: "underline" }}
+                          >
+                            {m.add_repo_modal_field_uri_tooltip_restic_docs()}
+                          </a>{" "}
+                          {m.add_repo_modal_field_uri_tooltip_info()}
+                        </li>
+                      </Box>
+                    </>
+                  }
+                  required
+                >
+                  <URIAutocomplete
+                    disabled={!!template}
+                    value={getField(["uri"])}
+                    onChange={(val: string) => updateField(["uri"], val)}
+                  />
+                </Field>
+
+                <Field
+                  label={m.add_repo_modal_field_password()}
+                  helperText={
+                    !template ? (
+                      <>
+                        {m.add_repo_modal_field_password_tooltip_intro()}
+                        <Box as="ul" ml={4} mt={1}>
+                          <li>
+                            {m.add_repo_modal_field_password_tooltip_entropy()}
+                          </li>
+                          <li>
+                            {m.add_repo_modal_field_password_tooltip_env()}
+                          </li>
+                          <li>
+                            {m.add_repo_modal_field_password_tooltip_generate()}
+                          </li>
+                        </Box>
+                      </>
+                    ) : undefined
+                  }
+                >
+                  <Flex gap={2} width="full">
+                    <Box flex={1}>
+                      <PasswordInput
+                        value={getField(["password"])}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          updateField(["password"], e.target.value)
+                        }
+                        disabled={!!template}
+                      />
+                    </Box>
+                    {!template && (
+                      <Button
+                        variant="ghost"
+                        onClick={() =>
+                          updateField(["password"], cryptoRandomPassword())
+                        }
+                      >
+                        {m.add_repo_modal_button_generate()}
+                      </Button>
+                    )}
+                  </Flex>
+                </Field>
+
+                <Field label={m.add_repo_modal_field_auto_unlock()}>
+                  <Checkbox
+                    checked={getField(["autoUnlock"])}
+                    onCheckedChange={(e: {
+                      checked: boolean | "indeterminate";
+                    }) => updateField(["autoUnlock"], !!e.checked)}
+                  >
+                    {m.add_repo_modal_field_auto_unlock()}
+                  </Checkbox>
+                  <CText fontSize="xs" color="fg.muted" ml={6}>
+                    {m.add_repo_modal_field_auto_unlock_tooltip()}
+                  </CText>
+                </Field>
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+        </Section>
+
+        <Section title="Environment & Flags">
+          <Card.Root variant="subtle">
+            <Card.Body>
+              <Stack gap={4}>
+                <DynamicList
+                  label={m.add_repo_modal_field_env_vars()}
+                  items={getField(["env"]) || []}
+                  onUpdate={(items: string[]) => updateField(["env"], items)}
+                  tooltip={m.add_repo_modal_field_env_vars_tooltip({
+                    MY_FOO_VAR: "$MY_FOO_VAR",
+                  })}
+                  placeholder="KEY=VALUE"
+                />
+
+                <DynamicList
+                  label={m.add_repo_modal_field_flags()}
+                  items={getField(["flags"]) || []}
+                  onUpdate={(items: string[]) => updateField(["flags"], items)}
+                  placeholder="--flag"
+                />
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+        </Section>
+
+        <Section
+          title={
+            <Tooltip
+              content={
+                <span>
+                  {m.add_repo_modal_field_prune_policy_tooltip_p1()}{" "}
+                  <a
+                    href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
+                    target="_blank"
+                    style={{ textDecoration: "underline" }}
+                  >
+                    {m.add_repo_modal_field_prune_policy_tooltip_link()}
+                  </a>{" "}
+                  {m.add_repo_modal_field_prune_policy_tooltip_p2()}
+                </span>
               }
-            />
-            <Field label="Prune Schedule">
-              <ScheduleFormItem
-                value={getField(["prunePolicy", "schedule"])}
-                onChange={(val: any) =>
-                  updateField(["prunePolicy", "schedule"], val)
-                }
-                defaults={ScheduleDefaultsDaily}
-              />
-            </Field>
-          </Stack>
-        </Field>
-
-        <Field label="Backend Check Policy">
-          <Stack gap={4} p={4} borderWidth="1px" borderRadius="md">
-            <Field label="Check Schedule">
-              <ScheduleFormItem
-                value={getField(["checkPolicy", "schedule"])}
-                onChange={(val: any) =>
-                  updateField(["checkPolicy", "schedule"], val)
-                }
-                defaults={ScheduleDefaultsDaily}
-              />
-            </Field>
-          </Stack>
-        </Field>
-
-        {!isWindows && (
-          <Flex gap={4}>
-            <Field label={m.add_repo_modal_field_io_priority()} flex={1}>
-              <SelectRoot
-                collection={ioNiceOptions}
-                size="sm"
-                value={[getField(["commandPrefix", "ioNice"])]}
-                onValueChange={(e: any) =>
-                  updateField(["commandPrefix", "ioNice"], e.value[0])
-                }
-              >
-                {/* @ts-ignore */}
-                <SelectTrigger>
-                  {/* @ts-ignore */}
-                  <SelectValueText placeholder="Select priority" />
-                </SelectTrigger>
-                {/* @ts-ignore */}
-                <SelectContent>
-                  {ioNiceOptions.items.map((item: any) => (
-                    // @ts-ignore
-                    <SelectItem item={item} key={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </SelectRoot>
-            </Field>
-            <Field label={m.add_repo_modal_field_cpu_priority()} flex={1}>
-              <SelectRoot
-                collection={cpuNiceOptions}
-                size="sm"
-                value={[getField(["commandPrefix", "cpuNice"])]}
-                onValueChange={(e: any) =>
-                  updateField(["commandPrefix", "cpuNice"], e.value[0])
-                }
-              >
-                {/* @ts-ignore */}
-                <SelectTrigger>
-                  {/* @ts-ignore */}
-                  <SelectValueText placeholder="Select priority" />
-                </SelectTrigger>
-                {/* @ts-ignore */}
-                <SelectContent>
-                  {cpuNiceOptions.items.map((item: any) => (
-                    // @ts-ignore
-                    <SelectItem item={item} key={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </SelectRoot>
-            </Field>
-          </Flex>
-        )}
-        <Field
-          label={m.add_plan_modal_field_hooks()}
-          helperText={hooksListTooltipText}
+            >
+              {m.add_repo_modal_field_prune_policy()}
+            </Tooltip>
+          }
         >
-          <HooksFormList
-            value={getField(["hooks"])}
-            onChange={(v: any) => updateField(["hooks"], v)}
-          />
-        </Field>
+          <Card.Root variant="subtle" size="sm">
+            <Card.Body>
+              <Stack gap={4}>
+                <NumberInputField
+                  label={m.add_repo_modal_field_max_unused()}
+                  helperText={m.add_repo_modal_field_max_unused_tooltip()}
+                  value={getField(["prunePolicy", "maxUnusedPercent"])}
+                  onValueChange={(e: {
+                    value: string;
+                    valueAsNumber: number;
+                  }) =>
+                    updateField(
+                      ["prunePolicy", "maxUnusedPercent"],
+                      e.valueAsNumber,
+                    )
+                  }
+                />
+                <ScheduleFormItem
+                  value={getField(["prunePolicy", "schedule"])}
+                  onChange={(val: any) =>
+                    updateField(["prunePolicy", "schedule"], val)
+                  }
+                  defaults={ScheduleDefaultsInfrequent}
+                />
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+        </Section>
+
+        <Section
+          title={
+            <Tooltip content={m.add_repo_modal_field_check_policy_tooltip()}>
+              {m.add_repo_modal_field_check_policy()}
+            </Tooltip>
+          }
+        >
+          <Card.Root variant="subtle" size="sm">
+            <Card.Body>
+              <Stack gap={4}>
+                <NumberInputField
+                  label={m.add_repo_modal_field_read_data()}
+                  helperText={m.add_repo_modal_field_read_data_tooltip()}
+                  value={getField(["checkPolicy", "readDataSubsetPercent"])}
+                  onValueChange={(e: {
+                    value: string;
+                    valueAsNumber: number;
+                  }) =>
+                    updateField(
+                      ["checkPolicy", "readDataSubsetPercent"],
+                      e.valueAsNumber,
+                    )
+                  }
+                />
+                <ScheduleFormItem
+                  value={getField(["checkPolicy", "schedule"])}
+                  onChange={(val: any) =>
+                    updateField(["checkPolicy", "schedule"], val)
+                  }
+                  defaults={ScheduleDefaultsInfrequent}
+                />
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+        </Section>
+
+        <Section title="Advanced">
+          <Card.Root variant="subtle">
+            <Card.Body>
+              <Stack gap={4} width="full">
+                {!isWindows && (
+                  <Field label={m.add_repo_modal_field_command_modifiers()}>
+                    <Grid templateColumns="1fr 1fr" gap={4} width="full">
+                      <Field
+                        label={m.add_repo_modal_field_io_priority()}
+                        helperText={m.add_repo_modal_field_io_priority_tooltip_intro()}
+                      >
+                        <EnumSelector
+                          options={ioNiceOptions}
+                          size="sm"
+                          value={getField(["commandPrefix", "ioNice"])}
+                          onChange={(val) =>
+                            updateField(
+                              ["commandPrefix", "ioNice"],
+                              val as string,
+                            )
+                          }
+                          placeholder={m.add_repo_modal_field_io_priority_placeholder()}
+                        />
+                      </Field>
+                      <Field
+                        label={m.add_repo_modal_field_cpu_priority()}
+                        helperText={m.add_repo_modal_field_cpu_priority_tooltip_intro()}
+                      >
+                        <EnumSelector
+                          options={cpuNiceOptions}
+                          size="sm"
+                          value={getField(["commandPrefix", "cpuNice"])}
+                          onChange={(val) =>
+                            updateField(
+                              ["commandPrefix", "cpuNice"],
+                              val as string,
+                            )
+                          }
+                          placeholder={m.add_repo_modal_field_cpu_priority_placeholder()}
+                        />
+                      </Field>
+                    </Grid>
+                  </Field>
+                )}
+
+                <Field
+                  label={m.add_plan_modal_field_hooks()}
+                  helperText={hooksListTooltipText}
+                >
+                  <HooksFormList
+                    value={getField(["hooks"])}
+                    onChange={(v: any) => updateField(["hooks"], v)}
+                  />
+                </Field>
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+        </Section>
+
+        {/* JSON Preview */}
+        <AccordionRoot collapsible variant="plain">
+          <AccordionItem value="json-preview">
+            <AccordionItemTrigger>
+              <CText fontSize="sm" color="fg.muted">
+                {m.add_repo_modal_preview_json()}
+              </CText>
+            </AccordionItemTrigger>
+            <AccordionItemContent>
+              <Code
+                display="block"
+                whiteSpace="pre"
+                overflowX="auto"
+                p={2}
+                borderRadius="md"
+                fontSize="xs"
+              >
+                {JSON.stringify(formData, null, 2)}
+              </Code>
+            </AccordionItemContent>
+          </AccordionItem>
+        </AccordionRoot>
       </Stack>
     </FormModal>
   );
 };
 
+const Section = ({
+  title,
+  children,
+}: {
+  title: React.ReactNode;
+  children: React.ReactNode;
+}) => (
+  <Stack gap={2}>
+    <CText fontWeight="semibold" fontSize="sm">
+      {title}
+    </CText>
+    {children}
+  </Stack>
+);
+
 // Utils
 const cryptoRandomPassword = (): string => {
   let vals = crypto.getRandomValues(new Uint8Array(64));
   return btoa(String.fromCharCode(...vals)).slice(0, 48);
+};
+
+// Validation Logic
+const expectedEnvVars: { [scheme: string]: string[][] } = {
+  s3: [
+    ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"],
+    ["AWS_SHARED_CREDENTIALS_FILE"],
+  ],
+  b2: [["B2_ACCOUNT_ID", "B2_ACCOUNT_KEY"]],
+  azure: [
+    ["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_KEY"],
+    ["AZURE_ACCOUNT_NAME", "AZURE_ACCOUNT_SAS"],
+  ],
+  gs: [
+    ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"],
+    ["GOOGLE_ACCESS_TOKEN"],
+  ],
+};
+
+const envVarSetValidator = async (formData: any) => {
+  const envVars = formData.env || [];
+  const uri = formData.uri;
+
+  if (!uri) {
+    return;
+  }
+
+  const envVarNames = envVars.map((e: string) => {
+    if (!e) return "";
+    let idx = e.indexOf("=");
+    if (idx === -1) return "";
+    return e.substring(0, idx);
+  });
+
+  const password = formData.password;
+  if (
+    (!password || password.length === 0) &&
+    !envVarNames.includes("RESTIC_PASSWORD") &&
+    !envVarNames.includes("RESTIC_PASSWORD_COMMAND") &&
+    !envVarNames.includes("RESTIC_PASSWORD_FILE")
+  ) {
+    throw new Error(m.add_repo_modal_error_missing_password());
+  }
+
+  let schemeIdx = uri.indexOf(":");
+  if (schemeIdx === -1) {
+    return;
+  }
+
+  let scheme = uri.substring(0, schemeIdx);
+  await checkSchemeEnvVars(scheme, envVarNames);
+};
+
+const checkSchemeEnvVars = async (
+  scheme: string,
+  envVarNames: string[],
+): Promise<void> => {
+  let expected = expectedEnvVars[scheme];
+  if (!expected) {
+    return;
+  }
+
+  const missingVarsCollection: string[][] = [];
+
+  for (let possibility of expected) {
+    const missingVars = possibility.filter(
+      (envVar) => !envVarNames.includes(envVar),
+    );
+
+    if (missingVars.length === 0) {
+      return;
+    }
+
+    if (missingVars.length < possibility.length) {
+      missingVarsCollection.push(missingVars);
+    }
+  }
+
+  if (!missingVarsCollection.length) {
+    missingVarsCollection.push(...expected);
+  }
+
+  throw new Error(
+    "Missing env vars " +
+      formatMissingEnvVars(missingVarsCollection) +
+      " for scheme " +
+      scheme,
+  );
+};
+
+const formatMissingEnvVars = (partialMatches: string[][]): string => {
+  return partialMatches
+    .map((x) => {
+      if (x.length > 1) {
+        return `[ ${x.join(", ")} ]`;
+      }
+      return x[0];
+    })
+    .join(" or ");
 };

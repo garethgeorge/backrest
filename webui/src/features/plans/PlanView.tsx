@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Plan } from "../../../gen/ts/v1/config_pb";
 import { Button } from "../../components/ui/button";
-import { Flex, Heading, Text, Box } from "@chakra-ui/react";
+import { Flex, Heading, Text, Box, Group, IconButton } from "@chakra-ui/react";
+import { FiChevronDown } from "react-icons/fi";
 import {
   Tabs,
   TabsList,
@@ -9,6 +10,12 @@ import {
   TabsContent,
   TabsRoot,
 } from "../../components/ui/tabs";
+import {
+  MenuContent,
+  MenuItem,
+  MenuRoot,
+  MenuTrigger,
+} from "../../components/ui/menu";
 import { Tooltip } from "../../components/ui/tooltip";
 import { alerts } from "../../components/common/Alerts";
 import { MAX_OPERATION_HISTORY } from "../../constants";
@@ -87,35 +94,42 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
     <Box>
       <Flex gap={4} align="center" wrap="wrap" mb={4}>
         <Heading size="xl">{plan.id}</Heading>
+        <Box flex="1" />
 
-        <SpinButton type="primary" onClickAsync={handleBackupNow}>
-          {m.plan_button_backup()}
-        </SpinButton>
-
-        <Tooltip content={m.repo_tooltip_run_command()}>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              const { RunCommandModal } =
-                await import("../operations/RunCommandModal");
-              showModal(<RunCommandModal repo={repo} />);
-            }}
-          >
-            {m.repo_button_run_command()}
-          </Button>
-        </Tooltip>
-
-        <Tooltip content={m.repo_tooltip_unlock()}>
-          <SpinButton type="default" onClickAsync={handleUnlockNow}>
-            {m.repo_button_unlock()}
+        <Group attached>
+          <SpinButton type="primary" onClickAsync={handleBackupNow}>
+            {m.plan_button_backup()}
           </SpinButton>
-        </Tooltip>
-
-        <Tooltip content={m.plan_tooltip_clear_history()}>
-          <SpinButton type="default" onClickAsync={handleClearErrorHistory}>
-            {m.plan_button_clear_history()}
-          </SpinButton>
-        </Tooltip>
+          <MenuRoot>
+            <MenuTrigger asChild>
+              <IconButton
+                variant="subtle"
+                colorPalette="blue"
+                aria-label="More actions"
+              >
+                <FiChevronDown />
+              </IconButton>
+            </MenuTrigger>
+            <MenuContent>
+              <MenuItem
+                value="run-command"
+                onClick={async () => {
+                  const { RunCommandModal } =
+                    await import("../operations/RunCommandModal");
+                  showModal(<RunCommandModal repo={repo} />);
+                }}
+              >
+                {m.repo_button_run_command()}
+              </MenuItem>
+              <MenuItem value="unlock" onClick={handleUnlockNow}>
+                {m.repo_button_unlock()}
+              </MenuItem>
+              <MenuItem value="clear-history" onClick={handleClearErrorHistory}>
+                {m.plan_button_clear_history()}
+              </MenuItem>
+            </MenuContent>
+          </MenuRoot>
+        </Group>
       </Flex>
 
       <TabsRoot defaultValue="tree" lazyMount>

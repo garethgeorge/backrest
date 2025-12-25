@@ -10,6 +10,7 @@ import {
   FiRadio,
   FiActivity, // Added as a placeholder/guess for ActivityBar if needed, or stick to component
   FiServer,
+  FiEdit2,
 } from "react-icons/fi";
 
 import {
@@ -20,7 +21,9 @@ import {
   Text,
   Spinner,
   Separator,
+  IconButton,
 } from "@chakra-ui/react";
+import { Tooltip } from "../components/ui/tooltip";
 import { keyframes } from "@emotion/react";
 
 import {
@@ -256,7 +259,7 @@ const Sidebar = () => {
                   pr={2}
                   py={1}
                   _hover={{ bg: "bg.subtle" }}
-                  role="group"
+                  className="group"
                   borderRadius="md"
                   mx={2}
                 >
@@ -276,18 +279,18 @@ const Sidebar = () => {
                     _groupHover={{ opacity: 1 }}
                     transition="opacity 0.2s"
                   >
-                    <Button
+                    <IconButton
                       size="xs"
                       variant="ghost"
-                      onClick={async (e) => {
+                      onClick={async (e: React.MouseEvent) => {
                         e.stopPropagation();
                         const { AddPlanModal } =
                           await import("../features/plans/AddPlanModal");
                         showModal(<AddPlanModal template={plan} />);
                       }}
                     >
-                      <FiSettings />
-                    </Button>
+                      <FiEdit2 />
+                    </IconButton>
                   </Box>
                 </Flex>
               );
@@ -328,7 +331,7 @@ const Sidebar = () => {
                   pr={2}
                   py={1}
                   _hover={{ bg: "bg.subtle" }}
-                  role="group"
+                  className="group"
                   borderRadius="md"
                   mx={2}
                 >
@@ -353,18 +356,18 @@ const Sidebar = () => {
                     _groupHover={{ opacity: 1 }}
                     transition="opacity 0.2s"
                   >
-                    <Button
+                    <IconButton
                       size="xs"
                       variant="ghost"
-                      onClick={async (e) => {
+                      onClick={async (e: React.MouseEvent) => {
                         e.stopPropagation();
                         const { AddRepoModal } =
                           await import("../features/repositories/AddRepoModal");
                         showModal(<AddRepoModal template={repo} />);
                       }}
                     >
-                      <FiSettings />
-                    </Button>
+                      <FiEdit2 />
+                    </IconButton>
                   </Box>
                 </Flex>
               );

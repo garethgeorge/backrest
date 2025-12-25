@@ -1,11 +1,4 @@
-import {
-  Flex,
-  Stack,
-  Input,
-  Text,
-  Card,
-  Button,
-} from "@chakra-ui/react";
+import { Flex, Stack, Input, Text, Card, Button } from "@chakra-ui/react";
 import { Checkbox } from "../ui/checkbox";
 import { Radio, RadioGroup } from "../ui/radio";
 import { NumberInputField } from "./NumberInput"; // Assuming I have this wrapper or standard NumberInput
@@ -110,7 +103,6 @@ export const ScheduleFormItem = ({
       <Card.Root variant="subtle" width="fit-content">
         <Card.Header pb={0}>
           <Field label="Schedule Type">
-
             <Flex gap={2} wrap="wrap">
               {[
                 { value: "disabled", label: "Disabled" },
@@ -206,13 +198,13 @@ export const ScheduleFormItem = ({
           )}
           {mode === "disabled" && (
             <Text color="fg.muted" fontSize="sm">
-              Automatic snapshots are disabled for this plan. You can still
-              run backups manually.
+              Automatic snapshots are disabled for this plan. You can still run
+              backups manually.
             </Text>
           )}
         </Card.Body>
       </Card.Root>
-    </Stack >
+    </Stack>
   );
 };
 

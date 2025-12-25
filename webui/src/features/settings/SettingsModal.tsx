@@ -172,9 +172,9 @@ export const SettingsModal = () => {
 
       setConfig(await backrestService.setConfig(newConfig));
       setReloadOnCancel(true);
-      alerts.success(m.settings_success_updated(), 5);
+      alerts.success(m.settings_success_updated());
     } catch (e: any) {
-      alerts.error(formatErrorAlert(e, m.settings_error_operation()), 15);
+      alerts.error(formatErrorAlert(e, m.settings_error_operation()));
     } finally {
       setConfirmLoading(false);
     }

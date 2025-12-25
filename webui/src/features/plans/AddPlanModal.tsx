@@ -36,11 +36,7 @@ import {
   type RetentionPolicy,
   type Schedule,
 } from "../../../gen/ts/v1/config_pb";
-import {
-  FiPlus as Plus,
-  FiMinus as Minus,
-  FiMenu,
-} from "react-icons/fi";
+import { FiPlus as Plus, FiMinus as Minus, FiMenu } from "react-icons/fi";
 import { BsCalculator as Calculator } from "react-icons/bs";
 import { alerts, formatErrorAlert } from "../../components/common/Alerts";
 import { namePattern } from "../../lib/util";
@@ -172,11 +168,10 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       configCopy.plans.splice(idx, 1);
       setConfig(await backrestService.setConfig(configCopy));
       showModal(null);
-      alerts.success(m.add_plan_modal_success_plan_deleted(), 30);
+      alerts.success(m.add_plan_modal_success_plan_deleted());
     } catch (e: any) {
       alerts.error(
         formatErrorAlert(e, m.add_plan_modal_error_destroy_prefix()),
-        15,
       );
     } finally {
       setConfirmLoading(false);
@@ -186,7 +181,45 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
   const handleOk = async () => {
     setConfirmLoading(true);
     try {
-      // TODO: Validation (manual or schema based)
+      // Validation
+      if (!formData.id?.trim()) {
+        throw new Error(m.add_plan_modal_validation_plan_name_required());
+      }
+      if (!namePattern.test(formData.id)) {
+        throw new Error(m.add_plan_modal_validation_plan_name_pattern());
+      }
+      if (!template && config.plans.find((p) => p.id === formData.id)) {
+        throw new Error(m.add_plan_modal_validation_plan_exists());
+      }
+      if (!formData.repo) {
+        throw new Error(m.add_plan_modal_validation_repository_required());
+      }
+      if (!formData.paths || formData.paths.length === 0) {
+        throw new Error(m.add_plan_modal_validation_paths_required());
+      }
+      if (
+        formData.backup_flags &&
+        formData.backup_flags.some((f: string) => !/^\-\-?.*$/.test(f))
+      ) {
+        throw new Error(m.add_plan_modal_validation_flag_pattern());
+      }
+
+      // Check retention for sub-hourly schedules
+      const scheduleValue = formData.schedule?.schedule?.value;
+      const isCron = formData.schedule?.schedule?.case === "cron";
+      const isSubHourly =
+        isCron && scheduleValue && !/^\d+ /.test(scheduleValue);
+
+      if (
+        isSubHourly &&
+        formData.retention?.policyTimeBucketed &&
+        !(formData.retention.policyTimeBucketed.keepLastN > 1)
+      ) {
+        throw new Error(
+          "Your schedule runs more than once per hour; please specify a 'Latest (Count)' greater than 1 in Retention Policy.",
+        );
+      }
+
       const plan = fromJson(PlanSchema, formData, {
         ignoreUnknownFields: true,
       });
@@ -218,7 +251,6 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
     } catch (e: any) {
       alerts.error(
         formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()),
-        15,
       );
     } finally {
       setConfirmLoading(false);
@@ -287,6 +319,17 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                   label={m.add_plan_modal_field_plan_name()}
                   helperText={m.add_plan_modal_field_plan_name_tooltip()}
                   required
+                  invalid={
+                    !!formData.id &&
+                    (!namePattern.test(formData.id) ||
+                      (!template &&
+                        !!config.plans.find((p) => p.id === formData.id)))
+                  }
+                  errorText={
+                    !!formData.id && !namePattern.test(formData.id)
+                      ? m.add_plan_modal_validation_plan_name_pattern()
+                      : m.add_plan_modal_validation_plan_exists()
+                  }
                 >
                   <Input
                     value={getField(["id"])}
@@ -300,6 +343,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                   label={m.add_plan_modal_field_repository()}
                   helperText={m.add_plan_modal_field_repository_tooltip()}
                   required
+                  invalid={!getField(["repo"]) && confirmLoading}
                 >
                   <SelectRoot
                     collection={repoOptions}
@@ -404,11 +448,11 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
 
         {/* Retention Policy */}
         <Section title="Retention Policy">
-           <RetentionPolicyView
-             schedule={getField(["schedule"])}
-             retention={getField(["retention"])}
-             onChange={(v: any) => updateField(["retention"], v)}
-           />
+          <RetentionPolicyView
+            schedule={getField(["schedule"])}
+            retention={getField(["retention"])}
+            onChange={(v: any) => updateField(["retention"], v)}
+          />
         </Section>
 
         {/* Advanced */}
@@ -416,23 +460,25 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           <Card.Root variant="subtle">
             <Card.Body>
               <Stack gap={4}>
-                 <DynamicList
-                    label={m.add_plan_modal_field_backup_flags()}
-                    items={getField(["backup_flags"]) || []}
-                    onUpdate={(items: string[]) => updateField(["backup_flags"], items)}
-                    tooltip={m.add_plan_modal_field_backup_flags_tooltip()}
-                    placeholder="--flag"
-                  />
+                <DynamicList
+                  label={m.add_plan_modal_field_backup_flags()}
+                  items={getField(["backup_flags"]) || []}
+                  onUpdate={(items: string[]) =>
+                    updateField(["backup_flags"], items)
+                  }
+                  tooltip={m.add_plan_modal_field_backup_flags_tooltip()}
+                  placeholder="--flag"
+                />
 
-                  <Field
-                    label={m.add_plan_modal_field_hooks()}
-                    helperText={hooksListTooltipText}
-                  >
-                    <HooksFormList
-                      value={getField(["hooks"])}
-                      onChange={(v: any) => updateField(["hooks"], v)}
-                    />
-                  </Field>
+                <Field
+                  label={m.add_plan_modal_field_hooks()}
+                  helperText={hooksListTooltipText}
+                >
+                  <HooksFormList
+                    value={getField(["hooks"])}
+                    onChange={(v: any) => updateField(["hooks"], v)}
+                  />
+                </Field>
               </Stack>
             </Card.Body>
           </Card.Root>
@@ -460,15 +506,22 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             </AccordionItemContent>
           </AccordionItem>
         </AccordionRoot>
-
       </Stack>
     </FormModal>
   );
 };
 
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+const Section = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
   <Stack gap={2}>
-    <CText fontWeight="semibold" fontSize="sm">{title}</CText>
+    <CText fontWeight="semibold" fontSize="sm">
+      {title}
+    </CText>
     {children}
   </Stack>
 );
@@ -658,4 +711,3 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
     </Stack>
   );
 };
-
