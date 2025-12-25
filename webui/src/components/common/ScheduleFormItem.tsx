@@ -35,8 +35,8 @@ export const ScheduleDefaultsInfrequent: ScheduleDefaults = {
 export const ScheduleDefaultsDaily: ScheduleDefaults = {
   maxFrequencyDays: 1,
   maxFrequencyHours: 24,
-  // midnight every day
-  cron: "0 0 * * *",
+  // every 4 hours
+  cron: "0 0/4 * * *",
   clock: Schedule_Clock.LOCAL,
 };
 

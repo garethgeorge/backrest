@@ -95,3 +95,4 @@ export const SelectLabel = ChakraSelect.Label;
 export const SelectIndicator = ChakraSelect.Indicator;
 export const SelectItemGroup = ChakraSelect.ItemGroup;
 export const SelectItemText = ChakraSelect.ItemText;
+export const SelectHiddenSelect = ChakraSelect.HiddenSelect;

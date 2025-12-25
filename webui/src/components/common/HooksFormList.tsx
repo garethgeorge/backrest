@@ -24,6 +24,7 @@ import {
   SelectValueText,
   SelectContent,
   SelectItem,
+  SelectHiddenSelect,
 } from "../ui/select";
 import {
   MenuContent,
@@ -72,10 +73,36 @@ export const hooksListTooltipText = (
   </Text>
 );
 
+const hookConditionDescriptions: Record<string, string> = {
+  CONDITION_SNAPSHOT_START:
+    "Triggered when a backup operation begins and must complete successfully before the snapshot will begin.",
+  CONDITION_SNAPSHOT_END:
+    "Triggered when a backup operation completes (regardless of success/failure)",
+  CONDITION_SNAPSHOT_SUCCESS:
+    "Triggered when a backup operation completes successfully",
+  CONDITION_SNAPSHOT_ERROR: "Triggered when a backup operation fails",
+  CONDITION_SNAPSHOT_WARNING:
+    "Triggered when a backup operation encounters non-fatal issues",
+  CONDITION_PRUNE_START: "Triggered when a prune operation begins",
+  CONDITION_PRUNE_SUCCESS:
+    "Triggered when a prune operation completes successfully",
+  CONDITION_PRUNE_ERROR: "Triggered when a prune operation fails",
+  CONDITION_CHECK_START: "Triggered when a check operation begins",
+  CONDITION_CHECK_SUCCESS:
+    "Triggered when a check operation completes successfully",
+  CONDITION_CHECK_ERROR: "Triggered when a check operation fails",
+  CONDITION_FORGET_START: "Triggered when a forget operation begins",
+  CONDITION_FORGET_SUCCESS:
+    "Triggered when a forget operation completes successfully",
+  CONDITION_FORGET_ERROR: "Triggered when a forget operation fails",
+  CONDITION_ANY_ERROR: "Triggered when any operation fails",
+};
+
 const conditionCollection = createListCollection({
   items: Hook_ConditionSchema.values.map((v) => ({
     label: v.name,
     value: v.name,
+    description: hookConditionDescriptions[v.name],
   })),
 });
 
@@ -210,15 +237,29 @@ const HookItem = ({
             onValueChange={handleConditionChange}
             size="sm"
           >
+            {/* @ts-ignore */}
+            <SelectHiddenSelect />
             <SelectTrigger>
-              {/* @ts-ignore */}
-              <SelectValueText placeholder="Runs when..." />
+              <Box flex="1" textAlign="left">
+                {hook.conditions && hook.conditions.length > 0 ? (
+                  hook.conditions.join(", ")
+                ) : (
+                  <Text color="fg.muted">Runs when...</Text>
+                )}
+              </Box>
             </SelectTrigger>
             <SelectContent zIndex={2000}>
               {conditionCollection.items.map((item: any) => (
                 // @ts-ignore
                 <SelectItem item={item} key={item.value}>
-                  {item.label}
+                  <span>
+                    {item.label}
+                    {item.description && (
+                      <Text as="span" color="fg.muted" ml={2}>
+                        - {item.description}
+                      </Text>
+                    )}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -419,6 +460,8 @@ const hookTypes: {
             }
             size="sm"
           >
+            {/* @ts-ignore */}
+            <SelectHiddenSelect />
             <SelectTrigger>
               {/* @ts-ignore */}
               <SelectValueText placeholder="Priority" />
@@ -639,6 +682,8 @@ const ItemOnErrorSelector = ({
         onValueChange={(e) => onChange({ ...hook, onError: e.value[0] })}
         size="sm"
       >
+        {/* @ts-ignore */}
+        <SelectHiddenSelect />
         <SelectTrigger>
           {/* @ts-ignore */}
           <SelectValueText placeholder="Error behavior..." />
