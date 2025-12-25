@@ -278,141 +278,165 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           {m.add_plan_modal_see_guide_suffix()}
         </p>
 
-        {/* Plan ID */}
-        {/* Plan ID */}
-        <Field
-          label={m.add_plan_modal_field_plan_name()}
-          helperText={m.add_plan_modal_field_plan_name_tooltip()}
-          required
-        >
-          <Input
-            value={getField(["id"])}
-            onChange={(e) => updateField(["id"], e.target.value)}
-            disabled={!!template}
-            placeholder={"plan" + ((config?.plans?.length || 0) + 1)}
-          />
-        </Field>
+        {/* Plan Details */}
+        <Section title="Plan Details">
+          <Card.Root variant="subtle">
+            <Card.Body>
+              <Stack gap={4}>
+                <Field
+                  label={m.add_plan_modal_field_plan_name()}
+                  helperText={m.add_plan_modal_field_plan_name_tooltip()}
+                  required
+                >
+                  <Input
+                    value={getField(["id"])}
+                    onChange={(e) => updateField(["id"], e.target.value)}
+                    disabled={!!template}
+                    placeholder={"plan" + ((config?.plans?.length || 0) + 1)}
+                  />
+                </Field>
 
-        {/* Repository */}
-        {/* Repository */}
-        <Field
-          label={m.add_plan_modal_field_repository()}
-          helperText={m.add_plan_modal_field_repository_tooltip()}
-          required
-        >
-          <SelectRoot
-            collection={repoOptions}
-            size="sm"
-            value={[getField(["repo"])]}
-            onValueChange={(e: any) => updateField(["repo"], e.value[0])}
-            disabled={!!template}
-            width="full"
-          >
-            {/* @ts-ignore */}
-            <SelectTrigger>
-              {/* @ts-ignore */}
-              <SelectValueText placeholder="Select repository" />
-            </SelectTrigger>
-            {/* @ts-ignore */}
-            <SelectContent>
-              {repoOptions.items.map((item: any) => (
-                // @ts-ignore
-                <SelectItem item={item} key={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </SelectRoot>
-        </Field>
+                <Field
+                  label={m.add_plan_modal_field_repository()}
+                  helperText={m.add_plan_modal_field_repository_tooltip()}
+                  required
+                >
+                  <SelectRoot
+                    collection={repoOptions}
+                    size="sm"
+                    value={[getField(["repo"])]}
+                    onValueChange={(e: any) =>
+                      updateField(["repo"], e.value[0])
+                    }
+                    disabled={!!template}
+                    width="full"
+                  >
+                    {/* @ts-ignore */}
+                    <SelectTrigger>
+                      {/* @ts-ignore */}
+                      <SelectValueText placeholder="Select repository" />
+                    </SelectTrigger>
+                    {/* @ts-ignore */}
+                    <SelectContent>
+                      {repoOptions.items.map((item: any) => (
+                        // @ts-ignore
+                        <SelectItem item={item} key={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </SelectRoot>
+                </Field>
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+        </Section>
 
-        {/* Paths */}
-        <DynamicList
-          label={m.add_plan_modal_field_paths()}
-          tooltip={"Paths to include in snapshots created by this plan"}
-          items={getField(["paths"]) || []}
-          onUpdate={(items: string[]) => updateField(["paths"], items)}
-          required
-        />
+        {/* Scope */}
+        <Section title="Backup Scope">
+          <Card.Root variant="subtle">
+            <Card.Body>
+              <Stack gap={4}>
+                <DynamicList
+                  label={m.add_plan_modal_field_paths()}
+                  tooltip={"Paths to include in snapshots created by this plan"}
+                  items={getField(["paths"]) || []}
+                  onUpdate={(items: string[]) => updateField(["paths"], items)}
+                  required
+                />
 
-        {/* Excludes */}
-        <DynamicList
-          label={m.add_plan_modal_field_excludes()}
-          items={getField(["excludes"]) || []}
-          onUpdate={(items: string[]) => updateField(["excludes"], items)}
-          tooltip={
-            <>
-              {m.add_plan_modal_field_excludes_tooltip_prefix()}{" "}
-              <a
-                href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
-                target="_blank"
-                style={{ textDecoration: "underline" }}
-              >
-                {m.add_plan_modal_field_excludes_tooltip_link()}
-              </a>{" "}
-              {m.add_plan_modal_field_excludes_tooltip_suffix()}
-            </>
-          }
-          placeholder="Exclude Pattern"
-        />
+                <DynamicList
+                  label={m.add_plan_modal_field_excludes()}
+                  items={getField(["excludes"]) || []}
+                  onUpdate={(items: string[]) =>
+                    updateField(["excludes"], items)
+                  }
+                  tooltip={
+                    <>
+                      {m.add_plan_modal_field_excludes_tooltip_prefix()}{" "}
+                      <a
+                        href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
+                        target="_blank"
+                        style={{ textDecoration: "underline" }}
+                      >
+                        {m.add_plan_modal_field_excludes_tooltip_link()}
+                      </a>{" "}
+                      {m.add_plan_modal_field_excludes_tooltip_suffix()}
+                    </>
+                  }
+                  placeholder="Exclude Pattern"
+                />
 
-        {/* IExcludes */}
-        <DynamicList
-          label={m.add_plan_modal_field_iexcludes()}
-          items={getField(["iexcludes"]) || []}
-          onUpdate={(items: string[]) => updateField(["iexcludes"], items)}
-          tooltip={
-            <>
-              {m.add_plan_modal_field_iexcludes_tooltip_prefix()}{" "}
-              <a
-                href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
-                target="_blank"
-                style={{ textDecoration: "underline" }}
-              >
-                {m.add_plan_modal_field_excludes_tooltip_link()}
-              </a>{" "}
-              {m.add_plan_modal_field_excludes_tooltip_suffix()}
-            </>
-          }
-          placeholder="Case-insensitive Exclude Pattern"
-        />
+                <DynamicList
+                  label={m.add_plan_modal_field_iexcludes()}
+                  items={getField(["iexcludes"]) || []}
+                  onUpdate={(items: string[]) =>
+                    updateField(["iexcludes"], items)
+                  }
+                  tooltip={
+                    <>
+                      {m.add_plan_modal_field_iexcludes_tooltip_prefix()}{" "}
+                      <a
+                        href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
+                        target="_blank"
+                        style={{ textDecoration: "underline" }}
+                      >
+                        {m.add_plan_modal_field_excludes_tooltip_link()}
+                      </a>{" "}
+                      {m.add_plan_modal_field_excludes_tooltip_suffix()}
+                    </>
+                  }
+                  placeholder="Case-insensitive Exclude Pattern"
+                />
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+        </Section>
 
         {/* Schedule */}
-        {/* Schedule */}
-        <Field label={m.add_plan_modal_field_schedule()}>
+        <Section title={m.add_plan_modal_field_schedule()}>
           <ScheduleFormItem
             value={getField(["schedule"])}
             onChange={(v: any) => updateField(["schedule"], v)}
             defaults={ScheduleDefaultsDaily}
           />
-        </Field>
-
-        {/* Backup Flags */}
-        <DynamicList
-          label={m.add_plan_modal_field_backup_flags()}
-          items={getField(["backup_flags"]) || []}
-          onUpdate={(items: string[]) => updateField(["backup_flags"], items)}
-          tooltip={m.add_plan_modal_field_backup_flags_tooltip()}
-          placeholder="--flag"
-        />
+        </Section>
 
         {/* Retention Policy */}
-        <RetentionPolicyView
-          schedule={getField(["schedule"])}
-          retention={getField(["retention"])}
-          onChange={(v: any) => updateField(["retention"], v)}
-        />
+        <Section title="Retention Policy">
+           <RetentionPolicyView
+             schedule={getField(["schedule"])}
+             retention={getField(["retention"])}
+             onChange={(v: any) => updateField(["retention"], v)}
+           />
+        </Section>
 
-        {/* Hooks */}
-        {/* Hooks */}
-        <Field
-          label={m.add_plan_modal_field_hooks()}
-          helperText={hooksListTooltipText}
-        >
-          <HooksFormList
-            value={getField(["hooks"])}
-            onChange={(v: any) => updateField(["hooks"], v)}
-          />
-        </Field>
+        {/* Advanced */}
+        <Section title="Advanced">
+          <Card.Root variant="subtle">
+            <Card.Body>
+              <Stack gap={4}>
+                 <DynamicList
+                    label={m.add_plan_modal_field_backup_flags()}
+                    items={getField(["backup_flags"]) || []}
+                    onUpdate={(items: string[]) => updateField(["backup_flags"], items)}
+                    tooltip={m.add_plan_modal_field_backup_flags_tooltip()}
+                    placeholder="--flag"
+                  />
+
+                  <Field
+                    label={m.add_plan_modal_field_hooks()}
+                    helperText={hooksListTooltipText}
+                  >
+                    <HooksFormList
+                      value={getField(["hooks"])}
+                      onChange={(v: any) => updateField(["hooks"], v)}
+                    />
+                  </Field>
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+        </Section>
 
         {/* JSON Preview */}
         <AccordionRoot collapsible variant="plain">
@@ -436,10 +460,18 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
             </AccordionItemContent>
           </AccordionItem>
         </AccordionRoot>
+
       </Stack>
     </FormModal>
   );
 };
+
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <Stack gap={2}>
+    <CText fontWeight="semibold" fontSize="sm">{title}</CText>
+    {children}
+  </Stack>
+);
 
 // Retention View
 const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
@@ -495,15 +527,11 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
   };
 
   return (
-    <Field
-      label="Retention Policy"
-      helperText="Set a retention policy to limit the number of backups you keep, retention is enforced after each backup removing snapshot records. Prune operations delete the data."
-    >
-      <Stack gap={4}>
-        <Card.Root variant="subtle" width="fit-content">
-          <Card.Header pb={0}>
-            {/* Mode Selector */}
-            <Flex gap={2} wrap="wrap">
+    <Stack gap={4}>
+      <Card.Root variant="subtle" width="fit-content">
+        <Card.Header pb={0}>
+          {/* Mode Selector */}
+          <Flex gap={2} wrap="wrap">
             {[
               {
                 value: "policyKeepLastN",
@@ -551,7 +579,7 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
               label="Keep Last N Snapshots"
               value={retention?.policyKeepLastN || 0}
               onValueChange={(e: any) =>
-                onChange({ policyKeepLastN: e.valueAsNumber })
+                onChange({ ...schedule, policyKeepLastN: e.valueAsNumber })
               }
             />
           )}
@@ -627,7 +655,7 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
           )}
         </Card.Body>
       </Card.Root>
-      </Stack>
-    </Field>
+    </Stack>
   );
 };
+

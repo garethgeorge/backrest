@@ -107,9 +107,10 @@ export const ScheduleFormItem = ({
   return (
     <Stack gap={4}>
       {/* Schedule Mode */}
-      <Field label="Schedule Type">
-        <Card.Root variant="subtle" width="fit-content">
-          <Card.Header pb={0}>
+      <Card.Root variant="subtle" width="fit-content">
+        <Card.Header pb={0}>
+          <Field label="Schedule Type">
+
             <Flex gap={2} wrap="wrap">
               {[
                 { value: "disabled", label: "Disabled" },
@@ -127,94 +128,94 @@ export const ScheduleFormItem = ({
                 </Button>
               ))}
             </Flex>
-          </Card.Header>
-
-          <Card.Body>
-            {/* Mode Specific Input */}
-            {mode === "cron" && (
-              <Field
-                label="Cron Expression"
-                helperText={(() => {
-                  try {
-                    return schedule.cron
-                      ? cronstrue.toString(schedule.cron)
-                      : "Standard cron syntax (e.g. 0 0 * * *)";
-                  } catch (e) {
-                    return "Invalid cron expression";
-                  }
-                })()}
-              >
-                <Input
-                  value={schedule.cron || ""}
-                  onChange={(e) =>
-                    onChange({ ...schedule, cron: e.target.value })
-                  }
-                  fontFamily="mono"
-                  width="sm"
-                />
-              </Field>
-            )}
-
-            {mode === "maxFrequencyDays" && (
-              <NumberInputField
-                label="Interval in Days"
-                value={schedule.maxFrequencyDays || 0}
-                onValueChange={(e: any) =>
-                  onChange({ ...schedule, maxFrequencyDays: e.valueAsNumber })
+          </Field>
+        </Card.Header>
+        <Card.Body>
+          {/* Mode Specific Input */}
+          {mode === "cron" && (
+            <Field
+              label="Cron Expression"
+              helperText={(() => {
+                try {
+                  return schedule.cron
+                    ? cronstrue.toString(schedule.cron)
+                    : "Standard cron syntax (e.g. 0 0 * * *)";
+                } catch (e) {
+                  return "Invalid cron expression";
                 }
-                min={1}
+              })()}
+            >
+              <Input
+                value={schedule.cron || ""}
+                onChange={(e) =>
+                  onChange({ ...schedule, cron: e.target.value })
+                }
+                fontFamily="mono"
                 width="sm"
               />
-            )}
+            </Field>
+          )}
 
-            {mode === "maxFrequencyHours" && (
-              <NumberInputField
-                label="Interval in Hours"
-                value={schedule.maxFrequencyHours || 0}
-                onValueChange={(e: any) =>
-                  onChange({ ...schedule, maxFrequencyHours: e.valueAsNumber })
-                }
-                min={1}
-                width="sm"
-              />
-            )}
+          {mode === "maxFrequencyDays" && (
+            <NumberInputField
+              label="Interval in Days"
+              value={schedule.maxFrequencyDays || 0}
+              onValueChange={(e: any) =>
+                onChange({ ...schedule, maxFrequencyDays: e.valueAsNumber })
+              }
+              min={1}
+              width="sm"
+            />
+          )}
 
-            {mode !== "disabled" && (
-              /* Clock Selection */
-              <Field
-                label="Reference Clock"
-                helperText="Time zone or reference point for the schedule."
+          {mode === "maxFrequencyHours" && (
+            <NumberInputField
+              label="Interval in Hours"
+              value={schedule.maxFrequencyHours || 0}
+              onValueChange={(e: any) =>
+                onChange({ ...schedule, maxFrequencyHours: e.valueAsNumber })
+              }
+              min={1}
+              width="sm"
+            />
+          )}
+
+          {mode !== "disabled" && (
+            /* Clock Selection */
+            <Field
+              label="Reference Clock"
+              helperText="Time zone or reference point for the schedule."
+            >
+              <RadioGroup
+                value={clockEnumValueToString(schedule.clock)}
+                onValueChange={(e) => {
+                  // find enum value
+                  const clk = Schedule_ClockSchema.values.find(
+                    (v) => v.name === e.value,
+                  );
+                  if (clk) onChange({ ...schedule, clock: clk.number });
+                }}
               >
-                <RadioGroup
-                  value={clockEnumValueToString(schedule.clock)}
-                  onValueChange={(e) => {
-                    // find enum value
-                    const clk = Schedule_ClockSchema.values.find(
-                      (v) => v.name === e.value,
-                    );
-                    if (clk) onChange({ ...schedule, clock: clk.number });
-                  }}
-                >
-                  <Stack direction="row" gap={4}>
-                    <Radio value="LOCAL">Local</Radio>
-                    <Radio value="UTC">UTC</Radio>
-                    <Radio value="LAST_RUN_TIME">Last Run Time</Radio>
-                  </Stack>
-                </RadioGroup>
-              </Field>
-            )}
-            {mode === "disabled" && (
-              <Text color="fg.muted" fontSize="sm">
-                Automatic snapshots are disabled for this plan. You can still
-                run backups manually.
-              </Text>
-            )}
-          </Card.Body>
-        </Card.Root>
-      </Field>
-    </Stack>
+                <Stack direction="row" gap={4}>
+                  <Radio value="CLOCK_LOCAL">Local</Radio>
+                  <Radio value="CLOCK_UTC">UTC</Radio>
+                  <Radio value="CLOCK_LAST_RUN_TIME">Last Run Time</Radio>
+                </Stack>
+              </RadioGroup>
+            </Field>
+          )}
+          {mode === "disabled" && (
+            <Text color="fg.muted" fontSize="sm">
+              Automatic snapshots are disabled for this plan. You can still
+              run backups manually.
+            </Text>
+          )}
+        </Card.Body>
+      </Card.Root>
+    </Stack >
   );
 };
 
 const clockEnumValueToString = (clock: Schedule_Clock) =>
-  Schedule_ClockSchema.values.find((v) => v.number === clock)?.name || "LOCAL";
+  Schedule_ClockSchema.values.find((v) => v.number === clock)?.name ||
+  "CLOCK_LOCAL";

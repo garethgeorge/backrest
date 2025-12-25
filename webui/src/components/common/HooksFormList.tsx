@@ -123,7 +123,7 @@ export const HooksFormList = ({
   };
 
   return (
-    <Stack gap={4}>
+    <Stack gap={4} width="full">
       {(hooks || []).map((hook, index) => (
         <HookItem
           key={index}
@@ -138,18 +138,18 @@ export const HooksFormList = ({
       <MenuRoot>
         {/* @ts-ignore */}
         <MenuTrigger asChild>
-          <Button variant="ghost" size="sm" width="full">
+          <Button variant="outline" borderStyle="dashed" size="sm" width="full">
             <FiPlus /> Add Hook
           </Button>
         </MenuTrigger>
         {/* @ts-ignore */}
-        <MenuContent>
+        <MenuContent zIndex={2000}>
           {hookTypes.map((type) => (
             // @ts-ignore
             <MenuItem
               key={type.name}
-              value={type.name}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 addHook(JSON.parse(JSON.stringify(type.template))); // Deep clone
               }}
               cursor="pointer"
@@ -183,7 +183,7 @@ const HookItem = ({
   };
 
   return (
-    <Card.Root size="sm" variant="outline">
+    <Card.Root size="sm" variant="outline" width="full">
       <Card.Header pb={2}>
         <Flex align="center" justify="space-between">
           <Text fontWeight="bold">
@@ -214,7 +214,7 @@ const HookItem = ({
               {/* @ts-ignore */}
               <SelectValueText placeholder="Runs when..." />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent zIndex={2000}>
               {conditionCollection.items.map((item: any) => (
                 // @ts-ignore
                 <SelectItem item={item} key={item.value}>
@@ -423,7 +423,7 @@ const hookTypes: {
               {/* @ts-ignore */}
               <SelectValueText placeholder="Priority" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent zIndex={2000}>
               {[
                 { label: "0 - No notification", value: "0" },
                 { label: "1 - Icon in notification bar", value: "1" },
@@ -643,7 +643,7 @@ const ItemOnErrorSelector = ({
           {/* @ts-ignore */}
           <SelectValueText placeholder="Error behavior..." />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent zIndex={2000}>
           {onErrorCollection.items.map((item: any) => (
             // @ts-ignore
             <SelectItem item={item} key={item.value}>

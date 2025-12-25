@@ -134,9 +134,25 @@ export const DynamicList = ({
               );
             })}
           </SortableContext>
-          <Button size="sm" variant="ghost" onClick={handleAdd} width="full">
-            <Plus size={16} /> Add
-          </Button>
+          <Flex align="center" gap={2} width="full">
+            {/* Placeholder for drag handle */}
+            <Box width="16px" display="flex" justifyContent="center">
+              <FiMenu style={{ opacity: 0 }} />
+            </Box>
+            <HStack gap={2} flex={1}>
+              <Button
+                size="sm"
+                variant="outline"
+                borderStyle="dashed"
+                onClick={handleAdd}
+                flex={1}
+              >
+                <Plus size={16} /> Add
+              </Button>
+              {/* Placeholder for remove button */}
+              <Box width="32px" />
+            </HStack>
+          </Flex>
         </Stack>
       </DndContext>
       {tooltip && (
