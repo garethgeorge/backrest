@@ -525,6 +525,7 @@ export const App: React.FC = () => {
             target="_blank"
             color="whiteAlpha.700"
             fontSize="xs"
+            display={{ base: "none", lg: "block" }}
           >
             {uiBuildVersion}
           </Link>
@@ -534,7 +535,11 @@ export const App: React.FC = () => {
         </Flex>
 
         <Flex ml="auto" align="center" gap={4}>
-          <Text fontSize="xs" color="whiteAlpha.600">
+          <Text
+            fontSize="xs"
+            color="whiteAlpha.600"
+            display={{ base: "none", lg: "block" }}
+          >
             {config && config.instance ? config.instance : undefined}
           </Text>
           <ColorModeButton color="white" />
