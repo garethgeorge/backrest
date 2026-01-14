@@ -467,7 +467,7 @@ export const App: React.FC = () => {
   const [config, setConfig] = useConfig();
 
   return (
-    <Flex direction="column" minH="100vh">
+    <Flex direction="column" h="100vh">
       {/* HEADER */}
       <Flex
         as="header"

@@ -242,7 +242,7 @@ export const SettingsModal = () => {
             </AccordionItemTrigger>
             <AccordionItemContent>
               <Stack gap={4}>
-                <Field label={m.settings_auth_disable()}>
+                <Field>
                   <Checkbox
                     checked={getField(["auth", "disabled"])}
                     onCheckedChange={(e: any) =>
@@ -254,9 +254,9 @@ export const SettingsModal = () => {
                 </Field>
 
                 <Field label={m.settings_auth_users()} required>
-                  <Stack gap={3}>
+                  <Stack gap={3} width="full">
                     {users.map((user: any, index: number) => (
-                      <Flex key={index} gap={2} align="center">
+                      <Flex key={index} gap={2} align="center" width="full">
                         <Input
                           placeholder={m.settings_auth_username_placeholder()}
                           value={user.name}
@@ -277,7 +277,7 @@ export const SettingsModal = () => {
                             newUsers[index].needsBcrypt = true;
                             updateField(["auth", "users"], newUsers);
                           }}
-                          flex={1}
+                          rootProps={{ flex: 1 }}
                         />
                         <IconButton
                           size="sm"
@@ -310,6 +310,7 @@ export const SettingsModal = () => {
                           ],
                         );
                       }}
+                      width="full"
                     >
                       <Plus /> {m.settings_auth_add_user()}
                     </Button>
