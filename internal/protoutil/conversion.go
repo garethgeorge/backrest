@@ -95,9 +95,17 @@ func BackupProgressEntryToBackupError(b *restic.BackupProgressEntry) (*v1.Backup
 		return nil, errors.New("BackupProgressEntry is not of type error")
 	}
 
+	message := ""
+	if errMap, ok := b.Error.(map[string]interface{}); ok {
+		if msg, ok := errMap["message"].(string); ok {
+			message = msg
+		}
+	}
+
 	return &v1.BackupProgressError{
-		Item:   b.Item,
-		During: b.During,
+		Item:    b.Item,
+		During:  b.During,
+		Message: message,
 	}, nil
 }
 

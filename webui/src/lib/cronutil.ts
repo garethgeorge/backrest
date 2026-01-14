@@ -23,7 +23,7 @@ const findMinimalDurationStartIndex = (
   if (windowSize > maxValue) {
     windowSize = 0;
   }
-  // If no constraints are specified, return the first value since it minimizes the number of 
+  // If no constraints are specified, return the first value since it minimizes the number of
   // iterations at the next higher level.
   if (!wrap && !windowSize) {
     return 0;
@@ -36,9 +36,10 @@ const findMinimalDurationStartIndex = (
     }
     // Calculate the duration to all values after this one
     let duration = 0;
-    const limit = windowSize || (sortedValues.length - 1);
+    const limit = windowSize || sortedValues.length - 1;
     for (let otherIndex = 0; otherIndex < limit; otherIndex++) {
-      const other = sortedValues[(valueIndex + 1 + otherIndex) % sortedValues.length];
+      const other =
+        sortedValues[(valueIndex + 1 + otherIndex) % sortedValues.length];
       // If the other value is after the value, calculate the duration
       if (other > value) {
         duration += other - value;
@@ -59,18 +60,23 @@ const findMinimalDurationStartIndex = (
 
 const monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-/** 
+/**
  * Generates days that are enabled by the cron expression.
  *
  * Yields increasing numbers representing any day enabled by either `days` or `weekdays`. The
  * numbers represent an absolute count of days since the start of the schedule. Follows calendar
  * months beginning in February.
  */
-function* enabledCronDays(days: readonly number[], weekdays: readonly number[]) {
+function* enabledCronDays(
+  days: readonly number[],
+  weekdays: readonly number[],
+) {
   let absoluteDay = 1;
   let monthDay = 1;
   let month = 1; // February
-  const enabledDays = new Set(days.length === 31 && weekdays.length < 7 ? [] : days);
+  const enabledDays = new Set(
+    days.length === 31 && weekdays.length < 7 ? [] : days,
+  );
   const enabledWeekdays = new Set(weekdays.length === 7 ? [] : weekdays);
   while (true) {
     if (monthDay > monthDays[month]) {
@@ -86,9 +92,8 @@ function* enabledCronDays(days: readonly number[], weekdays: readonly number[]) 
   }
 }
 
-const hasConsecutiveValues = (sortedValues: readonly number[]) => sortedValues.some(
-  (v, i) => i > 0 && v === sortedValues[i - 1] + 1,
-);
+const hasConsecutiveValues = (sortedValues: readonly number[]) =>
+  sortedValues.some((v, i) => i > 0 && v === sortedValues[i - 1] + 1);
 
 // min/max range for each cron unit in the order returned by `converter.parseCronString`
 const rangeByUnit = [
@@ -101,28 +106,34 @@ const rangeByUnit = [
 
 /** Parses a cron expression and returns the enabled values for each unit. */
 const parseCronExpression = (cronExpr: string) => {
-  const [ minutes, hours, days, months, weekdays ] = converter.parseCronString(cronExpr).map(
-    (value, unitIndex) => (value.length > 0
-      ? value
-      // `parseCronString` returns `*` as an empty array; swap with the full range of values
-      : Array.from(
-        { length: rangeByUnit[unitIndex][1] - rangeByUnit[unitIndex][0] + 1 }, 
-        (_, i) => rangeByUnit[unitIndex][0] + i
-      )
-    )
-  );
+  const [minutes, hours, days, months, weekdays] = converter
+    .parseCronString(cronExpr)
+    .map((value, unitIndex) =>
+      value.length > 0
+        ? value
+        : // `parseCronString` returns `*` as an empty array; swap with the full range of values
+          Array.from(
+            {
+              length: rangeByUnit[unitIndex][1] - rangeByUnit[unitIndex][0] + 1,
+            },
+            (_, i) => rangeByUnit[unitIndex][0] + i,
+          ),
+    );
   return { minutes, hours, days, months, weekdays };
 };
 
 /**
  * Calculates a rough minimum duration for the cron expression to run the specified number of times.
- * 
+ *
  * Months are ignored since backrest does not support scheduling by month.
  * @param cronExpr The cron expression to evaluate
  * @param targetInvocations The number of times the cron expression must run
  * @returns Minimal duration in milliseconds
  */
-export const getMinimumCronDuration = (cronExpr: string, targetInvocations = 1) => {
+export const getMinimumCronDuration = (
+  cronExpr: string,
+  targetInvocations = 1,
+) => {
   // Get arrays of minutes, hours, days, and weekdays that are enabled by the cron expression
   const { minutes, hours, days, weekdays } = parseCronExpression(cronExpr);
   // The total duration in minutes
@@ -132,12 +143,13 @@ export const getMinimumCronDuration = (cronExpr: string, targetInvocations = 1) 
   // Start with just enough days to test whether there are consecutive days
   const daysAndWeekdays = Array.from(
     {
-      length: weekdays.length < 7
-        // Days and weekdays align sufficiently after about 100 invocations to test consecutive
-        // days; no need to generate the full 7 month repeating pattern
-        ? 100
-        // If no weekdays specified we just need the days pattern with enough days to test wrapping
-        : days.length * 2
+      length:
+        weekdays.length < 7
+          ? // Days and weekdays align sufficiently after about 100 invocations to test consecutive
+            // days; no need to generate the full 7 month repeating pattern
+            100
+          : // If no weekdays specified we just need the days pattern with enough days to test wrapping
+            days.length * 2,
     },
     () => +daysIterator.next().value,
   );
@@ -150,7 +162,8 @@ export const getMinimumCronDuration = (cronExpr: string, targetInvocations = 1) 
 
     // Add time elapsed between days
     if (dayIndex >= 0) {
-      const skippedDays = (daysAndWeekdays[dayIndex] - (daysAndWeekdays[dayIndex - 1] ?? 0)) - 1;
+      const skippedDays =
+        daysAndWeekdays[dayIndex] - (daysAndWeekdays[dayIndex - 1] ?? 0) - 1;
       elapsedMinutes += skippedDays * 24 * 60;
     }
 
@@ -180,7 +193,9 @@ export const getMinimumCronDuration = (cronExpr: string, targetInvocations = 1) 
         remainingInvocations -= minutes.length - minuteStartIndex;
       } else {
         // This iteration satisfies the remaining invocations, so add what's left
-        elapsedMinutes += minutes[minuteStartIndex + remainingInvocations - 1] - minuteStartValue;
+        elapsedMinutes +=
+          minutes[minuteStartIndex + remainingInvocations - 1] -
+          minuteStartValue;
         // Return the duration in milliseconds
         return elapsedMinutes * 60_000;
       }
@@ -207,10 +222,12 @@ export const getMinimumCronDuration = (cronExpr: string, targetInvocations = 1) 
         daysAndWeekdays,
         daysAndWeekdays[daysAndWeekdays.length - 1],
         {
-          // We're not actually moving through months, daysAndWeekdays is just an increasing 
+          // We're not actually moving through months, daysAndWeekdays is just an increasing
           // sequence of day numbers
           wrap: false,
-          windowSize: Math.ceil(remainingInvocations / hours.length / minutes.length),
+          windowSize: Math.ceil(
+            remainingInvocations / hours.length / minutes.length,
+          ),
         },
       );
     }

@@ -1,0 +1,7 @@
+dist
+dist-windows
+node_modules
+gen
+src/paraglide
+.inlang
+package-lock.json
