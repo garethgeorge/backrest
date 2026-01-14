@@ -358,5 +358,9 @@
   "add_plan_modal_retention_policy_keep_regardless_label": "Dernières photos à conserver quel que soit l'âge",
   "add_plan_modal_retention_policy_subhourly_helper": "Le planning s'exécute fréquemment ; conservez quelques instantanés récents.",
   "op_row_error_path": "Chemin",
-  "op_row_error_message": "Message"
+  "op_row_error_message": "Message",
+  "add_repo_modal_env_vars_placeholder": "CLÉ=VALEUR (Une par ligne)",
+  "app_menu_edit_plan": "app_menu_edit_plan",
+  "add_repo_modal_field_auto_unlock_tooltip": "Le déverrouillage automatique supprime les fichiers de verrouillage au début de la plupart des opérations. Cette opération peut s'avérer dangereuse si le dépôt est partagé par plusieurs appareils clients ; elle est par ailleurs recommandée pour les configurations mono-client.",
+  "op_row_cancel_op": "Opération annulée"
 }

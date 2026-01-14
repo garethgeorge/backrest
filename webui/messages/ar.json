@@ -358,5 +358,9 @@
   "add_plan_modal_retention_policy_keep_regardless_label": "أحدث الصور التي يجب الاحتفاظ بها بغض النظر عن العمر",
   "add_plan_modal_retention_policy_subhourly_helper": "يتم تشغيل الجدول بشكل متكرر؛ احتفظ ببعض اللقطات الحديثة.",
   "op_row_error_path": "طريق",
-  "op_row_error_message": "رسالة"
+  "op_row_error_message": "رسالة",
+  "add_repo_modal_env_vars_placeholder": "المفتاح=القيمة (قيمة واحدة في كل سطر)",
+  "app_menu_edit_plan": "app_menu_edit_plan",
+  "add_repo_modal_field_auto_unlock_tooltip": "ستؤدي خاصية الفتح التلقائي إلى إزالة ملفات القفل عند بدء معظم العمليات. قد يكون هذا غير آمن إذا تمت مشاركة المستودع بين عدة أجهزة عميلة، وإلا يُنصح باستخدامه في إعدادات العميل الواحد.",
+  "op_row_cancel_op": "إلغاء العملية"
 }

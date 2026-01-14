@@ -358,5 +358,9 @@
   "add_plan_modal_retention_policy_keep_regardless_label": "उम्र की परवाह किए बिना सहेज कर रखने लायक नवीनतम तस्वीरें",
   "add_plan_modal_retention_policy_subhourly_helper": "यह शेड्यूल नियमित रूप से चलता रहता है; इसलिए कुछ हाल के स्नैपशॉट सुरक्षित रखें।",
   "op_row_error_path": "पथ",
-  "op_row_error_message": "संदेश"
+  "op_row_error_message": "संदेश",
+  "add_repo_modal_env_vars_placeholder": "कुंजी = मान (प्रत्येक पंक्ति में एक)",
+  "app_menu_edit_plan": "ऐप_मेनू_एडिट_प्लान",
+  "add_repo_modal_field_auto_unlock_tooltip": "अधिकांश कार्यों की शुरुआत में ऑटो-अनलॉक लॉकफाइलों को हटा देगा। यदि रिपॉजिटरी को कई क्लाइंट डिवाइसों द्वारा साझा किया जाता है तो यह संभावित रूप से असुरक्षित हो सकता है, अन्यथा एकल-क्लाइंट सेटअप के लिए इसकी अनुशंसा की जाती है।",
+  "op_row_cancel_op": "ऑपरेशन रद्द करें"
 }

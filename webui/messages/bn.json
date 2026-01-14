@@ -358,5 +358,9 @@
   "add_plan_modal_retention_policy_keep_regardless_label": "বয়স নির্বিশেষে রাখার জন্য সর্বশেষ স্ন্যাপশট",
   "add_plan_modal_retention_policy_subhourly_helper": "ঘন ঘন রানের সময়সূচী নির্ধারণ করুন; কিছু সাম্প্রতিক স্ন্যাপশট রাখুন।",
   "op_row_error_path": "পথ",
-  "op_row_error_message": "বার্তা"
+  "op_row_error_message": "বার্তা",
+  "add_repo_modal_env_vars_placeholder": "KEY=VALUE (প্রতি লাইনে একটি)",
+  "app_menu_edit_plan": "অ্যাপ_মেনু_সম্পাদনা_পরিকল্পনা",
+  "add_repo_modal_field_auto_unlock_tooltip": "বেশিরভাগ অপারেশনের শুরুতেই অটো-আনলক লকফাইলগুলি সরিয়ে ফেলবে। একাধিক ক্লায়েন্ট ডিভাইস দ্বারা রেপো শেয়ার করা হলে এটি সম্ভাব্যভাবে অনিরাপদ, অন্যথায় একক-ক্লায়েন্ট সেটআপের জন্য সুপারিশ করা হয়।",
+  "op_row_cancel_op": "অপারেশন বাতিল করুন"
 }

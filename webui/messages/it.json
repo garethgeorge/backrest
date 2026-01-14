@@ -358,5 +358,9 @@
   "add_plan_modal_retention_policy_keep_regardless_label": "Ultime istantanee da conservare indipendentemente dall'età",
   "add_plan_modal_retention_policy_subhourly_helper": "La pianificazione viene eseguita frequentemente; conserva alcuni snapshot recenti.",
   "op_row_error_path": "Sentiero",
-  "op_row_error_message": "Messaggio"
+  "op_row_error_message": "Messaggio",
+  "add_repo_modal_env_vars_placeholder": "CHIAVE=VALORE (Uno per riga)",
+  "app_menu_edit_plan": "app_menu_edit_plan",
+  "add_repo_modal_field_auto_unlock_tooltip": "Lo sblocco automatico rimuoverà i file di blocco all'inizio della maggior parte delle operazioni. Questa opzione è potenzialmente pericolosa se il repository è condiviso da più dispositivi client, altrimenti è consigliata per configurazioni con un solo client.",
+  "op_row_cancel_op": "Annulla operazione"
 }

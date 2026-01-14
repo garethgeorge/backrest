@@ -358,5 +358,9 @@
   "add_plan_modal_retention_policy_keep_regardless_label": "Capturas instantâneas recentes para guardar, independentemente da idade.",
   "add_plan_modal_retention_policy_subhourly_helper": "O agendamento é executado com frequência; mantenha alguns registros recentes.",
   "op_row_error_path": "Caminho",
-  "op_row_error_message": "Mensagem"
+  "op_row_error_message": "Mensagem",
+  "add_repo_modal_env_vars_placeholder": "CHAVE=VALOR (Um por linha)",
+  "app_menu_edit_plan": "app_menu_editar_plano",
+  "add_repo_modal_field_auto_unlock_tooltip": "O desbloqueio automático removerá os arquivos de bloqueio no início da maioria das operações. Isso pode ser inseguro se o repositório for compartilhado por vários dispositivos cliente; caso contrário, é recomendado para configurações com um único cliente.",
+  "op_row_cancel_op": "Cancelar operação"
 }
