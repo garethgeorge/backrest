@@ -373,14 +373,8 @@ func initRepoHelper(t *testing.T, config *v1.Config, repo *v1.Repo) *RepoOrchest
 
 func TestRestoreAmbiguity(t *testing.T) {
 	t.Parallel()
-
-	// 1. Setup Repo
 	repoDir := t.TempDir()
 	sourceDir := t.TempDir()
-
-	// 2. Create ambiguous directory structure
-	// source/target/target.txt
-	// source/nested/target/target.txt
 
 	targetDir := filepath.Join(sourceDir, "target")
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
@@ -413,17 +407,13 @@ func TestRestoreAmbiguity(t *testing.T) {
 
 	orchestrator := initRepoHelper(t, configForTest, r)
 
-	// 3. Backup
 	summary, err := orchestrator.Backup(context.Background(), plan, nil)
 	if err != nil {
 		t.Fatalf("backup error: %v", err)
 	}
 
-	// 4. Restore "target"
-
 	restoreDir := t.TempDir()
 
-	// We pass the full path. Restic backend handles the splitting.
 	restorePath := filepath.Join(sourceDir, "target")
 	restoreSummary, err := orchestrator.Restore(context.Background(), summary.SnapshotId, restorePath, restoreDir, nil)
 	if err != nil {
@@ -432,10 +422,6 @@ func TestRestoreAmbiguity(t *testing.T) {
 
 	t.Logf("Restore summary: %+v", restoreSummary)
 
-	// 5. Verify
-
-	// Check for nested/target (duplicate) - THIS IS THE BUG
-	// Since we restored with a subtree root, the files are relative to that root.
 	nestedFile := filepath.Join(restoreDir, "nested", "target", "target.txt")
 	if _, err := os.Stat(nestedFile); err == nil {
 		t.Errorf("FAIL: Found unexpected file from nested duplicate folder: %s", nestedFile)
@@ -443,7 +429,6 @@ func TestRestoreAmbiguity(t *testing.T) {
 		t.Errorf("Error checking for nested file: %v", err)
 	}
 
-	// Verify the correct one exists
 	expectedFile := filepath.Join(restoreDir, "target", "target.txt")
 	if _, err := os.Stat(expectedFile); err != nil {
 		t.Errorf("FAIL: Expected main file missing: %s", expectedFile)
