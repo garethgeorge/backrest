@@ -362,5 +362,6 @@
   "add_repo_modal_env_vars_placeholder": "SCHLÜSSEL=WERT (Einer pro Zeile)",
   "app_menu_edit_plan": "app_menu_edit_plan",
   "add_repo_modal_field_auto_unlock_tooltip": "Die automatische Entsperrung entfernt Sperrdateien zu Beginn der meisten Operationen. Dies kann unsicher sein, wenn das Repository von mehreren Clientgeräten gemeinsam genutzt wird; ansonsten wird diese Option für Einzelclient-Setups empfohlen.",
-  "op_row_cancel_op": "Vorgang abbrechen"
+  "op_row_cancel_op": "Vorgang abbrechen",
+  "op_row_confirm_cancel": "Abbrechen bestätigen?"
 }

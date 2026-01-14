@@ -5,8 +5,10 @@ import {
   Box,
   HStack,
   Text as CText,
+  Input,
+  createListCollection,
 } from "@chakra-ui/react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { FiPlus as Plus, FiMinus as Minus, FiMenu } from "react-icons/fi";
 import {
   DndContext,
@@ -27,6 +29,113 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "../ui/button";
 import { URIAutocomplete } from "./URIAutocomplete";
+import {
+  ComboboxRoot,
+  ComboboxInput,
+  ComboboxContent,
+  ComboboxItem,
+  ComboboxControl,
+  ComboboxEmpty,
+} from "../ui/combobox";
+
+interface DynamicListProps {
+  label: string;
+  items: string[];
+  onUpdate: (items: string[]) => void;
+  tooltip?: React.ReactNode;
+  placeholder?: string;
+  required?: boolean;
+  autocompleteType?: "uri" | "flag" | "none";
+}
+
+const RESTIC_FLAGS = [
+  { label: "--cacert <file>", value: "--cacert" },
+  { label: "--cache-dir <directory>", value: "--cache-dir" },
+  { label: "--cleanup-cache", value: "--cleanup-cache" },
+  { label: "--compression <mode>", value: "--compression" },
+  { label: "--http-user-agent <string>", value: "--http-user-agent" },
+  { label: "--insecure-no-password", value: "--insecure-no-password" },
+  { label: "--insecure-tls", value: "--insecure-tls" },
+  { label: "--json", value: "--json" },
+  { label: "--key-hint <key>", value: "--key-hint" },
+  { label: "--limit-download <rate>", value: "--limit-download" },
+  { label: "--limit-upload <rate>", value: "--limit-upload" },
+  { label: "--no-cache", value: "--no-cache" },
+  { label: "--no-extra-verify", value: "--no-extra-verify" },
+  { label: "--no-lock", value: "--no-lock" },
+  { label: "--option <key=value>", value: "--option" },
+  { label: "--pack-size <size>", value: "--pack-size" },
+  { label: "--password-command <command>", value: "--password-command" },
+  { label: "--password-file <file>", value: "--password-file" },
+  { label: "--quiet", value: "--quiet" },
+  { label: "--repo <repository>", value: "--repo" },
+  { label: "--repository-file <file>", value: "--repository-file" },
+  { label: "--retry-lock <duration>", value: "--retry-lock" },
+  { label: "--tls-client-cert <file>", value: "--tls-client-cert" },
+  { label: "--verbose", value: "--verbose" },
+];
+
+const FlagAutocomplete = ({
+  value,
+  onChange,
+  placeholder,
+  id,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  id?: string;
+}) => {
+  const [inputVal, setInputVal] = useState(value);
+
+  useEffect(() => {
+    setInputVal(value);
+  }, [value]);
+
+  const collection = useMemo(() => {
+    return createListCollection({
+      items: RESTIC_FLAGS.filter((item) =>
+        item.value.startsWith(inputVal || ""),
+      ),
+    });
+  }, [inputVal]);
+
+  const handleInputChange = (e: any) => {
+    const val = e.inputValue;
+    setInputVal(val);
+    onChange(val);
+  };
+
+  return (
+    <ComboboxRoot
+      id={id}
+      collection={collection}
+      inputBehavior="autocomplete"
+      inputValue={inputVal}
+      onInputValueChange={handleInputChange}
+      onValueChange={(e: any) => {
+        if (e.value && e.value[0]) {
+          setInputVal(e.value[0]);
+          onChange(e.value[0]);
+        }
+      }}
+      allowCustomValue
+      width="full"
+    >
+      <ComboboxControl hideTrigger>
+        <ComboboxInput placeholder={placeholder} width="full" />
+      </ComboboxControl>
+      <ComboboxContent zIndex={2000}>
+        <ComboboxEmpty>No flags found</ComboboxEmpty>
+        {collection.items.map((item) => (
+          <ComboboxItem key={item.value} item={item}>
+            {item.label}
+          </ComboboxItem>
+        ))}
+      </ComboboxContent>
+    </ComboboxRoot>
+  );
+};
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -37,7 +146,8 @@ export const DynamicList = ({
   tooltip,
   placeholder,
   required,
-}: any) => {
+  autocompleteType = "none",
+}: DynamicListProps) => {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -114,12 +224,29 @@ export const DynamicList = ({
                 <SortableItem key={id} id={id} index={index}>
                   <HStack gap={2} width="full">
                     <Box flex={1}>
-                      <URIAutocomplete
-                        id={`${label}-${index}`}
-                        value={item}
-                        onChange={(val: string) => handleChange(index, val)}
-                        placeholder={placeholder}
-                      />
+                      {autocompleteType === "uri" ? (
+                        <URIAutocomplete
+                          id={`${label}-${index}`}
+                          value={item}
+                          onChange={(val: string) => handleChange(index, val)}
+                          placeholder={placeholder}
+                        />
+                      ) : autocompleteType === "flag" ? (
+                        <FlagAutocomplete
+                          id={`${label}-${index}`}
+                          value={item}
+                          onChange={(val: string) => handleChange(index, val)}
+                          placeholder={placeholder}
+                        />
+                      ) : (
+                        <Input
+                          id={`${label}-${index}`}
+                          value={item}
+                          onChange={(e) => handleChange(index, e.target.value)}
+                          placeholder={placeholder}
+                          size="sm"
+                        />
+                      )}
                     </Box>
                     <IconButton
                       size="sm"

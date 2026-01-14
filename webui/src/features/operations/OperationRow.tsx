@@ -76,16 +76,11 @@ const ConfirmMenuItem = ({
 } & React.ComponentProps<typeof MenuItem>) => {
   const [needsConfirm, setNeedsConfirm] = useState(false);
 
-  useEffect(() => {
-    if (needsConfirm) {
-      const timer = setTimeout(() => setNeedsConfirm(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [needsConfirm]);
-
   return (
     <MenuItem
       {...props}
+      closeOnSelect={needsConfirm}
+      onMouseLeave={() => setNeedsConfirm(false)}
       onClick={(e) => {
         if (!needsConfirm) {
           e.preventDefault();

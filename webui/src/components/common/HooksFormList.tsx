@@ -16,6 +16,7 @@ import {
   Textarea,
   Flex,
   useControllableState,
+  SimpleGrid,
 } from "@chakra-ui/react";
 import { FiPlus, FiTrash2, FiInfo } from "react-icons/fi";
 import {
@@ -163,20 +164,25 @@ export const HooksFormList = ({
         </MenuTrigger>
         {/* @ts-ignore */}
         <MenuContent zIndex={2000}>
-          {hookTypes.map((type) => (
-            // @ts-ignore
-            <MenuItem
-              key={type.name}
-              onClick={(e) => {
-                e.stopPropagation();
-                addHook(JSON.parse(JSON.stringify(type.template))); // Deep clone
-              }}
-              cursor="pointer"
-            >
-              {/* @ts-ignore */}
-              <MenuItemText>{type.name}</MenuItemText>
-            </MenuItem>
-          ))}
+          <SimpleGrid columns={3} gap={2} p={2}>
+            {hookTypes.map((type) => (
+              // @ts-ignore
+              <MenuItem
+                key={type.name}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addHook(JSON.parse(JSON.stringify(type.template))); // Deep clone
+                }}
+                cursor="pointer"
+                justifyContent="center"
+                borderRadius="md"
+                _hover={{ bg: "bg.muted" }}
+              >
+                {/* @ts-ignore */}
+                <MenuItemText textAlign="center">{type.name}</MenuItemText>
+              </MenuItem>
+            ))}
+          </SimpleGrid>
         </MenuContent>
       </MenuRoot>
     </Stack>

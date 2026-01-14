@@ -387,6 +387,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                   items={getField(["paths"]) || []}
                   onUpdate={(items: string[]) => updateField(["paths"], items)}
                   required
+                  autocompleteType="uri"
                 />
 
                 <DynamicList
@@ -468,6 +469,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                   }
                   tooltip={m.add_plan_modal_field_backup_flags_tooltip()}
                   placeholder="--flag"
+                  autocompleteType="flag"
                 />
 
                 <Field
