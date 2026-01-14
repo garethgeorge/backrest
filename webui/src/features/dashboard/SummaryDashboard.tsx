@@ -243,81 +243,83 @@ const SummaryPanel = ({
 
   const CardInfo = () => (
     <DataListRoot orientation="vertical" size="sm">
-      <DataListItem
-        label={m.dashboard_card_backups_30d()}
-        value={
-          <Flex gap={2}>
-            {summary.backupsSuccessLast30days ? (
-              <Text color="green.500">
-                {summary.backupsSuccessLast30days +
-                  " " +
-                  m.dashboard_card_backups_ok()}
-              </Text>
-            ) : undefined}
-            {summary.backupsFailed30days ? (
-              <Text color="red.500">
-                {summary.backupsFailed30days +
-                  " " +
-                  m.dashboard_card_backups_failed()}
-              </Text>
-            ) : undefined}
-            {summary.backupsWarningLast30days ? (
-              <Text color="orange.500">
-                {summary.backupsWarningLast30days +
-                  " " +
-                  m.dashboard_card_backups_warning()}
-              </Text>
-            ) : undefined}
-          </Flex>
-        }
-      />
-      <DataListItem
-        label={m.dashboard_card_bytes_scanned_30d()}
-        value={
-          <DataValue>
-            {formatBytes(Number(summary.bytesScannedLast30days))}
-          </DataValue>
-        }
-      />
-      <DataListItem
-        label={m.dashboard_card_bytes_added_30d()}
-        value={
-          <DataValue>
-            {formatBytes(Number(summary.bytesAddedLast30days))}
-          </DataValue>
-        }
-      />
+      <SimpleGrid columns={2} gapX={8} gapY={2}>
+        <DataListItem
+          label={m.dashboard_card_backups_30d()}
+          value={
+            <Flex gap={2}>
+              {summary.backupsSuccessLast30days ? (
+                <Text color="green.500">
+                  {summary.backupsSuccessLast30days +
+                    " " +
+                    m.dashboard_card_backups_ok()}
+                </Text>
+              ) : undefined}
+              {summary.backupsFailed30days ? (
+                <Text color="red.500">
+                  {summary.backupsFailed30days +
+                    " " +
+                    m.dashboard_card_backups_failed()}
+                </Text>
+              ) : undefined}
+              {summary.backupsWarningLast30days ? (
+                <Text color="orange.500">
+                  {summary.backupsWarningLast30days +
+                    " " +
+                    m.dashboard_card_backups_warning()}
+                </Text>
+              ) : undefined}
+            </Flex>
+          }
+        />
+        <DataListItem
+          label={m.dashboard_card_bytes_scanned_30d()}
+          value={
+            <DataValue>
+              {formatBytes(Number(summary.bytesScannedLast30days))}
+            </DataValue>
+          }
+        />
+        <DataListItem
+          label={m.dashboard_card_bytes_added_30d()}
+          value={
+            <DataValue>
+              {formatBytes(Number(summary.bytesAddedLast30days))}
+            </DataValue>
+          }
+        />
 
-      {!isMobile() && (
-        <>
-          <DataListItem
-            label={m.dashboard_card_next_backup()}
-            value={
-              <DataValue>
-                {summary.nextBackupTimeMs
-                  ? formatTime(Number(summary.nextBackupTimeMs))
-                  : m.dashboard_card_none_scheduled()}
-              </DataValue>
-            }
-          />
-          <DataListItem
-            label={m.dashboard_card_bytes_scanned_avg()}
-            value={
-              <DataValue>
-                {formatBytes(Number(summary.bytesScannedAvg))}
-              </DataValue>
-            }
-          />
-          <DataListItem
-            label={m.dashboard_card_bytes_added_avg()}
-            value={
-              <DataValue>
-                {formatBytes(Number(summary.bytesAddedAvg))}
-              </DataValue>
-            }
-          />
-        </>
-      )}
+        {!isMobile() && (
+          <>
+            <DataListItem
+              label={m.dashboard_card_next_backup()}
+              value={
+                <DataValue>
+                  {summary.nextBackupTimeMs
+                    ? formatTime(Number(summary.nextBackupTimeMs))
+                    : m.dashboard_card_none_scheduled()}
+                </DataValue>
+              }
+            />
+            <DataListItem
+              label={m.dashboard_card_bytes_scanned_avg()}
+              value={
+                <DataValue>
+                  {formatBytes(Number(summary.bytesScannedAvg))}
+                </DataValue>
+              }
+            />
+            <DataListItem
+              label={m.dashboard_card_bytes_added_avg()}
+              value={
+                <DataValue>
+                  {formatBytes(Number(summary.bytesAddedAvg))}
+                </DataValue>
+              }
+            />
+          </>
+        )}
+      </SimpleGrid>
     </DataListRoot>
   );
 
