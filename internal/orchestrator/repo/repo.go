@@ -188,7 +188,7 @@ func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId str
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
 
-	_, entries, err := r.repo.ListDirectory(ctx, snapshotId, path)
+	_, entries, err := r.repo.ListDirectory(ctx, snapshotId, path, restic.WithFlags("--no-lock"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to list snapshot files: %w", err)
 	}
