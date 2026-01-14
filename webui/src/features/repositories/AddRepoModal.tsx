@@ -461,9 +461,16 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                   label={m.add_repo_modal_field_env_vars()}
                   items={getField(["env"]) || []}
                   onUpdate={(items: string[]) => updateField(["env"], items)}
-                  tooltip={m.add_repo_modal_field_env_vars_tooltip({
-                    MY_FOO_VAR: "$MY_FOO_VAR",
-                  })}
+                  tooltip={
+                    <Stack gap={2}>
+                      <CText>
+                        {m.add_repo_modal_field_env_vars_tooltip({
+                          MY_FOO_VAR: "$MY_FOO_VAR",
+                        })}
+                      </CText>
+                      <EnvVarTooltip uri={getField(["uri"])} />
+                    </Stack>
+                  }
                   placeholder="KEY=VALUE"
                 />
 
@@ -768,4 +775,25 @@ const formatMissingEnvVars = (partialMatches: string[][]): string => {
       return x[0];
     })
     .join(" or ");
+};
+const EnvVarTooltip = ({ uri }: { uri: string }) => {
+  if (!uri) return null;
+  const scheme = uri.split(":")[0];
+  const expected = expectedEnvVars[scheme];
+  if (!expected) return null;
+  return (
+    <Box mt={2} p={2} bg="bg.muted" borderRadius="md" borderWidth="1px">
+      <CText fontWeight="bold" mb={1}>
+        Recommended for {scheme}:
+      </CText>
+      <ul style={{ paddingLeft: "1.2em" }}>
+        {expected.map((set, i) => (
+          <li key={i}>
+            {i > 0 && "or "}
+            {set.join(" + ")}
+          </li>
+        ))}
+      </ul>
+    </Box>
+  );
 };
