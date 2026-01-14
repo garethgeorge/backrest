@@ -11,6 +11,7 @@ import {
   FiActivity, // Added as a placeholder/guess for ActivityBar if needed, or stick to component
   FiServer,
   FiEdit2,
+  FiMenu,
 } from "react-icons/fi";
 
 import {
@@ -32,6 +33,16 @@ import {
   AccordionItemTrigger,
   AccordionItemContent,
 } from "../components/ui/accordion";
+import {
+  DrawerBackdrop,
+  DrawerBody,
+  DrawerCloseTrigger,
+  DrawerContent,
+  DrawerHeader,
+  DrawerRoot,
+  DrawerTitle,
+  DrawerTrigger,
+} from "../components/ui/drawer";
 import { Config, Multihost_Peer } from "../../gen/ts/v1/config_pb";
 import { alerts } from "../components/common/Alerts";
 import { useShowModal } from "../components/common/ModalManager";
@@ -191,11 +202,16 @@ const PlanViewContainer = () => {
   );
 };
 
-const Sidebar = () => {
+const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
   const [config] = useConfig();
   const peerStates = useSyncStates();
   const showModal = useShowModal();
   const navigate = useNavigate();
+
+  const handleNav = (path: string) => {
+    navigate(path);
+    onClose?.();
+  };
 
   // Replicate getSidenavItems functionality with Chakra components
   if (!config) return null;
@@ -223,7 +239,7 @@ const Sidebar = () => {
       >
         {/* PLANS SECTION */}
         <AccordionItem value="plans">
-          <AccordionItemTrigger px={4} py={2} _hover={{ bg: "bg.subtle" }}>
+          <AccordionItemTrigger px={4} py={2} _hover={{ bg: "bg.muted" }}>
             <Flex align="center" gap={2}>
               <FiCalendar />
               <Text fontWeight="medium">{m.app_menu_plans()}</Text>
@@ -235,10 +251,12 @@ const Sidebar = () => {
               size="sm"
               width="full"
               justifyContent="flex-start"
+              _hover={{ bg: "bg.muted" }}
               onClick={async () => {
                 const { AddPlanModal } =
                   await import("../features/plans/AddPlanModal");
                 showModal(<AddPlanModal template={null} />);
+                onClose?.();
               }}
               pl={9}
               mb={1}
@@ -258,10 +276,8 @@ const Sidebar = () => {
                   pl={9}
                   pr={2}
                   py={1}
-                  _hover={{ bg: "bg.subtle" }}
+                  _hover={{ bg: "bg.muted" }}
                   className="group"
-                  borderRadius="md"
-                  mx={2}
                 >
                   <Box flexShrink={0} mr={2}>
                     <IconForResource selector={sel} />
@@ -269,7 +285,7 @@ const Sidebar = () => {
                   <Box
                     flex="1"
                     cursor="pointer"
-                    onClick={() => navigate(`/plan/${plan.id}`)}
+                    onClick={() => handleNav(`/plan/${plan.id}`)}
                     userSelect="none"
                   >
                     <Text truncate>{plan.id}</Text>
@@ -287,6 +303,7 @@ const Sidebar = () => {
                         const { AddPlanModal } =
                           await import("../features/plans/AddPlanModal");
                         showModal(<AddPlanModal template={plan} />);
+                        onClose?.();
                       }}
                     >
                       <FiEdit2 />
@@ -300,7 +317,7 @@ const Sidebar = () => {
 
         {/* REPOS SECTION */}
         <AccordionItem value="repos">
-          <AccordionItemTrigger px={4} py={2} _hover={{ bg: "bg.subtle" }}>
+          <AccordionItemTrigger px={4} py={2} _hover={{ bg: "bg.muted" }}>
             <Flex align="center" gap={2}>
               <FiDatabase />
               <Text fontWeight="medium">{m.app_menu_repos()}</Text>
@@ -312,10 +329,12 @@ const Sidebar = () => {
               size="sm"
               width="full"
               justifyContent="flex-start"
+              _hover={{ bg: "bg.muted" }}
               onClick={async () => {
                 const { AddRepoModal } =
                   await import("../features/repositories/AddRepoModal");
                 showModal(<AddRepoModal template={null} />);
+                onClose?.();
               }}
               pl={9}
               mb={1}
@@ -330,10 +349,8 @@ const Sidebar = () => {
                   pl={9}
                   pr={2}
                   py={1}
-                  _hover={{ bg: "bg.subtle" }}
+                  _hover={{ bg: "bg.muted" }}
                   className="group"
-                  borderRadius="md"
-                  mx={2}
                 >
                   <Box flexShrink={0} mr={2}>
                     <IconForResource
@@ -346,7 +363,7 @@ const Sidebar = () => {
                   <Box
                     flex="1"
                     cursor="pointer"
-                    onClick={() => navigate(`/repo/${repo.id}`)}
+                    onClick={() => handleNav(`/repo/${repo.id}`)}
                     userSelect="none"
                   >
                     <Text truncate>{repo.id}</Text>
@@ -364,6 +381,7 @@ const Sidebar = () => {
                         const { AddRepoModal } =
                           await import("../features/repositories/AddRepoModal");
                         showModal(<AddRepoModal template={repo} />);
+                        onClose?.();
                       }}
                     >
                       <FiEdit2 />
@@ -378,7 +396,7 @@ const Sidebar = () => {
         {/* REMOTE INSTANCES / AUTHORIZED CLIENTS */}
         {config.multihost?.authorizedClients?.length ? (
           <AccordionItem value="authorized-clients">
-            <AccordionItemTrigger px={4} py={2} _hover={{ bg: "bg.subtle" }}>
+            <AccordionItemTrigger px={4} py={2} _hover={{ bg: "bg.muted" }}>
               <Flex align="center" gap={2}>
                 <FiServer />
                 <Text fontWeight="medium">{m.app_menu_remote_instances()}</Text>
@@ -411,9 +429,7 @@ const Sidebar = () => {
                         pl={12}
                         pr={2}
                         py={1}
-                        _hover={{ bg: "bg.subtle" }}
-                        borderRadius="md"
-                        mx={2}
+                        _hover={{ bg: "bg.muted" }}
                         cursor="pointer"
                         onClick={() =>
                           navigate(
@@ -452,12 +468,30 @@ const Sidebar = () => {
               const { SettingsModal } =
                 await import("../features/settings/SettingsModal");
               showModal(<SettingsModal />);
+              onClose?.();
             }}
           >
             <FiSettings /> {m.app_menu_settings()}
           </Button>
         </Box>
       </AccordionRoot>
+    </Box>
+  );
+};
+
+const Sidebar = () => {
+  return (
+    <Box
+      w="300px"
+      bg="bg.panel"
+      borderRightWidth="1px"
+      borderColor="border"
+      h="full"
+      overflowY="auto"
+      flexShrink={0}
+      display={{ base: "none", lg: "block" }}
+    >
+      <SidebarContent />
     </Box>
   );
 };
@@ -478,6 +512,9 @@ export const App: React.FC = () => {
         color="white"
         flexShrink={0}
       >
+        <Box display={{ base: "block", lg: "none" }} mr={2}>
+          <MobileNavTrigger />
+        </Box>
         <Box as="a" cursor="pointer" onClick={() => navigate("/")} mr={4}>
           <img src={LogoSvg} style={{ height: "30px", marginBottom: "-4px" }} />
         </Box>
@@ -579,6 +616,32 @@ export const App: React.FC = () => {
         </Box>
       </Flex>
     </Flex>
+  );
+};
+
+const MobileNavTrigger = () => {
+  const [open, setOpen] = useState(false);
+  return (
+    <DrawerRoot
+      placement="start"
+      open={open}
+      onOpenChange={(e) => setOpen(e.open)}
+    >
+      <DrawerTrigger asChild>
+        <IconButton variant="ghost" size="sm" color="white" aria-label="Menu">
+          <FiMenu />
+        </IconButton>
+      </DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>Menu</DrawerTitle>
+          <DrawerCloseTrigger />
+        </DrawerHeader>
+        <DrawerBody p={0}>
+          <SidebarContent onClose={() => setOpen(false)} />
+        </DrawerBody>
+      </DrawerContent>
+    </DrawerRoot>
   );
 };
 
