@@ -9,7 +9,7 @@ import { OperationRow } from "./OperationRow";
 import { OplogState, syncStateFromRequest } from "../../api/logState";
 import { shouldHideStatus } from "../../api/oplog";
 import { toJsonString } from "@bufbuild/protobuf";
-import { Stack, Box, Flex } from "@chakra-ui/react";
+import { Stack, Box, Flex, Center, Spinner } from "@chakra-ui/react";
 import { EmptyState } from "../../components/ui/empty-state";
 import { FiList } from "react-icons/fi";
 import {
@@ -37,25 +37,28 @@ export const OperationListView = ({
   showDelete?: boolean; // allows deleting individual operation rows, useful for the list view in the plan / repo panels.
 }>) => {
   const [operations, setOperations] = useState<Operation[]>([]);
+  const [loading, setLoading] = useState(!!req);
   const [page, setPage] = useState(1);
   const pageSize = 25;
 
-  if (req) {
-    useEffect(() => {
-      const logState = new OplogState(
-        (op) => !shouldHideStatus(op.status) && (!filter || filter(op)),
-      );
+  useEffect(() => {
+    if (!req) return;
+    setLoading(true);
+    const logState = new OplogState(
+      (op) => !shouldHideStatus(op.status) && (!filter || filter(op)),
+    );
 
-      logState.subscribe((ids, flowIDs, event) => {
-        const ops = logState.getAll();
-        setOperations(ops);
-      });
+    logState.subscribe((ids, flowIDs, event) => {
+      const ops = logState.getAll();
+      setOperations(ops);
+      setLoading(false);
+    });
 
-      return syncStateFromRequest(logState, req, (e) => {
-        alerts.error("Failed to fetch operations: " + e.message);
-      });
-    }, [toJsonString(GetOperationsRequestSchema, req)]);
-  }
+    return syncStateFromRequest(logState, req, (e) => {
+      alerts.error("Failed to fetch operations: " + e.message);
+      setLoading(false);
+    });
+  }, [req ? toJsonString(GetOperationsRequestSchema, req) : ""]);
 
   const hookExecutionsForOperation: Map<bigint, Operation[]> = new Map();
   let operationsForDisplay: Operation[] = [];
@@ -87,6 +90,13 @@ export const OperationListView = ({
   });
 
   if (!operationsForDisplay || operationsForDisplay.length === 0) {
+    if (loading) {
+      return (
+        <Center py={8}>
+          <Spinner />
+        </Center>
+      );
+    }
     return (
       <EmptyState
         title="No operations yet"

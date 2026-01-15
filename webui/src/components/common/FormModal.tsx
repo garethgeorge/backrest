@@ -20,7 +20,20 @@ interface FormModalProps {
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  size?: "default" | "large";
+  size?:
+    | "xs"
+    | "sm"
+    | "md"
+    | "lg"
+    | "xl"
+    | "2xl"
+    | "3xl"
+    | "4xl"
+    | "5xl"
+    | "6xl"
+    | "full"
+    | "default"
+    | "large";
 }
 
 export const FormModal: React.FC<FormModalProps> = ({
@@ -33,19 +46,28 @@ export const FormModal: React.FC<FormModalProps> = ({
 }) => {
   // Map size "default" to "md" and "large" to "xl" or "2xl"
   // Chakra default sizes are xs, sm, md, lg, xl, 2xl, etc.
-  const chakraSize = size === "large" ? "xl" : "md";
+  let chakraSize = size;
+  if (size === "default") chakraSize = "md";
+  if (size === "large") chakraSize = "xl";
+
+  // Identify if the requested size is supported by the DialogRoot component directly
+  // definition: "xs" | "sm" | "md" | "lg" | "xl" | "full" | "cover" | undefined
+  const validRootSizes = ["xs", "sm", "md", "lg", "xl", "full", "cover"];
+  const isRootSize = validRootSizes.includes(chakraSize);
+  const rootSize = isRootSize ? (chakraSize as any) : undefined;
+  const contentMaxW = !isRootSize ? chakraSize : undefined;
 
   return (
     <DialogRoot
       open={isOpen}
       onOpenChange={(e: { open: boolean }) => !e.open && onClose()}
-      size={chakraSize}
+      size={rootSize}
       scrollBehavior="inside"
     >
       <Portal>
         <DialogBackdrop />
         <DialogPositioner>
-          <DialogContent>
+          <DialogContent maxW={contentMaxW}>
             <DialogHeader>
               <DialogTitle>{title}</DialogTitle>
             </DialogHeader>

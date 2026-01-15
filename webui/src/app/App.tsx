@@ -12,6 +12,7 @@ import {
   FiServer,
   FiEdit2,
   FiMenu,
+  FiHome,
 } from "react-icons/fi";
 
 import {
@@ -237,6 +238,21 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
         defaultValue={["plans", "repos", "authorized-clients"]}
         variant="plain"
       >
+        {/* DASHBOARD */}
+        <Box
+          cursor="pointer"
+          onClick={() => handleNav("/")}
+          px={4}
+          py={2}
+          _hover={{ bg: "bg.muted" }}
+          userSelect="none"
+        >
+          <Flex align="center" gap={2}>
+            <FiHome />
+            <Text fontWeight="medium">{m.app_menu_dashboard()}</Text>
+          </Flex>
+        </Box>
+
         {/* PLANS SECTION */}
         <AccordionItem value="plans">
           <AccordionItemTrigger px={4} py={2} _hover={{ bg: "bg.muted" }}>

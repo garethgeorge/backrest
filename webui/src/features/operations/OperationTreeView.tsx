@@ -8,6 +8,8 @@ import {
   EmptyState,
   VStack,
   TreeCollection,
+  Center,
+  Spinner,
 } from "@chakra-ui/react";
 import {
   TreeViewRoot,
@@ -92,6 +94,7 @@ export const OperationTreeView = ({
   const setScreenWidth = useState(window.innerWidth)[1];
   const [backups, setBackups] = useState<FlowDisplayInfo[]>([]);
   const [selectedBackupId, setSelectedBackupId] = useState<bigint | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // track the screen width so we can switch between mobile and desktop layouts.
   useEffect(() => {
@@ -137,12 +140,22 @@ export const OperationTreeView = ({
       }
 
       setBackups([...backupInfoByFlowID.values()]);
+      setLoading(false);
     });
 
     return syncStateFromRequest(logState, req, (err) => {
       alerts.error("API error: " + err.message);
+      setLoading(false);
     });
   }, [toJsonString(GetOperationsRequestSchema, req)]);
+
+  if (loading && backups.length === 0) {
+    return (
+      <Center height="100%">
+        <Spinner size="lg" />
+      </Center>
+    );
+  }
 
   if (backups.length === 0) {
     return (

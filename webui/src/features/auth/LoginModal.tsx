@@ -51,6 +51,7 @@ export const LoginModal = () => {
       isOpen={true}
       onClose={() => {}} // Non-closable
       title={m.login_title()}
+      size="2xl"
       footer={
         <Button
           type="submit"
@@ -63,13 +64,14 @@ export const LoginModal = () => {
       }
     >
       <form onSubmit={handleSubmit}>
-        <Stack gap={4}>
+        <Stack direction="row" gap={4}>
           <Field
+            flex={1}
             label="Username"
             required
             errorText={!username ? m.login_username_required() : undefined}
           >
-            <InputGroup startElement={<LuUser />}>
+            <InputGroup width="100%" startElement={<LuUser />}>
               <Input
                 placeholder={m.login_username_placeholder()}
                 value={username}
@@ -79,11 +81,12 @@ export const LoginModal = () => {
           </Field>
 
           <Field
+            flex={1}
             label="Password"
             required
             errorText={!password ? m.login_password_required() : undefined}
           >
-            <InputGroup startElement={<LuLock />}>
+            <InputGroup width="100%" startElement={<LuLock />}>
               <Input
                 type="password"
                 placeholder={m.login_password_placeholder()}
@@ -93,6 +96,8 @@ export const LoginModal = () => {
             </InputGroup>
           </Field>
         </Stack>
+        {/* Allows submitting the form by pressing enter in one of the fields */}
+        <button type="submit" style={{ display: "none" }} />
       </form>
     </FormModal>
   );

@@ -98,8 +98,8 @@ export const LogView = ({ logref }: { logref: string }) => {
       ))}
 
       {loading && lines.length === 0 && (
-        <Center py={4}>
-          <Spinner size="sm" />
+        <Center h="100%" minH="100px">
+          <Spinner color="fg.muted" />
         </Center>
       )}
 

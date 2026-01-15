@@ -363,5 +363,6 @@
   "app_menu_edit_plan": "app_menu_edit_plan",
   "add_repo_modal_field_auto_unlock_tooltip": "Le déverrouillage automatique supprime les fichiers de verrouillage au début de la plupart des opérations. Cette opération peut s'avérer dangereuse si le dépôt est partagé par plusieurs appareils clients ; elle est par ailleurs recommandée pour les configurations mono-client.",
   "op_row_cancel_op": "Opération annulée",
-  "op_row_confirm_cancel": "Confirmer Annuler ?"
+  "op_row_confirm_cancel": "Confirmer Annuler ?",
+  "app_menu_dashboard": "Tableau de bord"
 }

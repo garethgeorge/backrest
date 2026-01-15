@@ -145,6 +145,7 @@
   "app_menu_add_repo": "Add Repo",
   "app_menu_remote_instances": "Remote Instances",
   "app_menu_settings": "Settings",
+  "app_menu_dashboard": "Dashboard",
   "app_error_initial_config": "Failed to fetch initial config, typically this means the UI could not connect to the backend",
   "login_success": "Logged in",
   "login_error": "Login failed: ",

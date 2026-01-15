@@ -365,5 +365,6 @@
   "op_row_cancel_op": "取消操作",
   "op_row_confirm_cancel": "确认取消？",
   "op_row_delete": "删除操作",
-  "op_row_confirm_delete": "确认删除？"
+  "op_row_confirm_delete": "确认删除？",
+  "app_menu_dashboard": "仪表板"
 }

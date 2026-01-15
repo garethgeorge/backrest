@@ -1,6 +1,6 @@
 export const isMobile = () => {
   // check if window is narrow
-  if (window.innerWidth <= 1024) {
+  if (window.innerWidth <= 768) {
     return true;
   }
   // check if user agent is mobile

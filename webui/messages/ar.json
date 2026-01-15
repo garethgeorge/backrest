@@ -363,5 +363,6 @@
   "app_menu_edit_plan": "app_menu_edit_plan",
   "add_repo_modal_field_auto_unlock_tooltip": "ستؤدي خاصية الفتح التلقائي إلى إزالة ملفات القفل عند بدء معظم العمليات. قد يكون هذا غير آمن إذا تمت مشاركة المستودع بين عدة أجهزة عميلة، وإلا يُنصح باستخدامه في إعدادات العميل الواحد.",
   "op_row_cancel_op": "إلغاء العملية",
-  "op_row_confirm_cancel": "تأكيد إلغاء؟"
+  "op_row_confirm_cancel": "تأكيد إلغاء؟",
+  "app_menu_dashboard": "لوحة التحكم"
 }

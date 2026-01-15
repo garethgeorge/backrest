@@ -363,5 +363,6 @@
   "app_menu_edit_plan": "app_menu_edit_plan",
   "add_repo_modal_field_auto_unlock_tooltip": "Fitur buka kunci otomatis akan menghapus file kunci di awal sebagian besar operasi. Ini berpotensi tidak aman jika repositori digunakan bersama oleh beberapa perangkat klien, jika tidak, fitur ini direkomendasikan untuk pengaturan klien tunggal.",
   "op_row_cancel_op": "Batalkan Operasi",
-  "op_row_confirm_cancel": "Konfirmasi Batal?"
+  "op_row_confirm_cancel": "Konfirmasi Batal?",
+  "app_menu_dashboard": "Dasbor"
 }

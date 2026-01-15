@@ -283,9 +283,9 @@ export const DynamicList = ({
         </Stack>
       </DndContext>
       {tooltip && (
-        <CText fontSize="xs" color="fg.muted">
+        <Box fontSize="xs" color="fg.muted">
           {tooltip}
-        </CText>
+        </Box>
       )}
     </Stack>
   );
