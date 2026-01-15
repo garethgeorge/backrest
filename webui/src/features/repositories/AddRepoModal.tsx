@@ -199,11 +199,13 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         alerts.error(
           formatErrorAlert(e, m.add_repo_modal_error_list_snapshots()),
         );
+        return;
       }
     } catch (e: any) {
       alerts.error(
         formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()),
       );
+      return;
     } finally {
       setConfirmLoading(false);
     }
@@ -465,7 +467,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                     <Stack gap={2}>
                       <CText>
                         {m.add_repo_modal_field_env_vars_tooltip({
-                          MY_FOO_VAR: "$MY_FOO_VAR",
+                          MY_FOO_VAR: "$\\{MY_FOO_VAR\\}",
                         })}
                       </CText>
                       <EnvVarTooltip uri={getField(["uri"])} />

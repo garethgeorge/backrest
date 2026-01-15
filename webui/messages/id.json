@@ -191,7 +191,7 @@
   "add_repo_modal_field_password_tooltip_generate": "Klik [Hasilkan] untuk membuat kata sandi acak dari API kriptografi acak peramban Anda.",
   "add_repo_modal_button_generate": "[Menghasilkan]",
   "add_repo_modal_field_env_vars": "Variabel Lingkungan",
-  "add_repo_modal_field_env_vars_tooltip": "Variabel lingkungan yang diteruskan ke restic (misalnya untuk menyediakan kredensial S3 atau B2). Referensi ke variabel lingkungan proses induk didukung sebagai FOO=$ {MY_FOO_VAR} .",
+  "add_repo_modal_field_env_vars_tooltip": "Variabel lingkungan yang diteruskan ke restic (misalnya untuk menyediakan kredensial S3 atau B2). Referensi ke variabel lingkungan proses induk didukung sebagai FOO=$\\{MY_FOO_VAR\\} .",
   "add_repo_modal_error_env_format": "Variabel lingkungan harus dalam format KEY=VALUE",
   "add_repo_modal_button_set_env": "Atur Variabel Lingkungan",
   "add_repo_modal_field_flags": "Bendera",

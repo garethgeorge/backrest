@@ -191,7 +191,7 @@
   "add_repo_modal_field_password_tooltip_generate": "Click [Generate] to seed a random password from your browser's crypto random API.",
   "add_repo_modal_button_generate": "[Generate]",
   "add_repo_modal_field_env_vars": "Env Vars",
-  "add_repo_modal_field_env_vars_tooltip": "Environment variables that are passed to restic (e.g. to provide S3 or B2 credentials). References to parent-process env variables are supported as FOO=$MY_FOO_VAR.",
+  "add_repo_modal_field_env_vars_tooltip": "Environment variables that are passed to restic (e.g. to provide S3 or B2 credentials). References to parent-process env variables are supported as FOO=$\\{MY_FOO_VAR\\}.",
   "op_row_deleted_success": "Deleted operation",
   "op_row_deleted_error": "Failed to delete operation: ",
   "op_row_cancel_success": "Requested to cancel operation",

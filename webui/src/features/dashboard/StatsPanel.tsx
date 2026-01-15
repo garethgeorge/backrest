@@ -13,7 +13,7 @@ import { formatBytes, formatDate } from "../../lib/formatting";
 import { SimpleGrid } from "@chakra-ui/react";
 import { EmptyState } from "../../components/ui/empty-state";
 import { Operation, OperationStats } from "../../../gen/ts/v1/operations_pb";
-import { alerts } from "../../components/common/Alerts";
+import { alerts, formatErrorAlert } from "../../components/common/Alerts";
 import { getOperations } from "../../api/oplog";
 import {
   GetOperationsRequestSchema,
@@ -37,7 +37,7 @@ export const StatsPanel = ({ selector }: { selector: OpSelector }) => {
         setOperations(ops);
       })
       .catch((e) => {
-        alerts.error("Failed to fetch operations: " + e.message);
+        alerts.error(formatErrorAlert(e, "Failed to fetch operations: "));
       });
   }, [JSON.stringify(selector)]);
 

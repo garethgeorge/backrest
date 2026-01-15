@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { authenticationService, setAuthToken } from "../../api/client";
 import { LoginRequestSchema } from "../../../gen/ts/v1/authentication_pb";
-import { alerts } from "../../components/common/Alerts";
+import { alerts, formatErrorAlert } from "../../components/common/Alerts";
 import { create } from "@bufbuild/protobuf";
 import * as m from "../../paraglide/messages";
 import { FormModal } from "../../components/common/FormModal";
@@ -41,7 +41,7 @@ export const LoginModal = () => {
         window.location.reload();
       }, 500);
     } catch (e: any) {
-      alerts.error(m.login_error() + (e.message ? e.message : "" + e));
+      alerts.error(formatErrorAlert(e, m.login_error()));
       setLoading(false);
     }
   };

@@ -191,7 +191,7 @@
   "add_repo_modal_field_password_tooltip_generate": "আপনার ব্রাউজারের ক্রিপ্টো র‍্যান্ডম এপিআই থেকে একটি র‍্যান্ডম পাসওয়ার্ড তৈরি করতে [জেনারেট] এ ক্লিক করুন।",
   "add_repo_modal_button_generate": "[জেনারেট করুন]",
   "add_repo_modal_field_env_vars": "এনভ ভারস",
-  "add_repo_modal_field_env_vars_tooltip": "পরিবেশ ভেরিয়েবল যা restic-এ পাস করা হয় (যেমন S3 বা B2 শংসাপত্র প্রদান করার জন্য)। প্যারেন্ট-প্রসেস env ভেরিয়েবলের রেফারেন্সগুলি FOO=$ {MY_FOO_VAR} হিসাবে সমর্থিত।",
+  "add_repo_modal_field_env_vars_tooltip": "পরিবেশ ভেরিয়েবল যা restic-এ পাস করা হয় (যেমন S3 বা B2 শংসাপত্র প্রদান করার জন্য)। প্যারেন্ট-প্রসেস env ভেরিয়েবলের রেফারেন্সগুলি FOO=$\\{MY_FOO_VAR\\} হিসাবে সমর্থিত।",
   "add_repo_modal_error_env_format": "পরিবেশ পরিবর্তনশীল অবশ্যই KEY=VALUE ফর্ম্যাটে থাকতে হবে",
   "add_repo_modal_button_set_env": "পরিবেশ পরিবর্তনশীল সেট করুন",
   "add_repo_modal_field_flags": "পতাকা",

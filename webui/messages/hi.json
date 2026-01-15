@@ -191,7 +191,7 @@
   "add_repo_modal_field_password_tooltip_generate": "अपने ब्राउज़र के क्रिप्टो रैंडम एपीआई से एक रैंडम पासवर्ड प्राप्त करने के लिए [जनरेट] पर क्लिक करें।",
   "add_repo_modal_button_generate": "[उत्पन्न]",
   "add_repo_modal_field_env_vars": "पर्यावरण चर",
-  "add_repo_modal_field_env_vars_tooltip": "पर्यावरण चर जो restic को पास किए जाते हैं (उदाहरण के लिए S3 या B2 क्रेडेंशियल प्रदान करने के लिए)। पैरेंट-प्रोसेस पर्यावरण चर के संदर्भ FOO=$ {MY_FOO_VAR} के रूप में समर्थित हैं।",
+  "add_repo_modal_field_env_vars_tooltip": "पर्यावरण चर जो restic को पास किए जाते हैं (उदाहरण के लिए S3 या B2 क्रेडेंशियल प्रदान करने के लिए)। पैरेंट-प्रोसेस पर्यावरण चर के संदर्भ FOO=$\\{MY_FOO_VAR\\} के रूप में समर्थित हैं।",
   "add_repo_modal_error_env_format": "पर्यावरण चर का प्रारूप KEY=VALUE होना चाहिए।",
   "add_repo_modal_button_set_env": "पर्यावरण चर सेट करें",
   "add_repo_modal_field_flags": "झंडे",

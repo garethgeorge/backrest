@@ -191,7 +191,7 @@
   "add_repo_modal_field_password_tooltip_generate": "Klicken Sie auf [Generieren], um ein zufälliges Passwort mithilfe der Krypto-Zufalls-API Ihres Browsers zu erstellen.",
   "add_repo_modal_button_generate": "[Erzeugen]",
   "add_repo_modal_field_env_vars": "Umgebungsvariablen",
-  "add_repo_modal_field_env_vars_tooltip": "Umgebungsvariablen, die an restic übergeben werden (z. B. zur Bereitstellung von S3- oder B2-Anmeldeinformationen). Verweise auf Umgebungsvariablen des übergeordneten Prozesses werden als FOO=$ {MY_FOO_VAR} unterstützt.",
+  "add_repo_modal_field_env_vars_tooltip": "Umgebungsvariablen, die an restic übergeben werden (z. B. zur Bereitstellung von S3- oder B2-Anmeldeinformationen). Verweise auf Umgebungsvariablen des übergeordneten Prozesses werden als FOO=$\\{MY_FOO_VAR\\} unterstützt.",
   "add_repo_modal_error_env_format": "Umgebungsvariablen müssen das Format SCHLÜSSEL=WERT haben.",
   "add_repo_modal_button_set_env": "Umgebungsvariable setzen",
   "add_repo_modal_field_flags": "Flaggen",

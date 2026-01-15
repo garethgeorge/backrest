@@ -191,7 +191,7 @@
   "add_repo_modal_field_password_tooltip_generate": "انقر على [إنشاء] لإنشاء كلمة مرور عشوائية من واجهة برمجة تطبيقات التشفير العشوائية الخاصة بمتصفحك.",
   "add_repo_modal_button_generate": "[يولد]",
   "add_repo_modal_field_env_vars": "متغيرات البيئة",
-  "add_repo_modal_field_env_vars_tooltip": "المتغيرات البيئية التي يتم تمريرها إلى restic (على سبيل المثال، لتوفير بيانات اعتماد S3 أو B2). يتم دعم المراجع إلى متغيرات بيئة العملية الأصلية على النحو التالي: FOO=$ {MY_FOO_VAR} .",
+  "add_repo_modal_field_env_vars_tooltip": "المتغيرات البيئية التي يتم تمريرها إلى restic (على سبيل المثال، لتوفير بيانات اعتماد S3 أو B2). يتم دعم المراجع إلى متغيرات بيئة العملية الأصلية على النحو التالي: FOO=$\\{MY_FOO_VAR\\} .",
   "add_repo_modal_error_env_format": "يجب أن يكون متغير البيئة بالصيغة KEY=VALUE",
   "add_repo_modal_button_set_env": "ضبط متغيرات البيئة",
   "add_repo_modal_field_flags": "الأعلام",

@@ -191,7 +191,7 @@
   "add_repo_modal_field_password_tooltip_generate": "点击【生成】按钮，即可从浏览器的加密随机 API 生成一个随机密码。",
   "add_repo_modal_button_generate": "[产生]",
   "add_repo_modal_field_env_vars": "环境变量",
-  "add_repo_modal_field_env_vars_tooltip": "传递给 restic 的环境变量（例如，用于提供 S3 或 B2 凭据）。支持引用父进程环境变量，格式为 FOO=$ {MY_FOO_VAR} 。",
+  "add_repo_modal_field_env_vars_tooltip": "传递给 restic 的环境变量（例如，用于提供 S3 或 B2 凭据）。支持引用父进程环境变量，格式为 FOO=$\\{MY_FOO_VAR\\} 。",
   "add_repo_modal_error_env_format": "环境变量必须采用键=值格式。",
   "add_repo_modal_button_set_env": "设置环境变量",
   "add_repo_modal_field_flags": "旗帜",

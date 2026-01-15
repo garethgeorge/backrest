@@ -191,7 +191,7 @@
   "add_repo_modal_field_password_tooltip_generate": "Fai clic su [Genera] per generare una password casuale dall'API crittografica casuale del tuo browser.",
   "add_repo_modal_button_generate": "[Generare]",
   "add_repo_modal_field_env_vars": "Env Vars",
-  "add_repo_modal_field_env_vars_tooltip": "Variabili di ambiente che vengono passate a restic (ad esempio per fornire credenziali S3 o B2). I riferimenti alle variabili di ambiente del processo padre sono supportati come FOO=$ {MY_FOO_VAR} .",
+  "add_repo_modal_field_env_vars_tooltip": "Variabili di ambiente che vengono passate a restic (ad esempio per fornire credenziali S3 o B2). I riferimenti alle variabili di ambiente del processo padre sono supportati come FOO=$\\{MY_FOO_VAR\\} .",
   "add_repo_modal_error_env_format": "La variabile d'ambiente deve essere nel formato CHIAVE=VALORE",
   "add_repo_modal_button_set_env": "Imposta variabile d'ambiente",
   "add_repo_modal_field_flags": "Bandiere",

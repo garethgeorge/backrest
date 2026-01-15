@@ -3,10 +3,8 @@ import { toaster } from "../ui/toaster";
 
 export const alerts = {
   error: (content: any, duration = 5000) => {
-    const title =
-      typeof content === "string" ? content : formatErrorAlert(content);
     toaster.create({
-      title: title,
+      title: content,
       type: "error",
       duration,
     });
