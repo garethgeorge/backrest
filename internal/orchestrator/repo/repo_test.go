@@ -412,9 +412,22 @@ func TestRestoreAmbiguity(t *testing.T) {
 		t.Fatalf("backup error: %v", err)
 	}
 
+	// Restore "target"
 	restoreDir := t.TempDir()
 
-	restorePath := filepath.Join(sourceDir, "target")
+	// We pass the full path as it appears in the snapshot.
+	// On Windows, absolute paths like C:\Users are stored as /C/Users.
+	restorePath := sourceDir
+	if runtime.GOOS == "windows" {
+		vol := filepath.VolumeName(restorePath)
+		if vol != "" {
+			restorePath = "/" + strings.TrimSuffix(vol, ":") + filepath.ToSlash(restorePath[len(vol):])
+		} else {
+			restorePath = filepath.ToSlash(restorePath)
+		}
+	}
+	restorePath = path.Join(restorePath, "target")
+
 	restoreSummary, err := orchestrator.Restore(context.Background(), summary.SnapshotId, restorePath, restoreDir, nil)
 	if err != nil {
 		t.Fatalf("restore error: %v", err)
@@ -422,6 +435,7 @@ func TestRestoreAmbiguity(t *testing.T) {
 
 	t.Logf("Restore summary: %+v", restoreSummary)
 
+	// Since we restored with a subtree root, the files are relative to that root.
 	nestedFile := filepath.Join(restoreDir, "nested", "target", "target.txt")
 	if _, err := os.Stat(nestedFile); err == nil {
 		t.Errorf("FAIL: Found unexpected file from nested duplicate folder: %s", nestedFile)
@@ -429,6 +443,7 @@ func TestRestoreAmbiguity(t *testing.T) {
 		t.Errorf("Error checking for nested file: %v", err)
 	}
 
+	// Verify the correct one exists
 	expectedFile := filepath.Join(restoreDir, "target", "target.txt")
 	if _, err := os.Stat(expectedFile); err != nil {
 		t.Errorf("FAIL: Expected main file missing: %s", expectedFile)
