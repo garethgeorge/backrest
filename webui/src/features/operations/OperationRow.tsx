@@ -253,7 +253,6 @@ export const OperationRow = ({
           <Table.Root size="sm" variant="outline">
             <Table.Header>
               <Table.Row>
-                <Table.ColumnHeader>{m.op_row_error_path()}</Table.ColumnHeader>
                 <Table.ColumnHeader>
                   {m.op_row_error_message()}
                 </Table.ColumnHeader>
@@ -262,9 +261,6 @@ export const OperationRow = ({
             <Table.Body>
               {backupOp.errors.map((e, idx) => (
                 <Table.Row key={idx}>
-                  <Table.Cell fontFamily="mono" verticalAlign="top">
-                    {e.item}
-                  </Table.Cell>
                   <Table.Cell verticalAlign="top">
                     {e.message || e.item}
                   </Table.Cell>
