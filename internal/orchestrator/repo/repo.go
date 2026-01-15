@@ -320,7 +320,7 @@ func (r *RepoOrchestrator) Restore(ctx context.Context, snapshotId string, snaps
 			snapshotId = snapshotId + ":" + dir
 		}
 		if base != "" {
-			opts = append(opts, restic.WithFlags("--include", escapeGlob(base)))
+			opts = append(opts, restic.WithFlags("--include", "/"+escapeGlob(base)))
 		}
 	}
 

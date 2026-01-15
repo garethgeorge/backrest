@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -368,4 +369,83 @@ func initRepoHelper(t *testing.T, config *v1.Config, repo *v1.Repo) *RepoOrchest
 	}
 
 	return orchestrator
+}
+
+func TestRestoreAmbiguity(t *testing.T) {
+	t.Parallel()
+	repoDir := t.TempDir()
+	sourceDir := t.TempDir()
+
+	targetDir := filepath.Join(sourceDir, "target")
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(targetDir, "target.txt"), []byte("content1"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	nestedTargetDir := filepath.Join(sourceDir, "nested", "target")
+	if err := os.MkdirAll(nestedTargetDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(nestedTargetDir, "target.txt"), []byte("content2"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	r := &v1.Repo{
+		Id:       "test-restore-ambiguity",
+		Uri:      repoDir,
+		Password: "test",
+		Flags:    []string{"--no-cache"},
+	}
+
+	plan := &v1.Plan{
+		Id:    "test-plan",
+		Repo:  "test-restore-ambiguity",
+		Paths: []string{sourceDir},
+	}
+
+	orchestrator := initRepoHelper(t, configForTest, r)
+
+	summary, err := orchestrator.Backup(context.Background(), plan, nil)
+	if err != nil {
+		t.Fatalf("backup error: %v", err)
+	}
+
+	// Restore "target"
+	restoreDir := t.TempDir()
+
+	// We pass the full path as it appears in the snapshot.
+	// On Windows, absolute paths like C:\Users are stored as /C/Users.
+	restorePath := sourceDir
+	if runtime.GOOS == "windows" {
+		vol := filepath.VolumeName(restorePath)
+		if vol != "" {
+			restorePath = "/" + strings.TrimSuffix(vol, ":") + filepath.ToSlash(restorePath[len(vol):])
+		} else {
+			restorePath = filepath.ToSlash(restorePath)
+		}
+	}
+	restorePath = path.Join(restorePath, "target")
+
+	restoreSummary, err := orchestrator.Restore(context.Background(), summary.SnapshotId, restorePath, restoreDir, nil)
+	if err != nil {
+		t.Fatalf("restore error: %v", err)
+	}
+
+	t.Logf("Restore summary: %+v", restoreSummary)
+
+	// Since we restored with a subtree root, the files are relative to that root.
+	nestedFile := filepath.Join(restoreDir, "nested", "target", "target.txt")
+	if _, err := os.Stat(nestedFile); err == nil {
+		t.Errorf("FAIL: Found unexpected file from nested duplicate folder: %s", nestedFile)
+	} else if !os.IsNotExist(err) {
+		t.Errorf("Error checking for nested file: %v", err)
+	}
+
+	// Verify the correct one exists
+	expectedFile := filepath.Join(restoreDir, "target", "target.txt")
+	if _, err := os.Stat(expectedFile); err != nil {
+		t.Errorf("FAIL: Expected main file missing: %s", expectedFile)
+	}
 }
