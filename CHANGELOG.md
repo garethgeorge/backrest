@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/garethgeorge/backrest/compare/v1.11.0...v1.11.1) (2026-01-16)
+
+
+### Bug Fixes
+
+* Revert "fix: use .dotlk build tag for github.com/ncruces/go-sqlite3 to expand platform compatibility" ([85b52f0](https://github.com/garethgeorge/backrest/commit/85b52f02b973d415ff20a2727ef30b64fb957995))
+
 ## [1.11.0](https://github.com/garethgeorge/backrest/compare/v1.10.1...v1.11.0) (2026-01-16)
 
 
