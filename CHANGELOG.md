@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.11.0](https://github.com/garethgeorge/backrest/compare/v1.10.1...v1.11.0) (2026-01-16)
+
+
+### Features
+
+* dual publish docker images to ghcr.io (github container registry) and dockerhub ([1b4b4b1](https://github.com/garethgeorge/backrest/commit/1b4b4b1e9aec9273f66f09d6df20c0988d3c3af8))
+* localization support ([#1029](https://github.com/garethgeorge/backrest/issues/1029)) ([4c95556](https://github.com/garethgeorge/backrest/commit/4c955565737191d3879a40cf2abd0933482ed43c))
+* overhaul backrest UI using chakra  ([#1034](https://github.com/garethgeorge/backrest/issues/1034)) ([cedb7f8](https://github.com/garethgeorge/backrest/commit/cedb7f85f5791629d3bfa2ab67187d811126d79e))
+
+
+### Bug Fixes
+
+* allow browsing snapshots while repo is locked ([3850b8f](https://github.com/garethgeorge/backrest/commit/3850b8fed73ebdd9a63474939d128368cfb88b03))
+* can't browse snapshots of repos removed and readded under a different name ([259af2e](https://github.com/garethgeorge/backrest/commit/259af2e4290a32459a3e8dd94b6dc9cd7c2e0882))
+* CONDITION_ANY_ERROR does not trigger notification when backup target unreachable ([4c8e507](https://github.com/garethgeorge/backrest/commit/4c8e5076657fc1c9259fb46c585ebbfb2b9d22b0))
+* don't open a visible shell when running hooks on windows ([39e0b23](https://github.com/garethgeorge/backrest/commit/39e0b23f0d3ae8bb359c70eb14d55b16f06df357))
+* FormatSizeBytes reports incorrect sizes with fractional-gigabytes. ([#1006](https://github.com/garethgeorge/backrest/issues/1006)) ([3d15793](https://github.com/garethgeorge/backrest/commit/3d15793b693ccbdb2f1f5378e5e8ad7fec3604cf))
+* fr.json - French translation ([#1055](https://github.com/garethgeorge/backrest/issues/1055)) ([8b99ec1](https://github.com/garethgeorge/backrest/commit/8b99ec116873595ef924519d9bf489561a692a82))
+* install.sh should start the systemd / openrc services after installation ([#975](https://github.com/garethgeorge/backrest/issues/975)) ([039274e](https://github.com/garethgeorge/backrest/commit/039274e1f2c8928626de4e308d353914e2b07e2e))
+* it.json - Italian translation improvements ([#1031](https://github.com/garethgeorge/backrest/issues/1031)) ([4053b88](https://github.com/garethgeorge/backrest/commit/4053b88e7522684a75f4ff69870b156d0255d08f))
+* loading progress indicators, fixed login layout ([90e1401](https://github.com/garethgeorge/backrest/commit/90e1401cbdb28e3cb463df848d2cf475bdbc8fd9))
+* more UI refinements ([9bcf8fb](https://github.com/garethgeorge/backrest/commit/9bcf8fb5676a3663ac42940b3d64109df12d4c91))
+* multihost sync refinements ([#830](https://github.com/garethgeorge/backrest/issues/830)) ([93becf3](https://github.com/garethgeorge/backrest/commit/93becf3e328be1ae132a3c386c204c97648fa6cd))
+* prevent renaming users after creation, remove and readd instead ([5f14f3c](https://github.com/garethgeorge/backrest/commit/5f14f3c3f5579fec83be04f10ae500d5480b341c))
+* restore may include ambiguous files ([#1057](https://github.com/garethgeorge/backrest/issues/1057)) ([ecef46e](https://github.com/garethgeorge/backrest/commit/ecef46e08c655c83590f59278475af313332a6e7))
+* single column layout for item errors in backup details ([003010c](https://github.com/garethgeorge/backrest/commit/003010c81b3c5bb3ba81502fcb718d25df39c764))
+* slightly improve schedule layout and minor ui bug fixes ([64abe7c](https://github.com/garethgeorge/backrest/commit/64abe7c8b13a36641c8dce1877d0c69b442f7b17))
+* snapshot browser can download paths conaining spaces and special chars ([5585c20](https://github.com/garethgeorge/backrest/commit/5585c207c957cd3a821c0dc069032c77e136579e))
+* sqlitestore creates backups periodically and prior to running database migrations or schema migrations ([5c93d99](https://github.com/garethgeorge/backrest/commit/5c93d99a404fa028a7a5a37ec39b19d13d34b736))
+* use .dotlk build tag for github.com/ncruces/go-sqlite3 to expand platform compatibility ([3d4cc38](https://github.com/garethgeorge/backrest/commit/3d4cc3806c6145650d1dd08e1343ae7ab8b62fca))
+* zh.json - Simplified Chinese translation ([#1032](https://github.com/garethgeorge/backrest/issues/1032)) ([f7d4d5c](https://github.com/garethgeorge/backrest/commit/f7d4d5c3ed4ad3a5be602d42f57cc19295797440))
+
 ## [1.10.1](https://github.com/garethgeorge/backrest/compare/v1.10.0...v1.10.1) (2025-10-31)
 
 
