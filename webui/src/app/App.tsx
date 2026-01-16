@@ -67,6 +67,7 @@ import {
   useNavigate,
   useParams,
   Link as RouterLink,
+  useLocation,
 } from "react-router-dom";
 import { MainContentAreaTemplate } from "../components/layout/MainContentArea";
 import { create } from "@bufbuild/protobuf";
@@ -208,11 +209,14 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
   const peerStates = useSyncStates();
   const showModal = useShowModal();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleNav = (path: string) => {
     navigate(path);
     onClose?.();
   };
+
+  const isActive = (path: string) => location.pathname === path;
 
   // Replicate getSidenavItems functionality with Chakra components
   if (!config) return null;
@@ -244,6 +248,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
           onClick={() => handleNav("/")}
           px={4}
           py={2}
+          bg={isActive("/") ? "bg.muted" : undefined}
           _hover={{ bg: "bg.muted" }}
           userSelect="none"
         >
@@ -285,6 +290,8 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                 planId: plan.id,
                 repoGuid: reposById[plan.repo]?.guid,
               });
+              const planPath = `/plan/${plan.id}`;
+              const active = isActive(planPath);
               return (
                 <Flex
                   key={plan.id}
@@ -292,6 +299,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                   pl={9}
                   pr={2}
                   py={1}
+                  bg={active ? "bg.emphasized" : undefined}
                   _hover={{ bg: "bg.muted" }}
                   className="group"
                 >
@@ -301,10 +309,12 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                   <Box
                     flex="1"
                     cursor="pointer"
-                    onClick={() => handleNav(`/plan/${plan.id}`)}
+                    onClick={() => handleNav(planPath)}
                     userSelect="none"
                   >
-                    <Text truncate>{plan.id}</Text>
+                    <Text wordBreak="break-word">
+                      {plan.id}
+                    </Text>
                   </Box>
                   <Box
                     opacity={0}
@@ -358,6 +368,8 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
               <FiPlus /> {m.app_menu_add_repo()}
             </Button>
             {configRepos.map((repo) => {
+              const repoPath = `/repo/${repo.id}`;
+              const active = isActive(repoPath);
               return (
                 <Flex
                   key={repo.id}
@@ -365,6 +377,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                   pl={9}
                   pr={2}
                   py={1}
+                  bg={active ? "bg.emphasized" : undefined}
                   _hover={{ bg: "bg.muted" }}
                   className="group"
                 >
@@ -379,10 +392,12 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                   <Box
                     flex="1"
                     cursor="pointer"
-                    onClick={() => handleNav(`/repo/${repo.id}`)}
+                    onClick={() => handleNav(repoPath)}
                     userSelect="none"
                   >
-                    <Text truncate>{repo.id}</Text>
+                    <Text wordBreak="break-word">
+                      {repo.id}
+                    </Text>
                   </Box>
                   <Box
                     opacity={0}
@@ -438,34 +453,35 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                     </Flex>
 
                     {/* Nested Repos for Peer */}
-                    {peerState.knownRepos.map((repo: RepoMetadata) => (
-                      <Flex
-                        key={repo.guid}
-                        align="center"
-                        pl={12}
-                        pr={2}
-                        py={1}
-                        _hover={{ bg: "bg.muted" }}
-                        cursor="pointer"
-                        onClick={() =>
-                          navigate(
-                            `/peer/${peerState.peerInstanceId}/repo/${repo.id}`,
-                          )
-                        }
-                      >
-                        <Box flexShrink={0} mr={2}>
-                          <IconForResource
-                            selector={create(OpSelectorSchema, {
-                              originalInstanceKeyid: peerState.peerKeyid,
-                              repoGuid: repo.guid,
-                            })}
-                          />
-                        </Box>
-                        <Text fontSize="sm" truncate>
-                          {repo.id}
-                        </Text>
-                      </Flex>
-                    ))}
+                    {peerState.knownRepos.map((repo: RepoMetadata) => {
+                      const repoPath = `/peer/${peerState.peerInstanceId}/repo/${repo.id}`;
+                      const active = isActive(repoPath);
+                      return (
+                        <Flex
+                          key={repo.guid}
+                          align="center"
+                          pl={12}
+                          pr={2}
+                          py={1}
+                          bg={active ? "bg.emphasized" : undefined}
+                          _hover={{ bg: "bg.muted" }}
+                          cursor="pointer"
+                          onClick={() => handleNav(repoPath)}
+                        >
+                          <Box flexShrink={0} mr={2}>
+                            <IconForResource
+                              selector={create(OpSelectorSchema, {
+                                originalInstanceKeyid: peerState.peerKeyid,
+                                repoGuid: repo.guid,
+                              })}
+                            />
+                          </Box>
+                          <Text fontSize="sm" wordBreak="break-word">
+                            {repo.id}
+                          </Text>
+                        </Flex>
+                      );
+                    })}
                   </Box>
                 );
               })}
