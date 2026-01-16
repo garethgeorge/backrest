@@ -712,12 +712,27 @@ const Alert = ({ status, children }: any) => (
   </Box>
 );
 
+const languageNames: Record<string, string> = {
+  en: "English",
+  de: "Deutsch",
+  zh: "中文",
+  hi: "हिन्दी",
+  es: "Español",
+  ar: "العربية",
+  fr: "Français",
+  bn: "বাংলা",
+  pt: "Português",
+  ru: "Русский",
+  id: "Bahasa Indonesia",
+  it: "Italiano",
+};
+
 const UserSettingsForm = () => {
     const { preferences, updatePreference, availableLanguages } = useUserPreferences();
 
     const languageOptions = createListCollection({
         items: availableLanguages.map((tag: string) => ({
-            label: tag,
+            label: languageNames[tag] || tag,
             value: tag,
         })),
     });
