@@ -22,13 +22,6 @@ By building on restic, Backrest leverages its mature, fast, reliable, and secure
 
 Built with Go, Backrest is distributed as a standalone, lightweight binary with restic as its sole dependency. It can securely create new repositories or manage existing ones. Once storage is configured, the WebUI handles most operations, while still allowing direct access to the powerful [restic CLI](https://restic.readthedocs.io/en/latest/manual_rest.html) for advanced operations when needed.
 
-## Preview
-
-<p align="center">
-   <img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-19-50.png" width="60%" />
-   <img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-30-14.png" width="60%" />
-</p>
-
 ## Key Features
 
 - **Web Interface**: Access locally or remotely (perfect for NAS deployments)
@@ -48,23 +41,18 @@ Built with Go, Backrest is distributed as a standalone, lightweight binary with 
   - Compatible with rclone remotes
   - Supports all restic storage backends (S3, B2, Azure, GCS, local, SFTP, and [all rclone remotes](https://rclone.org/))
 
+## Preview
+
+<p align="center">
+   <img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-19-50.png" width="60%" />
+   <img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-30-14.png" width="60%" />
+</p>
+
 ---
-
-# User Guide
-
-[See the Backrest docs](https://garethgeorge.github.io/backrest/introduction/getting-started).
 
 # Installation
 
 Backrest is packaged as a single executable. It can be run directly on Linux, macOS, and Windows. [restic](https://github.com/restic/restic) will be downloaded and installed on first run.
-
-### Quick Start Options
-
-1. **Pre-built Release**: Download from the [releases page](https://github.com/garethgeorge/backrest/releases)
-2. **Docker**: Use `garethgeorge/backrest:latest` ([Docker Hub](https://hub.docker.com/r/garethgeorge/backrest))
-   - Includes rclone and common Unix utilities
-   - For minimal image, use `garethgeorge/backrest:scratch`
-3. **Build from Source**: See [Building](#building) section below
 
 Once installed, access Backrest at `http://localhost:9898` (default port). First-time setup will prompt for username and password creation.
 
@@ -73,10 +61,17 @@ Once installed, access Backrest at `http://localhost:9898` (default port). First
 > 
 > Backrest will use your system's installed version of restic if it's available and compatible. If not, Backrest will download and install a suitable version in its data directory, keeping it updated. To use a specific restic binary, set the `BACKREST_RESTIC_COMMAND` environment variable to the desired path.
 
+### Quick Start Options
+
+1. **Pre-built Release**: Download from the [releases page](https://github.com/garethgeorge/backrest/releases)
+2. **Docker**: Use `ghcr.io/garethgeorge/backrest:latest` (also available on [Docker Hub](https://hub.docker.com/r/garethgeorge/backrest))
+   - Includes rclone and common Unix utilities
+   - For minimal image, use `ghcr.io/garethgeorge/backrest:scratch`
+3. **Build from Source**: See [Development](#development) section below
 
 ### Running with Docker Compose
 
-Docker image: https://hub.docker.com/r/garethgeorge/backrest
+Docker image: `ghcr.io/garethgeorge/backrest`
 
 Example compose file:
 
@@ -84,7 +79,7 @@ Example compose file:
 version: "3.8"
 services:
   backrest:
-    image: garethgeorge/backrest:latest
+    image: ghcr.io/garethgeorge/backrest:latest
     container_name: backrest
     hostname: backrest
     volumes:
@@ -106,53 +101,50 @@ services:
     restart: unless-stopped
 ```
 
-## Running on Linux
+### Linux
 
-### Running on Linux
+#### Option A: Install Script (Recommended)
 
-1. **Download the Release**
-   - Get the latest release from the [releases page](https://github.com/garethgeorge/backrest/releases)
+```sh
+mkdir backrest && tar -xzvf backrest_Linux_x86_64.tar.gz -C backrest
+cd backrest && ./install.sh
+```
 
-2. **Installation Options**
+This script will:
+- Move the Backrest binary to `/usr/local/bin`
+- Create and start a systemd service running as the current user (use `sudo ./install.sh` to install as root)
 
-   a) Using the Install Script (Recommended)
-   ```sh
-   mkdir backrest && tar -xzvf backrest_Linux_x86_64.tar.gz -C backrest
-   cd backrest && ./install.sh
-   ```
-   This script will:
-   - Move the Backrest binary to `/usr/local/bin`
-   - Create and start a systemd service running as the current user (use `sudo ./install.sh` to install as root)
+#### Option B: Manual Installation with systemd
 
-   b) Manual Installation with systemd
-   ```sh
-   sudo mv backrest /usr/local/bin/backrest
-   sudo tee /etc/systemd/system/backrest.service > /dev/null <<EOT
-   [Unit]
-   Description=Backrest
-   After=network.target
+```sh
+sudo mv backrest /usr/local/bin/backrest
+sudo tee /etc/systemd/system/backrest.service > /dev/null <<EOT
+[Unit]
+Description=Backrest
+After=network.target
 
-   [Service]
-   Type=simple
-   User=$(whoami)
-   ExecStart=/usr/local/bin/backrest
-   Environment="BACKREST_PORT=127.0.0.1:9898"
+[Service]
+Type=simple
+User=$(whoami)
+ExecStart=/usr/local/bin/backrest
+Environment="BACKREST_PORT=127.0.0.1:9898"
 
-   [Install]
-   WantedBy=multi-user.target
-   EOT
-   sudo systemctl enable --now backrest
-   ```
+[Install]
+WantedBy=multi-user.target
+EOT
+sudo systemctl enable --now backrest
+```
 
-   c) Using cron (Basic)
-   ```sh
-   sudo mv backrest /usr/local/bin/backrest
-   (crontab -l 2>/dev/null; echo "@reboot /usr/local/bin/backrest") | crontab -
-   ```
+#### Option C: Using cron (Basic)
 
-3. **Verify Installation**
-   - Access Backrest at `http://localhost:9898`
-   - For the systemd service: `sudo systemctl status backrest`
+```sh
+sudo mv backrest /usr/local/bin/backrest
+(crontab -l 2>/dev/null; echo "@reboot /usr/local/bin/backrest") | crontab -
+```
+
+**Verify Installation**
+- Access Backrest at `http://localhost:9898`
+- For the systemd service: `sudo systemctl status backrest`
 
 > [!NOTE]
 > Adjust the `User` in the systemd service file if needed. The install script and manual systemd instructions use your current user by default.
@@ -164,7 +156,7 @@ services:
 > ```
 > Using `0.0.0.0` allows connections from any interface.
 
-### Arch Linux
+#### Arch Linux
 
 > [!Note]
 > [Backrest on AUR](https://aur.archlinux.org/packages/backrest) is not maintained by the Backrest official and has made minor adjustments to the recommended services. Please refer to [here](https://aur.archlinux.org/cgit/aur.git/tree/backrest@.service?h=backrest) for details. In [backrest@.service](https://aur.archlinux.org/cgit/aur.git/tree/backrest@.service?h=backrest), use `restic` from the Arch Linux official repository by setting `BACKREST_RESTIC_COMMAND`. And for information on enable/starting/stopping services, please refer to [Systemd#Using_units](https://wiki.archlinux.org/title/Systemd#Using_units).
@@ -177,9 +169,9 @@ paru -Sy backrest  # or: yay -Sy backrest
 sudo systemctl enable --now backrest@$USER.service
 ```
 
-## Running on macOS
+### macOS
 
-### Using Homebrew (Recommended)
+#### Homebrew (Recommended)
 
 Backrest is available via a [Homebrew tap](https://github.com/garethgeorge/homebrew-backrest-tap):
 
@@ -194,7 +186,7 @@ This method uses [Brew Services](https://github.com/Homebrew/homebrew-services) 
 > [!NOTE]
 > You may need to grant Full Disk Access to Backrest. Go to `System Preferences > Security & Privacy > Privacy > Full Disk Access` and add `/usr/local/bin/backrest`.
 
-### Manual Installation
+#### Manual Installation
 
 1. Download the latest Darwin release from the [releases page](https://github.com/garethgeorge/backrest/releases).
 2. Extract and install:
@@ -212,14 +204,14 @@ The install script will:
 > [!TIP]
 > Review the script before running to ensure you're comfortable with its operations.
 
-## Running on Windows
-
-#### Windows Installer
+### Windows
 
 Download the Windows installer for your architecture from the [releases page](https://github.com/garethgeorge/backrest/releases). The installer, named Backrest-setup-[arch].exe, will place Backrest and a GUI tray application in `%localappdata%\Programs\Backrest\`. The tray application, set to start on login, monitors Backrest.
 
 > [!TIP]
 > To override the default port before installation, set a user environment variable named BACKREST_PORT. On Windows 10+, navigate to Settings > About > Advanced system settings > Environment Variables. Under "User variables", create a new variable `BACKREST_PORT` with the value "127.0.0.1:port" (e.g., "127.0.0.1:8080" for port 8080). If changing post-installation, re-run the installer to update shortcuts with the new port.
+
+---
 
 # Configuration
 
@@ -243,11 +235,21 @@ Download the Windows installer for your architecture from the [releases page](ht
 | `BACKREST_RESTIC_COMMAND` | Path to restic binary       | Defaults to a Backrest managed version of restic in `C:\Program Files\restic\restic-x.x.x` |
 | `XDG_CACHE_HOME`          | Path to the cache directory |                                                                                            |
 
-# Contributing
+---
+
+# User Guide
+
+[See the Backrest docs](https://garethgeorge.github.io/backrest/introduction/getting-started).
+
+---
+
+# Development
+
+## Contributing
 
 Contributions are welcome! See the [issues](https://github.com/garethgeorge/backrest/issues) or feel free to open a new issue to discuss a project. Beyond the core codebase, contributions to [documentation](https://garethgeorge.github.io/backrest/introduction/getting-started), [cookbooks](https://garethgeorge.github.io/backrest/cookbooks/command-hook-examples), and testing are always welcome.
 
-## Build Depedencies
+## Build Dependencies
 
 - [Node.js](https://nodejs.org/en) for UI development
 - [Go](https://go.dev/) 1.21 or greater for server development
