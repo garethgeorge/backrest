@@ -5,6 +5,7 @@ import {
   OperationRestore,
   OperationStatus,
 } from "../../../gen/ts/v1/operations_pb";
+import { HeavyAccordion } from "../../components/common/HeavyAccordion";
 import {
   Button,
   GridItem,
@@ -28,12 +29,7 @@ import { FiFileText, FiMoreVertical, FiTrash2, FiX } from "react-icons/fi";
 import { ProgressCircle } from "../../components/ui/progress-circle";
 import { ProgressBar, ProgressRoot } from "../../components/ui/progress";
 import { toaster } from "../../components/ui/toaster";
-import {
-  AccordionItem,
-  AccordionItemTrigger,
-  AccordionItemContent,
-  AccordionRoot,
-} from "../../components/ui/accordion";
+
 import {
   BackupProgressEntry,
   ResticSnapshot,
@@ -110,6 +106,7 @@ export const OperationRow = ({
   const showModal = useShowModal();
   const displayType = getTypeForDisplay(operation);
   const setRefresh = useState(0)[1];
+
 
   useEffect(() => {
     if (operation.status === OperationStatus.STATUS_INPROGRESS) {
@@ -282,6 +279,7 @@ export const OperationRow = ({
     bodyItems.push({
       key: "browser",
       label: m.op_row_snapshot_browser(),
+      
       children: (
         <SnapshotBrowser
           snapshotId={snapshotOp.snapshot!.id}
@@ -385,6 +383,8 @@ export const OperationRow = ({
     }
   }
 
+
+
   return (
     <Box
       className="backrest visible-on-hover"
@@ -436,25 +436,10 @@ export const OperationRow = ({
 
         {bodyItems.length > 0 && (
           <Box mt={2} pl={2}>
-            <AccordionRoot
-              collapsible
-              multiple
-              defaultValue={expandedBodyItems}
-              variant="plain"
-            >
-              {bodyItems.map((item) => (
-                <AccordionItem key={item.key} value={item.key} border="none">
-                  <AccordionItemTrigger py={2}>
-                    <Text fontSize="sm" fontWeight="medium">
-                      {item.label}
-                    </Text>
-                  </AccordionItemTrigger>
-                  <AccordionItemContent pb={4}>
-                    {item.children}
-                  </AccordionItemContent>
-                </AccordionItem>
-              ))}
-            </AccordionRoot>
+            <HeavyAccordion
+              items={bodyItems}
+              defaultExpanded={expandedBodyItems}
+            />
           </Box>
         )}
       </Box>
