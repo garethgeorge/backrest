@@ -466,9 +466,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                   tooltip={
                     <Stack gap={2}>
                       <CText>
-                        {m.add_repo_modal_field_env_vars_tooltip({
-                          MY_FOO_VAR: "$\\{MY_FOO_VAR\\}",
-                        })}
+                        {m.add_repo_modal_field_env_vars_tooltip()}
                       </CText>
                       <EnvVarTooltip uri={getField(["uri"])} />
                     </Stack>
