@@ -364,5 +364,7 @@
   "add_repo_modal_field_auto_unlock_tooltip": "O desbloqueio automático removerá os arquivos de bloqueio no início da maioria das operações. Isso pode ser inseguro se o repositório for compartilhado por vários dispositivos cliente; caso contrário, é recomendado para configurações com um único cliente.",
   "op_row_cancel_op": "Cancelar operação",
   "op_row_confirm_cancel": "Confirmar Cancelar?",
-  "app_menu_dashboard": "Painel"
+  "app_menu_dashboard": "Painel",
+  "settings_section_user_settings": "Configurações do usuário",
+  "settings_field_language": "Idioma de exibição"
 }

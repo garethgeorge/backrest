@@ -1,6 +1,7 @@
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { ThemeProvider } from "next-themes";
 import React, { useContext, useState } from "react";
+import { useUserPreferences } from "../lib/userPreferences";
 import { Config } from "../../gen/ts/v1/config_pb";
 
 // Config Context Logic
@@ -13,6 +14,7 @@ export const useConfig = (): ConfigCtx => {
 };
 
 export function AppProvider(props: { children: React.ReactNode }) {
+  useUserPreferences(); // Ensure locale is synced on startup
   const [config, setConfig] = useState<Config | null>(null);
 
   return (

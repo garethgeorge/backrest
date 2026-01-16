@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
       paraglideVitePlugin({
         project: './project.inlang',
         outdir: './src/paraglide',
-        strategy: ['preferredLanguage', 'baseLocale'],
+        strategy: ['localStorage', 'preferredLanguage', 'baseLocale'],
       }),
       react(),
       tsconfigPaths(),

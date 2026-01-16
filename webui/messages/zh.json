@@ -367,5 +367,7 @@
   "op_row_delete": "[删除]",
   "op_row_confirm_delete": "[确认删除？]",
   "app_menu_dashboard": "仪表板",
-  "add_plan_modal_field_paths_tooltip": "请输入需要备份的文件路径，每行一个。输入时支持自动补全。"
+  "add_plan_modal_field_paths_tooltip": "请输入需要备份的文件路径，每行一个。输入时支持自动补全。",
+  "settings_section_user_settings": "用户设置",
+  "settings_field_language": "显示语言"
 }

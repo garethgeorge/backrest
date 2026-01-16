@@ -367,5 +367,7 @@
   "app_menu_dashboard": "Pannello di controllo",
   "add_plan_modal_field_paths_tooltip": "Inserisci i percorsi dei file da sottoporre a backup, uno per riga. Il completamento automatico è disponibile durante la digitazione.",
   "op_row_confirm_delete": "[Confermare l'eliminazione?]",
-  "op_row_delete": "[Eliminare]"
+  "op_row_delete": "[Eliminare]",
+  "settings_section_user_settings": "Impostazioni utente",
+  "settings_field_language": "Lingua di visualizzazione"
 }

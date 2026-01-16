@@ -364,5 +364,7 @@
   "add_repo_modal_field_auto_unlock_tooltip": "বেশিরভাগ অপারেশনের শুরুতেই অটো-আনলক লকফাইলগুলি সরিয়ে ফেলবে। একাধিক ক্লায়েন্ট ডিভাইস দ্বারা রেপো শেয়ার করা হলে এটি সম্ভাব্যভাবে অনিরাপদ, অন্যথায় একক-ক্লায়েন্ট সেটআপের জন্য সুপারিশ করা হয়।",
   "op_row_cancel_op": "অপারেশন বাতিল করুন",
   "op_row_confirm_cancel": "বাতিল নিশ্চিত করবেন?",
-  "app_menu_dashboard": "ড্যাশবোর্ড"
+  "app_menu_dashboard": "ড্যাশবোর্ড",
+  "settings_section_user_settings": "ব্যবহারকারীর সেটিংস",
+  "settings_field_language": "প্রদর্শন ভাষা"
 }

@@ -57,6 +57,8 @@ import {
 } from "../../components/ui/select";
 import { useConfig } from "../../app/provider";
 
+import { useUserPreferences } from "../../lib/userPreferences";
+
 interface FormData {
   auth: {
     disabled?: boolean;
@@ -233,7 +235,21 @@ export const SettingsModal = () => {
         </Field>
 
         {/* @ts-ignore */}
-        <AccordionRoot collapsible defaultValue={["auth"]}>
+        <AccordionRoot collapsible defaultValue={["user-settings", "auth"]}>
+           {/* User Settings Section */}
+           {/* @ts-ignore */}
+           <AccordionItem value="user-settings">
+            <AccordionItemTrigger>
+              {// @ts-ignore 
+              m.settings_section_user_settings ? m.settings_section_user_settings() : "User Settings"}
+            </AccordionItemTrigger>
+            <AccordionItemContent>
+              <Stack gap={4}>
+                <UserSettingsForm />
+              </Stack>
+            </AccordionItemContent>
+          </AccordionItem>
+
           {/* Authentication Section */}
           {/* @ts-ignore */}
           <AccordionItem value="auth">
@@ -695,3 +711,41 @@ const Alert = ({ status, children }: any) => (
     {children}
   </Box>
 );
+
+const UserSettingsForm = () => {
+    const { preferences, updatePreference, availableLanguages } = useUserPreferences();
+
+    const languageOptions = createListCollection({
+        items: availableLanguages.map((tag: string) => ({
+            label: tag,
+            value: tag,
+        })),
+    });
+
+    return (
+        <Field label={// @ts-ignore 
+            m.settings_field_language ? m.settings_field_language() : "Display Language"
+        }>
+            <SelectRoot
+                collection={languageOptions}
+                value={[preferences.language]}
+                onValueChange={(e: any) => updatePreference("language", e.value[0])}
+            >
+                {/* @ts-ignore */}
+                <SelectTrigger>
+                    {/* @ts-ignore */}
+                    <SelectValueText placeholder="Select language" />
+                </SelectTrigger>
+                {/* @ts-ignore */}
+                <SelectContent zIndex={2000}>
+                    {languageOptions.items.map((option: any) => (
+                        <SelectItem item={option} key={option.value}>
+                            {option.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </SelectRoot>
+        </Field>
+    );
+};
+

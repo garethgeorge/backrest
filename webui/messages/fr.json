@@ -367,5 +367,7 @@
   "app_menu_dashboard": "Tableau de bord",
   "add_plan_modal_field_paths_tooltip": "Saisissez les chemins d’accès aux fichiers à sauvegarder, un par ligne. La saisie semi-automatique est disponible pendant votre saisie.",
   "op_row_confirm_delete": "[Confirmer la suppression ?]",
-  "op_row_delete": "[Supprimer]"
+  "op_row_delete": "[Supprimer]",
+  "settings_section_user_settings": "Paramètres utilisateur",
+  "settings_field_language": "Langue d'affichage"
 }
