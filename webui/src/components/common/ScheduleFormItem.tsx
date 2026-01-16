@@ -208,6 +208,10 @@ export const ScheduleFormItem = ({
   );
 };
 
-const clockEnumValueToString = (clock: Schedule_Clock) =>
-  Schedule_ClockSchema.values.find((v) => v.number === clock)?.name ||
-  "CLOCK_LOCAL";
+const clockEnumValueToString = (clock: Schedule_Clock | string | number) => {
+  if (typeof clock === "string") return clock;
+  return (
+    Schedule_ClockSchema.values.find((v) => v.number === clock)?.name ||
+    "CLOCK_LOCAL"
+  );
+};
