@@ -40,7 +40,7 @@
   "add_plan_modal_see_guide_prefix": "Смотрите ",
   "add_plan_modal_see_guide_link": "руководство по началу работы с Backrest",
   "add_plan_modal_see_guide_suffix": " для инструкций по настройке плана.",
-  "add_plan_modal_field_hooks": "Хуки",
+  "add_plan_modal_field_hooks": "Скрипты (Хуки)",
   "settings_success_updated": "Настройки обновлены",
   "settings_error_operation": "Ошибка операции: ",
   "button_cancel": "Отмена",
@@ -353,7 +353,7 @@
   "op_row_error_path": "Путь",
   "op_row_error_message": "Сообщение",
   "add_repo_modal_env_vars_placeholder": "KEY=VALUE (по одному на строку)",
-  "app_menu_edit_plan": "редактировать план",
+  "app_menu_edit_plan": "Изменить план",
   "add_repo_modal_field_auto_unlock_tooltip": "Авторазблокировка удаляет lock-файлы в начале большинства операций. Это может быть небезопасно при совместном использовании репозитория несколькими клиентами; для одиночных конфигураций обычно рекомендуется.",
   "op_row_cancel_op": "Отменить операцию",
   "op_row_confirm_cancel": "Подтвердить отмену?"
