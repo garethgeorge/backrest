@@ -44,9 +44,16 @@ Built with Go, Backrest is distributed as a standalone, lightweight binary with 
 ## Preview
 
 <p align="center">
-   <img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-19-50.png" width="60%" />
-   <img src="https://f000.backblazeb2.com/file/gshare/screenshots/2024/Screenshot+from+2024-01-04+18-30-14.png" width="60%" />
+   <img src="https://f000.backblazeb2.com/file/gshare/screenshots/backrest-1.11.1-dashboard.png" width="80%" />
+   <img src="https://f000.backblazeb2.com/file/gshare/screenshots/backrest-1.11.1-browse-snapshot.png" width="80%" />
+   <img src="https://f000.backblazeb2.com/file/gshare/screenshots/backrest-1.11.1-add-plan.png" width="80%" />
 </p>
+
+---
+
+# User Guide
+
+[See the Backrest docs](https://garethgeorge.github.io/backrest/introduction/getting-started).
 
 ---
 
@@ -72,7 +79,7 @@ Once installed, access Backrest at `http://localhost:9898` (default port). First
 ### Running with Docker Compose
 
 Docker image: `ghcr.io/garethgeorge/backrest`
-
+oplog
 Example compose file:
 
 ```yaml
@@ -235,13 +242,6 @@ Download the Windows installer for your architecture from the [releases page](ht
 | `BACKREST_RESTIC_COMMAND` | Path to restic binary       | Defaults to a Backrest managed version of restic in `C:\Program Files\restic\restic-x.x.x` |
 | `XDG_CACHE_HOME`          | Path to the cache directory |                                                                                            |
 
----
-
-# User Guide
-
-[See the Backrest docs](https://garethgeorge.github.io/backrest/introduction/getting-started).
-
----
 
 # Development
 
