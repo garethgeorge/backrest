@@ -56,6 +56,53 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download restic
+        shell: powershell
+        run: |
+           # Get the latest release from GitHub API
+           $latest = Invoke-RestMethod -Uri "https://api.github.com/repos/restic/restic/releases/latest"
+           $tag = $latest.tag_name
+           if ($tag.StartsWith("v")) {
+             $tag = $tag.Substring(1)
+           }
+           Write-Host "Latest restic version: $tag"
+
+           $valid_checksums = $false
+
+           # Function to download and unzip
+           function Download-Restic {
+               param (
+                   [string]$arch,
+                   [string]$resticArch
+               )
+               $url = "https://github.com/restic/restic/releases/download/v$tag/restic_${tag}_windows_${resticArch}.zip"
+               $output = "restic_${tag}_windows_${resticArch}.zip"
+               
+               Write-Host "Downloading $url..."
+               try {
+                   Invoke-WebRequest -Uri $url -OutFile $output
+                   Expand-Archive $output -DestinationPath . -Force
+                   
+                   # Find the extracted exe (it might be in a subdir or just in root of zip)
+                   $extracted = Get-ChildItem -Recurse -Filter "restic*.exe" | Where-Object { $_.FullName -like "*${tag}_windows_${resticArch}*" } | Select-Object -First 1
+                   
+                   if ($extracted) {
+                       Move-Item $extracted.FullName -Destination "restic_${arch}.exe" -Force
+                       Write-Host "Successfully prepared restic_${arch}.exe"
+                   } else {
+                       Write-Error "Could not find extracted executable for $arch"
+                   }
+               } catch {
+                   Write-Warning "Failed to download or extract for $arch: $_"
+                   if ($arch -eq "arm64") {
+                       Write-Warning "Falling back to amd64 for arm64"
+                       # Fallback is handled by the caller checking if the file exists
+                   }
+               }
+           }
+
+           Download-Restic -arch "x86_64" -resticArch "amd64"
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
         with:
@@ -94,10 +141,11 @@ jobs:
         shell: powershell
         run: |
           mkdir windows_installers
-          foreach ($arch in "x86_64", "arm64") {
+          foreach ($arch in "x86_64") {
             $src = "backrest_Windows_$arch"
             Expand-Archive ".\${src}.zip"
             cp build\windows\* $src
+            cp "restic_${arch}.exe" "${src}\restic.exe"
             & "c:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DArch=$arch ${src}\installer.iss
             cp "$src\Output\*" windows_installers
           }
