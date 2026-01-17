@@ -56,6 +56,51 @@ jobs:
         run: |
           New-Item -Path .\webui\dist-windows\index.html -ItemType File -Force
 
+      - name: Resolve latest restic version
+        shell: powershell
+        id: restic-version
+        run: |
+           $latest = Invoke-RestMethod -Uri "https://api.github.com/repos/restic/restic/releases/latest"
+           $tag = $latest.tag_name
+           if ($tag.StartsWith("v")) {
+             $tag = $tag.Substring(1)
+           }
+           echo "RESTIC_VERSION=$tag" >> $env:GITHUB_ENV
+
+      - name: Cache restic
+        id: cache-restic
+        uses: actions/cache@v3
+        with:
+          path: restic-bin
+          key: restic-windows-${{ env.RESTIC_VERSION }}
+
+      - name: Download restic
+        if: steps.cache-restic.outputs.cache-hit != 'true'
+        shell: powershell
+        run: |
+           $tag = $env:RESTIC_VERSION
+           $url = "https://github.com/restic/restic/releases/download/v$tag/restic_${tag}_windows_amd64.zip"
+           $output = "restic.zip"
+           $dest = "restic-bin"
+           
+           New-Item -ItemType Directory -Force -Path $dest
+
+           Write-Host "Downloading $url..."
+           Invoke-WebRequest -Uri $url -OutFile $output
+           Expand-Archive $output -DestinationPath temp_extract -Force
+           
+           $extracted = Get-ChildItem -Recurse -Path temp_extract -Filter "restic*.exe" | Select-Object -First 1
+           if ($extracted) {
+               Move-Item $extracted.FullName -Destination "$dest\restic.exe" -Force
+           } else {
+               Write-Error "Could not find restic.exe"
+           }
+           Remove-Item -Recurse -Force temp_extract
+           Remove-Item -Force $output
+
+      - name: Add restic to PATH
+        run: echo "$PWD\restic-bin" >> $env:GITHUB_PATH
+
       - name: Build
         run: go build ./...
 
