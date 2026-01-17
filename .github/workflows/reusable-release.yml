@@ -125,7 +125,7 @@ jobs:
                        Write-Error "Could not find extracted executable for $arch"
                    }
                } catch {
-                   Write-Warning "Failed to download or extract for $arch: $_"
+                   Write-Warning "Failed to download or extract for ${arch}: $_"
                }
            }
 
