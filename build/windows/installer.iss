@@ -65,6 +65,7 @@ Name: "port9902"; Description: "9902"; GroupDescription: "{#PortDesc}"; Flags: e
 Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion; BeforeInstall: StopBackrest
 Source: "icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "backrest.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "restic.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 ; For user install mode only.
