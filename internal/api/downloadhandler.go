@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -97,11 +98,11 @@ func handleIndexSnapshotDownload(w http.ResponseWriter, r *http.Request, orchest
 	}
 
 	if runtime.GOOS != "windows" && IsTarArchive(bytes.NewReader(firstBytesBuffer.Bytes())) && filepath.Ext(filePath) != ".tar" {
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v.tar", filePath))
+		setContentDisposition(w, filePath+".tar")
 	} else if runtime.GOOS == "windows" && IsZipArchive(bytes.NewReader(firstBytesBuffer.Bytes())) && filepath.Ext(filePath) != ".zip" {
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v.zip", filePath))
+		setContentDisposition(w, filePath+".zip")
 	} else {
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filePath))
+		setContentDisposition(w, filePath)
 	}
 	w.Header().Set("Content-Transfer-Encoding", "binary")
 	w.WriteHeader(http.StatusOK)
@@ -123,7 +124,7 @@ func handleRestoreDownload(w http.ResponseWriter, r *http.Request, op *v1.Operat
 	}
 	fullPath := filepath.Join(targetPath, filePath)
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=archive-%v.tar.gz", time.Now().Format("2006-01-02-15-04-05")))
+	setContentDisposition(w, fmt.Sprintf("archive-%v.tar.gz", time.Now().Format("2006-01-02-15-04-05")))
 	w.Header().Set("Content-Type", "application/gzip")
 	w.Header().Set("Content-Transfer-Encoding", "binary")
 
@@ -139,6 +140,11 @@ func handleRestoreDownload(w http.ResponseWriter, r *http.Request, op *v1.Operat
 		zap.S().Errorf("error creating tar archive: %v", err)
 		http.Error(w, "error creating tar archive", http.StatusInternalServerError)
 	}
+}
+
+func setContentDisposition(w http.ResponseWriter, filename string) {
+	cd := mime.FormatMediaType("attachment", map[string]string{"filename": filename})
+	w.Header().Set("Content-Disposition", cd)
 }
 
 func tarDirectory(w io.Writer, dirpath string) error {
