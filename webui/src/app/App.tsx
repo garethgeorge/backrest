@@ -229,7 +229,8 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
 
   return (
     <Box
-      w="300px"
+      minW="300px"
+      maxW="400px"
       bg="bg.panel"
       borderRightWidth="1px"
       borderColor="border"
@@ -306,16 +307,23 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                   <Box flexShrink={0} mr={2}>
                     <IconForResource selector={sel} />
                   </Box>
-                  <Box
-                    flex="1"
-                    cursor="pointer"
-                    onClick={() => handleNav(planPath)}
-                    userSelect="none"
-                  >
-                    <Text wordBreak="break-word">
-                      {plan.id}
-                    </Text>
-                  </Box>
+                  <Tooltip content={plan.id}>
+                    <Box
+                      flex="1"
+                      minW="0"
+                      cursor="pointer"
+                      onClick={() => handleNav(planPath)}
+                      userSelect="none"
+                    >
+                      <Text
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                        whiteSpace="nowrap"
+                      >
+                        {plan.id}
+                      </Text>
+                    </Box>
+                  </Tooltip>
                   <Box
                     opacity={0}
                     _groupHover={{ opacity: 1 }}
@@ -389,16 +397,23 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                       })}
                     />
                   </Box>
-                  <Box
-                    flex="1"
-                    cursor="pointer"
-                    onClick={() => handleNav(repoPath)}
-                    userSelect="none"
-                  >
-                    <Text wordBreak="break-word">
-                      {repo.id}
-                    </Text>
-                  </Box>
+                  <Tooltip content={repo.id}>
+                    <Box
+                      flex="1"
+                      minW="0"
+                      cursor="pointer"
+                      onClick={() => handleNav(repoPath)}
+                      userSelect="none"
+                    >
+                      <Text
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                        whiteSpace="nowrap"
+                      >
+                        {repo.id}
+                      </Text>
+                    </Box>
+                  </Tooltip>
                   <Box
                     opacity={0}
                     _groupHover={{ opacity: 1 }}
@@ -514,7 +529,8 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
 const Sidebar = () => {
   return (
     <Box
-      w="300px"
+      minW="300px"
+      maxW="400px"
       bg="bg.panel"
       borderRightWidth="1px"
       borderColor="border"
