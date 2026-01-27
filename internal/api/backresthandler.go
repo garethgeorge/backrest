@@ -660,6 +660,44 @@ func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types
 	return connect.NewResponse(&emptypb.Empty{}), err
 }
 
+// DryRunBackup implements POST /v1/dryRunBackup
+func (s *BackrestHandler) DryRunBackup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+	planID := req.Msg.Value
+	if planID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("plan ID is required"))
+	}
+
+	plan, err := s.orchestrator.GetPlan(planID)
+	if err != nil {
+		return nil, fmt.Errorf("get plan %q: %w", planID, err)
+	}
+
+	repo, err := s.orchestrator.GetRepo(plan.Repo)
+	if err != nil {
+		return nil, fmt.Errorf("get repo %q: %w", plan.Repo, err)
+	}
+
+	var taskErr error
+	wait := make(chan struct{})
+
+	if err := s.orchestrator.ScheduleTask(
+		tasks.NewOneoffDryRunBackupTask(repo, plan.Id, 0 /* flowID */, time.Now()),
+		tasks.TaskPriorityInteractive,
+		func(e error) {
+			taskErr = e
+			close(wait)
+		},
+	); err != nil {
+		return nil, fmt.Errorf("schedule task: %w", err)
+	}
+
+	<-wait
+	if taskErr != nil {
+		return nil, taskErr
+	}
+	return connect.NewResponse(&emptypb.Empty{}), nil
+}
+
 func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {
 	at := time.Now()
 	var err error
