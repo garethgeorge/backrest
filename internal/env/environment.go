@@ -15,7 +15,6 @@ import (
 
 var (
 	EnvVarConfigPath                 = "BACKREST_CONFIG"                       // path to config file
-	EnvVarConfigDir                  = "BACKREST_CONFIG_DIR"                   // path to config directory
 	EnvVarDataDir                    = "BACKREST_DATA"                         // path to data directory
 	EnvVarBindAddress                = "BACKREST_PORT"                         // port to bind to (default 9898)
 	EnvVarBinPath                    = "BACKREST_RESTIC_COMMAND"               // path to restic binary (default restic)
@@ -24,7 +23,6 @@ var (
 
 var flagDataDir = flag.String("data-dir", "", "path to data directory, defaults to XDG_DATA_HOME/.local/backrest. Overrides BACKREST_DATA environment variable.")
 var flagConfigPath = flag.String("config-file", "", "path to config file, defaults to XDG_CONFIG_HOME/backrest/config.json. Overrides BACKREST_CONFIG environment variable.")
-var flagConfigDir = flag.String("config-dir", "", "path to config directory, defaults to XDG_CONFIG_HOME/backrest. Overrides BACKREST_CONFIG_DIR environment variable.")
 var flagBindAddress = flag.String("bind-address", "", "address to bind to, defaults to 127.0.0.1:9898. Use :9898 to listen on all interfaces. Overrides BACKREST_PORT environment variable.")
 var flagResticBinPath = flag.String("restic-cmd", "", "path to restic binary, defaults to a backrest managed version of restic. Overrides BACKREST_RESTIC_COMMAND environment variable.")
 var flagMultihostHeartbeatInterval = flag.Duration("multihost-heartbeat-interval", 600*time.Second, "interval in seconds to send heartbeat messages to other hosts in a multihost setup. Defaults to 600 seconds, but can be set lower to keep connections alive with reverse proxies that aggressively timeout idle connections.")
@@ -39,7 +37,7 @@ func ConfigFilePath() string {
 	if val := os.Getenv(EnvVarConfigPath); val != "" {
 		return val
 	}
-	return filepath.Join(getConfigDir(), "config.json")
+	return filepath.Join(getConfigDir(), "backrest", "config.json")
 }
 
 // DataDir
@@ -57,7 +55,7 @@ func DataDir() string {
 	}
 
 	if runtime.GOOS == "windows" {
-		return filepath.Join(getConfigDir(), "data")
+		return filepath.Join(getConfigDir(), "backrest", "data")
 	}
 	return path.Join(getHomeDir(), ".local/share/backrest")
 }
@@ -102,7 +100,8 @@ func LogsPath() string {
 }
 
 func SSHDir() string {
-	return filepath.Join(getConfigDir(), "ssh")
+	// This is awkward, we don't have a flag that specifies a "config" directory persay, so we default to the directory containing the config file for our SSH keys/known_hosts file.
+	return filepath.Join(filepath.Dir(ConfigFilePath()), ".backrest-ssh")
 }
 
 func getHomeDir() string {
@@ -114,20 +113,17 @@ func getHomeDir() string {
 }
 
 func getConfigDir() string {
-	if val := os.Getenv(EnvVarConfigDir); val != "" {
-		return val
-	}
 	if runtime.GOOS == "windows" {
 		cfgDir, err := os.UserConfigDir()
 		if err != nil {
 			panic(fmt.Errorf("couldn't determine config directory: %v", err))
 		}
-		return filepath.Join(cfgDir, "backrest")
+		return cfgDir
 	}
 	if val := os.Getenv("XDG_CONFIG_HOME"); val != "" {
-		return filepath.Join(val, "backrest")
+		return val
 	}
-	return filepath.Join(getHomeDir(), ".config", "backrest")
+	return filepath.Join(getHomeDir(), ".config")
 }
 
 func formatBindAddress(addr string) string {
