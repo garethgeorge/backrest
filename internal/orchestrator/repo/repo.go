@@ -184,6 +184,63 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 	return summary, nil
 }
 
+// DryRunBackup runs a dry run backup for the plan, writing verbose output to the writer.
+// This validates backup configuration and shows what would be backed up without transferring data.
+func (r *RepoOrchestrator) DryRunBackup(ctx context.Context, plan *v1.Plan, output io.Writer) error {
+	l := r.logger(ctx)
+	l.Debug("repo orchestrator starting dry run backup", zap.String("repo", r.repoConfig.Id))
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Build backup command options (same as regular backup)
+	var opts []restic.GenericOption
+	opts = append(opts, restic.WithFlags(
+		"--exclude-caches",
+		"--tag", TagForPlan(plan.Id),
+	))
+
+	if r.config.Instance != "" {
+		opts = append(opts, restic.WithFlags("--tag", TagForInstance(r.config.Instance)))
+	}
+
+	for _, exclude := range plan.Excludes {
+		opts = append(opts, restic.WithFlags("--exclude", exclude))
+	}
+	for _, iexclude := range plan.Iexcludes {
+		opts = append(opts, restic.WithFlags("--iexclude", iexclude))
+	}
+
+	for _, f := range plan.GetBackupFlags() {
+		args, err := shlex.Split(f)
+		if err != nil {
+			return fmt.Errorf("failed to parse backup flag %q for plan %q: %w", f, plan.Id, err)
+		}
+		opts = append(opts, restic.WithFlags(args...))
+	}
+
+	// Add dry run and verbose flags
+	opts = append(opts, restic.WithFlags("--dry-run", "-vv"))
+
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
+
+	l.Debug("starting dry run backup", zap.String("plan", plan.Id))
+
+	// Execute dry run backup - use GenericCommand since dry-run doesn't produce JSON progress
+	// Build command args: backup followed by paths
+	args := append([]string{"backup"}, plan.Paths...)
+
+	// Set up context logger for output capture
+	ctx = restic.ContextWithLogger(ctx, output)
+	if err := r.repo.GenericCommand(ctx, args, opts...); err != nil {
+		return fmt.Errorf("dry run backup: %w", err)
+	}
+
+	l.Debug("dry run backup completed", zap.String("plan", plan.Id))
+	return nil
+}
+
 func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId string, path string) ([]*v1.LsEntry, error) {
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
