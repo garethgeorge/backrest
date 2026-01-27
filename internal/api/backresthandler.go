@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -23,6 +24,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	"github.com/garethgeorge/backrest/internal/api/sftputil"
 	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
@@ -125,6 +127,13 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 		req.Msg.Repo.Guid = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
 	}
 
+	// SFTP Host Key Trust is handled in AddRepo / CheckRepoExists via addSftpHostKey still,
+	// but CheckRepoExistsRequest no longer has trust_sftp_host_key (wait, it DOES have it in my update, I kept it in CheckRepoExistsRequest? No I removed it from CheckRepoExistsRequest logic... wait check proto)
+	// Checking proto... CheckRepoExistsRequest: bool trust_sftp_host_key = 2; IS STILL THERE.
+	// Okay, I should keep using it if provided, but the SetupSftp flow handles it separately.
+	// The user might manually configure SFTP without using SetupSftp, in which case they might hit "unknown host key".
+	// So we should keep the logic that checks/adds host key if they confirm trust.
+
 	if err := s.addSftpHostKey(req.Msg.Repo, req.Msg.GetTrustSftpHostKey()); err != nil {
 		if strings.Contains(err.Error(), "host key verification failed") {
 			return connect.NewResponse(&v1.CheckRepoExistsResponse{
@@ -136,49 +145,7 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 	}
 
 	// SFTP Bootstrapping
-	if req.Msg.SftpUsername != "" && req.Msg.SftpPassword != "" {
-		_, host, port, err := parseSftpConfig(req.Msg.Repo)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse sftp config: %w", err)
-		}
-		if port == "" {
-			port = "22"
-		}
-
-		// Verify credentials by connecting
-		sshConfig := &ssh.ClientConfig{
-			User: req.Msg.SftpUsername,
-			Auth: []ssh.AuthMethod{
-				ssh.Password(req.Msg.SftpPassword),
-			},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Host key checked by addSftpHostKey
-			Timeout:         10 * time.Second,
-		}
-
-		conn, err := ssh.Dial("tcp", net.JoinHostPort(host, port), sshConfig)
-		if err != nil {
-			return connect.NewResponse(&v1.CheckRepoExistsResponse{
-				Error: fmt.Sprintf("Failed to connect with provided credentials: %v", err),
-			}), nil
-		}
-		conn.Close()
-
-		if !req.Msg.ConfirmInstallKey {
-			return connect.NewResponse(&v1.CheckRepoExistsResponse{
-				RequiresConfirmation: true,
-			}), nil
-		}
-
-		// Generate and install key
-		keyPath, err := s.generateAndInstallSSHKey(host, port, req.Msg.SftpUsername, req.Msg.SftpPassword)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate and install ssh key: %w", err)
-		}
-
-		return connect.NewResponse(&v1.CheckRepoExistsResponse{
-			GeneratedKeyPath: keyPath,
-		}), nil
-	}
+	// SFTP verification logic has been moved to SetupSftp
 
 	if err := config.ValidateConfig(c); err != nil {
 		return nil, fmt.Errorf("validation error: %w", err)
@@ -337,7 +304,64 @@ func (s *BackrestHandler) RemoveRepo(ctx context.Context, req *connect.Request[t
 	return connect.NewResponse(cfg), nil
 }
 
-// addSftpHostKey parses an SFTP URI and adds the host's public key to the user's known_hosts file.
+// SetupSftp implements SetupSftp RPC
+func (s *BackrestHandler) SetupSftp(ctx context.Context, req *connect.Request[v1.SetupSftpRequest]) (*connect.Response[v1.SetupSftpResponse], error) {
+	host := req.Msg.Host
+	port := req.Msg.Port
+	if port == "" {
+		port = "22"
+	}
+	user := req.Msg.Username
+	password := req.Msg.Password // Optional
+
+	if runtime.GOOS == "windows" {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("automated SFTP setup is not supported on Windows"))
+	}
+
+	// 1. Host Key Verification/Addition
+
+	// 1. Host Key Verification/Addition
+	if err := sftputil.AddHostKey(host, port, env.SSHDir()); err != nil {
+		return connect.NewResponse(&v1.SetupSftpResponse{
+			Error: fmt.Sprintf("Failed to add host key: %v", err),
+		}), nil
+	}
+
+	// 2. Generate Key
+	_, pubBytes, keyPath, err := sftputil.GenerateKey(host, env.SSHDir())
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate key: %w", err)
+	}
+
+	pubKeyStr := string(pubBytes)
+
+	// 3. Install if password provided
+	if password != nil {
+		if err := sftputil.InstallKey(host, port, user, *password, pubBytes); err != nil {
+			return connect.NewResponse(&v1.SetupSftpResponse{
+				Error: fmt.Sprintf("Failed to install key: %v", err),
+			}), nil
+		}
+
+		// Verify
+		privPEM, err := os.ReadFile(keyPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read generated private key for verification: %w", err)
+		}
+
+		if err := sftputil.VerifyConnection(host, port, user, privPEM); err != nil {
+			return connect.NewResponse(&v1.SetupSftpResponse{
+				Error: fmt.Sprintf("Key installed but verification failed: %v", err),
+			}), nil
+		}
+	}
+
+	return connect.NewResponse(&v1.SetupSftpResponse{
+		PublicKey: pubKeyStr,
+		KeyPath:   keyPath,
+	}), nil
+}
+
 // This is equivalent to what `ssh-keyscan` does.
 func (s *BackrestHandler) addSftpHostKey(repo *v1.Repo, trust bool) error {
 	uri := repo.GetUri()

@@ -30,6 +30,7 @@ import {
 import {
   AddRepoRequestSchema,
   CheckRepoExistsRequestSchema,
+  SetupSftpRequestSchema,
 } from "../../../gen/ts/v1/service_pb";
 import { StringValueSchema } from "../../../gen/ts/types/value_pb";
 import { URIAutocomplete } from "../../components/common/URIAutocomplete";
@@ -364,9 +365,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         const req = create(CheckRepoExistsRequestSchema, {
           repo: repo,
           trustSftpHostKey: trust,
-          sftpUsername: sftpUsername,
-          sftpPassword: sftpPassword,
-          confirmInstallKey: confirm,
+          /* sftpUsername: sftpUsername, */
+          /* sftpPassword: sftpPassword, */
+          /* confirmInstallKey: confirm, */
+          // Note: fields removed from CheckRepoExistsRequest
         });
 
         const response = await backrestService.checkRepoExists(req);
@@ -391,29 +393,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
           return;
         }
 
-        if (response.requiresConfirmation) {
-          setConfirmation({
-            open: true,
-            title: "Install SSH Key",
-            content:
-              "Do you want to install a newly generated SSH key on the server?",
-            onOk: () => {
-              setConfirmation((prev) => ({ ...prev, open: false }));
-              handleTestWrapper(trust, true);
-            },
-          });
-          return;
-        }
-
         if (response.error) {
           throw new Error(response.error);
-        }
-
-        if (response.generatedKeyPath) {
-          setSftpIdentityFile(response.generatedKeyPath);
-          setSftpUsername("");
-          setSftpPassword("");
-          alerts.success("SSH Key generated and installed!");
         }
 
         if (response.exists) {
@@ -636,7 +617,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                   </Field>
 
                   {/* SFTP Specific Fields */}
-                  {getField(["uri"])?.startsWith("sftp:") && !template && (
+                  {getField(["uri"])?.startsWith("sftp:") && !template && !isWindows && (
                     <Stack gap={4} ml={2} borderLeftWidth={2} pl={4}>
                       {!sftpIdentityFile && (
                         <AccordionRoot collapsible variant="enclosed">
@@ -663,13 +644,64 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                                 </Field>
                                 <Field label="SSH Password">
                                   <PasswordInput
-                                    placeholder="password"
+                                    placeholder="password (optional)"
                                     value={sftpPassword}
                                     onChange={(e) =>
                                       setSftpPassword(e.target.value)
                                     }
                                   />
                                 </Field>
+                                <Button
+                                  size="sm"
+                                  onClick={async () => {
+                                    setConfirmLoading(true);
+                                    try {
+                                        const uri = getField(["uri"]);
+                                        if (!uri) return;
+                                        // Simple parse of URI for host/port if not fully robust
+                                        let host = "";
+                                        let port = "22";
+                                        const uriParts = uri.replace("sftp:", "").split("/");
+                                        const authority = uriParts[0];
+                                        let hostPart = authority;
+                                        if (authority.includes("@")) {
+                                            setSftpUsername(authority.split("@")[0]);
+                                            hostPart = authority.split("@")[1];
+                                        }
+
+                                        if (hostPart.includes(":")) {
+                                            host = hostPart.split(":")[0];
+                                            port = hostPart.split(":")[1];
+                                        } else {
+                                            host = hostPart;
+                                        }
+
+                                        // Override from manual input if username is set there
+                                        const username = sftpUsername || getField(["uri"]).match(/([^@]+)@/)?.[1] || "";
+
+                                        const res = await backrestService.setupSftp({
+                                            host: host,
+                                            port: port,
+                                            username: username,
+                                            password: sftpPassword || undefined,
+                                        });
+
+                                        if (res.error) {
+                                            throw new Error(res.error);
+                                        }
+
+                                        setSftpIdentityFile(res.keyPath);
+                                        alerts.success(m.add_repo_modal_success_updated({ uri: "SFTP Key Setup Complete" })); // Reuse success message or custom
+                                    } catch (e: any) {
+                                        alerts.error(formatErrorAlert(e, "SFTP Setup Failed"));
+                                    } finally {
+                                        setConfirmLoading(false);
+                                    }
+                                  }}
+                                  loading={confirmLoading}
+                                >
+                                  Setup Keys
+                                </Button>
                               </Stack>
                             </AccordionItemContent>
                           </AccordionItem>
@@ -692,9 +724,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                         helperText="Optional: Specify a custom port for SFTP connection. Defaults to 22."
                       >
                         <NumberInputField
-                          value={sftpPort || undefined}
+                          value={sftpPort ? sftpPort.toString() : undefined}
                           onValueChange={(e) => setSftpPort(e.valueAsNumber)}
-                          placeholder="22"
                           min={1}
                           max={65535}
                         />

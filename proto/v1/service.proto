@@ -16,6 +16,8 @@ service Backrest {
 
   rpc SetConfig (Config) returns (Config) {}
 
+  rpc SetupSftp (SetupSftpRequest) returns (SetupSftpResponse) {}
+
   rpc CheckRepoExists (CheckRepoExistsRequest) returns (CheckRepoExistsResponse) {} // returns an error if the repo does not exist
 
   rpc AddRepo (AddRepoRequest) returns (Config) {}
@@ -76,19 +78,29 @@ message OpSelector {
   optional int64 modno_gte = 9;
 }
 
+message SetupSftpRequest {
+  string host = 1;
+  string port = 2;
+  string username = 3;
+  optional string password = 4; // If not provided, we only generate the key and add host to known_hosts
+}
+
+message SetupSftpResponse {
+  string public_key = 1;
+  string key_path = 2;
+  string error = 4;
+}
+
 message CheckRepoExistsRequest {
   Repo repo = 1;
   bool trust_sftp_host_key = 2;
-  string sftp_username = 3;
-  string sftp_password = 4;
-  bool confirm_install_key = 5;
 }
 
 message CheckRepoExistsResponse {
   bool exists = 1;
   string error = 2;
-  bool requires_confirmation = 3;
-  string generated_key_path = 4;
+  bool requires_confirmation = 3; // Deprecated
+  string generated_key_path = 4; // Deprecated
   bool host_key_untrusted = 5;
 }
 
