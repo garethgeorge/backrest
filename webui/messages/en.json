@@ -251,6 +251,7 @@
   "op_type_stats": "Stats",
   "op_type_run_hook": "Run Hook",
   "op_type_run_command": "Run Command",
+  "op_type_dry_run_backup": "Dry Run Backup",
   "op_type_unknown": "Unknown",
   "op_status_pending": "pending",
   "op_status_in_progress": "in progress",

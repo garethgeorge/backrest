@@ -17,6 +17,7 @@ export enum DisplayType {
   STATS,
   RUNHOOK,
   RUNCOMMAND,
+  DRY_RUN_BACKUP,
 }
 
 export interface FlowDisplayInfo {
@@ -224,6 +225,8 @@ export const getTypeForDisplay = (op: Operation) => {
       return DisplayType.RUNHOOK;
     case "operationRunCommand":
       return DisplayType.RUNCOMMAND;
+    case "operationDryRunBackup":
+      return DisplayType.DRY_RUN_BACKUP;
     default:
       return DisplayType.UNKNOWN;
   }
@@ -249,6 +252,8 @@ export const displayTypeToString = (type: DisplayType) => {
       return m.op_type_run_hook();
     case DisplayType.RUNCOMMAND:
       return m.op_type_run_command();
+    case DisplayType.DRY_RUN_BACKUP:
+      return m.op_type_dry_run_backup();
     default:
       return m.op_type_unknown();
   }

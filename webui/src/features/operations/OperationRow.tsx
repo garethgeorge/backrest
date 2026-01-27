@@ -361,6 +361,15 @@ export const OperationRow = ({
         children: <LogView logref={operation.logref} />,
       });
     }
+  } else if (operation.op.case === "operationDryRunBackup") {
+    const dryRun = operation.op.value;
+    if (dryRun.outputLogref) {
+      bodyItems.push({
+        key: "output",
+        label: m.op_row_command_output(),
+        children: <LogView logref={dryRun.outputLogref} />,
+      });
+    }
   }
 
   if (hookOperations) {
