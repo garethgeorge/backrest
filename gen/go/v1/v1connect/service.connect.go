@@ -39,6 +39,8 @@ const (
 	BackrestGetConfigProcedure = "/v1.Backrest/GetConfig"
 	// BackrestSetConfigProcedure is the fully-qualified name of the Backrest's SetConfig RPC.
 	BackrestSetConfigProcedure = "/v1.Backrest/SetConfig"
+	// BackrestSetupSftpProcedure is the fully-qualified name of the Backrest's SetupSftp RPC.
+	BackrestSetupSftpProcedure = "/v1.Backrest/SetupSftp"
 	// BackrestCheckRepoExistsProcedure is the fully-qualified name of the Backrest's CheckRepoExists
 	// RPC.
 	BackrestCheckRepoExistsProcedure = "/v1.Backrest/CheckRepoExists"
@@ -86,8 +88,9 @@ const (
 type BackrestClient interface {
 	GetConfig(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.Config], error)
 	SetConfig(context.Context, *connect.Request[v1.Config]) (*connect.Response[v1.Config], error)
-	CheckRepoExists(context.Context, *connect.Request[v1.Repo]) (*connect.Response[types.BoolValue], error)
-	AddRepo(context.Context, *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error)
+	SetupSftp(context.Context, *connect.Request[v1.SetupSftpRequest]) (*connect.Response[v1.SetupSftpResponse], error)
+	CheckRepoExists(context.Context, *connect.Request[v1.CheckRepoExistsRequest]) (*connect.Response[v1.CheckRepoExistsResponse], error)
+	AddRepo(context.Context, *connect.Request[v1.AddRepoRequest]) (*connect.Response[v1.Config], error)
 	RemoveRepo(context.Context, *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error)
 	GetOperationEvents(context.Context, *connect.Request[emptypb.Empty]) (*connect.ServerStreamForClient[v1.OperationEvent], error)
 	GetOperations(context.Context, *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error)
@@ -140,13 +143,19 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestMethods.ByName("SetConfig")),
 			connect.WithClientOptions(opts...),
 		),
-		checkRepoExists: connect.NewClient[v1.Repo, types.BoolValue](
+		setupSftp: connect.NewClient[v1.SetupSftpRequest, v1.SetupSftpResponse](
+			httpClient,
+			baseURL+BackrestSetupSftpProcedure,
+			connect.WithSchema(backrestMethods.ByName("SetupSftp")),
+			connect.WithClientOptions(opts...),
+		),
+		checkRepoExists: connect.NewClient[v1.CheckRepoExistsRequest, v1.CheckRepoExistsResponse](
 			httpClient,
 			baseURL+BackrestCheckRepoExistsProcedure,
 			connect.WithSchema(backrestMethods.ByName("CheckRepoExists")),
 			connect.WithClientOptions(opts...),
 		),
-		addRepo: connect.NewClient[v1.Repo, v1.Config](
+		addRepo: connect.NewClient[v1.AddRepoRequest, v1.Config](
 			httpClient,
 			baseURL+BackrestAddRepoProcedure,
 			connect.WithSchema(backrestMethods.ByName("AddRepo")),
@@ -255,8 +264,9 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 type backrestClient struct {
 	getConfig           *connect.Client[emptypb.Empty, v1.Config]
 	setConfig           *connect.Client[v1.Config, v1.Config]
-	checkRepoExists     *connect.Client[v1.Repo, types.BoolValue]
-	addRepo             *connect.Client[v1.Repo, v1.Config]
+	setupSftp           *connect.Client[v1.SetupSftpRequest, v1.SetupSftpResponse]
+	checkRepoExists     *connect.Client[v1.CheckRepoExistsRequest, v1.CheckRepoExistsResponse]
+	addRepo             *connect.Client[v1.AddRepoRequest, v1.Config]
 	removeRepo          *connect.Client[types.StringValue, v1.Config]
 	getOperationEvents  *connect.Client[emptypb.Empty, v1.OperationEvent]
 	getOperations       *connect.Client[v1.GetOperationsRequest, v1.OperationList]
@@ -285,13 +295,18 @@ func (c *backrestClient) SetConfig(ctx context.Context, req *connect.Request[v1.
 	return c.setConfig.CallUnary(ctx, req)
 }
 
+// SetupSftp calls v1.Backrest.SetupSftp.
+func (c *backrestClient) SetupSftp(ctx context.Context, req *connect.Request[v1.SetupSftpRequest]) (*connect.Response[v1.SetupSftpResponse], error) {
+	return c.setupSftp.CallUnary(ctx, req)
+}
+
 // CheckRepoExists calls v1.Backrest.CheckRepoExists.
-func (c *backrestClient) CheckRepoExists(ctx context.Context, req *connect.Request[v1.Repo]) (*connect.Response[types.BoolValue], error) {
+func (c *backrestClient) CheckRepoExists(ctx context.Context, req *connect.Request[v1.CheckRepoExistsRequest]) (*connect.Response[v1.CheckRepoExistsResponse], error) {
 	return c.checkRepoExists.CallUnary(ctx, req)
 }
 
 // AddRepo calls v1.Backrest.AddRepo.
-func (c *backrestClient) AddRepo(ctx context.Context, req *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error) {
+func (c *backrestClient) AddRepo(ctx context.Context, req *connect.Request[v1.AddRepoRequest]) (*connect.Response[v1.Config], error) {
 	return c.addRepo.CallUnary(ctx, req)
 }
 
@@ -379,8 +394,9 @@ func (c *backrestClient) GetSummaryDashboard(ctx context.Context, req *connect.R
 type BackrestHandler interface {
 	GetConfig(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.Config], error)
 	SetConfig(context.Context, *connect.Request[v1.Config]) (*connect.Response[v1.Config], error)
-	CheckRepoExists(context.Context, *connect.Request[v1.Repo]) (*connect.Response[types.BoolValue], error)
-	AddRepo(context.Context, *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error)
+	SetupSftp(context.Context, *connect.Request[v1.SetupSftpRequest]) (*connect.Response[v1.SetupSftpResponse], error)
+	CheckRepoExists(context.Context, *connect.Request[v1.CheckRepoExistsRequest]) (*connect.Response[v1.CheckRepoExistsResponse], error)
+	AddRepo(context.Context, *connect.Request[v1.AddRepoRequest]) (*connect.Response[v1.Config], error)
 	RemoveRepo(context.Context, *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error)
 	GetOperationEvents(context.Context, *connect.Request[emptypb.Empty], *connect.ServerStream[v1.OperationEvent]) error
 	GetOperations(context.Context, *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error)
@@ -427,6 +443,12 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		BackrestSetConfigProcedure,
 		svc.SetConfig,
 		connect.WithSchema(backrestMethods.ByName("SetConfig")),
+		connect.WithHandlerOptions(opts...),
+	)
+	backrestSetupSftpHandler := connect.NewUnaryHandler(
+		BackrestSetupSftpProcedure,
+		svc.SetupSftp,
+		connect.WithSchema(backrestMethods.ByName("SetupSftp")),
 		connect.WithHandlerOptions(opts...),
 	)
 	backrestCheckRepoExistsHandler := connect.NewUnaryHandler(
@@ -543,6 +565,8 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 			backrestGetConfigHandler.ServeHTTP(w, r)
 		case BackrestSetConfigProcedure:
 			backrestSetConfigHandler.ServeHTTP(w, r)
+		case BackrestSetupSftpProcedure:
+			backrestSetupSftpHandler.ServeHTTP(w, r)
 		case BackrestCheckRepoExistsProcedure:
 			backrestCheckRepoExistsHandler.ServeHTTP(w, r)
 		case BackrestAddRepoProcedure:
@@ -596,11 +620,15 @@ func (UnimplementedBackrestHandler) SetConfig(context.Context, *connect.Request[
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.SetConfig is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) CheckRepoExists(context.Context, *connect.Request[v1.Repo]) (*connect.Response[types.BoolValue], error) {
+func (UnimplementedBackrestHandler) SetupSftp(context.Context, *connect.Request[v1.SetupSftpRequest]) (*connect.Response[v1.SetupSftpResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.SetupSftp is not implemented"))
+}
+
+func (UnimplementedBackrestHandler) CheckRepoExists(context.Context, *connect.Request[v1.CheckRepoExistsRequest]) (*connect.Response[v1.CheckRepoExistsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.CheckRepoExists is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) AddRepo(context.Context, *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error) {
+func (UnimplementedBackrestHandler) AddRepo(context.Context, *connect.Request[v1.AddRepoRequest]) (*connect.Response[v1.Config], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.AddRepo is not implemented"))
 }
 

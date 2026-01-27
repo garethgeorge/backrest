@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Backrest_GetConfig_FullMethodName           = "/v1.Backrest/GetConfig"
 	Backrest_SetConfig_FullMethodName           = "/v1.Backrest/SetConfig"
+	Backrest_SetupSftp_FullMethodName           = "/v1.Backrest/SetupSftp"
 	Backrest_CheckRepoExists_FullMethodName     = "/v1.Backrest/CheckRepoExists"
 	Backrest_AddRepo_FullMethodName             = "/v1.Backrest/AddRepo"
 	Backrest_RemoveRepo_FullMethodName          = "/v1.Backrest/RemoveRepo"
@@ -49,8 +50,9 @@ const (
 type BackrestClient interface {
 	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error)
 	SetConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error)
-	CheckRepoExists(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*types.BoolValue, error)
-	AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error)
+	SetupSftp(ctx context.Context, in *SetupSftpRequest, opts ...grpc.CallOption) (*SetupSftpResponse, error)
+	CheckRepoExists(ctx context.Context, in *CheckRepoExistsRequest, opts ...grpc.CallOption) (*CheckRepoExistsResponse, error)
+	AddRepo(ctx context.Context, in *AddRepoRequest, opts ...grpc.CallOption) (*Config, error)
 	RemoveRepo(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*Config, error)
 	GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OperationEvent], error)
 	GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error)
@@ -108,9 +110,19 @@ func (c *backrestClient) SetConfig(ctx context.Context, in *Config, opts ...grpc
 	return out, nil
 }
 
-func (c *backrestClient) CheckRepoExists(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*types.BoolValue, error) {
+func (c *backrestClient) SetupSftp(ctx context.Context, in *SetupSftpRequest, opts ...grpc.CallOption) (*SetupSftpResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(types.BoolValue)
+	out := new(SetupSftpResponse)
+	err := c.cc.Invoke(ctx, Backrest_SetupSftp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *backrestClient) CheckRepoExists(ctx context.Context, in *CheckRepoExistsRequest, opts ...grpc.CallOption) (*CheckRepoExistsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckRepoExistsResponse)
 	err := c.cc.Invoke(ctx, Backrest_CheckRepoExists_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -118,7 +130,7 @@ func (c *backrestClient) CheckRepoExists(ctx context.Context, in *Repo, opts ...
 	return out, nil
 }
 
-func (c *backrestClient) AddRepo(ctx context.Context, in *Repo, opts ...grpc.CallOption) (*Config, error) {
+func (c *backrestClient) AddRepo(ctx context.Context, in *AddRepoRequest, opts ...grpc.CallOption) (*Config, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Config)
 	err := c.cc.Invoke(ctx, Backrest_AddRepo_FullMethodName, in, out, cOpts...)
@@ -312,8 +324,9 @@ func (c *backrestClient) GetSummaryDashboard(ctx context.Context, in *emptypb.Em
 type BackrestServer interface {
 	GetConfig(context.Context, *emptypb.Empty) (*Config, error)
 	SetConfig(context.Context, *Config) (*Config, error)
-	CheckRepoExists(context.Context, *Repo) (*types.BoolValue, error)
-	AddRepo(context.Context, *Repo) (*Config, error)
+	SetupSftp(context.Context, *SetupSftpRequest) (*SetupSftpResponse, error)
+	CheckRepoExists(context.Context, *CheckRepoExistsRequest) (*CheckRepoExistsResponse, error)
+	AddRepo(context.Context, *AddRepoRequest) (*Config, error)
 	RemoveRepo(context.Context, *types.StringValue) (*Config, error)
 	GetOperationEvents(*emptypb.Empty, grpc.ServerStreamingServer[OperationEvent]) error
 	GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error)
@@ -357,10 +370,13 @@ func (UnimplementedBackrestServer) GetConfig(context.Context, *emptypb.Empty) (*
 func (UnimplementedBackrestServer) SetConfig(context.Context, *Config) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetConfig not implemented")
 }
-func (UnimplementedBackrestServer) CheckRepoExists(context.Context, *Repo) (*types.BoolValue, error) {
+func (UnimplementedBackrestServer) SetupSftp(context.Context, *SetupSftpRequest) (*SetupSftpResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetupSftp not implemented")
+}
+func (UnimplementedBackrestServer) CheckRepoExists(context.Context, *CheckRepoExistsRequest) (*CheckRepoExistsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckRepoExists not implemented")
 }
-func (UnimplementedBackrestServer) AddRepo(context.Context, *Repo) (*Config, error) {
+func (UnimplementedBackrestServer) AddRepo(context.Context, *AddRepoRequest) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRepo not implemented")
 }
 func (UnimplementedBackrestServer) RemoveRepo(context.Context, *types.StringValue) (*Config, error) {
@@ -468,8 +484,26 @@ func _Backrest_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Backrest_SetupSftp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetupSftpRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackrestServer).SetupSftp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Backrest_SetupSftp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackrestServer).SetupSftp(ctx, req.(*SetupSftpRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Backrest_CheckRepoExists_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Repo)
+	in := new(CheckRepoExistsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -481,13 +515,13 @@ func _Backrest_CheckRepoExists_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: Backrest_CheckRepoExists_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).CheckRepoExists(ctx, req.(*Repo))
+		return srv.(BackrestServer).CheckRepoExists(ctx, req.(*CheckRepoExistsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Backrest_AddRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Repo)
+	in := new(AddRepoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -499,7 +533,7 @@ func _Backrest_AddRepo_Handler(srv interface{}, ctx context.Context, dec func(in
 		FullMethod: Backrest_AddRepo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).AddRepo(ctx, req.(*Repo))
+		return srv.(BackrestServer).AddRepo(ctx, req.(*AddRepoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -792,6 +826,10 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetConfig",
 			Handler:    _Backrest_SetConfig_Handler,
+		},
+		{
+			MethodName: "SetupSftp",
+			Handler:    _Backrest_SetupSftp_Handler,
 		},
 		{
 			MethodName: "CheckRepoExists",

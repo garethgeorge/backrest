@@ -10,6 +10,7 @@ import {
 } from "@chakra-ui/react";
 import { EnumSelector, EnumOption } from "../../components/common/EnumSelector";
 import { Checkbox } from "../../components/ui/checkbox";
+
 import {
   AccordionItem,
   AccordionItemContent,
@@ -27,6 +28,11 @@ import {
   RepoSchema,
   Schedule_Clock,
 } from "../../../gen/ts/v1/config_pb";
+import {
+  AddRepoRequestSchema,
+  CheckRepoExistsRequestSchema,
+  SetupSftpRequestSchema,
+} from "../../../gen/ts/v1/service_pb";
 import { StringValueSchema } from "../../../gen/ts/types/value_pb";
 import { URIAutocomplete } from "../../components/common/URIAutocomplete";
 import { alerts, formatErrorAlert } from "../../components/common/Alerts";
@@ -52,6 +58,16 @@ import {
   hooksListTooltipText,
 } from "../../components/common/HooksFormList";
 import { DynamicList } from "../../components/common/DynamicList";
+import {
+  DialogActionTrigger,
+  DialogBody,
+  DialogCloseTrigger,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogRoot,
+  DialogTitle,
+} from "../../components/ui/dialog";
 
 const repoDefaults = create(RepoSchema, {
   prunePolicy: {
@@ -79,6 +95,191 @@ const repoDefaults = create(RepoSchema, {
   },
 });
 
+interface ConfirmationState {
+  open: boolean;
+  title: string;
+  content: React.ReactNode;
+  onOk: () => void;
+}
+
+interface SftpConfigSectionProps {
+  uri: string | undefined;
+  identityFile: string;
+  onChangeIdentityFile: (path: string) => void;
+  port: number | null;
+  onChangePort: (port: number | null) => void;
+  onChangeKnownHostsPath: (path: string) => void;
+  isWindows: boolean;
+}
+
+const SftpConfigSection = ({
+  uri,
+  identityFile,
+  onChangeIdentityFile,
+  port,
+  onChangePort,
+  onChangeKnownHostsPath,
+  isWindows,
+}: SftpConfigSectionProps) => {
+  // Setup Keys state
+  const [sftpUsername, setSftpUsername] = useState("");
+  const [sftpPassword, setSftpPassword] = useState("");
+  const [setupLoading, setSetupLoading] = useState(false);
+  const [generatedPublicKey, setGeneratedPublicKey] = useState<string | null>(
+    null,
+  );
+
+  if (isWindows) return null;
+
+  const handleSetupKeys = async () => {
+    setSetupLoading(true);
+    setGeneratedPublicKey(null);
+    try {
+      if (!uri) return;
+      // Simple parse of URI for host/port if not fully robust
+      let host = "";
+      let defaultPort = "22";
+      const uriParts = uri.replace("sftp:", "").split("/");
+      const authority = uriParts[0];
+      let hostPart = authority;
+      if (authority.includes("@")) {
+        setSftpUsername(authority.split("@")[0]);
+        hostPart = authority.split("@")[1];
+      }
+
+      if (hostPart.includes(":")) {
+        host = hostPart.split(":")[0];
+        defaultPort = hostPart.split(":")[1];
+      } else {
+        host = hostPart;
+      }
+
+      // Override from manual input if username is set there
+      const username =
+        sftpUsername || uri.match(/([^@]+)@/)?.[1] || "";
+
+      const res = await backrestService.setupSftp({
+        host: host,
+        port: port ? port.toString() : defaultPort,
+        username: username,
+        password: sftpPassword || undefined,
+      });
+
+      if (res.error) {
+        throw new Error(res.error);
+      }
+
+      onChangeIdentityFile(res.keyPath);
+      onChangeKnownHostsPath(res.knownHostsPath);
+      if (res.publicKey) {
+        setGeneratedPublicKey(res.publicKey);
+      }
+      alerts.success(
+        "Created SSH keypair at " + res.keyPath + " and updated known hosts file at " + res.knownHostsPath,
+      );
+      alerts.success(
+        "Updated restic flags to use the SSH keypair and known hosts file."
+      );
+    } catch (e: any) {
+      alerts.error(formatErrorAlert(e, "SFTP Setup Failed"));
+    } finally {
+      setSetupLoading(false);
+    }
+  };
+
+  return (
+    <Stack gap={4} ml={2} borderLeftWidth={2} pl={4}>
+      {!generatedPublicKey && !identityFile && (
+        <AccordionRoot collapsible variant="enclosed">
+          <AccordionItem value="bootstrap">
+            <AccordionItemTrigger>
+              Bootstrap SSH Key (Optional)
+            </AccordionItemTrigger>
+            <AccordionItemContent>
+              <Stack gap={3} p={2}>
+                <CText fontSize="sm">
+                  Enter your SSH credentials here. When you click "Setup Keys",
+                  backrest will generate an SSH key pair.
+                </CText>
+                <Field label="SSH Username">
+                  <Input
+                    placeholder="user"
+                    value={sftpUsername}
+                    onChange={(e) => setSftpUsername(e.target.value)}
+                  />
+                </Field>
+                <Field label="SSH Password">
+                  <PasswordInput
+                    placeholder="password (optional)"
+                    value={sftpPassword}
+                    onChange={(e) => setSftpPassword(e.target.value)}
+                  />
+                </Field>
+                <Button
+                  size="sm"
+                  onClick={handleSetupKeys}
+                  loading={setupLoading}
+                >
+                  Setup Keys
+                </Button>
+              </Stack>
+            </AccordionItemContent>
+          </AccordionItem>
+        </AccordionRoot>
+      )}
+
+      {generatedPublicKey && (
+        <Box p={4} borderWidth={1} borderRadius="md" bg="bg.subtle">
+          <Stack gap={2}>
+            <CText fontWeight="bold" color="green.500">
+              Key Generated Successfully!
+            </CText>
+            <CText fontSize="sm">
+              Please add the following public key to your server's{" "}
+              <Code>~/.ssh/authorized_keys</Code> file:
+            </CText>
+            <Box position="relative">
+              <Code p={3} display="block" whiteSpace="pre-wrap" wordBreak="break-all">
+                {generatedPublicKey}
+              </Code>
+              <Box position="absolute" top={1} right={1}>
+                <Button size="xs" onClick={() => {
+                  navigator.clipboard.writeText(generatedPublicKey || "");
+                  alerts.success("Key copied to clipboard");
+                }}>Copy</Button>
+              </Box>
+            </Box>
+          </Stack>
+        </Box>
+      )}
+
+      <Field
+        label="SFTP Identity File"
+        helperText="Optional: Path to an SSH identity file for SFTP authentication. This path must be accessible on the machine running backrest."
+      >
+        <Input
+          placeholder="/home/user/.ssh/id_rsa"
+          value={identityFile}
+          onChange={(e) => onChangeIdentityFile(e.target.value)}
+        />
+      </Field>
+
+      <Field
+        label="SFTP Port"
+        helperText="Optional: Specify a custom port for SFTP connection. Defaults to 22."
+      >
+        <NumberInputField
+          value={port ? port.toString() : undefined}
+          onValueChange={(e) => onChangePort(e.valueAsNumber)}
+          min={1}
+          max={65535}
+          defaultValue={"22"}
+        />
+      </Field>
+    </Stack>
+  );
+};
+
 export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
@@ -91,12 +292,32 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
       : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true }),
   );
 
+  // SFTP specific state
+  // SFTP specific state
+  const [sftpIdentityFile, setSftpIdentityFile] = useState("");
+  const [sftpPort, setSftpPort] = useState<number | null>(null);
+  const [sftpKnownHostsPath, setSftpKnownHostsPath] = useState("");
+
+  const [confirmation, setConfirmation] = useState<ConfirmationState>({
+    open: false,
+    title: "",
+    content: null,
+    onOk: () => {},
+  });
+
   useEffect(() => {
     setFormData(
       template
         ? toJson(RepoSchema, template, { alwaysEmitImplicit: true })
         : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true }),
     );
+    // Reset SFTP fields when template changes (or is null)
+    if (!template) {
+
+      setSftpIdentityFile("");
+      setSftpPort(null);
+      setSftpKnownHostsPath("");
+    }
   }, [template]);
 
   const updateField = (path: string[], value: any) => {
@@ -120,6 +341,64 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     }
     return curr;
   };
+
+  // Logic to update flags based on SFTP inputs
+  useEffect(() => {
+    // If we are editing, we don't touch the flags. The user can edit them manually.
+    if (template) {
+      return;
+    }
+
+    const uri = getField(["uri"]);
+    if (!uri?.startsWith("sftp:")) {
+      return;
+    }
+
+    const currentFlags = getField(["flags"]) || [];
+    const newFlags = currentFlags.filter(
+      (f: string) =>
+        f && !f.includes("sftp.args") && !f.includes("sftp.command"),
+    );
+
+    let sftpArgs = "-oBatchMode=yes";
+    let argsChanged = false;
+
+    if (sftpIdentityFile) {
+      let cleanPath = sftpIdentityFile;
+      if (cleanPath.startsWith("@")) {
+        cleanPath = cleanPath.substring(1);
+      }
+      sftpArgs += ` -i ${cleanPath}`;
+      argsChanged = true;
+    }
+
+    if (sftpPort && sftpPort !== 0 && sftpPort !== 22) {
+      sftpArgs += ` -p ${sftpPort}`;
+      argsChanged = true;
+    }
+
+    if (sftpKnownHostsPath) {
+      sftpArgs += ` -oUserKnownHostsFile=${sftpKnownHostsPath}`;
+      argsChanged = true;
+    }
+
+    if (argsChanged) {
+      newFlags.push(`--option=sftp.args='${sftpArgs}'`);
+    }
+
+    const sortedCurrent = [...currentFlags].sort();
+    const sortedNew = [...newFlags].sort();
+
+    if (JSON.stringify(sortedCurrent) !== JSON.stringify(sortedNew)) {
+      updateField(["flags"], newFlags);
+    }
+  }, [
+    getField(["uri"]),
+    sftpIdentityFile,
+    sftpPort,
+    template,
+    getField(["flags"]),
+  ]);
 
   if (!config) return null;
 
@@ -174,59 +453,155 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     }
   };
 
+  const verifySftpHostKey = async (
+    action: (trust: boolean) => Promise<any>,
+  ) => {
+    try {
+      await action(false);
+    } catch (e: any) {
+      if (
+        e.message &&
+        e.message.includes("SFTP host key verification failed")
+      ) {
+        setConfirmation({
+          open: true,
+          title: "Unknown SFTP Host Key",
+          content: (
+            <>
+              The host key for this SFTP server is not known.
+              <br />
+              Do you want to trust this host and add its key to your known_hosts
+              file?
+            </>
+          ),
+          onOk: async () => {
+            setConfirmation((prev) => ({ ...prev, open: false }));
+            setConfirmLoading(true);
+            try {
+              await action(true);
+            } catch (retryErr: any) {
+              alerts.error(
+                formatErrorAlert(retryErr, "Operation error: "),
+              );
+            } finally {
+              setConfirmLoading(false);
+            }
+          },
+        });
+      } else {
+        throw e;
+      }
+    }
+  };
+
   const handleOk = async () => {
     setConfirmLoading(true);
     try {
       await validateLocal();
 
-      const repo = fromJson(RepoSchema, formData, {
-        ignoreUnknownFields: true,
-      });
+      const doSubmit = async (trust: boolean) => {
+        const repo = fromJson(RepoSchema, formData, {
+          ignoreUnknownFields: true,
+        });
 
-      if (template !== null) {
-        setConfig(await backrestService.addRepo(repo));
-        showModal(null);
-        alerts.success(m.add_repo_modal_success_updated({ uri: repo.uri }));
-      } else {
-        setConfig(await backrestService.addRepo(repo));
-        showModal(null);
-        alerts.success(m.add_repo_modal_success_added({ uri: repo.uri }));
-      }
+        const req = create(AddRepoRequestSchema, {
+          repo: repo,
+          trustSftpHostKey: trust,
+        });
 
-      try {
-        await backrestService.listSnapshots({ repoId: repo.id });
-      } catch (e: any) {
-        alerts.error(
-          formatErrorAlert(e, m.add_repo_modal_error_list_snapshots()),
-        );
-        return;
-      }
+        if (template !== null) {
+          setConfig(await backrestService.addRepo(req));
+          showModal(null);
+          alerts.success(m.add_repo_modal_success_updated({ uri: repo.uri }));
+        } else {
+          setConfig(await backrestService.addRepo(req));
+          showModal(null);
+          alerts.success(m.add_repo_modal_success_added({ uri: repo.uri }));
+        }
+
+        try {
+          await backrestService.listSnapshots({ repoId: repo.id });
+        } catch (e: any) {
+          alerts.error(
+            formatErrorAlert(e, m.add_repo_modal_error_list_snapshots()),
+          );
+        }
+      };
+
+      await verifySftpHostKey(doSubmit);
     } catch (e: any) {
       alerts.error(
         formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()),
       );
-      return;
     } finally {
       setConfirmLoading(false);
     }
   };
 
   const handleTest = async () => {
+    setConfirmLoading(true);
     try {
       await validateLocal();
-      const repo = fromJson(RepoSchema, formData, {
-        ignoreUnknownFields: true,
-      });
-      const exists = await backrestService.checkRepoExists(repo);
-      if (exists.value) {
-        alerts.success(
-          m.add_repo_modal_test_success_existing({ uri: repo.uri }),
-        );
-      } else {
-        alerts.success(m.add_repo_modal_test_success_new({ uri: repo.uri }));
-      }
+      const doCheck = async (trust: boolean, confirm: boolean) => {
+        const repo = fromJson(RepoSchema, formData, {
+          ignoreUnknownFields: true,
+        });
+        const req = create(CheckRepoExistsRequestSchema, {
+          repo: repo,
+          trustSftpHostKey: trust,
+        });
+
+        const response = await backrestService.checkRepoExists(req);
+
+        if (response.hostKeyUntrusted) {
+          setConfirmation({
+            open: true,
+            title: "Unknown SFTP Host Key",
+            content: (
+              <>
+                The host key for this SFTP server is not known.
+                <br />
+                Do you want to trust this host and add its key to your
+                known_hosts file?
+              </>
+            ),
+            onOk: () => {
+              setConfirmation((prev) => ({ ...prev, open: false }));
+              handleTestWrapper(true, confirm);
+            },
+          });
+          return;
+        }
+
+        if (response.error) {
+          throw new Error(response.error);
+        }
+
+        if (response.exists) {
+          alerts.success(
+            m.add_repo_modal_test_success_existing({ uri: repo.uri }),
+          );
+        } else {
+          alerts.success(m.add_repo_modal_test_success_new({ uri: repo.uri }));
+        }
+      };
+
+      // Wrapper to handle re-entry from dialog
+      const handleTestWrapper = async (trust: boolean, confirm: boolean) => {
+        setConfirmLoading(true);
+        try {
+          await doCheck(trust, confirm);
+        } catch (e: any) {
+          alerts.error(formatErrorAlert(e, m.add_repo_modal_test_error()));
+        } finally {
+          setConfirmLoading(false);
+        }
+      };
+
+      await handleTestWrapper(false, false);
     } catch (e: any) {
       alerts.error(formatErrorAlert(e, m.add_repo_modal_test_error()));
+      setConfirmLoading(false);
     }
   };
 
@@ -272,388 +647,430 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   ];
 
   return (
-    <FormModal
-      isOpen={true}
-      onClose={() => showModal(null)}
-      title={
-        template ? m.add_repo_modal_title_edit() : m.add_repo_modal_title_add()
-      }
-      size="large"
-      footer={
-        <Flex gap={2} justify="flex-end" width="full">
-          <Button
-            variant="outline"
-            disabled={confirmLoading}
-            onClick={() => showModal(null)}
-          >
-            {m.add_plan_modal_button_cancel()}
-          </Button>
-          {template && (
-            <ConfirmButton
-              danger
-              onClickAsync={handleDestroy}
-              confirmTitle={m.add_plan_modal_button_confirm_delete()}
+    <>
+      <DialogRoot
+        open={confirmation.open}
+        onOpenChange={(e) =>
+          setConfirmation((prev) => ({ ...prev, open: e.open }))
+        }
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmation.title}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>{confirmation.content}</DialogBody>
+          <DialogFooter>
+            <DialogActionTrigger asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogActionTrigger>
+            <Button onClick={confirmation.onOk}>Confirm</Button>
+          </DialogFooter>
+          <DialogCloseTrigger />
+        </DialogContent>
+      </DialogRoot>
+
+      <FormModal
+        isOpen={true}
+        onClose={() => showModal(null)}
+        title={
+          template
+            ? m.add_repo_modal_title_edit()
+            : m.add_repo_modal_title_add()
+        }
+        size="large"
+        footer={
+          <Flex gap={2} justify="flex-end" width="full">
+            <Button
+              variant="outline"
+              disabled={confirmLoading}
+              onClick={() => showModal(null)}
             >
-              {m.add_plan_modal_button_delete()}
-            </ConfirmButton>
-          )}
-          <SpinButton onClickAsync={handleTest}>
-            {m.add_repo_modal_test_config()}
-          </SpinButton>
-          <Button loading={confirmLoading} onClick={handleOk}>
-            {m.add_plan_modal_button_submit()}
-          </Button>
-        </Flex>
-      }
-    >
-      <Stack gap={6}>
-        <p>
-          {m.add_repo_modal_guide_text_p1()}{" "}
-          <a
-            href="https://garethgeorge.github.io/backrest/introduction/getting-started"
-            target="_blank"
-            style={{ textDecoration: "underline" }}
-          >
-            {m.add_repo_modal_guide_link_text()}
-          </a>{" "}
-          {m.add_repo_modal_guide_text_p2()}{" "}
-          <a
-            href="https://restic.readthedocs.io/"
-            target="_blank"
-            style={{ textDecoration: "underline" }}
-          >
-            {m.add_repo_modal_guide_restic_link_text()}
-          </a>{" "}
-          {m.add_repo_modal_guide_text_p3()}
-        </p>
+              {m.add_plan_modal_button_cancel()}
+            </Button>
+            {template && (
+              <ConfirmButton
+                danger
+                onClickAsync={handleDestroy}
+                confirmTitle={m.add_plan_modal_button_confirm_delete()}
+              >
+                {m.add_plan_modal_button_delete()}
+              </ConfirmButton>
+            )}
+            <Button
+              variant="subtle"
+              loading={confirmLoading}
+              onClick={handleTest}
+            >
+              {m.add_repo_modal_test_config()}
+            </Button>
+            <Button loading={confirmLoading} onClick={handleOk}>
+              {m.add_plan_modal_button_submit()}
+            </Button>
+          </Flex>
+        }
+      >
+        <Stack gap={6}>
+          <p>
+            {m.add_repo_modal_guide_text_p1()}{" "}
+            <a
+              href="https://garethgeorge.github.io/backrest/introduction/getting-started"
+              target="_blank"
+              style={{ textDecoration: "underline" }}
+            >
+              {m.add_repo_modal_guide_link_text()}
+            </a>{" "}
+            {m.add_repo_modal_guide_text_p2()}{" "}
+            <a
+              href="https://restic.readthedocs.io/"
+              target="_blank"
+              style={{ textDecoration: "underline" }}
+            >
+              {m.add_repo_modal_guide_restic_link_text()}
+            </a>{" "}
+            {m.add_repo_modal_guide_text_p3()}
+          </p>
 
-        <Section title="Repo Details">
-          <Card.Root variant="subtle">
-            <Card.Body>
-              <Stack gap={4}>
-                <Field
-                  label={m.add_repo_modal_field_repo_name()}
-                  helperText={
-                    !template
-                      ? m.add_repo_modal_field_repo_name_tooltip()
-                      : undefined
-                  }
-                  required
-                  invalid={
-                    !!getField(["id"]) &&
-                    (!namePattern.test(getField(["id"])) ||
-                      (!template &&
-                        !!config.repos.find((r) => r.id === getField(["id"]))))
-                  }
-                  errorText={
-                    !!getField(["id"]) && !namePattern.test(getField(["id"]))
-                      ? m.add_plan_modal_validation_plan_name_pattern()
-                      : m.add_repo_modal_error_repo_exists()
-                  }
-                >
-                  <Input
-                    value={getField(["id"])}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      updateField(["id"], e.target.value)
+          <Section title="Repo Details">
+            <Card.Root variant="subtle">
+              <Card.Body>
+                <Stack gap={4}>
+                  <Field
+                    label={m.add_repo_modal_field_repo_name()}
+                    helperText={
+                      !template
+                        ? m.add_repo_modal_field_repo_name_tooltip()
+                        : undefined
                     }
-                    disabled={!!template}
-                    placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
-                  />
-                </Field>
+                    required
+                    invalid={
+                      !!getField(["id"]) &&
+                      (!namePattern.test(getField(["id"])) ||
+                        (!template &&
+                          !!config.repos.find((r) => r.id === getField(["id"]))))
+                    }
+                    errorText={
+                      !!getField(["id"]) && !namePattern.test(getField(["id"]))
+                        ? m.add_plan_modal_validation_plan_name_pattern()
+                        : m.add_repo_modal_error_repo_exists()
+                    }
+                  >
+                    <Input
+                      value={getField(["id"])}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        updateField(["id"], e.target.value)
+                      }
+                      disabled={!!template}
+                      placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
+                    />
+                  </Field>
 
-                <Field
-                  label={m.add_repo_modal_field_uri()}
-                  helperText={
-                    <>
-                      {m.add_repo_modal_field_uri_tooltip_title()}
-                      <Box as="ul" ml={4} mt={1}>
-                        <li>{m.add_repo_modal_field_uri_tooltip_local()}</li>
-                        <li>{m.add_repo_modal_field_uri_tooltip_s3()}</li>
-                        <li>{m.add_repo_modal_field_uri_tooltip_sftp()}</li>
-                        <li>
-                          {m.add_repo_modal_field_uri_tooltip_see()}{" "}
-                          <a
-                            href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository"
-                            target="_blank"
-                            style={{ textDecoration: "underline" }}
-                          >
-                            {m.add_repo_modal_field_uri_tooltip_restic_docs()}
-                          </a>{" "}
-                          {m.add_repo_modal_field_uri_tooltip_info()}
-                        </li>
-                      </Box>
-                    </>
-                  }
-                  required
-                >
-                  <URIAutocomplete
-                    disabled={!!template}
-                    value={getField(["uri"])}
-                    onChange={(val: string) => updateField(["uri"], val)}
-                  />
-                </Field>
-
-                <Field
-                  label={m.add_repo_modal_field_password()}
-                  helperText={
-                    !template ? (
+                  <Field
+                    label={m.add_repo_modal_field_uri()}
+                    helperText={
                       <>
-                        {m.add_repo_modal_field_password_tooltip_intro()}
+                        {m.add_repo_modal_field_uri_tooltip_title()}
                         <Box as="ul" ml={4} mt={1}>
+                          <li>{m.add_repo_modal_field_uri_tooltip_local()}</li>
+                          <li>{m.add_repo_modal_field_uri_tooltip_s3()}</li>
+                          <li>{m.add_repo_modal_field_uri_tooltip_sftp()}</li>
                           <li>
-                            {m.add_repo_modal_field_password_tooltip_entropy()}
-                          </li>
-                          <li>
-                            {m.add_repo_modal_field_password_tooltip_env()}
-                          </li>
-                          <li>
-                            {m.add_repo_modal_field_password_tooltip_generate()}
+                            {m.add_repo_modal_field_uri_tooltip_see()}{" "}
+                            <a
+                              href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository"
+                              target="_blank"
+                              style={{ textDecoration: "underline" }}
+                            >
+                              {m.add_repo_modal_field_uri_tooltip_restic_docs()}
+                            </a>{" "}
+                            {m.add_repo_modal_field_uri_tooltip_info()}
                           </li>
                         </Box>
                       </>
-                    ) : undefined
-                  }
-                >
-                  <Flex gap={2} width="full">
-                    <Box flex={1}>
-                      <PasswordInput
-                        value={getField(["password"])}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          updateField(["password"], e.target.value)
-                        }
-                        disabled={!!template}
-                      />
-                    </Box>
-                    {!template && (
-                      <Button
-                        variant="ghost"
-                        onClick={() =>
-                          updateField(["password"], cryptoRandomPassword())
-                        }
-                      >
-                        {m.add_repo_modal_button_generate()}
-                      </Button>
-                    )}
-                  </Flex>
-                </Field>
-
-                <Field label={m.add_repo_modal_field_auto_unlock()}>
-                  <Checkbox
-                    checked={getField(["autoUnlock"])}
-                    onCheckedChange={(e: {
-                      checked: boolean | "indeterminate";
-                    }) => updateField(["autoUnlock"], !!e.checked)}
+                    }
+                    required
                   >
-                    {m.add_repo_modal_field_auto_unlock()}
-                  </Checkbox>
-                  <CText fontSize="xs" color="fg.muted" ml={6}>
-                    {m.add_repo_modal_field_auto_unlock_tooltip()}
-                  </CText>
-                </Field>
-              </Stack>
-            </Card.Body>
-          </Card.Root>
-        </Section>
-
-        <Section title="Environment & Flags">
-          <Card.Root variant="subtle">
-            <Card.Body>
-              <Stack gap={4}>
-                <DynamicList
-                  label={m.add_repo_modal_field_env_vars()}
-                  items={getField(["env"]) || []}
-                  onUpdate={(items: string[]) => updateField(["env"], items)}
-                  tooltip={
-                    <Stack gap={2}>
-                      <CText>
-                        {m.add_repo_modal_field_env_vars_tooltip()}
-                      </CText>
-                      <EnvVarTooltip uri={getField(["uri"])} />
-                    </Stack>
-                  }
-                  placeholder="KEY=VALUE"
-                />
-
-                <DynamicList
-                  label={m.add_repo_modal_field_flags()}
-                  items={getField(["flags"]) || []}
-                  onUpdate={(items: string[]) => updateField(["flags"], items)}
-                  placeholder="--flag"
-                />
-              </Stack>
-            </Card.Body>
-          </Card.Root>
-        </Section>
-
-        <Section
-          title={
-            <Tooltip
-              content={
-                <span>
-                  {m.add_repo_modal_field_prune_policy_tooltip_p1()}{" "}
-                  <a
-                    href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
-                    target="_blank"
-                    style={{ textDecoration: "underline" }}
-                  >
-                    {m.add_repo_modal_field_prune_policy_tooltip_link()}
-                  </a>{" "}
-                  {m.add_repo_modal_field_prune_policy_tooltip_p2()}
-                </span>
-              }
-            >
-              {m.add_repo_modal_field_prune_policy()}
-            </Tooltip>
-          }
-        >
-          <Card.Root variant="subtle" size="sm">
-            <Card.Body>
-              <Stack gap={4}>
-                <NumberInputField
-                  label={m.add_repo_modal_field_max_unused()}
-                  helperText={m.add_repo_modal_field_max_unused_tooltip()}
-                  value={getField(["prunePolicy", "maxUnusedPercent"])}
-                  onValueChange={(e: {
-                    value: string;
-                    valueAsNumber: number;
-                  }) =>
-                    updateField(
-                      ["prunePolicy", "maxUnusedPercent"],
-                      e.valueAsNumber,
-                    )
-                  }
-                />
-                <ScheduleFormItem
-                  value={getField(["prunePolicy", "schedule"])}
-                  onChange={(val: any) =>
-                    updateField(["prunePolicy", "schedule"], val)
-                  }
-                  defaults={ScheduleDefaultsInfrequent}
-                />
-              </Stack>
-            </Card.Body>
-          </Card.Root>
-        </Section>
-
-        <Section
-          title={
-            <Tooltip content={m.add_repo_modal_field_check_policy_tooltip()}>
-              {m.add_repo_modal_field_check_policy()}
-            </Tooltip>
-          }
-        >
-          <Card.Root variant="subtle" size="sm">
-            <Card.Body>
-              <Stack gap={4}>
-                <NumberInputField
-                  label={m.add_repo_modal_field_read_data()}
-                  helperText={m.add_repo_modal_field_read_data_tooltip()}
-                  value={getField(["checkPolicy", "readDataSubsetPercent"])}
-                  onValueChange={(e: {
-                    value: string;
-                    valueAsNumber: number;
-                  }) =>
-                    updateField(
-                      ["checkPolicy", "readDataSubsetPercent"],
-                      e.valueAsNumber,
-                    )
-                  }
-                />
-                <ScheduleFormItem
-                  value={getField(["checkPolicy", "schedule"])}
-                  onChange={(val: any) =>
-                    updateField(["checkPolicy", "schedule"], val)
-                  }
-                  defaults={ScheduleDefaultsInfrequent}
-                />
-              </Stack>
-            </Card.Body>
-          </Card.Root>
-        </Section>
-
-        <Section title="Advanced">
-          <Card.Root variant="subtle">
-            <Card.Body>
-              <Stack gap={4} width="full">
-                {!isWindows && (
-                  <Field label={m.add_repo_modal_field_command_modifiers()}>
-                    <Grid templateColumns="1fr 1fr" gap={4} width="full">
-                      <Field
-                        label={m.add_repo_modal_field_io_priority()}
-                        helperText={m.add_repo_modal_field_io_priority_tooltip_intro()}
-                      >
-                        <EnumSelector
-                          options={ioNiceOptions}
-                          size="sm"
-                          value={getField(["commandPrefix", "ioNice"])}
-                          onChange={(val) =>
-                            updateField(
-                              ["commandPrefix", "ioNice"],
-                              val as string,
-                            )
-                          }
-                          placeholder={m.add_repo_modal_field_io_priority_placeholder()}
-                        />
-                      </Field>
-                      <Field
-                        label={m.add_repo_modal_field_cpu_priority()}
-                        helperText={m.add_repo_modal_field_cpu_priority_tooltip_intro()}
-                      >
-                        <EnumSelector
-                          options={cpuNiceOptions}
-                          size="sm"
-                          value={getField(["commandPrefix", "cpuNice"])}
-                          onChange={(val) =>
-                            updateField(
-                              ["commandPrefix", "cpuNice"],
-                              val as string,
-                            )
-                          }
-                          placeholder={m.add_repo_modal_field_cpu_priority_placeholder()}
-                        />
-                      </Field>
-                    </Grid>
+                    <URIAutocomplete
+                      disabled={!!template}
+                      value={getField(["uri"])}
+                      onChange={(val: string) => updateField(["uri"], val)}
+                    />
                   </Field>
-                )}
 
-                <Field
-                  label={m.add_plan_modal_field_hooks()}
-                  helperText={hooksListTooltipText}
-                >
-                  <HooksFormList
-                    value={getField(["hooks"])}
-                    onChange={(v: any) => updateField(["hooks"], v)}
+                  {/* SFTP Specific Fields */}
+                  {getField(["uri"])?.startsWith("sftp:") && !template && (
+                    <SftpConfigSection
+                      uri={getField(["uri"])}
+                      identityFile={sftpIdentityFile}
+                      onChangeIdentityFile={setSftpIdentityFile}
+                      port={sftpPort}
+                      onChangePort={setSftpPort}
+                      onChangeKnownHostsPath={setSftpKnownHostsPath}
+                      isWindows={isWindows}
+                    />
+                  )}
+
+                  <Field
+                    label={m.add_repo_modal_field_password()}
+                    helperText={
+                      !template ? (
+                        <>
+                          {m.add_repo_modal_field_password_tooltip_intro()}
+                          <Box as="ul" ml={4} mt={1}>
+                            <li>
+                              {m.add_repo_modal_field_password_tooltip_entropy()}
+                            </li>
+                            <li>
+                              {m.add_repo_modal_field_password_tooltip_env()}
+                            </li>
+                            <li>
+                              {m.add_repo_modal_field_password_tooltip_generate()}
+                            </li>
+                          </Box>
+                        </>
+                      ) : undefined
+                    }
+                  >
+                    <Flex gap={2} width="full">
+                      <Box flex={1}>
+                        <PasswordInput
+                          value={getField(["password"])}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            updateField(["password"], e.target.value)
+                          }
+                          disabled={!!template}
+                        />
+                      </Box>
+                      {!template && (
+                        <Button
+                          variant="ghost"
+                          onClick={() =>
+                            updateField(["password"], cryptoRandomPassword())
+                          }
+                        >
+                          {m.add_repo_modal_button_generate()}
+                        </Button>
+                      )}
+                    </Flex>
+                  </Field>
+
+                  <Field label={m.add_repo_modal_field_auto_unlock()}>
+                    <Checkbox
+                      checked={getField(["autoUnlock"])}
+                      onCheckedChange={(e: {
+                        checked: boolean | "indeterminate";
+                      }) => updateField(["autoUnlock"], !!e.checked)}
+                    >
+                      {m.add_repo_modal_field_auto_unlock()}
+                    </Checkbox>
+                    <CText fontSize="xs" color="fg.muted" ml={6}>
+                      {m.add_repo_modal_field_auto_unlock_tooltip()}
+                    </CText>
+                  </Field>
+                </Stack>
+              </Card.Body>
+            </Card.Root>
+          </Section>
+
+          <Section title="Environment & Flags">
+            <Card.Root variant="subtle">
+              <Card.Body>
+                <Stack gap={4}>
+                  <DynamicList
+                    label={m.add_repo_modal_field_env_vars()}
+                    items={getField(["env"]) || []}
+                    onUpdate={(items: string[]) => updateField(["env"], items)}
+                    tooltip={
+                      <Stack gap={2}>
+                        <CText>
+                          {m.add_repo_modal_field_env_vars_tooltip()}
+                        </CText>
+                        <EnvVarTooltip uri={getField(["uri"])} />
+                      </Stack>
+                    }
+                    placeholder="KEY=VALUE"
                   />
-                </Field>
-              </Stack>
-            </Card.Body>
-          </Card.Root>
-        </Section>
 
-        {/* JSON Preview */}
-        <AccordionRoot collapsible variant="plain">
-          <AccordionItem value="json-preview">
-            <AccordionItemTrigger>
-              <CText fontSize="sm" color="fg.muted">
-                {m.add_repo_modal_preview_json()}
-              </CText>
-            </AccordionItemTrigger>
-            <AccordionItemContent>
-              <Code
-                display="block"
-                whiteSpace="pre"
-                overflowX="auto"
-                p={2}
-                borderRadius="md"
-                fontSize="xs"
+                  <DynamicList
+                    label={m.add_repo_modal_field_flags()}
+                    items={getField(["flags"]) || []}
+                    onUpdate={(items: string[]) => updateField(["flags"], items)}
+                    placeholder="--flag"
+                  />
+                </Stack>
+              </Card.Body>
+            </Card.Root>
+          </Section>
+
+          <Section
+            title={
+              <Tooltip
+                content={
+                  <span>
+                    {m.add_repo_modal_field_prune_policy_tooltip_p1()}{" "}
+                    <a
+                      href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
+                      target="_blank"
+                      style={{ textDecoration: "underline" }}
+                    >
+                      {m.add_repo_modal_field_prune_policy_tooltip_link()}
+                    </a>{" "}
+                    {m.add_repo_modal_field_prune_policy_tooltip_p2()}
+                  </span>
+                }
               >
-                {JSON.stringify(formData, null, 2)}
-              </Code>
-            </AccordionItemContent>
-          </AccordionItem>
-        </AccordionRoot>
-      </Stack>
-    </FormModal>
+                {m.add_repo_modal_field_prune_policy()}
+              </Tooltip>
+            }
+          >
+            <Card.Root variant="subtle" size="sm">
+              <Card.Body>
+                <Stack gap={4}>
+                  <NumberInputField
+                    label={m.add_repo_modal_field_max_unused()}
+                    helperText={m.add_repo_modal_field_max_unused_tooltip()}
+                    value={getField(["prunePolicy", "maxUnusedPercent"])}
+                    onValueChange={(e: {
+                      value: string;
+                      valueAsNumber: number;
+                    }) =>
+                      updateField(
+                        ["prunePolicy", "maxUnusedPercent"],
+                        e.valueAsNumber,
+                      )
+                    }
+                  />
+                  <ScheduleFormItem
+                    value={getField(["prunePolicy", "schedule"])}
+                    onChange={(val: any) =>
+                      updateField(["prunePolicy", "schedule"], val)
+                    }
+                    defaults={ScheduleDefaultsInfrequent}
+                  />
+                </Stack>
+              </Card.Body>
+            </Card.Root>
+          </Section>
+
+          <Section
+            title={
+              <Tooltip content={m.add_repo_modal_field_check_policy_tooltip()}>
+                {m.add_repo_modal_field_check_policy()}
+              </Tooltip>
+            }
+          >
+            <Card.Root variant="subtle" size="sm">
+              <Card.Body>
+                <Stack gap={4}>
+                  <NumberInputField
+                    label={m.add_repo_modal_field_read_data()}
+                    helperText={m.add_repo_modal_field_read_data_tooltip()}
+                    value={getField(["checkPolicy", "readDataSubsetPercent"])}
+                    onValueChange={(e: {
+                      value: string;
+                      valueAsNumber: number;
+                    }) =>
+                      updateField(
+                        ["checkPolicy", "readDataSubsetPercent"],
+                        e.valueAsNumber,
+                      )
+                    }
+                  />
+                  <ScheduleFormItem
+                    value={getField(["checkPolicy", "schedule"])}
+                    onChange={(val: any) =>
+                      updateField(["checkPolicy", "schedule"], val)
+                    }
+                    defaults={ScheduleDefaultsInfrequent}
+                  />
+                </Stack>
+              </Card.Body>
+            </Card.Root>
+          </Section>
+
+          <Section title="Advanced">
+            <Card.Root variant="subtle">
+              <Card.Body>
+                <Stack gap={4} width="full">
+                  {!isWindows && (
+                    <Field label={m.add_repo_modal_field_command_modifiers()}>
+                      <Grid templateColumns="1fr 1fr" gap={4} width="full">
+                        <Field
+                          label={m.add_repo_modal_field_io_priority()}
+                          helperText={m.add_repo_modal_field_io_priority_tooltip_intro()}
+                        >
+                          <EnumSelector
+                            options={ioNiceOptions}
+                            size="sm"
+                            value={getField(["commandPrefix", "ioNice"])}
+                            onChange={(val) =>
+                              updateField(
+                                ["commandPrefix", "ioNice"],
+                                val as string,
+                              )
+                            }
+                            placeholder={m.add_repo_modal_field_io_priority_placeholder()}
+                          />
+                        </Field>
+                        <Field
+                          label={m.add_repo_modal_field_cpu_priority()}
+                          helperText={m.add_repo_modal_field_cpu_priority_tooltip_intro()}
+                        >
+                          <EnumSelector
+                            options={cpuNiceOptions}
+                            size="sm"
+                            value={getField(["commandPrefix", "cpuNice"])}
+                            onChange={(val) =>
+                              updateField(
+                                ["commandPrefix", "cpuNice"],
+                                val as string,
+                              )
+                            }
+                            placeholder={m.add_repo_modal_field_cpu_priority_placeholder()}
+                          />
+                        </Field>
+                      </Grid>
+                    </Field>
+                  )}
+
+                  <Field
+                    label={m.add_plan_modal_field_hooks()}
+                    helperText={hooksListTooltipText}
+                  >
+                    <HooksFormList
+                      value={getField(["hooks"])}
+                      onChange={(v: any) => updateField(["hooks"], v)}
+                    />
+                  </Field>
+                </Stack>
+              </Card.Body>
+            </Card.Root>
+          </Section>
+
+          {/* JSON Preview */}
+          <AccordionRoot collapsible variant="plain">
+            <AccordionItem value="json-preview">
+              <AccordionItemTrigger>
+                <CText fontSize="sm" color="fg.muted">
+                  {m.add_repo_modal_preview_json()}
+                </CText>
+              </AccordionItemTrigger>
+              <AccordionItemContent>
+                <Code
+                  display="block"
+                  whiteSpace="pre"
+                  overflowX="auto"
+                  p={2}
+                  borderRadius="md"
+                  fontSize="xs"
+                >
+                  {JSON.stringify(formData, null, 2)}
+                </Code>
+              </AccordionItemContent>
+            </AccordionItem>
+          </AccordionRoot>
+        </Stack>
+      </FormModal>
+    </>
   );
 };
 

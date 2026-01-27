@@ -99,6 +99,11 @@ func LogsPath() string {
 	return filepath.Join(dataDir, "processlogs")
 }
 
+func SSHDir() string {
+	// This is awkward, we don't have a flag that specifies a "config" directory persay, so we default to the directory containing the config file for our SSH keys/known_hosts file.
+	return filepath.Join(filepath.Dir(ConfigFilePath()), ".backrest-ssh")
+}
+
 func getHomeDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {

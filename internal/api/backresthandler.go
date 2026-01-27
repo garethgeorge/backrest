@@ -3,11 +3,19 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
+	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -17,6 +25,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
+	"github.com/garethgeorge/backrest/internal/api/sftputil"
 	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
@@ -29,7 +38,9 @@ import (
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/garethgeorge/backrest/internal/resticinstaller"
 	"github.com/garethgeorge/backrest/pkg/restic"
+	"github.com/pkg/sftp"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -98,21 +109,33 @@ func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1
 	return connect.NewResponse(newConfig), nil
 }
 
-func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Request[v1.Repo]) (*connect.Response[types.BoolValue], error) {
+func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Request[v1.CheckRepoExistsRequest]) (*connect.Response[v1.CheckRepoExistsResponse], error) {
 	c, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
+	sanitizeRepoFlags(req.Msg.Repo)
+
 	c = proto.Clone(c).(*v1.Config)
-	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == req.Msg.Id }); idx != -1 {
-		c.Repos[idx] = req.Msg
+	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == req.Msg.Repo.Id }); idx != -1 {
+		c.Repos[idx] = req.Msg.Repo
 	} else {
-		c.Repos = append(c.Repos, req.Msg)
+		c.Repos = append(c.Repos, req.Msg.Repo)
 	}
 
-	if req.Msg.Guid == "" {
-		req.Msg.Guid = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+	if req.Msg.Repo.Guid == "" {
+		req.Msg.Repo.Guid = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+	}
+
+	if err := s.addSftpHostKey(req.Msg.Repo, req.Msg.GetTrustSftpHostKey()); err != nil {
+		if strings.Contains(err.Error(), "host key verification failed") {
+			return connect.NewResponse(&v1.CheckRepoExistsResponse{
+				HostKeyUntrusted: true,
+				Error:            err.Error(),
+			}), nil
+		}
+		return nil, fmt.Errorf("failed to add sftp host key: %w", err)
 	}
 
 	if err := config.ValidateConfig(c); err != nil {
@@ -124,7 +147,7 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 		return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
 	}
 
-	r, err := repo.NewRepoOrchestrator(c, req.Msg, bin)
+	r, err := repo.NewRepoOrchestrator(c, req.Msg.Repo, bin)
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure repo: %w", err)
 	}
@@ -133,24 +156,25 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 	defer cancel()
 
 	if err := r.Exists(ctx); err != nil {
-		zap.S().Debugf("repo %q exists or not: %v", req.Msg.Id, err)
+		zap.S().Debugf("repo %q exists or not: %v", req.Msg.Repo.Id, err)
 		if errors.Is(err, restic.ErrRepoNotFound) {
-			zap.S().Debugf("repo %q does not exist", req.Msg.Id)
-			return connect.NewResponse(&types.BoolValue{Value: false}), nil
+			zap.S().Debugf("repo %q does not exist", req.Msg.Repo.Id)
+			return connect.NewResponse(&v1.CheckRepoExistsResponse{Exists: false}), nil
 		}
 		return nil, err
 	}
-	return connect.NewResponse(&types.BoolValue{Value: true}), nil
+	return connect.NewResponse(&v1.CheckRepoExistsResponse{Exists: true}), nil
 }
 
 // AddRepo implements POST /v1/config/repo, it includes validation that the repo can be initialized.
-func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.Repo]) (*connect.Response[v1.Config], error) {
+func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.AddRepoRequest]) (*connect.Response[v1.Config], error) {
 	c, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
-	newRepo := req.Msg
+	newRepo := req.Msg.Repo
+	sanitizeRepoFlags(newRepo)
 
 	// Deep copy the configuration
 	c = proto.Clone(c).(*v1.Config)
@@ -188,6 +212,10 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.R
 	}
 
 	newRepo.Guid = guid
+
+	if err := s.addSftpHostKey(newRepo, req.Msg.GetTrustSftpHostKey()); err != nil {
+		return nil, fmt.Errorf("failed to add sftp host key: %w", err)
+	}
 
 	if err := config.ValidateConfig(c); err != nil {
 		return nil, fmt.Errorf("validation error: %w", err)
@@ -265,6 +293,158 @@ func (s *BackrestHandler) RemoveRepo(ctx context.Context, req *connect.Request[t
 	}
 
 	return connect.NewResponse(cfg), nil
+}
+
+// SetupSftp implements SetupSftp RPC
+func (s *BackrestHandler) SetupSftp(ctx context.Context, req *connect.Request[v1.SetupSftpRequest]) (*connect.Response[v1.SetupSftpResponse], error) {
+	host := req.Msg.Host
+	port := req.Msg.Port
+	if port == "" {
+		port = "22"
+	}
+	user := req.Msg.Username
+	password := req.Msg.Password // Optional
+
+	if runtime.GOOS == "windows" {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("automated SFTP setup is not supported on Windows"))
+	}
+
+	// 1. Host Key Verification/Addition
+	if err := sftputil.AddHostKey(host, port, env.SSHDir()); err != nil {
+		return connect.NewResponse(&v1.SetupSftpResponse{
+			Error: fmt.Sprintf("Failed to add host key: %v", err),
+		}), nil
+	}
+
+	// 2. Generate Key
+	_, pubBytes, keyPath, err := sftputil.GenerateKey(host, env.SSHDir())
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate key: %w", err)
+	}
+
+	pubKeyStr := string(pubBytes)
+
+	// 3. Install if password provided
+	if password != nil {
+		if err := sftputil.InstallKey(host, port, user, *password, pubBytes); err != nil {
+			return connect.NewResponse(&v1.SetupSftpResponse{
+				Error: fmt.Sprintf("Failed to install key: %v", err),
+			}), nil
+		}
+
+		// Verify
+		privPEM, err := os.ReadFile(keyPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read generated private key for verification: %w", err)
+		}
+
+		if err := sftputil.VerifyConnection(host, port, user, privPEM); err != nil {
+			return connect.NewResponse(&v1.SetupSftpResponse{
+				Error: fmt.Sprintf("Key installed but verification failed: %v", err),
+			}), nil
+		}
+	}
+
+	return connect.NewResponse(&v1.SetupSftpResponse{
+		PublicKey:      pubKeyStr,
+		KeyPath:        keyPath,
+		KnownHostsPath: filepath.Join(env.SSHDir(), "known_hosts"),
+	}), nil
+}
+
+// This is equivalent to what `ssh-keyscan` does.
+func (s *BackrestHandler) addSftpHostKey(repo *v1.Repo, trust bool) error {
+	uri := repo.GetUri()
+	if !strings.HasPrefix(uri, "sftp:") {
+		return nil
+	}
+	uri = strings.TrimPrefix(uri, "sftp:")
+
+	slashIdx := strings.Index(uri, "/")
+	if slashIdx == -1 {
+		slashIdx = len(uri)
+	}
+
+	authority := uri[:slashIdx]
+	hostPart := authority
+	if atIdx := strings.LastIndex(authority, "@"); atIdx != -1 {
+		hostPart = authority[atIdx+1:]
+	}
+
+	host, port, err := net.SplitHostPort(hostPart)
+	if err != nil {
+		host = hostPart
+	}
+
+	if host == "" {
+		return errors.New("could not parse host from sftp uri")
+	}
+
+	// Extract port from flags if possible
+	// Check for port in sftp.args
+	// e.g. --option=sftp.args='-oBatchMode=yes -p 23'
+	re := regexp.MustCompile(`(?:^|\s)-[pP]\s*(\d+)`)
+	for _, flag := range repo.Flags {
+		if strings.HasPrefix(flag, "--option=sftp.args=") {
+			matches := re.FindStringSubmatch(flag)
+			if len(matches) > 1 {
+				port = matches[1]
+				break
+			}
+		}
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("could not get home directory: %w", err)
+	}
+	knownHostsPath := path.Join(home, ".ssh", "known_hosts")
+
+	if err := os.MkdirAll(path.Dir(knownHostsPath), 0700); err != nil {
+		return err
+	}
+
+	// Construct host spec for ssh-keygen and ssh-keyscan
+	// If port is non-standard, host spec is usually [host]:port
+	hostSpec := host
+	if port != "" && port != "22" {
+		hostSpec = fmt.Sprintf("[%s]:%s", host, port)
+	}
+
+	checkCmd := exec.Command("ssh-keygen", "-F", hostSpec)
+	if err := checkCmd.Run(); err == nil {
+		zap.S().Debugf("SFTP host %s already in known_hosts", hostSpec)
+		return nil
+	}
+
+	if !trust {
+		return fmt.Errorf("SFTP host key verification failed: key for host %s is unknown", hostSpec)
+	}
+
+	keyscanArgs := []string{"-H"}
+	if port != "" {
+		keyscanArgs = append(keyscanArgs, "-p", port)
+	}
+	keyscanArgs = append(keyscanArgs, host)
+
+	keyscanCmd := exec.Command("ssh-keyscan", keyscanArgs...)
+	keyOutput, err := keyscanCmd.Output()
+	if err != nil {
+		return fmt.Errorf("ssh-keyscan for host %s failed: %w", host, err)
+	}
+
+	f, err := os.OpenFile(knownHostsPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to open known_hosts file: %w", err)
+	}
+	defer f.Close()
+
+	if _, err := f.Write(keyOutput); err != nil {
+		return fmt.Errorf("failed to write to known_hosts file: %w", err)
+	}
+
+	zap.S().Infof("Added SFTP host %s to known_hosts file at %s", hostSpec, knownHostsPath)
+	return nil
 }
 
 // ListSnapshots implements POST /v1/snapshots
@@ -903,4 +1083,184 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	}
 
 	return connect.NewResponse(response), nil
+}
+
+func parseSftpConfig(repo *v1.Repo) (user, host, port string, err error) {
+	uri := repo.GetUri()
+	if !strings.HasPrefix(uri, "sftp:") {
+		return "", "", "", errors.New("not an sftp repo")
+	}
+	uri = strings.TrimPrefix(uri, "sftp:")
+
+	slashIdx := strings.Index(uri, "/")
+	if slashIdx == -1 {
+		slashIdx = len(uri)
+	}
+
+	authority := uri[:slashIdx]
+	hostPart := authority
+	if atIdx := strings.LastIndex(authority, "@"); atIdx != -1 {
+		user = authority[:atIdx]
+		hostPart = authority[atIdx+1:]
+	}
+
+	host, port, err = net.SplitHostPort(hostPart)
+	if err != nil {
+		host = hostPart
+	}
+
+	// Parse port from flags
+	re := regexp.MustCompile(`(?:^|\s)-[pP]\s*(\d+)`)
+	for _, flag := range repo.Flags {
+		if strings.HasPrefix(flag, "--option=sftp.args=") {
+			matches := re.FindStringSubmatch(flag)
+			if len(matches) > 1 {
+				port = matches[1]
+				break
+			}
+		}
+	}
+	return user, host, port, nil
+}
+
+func sanitizeRepoFlags(repo *v1.Repo) {
+	for i, flag := range repo.Flags {
+		if strings.HasPrefix(flag, "--option=sftp.args=") {
+			repo.Flags[i] = strings.ReplaceAll(flag, "-i @", "-i ")
+		}
+	}
+}
+
+func (s *BackrestHandler) generateAndInstallSSHKey(host, port, user, password string) (string, error) {
+	zap.S().Debugf("Generating ED25519 key for %s@%s:%s", user, host, port)
+	// Generate Key
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return "", err
+	}
+
+	privBlock, err := ssh.MarshalPrivateKey(priv, "")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal private key: %w", err)
+	}
+	privPEM := pem.EncodeToMemory(privBlock)
+
+	sshPub, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		return "", err
+	}
+	pubBytes := ssh.MarshalAuthorizedKey(sshPub)
+
+	// Save to file
+	keyDir := env.SSHDir()
+	if err := os.MkdirAll(keyDir, 0700); err != nil {
+		return "", err
+	}
+	keyPath := path.Join(keyDir, fmt.Sprintf("id_ed25519_%s_%d", host, time.Now().Unix()))
+	if err := os.WriteFile(keyPath, privPEM, 0600); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(keyPath+".pub", pubBytes, 0644); err != nil {
+		zap.S().Warnf("failed to write public key: %v", err)
+	}
+	zap.S().Debugf("Saved private key to %s", keyPath)
+
+	// Verify key file is readable and valid
+	if diskBytes, err := os.ReadFile(keyPath); err != nil {
+		return "", fmt.Errorf("failed to read back key file: %w", err)
+	} else if _, err := ssh.ParsePrivateKey(diskBytes); err != nil {
+		return "", fmt.Errorf("generated key file is invalid or unparseable: %w", err)
+	}
+
+	// Install on server
+	sshConfig := &ssh.ClientConfig{
+		User: user,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         10 * time.Second,
+	}
+	zap.S().Debugf("Dialing SSH to %s:%s to install key", host, port)
+	conn, err := ssh.Dial("tcp", net.JoinHostPort(host, port), sshConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to dial ssh: %w", err)
+	}
+	defer conn.Close()
+
+	// Use SFTP to install key (handles restricted shells better)
+	sftpClient, err := sftp.NewClient(conn)
+	if err != nil {
+		return "", fmt.Errorf("failed to create sftp client: %w", err)
+	}
+	defer sftpClient.Close()
+
+	// Ensure .ssh directory exists
+	if _, err := sftpClient.Stat(".ssh"); errors.Is(err, os.ErrNotExist) {
+		if err := sftpClient.Mkdir(".ssh"); err != nil {
+			return "", fmt.Errorf("failed to create .ssh directory: %w", err)
+		}
+		if err := sftpClient.Chmod(".ssh", 0700); err != nil {
+			zap.S().Warnf("failed to chmod .ssh: %v", err)
+		}
+	}
+
+	// Open authorized_keys for appending
+	f, err := sftpClient.OpenFile(".ssh/authorized_keys", os.O_APPEND|os.O_CREATE|os.O_WRONLY)
+	if err != nil {
+		return "", fmt.Errorf("failed to open .ssh/authorized_keys: %w", err)
+	}
+	defer f.Close()
+
+	if err := f.Chmod(0600); err != nil {
+		zap.S().Warnf("failed to chmod authorized_keys: %v", err)
+	}
+
+	// Append key with leading newline to be safe
+	if _, err := f.Write([]byte("\n")); err != nil {
+		return "", fmt.Errorf("failed to write newline to authorized_keys: %w", err)
+	}
+	if _, err := f.Write(pubBytes); err != nil {
+		return "", fmt.Errorf("failed to write key to authorized_keys: %w", err)
+	}
+	if _, err := f.Write([]byte("\n")); err != nil {
+		return "", fmt.Errorf("failed to write newline to authorized_keys: %w", err)
+	}
+
+	zap.S().Debug("Key installed successfully via SFTP")
+
+	// Verify key works
+	keySigner, err := ssh.NewSignerFromKey(priv)
+	if err != nil {
+		return "", fmt.Errorf("failed to create signer: %w", err)
+	}
+
+	testConfig := &ssh.ClientConfig{
+		User: user,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(keySigner),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         10 * time.Second,
+	}
+
+	zap.S().Debugf("Verifying connection with new key...")
+	testConn, err := ssh.Dial("tcp", net.JoinHostPort(host, port), testConfig)
+	if err != nil {
+		zap.S().Warnf("Verification failed: %v", err)
+		return "", fmt.Errorf("generated key was installed but failed to authenticate: %w", err)
+	}
+	defer testConn.Close()
+
+	// Verify SFTP subsystem
+	verifySftpClient, err := sftp.NewClient(testConn)
+	if err != nil {
+		zap.S().Warnf("SFTP verification failed: %v", err)
+		return "", fmt.Errorf("generated key authenticated but SFTP subsystem failed: %w", err)
+	}
+	verifySftpClient.Close()
+
+	zap.S().Debug("Verification successful")
+
+	return keyPath, nil
 }

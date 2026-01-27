@@ -16,9 +16,11 @@ service Backrest {
 
   rpc SetConfig (Config) returns (Config) {}
 
-  rpc CheckRepoExists (Repo) returns (types.BoolValue) {} // returns an error if the repo does not exist
+  rpc SetupSftp (SetupSftpRequest) returns (SetupSftpResponse) {}
 
-  rpc AddRepo (Repo) returns (Config) {}
+  rpc CheckRepoExists (CheckRepoExistsRequest) returns (CheckRepoExistsResponse) {} // returns an error if the repo does not exist
+
+  rpc AddRepo (AddRepoRequest) returns (Config) {}
 
   rpc RemoveRepo (types.StringValue) returns (Config) {} // remvoes a repo from the config and deletes its history, does not delete the repo on disk
 
@@ -74,6 +76,36 @@ message OpSelector {
   optional string snapshot_id = 4;
   optional int64 flow_id = 5;
   optional int64 modno_gte = 9;
+}
+
+message SetupSftpRequest {
+  string host = 1;
+  string port = 2;
+  string username = 3;
+  optional string password = 4; // If not provided, we only generate the key and add host to known_hosts
+}
+
+message SetupSftpResponse {
+  string public_key = 1;
+  string key_path = 2;
+  string known_hosts_path = 3;
+  string error = 4;
+}
+
+message CheckRepoExistsRequest {
+  Repo repo = 1;
+  bool trust_sftp_host_key = 2;
+}
+
+message CheckRepoExistsResponse {
+  bool exists = 1;
+  string error = 2;
+  bool host_key_untrusted = 5;
+}
+
+message AddRepoRequest {
+  Repo repo = 1;
+  bool trust_sftp_host_key = 2;
 }
 
 message DoRepoTaskRequest {
