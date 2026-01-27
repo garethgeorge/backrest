@@ -40,6 +40,10 @@ func ConfigFilePath() string {
 	return filepath.Join(getConfigDir(), "backrest", "config.json")
 }
 
+func SSHDir() string {
+	return filepath.Join(getHomeDir(), ".ssh")
+}
+
 // DataDir
 // - *nix systems use $XDG_DATA_HOME/backrest
 // - windows uses %APPDATA%/backrest/data
