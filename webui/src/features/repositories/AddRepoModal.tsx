@@ -10,6 +10,7 @@ import {
 } from "@chakra-ui/react";
 import { EnumSelector, EnumOption } from "../../components/common/EnumSelector";
 import { Checkbox } from "../../components/ui/checkbox";
+
 import {
   AccordionItem,
   AccordionItemContent,
@@ -101,6 +102,178 @@ interface ConfirmationState {
   onOk: () => void;
 }
 
+interface SftpConfigSectionProps {
+  uri: string | undefined;
+  identityFile: string;
+  onChangeIdentityFile: (path: string) => void;
+  port: number | null;
+  onChangePort: (port: number | null) => void;
+  isWindows: boolean;
+}
+
+const SftpConfigSection = ({
+  uri,
+  identityFile,
+  onChangeIdentityFile,
+  port,
+  onChangePort,
+  isWindows,
+}: SftpConfigSectionProps) => {
+  // Setup Keys state
+  const [sftpUsername, setSftpUsername] = useState("");
+  const [sftpPassword, setSftpPassword] = useState("");
+  const [setupLoading, setSetupLoading] = useState(false);
+  const [generatedPublicKey, setGeneratedPublicKey] = useState<string | null>(
+    null,
+  );
+
+  if (isWindows) return null;
+
+  const handleSetupKeys = async () => {
+    setSetupLoading(true);
+    setGeneratedPublicKey(null);
+    try {
+      if (!uri) return;
+      // Simple parse of URI for host/port if not fully robust
+      let host = "";
+      let defaultPort = "22";
+      const uriParts = uri.replace("sftp:", "").split("/");
+      const authority = uriParts[0];
+      let hostPart = authority;
+      if (authority.includes("@")) {
+        setSftpUsername(authority.split("@")[0]);
+        hostPart = authority.split("@")[1];
+      }
+
+      if (hostPart.includes(":")) {
+        host = hostPart.split(":")[0];
+        defaultPort = hostPart.split(":")[1];
+      } else {
+        host = hostPart;
+      }
+
+      // Override from manual input if username is set there
+      const username =
+        sftpUsername || uri.match(/([^@]+)@/)?.[1] || "";
+
+      const res = await backrestService.setupSftp({
+        host: host,
+        port: port ? port.toString() : defaultPort,
+        username: username,
+        password: sftpPassword || undefined,
+      });
+
+      if (res.error) {
+        throw new Error(res.error);
+      }
+
+      onChangeIdentityFile(res.keyPath);
+      if (res.publicKey) {
+        setGeneratedPublicKey(res.publicKey);
+      }
+      alerts.success(
+        m.add_repo_modal_success_updated({ uri: "SFTP Key Setup Complete" }),
+      );
+    } catch (e: any) {
+      alerts.error(formatErrorAlert(e, "SFTP Setup Failed"));
+    } finally {
+      setSetupLoading(false);
+    }
+  };
+
+  return (
+    <Stack gap={4} ml={2} borderLeftWidth={2} pl={4}>
+      {!generatedPublicKey && !identityFile && (
+        <AccordionRoot collapsible variant="enclosed">
+          <AccordionItem value="bootstrap">
+            <AccordionItemTrigger>
+              Bootstrap SSH Key (Optional)
+            </AccordionItemTrigger>
+            <AccordionItemContent>
+              <Stack gap={3} p={2}>
+                <CText fontSize="sm">
+                  Enter your SSH credentials here. When you click "Setup Keys",
+                  backrest will generate an SSH key pair.
+                </CText>
+                <Field label="SSH Username">
+                  <Input
+                    placeholder="user"
+                    value={sftpUsername}
+                    onChange={(e) => setSftpUsername(e.target.value)}
+                  />
+                </Field>
+                <Field label="SSH Password">
+                  <PasswordInput
+                    placeholder="password (optional)"
+                    value={sftpPassword}
+                    onChange={(e) => setSftpPassword(e.target.value)}
+                  />
+                </Field>
+                <Button
+                  size="sm"
+                  onClick={handleSetupKeys}
+                  loading={setupLoading}
+                >
+                  Setup Keys
+                </Button>
+              </Stack>
+            </AccordionItemContent>
+          </AccordionItem>
+        </AccordionRoot>
+      )}
+
+      {generatedPublicKey && (
+        <Box p={4} borderWidth={1} borderRadius="md" bg="bg.subtle">
+          <Stack gap={2}>
+            <CText fontWeight="bold" color="green.500">
+              Key Generated Successfully!
+            </CText>
+            <CText fontSize="sm">
+              Please add the following public key to your server's{" "}
+              <Code>~/.ssh/authorized_keys</Code> file:
+            </CText>
+            <Box position="relative">
+              <Code p={3} display="block" whiteSpace="pre-wrap" wordBreak="break-all">
+                {generatedPublicKey}
+              </Code>
+              <Box position="absolute" top={1} right={1}>
+                <Button size="xs" onClick={() => {
+                  navigator.clipboard.writeText(generatedPublicKey || "");
+                  alerts.success("Key copied to clipboard");
+                }}>Copy</Button>
+              </Box>
+            </Box>
+          </Stack>
+        </Box>
+      )}
+
+      <Field
+        label="SFTP Identity File"
+        helperText="Optional: Path to an SSH identity file for SFTP authentication. This path must be accessible on the machine running backrest."
+      >
+        <Input
+          placeholder="/home/user/.ssh/id_rsa"
+          value={identityFile}
+          onChange={(e) => onChangeIdentityFile(e.target.value)}
+        />
+      </Field>
+
+      <Field
+        label="SFTP Port"
+        helperText="Optional: Specify a custom port for SFTP connection. Defaults to 22."
+      >
+        <NumberInputField
+          value={port ? port.toString() : undefined}
+          onValueChange={(e) => onChangePort(e.valueAsNumber)}
+          min={1}
+          max={65535}
+          defaultValue={"22"}
+        />
+      </Field>
+    </Stack>
+  );
+};
+
 export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
@@ -114,10 +287,9 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   );
 
   // SFTP specific state
+  // SFTP specific state
   const [sftpIdentityFile, setSftpIdentityFile] = useState("");
   const [sftpPort, setSftpPort] = useState<number | null>(null);
-  const [sftpUsername, setSftpUsername] = useState("");
-  const [sftpPassword, setSftpPassword] = useState("");
 
   const [confirmation, setConfirmation] = useState<ConfirmationState>({
     open: false,
@@ -134,10 +306,9 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     );
     // Reset SFTP fields when template changes (or is null)
     if (!template) {
+
       setSftpIdentityFile("");
       setSftpPort(null);
-      setSftpUsername("");
-      setSftpPassword("");
     }
   }, [template]);
 
@@ -365,10 +536,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         const req = create(CheckRepoExistsRequestSchema, {
           repo: repo,
           trustSftpHostKey: trust,
-          /* sftpUsername: sftpUsername, */
-          /* sftpPassword: sftpPassword, */
-          /* confirmInstallKey: confirm, */
-          // Note: fields removed from CheckRepoExistsRequest
         });
 
         const response = await backrestService.checkRepoExists(req);
@@ -617,120 +784,15 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                   </Field>
 
                   {/* SFTP Specific Fields */}
-                  {getField(["uri"])?.startsWith("sftp:") && !template && !isWindows && (
-                    <Stack gap={4} ml={2} borderLeftWidth={2} pl={4}>
-                      {!sftpIdentityFile && (
-                        <AccordionRoot collapsible variant="enclosed">
-                          <AccordionItem value="bootstrap">
-                            <AccordionItemTrigger>
-                              Bootstrap SSH Key (Optional)
-                            </AccordionItemTrigger>
-                            <AccordionItemContent>
-                              <Stack gap={3} p={2}>
-                                <CText fontSize="sm">
-                                  Enter your SSH credentials here. When you
-                                  click "Test Configuration", backrest will
-                                  generate an SSH key pair and install the
-                                  public key on the remote server automatically.
-                                </CText>
-                                <Field label="SSH Username">
-                                  <Input
-                                    placeholder="user"
-                                    value={sftpUsername}
-                                    onChange={(e) =>
-                                      setSftpUsername(e.target.value)
-                                    }
-                                  />
-                                </Field>
-                                <Field label="SSH Password">
-                                  <PasswordInput
-                                    placeholder="password (optional)"
-                                    value={sftpPassword}
-                                    onChange={(e) =>
-                                      setSftpPassword(e.target.value)
-                                    }
-                                  />
-                                </Field>
-                                <Button
-                                  size="sm"
-                                  onClick={async () => {
-                                    setConfirmLoading(true);
-                                    try {
-                                        const uri = getField(["uri"]);
-                                        if (!uri) return;
-                                        // Simple parse of URI for host/port if not fully robust
-                                        let host = "";
-                                        let port = "22";
-                                        const uriParts = uri.replace("sftp:", "").split("/");
-                                        const authority = uriParts[0];
-                                        let hostPart = authority;
-                                        if (authority.includes("@")) {
-                                            setSftpUsername(authority.split("@")[0]);
-                                            hostPart = authority.split("@")[1];
-                                        }
-
-                                        if (hostPart.includes(":")) {
-                                            host = hostPart.split(":")[0];
-                                            port = hostPart.split(":")[1];
-                                        } else {
-                                            host = hostPart;
-                                        }
-
-                                        // Override from manual input if username is set there
-                                        const username = sftpUsername || getField(["uri"]).match(/([^@]+)@/)?.[1] || "";
-
-                                        const res = await backrestService.setupSftp({
-                                            host: host,
-                                            port: port,
-                                            username: username,
-                                            password: sftpPassword || undefined,
-                                        });
-
-                                        if (res.error) {
-                                            throw new Error(res.error);
-                                        }
-
-                                        setSftpIdentityFile(res.keyPath);
-                                        alerts.success(m.add_repo_modal_success_updated({ uri: "SFTP Key Setup Complete" })); // Reuse success message or custom
-                                    } catch (e: any) {
-                                        alerts.error(formatErrorAlert(e, "SFTP Setup Failed"));
-                                    } finally {
-                                        setConfirmLoading(false);
-                                    }
-                                  }}
-                                  loading={confirmLoading}
-                                >
-                                  Setup Keys
-                                </Button>
-                              </Stack>
-                            </AccordionItemContent>
-                          </AccordionItem>
-                        </AccordionRoot>
-                      )}
-
-                      <Field
-                        label="SFTP Identity File"
-                        helperText="Optional: Path to an SSH identity file for SFTP authentication. This path must be accessible on the machine running backrest."
-                      >
-                        <Input
-                          placeholder="/home/user/.ssh/id_rsa"
-                          value={sftpIdentityFile}
-                          onChange={(e) => setSftpIdentityFile(e.target.value)}
-                        />
-                      </Field>
-
-                      <Field
-                        label="SFTP Port"
-                        helperText="Optional: Specify a custom port for SFTP connection. Defaults to 22."
-                      >
-                        <NumberInputField
-                          value={sftpPort ? sftpPort.toString() : undefined}
-                          onValueChange={(e) => setSftpPort(e.valueAsNumber)}
-                          min={1}
-                          max={65535}
-                        />
-                      </Field>
-                    </Stack>
+                  {getField(["uri"])?.startsWith("sftp:") && !template && (
+                    <SftpConfigSection
+                      uri={getField(["uri"])}
+                      identityFile={sftpIdentityFile}
+                      onChangeIdentityFile={setSftpIdentityFile}
+                      port={sftpPort}
+                      onChangePort={setSftpPort}
+                      isWindows={isWindows}
+                    />
                   )}
 
                   <Field

@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"slices"
@@ -127,13 +128,6 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 		req.Msg.Repo.Guid = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
 	}
 
-	// SFTP Host Key Trust is handled in AddRepo / CheckRepoExists via addSftpHostKey still,
-	// but CheckRepoExistsRequest no longer has trust_sftp_host_key (wait, it DOES have it in my update, I kept it in CheckRepoExistsRequest? No I removed it from CheckRepoExistsRequest logic... wait check proto)
-	// Checking proto... CheckRepoExistsRequest: bool trust_sftp_host_key = 2; IS STILL THERE.
-	// Okay, I should keep using it if provided, but the SetupSftp flow handles it separately.
-	// The user might manually configure SFTP without using SetupSftp, in which case they might hit "unknown host key".
-	// So we should keep the logic that checks/adds host key if they confirm trust.
-
 	if err := s.addSftpHostKey(req.Msg.Repo, req.Msg.GetTrustSftpHostKey()); err != nil {
 		if strings.Contains(err.Error(), "host key verification failed") {
 			return connect.NewResponse(&v1.CheckRepoExistsResponse{
@@ -143,9 +137,6 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 		}
 		return nil, fmt.Errorf("failed to add sftp host key: %w", err)
 	}
-
-	// SFTP Bootstrapping
-	// SFTP verification logic has been moved to SetupSftp
 
 	if err := config.ValidateConfig(c); err != nil {
 		return nil, fmt.Errorf("validation error: %w", err)
@@ -319,8 +310,6 @@ func (s *BackrestHandler) SetupSftp(ctx context.Context, req *connect.Request[v1
 	}
 
 	// 1. Host Key Verification/Addition
-
-	// 1. Host Key Verification/Addition
 	if err := sftputil.AddHostKey(host, port, env.SSHDir()); err != nil {
 		return connect.NewResponse(&v1.SetupSftpResponse{
 			Error: fmt.Sprintf("Failed to add host key: %v", err),
@@ -357,8 +346,9 @@ func (s *BackrestHandler) SetupSftp(ctx context.Context, req *connect.Request[v1
 	}
 
 	return connect.NewResponse(&v1.SetupSftpResponse{
-		PublicKey: pubKeyStr,
-		KeyPath:   keyPath,
+		PublicKey:      pubKeyStr,
+		KeyPath:        keyPath,
+		KnownHostsPath: filepath.Join(env.SSHDir(), "known_hosts"),
 	}), nil
 }
 

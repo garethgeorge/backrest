@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/sftp"
@@ -25,14 +27,17 @@ func AddHostKey(host, port string, sshDir string) error {
 		hostSpec = fmt.Sprintf("[%s]:%s", host, port)
 	}
 
+	knownHostsPath := filepath.Join(sshDir, "known_hosts")
+	if err := os.MkdirAll(path.Dir(knownHostsPath), 0700); err != nil {
+		return fmt.Errorf("failed to create ssh dir: %w", err)
+	}
+
 	// Check if already known
-	checkCmd := exec.Command("ssh-keygen", "-F", hostSpec)
+	checkCmd := exec.Command("ssh-keygen", "-F", hostSpec, "-f", knownHostsPath)
 	if checkCmd.Run() == nil {
 		zap.S().Debugf("SFTP host %s already in known_hosts", hostSpec)
 		return nil
 	}
-
-	knownHostsPath := path.Join(sshDir, "known_hosts")
 	if err := os.MkdirAll(path.Dir(knownHostsPath), 0700); err != nil {
 		return fmt.Errorf("failed to create ssh dir: %w", err)
 	}
@@ -91,7 +96,28 @@ func GenerateKey(host string, sshDir string) ([]byte, []byte, string, error) {
 	if err := os.MkdirAll(sshDir, 0700); err != nil {
 		return nil, nil, "", fmt.Errorf("failed to create ssh dir: %w", err)
 	}
-	keyPath := path.Join(sshDir, fmt.Sprintf("id_ed25519_%s_%d", host, time.Now().Unix()))
+	sanitizedHost := strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '.' || r == '-' {
+			return r
+		}
+		return '_'
+	}, host)
+
+	keyPath := filepath.Join(sshDir, "id_ed25519_"+string(sanitizedHost))
+	// check if file exists
+	if _, err := os.Stat(keyPath); err == nil {
+		// read the key from disk instead
+		privPEM, err = os.ReadFile(keyPath)
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("failed to read private key: %w", err)
+		}
+		pubBytes, err = os.ReadFile(keyPath + ".pub")
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("failed to read public key: %w", err)
+		}
+		return privPEM, pubBytes, keyPath, nil
+	}
+
 	if err := os.WriteFile(keyPath, privPEM, 0600); err != nil {
 		return nil, nil, "", fmt.Errorf("failed to write private key: %w", err)
 	}

@@ -88,6 +88,7 @@ message SetupSftpRequest {
 message SetupSftpResponse {
   string public_key = 1;
   string key_path = 2;
+  string known_hosts_path = 3;
   string error = 4;
 }
 
@@ -99,8 +100,6 @@ message CheckRepoExistsRequest {
 message CheckRepoExistsResponse {
   bool exists = 1;
   string error = 2;
-  bool requires_confirmation = 3; // Deprecated
-  string generated_key_path = 4; // Deprecated
   bool host_key_untrusted = 5;
 }
 

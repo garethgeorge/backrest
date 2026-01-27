@@ -252,12 +252,13 @@ func (x *SetupSftpRequest) GetPassword() string {
 }
 
 type SetupSftpResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicKey     string                 `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	KeyPath       string                 `protobuf:"bytes,2,opt,name=key_path,json=keyPath,proto3" json:"key_path,omitempty"`
-	Error         string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	PublicKey      string                 `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	KeyPath        string                 `protobuf:"bytes,2,opt,name=key_path,json=keyPath,proto3" json:"key_path,omitempty"`
+	KnownHostsPath string                 `protobuf:"bytes,3,opt,name=known_hosts_path,json=knownHostsPath,proto3" json:"known_hosts_path,omitempty"`
+	Error          string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SetupSftpResponse) Reset() {
@@ -300,6 +301,13 @@ func (x *SetupSftpResponse) GetPublicKey() string {
 func (x *SetupSftpResponse) GetKeyPath() string {
 	if x != nil {
 		return x.KeyPath
+	}
+	return ""
+}
+
+func (x *SetupSftpResponse) GetKnownHostsPath() string {
+	if x != nil {
+		return x.KnownHostsPath
 	}
 	return ""
 }
@@ -364,14 +372,12 @@ func (x *CheckRepoExistsRequest) GetTrustSftpHostKey() bool {
 }
 
 type CheckRepoExistsResponse struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	Exists               bool                   `protobuf:"varint,1,opt,name=exists,proto3" json:"exists,omitempty"`
-	Error                string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
-	RequiresConfirmation bool                   `protobuf:"varint,3,opt,name=requires_confirmation,json=requiresConfirmation,proto3" json:"requires_confirmation,omitempty"` // Deprecated
-	GeneratedKeyPath     string                 `protobuf:"bytes,4,opt,name=generated_key_path,json=generatedKeyPath,proto3" json:"generated_key_path,omitempty"`            // Deprecated
-	HostKeyUntrusted     bool                   `protobuf:"varint,5,opt,name=host_key_untrusted,json=hostKeyUntrusted,proto3" json:"host_key_untrusted,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Exists           bool                   `protobuf:"varint,1,opt,name=exists,proto3" json:"exists,omitempty"`
+	Error            string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	HostKeyUntrusted bool                   `protobuf:"varint,5,opt,name=host_key_untrusted,json=hostKeyUntrusted,proto3" json:"host_key_untrusted,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CheckRepoExistsResponse) Reset() {
@@ -414,20 +420,6 @@ func (x *CheckRepoExistsResponse) GetExists() bool {
 func (x *CheckRepoExistsResponse) GetError() string {
 	if x != nil {
 		return x.Error
-	}
-	return ""
-}
-
-func (x *CheckRepoExistsResponse) GetRequiresConfirmation() bool {
-	if x != nil {
-		return x.RequiresConfirmation
-	}
-	return false
-}
-
-func (x *CheckRepoExistsResponse) GetGeneratedKeyPath() string {
-	if x != nil {
-		return x.GeneratedKeyPath
 	}
 	return ""
 }
@@ -1513,20 +1505,19 @@ const file_v1_service_proto_rawDesc = "" +
 	"\x04port\x18\x02 \x01(\tR\x04port\x12\x1a\n" +
 	"\busername\x18\x03 \x01(\tR\busername\x12\x1f\n" +
 	"\bpassword\x18\x04 \x01(\tH\x00R\bpassword\x88\x01\x01B\v\n" +
-	"\t_password\"c\n" +
+	"\t_password\"\x8d\x01\n" +
 	"\x11SetupSftpResponse\x12\x1d\n" +
 	"\n" +
 	"public_key\x18\x01 \x01(\tR\tpublicKey\x12\x19\n" +
-	"\bkey_path\x18\x02 \x01(\tR\akeyPath\x12\x14\n" +
+	"\bkey_path\x18\x02 \x01(\tR\akeyPath\x12(\n" +
+	"\x10known_hosts_path\x18\x03 \x01(\tR\x0eknownHostsPath\x12\x14\n" +
 	"\x05error\x18\x04 \x01(\tR\x05error\"e\n" +
 	"\x16CheckRepoExistsRequest\x12\x1c\n" +
 	"\x04repo\x18\x01 \x01(\v2\b.v1.RepoR\x04repo\x12-\n" +
-	"\x13trust_sftp_host_key\x18\x02 \x01(\bR\x10trustSftpHostKey\"\xd8\x01\n" +
+	"\x13trust_sftp_host_key\x18\x02 \x01(\bR\x10trustSftpHostKey\"u\n" +
 	"\x17CheckRepoExistsResponse\x12\x16\n" +
 	"\x06exists\x18\x01 \x01(\bR\x06exists\x12\x14\n" +
-	"\x05error\x18\x02 \x01(\tR\x05error\x123\n" +
-	"\x15requires_confirmation\x18\x03 \x01(\bR\x14requiresConfirmation\x12,\n" +
-	"\x12generated_key_path\x18\x04 \x01(\tR\x10generatedKeyPath\x12,\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\x12,\n" +
 	"\x12host_key_untrusted\x18\x05 \x01(\bR\x10hostKeyUntrusted\"]\n" +
 	"\x0eAddRepoRequest\x12\x1c\n" +
 	"\x04repo\x18\x01 \x01(\v2\b.v1.RepoR\x04repo\x12-\n" +
