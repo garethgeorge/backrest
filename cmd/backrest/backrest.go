@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -42,6 +43,7 @@ import (
 )
 
 var installDepsOnly = flag.Bool("install-deps-only", false, "install dependencies and exit")
+var printVersion = flag.Bool("version", false, "print version and exit")
 
 var (
 	version = "unknown"
@@ -50,6 +52,10 @@ var (
 
 func runApp() {
 	flag.Parse()
+	if *printVersion {
+		fmt.Printf("backrest version: %s, commit: %s\n", version, commit)
+		return
+	}
 	installLoggers(version, commit)
 
 	// Install dependencies if requested
