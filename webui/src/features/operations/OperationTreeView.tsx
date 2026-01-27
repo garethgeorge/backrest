@@ -392,49 +392,49 @@ const DisplayOperationTree = ({
     });
     setTreeCollection(collection);
 
+    // Identify the 5 most recent operations
+    const CACHE_SIZE = 5;
+    const sortedOps = [...operations].sort((a, b) =>
+      a.displayTime > b.displayTime ? -1 : 1,
+    );
+    const recentFlowIds = new Set(
+      sortedOps.slice(0, CACHE_SIZE).map((op) => op.flowID.toString()),
+    );
+
     // Calculate initial expansion.
     const toExpand = new Set<string>();
-    const findRecentOrInProgress = (nodes: OpTreeNode[]) => {
-      let foundInProgress = false;
-      for (const node of nodes) {
-        let shouldExpandThis = false;
-        if (node.backup) {
-          if (
-            node.backup.status === OperationStatus.STATUS_INPROGRESS ||
-            node.backup.status === OperationStatus.STATUS_PENDING
-          ) {
-            shouldExpandThis = true;
-            foundInProgress = true;
-          }
-        }
 
-        if (node.children) {
-          const childFoundInProgress = findRecentOrInProgress(node.children);
-          if (childFoundInProgress) {
-            shouldExpandThis = true;
-            foundInProgress = true;
+    const expandRecent = (node: OpTreeNode): boolean => {
+      let hasRecent = false;
+      if (node.children) {
+        for (const child of node.children) {
+          if (expandRecent(child)) {
+            hasRecent = true;
           }
-        }
-
-        if (shouldExpandThis) {
-          toExpand.add(node.id);
         }
       }
-      return foundInProgress;
+      if (node.backup && recentFlowIds.has(node.backup.flowID.toString())) {
+        hasRecent = true;
+      }
+
+      if (hasRecent) {
+        toExpand.add(node.id);
+      }
+      return hasRecent;
     };
 
-    findRecentOrInProgress(nodes);
-
-    // Also expand the very first branch (most recent) if nothing else is expanded.
-    if (toExpand.size === 0 && nodes.length > 0) {
-      const expandFirst = (node: OpTreeNode) => {
-        toExpand.add(node.id);
-        if (node.children && node.children.length > 0) {
-          expandFirst(node.children[0]);
-        }
-      };
-      expandFirst(nodes[0]);
+    // Expand the very first branch (most recent) if nothing else is expanded.
+    if (nodes.length > 0) {
+      nodes.forEach((n) => expandRecent(n));
     }
+
+    const expandFirst = (node: OpTreeNode) => {
+      toExpand.add(node.id);
+      if (node.children && node.children.length > 0) {
+        expandFirst(node.children[0]);
+      }
+    };
+    expandFirst(nodes[0]);
 
     setExpandedValue(Array.from([...expandedValue, ...toExpand]));
   }, [operations, isPlanView]);
