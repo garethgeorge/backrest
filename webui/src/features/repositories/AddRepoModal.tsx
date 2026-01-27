@@ -108,6 +108,7 @@ interface SftpConfigSectionProps {
   onChangeIdentityFile: (path: string) => void;
   port: number | null;
   onChangePort: (port: number | null) => void;
+  onChangeKnownHostsPath: (path: string) => void;
   isWindows: boolean;
 }
 
@@ -117,6 +118,7 @@ const SftpConfigSection = ({
   onChangeIdentityFile,
   port,
   onChangePort,
+  onChangeKnownHostsPath,
   isWindows,
 }: SftpConfigSectionProps) => {
   // Setup Keys state
@@ -168,11 +170,15 @@ const SftpConfigSection = ({
       }
 
       onChangeIdentityFile(res.keyPath);
+      onChangeKnownHostsPath(res.knownHostsPath);
       if (res.publicKey) {
         setGeneratedPublicKey(res.publicKey);
       }
       alerts.success(
-        m.add_repo_modal_success_updated({ uri: "SFTP Key Setup Complete" }),
+        "Created SSH keypair at " + res.keyPath + " and updated known hosts file at " + res.knownHostsPath,
+      );
+      alerts.success(
+        "Updated restic flags to use the SSH keypair and known hosts file."
       );
     } catch (e: any) {
       alerts.error(formatErrorAlert(e, "SFTP Setup Failed"));
@@ -290,6 +296,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   // SFTP specific state
   const [sftpIdentityFile, setSftpIdentityFile] = useState("");
   const [sftpPort, setSftpPort] = useState<number | null>(null);
+  const [sftpKnownHostsPath, setSftpKnownHostsPath] = useState("");
 
   const [confirmation, setConfirmation] = useState<ConfirmationState>({
     open: false,
@@ -309,6 +316,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
 
       setSftpIdentityFile("");
       setSftpPort(null);
+      setSftpKnownHostsPath("");
     }
   }, [template]);
 
@@ -366,6 +374,11 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
 
     if (sftpPort && sftpPort !== 0 && sftpPort !== 22) {
       sftpArgs += ` -p ${sftpPort}`;
+      argsChanged = true;
+    }
+
+    if (sftpKnownHostsPath) {
+      sftpArgs += ` -oUserKnownHostsFile=${sftpKnownHostsPath}`;
       argsChanged = true;
     }
 
@@ -791,6 +804,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                       onChangeIdentityFile={setSftpIdentityFile}
                       port={sftpPort}
                       onChangePort={setSftpPort}
+                      onChangeKnownHostsPath={setSftpKnownHostsPath}
                       isWindows={isWindows}
                     />
                   )}
