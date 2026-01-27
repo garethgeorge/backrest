@@ -35,6 +35,9 @@ service Backrest {
   // Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
   rpc Backup(types.StringValue) returns (google.protobuf.Empty) {}
 
+  // DryRunBackup runs a dry run backup for a plan.
+  rpc DryRunBackup(types.StringValue) returns (google.protobuf.Empty) {}
+
   // DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
   rpc DoRepoTask(DoRepoTaskRequest) returns (google.protobuf.Empty) {}
 

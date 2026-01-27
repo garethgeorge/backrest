@@ -54,6 +54,7 @@ message Operation {
     OperationRunHook operation_run_hook = 106;
     OperationCheck operation_check = 107;
     OperationRunCommand operation_run_command = 108;
+    OperationDryRunBackup operation_dry_run_backup = 109;
   } 
 }
 
@@ -120,6 +121,11 @@ message OperationRunCommand {
   string command = 1;
   string output_logref = 2;
   int64 output_size_bytes = 3; // not necessarily authoritative, tracked as an optimization to allow clients to avoid fetching very large outputs.
+}
+
+// OperationDryRunBackup is a dry run backup operation.
+message OperationDryRunBackup {
+  string output_logref = 1; // reference to the output log for the dry run.
 }
 
 // OperationRestore tracks a restore operation.
