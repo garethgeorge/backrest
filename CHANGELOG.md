@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.11.2](https://github.com/garethgeorge/backrest/compare/v1.11.1...v1.11.2) (2026-01-27)
+
+
+### Bug Fixes
+
+* add a --version flag which prints the current backrest version info ([ef3ea4a](https://github.com/garethgeorge/backrest/commit/ef3ea4aacbb7bbb7fbdf43c73e05bbbf046a86b1))
+* add expansion of recent nodes in operation tree ([4102853](https://github.com/garethgeorge/backrest/commit/410285395a6d4e081133fdfb96a728ddf51e0f58))
+* add settings ui preference for language ([e0c5511](https://github.com/garethgeorge/backrest/commit/e0c55112383041b8f927907c47a4cf455301ec46))
+* bundle restic into windows installer ([#1072](https://github.com/garethgeorge/backrest/issues/1072)) ([a4aab03](https://github.com/garethgeorge/backrest/commit/a4aab035e30b8fa70f1a6a6b5d05ff9631145ac4))
+* correctly display previously selected clock value ([811e91f](https://github.com/garethgeorge/backrest/commit/811e91ff088b8b651367d8e908426138181e377c))
+* display well formatted language names in settings panel ([3c5682a](https://github.com/garethgeorge/backrest/commit/3c5682ae70992d6d8e8b217a6418eb6179e324d2))
+* improve Russian UI localization wording and consistency ([#1068](https://github.com/garethgeorge/backrest/issues/1068)) ([3ee7f20](https://github.com/garethgeorge/backrest/commit/3ee7f20eb62092e020f2e0bfb982846116e8b793))
+* keep the current repo / plan visibly selected in the side nav ([e222ec0](https://github.com/garethgeorge/backrest/commit/e222ec02802ddf9faed132af1f10616f408a4639))
+* llm generated translation fixes ([4934031](https://github.com/garethgeorge/backrest/commit/4934031570cd7d1364e0c63ed6ba3950a39ab0c9))
+* minor update in Italian translations - it.json ([#1069](https://github.com/garethgeorge/backrest/issues/1069)) ([0247c41](https://github.com/garethgeorge/backrest/commit/0247c41bb5282bd3e124dcfb0d894bee37b53f28))
+* prerendering expensive children in accordion ([d772dce](https://github.com/garethgeorge/backrest/commit/d772dce5fab7a8617516afdb0949feb31c2e8848))
+* properly format filename in downloadhandler ([70a0bfc](https://github.com/garethgeorge/backrest/commit/70a0bfc72b6ea081bbe2b6c1beb20940befab5ba))
+* truncate too long repo/plan names ([#1084](https://github.com/garethgeorge/backrest/issues/1084)) ([27697c0](https://github.com/garethgeorge/backrest/commit/27697c09cc3fd7c99181031a765c17d2eb5259b9))
+* update German translations for backrest messages ([#1081](https://github.com/garethgeorge/backrest/issues/1081)) ([ce57682](https://github.com/garethgeorge/backrest/commit/ce5768298e5e1cdab836f498bf0ba65eec2e37ff))
+
 ## [1.11.1](https://github.com/garethgeorge/backrest/compare/v1.11.0...v1.11.1) (2026-01-16)
 
 
