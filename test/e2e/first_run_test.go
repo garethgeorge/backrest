@@ -115,10 +115,12 @@ func TestFirstRun(t *testing.T) {
 			fmt.Sprintf("http://%s", addr),
 		)
 
-		req := connect.NewRequest(&v1.Repo{
-			Id:       "test-repo",
-			Uri:      filepath.Join(tmpDir, "test-repo"),
-			Password: "1234",
+		req := connect.NewRequest(&v1.AddRepoRequest{
+			Repo: &v1.Repo{
+				Id:       "test-repo",
+				Uri:      filepath.Join(tmpDir, "test-repo"),
+				Password: "1234",
+			},
 		})
 		_, err := client.AddRepo(context.Background(), req)
 		if err != nil {
