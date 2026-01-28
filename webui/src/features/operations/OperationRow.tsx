@@ -7,6 +7,7 @@ import {
 } from "../../../gen/ts/v1/operations_pb";
 import { HeavyAccordion } from "../../components/common/HeavyAccordion";
 import {
+  Badge,
   Button,
   GridItem,
   Collapsible,
@@ -363,10 +364,59 @@ export const OperationRow = ({
     }
   } else if (operation.op.case === "operationDryRunBackup") {
     const dryRun = operation.op.value;
+
+    // Show structured summary if we have parsed stats
+    // Convert BigInt to Number for display (safe for reasonable file counts/sizes)
+    const filesNew = Number(dryRun.filesNew);
+    const filesChanged = Number(dryRun.filesChanged);
+    const filesUnmodified = Number(dryRun.filesUnmodified);
+    const dirsNew = Number(dryRun.dirsNew);
+    const dirsChanged = Number(dryRun.dirsChanged);
+    const dirsUnmodified = Number(dryRun.dirsUnmodified);
+    const dataToAdd = Number(dryRun.dataToAdd);
+    const dataToAddPacked = Number(dryRun.dataToAddPacked);
+
+    const hasStats = filesNew > 0 || filesChanged > 0 ||
+                     dirsNew > 0 || dirsChanged > 0 ||
+                     dataToAdd > 0;
+
+    if (hasStats) {
+      bodyItems.push({
+        key: "summary",
+        label: (
+          <Flex align="center" gap={2}>
+            <Badge colorPalette="blue" variant="outline">DRY RUN</Badge>
+            <Text>Preview</Text>
+          </Flex>
+        ),
+        children: (
+          <SimpleGrid columns={2} gap={4}>
+            <Box>
+              <Text fontWeight="medium" color="fg.muted" fontSize="sm">Files to backup</Text>
+              <Text>{filesNew} new, {filesChanged} changed, {filesUnmodified} unmodified</Text>
+            </Box>
+            <Box>
+              <Text fontWeight="medium" color="fg.muted" fontSize="sm">Directories</Text>
+              <Text>{dirsNew} new, {dirsChanged} changed, {dirsUnmodified} unmodified</Text>
+            </Box>
+            <Box>
+              <Text fontWeight="medium" color="fg.muted" fontSize="sm">Would add</Text>
+              <Text>{formatBytes(dataToAdd)}</Text>
+            </Box>
+            <Box>
+              <Text fontWeight="medium" color="fg.muted" fontSize="sm">Stored size</Text>
+              <Text>{formatBytes(dataToAddPacked)}</Text>
+            </Box>
+          </SimpleGrid>
+        ),
+      });
+    }
+
+    // Keep full output available for details
     if (dryRun.outputLogref) {
       bodyItems.push({
         key: "output",
-        label: m.op_row_command_output(),
+        label: "Full Output",
         children: <LogView logref={dryRun.outputLogref} />,
       });
     }

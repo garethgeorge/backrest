@@ -981,10 +981,19 @@ func (x *OperationRunCommand) GetOutputSizeBytes() int64 {
 
 // OperationDryRunBackup is a dry run backup operation.
 type OperationDryRunBackup struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	OutputLogref  string                 `protobuf:"bytes,1,opt,name=output_logref,json=outputLogref,proto3" json:"output_logref,omitempty"` // reference to the output log for the dry run.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	OutputLogref string                 `protobuf:"bytes,1,opt,name=output_logref,json=outputLogref,proto3" json:"output_logref,omitempty"` // reference to the output log for the dry run.
+	// Parsed summary stats from dry run output
+	FilesNew        int64 `protobuf:"varint,2,opt,name=files_new,json=filesNew,proto3" json:"files_new,omitempty"`
+	FilesChanged    int64 `protobuf:"varint,3,opt,name=files_changed,json=filesChanged,proto3" json:"files_changed,omitempty"`
+	FilesUnmodified int64 `protobuf:"varint,4,opt,name=files_unmodified,json=filesUnmodified,proto3" json:"files_unmodified,omitempty"`
+	DirsNew         int64 `protobuf:"varint,5,opt,name=dirs_new,json=dirsNew,proto3" json:"dirs_new,omitempty"`
+	DirsChanged     int64 `protobuf:"varint,6,opt,name=dirs_changed,json=dirsChanged,proto3" json:"dirs_changed,omitempty"`
+	DirsUnmodified  int64 `protobuf:"varint,7,opt,name=dirs_unmodified,json=dirsUnmodified,proto3" json:"dirs_unmodified,omitempty"`
+	DataToAdd       int64 `protobuf:"varint,8,opt,name=data_to_add,json=dataToAdd,proto3" json:"data_to_add,omitempty"`                     // bytes that would be added (uncompressed)
+	DataToAddPacked int64 `protobuf:"varint,9,opt,name=data_to_add_packed,json=dataToAddPacked,proto3" json:"data_to_add_packed,omitempty"` // bytes that would be added (after compression)
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *OperationDryRunBackup) Reset() {
@@ -1022,6 +1031,62 @@ func (x *OperationDryRunBackup) GetOutputLogref() string {
 		return x.OutputLogref
 	}
 	return ""
+}
+
+func (x *OperationDryRunBackup) GetFilesNew() int64 {
+	if x != nil {
+		return x.FilesNew
+	}
+	return 0
+}
+
+func (x *OperationDryRunBackup) GetFilesChanged() int64 {
+	if x != nil {
+		return x.FilesChanged
+	}
+	return 0
+}
+
+func (x *OperationDryRunBackup) GetFilesUnmodified() int64 {
+	if x != nil {
+		return x.FilesUnmodified
+	}
+	return 0
+}
+
+func (x *OperationDryRunBackup) GetDirsNew() int64 {
+	if x != nil {
+		return x.DirsNew
+	}
+	return 0
+}
+
+func (x *OperationDryRunBackup) GetDirsChanged() int64 {
+	if x != nil {
+		return x.DirsChanged
+	}
+	return 0
+}
+
+func (x *OperationDryRunBackup) GetDirsUnmodified() int64 {
+	if x != nil {
+		return x.DirsUnmodified
+	}
+	return 0
+}
+
+func (x *OperationDryRunBackup) GetDataToAdd() int64 {
+	if x != nil {
+		return x.DataToAdd
+	}
+	return 0
+}
+
+func (x *OperationDryRunBackup) GetDataToAddPacked() int64 {
+	if x != nil {
+		return x.DataToAddPacked
+	}
+	return 0
 }
 
 // OperationRestore tracks a restore operation.
@@ -1266,9 +1331,17 @@ const file_v1_operations_proto_rawDesc = "" +
 	"\x13OperationRunCommand\x12\x18\n" +
 	"\acommand\x18\x01 \x01(\tR\acommand\x12#\n" +
 	"\routput_logref\x18\x02 \x01(\tR\foutputLogref\x12*\n" +
-	"\x11output_size_bytes\x18\x03 \x01(\x03R\x0foutputSizeBytes\"<\n" +
+	"\x11output_size_bytes\x18\x03 \x01(\x03R\x0foutputSizeBytes\"\xdd\x02\n" +
 	"\x15OperationDryRunBackup\x12#\n" +
-	"\routput_logref\x18\x01 \x01(\tR\foutputLogref\"y\n" +
+	"\routput_logref\x18\x01 \x01(\tR\foutputLogref\x12\x1b\n" +
+	"\tfiles_new\x18\x02 \x01(\x03R\bfilesNew\x12#\n" +
+	"\rfiles_changed\x18\x03 \x01(\x03R\ffilesChanged\x12)\n" +
+	"\x10files_unmodified\x18\x04 \x01(\x03R\x0ffilesUnmodified\x12\x19\n" +
+	"\bdirs_new\x18\x05 \x01(\x03R\adirsNew\x12!\n" +
+	"\fdirs_changed\x18\x06 \x01(\x03R\vdirsChanged\x12'\n" +
+	"\x0fdirs_unmodified\x18\a \x01(\x03R\x0edirsUnmodified\x12\x1e\n" +
+	"\vdata_to_add\x18\b \x01(\x03R\tdataToAdd\x12+\n" +
+	"\x12data_to_add_packed\x18\t \x01(\x03R\x0fdataToAddPacked\"y\n" +
 	"\x10OperationRestore\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x129\n" +

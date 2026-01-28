@@ -62,9 +62,21 @@ func dryRunBackupHelper(ctx context.Context, st ScheduledTask, runner TaskRunner
 	log.Info("starting dry run backup")
 
 	// Run dry run backup with verbose output
-	err = repo.DryRunBackup(ctx, plan, writer)
+	result, err := repo.DryRunBackup(ctx, plan, writer)
 	if err != nil {
 		return fmt.Errorf("dry run backup: %w", err)
+	}
+
+	// Populate structured stats from parsed result
+	if result != nil {
+		op.FilesNew = result.FilesNew
+		op.FilesChanged = result.FilesChanged
+		op.FilesUnmodified = result.FilesUnmodified
+		op.DirsNew = result.DirsNew
+		op.DirsChanged = result.DirsChanged
+		op.DirsUnmodified = result.DirsUnmodified
+		op.DataToAdd = result.DataToAdd
+		op.DataToAddPacked = result.DataToAddPacked
 	}
 
 	log.Info("dry run backup complete")

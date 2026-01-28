@@ -1,14 +1,17 @@
 package repo
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"path"
+	"regexp"
 	"runtime"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -186,7 +189,19 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 
 // DryRunBackup runs a dry run backup for the plan, writing verbose output to the writer.
 // This validates backup configuration and shows what would be backed up without transferring data.
-func (r *RepoOrchestrator) DryRunBackup(ctx context.Context, plan *v1.Plan, output io.Writer) error {
+// DryRunResult contains parsed statistics from a dry run backup.
+type DryRunResult struct {
+	FilesNew        int64
+	FilesChanged    int64
+	FilesUnmodified int64
+	DirsNew         int64
+	DirsChanged     int64
+	DirsUnmodified  int64
+	DataToAdd       int64 // bytes (uncompressed)
+	DataToAddPacked int64 // bytes (compressed/stored)
+}
+
+func (r *RepoOrchestrator) DryRunBackup(ctx context.Context, plan *v1.Plan, output io.Writer) (*DryRunResult, error) {
 	l := r.logger(ctx)
 	l.Debug("repo orchestrator starting dry run backup", zap.String("repo", r.repoConfig.Id))
 
@@ -214,7 +229,7 @@ func (r *RepoOrchestrator) DryRunBackup(ctx context.Context, plan *v1.Plan, outp
 	for _, f := range plan.GetBackupFlags() {
 		args, err := shlex.Split(f)
 		if err != nil {
-			return fmt.Errorf("failed to parse backup flag %q for plan %q: %w", f, plan.Id, err)
+			return nil, fmt.Errorf("failed to parse backup flag %q for plan %q: %w", f, plan.Id, err)
 		}
 		opts = append(opts, restic.WithFlags(args...))
 	}
@@ -231,14 +246,75 @@ func (r *RepoOrchestrator) DryRunBackup(ctx context.Context, plan *v1.Plan, outp
 	// Build command args: backup followed by paths
 	args := append([]string{"backup"}, plan.Paths...)
 
+	// Capture output to a buffer so we can parse it
+	var buf bytes.Buffer
+	multiWriter := io.MultiWriter(&buf, output)
+
 	// Set up context logger for output capture
-	ctx = restic.ContextWithLogger(ctx, output)
+	ctx = restic.ContextWithLogger(ctx, multiWriter)
 	if err := r.repo.GenericCommand(ctx, args, opts...); err != nil {
-		return fmt.Errorf("dry run backup: %w", err)
+		return nil, fmt.Errorf("dry run backup: %w", err)
 	}
 
 	l.Debug("dry run backup completed", zap.String("plan", plan.Id))
-	return nil
+
+	// Parse the output to extract stats
+	result := parseDryRunOutput(buf.String())
+	return result, nil
+}
+
+// parseDryRunOutput extracts statistics from restic dry run output.
+func parseDryRunOutput(output string) *DryRunResult {
+	result := &DryRunResult{}
+
+	// Match: "Files:           3 new,     0 changed,     0 unmodified"
+	filesRe := regexp.MustCompile(`Files:\s+(\d+)\s+new,\s+(\d+)\s+changed,\s+(\d+)\s+unmodified`)
+	if matches := filesRe.FindStringSubmatch(output); len(matches) == 4 {
+		result.FilesNew, _ = strconv.ParseInt(matches[1], 10, 64)
+		result.FilesChanged, _ = strconv.ParseInt(matches[2], 10, 64)
+		result.FilesUnmodified, _ = strconv.ParseInt(matches[3], 10, 64)
+	}
+
+	// Match: "Dirs:            2 new,     0 changed,     0 unmodified"
+	dirsRe := regexp.MustCompile(`Dirs:\s+(\d+)\s+new,\s+(\d+)\s+changed,\s+(\d+)\s+unmodified`)
+	if matches := dirsRe.FindStringSubmatch(output); len(matches) == 4 {
+		result.DirsNew, _ = strconv.ParseInt(matches[1], 10, 64)
+		result.DirsChanged, _ = strconv.ParseInt(matches[2], 10, 64)
+		result.DirsUnmodified, _ = strconv.ParseInt(matches[3], 10, 64)
+	}
+
+	// Match: "Would add to the repository: 1.769 KiB (1.318 KiB stored)"
+	dataRe := regexp.MustCompile(`Would add to the repository:\s+([\d.]+)\s+(\w+)\s+\(([\d.]+)\s+(\w+)\s+stored\)`)
+	if matches := dataRe.FindStringSubmatch(output); len(matches) == 5 {
+		result.DataToAdd = parseSize(matches[1], matches[2])
+		result.DataToAddPacked = parseSize(matches[3], matches[4])
+	}
+
+	return result
+}
+
+// parseSize converts a size string like "1.769" with unit "KiB" to bytes.
+func parseSize(sizeStr, unit string) int64 {
+	size, err := strconv.ParseFloat(sizeStr, 64)
+	if err != nil {
+		return 0
+	}
+
+	multiplier := 1.0
+	switch strings.ToUpper(unit) {
+	case "B":
+		multiplier = 1
+	case "KIB":
+		multiplier = 1024
+	case "MIB":
+		multiplier = 1024 * 1024
+	case "GIB":
+		multiplier = 1024 * 1024 * 1024
+	case "TIB":
+		multiplier = 1024 * 1024 * 1024 * 1024
+	}
+
+	return int64(size * multiplier)
 }
 
 func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId string, path string) ([]*v1.LsEntry, error) {
