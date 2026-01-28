@@ -385,26 +385,26 @@ export const OperationRow = ({
         key: "summary",
         label: (
           <Flex align="center" gap={2}>
-            <Badge colorPalette="blue" variant="outline">DRY RUN</Badge>
-            <Text>Preview</Text>
+            <Badge colorPalette="blue" variant="outline">{m.op_row_dry_run_badge()}</Badge>
+            <Text>{m.op_row_dry_run_preview()}</Text>
           </Flex>
         ),
         children: (
           <SimpleGrid columns={2} gap={4}>
             <Box>
-              <Text fontWeight="medium" color="fg.muted" fontSize="sm">Files to backup</Text>
+              <Text fontWeight="medium" color="fg.muted" fontSize="sm">{m.op_row_dry_run_files()}</Text>
               <Text>{filesNew} new, {filesChanged} changed, {filesUnmodified} unmodified</Text>
             </Box>
             <Box>
-              <Text fontWeight="medium" color="fg.muted" fontSize="sm">Directories</Text>
+              <Text fontWeight="medium" color="fg.muted" fontSize="sm">{m.op_row_dry_run_dirs()}</Text>
               <Text>{dirsNew} new, {dirsChanged} changed, {dirsUnmodified} unmodified</Text>
             </Box>
             <Box>
-              <Text fontWeight="medium" color="fg.muted" fontSize="sm">Would add</Text>
+              <Text fontWeight="medium" color="fg.muted" fontSize="sm">{m.op_row_dry_run_would_add()}</Text>
               <Text>{formatBytes(dataToAdd)}</Text>
             </Box>
             <Box>
-              <Text fontWeight="medium" color="fg.muted" fontSize="sm">Stored size</Text>
+              <Text fontWeight="medium" color="fg.muted" fontSize="sm">{m.op_row_dry_run_stored_size()}</Text>
               <Text>{formatBytes(dataToAddPacked)}</Text>
             </Box>
           </SimpleGrid>
@@ -416,7 +416,7 @@ export const OperationRow = ({
     if (dryRun.outputLogref) {
       bodyItems.push({
         key: "output",
-        label: "Full Output",
+        label: m.op_row_dry_run_full_output(),
         children: <LogView logref={dryRun.outputLogref} />,
       });
     }

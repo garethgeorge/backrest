@@ -208,6 +208,12 @@ func (r *RepoOrchestrator) DryRunBackup(ctx context.Context, plan *v1.Plan, outp
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	// Get snapshots for parent reference (same as regular backup)
+	snapshots, err := r.SnapshotsForPlan(ctx, plan)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get snapshots for plan: %w", err)
+	}
+
 	// Build backup command options (same as regular backup)
 	var opts []restic.GenericOption
 	opts = append(opts, restic.WithFlags(
@@ -224,6 +230,11 @@ func (r *RepoOrchestrator) DryRunBackup(ctx context.Context, plan *v1.Plan, outp
 	}
 	for _, iexclude := range plan.Iexcludes {
 		opts = append(opts, restic.WithFlags("--iexclude", iexclude))
+	}
+
+	// Set parent snapshot for accurate change detection
+	if len(snapshots) > 0 {
+		opts = append(opts, restic.WithFlags("--parent", snapshots[len(snapshots)-1].Id))
 	}
 
 	for _, f := range plan.GetBackupFlags() {

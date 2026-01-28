@@ -29,8 +29,11 @@ func NewOneoffDryRunBackupTask(repo *v1.Repo, planID string, flowID int64, at ti
 		},
 		Do: func(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
 			op := st.Op
-			dryRunOp := op.Op.(*v1.Operation_OperationDryRunBackup).OperationDryRunBackup
-			return dryRunBackupHelper(ctx, st, runner, dryRunOp)
+			dryRunOp, ok := op.Op.(*v1.Operation_OperationDryRunBackup)
+			if !ok {
+				return fmt.Errorf("unexpected operation type: %T", op.Op)
+			}
+			return dryRunBackupHelper(ctx, st, runner, dryRunOp.OperationDryRunBackup)
 		},
 	}
 }

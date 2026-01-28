@@ -54,9 +54,9 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
       await backrestService.dryRunBackup(
         create(StringValueSchema, { value: plan.id })
       );
-      alerts.success("Dry run backup completed");
+      alerts.success(m.plan_dry_run_success());
     } catch (e: any) {
-      alerts.error("Dry run failed: " + e.message);
+      alerts.error(m.plan_dry_run_error() + e.message);
     }
   };
 
@@ -124,7 +124,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
             </MenuTrigger>
             <MenuContent>
               <MenuItem value="dry-run-backup" onClick={handleDryRunBackup}>
-                Dry Run Backup
+                {m.op_type_dry_run_backup()}
               </MenuItem>
               <MenuItem
                 value="run-command"
