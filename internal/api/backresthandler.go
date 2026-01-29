@@ -640,7 +640,7 @@ func (s *BackrestHandler) IndexSnapshots(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error) {
 	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
 	if err != nil {
 		return nil, err
@@ -650,7 +650,7 @@ func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types
 		return nil, err
 	}
 	wait := make(chan struct{})
-	if err := s.orchestrator.ScheduleTask(tasks.NewOneoffBackupTask(repo, plan, time.Now()), tasks.TaskPriorityInteractive, func(e error) {
+	if err := s.orchestrator.ScheduleTask(tasks.NewOneoffBackupTask(repo, plan, time.Now(), req.Msg.DryRun), tasks.TaskPriorityInteractive, func(e error) {
 		err = e
 		close(wait)
 	}); err != nil {
@@ -658,44 +658,6 @@ func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types
 	}
 	<-wait
 	return connect.NewResponse(&emptypb.Empty{}), err
-}
-
-// DryRunBackup implements POST /v1/dryRunBackup
-func (s *BackrestHandler) DryRunBackup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	planID := req.Msg.Value
-	if planID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("plan ID is required"))
-	}
-
-	plan, err := s.orchestrator.GetPlan(planID)
-	if err != nil {
-		return nil, fmt.Errorf("get plan %q: %w", planID, err)
-	}
-
-	repo, err := s.orchestrator.GetRepo(plan.Repo)
-	if err != nil {
-		return nil, fmt.Errorf("get repo %q: %w", plan.Repo, err)
-	}
-
-	var taskErr error
-	wait := make(chan struct{})
-
-	if err := s.orchestrator.ScheduleTask(
-		tasks.NewOneoffDryRunBackupTask(repo, plan.Id, 0 /* flowID */, time.Now()),
-		tasks.TaskPriorityInteractive,
-		func(e error) {
-			taskErr = e
-			close(wait)
-		},
-	); err != nil {
-		return nil, fmt.Errorf("schedule task: %w", err)
-	}
-
-	<-wait
-	if taskErr != nil {
-		return nil, taskErr
-	}
-	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
 func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {

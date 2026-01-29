@@ -25,8 +25,8 @@ import {
   DoRepoTaskRequest_Task,
   DoRepoTaskRequestSchema,
   GetOperationsRequestSchema,
+  BackupRequestSchema,
 } from "../../../gen/ts/v1/service_pb";
-import { StringValueSchema } from "../../../gen/ts/types/value_pb";
 import { SpinButton } from "../../components/common/SpinButton";
 import { useShowModal } from "../../components/common/ModalManager";
 import { create } from "@bufbuild/protobuf";
@@ -42,7 +42,9 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
   const handleBackupNow = async () => {
     try {
-      await backrestService.backup({ value: plan.id });
+      await backrestService.backup(
+        create(BackupRequestSchema, { value: plan.id })
+      );
       alerts.success(m.plan_backup_scheduled());
     } catch (e: any) {
       alerts.error(m.plan_error_backup() + e.message);
@@ -51,10 +53,10 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
   const handleDryRunBackup = async () => {
     try {
-      await backrestService.dryRunBackup(
-        create(StringValueSchema, { value: plan.id })
+      await backrestService.backup(
+        create(BackupRequestSchema, { value: plan.id, dryRun: true })
       );
-      alerts.success(m.plan_dry_run_success());
+      alerts.success(m.plan_dry_run_scheduled());
     } catch (e: any) {
       alerts.error(m.plan_dry_run_error() + e.message);
     }

@@ -60,8 +60,6 @@ const (
 	BackrestListSnapshotFilesProcedure = "/v1.Backrest/ListSnapshotFiles"
 	// BackrestBackupProcedure is the fully-qualified name of the Backrest's Backup RPC.
 	BackrestBackupProcedure = "/v1.Backrest/Backup"
-	// BackrestDryRunBackupProcedure is the fully-qualified name of the Backrest's DryRunBackup RPC.
-	BackrestDryRunBackupProcedure = "/v1.Backrest/DryRunBackup"
 	// BackrestDoRepoTaskProcedure is the fully-qualified name of the Backrest's DoRepoTask RPC.
 	BackrestDoRepoTaskProcedure = "/v1.Backrest/DoRepoTask"
 	// BackrestForgetProcedure is the fully-qualified name of the Backrest's Forget RPC.
@@ -99,9 +97,7 @@ type BackrestClient interface {
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error)
 	ListSnapshotFiles(context.Context, *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
-	Backup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
-	// DryRunBackup runs a dry run backup for a plan.
-	DryRunBackup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
+	Backup(context.Context, *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error)
 	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
 	DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
@@ -195,16 +191,10 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestMethods.ByName("ListSnapshotFiles")),
 			connect.WithClientOptions(opts...),
 		),
-		backup: connect.NewClient[types.StringValue, emptypb.Empty](
+		backup: connect.NewClient[v1.BackupRequest, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestBackupProcedure,
 			connect.WithSchema(backrestMethods.ByName("Backup")),
-			connect.WithClientOptions(opts...),
-		),
-		dryRunBackup: connect.NewClient[types.StringValue, emptypb.Empty](
-			httpClient,
-			baseURL+BackrestDryRunBackupProcedure,
-			connect.WithSchema(backrestMethods.ByName("DryRunBackup")),
 			connect.WithClientOptions(opts...),
 		),
 		doRepoTask: connect.NewClient[v1.DoRepoTaskRequest, emptypb.Empty](
@@ -282,8 +272,7 @@ type backrestClient struct {
 	getOperations       *connect.Client[v1.GetOperationsRequest, v1.OperationList]
 	listSnapshots       *connect.Client[v1.ListSnapshotsRequest, v1.ResticSnapshotList]
 	listSnapshotFiles   *connect.Client[v1.ListSnapshotFilesRequest, v1.ListSnapshotFilesResponse]
-	backup              *connect.Client[types.StringValue, emptypb.Empty]
-	dryRunBackup        *connect.Client[types.StringValue, emptypb.Empty]
+	backup              *connect.Client[v1.BackupRequest, emptypb.Empty]
 	doRepoTask          *connect.Client[v1.DoRepoTaskRequest, emptypb.Empty]
 	forget              *connect.Client[v1.ForgetRequest, emptypb.Empty]
 	restore             *connect.Client[v1.RestoreSnapshotRequest, emptypb.Empty]
@@ -347,13 +336,8 @@ func (c *backrestClient) ListSnapshotFiles(ctx context.Context, req *connect.Req
 }
 
 // Backup calls v1.Backrest.Backup.
-func (c *backrestClient) Backup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (c *backrestClient) Backup(ctx context.Context, req *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.backup.CallUnary(ctx, req)
-}
-
-// DryRunBackup calls v1.Backrest.DryRunBackup.
-func (c *backrestClient) DryRunBackup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	return c.dryRunBackup.CallUnary(ctx, req)
 }
 
 // DoRepoTask calls v1.Backrest.DoRepoTask.
@@ -419,9 +403,7 @@ type BackrestHandler interface {
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error)
 	ListSnapshotFiles(context.Context, *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
-	Backup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
-	// DryRunBackup runs a dry run backup for a plan.
-	DryRunBackup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
+	Backup(context.Context, *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error)
 	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
 	DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
@@ -517,12 +499,6 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		connect.WithSchema(backrestMethods.ByName("Backup")),
 		connect.WithHandlerOptions(opts...),
 	)
-	backrestDryRunBackupHandler := connect.NewUnaryHandler(
-		BackrestDryRunBackupProcedure,
-		svc.DryRunBackup,
-		connect.WithSchema(backrestMethods.ByName("DryRunBackup")),
-		connect.WithHandlerOptions(opts...),
-	)
 	backrestDoRepoTaskHandler := connect.NewUnaryHandler(
 		BackrestDoRepoTaskProcedure,
 		svc.DoRepoTask,
@@ -607,8 +583,6 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 			backrestListSnapshotFilesHandler.ServeHTTP(w, r)
 		case BackrestBackupProcedure:
 			backrestBackupHandler.ServeHTTP(w, r)
-		case BackrestDryRunBackupProcedure:
-			backrestDryRunBackupHandler.ServeHTTP(w, r)
 		case BackrestDoRepoTaskProcedure:
 			backrestDoRepoTaskHandler.ServeHTTP(w, r)
 		case BackrestForgetProcedure:
@@ -678,12 +652,8 @@ func (UnimplementedBackrestHandler) ListSnapshotFiles(context.Context, *connect.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.ListSnapshotFiles is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) Backup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (UnimplementedBackrestHandler) Backup(context.Context, *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Backup is not implemented"))
-}
-
-func (UnimplementedBackrestHandler) DryRunBackup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.DryRunBackup is not implemented"))
 }
 
 func (UnimplementedBackrestHandler) DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error) {

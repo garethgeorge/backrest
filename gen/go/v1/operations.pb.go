@@ -226,7 +226,6 @@ type Operation struct {
 	//	*Operation_OperationRunHook
 	//	*Operation_OperationCheck
 	//	*Operation_OperationRunCommand
-	//	*Operation_OperationDryRunBackup
 	Op            isOperation_Op `protobuf_oneof:"op"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -462,15 +461,6 @@ func (x *Operation) GetOperationRunCommand() *OperationRunCommand {
 	return nil
 }
 
-func (x *Operation) GetOperationDryRunBackup() *OperationDryRunBackup {
-	if x != nil {
-		if x, ok := x.Op.(*Operation_OperationDryRunBackup); ok {
-			return x.OperationDryRunBackup
-		}
-	}
-	return nil
-}
-
 type isOperation_Op interface {
 	isOperation_Op()
 }
@@ -511,10 +501,6 @@ type Operation_OperationRunCommand struct {
 	OperationRunCommand *OperationRunCommand `protobuf:"bytes,108,opt,name=operation_run_command,json=operationRunCommand,proto3,oneof"`
 }
 
-type Operation_OperationDryRunBackup struct {
-	OperationDryRunBackup *OperationDryRunBackup `protobuf:"bytes,109,opt,name=operation_dry_run_backup,json=operationDryRunBackup,proto3,oneof"`
-}
-
 func (*Operation_OperationBackup) isOperation_Op() {}
 
 func (*Operation_OperationIndexSnapshot) isOperation_Op() {}
@@ -532,8 +518,6 @@ func (*Operation_OperationRunHook) isOperation_Op() {}
 func (*Operation_OperationCheck) isOperation_Op() {}
 
 func (*Operation_OperationRunCommand) isOperation_Op() {}
-
-func (*Operation_OperationDryRunBackup) isOperation_Op() {}
 
 // OperationEvent is used in the wireformat to stream operation changes to clients
 type OperationEvent struct {
@@ -654,6 +638,7 @@ type OperationBackup struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	LastStatus    *BackupProgressEntry   `protobuf:"bytes,3,opt,name=last_status,json=lastStatus,proto3" json:"last_status,omitempty"`
 	Errors        []*BackupProgressError `protobuf:"bytes,4,rep,name=errors,proto3" json:"errors,omitempty"`
+	DryRun        bool                   `protobuf:"varint,5,opt,name=dry_run,json=dryRun,proto3" json:"dry_run,omitempty"` // indicates this was a dry run backup (no snapshot created)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -700,6 +685,13 @@ func (x *OperationBackup) GetErrors() []*BackupProgressError {
 		return x.Errors
 	}
 	return nil
+}
+
+func (x *OperationBackup) GetDryRun() bool {
+	if x != nil {
+		return x.DryRun
+	}
+	return false
 }
 
 // OperationIndexSnapshot tracks that a snapshot was detected by backrest.
@@ -979,116 +971,6 @@ func (x *OperationRunCommand) GetOutputSizeBytes() int64 {
 	return 0
 }
 
-// OperationDryRunBackup is a dry run backup operation.
-type OperationDryRunBackup struct {
-	state        protoimpl.MessageState `protogen:"open.v1"`
-	OutputLogref string                 `protobuf:"bytes,1,opt,name=output_logref,json=outputLogref,proto3" json:"output_logref,omitempty"` // reference to the output log for the dry run.
-	// Parsed summary stats from dry run output
-	FilesNew        int64 `protobuf:"varint,2,opt,name=files_new,json=filesNew,proto3" json:"files_new,omitempty"`
-	FilesChanged    int64 `protobuf:"varint,3,opt,name=files_changed,json=filesChanged,proto3" json:"files_changed,omitempty"`
-	FilesUnmodified int64 `protobuf:"varint,4,opt,name=files_unmodified,json=filesUnmodified,proto3" json:"files_unmodified,omitempty"`
-	DirsNew         int64 `protobuf:"varint,5,opt,name=dirs_new,json=dirsNew,proto3" json:"dirs_new,omitempty"`
-	DirsChanged     int64 `protobuf:"varint,6,opt,name=dirs_changed,json=dirsChanged,proto3" json:"dirs_changed,omitempty"`
-	DirsUnmodified  int64 `protobuf:"varint,7,opt,name=dirs_unmodified,json=dirsUnmodified,proto3" json:"dirs_unmodified,omitempty"`
-	DataToAdd       int64 `protobuf:"varint,8,opt,name=data_to_add,json=dataToAdd,proto3" json:"data_to_add,omitempty"`                     // bytes that would be added (uncompressed)
-	DataToAddPacked int64 `protobuf:"varint,9,opt,name=data_to_add_packed,json=dataToAddPacked,proto3" json:"data_to_add_packed,omitempty"` // bytes that would be added (after compression)
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *OperationDryRunBackup) Reset() {
-	*x = OperationDryRunBackup{}
-	mi := &file_v1_operations_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *OperationDryRunBackup) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*OperationDryRunBackup) ProtoMessage() {}
-
-func (x *OperationDryRunBackup) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_operations_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use OperationDryRunBackup.ProtoReflect.Descriptor instead.
-func (*OperationDryRunBackup) Descriptor() ([]byte, []int) {
-	return file_v1_operations_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *OperationDryRunBackup) GetOutputLogref() string {
-	if x != nil {
-		return x.OutputLogref
-	}
-	return ""
-}
-
-func (x *OperationDryRunBackup) GetFilesNew() int64 {
-	if x != nil {
-		return x.FilesNew
-	}
-	return 0
-}
-
-func (x *OperationDryRunBackup) GetFilesChanged() int64 {
-	if x != nil {
-		return x.FilesChanged
-	}
-	return 0
-}
-
-func (x *OperationDryRunBackup) GetFilesUnmodified() int64 {
-	if x != nil {
-		return x.FilesUnmodified
-	}
-	return 0
-}
-
-func (x *OperationDryRunBackup) GetDirsNew() int64 {
-	if x != nil {
-		return x.DirsNew
-	}
-	return 0
-}
-
-func (x *OperationDryRunBackup) GetDirsChanged() int64 {
-	if x != nil {
-		return x.DirsChanged
-	}
-	return 0
-}
-
-func (x *OperationDryRunBackup) GetDirsUnmodified() int64 {
-	if x != nil {
-		return x.DirsUnmodified
-	}
-	return 0
-}
-
-func (x *OperationDryRunBackup) GetDataToAdd() int64 {
-	if x != nil {
-		return x.DataToAdd
-	}
-	return 0
-}
-
-func (x *OperationDryRunBackup) GetDataToAddPacked() int64 {
-	if x != nil {
-		return x.DataToAddPacked
-	}
-	return 0
-}
-
 // OperationRestore tracks a restore operation.
 type OperationRestore struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1101,7 +983,7 @@ type OperationRestore struct {
 
 func (x *OperationRestore) Reset() {
 	*x = OperationRestore{}
-	mi := &file_v1_operations_proto_msgTypes[10]
+	mi := &file_v1_operations_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1113,7 +995,7 @@ func (x *OperationRestore) String() string {
 func (*OperationRestore) ProtoMessage() {}
 
 func (x *OperationRestore) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_operations_proto_msgTypes[10]
+	mi := &file_v1_operations_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1126,7 +1008,7 @@ func (x *OperationRestore) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperationRestore.ProtoReflect.Descriptor instead.
 func (*OperationRestore) Descriptor() ([]byte, []int) {
-	return file_v1_operations_proto_rawDescGZIP(), []int{10}
+	return file_v1_operations_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *OperationRestore) GetPath() string {
@@ -1160,7 +1042,7 @@ type OperationStats struct {
 
 func (x *OperationStats) Reset() {
 	*x = OperationStats{}
-	mi := &file_v1_operations_proto_msgTypes[11]
+	mi := &file_v1_operations_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1172,7 +1054,7 @@ func (x *OperationStats) String() string {
 func (*OperationStats) ProtoMessage() {}
 
 func (x *OperationStats) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_operations_proto_msgTypes[11]
+	mi := &file_v1_operations_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1185,7 +1067,7 @@ func (x *OperationStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperationStats.ProtoReflect.Descriptor instead.
 func (*OperationStats) Descriptor() ([]byte, []int) {
-	return file_v1_operations_proto_rawDescGZIP(), []int{11}
+	return file_v1_operations_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *OperationStats) GetStats() *RepoStats {
@@ -1208,7 +1090,7 @@ type OperationRunHook struct {
 
 func (x *OperationRunHook) Reset() {
 	*x = OperationRunHook{}
-	mi := &file_v1_operations_proto_msgTypes[12]
+	mi := &file_v1_operations_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1220,7 +1102,7 @@ func (x *OperationRunHook) String() string {
 func (*OperationRunHook) ProtoMessage() {}
 
 func (x *OperationRunHook) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_operations_proto_msgTypes[12]
+	mi := &file_v1_operations_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1233,7 +1115,7 @@ func (x *OperationRunHook) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperationRunHook.ProtoReflect.Descriptor instead.
 func (*OperationRunHook) Descriptor() ([]byte, []int) {
-	return file_v1_operations_proto_rawDescGZIP(), []int{12}
+	return file_v1_operations_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *OperationRunHook) GetParentOp() int64 {
@@ -1272,7 +1154,7 @@ const file_v1_operations_proto_rawDesc = "" +
 	"\rOperationList\x12-\n" +
 	"\n" +
 	"operations\x18\x01 \x03(\v2\r.v1.OperationR\n" +
-	"operations\"\xf1\t\n" +
+	"operations\"\x9b\t\n" +
 	"\tOperation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1f\n" +
 	"\voriginal_id\x18\r \x01(\x03R\n" +
@@ -1302,8 +1184,7 @@ const file_v1_operations_proto_rawDesc = "" +
 	"\x0foperation_stats\x18i \x01(\v2\x12.v1.OperationStatsH\x00R\x0eoperationStats\x12D\n" +
 	"\x12operation_run_hook\x18j \x01(\v2\x14.v1.OperationRunHookH\x00R\x10operationRunHook\x12=\n" +
 	"\x0foperation_check\x18k \x01(\v2\x12.v1.OperationCheckH\x00R\x0eoperationCheck\x12M\n" +
-	"\x15operation_run_command\x18l \x01(\v2\x17.v1.OperationRunCommandH\x00R\x13operationRunCommand\x12T\n" +
-	"\x18operation_dry_run_backup\x18m \x01(\v2\x19.v1.OperationDryRunBackupH\x00R\x15operationDryRunBackupB\x04\n" +
+	"\x15operation_run_command\x18l \x01(\v2\x17.v1.OperationRunCommandH\x00R\x13operationRunCommandB\x04\n" +
 	"\x02op\"\x93\x02\n" +
 	"\x0eOperationEvent\x12-\n" +
 	"\n" +
@@ -1311,11 +1192,12 @@ const file_v1_operations_proto_rawDesc = "" +
 	"\x12created_operations\x18\x02 \x01(\v2\x11.v1.OperationListH\x00R\x11createdOperations\x12B\n" +
 	"\x12updated_operations\x18\x03 \x01(\v2\x11.v1.OperationListH\x00R\x11updatedOperations\x12A\n" +
 	"\x12deleted_operations\x18\x04 \x01(\v2\x10.types.Int64ListH\x00R\x11deletedOperationsB\a\n" +
-	"\x05event\"|\n" +
+	"\x05event\"\x95\x01\n" +
 	"\x0fOperationBackup\x128\n" +
 	"\vlast_status\x18\x03 \x01(\v2\x17.v1.BackupProgressEntryR\n" +
 	"lastStatus\x12/\n" +
-	"\x06errors\x18\x04 \x03(\v2\x17.v1.BackupProgressErrorR\x06errors\"`\n" +
+	"\x06errors\x18\x04 \x03(\v2\x17.v1.BackupProgressErrorR\x06errors\x12\x17\n" +
+	"\adry_run\x18\x05 \x01(\bR\x06dryRun\"`\n" +
 	"\x16OperationIndexSnapshot\x12.\n" +
 	"\bsnapshot\x18\x02 \x01(\v2\x12.v1.ResticSnapshotR\bsnapshot\x12\x16\n" +
 	"\x06forgot\x18\x03 \x01(\bR\x06forgot\"j\n" +
@@ -1331,17 +1213,7 @@ const file_v1_operations_proto_rawDesc = "" +
 	"\x13OperationRunCommand\x12\x18\n" +
 	"\acommand\x18\x01 \x01(\tR\acommand\x12#\n" +
 	"\routput_logref\x18\x02 \x01(\tR\foutputLogref\x12*\n" +
-	"\x11output_size_bytes\x18\x03 \x01(\x03R\x0foutputSizeBytes\"\xdd\x02\n" +
-	"\x15OperationDryRunBackup\x12#\n" +
-	"\routput_logref\x18\x01 \x01(\tR\foutputLogref\x12\x1b\n" +
-	"\tfiles_new\x18\x02 \x01(\x03R\bfilesNew\x12#\n" +
-	"\rfiles_changed\x18\x03 \x01(\x03R\ffilesChanged\x12)\n" +
-	"\x10files_unmodified\x18\x04 \x01(\x03R\x0ffilesUnmodified\x12\x19\n" +
-	"\bdirs_new\x18\x05 \x01(\x03R\adirsNew\x12!\n" +
-	"\fdirs_changed\x18\x06 \x01(\x03R\vdirsChanged\x12'\n" +
-	"\x0fdirs_unmodified\x18\a \x01(\x03R\x0edirsUnmodified\x12\x1e\n" +
-	"\vdata_to_add\x18\b \x01(\x03R\tdataToAdd\x12+\n" +
-	"\x12data_to_add_packed\x18\t \x01(\x03R\x0fdataToAddPacked\"y\n" +
+	"\x11output_size_bytes\x18\x03 \x01(\x03R\x0foutputSizeBytes\"y\n" +
 	"\x10OperationRestore\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x129\n" +
@@ -1382,7 +1254,7 @@ func file_v1_operations_proto_rawDescGZIP() []byte {
 }
 
 var file_v1_operations_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_v1_operations_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_v1_operations_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_v1_operations_proto_goTypes = []any{
 	(OperationEventType)(0),        // 0: v1.OperationEventType
 	(OperationStatus)(0),           // 1: v1.OperationStatus
@@ -1395,19 +1267,18 @@ var file_v1_operations_proto_goTypes = []any{
 	(*OperationPrune)(nil),         // 8: v1.OperationPrune
 	(*OperationCheck)(nil),         // 9: v1.OperationCheck
 	(*OperationRunCommand)(nil),    // 10: v1.OperationRunCommand
-	(*OperationDryRunBackup)(nil),  // 11: v1.OperationDryRunBackup
-	(*OperationRestore)(nil),       // 12: v1.OperationRestore
-	(*OperationStats)(nil),         // 13: v1.OperationStats
-	(*OperationRunHook)(nil),       // 14: v1.OperationRunHook
-	(*types.Empty)(nil),            // 15: types.Empty
-	(*types.Int64List)(nil),        // 16: types.Int64List
-	(*BackupProgressEntry)(nil),    // 17: v1.BackupProgressEntry
-	(*BackupProgressError)(nil),    // 18: v1.BackupProgressError
-	(*ResticSnapshot)(nil),         // 19: v1.ResticSnapshot
-	(*RetentionPolicy)(nil),        // 20: v1.RetentionPolicy
-	(*RestoreProgressEntry)(nil),   // 21: v1.RestoreProgressEntry
-	(*RepoStats)(nil),              // 22: v1.RepoStats
-	(Hook_Condition)(0),            // 23: v1.Hook.Condition
+	(*OperationRestore)(nil),       // 11: v1.OperationRestore
+	(*OperationStats)(nil),         // 12: v1.OperationStats
+	(*OperationRunHook)(nil),       // 13: v1.OperationRunHook
+	(*types.Empty)(nil),            // 14: types.Empty
+	(*types.Int64List)(nil),        // 15: types.Int64List
+	(*BackupProgressEntry)(nil),    // 16: v1.BackupProgressEntry
+	(*BackupProgressError)(nil),    // 17: v1.BackupProgressError
+	(*ResticSnapshot)(nil),         // 18: v1.ResticSnapshot
+	(*RetentionPolicy)(nil),        // 19: v1.RetentionPolicy
+	(*RestoreProgressEntry)(nil),   // 20: v1.RestoreProgressEntry
+	(*RepoStats)(nil),              // 21: v1.RepoStats
+	(Hook_Condition)(0),            // 22: v1.Hook.Condition
 }
 var file_v1_operations_proto_depIdxs = []int32{
 	3,  // 0: v1.OperationList.operations:type_name -> v1.Operation
@@ -1416,29 +1287,28 @@ var file_v1_operations_proto_depIdxs = []int32{
 	6,  // 3: v1.Operation.operation_index_snapshot:type_name -> v1.OperationIndexSnapshot
 	7,  // 4: v1.Operation.operation_forget:type_name -> v1.OperationForget
 	8,  // 5: v1.Operation.operation_prune:type_name -> v1.OperationPrune
-	12, // 6: v1.Operation.operation_restore:type_name -> v1.OperationRestore
-	13, // 7: v1.Operation.operation_stats:type_name -> v1.OperationStats
-	14, // 8: v1.Operation.operation_run_hook:type_name -> v1.OperationRunHook
+	11, // 6: v1.Operation.operation_restore:type_name -> v1.OperationRestore
+	12, // 7: v1.Operation.operation_stats:type_name -> v1.OperationStats
+	13, // 8: v1.Operation.operation_run_hook:type_name -> v1.OperationRunHook
 	9,  // 9: v1.Operation.operation_check:type_name -> v1.OperationCheck
 	10, // 10: v1.Operation.operation_run_command:type_name -> v1.OperationRunCommand
-	11, // 11: v1.Operation.operation_dry_run_backup:type_name -> v1.OperationDryRunBackup
-	15, // 12: v1.OperationEvent.keep_alive:type_name -> types.Empty
-	2,  // 13: v1.OperationEvent.created_operations:type_name -> v1.OperationList
-	2,  // 14: v1.OperationEvent.updated_operations:type_name -> v1.OperationList
-	16, // 15: v1.OperationEvent.deleted_operations:type_name -> types.Int64List
-	17, // 16: v1.OperationBackup.last_status:type_name -> v1.BackupProgressEntry
-	18, // 17: v1.OperationBackup.errors:type_name -> v1.BackupProgressError
-	19, // 18: v1.OperationIndexSnapshot.snapshot:type_name -> v1.ResticSnapshot
-	19, // 19: v1.OperationForget.forget:type_name -> v1.ResticSnapshot
-	20, // 20: v1.OperationForget.policy:type_name -> v1.RetentionPolicy
-	21, // 21: v1.OperationRestore.last_status:type_name -> v1.RestoreProgressEntry
-	22, // 22: v1.OperationStats.stats:type_name -> v1.RepoStats
-	23, // 23: v1.OperationRunHook.condition:type_name -> v1.Hook.Condition
-	24, // [24:24] is the sub-list for method output_type
-	24, // [24:24] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	14, // 11: v1.OperationEvent.keep_alive:type_name -> types.Empty
+	2,  // 12: v1.OperationEvent.created_operations:type_name -> v1.OperationList
+	2,  // 13: v1.OperationEvent.updated_operations:type_name -> v1.OperationList
+	15, // 14: v1.OperationEvent.deleted_operations:type_name -> types.Int64List
+	16, // 15: v1.OperationBackup.last_status:type_name -> v1.BackupProgressEntry
+	17, // 16: v1.OperationBackup.errors:type_name -> v1.BackupProgressError
+	18, // 17: v1.OperationIndexSnapshot.snapshot:type_name -> v1.ResticSnapshot
+	18, // 18: v1.OperationForget.forget:type_name -> v1.ResticSnapshot
+	19, // 19: v1.OperationForget.policy:type_name -> v1.RetentionPolicy
+	20, // 20: v1.OperationRestore.last_status:type_name -> v1.RestoreProgressEntry
+	21, // 21: v1.OperationStats.stats:type_name -> v1.RepoStats
+	22, // 22: v1.OperationRunHook.condition:type_name -> v1.Hook.Condition
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_v1_operations_proto_init() }
@@ -1458,7 +1328,6 @@ func file_v1_operations_proto_init() {
 		(*Operation_OperationRunHook)(nil),
 		(*Operation_OperationCheck)(nil),
 		(*Operation_OperationRunCommand)(nil),
-		(*Operation_OperationDryRunBackup)(nil),
 	}
 	file_v1_operations_proto_msgTypes[2].OneofWrappers = []any{
 		(*OperationEvent_KeepAlive)(nil),
@@ -1472,7 +1341,7 @@ func file_v1_operations_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_v1_operations_proto_rawDesc), len(file_v1_operations_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   13,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

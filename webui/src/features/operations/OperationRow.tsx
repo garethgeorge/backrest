@@ -7,7 +7,6 @@ import {
 } from "../../../gen/ts/v1/operations_pb";
 import { HeavyAccordion } from "../../components/common/HeavyAccordion";
 import {
-  Badge,
   Button,
   GridItem,
   Collapsible,
@@ -240,7 +239,7 @@ export const OperationRow = ({
     bodyItems.push({
       key: "details",
       label: m.op_row_backup_details(),
-      children: <BackupOperationStatus status={backupOp.lastStatus} />,
+      children: <BackupOperationStatus status={backupOp.lastStatus} dryRun={backupOp.dryRun} />,
     });
 
     if (backupOp.errors.length > 0) {
@@ -360,64 +359,6 @@ export const OperationRow = ({
         key: "logref",
         label: m.op_row_hook_output(),
         children: <LogView logref={operation.logref} />,
-      });
-    }
-  } else if (operation.op.case === "operationDryRunBackup") {
-    const dryRun = operation.op.value;
-
-    // Show structured summary if we have parsed stats
-    // Convert BigInt to Number for display (safe for reasonable file counts/sizes)
-    const filesNew = Number(dryRun.filesNew);
-    const filesChanged = Number(dryRun.filesChanged);
-    const filesUnmodified = Number(dryRun.filesUnmodified);
-    const dirsNew = Number(dryRun.dirsNew);
-    const dirsChanged = Number(dryRun.dirsChanged);
-    const dirsUnmodified = Number(dryRun.dirsUnmodified);
-    const dataToAdd = Number(dryRun.dataToAdd);
-    const dataToAddPacked = Number(dryRun.dataToAddPacked);
-
-    const hasStats = filesNew > 0 || filesChanged > 0 ||
-                     dirsNew > 0 || dirsChanged > 0 ||
-                     dataToAdd > 0;
-
-    if (hasStats) {
-      bodyItems.push({
-        key: "summary",
-        label: (
-          <Flex align="center" gap={2}>
-            <Badge colorPalette="blue" variant="outline">{m.op_row_dry_run_badge()}</Badge>
-            <Text>{m.op_row_dry_run_preview()}</Text>
-          </Flex>
-        ),
-        children: (
-          <SimpleGrid columns={2} gap={4}>
-            <Box>
-              <Text fontWeight="medium" color="fg.muted" fontSize="sm">{m.op_row_dry_run_files()}</Text>
-              <Text>{filesNew} new, {filesChanged} changed, {filesUnmodified} unmodified</Text>
-            </Box>
-            <Box>
-              <Text fontWeight="medium" color="fg.muted" fontSize="sm">{m.op_row_dry_run_dirs()}</Text>
-              <Text>{dirsNew} new, {dirsChanged} changed, {dirsUnmodified} unmodified</Text>
-            </Box>
-            <Box>
-              <Text fontWeight="medium" color="fg.muted" fontSize="sm">{m.op_row_dry_run_would_add()}</Text>
-              <Text>{formatBytes(dataToAdd)}</Text>
-            </Box>
-            <Box>
-              <Text fontWeight="medium" color="fg.muted" fontSize="sm">{m.op_row_dry_run_stored_size()}</Text>
-              <Text>{formatBytes(dataToAddPacked)}</Text>
-            </Box>
-          </SimpleGrid>
-        ),
-      });
-    }
-
-    // Keep full output available for details
-    if (dryRun.outputLogref) {
-      bodyItems.push({
-        key: "output",
-        label: m.op_row_dry_run_full_output(),
-        children: <LogView logref={dryRun.outputLogref} />,
       });
     }
   }
@@ -674,8 +615,10 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
 
 const BackupOperationStatus = ({
   status,
+  dryRun,
 }: {
   status?: BackupProgressEntry;
+  dryRun?: boolean;
 }) => {
   if (!status) {
     return <>{m.op_row_no_status()}</>;
@@ -733,7 +676,7 @@ const BackupOperationStatus = ({
           <Text as="span" fontWeight="bold">
             {m.op_row_snapshot_id()}
           </Text>
-          {sum.snapshotId !== ""
+          {sum.snapshotId !== "" && !dryRun
             ? normalizeSnapshotId(sum.snapshotId!)
             : m.op_row_no_snapshot()}
         </Text>

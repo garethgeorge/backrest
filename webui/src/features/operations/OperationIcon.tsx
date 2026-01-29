@@ -9,7 +9,6 @@ import {
   FaPaperclip,
   FaRobot,
   FaSave,
-  FaEye,
 } from "react-icons/fa";
 import { OperationStatus } from "../../../gen/ts/v1/operations_pb";
 
@@ -26,6 +25,7 @@ export const OperationIcon = ({
   let avatar: React.ReactNode;
   switch (type) {
     case DisplayType.BACKUP:
+    case DisplayType.BACKUP_DRYRUN:
       avatar = <FaSave style={style} />;
       break;
     case DisplayType.FORGET:
@@ -51,9 +51,6 @@ export const OperationIcon = ({
       break;
     case DisplayType.RUNCOMMAND:
       avatar = <FaCode style={style} />;
-      break;
-    case DisplayType.DRY_RUN_BACKUP:
-      avatar = <FaEye style={style} />;
       break;
   }
 

@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1/operations.proto.
  */
 export const file_v1_operations: GenFile = /*@__PURE__*/
-  fileDesc("ChN2MS9vcGVyYXRpb25zLnByb3RvEgJ2MSIyCg1PcGVyYXRpb25MaXN0EiEKCm9wZXJhdGlvbnMYASADKAsyDS52MS5PcGVyYXRpb24i/wYKCU9wZXJhdGlvbhIKCgJpZBgBIAEoAxITCgtvcmlnaW5hbF9pZBgNIAEoAxINCgVtb2RubxgMIAEoAxIPCgdmbG93X2lkGAogASgDEhgKEG9yaWdpbmFsX2Zsb3dfaWQYDiABKAMSDwoHcmVwb19pZBgCIAEoCRIRCglyZXBvX2d1aWQYDyABKAkSDwoHcGxhbl9pZBgDIAEoCRITCgtpbnN0YW5jZV9pZBgLIAEoCRIfChdvcmlnaW5hbF9pbnN0YW5jZV9rZXlpZBgQIAEoCRITCgtzbmFwc2hvdF9pZBgIIAEoCRIjCgZzdGF0dXMYBCABKA4yEy52MS5PcGVyYXRpb25TdGF0dXMSGgoSdW5peF90aW1lX3N0YXJ0X21zGAUgASgDEhgKEHVuaXhfdGltZV9lbmRfbXMYBiABKAMSFwoPZGlzcGxheV9tZXNzYWdlGAcgASgJEg4KBmxvZ3JlZhgJIAEoCRIvChBvcGVyYXRpb25fYmFja3VwGGQgASgLMhMudjEuT3BlcmF0aW9uQmFja3VwSAASPgoYb3BlcmF0aW9uX2luZGV4X3NuYXBzaG90GGUgASgLMhoudjEuT3BlcmF0aW9uSW5kZXhTbmFwc2hvdEgAEi8KEG9wZXJhdGlvbl9mb3JnZXQYZiABKAsyEy52MS5PcGVyYXRpb25Gb3JnZXRIABItCg9vcGVyYXRpb25fcHJ1bmUYZyABKAsyEi52MS5PcGVyYXRpb25QcnVuZUgAEjEKEW9wZXJhdGlvbl9yZXN0b3JlGGggASgLMhQudjEuT3BlcmF0aW9uUmVzdG9yZUgAEi0KD29wZXJhdGlvbl9zdGF0cxhpIAEoCzISLnYxLk9wZXJhdGlvblN0YXRzSAASMgoSb3BlcmF0aW9uX3J1bl9ob29rGGogASgLMhQudjEuT3BlcmF0aW9uUnVuSG9va0gAEi0KD29wZXJhdGlvbl9jaGVjaxhrIAEoCzISLnYxLk9wZXJhdGlvbkNoZWNrSAASOAoVb3BlcmF0aW9uX3J1bl9jb21tYW5kGGwgASgLMhcudjEuT3BlcmF0aW9uUnVuQ29tbWFuZEgAEj0KGG9wZXJhdGlvbl9kcnlfcnVuX2JhY2t1cBhtIAEoCzIZLnYxLk9wZXJhdGlvbkRyeVJ1bkJhY2t1cEgAQgQKAm9wIs8BCg5PcGVyYXRpb25FdmVudBIiCgprZWVwX2FsaXZlGAEgASgLMgwudHlwZXMuRW1wdHlIABIvChJjcmVhdGVkX29wZXJhdGlvbnMYAiABKAsyES52MS5PcGVyYXRpb25MaXN0SAASLwoSdXBkYXRlZF9vcGVyYXRpb25zGAMgASgLMhEudjEuT3BlcmF0aW9uTGlzdEgAEi4KEmRlbGV0ZWRfb3BlcmF0aW9ucxgEIAEoCzIQLnR5cGVzLkludDY0TGlzdEgAQgcKBWV2ZW50ImgKD09wZXJhdGlvbkJhY2t1cBIsCgtsYXN0X3N0YXR1cxgDIAEoCzIXLnYxLkJhY2t1cFByb2dyZXNzRW50cnkSJwoGZXJyb3JzGAQgAygLMhcudjEuQmFja3VwUHJvZ3Jlc3NFcnJvciJOChZPcGVyYXRpb25JbmRleFNuYXBzaG90EiQKCHNuYXBzaG90GAIgASgLMhIudjEuUmVzdGljU25hcHNob3QSDgoGZm9yZ290GAMgASgIIloKD09wZXJhdGlvbkZvcmdldBIiCgZmb3JnZXQYASADKAsyEi52MS5SZXN0aWNTbmFwc2hvdBIjCgZwb2xpY3kYAiABKAsyEy52MS5SZXRlbnRpb25Qb2xpY3kiOwoOT3BlcmF0aW9uUHJ1bmUSEgoGb3V0cHV0GAEgASgJQgIYARIVCg1vdXRwdXRfbG9ncmVmGAIgASgJIjsKDk9wZXJhdGlvbkNoZWNrEhIKBm91dHB1dBgBIAEoCUICGAESFQoNb3V0cHV0X2xvZ3JlZhgCIAEoCSJYChNPcGVyYXRpb25SdW5Db21tYW5kEg8KB2NvbW1hbmQYASABKAkSFQoNb3V0cHV0X2xvZ3JlZhgCIAEoCRIZChFvdXRwdXRfc2l6ZV9ieXRlcxgDIAEoAyLkAQoVT3BlcmF0aW9uRHJ5UnVuQmFja3VwEhUKDW91dHB1dF9sb2dyZWYYASABKAkSEQoJZmlsZXNfbmV3GAIgASgDEhUKDWZpbGVzX2NoYW5nZWQYAyABKAMSGAoQZmlsZXNfdW5tb2RpZmllZBgEIAEoAxIQCghkaXJzX25ldxgFIAEoAxIUCgxkaXJzX2NoYW5nZWQYBiABKAMSFwoPZGlyc191bm1vZGlmaWVkGAcgASgDEhMKC2RhdGFfdG9fYWRkGAggASgDEhoKEmRhdGFfdG9fYWRkX3BhY2tlZBgJIAEoAyJfChBPcGVyYXRpb25SZXN0b3JlEgwKBHBhdGgYASABKAkSDgoGdGFyZ2V0GAIgASgJEi0KC2xhc3Rfc3RhdHVzGAMgASgLMhgudjEuUmVzdG9yZVByb2dyZXNzRW50cnkiLgoOT3BlcmF0aW9uU3RhdHMSHAoFc3RhdHMYASABKAsyDS52MS5SZXBvU3RhdHMicQoQT3BlcmF0aW9uUnVuSG9vaxIRCglwYXJlbnRfb3AYBCABKAMSDAoEbmFtZRgBIAEoCRIVCg1vdXRwdXRfbG9ncmVmGAIgASgJEiUKCWNvbmRpdGlvbhgDIAEoDjISLnYxLkhvb2suQ29uZGl0aW9uKmAKEk9wZXJhdGlvbkV2ZW50VHlwZRIRCg1FVkVOVF9VTktOT1dOEAASEQoNRVZFTlRfQ1JFQVRFRBABEhEKDUVWRU5UX1VQREFURUQQAhIRCg1FVkVOVF9ERUxFVEVEEAMqwgEKD09wZXJhdGlvblN0YXR1cxISCg5TVEFUVVNfVU5LTk9XThAAEhIKDlNUQVRVU19QRU5ESU5HEAESFQoRU1RBVFVTX0lOUFJPR1JFU1MQAhISCg5TVEFUVVNfU1VDQ0VTUxADEhIKDlNUQVRVU19XQVJOSU5HEAcSEAoMU1RBVFVTX0VSUk9SEAQSGwoXU1RBVFVTX1NZU1RFTV9DQU5DRUxMRUQQBRIZChVTVEFUVVNfVVNFUl9DQU5DRUxMRUQQBkIsWipnaXRodWIuY29tL2dhcmV0aGdlb3JnZS9iYWNrcmVzdC9nZW4vZ28vdjFiBnByb3RvMw", [file_v1_restic, file_v1_config, file_types_value]);
+  fileDesc("ChN2MS9vcGVyYXRpb25zLnByb3RvEgJ2MSIyCg1PcGVyYXRpb25MaXN0EiEKCm9wZXJhdGlvbnMYASADKAsyDS52MS5PcGVyYXRpb24iwAYKCU9wZXJhdGlvbhIKCgJpZBgBIAEoAxITCgtvcmlnaW5hbF9pZBgNIAEoAxINCgVtb2RubxgMIAEoAxIPCgdmbG93X2lkGAogASgDEhgKEG9yaWdpbmFsX2Zsb3dfaWQYDiABKAMSDwoHcmVwb19pZBgCIAEoCRIRCglyZXBvX2d1aWQYDyABKAkSDwoHcGxhbl9pZBgDIAEoCRITCgtpbnN0YW5jZV9pZBgLIAEoCRIfChdvcmlnaW5hbF9pbnN0YW5jZV9rZXlpZBgQIAEoCRITCgtzbmFwc2hvdF9pZBgIIAEoCRIjCgZzdGF0dXMYBCABKA4yEy52MS5PcGVyYXRpb25TdGF0dXMSGgoSdW5peF90aW1lX3N0YXJ0X21zGAUgASgDEhgKEHVuaXhfdGltZV9lbmRfbXMYBiABKAMSFwoPZGlzcGxheV9tZXNzYWdlGAcgASgJEg4KBmxvZ3JlZhgJIAEoCRIvChBvcGVyYXRpb25fYmFja3VwGGQgASgLMhMudjEuT3BlcmF0aW9uQmFja3VwSAASPgoYb3BlcmF0aW9uX2luZGV4X3NuYXBzaG90GGUgASgLMhoudjEuT3BlcmF0aW9uSW5kZXhTbmFwc2hvdEgAEi8KEG9wZXJhdGlvbl9mb3JnZXQYZiABKAsyEy52MS5PcGVyYXRpb25Gb3JnZXRIABItCg9vcGVyYXRpb25fcHJ1bmUYZyABKAsyEi52MS5PcGVyYXRpb25QcnVuZUgAEjEKEW9wZXJhdGlvbl9yZXN0b3JlGGggASgLMhQudjEuT3BlcmF0aW9uUmVzdG9yZUgAEi0KD29wZXJhdGlvbl9zdGF0cxhpIAEoCzISLnYxLk9wZXJhdGlvblN0YXRzSAASMgoSb3BlcmF0aW9uX3J1bl9ob29rGGogASgLMhQudjEuT3BlcmF0aW9uUnVuSG9va0gAEi0KD29wZXJhdGlvbl9jaGVjaxhrIAEoCzISLnYxLk9wZXJhdGlvbkNoZWNrSAASOAoVb3BlcmF0aW9uX3J1bl9jb21tYW5kGGwgASgLMhcudjEuT3BlcmF0aW9uUnVuQ29tbWFuZEgAQgQKAm9wIs8BCg5PcGVyYXRpb25FdmVudBIiCgprZWVwX2FsaXZlGAEgASgLMgwudHlwZXMuRW1wdHlIABIvChJjcmVhdGVkX29wZXJhdGlvbnMYAiABKAsyES52MS5PcGVyYXRpb25MaXN0SAASLwoSdXBkYXRlZF9vcGVyYXRpb25zGAMgASgLMhEudjEuT3BlcmF0aW9uTGlzdEgAEi4KEmRlbGV0ZWRfb3BlcmF0aW9ucxgEIAEoCzIQLnR5cGVzLkludDY0TGlzdEgAQgcKBWV2ZW50InkKD09wZXJhdGlvbkJhY2t1cBIsCgtsYXN0X3N0YXR1cxgDIAEoCzIXLnYxLkJhY2t1cFByb2dyZXNzRW50cnkSJwoGZXJyb3JzGAQgAygLMhcudjEuQmFja3VwUHJvZ3Jlc3NFcnJvchIPCgdkcnlfcnVuGAUgASgIIk4KFk9wZXJhdGlvbkluZGV4U25hcHNob3QSJAoIc25hcHNob3QYAiABKAsyEi52MS5SZXN0aWNTbmFwc2hvdBIOCgZmb3Jnb3QYAyABKAgiWgoPT3BlcmF0aW9uRm9yZ2V0EiIKBmZvcmdldBgBIAMoCzISLnYxLlJlc3RpY1NuYXBzaG90EiMKBnBvbGljeRgCIAEoCzITLnYxLlJldGVudGlvblBvbGljeSI7Cg5PcGVyYXRpb25QcnVuZRISCgZvdXRwdXQYASABKAlCAhgBEhUKDW91dHB1dF9sb2dyZWYYAiABKAkiOwoOT3BlcmF0aW9uQ2hlY2sSEgoGb3V0cHV0GAEgASgJQgIYARIVCg1vdXRwdXRfbG9ncmVmGAIgASgJIlgKE09wZXJhdGlvblJ1bkNvbW1hbmQSDwoHY29tbWFuZBgBIAEoCRIVCg1vdXRwdXRfbG9ncmVmGAIgASgJEhkKEW91dHB1dF9zaXplX2J5dGVzGAMgASgDIl8KEE9wZXJhdGlvblJlc3RvcmUSDAoEcGF0aBgBIAEoCRIOCgZ0YXJnZXQYAiABKAkSLQoLbGFzdF9zdGF0dXMYAyABKAsyGC52MS5SZXN0b3JlUHJvZ3Jlc3NFbnRyeSIuCg5PcGVyYXRpb25TdGF0cxIcCgVzdGF0cxgBIAEoCzINLnYxLlJlcG9TdGF0cyJxChBPcGVyYXRpb25SdW5Ib29rEhEKCXBhcmVudF9vcBgEIAEoAxIMCgRuYW1lGAEgASgJEhUKDW91dHB1dF9sb2dyZWYYAiABKAkSJQoJY29uZGl0aW9uGAMgASgOMhIudjEuSG9vay5Db25kaXRpb24qYAoST3BlcmF0aW9uRXZlbnRUeXBlEhEKDUVWRU5UX1VOS05PV04QABIRCg1FVkVOVF9DUkVBVEVEEAESEQoNRVZFTlRfVVBEQVRFRBACEhEKDUVWRU5UX0RFTEVURUQQAyrCAQoPT3BlcmF0aW9uU3RhdHVzEhIKDlNUQVRVU19VTktOT1dOEAASEgoOU1RBVFVTX1BFTkRJTkcQARIVChFTVEFUVVNfSU5QUk9HUkVTUxACEhIKDlNUQVRVU19TVUNDRVNTEAMSEgoOU1RBVFVTX1dBUk5JTkcQBxIQCgxTVEFUVVNfRVJST1IQBBIbChdTVEFUVVNfU1lTVEVNX0NBTkNFTExFRBAFEhkKFVNUQVRVU19VU0VSX0NBTkNFTExFRBAGQixaKmdpdGh1Yi5jb20vZ2FyZXRoZ2VvcmdlL2JhY2tyZXN0L2dlbi9nby92MWIGcHJvdG8z", [file_v1_restic, file_v1_config, file_types_value]);
 
 /**
  * @generated from message v1.OperationList
@@ -203,12 +203,6 @@ export type Operation = Message<"v1.Operation"> & {
      */
     value: OperationRunCommand;
     case: "operationRunCommand";
-  } | {
-    /**
-     * @generated from field: v1.OperationDryRunBackup operation_dry_run_backup = 109;
-     */
-    value: OperationDryRunBackup;
-    case: "operationDryRunBackup";
   } | { case: undefined; value?: undefined };
 };
 
@@ -275,6 +269,13 @@ export type OperationBackup = Message<"v1.OperationBackup"> & {
    * @generated from field: repeated v1.BackupProgressError errors = 4;
    */
   errors: BackupProgressError[];
+
+  /**
+   * indicates this was a dry run backup (no snapshot created)
+   *
+   * @generated from field: bool dry_run = 5;
+   */
+  dryRun: boolean;
 };
 
 /**
@@ -426,73 +427,6 @@ export const OperationRunCommandSchema: GenMessage<OperationRunCommand> = /*@__P
   messageDesc(file_v1_operations, 8);
 
 /**
- * OperationDryRunBackup is a dry run backup operation.
- *
- * @generated from message v1.OperationDryRunBackup
- */
-export type OperationDryRunBackup = Message<"v1.OperationDryRunBackup"> & {
-  /**
-   * reference to the output log for the dry run.
-   *
-   * @generated from field: string output_logref = 1;
-   */
-  outputLogref: string;
-
-  /**
-   * Parsed summary stats from dry run output
-   *
-   * @generated from field: int64 files_new = 2;
-   */
-  filesNew: bigint;
-
-  /**
-   * @generated from field: int64 files_changed = 3;
-   */
-  filesChanged: bigint;
-
-  /**
-   * @generated from field: int64 files_unmodified = 4;
-   */
-  filesUnmodified: bigint;
-
-  /**
-   * @generated from field: int64 dirs_new = 5;
-   */
-  dirsNew: bigint;
-
-  /**
-   * @generated from field: int64 dirs_changed = 6;
-   */
-  dirsChanged: bigint;
-
-  /**
-   * @generated from field: int64 dirs_unmodified = 7;
-   */
-  dirsUnmodified: bigint;
-
-  /**
-   * bytes that would be added (uncompressed)
-   *
-   * @generated from field: int64 data_to_add = 8;
-   */
-  dataToAdd: bigint;
-
-  /**
-   * bytes that would be added (after compression)
-   *
-   * @generated from field: int64 data_to_add_packed = 9;
-   */
-  dataToAddPacked: bigint;
-};
-
-/**
- * Describes the message v1.OperationDryRunBackup.
- * Use `create(OperationDryRunBackupSchema)` to create a new message.
- */
-export const OperationDryRunBackupSchema: GenMessage<OperationDryRunBackup> = /*@__PURE__*/
-  messageDesc(file_v1_operations, 9);
-
-/**
  * OperationRestore tracks a restore operation.
  *
  * @generated from message v1.OperationRestore
@@ -525,7 +459,7 @@ export type OperationRestore = Message<"v1.OperationRestore"> & {
  * Use `create(OperationRestoreSchema)` to create a new message.
  */
 export const OperationRestoreSchema: GenMessage<OperationRestore> = /*@__PURE__*/
-  messageDesc(file_v1_operations, 10);
+  messageDesc(file_v1_operations, 9);
 
 /**
  * OperationStats tracks a stats operation.
@@ -544,7 +478,7 @@ export type OperationStats = Message<"v1.OperationStats"> & {
  * Use `create(OperationStatsSchema)` to create a new message.
  */
 export const OperationStatsSchema: GenMessage<OperationStats> = /*@__PURE__*/
-  messageDesc(file_v1_operations, 11);
+  messageDesc(file_v1_operations, 10);
 
 /**
  * OperationRunHook tracks a hook that was run.
@@ -586,7 +520,7 @@ export type OperationRunHook = Message<"v1.OperationRunHook"> & {
  * Use `create(OperationRunHookSchema)` to create a new message.
  */
 export const OperationRunHookSchema: GenMessage<OperationRunHook> = /*@__PURE__*/
-  messageDesc(file_v1_operations, 12);
+  messageDesc(file_v1_operations, 11);
 
 /**
  * OperationEventType indicates whether the operation was created or updated

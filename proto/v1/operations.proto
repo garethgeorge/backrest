@@ -54,7 +54,6 @@ message Operation {
     OperationRunHook operation_run_hook = 106;
     OperationCheck operation_check = 107;
     OperationRunCommand operation_run_command = 108;
-    OperationDryRunBackup operation_dry_run_backup = 109;
   } 
 }
 
@@ -90,6 +89,7 @@ enum OperationStatus {
 message OperationBackup {
   BackupProgressEntry last_status = 3;
   repeated BackupProgressError errors = 4;
+  bool dry_run = 5; // indicates this was a dry run backup (no snapshot created)
 }
 
 // OperationIndexSnapshot tracks that a snapshot was detected by backrest. 
@@ -121,21 +121,6 @@ message OperationRunCommand {
   string command = 1;
   string output_logref = 2;
   int64 output_size_bytes = 3; // not necessarily authoritative, tracked as an optimization to allow clients to avoid fetching very large outputs.
-}
-
-// OperationDryRunBackup is a dry run backup operation.
-message OperationDryRunBackup {
-  string output_logref = 1; // reference to the output log for the dry run.
-
-  // Parsed summary stats from dry run output
-  int64 files_new = 2;
-  int64 files_changed = 3;
-  int64 files_unmodified = 4;
-  int64 dirs_new = 5;
-  int64 dirs_changed = 6;
-  int64 dirs_unmodified = 7;
-  int64 data_to_add = 8;        // bytes that would be added (uncompressed)
-  int64 data_to_add_packed = 9; // bytes that would be added (after compression)
 }
 
 // OperationRestore tracks a restore operation.

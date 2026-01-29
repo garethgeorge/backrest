@@ -32,7 +32,6 @@ const (
 	Backrest_ListSnapshots_FullMethodName       = "/v1.Backrest/ListSnapshots"
 	Backrest_ListSnapshotFiles_FullMethodName   = "/v1.Backrest/ListSnapshotFiles"
 	Backrest_Backup_FullMethodName              = "/v1.Backrest/Backup"
-	Backrest_DryRunBackup_FullMethodName        = "/v1.Backrest/DryRunBackup"
 	Backrest_DoRepoTask_FullMethodName          = "/v1.Backrest/DoRepoTask"
 	Backrest_Forget_FullMethodName              = "/v1.Backrest/Forget"
 	Backrest_Restore_FullMethodName             = "/v1.Backrest/Restore"
@@ -60,9 +59,7 @@ type BackrestClient interface {
 	ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error)
 	ListSnapshotFiles(ctx context.Context, in *ListSnapshotFilesRequest, opts ...grpc.CallOption) (*ListSnapshotFilesResponse, error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
-	Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// DryRunBackup runs a dry run backup for a plan.
-	DryRunBackup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Backup(ctx context.Context, in *BackupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
 	DoRepoTask(ctx context.Context, in *DoRepoTaskRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
@@ -202,20 +199,10 @@ func (c *backrestClient) ListSnapshotFiles(ctx context.Context, in *ListSnapshot
 	return out, nil
 }
 
-func (c *backrestClient) Backup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) Backup(ctx context.Context, in *BackupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Backrest_Backup_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *backrestClient) DryRunBackup(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Backrest_DryRunBackup_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -346,9 +333,7 @@ type BackrestServer interface {
 	ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error)
 	ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
-	Backup(context.Context, *types.StringValue) (*emptypb.Empty, error)
-	// DryRunBackup runs a dry run backup for a plan.
-	DryRunBackup(context.Context, *types.StringValue) (*emptypb.Empty, error)
+	Backup(context.Context, *BackupRequest) (*emptypb.Empty, error)
 	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
 	DoRepoTask(context.Context, *DoRepoTaskRequest) (*emptypb.Empty, error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
@@ -409,11 +394,8 @@ func (UnimplementedBackrestServer) ListSnapshots(context.Context, *ListSnapshots
 func (UnimplementedBackrestServer) ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListSnapshotFiles not implemented")
 }
-func (UnimplementedBackrestServer) Backup(context.Context, *types.StringValue) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) Backup(context.Context, *BackupRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Backup not implemented")
-}
-func (UnimplementedBackrestServer) DryRunBackup(context.Context, *types.StringValue) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method DryRunBackup not implemented")
 }
 func (UnimplementedBackrestServer) DoRepoTask(context.Context, *DoRepoTaskRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DoRepoTask not implemented")
@@ -640,7 +622,7 @@ func _Backrest_ListSnapshotFiles_Handler(srv interface{}, ctx context.Context, d
 }
 
 func _Backrest_Backup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(types.StringValue)
+	in := new(BackupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -652,25 +634,7 @@ func _Backrest_Backup_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: Backrest_Backup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).Backup(ctx, req.(*types.StringValue))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Backrest_DryRunBackup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(types.StringValue)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BackrestServer).DryRunBackup(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Backrest_DryRunBackup_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).DryRunBackup(ctx, req.(*types.StringValue))
+		return srv.(BackrestServer).Backup(ctx, req.(*BackupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -894,10 +858,6 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Backup",
 			Handler:    _Backrest_Backup_Handler,
-		},
-		{
-			MethodName: "DryRunBackup",
-			Handler:    _Backrest_DryRunBackup_Handler,
 		},
 		{
 			MethodName: "DoRepoTask",

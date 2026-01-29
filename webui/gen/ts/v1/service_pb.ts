@@ -21,7 +21,33 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1/service.proto.
  */
 export const file_v1_service: GenFile = /*@__PURE__*/
-  fileDesc("ChB2MS9zZXJ2aWNlLnByb3RvEgJ2MSK/AgoKT3BTZWxlY3RvchILCgNpZHMYASADKAMSGAoLaW5zdGFuY2VfaWQYBiABKAlIAIgBARIkChdvcmlnaW5hbF9pbnN0YW5jZV9rZXlpZBgIIAEoCUgBiAEBEhYKCXJlcG9fZ3VpZBgHIAEoCUgCiAEBEhQKB3BsYW5faWQYAyABKAlIA4gBARIYCgtzbmFwc2hvdF9pZBgEIAEoCUgEiAEBEhQKB2Zsb3dfaWQYBSABKANIBYgBARIWCgltb2Rub19ndGUYCSABKANIBogBAUIOCgxfaW5zdGFuY2VfaWRCGgoYX29yaWdpbmFsX2luc3RhbmNlX2tleWlkQgwKCl9yZXBvX2d1aWRCCgoIX3BsYW5faWRCDgoMX3NuYXBzaG90X2lkQgoKCF9mbG93X2lkQgwKCl9tb2Rub19ndGUiZAoQU2V0dXBTZnRwUmVxdWVzdBIMCgRob3N0GAEgASgJEgwKBHBvcnQYAiABKAkSEAoIdXNlcm5hbWUYAyABKAkSFQoIcGFzc3dvcmQYBCABKAlIAIgBAUILCglfcGFzc3dvcmQiYgoRU2V0dXBTZnRwUmVzcG9uc2USEgoKcHVibGljX2tleRgBIAEoCRIQCghrZXlfcGF0aBgCIAEoCRIYChBrbm93bl9ob3N0c19wYXRoGAMgASgJEg0KBWVycm9yGAQgASgJIk0KFkNoZWNrUmVwb0V4aXN0c1JlcXVlc3QSFgoEcmVwbxgBIAEoCzIILnYxLlJlcG8SGwoTdHJ1c3Rfc2Z0cF9ob3N0X2tleRgCIAEoCCJUChdDaGVja1JlcG9FeGlzdHNSZXNwb25zZRIOCgZleGlzdHMYASABKAgSDQoFZXJyb3IYAiABKAkSGgoSaG9zdF9rZXlfdW50cnVzdGVkGAUgASgIIkUKDkFkZFJlcG9SZXF1ZXN0EhYKBHJlcG8YASABKAsyCC52MS5SZXBvEhsKE3RydXN0X3NmdHBfaG9zdF9rZXkYAiABKAgiwAEKEURvUmVwb1Rhc2tSZXF1ZXN0Eg8KB3JlcG9faWQYASABKAkSKAoEdGFzaxgCIAEoDjIaLnYxLkRvUmVwb1Rhc2tSZXF1ZXN0LlRhc2sicAoEVGFzaxINCglUQVNLX05PTkUQABIYChRUQVNLX0lOREVYX1NOQVBTSE9UUxABEg4KClRBU0tfUFJVTkUQAhIOCgpUQVNLX0NIRUNLEAMSDgoKVEFTS19TVEFUUxAEEg8KC1RBU0tfVU5MT0NLEAUiTAoTQ2xlYXJIaXN0b3J5UmVxdWVzdBIgCghzZWxlY3RvchgBIAEoCzIOLnYxLk9wU2VsZWN0b3ISEwoLb25seV9mYWlsZWQYAiABKAgiRgoNRm9yZ2V0UmVxdWVzdBIPCgdyZXBvX2lkGAEgASgJEg8KB3BsYW5faWQYAiABKAkSEwoLc25hcHNob3RfaWQYAyABKAkiOAoUTGlzdFNuYXBzaG90c1JlcXVlc3QSDwoHcmVwb19pZBgBIAEoCRIPCgdwbGFuX2lkGAIgASgJIkgKFEdldE9wZXJhdGlvbnNSZXF1ZXN0EiAKCHNlbGVjdG9yGAEgASgLMg4udjEuT3BTZWxlY3RvchIOCgZsYXN0X24YAiABKAMibQoWUmVzdG9yZVNuYXBzaG90UmVxdWVzdBIPCgdwbGFuX2lkGAEgASgJEg8KB3JlcG9faWQYBSABKAkSEwoLc25hcHNob3RfaWQYAiABKAkSDAoEcGF0aBgDIAEoCRIOCgZ0YXJnZXQYBCABKAkiUAoYTGlzdFNuYXBzaG90RmlsZXNSZXF1ZXN0EhEKCXJlcG9fZ3VpZBgBIAEoCRITCgtzbmFwc2hvdF9pZBgCIAEoCRIMCgRwYXRoGAMgASgJIkcKGUxpc3RTbmFwc2hvdEZpbGVzUmVzcG9uc2USDAoEcGF0aBgBIAEoCRIcCgdlbnRyaWVzGAIgAygLMgsudjEuTHNFbnRyeSIdCg5Mb2dEYXRhUmVxdWVzdBILCgNyZWYYASABKAkiOQoVR2V0RG93bmxvYWRVUkxSZXF1ZXN0Eg0KBW9wX2lkGAEgASgDEhEKCWZpbGVfcGF0aBgCIAEoCSKWAQoHTHNFbnRyeRIMCgRuYW1lGAEgASgJEgwKBHR5cGUYAiABKAkSDAoEcGF0aBgDIAEoCRILCgN1aWQYBCABKAMSCwoDZ2lkGAUgASgDEgwKBHNpemUYBiABKAMSDAoEbW9kZRgHIAEoAxINCgVtdGltZRgIIAEoCRINCgVhdGltZRgJIAEoCRINCgVjdGltZRgKIAEoCSI1ChFSdW5Db21tYW5kUmVxdWVzdBIPCgdyZXBvX2lkGAEgASgJEg8KB2NvbW1hbmQYAiABKAkitQUKGFN1bW1hcnlEYXNoYm9hcmRSZXNwb25zZRI8Cg5yZXBvX3N1bW1hcmllcxgBIAMoCzIkLnYxLlN1bW1hcnlEYXNoYm9hcmRSZXNwb25zZS5TdW1tYXJ5EjwKDnBsYW5fc3VtbWFyaWVzGAIgAygLMiQudjEuU3VtbWFyeURhc2hib2FyZFJlc3BvbnNlLlN1bW1hcnkSEwoLY29uZmlnX3BhdGgYCiABKAkSEQoJZGF0YV9wYXRoGAsgASgJGu4CCgdTdW1tYXJ5EgoKAmlkGAEgASgJEh0KFWJhY2t1cHNfZmFpbGVkXzMwZGF5cxgCIAEoAxIjChtiYWNrdXBzX3dhcm5pbmdfbGFzdF8zMGRheXMYAyABKAMSIwobYmFja3Vwc19zdWNjZXNzX2xhc3RfMzBkYXlzGAQgASgDEiEKGWJ5dGVzX3NjYW5uZWRfbGFzdF8zMGRheXMYBSABKAMSHwoXYnl0ZXNfYWRkZWRfbGFzdF8zMGRheXMYBiABKAMSFwoPdG90YWxfc25hcHNob3RzGAcgASgDEhkKEWJ5dGVzX3NjYW5uZWRfYXZnGAggASgDEhcKD2J5dGVzX2FkZGVkX2F2ZxgJIAEoAxIbChNuZXh0X2JhY2t1cF90aW1lX21zGAogASgDEkAKDnJlY2VudF9iYWNrdXBzGAsgASgLMigudjEuU3VtbWFyeURhc2hib2FyZFJlc3BvbnNlLkJhY2t1cENoYXJ0GoMBCgtCYWNrdXBDaGFydBIPCgdmbG93X2lkGAEgAygDEhQKDHRpbWVzdGFtcF9tcxgCIAMoAxITCgtkdXJhdGlvbl9tcxgDIAMoAxIjCgZzdGF0dXMYBCADKA4yEy52MS5PcGVyYXRpb25TdGF0dXMSEwoLYnl0ZXNfYWRkZWQYBSADKAMy0AoKCEJhY2tyZXN0EjEKCUdldENvbmZpZxIWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRoKLnYxLkNvbmZpZyIAEiUKCVNldENvbmZpZxIKLnYxLkNvbmZpZxoKLnYxLkNvbmZpZyIAEjoKCVNldHVwU2Z0cBIULnYxLlNldHVwU2Z0cFJlcXVlc3QaFS52MS5TZXR1cFNmdHBSZXNwb25zZSIAEkwKD0NoZWNrUmVwb0V4aXN0cxIaLnYxLkNoZWNrUmVwb0V4aXN0c1JlcXVlc3QaGy52MS5DaGVja1JlcG9FeGlzdHNSZXNwb25zZSIAEisKB0FkZFJlcG8SEi52MS5BZGRSZXBvUmVxdWVzdBoKLnYxLkNvbmZpZyIAEi4KClJlbW92ZVJlcG8SEi50eXBlcy5TdHJpbmdWYWx1ZRoKLnYxLkNvbmZpZyIAEkQKEkdldE9wZXJhdGlvbkV2ZW50cxIWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRoSLnYxLk9wZXJhdGlvbkV2ZW50IgAwARI+Cg1HZXRPcGVyYXRpb25zEhgudjEuR2V0T3BlcmF0aW9uc1JlcXVlc3QaES52MS5PcGVyYXRpb25MaXN0IgASQwoNTGlzdFNuYXBzaG90cxIYLnYxLkxpc3RTbmFwc2hvdHNSZXF1ZXN0GhYudjEuUmVzdGljU25hcHNob3RMaXN0IgASUgoRTGlzdFNuYXBzaG90RmlsZXMSHC52MS5MaXN0U25hcHNob3RGaWxlc1JlcXVlc3QaHS52MS5MaXN0U25hcHNob3RGaWxlc1Jlc3BvbnNlIgASNgoGQmFja3VwEhIudHlwZXMuU3RyaW5nVmFsdWUaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABI8CgxEcnlSdW5CYWNrdXASEi50eXBlcy5TdHJpbmdWYWx1ZRoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIAEj0KCkRvUmVwb1Rhc2sSFS52MS5Eb1JlcG9UYXNrUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIAEjUKBkZvcmdldBIRLnYxLkZvcmdldFJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABI/CgdSZXN0b3JlEhoudjEuUmVzdG9yZVNuYXBzaG90UmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIAEjUKBkNhbmNlbBIRLnR5cGVzLkludDY0VmFsdWUaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABI0CgdHZXRMb2dzEhIudjEuTG9nRGF0YVJlcXVlc3QaES50eXBlcy5CeXRlc1ZhbHVlIgAwARI4CgpSdW5Db21tYW5kEhUudjEuUnVuQ29tbWFuZFJlcXVlc3QaES50eXBlcy5JbnQ2NFZhbHVlIgASQQoOR2V0RG93bmxvYWRVUkwSGS52MS5HZXREb3dubG9hZFVSTFJlcXVlc3QaEi50eXBlcy5TdHJpbmdWYWx1ZSIAEkEKDENsZWFySGlzdG9yeRIXLnYxLkNsZWFySGlzdG9yeVJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABI7ChBQYXRoQXV0b2NvbXBsZXRlEhIudHlwZXMuU3RyaW5nVmFsdWUaES50eXBlcy5TdHJpbmdMaXN0IgASTQoTR2V0U3VtbWFyeURhc2hib2FyZBIWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRocLnYxLlN1bW1hcnlEYXNoYm9hcmRSZXNwb25zZSIAQixaKmdpdGh1Yi5jb20vZ2FyZXRoZ2VvcmdlL2JhY2tyZXN0L2dlbi9nby92MWIGcHJvdG8z", [file_v1_config, file_v1_restic, file_v1_operations, file_types_value, file_google_protobuf_empty, file_google_api_annotations]);
+  fileDesc("ChB2MS9zZXJ2aWNlLnByb3RvEgJ2MSIvCg1CYWNrdXBSZXF1ZXN0Eg0KBXZhbHVlGAEgASgJEg8KB2RyeV9ydW4YAiABKAgivwIKCk9wU2VsZWN0b3ISCwoDaWRzGAEgAygDEhgKC2luc3RhbmNlX2lkGAYgASgJSACIAQESJAoXb3JpZ2luYWxfaW5zdGFuY2Vfa2V5aWQYCCABKAlIAYgBARIWCglyZXBvX2d1aWQYByABKAlIAogBARIUCgdwbGFuX2lkGAMgASgJSAOIAQESGAoLc25hcHNob3RfaWQYBCABKAlIBIgBARIUCgdmbG93X2lkGAUgASgDSAWIAQESFgoJbW9kbm9fZ3RlGAkgASgDSAaIAQFCDgoMX2luc3RhbmNlX2lkQhoKGF9vcmlnaW5hbF9pbnN0YW5jZV9rZXlpZEIMCgpfcmVwb19ndWlkQgoKCF9wbGFuX2lkQg4KDF9zbmFwc2hvdF9pZEIKCghfZmxvd19pZEIMCgpfbW9kbm9fZ3RlImQKEFNldHVwU2Z0cFJlcXVlc3QSDAoEaG9zdBgBIAEoCRIMCgRwb3J0GAIgASgJEhAKCHVzZXJuYW1lGAMgASgJEhUKCHBhc3N3b3JkGAQgASgJSACIAQFCCwoJX3Bhc3N3b3JkImIKEVNldHVwU2Z0cFJlc3BvbnNlEhIKCnB1YmxpY19rZXkYASABKAkSEAoIa2V5X3BhdGgYAiABKAkSGAoQa25vd25faG9zdHNfcGF0aBgDIAEoCRINCgVlcnJvchgEIAEoCSJNChZDaGVja1JlcG9FeGlzdHNSZXF1ZXN0EhYKBHJlcG8YASABKAsyCC52MS5SZXBvEhsKE3RydXN0X3NmdHBfaG9zdF9rZXkYAiABKAgiVAoXQ2hlY2tSZXBvRXhpc3RzUmVzcG9uc2USDgoGZXhpc3RzGAEgASgIEg0KBWVycm9yGAIgASgJEhoKEmhvc3Rfa2V5X3VudHJ1c3RlZBgFIAEoCCJFCg5BZGRSZXBvUmVxdWVzdBIWCgRyZXBvGAEgASgLMggudjEuUmVwbxIbChN0cnVzdF9zZnRwX2hvc3Rfa2V5GAIgASgIIsABChFEb1JlcG9UYXNrUmVxdWVzdBIPCgdyZXBvX2lkGAEgASgJEigKBHRhc2sYAiABKA4yGi52MS5Eb1JlcG9UYXNrUmVxdWVzdC5UYXNrInAKBFRhc2sSDQoJVEFTS19OT05FEAASGAoUVEFTS19JTkRFWF9TTkFQU0hPVFMQARIOCgpUQVNLX1BSVU5FEAISDgoKVEFTS19DSEVDSxADEg4KClRBU0tfU1RBVFMQBBIPCgtUQVNLX1VOTE9DSxAFIkwKE0NsZWFySGlzdG9yeVJlcXVlc3QSIAoIc2VsZWN0b3IYASABKAsyDi52MS5PcFNlbGVjdG9yEhMKC29ubHlfZmFpbGVkGAIgASgIIkYKDUZvcmdldFJlcXVlc3QSDwoHcmVwb19pZBgBIAEoCRIPCgdwbGFuX2lkGAIgASgJEhMKC3NuYXBzaG90X2lkGAMgASgJIjgKFExpc3RTbmFwc2hvdHNSZXF1ZXN0Eg8KB3JlcG9faWQYASABKAkSDwoHcGxhbl9pZBgCIAEoCSJIChRHZXRPcGVyYXRpb25zUmVxdWVzdBIgCghzZWxlY3RvchgBIAEoCzIOLnYxLk9wU2VsZWN0b3ISDgoGbGFzdF9uGAIgASgDIm0KFlJlc3RvcmVTbmFwc2hvdFJlcXVlc3QSDwoHcGxhbl9pZBgBIAEoCRIPCgdyZXBvX2lkGAUgASgJEhMKC3NuYXBzaG90X2lkGAIgASgJEgwKBHBhdGgYAyABKAkSDgoGdGFyZ2V0GAQgASgJIlAKGExpc3RTbmFwc2hvdEZpbGVzUmVxdWVzdBIRCglyZXBvX2d1aWQYASABKAkSEwoLc25hcHNob3RfaWQYAiABKAkSDAoEcGF0aBgDIAEoCSJHChlMaXN0U25hcHNob3RGaWxlc1Jlc3BvbnNlEgwKBHBhdGgYASABKAkSHAoHZW50cmllcxgCIAMoCzILLnYxLkxzRW50cnkiHQoOTG9nRGF0YVJlcXVlc3QSCwoDcmVmGAEgASgJIjkKFUdldERvd25sb2FkVVJMUmVxdWVzdBINCgVvcF9pZBgBIAEoAxIRCglmaWxlX3BhdGgYAiABKAkilgEKB0xzRW50cnkSDAoEbmFtZRgBIAEoCRIMCgR0eXBlGAIgASgJEgwKBHBhdGgYAyABKAkSCwoDdWlkGAQgASgDEgsKA2dpZBgFIAEoAxIMCgRzaXplGAYgASgDEgwKBG1vZGUYByABKAMSDQoFbXRpbWUYCCABKAkSDQoFYXRpbWUYCSABKAkSDQoFY3RpbWUYCiABKAkiNQoRUnVuQ29tbWFuZFJlcXVlc3QSDwoHcmVwb19pZBgBIAEoCRIPCgdjb21tYW5kGAIgASgJIrUFChhTdW1tYXJ5RGFzaGJvYXJkUmVzcG9uc2USPAoOcmVwb19zdW1tYXJpZXMYASADKAsyJC52MS5TdW1tYXJ5RGFzaGJvYXJkUmVzcG9uc2UuU3VtbWFyeRI8Cg5wbGFuX3N1bW1hcmllcxgCIAMoCzIkLnYxLlN1bW1hcnlEYXNoYm9hcmRSZXNwb25zZS5TdW1tYXJ5EhMKC2NvbmZpZ19wYXRoGAogASgJEhEKCWRhdGFfcGF0aBgLIAEoCRruAgoHU3VtbWFyeRIKCgJpZBgBIAEoCRIdChViYWNrdXBzX2ZhaWxlZF8zMGRheXMYAiABKAMSIwobYmFja3Vwc193YXJuaW5nX2xhc3RfMzBkYXlzGAMgASgDEiMKG2JhY2t1cHNfc3VjY2Vzc19sYXN0XzMwZGF5cxgEIAEoAxIhChlieXRlc19zY2FubmVkX2xhc3RfMzBkYXlzGAUgASgDEh8KF2J5dGVzX2FkZGVkX2xhc3RfMzBkYXlzGAYgASgDEhcKD3RvdGFsX3NuYXBzaG90cxgHIAEoAxIZChFieXRlc19zY2FubmVkX2F2ZxgIIAEoAxIXCg9ieXRlc19hZGRlZF9hdmcYCSABKAMSGwoTbmV4dF9iYWNrdXBfdGltZV9tcxgKIAEoAxJACg5yZWNlbnRfYmFja3VwcxgLIAEoCzIoLnYxLlN1bW1hcnlEYXNoYm9hcmRSZXNwb25zZS5CYWNrdXBDaGFydBqDAQoLQmFja3VwQ2hhcnQSDwoHZmxvd19pZBgBIAMoAxIUCgx0aW1lc3RhbXBfbXMYAiADKAMSEwoLZHVyYXRpb25fbXMYAyADKAMSIwoGc3RhdHVzGAQgAygOMhMudjEuT3BlcmF0aW9uU3RhdHVzEhMKC2J5dGVzX2FkZGVkGAUgAygDMpEKCghCYWNrcmVzdBIxCglHZXRDb25maWcSFi5nb29nbGUucHJvdG9idWYuRW1wdHkaCi52MS5Db25maWciABIlCglTZXRDb25maWcSCi52MS5Db25maWcaCi52MS5Db25maWciABI6CglTZXR1cFNmdHASFC52MS5TZXR1cFNmdHBSZXF1ZXN0GhUudjEuU2V0dXBTZnRwUmVzcG9uc2UiABJMCg9DaGVja1JlcG9FeGlzdHMSGi52MS5DaGVja1JlcG9FeGlzdHNSZXF1ZXN0GhsudjEuQ2hlY2tSZXBvRXhpc3RzUmVzcG9uc2UiABIrCgdBZGRSZXBvEhIudjEuQWRkUmVwb1JlcXVlc3QaCi52MS5Db25maWciABIuCgpSZW1vdmVSZXBvEhIudHlwZXMuU3RyaW5nVmFsdWUaCi52MS5Db25maWciABJEChJHZXRPcGVyYXRpb25FdmVudHMSFi5nb29nbGUucHJvdG9idWYuRW1wdHkaEi52MS5PcGVyYXRpb25FdmVudCIAMAESPgoNR2V0T3BlcmF0aW9ucxIYLnYxLkdldE9wZXJhdGlvbnNSZXF1ZXN0GhEudjEuT3BlcmF0aW9uTGlzdCIAEkMKDUxpc3RTbmFwc2hvdHMSGC52MS5MaXN0U25hcHNob3RzUmVxdWVzdBoWLnYxLlJlc3RpY1NuYXBzaG90TGlzdCIAElIKEUxpc3RTbmFwc2hvdEZpbGVzEhwudjEuTGlzdFNuYXBzaG90RmlsZXNSZXF1ZXN0Gh0udjEuTGlzdFNuYXBzaG90RmlsZXNSZXNwb25zZSIAEjUKBkJhY2t1cBIRLnYxLkJhY2t1cFJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABI9CgpEb1JlcG9UYXNrEhUudjEuRG9SZXBvVGFza1JlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABI1CgZGb3JnZXQSES52MS5Gb3JnZXRSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IgASPwoHUmVzdG9yZRIaLnYxLlJlc3RvcmVTbmFwc2hvdFJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiABI1CgZDYW5jZWwSES50eXBlcy5JbnQ2NFZhbHVlGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IgASNAoHR2V0TG9ncxISLnYxLkxvZ0RhdGFSZXF1ZXN0GhEudHlwZXMuQnl0ZXNWYWx1ZSIAMAESOAoKUnVuQ29tbWFuZBIVLnYxLlJ1bkNvbW1hbmRSZXF1ZXN0GhEudHlwZXMuSW50NjRWYWx1ZSIAEkEKDkdldERvd25sb2FkVVJMEhkudjEuR2V0RG93bmxvYWRVUkxSZXF1ZXN0GhIudHlwZXMuU3RyaW5nVmFsdWUiABJBCgxDbGVhckhpc3RvcnkSFy52MS5DbGVhckhpc3RvcnlSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IgASOwoQUGF0aEF1dG9jb21wbGV0ZRISLnR5cGVzLlN0cmluZ1ZhbHVlGhEudHlwZXMuU3RyaW5nTGlzdCIAEk0KE0dldFN1bW1hcnlEYXNoYm9hcmQSFi5nb29nbGUucHJvdG9idWYuRW1wdHkaHC52MS5TdW1tYXJ5RGFzaGJvYXJkUmVzcG9uc2UiAEIsWipnaXRodWIuY29tL2dhcmV0aGdlb3JnZS9iYWNrcmVzdC9nZW4vZ28vdjFiBnByb3RvMw", [file_v1_config, file_v1_restic, file_v1_operations, file_types_value, file_google_protobuf_empty, file_google_api_annotations]);
+
+/**
+ * @generated from message v1.BackupRequest
+ */
+export type BackupRequest = Message<"v1.BackupRequest"> & {
+  /**
+   * plan_id - named 'value' for curl script backwards compatibility
+   *
+   * @generated from field: string value = 1;
+   */
+  value: string;
+
+  /**
+   * optional, simulate backup without creating snapshot
+   *
+   * @generated from field: bool dry_run = 2;
+   */
+  dryRun: boolean;
+};
+
+/**
+ * Describes the message v1.BackupRequest.
+ * Use `create(BackupRequestSchema)` to create a new message.
+ */
+export const BackupRequestSchema: GenMessage<BackupRequest> = /*@__PURE__*/
+  messageDesc(file_v1_service, 0);
 
 /**
  * OpSelector is a message that can be used to select operations e.g. by query.
@@ -75,7 +101,7 @@ export type OpSelector = Message<"v1.OpSelector"> & {
  * Use `create(OpSelectorSchema)` to create a new message.
  */
 export const OpSelectorSchema: GenMessage<OpSelector> = /*@__PURE__*/
-  messageDesc(file_v1_service, 0);
+  messageDesc(file_v1_service, 1);
 
 /**
  * @generated from message v1.SetupSftpRequest
@@ -109,7 +135,7 @@ export type SetupSftpRequest = Message<"v1.SetupSftpRequest"> & {
  * Use `create(SetupSftpRequestSchema)` to create a new message.
  */
 export const SetupSftpRequestSchema: GenMessage<SetupSftpRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 1);
+  messageDesc(file_v1_service, 2);
 
 /**
  * @generated from message v1.SetupSftpResponse
@@ -141,7 +167,7 @@ export type SetupSftpResponse = Message<"v1.SetupSftpResponse"> & {
  * Use `create(SetupSftpResponseSchema)` to create a new message.
  */
 export const SetupSftpResponseSchema: GenMessage<SetupSftpResponse> = /*@__PURE__*/
-  messageDesc(file_v1_service, 2);
+  messageDesc(file_v1_service, 3);
 
 /**
  * @generated from message v1.CheckRepoExistsRequest
@@ -163,7 +189,7 @@ export type CheckRepoExistsRequest = Message<"v1.CheckRepoExistsRequest"> & {
  * Use `create(CheckRepoExistsRequestSchema)` to create a new message.
  */
 export const CheckRepoExistsRequestSchema: GenMessage<CheckRepoExistsRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 3);
+  messageDesc(file_v1_service, 4);
 
 /**
  * @generated from message v1.CheckRepoExistsResponse
@@ -190,7 +216,7 @@ export type CheckRepoExistsResponse = Message<"v1.CheckRepoExistsResponse"> & {
  * Use `create(CheckRepoExistsResponseSchema)` to create a new message.
  */
 export const CheckRepoExistsResponseSchema: GenMessage<CheckRepoExistsResponse> = /*@__PURE__*/
-  messageDesc(file_v1_service, 4);
+  messageDesc(file_v1_service, 5);
 
 /**
  * @generated from message v1.AddRepoRequest
@@ -212,7 +238,7 @@ export type AddRepoRequest = Message<"v1.AddRepoRequest"> & {
  * Use `create(AddRepoRequestSchema)` to create a new message.
  */
 export const AddRepoRequestSchema: GenMessage<AddRepoRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 5);
+  messageDesc(file_v1_service, 6);
 
 /**
  * @generated from message v1.DoRepoTaskRequest
@@ -234,7 +260,7 @@ export type DoRepoTaskRequest = Message<"v1.DoRepoTaskRequest"> & {
  * Use `create(DoRepoTaskRequestSchema)` to create a new message.
  */
 export const DoRepoTaskRequestSchema: GenMessage<DoRepoTaskRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 6);
+  messageDesc(file_v1_service, 7);
 
 /**
  * @generated from enum v1.DoRepoTaskRequest.Task
@@ -275,7 +301,7 @@ export enum DoRepoTaskRequest_Task {
  * Describes the enum v1.DoRepoTaskRequest.Task.
  */
 export const DoRepoTaskRequest_TaskSchema: GenEnum<DoRepoTaskRequest_Task> = /*@__PURE__*/
-  enumDesc(file_v1_service, 6, 0);
+  enumDesc(file_v1_service, 7, 0);
 
 /**
  * @generated from message v1.ClearHistoryRequest
@@ -297,7 +323,7 @@ export type ClearHistoryRequest = Message<"v1.ClearHistoryRequest"> & {
  * Use `create(ClearHistoryRequestSchema)` to create a new message.
  */
 export const ClearHistoryRequestSchema: GenMessage<ClearHistoryRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 7);
+  messageDesc(file_v1_service, 8);
 
 /**
  * @generated from message v1.ForgetRequest
@@ -324,7 +350,7 @@ export type ForgetRequest = Message<"v1.ForgetRequest"> & {
  * Use `create(ForgetRequestSchema)` to create a new message.
  */
 export const ForgetRequestSchema: GenMessage<ForgetRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 8);
+  messageDesc(file_v1_service, 9);
 
 /**
  * @generated from message v1.ListSnapshotsRequest
@@ -346,7 +372,7 @@ export type ListSnapshotsRequest = Message<"v1.ListSnapshotsRequest"> & {
  * Use `create(ListSnapshotsRequestSchema)` to create a new message.
  */
 export const ListSnapshotsRequestSchema: GenMessage<ListSnapshotsRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 9);
+  messageDesc(file_v1_service, 10);
 
 /**
  * @generated from message v1.GetOperationsRequest
@@ -370,7 +396,7 @@ export type GetOperationsRequest = Message<"v1.GetOperationsRequest"> & {
  * Use `create(GetOperationsRequestSchema)` to create a new message.
  */
 export const GetOperationsRequestSchema: GenMessage<GetOperationsRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 10);
+  messageDesc(file_v1_service, 11);
 
 /**
  * @generated from message v1.RestoreSnapshotRequest
@@ -407,7 +433,7 @@ export type RestoreSnapshotRequest = Message<"v1.RestoreSnapshotRequest"> & {
  * Use `create(RestoreSnapshotRequestSchema)` to create a new message.
  */
 export const RestoreSnapshotRequestSchema: GenMessage<RestoreSnapshotRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 11);
+  messageDesc(file_v1_service, 12);
 
 /**
  * @generated from message v1.ListSnapshotFilesRequest
@@ -434,7 +460,7 @@ export type ListSnapshotFilesRequest = Message<"v1.ListSnapshotFilesRequest"> & 
  * Use `create(ListSnapshotFilesRequestSchema)` to create a new message.
  */
 export const ListSnapshotFilesRequestSchema: GenMessage<ListSnapshotFilesRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 12);
+  messageDesc(file_v1_service, 13);
 
 /**
  * @generated from message v1.ListSnapshotFilesResponse
@@ -456,7 +482,7 @@ export type ListSnapshotFilesResponse = Message<"v1.ListSnapshotFilesResponse"> 
  * Use `create(ListSnapshotFilesResponseSchema)` to create a new message.
  */
 export const ListSnapshotFilesResponseSchema: GenMessage<ListSnapshotFilesResponse> = /*@__PURE__*/
-  messageDesc(file_v1_service, 13);
+  messageDesc(file_v1_service, 14);
 
 /**
  * @generated from message v1.LogDataRequest
@@ -473,7 +499,7 @@ export type LogDataRequest = Message<"v1.LogDataRequest"> & {
  * Use `create(LogDataRequestSchema)` to create a new message.
  */
 export const LogDataRequestSchema: GenMessage<LogDataRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 14);
+  messageDesc(file_v1_service, 15);
 
 /**
  * @generated from message v1.GetDownloadURLRequest
@@ -495,7 +521,7 @@ export type GetDownloadURLRequest = Message<"v1.GetDownloadURLRequest"> & {
  * Use `create(GetDownloadURLRequestSchema)` to create a new message.
  */
 export const GetDownloadURLRequestSchema: GenMessage<GetDownloadURLRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 15);
+  messageDesc(file_v1_service, 16);
 
 /**
  * @generated from message v1.LsEntry
@@ -557,7 +583,7 @@ export type LsEntry = Message<"v1.LsEntry"> & {
  * Use `create(LsEntrySchema)` to create a new message.
  */
 export const LsEntrySchema: GenMessage<LsEntry> = /*@__PURE__*/
-  messageDesc(file_v1_service, 16);
+  messageDesc(file_v1_service, 17);
 
 /**
  * @generated from message v1.RunCommandRequest
@@ -579,7 +605,7 @@ export type RunCommandRequest = Message<"v1.RunCommandRequest"> & {
  * Use `create(RunCommandRequestSchema)` to create a new message.
  */
 export const RunCommandRequestSchema: GenMessage<RunCommandRequest> = /*@__PURE__*/
-  messageDesc(file_v1_service, 17);
+  messageDesc(file_v1_service, 18);
 
 /**
  * @generated from message v1.SummaryDashboardResponse
@@ -611,7 +637,7 @@ export type SummaryDashboardResponse = Message<"v1.SummaryDashboardResponse"> & 
  * Use `create(SummaryDashboardResponseSchema)` to create a new message.
  */
 export const SummaryDashboardResponseSchema: GenMessage<SummaryDashboardResponse> = /*@__PURE__*/
-  messageDesc(file_v1_service, 18);
+  messageDesc(file_v1_service, 19);
 
 /**
  * @generated from message v1.SummaryDashboardResponse.Summary
@@ -682,7 +708,7 @@ export type SummaryDashboardResponse_Summary = Message<"v1.SummaryDashboardRespo
  * Use `create(SummaryDashboardResponse_SummarySchema)` to create a new message.
  */
 export const SummaryDashboardResponse_SummarySchema: GenMessage<SummaryDashboardResponse_Summary> = /*@__PURE__*/
-  messageDesc(file_v1_service, 18, 0);
+  messageDesc(file_v1_service, 19, 0);
 
 /**
  * @generated from message v1.SummaryDashboardResponse.BackupChart
@@ -719,7 +745,7 @@ export type SummaryDashboardResponse_BackupChart = Message<"v1.SummaryDashboardR
  * Use `create(SummaryDashboardResponse_BackupChartSchema)` to create a new message.
  */
 export const SummaryDashboardResponse_BackupChartSchema: GenMessage<SummaryDashboardResponse_BackupChart> = /*@__PURE__*/
-  messageDesc(file_v1_service, 18, 1);
+  messageDesc(file_v1_service, 19, 1);
 
 /**
  * @generated from service v1.Backrest
@@ -812,17 +838,7 @@ export const Backrest: GenService<{
    */
   backup: {
     methodKind: "unary";
-    input: typeof StringValueSchema;
-    output: typeof EmptySchema;
-  },
-  /**
-   * DryRunBackup runs a dry run backup for a plan.
-   *
-   * @generated from rpc v1.Backrest.DryRunBackup
-   */
-  dryRunBackup: {
-    methodKind: "unary";
-    input: typeof StringValueSchema;
+    input: typeof BackupRequestSchema;
     output: typeof EmptySchema;
   },
   /**

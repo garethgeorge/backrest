@@ -9,6 +9,7 @@ import * as m from "../paraglide/messages";
 export enum DisplayType {
   UNKNOWN,
   BACKUP,
+  BACKUP_DRYRUN,
   SNAPSHOT,
   FORGET,
   PRUNE,
@@ -17,7 +18,6 @@ export enum DisplayType {
   STATS,
   RUNHOOK,
   RUNCOMMAND,
-  DRY_RUN_BACKUP,
 }
 
 export interface FlowDisplayInfo {
@@ -63,7 +63,8 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
       {
         const lastStatus = firstOp.op.value.lastStatus;
         if (lastStatus) {
-          if (lastStatus.entry.case === "summary") {
+          // Show snapshot ID in subtitle, but not for dry runs (fake ID)
+          if (lastStatus.entry.case === "summary" && !firstOp.op.value.dryRun) {
             info.subtitleComponents.push(
               m.op_subtitle_id({
                 id: normalizeSnapshotId(lastStatus.entry.value.snapshotId),
@@ -208,6 +209,7 @@ export const shouldHideStatus = (status: OperationStatus) => {
 export const getTypeForDisplay = (op: Operation) => {
   switch (op.op.case) {
     case "operationBackup":
+      if (op.op.value.dryRun) return DisplayType.BACKUP_DRYRUN;
       return DisplayType.BACKUP;
     case "operationIndexSnapshot":
       return DisplayType.SNAPSHOT;
@@ -225,8 +227,6 @@ export const getTypeForDisplay = (op: Operation) => {
       return DisplayType.RUNHOOK;
     case "operationRunCommand":
       return DisplayType.RUNCOMMAND;
-    case "operationDryRunBackup":
-      return DisplayType.DRY_RUN_BACKUP;
     default:
       return DisplayType.UNKNOWN;
   }
@@ -236,6 +236,8 @@ export const displayTypeToString = (type: DisplayType) => {
   switch (type) {
     case DisplayType.BACKUP:
       return m.op_type_backup();
+    case DisplayType.BACKUP_DRYRUN:
+      return m.op_type_dry_run_backup();
     case DisplayType.SNAPSHOT:
       return m.op_type_snapshot();
     case DisplayType.FORGET:
@@ -252,8 +254,6 @@ export const displayTypeToString = (type: DisplayType) => {
       return m.op_type_run_hook();
     case DisplayType.RUNCOMMAND:
       return m.op_type_run_command();
-    case DisplayType.DRY_RUN_BACKUP:
-      return m.op_type_dry_run_backup();
     default:
       return m.op_type_unknown();
   }
