@@ -79,7 +79,7 @@ Once installed, access Backrest at `http://localhost:9898` (default port). First
 ### Running with Docker Compose
 
 Docker image: `ghcr.io/garethgeorge/backrest`
-oplog
+
 Example compose file:
 
 ```yaml
