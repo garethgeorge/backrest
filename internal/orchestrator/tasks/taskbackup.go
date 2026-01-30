@@ -22,6 +22,7 @@ var maxBackupErrorHistoryLength = 20 // arbitrary limit on the number of file re
 type BackupTask struct {
 	BaseTask
 	force  bool
+	dryRun bool
 	didRun bool
 }
 
@@ -38,7 +39,7 @@ func NewScheduledBackupTask(repo *v1.Repo, plan *v1.Plan) *BackupTask {
 	}
 }
 
-func NewOneoffBackupTask(repo *v1.Repo, plan *v1.Plan, at time.Time) *BackupTask {
+func NewOneoffBackupTask(repo *v1.Repo, plan *v1.Plan, at time.Time, dryRun bool) *BackupTask {
 	return &BackupTask{
 		BaseTask: BaseTask{
 			TaskType:   "backup",
@@ -46,7 +47,8 @@ func NewOneoffBackupTask(repo *v1.Repo, plan *v1.Plan, at time.Time) *BackupTask
 			TaskRepo:   repo,
 			TaskPlanID: plan.Id,
 		},
-		force: true,
+		force:  true,
+		dryRun: dryRun,
 	}
 }
 
@@ -60,7 +62,11 @@ func (t *BackupTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 			Task:  t,
 			RunAt: now,
 			Op: &v1.Operation{
-				Op: &v1.Operation_OperationBackup{},
+				Op: &v1.Operation_OperationBackup{
+					OperationBackup: &v1.OperationBackup{
+						DryRun: t.dryRun,
+					},
+				},
 			},
 		}, nil
 	}
@@ -83,7 +89,7 @@ func (t *BackupTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
 			return nil
 		}
-		if _, ok := op.Op.(*v1.Operation_OperationBackup); ok && op.UnixTimeEndMs != 0 {
+		if backup, ok := op.Op.(*v1.Operation_OperationBackup); ok && op.UnixTimeEndMs != 0 && !backup.OperationBackup.DryRun {
 			lastRan = time.Unix(0, op.UnixTimeEndMs*int64(time.Millisecond))
 			return oplog.ErrStopIteration
 		}
@@ -105,7 +111,11 @@ func (t *BackupTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 		Task:  t,
 		RunAt: nextRun,
 		Op: &v1.Operation{
-			Op: &v1.Operation_OperationBackup{},
+			Op: &v1.Operation_OperationBackup{
+				OperationBackup: &v1.OperationBackup{
+					DryRun: t.dryRun,
+				},
+			},
 		},
 	}, nil
 }
@@ -116,7 +126,9 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 	startTime := time.Now()
 	op := st.Op
 	backupOp := &v1.Operation_OperationBackup{
-		OperationBackup: &v1.OperationBackup{},
+		OperationBackup: &v1.OperationBackup{
+			DryRun: t.dryRun,
+		},
 	}
 	op.Op = backupOp
 
@@ -149,7 +161,7 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 	lastSent := time.Now() // debounce progress updates, these can endup being very frequent.
 	var lastFiles []string
 	fileErrorCount := 0
-	summary, err := repo.Backup(ctx, plan, func(entry *restic.BackupProgressEntry) {
+	summary, err := repo.Backup(ctx, plan, t.dryRun, func(entry *restic.BackupProgressEntry) {
 		sendWg.Wait()
 		if entry.MessageType == "status" {
 			// prevents flickering output when a status entry omits the CurrentFiles property. Largely cosmetic.
@@ -198,8 +210,6 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		summary = &restic.BackupProgressEntry{}
 	}
 
-	metric.GetRegistry().RecordBackupSummary(t.RepoID(), t.PlanID(), summary.TotalBytesProcessed, summary.DataAdded, int64(fileErrorCount))
-
 	vars := HookVars{
 		Task:          t.Name(),
 		SnapshotStats: summary,
@@ -232,11 +242,27 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 
 	l.Info("backup complete", zap.String("plan", plan.Id), zap.Duration("duration", time.Since(startTime)), zap.Any("summary", backupOp.OperationBackup.LastStatus))
 
-	if summary.SnapshotId == "" { // support --skip-if-unchanged which returns an operation with an empty snapshot ID
-		op.DisplayMessage = "No snapshot added, possibly due to no changes in the source data."
+	// Handle dry run - set display message and clear snapshot ID to prevent GC
+	if t.dryRun {
+		op.DisplayMessage = "Dry run backup, not saved in repo"
+		op.SnapshotId = ""
+	}
 
+	// Skip metrics for dry runs - no real data backed up
+	if !t.dryRun {
+		metric.GetRegistry().RecordBackupSummary(t.RepoID(), t.PlanID(), summary.TotalBytesProcessed, summary.DataAdded, int64(fileErrorCount))
+	}
+
+	// Determine if we should skip follow-up tasks
+	skipFollowUpTasks := summary.SnapshotId == "" || t.dryRun
+
+	if summary.SnapshotId == "" && !t.dryRun {
+		// --skip-if-unchanged case: no changes in source data
+		op.DisplayMessage = "No snapshot added, possibly due to no changes in the source data."
 		conditions = append(conditions, v1.Hook_CONDITION_SNAPSHOT_SKIPPED)
-	} else {
+	}
+
+	if !skipFollowUpTasks {
 		// schedule followup tasks if a snapshot was added
 		at := time.Now()
 		if _, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyKeepAll); plan.Retention != nil && !ok {

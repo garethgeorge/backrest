@@ -190,7 +190,7 @@ func TestBackup(t *testing.T) {
 		sut.orch.Run(ctx)
 	}()
 
-	_, err := sut.handler.Backup(ctx, connect.NewRequest(&types.StringValue{Value: "test"}))
+	_, err := sut.handler.Backup(ctx, connect.NewRequest(&v1.BackupRequest{Value: "test"}))
 	if err != nil {
 		t.Fatalf("Backup() error = %v", err)
 	}
@@ -291,7 +291,7 @@ func TestMultipleBackup(t *testing.T) {
 	}()
 
 	for i := 0; i < 2; i++ {
-		_, err := sut.handler.Backup(ctx, connect.NewRequest(&types.StringValue{Value: "test"}))
+		_, err := sut.handler.Backup(ctx, connect.NewRequest(&v1.BackupRequest{Value: "test"}))
 		if err != nil {
 			t.Fatalf("Backup() error = %v", err)
 		}
@@ -382,7 +382,7 @@ func TestHookExecution(t *testing.T) {
 		sut.orch.Run(ctx)
 	}()
 
-	_, err := sut.handler.Backup(ctx, connect.NewRequest(&types.StringValue{Value: "test"}))
+	_, err := sut.handler.Backup(ctx, connect.NewRequest(&v1.BackupRequest{Value: "test"}))
 	if err != nil {
 		t.Fatalf("Backup() error = %v", err)
 	}
@@ -580,7 +580,7 @@ func TestHookOnErrorHandling(t *testing.T) {
 			var errgroup errgroup.Group
 
 			errgroup.Go(func() error {
-				_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: tc.plan}))
+				_, err := sut.handler.Backup(context.Background(), connect.NewRequest(&v1.BackupRequest{Value: tc.plan}))
 				if (err != nil) != tc.wantBackupError {
 					return fmt.Errorf("Backup() error = %v, wantErr %v", err, tc.wantBackupError)
 				}
@@ -689,7 +689,7 @@ func TestCancelBackup(t *testing.T) {
 	}()
 
 	go func() {
-		backupReq := &types.StringValue{Value: "test"}
+		backupReq := &v1.BackupRequest{Value: "test"}
 		_, err := sut.handler.Backup(ctx, connect.NewRequest(backupReq))
 		if err != nil {
 			t.Logf("Backup() error = %v", err)
@@ -772,7 +772,7 @@ func TestRestore(t *testing.T) {
 		sut.orch.Run(ctx)
 	}()
 
-	_, err := sut.handler.Backup(ctx, connect.NewRequest(&types.StringValue{Value: "test"}))
+	_, err := sut.handler.Backup(ctx, connect.NewRequest(&v1.BackupRequest{Value: "test"}))
 	if err != nil {
 		t.Fatalf("Backup() error = %v", err)
 	}
@@ -985,8 +985,8 @@ func TestMultihostIndexSnapshots(t *testing.T) {
 		host2.orch.Run(ctx)
 	}()
 
-	host1.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test1"}))
-	host2.handler.Backup(context.Background(), connect.NewRequest(&types.StringValue{Value: "test2"}))
+	host1.handler.Backup(context.Background(), connect.NewRequest(&v1.BackupRequest{Value: "test1"}))
+	host2.handler.Backup(context.Background(), connect.NewRequest(&v1.BackupRequest{Value: "test2"}))
 
 	for i := 0; i < 1; i++ {
 		if _, err := host1.handler.IndexSnapshots(context.Background(), connect.NewRequest(&types.StringValue{Value: "local1"})); err != nil {

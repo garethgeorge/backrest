@@ -78,7 +78,7 @@ func TestBackup(t *testing.T) {
 
 			orchestrator := initRepoHelper(t, configForTest, tc.repo)
 
-			summary, err := orchestrator.Backup(context.Background(), tc.plan, nil)
+			summary, err := orchestrator.Backup(context.Background(), tc.plan, false, nil)
 			if err != nil {
 				t.Fatalf("backup error: %v", err)
 			}
@@ -124,7 +124,7 @@ func TestRestore(t *testing.T) {
 	orchestrator := initRepoHelper(t, configForTest, r)
 
 	// Create a backup of the single file
-	summary, err := orchestrator.Backup(context.Background(), plan, nil)
+	summary, err := orchestrator.Backup(context.Background(), plan, false, nil)
 	if err != nil {
 		t.Fatalf("backup error: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestSnapshotParenting(t *testing.T) {
 	for _, plan := range plans {
 		eg.Go(func() error {
 			for i := 0; i < 2; i++ {
-				summary, err := orchestrator.Backup(context.Background(), plan, nil)
+				summary, err := orchestrator.Backup(context.Background(), plan, false, nil)
 				if err != nil {
 					return fmt.Errorf("failed to backup plan %s: %v", plan.Id, err)
 				}
@@ -407,7 +407,7 @@ func TestRestoreAmbiguity(t *testing.T) {
 
 	orchestrator := initRepoHelper(t, configForTest, r)
 
-	summary, err := orchestrator.Backup(context.Background(), plan, nil)
+	summary, err := orchestrator.Backup(context.Background(), plan, false, nil)
 	if err != nil {
 		t.Fatalf("backup error: %v", err)
 	}

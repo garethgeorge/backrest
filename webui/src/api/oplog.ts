@@ -70,11 +70,17 @@ export const unsubscribeFromOperations = (
 };
 
 export const shouldHideOperation = (operation: Operation) => {
+  // Hide successful backups with no snapshot ID (e.g., --skip-if-unchanged)
+  // but NOT dry run backups which intentionally have no snapshot
+  const isSkippedBackup =
+    operation.status === OperationStatus.STATUS_SUCCESS &&
+    operation.op.case === "operationBackup" &&
+    !operation.snapshotId &&
+    !operation.op.value.dryRun;
+
   return (
     operation.op.case === "operationStats" ||
-    (operation.status === OperationStatus.STATUS_SUCCESS &&
-      operation.op.case === "operationBackup" &&
-      !operation.snapshotId) ||
+    isSkippedBackup ||
     shouldHideStatus(operation.status)
   );
 };

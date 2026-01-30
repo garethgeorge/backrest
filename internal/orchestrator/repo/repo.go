@@ -126,7 +126,7 @@ func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) 
 	return snapshots, nil
 }
 
-func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCallback func(event *restic.BackupProgressEntry)) (*restic.BackupProgressEntry, error) {
+func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, dryRun bool, progressCallback func(event *restic.BackupProgressEntry)) (*restic.BackupProgressEntry, error) {
 	l := r.logger(ctx)
 	l.Debug("repo orchestrator starting backup", zap.String("repo", r.repoConfig.Id))
 
@@ -170,6 +170,10 @@ func (r *RepoOrchestrator) Backup(ctx context.Context, plan *v1.Plan, progressCa
 			return nil, fmt.Errorf("failed to parse backup flag %q for plan %q: %w", f, plan.Id, err)
 		}
 		opts = append(opts, restic.WithFlags(args...))
+	}
+
+	if dryRun {
+		opts = append(opts, restic.WithFlags("--dry-run", "-vv"))
 	}
 
 	ctx, flush := forwardResticLogs(ctx)

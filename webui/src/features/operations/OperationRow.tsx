@@ -239,7 +239,7 @@ export const OperationRow = ({
     bodyItems.push({
       key: "details",
       label: m.op_row_backup_details(),
-      children: <BackupOperationStatus status={backupOp.lastStatus} />,
+      children: <BackupOperationStatus status={backupOp.lastStatus} dryRun={backupOp.dryRun} />,
     });
 
     if (backupOp.errors.length > 0) {
@@ -615,8 +615,10 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
 
 const BackupOperationStatus = ({
   status,
+  dryRun,
 }: {
   status?: BackupProgressEntry;
+  dryRun?: boolean;
 }) => {
   if (!status) {
     return <>{m.op_row_no_status()}</>;
@@ -674,7 +676,7 @@ const BackupOperationStatus = ({
           <Text as="span" fontWeight="bold">
             {m.op_row_snapshot_id()}
           </Text>
-          {sum.snapshotId !== ""
+          {sum.snapshotId !== "" && !dryRun
             ? normalizeSnapshotId(sum.snapshotId!)
             : m.op_row_no_snapshot()}
         </Text>

@@ -11,6 +11,11 @@ import "types/value.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
 
+message BackupRequest {
+  string value = 1; // plan_id - named 'value' for curl script backwards compatibility
+  bool dry_run = 2; // optional, simulate backup without creating snapshot
+}
+
 service Backrest {
   rpc GetConfig (google.protobuf.Empty) returns (Config) {}
 
@@ -33,7 +38,7 @@ service Backrest {
   rpc ListSnapshotFiles(ListSnapshotFilesRequest) returns (ListSnapshotFilesResponse) {}
 
   // Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
-  rpc Backup(types.StringValue) returns (google.protobuf.Empty) {}
+  rpc Backup(BackupRequest) returns (google.protobuf.Empty) {}
 
   // DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
   rpc DoRepoTask(DoRepoTaskRequest) returns (google.protobuf.Empty) {}

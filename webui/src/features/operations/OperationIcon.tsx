@@ -25,6 +25,7 @@ export const OperationIcon = ({
   let avatar: React.ReactNode;
   switch (type) {
     case DisplayType.BACKUP:
+    case DisplayType.BACKUP_DRYRUN:
       avatar = <FaSave style={style} />;
       break;
     case DisplayType.FORGET:

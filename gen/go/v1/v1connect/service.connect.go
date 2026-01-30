@@ -97,7 +97,7 @@ type BackrestClient interface {
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error)
 	ListSnapshotFiles(context.Context, *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
-	Backup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
+	Backup(context.Context, *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error)
 	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
 	DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
@@ -191,7 +191,7 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestMethods.ByName("ListSnapshotFiles")),
 			connect.WithClientOptions(opts...),
 		),
-		backup: connect.NewClient[types.StringValue, emptypb.Empty](
+		backup: connect.NewClient[v1.BackupRequest, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestBackupProcedure,
 			connect.WithSchema(backrestMethods.ByName("Backup")),
@@ -272,7 +272,7 @@ type backrestClient struct {
 	getOperations       *connect.Client[v1.GetOperationsRequest, v1.OperationList]
 	listSnapshots       *connect.Client[v1.ListSnapshotsRequest, v1.ResticSnapshotList]
 	listSnapshotFiles   *connect.Client[v1.ListSnapshotFilesRequest, v1.ListSnapshotFilesResponse]
-	backup              *connect.Client[types.StringValue, emptypb.Empty]
+	backup              *connect.Client[v1.BackupRequest, emptypb.Empty]
 	doRepoTask          *connect.Client[v1.DoRepoTaskRequest, emptypb.Empty]
 	forget              *connect.Client[v1.ForgetRequest, emptypb.Empty]
 	restore             *connect.Client[v1.RestoreSnapshotRequest, emptypb.Empty]
@@ -336,7 +336,7 @@ func (c *backrestClient) ListSnapshotFiles(ctx context.Context, req *connect.Req
 }
 
 // Backup calls v1.Backrest.Backup.
-func (c *backrestClient) Backup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (c *backrestClient) Backup(ctx context.Context, req *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.backup.CallUnary(ctx, req)
 }
 
@@ -403,7 +403,7 @@ type BackrestHandler interface {
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error)
 	ListSnapshotFiles(context.Context, *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
-	Backup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error)
+	Backup(context.Context, *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error)
 	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
 	DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error)
 	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
@@ -652,7 +652,7 @@ func (UnimplementedBackrestHandler) ListSnapshotFiles(context.Context, *connect.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.ListSnapshotFiles is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) Backup(context.Context, *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (UnimplementedBackrestHandler) Backup(context.Context, *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Backup is not implemented"))
 }
 
