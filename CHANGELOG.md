@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/garethgeorge/backrest/compare/v1.11.2...v1.12.0) (2026-01-30)
+
+
+### Features
+
+* SFTP configuration UI (enabled for `sftp:` URIs) with support for SSH key bootstrapping ([#961](https://github.com/garethgeorge/backrest/issues/961)) ([3250ff4](https://github.com/garethgeorge/backrest/commit/3250ff481d3c8f5da4e38ab0b0c896e7608f8716))
+
 ## [1.11.2](https://github.com/garethgeorge/backrest/compare/v1.11.1...v1.11.2) (2026-01-27)
 
 
