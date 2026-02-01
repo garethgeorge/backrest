@@ -58,6 +58,9 @@ const BACKREST_CONTEXT = `
     - "Forget": Manages snapshot retention policies (e.g., keep last N).
     - "Check": Verifies repository integrity.
     - "Snapshot": A backup point in time.
+  - Scheduling:
+    - Repo: a restic repository, includes its passwords, environment variables and flags.
+    - Plan: a scheduled backup job, includes its schedule, repository, and any extra flags.
   - Features: Cron scheduling, multi-platform (Linux/macOS/Windows), supports various storage backends (S3, B2, Local, SFTP).
 `;
 
@@ -87,6 +90,27 @@ async function callGemini<T>(prompt: string, schema: any): Promise<T> {
     console.error("Gemini API call failed:", error.message);
     throw error;
   }
+}
+
+function parsePattern(text: string, allowedVariables?: Set<string>): any[] {
+  // Split by variable pattern {varName}
+  const parts = text.split(/({[^}]+})/g);
+  return parts.filter(p => p !== "").map(p => {
+    // If it looks like a variable {name}
+    if (p.startsWith("{") && p.endsWith("}")) {
+      const varName = p.slice(1, -1);
+      // Only treat as expression if it's in the allowed list (or if no list provided, for safety/fallback)
+      // Ideally we always provide the list.
+      if (!allowedVariables || allowedVariables.has(varName)) {
+        return {
+          type: "expression",
+          arg: { type: "variable-reference", name: varName }
+        };
+      }
+    }
+    // Otherwise it's plain text
+    return { type: "text", value: p };
+  });
 }
 
 async function translateBatch(
@@ -194,6 +218,20 @@ async function main() {
     output: process.stdout,
   });
 
+  // Map to store allowed variables for each message ID
+  const messageVariables = new Map<string, Set<string>>();
+
+  // Helper to extract variables from a pattern
+  const extractVariables = (pattern: any[]) => {
+      const vars = new Set<string>();
+      for (const node of pattern) {
+          if (node.type === "expression" && (node.arg?.type === "variable" || node.arg?.type === "variable-reference")) {
+              vars.add(node.arg.name);
+          }
+      }
+      return vars;
+  };
+
   for (const targetLang of targetLangs) {
     console.log(`\nProcessing language: ${targetLang}...`);
 
@@ -206,6 +244,9 @@ async function main() {
       // Extract source text
       let sourceText = "";
       if (sourceMsg && sourceMsg.variants[0]) {
+         // Extract allowed variables from source
+         messageVariables.set(bundle.id, extractVariables(sourceMsg.variants[0].pattern));
+
          sourceText = sourceMsg.variants[0].pattern.map((p: any) => {
             if (p.type === "text") return p.value;
             if (p.type === "expression") return `{${p.arg.name}}`;
@@ -289,7 +330,7 @@ async function main() {
                                    id: randomUUID(), // New variant ID
                                    messageId: msg.id,
                                    matches: [],
-                                   pattern: [{ type: "text", value: res.newTranslation }] // Simplified pattern
+                                   pattern: parsePattern(res.newTranslation!, messageVariables.get(item.id)) 
                                }]
                            }
                        }
@@ -316,7 +357,7 @@ async function main() {
                 
                 const messageId = randomUUID();
                 const variantId = randomUUID();
-                const pattern = [{ type: "text", value: item.translation }];
+                const pattern = parsePattern(item.translation, messageVariables.get(item.id));
                 
                 const newMessage = {
                     id: messageId,
