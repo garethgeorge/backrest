@@ -369,5 +369,9 @@
   "op_row_confirm_delete": "[Confermare l'eliminazione?]",
   "op_row_delete": "[Eliminare]",
   "settings_section_user_settings": "Impostazioni utente",
-  "settings_field_language": "Lingua di visualizzazione"
+  "settings_field_language": "Lingua di visualizzazione",
+  "add_repo_modal_field_prune_policy_heading": "Politica di Pruning",
+  "add_repo_modal_field_prune_policy_help": "Le operazioni di pruning rimuovono i dati non referenziati dal repository Restic, ad esempio snapshot dimenticati, ecc. Questa è l'unica operazione in cui Restic elimina i dati dall'archivio. Prune dovrebbe essere eseguita raramente: circa una volta al mese è un buon punto di partenza.",
+  "add_repo_modal_field_check_policy_heading": "Controlla la politica",
+  "add_repo_modal_field_check_policy_help": "Le operazioni di controllo verificano l'integrità del tuo repository restic. Dovrebbero essere eseguite raramente, circa una volta al mese è un buon punto di partenza. Il controllo verificherà, come minimo, la struttura del tuo repository. Facoltativamente, il controllo può anche riscaricare e verificare i checksum per i dati dei pacchetti, il che è utile se il tuo storage potrebbe essere soggetto a bit invertiti o perdite di dati silenziose."
 }
