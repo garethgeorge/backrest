@@ -6,10 +6,11 @@ package platformutil
 import (
 	"os/exec"
 	"syscall"
-
-	"golang.org/x/sys/windows"
 )
 
 func SetPlatformOptions(cmd *exec.Cmd) {
-	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NO_WINDOW}
+	if cmd.SysProcAttr == nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+	}
+	cmd.SysProcAttr.HideWindow = true
 }
