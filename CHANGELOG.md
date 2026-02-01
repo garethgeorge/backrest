@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.12.0](https://github.com/garethgeorge/backrest/compare/v1.11.2...v1.12.0) (2026-02-01)
+
+
+### Features
+
+* add Dry Run Backup action ([#1098](https://github.com/garethgeorge/backrest/issues/1098)) ([4063d8f](https://github.com/garethgeorge/backrest/commit/4063d8fafcf00e59ab259556002abc63e51fa20c))
+* SFTP configuration UI (enabled for `sftp:` URIs) with support for SSH key bootstrapping ([#961](https://github.com/garethgeorge/backrest/issues/961)) ([3250ff4](https://github.com/garethgeorge/backrest/commit/3250ff481d3c8f5da4e38ab0b0c896e7608f8716))
+
+
+### Bug Fixes
+
+* use cmd.SysProcAttr.HideWindow to spawn background processes on Windows ([#1101](https://github.com/garethgeorge/backrest/issues/1101)) ([7638b5f](https://github.com/garethgeorge/backrest/commit/7638b5f2dc82d003eccc16a585d45bb293744a39))
+
 ## [1.11.2](https://github.com/garethgeorge/backrest/compare/v1.11.1...v1.11.2) (2026-01-27)
 
 
