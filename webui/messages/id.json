@@ -366,5 +366,9 @@
   "op_row_confirm_cancel": "Konfirmasi Batal?",
   "app_menu_dashboard": "Dasbor",
   "settings_section_user_settings": "Pengaturan Pengguna",
-  "settings_field_language": "Bahasa Tampilan"
+  "settings_field_language": "Bahasa Tampilan",
+  "add_repo_modal_field_prune_policy_heading": "Kebijakan Pemangkasan",
+  "add_repo_modal_field_prune_policy_help": "Operasi pemangkasan (prune) menghapus data yang tidak lagi digunakan dari repositori restic Anda, misalnya snapshot yang terlupakan, dll. Ini adalah satu-satunya saat restic menghapus data dari penyimpanan. Pemangkasan sebaiknya dijalankan jarang, sekitar sebulan sekali adalah titik awal yang baik.",
+  "add_repo_modal_field_check_policy_heading": "Periksa Kebijakan",
+  "add_repo_modal_field_check_policy_help": "Operasi pengecekan memverifikasi integritas repositori restic Anda. Operasi ini sebaiknya dijalankan jarang, sekitar sebulan sekali adalah titik awal yang baik. Pengecekan, minimal, akan memverifikasi struktur repositori Anda. Secara opsional, pengecekan juga dapat mengunduh ulang dan memverifikasi checksum untuk data paket, ini berguna jika penyimpanan Anda mungkin rentan terhadap perubahan bit atau kehilangan data tanpa pemberitahuan."
 }

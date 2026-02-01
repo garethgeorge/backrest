@@ -356,5 +356,12 @@
   "app_menu_edit_plan": "Editar plan",
   "add_repo_modal_field_auto_unlock_tooltip": "El desbloqueo automático eliminará los archivos de bloqueo al inicio de la mayoría de las operaciones. Esto puede ser potencialmente inseguro si el repositorio se comparte entre varios dispositivos (clientes); en caso contrario, se recomienda para configuraciones de un solo cliente.",
   "op_row_cancel_op": "Cancelar operación",
-  "op_row_confirm_cancel": "¿Confirmar cancelación?"
+  "op_row_confirm_cancel": "¿Confirmar Cancelar?",
+  "app_menu_dashboard": "Panel",
+  "settings_section_user_settings": "Configuración de usuario",
+  "settings_field_language": "Idioma de visualización",
+  "add_repo_modal_field_prune_policy_heading": "Política de poda",
+  "add_repo_modal_field_prune_policy_help": "Las operaciones de poda eliminan datos no referenciados de su repositorio de restic, como instantáneas olvidadas, etc. Este es el único caso en el que restic elimina datos del almacenamiento. La poda debe ejecutarse con poca frecuencia; aproximadamente una vez al mes es un buen punto de partida.",
+  "add_repo_modal_field_check_policy_heading": "Consultar política",
+  "add_repo_modal_field_check_policy_help": "Las operaciones de verificación verifican la integridad de su repositorio restic. Deben ejecutarse con poca frecuencia; aproximadamente una vez al mes es un buen punto de partida. Verificará, como mínimo, la estructura de su repositorio. Opcionalmente, también puede volver a descargar y verificar las sumas de comprobación de los datos del paquete. Esto resulta útil si su almacenamiento es propenso a la inversión de bits o a la pérdida silenciosa de datos."
 }

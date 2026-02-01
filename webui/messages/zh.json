@@ -369,5 +369,9 @@
   "app_menu_dashboard": "仪表板",
   "add_plan_modal_field_paths_tooltip": "请输入需要备份的文件路径，每行一个。输入时支持自动补全。",
   "settings_section_user_settings": "用户设置",
-  "settings_field_language": "显示语言"
+  "settings_field_language": "显示语言",
+  "add_repo_modal_field_prune_policy_heading": "修剪策略",
+  "add_repo_modal_field_prune_policy_help": "Prune 操作会从 restic 存储库中移除不再引用的数据，例如遗忘的快照等。这是 restic 唯一一次从存储中删除数据。Prune 操作应该不频繁执行，每月一次是一个不错的起始频率。",
+  "add_repo_modal_field_check_policy_heading": "查看政策",
+  "add_repo_modal_field_check_policy_help": "检查操作用于验证 restic 仓库的完整性。建议不频繁运行，每月一次左右是一个不错的起点。检查操作至少会验证仓库的结构。此外，检查操作还可以选择重新下载并验证软件包数据的校验和，这在存储可能存在比特翻转或静默数据丢失的情况下非常有用。"
 }
