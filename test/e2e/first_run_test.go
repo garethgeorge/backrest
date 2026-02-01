@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/testutil"
@@ -159,7 +158,7 @@ func TestFirstRun(t *testing.T) {
 			http.DefaultClient,
 			fmt.Sprintf("http://%s", addr),
 		)
-		_, err := client.Backup(context.Background(), connect.NewRequest(&types.StringValue{
+		_, err := client.Backup(context.Background(), connect.NewRequest(&v1.BackupRequest{
 			Value: "test-plan",
 		}))
 		if err != nil {

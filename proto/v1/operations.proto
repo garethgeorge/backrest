@@ -89,6 +89,7 @@ enum OperationStatus {
 message OperationBackup {
   BackupProgressEntry last_status = 3;
   repeated BackupProgressError errors = 4;
+  bool dry_run = 5; // indicates this was a dry run backup (no snapshot created)
 }
 
 // OperationIndexSnapshot tracks that a snapshot was detected by backrest. 

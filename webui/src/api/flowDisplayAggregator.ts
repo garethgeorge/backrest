@@ -9,6 +9,7 @@ import * as m from "../paraglide/messages";
 export enum DisplayType {
   UNKNOWN,
   BACKUP,
+  BACKUP_DRYRUN,
   SNAPSHOT,
   FORGET,
   PRUNE,
@@ -62,7 +63,8 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
       {
         const lastStatus = firstOp.op.value.lastStatus;
         if (lastStatus) {
-          if (lastStatus.entry.case === "summary") {
+          // Show snapshot ID in subtitle, but not for dry runs (fake ID)
+          if (lastStatus.entry.case === "summary" && !firstOp.op.value.dryRun) {
             info.subtitleComponents.push(
               m.op_subtitle_id({
                 id: normalizeSnapshotId(lastStatus.entry.value.snapshotId),
@@ -207,6 +209,7 @@ export const shouldHideStatus = (status: OperationStatus) => {
 export const getTypeForDisplay = (op: Operation) => {
   switch (op.op.case) {
     case "operationBackup":
+      if (op.op.value.dryRun) return DisplayType.BACKUP_DRYRUN;
       return DisplayType.BACKUP;
     case "operationIndexSnapshot":
       return DisplayType.SNAPSHOT;
@@ -233,6 +236,8 @@ export const displayTypeToString = (type: DisplayType) => {
   switch (type) {
     case DisplayType.BACKUP:
       return m.op_type_backup();
+    case DisplayType.BACKUP_DRYRUN:
+      return m.op_type_dry_run_backup();
     case DisplayType.SNAPSHOT:
       return m.op_type_snapshot();
     case DisplayType.FORGET:

@@ -640,7 +640,7 @@ func (s *BackrestHandler) IndexSnapshots(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error) {
 	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
 	if err != nil {
 		return nil, err
@@ -650,7 +650,7 @@ func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[types
 		return nil, err
 	}
 	wait := make(chan struct{})
-	if err := s.orchestrator.ScheduleTask(tasks.NewOneoffBackupTask(repo, plan, time.Now()), tasks.TaskPriorityInteractive, func(e error) {
+	if err := s.orchestrator.ScheduleTask(tasks.NewOneoffBackupTask(repo, plan, time.Now(), req.Msg.DryRun), tasks.TaskPriorityInteractive, func(e error) {
 		err = e
 		close(wait)
 	}); err != nil {
