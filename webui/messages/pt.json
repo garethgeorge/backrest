@@ -366,5 +366,9 @@
   "op_row_confirm_cancel": "Confirmar Cancelar?",
   "app_menu_dashboard": "Painel",
   "settings_section_user_settings": "Configurações do usuário",
-  "settings_field_language": "Idioma de exibição"
+  "settings_field_language": "Idioma de exibição",
+  "add_repo_modal_field_prune_policy_heading": "Política de limpeza",
+  "add_repo_modal_field_prune_policy_help": "A operação de limpeza remove dados não referenciados do seu repositório restic, como snapshots esquecidos, etc. Esta é a única vez que o restic exclui dados do armazenamento. A limpeza deve ser executada com pouca frequência; cerca de uma vez por mês é um bom ponto de partida.",
+  "add_repo_modal_field_check_policy_heading": "Política de verificação",
+  "add_repo_modal_field_check_policy_help": "As operações de verificação garantem a integridade do seu repositório restic. Elas devem ser executadas com pouca frequência; cerca de uma vez por mês é um bom ponto de partida. A verificação irá, no mínimo, verificar a estrutura do seu repositório. Opcionalmente, a verificação também pode baixar e verificar novamente os checksums dos dados dos pacotes, o que é útil se o seu armazenamento estiver sujeito a bits invertidos ou perda silenciosa de dados."
 }

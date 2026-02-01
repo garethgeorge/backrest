@@ -486,25 +486,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         </Section>
 
         <Section
-          title={
-            <Tooltip
-              content={
-                <span>
-                  {m.add_repo_modal_field_prune_policy_tooltip_p1()}{" "}
-                  <a
-                    href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
-                    target="_blank"
-                    style={{ textDecoration: "underline" }}
-                  >
-                    {m.add_repo_modal_field_prune_policy_tooltip_link()}
-                  </a>{" "}
-                  {m.add_repo_modal_field_prune_policy_tooltip_p2()}
-                </span>
-              }
-            >
-              {m.add_repo_modal_field_prune_policy()}
-            </Tooltip>
-          }
+          title={m.add_repo_modal_field_prune_policy_heading()}
+          help={m.add_repo_modal_field_prune_policy_help()}
         >
           <Card.Root variant="subtle" size="sm">
             <Card.Body>
@@ -536,11 +519,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         </Section>
 
         <Section
-          title={
-            <Tooltip content={m.add_repo_modal_field_check_policy_tooltip()}>
-              {m.add_repo_modal_field_check_policy()}
-            </Tooltip>
-          }
+          title={m.add_repo_modal_field_check_policy_heading()}
+          help={m.add_repo_modal_field_check_policy_help()}
         >
           <Card.Root variant="subtle" size="sm">
             <Card.Body>
@@ -659,15 +639,24 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
 
 const Section = ({
   title,
+  help,
   children,
 }: {
   title: React.ReactNode;
+  help?: React.ReactNode;
   children: React.ReactNode;
 }) => (
   <Stack gap={2}>
-    <CText fontWeight="semibold" fontSize="sm">
-      {title}
-    </CText>
+    <Stack gap={0}>
+      <CText fontWeight="semibold" fontSize="sm">
+        {title}
+      </CText>
+      {help && (
+        <CText fontSize="sm" color="fg.muted">
+          {help}
+        </CText>
+      )}
+    </Stack>
     {children}
   </Stack>
 );

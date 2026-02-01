@@ -366,5 +366,9 @@
   "op_row_confirm_cancel": "Abbrechen bestätigen?",
   "app_menu_dashboard": "Dashboard",
   "settings_section_user_settings": "Benutzereinstellungen",
-  "settings_field_language": "Anzeigesprache"
+  "settings_field_language": "Anzeigesprache",
+  "add_repo_modal_field_prune_policy_heading": "Prune-Richtlinie",
+  "add_repo_modal_field_prune_policy_help": "Der Prune-Vorgang entfernt nicht referenzierte Daten aus Ihrem restic-Repository, z. B. vergessene Snapshots. Dies ist der einzige Zeitpunkt, an dem restic Daten aus dem Speicher löscht. Der Prune-Vorgang sollte nur selten ausgeführt werden; etwa einmal im Monat ist ein guter Richtwert.",
+  "add_repo_modal_field_check_policy_heading": "Prüfrichtlinie",
+  "add_repo_modal_field_check_policy_help": "Die Prüfvorgänge verifizieren die Integrität Ihres restic-Repositorys. Sie sollten nur selten ausgeführt werden; etwa einmal im Monat ist ein guter Richtwert. Die Prüfvorgänge überprüfen mindestens die Struktur Ihres Repositorys. Optional können die Prüfvorgänge auch die Prüfsummen der Paketdaten erneut herunterladen und überprüfen. Dies ist hilfreich, wenn Ihr Speicher anfällig für Bitfehler oder unbemerkten Datenverlust ist."
 }

@@ -369,5 +369,9 @@
   "op_row_confirm_delete": "[Confirmer la suppression ?]",
   "op_row_delete": "[Supprimer]",
   "settings_section_user_settings": "Paramètres utilisateur",
-  "settings_field_language": "Langue d'affichage"
+  "settings_field_language": "Langue d'affichage",
+  "add_repo_modal_field_prune_policy_heading": "Politique de nettoyage",
+  "add_repo_modal_field_prune_policy_help": "L'opération de nettoyage supprime les données non référencées de votre dépôt restic (par exemple, les snapshots oubliés). C'est la seule fois où restic supprime des données du stockage. Il est conseillé d'effectuer cette opération peu fréquemment ; une fois par mois environ constitue un bon point de départ.",
+  "add_repo_modal_field_check_policy_heading": "Vérifier la politique",
+  "add_repo_modal_field_check_policy_help": "Les opérations de vérification contrôlent l'intégrité de votre dépôt restic. Elles doivent être exécutées peu fréquemment ; une fois par mois environ constitue un bon point de départ. La vérification contrôle au minimum la structure de votre dépôt. Elle peut également, en option, retélécharger et vérifier les sommes de contrôle des données des paquets, ce qui est utile si votre système de stockage est susceptible de présenter des erreurs de bits ou des pertes de données silencieuses."
 }
