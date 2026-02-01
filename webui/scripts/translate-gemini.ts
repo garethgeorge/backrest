@@ -1,9 +1,10 @@
 
 import "dotenv/config";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
-import { loadProjectFromDirectory, selectBundleNested, upsertBundleNested } from "@inlang/sdk";
+import { loadProjectFromDirectory, selectBundleNested, upsertBundleNested, saveProjectToDirectory } from "@inlang/sdk";
 import { openRepository } from "@lix-js/client";
 import fs from "node:fs";
+import nodeFs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
@@ -11,7 +12,7 @@ import * as readline from "node:readline";
 
 const PROJECT_PATH = "./project.inlang";
 const MODEL_NAME = "gemini-2.5-flash"; // Updated per previous edit
-const BATCH_SIZE = 32; // Smaller batch size for interactive mode consistency
+const BATCH_SIZE = 64;
 
 // Ensure API key is present
 if (!process.env.GEMINI_API_KEY) {
@@ -31,7 +32,7 @@ const translationSchema = {
       translation: { type: SchemaType.STRING },
     },
   },
-};
+} as any;
 
 // Schema for reprocessing/review
 const reprocessSchema = {
@@ -46,11 +47,47 @@ const reprocessSchema = {
     },
     required: ["id", "ok"],
   },
-};
+} as any;
+
+const BACKREST_CONTEXT = `
+  Context about Backrest:
+  - It is a GUI and scheduler for the "restic" backup tool.
+  - Key operations: 
+    - "Backup": Creates snapshots of data.
+    - "Prune": Removes unused data from the repository (repacks).
+    - "Forget": Manages snapshot retention policies (e.g., keep last N).
+    - "Check": Verifies repository integrity.
+    - "Snapshot": A backup point in time.
+  - Features: Cron scheduling, multi-platform (Linux/macOS/Windows), supports various storage backends (S3, B2, Local, SFTP).
+`;
+
+const SHARED_RULES = `
+  Rules:
+  1. Maintain all variables (e.g. {name}) exactly.
+  2. Do not add explanations.
+  3. Use terminology consistent with backup software (e.g., "snapshot", "repository", "retention").
+  4. Variables in text are enclosed in braces {}, copy them exactly. Do not add new escape characters (but keep any existing ones).
+`;
 
 const model = genAI.getGenerativeModel({
   model: MODEL_NAME,
 });
+
+async function callGemini<T>(prompt: string, schema: any): Promise<T> {
+  try {
+    const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: schema,
+        },
+    });
+    return JSON.parse(result.response.text());
+  } catch (error: any) {
+    console.error("Gemini API call failed:", error.message);
+    throw error;
+  }
+}
 
 async function translateBatch(
   batch: { id: string; text: string }[],
@@ -64,41 +101,21 @@ async function translateBatch(
   const prompt = `
     You are a professional translator for "Backrest", a web-accessible backup solution built on top of restic.
     
-    Context about Backrest:
-    - It is a GUI and scheduler for the "restic" backup tool.
-    - Key operations: 
-      - "Backup": Creates snapshots of data.
-      - "Prune": Removes unused data from the repository (repacks).
-      - "Forget": Manages snapshot retention policies (e.g., keep last N).
-      - "Check": Verifies repository integrity.
-    - Features: Cron scheduling, multi-platform (Linux/macOS/Windows), supports various storage backends (S3, B2, Local, SFTP).
+    ${BACKREST_CONTEXT}
     
     Translate the following texts to ${targetLang}.
     
-    Rules:
-    1. Maintain all variables (e.g. {name}) exactly.
-    2. Do not add explanations.
-    3. Return a JSON array where each object contains the 'id' (from input) and the 'translation'.
-    4. Use terminology consistent with backup software (e.g., "snapshot", "repository", "retention").
-    
-    Variables in text are enclosed in braces {}.
+    ${SHARED_RULES}
+    5. Return a JSON array where each object contains the 'id' (from input) and the 'translation'.
     
     Input JSON:
     ${JSON.stringify(payload, null, 2)}
   `;
 
   try {
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: translationSchema,
-      },
-    });
-    return JSON.parse(result.response.text());
-  } catch (error: any) {
-    console.error("Batch translation failed:", error.message);
-    return [];
+      return await callGemini(prompt, translationSchema);
+  } catch (e) {
+      return [];
   }
 }
 
@@ -116,6 +133,8 @@ async function reprocessBatch(
     You are a professional translator for "Backrest" (a backup tool web UI).
     Review the following translations for target language: ${targetLang}.
 
+    ${BACKREST_CONTEXT}
+
     For each item:
     1. accurate: Is the 'current' translation accurate and does it use correct terminology? (bool "ok")
     2. fit: Does it preserve variables (e.g. {name})?
@@ -124,27 +143,16 @@ async function reprocessBatch(
     - Provide a better "newTranslation".
     - Provide a brief "explanation" (in English) of why the old one was incorrect or suboptimal.
     
-    Context:
-    - "Prune" = removing unused data / repacking.
-    - "Forget" = removing old snapshots based on policy.
-    - "Snapshot" = a backup point in time.
+    ${SHARED_RULES}
 
     Input JSON:
     ${JSON.stringify(payload, null, 2)}
   `;
 
   try {
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: reprocessSchema,
-      },
-    });
-    return JSON.parse(result.response.text());
-  } catch (error: any) {
-    console.error("Batch reprocessing failed:", error.message);
-    return [];
+      return await callGemini(prompt, reprocessSchema);
+  } catch (e) {
+      return [];
   }
 }
 
@@ -180,7 +188,7 @@ async function main() {
     process.exit(1);
   }
 
-  const targetLangs = settings.languageTags.filter((tag) => tag !== sourceLang);
+  const targetLangs = (settings.languageTags || []).filter((tag) => tag !== sourceLang);
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -336,7 +344,15 @@ async function main() {
         }
         console.log(`Updated ${updates} messages.`);
       }
-    }
+    } // end of items processing loop for this language
+
+    // Explicitly save the project after processing each language to ensure persistence
+    console.log(`Saving progress for ${targetLang}...`);
+    await saveProjectToDirectory({
+       fs: nodeFs,
+       project: project,
+       path: path.resolve(process.cwd(), PROJECT_PATH)
+    });
   }
 
   console.log("\nDone.");
