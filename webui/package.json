@@ -10,6 +10,7 @@
     "build-windows": "cross-env UI_OS=windows vite build --outDir dist-windows",
     "check": "tsc --noEmit",
     "translate": "tsx scripts/translate-gemini.ts && paraglide-js compile --project ./project.inlang --outdir ./src/paraglide",
+    "translate-reprocess": "tsx scripts/translate-gemini.ts --reprocess && paraglide-js compile --project ./project.inlang --outdir ./src/paraglide",
     "format": "prettier --write ."
   },
   "author": "",
