@@ -725,6 +725,7 @@ const languageNames: Record<string, string> = {
   ru: "Русский",
   id: "Bahasa Indonesia",
   it: "Italiano",
+  ja: "日本語",
 };
 
 const UserSettingsForm = () => {
