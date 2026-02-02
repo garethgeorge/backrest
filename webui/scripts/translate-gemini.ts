@@ -398,7 +398,7 @@ async function main() {
 
   console.log("\nDone.");
   rl.close();
-  // process.exit(0); // Allow pending file writes to complete
+  process.exit(0); // Allow pending file writes to complete
 }
 
 main().catch(console.error);
