@@ -184,6 +184,40 @@ function askQuestion(query: string, rl: readline.Interface): Promise<string> {
   return new Promise((resolve) => rl.question(query, resolve));
 }
 
+async function* createBufferedIterator<T, R>(
+  items: T[],
+  batchSize: number,
+  processor: (batch: T[]) => Promise<R>,
+  concurrency: number = 2
+) {
+  // Split items into batches
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+     batches.push(items.slice(i, i + batchSize));
+  }
+
+  const batchPromises: Promise<R>[] = [];
+
+  for (let i = 0; i < batches.length; i++) {
+      // Ensure we have a promise for this batch
+      if (!batchPromises[i]) {
+          console.log(`[Background] Starting batch ${i + 1}/${batches.length}...`);
+          batchPromises[i] = processor(batches[i]);
+      }
+      
+      // Ensure we have prefetched up to concurrency limit
+      for (let j = 1; j < concurrency + 1; j++) {
+           if (i + j < batches.length && !batchPromises[i + j]) {
+               console.log(`[Background] Pre-fetching batch ${i + j + 1}/${batches.length}...`);
+               batchPromises[i + j] = processor(batches[i + j]);
+           }
+      }
+      
+      const result = await batchPromises[i];
+      yield { batch: batches[i], result, index: i, total: batches.length };
+  }
+}
+
 async function main() {
   const isReprocess = process.argv.includes("--reprocess");
   
@@ -295,97 +329,108 @@ async function main() {
 
     console.log(`Found ${itemsToProcess.length} items for ${targetLang}.`);
 
-    for (let i = 0; i < itemsToProcess.length; i += BATCH_SIZE) {
-      const batch = itemsToProcess.slice(i, i + BATCH_SIZE);
-      console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1} / ${Math.ceil(itemsToProcess.length / BATCH_SIZE)}`);
+    if (isReprocess) {
+        // Process with buffered iterator for parallelism
+        const iterator = createBufferedIterator(
+            itemsToProcess,
+            BATCH_SIZE,
+            (b) => {
+                // Transform for the API
+                const reprocessInput = b.map(item => ({ id: item.id, english: item.text, current: item.current! }));
+                return reprocessBatch(reprocessInput, targetLang);
+            }
+        );
 
-      if (isReprocess) {
-          const reprocessInput = batch.map(b => ({ id: b.id, english: b.text, current: b.current! }));
-          const results = await reprocessBatch(reprocessInput, targetLang);
-          
-          for (const res of results) {
-              if (res.ok) continue;
+        for await (const { batch, result: results, index, total } of iterator) {
+            console.log(`\n--- Batch ${index + 1} of ${total} Ready ---`);
+            
+            for (const res of results) {
+               const item = batch.find(b => b.id === res.id);
+               if (!item) continue;
 
-              const item = batch.find(b => b.id === res.id);
-              if (!item) continue;
+               if (res.ok) {
+                   // NOOP
+               } else if (res.newTranslation) {
+                   console.log(`\n----------------------------------------`);
+                   console.log(`Key: ${item.id}`);
+                   console.log(`English: "${item.text}"`);
+                   console.log(`Current: "${item.current}"`);
+                   console.log(`Suggestion: "${res.newTranslation}"`);
+                   console.log(`Reason: ${res.explanation}`);
+                   
+                   const answer = await askQuestion("Approve replacement? (y/N): ", rl);
+                   if (answer.toLowerCase() === 'y') {
+                       console.log(`[${res.id}] Updating...`);
 
-              console.log(`\n----------------------------------------`);
-              console.log(`Key: ${item.id}`);
-              console.log(`English: "${item.text}"`);
-              console.log(`Current: "${item.current}"`);
-              console.log(`Suggestion: "${res.newTranslation}"`);
-              console.log(`Reason: ${res.explanation}`);
-              
-              const answer = await askQuestion("Approve replacement? (y/N): ", rl);
-              if (answer.toLowerCase() === 'y' && res.newTranslation) {
-                  // Apply update
-                   const bundle = item.bundle;
-                   // Find existing message index to update or replace variants?
-                   // Simplest is to map over messages and update the one for this locale.
-                   const updatedMessages = bundle.messages.map((msg: any) => {
-                       if (msg.locale === targetLang) {
-                           return {
-                               ...msg,
-                               variants: [{
-                                   id: randomUUID(), // New variant ID
-                                   messageId: msg.id,
-                                   matches: [],
-                                   pattern: parsePattern(res.newTranslation!, messageVariables.get(item.id)) 
-                               }]
-                           }
-                       }
-                       return msg;
-                   });
-
-                   await upsertBundleNested(project.db, { ...bundle, messages: updatedMessages });
-                   console.log("Updated.");
-              } else {
-                  console.log("Skipped.");
-              }
-          }
-
-      } else {
-        // Standard Translation Logic
-        const results = await translateBatch(batch, targetLang);
-        console.log("Batch results:");
-        let updates = 0;
-        for (const item of results) {
-            const originalTask = batch.find((b) => b.id === item.id);
-            if (originalTask && item.translation) {
-                console.log(` - ${item.id}: "${item.translation}"`);
-                const bundle = originalTask.bundle;
-                
-                const messageId = randomUUID();
-                const variantId = randomUUID();
-                const pattern = parsePattern(item.translation, messageVariables.get(item.id));
-                
-                const newMessage = {
-                    id: messageId,
-                    bundleId: bundle.id,
-                    locale: targetLang,
-                    selectors: [],
-                    variants: [
-                        {
-                            id: variantId,
-                            messageId: messageId,
-                            matches: [],
-                            pattern: pattern as any 
-                        }
-                    ]
-                };
-                
-                const updatedBundle = {
-                    ...bundle,
-                    messages: [...bundle.messages, newMessage]
-                };
-
-                await upsertBundleNested(project.db, updatedBundle);
-                updates++;
+                        const bundle = item.bundle;
+                         const updatedMessages = bundle.messages.map((msg: any) => {
+                             if (msg.locale === targetLang) {
+                                 return {
+                                     ...msg,
+                                     variants: [{
+                                         id: randomUUID(), // New variant ID
+                                         messageId: msg.id,
+                                         matches: [],
+                                         pattern: parsePattern(res.newTranslation!, messageVariables.get(item.id)) 
+                                     }]
+                                 }
+                             }
+                             return msg;
+                         });
+                         
+                         await upsertBundleNested(project.db, { ...bundle, messages: updatedMessages });
+                   } else {
+                       console.log("Skipped.");
+                   }
+               }
             }
         }
-        console.log(`Updated ${updates} messages.`);
-      }
-    } // end of items processing loop for this language
+    } else {
+        // Standard Translation Logic
+        for (let i = 0; i < itemsToProcess.length; i += BATCH_SIZE) {
+            const batch = itemsToProcess.slice(i, i + BATCH_SIZE);
+            console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1} / ${Math.ceil(itemsToProcess.length / BATCH_SIZE)}`);
+            
+            const results = await translateBatch(batch, targetLang);
+            console.log("Batch results:");
+            let updates = 0;
+            for (const item of results) {
+                const originalTask = batch.find((b) => b.id === item.id);
+                if (originalTask && item.translation) {
+                    console.log(` - ${item.id}: "${item.translation}"`);
+                    const bundle = originalTask.bundle;
+                    
+                    const messageId = randomUUID();
+                    const variantId = randomUUID();
+                    const pattern = parsePattern(item.translation, messageVariables.get(item.id));
+                    
+                    const newMessage = {
+                        id: messageId,
+                        bundleId: bundle.id,
+                        locale: targetLang,
+                        selectors: [],
+                        variants: [
+                            {
+                                id: variantId,
+                                messageId: messageId,
+                                matches: [],
+                                pattern: pattern as any 
+                            }
+                        ]
+                    };
+                    
+                    const updatedBundle = {
+                        ...bundle,
+                        messages: [...bundle.messages, newMessage]
+                    };
+
+                    await upsertBundleNested(project.db, updatedBundle);
+                    updates++;
+                }
+            }
+            console.log(`Updated ${updates} messages.`);
+        }
+    }
 
     // Explicitly save the project after processing each language to ensure persistence
     console.log(`Saving progress for ${targetLang}...`);
