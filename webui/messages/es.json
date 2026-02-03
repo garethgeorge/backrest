@@ -23,7 +23,6 @@
   "add_plan_modal_field_paths": "Caminos",
   "add_plan_modal_validation_paths_required": "Ingrese al menos una ruta para realizar la copia de seguridad",
   "add_plan_modal_validation_paths_valid_required": "Ingrese al menos una ruta válida para realizar la copia de seguridad",
-  "add_plan_modal_field_paths_placeholder": "Introduzca rutas, una por línea\np.ej\n/inicio/usuario/documentos\n/inicio/usuario/fotos",
   "add_plan_modal_field_excludes": "Excluye",
   "add_plan_modal_field_excludes_tooltip_prefix": "Rutas que se deben excluir de las copias de seguridad. Consulte la ",
   "add_plan_modal_field_excludes_tooltip_link": "documentos restic",
