@@ -353,7 +353,7 @@
   "op_row_error_path": "Path",
   "op_row_error_message": "Message",
   "add_repo_modal_env_vars_placeholder": "KEY=VALUE (One per line)",
-  "app_menu_edit_plan": "Edit plan",
+  "app_menu_edit_plan": "Edit Plan",
   "add_repo_modal_field_auto_unlock_tooltip": "Auto-unlock will remove lockfiles at the start of most operations. This is potentially unsafe if the repo is shared by multiple client devices, otherwise is recommended for single-client setups.",
   "op_row_cancel_op": "Cancel Operation",
   "op_row_confirm_cancel": "Confirm Cancel?"
