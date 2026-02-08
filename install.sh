@@ -4,16 +4,22 @@ cd "$(dirname "$0")" # cd to the directory of this script
 
 # Parse command line arguments
 ALLOW_REMOTE_ACCESS=false
+FROM_SOURCE=false
 for arg in "$@"; do
   case $arg in
     --allow-remote-access)
       ALLOW_REMOTE_ACCESS=true
       shift
       ;;
+    --from-source)
+      FROM_SOURCE=true
+      shift
+      ;;
     *)
       echo "Unknown option: $arg"
-      echo "Usage: $0 [--allow-remote-access]"
+      echo "Usage: $0 [--allow-remote-access] [--from-source]"
       echo "  --allow-remote-access: Allow remote access by binding to 0.0.0.0:9898 instead of 127.0.0.1:9898"
+      echo "  --from-source: Build binary from source"
       exit 1
       ;;
   esac
@@ -26,6 +32,34 @@ if [ "$ALLOW_REMOTE_ACCESS" = true ]; then
 else
   BACKREST_PORT="127.0.0.1:9898"
   echo "Local access only: Backrest will bind to 127.0.0.1:9898, run ./install.sh --allow-remote-access to enable remote access"
+fi
+
+if [ "$FROM_SOURCE" = true ]; then
+  if ! command -v go &> /dev/null; then
+      echo "Error: go is not installed or not in PATH."
+      exit 1
+  fi
+
+  if ! command -v npm &> /dev/null; then
+      echo "Error: npm is not installed or not in PATH."
+      exit 1
+  fi
+
+  echo "Building from source..."
+
+  echo "Installing webui dependencies..."
+  pushd webui > /dev/null || exit 1
+  if command -v pnpm &> /dev/null; then
+      echo "Using pnpm..."
+      pnpm install
+  else
+      echo "Using npm..."
+      npm install
+  fi
+  popd > /dev/null || exit 1
+
+  go generate ./...
+  go build -o backrest ./cmd/backrest
 fi
 
 stop_systemd_service() {
