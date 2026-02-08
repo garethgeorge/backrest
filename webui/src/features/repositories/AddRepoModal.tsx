@@ -155,8 +155,7 @@ const SftpConfigSection = ({
       }
 
       // Override from manual input if username is set there
-      const username =
-        sftpUsername || uri.match(/([^@]+)@/)?.[1] || "";
+      const username = sftpUsername || uri.match(/([^@]+)@/)?.[1] || "";
 
       const res = await backrestService.setupSftp({
         host: host,
@@ -175,10 +174,13 @@ const SftpConfigSection = ({
         setGeneratedPublicKey(res.publicKey);
       }
       alerts.success(
-        "Created SSH keypair at " + res.keyPath + " and updated known hosts file at " + res.knownHostsPath,
+        "Created SSH keypair at " +
+          res.keyPath +
+          " and updated known hosts file at " +
+          res.knownHostsPath,
       );
       alerts.success(
-        "Updated restic flags to use the SSH keypair and known hosts file."
+        "Updated restic flags to use the SSH keypair and known hosts file.",
       );
     } catch (e: any) {
       alerts.error(formatErrorAlert(e, "SFTP Setup Failed"));
@@ -239,14 +241,24 @@ const SftpConfigSection = ({
               <Code>~/.ssh/authorized_keys</Code> file:
             </CText>
             <Box position="relative">
-              <Code p={3} display="block" whiteSpace="pre-wrap" wordBreak="break-all">
+              <Code
+                p={3}
+                display="block"
+                whiteSpace="pre-wrap"
+                wordBreak="break-all"
+              >
                 {generatedPublicKey}
               </Code>
               <Box position="absolute" top={1} right={1}>
-                <Button size="xs" onClick={() => {
-                  navigator.clipboard.writeText(generatedPublicKey || "");
-                  alerts.success("Key copied to clipboard");
-                }}>Copy</Button>
+                <Button
+                  size="xs"
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedPublicKey || "");
+                    alerts.success("Key copied to clipboard");
+                  }}
+                >
+                  Copy
+                </Button>
               </Box>
             </Box>
           </Stack>
@@ -313,7 +325,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     );
     // Reset SFTP fields when template changes (or is null)
     if (!template) {
-
       setSftpIdentityFile("");
       setSftpPort(null);
       setSftpKnownHostsPath("");
@@ -480,9 +491,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             try {
               await action(true);
             } catch (retryErr: any) {
-              alerts.error(
-                formatErrorAlert(retryErr, "Operation error: "),
-              );
+              alerts.error(formatErrorAlert(retryErr, "Operation error: "));
             } finally {
               setConfirmLoading(false);
             }
@@ -746,7 +755,9 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                       !!getField(["id"]) &&
                       (!namePattern.test(getField(["id"])) ||
                         (!template &&
-                          !!config.repos.find((r) => r.id === getField(["id"]))))
+                          !!config.repos.find(
+                            (r) => r.id === getField(["id"]),
+                          )))
                     }
                     errorText={
                       !!getField(["id"]) && !namePattern.test(getField(["id"]))
@@ -893,7 +904,9 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                   <DynamicList
                     label={m.add_repo_modal_field_flags()}
                     items={getField(["flags"]) || []}
-                    onUpdate={(items: string[]) => updateField(["flags"], items)}
+                    onUpdate={(items: string[]) =>
+                      updateField(["flags"], items)
+                    }
                     placeholder="--flag"
                   />
                 </Stack>
@@ -901,29 +914,22 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             </Card.Root>
           </Section>
 
-          <Section
-            title={
-              <Tooltip
-                content={
-                  <span>
-                    {m.add_repo_modal_field_prune_policy_tooltip_p1()}{" "}
-                    <a
-                      href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
-                      target="_blank"
-                      style={{ textDecoration: "underline" }}
-                    >
-                      {m.add_repo_modal_field_prune_policy_tooltip_link()}
-                    </a>{" "}
-                    {m.add_repo_modal_field_prune_policy_tooltip_p2()}
-                  </span>
-                }
-              >
-                {m.add_repo_modal_field_prune_policy()}
-              </Tooltip>
-            }
-          >
+          <Section title={m.add_repo_modal_field_prune_policy()}>
             <Card.Root variant="subtle" size="sm">
               <Card.Body>
+                <Stack gap={2} mb={4}>
+                  <span>
+                  {m.add_repo_modal_field_prune_policy_tooltip_p1()}{" "}
+                  <a
+                    href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
+                    target="_blank"
+                    style={{ textDecoration: "underline" }}
+                  >
+                    {m.add_repo_modal_field_prune_policy_tooltip_link()}
+                  </a>{" "}
+                  {m.add_repo_modal_field_prune_policy_tooltip_p2()}
+                  </span>
+                </Stack>
                 <Stack gap={4}>
                   <NumberInputField
                     label={m.add_repo_modal_field_max_unused()}
@@ -953,13 +959,14 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
 
           <Section
             title={
-              <Tooltip content={m.add_repo_modal_field_check_policy_tooltip()}>
-                {m.add_repo_modal_field_check_policy()}
-              </Tooltip>
+                m.add_repo_modal_field_check_policy()
             }
           >
             <Card.Root variant="subtle" size="sm">
               <Card.Body>
+                <Stack gap={2} mb={4}>
+                  <span>{m.add_repo_modal_field_check_policy_tooltip()}</span>
+                </Stack>
                 <Stack gap={4}>
                   <NumberInputField
                     label={m.add_repo_modal_field_read_data()}
