@@ -38,6 +38,9 @@ func ResolveSchedule(sched *v1.Schedule, lastRan time.Time, curTime time.Time) (
 		if err != nil {
 			return time.Time{}, fmt.Errorf("parse cron %q: %w", s.Cron, err)
 		}
+		if cron.Next(t).IsZero() || cron.Next(t).Before(t) {
+			return time.Time{}, fmt.Errorf("cron %q may be malformed, next scheduled time is in the past %v", s.Cron, t)
+		}
 		return cron.Next(t), nil
 	default:
 		return time.Time{}, fmt.Errorf("unknown schedule type: %T", s)
@@ -58,9 +61,12 @@ func ValidateSchedule(sched *v1.Schedule) error {
 		if s.Cron == "" {
 			return errors.New("empty cron expression")
 		}
-		_, err := cronexpr.ParseInLocation(s.Cron, time.Now().Location().String())
+		cron, err := cronexpr.ParseInLocation(s.Cron, time.Now().Location().String())
 		if err != nil {
 			return fmt.Errorf("invalid cron %q: %w", s.Cron, err)
+		}
+		if next := cron.Next(time.Now()); next.IsZero() || next.Year() < 2000 {
+			return fmt.Errorf("invalid cron %q: next scheduled time is invalid (check for DOW=7 usage)", s.Cron)
 		}
 	case nil:
 		return nil
