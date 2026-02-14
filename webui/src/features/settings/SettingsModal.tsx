@@ -236,12 +236,12 @@ export const SettingsModal = () => {
 
         {/* @ts-ignore */}
         <AccordionRoot collapsible defaultValue={["user-settings", "auth"]}>
-           {/* User Settings Section */}
-           {/* @ts-ignore */}
-           <AccordionItem value="user-settings">
+          {/* User Settings Section */}
+          {/* @ts-ignore */}
+          <AccordionItem value="user-settings">
             <AccordionItemTrigger>
-              {// @ts-ignore 
-              m.settings_section_user_settings ? m.settings_section_user_settings() : "User Settings"}
+              {// @ts-ignore
+                m.settings_section_user_settings ? m.settings_section_user_settings() : "User Settings"}
             </AccordionItemTrigger>
             <AccordionItemContent>
               <Stack gap={4}>
@@ -725,42 +725,43 @@ const languageNames: Record<string, string> = {
   ru: "Русский",
   id: "Bahasa Indonesia",
   it: "Italiano",
+  ja: "日本語",
 };
 
 const UserSettingsForm = () => {
-    const { preferences, updatePreference, availableLanguages } = useUserPreferences();
+  const { preferences, updatePreference, availableLanguages } = useUserPreferences();
 
-    const languageOptions = createListCollection({
-        items: availableLanguages.map((tag: string) => ({
-            label: languageNames[tag] || tag,
-            value: tag,
-        })),
-    });
+  const languageOptions = createListCollection({
+    items: availableLanguages.map((tag: string) => ({
+      label: languageNames[tag] || tag,
+      value: tag,
+    })),
+  });
 
-    return (
-        <Field label={// @ts-ignore 
-            m.settings_field_language ? m.settings_field_language() : "Display Language"
-        }>
-            <SelectRoot
-                collection={languageOptions}
-                value={[preferences.language]}
-                onValueChange={(e: any) => updatePreference("language", e.value[0])}
-            >
-                {/* @ts-ignore */}
-                <SelectTrigger>
-                    {/* @ts-ignore */}
-                    <SelectValueText placeholder="Select language" />
-                </SelectTrigger>
-                {/* @ts-ignore */}
-                <SelectContent zIndex={2000}>
-                    {languageOptions.items.map((option: any) => (
-                        <SelectItem item={option} key={option.value}>
-                            {option.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </SelectRoot>
-        </Field>
-    );
+  return (
+    <Field label={// @ts-ignore
+      m.settings_field_language ? m.settings_field_language() : "Display Language"
+    }>
+      <SelectRoot
+        collection={languageOptions}
+        value={[preferences.language]}
+        onValueChange={(e: any) => updatePreference("language", e.value[0])}
+      >
+        {/* @ts-ignore */}
+        <SelectTrigger>
+          {/* @ts-ignore */}
+          <SelectValueText placeholder="Select language" />
+        </SelectTrigger>
+        {/* @ts-ignore */}
+        <SelectContent zIndex={2000}>
+          {languageOptions.items.map((option: any) => (
+            <SelectItem item={option} key={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </SelectRoot>
+    </Field>
+  );
 };
 
