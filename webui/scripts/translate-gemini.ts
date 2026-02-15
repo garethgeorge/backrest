@@ -11,8 +11,9 @@ import { randomUUID } from "node:crypto";
 import * as readline from "node:readline";
 
 const PROJECT_PATH = "./project.inlang";
-const MODEL_NAME = "gemini-2.5-flash"; // Updated per previous edit
-const BATCH_SIZE = 64;
+const MODEL_NAME = "gemini-2.5-flash";
+const BATCH_SIZE = 32;
+const CONCURRENCY = 4; // Adjust parallelism
 
 // Ensure API key is present
 if (!process.env.GEMINI_API_KEY) {
@@ -22,7 +23,8 @@ if (!process.env.GEMINI_API_KEY) {
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Schema for simple translation
+// -- Schemas --
+
 const translationSchema = {
   type: SchemaType.ARRAY,
   items: {
@@ -31,21 +33,32 @@ const translationSchema = {
       id: { type: SchemaType.STRING },
       translation: { type: SchemaType.STRING },
     },
+    required: ["id", "translation"],
   },
 } as any;
 
-// Schema for reprocessing/review
 const reprocessSchema = {
   type: SchemaType.ARRAY,
   items: {
-    type: SchemaType.OBJECT,
-    properties: {
-      id: { type: SchemaType.STRING },
-      ok: { type: SchemaType.BOOLEAN },
-      newTranslation: { type: SchemaType.STRING, nullable: true },
-      explanation: { type: SchemaType.STRING, nullable: true },
-    },
-    required: ["id", "ok"],
+    oneOf: [
+      {
+        type: SchemaType.OBJECT,
+        properties: {
+          id: { type: SchemaType.STRING },
+          ok: { type: SchemaType.BOOLEAN },
+        },
+        required: ["id", "ok"],
+      },
+      {
+        type: SchemaType.OBJECT,
+        properties: {
+          id: { type: SchemaType.STRING },
+          newTranslation: { type: SchemaType.STRING },
+          explanation: { type: SchemaType.STRING },
+        },
+        required: ["id", "newTranslation", "explanation"],
+      },
+    ],
   },
 } as any;
 
@@ -67,7 +80,7 @@ const BACKREST_CONTEXT = `
 const SHARED_RULES = `
   Rules:
   1. Maintain all variables (e.g. {name}) exactly.
-  2. Do not add explanations.
+  2. Do not add explanations to the translation text.
   3. Use terminology consistent with backup software (e.g., "snapshot", "repository", "retention").
   4. Variables in text are enclosed in braces {}, copy them exactly. Do not add new escape characters (but keep any existing ones).
 `;
@@ -79,11 +92,11 @@ const model = genAI.getGenerativeModel({
 async function callGemini<T>(prompt: string, schema: any): Promise<T> {
   try {
     const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: schema,
-        },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: schema,
+      },
     });
     return JSON.parse(result.response.text());
   } catch (error: any) {
@@ -92,15 +105,13 @@ async function callGemini<T>(prompt: string, schema: any): Promise<T> {
   }
 }
 
+// -- Helpers --
+
 function parsePattern(text: string, allowedVariables?: Set<string>): any[] {
-  // Split by variable pattern {varName}
   const parts = text.split(/({[^}]+})/g);
   return parts.filter(p => p !== "").map(p => {
-    // If it looks like a variable {name}
     if (p.startsWith("{") && p.endsWith("}")) {
       const varName = p.slice(1, -1);
-      // Only treat as expression if it's in the allowed list (or if no list provided, for safety/fallback)
-      // Ideally we always provide the list.
       if (!allowedVariables || allowedVariables.has(varName)) {
         return {
           type: "expression",
@@ -108,123 +119,106 @@ function parsePattern(text: string, allowedVariables?: Set<string>): any[] {
         };
       }
     }
-    // Otherwise it's plain text
     return { type: "text", value: p };
   });
-}
-
-async function translateBatch(
-  batch: { id: string; text: string }[],
-  targetLang: string
-): Promise<{ id: string; translation: string }[]> {
-  const payload = batch.map((msg) => ({
-    id: msg.id,
-    text: msg.text,
-  }));
-
-  const prompt = `
-    You are a professional translator for "Backrest", a web-accessible backup solution built on top of restic.
-    
-    ${BACKREST_CONTEXT}
-    
-    Translate the following texts to ${targetLang}.
-    
-    ${SHARED_RULES}
-    5. Return a JSON array where each object contains the 'id' (from input) and the 'translation'.
-    
-    Input JSON:
-    ${JSON.stringify(payload, null, 2)}
-  `;
-
-  try {
-      return await callGemini(prompt, translationSchema);
-  } catch (e) {
-      return [];
-  }
-}
-
-async function reprocessBatch(
-  batch: { id: string; english: string; current: string }[],
-  targetLang: string
-): Promise<{ id: string; ok: boolean; newTranslation?: string; explanation?: string }[]> {
-  const payload = batch.map((msg) => ({
-    id: msg.id,
-    english: msg.english,
-    current: msg.current,
-  }));
-
-  const prompt = `
-    You are a professional translator for "Backrest" (a backup tool web UI).
-    Review the following translations for target language: ${targetLang}.
-
-    ${BACKREST_CONTEXT}
-
-    For each item:
-    1. accurate: Is the 'current' translation accurate and does it use correct terminology? (bool "ok")
-    2. fit: Does it preserve variables (e.g. {name})?
-    
-    If "ok" is false:
-    - Provide a better "newTranslation".
-    - Provide a brief "explanation" (in English) of why the old one was incorrect or suboptimal.
-    
-    ${SHARED_RULES}
-
-    Input JSON:
-    ${JSON.stringify(payload, null, 2)}
-  `;
-
-  try {
-      return await callGemini(prompt, reprocessSchema);
-  } catch (e) {
-      return [];
-  }
 }
 
 function askQuestion(query: string, rl: readline.Interface): Promise<string> {
   return new Promise((resolve) => rl.question(query, resolve));
 }
 
-async function* createBufferedIterator<T, R>(
-  items: T[],
-  batchSize: number,
-  processor: (batch: T[]) => Promise<R>,
-  concurrency: number = 2
+// -- Pipeline --
+
+interface PipelineTask<T> {
+  id: string; // Unique ID for finding the task item
+  data: T;
+}
+
+/**
+ * A generic pipeline with backpressure.
+ * - producer: yields tasks
+ * - processor: processes tasks concurrently
+ * - consumer: consumes results serially
+ */
+async function runPipeline<T, R>(
+  concurrency: number,
+  tasks: T[],
+  processTask: (task: T) => Promise<R>,
+  consumeResult: (result: R, task: T) => Promise<void>
 ) {
-  // Split items into batches
-  const batches: T[][] = [];
-  for (let i = 0; i < items.length; i += batchSize) {
-     batches.push(items.slice(i, i + batchSize));
-  }
+  const queue = [...tasks];
+  // Map of active promises -> task info
+  const active = new Map<Promise<R>, T>();
 
-  const batchPromises: Promise<R>[] = [];
+  const fillQueue = () => {
+    while (queue.length > 0 && active.size < concurrency) {
+      const task = queue.shift()!;
+      const promise = processTask(task);
+      active.set(promise, task);
 
-  for (let i = 0; i < batches.length; i++) {
-      // Ensure we have a promise for this batch
-      if (!batchPromises[i]) {
-          console.log(`[Background] Starting batch ${i + 1}/${batches.length}...`);
-          batchPromises[i] = processor(batches[i]);
+      // When promise settles, strict handling is done in the main loop
+      // but we need to ensure errors don't crash everything unhandled
+      promise.catch(() => { });
+    }
+  };
+
+  while (queue.length > 0 || active.size > 0) {
+    fillQueue();
+
+    if (active.size > 0) {
+      // Race to find the first completion
+      // We wrap promises to identify which one finished
+      const promises = Array.from(active.keys());
+      const wrappedPromises = promises.map(p => p.then(
+        val => ({ status: 'fulfilled' as const, value: val, original: p }),
+        err => ({ status: 'rejected' as const, reason: err, original: p })
+      ));
+
+      const winner = await Promise.race(wrappedPromises);
+
+      // detailed info
+      const task = active.get(winner.original)!;
+      active.delete(winner.original);
+
+      if (winner.status === 'fulfilled') {
+        await consumeResult(winner.value, task);
+      } else {
+        console.error("Task failed:", winner.reason);
+        // Optionally handle retry or just log
       }
-      
-      // Ensure we have prefetched up to concurrency limit
-      for (let j = 1; j < concurrency + 1; j++) {
-           if (i + j < batches.length && !batchPromises[i + j]) {
-               console.log(`[Background] Pre-fetching batch ${i + j + 1}/${batches.length}...`);
-               batchPromises[i + j] = processor(batches[i + j]);
-           }
-      }
-      
-      const result = await batchPromises[i];
-      yield { batch: batches[i], result, index: i, total: batches.length };
+    }
   }
+}
+
+// -- Main Logic --
+
+interface TranslationItem {
+  id: string;
+  sourceText: string;
+  currentText?: string;
+  bundle: any;
+}
+
+interface WorkerTask {
+  lang: string;
+  items: TranslationItem[];
+}
+
+interface WorkerResult {
+  lang: string;
+  // Result can be either Translation or ReprocessReview
+  translations?: { id: string, translation: string }[];
+  reviews?: ({ id: string; ok: boolean } | { id: string; newTranslation: string; explanation: string })[];
 }
 
 async function main() {
   const isReprocess = process.argv.includes("--reprocess");
-  
+
+  // 1. Load Project
+  console.log("Loading project...");
   const repo = await openRepository(pathToFileURL(path.resolve(process.cwd())).href, {
     nodeishFs: fs as any,
   });
-
   const project = await loadProjectFromDirectory({
     path: path.resolve(process.cwd(), PROJECT_PATH),
     fs: fs as any,
@@ -239,211 +233,241 @@ async function main() {
 
   const bundles = await selectBundleNested(project.db).execute();
   const settings = await project.settings.get();
-  const sourceLang = settings.sourceLanguageTag;
-
-  if (!sourceLang) {
-    console.error("Source language not found in settings.");
-    process.exit(1);
-  }
-
+  const sourceLang = settings.sourceLanguageTag || "en";
   const targetLangs = (settings.languageTags || []).filter((tag) => tag !== sourceLang);
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
 
-  // Map to store allowed variables for each message ID
+  // 2. Prepare Tasks (Fan Out)
+  console.log("Preparing tasks...");
+  const allTasks: WorkerTask[] = [];
+
+  // Pre-calculate valid variables for each message to avoid threading issues later
   const messageVariables = new Map<string, Set<string>>();
 
-  // Helper to extract variables from a pattern
-  const extractVariables = (pattern: any[]) => {
+  for (const bundle of bundles) {
+    const sourceMsg = bundle.messages.find((m: any) => m.locale === sourceLang);
+    if (sourceMsg && sourceMsg.variants[0]) {
       const vars = new Set<string>();
-      for (const node of pattern) {
-          if (node.type === "expression" && (node.arg?.type === "variable" || node.arg?.type === "variable-reference")) {
-              vars.add(node.arg.name);
-          }
+      for (const node of sourceMsg.variants[0].pattern) {
+        if (node.type === "expression" && node.arg?.type === "variable-reference") {
+          vars.add(node.arg.name);
+        }
       }
-      return vars;
-  };
+      messageVariables.set(bundle.id, vars);
+    }
+  }
 
   for (const targetLang of targetLangs) {
-    console.log(`\nProcessing language: ${targetLang}...`);
-
-    const itemsToProcess: { id: string; text: string; bundle: any; current?: string }[] = [];
+    const langItems: TranslationItem[] = [];
 
     for (const bundle of bundles) {
       const sourceMsg = bundle.messages.find((m: any) => m.locale === sourceLang);
       const targetMsg = bundle.messages.find((m: any) => m.locale === targetLang);
 
-      // Extract source text
-      let sourceText = "";
-      if (sourceMsg && sourceMsg.variants[0]) {
-         // Extract allowed variables from source
-         messageVariables.set(bundle.id, extractVariables(sourceMsg.variants[0].pattern));
+      // We need source text
+      if (!sourceMsg || !sourceMsg.variants[0]) continue;
 
-         sourceText = sourceMsg.variants[0].pattern.map((p: any) => {
+      const sourceText = sourceMsg.variants[0].pattern.map((p: any) => {
+        if (p.type === "text") return p.value;
+        if (p.type === "expression") return `{${p.arg.name}}`;
+        return "";
+      }).join("");
+
+      // Logic for inclusion
+      if (isReprocess) {
+        // Reprocess mode: Check existing translations
+        if (targetMsg && targetMsg.variants[0]) {
+          const currentText = targetMsg.variants[0].pattern.map((p: any) => {
             if (p.type === "text") return p.value;
             if (p.type === "expression") return `{${p.arg.name}}`;
             return "";
-        }).join("");
-      }
+          }).join("");
 
-      if (!sourceText) continue;
-
-      if (isReprocess) {
-        // For reprocess, we look for EXISTING translations
-        if (targetMsg) {
-             let currentText = "";
-             if (targetMsg.variants[0]) {
-                currentText = targetMsg.variants[0].pattern.map((p: any) => {
-                    if (p.type === "text") return p.value;
-                    if (p.type === "expression") return `{${p.arg.name}}`;
-                    return "";
-                }).join("");
-             }
-             if (currentText) {
-                 itemsToProcess.push({
-                     id: bundle.id,
-                     text: sourceText,
-                     bundle: bundle,
-                     current: currentText
-                 });
-             }
+          if (currentText) {
+            langItems.push({ id: bundle.id, sourceText, currentText, bundle });
+          }
         }
       } else {
-        // For standard translate, we look for MISSING translations
+        // Translate mode: Only missing translations
         if (!targetMsg) {
-            itemsToProcess.push({ 
-                id: bundle.id, 
-                text: sourceText, 
-                bundle: bundle 
-            });
+          langItems.push({ id: bundle.id, sourceText, bundle });
         }
       }
     }
 
-    if (itemsToProcess.length === 0) {
-      console.log(`No items to process for ${targetLang}.`);
-      continue;
+    // Chunkify
+    for (let i = 0; i < langItems.length; i += BATCH_SIZE) {
+      allTasks.push({
+        lang: targetLang,
+        items: langItems.slice(i, i + BATCH_SIZE)
+      });
     }
-
-    console.log(`Found ${itemsToProcess.length} items for ${targetLang}.`);
-
-    if (isReprocess) {
-        // Process with buffered iterator for parallelism
-        const iterator = createBufferedIterator(
-            itemsToProcess,
-            BATCH_SIZE,
-            (b) => {
-                // Transform for the API
-                const reprocessInput = b.map(item => ({ id: item.id, english: item.text, current: item.current! }));
-                return reprocessBatch(reprocessInput, targetLang);
-            }
-        );
-
-        for await (const { batch, result: results, index, total } of iterator) {
-            console.log(`\n--- Batch ${index + 1} of ${total} Ready ---`);
-            
-            for (const res of results) {
-               const item = batch.find(b => b.id === res.id);
-               if (!item) continue;
-
-               if (res.ok) {
-                   // NOOP
-               } else if (res.newTranslation) {
-                   console.log(`\n----------------------------------------`);
-                   console.log(`Key: ${item.id}`);
-                   console.log(`English: "${item.text}"`);
-                   console.log(`Current: "${item.current}"`);
-                   console.log(`Suggestion: "${res.newTranslation}"`);
-                   console.log(`Reason: ${res.explanation}`);
-                   
-                   const answer = await askQuestion("Approve replacement? (y/N): ", rl);
-                   if (answer.toLowerCase() === 'y') {
-                       console.log(`[${res.id}] Updating...`);
-
-                        const bundle = item.bundle;
-                         const updatedMessages = bundle.messages.map((msg: any) => {
-                             if (msg.locale === targetLang) {
-                                 return {
-                                     ...msg,
-                                     variants: [{
-                                         id: randomUUID(), // New variant ID
-                                         messageId: msg.id,
-                                         matches: [],
-                                         pattern: parsePattern(res.newTranslation!, messageVariables.get(item.id)) 
-                                     }]
-                                 }
-                             }
-                             return msg;
-                         });
-                         
-                         await upsertBundleNested(project.db, { ...bundle, messages: updatedMessages });
-                   } else {
-                       console.log("Skipped.");
-                   }
-               }
-            }
-        }
-    } else {
-        // Standard Translation Logic
-        for (let i = 0; i < itemsToProcess.length; i += BATCH_SIZE) {
-            const batch = itemsToProcess.slice(i, i + BATCH_SIZE);
-            console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1} / ${Math.ceil(itemsToProcess.length / BATCH_SIZE)}`);
-            
-            const results = await translateBatch(batch, targetLang);
-            console.log("Batch results:");
-            let updates = 0;
-            for (const item of results) {
-                const originalTask = batch.find((b) => b.id === item.id);
-                if (originalTask && item.translation) {
-                    console.log(` - ${item.id}: "${item.translation}"`);
-                    const bundle = originalTask.bundle;
-                    
-                    const messageId = randomUUID();
-                    const variantId = randomUUID();
-                    const pattern = parsePattern(item.translation, messageVariables.get(item.id));
-                    
-                    const newMessage = {
-                        id: messageId,
-                        bundleId: bundle.id,
-                        locale: targetLang,
-                        selectors: [],
-                        variants: [
-                            {
-                                id: variantId,
-                                messageId: messageId,
-                                matches: [],
-                                pattern: pattern as any 
-                            }
-                        ]
-                    };
-                    
-                    const updatedBundle = {
-                        ...bundle,
-                        messages: [...bundle.messages, newMessage]
-                    };
-
-                    await upsertBundleNested(project.db, updatedBundle);
-                    updates++;
-                }
-            }
-            console.log(`Updated ${updates} messages.`);
-        }
-    }
-
-    // Explicitly save the project after processing each language to ensure persistence
-    console.log(`Saving progress for ${targetLang}...`);
-    await saveProjectToDirectory({
-       fs: nodeFs,
-       project: project,
-       path: path.resolve(process.cwd(), PROJECT_PATH)
-    });
   }
 
-  console.log("\nDone.");
+  console.log(`Created ${allTasks.length} tasks/chunks across ${targetLangs.length} languages.`);
+  if (allTasks.length === 0) {
+    console.log("Nothing to do.");
+    process.exit(0);
+  }
+
+  // 3. User Interface
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  // 4. Run Pipeline
+  await runPipeline<WorkerTask, WorkerResult>(
+    CONCURRENCY,
+    allTasks,
+    // Processor (Parallel)
+    async (task) => {
+      const lang = task.lang;
+      try {
+        if (isReprocess) {
+          // Prompt for Review
+          const payload = task.items.map(item => ({
+            id: item.id,
+            english: item.sourceText,
+            current: item.currentText!
+          }));
+
+          const prompt = `
+                 You are a professional translator for "Backrest" (a backup tool web UI).
+                 Review these translations for: ${lang}.
+                 ${BACKREST_CONTEXT}
+                 Checks:
+                 1. Accuracy/Terminology.
+                 2. Variable preservation.
+
+                 Leave terms from the restic API e.g. forget, prune, snapshot, repository, etc in English or use the same word in the target language if it is commonly used in that language.
+                 Avoid translation churn. If the translation is already good, leave it.
+                 
+                 If the translation is correct, return an object with id and ok: true.
+                 If the translation is incorrect, return an object with id, newTranslation, and explanation. The explanation should always be in English, and for the reviewer to understand why the translation was changed.
+                 
+                 ${SHARED_RULES}
+                 
+                 Input:
+                 ${JSON.stringify(payload, null, 2)}
+               `;
+
+          const result = await callGemini<any>(prompt, reprocessSchema);
+          return { lang, reviews: result };
+        } else {
+          // Prompt for Translation
+          const payload = task.items.map(item => ({
+            id: item.id,
+            text: item.sourceText,
+          }));
+
+          const prompt = `
+                 You are a professional translator for "Backrest".
+                 Translate to ${lang}.
+                 ${BACKREST_CONTEXT}
+                 
+                 ${SHARED_RULES}
+                 5. Return JSON array with 'id' and 'translation'.
+                 
+                 Input:
+                 ${JSON.stringify(payload, null, 2)}
+               `;
+
+          const result = await callGemini<any>(prompt, translationSchema);
+          return { lang, translations: result };
+        }
+      } catch (e: any) {
+        console.error(`[Processor] Task failed for ${lang}: ${e.message}`);
+        return { lang, translations: [], reviews: [] }; // Return empty on failure to continue pipeline
+      }
+    },
+    // Consumer (Serial)
+    async (result, task) => {
+      let updatesCount = 0;
+
+      if (isReprocess && result.reviews) {
+        for (const review of result.reviews) {
+          // Check if it's the "correction" variant
+          if (!("newTranslation" in review) || !review.newTranslation) continue;
+
+          const item = task.items.find(i => i.id === review.id);
+          if (!item) continue;
+
+          console.log(`\n--- Review Required [${task.lang}] ---`);
+          console.log(`Key       : ${item.id}`);
+          console.log(`English   : ${item.sourceText}`);
+          console.log(`Current   : ${item.currentText}`);
+          console.log(`Suggestion: ${review.newTranslation}`);
+          console.log(`Reason    : ${review.explanation}`);
+
+          const answer = await askQuestion("Accept change? (y/N): ", rl);
+          if (answer.toLowerCase() === 'y') {
+            updatesCount++;
+            await updateBundle(project, item.bundle, task.lang, review.newTranslation, messageVariables.get(item.id));
+            console.log("Updated.");
+          } else {
+            console.log("Skipped.");
+          }
+        }
+      } else if (!isReprocess && result.translations) {
+        for (const trans of result.translations) {
+          const item = task.items.find(i => i.id === trans.id);
+          if (!item) continue;
+
+          updatesCount++;
+          console.log(`[${task.lang}] Auto-translated: ${item.id}`);
+          await updateBundle(project, item.bundle, task.lang, trans.translation, messageVariables.get(item.id));
+        }
+      }
+
+      if (updatesCount > 0) {
+        console.log(`[Consumer] Batch for ${task.lang} processed. ${updatesCount} updates saved to in-memory project.`);
+      }
+    }
+  );
+
+  // 5. Final Save
+  console.log("\nPipeline finished. Saving project to disk...");
+  await saveProjectToDirectory({
+    fs: nodeFs,
+    project: project,
+    path: path.resolve(process.cwd(), PROJECT_PATH)
+  });
+
+  console.log("Done.");
   rl.close();
-  process.exit(0); // Allow pending file writes to complete
+  process.exit(0);
+}
+
+// Helper to upsert
+async function updateBundle(project: any, bundle: any, lang: string, text: string, allowedVars?: Set<string>) {
+  const pattern = parsePattern(text, allowedVars);
+  const messageId = randomUUID();
+  const variantId = randomUUID();
+
+  const newMessage = {
+    id: messageId,
+    bundleId: bundle.id,
+    locale: lang,
+    selectors: [],
+    variants: [{
+      id: variantId,
+      messageId,
+      matches: [],
+      pattern: pattern
+    }]
+  };
+
+  // Remove existing message for this locale if any
+  const otherMessages = bundle.messages.filter((m: any) => m.locale !== lang);
+  const newBundle = {
+    ...bundle,
+    messages: [...otherMessages, newMessage]
+  };
+
+  // Update local reference in case another batch uses it (unlikely with deep cloning, but good practice)
+  bundle.messages = newBundle.messages;
+
+  await upsertBundleNested(project.db, newBundle);
 }
 
 main().catch(console.error);
