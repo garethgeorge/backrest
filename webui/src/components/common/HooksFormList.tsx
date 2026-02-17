@@ -29,6 +29,7 @@ import {
 import { Tooltip } from "../ui/tooltip";
 import { Link } from "../ui/link";
 import { EnumSelector, EnumOption } from "./EnumSelector";
+import * as m from "../../paraglide/messages";
 
 export interface HookFields {
   conditions: string[];
@@ -45,24 +46,23 @@ export interface HookFields {
 
 export const hooksListTooltipText = (
   <Text as="span">
-    Hooks let you configure actions e.g. notifications and scripts that run in
-    response to the backup lifecycle. See{" "}
+    {m.hooks_from_list_a()}
     <Link
       href="https://garethgeorge.github.io/backrest/docs/hooks"
       target="_blank"
       color="blue.500"
     >
-      the hook documentation
-    </Link>{" "}
-    for available options, or{" "}
+      {m.hooks_from_list_b()}
+    </Link>
+    {m.hooks_from_list_c()}
     <Link
       href="https://garethgeorge.github.io/backrest/cookbooks/command-hook-examples"
       target="_blank"
       color="blue.500"
     >
-      the cookbook
-    </Link>{" "}
-    for scripting examples.
+      {m.hooks_from_list_d()}
+    </Link>
+    {m.hooks_from_list_e()}
   </Text>
 );
 
@@ -260,306 +260,306 @@ const hookTypes: {
     onChange: (h: HookFields) => void;
   }) => React.ReactNode;
 }[] = [
-  {
-    name: "Command",
-    template: {
-      actionCommand: {
-        command: "echo {{ .ShellEscape .Summary }}",
+    {
+      name: "Command",
+      template: {
+        actionCommand: {
+          command: "echo {{ .ShellEscape .Summary }}",
+        },
+        conditions: [],
       },
-      conditions: [],
-    },
-    oneofKey: "actionCommand",
-    component: ({ hook, onChange }) => {
-      const updateCommand = (val: string) => {
-        onChange({
-          ...hook,
-          actionCommand: { ...hook.actionCommand, command: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Text fontSize="sm" fontWeight="medium">
-            Script:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionCommand?.command || ""}
-            onChange={(e) => updateCommand(e.target.value)}
-            size="sm"
-          />
-          <ItemOnErrorSelector hook={hook} onChange={onChange} />
-        </Stack>
-      );
-    },
-  },
-  {
-    name: "Shoutrrr",
-    template: {
-      actionShoutrrr: {
-        template: "{{ .Summary }}",
+      oneofKey: "actionCommand",
+      component: ({ hook, onChange }) => {
+        const updateCommand = (val: string) => {
+          onChange({
+            ...hook,
+            actionCommand: { ...hook.actionCommand, command: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Text fontSize="sm" fontWeight="medium">
+              Script:
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionCommand?.command || ""}
+              onChange={(e) => updateCommand(e.target.value)}
+              size="sm"
+            />
+            <ItemOnErrorSelector hook={hook} onChange={onChange} />
+          </Stack>
+        );
       },
-      conditions: [],
     },
-    oneofKey: "actionShoutrrr",
-    component: ({ hook, onChange }) => {
-      const updateShoutrrr = (field: string, val: string) => {
-        onChange({
-          ...hook,
-          actionShoutrrr: { ...hook.actionShoutrrr, [field]: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Input
-            placeholder="Shoutrrr URL"
-            value={hook.actionShoutrrr?.shoutrrrUrl || ""}
-            onChange={(e) => updateShoutrrr("shoutrrrUrl", e.target.value)}
-            size="sm"
-          />
-          <Text fontSize="sm" mt={1}>
-            Text Template:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionShoutrrr?.template || ""}
-            onChange={(e) => updateShoutrrr("template", e.target.value)}
-            size="sm"
-          />
-        </Stack>
-      );
-    },
-  },
-  {
-    name: "Discord",
-    template: {
-      actionDiscord: {
-        webhookUrl: "",
-        template: "{{ .Summary }}",
+    {
+      name: "Shoutrrr",
+      template: {
+        actionShoutrrr: {
+          template: "{{ .Summary }}",
+        },
+        conditions: [],
       },
-      conditions: [],
-    },
-    oneofKey: "actionDiscord",
-    component: ({ hook, onChange }) => {
-      const updateDiscord = (field: string, val: string) => {
-        onChange({
-          ...hook,
-          actionDiscord: { ...hook.actionDiscord, [field]: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Input
-            placeholder="Discord Webhook URL"
-            value={hook.actionDiscord?.webhookUrl || ""}
-            onChange={(e) => updateDiscord("webhookUrl", e.target.value)}
-            size="sm"
-          />
-          <Text fontSize="sm" mt={1}>
-            Text Template:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionDiscord?.template || ""}
-            onChange={(e) => updateDiscord("template", e.target.value)}
-            size="sm"
-          />
-        </Stack>
-      );
-    },
-  },
-  {
-    name: "Gotify",
-    template: {
-      actionGotify: {
-        baseUrl: "",
-        token: "",
-        template: "{{ .Summary }}",
-        titleTemplate:
-          "Backrest {{ .EventName .Event }} in plan {{ .Plan.Id }}",
-        priority: 5,
+      oneofKey: "actionShoutrrr",
+      component: ({ hook, onChange }) => {
+        const updateShoutrrr = (field: string, val: string) => {
+          onChange({
+            ...hook,
+            actionShoutrrr: { ...hook.actionShoutrrr, [field]: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Input
+              placeholder="Shoutrrr URL"
+              value={hook.actionShoutrrr?.shoutrrrUrl || ""}
+              onChange={(e) => updateShoutrrr("shoutrrrUrl", e.target.value)}
+              size="sm"
+            />
+            <Text fontSize="sm" mt={1}>
+              Text Template:
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionShoutrrr?.template || ""}
+              onChange={(e) => updateShoutrrr("template", e.target.value)}
+              size="sm"
+            />
+          </Stack>
+        );
       },
-      conditions: [],
     },
-    oneofKey: "actionGotify",
-    component: ({ hook, onChange }) => {
-      const updateGotify = (field: string, val: any) => {
-        onChange({
-          ...hook,
-          actionGotify: { ...hook.actionGotify, [field]: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Input
-            placeholder="Gotify Base URL"
-            value={hook.actionGotify?.baseUrl || ""}
-            onChange={(e) => updateGotify("baseUrl", e.target.value)}
-            size="sm"
-          />
-          <Input
-            placeholder="Gotify Token"
-            value={hook.actionGotify?.token || ""}
-            onChange={(e) => updateGotify("token", e.target.value)}
-            size="sm"
-          />
-          <Input
-            placeholder="Title Template"
-            value={hook.actionGotify?.titleTemplate || ""}
-            onChange={(e) => updateGotify("titleTemplate", e.target.value)}
-            size="sm"
-          />
-          <Text fontSize="sm" mt={1}>
-            Text Template:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionGotify?.template || ""}
-            onChange={(e) => updateGotify("template", e.target.value)}
-            size="sm"
-          />
-          <EnumSelector
-            options={[
-              { label: "0 - No notification", value: "0" },
-              { label: "1 - Icon in notification bar", value: "1" },
-              { label: "4 - Icon in notification bar + Sound", value: "4" },
-              {
-                label: "8 - Icon in notification bar + Sound + Vibration",
-                value: "8",
-              },
-            ]}
-            value={String(hook.actionGotify?.priority ?? 5)}
-            onChange={(val) =>
-              updateGotify("priority", parseInt(val as string))
-            }
-            placeholder="Priority"
-            size="sm"
-          />
-        </Stack>
-      );
-    },
-  },
-  {
-    name: "Slack",
-    template: {
-      actionSlack: {
-        webhookUrl: "",
-        template: "{{ .Summary }}",
+    {
+      name: "Discord",
+      template: {
+        actionDiscord: {
+          webhookUrl: "",
+          template: "{{ .Summary }}",
+        },
+        conditions: [],
       },
-      conditions: [],
-    },
-    oneofKey: "actionSlack",
-    component: ({ hook, onChange }) => {
-      const updateSlack = (field: string, val: string) => {
-        onChange({
-          ...hook,
-          actionSlack: { ...hook.actionSlack, [field]: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Input
-            placeholder="Slack Webhook URL"
-            value={hook.actionSlack?.webhookUrl || ""}
-            onChange={(e) => updateSlack("webhookUrl", e.target.value)}
-            size="sm"
-          />
-          <Text fontSize="sm" mt={1}>
-            Text Template:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionSlack?.template || ""}
-            onChange={(e) => updateSlack("template", e.target.value)}
-            size="sm"
-          />
-        </Stack>
-      );
-    },
-  },
-  {
-    name: "Healthchecks",
-    template: {
-      actionHealthchecks: {
-        webhookUrl: "",
-        template: "{{ .Summary }}",
+      oneofKey: "actionDiscord",
+      component: ({ hook, onChange }) => {
+        const updateDiscord = (field: string, val: string) => {
+          onChange({
+            ...hook,
+            actionDiscord: { ...hook.actionDiscord, [field]: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Input
+              placeholder="Discord Webhook URL"
+              value={hook.actionDiscord?.webhookUrl || ""}
+              onChange={(e) => updateDiscord("webhookUrl", e.target.value)}
+              size="sm"
+            />
+            <Text fontSize="sm" mt={1}>
+              Text Template:
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionDiscord?.template || ""}
+              onChange={(e) => updateDiscord("template", e.target.value)}
+              size="sm"
+            />
+          </Stack>
+        );
       },
-      conditions: [],
     },
-    oneofKey: "actionHealthchecks",
-    component: ({ hook, onChange }) => {
-      const updateHealthchecks = (field: string, val: string) => {
-        onChange({
-          ...hook,
-          actionHealthchecks: { ...hook.actionHealthchecks, [field]: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Input
-            placeholder="Ping URL"
-            value={hook.actionHealthchecks?.webhookUrl || ""}
-            onChange={(e) => updateHealthchecks("webhookUrl", e.target.value)}
-            size="sm"
-          />
-          <Text fontSize="sm" mt={1}>
-            Text Template:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionHealthchecks?.template || ""}
-            onChange={(e) => updateHealthchecks("template", e.target.value)}
-            size="sm"
-          />
-        </Stack>
-      );
-    },
-  },
-  {
-    name: "Telegram",
-    template: {
-      actionTelegram: {
-        botToken: "",
-        chatId: "",
-        template: "{{ .Summary }}",
+    {
+      name: "Gotify",
+      template: {
+        actionGotify: {
+          baseUrl: "",
+          token: "",
+          template: "{{ .Summary }}",
+          titleTemplate:
+            "Backrest {{ .EventName .Event }} in plan {{ .Plan.Id }}",
+          priority: 5,
+        },
+        conditions: [],
       },
-      conditions: [],
+      oneofKey: "actionGotify",
+      component: ({ hook, onChange }) => {
+        const updateGotify = (field: string, val: any) => {
+          onChange({
+            ...hook,
+            actionGotify: { ...hook.actionGotify, [field]: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Input
+              placeholder="Gotify Base URL"
+              value={hook.actionGotify?.baseUrl || ""}
+              onChange={(e) => updateGotify("baseUrl", e.target.value)}
+              size="sm"
+            />
+            <Input
+              placeholder="Gotify Token"
+              value={hook.actionGotify?.token || ""}
+              onChange={(e) => updateGotify("token", e.target.value)}
+              size="sm"
+            />
+            <Input
+              placeholder="Title Template"
+              value={hook.actionGotify?.titleTemplate || ""}
+              onChange={(e) => updateGotify("titleTemplate", e.target.value)}
+              size="sm"
+            />
+            <Text fontSize="sm" mt={1}>
+              Text Template:
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionGotify?.template || ""}
+              onChange={(e) => updateGotify("template", e.target.value)}
+              size="sm"
+            />
+            <EnumSelector
+              options={[
+                { label: "0 - No notification", value: "0" },
+                { label: "1 - Icon in notification bar", value: "1" },
+                { label: "4 - Icon in notification bar + Sound", value: "4" },
+                {
+                  label: "8 - Icon in notification bar + Sound + Vibration",
+                  value: "8",
+                },
+              ]}
+              value={String(hook.actionGotify?.priority ?? 5)}
+              onChange={(val) =>
+                updateGotify("priority", parseInt(val as string))
+              }
+              placeholder="Priority"
+              size="sm"
+            />
+          </Stack>
+        );
+      },
     },
-    oneofKey: "actionTelegram",
-    component: ({ hook, onChange }) => {
-      const updateTelegram = (field: string, val: string) => {
-        onChange({
-          ...hook,
-          actionTelegram: { ...hook.actionTelegram, [field]: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Input
-            placeholder="Bot Token"
-            value={hook.actionTelegram?.botToken || ""}
-            onChange={(e) => updateTelegram("botToken", e.target.value)}
-            size="sm"
-          />
-          <Input
-            placeholder="Chat ID"
-            value={hook.actionTelegram?.chatId || ""}
-            onChange={(e) => updateTelegram("chatId", e.target.value)}
-            size="sm"
-          />
-          <Text fontSize="sm" mt={1}>
-            Text Template:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionTelegram?.template || ""}
-            onChange={(e) => updateTelegram("template", e.target.value)}
-            size="sm"
-          />
-        </Stack>
-      );
+    {
+      name: "Slack",
+      template: {
+        actionSlack: {
+          webhookUrl: "",
+          template: "{{ .Summary }}",
+        },
+        conditions: [],
+      },
+      oneofKey: "actionSlack",
+      component: ({ hook, onChange }) => {
+        const updateSlack = (field: string, val: string) => {
+          onChange({
+            ...hook,
+            actionSlack: { ...hook.actionSlack, [field]: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Input
+              placeholder="Slack Webhook URL"
+              value={hook.actionSlack?.webhookUrl || ""}
+              onChange={(e) => updateSlack("webhookUrl", e.target.value)}
+              size="sm"
+            />
+            <Text fontSize="sm" mt={1}>
+              Text Template:
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionSlack?.template || ""}
+              onChange={(e) => updateSlack("template", e.target.value)}
+              size="sm"
+            />
+          </Stack>
+        );
+      },
     },
-  },
-];
+    {
+      name: "Healthchecks",
+      template: {
+        actionHealthchecks: {
+          webhookUrl: "",
+          template: "{{ .Summary }}",
+        },
+        conditions: [],
+      },
+      oneofKey: "actionHealthchecks",
+      component: ({ hook, onChange }) => {
+        const updateHealthchecks = (field: string, val: string) => {
+          onChange({
+            ...hook,
+            actionHealthchecks: { ...hook.actionHealthchecks, [field]: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Input
+              placeholder="Ping URL"
+              value={hook.actionHealthchecks?.webhookUrl || ""}
+              onChange={(e) => updateHealthchecks("webhookUrl", e.target.value)}
+              size="sm"
+            />
+            <Text fontSize="sm" mt={1}>
+              Text Template:
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionHealthchecks?.template || ""}
+              onChange={(e) => updateHealthchecks("template", e.target.value)}
+              size="sm"
+            />
+          </Stack>
+        );
+      },
+    },
+    {
+      name: "Telegram",
+      template: {
+        actionTelegram: {
+          botToken: "",
+          chatId: "",
+          template: "{{ .Summary }}",
+        },
+        conditions: [],
+      },
+      oneofKey: "actionTelegram",
+      component: ({ hook, onChange }) => {
+        const updateTelegram = (field: string, val: string) => {
+          onChange({
+            ...hook,
+            actionTelegram: { ...hook.actionTelegram, [field]: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Input
+              placeholder="Bot Token"
+              value={hook.actionTelegram?.botToken || ""}
+              onChange={(e) => updateTelegram("botToken", e.target.value)}
+              size="sm"
+            />
+            <Input
+              placeholder="Chat ID"
+              value={hook.actionTelegram?.chatId || ""}
+              onChange={(e) => updateTelegram("chatId", e.target.value)}
+              size="sm"
+            />
+            <Text fontSize="sm" mt={1}>
+              Text Template:
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionTelegram?.template || ""}
+              onChange={(e) => updateTelegram("template", e.target.value)}
+              size="sm"
+            />
+          </Stack>
+        );
+      },
+    },
+  ];
 
 const findHookTypeName = (field: HookFields): string => {
   if (!field) {
