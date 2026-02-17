@@ -491,7 +491,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
           <AccordionItem value="json-preview">
             <AccordionItemTrigger>
               <CText fontSize="sm" color="fg.muted">
-                Show JSON Preview
+                {m.add_repo_modal_preview_json()}
               </CText>
             </AccordionItemTrigger>
             <AccordionItemContent>

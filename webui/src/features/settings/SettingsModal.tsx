@@ -195,7 +195,7 @@ export const SettingsModal = () => {
     <FormModal
       isOpen={true}
       onClose={handleCancel}
-      title="Settings"
+      title={m.settings_modal_title()}
       size="large"
       footer={
         <Flex gap={2} justify="flex-end" width="full">

@@ -50,7 +50,9 @@ export const LoginModal = () => {
         window.location.reload();
       }, 500);
     } catch (_) {
-      alerts.error(formatErrorAlert(m.login_password_invalid(), m.login_error()));
+      alerts.error(
+        formatErrorAlert(m.login_password_invalid(), m.login_error()),
+      );
       setLoading(false);
     }
   };
@@ -58,7 +60,7 @@ export const LoginModal = () => {
   return (
     <FormModal
       isOpen={true}
-      onClose={() => { }} // Non-closable
+      onClose={() => {}} // Non-closable
       title={m.login_title()}
       size="2xl"
       footer={
