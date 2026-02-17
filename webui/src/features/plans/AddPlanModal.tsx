@@ -311,7 +311,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         </p>
 
         {/* Plan Details */}
-        <Section title="Plan Details">
+        <Section title={m.op_row_backup_details()}>
           <Card.Root variant="subtle">
             <Card.Body>
               <Stack gap={4}>
@@ -358,7 +358,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                     {/* @ts-ignore */}
                     <SelectTrigger>
                       {/* @ts-ignore */}
-                      <SelectValueText placeholder="Select repository" />
+                      <SelectValueText placeholder={m.add_plan_modal_field_repository_select()} />
                     </SelectTrigger>
                     {/* @ts-ignore */}
                     <SelectContent>
@@ -377,13 +377,13 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         </Section>
 
         {/* Scope */}
-        <Section title="Backup Scope">
+        <Section title={m.settings_peer_permission_scopes()}>
           <Card.Root variant="subtle">
             <Card.Body>
               <Stack gap={4}>
                 <DynamicList
                   label={m.add_plan_modal_field_paths()}
-                  tooltip={"Paths to include in snapshots created by this plan"}
+                  tooltip={m.add_plan_modal_field_paths_tooltip()}
                   items={getField(["paths"]) || []}
                   onUpdate={(items: string[]) => updateField(["paths"], items)}
                   required
