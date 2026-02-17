@@ -1,18 +1,47 @@
-FROM golang:1.25-alpine AS builder
+# Stage 1: Web Builder
+FROM node:24-alpine AS web-builder
+WORKDIR /src
+COPY webui ./webui
+WORKDIR /src/webui
+RUN npm install -g pnpm
+RUN pnpm install
+RUN pnpm run build
+
+# Stage 2: Go Builder
+FROM golang:1.24-alpine AS builder
+
 WORKDIR /src
 COPY . .
+# Copy built web assets from web-builder to where go embed expects them
+COPY --from=web-builder /src/webui/dist ./webui/dist
+
+# Magic Args provided by Docker Buildx
+ARG TARGETOS
+ARG TARGETARCH
+ARG VERSION
+
+# Build using the args to cross-compile FAST
+# We map Docker's args to Go's args
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -ldflags="-s -w -X main.version=${VERSION}" -o /backrest ./cmd/backrest
+
 RUN go build -o /docker-entrypoint -ldflags "-s -w" ./cmd/docker-entrypoint
 
-
+# Stage 3: Final Image
 FROM alpine:latest
 LABEL org.opencontainers.image.source="https://github.com/garethgeorge/backrest"
 RUN apk --no-cache add tini ca-certificates curl bash rclone openssh tzdata docker-cli
 RUN mkdir -p /tmp
-COPY backrest /backrest
-RUN /backrest --install-deps-only
-RUN mkdir -p /bin && mv /root/.local/share/backrest/restic /bin/restic
 
+# Copy the binary we built
+COPY --from=builder /backrest /backrest
 COPY --from=builder /docker-entrypoint /docker-entrypoint
+
+# Run the binary to install dependencies (may run via QEMU but necessary)
+RUN /backrest --install-deps-only
+
+# Setup path for restic
+RUN mkdir -p /bin && mv /root/.local/share/backrest/restic /bin/restic
 
 ENTRYPOINT ["/sbin/tini", "--", "/docker-entrypoint"]
 CMD ["/backrest"]

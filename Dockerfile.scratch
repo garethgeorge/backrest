@@ -1,23 +1,59 @@
-FROM golang:1.25-alpine AS builder
+# Stage 1: Web Builder
+FROM node:24-alpine AS web-builder
+WORKDIR /src
+COPY webui ./webui
+WORKDIR /src/webui
+RUN npm install -g pnpm
+RUN pnpm install
+RUN pnpm run build
+
+# Stage 2: Go Builder
+FROM golang:1.24-alpine AS builder
+
 WORKDIR /src
 COPY . .
+# Copy built web assets from web-builder to where go embed expects them
+COPY --from=web-builder /src/webui/dist ./webui/dist
+
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
+ARG VERSION
+
+# Logic to handle ARMv6 specifically
+RUN if [ "$TARGETARCH" = "arm" ] && [ "$TARGETVARIANT" = "v6" ]; then \
+      export GOARM=6; \
+    fi; \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -ldflags="-s -w -X main.version=${VERSION}" -o /backrest ./cmd/backrest
+
 RUN go build -o /docker-entrypoint -ldflags "-s -w" ./cmd/docker-entrypoint
 
+
+# Stage 3: Dependencies (Alpine)
 FROM alpine:latest AS alpine
 RUN apk add --no-cache ca-certificates tini-static
 RUN mkdir /tmp-orig
-COPY backrest /backrest
+
+# Copy binary to run install-deps
+COPY --from=builder /backrest /backrest
 RUN /backrest --install-deps-only
+
+# Setup restic path
 RUN mkdir -p /bin && mv /root/.local/share/backrest/restic /bin/restic
 
+
+# Stage 4: Final Image (Scratch)
 FROM scratch
 LABEL org.opencontainers.image.source="https://github.com/garethgeorge/backrest"
+
 COPY --from=alpine /tmp-orig /tmp
 COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=alpine /bin /bin
+COPY --from=alpine /bin/restic /bin/restic
 COPY --from=alpine /sbin/tini-static /tini
-COPY backrest /backrest
 
+# Copy binaries from builder
+COPY --from=builder /backrest /backrest
 COPY --from=builder /docker-entrypoint /docker-entrypoint
 
 ENTRYPOINT ["/tini", "--", "/docker-entrypoint"]
