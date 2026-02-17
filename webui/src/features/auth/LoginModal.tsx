@@ -8,7 +8,7 @@ import { FormModal } from "../../components/common/FormModal";
 import { Button } from "../../components/ui/button";
 import { Field } from "../../components/ui/field";
 import { InputGroup } from "../../components/ui/input-group";
-import { Input, Flex, Stack } from "@chakra-ui/react";
+import { Input, Stack } from "@chakra-ui/react";
 import { LuUser, LuLock } from "react-icons/lu";
 
 export const LoginModal = () => {
@@ -23,6 +23,15 @@ export const LoginModal = () => {
     if (!username || !password) {
       // basic validation visual feedback handled by 'required' on fields usually,
       // but we can rely on disable logic or just let the user try.
+      if (!username) {
+        alerts.error(
+          formatErrorAlert(m.login_username_required(), m.login_error()),
+        );
+      } else if (!password) {
+        alerts.error(
+          formatErrorAlert(m.login_password_required(), m.login_error()),
+        );
+      }
       return;
     }
 
@@ -40,8 +49,8 @@ export const LoginModal = () => {
       setTimeout(() => {
         window.location.reload();
       }, 500);
-    } catch (e: any) {
-      alerts.error(formatErrorAlert(e, m.login_error()));
+    } catch (_) {
+      alerts.error(formatErrorAlert(m.login_password_invalid(), m.login_error()));
       setLoading(false);
     }
   };
@@ -49,7 +58,7 @@ export const LoginModal = () => {
   return (
     <FormModal
       isOpen={true}
-      onClose={() => {}} // Non-closable
+      onClose={() => { }} // Non-closable
       title={m.login_title()}
       size="2xl"
       footer={
@@ -67,7 +76,7 @@ export const LoginModal = () => {
         <Stack direction="row" gap={4}>
           <Field
             flex={1}
-            label="Username"
+            label={m.login_username_placeholder()}
             required
             errorText={!username ? m.login_username_required() : undefined}
           >
@@ -82,7 +91,7 @@ export const LoginModal = () => {
 
           <Field
             flex={1}
-            label="Password"
+            label={m.login_password_placeholder()}
             required
             errorText={!password ? m.login_password_required() : undefined}
           >

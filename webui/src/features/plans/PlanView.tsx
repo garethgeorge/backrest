@@ -43,7 +43,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const handleBackupNow = async () => {
     try {
       await backrestService.backup(
-        create(BackupRequestSchema, { value: plan.id })
+        create(BackupRequestSchema, { value: plan.id }),
       );
       alerts.success(m.plan_backup_scheduled());
     } catch (e: any) {
@@ -54,7 +54,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const handleDryRunBackup = async () => {
     try {
       await backrestService.backup(
-        create(BackupRequestSchema, { value: plan.id, dryRun: true })
+        create(BackupRequestSchema, { value: plan.id, dryRun: true }),
       );
       alerts.success(m.plan_dry_run_scheduled());
     } catch (e: any) {
