@@ -919,15 +919,15 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               <Card.Body>
                 <Stack gap={2} mb={4}>
                   <span>
-                  {m.add_repo_modal_field_prune_policy_tooltip_p1()}{" "}
-                  <a
-                    href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
-                    target="_blank"
-                    style={{ textDecoration: "underline" }}
-                  >
-                    {m.add_repo_modal_field_prune_policy_tooltip_link()}
-                  </a>{" "}
-                  {m.add_repo_modal_field_prune_policy_tooltip_p2()}
+                    {m.add_repo_modal_field_prune_policy_tooltip_p1()}{" "}
+                    <a
+                      href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
+                      target="_blank"
+                      style={{ textDecoration: "underline" }}
+                    >
+                      {m.add_repo_modal_field_prune_policy_tooltip_link()}
+                    </a>{" "}
+                    {m.add_repo_modal_field_prune_policy_tooltip_p2()}
                   </span>
                 </Stack>
                 <Stack gap={4}>
@@ -957,11 +957,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             </Card.Root>
           </Section>
 
-          <Section
-            title={
-                m.add_repo_modal_field_check_policy()
-            }
-          >
+          <Section title={m.add_repo_modal_field_check_policy()}>
             <Card.Root variant="subtle" size="sm">
               <Card.Body>
                 <Stack gap={2} mb={4}>

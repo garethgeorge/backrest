@@ -156,6 +156,7 @@
   "login_username_placeholder": "Username",
   "login_password_required": "Please input your password!",
   "login_password_placeholder": "Password",
+  "login_password_invalid": "Password is invalid",
   "login_button": "Log in",
   "add_repo_modal_title_edit": "Edit Restic Repository",
   "add_repo_modal_title_add": "Add Restic Repository",

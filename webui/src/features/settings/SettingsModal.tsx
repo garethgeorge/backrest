@@ -240,8 +240,12 @@ export const SettingsModal = () => {
           {/* @ts-ignore */}
           <AccordionItem value="user-settings">
             <AccordionItemTrigger>
-              {// @ts-ignore
-                m.settings_section_user_settings ? m.settings_section_user_settings() : "User Settings"}
+              {
+                // @ts-ignore
+                m.settings_section_user_settings
+                  ? m.settings_section_user_settings()
+                  : "User Settings"
+              }
             </AccordionItemTrigger>
             <AccordionItemContent>
               <Stack gap={4}>
@@ -729,7 +733,8 @@ const languageNames: Record<string, string> = {
 };
 
 const UserSettingsForm = () => {
-  const { preferences, updatePreference, availableLanguages } = useUserPreferences();
+  const { preferences, updatePreference, availableLanguages } =
+    useUserPreferences();
 
   const languageOptions = createListCollection({
     items: availableLanguages.map((tag: string) => ({
@@ -739,9 +744,14 @@ const UserSettingsForm = () => {
   });
 
   return (
-    <Field label={// @ts-ignore
-      m.settings_field_language ? m.settings_field_language() : "Display Language"
-    }>
+    <Field
+      label={
+        // @ts-ignore
+        m.settings_field_language
+          ? m.settings_field_language()
+          : "Display Language"
+      }
+    >
       <SelectRoot
         collection={languageOptions}
         value={[preferences.language]}
@@ -764,4 +774,3 @@ const UserSettingsForm = () => {
     </Field>
   );
 };
-
