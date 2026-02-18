@@ -388,6 +388,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                   onUpdate={(items: string[]) => updateField(["paths"], items)}
                   required
                   autocompleteType="uri"
+                  placeholder={m.add_plan_modal_field_paths()}
                 />
 
                 <DynamicList
@@ -409,7 +410,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                       {m.add_plan_modal_field_excludes_tooltip_suffix()}
                     </>
                   }
-                  placeholder="Exclude Pattern"
+                  placeholder={m.add_plan_modal_field_excludes()}
                 />
 
                 <DynamicList
@@ -431,7 +432,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
                       {m.add_plan_modal_field_excludes_tooltip_suffix()}
                     </>
                   }
-                  placeholder="Case-insensitive Exclude Pattern"
+                  placeholder={m.add_plan_modal_field_iexcludes()}
                 />
               </Stack>
             </Card.Body>
@@ -448,7 +449,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         </Section>
 
         {/* Retention Policy */}
-        <Section title="Retention Policy">
+        <Section title={m.add_plan_modal_retention_policy_label()}>
           <RetentionPolicyView
             schedule={getField(["schedule"])}
             retention={getField(["retention"])}
@@ -457,7 +458,7 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         </Section>
 
         {/* Advanced */}
-        <Section title="Advanced">
+        <Section title={m.add_plan_modal_advanced_label()}>
           <Card.Root variant="subtle">
             <Card.Body>
               <Stack gap={4}>
@@ -590,21 +591,18 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
             {[
               {
                 value: "policyKeepLastN",
-                label: "By Count",
-                tooltip:
-                  "The last N snapshots will be kept by restic. Retention policy is applied to drop older snapshots after each backup run.",
+                label: m.add_plan_modal_retention_policy_mode_count_label(),
+                tooltip: m.add_plan_modal_retention_policy_keep_last_n_tooltip()
               },
               {
                 value: "policyTimeBucketed",
-                label: "By Time Period",
-                tooltip:
-                  "The last N snapshots for each time period will be kept by restic. Retention policy is applied to drop older snapshots after each backup run.",
+                label: m.add_plan_modal_retention_policy_mode_time_label(),
+                tooltip: m.add_plan_modal_retention_policy_time_bucketed_tooltip()
               },
               {
                 value: "policyKeepAll",
-                label: "None",
-                tooltip:
-                  "All backups will be retained. Note that this may result in slow backups if the set of snapshots grows very large.",
+                label: m.add_plan_modal_retention_policy_mode_none_label(),
+                tooltip: m.add_plan_modal_retention_policy_keep_all_tooltip()
               },
             ].map((option) => (
               <Tooltip key={option.value} content={option.tooltip}>
@@ -624,14 +622,13 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
           {/* Mode Content */}
           {mode === "policyKeepAll" && (
             <p>
-              All backups are retained. Warning: this may result in slow backups
-              if the repo grows very large.
+              {m.add_plan_modal_retention_policy_keep_all_warning()}
             </p>
           )}
 
           {mode === "policyKeepLastN" && (
             <NumberInputField
-              label="Keep Last N Snapshots"
+              label={m.add_plan_modal_retention_policy_keep_last_n_snapshots_label()}
               value={retention?.policyKeepLastN || 0}
               onValueChange={(e: any) =>
                 onChange({ ...schedule, policyKeepLastN: e.valueAsNumber })
@@ -642,7 +639,7 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
           {mode === "policyTimeBucketed" && (
             <Grid templateColumns="repeat(3, 180px)" gap={4}>
               <NumberInputField
-                label="Hourly"
+                label={m.add_plan_modal_retention_policy_hourly_label()}
                 value={retention?.policyTimeBucketed?.hourly || 0}
                 onValueChange={(e: any) =>
                   updateRetentionField(
@@ -652,7 +649,7 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
                 }
               />
               <NumberInputField
-                label="Daily"
+                label={m.add_plan_modal_retention_policy_daily_label()}
                 value={retention?.policyTimeBucketed?.daily || 0}
                 onValueChange={(e: any) =>
                   updateRetentionField(
@@ -662,7 +659,7 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
                 }
               />
               <NumberInputField
-                label="Weekly"
+                label={m.add_plan_modal_retention_policy_weekly_label()}
                 value={retention?.policyTimeBucketed?.weekly || 0}
                 onValueChange={(e: any) =>
                   updateRetentionField(
@@ -672,7 +669,7 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
                 }
               />
               <NumberInputField
-                label="Monthly"
+                label={m.add_plan_modal_retention_policy_monthly_label()}
                 value={retention?.policyTimeBucketed?.monthly || 0}
                 onValueChange={(e: any) =>
                   updateRetentionField(
@@ -682,7 +679,7 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
                 }
               />
               <NumberInputField
-                label="Yearly"
+                label={m.add_plan_modal_retention_policy_yearly_label()}
                 value={retention?.policyTimeBucketed?.yearly || 0}
                 onValueChange={(e: any) =>
                   updateRetentionField(
@@ -692,11 +689,11 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
                 }
               />
               <NumberInputField
-                label="Latest (Count)"
+                label={m.add_plan_modal_retention_policy_latest_label()}
                 helperText={
                   cronIsSubHourly
                     ? "Keep recent snapshots (High-frequency schedule detected)"
-                    : "Latest snapshots to keep regardless of age"
+                    : m.add_plan_modal_retention_policy_keep_regardless_label()
                 }
                 value={retention?.policyTimeBucketed?.keepLastN || 0}
                 onValueChange={(e: any) =>

@@ -47,6 +47,7 @@ interface DynamicListProps {
   required?: boolean;
   autocompleteType?: "uri" | "flag" | "none";
 }
+import * as m from "../../paraglide/messages"
 
 const RESTIC_FLAGS = [
   { label: "--cacert <file>", value: "--cacert" },
@@ -274,7 +275,7 @@ export const DynamicList = ({
                 onClick={handleAdd}
                 flex={1}
               >
-                <Plus size={16} /> Add
+                <Plus size={16} /> {m.add_plan_modal_field_add()}
               </Button>
               {/* Placeholder for remove button */}
               <Box width="32px" />

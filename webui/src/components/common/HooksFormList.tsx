@@ -159,7 +159,7 @@ export const HooksFormList = ({
         {/* @ts-ignore */}
         <MenuTrigger asChild>
           <Button variant="outline" borderStyle="dashed" size="sm" width="full">
-            <FiPlus /> Add Hook
+            <FiPlus /> {m.add_plan_modal_field_add_hook()}
           </Button>
         </MenuTrigger>
         {/* @ts-ignore */}
