@@ -108,9 +108,6 @@ EOM
 
   echo "Reloading systemd daemon"
   sudo systemctl daemon-reload
-
-  echo "Enabling systemd service backrest.service"
-  sudo systemctl enable backrest  
 }
 
 create_openrc_service() {
@@ -130,18 +127,18 @@ depend() {
     use net logger
 }
 
+: \${BACKREST_PORT:=${BACKREST_PORT}}
+
 command=/usr/local/bin/backrest
 command_background=true
+command_args="-bind-address \${BACKREST_PORT}"
 pidfile="/run/\${RC_SVCNAME}.pid"
 command_user="$(whoami):$(whoami)"
 supervisor=supervise-daemon
 
-export BACKREST_PORT=$BACKREST_PORT
 EOM
 
   sudo chmod 755 /etc/init.d/backrest
-  echo "Adding backrest to runlevel default"
-  sudo rc-update add backrest default
 }
 
 create_launchd_plist() {
@@ -200,6 +197,9 @@ elif [ "$OS" = "Linux" ]; then
     stop_systemd_service
     install_unix
     create_systemd_service
+
+    echo "Enabling systemd service backrest.service"
+    sudo systemctl enable backrest
     echo "Reloading systemd service"
     sudo systemctl start backrest
   elif [ $openrc_ -eq 0 ]; then
@@ -208,6 +208,9 @@ elif [ "$OS" = "Linux" ]; then
     stop_openrc_service
     install_unix
     create_openrc_service
+
+    echo "Adding backrest to runlevel default"
+    sudo rc-update add backrest default
     echo "Reloading openrc service"
     sudo rc-service backrest start
   else
