@@ -67,28 +67,23 @@ export const hooksListTooltipText = (
 );
 
 const hookConditionDescriptions: Record<string, string> = {
-  CONDITION_SNAPSHOT_START:
-    "Triggered when a backup operation begins and must complete successfully before the snapshot will begin.",
-  CONDITION_SNAPSHOT_END:
-    "Triggered when a backup operation completes (regardless of success/failure)",
-  CONDITION_SNAPSHOT_SUCCESS:
-    "Triggered when a backup operation completes successfully",
-  CONDITION_SNAPSHOT_ERROR: "Triggered when a backup operation fails",
-  CONDITION_SNAPSHOT_WARNING:
-    "Triggered when a backup operation encounters non-fatal issues",
-  CONDITION_PRUNE_START: "Triggered when a prune operation begins",
-  CONDITION_PRUNE_SUCCESS:
-    "Triggered when a prune operation completes successfully",
-  CONDITION_PRUNE_ERROR: "Triggered when a prune operation fails",
-  CONDITION_CHECK_START: "Triggered when a check operation begins",
-  CONDITION_CHECK_SUCCESS:
-    "Triggered when a check operation completes successfully",
-  CONDITION_CHECK_ERROR: "Triggered when a check operation fails",
-  CONDITION_FORGET_START: "Triggered when a forget operation begins",
-  CONDITION_FORGET_SUCCESS:
-    "Triggered when a forget operation completes successfully",
-  CONDITION_FORGET_ERROR: "Triggered when a forget operation fails",
-  CONDITION_ANY_ERROR: "Triggered when any operation fails",
+  CONDITION_SNAPSHOT_START: m.repo_hooks_command_runs_condition_snapshot_start(),
+  CONDITION_SNAPSHOT_END: m.repo_hooks_command_runs_condition_snapshot_end(),
+  CONDITION_SNAPSHOT_SUCCESS: m.repo_hooks_command_runs_condition_snapshot_success(),
+  CONDITION_SNAPSHOT_ERROR: m.repo_hooks_command_runs_condition_snapshot_error(),
+  CONDITION_SNAPSHOT_WARNING: m.repo_hooks_command_runs_condition_snapshot_warning(),
+  CONDITION_SNAPSHOT_SKIPPED: m.repo_hooks_command_runs_condition_snapshot_skipped(),
+  CONDITION_PRUNE_START: m.repo_hooks_command_runs_condition_prune_start(),
+  CONDITION_PRUNE_SUCCESS: m.repo_hooks_command_runs_condition_prune_success(),
+  CONDITION_PRUNE_ERROR: m.repo_hooks_command_runs_condition_prune_error(),
+  CONDITION_CHECK_START: m.repo_hooks_command_runs_condition_check_start(),
+  CONDITION_CHECK_SUCCESS: m.repo_hooks_command_runs_condition_check_success(),
+  CONDITION_CHECK_ERROR: m.repo_hooks_command_runs_condition_check_error(),
+  CONDITION_FORGET_START: m.repo_hooks_command_runs_condition_forget_start(),
+  CONDITION_FORGET_SUCCESS: m.repo_hooks_command_runs_condition_forget_success(),
+  CONDITION_FORGET_ERROR: m.repo_hooks_command_runs_condition_forget_error(),
+  CONDITION_ANY_ERROR: m.repo_hooks_command_runs_condition_any_error(),
+  CONDITION_UNKNOWN: m.repo_hooks_command_runs_condition_unknown(),
 };
 
 const conditionOptions: EnumOption<string>[] = Hook_ConditionSchema.values.map(
@@ -236,7 +231,7 @@ const HookItem = ({
               options={conditionOptions}
               value={hook.conditions}
               onChange={handleConditionChange}
-              placeholder="Runs when..."
+              placeholder={m.repo_hooks_command_runs_when()}
               size="sm"
             />
           </Box>
@@ -261,7 +256,7 @@ const hookTypes: {
   }) => React.ReactNode;
 }[] = [
     {
-      name: "Command",
+      name: m.repo_hooks_command_label(),
       template: {
         actionCommand: {
           command: "echo {{ .ShellEscape .Summary }}",
@@ -279,7 +274,7 @@ const hookTypes: {
         return (
           <Stack gap={2}>
             <Text fontSize="sm" fontWeight="medium">
-              Script:
+              {m.repo_hooks_command_script_label()}
             </Text>
             <Textarea
               fontFamily="monospace"
@@ -317,7 +312,7 @@ const hookTypes: {
               size="sm"
             />
             <Text fontSize="sm" mt={1}>
-              Text Template:
+              {m.repo_hooks_command_template_label()}
             </Text>
             <Textarea
               fontFamily="monospace"
@@ -355,7 +350,7 @@ const hookTypes: {
               size="sm"
             />
             <Text fontSize="sm" mt={1}>
-              Text Template:
+              {m.repo_hooks_command_template_label()}
             </Text>
             <Textarea
               fontFamily="monospace"
@@ -409,7 +404,7 @@ const hookTypes: {
               size="sm"
             />
             <Text fontSize="sm" mt={1}>
-              Text Template:
+              {m.repo_hooks_command_template_label()}
             </Text>
             <Textarea
               fontFamily="monospace"
@@ -464,7 +459,7 @@ const hookTypes: {
               size="sm"
             />
             <Text fontSize="sm" mt={1}>
-              Text Template:
+              {m.repo_hooks_command_template_label()}
             </Text>
             <Textarea
               fontFamily="monospace"
@@ -477,7 +472,7 @@ const hookTypes: {
       },
     },
     {
-      name: "Healthchecks",
+      name: m.repo_hooks_healthchecks_label(),
       template: {
         actionHealthchecks: {
           webhookUrl: "",
@@ -502,7 +497,7 @@ const hookTypes: {
               size="sm"
             />
             <Text fontSize="sm" mt={1}>
-              Text Template:
+              {m.repo_hooks_command_template_label()}
             </Text>
             <Textarea
               fontFamily="monospace"
@@ -547,7 +542,7 @@ const hookTypes: {
               size="sm"
             />
             <Text fontSize="sm" mt={1}>
-              Text Template:
+              {m.repo_hooks_command_template_label()}
             </Text>
             <Textarea
               fontFamily="monospace"
@@ -604,19 +599,19 @@ const ItemOnErrorSelector = ({
     <Stack gap={2}>
       <Flex align="center" gap={1}>
         <Text fontSize="sm" fontWeight="medium">
-          Error Behavior:
+          {m.repo_hooks_command_error_label()}
         </Text>
         <Tooltip
           content={
             <Box>
-              <Text fontWeight="bold">What happens when the hook fails</Text>
+              <Text fontWeight="bold">{m.repo_hooks_command_error_info_what()}</Text>
               <Text fontSize="xs">
-                (only effective on start hooks e.g. backup start)
+                {m.repo_hooks_command_error_info_only()}
               </Text>
               <Stack gap={1} mt={1} fontSize="xs">
-                <Text>• IGNORE - failure is ignored</Text>
-                <Text>• FATAL - stops operation with error</Text>
-                <Text>• CANCEL - stops operation (cancelled)</Text>
+                <Text>• {m.repo_hooks_command_error_info_ignore()}</Text>
+                <Text>• {m.repo_hooks_command_error_info_fatal()}</Text>
+                <Text>• {m.repo_hooks_command_error_info_cancel()}</Text>
               </Stack>
             </Box>
           }
@@ -630,7 +625,7 @@ const ItemOnErrorSelector = ({
         options={onErrorOptions}
         value={hook.onError || ""}
         onChange={(val) => onChange({ ...hook, onError: val as string })}
-        placeholder="Error behavior..."
+        placeholder={m.repo_hooks_command_error_tooltip()}
         size="sm"
       />
     </Stack>
@@ -642,18 +637,18 @@ const HookConditionsTooltip = ({ children }: { children: React.ReactNode }) => {
     <Tooltip
       content={
         <Box>
-          <Text fontWeight="bold">Available conditions</Text>
+          <Text fontWeight="bold">{m.repo_hooks_command_runs_info_available()}</Text>
           <Stack gap={0} fontSize="xs">
-            <Text>• CONDITION_ANY_ERROR - error executing any task</Text>
+            <Text>• {m.repo_hooks_command_runs_info_any_error()}</Text>
             <Text>
-              • CONDITION_SNAPSHOT_START - start of a backup operation
+              • {m.repo_hooks_command_runs_info_start()}
             </Text>
-            <Text>• CONDITION_SNAPSHOT_END - end of backup operation</Text>
-            <Text>• CONDITION_SNAPSHOT_SUCCESS - end of successful backup</Text>
-            <Text>• CONDITION_SNAPSHOT_ERROR - end of failed backup</Text>
-            <Text>• CONDITION_SNAPSHOT_WARNING - end of partial backup</Text>
-            <Text>• CONDITION_PRUNE_START - start of prune operation</Text>
-            <Text>• ... see docs for more</Text>
+            <Text>• {m.repo_hooks_command_runs_info_end()}</Text>
+            <Text>• {m.repo_hooks_command_runs_info_success()}</Text>
+            <Text>• {m.repo_hooks_command_runs_info_error()}</Text>
+            <Text>• {m.repo_hooks_command_runs_info_warning()}</Text>
+            <Text>• {m.repo_hooks_command_runs_info_prune_start()}</Text>
+            <Text>• {m.repo_hooks_command_runs_info_docs()}</Text>
           </Stack>
         </Box>
       }

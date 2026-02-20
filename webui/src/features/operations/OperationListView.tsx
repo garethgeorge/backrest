@@ -18,6 +18,7 @@ import {
   PaginationNextTrigger,
   PaginationPrevTrigger,
 } from "../../components/ui/pagination";
+import * as m from "../../paraglide/messages"
 
 // OperationList displays a list of operations that are either fetched based on 'req' or passed in via 'useBackups'.
 // If showPlan is provided the planId will be displayed next to each operation in the operation list.
@@ -99,8 +100,8 @@ export const OperationListView = ({
     }
     return (
       <EmptyState
-        title="No operations yet"
-        description="Operations will appear here once they start."
+        title={m.repo_command_no()}
+        description={m.repo_command_no_op()}
         icon={<FiList />}
       />
     );

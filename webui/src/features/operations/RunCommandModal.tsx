@@ -50,7 +50,7 @@ export const RunCommandModal = ({ repo }: { repo: RepoProps }) => {
     <FormModal
       isOpen={true}
       onClose={handleCancel}
-      title={`Run Command in repo ${repo.id}`}
+      title={`${m.repo_command_run()} ${repo.id}`}
       size="large"
       footer={
         <Button variant="ghost" onClick={handleCancel}>
@@ -61,7 +61,7 @@ export const RunCommandModal = ({ repo }: { repo: RepoProps }) => {
       <Stack gap={4}>
         <Group attached>
           <Input
-            placeholder="Run a restic command e.g. 'help' to print help text"
+            placeholder={m.repo_command_tooltip()}
             value={command}
             onChange={(e) => setCommand(e.target.value)}
             onKeyUp={(e) => {
@@ -71,7 +71,7 @@ export const RunCommandModal = ({ repo }: { repo: RepoProps }) => {
             }}
           />
           <Button loading={running} onClick={doExecute}>
-            Execute
+            {m.repo_command_button_execute()}
           </Button>
         </Group>
 
