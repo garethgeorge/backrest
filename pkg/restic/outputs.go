@@ -287,22 +287,29 @@ func (e *LsEntry) ToProto() *v1.LsEntry {
 }
 
 func readLs(output io.Reader) (*Snapshot, []*LsEntry, error) {
-	scanner := bufio.NewScanner(output)
-	scanner.Split(bufio.ScanLines)
+	reader := bufio.NewReader(output)
 
-	if !scanner.Scan() {
-		return nil, nil, fmt.Errorf("failed to read first line, expected snapshot info")
+	bytes, err := reader.ReadBytes('\n')
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read first line, expected snapshot info: %w", err)
 	}
 
 	var snapshot *Snapshot
-	if err := json.Unmarshal(scanner.Bytes(), &snapshot); err != nil {
+	if err := json.Unmarshal(bytes, &snapshot); err != nil {
 		return nil, nil, fmt.Errorf("failed to parse JSON: %w", err)
 	}
 
 	var entries []*LsEntry
-	for scanner.Scan() {
+	for {
+		bytes, err := reader.ReadBytes('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, nil, fmt.Errorf("failed to read bytes: %w", err)
+		}
 		var entry *LsEntry
-		if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
+		if err := json.Unmarshal(bytes, &entry); err != nil {
 			return nil, nil, fmt.Errorf("failed to parse JSON: %w", err)
 		}
 		entries = append(entries, entry)
