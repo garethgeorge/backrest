@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.13.0](https://github.com/garethgeorge/backrest/compare/v1.12.0...v1.13.0) (2026-02-22)
+
+
+### Features
+
+* add new translation strings and expand Japanese language translations ([#1120](https://github.com/garethgeorge/backrest/issues/1120)) ([7f050d2](https://github.com/garethgeorge/backrest/commit/7f050d2fae6ab6a2a26b53de0dbac2043ee1cddb))
+
+
+### Bug Fixes
+
+* ensure that docker images package the latest rclone ([#1128](https://github.com/garethgeorge/backrest/issues/1128)) ([4734bc2](https://github.com/garethgeorge/backrest/commit/4734bc21b7940775d69920b1ca9a48e031763d71))
+* use LLM to generate more consistent translations ([#1103](https://github.com/garethgeorge/backrest/issues/1103)) ([0199440](https://github.com/garethgeorge/backrest/commit/0199440780418177452f0c9fcad945a549f8f95f))
+
 ## [1.12.0](https://github.com/garethgeorge/backrest/compare/v1.11.2...v1.12.0) (2026-02-22)
 
 
