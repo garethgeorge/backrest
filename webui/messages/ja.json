@@ -1,5 +1,5 @@
 {
-  "$schema": "https://inlang.org/schema/inlang-message-format",
+  "$schema": "https://inlang.com/schema/inlang-message-format",
   "example_message": "こんにちは、{username}",
   "add_plan_modal_error_template_not_found": "テンプレートは見つかりませんでした",
   "add_plan_modal_error_plan_delete_not_found": "構成の更新に失敗し、削除対象は見つかりませんでした",
@@ -454,5 +454,9 @@
   "app_menu_edit_plan": "app_menu_edit_plan",
   "add_repo_modal_field_auto_unlock_tooltip": "自動ロック解除は、ほとんどの操作開始時にアクセス権ファイルを削除します。リポジトリが複数のクライアントデバイスで共有されている場合には危険を伴うため、単一ユーザー環境でのみ使用することが推奨されます。",
   "op_row_cancel_op": "操作を中止する",
-  "op_row_confirm_cancel": "本当にキャンセルしますか"
+  "op_row_confirm_cancel": "本当にキャンセルしますか",
+  "add_repo_modal_field_prune_policy_heading": "Prune ポリシー",
+  "add_repo_modal_field_prune_policy_help": "Prune操作は、参照されていないデータ（例：忘れられたスナップショットなど）をresticリポジトリから削除します。これはresticがストレージからデータを削除する唯一のタイミングです。Pruneは頻繁に実行すべきではなく、月に一度程度が良い目安です。",
+  "add_repo_modal_field_check_policy_heading": "Check ポリシー",
+  "add_repo_modal_field_check_policy_help": "Check操作は、resticリポジトリの整合性を検証します。これらは頻繁に実行すべきではなく、月に一度程度が良い目安です。Checkは、最低限、リポジトリの構造を検証します。オプションで、Checkはパックデータを再ダウンロードしてチェックサムを検証することもできます。これは、ストレージがビット反転やサイレントデータ損失の影響を受けやすい場合に役立ちます。"
 }

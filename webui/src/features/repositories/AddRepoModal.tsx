@@ -913,136 +913,125 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               </Card.Body>
             </Card.Root>
           </Section>
+        <Section
+          title={m.add_repo_modal_field_prune_policy_heading()}
+          help={m.add_repo_modal_field_prune_policy_help()}
+        >
+          <Card.Root variant="subtle" size="sm">
+            <Card.Body>
+              <Stack gap={4}>
+                <NumberInputField
+                  label={m.add_repo_modal_field_max_unused()}
+                  helperText={m.add_repo_modal_field_max_unused_tooltip()}
+                  value={getField(["prunePolicy", "maxUnusedPercent"])}
+                  onValueChange={(e: {
+                    value: string;
+                    valueAsNumber: number;
+                  }) =>
+                    updateField(
+                      ["prunePolicy", "maxUnusedPercent"],
+                      e.valueAsNumber,
+                    )
+                  }
+                />
+                <ScheduleFormItem
+                  value={getField(["prunePolicy", "schedule"])}
+                  onChange={(val: any) =>
+                    updateField(["prunePolicy", "schedule"], val)
+                  }
+                  defaults={ScheduleDefaultsInfrequent}
+                />
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+        </Section>
 
-          <Section title={m.add_repo_modal_field_prune_policy()}>
-            <Card.Root variant="subtle" size="sm">
-              <Card.Body>
-                <Stack gap={2} mb={4}>
-                  <span>
-                    {m.add_repo_modal_field_prune_policy_tooltip_p1()}{" "}
-                    <a
-                      href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
-                      target="_blank"
-                      style={{ textDecoration: "underline" }}
-                    >
-                      {m.add_repo_modal_field_prune_policy_tooltip_link()}
-                    </a>{" "}
-                    {m.add_repo_modal_field_prune_policy_tooltip_p2()}
-                  </span>
-                </Stack>
-                <Stack gap={4}>
-                  <NumberInputField
-                    label={m.add_repo_modal_field_max_unused()}
-                    helperText={m.add_repo_modal_field_max_unused_tooltip()}
-                    value={getField(["prunePolicy", "maxUnusedPercent"])}
-                    onValueChange={(e: {
-                      value: string;
-                      valueAsNumber: number;
-                    }) =>
-                      updateField(
-                        ["prunePolicy", "maxUnusedPercent"],
-                        e.valueAsNumber,
-                      )
-                    }
-                  />
-                  <ScheduleFormItem
-                    value={getField(["prunePolicy", "schedule"])}
-                    onChange={(val: any) =>
-                      updateField(["prunePolicy", "schedule"], val)
-                    }
-                    defaults={ScheduleDefaultsInfrequent}
-                  />
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-          </Section>
+        <Section
+          title={m.add_repo_modal_field_check_policy_heading()}
+          help={m.add_repo_modal_field_check_policy_help()}
+        >
+          <Card.Root variant="subtle" size="sm">
+            <Card.Body>
+              <Stack gap={4}>
+                <NumberInputField
+                  label={m.add_repo_modal_field_read_data()}
+                  helperText={m.add_repo_modal_field_read_data_tooltip()}
+                  value={getField(["checkPolicy", "readDataSubsetPercent"])}
+                  onValueChange={(e: {
+                    value: string;
+                    valueAsNumber: number;
+                  }) =>
+                    updateField(
+                      ["checkPolicy", "readDataSubsetPercent"],
+                      e.valueAsNumber,
+                    )
+                  }
+                />
+                <ScheduleFormItem
+                  value={getField(["checkPolicy", "schedule"])}
+                  onChange={(val: any) =>
+                    updateField(["checkPolicy", "schedule"], val)
+                  }
+                  defaults={ScheduleDefaultsInfrequent}
+                />
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+        </Section>
 
-          <Section title={m.add_repo_modal_field_check_policy()}>
-            <Card.Root variant="subtle" size="sm">
-              <Card.Body>
-                <Stack gap={2} mb={4}>
-                  <span>{m.add_repo_modal_field_check_policy_tooltip()}</span>
-                </Stack>
-                <Stack gap={4}>
-                  <NumberInputField
-                    label={m.add_repo_modal_field_read_data()}
-                    helperText={m.add_repo_modal_field_read_data_tooltip()}
-                    value={getField(["checkPolicy", "readDataSubsetPercent"])}
-                    onValueChange={(e: {
-                      value: string;
-                      valueAsNumber: number;
-                    }) =>
-                      updateField(
-                        ["checkPolicy", "readDataSubsetPercent"],
-                        e.valueAsNumber,
-                      )
-                    }
-                  />
-                  <ScheduleFormItem
-                    value={getField(["checkPolicy", "schedule"])}
-                    onChange={(val: any) =>
-                      updateField(["checkPolicy", "schedule"], val)
-                    }
-                    defaults={ScheduleDefaultsInfrequent}
-                  />
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-          </Section>
+        <Section title="Advanced">
+          <Card.Root variant="subtle">
+            <Card.Body>
+              <Stack gap={4} width="full">
+                {!isWindows && (
+                  <Field label={m.add_repo_modal_field_command_modifiers()}>
+                    <Grid templateColumns="1fr 1fr" gap={4} width="full">
+                      <Field
+                        label={m.add_repo_modal_field_io_priority()}
+                        helperText={m.add_repo_modal_field_io_priority_tooltip_intro()}
+                      >
+                        <EnumSelector
+                          options={ioNiceOptions}
+                          size="sm"
+                          value={getField(["commandPrefix", "ioNice"])}
+                          onChange={(val) =>
+                            updateField(
+                              ["commandPrefix", "ioNice"],
+                              val as string,
+                            )
+                          }
+                          placeholder={m.add_repo_modal_field_io_priority_placeholder()}
+                        />
+                      </Field>
+                      <Field
+                        label={m.add_repo_modal_field_cpu_priority()}
+                        helperText={m.add_repo_modal_field_cpu_priority_tooltip_intro()}
+                      >
+                        <EnumSelector
+                          options={cpuNiceOptions}
+                          size="sm"
+                          value={getField(["commandPrefix", "cpuNice"])}
+                          onChange={(val) =>
+                            updateField(
+                              ["commandPrefix", "cpuNice"],
+                              val as string,
+                            )
+                          }
+                          placeholder={m.add_repo_modal_field_cpu_priority_placeholder()}
+                        />
+                      </Field>
+                    </Grid>
+                  </Field>
+                )}
 
-          <Section title={m.add_plan_modal_advanced_label()}>
-            <Card.Root variant="subtle">
-              <Card.Body>
-                <Stack gap={4} width="full">
-                  {!isWindows && (
-                    <Field label={m.add_repo_modal_field_command_modifiers()}>
-                      <Grid templateColumns="1fr 1fr" gap={4} width="full">
-                        <Field
-                          label={m.add_repo_modal_field_io_priority()}
-                          helperText={m.add_repo_modal_field_io_priority_tooltip_intro()}
-                        >
-                          <EnumSelector
-                            options={ioNiceOptions}
-                            size="sm"
-                            value={getField(["commandPrefix", "ioNice"])}
-                            onChange={(val) =>
-                              updateField(
-                                ["commandPrefix", "ioNice"],
-                                val as string,
-                              )
-                            }
-                            placeholder={m.add_repo_modal_field_io_priority_placeholder()}
-                          />
-                        </Field>
-                        <Field
-                          label={m.add_repo_modal_field_cpu_priority()}
-                          helperText={m.add_repo_modal_field_cpu_priority_tooltip_intro()}
-                        >
-                          <EnumSelector
-                            options={cpuNiceOptions}
-                            size="sm"
-                            value={getField(["commandPrefix", "cpuNice"])}
-                            onChange={(val) =>
-                              updateField(
-                                ["commandPrefix", "cpuNice"],
-                                val as string,
-                              )
-                            }
-                            placeholder={m.add_repo_modal_field_cpu_priority_placeholder()}
-                          />
-                        </Field>
-                      </Grid>
-                    </Field>
-                  )}
-
-                  <Field
-                    label={m.add_plan_modal_field_hooks()}
-                    helperText={hooksListTooltipText}
-                  >
-                    <HooksFormList
-                      value={getField(["hooks"])}
-                      onChange={(v: any) => updateField(["hooks"], v)}
-                    />
+                <Field
+                  label={m.add_plan_modal_field_hooks()}
+                  helperText={hooksListTooltipText}
+                >
+                  <HooksFormList
+                    value={getField(["hooks"])}
+                    onChange={(v: any) => updateField(["hooks"], v)}
+                  />
                   </Field>
                 </Stack>
               </Card.Body>
@@ -1079,15 +1068,24 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
 
 const Section = ({
   title,
+  help,
   children,
 }: {
   title: React.ReactNode;
+  help?: React.ReactNode;
   children: React.ReactNode;
 }) => (
   <Stack gap={2}>
-    <CText fontWeight="semibold" fontSize="sm">
-      {title}
-    </CText>
+    <Stack gap={0}>
+      <CText fontWeight="semibold" fontSize="sm">
+        {title}
+      </CText>
+      {help && (
+        <CText fontSize="sm" color="fg.muted">
+          {help}
+        </CText>
+      )}
+    </Stack>
     {children}
   </Stack>
 );
