@@ -17,7 +17,7 @@ import * as readline from "node:readline";
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 const PROJECT_PATH = "./project.inlang";
-const MODEL_NAME = "gemini-2.5-flash";
+const MODEL_NAME = "gemini-3-flash-preview";
 const BATCH_SIZE = 32;
 const CONCURRENCY = 4; // Max simultaneous Gemini requests per language
 
