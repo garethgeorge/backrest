@@ -18,7 +18,7 @@ const defaultPreferences: UserPreferences = {
 
 export const useUserPreferences = () => {
   const [preferences, setPreferences] = useState<UserPreferences>(() => ({
-      language: getLocale(),
+    language: getLocale(),
   }));
 
   const updatePreference = <K extends keyof UserPreferences>(
@@ -34,8 +34,6 @@ export const useUserPreferences = () => {
       setLocale(value as string, { reload: false });
     }
   };
-
-
 
   // Sync initial state if needed
   useEffect(() => {

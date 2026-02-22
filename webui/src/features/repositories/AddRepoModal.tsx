@@ -175,9 +175,9 @@ const SftpConfigSection = ({
       }
       alerts.success(
         "Created SSH keypair at " +
-          res.keyPath +
-          " and updated known hosts file at " +
-          res.knownHostsPath,
+        res.keyPath +
+        " and updated known hosts file at " +
+        res.knownHostsPath,
       );
       alerts.success(
         "Updated restic flags to use the SSH keypair and known hosts file.",
@@ -314,7 +314,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     open: false,
     title: "",
     content: null,
-    onOk: () => {},
+    onOk: () => { },
   });
 
   useEffect(() => {
@@ -739,7 +739,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             {m.add_repo_modal_guide_text_p3()}
           </p>
 
-          <Section title="Repo Details">
+          <Section title={m.add_repo_modal_repo_details()}>
             <Card.Root variant="subtle">
               <Card.Body>
                 <Stack gap={4}>
@@ -882,7 +882,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             </Card.Root>
           </Section>
 
-          <Section title="Environment & Flags">
+          <Section title={m.add_repo_modal_env_and_flags()}>
             <Card.Root variant="subtle">
               <Card.Body>
                 <Stack gap={4}>
@@ -919,15 +919,15 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               <Card.Body>
                 <Stack gap={2} mb={4}>
                   <span>
-                  {m.add_repo_modal_field_prune_policy_tooltip_p1()}{" "}
-                  <a
-                    href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
-                    target="_blank"
-                    style={{ textDecoration: "underline" }}
-                  >
-                    {m.add_repo_modal_field_prune_policy_tooltip_link()}
-                  </a>{" "}
-                  {m.add_repo_modal_field_prune_policy_tooltip_p2()}
+                    {m.add_repo_modal_field_prune_policy_tooltip_p1()}{" "}
+                    <a
+                      href="https://restic.readthedocs.io/en/stable/060_forget.html#customize-pruning"
+                      target="_blank"
+                      style={{ textDecoration: "underline" }}
+                    >
+                      {m.add_repo_modal_field_prune_policy_tooltip_link()}
+                    </a>{" "}
+                    {m.add_repo_modal_field_prune_policy_tooltip_p2()}
                   </span>
                 </Stack>
                 <Stack gap={4}>
@@ -957,11 +957,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             </Card.Root>
           </Section>
 
-          <Section
-            title={
-                m.add_repo_modal_field_check_policy()
-            }
-          >
+          <Section title={m.add_repo_modal_field_check_policy()}>
             <Card.Root variant="subtle" size="sm">
               <Card.Body>
                 <Stack gap={2} mb={4}>
@@ -994,7 +990,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             </Card.Root>
           </Section>
 
-          <Section title="Advanced">
+          <Section title={m.add_plan_modal_advanced_label()}>
             <Card.Root variant="subtle">
               <Card.Body>
                 <Stack gap={4} width="full">
@@ -1184,9 +1180,9 @@ const checkSchemeEnvVars = async (
 
   throw new Error(
     "Missing env vars " +
-      formatMissingEnvVars(missingVarsCollection) +
-      " for scheme " +
-      scheme,
+    formatMissingEnvVars(missingVarsCollection) +
+    " for scheme " +
+    scheme,
   );
 };
 

@@ -19,6 +19,7 @@ import { useConfig } from "../../app/provider";
 import { ConfigSchema } from "../../../gen/ts/v1/config_pb";
 import { isDevBuild } from "../../state/buildcfg";
 import { toJsonString } from "@bufbuild/protobuf";
+import * as m from "../../paraglide/messages";
 
 export const GettingStartedGuide = () => {
   const [config] = useConfig();
@@ -35,7 +36,7 @@ export const GettingStartedGuide = () => {
   return (
     <Box>
       <Heading size="xl" mb={4}>
-        Getting Started
+        {m.dashboard_getting_started_title()}
       </Heading>
 
       <Text mb={4}>
@@ -44,72 +45,57 @@ export const GettingStartedGuide = () => {
           target="_blank"
           colorPalette="blue"
         >
-          Check for new Backrest releases on GitHub
+          {m.dashboard_getting_started_check()}
         </Link>
       </Text>
 
-      <DividerWithText>Overview</DividerWithText>
+      <DividerWithText>
+        {m.dashboard_getting_started_overview()}
+      </DividerWithText>
 
       <List.Root gap={2} ml={5} as="ul" listStyleType="disc">
+        <List.Item>{m.dashboard_getting_started_overview_a()}</List.Item>
+        <List.Item>{m.dashboard_getting_started_overview_b()}</List.Item>
         <List.Item>
-          Repos map directly to restic repositories, start by configuring your
-          backup locations.
-        </List.Item>
-        <List.Item>
-          Plans are where you configure directories to backup, and backup
-          scheduling. Multiple plans can backup to a single restic repository.
-        </List.Item>
-        <List.Item>
-          See{" "}
+          {m.dashboard_getting_started_overview_c_a()}
           <Link
             href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html"
             target="_blank"
             colorPalette="blue"
           >
-            the restic docs on preparing a new repository
-          </Link>{" "}
-          for details about available repository types and how they can be
-          configured.
+            {m.dashboard_getting_started_overview_c_b()}
+          </Link>
+          {m.dashboard_getting_started_overview_c_c()}
         </List.Item>
         <List.Item>
-          See{" "}
+          {m.dashboard_getting_started_overview_d_a()}
           <Link
             href="https://garethgeorge.github.io/backrest"
             target="_blank"
             colorPalette="blue"
           >
-            the Backrest wiki
-          </Link>{" "}
-          for instructions on how to configure Backrest.
+            {m.dashboard_getting_started_overview_d_b()}
+          </Link>
+          {m.dashboard_getting_started_overview_d_c()}
         </List.Item>
       </List.Root>
 
-      <DividerWithText>Tips</DividerWithText>
+      <DividerWithText>{m.dashboard_getting_started_tips()}</DividerWithText>
 
       <List.Root gap={2} ml={5} as="ul" listStyleType="disc">
-        <List.Item>
-          Backup your Backrest configuration: your Backrest config holds all of
-          your repos, plans, and the passwords to decrypt them. When you have
-          Backrest configured to your liking make sure to store a copy of your
-          config (or minimally a copy of your passwords) in a safe location e.g.
-          a secure note in your password manager.
-        </List.Item>
-        <List.Item>
-          Configure hooks: Backrest can deliver notifications about backup
-          events. It's strongly recommended that you configure an on error hook
-          that will notify you in the event that backups start failing (e.g. an
-          issue with storage or network connectivity). Hooks can be configured
-          either at the plan or repo level.
-        </List.Item>
+        <List.Item>{m.dashboard_getting_started_tips_a()}</List.Item>
+        <List.Item>{m.dashboard_getting_started_tips_b()}</List.Item>
       </List.Root>
 
       {isDevBuild && (
         <>
-          <DividerWithText>Config View</DividerWithText>
+          <DividerWithText>
+            {m.dashboard_getting_started_config_view()}
+          </DividerWithText>
           <AccordionRoot collapsible variant="plain">
             <AccordionItem value="config">
               <AccordionItemTrigger>
-                Config JSON hidden for security
+                {m.dashboard_getting_started_config_json()}
               </AccordionItemTrigger>
               <AccordionItemContent>
                 {config ? (

@@ -107,7 +107,6 @@ export const OperationRow = ({
   const displayType = getTypeForDisplay(operation);
   const setRefresh = useState(0)[1];
 
-
   useEffect(() => {
     if (operation.status === OperationStatus.STATUS_INPROGRESS) {
       const interval = setInterval(() => {
@@ -239,7 +238,12 @@ export const OperationRow = ({
     bodyItems.push({
       key: "details",
       label: m.op_row_backup_details(),
-      children: <BackupOperationStatus status={backupOp.lastStatus} dryRun={backupOp.dryRun} />,
+      children: (
+        <BackupOperationStatus
+          status={backupOp.lastStatus}
+          dryRun={backupOp.dryRun}
+        />
+      ),
     });
 
     if (backupOp.errors.length > 0) {
@@ -279,7 +283,7 @@ export const OperationRow = ({
     bodyItems.push({
       key: "browser",
       label: m.op_row_snapshot_browser(),
-      
+
       children: (
         <SnapshotBrowser
           snapshotId={snapshotOp.snapshot!.id}
@@ -382,8 +386,6 @@ export const OperationRow = ({
       }
     }
   }
-
-
 
   return (
     <Box

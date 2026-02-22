@@ -29,6 +29,7 @@ import {
 import { Tooltip } from "../ui/tooltip";
 import { Link } from "../ui/link";
 import { EnumSelector, EnumOption } from "./EnumSelector";
+import * as m from "../../paraglide/messages";
 
 export interface HookFields {
   conditions: string[];
@@ -45,50 +46,44 @@ export interface HookFields {
 
 export const hooksListTooltipText = (
   <Text as="span">
-    Hooks let you configure actions e.g. notifications and scripts that run in
-    response to the backup lifecycle. See{" "}
+    {m.hooks_from_list_a()}
     <Link
       href="https://garethgeorge.github.io/backrest/docs/hooks"
       target="_blank"
       color="blue.500"
     >
-      the hook documentation
-    </Link>{" "}
-    for available options, or{" "}
+      {m.hooks_from_list_b()}
+    </Link>
+    {m.hooks_from_list_c()}
     <Link
       href="https://garethgeorge.github.io/backrest/cookbooks/command-hook-examples"
       target="_blank"
       color="blue.500"
     >
-      the cookbook
-    </Link>{" "}
-    for scripting examples.
+      {m.hooks_from_list_d()}
+    </Link>
+    {m.hooks_from_list_e()}
   </Text>
 );
 
 const hookConditionDescriptions: Record<string, string> = {
-  CONDITION_SNAPSHOT_START:
-    "Triggered when a backup operation begins and must complete successfully before the snapshot will begin.",
-  CONDITION_SNAPSHOT_END:
-    "Triggered when a backup operation completes (regardless of success/failure)",
-  CONDITION_SNAPSHOT_SUCCESS:
-    "Triggered when a backup operation completes successfully",
-  CONDITION_SNAPSHOT_ERROR: "Triggered when a backup operation fails",
-  CONDITION_SNAPSHOT_WARNING:
-    "Triggered when a backup operation encounters non-fatal issues",
-  CONDITION_PRUNE_START: "Triggered when a prune operation begins",
-  CONDITION_PRUNE_SUCCESS:
-    "Triggered when a prune operation completes successfully",
-  CONDITION_PRUNE_ERROR: "Triggered when a prune operation fails",
-  CONDITION_CHECK_START: "Triggered when a check operation begins",
-  CONDITION_CHECK_SUCCESS:
-    "Triggered when a check operation completes successfully",
-  CONDITION_CHECK_ERROR: "Triggered when a check operation fails",
-  CONDITION_FORGET_START: "Triggered when a forget operation begins",
-  CONDITION_FORGET_SUCCESS:
-    "Triggered when a forget operation completes successfully",
-  CONDITION_FORGET_ERROR: "Triggered when a forget operation fails",
-  CONDITION_ANY_ERROR: "Triggered when any operation fails",
+  CONDITION_SNAPSHOT_START: m.repo_hooks_command_runs_condition_snapshot_start(),
+  CONDITION_SNAPSHOT_END: m.repo_hooks_command_runs_condition_snapshot_end(),
+  CONDITION_SNAPSHOT_SUCCESS: m.repo_hooks_command_runs_condition_snapshot_success(),
+  CONDITION_SNAPSHOT_ERROR: m.repo_hooks_command_runs_condition_snapshot_error(),
+  CONDITION_SNAPSHOT_WARNING: m.repo_hooks_command_runs_condition_snapshot_warning(),
+  CONDITION_SNAPSHOT_SKIPPED: m.repo_hooks_command_runs_condition_snapshot_skipped(),
+  CONDITION_PRUNE_START: m.repo_hooks_command_runs_condition_prune_start(),
+  CONDITION_PRUNE_SUCCESS: m.repo_hooks_command_runs_condition_prune_success(),
+  CONDITION_PRUNE_ERROR: m.repo_hooks_command_runs_condition_prune_error(),
+  CONDITION_CHECK_START: m.repo_hooks_command_runs_condition_check_start(),
+  CONDITION_CHECK_SUCCESS: m.repo_hooks_command_runs_condition_check_success(),
+  CONDITION_CHECK_ERROR: m.repo_hooks_command_runs_condition_check_error(),
+  CONDITION_FORGET_START: m.repo_hooks_command_runs_condition_forget_start(),
+  CONDITION_FORGET_SUCCESS: m.repo_hooks_command_runs_condition_forget_success(),
+  CONDITION_FORGET_ERROR: m.repo_hooks_command_runs_condition_forget_error(),
+  CONDITION_ANY_ERROR: m.repo_hooks_command_runs_condition_any_error(),
+  CONDITION_UNKNOWN: m.repo_hooks_command_runs_condition_unknown(),
 };
 
 const conditionOptions: EnumOption<string>[] = Hook_ConditionSchema.values.map(
@@ -159,7 +154,7 @@ export const HooksFormList = ({
         {/* @ts-ignore */}
         <MenuTrigger asChild>
           <Button variant="outline" borderStyle="dashed" size="sm" width="full">
-            <FiPlus /> Add Hook
+            <FiPlus /> {m.add_plan_modal_field_add_hook()}
           </Button>
         </MenuTrigger>
         {/* @ts-ignore */}
@@ -236,7 +231,7 @@ const HookItem = ({
               options={conditionOptions}
               value={hook.conditions}
               onChange={handleConditionChange}
-              placeholder="Runs when..."
+              placeholder={m.repo_hooks_command_runs_when()}
               size="sm"
             />
           </Box>
@@ -260,306 +255,306 @@ const hookTypes: {
     onChange: (h: HookFields) => void;
   }) => React.ReactNode;
 }[] = [
-  {
-    name: "Command",
-    template: {
-      actionCommand: {
-        command: "echo {{ .ShellEscape .Summary }}",
+    {
+      name: m.repo_hooks_command_label(),
+      template: {
+        actionCommand: {
+          command: "echo {{ .ShellEscape .Summary }}",
+        },
+        conditions: [],
       },
-      conditions: [],
-    },
-    oneofKey: "actionCommand",
-    component: ({ hook, onChange }) => {
-      const updateCommand = (val: string) => {
-        onChange({
-          ...hook,
-          actionCommand: { ...hook.actionCommand, command: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Text fontSize="sm" fontWeight="medium">
-            Script:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionCommand?.command || ""}
-            onChange={(e) => updateCommand(e.target.value)}
-            size="sm"
-          />
-          <ItemOnErrorSelector hook={hook} onChange={onChange} />
-        </Stack>
-      );
-    },
-  },
-  {
-    name: "Shoutrrr",
-    template: {
-      actionShoutrrr: {
-        template: "{{ .Summary }}",
+      oneofKey: "actionCommand",
+      component: ({ hook, onChange }) => {
+        const updateCommand = (val: string) => {
+          onChange({
+            ...hook,
+            actionCommand: { ...hook.actionCommand, command: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Text fontSize="sm" fontWeight="medium">
+              {m.repo_hooks_command_script_label()}
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionCommand?.command || ""}
+              onChange={(e) => updateCommand(e.target.value)}
+              size="sm"
+            />
+            <ItemOnErrorSelector hook={hook} onChange={onChange} />
+          </Stack>
+        );
       },
-      conditions: [],
     },
-    oneofKey: "actionShoutrrr",
-    component: ({ hook, onChange }) => {
-      const updateShoutrrr = (field: string, val: string) => {
-        onChange({
-          ...hook,
-          actionShoutrrr: { ...hook.actionShoutrrr, [field]: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Input
-            placeholder="Shoutrrr URL"
-            value={hook.actionShoutrrr?.shoutrrrUrl || ""}
-            onChange={(e) => updateShoutrrr("shoutrrrUrl", e.target.value)}
-            size="sm"
-          />
-          <Text fontSize="sm" mt={1}>
-            Text Template:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionShoutrrr?.template || ""}
-            onChange={(e) => updateShoutrrr("template", e.target.value)}
-            size="sm"
-          />
-        </Stack>
-      );
-    },
-  },
-  {
-    name: "Discord",
-    template: {
-      actionDiscord: {
-        webhookUrl: "",
-        template: "{{ .Summary }}",
+    {
+      name: "Shoutrrr",
+      template: {
+        actionShoutrrr: {
+          template: "{{ .Summary }}",
+        },
+        conditions: [],
       },
-      conditions: [],
-    },
-    oneofKey: "actionDiscord",
-    component: ({ hook, onChange }) => {
-      const updateDiscord = (field: string, val: string) => {
-        onChange({
-          ...hook,
-          actionDiscord: { ...hook.actionDiscord, [field]: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Input
-            placeholder="Discord Webhook URL"
-            value={hook.actionDiscord?.webhookUrl || ""}
-            onChange={(e) => updateDiscord("webhookUrl", e.target.value)}
-            size="sm"
-          />
-          <Text fontSize="sm" mt={1}>
-            Text Template:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionDiscord?.template || ""}
-            onChange={(e) => updateDiscord("template", e.target.value)}
-            size="sm"
-          />
-        </Stack>
-      );
-    },
-  },
-  {
-    name: "Gotify",
-    template: {
-      actionGotify: {
-        baseUrl: "",
-        token: "",
-        template: "{{ .Summary }}",
-        titleTemplate:
-          "Backrest {{ .EventName .Event }} in plan {{ .Plan.Id }}",
-        priority: 5,
+      oneofKey: "actionShoutrrr",
+      component: ({ hook, onChange }) => {
+        const updateShoutrrr = (field: string, val: string) => {
+          onChange({
+            ...hook,
+            actionShoutrrr: { ...hook.actionShoutrrr, [field]: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Input
+              placeholder="Shoutrrr URL"
+              value={hook.actionShoutrrr?.shoutrrrUrl || ""}
+              onChange={(e) => updateShoutrrr("shoutrrrUrl", e.target.value)}
+              size="sm"
+            />
+            <Text fontSize="sm" mt={1}>
+              {m.repo_hooks_command_template_label()}
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionShoutrrr?.template || ""}
+              onChange={(e) => updateShoutrrr("template", e.target.value)}
+              size="sm"
+            />
+          </Stack>
+        );
       },
-      conditions: [],
     },
-    oneofKey: "actionGotify",
-    component: ({ hook, onChange }) => {
-      const updateGotify = (field: string, val: any) => {
-        onChange({
-          ...hook,
-          actionGotify: { ...hook.actionGotify, [field]: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Input
-            placeholder="Gotify Base URL"
-            value={hook.actionGotify?.baseUrl || ""}
-            onChange={(e) => updateGotify("baseUrl", e.target.value)}
-            size="sm"
-          />
-          <Input
-            placeholder="Gotify Token"
-            value={hook.actionGotify?.token || ""}
-            onChange={(e) => updateGotify("token", e.target.value)}
-            size="sm"
-          />
-          <Input
-            placeholder="Title Template"
-            value={hook.actionGotify?.titleTemplate || ""}
-            onChange={(e) => updateGotify("titleTemplate", e.target.value)}
-            size="sm"
-          />
-          <Text fontSize="sm" mt={1}>
-            Text Template:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionGotify?.template || ""}
-            onChange={(e) => updateGotify("template", e.target.value)}
-            size="sm"
-          />
-          <EnumSelector
-            options={[
-              { label: "0 - No notification", value: "0" },
-              { label: "1 - Icon in notification bar", value: "1" },
-              { label: "4 - Icon in notification bar + Sound", value: "4" },
-              {
-                label: "8 - Icon in notification bar + Sound + Vibration",
-                value: "8",
-              },
-            ]}
-            value={String(hook.actionGotify?.priority ?? 5)}
-            onChange={(val) =>
-              updateGotify("priority", parseInt(val as string))
-            }
-            placeholder="Priority"
-            size="sm"
-          />
-        </Stack>
-      );
-    },
-  },
-  {
-    name: "Slack",
-    template: {
-      actionSlack: {
-        webhookUrl: "",
-        template: "{{ .Summary }}",
+    {
+      name: "Discord",
+      template: {
+        actionDiscord: {
+          webhookUrl: "",
+          template: "{{ .Summary }}",
+        },
+        conditions: [],
       },
-      conditions: [],
-    },
-    oneofKey: "actionSlack",
-    component: ({ hook, onChange }) => {
-      const updateSlack = (field: string, val: string) => {
-        onChange({
-          ...hook,
-          actionSlack: { ...hook.actionSlack, [field]: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Input
-            placeholder="Slack Webhook URL"
-            value={hook.actionSlack?.webhookUrl || ""}
-            onChange={(e) => updateSlack("webhookUrl", e.target.value)}
-            size="sm"
-          />
-          <Text fontSize="sm" mt={1}>
-            Text Template:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionSlack?.template || ""}
-            onChange={(e) => updateSlack("template", e.target.value)}
-            size="sm"
-          />
-        </Stack>
-      );
-    },
-  },
-  {
-    name: "Healthchecks",
-    template: {
-      actionHealthchecks: {
-        webhookUrl: "",
-        template: "{{ .Summary }}",
+      oneofKey: "actionDiscord",
+      component: ({ hook, onChange }) => {
+        const updateDiscord = (field: string, val: string) => {
+          onChange({
+            ...hook,
+            actionDiscord: { ...hook.actionDiscord, [field]: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Input
+              placeholder="Discord Webhook URL"
+              value={hook.actionDiscord?.webhookUrl || ""}
+              onChange={(e) => updateDiscord("webhookUrl", e.target.value)}
+              size="sm"
+            />
+            <Text fontSize="sm" mt={1}>
+              {m.repo_hooks_command_template_label()}
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionDiscord?.template || ""}
+              onChange={(e) => updateDiscord("template", e.target.value)}
+              size="sm"
+            />
+          </Stack>
+        );
       },
-      conditions: [],
     },
-    oneofKey: "actionHealthchecks",
-    component: ({ hook, onChange }) => {
-      const updateHealthchecks = (field: string, val: string) => {
-        onChange({
-          ...hook,
-          actionHealthchecks: { ...hook.actionHealthchecks, [field]: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Input
-            placeholder="Ping URL"
-            value={hook.actionHealthchecks?.webhookUrl || ""}
-            onChange={(e) => updateHealthchecks("webhookUrl", e.target.value)}
-            size="sm"
-          />
-          <Text fontSize="sm" mt={1}>
-            Text Template:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionHealthchecks?.template || ""}
-            onChange={(e) => updateHealthchecks("template", e.target.value)}
-            size="sm"
-          />
-        </Stack>
-      );
-    },
-  },
-  {
-    name: "Telegram",
-    template: {
-      actionTelegram: {
-        botToken: "",
-        chatId: "",
-        template: "{{ .Summary }}",
+    {
+      name: "Gotify",
+      template: {
+        actionGotify: {
+          baseUrl: "",
+          token: "",
+          template: "{{ .Summary }}",
+          titleTemplate:
+            "Backrest {{ .EventName .Event }} in plan {{ .Plan.Id }}",
+          priority: 5,
+        },
+        conditions: [],
       },
-      conditions: [],
+      oneofKey: "actionGotify",
+      component: ({ hook, onChange }) => {
+        const updateGotify = (field: string, val: any) => {
+          onChange({
+            ...hook,
+            actionGotify: { ...hook.actionGotify, [field]: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Input
+              placeholder="Gotify Base URL"
+              value={hook.actionGotify?.baseUrl || ""}
+              onChange={(e) => updateGotify("baseUrl", e.target.value)}
+              size="sm"
+            />
+            <Input
+              placeholder="Gotify Token"
+              value={hook.actionGotify?.token || ""}
+              onChange={(e) => updateGotify("token", e.target.value)}
+              size="sm"
+            />
+            <Input
+              placeholder="Title Template"
+              value={hook.actionGotify?.titleTemplate || ""}
+              onChange={(e) => updateGotify("titleTemplate", e.target.value)}
+              size="sm"
+            />
+            <Text fontSize="sm" mt={1}>
+              {m.repo_hooks_command_template_label()}
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionGotify?.template || ""}
+              onChange={(e) => updateGotify("template", e.target.value)}
+              size="sm"
+            />
+            <EnumSelector
+              options={[
+                { label: "0 - No notification", value: "0" },
+                { label: "1 - Icon in notification bar", value: "1" },
+                { label: "4 - Icon in notification bar + Sound", value: "4" },
+                {
+                  label: "8 - Icon in notification bar + Sound + Vibration",
+                  value: "8",
+                },
+              ]}
+              value={String(hook.actionGotify?.priority ?? 5)}
+              onChange={(val) =>
+                updateGotify("priority", parseInt(val as string))
+              }
+              placeholder="Priority"
+              size="sm"
+            />
+          </Stack>
+        );
+      },
     },
-    oneofKey: "actionTelegram",
-    component: ({ hook, onChange }) => {
-      const updateTelegram = (field: string, val: string) => {
-        onChange({
-          ...hook,
-          actionTelegram: { ...hook.actionTelegram, [field]: val },
-        });
-      };
-      return (
-        <Stack gap={2}>
-          <Input
-            placeholder="Bot Token"
-            value={hook.actionTelegram?.botToken || ""}
-            onChange={(e) => updateTelegram("botToken", e.target.value)}
-            size="sm"
-          />
-          <Input
-            placeholder="Chat ID"
-            value={hook.actionTelegram?.chatId || ""}
-            onChange={(e) => updateTelegram("chatId", e.target.value)}
-            size="sm"
-          />
-          <Text fontSize="sm" mt={1}>
-            Text Template:
-          </Text>
-          <Textarea
-            fontFamily="monospace"
-            value={hook.actionTelegram?.template || ""}
-            onChange={(e) => updateTelegram("template", e.target.value)}
-            size="sm"
-          />
-        </Stack>
-      );
+    {
+      name: "Slack",
+      template: {
+        actionSlack: {
+          webhookUrl: "",
+          template: "{{ .Summary }}",
+        },
+        conditions: [],
+      },
+      oneofKey: "actionSlack",
+      component: ({ hook, onChange }) => {
+        const updateSlack = (field: string, val: string) => {
+          onChange({
+            ...hook,
+            actionSlack: { ...hook.actionSlack, [field]: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Input
+              placeholder="Slack Webhook URL"
+              value={hook.actionSlack?.webhookUrl || ""}
+              onChange={(e) => updateSlack("webhookUrl", e.target.value)}
+              size="sm"
+            />
+            <Text fontSize="sm" mt={1}>
+              {m.repo_hooks_command_template_label()}
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionSlack?.template || ""}
+              onChange={(e) => updateSlack("template", e.target.value)}
+              size="sm"
+            />
+          </Stack>
+        );
+      },
     },
-  },
-];
+    {
+      name: m.repo_hooks_healthchecks_label(),
+      template: {
+        actionHealthchecks: {
+          webhookUrl: "",
+          template: "{{ .Summary }}",
+        },
+        conditions: [],
+      },
+      oneofKey: "actionHealthchecks",
+      component: ({ hook, onChange }) => {
+        const updateHealthchecks = (field: string, val: string) => {
+          onChange({
+            ...hook,
+            actionHealthchecks: { ...hook.actionHealthchecks, [field]: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Input
+              placeholder="Ping URL"
+              value={hook.actionHealthchecks?.webhookUrl || ""}
+              onChange={(e) => updateHealthchecks("webhookUrl", e.target.value)}
+              size="sm"
+            />
+            <Text fontSize="sm" mt={1}>
+              {m.repo_hooks_command_template_label()}
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionHealthchecks?.template || ""}
+              onChange={(e) => updateHealthchecks("template", e.target.value)}
+              size="sm"
+            />
+          </Stack>
+        );
+      },
+    },
+    {
+      name: "Telegram",
+      template: {
+        actionTelegram: {
+          botToken: "",
+          chatId: "",
+          template: "{{ .Summary }}",
+        },
+        conditions: [],
+      },
+      oneofKey: "actionTelegram",
+      component: ({ hook, onChange }) => {
+        const updateTelegram = (field: string, val: string) => {
+          onChange({
+            ...hook,
+            actionTelegram: { ...hook.actionTelegram, [field]: val },
+          });
+        };
+        return (
+          <Stack gap={2}>
+            <Input
+              placeholder="Bot Token"
+              value={hook.actionTelegram?.botToken || ""}
+              onChange={(e) => updateTelegram("botToken", e.target.value)}
+              size="sm"
+            />
+            <Input
+              placeholder="Chat ID"
+              value={hook.actionTelegram?.chatId || ""}
+              onChange={(e) => updateTelegram("chatId", e.target.value)}
+              size="sm"
+            />
+            <Text fontSize="sm" mt={1}>
+              {m.repo_hooks_command_template_label()}
+            </Text>
+            <Textarea
+              fontFamily="monospace"
+              value={hook.actionTelegram?.template || ""}
+              onChange={(e) => updateTelegram("template", e.target.value)}
+              size="sm"
+            />
+          </Stack>
+        );
+      },
+    },
+  ];
 
 const findHookTypeName = (field: HookFields): string => {
   if (!field) {
@@ -604,19 +599,19 @@ const ItemOnErrorSelector = ({
     <Stack gap={2}>
       <Flex align="center" gap={1}>
         <Text fontSize="sm" fontWeight="medium">
-          Error Behavior:
+          {m.repo_hooks_command_error_label()}
         </Text>
         <Tooltip
           content={
             <Box>
-              <Text fontWeight="bold">What happens when the hook fails</Text>
+              <Text fontWeight="bold">{m.repo_hooks_command_error_info_what()}</Text>
               <Text fontSize="xs">
-                (only effective on start hooks e.g. backup start)
+                {m.repo_hooks_command_error_info_only()}
               </Text>
               <Stack gap={1} mt={1} fontSize="xs">
-                <Text>• IGNORE - failure is ignored</Text>
-                <Text>• FATAL - stops operation with error</Text>
-                <Text>• CANCEL - stops operation (cancelled)</Text>
+                <Text>• {m.repo_hooks_command_error_info_ignore()}</Text>
+                <Text>• {m.repo_hooks_command_error_info_fatal()}</Text>
+                <Text>• {m.repo_hooks_command_error_info_cancel()}</Text>
               </Stack>
             </Box>
           }
@@ -630,7 +625,7 @@ const ItemOnErrorSelector = ({
         options={onErrorOptions}
         value={hook.onError || ""}
         onChange={(val) => onChange({ ...hook, onError: val as string })}
-        placeholder="Error behavior..."
+        placeholder={m.repo_hooks_command_error_tooltip()}
         size="sm"
       />
     </Stack>
@@ -642,18 +637,18 @@ const HookConditionsTooltip = ({ children }: { children: React.ReactNode }) => {
     <Tooltip
       content={
         <Box>
-          <Text fontWeight="bold">Available conditions</Text>
+          <Text fontWeight="bold">{m.repo_hooks_command_runs_info_available()}</Text>
           <Stack gap={0} fontSize="xs">
-            <Text>• CONDITION_ANY_ERROR - error executing any task</Text>
+            <Text>• {m.repo_hooks_command_runs_info_any_error()}</Text>
             <Text>
-              • CONDITION_SNAPSHOT_START - start of a backup operation
+              • {m.repo_hooks_command_runs_info_start()}
             </Text>
-            <Text>• CONDITION_SNAPSHOT_END - end of backup operation</Text>
-            <Text>• CONDITION_SNAPSHOT_SUCCESS - end of successful backup</Text>
-            <Text>• CONDITION_SNAPSHOT_ERROR - end of failed backup</Text>
-            <Text>• CONDITION_SNAPSHOT_WARNING - end of partial backup</Text>
-            <Text>• CONDITION_PRUNE_START - start of prune operation</Text>
-            <Text>• ... see docs for more</Text>
+            <Text>• {m.repo_hooks_command_runs_info_end()}</Text>
+            <Text>• {m.repo_hooks_command_runs_info_success()}</Text>
+            <Text>• {m.repo_hooks_command_runs_info_error()}</Text>
+            <Text>• {m.repo_hooks_command_runs_info_warning()}</Text>
+            <Text>• {m.repo_hooks_command_runs_info_prune_start()}</Text>
+            <Text>• {m.repo_hooks_command_runs_info_docs()}</Text>
           </Stack>
         </Box>
       }

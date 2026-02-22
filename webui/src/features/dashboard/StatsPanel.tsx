@@ -20,6 +20,7 @@ import {
   OpSelector,
 } from "../../../gen/ts/v1/service_pb";
 import { create } from "@bufbuild/protobuf";
+import * as m from "../../paraglide/messages"
 
 export const StatsPanel = ({ selector }: { selector: OpSelector }) => {
   const [operations, setOperations] = useState<Operation[]>([]);
@@ -44,8 +45,8 @@ export const StatsPanel = ({ selector }: { selector: OpSelector }) => {
   if (operations.length === 0) {
     return (
       <EmptyState
-        title="No stats available"
-        description="Have you run a stats operation yet?"
+        title={m.repo_tab_stats_no()}
+        description={m.repo_tab_stats_yet()}
       />
     );
   }
@@ -92,7 +93,7 @@ export const StatsPanel = ({ selector }: { selector: OpSelector }) => {
           />
           <Tooltip
             labelFormatter={(x) => formatDate(x as number)}
-            formatter={(y) => [formatBytes(y as number), "Total Size"]}
+            formatter={(y) => [formatBytes(y as number), m.repo_tab_stats_size()]}
           />
           <Legend />
           <Line
@@ -100,7 +101,7 @@ export const StatsPanel = ({ selector }: { selector: OpSelector }) => {
             type="monotone"
             dataKey="totalSizeBytes"
             stroke="#8884d8"
-            name="Total Size"
+            name={m.repo_tab_stats_size()}
           ></Line>
         </LineChart>
       </ResponsiveContainer>
@@ -126,7 +127,7 @@ export const StatsPanel = ({ selector }: { selector: OpSelector }) => {
             type="monotone"
             dataKey="compressionRatio"
             stroke="#82ca9d"
-            name="Compression Ratio"
+            name={m.repo_tab_stats_ratio()}
           ></Line>
         </LineChart>
       </ResponsiveContainer>
@@ -147,7 +148,7 @@ export const StatsPanel = ({ selector }: { selector: OpSelector }) => {
             type="monotone"
             dataKey="snapshotCount"
             stroke="#ff7300"
-            name="Snapshot Count"
+            name={m.repo_tab_stats_count()}
           ></Line>
         </LineChart>
       </ResponsiveContainer>
@@ -168,7 +169,7 @@ export const StatsPanel = ({ selector }: { selector: OpSelector }) => {
             type="monotone"
             dataKey="totalBlobCount"
             stroke="#00BBBB"
-            name="Total Blob Count"
+            name={m.repo_tab_stats_blob()}
           ></Line>
         </LineChart>
       </ResponsiveContainer>

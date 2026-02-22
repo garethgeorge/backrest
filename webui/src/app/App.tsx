@@ -687,7 +687,7 @@ const MobileNavTrigger = () => {
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle>Menu</DrawerTitle>
+          <DrawerTitle>{m.app_menu_menu()}</DrawerTitle>
           <DrawerCloseTrigger />
         </DrawerHeader>
         <DrawerBody p={0}>

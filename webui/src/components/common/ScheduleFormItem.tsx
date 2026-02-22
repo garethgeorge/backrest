@@ -9,6 +9,7 @@ import {
   Schedule_ClockSchema,
 } from "../../../gen/ts/v1/config_pb";
 import cronstrue from "cronstrue";
+import * as m from "../../paraglide/messages"
 
 interface ScheduleDefaults {
   maxFrequencyDays: number;
@@ -102,13 +103,13 @@ export const ScheduleFormItem = ({
       {/* Schedule Mode */}
       <Card.Root variant="subtle" width="fit-content">
         <Card.Header pb={0}>
-          <Field label="Schedule Type">
+          <Field label={m.add_plan_modal_schedule_type_label()}>
             <Flex gap={2} wrap="wrap">
               {[
-                { value: "disabled", label: "Disabled" },
-                { value: "maxFrequencyHours", label: "Interval (Hours)" },
-                { value: "maxFrequencyDays", label: "Interval (Days)" },
-                { value: "cron", label: "Cron" },
+                { value: "disabled", label: m.add_plan_modal_schedule_disabled_label() },
+                { value: "maxFrequencyHours", label: m.add_plan_modal_schedule_interval_hours() },
+                { value: "maxFrequencyDays", label: m.add_plan_modal_schedule_interval_days() },
+                { value: "cron", label: m.add_plan_modal_schedule_cron() },
               ].map((option) => (
                 <Button
                   key={option.value}
@@ -126,14 +127,14 @@ export const ScheduleFormItem = ({
           {/* Mode Specific Input */}
           {mode === "cron" && (
             <Field
-              label="Cron Expression"
+              label={m.add_plan_modal_schedule_cron_expression()}
               helperText={(() => {
                 try {
                   return schedule.cron
                     ? cronstrue.toString(schedule.cron)
                     : "Standard cron syntax (e.g. 0 0 * * *)";
                 } catch (e) {
-                  return "Invalid cron expression";
+                  return m.add_plan_modal_schedule_invalid_cron();
                 }
               })()}
             >
@@ -150,7 +151,7 @@ export const ScheduleFormItem = ({
 
           {mode === "maxFrequencyDays" && (
             <NumberInputField
-              label="Interval in Days"
+              label={m.add_plan_modal_schedule_interval_in_days()}
               value={schedule.maxFrequencyDays || 0}
               onValueChange={(e: any) =>
                 onChange({ ...schedule, maxFrequencyDays: e.valueAsNumber })
@@ -162,7 +163,7 @@ export const ScheduleFormItem = ({
 
           {mode === "maxFrequencyHours" && (
             <NumberInputField
-              label="Interval in Hours"
+              label={m.add_plan_modal_schedule_interval_in_hours()}
               value={schedule.maxFrequencyHours || 0}
               onValueChange={(e: any) =>
                 onChange({ ...schedule, maxFrequencyHours: e.valueAsNumber })
@@ -175,8 +176,8 @@ export const ScheduleFormItem = ({
           {mode !== "disabled" && (
             /* Clock Selection */
             <Field
-              label="Reference Clock"
-              helperText="Time zone or reference point for the schedule."
+              label={m.add_plan_modal_schedule_reference_clock()}
+              helperText={m.add_plan_modal_schedule_time_zone()}
             >
               <RadioGroup
                 value={clockEnumValueToString(schedule.clock)}
@@ -189,17 +190,16 @@ export const ScheduleFormItem = ({
                 }}
               >
                 <Stack direction="row" gap={4}>
-                  <Radio value="CLOCK_LOCAL">Local</Radio>
-                  <Radio value="CLOCK_UTC">UTC</Radio>
-                  <Radio value="CLOCK_LAST_RUN_TIME">Last Run Time</Radio>
+                  <Radio value="CLOCK_LOCAL">{m.add_plan_modal_schedule_time_local()}</Radio>
+                  <Radio value="CLOCK_UTC">{m.add_plan_modal_schedule_time_utc()}</Radio>
+                  <Radio value="CLOCK_LAST_RUN_TIME">{m.add_plan_modal_schedule_time_last()}</Radio>
                 </Stack>
               </RadioGroup>
             </Field>
           )}
           {mode === "disabled" && (
             <Text color="fg.muted" fontSize="sm">
-              Automatic snapshots are disabled for this plan. You can still run
-              backups manually.
+              {m.add_plan_modal_schedule_disabled_description()}
             </Text>
           )}
         </Card.Body>
