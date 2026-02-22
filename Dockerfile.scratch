@@ -1,24 +1,28 @@
-FROM golang:1.25-alpine AS builder
-WORKDIR /src
-COPY . .
-RUN go build -o /docker-entrypoint -ldflags "-s -w" ./cmd/docker-entrypoint
-
+# Stage 1: Dependencies (Alpine)
 FROM alpine:latest AS alpine
 RUN apk add --no-cache ca-certificates tini-static
 RUN mkdir /tmp-orig
+
+# Copy binary from goreleaser to run install-deps
 COPY backrest /backrest
 RUN /backrest --install-deps-only
+
+# Setup restic path
 RUN mkdir -p /bin && mv /root/.local/share/backrest/restic /bin/restic
 
+
+# Stage 2: Final Image (Scratch)
 FROM scratch
 LABEL org.opencontainers.image.source="https://github.com/garethgeorge/backrest"
+
 COPY --from=alpine /tmp-orig /tmp
 COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=alpine /bin /bin
+COPY --from=alpine /bin/restic /bin/restic
 COPY --from=alpine /sbin/tini-static /tini
-COPY backrest /backrest
 
-COPY --from=builder /docker-entrypoint /docker-entrypoint
+# Copy binaries from goreleaser
+COPY backrest /backrest
+COPY docker-entrypoint /docker-entrypoint
 
 ENTRYPOINT ["/tini", "--", "/docker-entrypoint"]
 CMD ["/backrest"]
