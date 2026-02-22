@@ -10,7 +10,7 @@ When using the Slack Hook you can provide a simple message or a [Slack Block Kit
 <img src="/screenshots/slack-clean-job.png" alt="Settings View" style="width: 700px; height: auto;" />
 </div>
 
-```
+```json v-pre
 {
   "blocks": [
     {

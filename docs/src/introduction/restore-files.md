@@ -29,9 +29,9 @@ Once your snapshots are indexed, they are visible in backrest in a tree view ord
 
 To restore a snapshot start by browsing for the files you'd like to restore. Click on the "Snapshot Browser" shown in the red box in the image above. This view will expand to show the files in your snapshot. 
 
-::alert{type="warning"}
+::: warning
 If your repo is using remote storage browsing can be very slow as restic fetches pack files to index the directory structure of your snapshot.
-::
+:::
 
 Once you have found the directory you'd like to restore, hover over the directory and click the restore icon and select "Restore to path". The restore location options are
 

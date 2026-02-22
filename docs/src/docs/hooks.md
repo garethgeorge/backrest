@@ -41,7 +41,20 @@ Backrest supports multiple notification services for hook delivery:
 | Slack    | Send notifications to Slack channels   | [Slack Webhooks Guide](https://api.slack.com/messaging/webhooks)                                    |
 | Gotify   | Send notifications via Gotify server   | [Gotify Documentation](https://github.com/gotify/server)                                            |
 | Shoutrrr | Multi-provider notification service    | [Shoutrrr Documentation](https://containrrr.dev/shoutrrr/v0.8/)                                     |
-| Command  | Execute custom commands                | See [command cookbook](../../cookbooks/command-hook-examples)                                       |
+| Healthchecks | Ping Healthchecks.io monitoring URLs | [Healthchecks API](https://healthchecks.io/docs/http_api/)                                          |
+| Command  | Execute custom commands                | See [command cookbook](../cookbooks/command-hook-examples)                                       |
+
+### Healthchecks.io Integration
+
+The Healthchecks hook type is specifically designed to integrate with [Healthchecks.io](https://healthchecks.io/) or compatible self-hosted instances. 
+
+When configured, Backrest automatically appends the correct status endpoint to your webhook URL based on the event type:
+- **Start events** (e.g., `CONDITION_SNAPSHOT_START`): Appends `/start` to the URL.
+- **Error events** (e.g., `CONDITION_SNAPSHOT_ERROR`): Appends `/fail` to the URL.
+- **Log events**: Appends `/log` to the URL.
+- **Success & Other events**: Pings the base URL directly.
+
+It also sends the formatted template summary as the HTTP POST body in plain text, which Healthchecks.io captures as the "ping payload". This is particularly useful for reading error messages or backup statistics directly from the Healthchecks.io dashboard.
 
 ## Error Handling
 
@@ -59,32 +72,34 @@ Hooks use Go templates for formatting notifications and scripts. The following v
 
 | Variable        | Type                         | Description                 | Example Usage                     |
 | --------------- | ---------------------------- | --------------------------- | --------------------------------- |
-| `Event`         | `v1.Hook_Condition`          | The triggering event        | `{{ .Event }}`                    |
-| `Task`          | `string`                     | Task name                   | `{{ .Task }}`                     |
-| `Repo`          | `v1.Repo`                    | Repository information      | `{{ .Repo.Id }}`                  |
-| `Plan`          | `v1.Plan`                    | Plan information            | `{{ .Plan.Id }}`                  |
-| `SnapshotId`    | `string`                     | ID of associated snapshot   | `{{ .SnapshotId }}`               |
+| `Event`         | `v1.Hook_Condition`          | The triggering event        | <code v-pre>{{ .Event }}</code>                    |
+| `Task`          | `string`                     | Task name                   | <code v-pre>{{ .Task }}</code>                     |
+| `Repo`          | `v1.Repo`                    | Repository information      | <code v-pre>{{ .Repo.Id }}</code>                  |
+| `Plan`          | `v1.Plan`                    | Plan information            | <code v-pre>{{ .Plan.Id }}</code>                  |
+| `SnapshotId`    | `string`                     | ID of associated snapshot   | <code v-pre>{{ .SnapshotId }}</code>               |
 | `SnapshotStats` | `restic.BackupProgressEntry` | Backup operation statistics | See example below                 |
-| `CurTime`       | `time.Time`                  | Current timestamp           | `{{ .FormatTime .CurTime }}`      |
-| `Duration`      | `time.Duration`              | Operation duration          | `{{ .FormatDuration .Duration }}` |
-| `Error`         | `string`                     | Error message if applicable | `{{ .Error }}`                    |
+| `CurTime`       | `time.Time`                  | Current timestamp           | <code v-pre>{{ .FormatTime .CurTime }}</code>      |
+| `Duration`      | `time.Duration`              | Operation duration          | <code v-pre>{{ .FormatDuration .Duration }}</code> |
+| `Error`         | `string`                     | Error message if applicable | <code v-pre>{{ .Error }}</code>                    |
 
 ### Helper Functions
 
 | Function           | Description                     | Example                             |
 | ------------------ | ------------------------------- | ----------------------------------- |
-| `.Summary`         | Generates default event summary | `{{ .Summary }}`                    |
-| `.FormatTime`      | Formats timestamp               | `{{ .FormatTime .CurTime }}`        |
-| `.FormatDuration`  | Formats time duration           | `{{ .FormatDuration .Duration }}`   |
-| `.FormatSizeBytes` | Formats byte sizes              | `{{ .FormatSizeBytes 1048576 }}`    |
-| `.ShellEscape`     | Escapes strings for shell usage | `{{ .ShellEscape "my string" }}`    |
-| `.JsonMarshal`     | Converts value to JSON          | `{{ .JsonMarshal .SnapshotStats }}` |
+| `.Summary`         | Generates default event summary | <code v-pre>{{ .Summary }}</code>                    |
+| `.FormatTime`      | Formats timestamp               | <code v-pre>{{ .FormatTime .CurTime }}</code>        |
+| `.FormatDuration`  | Formats time duration           | <code v-pre>{{ .FormatDuration .Duration }}</code>   |
+| `.FormatSizeBytes` | Formats byte sizes              | <code v-pre>{{ .FormatSizeBytes 1048576 }}</code>    |
+| `.ShellEscape`     | Escapes strings for shell usage | <code v-pre>{{ .ShellEscape "my string" }}</code>    |
+| `.JsonMarshal`     | Converts value to JSON          | <code v-pre>{{ .JsonMarshal .SnapshotStats }}</code> |
 
 ## Default Summary Template
 
 Below is the implementation of the `.Summary` function, which you can use as a reference for creating custom templates:
 
-```
+<div v-pre>
+
+```text
 Task: "{{ .Task }}" at {{ .FormatTime .CurTime }}
 Event: {{ .EventName .Event }}
 Repo: {{ .Repo.Id }}
@@ -112,3 +127,5 @@ Backup Statistics:
 - Total duration: {{ .SnapshotStats.TotalDuration }}s
 {{ end }}
 {{ end }}
+```
+</div>

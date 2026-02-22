@@ -24,7 +24,7 @@ Notify a health monitoring service (e.g., healthchecks.io) about backup status.
 **Event:** `CONDITION_SNAPSHOT_END`  
 **Error Behavior:** `ON_ERROR_IGNORE`
 
-```bash
+```bash v-pre
 #!/bin/bash
 {{ if .Error -}}
 curl -fsS --retry 3 https://hc-ping.com/your-uuid/fail
@@ -41,7 +41,7 @@ Display system notifications for backup events.
 **Events:** `CONDITION_SNAPSHOT_END`, `CONDITION_PRUNE_ERROR`, `CONDITION_CHECK_ERROR`  
 **Error Behavior:** `ON_ERROR_IGNORE`
 
-```bash
+```bash v-pre
 #!/bin/bash
 {{ if .Error -}}
 osascript -e 'display notification "{{ .ShellEscape .Task }} failed" with title "Backrest"'
@@ -135,7 +135,7 @@ Display persistent error messages requiring user acknowledgment.
 
 **Event:** `CONDITION_ANY_ERROR`
 
-```sh
+```sh v-pre
 Add-Type -AssemblyName System.Windows.Forms
 $options = [System.Windows.Forms.MessageBoxOptions]::ServiceNotification
 $defbutton = [System.Windows.Forms.MessageBoxDefaultButton]::Button1
@@ -151,7 +151,7 @@ Show temporary warning notifications.
 
 **Event:** `CONDITION_SNAPSHOT_WARNING`
 
-```sh
+```sh v-pre
 Add-Type -AssemblyName System.Windows.Forms
 $balloon = New-Object System.Windows.Forms.NotifyIcon
 $balloon.Icon = [System.Drawing.SystemIcons]::Warning
@@ -171,7 +171,7 @@ Display temporary success notifications.
 
 **Event:** `CONDITION_SNAPSHOT_SUCCESS`
 
-```sh
+```sh v-pre
 Add-Type -AssemblyName System.Windows.Forms
 $balloon = New-Object System.Windows.Forms.NotifyIcon
 $balloon.Icon = [System.Drawing.SystemIcons]::Information
