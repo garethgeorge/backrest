@@ -246,7 +246,7 @@
 	"op_type_snapshot": "Snapshot",
 	"op_type_forget": "Forget",
 	"op_type_prune": "Prune",
-	"op_type_check": "Periksa",
+	"op_type_check": "Check",
 	"op_type_restore": "Pulihkan",
 	"op_type_stats": "Statistik",
 	"op_type_run_hook": "Jalankan Hook",

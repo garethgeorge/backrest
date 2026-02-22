@@ -332,7 +332,7 @@
   "op_row_policy_monthly": "{count} Snapshots speichern",
   "op_row_policy_yearly": "{count} Snapshots speichern",
   "op_row_policy_keep_latest": "Die neuesten {count} Snapshots werden unabhängig vom Alter gespeichert",
-  "op_row_removed_snapshot_desc": "Snapshot {id} (aufgenommen am {time}) entfernt",
+  "op_row_removed_snapshot_desc": "Snapshot {id} vom {time} entfernt",
   "op_row_policy_header": "Richtlinie:",
   "op_row_fetch_download_error": "Download-URL konnte nicht abgerufen werden: ",
   "op_row_removed_header": "Entfernte Snapshots",
