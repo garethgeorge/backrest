@@ -1,6 +1,7 @@
 FROM alpine:latest
 LABEL org.opencontainers.image.source="https://github.com/garethgeorge/backrest"
-RUN apk --no-cache add tini ca-certificates curl bash rclone openssh tzdata docker-cli
+RUN apk --no-cache add tini ca-certificates curl bash rclone openssh tzdata docker-cli && \
+    rclone selfupdate --stable
 RUN mkdir -p /tmp
 
 # Copy the binary we built via goreleaser
