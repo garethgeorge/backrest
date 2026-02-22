@@ -1,11 +1,3 @@
-# This is an example .goreleaser.yml file with some sensible defaults.
-# Make sure to check the documentation at https://goreleaser.com
-
-# The lines below are called `modelines`. See `:help modeline`
-# Feel free to remove those if you don't want/need to use them.
-# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
-# vim: set ts=2 sw=2 tw=0 fo=cnqoj
-
 version: 1
 
 env:
@@ -21,6 +13,7 @@ before:
 builds:
   - id: other
     main: ./cmd/backrest
+    binary: backrest
     env:
       - CGO_ENABLED=0
     goos:
@@ -33,6 +26,7 @@ builds:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   - id: linux
     main: ./cmd/backrest
+    binary: backrest
     env:
       - CGO_ENABLED=0
     goos:
@@ -41,10 +35,28 @@ builds:
       - amd64
       - arm64
       - arm
+    goarm:
+      - 6
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+  - id: docker-entrypoint
+    main: ./cmd/docker-entrypoint
+    binary: docker-entrypoint
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - 6
+    ldflags:
+      - -s -w
   - id: windows
     main: ./cmd/backrest
+    binary: backrest
     env:
       - CGO_ENABLED=1
     goos:
@@ -84,8 +96,9 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--platform=linux/amd64"
-    extra_files:
-      - ./
+    ids:
+      - linux
+      - docker-entrypoint
 
   - image_templates:
       - garethgeorge/backrest:{{ .Tag }}-alpine-arm64
@@ -96,8 +109,9 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--platform=linux/arm64/v8"
-    extra_files:
-      - ./
+    ids:
+      - linux
+      - docker-entrypoint
 
   - image_templates:
       - garethgeorge/backrest:{{ .Tag }}-scratch-arm64
@@ -108,8 +122,9 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--platform=linux/arm64/v8"
-    extra_files:
-      - ./
+    ids:
+      - linux
+      - docker-entrypoint
 
   - image_templates:
       - garethgeorge/backrest:{{ .Tag }}-scratch-amd64
@@ -119,8 +134,9 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--platform=linux/amd64"
-    extra_files:
-      - ./
+    ids:
+      - linux
+      - docker-entrypoint
 
   - image_templates:
       - garethgeorge/backrest:{{ .Tag }}-scratch-armv6
@@ -131,9 +147,11 @@ dockers:
     goarm: 6
     build_flag_templates:
       - "--pull"
+      - "--provenance=false"
       - "--platform=linux/arm/v6"
-    extra_files:
-      - ./
+    ids:
+      - linux
+      - docker-entrypoint
 
 docker_manifests:
   - name_template: "garethgeorge/backrest:latest"

@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.12.0](https://github.com/garethgeorge/backrest/compare/v1.11.2...v1.12.0) (2026-02-22)
+
+
+### Features
+
+* add a --from-source option to install.sh to build backrest locally ([b1d5403](https://github.com/garethgeorge/backrest/commit/b1d5403e1fcdbd827c5c9c33f91f26021522273f))
+* add Dry Run Backup action ([#1098](https://github.com/garethgeorge/backrest/issues/1098)) ([4063d8f](https://github.com/garethgeorge/backrest/commit/4063d8fafcf00e59ab259556002abc63e51fa20c))
+* add japanese ([#1114](https://github.com/garethgeorge/backrest/issues/1114)) ([92b8254](https://github.com/garethgeorge/backrest/commit/92b82546b8c0d604c9bdaaab75ca0b171f788880))
+* SFTP configuration UI (enabled for `sftp:` URIs) with support for SSH key bootstrapping ([#961](https://github.com/garethgeorge/backrest/issues/961)) ([3250ff4](https://github.com/garethgeorge/backrest/commit/3250ff481d3c8f5da4e38ab0b0c896e7608f8716))
+
+
+### Bug Fixes
+
+* enable systemd unit, change rc service ([#1113](https://github.com/garethgeorge/backrest/issues/1113)) ([ec4764c](https://github.com/garethgeorge/backrest/commit/ec4764c9097dd1441a95e573f813429b3d112ce1))
+* spanish translations improved with context and standardized ([#1117](https://github.com/garethgeorge/backrest/issues/1117)) ([844ed1d](https://github.com/garethgeorge/backrest/commit/844ed1db331cbb29b754378820de71769caa5510))
+* stricter cronexpr validation ([45d980b](https://github.com/garethgeorge/backrest/commit/45d980b16ef7901cc31a5a870202219344ffa41d))
+* tooltips and section headers for check and prune policies ([9130539](https://github.com/garethgeorge/backrest/commit/91305396f8647458525ac71b80e219616b5a4346))
+* use cmd.SysProcAttr.HideWindow to spawn background processes on Windows ([#1101](https://github.com/garethgeorge/backrest/issues/1101)) ([7638b5f](https://github.com/garethgeorge/backrest/commit/7638b5f2dc82d003eccc16a585d45bb293744a39))
+
 ## [1.11.2](https://github.com/garethgeorge/backrest/compare/v1.11.1...v1.11.2) (2026-01-27)
 
 
