@@ -60,7 +60,7 @@ Backrest provides flexible scheduling options for all operations through policie
 
 ## Operation Types
 
-### Backup
+### 💾 Backup
 [Restic Documentation](https://restic.readthedocs.io/en/latest/040_backup.html)
 
 Creates snapshots of your data using `restic backup`.
@@ -85,7 +85,7 @@ Creates snapshots of your data using `restic backup`.
 - `plan:{PLAN_ID}`: Groups snapshots by backup plan
 - `created-by:{INSTANCE_ID}`: Identifies creating Backrest instance
 
-### Forget
+### 🕰️ Forget
 [Restic Documentation](https://restic.readthedocs.io/en/latest/060_forget.html)
 
 Manages snapshot retention using `restic forget --tag plan:{PLAN_ID}`.
@@ -94,7 +94,7 @@ Manages snapshot retention using `restic forget --tag plan:{PLAN_ID}`.
 - **By Count**: `--keep-last {COUNT}`
 - **By Time Period**: `--keep-{hourly,daily,weekly,monthly,yearly} {COUNT}`
 
-### Prune
+### ✂️ Prune
 [Restic Documentation](https://restic.readthedocs.io/en/latest/060_forget.html#removing-unreferenced-data)
 
 Removes unreferenced data using `restic prune`. Like Backup, Prune operations trigger their respective lifecycle hooks (e.g., `CONDITION_PRUNE_START`).
@@ -113,7 +113,7 @@ Removes unreferenced data using `restic prune`. Like Backup, Prune operations tr
 - Consider storage costs vs. cleanup frequency
 :::
 
-### Check
+### 🔍 Check
 [Restic Documentation](https://restic.readthedocs.io/en/latest/080_check.html)
 
 Verifies repository integrity using `restic check`.
