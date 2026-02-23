@@ -17,7 +17,7 @@ curl -X POST 'localhost:9898/v1.Backrest/Backup' --data '{"value": "YOUR_PLAN_ID
 ```
 The request will block until the operation has completed. A 200 response means the backup completed successfully, if the request times out the operation will continue in the background.
 
-The backup API can also be used to trigger backups plans sequentially. This hook will start the next backup plan immediately after this plan finishes (or fails):
+The backup API can also be used to trigger backup plans sequentially. This hook will start the next backup plan immediately after this plan finishes (or fails):
 
 **Event:** `CONDITION_SNAPSHOT_END`
 **Error Behavior:** `ON_ERROR_IGNORE`
