@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"time"
+	"strings"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
@@ -301,18 +302,26 @@ func readLs(output io.Reader) (*Snapshot, []*LsEntry, error) {
 
 	var entries []*LsEntry
 	for {
-		bytes, err := reader.ReadBytes('\n')
-		if err != nil {
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return nil, nil, fmt.Errorf("failed to read bytes: %w", err)
+		}
+		trimmed := strings.TrimRight(line, "\r\n")
+		if trimmed == "" {
 			if err == io.EOF {
 				break
 			}
-			return nil, nil, fmt.Errorf("failed to read bytes: %w", err)
+			continue
 		}
+
 		var entry *LsEntry
-		if err := json.Unmarshal(bytes, &entry); err != nil {
+		if err := json.Unmarshal([]byte(trimmed), &entry); err != nil {
 			return nil, nil, fmt.Errorf("failed to parse JSON: %w", err)
 		}
 		entries = append(entries, entry)
+		if err == io.EOF {
+			break
+		}
 	}
 	return snapshot, entries, nil
 }
