@@ -1,6 +1,7 @@
 package sftputil
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/pem"
@@ -9,7 +10,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -28,18 +28,28 @@ func AddHostKey(host, port string, sshDir string) error {
 	}
 
 	knownHostsPath := filepath.Join(sshDir, "known_hosts")
-	if err := os.MkdirAll(path.Dir(knownHostsPath), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(knownHostsPath), 0700); err != nil {
 		return fmt.Errorf("failed to create ssh dir: %w", err)
 	}
 
-	// Check if already known
+	// Check if already known in the specified file
 	checkCmd := exec.Command("ssh-keygen", "-F", hostSpec, "-f", knownHostsPath)
 	if checkCmd.Run() == nil {
-		zap.S().Debugf("SFTP host %s already in known_hosts", hostSpec)
+		zap.S().Debugf("SFTP host %s already in %s", hostSpec, knownHostsPath)
 		return nil
 	}
-	if err := os.MkdirAll(path.Dir(knownHostsPath), 0700); err != nil {
-		return fmt.Errorf("failed to create ssh dir: %w", err)
+
+	// Also check default known_hosts if the user hasn't explicitly pointed us to a custom one that overlaps
+	home, _ := os.UserHomeDir()
+	defaultKnownHosts := filepath.Join(home, ".ssh", "known_hosts")
+	if defaultKnownHosts != knownHostsPath {
+		if _, err := os.Stat(defaultKnownHosts); err == nil {
+			checkDefaultCmd := exec.Command("ssh-keygen", "-F", hostSpec, "-f", defaultKnownHosts)
+			if checkDefaultCmd.Run() == nil {
+				zap.S().Debugf("SFTP host %s already in %s", hostSpec, defaultKnownHosts)
+				return nil
+			}
+		}
 	}
 
 	keyscanArgs := []string{"-H"}
@@ -49,9 +59,17 @@ func AddHostKey(host, port string, sshDir string) error {
 	keyscanArgs = append(keyscanArgs, host)
 
 	keyscanCmd := exec.Command("ssh-keyscan", keyscanArgs...)
-	keyOutput, err := keyscanCmd.Output()
-	if err != nil {
-		return fmt.Errorf("ssh-keyscan for host %s failed: %w", host, err)
+	var stdout, stderr bytes.Buffer
+	keyscanCmd.Stdout = &stdout
+	keyscanCmd.Stderr = &stderr
+	if err := keyscanCmd.Run(); err != nil {
+		return fmt.Errorf("ssh-keyscan for host %s failed: %w (stderr: %q)", host, err, strings.TrimSpace(stderr.String()))
+	}
+	keyOutput := stdout.Bytes()
+
+	// If ssh-keyscan succeeded but returned no output, it's also an error (e.g. host down)
+	if len(bytes.TrimSpace(keyOutput)) == 0 {
+		return fmt.Errorf("ssh-keyscan for host %s returned no keys (stderr: %q)", host, strings.TrimSpace(stderr.String()))
 	}
 
 	f, err := os.OpenFile(knownHostsPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)

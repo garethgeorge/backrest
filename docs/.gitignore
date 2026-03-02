@@ -10,3 +10,5 @@ dist
 sw.*
 .env
 .output
+src/.vitepress/dist
+src/.vitepress/cache

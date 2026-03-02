@@ -99,7 +99,6 @@ message SetupSftpResponse {
 
 message CheckRepoExistsRequest {
   Repo repo = 1;
-  bool trust_sftp_host_key = 2;
 }
 
 message CheckRepoExistsResponse {
@@ -110,7 +109,6 @@ message CheckRepoExistsResponse {
 
 message AddRepoRequest {
   Repo repo = 1;
-  bool trust_sftp_host_key = 2;
 }
 
 message DoRepoTaskRequest {

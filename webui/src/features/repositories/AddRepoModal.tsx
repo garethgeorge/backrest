@@ -464,58 +464,18 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     }
   };
 
-  const verifySftpHostKey = async (
-    action: (trust: boolean) => Promise<any>,
-  ) => {
-    try {
-      await action(false);
-    } catch (e: any) {
-      if (
-        e.message &&
-        e.message.includes("SFTP host key verification failed")
-      ) {
-        setConfirmation({
-          open: true,
-          title: "Unknown SFTP Host Key",
-          content: (
-            <>
-              The host key for this SFTP server is not known.
-              <br />
-              Do you want to trust this host and add its key to your known_hosts
-              file?
-            </>
-          ),
-          onOk: async () => {
-            setConfirmation((prev) => ({ ...prev, open: false }));
-            setConfirmLoading(true);
-            try {
-              await action(true);
-            } catch (retryErr: any) {
-              alerts.error(formatErrorAlert(retryErr, "Operation error: "));
-            } finally {
-              setConfirmLoading(false);
-            }
-          },
-        });
-      } else {
-        throw e;
-      }
-    }
-  };
-
   const handleOk = async () => {
     setConfirmLoading(true);
     try {
       await validateLocal();
 
-      const doSubmit = async (trust: boolean) => {
+      const doSubmit = async () => {
         const repo = fromJson(RepoSchema, formData, {
           ignoreUnknownFields: true,
         });
 
         const req = create(AddRepoRequestSchema, {
           repo: repo,
-          trustSftpHostKey: trust,
         });
 
         if (template !== null) {
@@ -537,7 +497,32 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         }
       };
 
-      await verifySftpHostKey(doSubmit);
+      try {
+        await doSubmit();
+      } catch (e: any) {
+        if (
+          e.message &&
+          e.message.includes("SFTP host key verification failed")
+        ) {
+          setConfirmation({
+            open: true,
+            title: "Unknown SFTP Host Key",
+            content: (
+              <>
+                The host key for this SFTP server is not known.
+                <br />
+                <br />
+                To proceed, please manually add the host key to your known_hosts file, or use the "Bootstrap SSH Key" section below to generate and authorize a key.
+              </>
+            ),
+            onOk: () => {
+              setConfirmation((prev) => ({ ...prev, open: false }));
+            },
+          });
+        } else {
+          throw e; // rethrow to be caught by the outer catch
+        }
+      }
     } catch (e: any) {
       alerts.error(
         formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()),
@@ -551,13 +536,12 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     setConfirmLoading(true);
     try {
       await validateLocal();
-      const doCheck = async (trust: boolean, confirm: boolean) => {
+      const doCheck = async () => {
         const repo = fromJson(RepoSchema, formData, {
           ignoreUnknownFields: true,
         });
         const req = create(CheckRepoExistsRequestSchema, {
           repo: repo,
-          trustSftpHostKey: trust,
         });
 
         const response = await backrestService.checkRepoExists(req);
@@ -570,13 +554,12 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               <>
                 The host key for this SFTP server is not known.
                 <br />
-                Do you want to trust this host and add its key to your
-                known_hosts file?
+                <br />
+                To proceed, please manually add the host key to your known_hosts file, or use the "Bootstrap SSH Key" section below to generate and authorize a key.
               </>
             ),
             onOk: () => {
               setConfirmation((prev) => ({ ...prev, open: false }));
-              handleTestWrapper(true, confirm);
             },
           });
           return;
@@ -595,21 +578,14 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         }
       };
 
-      // Wrapper to handle re-entry from dialog
-      const handleTestWrapper = async (trust: boolean, confirm: boolean) => {
-        setConfirmLoading(true);
-        try {
-          await doCheck(trust, confirm);
-        } catch (e: any) {
-          alerts.error(formatErrorAlert(e, m.add_repo_modal_test_error()));
-        } finally {
-          setConfirmLoading(false);
-        }
-      };
-
-      await handleTestWrapper(false, false);
+      try {
+        await doCheck();
+      } catch (e: any) {
+        alerts.error(formatErrorAlert(e, m.add_repo_modal_test_error()));
+      }
     } catch (e: any) {
       alerts.error(formatErrorAlert(e, m.add_repo_modal_test_error()));
+    } finally {
       setConfirmLoading(false);
     }
   };

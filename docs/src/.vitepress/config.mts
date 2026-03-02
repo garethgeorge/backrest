@@ -7,6 +7,9 @@ export default defineConfig({
   cleanUrls: true,
   themeConfig: {
     logo: '/logo.svg', // Assuming there's a logo or comment out if none
+    search: {
+      provider: 'local'
+    },
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Docs', link: '/introduction/getting-started' },
