@@ -35,14 +35,6 @@ mkdir -p "$APP_DIR/Contents/Resources"
 cp "$BINARY" "$APP_DIR/Contents/MacOS/backrest"
 chmod +x "$APP_DIR/Contents/MacOS/backrest"
 
-# Create a launcher wrapper that passes --tray by default
-cat > "$APP_DIR/Contents/MacOS/backrest-launcher" << 'LAUNCHER'
-#!/bin/bash
-DIR="$(cd "$(dirname "$0")" && pwd)"
-exec "$DIR/backrest" --tray "$@"
-LAUNCHER
-chmod +x "$APP_DIR/Contents/MacOS/backrest-launcher"
-
 # Generate Info.plist with version
 sed "s|__VERSION__|$VERSION|g" "$SCRIPT_DIR/Info.plist" > "$APP_DIR/Contents/Info.plist"
 
