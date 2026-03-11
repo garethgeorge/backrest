@@ -47,7 +47,7 @@ chmod +x "$APP_DIR/Contents/MacOS/backrest-launcher"
 sed "s/__VERSION__/$VERSION/g" "$SCRIPT_DIR/Info.plist" > "$APP_DIR/Contents/Info.plist"
 
 # Generate .icns from the PNG icon
-ICON_PNG="$SCRIPT_DIR/../../cmd/backrest/icon.png"
+ICON_PNG="$SCRIPT_DIR/icon.png"
 if [ -f "$ICON_PNG" ]; then
     ICONSET_DIR=$(mktemp -d)/backrest.iconset
     mkdir -p "$ICONSET_DIR"
