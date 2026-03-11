@@ -194,9 +194,6 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
       if (!formData.repo) {
         throw new Error(m.add_plan_modal_validation_repository_required());
       }
-      if (!formData.paths || formData.paths.length === 0) {
-        throw new Error(m.add_plan_modal_validation_paths_required());
-      }
       if (
         formData.backup_flags &&
         formData.backup_flags.some((f: string) => !/^\-\-?.*$/.test(f))

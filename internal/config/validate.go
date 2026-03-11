@@ -134,6 +134,10 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 		}
 	}
 
+	hasStdinFromCommand := slices.Contains(plan.BackupFlags, "--stdin-from-command")
+	if len(plan.Paths) == 0 && !hasStdinFromCommand {
+		err = multierror.Append(err, fmt.Errorf("at least one path is required (unless --stdin-from-command is used)"))
+	}
 	for idx, p := range plan.Paths {
 		if p == "" {
 			err = multierror.Append(err, fmt.Errorf("path[%d] cannot be empty", idx))
