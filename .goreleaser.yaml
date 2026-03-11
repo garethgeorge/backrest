@@ -304,6 +304,8 @@ docker_manifests:
 
 brews:
   - name: backrest
+    ids:
+      - default
     homepage: https://github.com/garethgeorge/backrest
     description: "Backrest is a web UI and orchestrator for restic backup."
 
