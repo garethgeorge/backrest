@@ -62,5 +62,8 @@ else
     echo "Warning: icon.png not found at $ICON_PNG, bundling without icon"
 fi
 
+# Ad-hoc sign so macOS shows "unverified developer" instead of "damaged"
+codesign --force --deep -s - "$APP_DIR"
+
 echo "Created $APP_DIR (version: $VERSION)"
 echo "To run: open $APP_DIR"
