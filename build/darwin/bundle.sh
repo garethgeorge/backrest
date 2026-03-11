@@ -44,7 +44,7 @@ LAUNCHER
 chmod +x "$APP_DIR/Contents/MacOS/backrest-launcher"
 
 # Generate Info.plist with version
-sed "s/__VERSION__/$VERSION/g" "$SCRIPT_DIR/Info.plist" > "$APP_DIR/Contents/Info.plist"
+sed "s|__VERSION__|$VERSION|g" "$SCRIPT_DIR/Info.plist" > "$APP_DIR/Contents/Info.plist"
 
 # Generate .icns from the PNG icon
 ICON_PNG="$SCRIPT_DIR/icon.png"
