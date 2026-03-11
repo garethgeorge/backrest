@@ -157,3 +157,52 @@ jobs:
         with:
           files: |
             ./windows_installers/*
+
+  macos-bundle:
+    name: macOS app bundle (${{ matrix.goarch }})
+    needs: [goreleaser]
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.25"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Build web UI
+        run: |
+          cd webui && pnpm install && pnpm run build
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Build binary
+        env:
+          CGO_ENABLED: "1"
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -tags tray \
+            -ldflags "-s -w -X main.version=${{ steps.version.outputs.version }} -X main.commit=${{ github.sha }}" \
+            -o backrest ./cmd/backrest/
+      - name: Create app bundle
+        run: ./build/darwin/bundle.sh ./backrest ${{ steps.version.outputs.version }}
+      - name: Package bundle
+        run: |
+          zip -r "Backrest_Darwin_${{ matrix.goarch }}.app.zip" Backrest.app
+      - name: Upload as artifact
+        if: ${{ inputs.snapshot }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backrest-macos-${{ matrix.goarch }}
+          path: "Backrest_Darwin_${{ matrix.goarch }}.app.zip"
+      - name: Upload to release
+        if: ${{ !inputs.snapshot && startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "Backrest_Darwin_${{ matrix.goarch }}.app.zip"
