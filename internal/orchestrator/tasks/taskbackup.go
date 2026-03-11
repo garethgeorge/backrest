@@ -142,10 +142,6 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		return notifyError(err)
 	}
 
-	if err := repo.UnlockIfAutoEnabled(ctx); err != nil {
-		return notifyError(fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err))
-	}
-
 	plan, err := runner.GetPlan(t.PlanID())
 	if err != nil {
 		return notifyError(err)
@@ -155,6 +151,10 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		v1.Hook_CONDITION_SNAPSHOT_START,
 	}, HookVars{}); err != nil {
 		return notifyError(fmt.Errorf("snapshot start hook: %w", err))
+	}
+
+	if err := repo.UnlockIfAutoEnabled(ctx); err != nil {
+		return notifyError(fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err))
 	}
 
 	var sendWg sync.WaitGroup
