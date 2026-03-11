@@ -18,8 +18,7 @@ func startTray() {
 }
 
 func onReady() {
-	systray.SetTitle("Backrest")
-	systray.SetTooltip("Manage backrest")
+	systray.SetTooltip("Backrest")
 	systray.SetIcon(icon)
 
 	mOpenUI := systray.AddMenuItem("Open WebUI", "Open the Backrest WebUI in your default browser")

@@ -196,17 +196,25 @@ jobs:
             -o backrest ./cmd/backrest/
       - name: Create app bundle
         run: ./build/darwin/bundle.sh ./backrest ${{ steps.version.outputs.version }}
+      - name: Compute arch name
+        id: arch
+        run: |
+          if [ "${{ matrix.goarch }}" = "amd64" ]; then
+            echo "name=x86_64" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${{ matrix.goarch }}" >> "$GITHUB_OUTPUT"
+          fi
       - name: Package bundle
         run: |
-          zip -r "Backrest_Darwin_${{ matrix.goarch }}.app.zip" Backrest.app
+          zip -r "backrest_Darwin_${{ steps.arch.outputs.name }}.iso" Backrest.app
       - name: Upload as artifact
         if: ${{ inputs.snapshot }}
         uses: actions/upload-artifact@v4
         with:
-          name: backrest-macos-${{ matrix.goarch }}
-          path: "Backrest_Darwin_${{ matrix.goarch }}.app.zip"
+          name: backrest-macos-${{ steps.arch.outputs.name }}
+          path: "backrest_Darwin_${{ steps.arch.outputs.name }}.iso"
       - name: Upload to release
         if: ${{ !inputs.snapshot && startsWith(github.ref, 'refs/tags/') }}
         uses: softprops/action-gh-release@v2
         with:
-          files: "Backrest_Darwin_${{ matrix.goarch }}.app.zip"
+          files: "backrest_Darwin_${{ steps.arch.outputs.name }}.iso"
