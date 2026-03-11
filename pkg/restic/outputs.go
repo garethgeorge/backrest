@@ -207,6 +207,8 @@ func processProgressOutput[T ProgressEntryValidator](
 	callback func(T)) (T, error) {
 
 	scanner := bufio.NewScanner(output)
+	// increase the buffer size to handle large JSON lines.
+	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 	scanner.Split(bufio.ScanLines)
 
 	nonJSONOutput := &errorMessageCollector{}
