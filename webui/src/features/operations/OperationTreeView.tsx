@@ -72,6 +72,7 @@ import {
 } from "../../api/flowDisplayAggregator";
 import { OperationIcon } from "./OperationIcon";
 import { shouldHideOperation } from "../../api/oplog";
+import { StickyPanel } from "../../components/common/StickyPanel";
 import { create, toJsonString } from "@bufbuild/protobuf";
 import { useConfig } from "../../app/provider";
 
@@ -191,7 +192,9 @@ export const OperationTreeView = ({
         operations={instanceBackups}
         isPlanView={isPlanView}
         onSelect={(flow) => {
-          setSelectedBackupId(flow ? flow.flowID : null);
+          if (flow) {
+            setSelectedBackupId(flow.flowID);
+          }
         }}
       />
     );
@@ -259,14 +262,14 @@ export const OperationTreeView = ({
         </SplitterPanel>
         <SplitterResizeTrigger id="tree:view" />
         <SplitterPanel id="view">
-          <Box paddingLeft="2" height="100%" overflowY="auto">
-            <BackupViewContainer>
+          <Box paddingLeft="2" height="100%" overflow="hidden">
+            <StickyPanel>
               {selectedBackupId ? (
                 <BackupView
                   backup={backups.find((b) => b.flowID === selectedBackupId)}
                 />
               ) : null}
-            </BackupViewContainer>
+            </StickyPanel>
           </Box>
         </SplitterPanel>
       </Splitter>
@@ -536,14 +539,6 @@ const DisplayOperationTree = ({
         />
       </TreeViewTree>
     </TreeViewRoot>
-  );
-};
-
-const BackupViewContainer = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <Box position="sticky" top="0" width="100%">
-      {children}
-    </Box>
   );
 };
 
