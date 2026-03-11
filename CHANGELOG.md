@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.12.1](https://github.com/garethgeorge/backrest/compare/v1.12.0...v1.12.1) (2026-03-11)
+
+
+### Features
+
+* add new translation strings and expand Japanese language translations ([#1120](https://github.com/garethgeorge/backrest/issues/1120)) ([7f050d2](https://github.com/garethgeorge/backrest/commit/7f050d2fae6ab6a2a26b53de0dbac2043ee1cddb))
+
+
+### Bug Fixes
+
+* allow --stdin-from-command flag to be used ([c603f00](https://github.com/garethgeorge/backrest/commit/c603f0010e995f9680befdd37244700ec2f43336))
+* condition snapshot start hook may not run if repo is unreachable and autounlock is enabled ([cd72b7f](https://github.com/garethgeorge/backrest/commit/cd72b7f8a94f830cf0a1365547d1ac47bc37a738))
+* disable strict sftp trust / known host checking ([1bad3d0](https://github.com/garethgeorge/backrest/commit/1bad3d088792e80fc4c0c29d58b3f503a224c7e3))
+* ensure that docker images package the latest rclone ([#1128](https://github.com/garethgeorge/backrest/issues/1128)) ([4734bc2](https://github.com/garethgeorge/backrest/commit/4734bc21b7940775d69920b1ca9a48e031763d71))
+* increase bufio's max buffer size to handle large json lines for big repos ([bebe608](https://github.com/garethgeorge/backrest/commit/bebe60850566c603eb37659daf89b853ffdc9f63))
+* reduce occurrence of benign 'API error reconnecting' warnings ([d4594cc](https://github.com/garethgeorge/backrest/commit/d4594cc6954820c9df2f1f87408853562aefbe84))
+* snap operation details to view port when scrolling through a large operation tree ([7344541](https://github.com/garethgeorge/backrest/commit/7344541588ea4cc9fe1fbcd404430d09558d4321))
+* support for linux/arm/v7 ([#1151](https://github.com/garethgeorge/backrest/issues/1151)) ([96d6dff](https://github.com/garethgeorge/backrest/commit/96d6dffabc29cfdaf4c1c3c90c448e2ce8408608))
+* use LLM to generate more consistent translations ([#1103](https://github.com/garethgeorge/backrest/issues/1103)) ([0199440](https://github.com/garethgeorge/backrest/commit/0199440780418177452f0c9fcad945a549f8f95f))
+
+
+### Miscellaneous Chores
+
+* set next release version to 1.12.1 ([9e5d795](https://github.com/garethgeorge/backrest/commit/9e5d795efb5d91276729c9e54f4f5cceee27e148))
+
 ## [1.12.0](https://github.com/garethgeorge/backrest/compare/v1.11.2...v1.12.0) (2026-02-22)
 
 
