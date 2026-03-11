@@ -212,15 +212,15 @@ jobs:
           fi
       - name: Package bundle
         run: |
-          zip -r "backrest_Darwin_${{ steps.arch.outputs.name }}.iso" Backrest.app
+          zip -r "backrest_Darwin_${{ steps.arch.outputs.name }}.zip" Backrest.app
       - name: Upload as artifact
         if: ${{ inputs.snapshot }}
         uses: actions/upload-artifact@v4
         with:
           name: backrest-macos-${{ steps.arch.outputs.name }}
-          path: "backrest_Darwin_${{ steps.arch.outputs.name }}.iso"
+          path: "backrest_Darwin_${{ steps.arch.outputs.name }}.zip"
       - name: Upload to release
         if: ${{ !inputs.snapshot && startsWith(github.ref, 'refs/tags/') }}
         uses: softprops/action-gh-release@v2
         with:
-          files: "backrest_Darwin_${{ steps.arch.outputs.name }}.iso"
+          files: "backrest_Darwin_${{ steps.arch.outputs.name }}.zip"
