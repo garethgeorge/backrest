@@ -176,33 +176,36 @@ const SummaryPanel = ({
 }: {
   summary: SummaryDashboardResponse_Summary;
 }) => {
-  const recentBackupsChart: {
-    idx: number;
-    time: number;
-    durationMs: number;
-    color: string;
-    bytesAdded: number;
-  }[] = [];
   const recentBackups = summary.recentBackups!;
-  for (let i = 0; i < recentBackups.timestampMs.length; i++) {
-    const color = colorForStatus(recentBackups.status[i]);
-    recentBackupsChart.push({
-      idx: i,
-      time: Number(recentBackups.timestampMs[i]),
-      durationMs: Number(recentBackups.durationMs[i]),
-      color: color,
-      bytesAdded: Number(recentBackups.bytesAdded[i]),
-    });
-  }
-  while (recentBackupsChart.length < 60) {
-    recentBackupsChart.push({
-      idx: recentBackupsChart.length,
-      time: 0,
-      durationMs: 0,
-      color: "transparent", // transparent instead of white for dark mode support
-      bytesAdded: 0,
-    });
-  }
+  const recentBackupsChart = useMemo(() => {
+    const chart: {
+      idx: number;
+      time: number;
+      durationMs: number;
+      color: string;
+      bytesAdded: number;
+    }[] = [];
+    for (let i = 0; i < recentBackups.timestampMs.length; i++) {
+      const color = colorForStatus(recentBackups.status[i]);
+      chart.push({
+        idx: i,
+        time: Number(recentBackups.timestampMs[i]),
+        durationMs: Number(recentBackups.durationMs[i]),
+        color: color,
+        bytesAdded: Number(recentBackups.bytesAdded[i]),
+      });
+    }
+    while (chart.length < 60) {
+      chart.push({
+        idx: chart.length,
+        time: 0,
+        durationMs: 0,
+        color: "transparent", // transparent instead of white for dark mode support
+        bytesAdded: 0,
+      });
+    }
+    return chart;
+  }, [recentBackups]);
 
   const BackupChartTooltip = ({ active, payload, label }: any) => {
     const idx = Number(label);
