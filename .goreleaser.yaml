@@ -56,11 +56,31 @@ builds:
       - 7
     ldflags:
       - -s -w
+  - id: linux-tray
+    main: ./cmd/backrest
+    binary: backrest-tray
+    env:
+      - CGO_ENABLED=0
+    tags:
+      - tray
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - 6
+      - 7
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   - id: windows
     main: ./cmd/backrest
     binary: backrest
     env:
       - CGO_ENABLED=1
+    tags:
+      - tray
     goos:
       - windows
     goarch:
@@ -70,7 +90,12 @@ builds:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -H windowsgui
 
 archives:
-  - format: tar.gz
+  - id: default
+    builds:
+      - other
+      - linux
+      - windows
+    format: tar.gz
     name_template: >-
       {{ .ProjectName }}_
       {{- title .Os }}_
@@ -88,6 +113,23 @@ archives:
       - README.md
       - CHANGELOG.md
     allow_different_binary_count: true
+  - id: tray
+    builds:
+      - linux-tray
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}-tray_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - install.sh
+      - uninstall.sh
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
 
 dockers:
   - image_templates:
@@ -262,6 +304,8 @@ docker_manifests:
 
 brews:
   - name: backrest
+    ids:
+      - default
     homepage: https://github.com/garethgeorge/backrest
     description: "Backrest is a web UI and orchestrator for restic backup."
 
