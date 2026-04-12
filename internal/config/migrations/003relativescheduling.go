@@ -5,7 +5,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var migration003RelativeScheduling = func(config *v1.Config) {
+var migration003RelativeScheduling = func(config *v1.Config) error {
 	zap.L().Info("applying config migration 003: relative scheduling")
 	// loop over plans and examine prune policy's
 	for _, repo := range config.Repos {
@@ -22,4 +22,5 @@ var migration003RelativeScheduling = func(config *v1.Config) {
 			schedule.Clock = v1.Schedule_CLOCK_LAST_RUN_TIME
 		}
 	}
+	return nil
 }
