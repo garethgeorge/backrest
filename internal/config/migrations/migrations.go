@@ -8,11 +8,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var migrations = []*func(*v1.Config){
+var migrations = []*func(*v1.Config) error{
 	&noop, // migration001PrunePolicy is deprecated
 	&noop, // migration002Schedules is deprecated
 	&migration003RelativeScheduling,
 	&migration004RepoGuid,
+	&migration005CheckRepoPasswords,
 }
 
 var CurrentVersion = int32(len(migrations))
@@ -39,13 +40,16 @@ func ApplyMigrations(config *v1.Config) error {
 		if m == &noop {
 			return fmt.Errorf("config version %d is too old to migrate, please try first upgrading to backrest 1.4.0 which is the last version that may be compatible with your config", config.Version)
 		}
-		(*m)(config)
+		if err := (*m)(config); err != nil {
+			return err
+		}
 	}
 	config.Version = CurrentVersion
 
 	return nil
 }
 
-var noop = func(config *v1.Config) {
+var noop = func(config *v1.Config) error {
 	// do nothing
+	return nil
 }
