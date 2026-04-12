@@ -29,6 +29,8 @@ builds:
     binary: backrest
     env:
       - CGO_ENABLED=0
+    tags:
+      - tray
     goos:
       - linux
     goarch:
@@ -56,24 +58,6 @@ builds:
       - 7
     ldflags:
       - -s -w
-  - id: linux-tray
-    main: ./cmd/backrest
-    binary: backrest-tray
-    env:
-      - CGO_ENABLED=0
-    tags:
-      - tray
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-      - arm
-    goarm:
-      - 6
-      - 7
-    ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   - id: windows
     main: ./cmd/backrest
     binary: backrest
@@ -113,23 +97,6 @@ archives:
       - README.md
       - CHANGELOG.md
     allow_different_binary_count: true
-  - id: tray
-    builds:
-      - linux-tray
-    format: tar.gz
-    name_template: >-
-      {{ .ProjectName }}-tray_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-    files:
-      - install.sh
-      - uninstall.sh
-      - LICENSE
-      - README.md
-      - CHANGELOG.md
 
 dockers:
   - image_templates:

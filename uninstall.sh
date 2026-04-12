@@ -31,6 +31,14 @@ remove_launchd_plist() {
   sudo rm /Library/LaunchAgents/com.backrest.plist
 }
 
+remove_autostart_desktop() {
+  local desktop_file="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/backrest.desktop"
+  if [ -f "$desktop_file" ]; then
+    rm -f "$desktop_file"
+    echo "Removed tray autostart entry at $desktop_file"
+  fi
+}
+
 OS=$(uname -s)
 if [ "$OS" = "Darwin" ]; then
   echo "Uninstalling on Darwin"
@@ -39,18 +47,21 @@ if [ "$OS" = "Darwin" ]; then
 
   echo "Done -- run 'launchctl list | grep backrest' to check the service installation."
 elif [ "$OS" = "Linux" ]; then
-  echo "Unnstalling on Linux"
+  echo "Uninstalling on Linux"
   uninstall_unix
 
-  systemctl --version
+  # Remove tray autostart if present
+  remove_autostart_desktop
+
+  systemctl --version &>/dev/null
   systemd_=$?
-  rc-status --version
+  rc-status --version &>/dev/null
   openrc_=$?
 
-  if [ $systemd_ -eq 0 ]; then
+  if [ $systemd_ -eq 0 ] && [ -f /etc/systemd/system/backrest.service ]; then
     remove_systemd_service
     echo "Done -- run 'systemctl status backrest' to check the status of the service."
-  elif [ $openrc_ -eq 0 ]; then
+  elif [ $openrc_ -eq 0 ] && [ -f /etc/init.d/backrest ]; then
     remove_openrc_service
     echo "Done -- run 'rc-service backrest status' to check the status of the service."
   fi
