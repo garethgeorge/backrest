@@ -270,7 +270,6 @@ export const SnapshotBrowser = ({
                         cursor="pointer"
                         onClick={(e: any) => {
                           e.stopPropagation();
-                          console.log("SnapshotBrowser onClick: " + node.key);
                           if (loadingKeys.has(node.key)) return;
                           const newExpanded = new Set(expandedKeys);
                           if (newExpanded.has(node.key)) {

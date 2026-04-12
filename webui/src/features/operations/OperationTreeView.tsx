@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Flex,
@@ -277,7 +277,7 @@ export const OperationTreeView = ({
   );
 };
 
-const DisplayOperationTree = ({
+const DisplayOperationTree = React.memo(({
   operations,
   isPlanView,
   onSelect,
@@ -442,6 +442,84 @@ const DisplayOperationTree = ({
     setExpandedValue(Array.from([...expandedValue, ...toExpand]));
   }, [operations, isPlanView]);
 
+  const renderNode = useCallback(
+    ({ node, nodeState }: { node: OpTreeNode; nodeState: any }) =>
+      nodeState.isBranch ? (
+        <TreeViewBranchControl
+          cursor="pointer"
+          onClick={() => {
+            setExpandedValue((prev) =>
+              prev.includes(node.id)
+                ? prev.filter((id) => id !== node.id)
+                : [...prev, node.id],
+            );
+          }}
+        >
+          <Box
+            transform={nodeState.expanded ? "rotate(90deg)" : undefined}
+            transition="transform 0.2s"
+            display="inline-flex"
+            alignItems="center"
+            justifyContent="center"
+            w="20px"
+            flexShrink={0}
+          >
+            <LuChevronRight size="14px" />
+          </Box>
+          <TreeViewBranchTrigger>
+            <Box
+              display="inline-flex"
+              alignItems="center"
+              justifyContent="center"
+              w="24px"
+              flexShrink={0}
+            >
+              <LuFolder />
+            </Box>
+          </TreeViewBranchTrigger>
+          <TreeViewBranchText>{node.label}</TreeViewBranchText>
+          <TreeViewBranchContent />
+        </TreeViewBranchControl>
+      ) : (
+        <TreeViewItem>
+          {/* Spacer to match chevron width */}
+          <Box w="20px" flexShrink={0} />
+          <Box
+            display="inline-flex"
+            alignItems="center"
+            justifyContent="center"
+            w="24px"
+            flexShrink={0}
+          >
+            {node.icon ? node.icon : <LuFile />}
+          </Box>
+          <TreeViewItemText>
+            {node.backup ? (
+              <VStack align="start" gap="0">
+                <Text>
+                  {displayTypeToString(node.backup.type)}{" "}
+                  {formatTime(node.backup.displayTime)}
+                </Text>
+                {node.backup.subtitleComponents &&
+                  node.backup.subtitleComponents.length > 0 && (
+                    <Text
+                      color="fg.muted"
+                      fontSize="xs"
+                      fontFamily="mono"
+                    >
+                      {node.backup.subtitleComponents.join(", ")}
+                    </Text>
+                  )}
+              </VStack>
+            ) : (
+              node.label
+            )}
+          </TreeViewItemText>
+        </TreeViewItem>
+      ),
+    [],
+  );
+
   if (!treeCollection) return <></>;
 
   return (
@@ -460,87 +538,11 @@ const DisplayOperationTree = ({
       }}
     >
       <TreeViewTree>
-        <TreeViewNode<OpTreeNode>
-          render={({ node, nodeState }) =>
-            nodeState.isBranch ? (
-              <TreeViewBranchControl
-                cursor="pointer"
-                onClick={() => {
-                  setExpandedValue((prev) =>
-                    prev.includes(node.id)
-                      ? prev.filter((id) => id !== node.id)
-                      : [...prev, node.id],
-                  );
-                }}
-              >
-                <Box
-                  transform={nodeState.expanded ? "rotate(90deg)" : undefined}
-                  transition="transform 0.2s"
-                  display="inline-flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  w="20px"
-                  flexShrink={0}
-                >
-                  <LuChevronRight size="14px" />
-                </Box>
-                <TreeViewBranchTrigger>
-                  <Box
-                    display="inline-flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    w="24px"
-                    flexShrink={0}
-                  >
-                    <LuFolder />
-                  </Box>
-                </TreeViewBranchTrigger>
-                <TreeViewBranchText>{node.label}</TreeViewBranchText>
-                <TreeViewBranchContent />
-              </TreeViewBranchControl>
-            ) : (
-              <TreeViewItem>
-                {/* Spacer to match chevron width */}
-                <Box w="20px" flexShrink={0} />
-                <Box
-                  display="inline-flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  w="24px"
-                  flexShrink={0}
-                >
-                  {node.icon ? node.icon : <LuFile />}
-                </Box>
-                <TreeViewItemText>
-                  {node.backup ? (
-                    <VStack align="start" gap="0">
-                      <Text>
-                        {displayTypeToString(node.backup.type)}{" "}
-                        {formatTime(node.backup.displayTime)}
-                      </Text>
-                      {node.backup.subtitleComponents &&
-                        node.backup.subtitleComponents.length > 0 && (
-                          <Text
-                            color="fg.muted"
-                            fontSize="xs"
-                            fontFamily="mono"
-                          >
-                            {node.backup.subtitleComponents.join(", ")}
-                          </Text>
-                        )}
-                    </VStack>
-                  ) : (
-                    node.label
-                  )}
-                </TreeViewItemText>
-              </TreeViewItem>
-            )
-          }
-        />
+        <TreeViewNode<OpTreeNode> render={renderNode} />
       </TreeViewTree>
     </TreeViewRoot>
   );
-};
+});
 
 const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
   if (!backup) {
