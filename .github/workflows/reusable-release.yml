@@ -77,7 +77,7 @@ jobs:
   installer:
     name: Windows installers
     needs: [goreleaser]
-    runs-on: windows-2022
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
