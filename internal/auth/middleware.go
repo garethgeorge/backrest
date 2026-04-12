@@ -29,6 +29,12 @@ func RequireAuthentication(h http.Handler, auth *Authenticator) http.Handler {
 			return
 		}
 
+		// Pass OPTIONS through unauthenticated so CORS preflight succeeds.
+		if r.Method == http.MethodOptions {
+			h.ServeHTTP(w, r)
+			return
+		}
+
 		username, password, usesBasicAuth := r.BasicAuth()
 		if usesBasicAuth {
 			user, err := auth.Login(username, password)
