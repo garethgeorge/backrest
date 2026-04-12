@@ -50,10 +50,7 @@ import { useShowModal } from "../components/common/ModalManager";
 import { uiBuildVersion } from "../state/buildcfg";
 import { ActivityBar } from "../components/layout/ActivityBar";
 import { OperationStatus } from "../../gen/ts/v1/operations_pb";
-import {
-  ResourceStatusProvider,
-  useResourceStatus,
-} from "../api/resourceStatus";
+import { useResourceStatus } from "../api/resourceStatus";
 import LogoSvg from "../../assets/logo.svg";
 import { keyBy } from "../lib/util";
 import { Code } from "@connectrpc/connect";
@@ -369,10 +366,11 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const reposById = useMemo(() => config ? keyBy(config.repos, (r) => r.id) : {}, [config?.repos]);
+
   // Replicate getSidenavItems functionality with Chakra components
   if (!config) return null;
 
-  const reposById = useMemo(() => keyBy(config.repos, (r) => r.id), [config.repos]);
   const configPlans = config.plans || [];
   const configRepos = config.repos || [];
 
@@ -586,21 +584,19 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
 
 const Sidebar = () => {
   return (
-    <ResourceStatusProvider>
-      <Box
-        minW="300px"
-        maxW="400px"
-        bg="bg.panel"
-        borderRightWidth="1px"
-        borderColor="border"
-        h="full"
-        overflowY="auto"
-        flexShrink={0}
-        display={{ base: "none", lg: "block" }}
-      >
-        <SidebarContent />
-      </Box>
-    </ResourceStatusProvider>
+    <Box
+      minW="300px"
+      maxW="400px"
+      bg="bg.panel"
+      borderRightWidth="1px"
+      borderColor="border"
+      h="full"
+      overflowY="auto"
+      flexShrink={0}
+      display={{ base: "none", lg: "block" }}
+    >
+      <SidebarContent />
+    </Box>
   );
 };
 
@@ -751,9 +747,7 @@ const MobileNavTrigger = () => {
           <DrawerCloseTrigger />
         </DrawerHeader>
         <DrawerBody p={0}>
-          <ResourceStatusProvider>
-            <SidebarContent onClose={() => setOpen(false)} />
-          </ResourceStatusProvider>
+          <SidebarContent onClose={() => setOpen(false)} />
         </DrawerBody>
       </DrawerContent>
     </DrawerRoot>
