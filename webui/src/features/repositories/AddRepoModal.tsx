@@ -108,6 +108,7 @@ interface SftpConfigSectionProps {
   onChangeIdentityFile: (path: string) => void;
   port: number | null;
   onChangePort: (port: number | null) => void;
+  knownHostsPath: string;
   onChangeKnownHostsPath: (path: string) => void;
   isWindows: boolean;
 }
@@ -118,70 +119,48 @@ const SftpConfigSection = ({
   onChangeIdentityFile,
   port,
   onChangePort,
+  knownHostsPath,
   onChangeKnownHostsPath,
   isWindows,
 }: SftpConfigSectionProps) => {
-  // Setup Keys state
-  const [sftpUsername, setSftpUsername] = useState("");
-  const [sftpPassword, setSftpPassword] = useState("");
   const [setupLoading, setSetupLoading] = useState(false);
-  const [generatedPublicKey, setGeneratedPublicKey] = useState<string | null>(
-    null,
-  );
+  const [generatedPublicKey, setGeneratedPublicKey] = useState<string | null>(null);
+  const [hostKeyWarning, setHostKeyWarning] = useState<string | null>(null);
+  const [keyCopied, setKeyCopied] = useState(false);
 
   if (isWindows) return null;
 
-  const handleSetupKeys = async () => {
+  const handleGenerateKey = async () => {
     setSetupLoading(true);
     setGeneratedPublicKey(null);
+    setHostKeyWarning(null);
     try {
       if (!uri) return;
-      // Simple parse of URI for host/port if not fully robust
-      let host = "";
+
+      // Parse host and port from the SFTP URI
+      const authority = uri.replace("sftp:", "").split("/")[0];
+      const hostPart = authority.includes("@") ? authority.split("@")[1] : authority;
+      let host = hostPart;
       let defaultPort = "22";
-      const uriParts = uri.replace("sftp:", "").split("/");
-      const authority = uriParts[0];
-      let hostPart = authority;
-      if (authority.includes("@")) {
-        setSftpUsername(authority.split("@")[0]);
-        hostPart = authority.split("@")[1];
-      }
-
       if (hostPart.includes(":")) {
-        host = hostPart.split(":")[0];
-        defaultPort = hostPart.split(":")[1];
-      } else {
-        host = hostPart;
+        [host, defaultPort] = hostPart.split(":");
       }
-
-      // Override from manual input if username is set there
-      const username = sftpUsername || uri.match(/([^@]+)@/)?.[1] || "";
 
       const res = await backrestService.setupSftp({
-        host: host,
+        host,
         port: port ? port.toString() : defaultPort,
-        username: username,
-        password: sftpPassword || undefined,
+        username: "",
       });
-
-      if (res.error) {
-        throw new Error(res.error);
-      }
 
       onChangeIdentityFile(res.keyPath);
       onChangeKnownHostsPath(res.knownHostsPath);
       if (res.publicKey) {
         setGeneratedPublicKey(res.publicKey);
       }
-      alerts.success(
-        "Created SSH keypair at " +
-        res.keyPath +
-        " and updated known hosts file at " +
-        res.knownHostsPath,
-      );
-      alerts.success(
-        "Updated restic flags to use the SSH keypair and known hosts file.",
-      );
+      if (res.error) {
+        setHostKeyWarning(res.error);
+      }
+      alerts.success("Generated SSH keypair at " + res.keyPath);
     } catch (e: any) {
       alerts.error(formatErrorAlert(e, "SFTP Setup Failed"));
     } finally {
@@ -195,34 +174,22 @@ const SftpConfigSection = ({
         <AccordionRoot collapsible variant="enclosed">
           <AccordionItem value="bootstrap">
             <AccordionItemTrigger>
-              Bootstrap SSH Key (Optional)
+              Setup SSH Key (Optional)
             </AccordionItemTrigger>
             <AccordionItemContent>
               <Stack gap={3} p={2}>
                 <CText fontSize="sm">
-                  Enter your SSH credentials here. When you click "Setup Keys",
-                  backrest will generate an SSH key pair.
+                  Click "Generate Key" to create an SSH key pair for this host.
+                  Backrest will attempt to scan the host key into known_hosts automatically.
+                  You will then need to add the generated public key to{" "}
+                  <Code>~/.ssh/authorized_keys</Code> on the remote server.
                 </CText>
-                <Field label="SSH Username">
-                  <Input
-                    placeholder="user"
-                    value={sftpUsername}
-                    onChange={(e) => setSftpUsername(e.target.value)}
-                  />
-                </Field>
-                <Field label="SSH Password">
-                  <PasswordInput
-                    placeholder="password (optional)"
-                    value={sftpPassword}
-                    onChange={(e) => setSftpPassword(e.target.value)}
-                  />
-                </Field>
                 <Button
                   size="sm"
-                  onClick={handleSetupKeys}
+                  onClick={handleGenerateKey}
                   loading={setupLoading}
                 >
-                  Setup Keys
+                  Generate Key
                 </Button>
               </Stack>
             </AccordionItemContent>
@@ -237,8 +204,7 @@ const SftpConfigSection = ({
               Key Generated Successfully!
             </CText>
             <CText fontSize="sm">
-              Please add the following public key to your server's{" "}
-              <Code>~/.ssh/authorized_keys</Code> file:
+              Add the following public key to <Code>~/.ssh/authorized_keys</Code> on the remote server:
             </CText>
             <Box position="relative">
               <Code
@@ -254,13 +220,22 @@ const SftpConfigSection = ({
                   size="xs"
                   onClick={() => {
                     navigator.clipboard.writeText(generatedPublicKey || "");
-                    alerts.success("Key copied to clipboard");
+                    setKeyCopied(true);
+                    setTimeout(() => setKeyCopied(false), 2000);
                   }}
+                  colorPalette={keyCopied ? "green" : undefined}
                 >
-                  Copy
+                  {keyCopied ? "Copied!" : "Copy"}
                 </Button>
               </Box>
             </Box>
+            {hostKeyWarning && (
+              <Box p={3} borderWidth={1} borderRadius="md" borderColor="yellow.400" bg="yellow.subtle">
+                <CText fontSize="sm" color="yellow.700">
+                  <strong>Host key scan failed:</strong> {hostKeyWarning}
+                </CText>
+              </Box>
+            )}
           </Stack>
         </Box>
       )}
@@ -286,6 +261,17 @@ const SftpConfigSection = ({
           min={1}
           max={65535}
           defaultValue={"22"}
+        />
+      </Field>
+
+      <Field
+        label="Known Hosts File"
+        helperText="Optional: Path to a known_hosts file for host key verification. Populated automatically by Setup Keys."
+      >
+        <Input
+          placeholder="/home/user/.ssh/known_hosts"
+          value={knownHostsPath}
+          onChange={(e) => onChangeKnownHostsPath(e.target.value)}
         />
       </Field>
     </Stack>
@@ -325,11 +311,30 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         ? toJson(RepoSchema, template, { alwaysEmitImplicit: true })
         : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true }),
     );
-    // Reset SFTP fields when template changes (or is null)
-    if (!template) {
-      setSftpIdentityFile("");
-      setSftpPort(null);
-      setSftpKnownHostsPath("");
+
+    setSftpIdentityFile("");
+    setSftpPort(null);
+    setSftpKnownHostsPath("");
+
+    if (template?.uri?.startsWith("sftp:")) {
+      // Populate SFTP fields by parsing the existing sftp.args flag
+      const sftpArgsFlag = (template.flags || []).find(
+        (f) => f.includes("sftp.args") || f.includes("sftp.command"),
+      );
+      if (sftpArgsFlag) {
+        const argsMatch = sftpArgsFlag.match(/sftp\.args=['"]?(.+?)['"]?\s*$/);
+        if (argsMatch) {
+          const argsStr = argsMatch[1].replace(/^'|'$/g, "");
+          const identityMatch = argsStr.match(/-i\s+["']?([^\s"']+)["']?/);
+          if (identityMatch) setSftpIdentityFile(identityMatch[1]);
+          const portMatch = argsStr.match(/-p\s+(\d+)/);
+          if (portMatch) setSftpPort(parseInt(portMatch[1], 10));
+          const knownHostsMatch = argsStr.match(
+            /-oUserKnownHostsFile=["']?([^\s"']+)["']?/,
+          );
+          if (knownHostsMatch) setSftpKnownHostsPath(knownHostsMatch[1]);
+        }
+      }
     }
   }, [template]);
 
@@ -359,13 +364,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   // read the current value without flags being a reactive dependency.
   flagsRef.current = (formData.flags as string[]) || [];
 
-  // Logic to update flags based on SFTP inputs
+  // Keep sftp.args flag in sync with the SFTP config fields.
   useEffect(() => {
-    // If we are editing, we don't touch the flags. The user can edit them manually.
-    if (template) {
-      return;
-    }
-
     const uri = getField(["uri"]);
     if (!uri?.startsWith("sftp:")) {
       return;
@@ -379,31 +379,26 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         f && !f.includes("sftp.args") && !f.includes("sftp.command"),
     );
 
+    // Always include -oBatchMode=yes; quote paths to handle spaces.
     let sftpArgs = "-oBatchMode=yes";
-    let argsChanged = false;
 
     if (sftpIdentityFile) {
       let cleanPath = sftpIdentityFile;
       if (cleanPath.startsWith("@")) {
         cleanPath = cleanPath.substring(1);
       }
-      sftpArgs += ` -i ${cleanPath}`;
-      argsChanged = true;
+      sftpArgs += ` -i "${cleanPath}"`;
     }
 
     if (sftpPort && sftpPort !== 0 && sftpPort !== 22) {
       sftpArgs += ` -p ${sftpPort}`;
-      argsChanged = true;
     }
 
     if (sftpKnownHostsPath) {
-      sftpArgs += ` -oUserKnownHostsFile=${sftpKnownHostsPath}`;
-      argsChanged = true;
+      sftpArgs += ` -oUserKnownHostsFile="${sftpKnownHostsPath}"`;
     }
 
-    if (argsChanged) {
-      newFlags.push(`--option=sftp.args='${sftpArgs}'`);
-    }
+    newFlags.push(`--option=sftp.args='${sftpArgs}'`);
 
     const sortedCurrent = [...currentFlags].sort();
     const sortedNew = [...newFlags].sort();
@@ -416,7 +411,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     sftpIdentityFile,
     sftpPort,
     sftpKnownHostsPath,
-    template,
     // flags intentionally omitted: flagsRef avoids a circular dep where any
     // user edit to flags would re-trigger the effect and erase empty rows.
   ]);
@@ -794,13 +788,14 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                   </Field>
 
                   {/* SFTP Specific Fields */}
-                  {getField(["uri"])?.startsWith("sftp:") && !template && (
+                  {getField(["uri"])?.startsWith("sftp:") && (
                     <SftpConfigSection
                       uri={getField(["uri"])}
                       identityFile={sftpIdentityFile}
                       onChangeIdentityFile={setSftpIdentityFile}
                       port={sftpPort}
                       onChangePort={setSftpPort}
+                      knownHostsPath={sftpKnownHostsPath}
                       onChangeKnownHostsPath={setSftpKnownHostsPath}
                       isWindows={isWindows}
                     />

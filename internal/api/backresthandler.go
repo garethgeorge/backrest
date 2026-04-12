@@ -280,53 +280,29 @@ func (s *BackrestHandler) SetupSftp(ctx context.Context, req *connect.Request[v1
 	if port == "" {
 		port = "22"
 	}
-	user := req.Msg.Username
-	password := req.Msg.Password // Optional
 
 	if runtime.GOOS == "windows" {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("automated SFTP setup is not supported on Windows"))
 	}
 
-	// 1. Host Key Verification/Addition
-	if err := sftputil.AddHostKey(host, port, env.SSHDir()); err != nil {
-		return connect.NewResponse(&v1.SetupSftpResponse{
-			Error: fmt.Sprintf("Failed to add host key: %v", err),
-		}), nil
-	}
-
-	// 2. Generate Key
+	// 1. Generate key pair (local, always succeeds)
 	_, pubBytes, keyPath, err := sftputil.GenerateKey(host, env.SSHDir())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate key: %w", err)
 	}
 
-	pubKeyStr := string(pubBytes)
-
-	// 3. Install if password provided
-	if password != nil {
-		if err := sftputil.InstallKey(host, port, user, *password, pubBytes); err != nil {
-			return connect.NewResponse(&v1.SetupSftpResponse{
-				Error: fmt.Sprintf("Failed to install key: %v", err),
-			}), nil
-		}
-
-		// Verify
-		privPEM, err := os.ReadFile(keyPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read generated private key for verification: %w", err)
-		}
-
-		if err := sftputil.VerifyConnection(host, port, user, privPEM); err != nil {
-			return connect.NewResponse(&v1.SetupSftpResponse{
-				Error: fmt.Sprintf("Key installed but verification failed: %v", err),
-			}), nil
-		}
+	// 2. Scan remote host key into known_hosts (network, non-fatal)
+	var hostKeyWarning string
+	if err := sftputil.AddHostKey(host, port, env.SSHDir()); err != nil {
+		zap.S().Warnf("SFTP host key scan failed for %s: %v", host, err)
+		hostKeyWarning = fmt.Sprintf("Could not scan host key (%v). Add the host key to known_hosts manually or ensure the host is reachable.", err)
 	}
 
 	return connect.NewResponse(&v1.SetupSftpResponse{
-		PublicKey:      pubKeyStr,
+		PublicKey:      string(pubBytes),
 		KeyPath:        keyPath,
 		KnownHostsPath: filepath.Join(env.SSHDir(), "known_hosts"),
+		Error:          hostKeyWarning,
 	}), nil
 }
 
