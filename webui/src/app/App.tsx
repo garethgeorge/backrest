@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import {
   FiCalendar,
   FiDatabase,
@@ -44,15 +44,15 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "../components/ui/drawer";
-import { Config, Multihost_Peer } from "../../gen/ts/v1/config_pb";
+import { Config, Multihost_Peer, Plan, Repo } from "../../gen/ts/v1/config_pb";
 import { alerts } from "../components/common/Alerts";
 import { useShowModal } from "../components/common/ModalManager";
 import { uiBuildVersion } from "../state/buildcfg";
 import { ActivityBar } from "../components/layout/ActivityBar";
-import { OperationEvent, OperationStatus } from "../../gen/ts/v1/operations_pb";
-import { subscribeToOperations, unsubscribeFromOperations } from "../api/oplog";
+import { OperationStatus } from "../../gen/ts/v1/operations_pb";
+import { useResourceStatus } from "../api/resourceStatus";
 import LogoSvg from "../../assets/logo.svg";
-import { debounce, keyBy } from "../lib/util";
+import { keyBy } from "../lib/util";
 import { Code } from "@connectrpc/connect";
 import { LoginModal } from "../features/auth/LoginModal";
 import { backrestService, setAuthToken } from "../api/client";
@@ -60,7 +60,6 @@ import { useConfig } from "./provider";
 import { shouldShowSettings } from "../state/configutil";
 import { OpSelector, OpSelectorSchema } from "../../gen/ts/v1/service_pb";
 import { colorForStatus } from "../api/flowDisplayAggregator";
-import { getStatusForSelector, matchSelector } from "../api/logState";
 import {
   Route,
   Routes,
@@ -204,6 +203,155 @@ const PlanViewContainer = () => {
   );
 };
 
+const SidebarPlanItem = React.memo(
+  ({
+    plan,
+    repoGuid,
+    active,
+    onNav,
+    onEdit,
+  }: {
+    plan: Plan;
+    repoGuid: string | undefined;
+    active: boolean;
+    onNav: (path: string) => void;
+    onEdit: (plan: Plan) => void;
+  }) => {
+    const sel = useMemo(
+      () =>
+        create(OpSelectorSchema, {
+          originalInstanceKeyid: "",
+          planId: plan.id,
+          repoGuid: repoGuid,
+        }),
+      [plan.id, repoGuid],
+    );
+    const planPath = `/plan/${plan.id}`;
+    return (
+      <Flex
+        align="center"
+        pl={9}
+        pr={2}
+        py={1}
+        bg={active ? "bg.emphasized" : undefined}
+        _hover={{ bg: "bg.muted" }}
+        className="group"
+      >
+        <Box flexShrink={0} mr={2}>
+          <IconForResource selector={sel} />
+        </Box>
+        <Tooltip content={plan.id}>
+          <Box
+            flex="1"
+            minW="0"
+            cursor="pointer"
+            onClick={() => onNav(planPath)}
+            userSelect="none"
+          >
+            <Text
+              overflow="hidden"
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+            >
+              {plan.id}
+            </Text>
+          </Box>
+        </Tooltip>
+        <Box
+          opacity={0}
+          _groupHover={{ opacity: 1 }}
+          transition="opacity 0.2s"
+        >
+          <IconButton
+            size="xs"
+            variant="ghost"
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              onEdit(plan);
+            }}
+          >
+            <FiEdit2 />
+          </IconButton>
+        </Box>
+      </Flex>
+    );
+  },
+);
+
+const SidebarRepoItem = React.memo(
+  ({
+    repo,
+    instanceId,
+    active,
+    onNav,
+    onEdit,
+  }: {
+    repo: Repo;
+    instanceId: string;
+    active: boolean;
+    onNav: (path: string) => void;
+    onEdit: (repo: Repo) => void;
+  }) => {
+    const sel = useMemo(
+      () =>
+        create(OpSelectorSchema, {
+          instanceId: instanceId,
+          repoGuid: repo.guid,
+        }),
+      [instanceId, repo.guid],
+    );
+    const repoPath = `/repo/${repo.id}`;
+    return (
+      <Flex
+        align="center"
+        pl={9}
+        pr={2}
+        py={1}
+        bg={active ? "bg.emphasized" : undefined}
+        _hover={{ bg: "bg.muted" }}
+        className="group"
+      >
+        <Box flexShrink={0} mr={2}>
+          <IconForResource selector={sel} />
+        </Box>
+        <Tooltip content={repo.id}>
+          <Box
+            flex="1"
+            minW="0"
+            cursor="pointer"
+            onClick={() => onNav(repoPath)}
+            userSelect="none"
+          >
+            <Text
+              overflow="hidden"
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+            >
+              {repo.id}
+            </Text>
+          </Box>
+        </Tooltip>
+        <Box
+          opacity={0}
+          _groupHover={{ opacity: 1 }}
+          transition="opacity 0.2s"
+        >
+          <IconButton
+            size="xs"
+            variant="ghost"
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              onEdit(repo);
+            }}
+          >
+            <FiEdit2 />
+          </IconButton>
+        </Box>
+      </Flex>
+    );
+  },
+);
+
 const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
   const [config] = useConfig();
   const peerStates = useSyncStates();
@@ -218,12 +366,11 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const reposById = useMemo(() => config ? keyBy(config.repos, (r) => r.id) : {}, [config?.repos]);
+
   // Replicate getSidenavItems functionality with Chakra components
   if (!config) return null;
 
-  const reposById = keyBy(config.repos, (r) => r.id);
-
-  // Sort logic can be added here if needed, currently adhering to original order
   const configPlans = config.plans || [];
   const configRepos = config.repos || [];
 
@@ -242,6 +389,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
         multiple
         defaultValue={["plans", "repos", "authorized-clients"]}
         variant="plain"
+        lazyMount
       >
         {/* DASHBOARD */}
         <Box
@@ -285,67 +433,21 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
             >
               <FiPlus /> {m.app_menu_add_plan()}
             </Button>
-            {configPlans.map((plan) => {
-              const sel = create(OpSelectorSchema, {
-                originalInstanceKeyid: "",
-                planId: plan.id,
-                repoGuid: reposById[plan.repo]?.guid,
-              });
-              const planPath = `/plan/${plan.id}`;
-              const active = isActive(planPath);
-              return (
-                <Flex
-                  key={plan.id}
-                  align="center"
-                  pl={9}
-                  pr={2}
-                  py={1}
-                  bg={active ? "bg.emphasized" : undefined}
-                  _hover={{ bg: "bg.muted" }}
-                  className="group"
-                >
-                  <Box flexShrink={0} mr={2}>
-                    <IconForResource selector={sel} />
-                  </Box>
-                  <Tooltip content={plan.id}>
-                    <Box
-                      flex="1"
-                      minW="0"
-                      cursor="pointer"
-                      onClick={() => handleNav(planPath)}
-                      userSelect="none"
-                    >
-                      <Text
-                        overflow="hidden"
-                        textOverflow="ellipsis"
-                        whiteSpace="nowrap"
-                      >
-                        {plan.id}
-                      </Text>
-                    </Box>
-                  </Tooltip>
-                  <Box
-                    opacity={0}
-                    _groupHover={{ opacity: 1 }}
-                    transition="opacity 0.2s"
-                  >
-                    <IconButton
-                      size="xs"
-                      variant="ghost"
-                      onClick={async (e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        const { AddPlanModal } =
-                          await import("../features/plans/AddPlanModal");
-                        showModal(<AddPlanModal template={plan} />);
-                        onClose?.();
-                      }}
-                    >
-                      <FiEdit2 />
-                    </IconButton>
-                  </Box>
-                </Flex>
-              );
-            })}
+            {configPlans.map((plan) => (
+              <SidebarPlanItem
+                key={plan.id}
+                plan={plan}
+                repoGuid={reposById[plan.repo]?.guid}
+                active={isActive(`/plan/${plan.id}`)}
+                onNav={handleNav}
+                onEdit={async (plan) => {
+                  const { AddPlanModal } =
+                    await import("../features/plans/AddPlanModal");
+                  showModal(<AddPlanModal template={plan} />);
+                  onClose?.();
+                }}
+              />
+            ))}
           </AccordionItemContent>
         </AccordionItem>
 
@@ -375,67 +477,21 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
             >
               <FiPlus /> {m.app_menu_add_repo()}
             </Button>
-            {configRepos.map((repo) => {
-              const repoPath = `/repo/${repo.id}`;
-              const active = isActive(repoPath);
-              return (
-                <Flex
-                  key={repo.id}
-                  align="center"
-                  pl={9}
-                  pr={2}
-                  py={1}
-                  bg={active ? "bg.emphasized" : undefined}
-                  _hover={{ bg: "bg.muted" }}
-                  className="group"
-                >
-                  <Box flexShrink={0} mr={2}>
-                    <IconForResource
-                      selector={create(OpSelectorSchema, {
-                        instanceId: config.instance,
-                        repoGuid: repo.guid,
-                      })}
-                    />
-                  </Box>
-                  <Tooltip content={repo.id}>
-                    <Box
-                      flex="1"
-                      minW="0"
-                      cursor="pointer"
-                      onClick={() => handleNav(repoPath)}
-                      userSelect="none"
-                    >
-                      <Text
-                        overflow="hidden"
-                        textOverflow="ellipsis"
-                        whiteSpace="nowrap"
-                      >
-                        {repo.id}
-                      </Text>
-                    </Box>
-                  </Tooltip>
-                  <Box
-                    opacity={0}
-                    _groupHover={{ opacity: 1 }}
-                    transition="opacity 0.2s"
-                  >
-                    <IconButton
-                      size="xs"
-                      variant="ghost"
-                      onClick={async (e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        const { AddRepoModal } =
-                          await import("../features/repositories/AddRepoModal");
-                        showModal(<AddRepoModal template={repo} />);
-                        onClose?.();
-                      }}
-                    >
-                      <FiEdit2 />
-                    </IconButton>
-                  </Box>
-                </Flex>
-              );
-            })}
+            {configRepos.map((repo) => (
+              <SidebarRepoItem
+                key={repo.id}
+                repo={repo}
+                instanceId={config.instance}
+                active={isActive(`/repo/${repo.id}`)}
+                onNav={handleNav}
+                onEdit={async (repo) => {
+                  const { AddRepoModal } =
+                    await import("../features/repositories/AddRepoModal");
+                  showModal(<AddRepoModal template={repo} />);
+                  onClose?.();
+                }}
+              />
+            ))}
           </AccordionItemContent>
         </AccordionItem>
 
@@ -779,37 +835,12 @@ const AuthenticationBoundary = ({
   return <>{children}</>;
 };
 
-const IconForResource = ({ selector }: { selector: OpSelector }) => {
-  const [status, setStatus] = useState(OperationStatus.STATUS_UNKNOWN);
-  useEffect(() => {
-    const load = async () => {
-      setStatus(await getStatusForSelector(selector));
-    };
-    load();
-    const refresh = debounce(load, 1000, { maxWait: 10000, trailing: true });
-    const callback = (event?: OperationEvent, err?: Error) => {
-      if (!event || !event.event) return;
-      switch (event.event.case) {
-        case "createdOperations":
-        case "updatedOperations":
-          const ops = event.event.value.operations;
-          if (ops.find((op) => matchSelector(selector, op))) {
-            refresh();
-          }
-          break;
-        case "deletedOperations":
-          refresh();
-          break;
-      }
-    };
-
-    subscribeToOperations(callback);
-    return () => {
-      unsubscribeFromOperations(callback);
-    };
-  }, [JSON.stringify(selector)]);
-  return iconForStatus(status);
-};
+const IconForResource = React.memo(
+  ({ selector }: { selector: OpSelector }) => {
+    const status = useResourceStatus(selector);
+    return iconForStatus(status);
+  },
+);
 
 const iconForStatus = (status: OperationStatus) => {
   const color = colorForStatus(status);
