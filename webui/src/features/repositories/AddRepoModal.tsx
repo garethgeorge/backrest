@@ -17,7 +17,7 @@ import {
   AccordionItemTrigger,
   AccordionRoot,
 } from "../../components/ui/accordion";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useShowModal } from "../../components/common/ModalManager";
 import {
   CommandPrefix_CPUNiceLevel,
@@ -305,10 +305,12 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
   );
 
   // SFTP specific state
-  // SFTP specific state
   const [sftpIdentityFile, setSftpIdentityFile] = useState("");
   const [sftpPort, setSftpPort] = useState<number | null>(null);
   const [sftpKnownHostsPath, setSftpKnownHostsPath] = useState("");
+
+  // Ref to read current flags without making them a useEffect dependency
+  const flagsRef = useRef<string[]>([]);
 
   const [confirmation, setConfirmation] = useState<ConfirmationState>({
     open: false,
@@ -353,6 +355,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     return curr;
   };
 
+  // Keep flagsRef in sync with latest formData.flags so the SFTP effect can
+  // read the current value without flags being a reactive dependency.
+  flagsRef.current = (formData.flags as string[]) || [];
+
   // Logic to update flags based on SFTP inputs
   useEffect(() => {
     // If we are editing, we don't touch the flags. The user can edit them manually.
@@ -365,7 +371,9 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
       return;
     }
 
-    const currentFlags = getField(["flags"]) || [];
+    // Read flags via ref so this effect does not re-run whenever the user
+    // edits the flags list (which would immediately erase empty rows).
+    const currentFlags = flagsRef.current;
     const newFlags = currentFlags.filter(
       (f: string) =>
         f && !f.includes("sftp.args") && !f.includes("sftp.command"),
@@ -407,8 +415,10 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     getField(["uri"]),
     sftpIdentityFile,
     sftpPort,
+    sftpKnownHostsPath,
     template,
-    getField(["flags"]),
+    // flags intentionally omitted: flagsRef avoids a circular dep where any
+    // user edit to flags would re-trigger the effect and erase empty rows.
   ]);
 
   if (!config) return null;
