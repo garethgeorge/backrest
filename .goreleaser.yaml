@@ -51,6 +51,7 @@ builds:
       - amd64
       - arm64
       - arm
+      - "386"
     goarm:
       - 6
       - 7
@@ -91,8 +92,8 @@ archives:
 
 dockers:
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-alpine-amd64
-      - ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-amd64
+      - pwbriggs/backrest:{{ .Tag }}-alpine-amd64
+      - ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-amd64
     dockerfile: Dockerfile.alpine
     use: buildx
     build_flag_templates:
@@ -103,8 +104,8 @@ dockers:
       - docker-entrypoint
 
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-alpine-arm64
-      - ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-arm64
+      - pwbriggs/backrest:{{ .Tag }}-alpine-arm64
+      - ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-arm64
     dockerfile: Dockerfile.alpine
     goarch: arm64
     use: buildx
@@ -116,8 +117,8 @@ dockers:
       - docker-entrypoint
 
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-alpine-armv6
-      - ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-armv6
+      - pwbriggs/backrest:{{ .Tag }}-alpine-armv6
+      - ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-armv6
     dockerfile: Dockerfile.alpine
     use: buildx
     goarch: arm
@@ -131,8 +132,8 @@ dockers:
       - docker-entrypoint
 
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-alpine-armv7
-      - ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-armv7
+      - pwbriggs/backrest:{{ .Tag }}-alpine-armv7
+      - ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-armv7
     dockerfile: Dockerfile.alpine
     use: buildx
     goarch: arm
@@ -146,8 +147,23 @@ dockers:
       - docker-entrypoint
 
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-scratch-arm64
-      - ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-arm64
+      - pwbriggs/backrest:{{ .Tag }}-alpine-386
+      - ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-386
+    dockerfile: Dockerfile.alpine
+    use: buildx
+    goarch: "386"
+    goarm: 7
+    build_flag_templates:
+      - "--pull"
+      - "--provenance=false"
+      - "--platform=linux/386"
+    ids:
+      - linux
+      - docker-entrypoint
+
+  - image_templates:
+      - pwbriggs/backrest:{{ .Tag }}-scratch-arm64
+      - ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-arm64
     dockerfile: Dockerfile.scratch
     goarch: arm64
     use: buildx
@@ -159,8 +175,8 @@ dockers:
       - docker-entrypoint
 
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-scratch-amd64
-      - ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-amd64
+      - pwbriggs/backrest:{{ .Tag }}-scratch-amd64
+      - ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-amd64
     dockerfile: Dockerfile.scratch
     use: buildx
     build_flag_templates:
@@ -171,8 +187,8 @@ dockers:
       - docker-entrypoint
 
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-scratch-armv6
-      - ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-armv6
+      - pwbriggs/backrest:{{ .Tag }}-scratch-armv6
+      - ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-armv6
     dockerfile: Dockerfile.scratch
     use: buildx
     goarch: arm
@@ -186,8 +202,8 @@ dockers:
       - docker-entrypoint
 
   - image_templates:
-      - garethgeorge/backrest:{{ .Tag }}-scratch-armv7
-      - ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-armv7
+      - pwbriggs/backrest:{{ .Tag }}-scratch-armv7
+      - ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-armv7
     dockerfile: Dockerfile.scratch
     use: buildx
     goarch: arm
@@ -196,133 +212,166 @@ dockers:
       - "--pull"
       - "--provenance=false"
       - "--platform=linux/arm/v7"
+    ids:
+      - linux
+      - docker-entrypoint
+
+  - image_templates:
+      - pwbriggs/backrest:{{ .Tag }}-scratch-386
+      - ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-386
+    dockerfile: Dockerfile.scratch
+    use: buildx
+    goarch: "386"
+    goarm: 7
+    build_flag_templates:
+      - "--pull"
+      - "--provenance=false"
+      - "--platform=linux/386"
     ids:
       - linux
       - docker-entrypoint
 
 docker_manifests:
-  - name_template: "garethgeorge/backrest:latest"
+  - name_template: "pwbriggs/backrest:latest"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-armv6"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-armv7"
-  - name_template: "ghcr.io/garethgeorge/backrest:latest"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-amd64"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-arm64"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-armv6"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-armv7"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-386"
+  - name_template: "ghcr.io/pwbriggs/backrest:latest"
     image_templates:
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-armv6"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-armv7"
-  - name_template: "garethgeorge/backrest:v{{ .Major }}"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-amd64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-arm64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-armv6"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-armv7"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-386"
+  - name_template: "pwbriggs/backrest:v{{ .Major }}"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-armv6"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-armv7"
-  - name_template: "ghcr.io/garethgeorge/backrest:v{{ .Major }}"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-amd64"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-arm64"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-armv6"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-armv7"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-386"
+  - name_template: "ghcr.io/pwbriggs/backrest:v{{ .Major }}"
     image_templates:
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-armv6"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-armv7"
-  - name_template: "garethgeorge/backrest:v{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-amd64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-arm64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-armv6"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-armv7"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-386"
+  - name_template: "pwbriggs/backrest:v{{ .Major }}.{{ .Minor }}"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-armv6"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-armv7"
-  - name_template: "ghcr.io/garethgeorge/backrest:v{{ .Major }}.{{ .Minor }}"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-amd64"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-arm64"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-armv6"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-armv7"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-386"
+  - name_template: "ghcr.io/pwbriggs/backrest:v{{ .Major }}.{{ .Minor }}"
     image_templates:
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-armv6"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-armv7"
-  - name_template: "garethgeorge/backrest:{{ .Tag }}"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-amd64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-arm64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-armv6"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-armv7"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-386"
+  - name_template: "pwbriggs/backrest:{{ .Tag }}"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-armv6"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-armv7"
-  - name_template: "ghcr.io/garethgeorge/backrest:{{ .Tag }}"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-amd64"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-arm64"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-armv6"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-armv7"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-386"
+  - name_template: "ghcr.io/pwbriggs/backrest:{{ .Tag }}"
     image_templates:
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-armv6"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-armv7"
-  - name_template: "garethgeorge/backrest:latest-alpine"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-amd64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-arm64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-armv6"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-armv7"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-386"
+  - name_template: "pwbriggs/backrest:latest-alpine"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-armv6"
-      - "garethgeorge/backrest:{{ .Tag }}-alpine-armv7"
-  - name_template: "ghcr.io/garethgeorge/backrest:latest-alpine"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-amd64"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-arm64"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-armv6"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-armv7"
+      - "pwbriggs/backrest:{{ .Tag }}-alpine-386"
+  - name_template: "ghcr.io/pwbriggs/backrest:latest-alpine"
     image_templates:
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-amd64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-arm64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-armv6"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-alpine-armv7"
-  - name_template: "garethgeorge/backrest:scratch"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-amd64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-arm64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-armv6"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-armv7"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-alpine-386"
+  - name_template: "pwbriggs/backrest:scratch"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv7"
-  - name_template: "ghcr.io/garethgeorge/backrest:scratch"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-amd64"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-arm64"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-armv6"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-armv7"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-386"
+  - name_template: "ghcr.io/pwbriggs/backrest:scratch"
     image_templates:
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-armv7"
-  - name_template: "garethgeorge/backrest:v{{ .Major }}-scratch"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-amd64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-arm64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-armv6"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-armv7"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-386"
+  - name_template: "pwbriggs/backrest:v{{ .Major }}-scratch"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv7"
-  - name_template: "ghcr.io/garethgeorge/backrest:v{{ .Major }}-scratch"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-amd64"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-arm64"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-armv6"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-armv7"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-386"
+  - name_template: "ghcr.io/pwbriggs/backrest:v{{ .Major }}-scratch"
     image_templates:
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-armv7"
-  - name_template: "garethgeorge/backrest:v{{ .Major }}.{{ .Minor }}-scratch"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-amd64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-arm64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-armv6"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-armv7"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-386"
+  - name_template: "pwbriggs/backrest:v{{ .Major }}.{{ .Minor }}-scratch"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv7"
-  - name_template: "ghcr.io/garethgeorge/backrest:v{{ .Major }}.{{ .Minor }}-scratch"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-amd64"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-arm64"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-armv6"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-armv7"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-386"
+  - name_template: "ghcr.io/pwbriggs/backrest:v{{ .Major }}.{{ .Minor }}-scratch"
     image_templates:
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-armv7"
-  - name_template: "garethgeorge/backrest:{{ .Tag }}-scratch"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-amd64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-arm64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-armv6"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-armv7"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-386"
+  - name_template: "pwbriggs/backrest:{{ .Tag }}-scratch"
     image_templates:
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
-      - "garethgeorge/backrest:{{ .Tag }}-scratch-armv7"
-  - name_template: "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-amd64"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-arm64"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-armv6"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-armv7"
+      - "pwbriggs/backrest:{{ .Tag }}-scratch-386"
+  - name_template: "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch"
     image_templates:
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-amd64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-arm64"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-armv6"
-      - "ghcr.io/garethgeorge/backrest:{{ .Tag }}-scratch-armv7"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-amd64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-arm64"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-armv6"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-armv7"
+      - "ghcr.io/pwbriggs/backrest:{{ .Tag }}-scratch-386"
 
 brews:
   - name: backrest
-    homepage: https://github.com/garethgeorge/backrest
+    homepage: https://github.com/pwbriggs/backrest
     description: "Backrest is a web UI and orchestrator for restic backup."
 
-    url_template: "https://github.com/garethgeorge/backrest/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    url_template: "https://github.com/pwbriggs/backrest/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
 
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
 
     repository:
-      owner: garethgeorge
+      owner: pwbriggs
       name: homebrew-backrest-tap
       branch: main
       token: "{{ .Env.HOMEBREW_GITHUB_TOKEN }}"
@@ -341,5 +390,5 @@ changelog:
 
 release:
   github:
-    owner: garethgeorge
+    owner: pwbriggs
     name: backrest
