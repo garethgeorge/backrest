@@ -372,7 +372,12 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
   if (!config) return null;
 
   const configPlans = config.plans || [];
-  const configRepos = config.repos || [];
+  const localRepos = (config.repos || []).filter(
+    (r) => !r.originInstanceId,
+  );
+  const remoteRepos = (config.repos || []).filter(
+    (r) => !!r.originInstanceId,
+  );
 
   return (
     <Box
@@ -563,10 +568,11 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                       </Text>
                     </Flex>
 
-                    {/* Nested Repos for Peer */}
-                    {(remoteConfig?.repos || []).map((repo) => {
+                    {/* Nested Repos for Peer — listed from knownRepos (READ_OPERATIONS), edit from remoteConfig (READ_CONFIG) */}
+                    {peerState.knownRepos.map((repo: RepoMetadata) => {
                       const repoPath = `/peer/${peerState.peerInstanceId}/repo/${repo.id}`;
                       const active = isActive(repoPath);
+                      const editableRepo = remoteConfig?.repos?.find((r: Repo) => r.guid === repo.guid);
                       return (
                         <Flex
                           key={repo.guid}
@@ -591,31 +597,34 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                           <Text fontSize="sm" flex="1" wordBreak="break-word">
                             {repo.id}
                           </Text>
-                          <Box
-                            opacity={0}
-                            _groupHover={{ opacity: 1 }}
-                            transition="opacity 0.2s"
-                          >
-                            <IconButton
-                              size="xs"
-                              variant="ghost"
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                handleRemoteRepoEdit(repo);
-                              }}
+                          {editableRepo && (
+                            <Box
+                              opacity={0}
+                              _groupHover={{ opacity: 1 }}
+                              transition="opacity 0.2s"
                             >
-                              <FiEdit2 />
-                            </IconButton>
-                          </Box>
+                              <IconButton
+                                size="xs"
+                                variant="ghost"
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  handleRemoteRepoEdit(editableRepo);
+                                }}
+                              >
+                                <FiEdit2 />
+                              </IconButton>
+                            </Box>
+                          )}
                         </Flex>
                       );
                     })}
 
-                    {/* Nested Plans for Peer */}
-                    {(remoteConfig?.plans || []).map((plan) => {
+                    {/* Nested Plans for Peer — listed from knownPlans, edit from remoteConfig */}
+                    {peerState.knownPlans.map((planMeta: PlanMetadata) => {
+                      const editablePlan = remoteConfig?.plans?.find((p: Plan) => p.id === planMeta.id);
                       return (
                         <Flex
-                          key={plan.id}
+                          key={planMeta.id}
                           align="center"
                           pl={12}
                           pr={2}
@@ -627,24 +636,26 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                             <FiCalendar />
                           </Box>
                           <Text fontSize="sm" flex="1" wordBreak="break-word">
-                            {plan.id}
+                            {planMeta.id}
                           </Text>
-                          <Box
-                            opacity={0}
-                            _groupHover={{ opacity: 1 }}
-                            transition="opacity 0.2s"
-                          >
-                            <IconButton
-                              size="xs"
-                              variant="ghost"
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                handleRemotePlanEdit(plan);
-                              }}
+                          {editablePlan && (
+                            <Box
+                              opacity={0}
+                              _groupHover={{ opacity: 1 }}
+                              transition="opacity 0.2s"
                             >
-                              <FiEdit2 />
-                            </IconButton>
-                          </Box>
+                              <IconButton
+                                size="xs"
+                                variant="ghost"
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  handleRemotePlanEdit(editablePlan);
+                                }}
+                              >
+                                <FiEdit2 />
+                              </IconButton>
+                            </Box>
+                          )}
                         </Flex>
                       );
                     })}
