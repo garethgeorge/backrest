@@ -387,9 +387,13 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 // sendSharedReposToClient sends repos marked as shared to the client via SetConfig.
 // This pushes repo configurations to the client so they are added to the client's local config.
 func (h *syncSessionHandlerServer) sendSharedReposToClient(stream *bidiSyncCommandStream, config *v1.Config) {
+	if !h.permissions.HasPermissionType(v1.Multihost_Permission_PERMISSION_RECEIVE_SHARED_REPOS) {
+		return
+	}
+
 	var sharedRepos []*v1.Repo
 	for _, repo := range config.Repos {
-		if repo.GetShared() && h.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanViewConfiguration...) {
+		if repo.GetShared() {
 			repoCopy := proto.Clone(repo).(*v1.Repo)
 			repoCopy.OriginInstanceId = config.Instance
 			sharedRepos = append(sharedRepos, repoCopy)

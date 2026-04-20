@@ -65,6 +65,10 @@ message Multihost {
       // When granted to an authorizedClient, the client will be able to write the configuration to the server.
       // When granted to a knownHost, the known host will be able to write configuration.
       PERMISSION_READ_WRITE_CONFIG = 3; // read and write configuration for the resource in scope.
+
+      // When granted to an authorizedClient, the server will push repos marked as 'shared' to the client.
+      // This permission does not use scopes — if present, all shared repos are pushed.
+      PERMISSION_RECEIVE_SHARED_REPOS = 4;
     }
     // Scopes are any of '*', 'repo:<repo_id>' or 'plan:<plan_id>','-repo:<repo_id>','-plan:<plan_id>'.
     // '*' means all repos and plans, 'repo:<repo_id>' means the repo with the given ID, 'plan:<plan_id>' means the plan with the given ID.

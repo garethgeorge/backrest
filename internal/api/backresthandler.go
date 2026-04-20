@@ -972,15 +972,30 @@ func (s *BackrestHandler) GeneratePairingToken(ctx context.Context, req *connect
 		expiresAt = now + req.Msg.TtlSeconds
 	}
 
+	// Apply default permissions if none specified:
+	// share operations (read ops with wildcard scope) + receive shared repos (no scope needed)
+	perms := req.Msg.Permissions
+	if len(perms) == 0 {
+		perms = []*v1.Multihost_Permission{
+			{
+				Type:   v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
+				Scopes: []string{"*"},
+			},
+			{
+				Type: v1.Multihost_Permission_PERMISSION_RECEIVE_SHARED_REPOS,
+			},
+		}
+	}
+
 	// Store the pairing token in config
 	pairingToken := &v1.Multihost_PairingToken{
-		Secret:       secret,
-		Label:        req.Msg.Label,
+		Secret:        secret,
+		Label:         req.Msg.Label,
 		CreatedAtUnix: now,
 		ExpiresAtUnix: expiresAt,
-		MaxUses:      req.Msg.MaxUses,
-		Uses:         0,
-		Permissions:  req.Msg.Permissions,
+		MaxUses:       req.Msg.MaxUses,
+		Uses:          0,
+		Permissions:   perms,
 	}
 
 	cfg.Multihost.PairingTokens = append(cfg.Multihost.PairingTokens, pairingToken)

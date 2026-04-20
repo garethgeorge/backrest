@@ -476,7 +476,8 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 
 	for _, repo := range item.GetRepos() {
 		c.l.Sugar().Debugf("received repo update: %s", repo.Guid)
-		if !c.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanWriteConfiguration...) {
+		isFromOriginPeer := repo.GetOriginInstanceId() != "" && repo.GetOriginInstanceId() == c.peer.InstanceId
+		if !isFromOriginPeer && !c.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanWriteConfiguration...) {
 			return NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to update repo %q", c.peer.InstanceId, repo.Id))
 		}
 
