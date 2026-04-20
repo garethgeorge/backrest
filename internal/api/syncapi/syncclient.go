@@ -244,6 +244,33 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 	peerState.LastHeartbeat = time.Now()
 	c.mgr.peerStateManager.SetPeerState(peer.Keyid, peerState)
 
+	// Clear the pairing secret from the known host entry now that pairing has succeeded.
+	if c.syncConfigSnapshot.config.GetMultihost() != nil {
+		for _, knownHost := range c.syncConfigSnapshot.config.GetMultihost().GetKnownHosts() {
+			if knownHost.GetKeyid() == peer.GetKeyid() && knownHost.GetInitialPairingSecret() != "" {
+				cfg, err := c.mgr.configMgr.Get()
+				if err != nil {
+					c.l.Sugar().Warnf("failed to get config to clear pairing secret: %v", err)
+					break
+				}
+				cfg = proto.Clone(cfg).(*v1.Config)
+				for _, kh := range cfg.GetMultihost().GetKnownHosts() {
+					if kh.GetKeyid() == peer.GetKeyid() {
+						kh.InitialPairingSecret = ""
+						break
+					}
+				}
+				cfg.Modno++
+				if err := c.mgr.configMgr.Update(cfg); err != nil {
+					c.l.Sugar().Warnf("failed to clear pairing secret after successful pairing: %v", err)
+				} else {
+					c.l.Sugar().Infof("cleared pairing secret for peer %q after successful connection", peer.InstanceId)
+				}
+				break
+			}
+		}
+	}
+
 	// Send a heartbeat every interval to keep the connection alive.
 	go sendHeartbeats(ctx, stream, env.MultihostHeartbeatInterval())
 
@@ -450,12 +477,12 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 	c.l.Sugar().Debugf("received SetConfig request from peer %q")
 
 	// Fetch latest config from the config manager
-	latestConfig, err := c.mgr.configMgr.Get()
+	originalConfig, err := c.mgr.configMgr.Get()
 	if err != nil {
 		return fmt.Errorf("fetch latest config: %w", err)
 	}
 
-	latestConfig = proto.Clone(latestConfig).(*v1.Config) // Clone to avoid modifying the original config
+	latestConfig := proto.Clone(originalConfig).(*v1.Config) // Clone to avoid modifying the original config
 
 	for _, plan := range item.GetPlans() {
 		c.l.Sugar().Debugf("received plan update: %s", plan.Id)
@@ -526,8 +553,16 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 		}
 	}
 
+	// Skip the update if nothing actually changed to avoid triggering a reconnect loop.
+	// Compare without modno since we haven't bumped it yet.
+	latestConfig.Modno = originalConfig.Modno
+	if proto.Equal(latestConfig, originalConfig) {
+		c.l.Sugar().Debugf("SetConfig resulted in no changes, skipping update")
+		return nil
+	}
+
 	// Update the local config with the new changes
-	latestConfig.Modno++
+	latestConfig.Modno = originalConfig.Modno + 1
 	if err := c.mgr.configMgr.Update(latestConfig); err != nil {
 		return fmt.Errorf("set updated config: %w", err)
 	}
