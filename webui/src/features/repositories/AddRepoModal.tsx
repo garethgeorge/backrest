@@ -278,10 +278,11 @@ const SftpConfigSection = ({
   );
 };
 
-export const AddRepoModal = ({ template }: { template: Repo | null }) => {
+export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | null, onSaveOverride?: (repo: Repo) => Promise<void> }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const [config, setConfig] = useConfig();
+  const isRemoteOrigin = !!template?.originInstanceId;
 
   // Local state for form fields
   const [formData, setFormData] = useState<any>(
@@ -477,6 +478,13 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         const repo = fromJson(RepoSchema, formData, {
           ignoreUnknownFields: true,
         });
+
+        if (onSaveOverride) {
+          await onSaveOverride(repo);
+          showModal(null);
+          alerts.success(m.add_repo_modal_success_updated({ uri: repo.uri }));
+          return;
+        }
 
         const req = create(AddRepoRequestSchema, {
           repo: repo,
@@ -685,20 +693,31 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                 {m.add_plan_modal_button_delete()}
               </ConfirmButton>
             )}
-            <Button
-              variant="subtle"
-              loading={confirmLoading}
-              onClick={handleTest}
-            >
-              {m.add_repo_modal_test_config()}
-            </Button>
-            <Button loading={confirmLoading} onClick={handleOk}>
-              {m.add_plan_modal_button_submit()}
-            </Button>
+            {!isRemoteOrigin && (
+              <>
+                <Button
+                  variant="subtle"
+                  loading={confirmLoading}
+                  onClick={handleTest}
+                >
+                  {m.add_repo_modal_test_config()}
+                </Button>
+                <Button loading={confirmLoading} onClick={handleOk}>
+                  {m.add_plan_modal_button_submit()}
+                </Button>
+              </>
+            )}
           </Flex>
         }
       >
-        <Stack gap={6}>
+        <Stack gap={6} opacity={isRemoteOrigin ? 0.7 : 1} pointerEvents={isRemoteOrigin ? "none" : undefined}>
+          {isRemoteOrigin && (
+            <Box p={3} borderWidth={1} borderRadius="md" bg="blue.subtle" borderColor="blue.400" pointerEvents="auto">
+              <CText fontSize="sm">
+                This repository is managed by remote instance <strong>{template?.originInstanceId}</strong> and cannot be edited. You may delete it to remove the local copy.
+              </CText>
+            </Box>
+          )}
           <p>
             {m.add_repo_modal_guide_text_p1()}{" "}
             <a
@@ -856,6 +875,20 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                     </Checkbox>
                     <CText fontSize="xs" color="fg.muted" ml={6}>
                       {m.add_repo_modal_field_auto_unlock_tooltip()}
+                    </CText>
+                  </Field>
+
+                  <Field label="Shared">
+                    <Checkbox
+                      checked={getField(["shared"])}
+                      onCheckedChange={(e: {
+                        checked: boolean | "indeterminate";
+                      }) => updateField(["shared"], !!e.checked)}
+                    >
+                      Shared
+                    </Checkbox>
+                    <CText fontSize="xs" color="fg.muted" ml={6}>
+                      Automatically push this repo's configuration to all authorized clients with read permission.
                     </CText>
                   </Field>
                 </Stack>

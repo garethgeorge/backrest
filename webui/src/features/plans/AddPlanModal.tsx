@@ -107,7 +107,7 @@ const planDefaults = create(PlanSchema, {
   },
 });
 
-export const AddPlanModal = ({ template }: { template: Plan | null }) => {
+export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | null, onSaveOverride?: (plan: Plan) => Promise<void> }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const [config, setConfig] = useConfig();
@@ -231,6 +231,12 @@ export const AddPlanModal = ({ template }: { template: Plan | null }) => {
         )
       ) {
         delete plan.retention;
+      }
+
+      if (onSaveOverride) {
+        await onSaveOverride(plan);
+        showModal(null);
+        return;
       }
 
       const configCopy = clone(ConfigSchema, config);

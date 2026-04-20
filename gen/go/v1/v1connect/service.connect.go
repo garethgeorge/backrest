@@ -82,6 +82,9 @@ const (
 	// BackrestGetSummaryDashboardProcedure is the fully-qualified name of the Backrest's
 	// GetSummaryDashboard RPC.
 	BackrestGetSummaryDashboardProcedure = "/v1.Backrest/GetSummaryDashboard"
+	// BackrestGeneratePairingTokenProcedure is the fully-qualified name of the Backrest's
+	// GeneratePairingToken RPC.
+	BackrestGeneratePairingTokenProcedure = "/v1.Backrest/GeneratePairingToken"
 )
 
 // BackrestClient is a client for the v1.Backrest service.
@@ -118,6 +121,9 @@ type BackrestClient interface {
 	PathAutocomplete(context.Context, *connect.Request[types.StringValue]) (*connect.Response[types.StringList], error)
 	// GetSummaryDashboard returns data for the dashboard view.
 	GetSummaryDashboard(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.SummaryDashboardResponse], error)
+	// GeneratePairingToken creates a new pairing token on the server that can be shared with clients to simplify peering.
+	// The token format is "<keyid>:<secret>#<instanceid>" — an opaque string the client pastes when adding a known host.
+	GeneratePairingToken(context.Context, *connect.Request[v1.GeneratePairingTokenRequest]) (*connect.Response[v1.GeneratePairingTokenResponse], error)
 }
 
 // NewBackrestClient constructs a client for the v1.Backrest service. By default, it uses the
@@ -257,32 +263,39 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestMethods.ByName("GetSummaryDashboard")),
 			connect.WithClientOptions(opts...),
 		),
+		generatePairingToken: connect.NewClient[v1.GeneratePairingTokenRequest, v1.GeneratePairingTokenResponse](
+			httpClient,
+			baseURL+BackrestGeneratePairingTokenProcedure,
+			connect.WithSchema(backrestMethods.ByName("GeneratePairingToken")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // backrestClient implements BackrestClient.
 type backrestClient struct {
-	getConfig           *connect.Client[emptypb.Empty, v1.Config]
-	setConfig           *connect.Client[v1.Config, v1.Config]
-	setupSftp           *connect.Client[v1.SetupSftpRequest, v1.SetupSftpResponse]
-	checkRepoExists     *connect.Client[v1.CheckRepoExistsRequest, v1.CheckRepoExistsResponse]
-	addRepo             *connect.Client[v1.AddRepoRequest, v1.Config]
-	removeRepo          *connect.Client[types.StringValue, v1.Config]
-	getOperationEvents  *connect.Client[emptypb.Empty, v1.OperationEvent]
-	getOperations       *connect.Client[v1.GetOperationsRequest, v1.OperationList]
-	listSnapshots       *connect.Client[v1.ListSnapshotsRequest, v1.ResticSnapshotList]
-	listSnapshotFiles   *connect.Client[v1.ListSnapshotFilesRequest, v1.ListSnapshotFilesResponse]
-	backup              *connect.Client[v1.BackupRequest, emptypb.Empty]
-	doRepoTask          *connect.Client[v1.DoRepoTaskRequest, emptypb.Empty]
-	forget              *connect.Client[v1.ForgetRequest, emptypb.Empty]
-	restore             *connect.Client[v1.RestoreSnapshotRequest, emptypb.Empty]
-	cancel              *connect.Client[types.Int64Value, emptypb.Empty]
-	getLogs             *connect.Client[v1.LogDataRequest, types.BytesValue]
-	runCommand          *connect.Client[v1.RunCommandRequest, types.Int64Value]
-	getDownloadURL      *connect.Client[v1.GetDownloadURLRequest, types.StringValue]
-	clearHistory        *connect.Client[v1.ClearHistoryRequest, emptypb.Empty]
-	pathAutocomplete    *connect.Client[types.StringValue, types.StringList]
-	getSummaryDashboard *connect.Client[emptypb.Empty, v1.SummaryDashboardResponse]
+	getConfig            *connect.Client[emptypb.Empty, v1.Config]
+	setConfig            *connect.Client[v1.Config, v1.Config]
+	setupSftp            *connect.Client[v1.SetupSftpRequest, v1.SetupSftpResponse]
+	checkRepoExists      *connect.Client[v1.CheckRepoExistsRequest, v1.CheckRepoExistsResponse]
+	addRepo              *connect.Client[v1.AddRepoRequest, v1.Config]
+	removeRepo           *connect.Client[types.StringValue, v1.Config]
+	getOperationEvents   *connect.Client[emptypb.Empty, v1.OperationEvent]
+	getOperations        *connect.Client[v1.GetOperationsRequest, v1.OperationList]
+	listSnapshots        *connect.Client[v1.ListSnapshotsRequest, v1.ResticSnapshotList]
+	listSnapshotFiles    *connect.Client[v1.ListSnapshotFilesRequest, v1.ListSnapshotFilesResponse]
+	backup               *connect.Client[v1.BackupRequest, emptypb.Empty]
+	doRepoTask           *connect.Client[v1.DoRepoTaskRequest, emptypb.Empty]
+	forget               *connect.Client[v1.ForgetRequest, emptypb.Empty]
+	restore              *connect.Client[v1.RestoreSnapshotRequest, emptypb.Empty]
+	cancel               *connect.Client[types.Int64Value, emptypb.Empty]
+	getLogs              *connect.Client[v1.LogDataRequest, types.BytesValue]
+	runCommand           *connect.Client[v1.RunCommandRequest, types.Int64Value]
+	getDownloadURL       *connect.Client[v1.GetDownloadURLRequest, types.StringValue]
+	clearHistory         *connect.Client[v1.ClearHistoryRequest, emptypb.Empty]
+	pathAutocomplete     *connect.Client[types.StringValue, types.StringList]
+	getSummaryDashboard  *connect.Client[emptypb.Empty, v1.SummaryDashboardResponse]
+	generatePairingToken *connect.Client[v1.GeneratePairingTokenRequest, v1.GeneratePairingTokenResponse]
 }
 
 // GetConfig calls v1.Backrest.GetConfig.
@@ -390,6 +403,11 @@ func (c *backrestClient) GetSummaryDashboard(ctx context.Context, req *connect.R
 	return c.getSummaryDashboard.CallUnary(ctx, req)
 }
 
+// GeneratePairingToken calls v1.Backrest.GeneratePairingToken.
+func (c *backrestClient) GeneratePairingToken(ctx context.Context, req *connect.Request[v1.GeneratePairingTokenRequest]) (*connect.Response[v1.GeneratePairingTokenResponse], error) {
+	return c.generatePairingToken.CallUnary(ctx, req)
+}
+
 // BackrestHandler is an implementation of the v1.Backrest service.
 type BackrestHandler interface {
 	GetConfig(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.Config], error)
@@ -424,6 +442,9 @@ type BackrestHandler interface {
 	PathAutocomplete(context.Context, *connect.Request[types.StringValue]) (*connect.Response[types.StringList], error)
 	// GetSummaryDashboard returns data for the dashboard view.
 	GetSummaryDashboard(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.SummaryDashboardResponse], error)
+	// GeneratePairingToken creates a new pairing token on the server that can be shared with clients to simplify peering.
+	// The token format is "<keyid>:<secret>#<instanceid>" — an opaque string the client pastes when adding a known host.
+	GeneratePairingToken(context.Context, *connect.Request[v1.GeneratePairingTokenRequest]) (*connect.Response[v1.GeneratePairingTokenResponse], error)
 }
 
 // NewBackrestHandler builds an HTTP handler from the service implementation. It returns the path on
@@ -559,6 +580,12 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		connect.WithSchema(backrestMethods.ByName("GetSummaryDashboard")),
 		connect.WithHandlerOptions(opts...),
 	)
+	backrestGeneratePairingTokenHandler := connect.NewUnaryHandler(
+		BackrestGeneratePairingTokenProcedure,
+		svc.GeneratePairingToken,
+		connect.WithSchema(backrestMethods.ByName("GeneratePairingToken")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/v1.Backrest/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case BackrestGetConfigProcedure:
@@ -603,6 +630,8 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 			backrestPathAutocompleteHandler.ServeHTTP(w, r)
 		case BackrestGetSummaryDashboardProcedure:
 			backrestGetSummaryDashboardHandler.ServeHTTP(w, r)
+		case BackrestGeneratePairingTokenProcedure:
+			backrestGeneratePairingTokenHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -694,4 +723,8 @@ func (UnimplementedBackrestHandler) PathAutocomplete(context.Context, *connect.R
 
 func (UnimplementedBackrestHandler) GetSummaryDashboard(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.SummaryDashboardResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetSummaryDashboard is not implemented"))
+}
+
+func (UnimplementedBackrestHandler) GeneratePairingToken(context.Context, *connect.Request[v1.GeneratePairingTokenRequest]) (*connect.Response[v1.GeneratePairingTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GeneratePairingToken is not implemented"))
 }

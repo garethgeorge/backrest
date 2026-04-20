@@ -109,6 +109,8 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 				cmdStream,
 				syncSessionHandler,
 				c.syncConfigSnapshot.config.GetMultihost().GetKnownHosts(),
+				c.peer.GetInitialPairingSecret(),
+				nil, // client never handles unknown peers
 			)
 			cmdStream.SendErrorAndTerminate(err)
 		}()

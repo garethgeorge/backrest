@@ -21,7 +21,7 @@ import {
 import { formatErrorAlert, alerts } from "../../components/common/Alerts";
 import { namePattern } from "../../lib/util";
 import { backrestService, authenticationService } from "../../api/client";
-import { clone, fromJson, toJson } from "@bufbuild/protobuf";
+import { clone, create, fromJson, toJson } from "@bufbuild/protobuf";
 import {
   AuthSchema,
   Config,
@@ -31,6 +31,7 @@ import {
   Multihost_PeerSchema,
   Multihost_Permission_Type,
 } from "../../../gen/ts/v1/config_pb";
+import { GeneratePairingTokenRequestSchema } from "../../../gen/ts/v1/service_pb";
 import { PeerState } from "../../../gen/ts/v1sync/syncservice_pb";
 import { useSyncStates } from "../../state/peerStates";
 import { PeerStateConnectionStatusIcon } from "../../components/common/SyncStateIcon";
@@ -86,6 +87,19 @@ export const SettingsModal = () => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [reloadOnCancel, setReloadOnCancel] = useState(false);
 
+  // Pairing token generation state
+  const [showGenerateToken, setShowGenerateToken] = useState(false);
+  const [tokenLabel, setTokenLabel] = useState("");
+  const [tokenTtl, setTokenTtl] = useState("3600");
+  const [tokenMaxUses, setTokenMaxUses] = useState(1);
+  const [generatedToken, setGeneratedToken] = useState("");
+  const [generateLoading, setGenerateLoading] = useState(false);
+
+  // Pair with server state
+  const [showPairWithServer, setShowPairWithServer] = useState(false);
+  const [pairToken, setPairToken] = useState("");
+  const [pairInstanceUrl, setPairInstanceUrl] = useState("");
+
   // Local state initialized from config
   const [formData, setFormData] = useState<any>(() => {
     if (!config) return null;
@@ -112,6 +126,76 @@ export const SettingsModal = () => {
       },
     };
   });
+
+  const ttlOptions = createListCollection({
+    items: [
+      { label: "15 minutes", value: "900" },
+      { label: "1 hour", value: "3600" },
+      { label: "24 hours", value: "86400" },
+      { label: "7 days", value: "604800" },
+    ],
+  });
+
+  const handleGenerateToken = async () => {
+    setGenerateLoading(true);
+    try {
+      const resp = await backrestService.generatePairingToken(
+        create(GeneratePairingTokenRequestSchema, {
+          label: tokenLabel,
+          ttlSeconds: BigInt(parseInt(tokenTtl)),
+          maxUses: tokenMaxUses,
+        }),
+      );
+      setGeneratedToken(resp.token);
+    } catch (e: any) {
+      alerts.error(formatErrorAlert(e, "Failed to generate pairing token"));
+    } finally {
+      setGenerateLoading(false);
+    }
+  };
+
+  const handlePairWithServer = () => {
+    try {
+      // Parse token format: <keyid>:<secret>#<instanceid>
+      const hashIdx = pairToken.indexOf("#");
+      const colonIdx = pairToken.indexOf(":");
+      if (hashIdx === -1 || colonIdx === -1 || colonIdx > hashIdx) {
+        throw new Error(
+          'Invalid token format. Expected "<keyid>:<secret>#<instanceid>"',
+        );
+      }
+      const keyId = pairToken.substring(0, colonIdx);
+      const secret = pairToken.substring(colonIdx + 1, hashIdx);
+      const instanceId = pairToken.substring(hashIdx + 1);
+
+      if (!keyId || !secret || !instanceId) {
+        throw new Error("Token is missing required fields");
+      }
+      if (!pairInstanceUrl) {
+        throw new Error("Instance URL is required");
+      }
+
+      const knownHosts = getField(["multihost", "knownHosts"]) || [];
+      updateField(["multihost", "knownHosts"], [
+        ...knownHosts,
+        {
+          instanceId,
+          keyId,
+          instanceUrl: pairInstanceUrl,
+          initialPairingSecret: secret,
+          permissions: [],
+        },
+      ]);
+
+      // Reset form
+      setPairToken("");
+      setPairInstanceUrl("");
+      setShowPairWithServer(false);
+      alerts.success("Server added to known hosts. Save settings to apply.");
+    } catch (e: any) {
+      alerts.error(formatErrorAlert(e, "Failed to pair with server"));
+    }
+  };
 
   if (!config || !formData) return null;
 
