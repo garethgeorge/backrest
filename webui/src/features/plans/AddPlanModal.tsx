@@ -2,30 +2,24 @@ import {
   Flex,
   Stack,
   Input,
-  Textarea,
   createListCollection,
   SelectContent,
   SelectItem,
-  SelectLabel,
   SelectRoot,
   SelectTrigger,
   SelectValueText,
-  IconButton,
   Card,
-  Box,
-  HStack,
   Text as CText,
   Grid,
   Code,
 } from "@chakra-ui/react";
-import { Checkbox } from "../../components/ui/checkbox";
 import {
   AccordionItem,
   AccordionItemContent,
   AccordionItemTrigger,
   AccordionRoot,
 } from "../../components/ui/accordion";
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useShowModal } from "../../components/common/ModalManager";
 import {
   ConfigSchema,
@@ -33,65 +27,47 @@ import {
   RetentionPolicySchema,
   Schedule_Clock,
   type Plan,
-  type RetentionPolicy,
-  type Schedule,
 } from "../../../gen/ts/v1/config_pb";
-import { FiPlus as Plus, FiMinus as Minus, FiMenu } from "react-icons/fi";
-import { BsCalculator as Calculator } from "react-icons/bs";
+import { FiFileText, FiFolder, FiClock, FiArchive, FiSliders } from "react-icons/fi";
 import { alerts, formatErrorAlert } from "../../components/common/Alerts";
 import { namePattern } from "../../lib/util";
 import { ConfirmButton } from "../../components/common/SpinButton";
 import { useConfig } from "../../app/provider";
 import { backrestService } from "../../api/client";
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
   clone,
   create,
   equals,
   fromJson,
   toJson,
-  JsonValue,
 } from "@bufbuild/protobuf";
 import * as m from "../../paraglide/messages";
-import { FormModal } from "../../components/common/FormModal";
 import { Button } from "../../components/ui/button";
 import { Field } from "../../components/ui/field";
 import { Tooltip } from "../../components/ui/tooltip";
-import { NumberInputField } from "../../components/common/NumberInput"; // Assuming I migrated this or will check
+import { NumberInputField } from "../../components/common/NumberInput";
 import {
   ScheduleFormItem,
   ScheduleDefaultsDaily,
 } from "../../components/common/ScheduleFormItem";
-// Use the real implementation
-import { URIAutocomplete } from "../../components/common/URIAutocomplete";
 import {
   HooksFormList,
   hooksListTooltipText,
 } from "../../components/common/HooksFormList";
 import { DynamicList } from "../../components/common/DynamicList";
+import {
+  TwoPaneModal,
+  TwoPaneSection,
+  type SectionDef,
+} from "../../components/common/TwoPaneModal";
+import { SectionCard } from "../../components/common/SectionCard";
 
 // Default Plan
 const planDefaults = create(PlanSchema, {
   schedule: {
     schedule: {
       case: "cron",
-      value: "0 * * * *", // every hour
+      value: "0 * * * *",
     },
     clock: Schedule_Clock.LOCAL,
   },
@@ -112,14 +88,12 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
   const showModal = useShowModal();
   const [config, setConfig] = useConfig();
 
-  // Local State
   const [formData, setFormData] = useState<any>(
     template
       ? toJson(PlanSchema, template, { alwaysEmitImplicit: true })
       : toJson(PlanSchema, planDefaults, { alwaysEmitImplicit: true }),
   );
 
-  // Sync state with template prop
   useEffect(() => {
     setFormData(
       template
@@ -128,13 +102,11 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
     );
   }, [template]);
 
-  // Helper to update fields
   const updateField = (path: string[], value: any) => {
     setFormData((prev: any) => {
       const next = { ...prev };
       let curr = next;
       for (let i = 0; i < path.length - 1; i++) {
-        // Create shallow copy of the next level if it exists, or new object if not
         curr[path[i]] = curr[path[i]] ? { ...curr[path[i]] } : {};
         curr = curr[path[i]];
       }
@@ -181,7 +153,6 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
   const handleOk = async () => {
     setConfirmLoading(true);
     try {
-      // Validation
       if (!formData.id?.trim()) {
         throw new Error(m.add_plan_modal_validation_plan_name_required());
       }
@@ -201,7 +172,6 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
         throw new Error(m.add_plan_modal_validation_flag_pattern());
       }
 
-      // Check retention for sub-hourly schedules
       const scheduleValue = formData.schedule?.schedule?.value;
       const isCron = formData.schedule?.schedule?.case === "cron";
       const isSubHourly =
@@ -221,7 +191,6 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
         ignoreUnknownFields: true,
       });
 
-      // Clean up retention if empty (logic from original)
       if (
         plan.retention &&
         equals(
@@ -265,8 +234,40 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
     items: repos.map((r) => ({ label: r.id, value: r.id })),
   });
 
+  const sections: SectionDef[] = [
+    { id: "details", label: "Details", icon: <FiFileText size={14} /> },
+    { id: "scope", label: "Scope", icon: <FiFolder size={14} /> },
+    { id: "schedule", label: "Schedule", icon: <FiClock size={14} /> },
+    { id: "retention", label: "Retention", icon: <FiArchive size={14} /> },
+    { id: "advanced", label: "Advanced", icon: <FiSliders size={14} /> },
+  ];
+
+  const footer = (
+    <Flex gap={2} justify="flex-end" width="full">
+      <Button
+        variant="outline"
+        disabled={confirmLoading}
+        onClick={() => showModal(null)}
+      >
+        {m.add_plan_modal_button_cancel()}
+      </Button>
+      {template && (
+        <ConfirmButton
+          danger
+          onClickAsync={handleDestroy}
+          confirmTitle={m.add_plan_modal_button_confirm_delete()}
+        >
+          {m.add_plan_modal_button_delete()}
+        </ConfirmButton>
+      )}
+      <Button loading={confirmLoading} onClick={handleOk}>
+        {m.add_plan_modal_button_submit()}
+      </Button>
+    </Flex>
+  );
+
   return (
-    <FormModal
+    <TwoPaneModal
       isOpen={true}
       onClose={() => showModal(null)}
       title={
@@ -274,267 +275,232 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
           ? m.add_plan_modal_title_update()
           : m.add_plan_modal_title_add()
       }
-      size="large"
-      footer={
-        <Flex gap={2} justify="flex-end" width="full">
-          <Button
-            variant="outline"
-            disabled={confirmLoading}
-            onClick={() => showModal(null)}
-          >
-            {m.add_plan_modal_button_cancel()}
-          </Button>
-          {template && (
-            <ConfirmButton
-              danger
-              onClickAsync={handleDestroy}
-              confirmTitle={m.add_plan_modal_button_confirm_delete()}
-            >
-              {m.add_plan_modal_button_delete()}
-            </ConfirmButton>
-          )}
-          <Button loading={confirmLoading} onClick={handleOk}>
-            {m.add_plan_modal_button_submit()}
-          </Button>
-        </Flex>
-      }
+      headerIcon={<FiFileText size={14} />}
+      sections={sections}
+      footer={footer}
     >
-      <Stack gap={6}>
-        {/* Info Link */}
-        <p>
-          {m.add_plan_modal_see_guide_prefix()}{" "}
-          <a
-            href="https://garethgeorge.github.io/backrest/introduction/getting-started"
-            target="_blank"
-            style={{ textDecoration: "underline" }}
-          >
-            {m.add_plan_modal_see_guide_link()}
-          </a>{" "}
-          {m.add_plan_modal_see_guide_suffix()}
-        </p>
+      {/* Details Section */}
+      <TwoPaneSection id="details">
+        <SectionCard
+          icon={<FiFileText size={16} />}
+          title={m.op_row_backup_details()}
+          description="Plan name and target repository."
+        >
+          <Stack gap={4}>
+            <Field
+              label={m.add_plan_modal_field_plan_name()}
+              helperText={m.add_plan_modal_field_plan_name_tooltip()}
+              required
+              invalid={
+                !!formData.id &&
+                (!namePattern.test(formData.id) ||
+                  (!template &&
+                    !!config.plans.find((p) => p.id === formData.id)))
+              }
+              errorText={
+                !!formData.id && !namePattern.test(formData.id)
+                  ? m.add_plan_modal_validation_plan_name_pattern()
+                  : m.add_plan_modal_validation_plan_exists()
+              }
+            >
+              <Input
+                value={getField(["id"])}
+                onChange={(e) => updateField(["id"], e.target.value)}
+                disabled={!!template}
+                placeholder={"plan" + ((config?.plans?.length || 0) + 1)}
+              />
+            </Field>
 
-        {/* Plan Details */}
-        <Section title={m.op_row_backup_details()}>
-          <Card.Root variant="subtle">
-            <Card.Body>
-              <Stack gap={4}>
-                <Field
-                  label={m.add_plan_modal_field_plan_name()}
-                  helperText={m.add_plan_modal_field_plan_name_tooltip()}
-                  required
-                  invalid={
-                    !!formData.id &&
-                    (!namePattern.test(formData.id) ||
-                      (!template &&
-                        !!config.plans.find((p) => p.id === formData.id)))
-                  }
-                  errorText={
-                    !!formData.id && !namePattern.test(formData.id)
-                      ? m.add_plan_modal_validation_plan_name_pattern()
-                      : m.add_plan_modal_validation_plan_exists()
-                  }
-                >
-                  <Input
-                    value={getField(["id"])}
-                    onChange={(e) => updateField(["id"], e.target.value)}
-                    disabled={!!template}
-                    placeholder={"plan" + ((config?.plans?.length || 0) + 1)}
-                  />
-                </Field>
+            <Field
+              label={m.add_plan_modal_field_repository()}
+              helperText={m.add_plan_modal_field_repository_tooltip()}
+              required
+              invalid={!getField(["repo"]) && confirmLoading}
+            >
+              <SelectRoot
+                collection={repoOptions}
+                size="sm"
+                value={[getField(["repo"])]}
+                onValueChange={(e: any) =>
+                  updateField(["repo"], e.value[0])
+                }
+                disabled={!!template}
+                width="full"
+              >
+                {/* @ts-ignore */}
+                <SelectTrigger>
+                  {/* @ts-ignore */}
+                  <SelectValueText placeholder={m.add_plan_modal_field_repository_select()} />
+                </SelectTrigger>
+                {/* @ts-ignore */}
+                <SelectContent>
+                  {repoOptions.items.map((item: any) => (
+                    <SelectItem item={item} key={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </SelectRoot>
+            </Field>
+          </Stack>
+        </SectionCard>
+      </TwoPaneSection>
 
-                <Field
-                  label={m.add_plan_modal_field_repository()}
-                  helperText={m.add_plan_modal_field_repository_tooltip()}
-                  required
-                  invalid={!getField(["repo"]) && confirmLoading}
-                >
-                  <SelectRoot
-                    collection={repoOptions}
-                    size="sm"
-                    value={[getField(["repo"])]}
-                    onValueChange={(e: any) =>
-                      updateField(["repo"], e.value[0])
-                    }
-                    disabled={!!template}
-                    width="full"
+      {/* Scope Section */}
+      <TwoPaneSection id="scope">
+        <SectionCard
+          icon={<FiFolder size={16} />}
+          title={m.settings_peer_permission_scopes()}
+          description="Directories and exclusion patterns."
+        >
+          <Stack gap={4}>
+            <DynamicList
+              label={m.add_plan_modal_field_paths()}
+              tooltip={m.add_plan_modal_field_paths_tooltip()}
+              items={getField(["paths"]) || []}
+              onUpdate={(items: string[]) => updateField(["paths"], items)}
+              required
+              autocompleteType="uri"
+              placeholder={m.add_plan_modal_field_paths()}
+            />
+
+            <DynamicList
+              label={m.add_plan_modal_field_excludes()}
+              items={getField(["excludes"]) || []}
+              onUpdate={(items: string[]) =>
+                updateField(["excludes"], items)
+              }
+              tooltip={
+                <>
+                  {m.add_plan_modal_field_excludes_tooltip_prefix()}{" "}
+                  <a
+                    href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
+                    target="_blank"
+                    style={{ textDecoration: "underline" }}
                   >
-                    {/* @ts-ignore */}
-                    <SelectTrigger>
-                      {/* @ts-ignore */}
-                      <SelectValueText placeholder={m.add_plan_modal_field_repository_select()} />
-                    </SelectTrigger>
-                    {/* @ts-ignore */}
-                    <SelectContent>
-                      {repoOptions.items.map((item: any) => (
-                        // @ts-ignore
-                        <SelectItem item={item} key={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </SelectRoot>
-                </Field>
-              </Stack>
-            </Card.Body>
-          </Card.Root>
-        </Section>
+                    {m.add_plan_modal_field_excludes_tooltip_link()}
+                  </a>{" "}
+                  {m.add_plan_modal_field_excludes_tooltip_suffix()}
+                </>
+              }
+              placeholder={m.add_plan_modal_field_excludes()}
+            />
 
-        {/* Scope */}
-        <Section title={m.settings_peer_permission_scopes()}>
-          <Card.Root variant="subtle">
-            <Card.Body>
-              <Stack gap={4}>
-                <DynamicList
-                  label={m.add_plan_modal_field_paths()}
-                  tooltip={m.add_plan_modal_field_paths_tooltip()}
-                  items={getField(["paths"]) || []}
-                  onUpdate={(items: string[]) => updateField(["paths"], items)}
-                  required
-                  autocompleteType="uri"
-                  placeholder={m.add_plan_modal_field_paths()}
-                />
+            <DynamicList
+              label={m.add_plan_modal_field_iexcludes()}
+              items={getField(["iexcludes"]) || []}
+              onUpdate={(items: string[]) =>
+                updateField(["iexcludes"], items)
+              }
+              tooltip={
+                <>
+                  {m.add_plan_modal_field_iexcludes_tooltip_prefix()}{" "}
+                  <a
+                    href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
+                    target="_blank"
+                    style={{ textDecoration: "underline" }}
+                  >
+                    {m.add_plan_modal_field_excludes_tooltip_link()}
+                  </a>{" "}
+                  {m.add_plan_modal_field_excludes_tooltip_suffix()}
+                </>
+              }
+              placeholder={m.add_plan_modal_field_iexcludes()}
+            />
+          </Stack>
+        </SectionCard>
+      </TwoPaneSection>
 
-                <DynamicList
-                  label={m.add_plan_modal_field_excludes()}
-                  items={getField(["excludes"]) || []}
-                  onUpdate={(items: string[]) =>
-                    updateField(["excludes"], items)
-                  }
-                  tooltip={
-                    <>
-                      {m.add_plan_modal_field_excludes_tooltip_prefix()}{" "}
-                      <a
-                        href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
-                        target="_blank"
-                        style={{ textDecoration: "underline" }}
-                      >
-                        {m.add_plan_modal_field_excludes_tooltip_link()}
-                      </a>{" "}
-                      {m.add_plan_modal_field_excludes_tooltip_suffix()}
-                    </>
-                  }
-                  placeholder={m.add_plan_modal_field_excludes()}
-                />
-
-                <DynamicList
-                  label={m.add_plan_modal_field_iexcludes()}
-                  items={getField(["iexcludes"]) || []}
-                  onUpdate={(items: string[]) =>
-                    updateField(["iexcludes"], items)
-                  }
-                  tooltip={
-                    <>
-                      {m.add_plan_modal_field_iexcludes_tooltip_prefix()}{" "}
-                      <a
-                        href="https://restic.readthedocs.io/en/latest/040_backup.html#excluding-files"
-                        target="_blank"
-                        style={{ textDecoration: "underline" }}
-                      >
-                        {m.add_plan_modal_field_excludes_tooltip_link()}
-                      </a>{" "}
-                      {m.add_plan_modal_field_excludes_tooltip_suffix()}
-                    </>
-                  }
-                  placeholder={m.add_plan_modal_field_iexcludes()}
-                />
-              </Stack>
-            </Card.Body>
-          </Card.Root>
-        </Section>
-
-        {/* Schedule */}
-        <Section title={m.add_plan_modal_field_schedule()}>
+      {/* Schedule Section */}
+      <TwoPaneSection id="schedule">
+        <SectionCard
+          icon={<FiClock size={16} />}
+          title={m.add_plan_modal_field_schedule()}
+          description="When backups run automatically."
+        >
           <ScheduleFormItem
             value={getField(["schedule"])}
             onChange={(v: any) => updateField(["schedule"], v)}
             defaults={ScheduleDefaultsDaily}
           />
-        </Section>
+        </SectionCard>
+      </TwoPaneSection>
 
-        {/* Retention Policy */}
-        <Section title={m.add_plan_modal_retention_policy_label()}>
+      {/* Retention Section */}
+      <TwoPaneSection id="retention">
+        <SectionCard
+          icon={<FiArchive size={16} />}
+          title={m.add_plan_modal_retention_policy_label()}
+          description="How long to keep snapshots before forgetting them."
+        >
           <RetentionPolicyView
             schedule={getField(["schedule"])}
             retention={getField(["retention"])}
             onChange={(v: any) => updateField(["retention"], v)}
           />
-        </Section>
+        </SectionCard>
+      </TwoPaneSection>
 
-        {/* Advanced */}
-        <Section title={m.add_plan_modal_advanced_label()}>
-          <Card.Root variant="subtle">
-            <Card.Body>
-              <Stack gap={4}>
-                <DynamicList
-                  label={m.add_plan_modal_field_backup_flags()}
-                  items={getField(["backup_flags"]) || []}
-                  onUpdate={(items: string[]) =>
-                    updateField(["backup_flags"], items)
-                  }
-                  tooltip={m.add_plan_modal_field_backup_flags_tooltip()}
-                  placeholder="--flag"
-                  autocompleteType="flag"
-                />
+      {/* Advanced Section */}
+      <TwoPaneSection id="advanced">
+        <SectionCard
+          icon={<FiSliders size={16} />}
+          title={m.add_plan_modal_advanced_label()}
+          description="Extra flags and notification hooks."
+        >
+          <Stack gap={4}>
+            <DynamicList
+              label={m.add_plan_modal_field_backup_flags()}
+              items={getField(["backup_flags"]) || []}
+              onUpdate={(items: string[]) =>
+                updateField(["backup_flags"], items)
+              }
+              tooltip={m.add_plan_modal_field_backup_flags_tooltip()}
+              placeholder="--flag"
+              autocompleteType="flag"
+            />
 
-                <Field
-                  label={m.add_plan_modal_field_hooks()}
-                  helperText={hooksListTooltipText}
-                >
-                  <HooksFormList
-                    value={getField(["hooks"])}
-                    onChange={(v: any) => updateField(["hooks"], v)}
-                  />
-                </Field>
-              </Stack>
-            </Card.Body>
-          </Card.Root>
-        </Section>
+            <Field
+              label={m.add_plan_modal_field_hooks()}
+              helperText={hooksListTooltipText}
+            >
+              <HooksFormList
+                value={getField(["hooks"])}
+                onChange={(v: any) => updateField(["hooks"], v)}
+              />
+            </Field>
+          </Stack>
+        </SectionCard>
+      </TwoPaneSection>
 
-        {/* JSON Preview */}
-        <AccordionRoot collapsible variant="plain">
-          <AccordionItem value="json-preview">
-            <AccordionItemTrigger>
-              <CText fontSize="sm" color="fg.muted">
-                {m.add_repo_modal_preview_json()}
-              </CText>
-            </AccordionItemTrigger>
-            <AccordionItemContent>
-              <Code
-                display="block"
-                whiteSpace="pre"
-                overflowX="auto"
-                p={2}
-                borderRadius="md"
-                fontSize="xs"
-              >
-                {JSON.stringify(formData, null, 2)}
-              </Code>
-            </AccordionItemContent>
-          </AccordionItem>
-        </AccordionRoot>
-      </Stack>
-    </FormModal>
+      {/* JSON Preview */}
+      <AccordionRoot collapsible variant="plain">
+        <AccordionItem value="json-preview">
+          <AccordionItemTrigger>
+            <CText fontSize="sm" color="fg.muted">
+              {m.add_repo_modal_preview_json()}
+            </CText>
+          </AccordionItemTrigger>
+          <AccordionItemContent>
+            <Code
+              display="block"
+              whiteSpace="pre"
+              overflowX="auto"
+              p={2}
+              borderRadius="md"
+              fontSize="xs"
+            >
+              {JSON.stringify(formData, null, 2)}
+            </Code>
+          </AccordionItemContent>
+        </AccordionItem>
+      </AccordionRoot>
+    </TwoPaneModal>
   );
 };
 
-const Section = ({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) => (
-  <Stack gap={2}>
-    <CText fontWeight="semibold" fontSize="sm">
-      {title}
-    </CText>
-    {children}
-  </Stack>
-);
-
 // Retention View
 const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
-  // Mode determination
   const determineMode = () => {
     if (!retention) return "policyTimeBucketed";
     if (retention.policyKeepLastN) return "policyKeepLastN";
@@ -563,7 +529,6 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
     }
   };
 
-  // Derived values
   const cronIsSubHourly = useMemo(
     () =>
       schedule?.schedule?.value &&
@@ -572,12 +537,10 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
     [schedule],
   );
 
-  // Helpers to update nested retention fields
   const updateRetentionField = (path: string[], val: any) => {
     const next = { ...retention };
     let curr = next;
     for (let i = 0; i < path.length - 1; i++) {
-      // Create shallow copy of the next level to ensure immutability
       curr[path[i]] = curr[path[i]] ? { ...curr[path[i]] } : {};
       curr = curr[path[i]];
     }
@@ -589,7 +552,6 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
     <Stack gap={4}>
       <Card.Root variant="subtle" width="fit-content">
         <Card.Header pb={0}>
-          {/* Mode Selector */}
           <Flex gap={2} wrap="wrap">
             {[
               {
@@ -622,7 +584,6 @@ const RetentionPolicyView = ({ schedule, retention, onChange }: any) => {
         </Card.Header>
 
         <Card.Body>
-          {/* Mode Content */}
           {mode === "policyKeepAll" && (
             <p>
               {m.add_plan_modal_retention_policy_keep_all_warning()}

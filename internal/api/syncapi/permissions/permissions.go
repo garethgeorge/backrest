@@ -96,6 +96,9 @@ type PermissionSet struct {
 	// immutable after construction
 	perms map[v1.Multihost_Permission_Type]ScopeSet
 
+	// scopelessPerms tracks permission types that were granted without scopes (e.g. PERMISSION_RECEIVE_SHARED_REPOS)
+	scopelessPerms map[v1.Multihost_Permission_Type]bool
+
 	// caches store computed permission checks per scope id and permission type
 	// cache is best-effort and not bounded; PermissionSet is expected to be short-lived (per connection/request)
 	mu        sync.RWMutex
@@ -105,13 +108,15 @@ type PermissionSet struct {
 
 func NewPermissionSet(perms []*v1.Multihost_Permission) (*PermissionSet, error) {
 	permSet := &PermissionSet{
-		perms:     make(map[v1.Multihost_Permission_Type]ScopeSet),
-		planCache: make(map[string]map[v1.Multihost_Permission_Type]bool),
-		repoCache: make(map[string]map[v1.Multihost_Permission_Type]bool),
+		perms:          make(map[v1.Multihost_Permission_Type]ScopeSet),
+		scopelessPerms: make(map[v1.Multihost_Permission_Type]bool),
+		planCache:      make(map[string]map[v1.Multihost_Permission_Type]bool),
+		repoCache:      make(map[string]map[v1.Multihost_Permission_Type]bool),
 	}
 
 	for _, perm := range perms {
 		if perm.Scopes == nil {
+			permSet.scopelessPerms[perm.Type] = true
 			continue
 		}
 		scopeSet, err := NewScopeSet(perm.Scopes)
@@ -122,6 +127,18 @@ func NewPermissionSet(perms []*v1.Multihost_Permission) (*PermissionSet, error) 
 	}
 
 	return permSet, nil
+}
+
+// HasPermissionType checks if a permission type is granted, regardless of scopes.
+// Use this for scope-less permissions like PERMISSION_RECEIVE_SHARED_REPOS.
+func (p *PermissionSet) HasPermissionType(permType v1.Multihost_Permission_Type) bool {
+	if _, ok := p.scopelessPerms[permType]; ok {
+		return true
+	}
+	if _, ok := p.perms[permType]; ok {
+		return true
+	}
+	return false
 }
 
 func (p *PermissionSet) CheckPermissionForPlan(planID string, permType ...v1.Multihost_Permission_Type) bool {

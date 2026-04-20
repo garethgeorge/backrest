@@ -34,6 +34,9 @@ const (
 	// When granted to an authorizedClient, the client will be able to write the configuration to the server.
 	// When granted to a knownHost, the known host will be able to write configuration.
 	Multihost_Permission_PERMISSION_READ_WRITE_CONFIG Multihost_Permission_Type = 3 // read and write configuration for the resource in scope.
+	// When granted to an authorizedClient, the server will push repos marked as 'shared' to the client.
+	// This permission does not use scopes — if present, all shared repos are pushed.
+	Multihost_Permission_PERMISSION_RECEIVE_SHARED_REPOS Multihost_Permission_Type = 4
 )
 
 // Enum value maps for Multihost_Permission_Type.
@@ -43,12 +46,14 @@ var (
 		1: "PERMISSION_READ_OPERATIONS",
 		2: "PERMISSION_READ_CONFIG",
 		3: "PERMISSION_READ_WRITE_CONFIG",
+		4: "PERMISSION_RECEIVE_SHARED_REPOS",
 	}
 	Multihost_Permission_Type_value = map[string]int32{
-		"PERMISSION_UNKNOWN":           0,
-		"PERMISSION_READ_OPERATIONS":   1,
-		"PERMISSION_READ_CONFIG":       2,
-		"PERMISSION_READ_WRITE_CONFIG": 3,
+		"PERMISSION_UNKNOWN":              0,
+		"PERMISSION_READ_OPERATIONS":      1,
+		"PERMISSION_READ_CONFIG":          2,
+		"PERMISSION_READ_WRITE_CONFIG":    3,
+		"PERMISSION_RECEIVE_SHARED_REPOS": 4,
 	}
 )
 
@@ -2371,7 +2376,7 @@ const file_v1_config_proto_rawDesc = "" +
 	"\x05repos\x18\x03 \x03(\v2\b.v1.RepoR\x05repos\x12\x1e\n" +
 	"\x05plans\x18\x04 \x03(\v2\b.v1.PlanR\x05plans\x12\x1c\n" +
 	"\x04auth\x18\x05 \x01(\v2\b.v1.AuthR\x04auth\x12&\n" +
-	"\tmultihost\x18\a \x01(\v2\r.v1.MultihostR\x04sync\"\x9f\a\n" +
+	"\tmultihost\x18\a \x01(\v2\r.v1.MultihostR\x04sync\"\xc5\a\n" +
 	"\tMultihost\x12*\n" +
 	"\bidentity\x18\x01 \x01(\v2\x0e.v1.PrivateKeyR\bidentity\x123\n" +
 	"\vknown_hosts\x18\x02 \x03(\v2\x12.v1.Multihost.PeerR\n" +
@@ -2392,16 +2397,17 @@ const file_v1_config_proto_rawDesc = "" +
 	"\x0fexpires_at_unix\x18\x04 \x01(\x03R\rexpiresAtUnix\x12\x19\n" +
 	"\bmax_uses\x18\x05 \x01(\x05R\amaxUses\x12\x12\n" +
 	"\x04uses\x18\x06 \x01(\x05R\x04uses\x12:\n" +
-	"\vpermissions\x18\a \x03(\v2\x18.v1.Multihost.PermissionR\vpermissions\x1a\xd5\x01\n" +
+	"\vpermissions\x18\a \x03(\v2\x18.v1.Multihost.PermissionR\vpermissions\x1a\xfb\x01\n" +
 	"\n" +
 	"Permission\x121\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1d.v1.Multihost.Permission.TypeR\x04type\x12\x16\n" +
-	"\x06scopes\x18\x02 \x03(\tR\x06scopes\"|\n" +
+	"\x06scopes\x18\x02 \x03(\tR\x06scopes\"\xa1\x01\n" +
 	"\x04Type\x12\x16\n" +
 	"\x12PERMISSION_UNKNOWN\x10\x00\x12\x1e\n" +
 	"\x1aPERMISSION_READ_OPERATIONS\x10\x01\x12\x1a\n" +
 	"\x16PERMISSION_READ_CONFIG\x10\x02\x12 \n" +
-	"\x1cPERMISSION_READ_WRITE_CONFIG\x10\x03\"\xd2\x03\n" +
+	"\x1cPERMISSION_READ_WRITE_CONFIG\x10\x03\x12#\n" +
+	"\x1fPERMISSION_RECEIVE_SHARED_REPOS\x10\x04\"\xd2\x03\n" +
 	"\x04Repo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03uri\x18\x02 \x01(\tR\x03uri\x12\x12\n" +
