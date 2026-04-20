@@ -14,4 +14,4 @@ export const features = new Set<string>(
 );
 
 // Feature flags
-export const isMultihostSyncEnabled = features.has("multihost-sync");
+export const isMultihostSyncEnabled = true;

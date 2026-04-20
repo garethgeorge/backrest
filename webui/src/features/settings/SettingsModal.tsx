@@ -88,7 +88,7 @@ export const SettingsModal = () => {
   const [reloadOnCancel, setReloadOnCancel] = useState(false);
 
   // Pairing token generation state
-  const [showGenerateToken, setShowGenerateToken] = useState(false);
+  const [showGenerateForm, setShowGenerateForm] = useState(false);
   const [tokenLabel, setTokenLabel] = useState("");
   const [tokenTtl, setTokenTtl] = useState("3600");
   const [tokenMaxUses, setTokenMaxUses] = useState(1);
@@ -133,8 +133,14 @@ export const SettingsModal = () => {
       { label: "1 hour", value: "3600" },
       { label: "24 hours", value: "86400" },
       { label: "7 days", value: "604800" },
+      { label: "Forever", value: "0" },
     ],
   });
+
+  const refreshConfig = async () => {
+    const freshConfig = await backrestService.getConfig({});
+    setConfig(freshConfig);
+  };
 
   const handleGenerateToken = async () => {
     setGenerateLoading(true);
@@ -147,10 +153,25 @@ export const SettingsModal = () => {
         }),
       );
       setGeneratedToken(resp.token);
+      await refreshConfig();
     } catch (e: any) {
       alerts.error(formatErrorAlert(e, "Failed to generate pairing token"));
     } finally {
       setGenerateLoading(false);
+    }
+  };
+
+  const handleRemovePairingToken = async (index: number) => {
+    if (!config) return;
+    try {
+      const newConfig = clone(ConfigSchema, config);
+      if (newConfig.multihost) {
+        newConfig.multihost.pairingTokens.splice(index, 1);
+      }
+      setConfig(await backrestService.setConfig(newConfig));
+      alerts.success("Pairing token removed.");
+    } catch (e: any) {
+      alerts.error(formatErrorAlert(e, "Failed to remove pairing token"));
     }
   };
 
@@ -444,7 +465,7 @@ export const SettingsModal = () => {
                     label={m.settings_multihost_identity()}
                     helperText={m.settings_multihost_identity_tooltip()}
                   >
-                    <Flex gap={2}>
+                    <Flex gap={2} width="full">
                       <Input
                         value={getField(["multihost", "identity", "keyid"])}
                         disabled
@@ -465,6 +486,189 @@ export const SettingsModal = () => {
                     </Flex>
                   </Field>
 
+                  {/* Pairing Tokens */}
+                  <Field
+                    label="Pairing Tokens"
+                    helperText="Tokens that can be shared with other Backrest instances to simplify peering."
+                  >
+                    <Stack gap={3} width="full">
+                      {(config.multihost?.pairingTokens || []).map(
+                        (token, index) => {
+                          const isExpired =
+                            token.expiresAtUnix > 0n &&
+                            token.expiresAtUnix <
+                              BigInt(Math.floor(Date.now() / 1000));
+                          const usesText =
+                            token.maxUses === 0
+                              ? `${token.uses} uses (unlimited)`
+                              : `${token.uses}/${token.maxUses} uses`;
+                          const expiryText =
+                            token.expiresAtUnix === 0n
+                              ? "Never expires"
+                              : isExpired
+                                ? `Expired ${new Date(Number(token.expiresAtUnix) * 1000).toLocaleString()}`
+                                : `Expires ${new Date(Number(token.expiresAtUnix) * 1000).toLocaleString()}`;
+
+                          return (
+                            <Box
+                              key={index}
+                              p={3}
+                              borderWidth="1px"
+                              borderRadius="md"
+                            >
+                              <Flex
+                                justify="space-between"
+                                align="center"
+                                width="full"
+                              >
+                                <Stack gap={0}>
+                                  <Text fontSize="sm" fontWeight="medium">
+                                    {token.label || "(no label)"}
+                                  </Text>
+                                  <Text
+                                    fontSize="xs"
+                                    color={isExpired ? "red.500" : "gray.500"}
+                                  >
+                                    {expiryText} -- {usesText}
+                                  </Text>
+                                </Stack>
+                                <IconButton
+                                  size="xs"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    handleRemovePairingToken(index)
+                                  }
+                                  aria-label="Remove token"
+                                >
+                                  <Minus />
+                                </IconButton>
+                              </Flex>
+                            </Box>
+                          );
+                        },
+                      )}
+
+                      {generatedToken && (
+                        <Field
+                          label="Generated Token"
+                          helperText="Copy this token and share it with the client instance. It will not be shown again."
+                        >
+                          <Flex gap={2} width="full">
+                            <Input
+                              value={generatedToken}
+                              readOnly
+                              flex={1}
+                            />
+                            <IconButton
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                navigator.clipboard.writeText(generatedToken)
+                              }
+                              aria-label="Copy token"
+                            >
+                              <Copy />
+                            </IconButton>
+                          </Flex>
+                        </Field>
+                      )}
+
+                      {showGenerateForm && (
+                        <Box
+                          p={4}
+                          borderWidth="1px"
+                          borderRadius="md"
+                        >
+                          <Stack gap={3}>
+                            <Field label="Label (optional)">
+                              <Input
+                                value={tokenLabel}
+                                onChange={(e) => setTokenLabel(e.target.value)}
+                                placeholder="e.g. laptop-2"
+                                width="full"
+                              />
+                            </Field>
+                            <Field label="TTL">
+                              <SelectRoot
+                                collection={ttlOptions}
+                                value={[tokenTtl]}
+                                onValueChange={(e: any) =>
+                                  setTokenTtl(e.value[0])
+                                }
+                              >
+                                {/* @ts-ignore */}
+                                <SelectTrigger>
+                                  {/* @ts-ignore */}
+                                  <SelectValueText placeholder="Select TTL" />
+                                </SelectTrigger>
+                                {/* @ts-ignore */}
+                                <SelectContent zIndex={2000}>
+                                  {ttlOptions.items.map((o: any) => (
+                                    <SelectItem item={o} key={o.value}>
+                                      {o.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </SelectRoot>
+                            </Field>
+                            <Field
+                              label="Max Uses"
+                              helperText="0 = unlimited"
+                            >
+                              <Input
+                                type="number"
+                                value={tokenMaxUses}
+                                onChange={(e) =>
+                                  setTokenMaxUses(
+                                    parseInt(e.target.value) || 0,
+                                  )
+                                }
+                                min={0}
+                                width="full"
+                              />
+                            </Field>
+                            <Flex gap={2}>
+                              <Button
+                                size="sm"
+                                onClick={handleGenerateToken}
+                                loading={generateLoading}
+                              >
+                                Generate
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setShowGenerateForm(false);
+                                  setGeneratedToken("");
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </Flex>
+                          </Stack>
+                        </Box>
+                      )}
+
+                      {!showGenerateForm && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setShowGenerateForm(true);
+                            setGeneratedToken("");
+                            setTokenLabel("");
+                            setTokenTtl("3600");
+                            setTokenMaxUses(1);
+                          }}
+                          width="full"
+                        >
+                          <Plus /> Generate Pairing Token
+                        </Button>
+                      )}
+                    </Stack>
+                  </Field>
+
                   <Field
                     label={m.settings_multihost_authorized_clients()}
                     helperText={m.settings_multihost_authorized_clients_tooltip()}
@@ -480,6 +684,58 @@ export const SettingsModal = () => {
                       showInstanceUrl={false}
                     />
                   </Field>
+
+                  {/* Pair with Server */}
+                  <Box>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setShowPairWithServer(!showPairWithServer)
+                      }
+                      width="full"
+                    >
+                      {showPairWithServer
+                        ? "Hide Pair with Server"
+                        : "Pair with Server"}
+                    </Button>
+                    {showPairWithServer && (
+                      <Box
+                        mt={3}
+                        p={4}
+                        borderWidth="1px"
+                        borderRadius="md"
+                      >
+                        <Stack gap={3}>
+                          <Text fontSize="sm" color="gray.500">
+                            Paste a pairing token from another Backrest server
+                            to add it as a known host.
+                          </Text>
+                          <Field label="Pairing Token">
+                            <Input
+                              value={pairToken}
+                              onChange={(e) => setPairToken(e.target.value)}
+                              placeholder='<keyid>:<secret>#<instanceid>'
+                              width="full"
+                            />
+                          </Field>
+                          <Field label="Instance URL">
+                            <Input
+                              value={pairInstanceUrl}
+                              onChange={(e) =>
+                                setPairInstanceUrl(e.target.value)
+                              }
+                              placeholder="e.g. http://server:9898"
+                              width="full"
+                            />
+                          </Field>
+                          <Button size="sm" onClick={handlePairWithServer}>
+                            Pair
+                          </Button>
+                        </Stack>
+                      </Box>
+                    )}
+                  </Box>
 
                   <Field
                     label={m.settings_multihost_known_hosts()}
@@ -727,7 +983,7 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
                   />
                 </SelectTrigger>
                 {/* @ts-ignore */}
-                <SelectContent>
+                <SelectContent zIndex={2000}>
                   {permissionTypeOptions.items.map((o: any) => (
                     <SelectItem item={o} key={o.value}>
                       {o.label}
@@ -754,7 +1010,7 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
                   />
                 </SelectTrigger>
                 {/* @ts-ignore */}
-                <SelectContent>
+                <SelectContent zIndex={2000}>
                   {repoOptions.items.map((o: any) => (
                     <SelectItem item={o} key={o.value}>
                       {o.label}

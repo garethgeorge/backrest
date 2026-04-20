@@ -965,13 +965,12 @@ func (s *BackrestHandler) GeneratePairingToken(ctx context.Context, req *connect
 		return nil, fmt.Errorf("failed to generate pairing secret: %w", err)
 	}
 
-	// Compute expiry
-	ttl := req.Msg.TtlSeconds
-	if ttl <= 0 {
-		ttl = 3600 // default 1 hour
-	}
+	// Compute expiry (0 means never expires)
 	now := time.Now().Unix()
-	expiresAt := now + ttl
+	var expiresAt int64
+	if req.Msg.TtlSeconds > 0 {
+		expiresAt = now + req.Msg.TtlSeconds
+	}
 
 	// Store the pairing token in config
 	pairingToken := &v1.Multihost_PairingToken{
