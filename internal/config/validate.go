@@ -246,10 +246,6 @@ func validatePeer(peer *v1.Multihost_Peer, isKnownHost bool) error {
 		}
 	}
 
-	if peer.KeyidVerified && peer.GetKeyid() == "" {
-		return errors.New("public key cannot be marked as verified if it is unset, the keyid must be specified at a minimum")
-	}
-
 	_, err := permissions.NewPermissionSet(peer.GetPermissions())
 	if err != nil {
 		return fmt.Errorf("peer permissions: %w", err)

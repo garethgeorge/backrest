@@ -13,11 +13,11 @@ message SignedMessage {
 
 message PublicKey {
   string keyid = 1 [json_name="keyId"]; // a unique identifier generated as the SHA256 of the public key.
-  string ed25519pub = 2 [json_name="ed25519pub"];
+  string ecdsa_pub = 2 [json_name="ecdsaPub"];
 }
 
 message PrivateKey {
   string keyid = 1 [json_name="keyId"]; // a unique identifier generated as the SHA256 of the public key
-  string ed25519priv = 2 [json_name="ed25519priv"]; 
-  string ed25519pub = 3 [json_name="ed25519pub"];
+  string ecdsa_priv = 2 [json_name="ecdsaPriv"];
+  string ecdsa_pub = 3 [json_name="ecdsaPub"];
 }

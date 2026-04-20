@@ -55,7 +55,7 @@ import LogoSvg from "../../assets/logo.svg";
 import { keyBy } from "../lib/util";
 import { Code } from "@connectrpc/connect";
 import { LoginModal } from "../features/auth/LoginModal";
-import { backrestService, setAuthToken } from "../api/client";
+import { backrestService, syncStateService, setAuthToken } from "../api/client";
 import { useConfig } from "./provider";
 import { shouldShowSettings } from "../state/configutil";
 import { OpSelector, OpSelectorSchema } from "../../gen/ts/v1/service_pb";
@@ -70,7 +70,7 @@ import {
 } from "react-router-dom";
 import { MainContentAreaTemplate } from "../components/layout/MainContentArea";
 import { create } from "@bufbuild/protobuf";
-import { PeerState, RepoMetadata } from "../../gen/ts/v1sync/syncservice_pb";
+import { PeerState, PlanMetadata, RepoMetadata, SetRemoteClientConfigRequestSchema } from "../../gen/ts/v1sync/syncservice_pb";
 import { useSyncStates } from "../state/peerStates";
 import * as m from "../paraglide/messages";
 import { Link } from "../components/ui/link";
@@ -506,11 +506,51 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
             </AccordionItemTrigger>
             <AccordionItemContent pb={2}>
               {peerStates.map((peerState) => {
-                // Logic to get peer config if needed, filtering handled by original logic
-                // Assuming we list all peerStates derived from hook
                 const sel = create(OpSelectorSchema, {
                   originalInstanceKeyid: peerState.peerKeyid,
                 });
+
+                const remoteConfig = peerState.remoteConfig;
+
+                const handleRemoteRepoEdit = async (repo: Repo) => {
+                  const { AddRepoModal } =
+                    await import("../features/repositories/AddRepoModal");
+                  showModal(
+                    <AddRepoModal
+                      template={repo}
+                      onSaveOverride={async (updatedRepo) => {
+                        await syncStateService.setRemoteClientConfig(
+                          create(SetRemoteClientConfigRequestSchema, {
+                            peerKeyid: peerState.peerKeyid,
+                            repos: [updatedRepo],
+                          }),
+                        );
+                        alerts.success("Remote repo updated");
+                      }}
+                    />,
+                  );
+                  onClose?.();
+                };
+
+                const handleRemotePlanEdit = async (plan: Plan) => {
+                  const { AddPlanModal } =
+                    await import("../features/plans/AddPlanModal");
+                  showModal(
+                    <AddPlanModal
+                      template={plan}
+                      onSaveOverride={async (updatedPlan) => {
+                        await syncStateService.setRemoteClientConfig(
+                          create(SetRemoteClientConfigRequestSchema, {
+                            peerKeyid: peerState.peerKeyid,
+                            plans: [updatedPlan],
+                          }),
+                        );
+                        alerts.success("Remote plan updated");
+                      }}
+                    />,
+                  );
+                  onClose?.();
+                };
 
                 return (
                   <Box key={peerState.peerKeyid} mb={2}>
@@ -524,7 +564,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                     </Flex>
 
                     {/* Nested Repos for Peer */}
-                    {peerState.knownRepos.map((repo: RepoMetadata) => {
+                    {(remoteConfig?.repos || []).map((repo) => {
                       const repoPath = `/peer/${peerState.peerInstanceId}/repo/${repo.id}`;
                       const active = isActive(repoPath);
                       return (
@@ -537,6 +577,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                           bg={active ? "bg.emphasized" : undefined}
                           _hover={{ bg: "bg.muted" }}
                           cursor="pointer"
+                          className="group"
                           onClick={() => handleNav(repoPath)}
                         >
                           <Box flexShrink={0} mr={2}>
@@ -547,9 +588,63 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                               })}
                             />
                           </Box>
-                          <Text fontSize="sm" wordBreak="break-word">
+                          <Text fontSize="sm" flex="1" wordBreak="break-word">
                             {repo.id}
                           </Text>
+                          <Box
+                            opacity={0}
+                            _groupHover={{ opacity: 1 }}
+                            transition="opacity 0.2s"
+                          >
+                            <IconButton
+                              size="xs"
+                              variant="ghost"
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                handleRemoteRepoEdit(repo);
+                              }}
+                            >
+                              <FiEdit2 />
+                            </IconButton>
+                          </Box>
+                        </Flex>
+                      );
+                    })}
+
+                    {/* Nested Plans for Peer */}
+                    {(remoteConfig?.plans || []).map((plan) => {
+                      return (
+                        <Flex
+                          key={plan.id}
+                          align="center"
+                          pl={12}
+                          pr={2}
+                          py={1}
+                          _hover={{ bg: "bg.muted" }}
+                          className="group"
+                        >
+                          <Box flexShrink={0} mr={2}>
+                            <FiCalendar />
+                          </Box>
+                          <Text fontSize="sm" flex="1" wordBreak="break-word">
+                            {plan.id}
+                          </Text>
+                          <Box
+                            opacity={0}
+                            _groupHover={{ opacity: 1 }}
+                            transition="opacity 0.2s"
+                          >
+                            <IconButton
+                              size="xs"
+                              variant="ghost"
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                handleRemotePlanEdit(plan);
+                              }}
+                            >
+                              <FiEdit2 />
+                            </IconButton>
+                          </Box>
                         </Flex>
                       );
                     })}

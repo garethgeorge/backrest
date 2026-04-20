@@ -944,6 +944,60 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	return connect.NewResponse(response), nil
 }
 
+func (s *BackrestHandler) GeneratePairingToken(ctx context.Context, req *connect.Request[v1.GeneratePairingTokenRequest]) (*connect.Response[v1.GeneratePairingTokenResponse], error) {
+	cfg, err := s.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %w", err)
+	}
+
+	if cfg.Instance == "" {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("instance name must be set before generating pairing tokens"))
+	}
+
+	identity := cfg.GetMultihost().GetIdentity()
+	if identity == nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("multihost identity must be configured before generating pairing tokens"))
+	}
+
+	// Generate the one-time secret
+	secret, err := cryptoutil.GeneratePairingSecret()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate pairing secret: %w", err)
+	}
+
+	// Compute expiry
+	ttl := req.Msg.TtlSeconds
+	if ttl <= 0 {
+		ttl = 3600 // default 1 hour
+	}
+	now := time.Now().Unix()
+	expiresAt := now + ttl
+
+	// Store the pairing token in config
+	pairingToken := &v1.Multihost_PairingToken{
+		Secret:       secret,
+		Label:        req.Msg.Label,
+		CreatedAtUnix: now,
+		ExpiresAtUnix: expiresAt,
+		MaxUses:      req.Msg.MaxUses,
+		Uses:         0,
+		Permissions:  req.Msg.Permissions,
+	}
+
+	cfg.Multihost.PairingTokens = append(cfg.Multihost.PairingTokens, pairingToken)
+	cfg.Modno++
+	if err := s.config.Update(cfg); err != nil {
+		return nil, fmt.Errorf("failed to save pairing token: %w", err)
+	}
+
+	// Format the token string
+	tokenStr := cryptoutil.FormatPairingToken(identity.Keyid, secret, cfg.Instance)
+
+	return connect.NewResponse(&v1.GeneratePairingTokenResponse{
+		Token: tokenStr,
+	}), nil
+}
+
 func sanitizeRepoFlags(repo *v1.Repo) {
 	for i, flag := range repo.Flags {
 		if strings.HasPrefix(flag, "--option=sftp.args=") {

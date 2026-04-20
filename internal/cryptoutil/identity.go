@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	curve = elliptic.P256() // ed25519
+	curve = elliptic.P256()
 )
 
 type PublicKey struct {
@@ -25,7 +25,7 @@ type PublicKey struct {
 }
 
 func NewPublicKey(pubkey *v1.PublicKey) (*PublicKey, error) {
-	pubKeyBlock, _ := pem.Decode([]byte(pubkey.Ed25519Pub))
+	pubKeyBlock, _ := pem.Decode([]byte(pubkey.EcdsaPub))
 	if pubKeyBlock == nil {
 		return nil, errors.New("no public key found in pem")
 	}
@@ -74,7 +74,7 @@ type PrivateKey struct {
 }
 
 func NewPrivateKey(privkey *v1.PrivateKey) (*PrivateKey, error) {
-	privKeyBlock, _ := pem.Decode([]byte(privkey.Ed25519Priv))
+	privKeyBlock, _ := pem.Decode([]byte(privkey.EcdsaPriv))
 	if privKeyBlock == nil {
 		return nil, errors.New("no private key found in pem")
 	}
@@ -86,7 +86,7 @@ func NewPrivateKey(privkey *v1.PrivateKey) (*PrivateKey, error) {
 
 	pubKey, err := NewPublicKey(&v1.PublicKey{
 		Keyid:      privkey.Keyid,
-		Ed25519Pub: privkey.Ed25519Pub,
+		EcdsaPub: privkey.EcdsaPub,
 	})
 	if err != nil {
 		return nil, err
@@ -123,8 +123,8 @@ func GeneratePrivateKey() (*v1.PrivateKey, error) {
 
 	return &v1.PrivateKey{
 		Keyid:       deriveKeyId(&privKey.PublicKey),
-		Ed25519Priv: string(pemPrivateKeyBytes),
-		Ed25519Pub:  string(pemPublicKeyBytes),
+		EcdsaPriv: string(pemPrivateKeyBytes),
+		EcdsaPub:  string(pemPublicKeyBytes),
 	}, nil
 }
 

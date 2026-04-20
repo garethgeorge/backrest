@@ -88,8 +88,7 @@ func TestConnectionSucceeds(t *testing.T) {
 			AuthorizedClients: []*v1.Multihost_Peer{
 				{
 					Keyid:         identity2.Keyid,
-					KeyidVerified: true,
-					InstanceId:    defaultClientID,
+										InstanceId:    defaultClientID,
 				},
 			},
 		},
@@ -192,8 +191,7 @@ func TestSyncConfigChange(t *testing.T) {
 			AuthorizedClients: []*v1.Multihost_Peer{
 				{
 					Keyid:         identity2.Keyid,
-					KeyidVerified: true,
-					InstanceId:    defaultClientID,
+										InstanceId:    defaultClientID,
 					Permissions: []*v1.Multihost_Permission{
 						{
 							Type: v1.Multihost_Permission_PERMISSION_READ_CONFIG,
@@ -292,8 +290,7 @@ func TestSimpleOperationSync(t *testing.T) {
 			AuthorizedClients: []*v1.Multihost_Peer{
 				{
 					Keyid:         identity2.Keyid,
-					KeyidVerified: true,
-					InstanceId:    defaultClientID,
+										InstanceId:    defaultClientID,
 				},
 			},
 		},
@@ -419,8 +416,7 @@ func TestSyncMutations(t *testing.T) {
 			AuthorizedClients: []*v1.Multihost_Peer{
 				{
 					Keyid:         identity2.Keyid,
-					KeyidVerified: true,
-					InstanceId:    defaultClientID,
+										InstanceId:    defaultClientID,
 				},
 			},
 		},

@@ -10,12 +10,30 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1sync"
+	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"go.uber.org/zap"
 )
+
+// connectedPeerHandle represents a connected peer's stream and metadata.
+// It allows the API layer to send messages to a specific connected peer.
+type connectedPeerHandle struct {
+	stream      *bidiSyncCommandStream
+	peer        *v1.Multihost_Peer
+	permissions *permissions.PermissionSet
+}
+
+// SendSetConfig sends a SyncActionSetConfig message to the connected peer.
+func (h *connectedPeerHandle) SendSetConfig(setConfig *v1sync.SyncStreamItem_SyncActionSetConfig) {
+	h.stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_SetConfig{
+			SetConfig: setConfig,
+		},
+	})
+}
 
 type SyncManager struct {
 	configMgr    *config.ConfigManager
@@ -30,6 +48,10 @@ type SyncManager struct {
 	syncClientRetryDelay time.Duration // the default retry delay for sync clients, protected by mu
 
 	syncClients map[string]*SyncClient // current sync clients, protected by mu
+
+	// connectedPeers tracks connected authorized client peers by key ID.
+	// This allows the API layer to send messages to specific connected peers.
+	connectedPeers map[string]*connectedPeerHandle
 
 	peerStateManager PeerStateManager
 }
@@ -66,6 +88,7 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 
 		syncClientRetryDelay: 60 * time.Second,
 		syncClients:          make(map[string]*SyncClient),
+		connectedPeers:       make(map[string]*connectedPeerHandle),
 
 		peerStateManager: peerStateManager,
 	}
@@ -189,6 +212,27 @@ func (m *SyncManager) runSyncWithPeerInternal(ctx context.Context, config *v1.Co
 	}()
 
 	return nil
+}
+
+// registerConnectedPeer registers a connected peer's stream handle.
+func (m *SyncManager) registerConnectedPeer(keyID string, handle *connectedPeerHandle) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.connectedPeers[keyID] = handle
+}
+
+// unregisterConnectedPeer removes a connected peer's stream handle.
+func (m *SyncManager) unregisterConnectedPeer(keyID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.connectedPeers, keyID)
+}
+
+// GetConnectedPeer returns the handle for a connected peer, or nil if not connected.
+func (m *SyncManager) GetConnectedPeer(keyID string) *connectedPeerHandle {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.connectedPeers[keyID]
 }
 
 type syncConfigSnapshot struct {

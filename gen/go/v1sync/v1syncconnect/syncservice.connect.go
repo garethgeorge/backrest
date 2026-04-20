@@ -41,6 +41,9 @@ const (
 	// BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure is the fully-qualified name of the
 	// BackrestSyncStateService's GetPeerSyncStatesStream RPC.
 	BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure = "/v1sync.BackrestSyncStateService/GetPeerSyncStatesStream"
+	// BackrestSyncStateServiceSetRemoteClientConfigProcedure is the fully-qualified name of the
+	// BackrestSyncStateService's SetRemoteClientConfig RPC.
+	BackrestSyncStateServiceSetRemoteClientConfigProcedure = "/v1sync.BackrestSyncStateService/SetRemoteClientConfig"
 )
 
 // BackrestSyncServiceClient is a client for the v1sync.BackrestSyncService service.
@@ -116,6 +119,8 @@ func (UnimplementedBackrestSyncServiceHandler) Sync(context.Context, *connect.Bi
 // BackrestSyncStateServiceClient is a client for the v1sync.BackrestSyncStateService service.
 type BackrestSyncStateServiceClient interface {
 	GetPeerSyncStatesStream(context.Context, *connect.Request[v1sync.SyncStateStreamRequest]) (*connect.ServerStreamForClient[v1sync.PeerState], error)
+	// SetRemoteClientConfig pushes a config change to a connected authorized client peer.
+	SetRemoteClientConfig(context.Context, *connect.Request[v1sync.SetRemoteClientConfigRequest]) (*connect.Response[v1sync.SetRemoteClientConfigResponse], error)
 }
 
 // NewBackrestSyncStateServiceClient constructs a client for the v1sync.BackrestSyncStateService
@@ -135,12 +140,19 @@ func NewBackrestSyncStateServiceClient(httpClient connect.HTTPClient, baseURL st
 			connect.WithSchema(backrestSyncStateServiceMethods.ByName("GetPeerSyncStatesStream")),
 			connect.WithClientOptions(opts...),
 		),
+		setRemoteClientConfig: connect.NewClient[v1sync.SetRemoteClientConfigRequest, v1sync.SetRemoteClientConfigResponse](
+			httpClient,
+			baseURL+BackrestSyncStateServiceSetRemoteClientConfigProcedure,
+			connect.WithSchema(backrestSyncStateServiceMethods.ByName("SetRemoteClientConfig")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // backrestSyncStateServiceClient implements BackrestSyncStateServiceClient.
 type backrestSyncStateServiceClient struct {
 	getPeerSyncStatesStream *connect.Client[v1sync.SyncStateStreamRequest, v1sync.PeerState]
+	setRemoteClientConfig   *connect.Client[v1sync.SetRemoteClientConfigRequest, v1sync.SetRemoteClientConfigResponse]
 }
 
 // GetPeerSyncStatesStream calls v1sync.BackrestSyncStateService.GetPeerSyncStatesStream.
@@ -148,10 +160,17 @@ func (c *backrestSyncStateServiceClient) GetPeerSyncStatesStream(ctx context.Con
 	return c.getPeerSyncStatesStream.CallServerStream(ctx, req)
 }
 
+// SetRemoteClientConfig calls v1sync.BackrestSyncStateService.SetRemoteClientConfig.
+func (c *backrestSyncStateServiceClient) SetRemoteClientConfig(ctx context.Context, req *connect.Request[v1sync.SetRemoteClientConfigRequest]) (*connect.Response[v1sync.SetRemoteClientConfigResponse], error) {
+	return c.setRemoteClientConfig.CallUnary(ctx, req)
+}
+
 // BackrestSyncStateServiceHandler is an implementation of the v1sync.BackrestSyncStateService
 // service.
 type BackrestSyncStateServiceHandler interface {
 	GetPeerSyncStatesStream(context.Context, *connect.Request[v1sync.SyncStateStreamRequest], *connect.ServerStream[v1sync.PeerState]) error
+	// SetRemoteClientConfig pushes a config change to a connected authorized client peer.
+	SetRemoteClientConfig(context.Context, *connect.Request[v1sync.SetRemoteClientConfigRequest]) (*connect.Response[v1sync.SetRemoteClientConfigResponse], error)
 }
 
 // NewBackrestSyncStateServiceHandler builds an HTTP handler from the service implementation. It
@@ -167,10 +186,18 @@ func NewBackrestSyncStateServiceHandler(svc BackrestSyncStateServiceHandler, opt
 		connect.WithSchema(backrestSyncStateServiceMethods.ByName("GetPeerSyncStatesStream")),
 		connect.WithHandlerOptions(opts...),
 	)
+	backrestSyncStateServiceSetRemoteClientConfigHandler := connect.NewUnaryHandler(
+		BackrestSyncStateServiceSetRemoteClientConfigProcedure,
+		svc.SetRemoteClientConfig,
+		connect.WithSchema(backrestSyncStateServiceMethods.ByName("SetRemoteClientConfig")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/v1sync.BackrestSyncStateService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case BackrestSyncStateServiceGetPeerSyncStatesStreamProcedure:
 			backrestSyncStateServiceGetPeerSyncStatesStreamHandler.ServeHTTP(w, r)
+		case BackrestSyncStateServiceSetRemoteClientConfigProcedure:
+			backrestSyncStateServiceSetRemoteClientConfigHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -182,4 +209,8 @@ type UnimplementedBackrestSyncStateServiceHandler struct{}
 
 func (UnimplementedBackrestSyncStateServiceHandler) GetPeerSyncStatesStream(context.Context, *connect.Request[v1sync.SyncStateStreamRequest], *connect.ServerStream[v1sync.PeerState]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.BackrestSyncStateService.GetPeerSyncStatesStream is not implemented"))
+}
+
+func (UnimplementedBackrestSyncStateServiceHandler) SetRemoteClientConfig(context.Context, *connect.Request[v1sync.SetRemoteClientConfigRequest]) (*connect.Response[v1sync.SetRemoteClientConfigResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1sync.BackrestSyncStateService.SetRemoteClientConfig is not implemented"))
 }

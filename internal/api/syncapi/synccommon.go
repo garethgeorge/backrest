@@ -16,6 +16,12 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
+// onUnknownPeerFunc is called when a peer is not found in the known peers list during handshake.
+// It receives the handshake item and may return a peer definition to authorize the connection
+// (e.g. by validating a pairing token and adding the peer to the config).
+// If it returns nil, the connection is rejected.
+type onUnknownPeerFunc func(handshake *v1sync.SyncStreamItem) (*v1.Multihost_Peer, error)
+
 func runSync(
 	ctx context.Context,
 	localInstanceID string,
@@ -23,9 +29,11 @@ func runSync(
 	commandStream *bidiSyncCommandStream,
 	handler syncSessionHandler,
 	knownPeers []*v1.Multihost_Peer, // could be known hosts or authorized clients, doesn't matter. This is used to verify the handshake packet, authorization comes later.
+	pairingSecret string, // optional one-time pairing secret to send during the handshake
+	onUnknownPeer onUnknownPeerFunc, // optional callback for handling unknown peers (e.g. pairing), nil to reject all unknown peers
 ) error {
 	// send the initial handshake packet to the peer to establish the connection.
-	handshakePacket, err := createHandshakePacket(localInstanceID, localKey)
+	handshakePacket, err := createHandshakePacket(localInstanceID, localKey, pairingSecret)
 	if err != nil {
 		return NewSyncErrorAuth(fmt.Errorf("creating handshake packet: %w", err))
 	}
@@ -47,13 +55,22 @@ func runSync(
 	})
 	if peerIdx >= 0 {
 		peer = knownPeers[peerIdx]
-	} else {
+	} else if onUnknownPeer != nil {
+		// Peer not in known list — try the onUnknownPeer callback (e.g. pairing token validation).
+		peer, err = onUnknownPeer(handshake)
+		if err != nil {
+			return NewSyncErrorAuth(fmt.Errorf("pairing failed: %w", err))
+		}
+	}
+	if peer == nil {
 		return NewSyncErrorAuth(fmt.Errorf("peer public key ID %s (instance ID %s) not found in known peers", handshake.GetHandshake().GetPublicKey().GetKeyid(), string(handshake.GetHandshake().GetInstanceId().GetPayload())))
 	}
 
 	if err := authorizeHandshakeAsPeer(handshake, peer); err != nil {
 		return NewSyncErrorAuth(fmt.Errorf("authorizing handshake as peer: %w", err))
 	}
+
+	defer handler.OnConnectionDisconnected()
 
 	if err := handler.OnConnectionEstablished(ctx, commandStream, peer); err != nil {
 		return err
@@ -108,7 +125,7 @@ func runSync(
 	return nil
 }
 
-func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey) (*v1sync.SyncStreamItem, error) {
+func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey, pairingSecret string) (*v1sync.SyncStreamItem, error) {
 	signedMessage, err := createSignedMessage([]byte(instanceID), identity)
 	if err != nil {
 		return nil, fmt.Errorf("signing instance ID: %w", err)
@@ -120,6 +137,7 @@ func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey) (
 				ProtocolVersion: SyncProtocolVersion,
 				InstanceId:      signedMessage,
 				PublicKey:       identity.PublicKeyProto(),
+				PairingSecret:   pairingSecret,
 			},
 		},
 	}, nil
@@ -200,6 +218,7 @@ func sendHeartbeats(ctx context.Context, stream *bidiSyncCommandStream, interval
 // the handler does not need to be thread safe as it is guaranteed to be called from a single thread.
 type syncSessionHandler interface {
 	OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error
+	OnConnectionDisconnected()
 	HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error
 	HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error
 	HandleReceiveOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveOperations) error
@@ -219,6 +238,8 @@ var _ syncSessionHandler = (*unimplementedSyncSessionHandler)(nil)
 func (h *unimplementedSyncSessionHandler) OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error {
 	return NewSyncErrorProtocol(fmt.Errorf("OnConnectionEstablished not implemented"))
 }
+
+func (h *unimplementedSyncSessionHandler) OnConnectionDisconnected() {}
 
 func (h *unimplementedSyncSessionHandler) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error {
 	return NewSyncErrorProtocol(fmt.Errorf("HandleHeartbeat not implemented"))
