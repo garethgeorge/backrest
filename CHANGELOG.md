@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.12.2](https://github.com/garethgeorge/backrest/compare/v1.12.1...v1.12.2) (2026-04-20)
+
+
+### Bug Fixes
+
+* Alpine Docker images for arm/v6 and arm/v7 architectures ([#1165](https://github.com/garethgeorge/backrest/issues/1165)) ([4ebc22b](https://github.com/garethgeorge/backrest/commit/4ebc22b7d1e73bae14e2c68720b2ca1bf015f664))
+* always allow CORS OPTIONS requests even behind authenticated endpoints ([#1194](https://github.com/garethgeorge/backrest/issues/1194)) ([12008e5](https://github.com/garethgeorge/backrest/commit/12008e532400cefc0680ba619761be4ddc8c5533))
+* minor windows installer fixes ([5b83453](https://github.com/garethgeorge/backrest/commit/5b83453a31b3e65f0e716932103e3cddc2cf3ace))
+* optimize backrest ui performance ([#1195](https://github.com/garethgeorge/backrest/issues/1195)) ([8e9470c](https://github.com/garethgeorge/backrest/commit/8e9470c954ee0547a4a998b24fe36b6c80453f36))
+* refine backrest SFTP UI ([#1193](https://github.com/garethgeorge/backrest/issues/1193)) ([88f0fbc](https://github.com/garethgeorge/backrest/commit/88f0fbc7aab4bfaa89cebd65c8c9cee153683d84))
+* RESTIC_PASSWORD env shold not take precedent over repo passwords ([#1192](https://github.com/garethgeorge/backrest/issues/1192)) ([27e1d18](https://github.com/garethgeorge/backrest/commit/27e1d189ab8ccce08d99e0167d322c6d2731187d))
+* wrong order of parameters in task name ([#1168](https://github.com/garethgeorge/backrest/issues/1168)) ([b3edd06](https://github.com/garethgeorge/backrest/commit/b3edd06a27745674327215396dfe0e85fa13100b))
+
 ## [1.12.1](https://github.com/garethgeorge/backrest/compare/v1.12.0...v1.12.1) (2026-03-11)
 
 
