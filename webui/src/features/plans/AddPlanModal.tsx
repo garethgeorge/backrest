@@ -229,9 +229,17 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
     }
   };
 
-  const repos = config?.repos || [];
+  const allRepos = config?.repos || [];
+  const localRepos = allRepos.filter((r) => !r.originInstanceId);
+  const remoteRepos = allRepos.filter((r) => !!r.originInstanceId);
   const repoOptions = createListCollection({
-    items: repos.map((r) => ({ label: r.id, value: r.id })),
+    items: [
+      ...localRepos.map((r) => ({ label: r.id, value: r.id })),
+      ...remoteRepos.map((r) => ({
+        label: `${r.id} (from ${r.originInstanceId})`,
+        value: r.id,
+      })),
+    ],
   });
 
   const sections: SectionDef[] = [
@@ -334,7 +342,22 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
                 </SelectTrigger>
                 {/* @ts-ignore */}
                 <SelectContent>
-                  {repoOptions.items.map((item: any) => (
+                  {localRepos.length > 0 && remoteRepos.length > 0 && (
+                    <CText fontSize="xs" fontWeight="bold" color="fg.muted" px={2} py={1}>
+                      Local
+                    </CText>
+                  )}
+                  {repoOptions.items.slice(0, localRepos.length).map((item: any) => (
+                    <SelectItem item={item} key={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                  {remoteRepos.length > 0 && (
+                    <CText fontSize="xs" fontWeight="bold" color="fg.muted" px={2} py={1} mt={1} borderTopWidth="1px" borderColor="border">
+                      Remote
+                    </CText>
+                  )}
+                  {repoOptions.items.slice(localRepos.length).map((item: any) => (
                     <SelectItem item={item} key={item.value}>
                       {item.label}
                     </SelectItem>

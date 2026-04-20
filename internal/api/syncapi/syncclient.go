@@ -386,7 +386,7 @@ func (c *syncSessionHandlerClient) HandleRequestOperations(ctx context.Context, 
 					ReceiveOperations: &v1sync.SyncStreamItem_SyncActionReceiveOperations{
 						Event: &v1.OperationEvent{
 							Event: &v1.OperationEvent_CreatedOperations{
-								CreatedOperations: &v1.OperationList{Operations: batch},
+								CreatedOperations: &v1.OperationList{Operations: newOps},
 							},
 						},
 					},

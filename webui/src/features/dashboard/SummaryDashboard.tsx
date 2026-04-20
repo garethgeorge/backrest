@@ -449,6 +449,27 @@ const PeerStateTile = ({ peerState }: { peerState: PeerState }) => {
               />
             }
           />
+          {peerState.knownRepos.length > 0 && (
+            <DataListItem
+              label="Shared Repos"
+              value={
+                <Flex gap={1} flexWrap="wrap">
+                  {peerState.knownRepos.map((repo) => (
+                    <Box
+                      key={repo.id}
+                      px={2}
+                      py={0.5}
+                      bg="bg.muted"
+                      borderRadius="sm"
+                      fontSize="xs"
+                    >
+                      {repo.id}
+                    </Box>
+                  ))}
+                </Flex>
+              }
+            />
+          )}
         </DataListRoot>
       </Card.Body>
     </Card.Root>
