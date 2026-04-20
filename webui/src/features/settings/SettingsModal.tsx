@@ -875,21 +875,9 @@ const PeerFormListItem = ({
   };
 
   return (
-    <Box p={4} borderWidth="1px" borderRadius="md" position="relative">
-      <Flex position="absolute" top={2} right={2} gap={2} align="center">
-        {peerState && <PeerStateConnectionStatusIcon peerState={peerState} />}
-        <IconButton
-          size="xs"
-          variant="ghost"
-          onClick={onRemove}
-          aria-label="Remove"
-        >
-          <Minus />
-        </IconButton>
-      </Flex>
-
+    <Box p={4} borderWidth="1px" borderRadius="md">
       <Stack gap={3}>
-        <Flex gap={4}>
+        <Flex gap={4} align="center">
           <Field label={m.settings_peer_instance_id()} required flex={1}>
             <Input
               value={item.instanceId}
@@ -904,6 +892,19 @@ const PeerFormListItem = ({
               placeholder={m.settings_peer_key_id_placeholder()}
             />
           </Field>
+          <Flex gap={1} align="center" alignSelf="flex-start" mt={1} flexShrink={0}>
+            {peerState && (
+              <PeerStateConnectionStatusIcon peerState={peerState} />
+            )}
+            <IconButton
+              size="xs"
+              variant="ghost"
+              onClick={onRemove}
+              aria-label="Remove"
+            >
+              <Minus />
+            </IconButton>
+          </Flex>
         </Flex>
 
         {showInstanceUrl && (
