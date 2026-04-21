@@ -1,19 +1,19 @@
 FROM mcr.microsoft.com/devcontainers/base:bookworm
 
-# Install Nix in single-user mode
-RUN curl -L https://nixos.org/nix/install | bash -s -- --no-daemon \
-    && echo '. /root/.nix-profile/etc/profile.d/nix.sh' >> /etc/bash.bashrc
+# Install Nix in single-user mode for the vscode user
+USER vscode
+RUN curl -L https://nixos.org/nix/install | bash -s -- --no-daemon
+ENV PATH="/home/vscode/.nix-profile/bin:${PATH}"
 
-ENV PATH="/root/.nix-profile/bin:${PATH}"
+# Install direnv via Nix and configure shell hooks
+RUN . /home/vscode/.nix-profile/etc/profile.d/nix.sh \
+    && nix-env -iA nixpkgs.direnv
+RUN echo '. /home/vscode/.nix-profile/etc/profile.d/nix.sh' >> /home/vscode/.bashrc \
+    && echo 'eval "$(direnv hook bash)"' >> /home/vscode/.bashrc \
+    && echo '. /home/vscode/.nix-profile/etc/profile.d/nix.sh' >> /home/vscode/.zshrc \
+    && echo 'eval "$(direnv hook zsh)"' >> /home/vscode/.zshrc
 
-# Install direnv via Nix and configure the shell hook
-RUN . /root/.nix-profile/etc/profile.d/nix.sh \
-    && nix-env -iA nixpkgs.direnv \
-    && echo 'eval "$(direnv hook bash)"' >> /etc/bash.bashrc \
-    && echo 'eval "$(direnv hook zsh)"' >> /etc/zshrc
-
-# Pre-populate the nix store with project dependencies
+# Pre-populate the nix store with project dependencies so first open is fast
 COPY shell.nix /tmp/shell.nix
-RUN . /root/.nix-profile/etc/profile.d/nix.sh \
-    && nix-shell /tmp/shell.nix --run "echo 'nix dependencies cached'" \
-    && rm /tmp/shell.nix
+RUN . /home/vscode/.nix-profile/etc/profile.d/nix.sh \
+    && nix-shell /tmp/shell.nix --run "echo 'nix dependencies cached'"

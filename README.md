@@ -251,17 +251,29 @@ Contributions are welcome! See the [issues](https://github.com/garethgeorge/back
 
 ## Build Dependencies
 
-- [Node.js](https://nodejs.org/en) for UI development
-- [Go](https://go.dev/) 1.21 or greater for server development
+All build dependencies are defined in `shell.nix` and can be activated automatically using [Nix](https://nixos.org/) and [direnv](https://direnv.net/).
+
+### Using Nix + direnv (Recommended)
+
+1. Install [Nix](https://nixos.org/download/) and [direnv](https://direnv.net/docs/installation.html)
+2. [Hook direnv into your shell](https://direnv.net/docs/hook.html) (e.g. `eval "$(direnv hook bash)"` in your `.bashrc`)
+3. Clone the repo and `cd` into it
+4. Run `direnv allow` to trust the `.envrc` — all dependencies (Go, Node.js, pnpm, protoc, buf, etc.) will be available in your shell automatically
+
+### Manual Setup
+
+If you prefer not to use Nix, install the following manually:
+
+- [Go](https://go.dev/) 1.24 or greater
+- [Node.js](https://nodejs.org/en) 20.x and [pnpm](https://pnpm.io/) 9
 - [goreleaser](https://github.com/goreleaser/goreleaser) `go install github.com/goreleaser/goreleaser@latest`
 
-**(Optional) To Edit Protobuffers**
+**(Optional) To edit protobuf definitions:**
 
 ```sh
 apt install -y protobuf-compiler
 go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-go install github.com/bufbuild/buf/cmd/buf@v1.47.2
-go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+go install github.com/bufbuild/buf/cmd/buf@latest
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install connectrpc.com/connect/cmd/protoc-gen-connect-go@latest
 npm install -g @bufbuild/protoc-gen-es
@@ -270,22 +282,22 @@ npm install -g @bufbuild/protoc-gen-es
 ## Compiling
 
 ```sh
-(cd webui && npm i && npm run build)
+(cd webui && pnpm i && pnpm run build)
 (cd cmd/backrest && go build .)
 ```
 
 ## Using VSCode Dev Containers
 
-You can also use VSCode with [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension to quickly get up and running with a working development and debugging environment.
+The dev container uses Nix and direnv to provide all dependencies. When the container starts, `direnv allow` runs automatically so the Nix shell is activated in every terminal.
 
-0. Make sure Docker and VSCode with [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension is installed
+0. Make sure Docker and VSCode with the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension is installed
 1. Clone this repository
 2. Open this folder in VSCode
 3. When prompted, click on `Open in Container` button, or run `> Dev Containers: Rebuild and Reopen in Containers` command
-4. When container is started, go to `Run and Debug`, choose `Debug Backrest (backend+frontend)` and run it
+4. When the container is started, go to `Run and Debug`, choose `Debug Backrest (backend+frontend)` and run it
 
 > [!NOTE]
-> Provided launch configuration has hot reload for typescript frontend.
+> Provided launch configuration has hot reload for the typescript frontend.
 
 ## Translations
 
