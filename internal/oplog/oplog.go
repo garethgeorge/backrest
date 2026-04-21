@@ -2,6 +2,7 @@ package oplog
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 
@@ -162,6 +163,43 @@ func (o *OpLog) Update(ops ...*v1.Operation) error {
 	return nil
 }
 
+// SetOptions configures the behavior of Set.
+type SetOptions struct {
+	InsertOnly bool // If true, only insert; fail if the operation already exists (Id != 0).
+	UpdateOnly bool // If true, only update; fail if the operation does not exist (Id == 0).
+	AllocateID bool // If true, allocate a new Id for operations with Id == 0.
+}
+
+func (o *OpLog) Set(opts SetOptions, ops ...*v1.Operation) error {
+	if opts.InsertOnly && opts.UpdateOnly {
+		return errors.New("InsertOnly and UpdateOnly are mutually exclusive")
+	}
+	for _, op := range ops {
+		if opts.InsertOnly && op.Id != 0 {
+			return fmt.Errorf("InsertOnly but operation already has Id %d", op.Id)
+		}
+		if opts.UpdateOnly && op.Id == 0 {
+			return errors.New("UpdateOnly but operation has no Id")
+		}
+	}
+
+	isNew := make([]bool, len(ops))
+	for i, op := range ops {
+		isNew[i] = op.Id == 0
+	}
+	if err := o.store.Set(opts, ops...); err != nil {
+		return err
+	}
+	for i, op := range ops {
+		if isNew[i] {
+			o.notify([]*v1.Operation{op}, OPERATION_ADDED)
+		} else {
+			o.notify([]*v1.Operation{op}, OPERATION_UPDATED)
+		}
+	}
+	return nil
+}
+
 func (o *OpLog) Delete(opID ...int64) error {
 	removedOps, err := o.store.Delete(opID...)
 	if err != nil {
@@ -194,6 +232,10 @@ type OpStore interface {
 	Add(op ...*v1.Operation) error
 	// Update updates the given operations in the store.
 	Update(op ...*v1.Operation) error
+	// Set inserts or updates operations. Zero-valued fields (Id, Modno, FlowId) are
+	// allocated automatically (like Add/Update), but non-zero values provided by the
+	// caller are preserved. If Id is non-zero, it updates; if Id is zero, it inserts.
+	Set(opts SetOptions, op ...*v1.Operation) error
 	// Delete removes the operations with the given IDs from the store, and returns the removed operations.
 	Delete(opID ...int64) ([]*v1.Operation, error)
 	// Transform applies the given function to each operation that matches the query.
@@ -212,4 +254,7 @@ type OpMetadata struct {
 	OriginalID     int64
 	OriginalFlowID int64
 	Status         v1.OperationStatus
+	RepoID         string
+	RepoGUID       string
+	PlanID         string
 }

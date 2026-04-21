@@ -219,6 +219,41 @@ func (c *syncSessionHandlerClient) canForwardOperation(op *v1.Operation) bool {
 	return false
 }
 
+func (c *syncSessionHandlerClient) canForwardMeta(meta oplog.OpMetadata) bool {
+	if meta.OriginalID != 0 {
+		return false // don't forward ops received from other peers
+	}
+	if _, ok := c.canForwardReposSet[meta.RepoGUID]; ok {
+		return true
+	}
+	if meta.PlanID != "" {
+		if _, ok := c.canForwardPlansSet[meta.PlanID]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *syncSessionHandlerClient) sendManifest(stream *bidiSyncCommandStream) {
+	var opIDs, modnos []int64
+	c.oplog.QueryMetadata(oplog.Query{}, func(meta oplog.OpMetadata) error {
+		if c.canForwardMeta(meta) {
+			opIDs = append(opIDs, meta.ID)
+			modnos = append(modnos, meta.Modno)
+		}
+		return nil
+	})
+	c.l.Sugar().Debugf("sending operation manifest with %d operations", len(opIDs))
+	stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_OperationManifest{
+			OperationManifest: &v1sync.SyncStreamItem_SyncActionOperationManifest{
+				OpIds:  opIDs,
+				Modnos: modnos,
+			},
+		},
+	})
+}
+
 func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error {
 	// A client expects to connect to a specific peer, so we check that the peer we connected to matches the one we expect.
 	if !proto.Equal(c.peer, peer) {
@@ -339,6 +374,10 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 		<-ctx.Done()
 		c.oplog.Unsubscribe(&oplogSubscription)
 	}()
+
+	// Send initial operation manifest to the server for reconciliation.
+	c.sendManifest(stream)
+
 	return nil
 }
 
@@ -356,79 +395,42 @@ func (c *syncSessionHandlerClient) HandleHeartbeat(ctx context.Context, stream *
 	return nil
 }
 
-func (c *syncSessionHandlerClient) HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error {
-	highModno := item.GetHighModno()
-	highOpid := item.GetHighOpid()
-	c.l.Sugar().Debugf("received operation request for high_modno: %d, high_opid: %d", highModno, highOpid)
+func (c *syncSessionHandlerClient) HandleOperationManifest(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionOperationManifest) error {
+	// Server re-requested a manifest (e.g. after reconnect). Respond with a fresh one.
+	c.sendManifest(stream)
+	return nil
+}
 
+func (c *syncSessionHandlerClient) HandleRequestOperationData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperationData) error {
 	var batch []*v1.Operation
-
-	send := func() error {
+	send := func() {
 		if len(batch) == 0 {
-			return nil
+			return
 		}
-
-		// find new and updated operations
-		var newOps []*v1.Operation
-		var updatedOps []*v1.Operation
-		for _, op := range batch {
-			if op.GetId() > highOpid {
-				newOps = append(newOps, op)
-			} else {
-				updatedOps = append(updatedOps, op)
-			}
-		}
-
-		// send new and updated operations
-		if len(newOps) > 0 {
-			stream.Send(&v1sync.SyncStreamItem{
-				Action: &v1sync.SyncStreamItem_ReceiveOperations{
-					ReceiveOperations: &v1sync.SyncStreamItem_SyncActionReceiveOperations{
-						Event: &v1.OperationEvent{
-							Event: &v1.OperationEvent_CreatedOperations{
-								CreatedOperations: &v1.OperationList{Operations: newOps},
-							},
+		stream.Send(&v1sync.SyncStreamItem{
+			Action: &v1sync.SyncStreamItem_ReceiveOperations{
+				ReceiveOperations: &v1sync.SyncStreamItem_SyncActionReceiveOperations{
+					Event: &v1.OperationEvent{
+						Event: &v1.OperationEvent_UpdatedOperations{
+							UpdatedOperations: &v1.OperationList{Operations: batch},
 						},
 					},
 				},
-			})
-		}
-		if len(updatedOps) > 0 {
-			stream.Send(&v1sync.SyncStreamItem{
-				Action: &v1sync.SyncStreamItem_ReceiveOperations{
-					ReceiveOperations: &v1sync.SyncStreamItem_SyncActionReceiveOperations{
-						Event: &v1.OperationEvent{
-							Event: &v1.OperationEvent_UpdatedOperations{
-								UpdatedOperations: &v1.OperationList{Operations: updatedOps},
-							},
-						},
-					},
-				},
-			})
-		}
-
+			},
+		})
 		batch = batch[:0]
-		return nil
 	}
-
-	c.oplog.Query(oplog.Query{}.SetModnoGte(highModno), func(op *v1.Operation) error {
-		if !c.canForwardOperation(op) {
-			return nil // skip operations that the peer is not allowed to read
+	for _, id := range item.GetOpIds() {
+		op, err := c.oplog.Get(id)
+		if err != nil {
+			continue // may have been deleted between manifest and request
 		}
-
 		batch = append(batch, op)
 		if len(batch) >= 256 {
-			if err := send(); err != nil {
-				return err
-			}
+			send()
 		}
-		return nil
-	})
-
-	if err := send(); err != nil {
-		return err
 	}
-
+	send()
 	return nil
 }
 

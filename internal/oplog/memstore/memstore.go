@@ -91,6 +91,9 @@ func (m *MemStore) QueryMetadata(q oplog.Query, f func(meta oplog.OpMetadata) er
 			OriginalID:     op.OriginalId,
 			OriginalFlowID: op.OriginalFlowId,
 			Status:         op.Status,
+			RepoID:         op.RepoId,
+			RepoGUID:       op.RepoGuid,
+			PlanID:         op.PlanId,
 		}); err != nil {
 			return err
 		}
@@ -169,6 +172,45 @@ func (m *MemStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 		delete(m.operations, id)
 	}
 	return ops, nil
+}
+
+func (m *MemStore) Set(opts oplog.SetOptions, op ...*v1.Operation) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, o := range op {
+		if o.Id == 0 {
+			m.nextID++
+			o.Id = m.nextID
+			if o.Modno == 0 {
+				m.nextModno++
+				o.Modno = m.nextModno
+			} else if o.Modno > m.nextModno {
+				m.nextModno = o.Modno
+			}
+			if o.FlowId == 0 {
+				o.FlowId = o.Id
+			}
+			if err := protoutil.ValidateOperation(o); err != nil {
+				return err
+			}
+			m.operations[o.Id] = o
+		} else {
+			if o.Modno == 0 {
+				m.nextModno++
+				o.Modno = m.nextModno
+			} else if o.Modno > m.nextModno {
+				m.nextModno = o.Modno
+			}
+			if err := protoutil.ValidateOperation(o); err != nil {
+				return err
+			}
+			if _, ok := m.operations[o.Id]; !ok {
+				return oplog.ErrNotExist
+			}
+			m.operations[o.Id] = o
+		}
+	}
+	return nil
 }
 
 func (m *MemStore) Update(op ...*v1.Operation) error {

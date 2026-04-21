@@ -789,6 +789,9 @@ func TestQueryMetadata(t *testing.T) {
 				OriginalID:     3,
 				OriginalFlowID: 4,
 				Status:         v1.OperationStatus_STATUS_INPROGRESS,
+				RepoID:         "repo1",
+				RepoGUID:       "repo1-guid",
+				PlanID:         "plan1",
 			}); diff != "" {
 				t.Errorf("unexpected diff: %v", diff)
 			}

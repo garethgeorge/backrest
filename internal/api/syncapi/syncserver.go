@@ -214,11 +214,6 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 	// Push shared repos to the client
 	h.sendSharedReposToClient(stream, h.snapshot.config)
 
-	// send initial request for operation sync
-	if err := h.sendOperationSyncRequest(stream); err != nil {
-		return NewSyncErrorInternal(fmt.Errorf("sending initial operation sync request: %w", err))
-	}
-
 	return nil
 }
 
@@ -309,18 +304,9 @@ func (h *syncSessionHandlerServer) insertOrUpdate(op *v1.Operation, isUpdate boo
 	op.OriginalFlowId = op.FlowId
 	op.Id = localOpID
 	op.FlowId = localFlowID
-	if op.Id == 0 {
-		if isUpdate {
-			h.l.Sugar().Warnf("received update for non-existent operation %+v, inserting instead", op)
-		}
-		op.Modno = 0
-		return h.mgr.oplog.Add(op)
-	} else {
-		if !isUpdate {
-			h.l.Sugar().Warnf("received insert for existing operation %+v, updating instead", op)
-		}
-		return h.mgr.oplog.Update(op)
-	}
+	// Use Set which handles both insert (Id==0) and update (Id!=0),
+	// preserving the operation's Modno from the client.
+	return h.mgr.oplog.Set(oplog.SetOptions{}, op)
 }
 
 func (h *syncSessionHandlerServer) deleteByOriginalID(originalID int64) error {
@@ -497,19 +483,67 @@ func (h *BackrestSyncHandler) handleUnknownPeerPairing(snapshot *syncConfigSnaps
 	}
 }
 
-func (h *syncSessionHandlerServer) sendOperationSyncRequest(stream *bidiSyncCommandStream) error {
-	highestID, highestModno, err := h.mgr.oplog.GetHighestOpIDAndModno(oplog.Query{}.SetOriginalInstanceKeyid(h.peer.Keyid))
-	if err != nil {
-		return fmt.Errorf("getting highest opid and modno: %w", err)
+func (h *syncSessionHandlerServer) HandleOperationManifest(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionOperationManifest) error {
+	h.l.Sugar().Debugf("received operation manifest with %d operations", len(item.GetOpIds()))
+	// Build local state: original_id → {localID, modno}
+	type localOp struct {
+		localID int64
+		modno   int64
 	}
-	stream.Send(&v1sync.SyncStreamItem{
-		Action: &v1sync.SyncStreamItem_RequestOperations{
-			RequestOperations: &v1sync.SyncStreamItem_SyncActionRequestOperations{
-				HighOpid:  highestID,
-				HighModno: highestModno,
-			},
+	localState := map[int64]localOp{}
+	h.mgr.oplog.QueryMetadata(
+		oplog.Query{}.SetOriginalInstanceKeyid(h.peer.Keyid),
+		func(meta oplog.OpMetadata) error {
+			localState[meta.OriginalID] = localOp{localID: meta.ID, modno: meta.Modno}
+			return nil
 		},
-	})
-	h.l.Sugar().Debugf("requested operations from client starting at opID %d and modno %d", highestID, highestModno)
+	)
+	h.l.Sugar().Debugf("local state has %d operations from this peer", len(localState))
+
+	// Build remote set from manifest
+	remoteSet := make(map[int64]int64, len(item.GetOpIds()))
+	for i, id := range item.GetOpIds() {
+		remoteSet[id] = item.GetModnos()[i]
+	}
+
+	// Delete ops not in manifest
+	var toDelete []int64
+	for origID, local := range localState {
+		if _, exists := remoteSet[origID]; !exists {
+			toDelete = append(toDelete, local.localID)
+		}
+	}
+	if len(toDelete) > 0 {
+		h.l.Sugar().Debugf("deleting %d stale operations", len(toDelete))
+		if err := h.mgr.oplog.Delete(toDelete...); err != nil {
+			h.l.Sugar().Warnf("failed to delete stale operations: %v", err)
+		}
+	}
+
+	// Find ops we need (new or changed modno)
+	var needIDs []int64
+	for id, modno := range remoteSet {
+		local, exists := localState[id]
+		if !exists || local.modno != modno {
+			needIDs = append(needIDs, id)
+		}
+	}
+	h.l.Sugar().Debugf("need %d operations (new or changed), local state comparison: remoteSet=%v localState=%v", len(needIDs), remoteSet, localState)
+
+	// Request the ops we need
+	if len(needIDs) > 0 {
+		stream.Send(&v1sync.SyncStreamItem{
+			Action: &v1sync.SyncStreamItem_RequestOperationData{
+				RequestOperationData: &v1sync.SyncStreamItem_SyncActionRequestOperationData{
+					OpIds: needIDs,
+				},
+			},
+		})
+	}
+
 	return nil
+}
+
+func (h *syncSessionHandlerServer) HandleRequestOperationData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperationData) error {
+	return NewSyncErrorProtocol(fmt.Errorf("server should not receive RequestOperationData"))
 }

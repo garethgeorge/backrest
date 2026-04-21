@@ -28,7 +28,6 @@ import {
   UserSchema,
   MultihostSchema,
   Multihost_PeerSchema,
-  Multihost_Permission_Type,
 } from "../../../gen/ts/v1/config_pb";
 import { GeneratePairingTokenRequestSchema } from "../../../gen/ts/v1/service_pb";
 import { useSyncStates } from "../../state/peerStates";
@@ -687,7 +686,7 @@ const KnownHostsList = ({
             instanceUrl: pairInstanceUrl,
             permissions: [
               {
-                type: Multihost_Permission_Type.PERMISSION_READ_OPERATIONS,
+                type: "PERMISSION_READ_OPERATIONS",
                 scopes: ["*"],
               },
             ],
@@ -726,7 +725,7 @@ const KnownHostsList = ({
           initialPairingSecret: secret,
           permissions: [
             {
-              type: Multihost_Permission_Type.PERMISSION_READ_OPERATIONS,
+              type: "PERMISSION_READ_OPERATIONS",
               scopes: ["*"],
             },
           ],
@@ -938,20 +937,20 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
     ],
   });
 
+  // Permission type values must match what toJson produces for enum fields (string names, not numbers).
   const permissionTypeOptions = createListCollection({
     items: [
       {
         label: m.settings_permission_edit_repo(),
-        value:
-          Multihost_Permission_Type.PERMISSION_READ_WRITE_CONFIG.toString(),
+        value: "PERMISSION_READ_WRITE_CONFIG",
       },
       {
         label: m.settings_permission_read_ops(),
-        value: Multihost_Permission_Type.PERMISSION_READ_OPERATIONS.toString(),
+        value: "PERMISSION_READ_OPERATIONS",
       },
       {
         label: "Receive shared repos",
-        value: Multihost_Permission_Type.PERMISSION_RECEIVE_SHARED_REPOS.toString(),
+        value: "PERMISSION_RECEIVE_SHARED_REPOS",
       },
     ],
   });
@@ -960,7 +959,7 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
     onUpdate([
       ...permissions,
       {
-        type: Multihost_Permission_Type.PERMISSION_READ_OPERATIONS,
+        type: "PERMISSION_READ_OPERATIONS",
         scopes: ["*"],
       },
     ]);
@@ -998,7 +997,7 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
                 collection={permissionTypeOptions}
                 value={[perm.type.toString()]}
                 onValueChange={(e: any) =>
-                  handleUpdate(index, "type", parseInt(e.value[0]))
+                  handleUpdate(index, "type", e.value[0])
                 }
               >
                 {/* @ts-ignore */}
@@ -1019,7 +1018,7 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
               </SelectRoot>
             </Field>
 
-            {perm.type !== Multihost_Permission_Type.PERMISSION_RECEIVE_SHARED_REPOS && (
+            {perm.type !== "PERMISSION_RECEIVE_SHARED_REPOS" && (
               <Field label={m.settings_peer_permission_scopes()} flex={1}>
                 <SelectRoot
                   multiple
