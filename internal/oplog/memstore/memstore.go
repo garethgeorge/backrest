@@ -82,6 +82,9 @@ func (m *MemStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 }
 
 func (m *MemStore) QueryMetadata(q oplog.Query, f func(meta oplog.OpMetadata) error) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	for _, id := range m.idsForQuery(q) {
 		op := m.operations[id]
 		if err := f(oplog.OpMetadata{
@@ -168,7 +171,9 @@ func (m *MemStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 	defer m.mu.Unlock()
 	ops := make([]*v1.Operation, 0, len(opID))
 	for _, id := range opID {
-		ops = append(ops, m.operations[id])
+		if op, ok := m.operations[id]; ok {
+			ops = append(ops, op)
+		}
 		delete(m.operations, id)
 	}
 	return ops, nil

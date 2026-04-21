@@ -444,41 +444,37 @@ func (h *BackrestSyncHandler) handleUnknownPeerPairing(snapshot *syncConfigSnaps
 		peerKeyID := handshake.GetHandshake().GetPublicKey().GetKeyid()
 		peerInstanceID := string(handshake.GetHandshake().GetInstanceId().GetPayload())
 
-		// Fetch the latest config for token validation (not the snapshot, which may be stale).
-		cfg, err := h.mgr.configMgr.Get()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get config: %w", err)
-		}
+		// Atomically validate the pairing secret and add the client.
+		var newPeer *v1.Multihost_Peer
+		if err := h.mgr.configMgr.Transform(func(cfg *v1.Config) (*v1.Config, error) {
+			token, err := ValidatePairingSecret(pairingSecret, cfg.GetMultihost().GetPairingTokens(), time.Now())
+			if err != nil {
+				zap.S().Warnf("rejected pairing attempt from %q (%s): %v", peerInstanceID, peerKeyID, err)
+				return nil, err
+			}
 
-		// Validate the pairing secret against stored tokens.
-		token, err := ValidatePairingSecret(pairingSecret, cfg.GetMultihost().GetPairingTokens(), time.Now())
-		if err != nil {
-			zap.S().Warnf("rejected pairing attempt from %q (%s): %v", peerInstanceID, peerKeyID, err)
-			return nil, err
-		}
+			newPeer = &v1.Multihost_Peer{
+				InstanceId:  peerInstanceID,
+				Keyid:       peerKeyID,
+				Permissions: token.Permissions,
+			}
+			cfg.Multihost.AuthorizedClients = append(cfg.Multihost.AuthorizedClients, newPeer)
 
-		// Token is valid — add the client to authorized_clients and consume the token.
-		newPeer := &v1.Multihost_Peer{
-			InstanceId:  peerInstanceID,
-			Keyid:       peerKeyID,
-			Permissions: token.Permissions,
-		}
-		cfg.Multihost.AuthorizedClients = append(cfg.Multihost.AuthorizedClients, newPeer)
+			// Consume the token: increment uses, remove if exhausted.
+			token.Uses++
+			if token.MaxUses > 0 && token.Uses >= token.MaxUses {
+				cfg.Multihost.PairingTokens = slices.DeleteFunc(cfg.Multihost.PairingTokens, func(t *v1.Multihost_PairingToken) bool {
+					return t.Secret == token.Secret
+				})
+			}
 
-		// Consume the token: increment uses, remove if exhausted.
-		token.Uses++
-		if token.MaxUses > 0 && token.Uses >= token.MaxUses {
-			cfg.Multihost.PairingTokens = slices.DeleteFunc(cfg.Multihost.PairingTokens, func(t *v1.Multihost_PairingToken) bool {
-				return t.Secret == token.Secret
-			})
-		}
-
-		cfg.Modno++
-		if err := h.mgr.configMgr.Update(cfg); err != nil {
+			cfg.Modno++
+			return cfg, nil
+		}); err != nil {
 			return nil, fmt.Errorf("failed to save paired client: %w", err)
 		}
 
-		zap.S().Infof("successfully paired client %q (%s) via pairing token %q", peerInstanceID, peerKeyID, token.Label)
+		zap.S().Infof("successfully paired client %q (%s)", peerInstanceID, peerKeyID)
 		return newPeer, nil
 	}
 }
@@ -491,16 +487,21 @@ func (h *syncSessionHandlerServer) HandleOperationManifest(ctx context.Context, 
 		modno   int64
 	}
 	localState := map[int64]localOp{}
-	h.mgr.oplog.QueryMetadata(
+	if err := h.mgr.oplog.QueryMetadata(
 		oplog.Query{}.SetOriginalInstanceKeyid(h.peer.Keyid),
 		func(meta oplog.OpMetadata) error {
 			localState[meta.OriginalID] = localOp{localID: meta.ID, modno: meta.Modno}
 			return nil
 		},
-	)
+	); err != nil {
+		return fmt.Errorf("querying local operation metadata: %w", err)
+	}
 	h.l.Sugar().Debugf("local state has %d operations from this peer", len(localState))
 
 	// Build remote set from manifest
+	if len(item.GetOpIds()) != len(item.GetModnos()) {
+		return NewSyncErrorProtocol(fmt.Errorf("operation manifest has mismatched OpIds (%d) and Modnos (%d) lengths", len(item.GetOpIds()), len(item.GetModnos())))
+	}
 	remoteSet := make(map[int64]int64, len(item.GetOpIds()))
 	for i, id := range item.GetOpIds() {
 		remoteSet[id] = item.GetModnos()[i]

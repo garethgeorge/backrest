@@ -136,6 +136,10 @@ func (q *Query) Match(op *v1.Operation) bool {
 		return false
 	}
 
+	if q.OriginalInstanceKeyid != nil && op.OriginalInstanceKeyid != *q.OriginalInstanceKeyid {
+		return false
+	}
+
 	if q.ModnoGte != nil && op.Modno < *q.ModnoGte {
 		return false
 	}

@@ -234,15 +234,17 @@ func (c *syncSessionHandlerClient) canForwardMeta(meta oplog.OpMetadata) bool {
 	return false
 }
 
-func (c *syncSessionHandlerClient) sendManifest(stream *bidiSyncCommandStream) {
+func (c *syncSessionHandlerClient) sendManifest(stream *bidiSyncCommandStream) error {
 	var opIDs, modnos []int64
-	c.oplog.QueryMetadata(oplog.Query{}, func(meta oplog.OpMetadata) error {
+	if err := c.oplog.QueryMetadata(oplog.Query{}, func(meta oplog.OpMetadata) error {
 		if c.canForwardMeta(meta) {
 			opIDs = append(opIDs, meta.ID)
 			modnos = append(modnos, meta.Modno)
 		}
 		return nil
-	})
+	}); err != nil {
+		return fmt.Errorf("querying operation metadata for manifest: %w", err)
+	}
 	c.l.Sugar().Debugf("sending operation manifest with %d operations", len(opIDs))
 	stream.Send(&v1sync.SyncStreamItem{
 		Action: &v1sync.SyncStreamItem_OperationManifest{
@@ -252,6 +254,7 @@ func (c *syncSessionHandlerClient) sendManifest(stream *bidiSyncCommandStream) {
 			},
 		},
 	})
+	return nil
 }
 
 func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error {
@@ -280,28 +283,24 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 	c.mgr.peerStateManager.SetPeerState(peer.Keyid, peerState)
 
 	// Clear the pairing secret from the known host entry now that pairing has succeeded.
-	knownHosts := c.syncConfigSnapshot.config.GetMultihost().GetKnownHosts()
-	khIdx := slices.IndexFunc(knownHosts, func(kh *v1.Multihost_Peer) bool {
+	snapshotHosts := c.syncConfigSnapshot.config.GetMultihost().GetKnownHosts()
+	khIdx := slices.IndexFunc(snapshotHosts, func(kh *v1.Multihost_Peer) bool {
 		return kh.GetKeyid() == peer.GetKeyid()
 	})
-	if khIdx >= 0 && knownHosts[khIdx].GetInitialPairingSecret() != "" {
-		cfg, err := c.mgr.configMgr.Get()
-		if err != nil {
-			c.l.Sugar().Warnf("failed to get config to clear pairing secret: %v", err)
-		} else {
-			cfg = proto.Clone(cfg).(*v1.Config)
-			liveIdx := slices.IndexFunc(cfg.GetMultihost().GetKnownHosts(), func(kh *v1.Multihost_Peer) bool {
+	if khIdx >= 0 && snapshotHosts[khIdx].GetInitialPairingSecret() != "" {
+		if err := c.mgr.configMgr.Transform(func(cfg *v1.Config) (*v1.Config, error) {
+			idx := slices.IndexFunc(cfg.GetMultihost().GetKnownHosts(), func(kh *v1.Multihost_Peer) bool {
 				return kh.GetKeyid() == peer.GetKeyid()
 			})
-			if liveIdx >= 0 {
-				cfg.GetMultihost().GetKnownHosts()[liveIdx].InitialPairingSecret = ""
+			if idx >= 0 {
+				cfg.GetMultihost().GetKnownHosts()[idx].InitialPairingSecret = ""
 			}
 			cfg.Modno++
-			if err := c.mgr.configMgr.Update(cfg); err != nil {
-				c.l.Sugar().Warnf("failed to clear pairing secret after successful pairing: %v", err)
-			} else {
-				c.l.Sugar().Infof("cleared pairing secret for peer %q after successful connection", peer.InstanceId)
-			}
+			return cfg, nil
+		}); err != nil {
+			c.l.Sugar().Warnf("failed to clear pairing secret after successful pairing: %v", err)
+		} else {
+			c.l.Sugar().Infof("cleared pairing secret for peer %q after successful connection", peer.InstanceId)
 		}
 	}
 
@@ -375,7 +374,9 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 	}()
 
 	// Send initial operation manifest to the server for reconciliation.
-	c.sendManifest(stream)
+	if err := c.sendManifest(stream); err != nil {
+		return fmt.Errorf("send manifest to peer %q: %w", peer.InstanceId, err)
+	}
 
 	return nil
 }
@@ -396,8 +397,7 @@ func (c *syncSessionHandlerClient) HandleHeartbeat(ctx context.Context, stream *
 
 func (c *syncSessionHandlerClient) HandleOperationManifest(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionOperationManifest) error {
 	// Server re-requested a manifest (e.g. after reconnect). Respond with a fresh one.
-	c.sendManifest(stream)
-	return nil
+	return c.sendManifest(stream)
 }
 
 func (c *syncSessionHandlerClient) HandleRequestOperationData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperationData) error {
@@ -474,109 +474,92 @@ func (c *syncSessionHandlerClient) HandleReceiveConfig(ctx context.Context, stre
 }
 
 func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSetConfig) error {
-	// Log the received config updates
-	c.l.Sugar().Debugf("received SetConfig request from peer %q")
+	c.l.Sugar().Debugf("received SetConfig request from peer %q", c.peer.GetInstanceId())
 
-	// Fetch latest config from the config manager
-	originalConfig, err := c.mgr.configMgr.Get()
-	if err != nil {
-		return fmt.Errorf("fetch latest config: %w", err)
-	}
+	return c.mgr.configMgr.Transform(func(cfg *v1.Config) (*v1.Config, error) {
+		snapshot := proto.Clone(cfg).(*v1.Config) // snapshot for change detection
 
-	latestConfig := proto.Clone(originalConfig).(*v1.Config) // Clone to avoid modifying the original config
-
-	for _, plan := range item.GetPlans() {
-		c.l.Sugar().Debugf("received plan update: %s", plan.Id)
-		if !c.permissions.CheckPermissionForPlan(plan.Id, permissions.PermsCanWriteConfiguration...) {
-			return NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to update plan %q", c.peer.InstanceId, plan.Id))
-		}
-
-		// Update the plan in the local config
-		idx := slices.IndexFunc(latestConfig.Plans, func(p *v1.Plan) bool {
-			return p.Id == plan.Id
-		})
-		if idx >= 0 {
-			latestConfig.Plans[idx] = plan
-		} else {
-			latestConfig.Plans = append(latestConfig.Plans, plan)
-		}
-	}
-
-	for _, repo := range item.GetRepos() {
-		c.l.Sugar().Debugf("received repo update: %s", repo.Guid)
-		isFromOriginPeer := repo.GetOriginInstanceId() != "" && repo.GetOriginInstanceId() == c.peer.InstanceId
-		if !isFromOriginPeer && !c.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanWriteConfiguration...) {
-			return NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to update repo %q", c.peer.InstanceId, repo.Id))
-		}
-
-		// Update the repo in the local config
-		idx := slices.IndexFunc(latestConfig.Repos, func(r *v1.Repo) bool {
-			return r.Guid == repo.Guid
-		})
-		if idx >= 0 {
-			latestConfig.Repos[idx] = repo
-		} else {
-			// Check for conflicts with existing local repos by ID or URI
-			conflictIdx := slices.IndexFunc(latestConfig.Repos, func(r *v1.Repo) bool {
-				return r.Id == repo.Id || r.Uri == repo.Uri
-			})
-			if conflictIdx >= 0 {
-				c.l.Sugar().Warnf("received shared repo %q (guid %s) conflicts with existing local repo %q (guid %s), skipping", repo.Id, repo.Guid, latestConfig.Repos[conflictIdx].Id, latestConfig.Repos[conflictIdx].Guid)
-				continue
+		for _, plan := range item.GetPlans() {
+			c.l.Sugar().Debugf("received plan update: %s", plan.Id)
+			if !c.permissions.CheckPermissionForPlan(plan.Id, permissions.PermsCanWriteConfiguration...) {
+				return nil, NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to update plan %q", c.peer.InstanceId, plan.Id))
 			}
-			latestConfig.Repos = append(latestConfig.Repos, repo)
-		}
-	}
 
-	for _, plan := range item.GetPlansToDelete() {
-		c.l.Sugar().Debugf("received plan deletion request: %s", plan)
-		if !c.permissions.CheckPermissionForPlan(plan, permissions.PermsCanWriteConfiguration...) {
-			return NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to delete plan %q", c.peer.InstanceId, plan))
-		}
-
-		// Remove the plan from the local config
-		idx := slices.IndexFunc(latestConfig.Plans, func(p *v1.Plan) bool {
-			return p.Id == plan
-		})
-		if idx >= 0 {
-			latestConfig.Plans = append(latestConfig.Plans[:idx], latestConfig.Plans[idx+1:]...)
-		} else {
-			c.l.Sugar().Warnf("received plan deletion request for non-existent plan %q, ignoring", plan)
-		}
-	}
-
-	for _, repoID := range item.GetReposToDelete() {
-		c.l.Sugar().Debugf("received repo deletion request: %s", repoID)
-		if !c.permissions.CheckPermissionForRepo(repoID, permissions.PermsCanWriteConfiguration...) {
-			return NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to delete repo %q", c.peer.InstanceId, repoID))
+			idx := slices.IndexFunc(cfg.Plans, func(p *v1.Plan) bool {
+				return p.Id == plan.Id
+			})
+			if idx >= 0 {
+				cfg.Plans[idx] = plan
+			} else {
+				cfg.Plans = append(cfg.Plans, plan)
+			}
 		}
 
-		// Remove the repo from the local config
-		idx := slices.IndexFunc(latestConfig.Repos, func(r *v1.Repo) bool {
-			return r.Id == repoID
-		})
-		if idx >= 0 {
-			latestConfig.Repos = append(latestConfig.Repos[:idx], latestConfig.Repos[idx+1:]...)
-		} else {
-			c.l.Sugar().Warnf("received repo deletion request for non-existent repo %q, ignoring", repoID)
+		for _, repo := range item.GetRepos() {
+			c.l.Sugar().Debugf("received repo update: %s", repo.Guid)
+			isFromOriginPeer := repo.GetOriginInstanceId() != "" && repo.GetOriginInstanceId() == c.peer.InstanceId
+			if !isFromOriginPeer && !c.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanWriteConfiguration...) {
+				return nil, NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to update repo %q", c.peer.InstanceId, repo.Id))
+			}
+
+			idx := slices.IndexFunc(cfg.Repos, func(r *v1.Repo) bool {
+				return r.Guid == repo.Guid
+			})
+			if idx >= 0 {
+				cfg.Repos[idx] = repo
+			} else {
+				conflictIdx := slices.IndexFunc(cfg.Repos, func(r *v1.Repo) bool {
+					return r.Id == repo.Id || r.Uri == repo.Uri
+				})
+				if conflictIdx >= 0 {
+					c.l.Sugar().Warnf("received shared repo %q (guid %s) conflicts with existing local repo %q (guid %s), skipping", repo.Id, repo.Guid, cfg.Repos[conflictIdx].Id, cfg.Repos[conflictIdx].Guid)
+					continue
+				}
+				cfg.Repos = append(cfg.Repos, repo)
+			}
 		}
-	}
 
-	// Skip the update if nothing actually changed to avoid triggering a reconnect loop.
-	// Compare without modno since we haven't bumped it yet.
-	latestConfig.Modno = originalConfig.Modno
-	if proto.Equal(latestConfig, originalConfig) {
-		c.l.Sugar().Debugf("SetConfig resulted in no changes, skipping update")
-		return nil
-	}
+		for _, plan := range item.GetPlansToDelete() {
+			c.l.Sugar().Debugf("received plan deletion request: %s", plan)
+			if !c.permissions.CheckPermissionForPlan(plan, permissions.PermsCanWriteConfiguration...) {
+				return nil, NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to delete plan %q", c.peer.InstanceId, plan))
+			}
 
-	// Update the local config with the new changes
-	latestConfig.Modno = originalConfig.Modno + 1
-	if err := c.mgr.configMgr.Update(latestConfig); err != nil {
-		return fmt.Errorf("set updated config: %w", err)
-	}
+			idx := slices.IndexFunc(cfg.Plans, func(p *v1.Plan) bool {
+				return p.Id == plan
+			})
+			if idx >= 0 {
+				cfg.Plans = append(cfg.Plans[:idx], cfg.Plans[idx+1:]...)
+			} else {
+				c.l.Sugar().Warnf("received plan deletion request for non-existent plan %q, ignoring", plan)
+			}
+		}
 
-	return nil
+		for _, repoID := range item.GetReposToDelete() {
+			c.l.Sugar().Debugf("received repo deletion request: %s", repoID)
+			if !c.permissions.CheckPermissionForRepo(repoID, permissions.PermsCanWriteConfiguration...) {
+				return nil, NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to delete repo %q", c.peer.InstanceId, repoID))
+			}
+
+			idx := slices.IndexFunc(cfg.Repos, func(r *v1.Repo) bool {
+				return r.Id == repoID
+			})
+			if idx >= 0 {
+				cfg.Repos = append(cfg.Repos[:idx], cfg.Repos[idx+1:]...)
+			} else {
+				c.l.Sugar().Warnf("received repo deletion request for non-existent repo %q, ignoring", repoID)
+			}
+		}
+
+		// Skip the update if nothing actually changed to avoid triggering a reconnect loop.
+		if proto.Equal(cfg, snapshot) {
+			c.l.Sugar().Debugf("SetConfig resulted in no changes, skipping update")
+			return nil, nil
+		}
+
+		cfg.Modno++
+		return cfg, nil
+	})
 }
 
 func (c *syncSessionHandlerClient) sendConfig(ctx context.Context, stream *bidiSyncCommandStream) error {
@@ -587,7 +570,7 @@ func (c *syncSessionHandlerClient) sendConfig(ctx context.Context, stream *bidiS
 	}
 
 	for _, repo := range localConfig.Repos {
-		if c.permissions.CheckPermissionForRepo(repo.Guid, permissions.PermsCanViewConfiguration...) {
+		if c.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanViewConfiguration...) {
 			remoteConfig.Repos = append(remoteConfig.Repos, repo)
 		}
 	}
