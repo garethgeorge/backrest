@@ -280,28 +280,27 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 	c.mgr.peerStateManager.SetPeerState(peer.Keyid, peerState)
 
 	// Clear the pairing secret from the known host entry now that pairing has succeeded.
-	if c.syncConfigSnapshot.config.GetMultihost() != nil {
-		for _, knownHost := range c.syncConfigSnapshot.config.GetMultihost().GetKnownHosts() {
-			if knownHost.GetKeyid() == peer.GetKeyid() && knownHost.GetInitialPairingSecret() != "" {
-				cfg, err := c.mgr.configMgr.Get()
-				if err != nil {
-					c.l.Sugar().Warnf("failed to get config to clear pairing secret: %v", err)
-					break
-				}
-				cfg = proto.Clone(cfg).(*v1.Config)
-				for _, kh := range cfg.GetMultihost().GetKnownHosts() {
-					if kh.GetKeyid() == peer.GetKeyid() {
-						kh.InitialPairingSecret = ""
-						break
-					}
-				}
-				cfg.Modno++
-				if err := c.mgr.configMgr.Update(cfg); err != nil {
-					c.l.Sugar().Warnf("failed to clear pairing secret after successful pairing: %v", err)
-				} else {
-					c.l.Sugar().Infof("cleared pairing secret for peer %q after successful connection", peer.InstanceId)
-				}
-				break
+	knownHosts := c.syncConfigSnapshot.config.GetMultihost().GetKnownHosts()
+	khIdx := slices.IndexFunc(knownHosts, func(kh *v1.Multihost_Peer) bool {
+		return kh.GetKeyid() == peer.GetKeyid()
+	})
+	if khIdx >= 0 && knownHosts[khIdx].GetInitialPairingSecret() != "" {
+		cfg, err := c.mgr.configMgr.Get()
+		if err != nil {
+			c.l.Sugar().Warnf("failed to get config to clear pairing secret: %v", err)
+		} else {
+			cfg = proto.Clone(cfg).(*v1.Config)
+			liveIdx := slices.IndexFunc(cfg.GetMultihost().GetKnownHosts(), func(kh *v1.Multihost_Peer) bool {
+				return kh.GetKeyid() == peer.GetKeyid()
+			})
+			if liveIdx >= 0 {
+				cfg.GetMultihost().GetKnownHosts()[liveIdx].InitialPairingSecret = ""
+			}
+			cfg.Modno++
+			if err := c.mgr.configMgr.Update(cfg); err != nil {
+				c.l.Sugar().Warnf("failed to clear pairing secret after successful pairing: %v", err)
+			} else {
+				c.l.Sugar().Infof("cleared pairing secret for peer %q after successful connection", peer.InstanceId)
 			}
 		}
 	}
@@ -517,6 +516,14 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 		if idx >= 0 {
 			latestConfig.Repos[idx] = repo
 		} else {
+			// Check for conflicts with existing local repos by ID or URI
+			conflictIdx := slices.IndexFunc(latestConfig.Repos, func(r *v1.Repo) bool {
+				return r.Id == repo.Id || r.Uri == repo.Uri
+			})
+			if conflictIdx >= 0 {
+				c.l.Sugar().Warnf("received shared repo %q (guid %s) conflicts with existing local repo %q (guid %s), skipping", repo.Id, repo.Guid, latestConfig.Repos[conflictIdx].Id, latestConfig.Repos[conflictIdx].Guid)
+				continue
+			}
 			latestConfig.Repos = append(latestConfig.Repos, repo)
 		}
 	}
