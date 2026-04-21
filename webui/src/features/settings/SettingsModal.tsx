@@ -420,147 +420,146 @@ export const SettingsModal = () => {
                   </IconButton>
                 </Flex>
               </Field>
-
-              {/* Pairing Tokens */}
-              <Field
-                label="Pairing Tokens"
-                helperText="Tokens that can be shared with other Backrest instances to simplify peering."
-                width="full"
-              >
-                <Stack gap={3} width="full">
-                  {(config.multihost?.pairingTokens || []).map(
-                    (token, index) => (
-                      <PairingTokenItem
-                        key={index}
-                        token={token}
-                        isNew={index >= initialTokenCount}
-                        generatedTokenString={
-                          index >= initialTokenCount ? generatedToken : undefined
-                        }
-                        config={config}
-                        onRemove={() => handleRemovePairingToken(index)}
-                      />
-                    ),
-                  )}
-
-                  {showGenerateForm && (
-                    <Box p={4} borderWidth="1px" borderRadius="md">
-                      <Stack gap={3}>
-                        <Field label="Label (optional)">
-                          <Input
-                            value={tokenLabel}
-                            onChange={(e) => setTokenLabel(e.target.value)}
-                            placeholder="e.g. laptop-2"
-                            width="full"
-                          />
-                        </Field>
-                        <Field label="TTL">
-                          <SelectRoot
-                            collection={ttlOptions}
-                            value={[tokenTtl]}
-                            onValueChange={(e: any) =>
-                              setTokenTtl(e.value[0])
-                            }
-                          >
-                            {/* @ts-ignore */}
-                            <SelectTrigger>
-                              {/* @ts-ignore */}
-                              <SelectValueText placeholder="Select TTL" />
-                            </SelectTrigger>
-                            {/* @ts-ignore */}
-                            <SelectContent zIndex={2000}>
-                              {ttlOptions.items.map((o: any) => (
-                                <SelectItem item={o} key={o.value}>
-                                  {o.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </SelectRoot>
-                        </Field>
-                        <Field label="Max Uses" helperText="0 = unlimited">
-                          <Input
-                            type="number"
-                            value={tokenMaxUses}
-                            onChange={(e) =>
-                              setTokenMaxUses(parseInt(e.target.value) || 0)
-                            }
-                            min={0}
-                            width="full"
-                          />
-                        </Field>
-                        <Flex gap={2}>
-                          <Button
-                            size="sm"
-                            onClick={handleGenerateToken}
-                            loading={generateLoading}
-                          >
-                            Generate
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setShowGenerateForm(false);
-                              setGeneratedToken("");
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                        </Flex>
-                      </Stack>
-                    </Box>
-                  )}
-
-                  {!showGenerateForm && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setShowGenerateForm(true);
-                        setGeneratedToken("");
-                        setTokenLabel("");
-                        setTokenTtl("3600");
-                        setTokenMaxUses(1);
-                      }}
-                      width="full"
-                    >
-                      <Plus /> Generate Pairing Token
-                    </Button>
-                  )}
-                </Stack>
-              </Field>
-
-              <Field
-                label={m.settings_multihost_authorized_clients()}
-                helperText={m.settings_multihost_authorized_clients_tooltip()}
-                width="full"
-              >
-                <PeerFormList
-                  items={getField(["multihost", "authorizedClients"]) || []}
-                  onUpdate={(items: any) =>
-                    updateField(["multihost", "authorizedClients"], items)
-                  }
-                  peerStates={peerStates}
-                  config={config}
-                  showInstanceUrl={false}
-                />
-              </Field>
-
-              <Field
-                label={m.settings_multihost_known_hosts()}
-                helperText={m.settings_multihost_known_hosts_tooltip()}
-                width="full"
-              >
-                <KnownHostsList
-                  items={getField(["multihost", "knownHosts"]) || []}
-                  onUpdate={(items: any) =>
-                    updateField(["multihost", "knownHosts"], items)
-                  }
-                  peerStates={peerStates}
-                  config={config}
-                />
-              </Field>
             </Stack>
+          </SectionCard>
+
+          <SectionCard
+            icon={<FiLock size={16} />}
+            title="Pairing Tokens"
+            description="Tokens that can be shared with other Backrest instances to simplify peering."
+          >
+            <Stack gap={3} width="full">
+              {(config.multihost?.pairingTokens || []).map(
+                (token, index) => (
+                  <PairingTokenItem
+                    key={index}
+                    token={token}
+                    isNew={index >= initialTokenCount}
+                    generatedTokenString={
+                      index >= initialTokenCount ? generatedToken : undefined
+                    }
+                    config={config}
+                    onRemove={() => handleRemovePairingToken(index)}
+                  />
+                ),
+              )}
+
+              {showGenerateForm && (
+                <Box p={4} borderWidth="1px" borderRadius="md">
+                  <Stack gap={3}>
+                    <Field label="Label (optional)">
+                      <Input
+                        value={tokenLabel}
+                        onChange={(e) => setTokenLabel(e.target.value)}
+                        placeholder="e.g. laptop-2"
+                        width="full"
+                      />
+                    </Field>
+                    <Field label="TTL">
+                      <SelectRoot
+                        collection={ttlOptions}
+                        value={[tokenTtl]}
+                        onValueChange={(e: any) =>
+                          setTokenTtl(e.value[0])
+                        }
+                      >
+                        {/* @ts-ignore */}
+                        <SelectTrigger>
+                          {/* @ts-ignore */}
+                          <SelectValueText placeholder="Select TTL" />
+                        </SelectTrigger>
+                        {/* @ts-ignore */}
+                        <SelectContent zIndex={2000}>
+                          {ttlOptions.items.map((o: any) => (
+                            <SelectItem item={o} key={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </SelectRoot>
+                    </Field>
+                    <Field label="Max Uses" helperText="0 = unlimited">
+                      <Input
+                        type="number"
+                        value={tokenMaxUses}
+                        onChange={(e) =>
+                          setTokenMaxUses(parseInt(e.target.value) || 0)
+                        }
+                        min={0}
+                        width="full"
+                      />
+                    </Field>
+                    <Flex gap={2}>
+                      <Button
+                        size="sm"
+                        onClick={handleGenerateToken}
+                        loading={generateLoading}
+                      >
+                        Generate
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setShowGenerateForm(false);
+                          setGeneratedToken("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </Flex>
+                  </Stack>
+                </Box>
+              )}
+
+              {!showGenerateForm && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowGenerateForm(true);
+                    setGeneratedToken("");
+                    setTokenLabel("");
+                    setTokenTtl("3600");
+                    setTokenMaxUses(1);
+                  }}
+                  width="full"
+                >
+                  <Plus /> Generate Pairing Token
+                </Button>
+              )}
+            </Stack>
+          </SectionCard>
+
+          <SectionCard
+            icon={<FiLock size={16} />}
+            title={m.settings_multihost_authorized_clients()}
+            description={m.settings_multihost_authorized_clients_tooltip()}
+          >
+            <PeerFormList
+              items={getField(["multihost", "authorizedClients"]) || []}
+              onUpdate={(items: any) =>
+                updateField(["multihost", "authorizedClients"], items)
+              }
+              peerStates={peerStates}
+              config={config}
+              showInstanceUrl={false}
+            />
+          </SectionCard>
+
+          <SectionCard
+            icon={<FiGlobe size={16} />}
+            title={m.settings_multihost_known_hosts()}
+            description={m.settings_multihost_known_hosts_tooltip()}
+          >
+            <KnownHostsList
+              items={getField(["multihost", "knownHosts"]) || []}
+              onUpdate={(items: any) =>
+                updateField(["multihost", "knownHosts"], items)
+              }
+              peerStates={peerStates}
+              config={config}
+            />
           </SectionCard>
         </TwoPaneSection>
       )}
@@ -689,6 +688,9 @@ const KnownHostsList = ({
                 type: "PERMISSION_READ_OPERATIONS",
                 scopes: ["*"],
               },
+              {
+                type: "PERMISSION_RECEIVE_SHARED_REPOS",
+              },
             ],
           },
         ]);
@@ -727,6 +729,9 @@ const KnownHostsList = ({
             {
               type: "PERMISSION_READ_OPERATIONS",
               scopes: ["*"],
+            },
+            {
+              type: "PERMISSION_RECEIVE_SHARED_REPOS",
             },
           ],
         },

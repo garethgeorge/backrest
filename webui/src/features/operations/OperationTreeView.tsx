@@ -146,6 +146,7 @@ export const OperationTreeView = ({
 
     return syncStateFromRequest(logState, req, (err) => {
       alerts.error("API error: " + err.message);
+    }, () => {
       setLoading(false);
     });
   }, [toJsonString(GetOperationsRequestSchema, req)]);
