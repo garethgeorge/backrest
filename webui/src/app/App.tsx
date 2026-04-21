@@ -13,6 +13,7 @@ import {
   FiEdit2,
   FiMenu,
   FiHome,
+  FiChevronRight,
 } from "react-icons/fi";
 
 import {
@@ -253,6 +254,175 @@ const PlanViewContainer = () => {
         <EmptyState title={m.app_plan_not_found({ planId: planId || "" })} />
       )}
     </MainContentAreaTemplate>
+  );
+};
+
+const PeerNavItem = ({
+  icon,
+  typeLabel,
+  name,
+  active,
+  onClick,
+  onEdit,
+}: {
+  icon: React.ReactNode;
+  typeLabel: string;
+  name: string;
+  active: boolean;
+  onClick: () => void;
+  onEdit?: (e: React.MouseEvent) => void;
+}) => (
+  <Flex
+    align="center"
+    pl={14}
+    pr={2}
+    py={1}
+    bg={active ? "bg.emphasized" : undefined}
+    _hover={{ bg: "bg.muted" }}
+    cursor="pointer"
+    className="group"
+    onClick={onClick}
+  >
+    <Box flexShrink={0} mr={2}>
+      {icon}
+    </Box>
+    <Text color="fg.muted" fontSize="xs" flexShrink={0} mr={1}>
+      {typeLabel}
+    </Text>
+    <Text fontSize="sm" flex="1" wordBreak="break-word">
+      {name}
+    </Text>
+    {onEdit && (
+      <Box
+        opacity={0}
+        _groupHover={{ opacity: 1 }}
+        transition="opacity 0.2s"
+      >
+        <IconButton
+          size="xs"
+          variant="ghost"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            onEdit(e);
+          }}
+        >
+          <FiEdit2 />
+        </IconButton>
+      </Box>
+    )}
+  </Flex>
+);
+
+const PeerInstanceSection = ({
+  peerState,
+  sel,
+  remoteConfig,
+  isActive,
+  handleNav,
+  handleRemoteRepoEdit,
+  handleRemotePlanEdit,
+}: {
+  peerState: PeerState;
+  sel: OpSelector;
+  remoteConfig: PeerState["remoteConfig"];
+  isActive: (path: string) => boolean;
+  handleNav: (path: string) => void;
+  handleRemoteRepoEdit: (repo: Repo) => void;
+  handleRemotePlanEdit: (plan: Plan) => void;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Box mb={2}>
+      <Flex
+        align="center"
+        pl={9}
+        pr={2}
+        py={1}
+        cursor="pointer"
+        _hover={{ bg: "bg.muted" }}
+        onClick={() => setExpanded((prev) => !prev)}
+      >
+        <Box
+          transform={expanded ? "rotate(90deg)" : undefined}
+          transition="transform 0.2s"
+          display="inline-flex"
+          alignItems="center"
+          mr={2}
+          flexShrink={0}
+        >
+          <FiChevronRight size={14} />
+        </Box>
+        <Box flexShrink={0} mr={2}>
+          <IconForResource selector={sel} />
+        </Box>
+        <Text fontWeight="bold" fontSize="sm">
+          {peerState.peerInstanceId}
+        </Text>
+      </Flex>
+
+      {expanded && (
+        <>
+          {peerState.knownRepos.map((repo: RepoMetadata) => {
+            const repoPath = `/peer/${peerState.peerInstanceId}/repo/${repo.id}`;
+            const editableRepo = remoteConfig?.repos?.find(
+              (r: Repo) => r.guid === repo.guid,
+            );
+            return (
+              <PeerNavItem
+                key={repo.guid}
+                icon={
+                  <IconForResource
+                    selector={create(OpSelectorSchema, {
+                      originalInstanceKeyid: peerState.peerKeyid,
+                      repoGuid: repo.guid,
+                    })}
+                  />
+                }
+                typeLabel="repo"
+                name={repo.id}
+                active={isActive(repoPath)}
+                onClick={() => handleNav(repoPath)}
+                onEdit={
+                  editableRepo
+                    ? () => handleRemoteRepoEdit(editableRepo)
+                    : undefined
+                }
+              />
+            );
+          })}
+
+          {peerState.knownPlans.map((planMeta: PlanMetadata) => {
+            const planPath = `/peer/${peerState.peerInstanceId}/plan/${planMeta.id}`;
+            const editablePlan = remoteConfig?.plans?.find(
+              (p: Plan) => p.id === planMeta.id,
+            );
+            return (
+              <PeerNavItem
+                key={planMeta.id}
+                icon={
+                  <IconForResource
+                    selector={create(OpSelectorSchema, {
+                      originalInstanceKeyid: peerState.peerKeyid,
+                      planId: planMeta.id,
+                    })}
+                  />
+                }
+                typeLabel="plan"
+                name={planMeta.id}
+                active={isActive(planPath)}
+                onClick={() => handleNav(planPath)}
+                onEdit={
+                  editablePlan
+                    ? () => handleRemotePlanEdit(editablePlan)
+                    : undefined
+                }
+              />
+            );
+          })}
+        </>
+      )}
+    </Box>
   );
 };
 
@@ -640,113 +810,16 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                 };
 
                 return (
-                  <Box key={peerState.peerKeyid} mb={2}>
-                    <Flex align="center" pl={9} pr={2} py={1}>
-                      <Box flexShrink={0} mr={2}>
-                        <IconForResource selector={sel} />
-                      </Box>
-                      <Text fontWeight="bold" fontSize="sm">
-                        {peerState.peerInstanceId}
-                      </Text>
-                    </Flex>
-
-                    {/* Nested Repos for Peer — listed from knownRepos (READ_OPERATIONS), edit from remoteConfig (READ_CONFIG) */}
-                    {peerState.knownRepos.map((repo: RepoMetadata) => {
-                      const repoPath = `/peer/${peerState.peerInstanceId}/repo/${repo.id}`;
-                      const active = isActive(repoPath);
-                      const editableRepo = remoteConfig?.repos?.find((r: Repo) => r.guid === repo.guid);
-                      return (
-                        <Flex
-                          key={repo.guid}
-                          align="center"
-                          pl={12}
-                          pr={2}
-                          py={1}
-                          bg={active ? "bg.emphasized" : undefined}
-                          _hover={{ bg: "bg.muted" }}
-                          cursor="pointer"
-                          className="group"
-                          onClick={() => handleNav(repoPath)}
-                        >
-                          <Box flexShrink={0} mr={2}>
-                            <IconForResource
-                              selector={create(OpSelectorSchema, {
-                                originalInstanceKeyid: peerState.peerKeyid,
-                                repoGuid: repo.guid,
-                              })}
-                            />
-                          </Box>
-                          <Text fontSize="sm" flex="1" wordBreak="break-word">
-                            {repo.id}
-                          </Text>
-                          {editableRepo && (
-                            <Box
-                              opacity={0}
-                              _groupHover={{ opacity: 1 }}
-                              transition="opacity 0.2s"
-                            >
-                              <IconButton
-                                size="xs"
-                                variant="ghost"
-                                onClick={(e: React.MouseEvent) => {
-                                  e.stopPropagation();
-                                  handleRemoteRepoEdit(editableRepo);
-                                }}
-                              >
-                                <FiEdit2 />
-                              </IconButton>
-                            </Box>
-                          )}
-                        </Flex>
-                      );
-                    })}
-
-                    {/* Nested Plans for Peer — listed from knownPlans, edit from remoteConfig */}
-                    {peerState.knownPlans.map((planMeta: PlanMetadata) => {
-                      const planPath = `/peer/${peerState.peerInstanceId}/plan/${planMeta.id}`;
-                      const active = isActive(planPath);
-                      const editablePlan = remoteConfig?.plans?.find((p: Plan) => p.id === planMeta.id);
-                      return (
-                        <Flex
-                          key={planMeta.id}
-                          align="center"
-                          pl={12}
-                          pr={2}
-                          py={1}
-                          bg={active ? "bg.emphasized" : undefined}
-                          _hover={{ bg: "bg.muted" }}
-                          cursor="pointer"
-                          className="group"
-                          onClick={() => handleNav(planPath)}
-                        >
-                          <Box flexShrink={0} mr={2}>
-                            <FiCalendar />
-                          </Box>
-                          <Text fontSize="sm" flex="1" wordBreak="break-word">
-                            {planMeta.id}
-                          </Text>
-                          {editablePlan && (
-                            <Box
-                              opacity={0}
-                              _groupHover={{ opacity: 1 }}
-                              transition="opacity 0.2s"
-                            >
-                              <IconButton
-                                size="xs"
-                                variant="ghost"
-                                onClick={(e: React.MouseEvent) => {
-                                  e.stopPropagation();
-                                  handleRemotePlanEdit(editablePlan);
-                                }}
-                              >
-                                <FiEdit2 />
-                              </IconButton>
-                            </Box>
-                          )}
-                        </Flex>
-                      );
-                    })}
-                  </Box>
+                  <PeerInstanceSection
+                    key={peerState.peerKeyid}
+                    peerState={peerState}
+                    sel={sel}
+                    remoteConfig={remoteConfig}
+                    isActive={isActive}
+                    handleNav={handleNav}
+                    handleRemoteRepoEdit={handleRemoteRepoEdit}
+                    handleRemotePlanEdit={handleRemotePlanEdit}
+                  />
                 );
               })}
             </AccordionItemContent>

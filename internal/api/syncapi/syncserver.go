@@ -520,9 +520,10 @@ func (h *syncSessionHandlerServer) HandleOperationManifest(ctx context.Context, 
 		}
 	}
 
-	// Find ops we need (new or changed modno)
+	// Find ops we need (new or changed modno), preserving manifest order
 	var needIDs []int64
-	for id, modno := range remoteSet {
+	for i, id := range item.GetOpIds() {
+		modno := item.GetModnos()[i]
 		local, exists := localState[id]
 		if !exists || local.modno != modno {
 			needIDs = append(needIDs, id)
