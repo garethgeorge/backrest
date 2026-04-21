@@ -133,7 +133,26 @@ const RepoViewContainer = () => {
       key={repoId}
     >
       {repo ? (
-        <RepoView repo={repo} />
+        <>
+          {repo.originInstanceId && (
+            <Box
+              p={3}
+              mb={4}
+              borderRadius="md"
+              bg="blue.50"
+              borderWidth="1px"
+              borderColor="blue.200"
+              fontSize="sm"
+              color="blue.800"
+              _dark={{ bg: "blue.950", borderColor: "blue.800", color: "blue.200" }}
+            >
+              This is a remote repo from{" "}
+              <strong>{repo.originInstanceId}</strong>. Operation history only
+              includes backups run locally and may be incomplete.
+            </Box>
+          )}
+          <RepoView repo={repo} />
+        </>
       ) : (
         <EmptyState title={m.app_repo_not_found({ repoId: repoId || "" })} />
       )}
@@ -482,7 +501,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
             >
               <FiPlus /> {m.app_menu_add_repo()}
             </Button>
-            {configRepos.map((repo) => (
+            {localRepos.map((repo) => (
               <SidebarRepoItem
                 key={repo.id}
                 repo={repo}
@@ -497,6 +516,35 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                 }}
               />
             ))}
+            {remoteRepos.length > 0 && (
+              <>
+                <Text
+                  fontSize="xs"
+                  fontWeight="bold"
+                  color="fg.muted"
+                  pl={9}
+                  pt={2}
+                  pb={1}
+                >
+                  Remote
+                </Text>
+                {remoteRepos.map((repo) => (
+                  <SidebarRepoItem
+                    key={repo.id}
+                    repo={repo}
+                    instanceId={config.instance}
+                    active={isActive(`/repo/${repo.id}`)}
+                    onNav={handleNav}
+                    onEdit={async (repo) => {
+                      const { AddRepoModal } =
+                        await import("../features/repositories/AddRepoModal");
+                      showModal(<AddRepoModal template={repo} />);
+                      onClose?.();
+                    }}
+                  />
+                ))}
+              </>
+            )}
           </AccordionItemContent>
         </AccordionItem>
 

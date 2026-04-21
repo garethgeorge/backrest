@@ -82,9 +82,13 @@ func runSync(
 			if err := handler.HandleHeartbeat(ctx, commandStream, item.GetHeartbeat()); err != nil {
 				return fmt.Errorf("handling heartbeat: %w", err)
 			}
-		case *v1sync.SyncStreamItem_RequestOperations:
-			if err := handler.HandleRequestOperations(ctx, commandStream, item.GetRequestOperations()); err != nil {
-				return fmt.Errorf("handling request operations: %w", err)
+		case *v1sync.SyncStreamItem_OperationManifest:
+			if err := handler.HandleOperationManifest(ctx, commandStream, item.GetOperationManifest()); err != nil {
+				return fmt.Errorf("handling operation manifest: %w", err)
+			}
+		case *v1sync.SyncStreamItem_RequestOperationData:
+			if err := handler.HandleRequestOperationData(ctx, commandStream, item.GetRequestOperationData()); err != nil {
+				return fmt.Errorf("handling request operation data: %w", err)
 			}
 		case *v1sync.SyncStreamItem_ReceiveOperations:
 			if err := handler.HandleReceiveOperations(ctx, commandStream, item.GetReceiveOperations()); err != nil {
@@ -220,7 +224,8 @@ type syncSessionHandler interface {
 	OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error
 	OnConnectionDisconnected()
 	HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error
-	HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error
+	HandleOperationManifest(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionOperationManifest) error
+	HandleRequestOperationData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperationData) error
 	HandleReceiveOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveOperations) error
 	HandleReceiveConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveConfig) error
 	HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSetConfig) error
@@ -245,8 +250,12 @@ func (h *unimplementedSyncSessionHandler) HandleHeartbeat(ctx context.Context, s
 	return NewSyncErrorProtocol(fmt.Errorf("HandleHeartbeat not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error {
-	return NewSyncErrorProtocol(fmt.Errorf("HandleRequestOperations not implemented"))
+func (h *unimplementedSyncSessionHandler) HandleOperationManifest(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionOperationManifest) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleOperationManifest not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleRequestOperationData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperationData) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleRequestOperationData not implemented"))
 }
 
 func (h *unimplementedSyncSessionHandler) HandleReceiveOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveOperations) error {
@@ -327,20 +336,26 @@ func (om *remoteOpIDMapper) translateOpID(originalInstanceKeyid string, original
 		return translatedID, nil
 	}
 
-	// Cache miss - query the database
-	op, err := om.oplog.FindOneMetadata(oplog.Query{
+	// Cache miss - query the database. Use QueryMetadata directly to handle
+	// the case where duplicates already exist (return the first match).
+	var translatedID int64
+	err := om.oplog.QueryMetadata(oplog.Query{
 		OriginalInstanceKeyid: &originalInstanceKeyid,
 		OriginalID:            &originalOpId,
+	}, func(op oplog.OpMetadata) error {
+		if translatedID == 0 {
+			translatedID = op.ID
+		}
+		return oplog.ErrStopIteration
 	})
 	if err != nil {
-		if errors.Is(err, oplog.ErrNoResults) {
-			return 0, nil // No results means the ID is not found
-		}
-		return 0, err // Other errors should be propagated
+		return 0, err
+	}
+	if translatedID == 0 {
+		return 0, nil // No results means the ID is not found
 	}
 
 	// Cache the result and return
-	translatedID := op.ID
 	om.opIDLru.Add(cacheKey, translatedID)
 	return translatedID, nil
 }
@@ -361,20 +376,26 @@ func (om *remoteOpIDMapper) translateFlowID(originalInstanceKeyid string, origin
 		return translatedID, nil
 	}
 
-	// Cache miss - query the database
-	op, err := om.oplog.FindOneMetadata(oplog.Query{
+	// Cache miss - query the database. Use QueryMetadata directly to handle
+	// the case where duplicates already exist (return the first match).
+	var translatedID int64
+	err := om.oplog.QueryMetadata(oplog.Query{
 		OriginalInstanceKeyid: &originalInstanceKeyid,
 		OriginalFlowID:        &originalFlowId,
+	}, func(op oplog.OpMetadata) error {
+		if translatedID == 0 {
+			translatedID = op.FlowID
+		}
+		return oplog.ErrStopIteration
 	})
 	if err != nil {
-		if errors.Is(err, oplog.ErrNoResults) {
-			return 0, nil // No results means the ID is not found
-		}
-		return 0, err // Other errors should be propagated
+		return 0, err
+	}
+	if translatedID == 0 {
+		return 0, nil // No results means the ID is not found
 	}
 
 	// Cache the result and return
-	translatedID := op.FlowID
 	om.flowIDLru.Add(cacheKey, translatedID)
 	return translatedID, nil
 }

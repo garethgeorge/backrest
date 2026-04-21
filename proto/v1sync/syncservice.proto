@@ -124,9 +124,10 @@ message SyncStreamItem {
     SyncActionHandshake handshake = 3; // note: mostly deprecated, sent through headers rather than stream.
     SyncActionHeartbeat heartbeat = 4;
     
-    SyncActionRequestOperations request_operations = 20;
+    SyncActionOperationManifest operation_manifest = 20;
     SyncActionReceiveOperations receive_operations = 21;
-    SyncActionReceiveConfig receive_config = 22;
+    SyncActionRequestOperationData request_operation_data = 22;
+    SyncActionReceiveConfig receive_config = 23;
     SyncActionSetConfig set_config = 24;
     SyncActionRequestResources request_resources = 25; // request a list of available resources. Only used by the server.
     SyncActionReceiveResources receive_resources = 26; // receiving a list of available resources.
@@ -176,9 +177,13 @@ message SyncStreamItem {
     CONNECTION_STATE_NOT_FOUND = 4;
   }
 
-  message SyncActionRequestOperations {
-    int64 high_opid = 1; // The highest operation ID the requester has.
-    int64 high_modno = 2; // The highest modno the requester has.
+  message SyncActionOperationManifest {
+    repeated int64 op_ids = 1;
+    repeated int64 modnos = 2;
+  }
+
+  message SyncActionRequestOperationData {
+    repeated int64 op_ids = 1;
   }
 
   message SyncActionReceiveOperations {

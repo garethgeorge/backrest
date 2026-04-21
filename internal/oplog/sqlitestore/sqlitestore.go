@@ -342,7 +342,7 @@ func (m *SqliteStore) Query(q oplog.Query, f func(*v1.Operation) error) error {
 
 func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) error) error {
 	where, args := m.buildQueryWhereClause(q, false)
-	rows, err := m.dbpool.QueryContext(context.Background(), "SELECT operations.id, operations.modno, operations.original_id, operations.flow_id, operations.original_flow_id, operations.status FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+where, args...)
+	rows, err := m.dbpool.QueryContext(context.Background(), "SELECT operations.id, operations.modno, operations.original_id, operations.flow_id, operations.original_flow_id, operations.status, operations.ogid, operation_groups.repo_id, operation_groups.repo_guid, operation_groups.plan_id FROM operations JOIN operation_groups ON operations.ogid = operation_groups.ogid WHERE "+where, args...)
 	if err != nil {
 		return fmt.Errorf("query metadata: %v", err)
 	}
@@ -350,7 +350,8 @@ func (m *SqliteStore) QueryMetadata(q oplog.Query, f func(oplog.OpMetadata) erro
 
 	for rows.Next() {
 		var meta oplog.OpMetadata
-		if err := rows.Scan(&meta.ID, &meta.Modno, &meta.OriginalID, &meta.FlowID, &meta.OriginalFlowID, &meta.Status); err != nil {
+		var ogid int64
+		if err := rows.Scan(&meta.ID, &meta.Modno, &meta.OriginalID, &meta.FlowID, &meta.OriginalFlowID, &meta.Status, &ogid, &meta.RepoID, &meta.RepoGUID, &meta.PlanID); err != nil {
 			return fmt.Errorf("query metadata: scan: %v", err)
 		}
 		if err := f(meta); err != nil {
@@ -427,7 +428,7 @@ func (m *SqliteStore) Transform(q oplog.Query, f func(*v1.Operation) (*v1.Operat
 			continue
 		}
 
-		if err := m.updateInternal(tx, newOp); err != nil {
+		if err := m.updateInternal(tx, false, newOp); err != nil {
 			return err
 		}
 	}
@@ -490,6 +491,52 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 	return tx.Commit()
 }
 
+func (m *SqliteStore) Set(opts oplog.SetOptions, op ...*v1.Operation) error {
+	tx, err := m.dbpool.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return fmt.Errorf("set operation: begin tx: %v", err)
+	}
+	defer tx.Rollback()
+
+	for _, o := range op {
+		if o.Id == 0 {
+			// Insert path: allocate Id if requested or by default
+			if opts.AllocateID || true {
+				o.Id = m.highestOpID.Add(1)
+			}
+			if o.Modno == 0 {
+				o.Modno = m.highestModno.Add(1)
+			} else if o.Modno > m.highestModno.Load() {
+				m.highestModno.Store(o.Modno)
+			}
+			if o.FlowId == 0 {
+				o.FlowId = o.Id
+			}
+			if err := protoutil.ValidateOperation(o); err != nil {
+				return err
+			}
+			if err := m.addInternal(tx, o); err != nil {
+				return err
+			}
+		} else {
+			// Update path: preserve Id, allocate modno only if zero
+			if o.Modno == 0 {
+				o.Modno = m.highestModno.Add(1)
+			} else if o.Modno > m.highestModno.Load() {
+				m.highestModno.Store(o.Modno)
+			}
+			if err := protoutil.ValidateOperation(o); err != nil {
+				return err
+			}
+			if err := m.updateInternal(tx, true, o); err != nil {
+				return err
+			}
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (m *SqliteStore) Update(op ...*v1.Operation) error {
 	tx, err := m.dbpool.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
@@ -497,16 +544,18 @@ func (m *SqliteStore) Update(op ...*v1.Operation) error {
 	}
 	defer tx.Rollback()
 
-	if err := m.updateInternal(tx, op...); err != nil {
+	if err := m.updateInternal(tx, false, op...); err != nil {
 		return err
 	}
 
 	return tx.Commit()
 }
 
-func (m *SqliteStore) updateInternal(tx *sql.Tx, op ...*v1.Operation) error {
+func (m *SqliteStore) updateInternal(tx *sql.Tx, preserveModno bool, op ...*v1.Operation) error {
 	for _, o := range op {
-		o.Modno = m.highestModno.Add(1)
+		if !preserveModno {
+			o.Modno = m.highestModno.Add(1)
+		}
 		if err := protoutil.ValidateOperation(o); err != nil {
 			return err
 		}

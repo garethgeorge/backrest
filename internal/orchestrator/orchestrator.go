@@ -268,6 +268,12 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 			return fmt.Errorf("repo %q not found for plan %q", plan.Repo, plan.Id)
 		}
 
+		// Skip plans targeting repos managed by a remote instance; the remote
+		// instance's orchestrator owns scheduling for those.
+		if repo.GetOriginInstanceId() != "" {
+			continue
+		}
+
 		t := tasks.NewScheduledBackupTask(repo, plan)
 		if err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {
 			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
@@ -275,6 +281,12 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 	}
 
 	for _, repo := range config.Repos {
+		// Skip repos managed by a remote instance; the remote instance's
+		// orchestrator owns prune/check scheduling for those.
+		if repo.GetOriginInstanceId() != "" {
+			continue
+		}
+
 		// Schedule a prune task for the repo
 		t := tasks.NewPruneTask(repo, tasks.PlanForSystemTasks, false)
 		if err := o.ScheduleTask(t, tasks.TaskPriorityPrune); err != nil {
