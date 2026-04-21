@@ -195,6 +195,40 @@ const RemoteRepoViewContainer = () => {
   );
 };
 
+const RemotePlanViewContainer = () => {
+  const { peerInstanceId, planId } = useParams();
+  const peerStates = useSyncStates();
+
+  const peerState = peerStates.find(
+    (state) => state.peerInstanceId === peerInstanceId,
+  );
+  const peerPlan = (peerState?.knownPlans || []).find((p) => p.id === planId);
+
+  return (
+    <MainContentAreaTemplate
+      breadcrumbs={[
+        { title: m.app_breadcrumb_peer() },
+        { title: peerInstanceId || m.app_unknown_peer() },
+        { title: m.app_breadcrumb_plan() },
+        { title: planId || "" },
+      ]}
+      key={`${peerInstanceId}-${planId}`}
+    >
+      {peerPlan ? (
+        <SelectorView
+          title={peerPlan.id}
+          sel={create(OpSelectorSchema, {
+            originalInstanceKeyid: peerState?.peerKeyid,
+            planId: peerPlan.id,
+          })}
+        />
+      ) : (
+        <EmptyState title={m.app_plan_not_found({ planId: planId || "" })} />
+      )}
+    </MainContentAreaTemplate>
+  );
+};
+
 const PlanViewContainer = () => {
   const { planId } = useParams();
   const [config, setConfig] = useConfig();
@@ -669,6 +703,8 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
 
                     {/* Nested Plans for Peer — listed from knownPlans, edit from remoteConfig */}
                     {peerState.knownPlans.map((planMeta: PlanMetadata) => {
+                      const planPath = `/peer/${peerState.peerInstanceId}/plan/${planMeta.id}`;
+                      const active = isActive(planPath);
                       const editablePlan = remoteConfig?.plans?.find((p: Plan) => p.id === planMeta.id);
                       return (
                         <Flex
@@ -677,8 +713,11 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                           pl={12}
                           pr={2}
                           py={1}
+                          bg={active ? "bg.emphasized" : undefined}
                           _hover={{ bg: "bg.muted" }}
+                          cursor="pointer"
                           className="group"
+                          onClick={() => handleNav(planPath)}
                         >
                           <Box flexShrink={0} mr={2}>
                             <FiCalendar />
@@ -861,6 +900,10 @@ export const App: React.FC = () => {
                 <Route
                   path="/peer/:peerInstanceId/repo/:repoId"
                   element={<RemoteRepoViewContainer />}
+                />
+                <Route
+                  path="/peer/:peerInstanceId/plan/:planId"
+                  element={<RemotePlanViewContainer />}
                 />
                 <Route
                   path="/*"

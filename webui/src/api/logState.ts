@@ -26,15 +26,18 @@ export const syncStateFromRequest = (
   state: OplogState,
   req: GetOperationsRequest,
   onError?: (e: Error) => void,
+  onInitialLoad?: () => void,
 ): (() => void) => {
   getOperations(req)
     .then((res) => {
       state.add(...res);
+      onInitialLoad?.();
     })
     .catch((e) => {
       if (onError) {
         onError(e);
       }
+      onInitialLoad?.();
     });
 
   const cbHelper = (event?: OperationEvent, err?: Error) => {

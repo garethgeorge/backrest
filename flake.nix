@@ -19,7 +19,7 @@
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
               # Go backend
-              go_1_24  # go 1.25 not yet in nixpkgs; use latest available
+              go
               goreleaser
 
               # Frontend
@@ -39,15 +39,25 @@
               # Runtime dependencies (for local testing)
               restic
               rclone
+
+              # Shell
+              zsh
+              oh-my-posh
             ];
 
+            SHELL = "${pkgs.zsh}/bin/zsh";
+            OMP_THEME = "${pkgs.oh-my-posh}/share/oh-my-posh/themes/star.omp.json";
+
             shellHook = ''
-              echo "backrest dev shell"
-              echo "  go     : $(go version)"
-              echo "  node   : $(node --version)"
-              echo "  pnpm   : $(pnpm --version)"
-              echo "  protoc : $(protoc --version)"
-              echo "  buf    : $(buf --version)"
+              if [ -z "$IN_NIX_SHELL_ZSH" ]; then
+                export IN_NIX_SHELL_ZSH=1
+                export ZDOTDIR=$(mktemp -d)
+                cat > "$ZDOTDIR/.zshrc" <<'ZSHRC'
+              [[ -f ~/.zshrc ]] && source ~/.zshrc
+              eval "$(oh-my-posh init zsh --config "$OMP_THEME")"
+              ZSHRC
+                exec ${pkgs.zsh}/bin/zsh
+              fi
             '';
           };
         });
