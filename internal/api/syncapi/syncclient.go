@@ -35,6 +35,11 @@ type SyncClient struct {
 	l                  *zap.Logger
 
 	reconnectAttempts int
+
+	// Lock protocol support
+	streamMu       sync.Mutex
+	activeStream   *bidiSyncCommandStream // set while connected, nil otherwise
+	lockResponseCh chan *v1sync.SyncStreamItem_SyncActionAcquireLockResponse
 }
 
 func newInsecureClient() *http.Client {
@@ -73,6 +78,7 @@ func NewSyncClient(
 		client:             client,
 		oplog:              oplog,
 		l:                  zap.L().Named(fmt.Sprintf("syncclient for %q", peer.GetInstanceId())),
+		lockResponseCh:     make(chan *v1sync.SyncStreamItem_SyncActionAcquireLockResponse, 1),
 	}
 	c.mgr.peerStateManager.SetPeerState(peer.Keyid, newPeerState(peer.InstanceId, peer.Keyid))
 	return c, nil
@@ -92,9 +98,14 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 			c.syncConfigSnapshot,
 			c.oplog,
 			c.peer,
+			c,
 		)
 
 		cmdStream := newBidiSyncCommandStream()
+
+		c.streamMu.Lock()
+		c.activeStream = cmdStream
+		c.streamMu.Unlock()
 
 		c.l.Sugar().Infof("connecting to peer %q (%s) at %s", c.peer.InstanceId, c.peer.Keyid, c.peer.GetInstanceUrl())
 
@@ -115,32 +126,44 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 			cmdStream.SendErrorAndTerminate(err)
 		}()
 
-		if err := cmdStream.ConnectStream(ctx, c.client.Sync(ctx)); err != nil {
-			c.l.Sugar().Infof("lost stream connection to peer %q (%s): %v", c.peer.InstanceId, c.peer.Keyid, err)
+		connectErr := cmdStream.ConnectStream(ctx, c.client.Sync(ctx))
+		c.streamMu.Lock()
+		c.activeStream = nil
+		c.streamMu.Unlock()
+		if connectErr != nil {
+			c.l.Sugar().Infof("lost stream connection to peer %q (%s): %v", c.peer.InstanceId, c.peer.Keyid, connectErr)
 			var syncErr *SyncError
 			state := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
 			if state == nil {
 				state = newPeerState(c.peer.InstanceId, c.peer.Keyid)
 			}
 			state.LastHeartbeat = time.Now()
-			if errors.As(err, &syncErr) {
+			if errors.As(connectErr, &syncErr) {
 				state.ConnectionState = syncErr.State
 				state.ConnectionStateMessage = syncErr.Message.Error()
 			} else {
 				state.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_ERROR_INTERNAL
-				state.ConnectionStateMessage = err.Error()
+				state.ConnectionStateMessage = connectErr.Error()
 			}
 			c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, state)
-		} else {
-			c.reconnectAttempts = 0
 		}
 
 		wg.Wait()
+
+		// Reset reconnect backoff if the session lasted long enough to be considered a real success,
+		// rather than a handshake that failed immediately. Using reconnectDelay as the threshold means
+		// any session that ran at least one full retry window counts as stable.
+		if time.Since(lastConnect) >= c.reconnectDelay {
+			c.reconnectAttempts = 0
+		}
 
 		delay := c.reconnectDelay - time.Since(lastConnect)
 		if c.reconnectAttempts > 0 {
 			backoff := time.Duration(1<<min(c.reconnectAttempts, 5)) * c.reconnectDelay // 2^reconnectAttempts, max 32
 			delay += backoff
+		}
+		if delay < 0 {
+			delay = 0
 		}
 		c.l.Sugar().Infof("disconnected, will retry after %v (attempt %d)", delay, c.reconnectAttempts)
 		c.reconnectAttempts++
@@ -150,6 +173,83 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 			return
 		}
 	}
+}
+
+// AcquireLock sends a lock acquire request and waits for the response.
+// Returns true if the lock was acquired, false otherwise.
+// Returns an error if the client is not connected or the context expires.
+func (c *SyncClient) AcquireLock(ctx context.Context, lockKey string) (bool, error) {
+	c.streamMu.Lock()
+	stream := c.activeStream
+	c.streamMu.Unlock()
+
+	if stream == nil {
+		return false, fmt.Errorf("not connected to peer %q", c.peer.GetInstanceId())
+	}
+
+	// Drain any stale responses
+	select {
+	case <-c.lockResponseCh:
+	default:
+	}
+
+	stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_AcquireLock{
+			AcquireLock: &v1sync.SyncStreamItem_SyncActionAcquireLock{
+				LockKey:  lockKey,
+				HolderId: c.localInstanceID,
+			},
+		},
+	})
+
+	select {
+	case resp := <-c.lockResponseCh:
+		return resp.GetAcquired(), nil
+	case <-ctx.Done():
+		return false, ctx.Err()
+	case <-time.After(10 * time.Second):
+		return false, fmt.Errorf("timeout waiting for lock response from peer %q", c.peer.GetInstanceId())
+	}
+}
+
+// ReleaseLock sends a lock release request to the peer.
+func (c *SyncClient) ReleaseLock(lockKey string) {
+	c.streamMu.Lock()
+	stream := c.activeStream
+	c.streamMu.Unlock()
+
+	if stream == nil {
+		return
+	}
+
+	stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_ReleaseLock{
+			ReleaseLock: &v1sync.SyncStreamItem_SyncActionReleaseLock{
+				LockKey:  lockKey,
+				HolderId: c.localInstanceID,
+			},
+		},
+	})
+}
+
+// RefreshLock sends a lock refresh request to the peer.
+func (c *SyncClient) RefreshLock(lockKey string) {
+	c.streamMu.Lock()
+	stream := c.activeStream
+	c.streamMu.Unlock()
+
+	if stream == nil {
+		return
+	}
+
+	stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_RefreshLock{
+			RefreshLock: &v1sync.SyncStreamItem_SyncActionRefreshLock{
+				LockKey:  lockKey,
+				HolderId: c.localInstanceID,
+			},
+		},
+	})
 }
 
 // syncSessionHandlerClient is a syncSessionHandler implementation for clients.
@@ -167,6 +267,10 @@ type syncSessionHandlerClient struct {
 
 	canForwardReposSet map[string]struct{}
 	canForwardPlansSet map[string]struct{}
+
+	syncClient *SyncClient // back-reference for forwarding lock responses
+
+	oplogSubscription *oplog.Subscription // set while subscribed; unsubscribed in OnConnectionDisconnected.
 }
 
 func newSyncHandlerClient(
@@ -175,6 +279,7 @@ func newSyncHandlerClient(
 	snapshot syncConfigSnapshot,
 	oplog *oplog.OpLog,
 	peer *v1.Multihost_Peer, // The peer this handler is associated with, must be set before calling OnConnectionEstablished.
+	syncClient *SyncClient,
 ) *syncSessionHandlerClient {
 	return &syncSessionHandlerClient{
 		l:                  l,
@@ -186,6 +291,8 @@ func newSyncHandlerClient(
 
 		canForwardReposSet: make(map[string]struct{}),
 		canForwardPlansSet: make(map[string]struct{}),
+
+		syncClient: syncClient,
 	}
 }
 
@@ -368,11 +475,8 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 			},
 		})
 	}
-	c.oplog.Subscribe(oplog.Query{}, &oplogSubscription)
-	go func() {
-		<-ctx.Done()
-		c.oplog.Unsubscribe(&oplogSubscription)
-	}()
+	c.oplogSubscription = &oplogSubscription
+	c.oplog.Subscribe(oplog.Query{}, c.oplogSubscription)
 
 	// Send initial operation manifest to the server for reconciliation.
 	opCount, err := c.sendManifest(stream)
@@ -384,6 +488,13 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 		opCount, repoCount, planCount, resRepoCount, resPlanCount)
 
 	return nil
+}
+
+func (c *syncSessionHandlerClient) OnConnectionDisconnected() {
+	if c.oplogSubscription != nil {
+		c.oplog.Unsubscribe(c.oplogSubscription)
+		c.oplogSubscription = nil
+	}
 }
 
 func (c *syncSessionHandlerClient) HandleRequestResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestResources) error {
@@ -662,4 +773,15 @@ func (c *syncSessionHandlerClient) sendResourceList(ctx context.Context, stream 
 	})
 
 	return len(repoMetadatas), len(planMetadatas), nil
+}
+
+func (c *syncSessionHandlerClient) HandleAcquireLockResponse(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionAcquireLockResponse) error {
+	if c.syncClient != nil {
+		select {
+		case c.syncClient.lockResponseCh <- item:
+		default:
+			c.l.Warn("lock response channel full, dropping response", zap.String("key", item.GetLockKey()))
+		}
+	}
+	return nil
 }

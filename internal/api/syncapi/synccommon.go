@@ -32,6 +32,12 @@ func runSync(
 	pairingSecret string, // optional one-time pairing secret to send during the handshake
 	onUnknownPeer onUnknownPeerFunc, // optional callback for handling unknown peers (e.g. pairing), nil to reject all unknown peers
 ) error {
+	// Session-scoped context: cancelled when this runSync invocation returns. Any per-session
+	// goroutines the handler spawns (heartbeats, watchers, etc.) should use this ctx so they
+	// die with the session rather than outliving it into the next reconnect cycle.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	// send the initial handshake packet to the peer to establish the connection.
 	handshakePacket, err := createHandshakePacket(localInstanceID, localKey, pairingSecret)
 	if err != nil {
@@ -117,6 +123,22 @@ func runSync(
 		case *v1sync.SyncStreamItem_ReceiveLogData:
 			if err := handler.HandleReceiveLogData(ctx, commandStream, item.GetReceiveLogData()); err != nil {
 				return fmt.Errorf("handling receive log data: %w", err)
+			}
+		case *v1sync.SyncStreamItem_AcquireLock:
+			if err := handler.HandleAcquireLock(ctx, commandStream, item.GetAcquireLock()); err != nil {
+				return fmt.Errorf("handling acquire lock: %w", err)
+			}
+		case *v1sync.SyncStreamItem_AcquireLockResponse:
+			if err := handler.HandleAcquireLockResponse(ctx, commandStream, item.GetAcquireLockResponse()); err != nil {
+				return fmt.Errorf("handling acquire lock response: %w", err)
+			}
+		case *v1sync.SyncStreamItem_ReleaseLock:
+			if err := handler.HandleReleaseLock(ctx, commandStream, item.GetReleaseLock()); err != nil {
+				return fmt.Errorf("handling release lock: %w", err)
+			}
+		case *v1sync.SyncStreamItem_RefreshLock:
+			if err := handler.HandleRefreshLock(ctx, commandStream, item.GetRefreshLock()); err != nil {
+				return fmt.Errorf("handling refresh lock: %w", err)
 			}
 		case *v1sync.SyncStreamItem_Throttle:
 			if err := handler.HandleThrottle(ctx, commandStream, item.GetThrottle()); err != nil {
@@ -220,6 +242,9 @@ func sendHeartbeats(ctx context.Context, stream *bidiSyncCommandStream, interval
 
 // syncSessionHandler is a stateful handler for the messages within the context of a sync stream session.
 // the handler does not need to be thread safe as it is guaranteed to be called from a single thread.
+//
+// The ctx passed to every method is scoped to the session: it is cancelled when runSync returns.
+// Goroutines spawned by the handler should use this ctx so they don't leak across reconnect cycles.
 type syncSessionHandler interface {
 	OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error
 	OnConnectionDisconnected()
@@ -234,6 +259,10 @@ type syncSessionHandler interface {
 	HandleRequestLog(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestLog) error
 	HandleReceiveLogData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveLogData) error
 	HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionThrottle) error
+	HandleAcquireLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionAcquireLock) error
+	HandleAcquireLockResponse(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionAcquireLockResponse) error
+	HandleReleaseLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReleaseLock) error
+	HandleRefreshLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRefreshLock) error
 }
 
 type unimplementedSyncSessionHandler struct{}
@@ -288,6 +317,22 @@ func (h *unimplementedSyncSessionHandler) HandleReceiveLogData(ctx context.Conte
 
 func (h *unimplementedSyncSessionHandler) HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionThrottle) error {
 	return NewSyncErrorProtocol(fmt.Errorf("HandleThrottle not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleAcquireLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionAcquireLock) error {
+	return nil // default: ignore lock requests
+}
+
+func (h *unimplementedSyncSessionHandler) HandleAcquireLockResponse(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionAcquireLockResponse) error {
+	return nil // default: ignore lock responses
+}
+
+func (h *unimplementedSyncSessionHandler) HandleReleaseLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReleaseLock) error {
+	return nil // default: ignore lock releases
+}
+
+func (h *unimplementedSyncSessionHandler) HandleRefreshLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRefreshLock) error {
+	return nil // default: ignore lock refreshes
 }
 
 type remoteOpIdCacheKey struct {

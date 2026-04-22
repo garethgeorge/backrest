@@ -552,6 +552,17 @@ const SidebarRepoItem = React.memo(
             >
               {repo.id}
             </Text>
+            {repo.originInstanceId && (
+              <Text
+                fontSize="xs"
+                color="fg.muted"
+                overflow="hidden"
+                textOverflow="ellipsis"
+                whiteSpace="nowrap"
+              >
+                {repo.originInstanceId}
+              </Text>
+            )}
           </Box>
         </Tooltip>
         <Box

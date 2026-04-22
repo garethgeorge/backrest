@@ -52,7 +52,7 @@ func newAuthHandler(config *config.ConfigManager, next http.Handler) http.Handle
 		}
 		rw.Header().Set(authTokenHeader, authHeaderValue)
 
-		peer, err := decodeAndVerifyAuthHeader(r, config.Instance, config.GetMultihost().GetAuthorizedClients())
+		peer, err := decodeAndVerifyAuthHeader(r.Header, config.GetMultihost().GetAuthorizedClients())
 		if err != nil {
 			http.Error(rw, fmt.Sprintf("unauthorized: %v", err), http.StatusUnauthorized)
 			return
@@ -116,7 +116,8 @@ func (c *authHeaderClient) Do(req *http.Request) (*http.Response, error) {
 	if resp.StatusCode != http.StatusOK {
 		return resp, fmt.Errorf("HTTP request failed with status %d: %s", resp.StatusCode, resp.Status)
 	}
-	peer, err := decodeAndVerifyAuthHeader(req, cfg.Instance, cfg.GetMultihost().GetAuthorizedClients())
+	// Verify the server's response header against our known hosts.
+	peer, err := decodeAndVerifyAuthHeader(resp.Header, cfg.GetMultihost().GetKnownHosts())
 	if err != nil {
 		return resp, fmt.Errorf("verify auth header: %w", err)
 	}
@@ -138,8 +139,8 @@ func newHTTPClientWithConfig(cfg *config.ConfigManager, delegate connect.HTTPCli
 	}, nil
 }
 
-func decodeAndVerifyAuthHeader(r *http.Request, localInstanceID string, peers []*v1.Multihost_Peer) (*v1.Multihost_Peer, error) {
-	authHeader := r.Header.Get(authTokenHeader)
+func decodeAndVerifyAuthHeader(header http.Header, peers []*v1.Multihost_Peer) (*v1.Multihost_Peer, error) {
+	authHeader := header.Get(authTokenHeader)
 	if len(authHeader) == 0 {
 		return nil, errors.New("missing authorization header")
 	}
@@ -195,7 +196,7 @@ func createSignedMessage(payload []byte, identity *cryptoutil.PrivateKey) (*v1.S
 	timestampMillis := time.Now().UnixMilli()
 
 	payloadWithTimestamp := make([]byte, 0, len(payload)+8)
-	binary.BigEndian.AppendUint64(payloadWithTimestamp, uint64(timestampMillis))
+	payloadWithTimestamp = binary.BigEndian.AppendUint64(payloadWithTimestamp, uint64(timestampMillis))
 	payloadWithTimestamp = append(payloadWithTimestamp, payload...)
 
 	signature, err := identity.Sign(payloadWithTimestamp)
@@ -230,7 +231,7 @@ func verifySignedMessage(msg *v1.SignedMessage, publicKey *cryptoutil.PublicKey)
 	}
 
 	payloadWithTimestamp := make([]byte, 0, len(msg.GetPayload())+8)
-	binary.BigEndian.AppendUint64(payloadWithTimestamp, uint64(msg.GetTimestampMillis()))
+	payloadWithTimestamp = binary.BigEndian.AppendUint64(payloadWithTimestamp, uint64(msg.GetTimestampMillis()))
 	payloadWithTimestamp = append(payloadWithTimestamp, msg.GetPayload()...)
 
 	if err := publicKey.Verify(payloadWithTimestamp, msg.GetSignature()); err != nil {

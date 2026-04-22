@@ -362,6 +362,7 @@ const MultihostSummary = ({
 }: {
   multihostConfig: Multihost | null;
 }) => {
+  const [config] = useConfig();
   const allPeerStates = useSyncStates();
   const peerStates = useMemo(() => {
     const map = new Map<string, PeerState>();
@@ -371,6 +372,19 @@ const MultihostSummary = ({
     return map;
   }, [allPeerStates]);
 
+  // Build a map of host instance ID -> repo IDs shared by that host (repos in local config with originInstanceId set)
+  const sharedReposByHost = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const repo of config?.repos || []) {
+      if (repo.originInstanceId) {
+        const repos = map.get(repo.originInstanceId) || [];
+        repos.push(repo.id);
+        map.set(repo.originInstanceId, repos);
+      }
+    }
+    return map;
+  }, [config?.repos]);
+
   const knownHostTiles: JSX.Element[] = [];
   for (const cfgPeer of multihostConfig?.knownHosts || []) {
     const peerState = peerStates.get(cfgPeer.keyid);
@@ -378,7 +392,11 @@ const MultihostSummary = ({
       continue;
     }
     knownHostTiles.push(
-      <PeerStateTile peerState={peerState} key={peerState.peerKeyid} />,
+      <PeerStateTile
+        peerState={peerState}
+        sharedRepoIds={sharedReposByHost.get(peerState.peerInstanceId)}
+        key={peerState.peerKeyid}
+      />,
     );
   }
 
@@ -411,7 +429,13 @@ const MultihostSummary = ({
   );
 };
 
-const PeerStateTile = ({ peerState }: { peerState: PeerState }) => {
+const PeerStateTile = ({
+  peerState,
+  sharedRepoIds,
+}: {
+  peerState: PeerState;
+  sharedRepoIds?: string[];
+}) => {
   const state = useState(1);
   useEffect(() => {
     // Force rerender every second to update the last heartbeat time
@@ -464,6 +488,27 @@ const PeerStateTile = ({ peerState }: { peerState: PeerState }) => {
                       fontSize="xs"
                     >
                       {repo.id}
+                    </Box>
+                  ))}
+                </Flex>
+              }
+            />
+          )}
+          {sharedRepoIds && sharedRepoIds.length > 0 && (
+            <DataListItem
+              label="Shared Repos"
+              value={
+                <Flex gap={1} flexWrap="wrap">
+                  {sharedRepoIds.map((repoId) => (
+                    <Box
+                      key={repoId}
+                      px={2}
+                      py={0.5}
+                      bg="bg.muted"
+                      borderRadius="sm"
+                      fontSize="xs"
+                    >
+                      {repoId}
                     </Box>
                   ))}
                 </Flex>
