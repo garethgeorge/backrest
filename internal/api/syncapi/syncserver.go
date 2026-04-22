@@ -196,23 +196,30 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 				}
 
 				// Permissions unchanged — send updated config and shared repos to client
-				h.l.Sugar().Debugf("config changed, sending updated config to client %q", h.peer.InstanceId)
-				if err := h.sendConfigToClient(stream, newConfig); err != nil {
+				configRepos, configPlans, err := h.sendConfigToClient(stream, newConfig)
+				if err != nil {
 					h.l.Sugar().Warnf("failed to send updated config to client %q: %v", h.peer.InstanceId, err)
+				} else {
+					sharedRepos := h.sendSharedReposToClient(stream, newConfig)
+					h.l.Sugar().Debugf("config changed, sent update to client %q: %d repos, %d plans (config); %d shared repos pushed",
+						h.peer.InstanceId, configRepos, configPlans, sharedRepos)
 				}
-				h.sendSharedReposToClient(stream, newConfig)
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
 
-	if err := h.sendConfigToClient(stream, h.snapshot.config); err != nil {
+	configRepos, configPlans, err := h.sendConfigToClient(stream, h.snapshot.config)
+	if err != nil {
 		return NewSyncErrorInternal(fmt.Errorf("sending initial config to client: %w", err))
 	}
 
 	// Push shared repos to the client
-	h.sendSharedReposToClient(stream, h.snapshot.config)
+	sharedRepoCount := h.sendSharedReposToClient(stream, h.snapshot.config)
+
+	h.l.Sugar().Infof("sent initial state to client %q: %d repos, %d plans (config); %d shared repos pushed",
+		h.peer.InstanceId, configRepos, configPlans, sharedRepoCount)
 
 	return nil
 }
@@ -323,14 +330,12 @@ func (h *syncSessionHandlerServer) deleteByOriginalID(originalID int64) error {
 	return h.mgr.oplog.Delete(foundOp.ID)
 }
 
-func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStream, config *v1.Config) error {
+func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStream, config *v1.Config) (int, int, error) {
 	remoteConfig := &v1sync.RemoteConfig{
 		Version: config.Version,
 		Modno:   config.Modno,
 	}
 	resourceListMsg := &v1sync.SyncStreamItem_SyncActionReceiveResources{}
-	var allowedRepoIDs []string
-	var allowedPlanIDs []string
 	for _, repo := range config.Repos {
 		if h.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanViewConfiguration...) {
 			remoteConfig.Repos = append(remoteConfig.Repos, repo)
@@ -338,7 +343,6 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 				Id:   repo.Id,
 				Guid: repo.Guid,
 			})
-			allowedRepoIDs = append(allowedRepoIDs, repo.Id)
 		}
 	}
 	for _, plan := range config.Plans {
@@ -347,10 +351,8 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 			resourceListMsg.Plans = append(resourceListMsg.Plans, &v1sync.PlanMetadata{
 				Id: plan.Id,
 			})
-			allowedPlanIDs = append(allowedPlanIDs, plan.Id)
 		}
 	}
-	h.l.Sugar().Debugf("determined client %v is allowlisted to read configs for repos %v and plans %v", h.peer.InstanceId, allowedRepoIDs, allowedPlanIDs)
 
 	// Send the config, this is the first meaningful packet the client will receive.
 	stream.Send(&v1sync.SyncStreamItem{
@@ -367,14 +369,15 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 			ReceiveResources: resourceListMsg,
 		},
 	})
-	return nil
+	return len(remoteConfig.Repos), len(remoteConfig.Plans), nil
 }
 
 // sendSharedReposToClient sends repos marked as shared to the client via SetConfig.
 // This pushes repo configurations to the client so they are added to the client's local config.
-func (h *syncSessionHandlerServer) sendSharedReposToClient(stream *bidiSyncCommandStream, config *v1.Config) {
+// Returns the number of shared repos sent.
+func (h *syncSessionHandlerServer) sendSharedReposToClient(stream *bidiSyncCommandStream, config *v1.Config) int {
 	if !h.permissions.HasPermissionType(v1.Multihost_Permission_PERMISSION_RECEIVE_SHARED_REPOS) {
-		return
+		return 0
 	}
 
 	var sharedRepos []*v1.Repo
@@ -387,10 +390,9 @@ func (h *syncSessionHandlerServer) sendSharedReposToClient(stream *bidiSyncComma
 	}
 
 	if len(sharedRepos) == 0 {
-		return
+		return 0
 	}
 
-	h.l.Sugar().Debugf("sending %d shared repos to client %q", len(sharedRepos), h.peer.InstanceId)
 	stream.Send(&v1sync.SyncStreamItem{
 		Action: &v1sync.SyncStreamItem_SetConfig{
 			SetConfig: &v1sync.SyncStreamItem_SyncActionSetConfig{
@@ -398,6 +400,7 @@ func (h *syncSessionHandlerServer) sendSharedReposToClient(stream *bidiSyncComma
 			},
 		},
 	})
+	return len(sharedRepos)
 }
 
 // ValidatePairingSecret checks a pairing secret against a list of pairing tokens.
@@ -522,9 +525,11 @@ func (h *syncSessionHandlerServer) HandleOperationManifest(ctx context.Context, 
 	}
 
 	// Find ops we need (new or changed modno), preserving manifest order
+	opIDs := item.GetOpIds()
+	modnos := item.GetModnos()
 	var needIDs []int64
-	for i, id := range item.GetOpIds() {
-		modno := item.GetModnos()[i]
+	for i, id := range opIDs {
+		modno := modnos[i]
 		local, exists := localState[id]
 		if !exists || local.modno != modno {
 			needIDs = append(needIDs, id)
