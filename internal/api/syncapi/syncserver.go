@@ -29,7 +29,10 @@ type BackrestSyncHandler struct {
 var _ v1syncconnect.BackrestSyncServiceHandler = &BackrestSyncHandler{}
 
 func NewBackrestSyncHandler(mgr *SyncManager) *BackrestSyncHandler {
-	mapper, _ := newRemoteOpIDMapper(mgr.oplog, 4096) // error can be ignored, it just checks for valid size
+	mapper, err := newRemoteOpIDMapper(mgr.oplog, 4096)
+	if err != nil {
+		panic(fmt.Errorf("syncapi: constructing remote op ID mapper: %w", err))
+	}
 	return &BackrestSyncHandler{
 		mgr:    mgr,
 		mapper: mapper,
@@ -230,6 +233,32 @@ func (h *syncSessionHandlerServer) OnConnectionDisconnected() {
 	}
 }
 
+func (h *syncSessionHandlerServer) HandleAcquireLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionAcquireLock) error {
+	acquired := h.mgr.lockManager.Acquire(item.GetLockKey(), item.GetHolderId())
+	h.l.Debug("lock acquire request", zap.String("key", item.GetLockKey()), zap.String("holder", item.GetHolderId()), zap.Bool("acquired", acquired))
+	stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_AcquireLockResponse{
+			AcquireLockResponse: &v1sync.SyncStreamItem_SyncActionAcquireLockResponse{
+				Acquired: acquired,
+				LockKey:  item.GetLockKey(),
+			},
+		},
+	})
+	return nil
+}
+
+func (h *syncSessionHandlerServer) HandleReleaseLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReleaseLock) error {
+	released := h.mgr.lockManager.Release(item.GetLockKey(), item.GetHolderId())
+	h.l.Debug("lock release request", zap.String("key", item.GetLockKey()), zap.String("holder", item.GetHolderId()), zap.Bool("released", released))
+	return nil
+}
+
+func (h *syncSessionHandlerServer) HandleRefreshLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRefreshLock) error {
+	refreshed := h.mgr.lockManager.Refresh(item.GetLockKey(), item.GetHolderId())
+	h.l.Debug("lock refresh request", zap.String("key", item.GetLockKey()), zap.String("holder", item.GetHolderId()), zap.Bool("refreshed", refreshed))
+	return nil
+}
+
 func (h *syncSessionHandlerServer) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error {
 	peerState := h.mgr.peerStateManager.GetPeerState(h.peer.Keyid).Clone()
 	if peerState == nil {
@@ -385,6 +414,30 @@ func (h *syncSessionHandlerServer) sendSharedReposToClient(stream *bidiSyncComma
 		if repo.GetShared() {
 			repoCopy := proto.Clone(repo).(*v1.Repo)
 			repoCopy.OriginInstanceId = config.Instance
+			// Inject lock hooks so the client acquires a lock on this server
+			// before running operations on the shared repo.
+			repoCopy.Hooks = append(repoCopy.Hooks,
+				&v1.Hook{
+					Conditions: []v1.Hook_Condition{v1.Hook_CONDITION_ANY_START},
+					OnError:    v1.Hook_ON_ERROR_IGNORE,
+					Action: &v1.Hook_ActionSyncLock{
+						ActionSyncLock: &v1.Hook_SyncLock{
+							TargetInstanceId: config.Instance,
+							LockKey:          repo.GetId(),
+						},
+					},
+				},
+				&v1.Hook{
+					Conditions: []v1.Hook_Condition{v1.Hook_CONDITION_ANY_END},
+					OnError:    v1.Hook_ON_ERROR_IGNORE,
+					Action: &v1.Hook_ActionSyncLock{
+						ActionSyncLock: &v1.Hook_SyncLock{
+							TargetInstanceId: config.Instance,
+							LockKey:          repo.GetId(),
+						},
+					},
+				},
+			)
 			sharedRepos = append(sharedRepos, repoCopy)
 		}
 	}

@@ -260,6 +260,9 @@ const (
 	Hook_CONDITION_FORGET_START   Hook_Condition = 300 // forget started.
 	Hook_CONDITION_FORGET_ERROR   Hook_Condition = 301 // forget failed.
 	Hook_CONDITION_FORGET_SUCCESS Hook_Condition = 302 // forget succeeded.
+	// any operation conditions
+	Hook_CONDITION_ANY_START Hook_Condition = 400 // before any operation starts.
+	Hook_CONDITION_ANY_END   Hook_Condition = 401 // after any operation ends (success or fail).
 )
 
 // Enum value maps for Hook_Condition.
@@ -282,6 +285,8 @@ var (
 		300: "CONDITION_FORGET_START",
 		301: "CONDITION_FORGET_ERROR",
 		302: "CONDITION_FORGET_SUCCESS",
+		400: "CONDITION_ANY_START",
+		401: "CONDITION_ANY_END",
 	}
 	Hook_Condition_value = map[string]int32{
 		"CONDITION_UNKNOWN":          0,
@@ -301,6 +306,8 @@ var (
 		"CONDITION_FORGET_START":     300,
 		"CONDITION_FORGET_ERROR":     301,
 		"CONDITION_FORGET_SUCCESS":   302,
+		"CONDITION_ANY_START":        400,
+		"CONDITION_ANY_END":          401,
 	}
 )
 
@@ -1302,6 +1309,7 @@ type Hook struct {
 	//	*Hook_ActionShoutrrr
 	//	*Hook_ActionHealthchecks
 	//	*Hook_ActionTelegram
+	//	*Hook_ActionSyncLock
 	Action        isHook_Action `protobuf_oneof:"action"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1430,6 +1438,15 @@ func (x *Hook) GetActionTelegram() *Hook_Telegram {
 	return nil
 }
 
+func (x *Hook) GetActionSyncLock() *Hook_SyncLock {
+	if x != nil {
+		if x, ok := x.Action.(*Hook_ActionSyncLock); ok {
+			return x.ActionSyncLock
+		}
+	}
+	return nil
+}
+
 type isHook_Action interface {
 	isHook_Action()
 }
@@ -1466,6 +1483,10 @@ type Hook_ActionTelegram struct {
 	ActionTelegram *Hook_Telegram `protobuf:"bytes,107,opt,name=action_telegram,json=actionTelegram,proto3,oneof"`
 }
 
+type Hook_ActionSyncLock struct {
+	ActionSyncLock *Hook_SyncLock `protobuf:"bytes,109,opt,name=action_sync_lock,json=actionSyncLock,proto3,oneof"`
+}
+
 func (*Hook_ActionCommand) isHook_Action() {}
 
 func (*Hook_ActionWebhook) isHook_Action() {}
@@ -1481,6 +1502,8 @@ func (*Hook_ActionShoutrrr) isHook_Action() {}
 func (*Hook_ActionHealthchecks) isHook_Action() {}
 
 func (*Hook_ActionTelegram) isHook_Action() {}
+
+func (*Hook_ActionSyncLock) isHook_Action() {}
 
 type Auth struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2364,6 +2387,58 @@ func (x *Hook_Telegram) GetTemplate() string {
 	return ""
 }
 
+type Hook_SyncLock struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	TargetInstanceId string                 `protobuf:"bytes,1,opt,name=target_instance_id,json=targetInstanceId,proto3" json:"target_instance_id,omitempty"` // the instance ID of the peer to acquire the lock on.
+	LockKey          string                 `protobuf:"bytes,2,opt,name=lock_key,json=lockKey,proto3" json:"lock_key,omitempty"`                              // the lock key, typically the repo ID.
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *Hook_SyncLock) Reset() {
+	*x = Hook_SyncLock{}
+	mi := &file_v1_config_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Hook_SyncLock) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Hook_SyncLock) ProtoMessage() {}
+
+func (x *Hook_SyncLock) ProtoReflect() protoreflect.Message {
+	mi := &file_v1_config_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Hook_SyncLock.ProtoReflect.Descriptor instead.
+func (*Hook_SyncLock) Descriptor() ([]byte, []int) {
+	return file_v1_config_proto_rawDescGZIP(), []int{9, 8}
+}
+
+func (x *Hook_SyncLock) GetTargetInstanceId() string {
+	if x != nil {
+		return x.TargetInstanceId
+	}
+	return ""
+}
+
+func (x *Hook_SyncLock) GetLockKey() string {
+	if x != nil {
+		return x.LockKey
+	}
+	return ""
+}
+
 var File_v1_config_proto protoreflect.FileDescriptor
 
 const file_v1_config_proto_rawDesc = "" +
@@ -2484,7 +2559,7 @@ const file_v1_config_proto_rawDesc = "" +
 	"\tCLOCK_UTC\x10\x02\x12\x17\n" +
 	"\x13CLOCK_LAST_RUN_TIME\x10\x03B\n" +
 	"\n" +
-	"\bschedule\"\xe1\x0f\n" +
+	"\bschedule\"\xa7\x11\n" +
 	"\x04Hook\x122\n" +
 	"\n" +
 	"conditions\x18\x01 \x03(\x0e2\x12.v1.Hook.ConditionR\n" +
@@ -2497,7 +2572,8 @@ const file_v1_config_proto_rawDesc = "" +
 	"\faction_slack\x18h \x01(\v2\x0e.v1.Hook.SlackH\x00R\vactionSlack\x12<\n" +
 	"\x0faction_shoutrrr\x18i \x01(\v2\x11.v1.Hook.ShoutrrrH\x00R\x0eactionShoutrrr\x12H\n" +
 	"\x13action_healthchecks\x18j \x01(\v2\x15.v1.Hook.HealthchecksH\x00R\x12actionHealthchecks\x12<\n" +
-	"\x0faction_telegram\x18k \x01(\v2\x11.v1.Hook.TelegramH\x00R\x0eactionTelegram\x1a#\n" +
+	"\x0faction_telegram\x18k \x01(\v2\x11.v1.Hook.TelegramH\x00R\x0eactionTelegram\x12=\n" +
+	"\x10action_sync_lock\x18m \x01(\v2\x11.v1.Hook.SyncLockH\x00R\x0eactionSyncLock\x1a#\n" +
 	"\aCommand\x12\x18\n" +
 	"\acommand\x18\x01 \x01(\tR\acommand\x1a\xa1\x01\n" +
 	"\aWebhook\x12\x1f\n" +
@@ -2533,7 +2609,10 @@ const file_v1_config_proto_rawDesc = "" +
 	"\bTelegram\x12\x1b\n" +
 	"\tbot_token\x18\x01 \x01(\tR\bbotToken\x12\x17\n" +
 	"\achat_id\x18\x02 \x01(\tR\x06chatId\x12\x1a\n" +
-	"\btemplate\x18\x03 \x01(\tR\btemplate\"\xf5\x03\n" +
+	"\btemplate\x18\x03 \x01(\tR\btemplate\x1aS\n" +
+	"\bSyncLock\x12,\n" +
+	"\x12target_instance_id\x18\x01 \x01(\tR\x10targetInstanceId\x12\x19\n" +
+	"\block_key\x18\x02 \x01(\tR\alockKey\"\xa7\x04\n" +
 	"\tCondition\x12\x15\n" +
 	"\x11CONDITION_UNKNOWN\x10\x00\x12\x17\n" +
 	"\x13CONDITION_ANY_ERROR\x10\x01\x12\x1c\n" +
@@ -2551,7 +2630,9 @@ const file_v1_config_proto_rawDesc = "" +
 	"\x17CONDITION_CHECK_SUCCESS\x10\xca\x01\x12\x1b\n" +
 	"\x16CONDITION_FORGET_START\x10\xac\x02\x12\x1b\n" +
 	"\x16CONDITION_FORGET_ERROR\x10\xad\x02\x12\x1d\n" +
-	"\x18CONDITION_FORGET_SUCCESS\x10\xae\x02\"\xa9\x01\n" +
+	"\x18CONDITION_FORGET_SUCCESS\x10\xae\x02\x12\x18\n" +
+	"\x13CONDITION_ANY_START\x10\x90\x03\x12\x16\n" +
+	"\x11CONDITION_ANY_END\x10\x91\x03\"\xa9\x01\n" +
 	"\aOnError\x12\x13\n" +
 	"\x0fON_ERROR_IGNORE\x10\x00\x12\x13\n" +
 	"\x0fON_ERROR_CANCEL\x10\x01\x12\x12\n" +
@@ -2582,7 +2663,7 @@ func file_v1_config_proto_rawDescGZIP() []byte {
 }
 
 var file_v1_config_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_v1_config_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_v1_config_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_v1_config_proto_goTypes = []any{
 	(Multihost_Permission_Type)(0),             // 0: v1.Multihost.Permission.Type
 	(CommandPrefix_IONiceLevel)(0),             // 1: v1.CommandPrefix.IONiceLevel
@@ -2615,14 +2696,15 @@ var file_v1_config_proto_goTypes = []any{
 	(*Hook_Shoutrrr)(nil),                      // 28: v1.Hook.Shoutrrr
 	(*Hook_Healthchecks)(nil),                  // 29: v1.Hook.Healthchecks
 	(*Hook_Telegram)(nil),                      // 30: v1.Hook.Telegram
-	(*PrivateKey)(nil),                         // 31: v1.PrivateKey
+	(*Hook_SyncLock)(nil),                      // 31: v1.Hook.SyncLock
+	(*PrivateKey)(nil),                         // 32: v1.PrivateKey
 }
 var file_v1_config_proto_depIdxs = []int32{
 	9,  // 0: v1.Config.repos:type_name -> v1.Repo
 	10, // 1: v1.Config.plans:type_name -> v1.Plan
 	17, // 2: v1.Config.auth:type_name -> v1.Auth
 	8,  // 3: v1.Config.multihost:type_name -> v1.Multihost
-	31, // 4: v1.Multihost.identity:type_name -> v1.PrivateKey
+	32, // 4: v1.Multihost.identity:type_name -> v1.PrivateKey
 	19, // 5: v1.Multihost.known_hosts:type_name -> v1.Multihost.Peer
 	19, // 6: v1.Multihost.authorized_clients:type_name -> v1.Multihost.Peer
 	20, // 7: v1.Multihost.pairing_tokens:type_name -> v1.Multihost.PairingToken
@@ -2649,16 +2731,17 @@ var file_v1_config_proto_depIdxs = []int32{
 	28, // 28: v1.Hook.action_shoutrrr:type_name -> v1.Hook.Shoutrrr
 	29, // 29: v1.Hook.action_healthchecks:type_name -> v1.Hook.Healthchecks
 	30, // 30: v1.Hook.action_telegram:type_name -> v1.Hook.Telegram
-	18, // 31: v1.Auth.users:type_name -> v1.User
-	21, // 32: v1.Multihost.Peer.permissions:type_name -> v1.Multihost.Permission
-	21, // 33: v1.Multihost.PairingToken.permissions:type_name -> v1.Multihost.Permission
-	0,  // 34: v1.Multihost.Permission.type:type_name -> v1.Multihost.Permission.Type
-	6,  // 35: v1.Hook.Webhook.method:type_name -> v1.Hook.Webhook.Method
-	36, // [36:36] is the sub-list for method output_type
-	36, // [36:36] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	31, // 31: v1.Hook.action_sync_lock:type_name -> v1.Hook.SyncLock
+	18, // 32: v1.Auth.users:type_name -> v1.User
+	21, // 33: v1.Multihost.Peer.permissions:type_name -> v1.Multihost.Permission
+	21, // 34: v1.Multihost.PairingToken.permissions:type_name -> v1.Multihost.Permission
+	0,  // 35: v1.Multihost.Permission.type:type_name -> v1.Multihost.Permission.Type
+	6,  // 36: v1.Hook.Webhook.method:type_name -> v1.Hook.Webhook.Method
+	37, // [37:37] is the sub-list for method output_type
+	37, // [37:37] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_v1_config_proto_init() }
@@ -2691,6 +2774,7 @@ func file_v1_config_proto_init() {
 		(*Hook_ActionShoutrrr)(nil),
 		(*Hook_ActionHealthchecks)(nil),
 		(*Hook_ActionTelegram)(nil),
+		(*Hook_ActionSyncLock)(nil),
 	}
 	file_v1_config_proto_msgTypes[11].OneofWrappers = []any{
 		(*User_PasswordBcrypt)(nil),
@@ -2701,7 +2785,7 @@ func file_v1_config_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_v1_config_proto_rawDesc), len(file_v1_config_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   24,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

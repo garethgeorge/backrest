@@ -61,6 +61,10 @@ func (v HookVars) EventName(cond v1.Hook_Condition) string {
 		return "forget error"
 	case v1.Hook_CONDITION_FORGET_SUCCESS:
 		return "forget success"
+	case v1.Hook_CONDITION_ANY_START:
+		return "any start"
+	case v1.Hook_CONDITION_ANY_END:
+		return "any end"
 	default:
 		return "unknown"
 	}

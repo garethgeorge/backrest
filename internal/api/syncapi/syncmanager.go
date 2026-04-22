@@ -14,8 +14,10 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
+	hooktypes "github.com/garethgeorge/backrest/internal/hook/types"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 // connectedPeerHandle represents a connected peer's stream and metadata.
@@ -54,6 +56,8 @@ type SyncManager struct {
 	connectedPeers map[string]*connectedPeerHandle
 
 	peerStateManager PeerStateManager
+
+	lockManager *LockManager
 }
 
 func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchestrator *orchestrator.Orchestrator, peerStateManager PeerStateManager) *SyncManager {
@@ -81,7 +85,7 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 	} else {
 		zap.S().Errorf("syncmanager failed to get initial config: %v", err)
 	}
-	return &SyncManager{
+	mgr := &SyncManager{
 		configMgr:    configMgr,
 		orchestrator: orchestrator,
 		oplog:        oplog,
@@ -91,7 +95,10 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 		connectedPeers:       make(map[string]*connectedPeerHandle),
 
 		peerStateManager: peerStateManager,
+		lockManager:      NewLockManager(),
 	}
+	hooktypes.SetSyncLockClientProvider(mgr)
+	return mgr
 }
 
 // GetSyncClients returns a copy of the sync clients map. This makes the map safe to read from concurrently.
@@ -99,6 +106,30 @@ func (m *SyncManager) GetSyncClients() map[string]*SyncClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return maps.Clone(m.syncClients)
+}
+
+// GetSyncClient returns the sync client for the given instance ID, or nil if not found.
+// The map is keyed by Keyid internally (unique and stable), but callers typically only know
+// the user-facing InstanceId, so this scans the small set of active clients.
+func (m *SyncManager) GetSyncClient(instanceID string) *SyncClient {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, client := range m.syncClients {
+		if client.peer.GetInstanceId() == instanceID {
+			return client
+		}
+	}
+	return nil
+}
+
+// GetSyncLockClient returns a SyncLockClient for the given instance ID, satisfying the
+// types.SyncLockClientProvider interface for the synclock hook handler.
+func (m *SyncManager) GetSyncLockClient(instanceID string) hooktypes.SyncLockClient {
+	client := m.GetSyncClient(instanceID)
+	if client == nil {
+		return nil
+	}
+	return client
 }
 
 // Note: top level function will be called holding the lock, must kick off goroutines and then return.
@@ -112,7 +143,7 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 		zap.L().Info("syncmanager exited")
 	}()
 
-	runSyncWithNewConfig := func() {
+	startSync := func(config *v1.Config) {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
@@ -125,12 +156,6 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 		}
 		syncCtx, cancel := context.WithCancel(ctx)
 		cancelLastSync = cancel
-
-		config, err := m.configMgr.Get()
-		if err != nil {
-			zap.S().Errorf("syncmanager failed to refresh config with latest changes so sync is stopped: %v", err)
-			return
-		}
 
 		if config.Multihost.GetIdentity() == nil {
 			zap.S().Info("syncmanager no identity key configured, sync feature is disabled.")
@@ -175,14 +200,68 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 		}
 	}
 
-	runSyncWithNewConfig()
+	// lastConfig tracks the config that sync is currently running with.
+	// We only restart sync when the config changes in a meaningful way
+	// (i.e. ignoring the Modno field which increments on every write).
+	var lastConfig *v1.Config
+
+	syncConfigEqual := func(a, b *v1.Config) bool {
+		if a == nil || b == nil {
+			return a == b
+		}
+		// Compare ignoring Modno which changes on every config write.
+		ac := proto.Clone(a).(*v1.Config)
+		bc := proto.Clone(b).(*v1.Config)
+		ac.Modno = 0
+		bc.Modno = 0
+		return proto.Equal(ac, bc)
+	}
+
+	restartSyncIfChanged := func() {
+		config, err := m.configMgr.Get()
+		if err != nil {
+			zap.S().Errorf("syncmanager failed to refresh config with latest changes so sync is stopped: %v", err)
+			return
+		}
+		if syncConfigEqual(config, lastConfig) {
+			zap.L().Debug("syncmanager config changed but sync-relevant config is unchanged, skipping restart")
+			return
+		}
+		lastConfig = proto.Clone(config).(*v1.Config)
+		startSync(config)
+	}
+
+	restartSyncIfChanged()
+
+	// Clock jump detection: if the ticker fires much later than expected
+	// (e.g. after system sleep), force a reconnect to recover dead streams.
+	clockJumpInterval := 1 * time.Minute
+	clockJumpGrace := 30 * time.Second
+	clockJumpTicker := time.NewTicker(clockJumpInterval)
+	defer clockJumpTicker.Stop()
+	lastTickTime := time.Now()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-configWatchCh:
-			runSyncWithNewConfig()
+			restartSyncIfChanged()
+		case <-clockJumpTicker.C:
+			delta := time.Since(lastTickTime) - clockJumpInterval
+			lastTickTime = time.Now()
+			if delta < 0 {
+				delta = -delta
+			}
+			if delta > clockJumpGrace {
+				zap.S().Warnf("syncmanager detected clock jump of %v, forcing reconnection", delta)
+				config, err := m.configMgr.Get()
+				if err != nil {
+					zap.S().Errorf("syncmanager failed to get config after clock jump: %v", err)
+					continue
+				}
+				startSync(config)
+			}
 		}
 	}
 }
@@ -201,13 +280,18 @@ func (m *SyncManager) runSyncWithPeerInternal(ctx context.Context, config *v1.Co
 		return fmt.Errorf("creating sync client: %w", err)
 	}
 	m.mu.Lock()
-	m.syncClients[knownHostPeer.InstanceId] = newClient
+	m.syncClients[knownHostPeer.Keyid] = newClient
 	m.mu.Unlock()
 
 	go func() {
 		newClient.RunSync(ctx)
 		m.mu.Lock()
-		delete(m.syncClients, knownHostPeer.InstanceId)
+		// Only remove the entry if it still points at us. On reconfiguration the new
+		// client may have already inserted itself under the same key; deleting blindly
+		// would wipe the replacement.
+		if m.syncClients[knownHostPeer.Keyid] == newClient {
+			delete(m.syncClients, knownHostPeer.Keyid)
+		}
 		m.mu.Unlock()
 	}()
 
