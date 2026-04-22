@@ -234,7 +234,7 @@ func (c *syncSessionHandlerClient) canForwardMeta(meta oplog.OpMetadata) bool {
 	return false
 }
 
-func (c *syncSessionHandlerClient) sendManifest(stream *bidiSyncCommandStream) error {
+func (c *syncSessionHandlerClient) sendManifest(stream *bidiSyncCommandStream) (int, error) {
 	var opIDs, modnos []int64
 	if err := c.oplog.QueryMetadata(oplog.Query{}, func(meta oplog.OpMetadata) error {
 		if c.canForwardMeta(meta) {
@@ -243,9 +243,8 @@ func (c *syncSessionHandlerClient) sendManifest(stream *bidiSyncCommandStream) e
 		}
 		return nil
 	}); err != nil {
-		return fmt.Errorf("querying operation metadata for manifest: %w", err)
+		return 0, fmt.Errorf("querying operation metadata for manifest: %w", err)
 	}
-	c.l.Sugar().Debugf("sending operation manifest with %d operations", len(opIDs))
 	stream.Send(&v1sync.SyncStreamItem{
 		Action: &v1sync.SyncStreamItem_OperationManifest{
 			OperationManifest: &v1sync.SyncStreamItem_SyncActionOperationManifest{
@@ -254,7 +253,7 @@ func (c *syncSessionHandlerClient) sendManifest(stream *bidiSyncCommandStream) e
 			},
 		},
 	})
-	return nil
+	return len(opIDs), nil
 }
 
 func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error {
@@ -308,12 +307,14 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 	go sendHeartbeats(ctx, stream, env.MultihostHeartbeatInterval())
 
 	// Forward a view of our config (if the peer is allowed to see it).
-	if err := c.sendConfig(ctx, stream); err != nil {
+	repoCount, planCount, err := c.sendConfig(ctx, stream)
+	if err != nil {
 		return fmt.Errorf("send config to peer %q: %w", peer.InstanceId, err)
 	}
 
 	// Forward a list of the resources we're making available to the peer
-	if err := c.sendResourceList(ctx, stream); err != nil {
+	resRepoCount, resPlanCount, err := c.sendResourceList(ctx, stream)
+	if err != nil {
 		return fmt.Errorf("send resource list to peer %q: %w", peer.InstanceId, err)
 	}
 
@@ -374,15 +375,20 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 	}()
 
 	// Send initial operation manifest to the server for reconciliation.
-	if err := c.sendManifest(stream); err != nil {
+	opCount, err := c.sendManifest(stream)
+	if err != nil {
 		return fmt.Errorf("send manifest to peer %q: %w", peer.InstanceId, err)
 	}
+
+	c.l.Sugar().Infof("sent initial state to server: %d operations, %d repos, %d plans (config); %d repos, %d plans (resources)",
+		opCount, repoCount, planCount, resRepoCount, resPlanCount)
 
 	return nil
 }
 
 func (c *syncSessionHandlerClient) HandleRequestResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestResources) error {
-	return c.sendResourceList(ctx, stream)
+	_, _, err := c.sendResourceList(ctx, stream)
+	return err
 }
 
 func (c *syncSessionHandlerClient) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error {
@@ -397,7 +403,12 @@ func (c *syncSessionHandlerClient) HandleHeartbeat(ctx context.Context, stream *
 
 func (c *syncSessionHandlerClient) HandleOperationManifest(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionOperationManifest) error {
 	// Server re-requested a manifest (e.g. after reconnect). Respond with a fresh one.
-	return c.sendManifest(stream)
+	opCount, err := c.sendManifest(stream)
+	if err != nil {
+		return err
+	}
+	c.l.Sugar().Debugf("re-sent operation manifest with %d operations", opCount)
+	return nil
 }
 
 func (c *syncSessionHandlerClient) HandleRequestOperationData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperationData) error {
@@ -438,9 +449,7 @@ func (c *syncSessionHandlerClient) HandleReceiveOperations(ctx context.Context, 
 }
 
 func (c *syncSessionHandlerClient) HandleReceiveResources(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveResources) error {
-	c.l.Debug("received resource list from server",
-		zap.Any("repos", item.GetRepos()),
-		zap.Any("plans", item.GetPlans()))
+	c.l.Sugar().Debugf("received resource list from server: %d repos, %d plans", len(item.GetRepos()), len(item.GetPlans()))
 	peerState := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
 	if peerState == nil {
 		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", c.peer.Keyid))
@@ -459,7 +468,8 @@ func (c *syncSessionHandlerClient) HandleReceiveResources(ctx context.Context, s
 
 // Note unused: there isn't a situation where the host would send its config for information, the host will only call 'SetConfig' to update the config.
 func (c *syncSessionHandlerClient) HandleReceiveConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveConfig) error {
-	c.l.Sugar().Debugf("received remote config update")
+	c.l.Sugar().Debugf("received remote config: %d repos, %d plans, modno=%d",
+		len(item.GetConfig().GetRepos()), len(item.GetConfig().GetPlans()), item.GetConfig().GetModno())
 	peerState := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
 	if peerState == nil {
 		return NewSyncErrorInternal(fmt.Errorf("peer state for %q not found", c.peer.Keyid))
@@ -474,13 +484,11 @@ func (c *syncSessionHandlerClient) HandleReceiveConfig(ctx context.Context, stre
 }
 
 func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSetConfig) error {
-	c.l.Sugar().Debugf("received SetConfig request from peer %q", c.peer.GetInstanceId())
-
 	return c.mgr.configMgr.Transform(func(cfg *v1.Config) (*v1.Config, error) {
 		snapshot := proto.Clone(cfg).(*v1.Config) // snapshot for change detection
 
+		var plansNew, plansUpdated, plansUnchanged int
 		for _, plan := range item.GetPlans() {
-			c.l.Sugar().Debugf("received plan update: %s", plan.Id)
 			if !c.permissions.CheckPermissionForPlan(plan.Id, permissions.PermsCanWriteConfiguration...) {
 				return nil, NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to update plan %q", c.peer.InstanceId, plan.Id))
 			}
@@ -489,14 +497,23 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 				return p.Id == plan.Id
 			})
 			if idx >= 0 {
+				if proto.Equal(cfg.Plans[idx], plan) {
+					c.l.Sugar().Debugf("received plan %s (unchanged)", plan.Id)
+					plansUnchanged++
+				} else {
+					c.l.Sugar().Debugf("received plan %s (updated)", plan.Id)
+					plansUpdated++
+				}
 				cfg.Plans[idx] = plan
 			} else {
+				c.l.Sugar().Debugf("received plan %s (new)", plan.Id)
+				plansNew++
 				cfg.Plans = append(cfg.Plans, plan)
 			}
 		}
 
+		var reposNew, reposUpdated, reposUnchanged, reposSkipped int
 		for _, repo := range item.GetRepos() {
-			c.l.Sugar().Debugf("received repo update: %s", repo.Guid)
 			isFromOriginPeer := repo.GetOriginInstanceId() != "" && repo.GetOriginInstanceId() == c.peer.InstanceId
 			if !isFromOriginPeer && !c.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanWriteConfiguration...) {
 				return nil, NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to update repo %q", c.peer.InstanceId, repo.Id))
@@ -506,6 +523,13 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 				return r.Guid == repo.Guid
 			})
 			if idx >= 0 {
+				if proto.Equal(cfg.Repos[idx], repo) {
+					c.l.Sugar().Debugf("received repo %s (unchanged)", repo.Id)
+					reposUnchanged++
+				} else {
+					c.l.Sugar().Debugf("received repo %s (updated)", repo.Id)
+					reposUpdated++
+				}
 				cfg.Repos[idx] = repo
 			} else {
 				conflictIdx := slices.IndexFunc(cfg.Repos, func(r *v1.Repo) bool {
@@ -513,14 +537,17 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 				})
 				if conflictIdx >= 0 {
 					c.l.Sugar().Warnf("received shared repo %q (guid %s) conflicts with existing local repo %q (guid %s), skipping", repo.Id, repo.Guid, cfg.Repos[conflictIdx].Id, cfg.Repos[conflictIdx].Guid)
+					reposSkipped++
 					continue
 				}
+				c.l.Sugar().Debugf("received repo %s (new)", repo.Id)
+				reposNew++
 				cfg.Repos = append(cfg.Repos, repo)
 			}
 		}
 
+		var plansDeleted int
 		for _, plan := range item.GetPlansToDelete() {
-			c.l.Sugar().Debugf("received plan deletion request: %s", plan)
 			if !c.permissions.CheckPermissionForPlan(plan, permissions.PermsCanWriteConfiguration...) {
 				return nil, NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to delete plan %q", c.peer.InstanceId, plan))
 			}
@@ -529,14 +556,16 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 				return p.Id == plan
 			})
 			if idx >= 0 {
+				c.l.Sugar().Debugf("received plan deletion: %s", plan)
+				plansDeleted++
 				cfg.Plans = append(cfg.Plans[:idx], cfg.Plans[idx+1:]...)
 			} else {
 				c.l.Sugar().Warnf("received plan deletion request for non-existent plan %q, ignoring", plan)
 			}
 		}
 
+		var reposDeleted int
 		for _, repoID := range item.GetReposToDelete() {
-			c.l.Sugar().Debugf("received repo deletion request: %s", repoID)
 			if !c.permissions.CheckPermissionForRepo(repoID, permissions.PermsCanWriteConfiguration...) {
 				return nil, NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to delete repo %q", c.peer.InstanceId, repoID))
 			}
@@ -545,6 +574,8 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 				return r.Id == repoID
 			})
 			if idx >= 0 {
+				c.l.Sugar().Debugf("received repo deletion: %s", repoID)
+				reposDeleted++
 				cfg.Repos = append(cfg.Repos[:idx], cfg.Repos[idx+1:]...)
 			} else {
 				c.l.Sugar().Warnf("received repo deletion request for non-existent repo %q, ignoring", repoID)
@@ -552,17 +583,25 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 		}
 
 		// Skip the update if nothing actually changed to avoid triggering a reconnect loop.
-		if proto.Equal(cfg, snapshot) {
-			c.l.Sugar().Debugf("SetConfig resulted in no changes, skipping update")
-			return nil, nil
+		hasChanges := !proto.Equal(cfg, snapshot)
+		if hasChanges {
+			cfg.Modno++
 		}
 
-		cfg.Modno++
+		c.l.Sugar().Debugf("SetConfig from peer %q: repos(%d new, %d updated, %d unchanged, %d skipped, %d deleted) plans(%d new, %d updated, %d unchanged, %d deleted) — config %s",
+			c.peer.GetInstanceId(),
+			reposNew, reposUpdated, reposUnchanged, reposSkipped, reposDeleted,
+			plansNew, plansUpdated, plansUnchanged, plansDeleted,
+			map[bool]string{true: "updated", false: "unchanged"}[hasChanges])
+
+		if !hasChanges {
+			return nil, nil
+		}
 		return cfg, nil
 	})
 }
 
-func (c *syncSessionHandlerClient) sendConfig(ctx context.Context, stream *bidiSyncCommandStream) error {
+func (c *syncSessionHandlerClient) sendConfig(ctx context.Context, stream *bidiSyncCommandStream) (int, int, error) {
 	localConfig := c.syncConfigSnapshot.config
 	remoteConfig := &v1sync.RemoteConfig{
 		Version: localConfig.Version,
@@ -589,10 +628,10 @@ func (c *syncSessionHandlerClient) sendConfig(ctx context.Context, stream *bidiS
 		},
 	})
 
-	return nil
+	return len(remoteConfig.Repos), len(remoteConfig.Plans), nil
 }
 
-func (c *syncSessionHandlerClient) sendResourceList(ctx context.Context, stream *bidiSyncCommandStream) error {
+func (c *syncSessionHandlerClient) sendResourceList(ctx context.Context, stream *bidiSyncCommandStream) (int, int, error) {
 	repoMetadatas := []*v1sync.RepoMetadata{}
 	planMetadatas := []*v1sync.PlanMetadata{}
 
@@ -622,5 +661,5 @@ func (c *syncSessionHandlerClient) sendResourceList(ctx context.Context, stream 
 		},
 	})
 
-	return nil
+	return len(repoMetadatas), len(planMetadatas), nil
 }
