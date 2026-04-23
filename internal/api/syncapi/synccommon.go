@@ -124,22 +124,6 @@ func runSync(
 			if err := handler.HandleReceiveLogData(ctx, commandStream, item.GetReceiveLogData()); err != nil {
 				return fmt.Errorf("handling receive log data: %w", err)
 			}
-		case *v1sync.SyncStreamItem_AcquireLock:
-			if err := handler.HandleAcquireLock(ctx, commandStream, item.GetAcquireLock()); err != nil {
-				return fmt.Errorf("handling acquire lock: %w", err)
-			}
-		case *v1sync.SyncStreamItem_AcquireLockResponse:
-			if err := handler.HandleAcquireLockResponse(ctx, commandStream, item.GetAcquireLockResponse()); err != nil {
-				return fmt.Errorf("handling acquire lock response: %w", err)
-			}
-		case *v1sync.SyncStreamItem_ReleaseLock:
-			if err := handler.HandleReleaseLock(ctx, commandStream, item.GetReleaseLock()); err != nil {
-				return fmt.Errorf("handling release lock: %w", err)
-			}
-		case *v1sync.SyncStreamItem_RefreshLock:
-			if err := handler.HandleRefreshLock(ctx, commandStream, item.GetRefreshLock()); err != nil {
-				return fmt.Errorf("handling refresh lock: %w", err)
-			}
 		case *v1sync.SyncStreamItem_Throttle:
 			if err := handler.HandleThrottle(ctx, commandStream, item.GetThrottle()); err != nil {
 				return fmt.Errorf("handling throttle: %w", err)
@@ -259,10 +243,6 @@ type syncSessionHandler interface {
 	HandleRequestLog(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestLog) error
 	HandleReceiveLogData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveLogData) error
 	HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionThrottle) error
-	HandleAcquireLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionAcquireLock) error
-	HandleAcquireLockResponse(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionAcquireLockResponse) error
-	HandleReleaseLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReleaseLock) error
-	HandleRefreshLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRefreshLock) error
 }
 
 type unimplementedSyncSessionHandler struct{}
@@ -317,22 +297,6 @@ func (h *unimplementedSyncSessionHandler) HandleReceiveLogData(ctx context.Conte
 
 func (h *unimplementedSyncSessionHandler) HandleThrottle(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionThrottle) error {
 	return NewSyncErrorProtocol(fmt.Errorf("HandleThrottle not implemented"))
-}
-
-func (h *unimplementedSyncSessionHandler) HandleAcquireLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionAcquireLock) error {
-	return nil // default: ignore lock requests
-}
-
-func (h *unimplementedSyncSessionHandler) HandleAcquireLockResponse(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionAcquireLockResponse) error {
-	return nil // default: ignore lock responses
-}
-
-func (h *unimplementedSyncSessionHandler) HandleReleaseLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReleaseLock) error {
-	return nil // default: ignore lock releases
-}
-
-func (h *unimplementedSyncSessionHandler) HandleRefreshLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRefreshLock) error {
-	return nil // default: ignore lock refreshes
 }
 
 type remoteOpIdCacheKey struct {

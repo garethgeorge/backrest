@@ -652,22 +652,7 @@ func (o *Orchestrator) cleanupTaskContext(ctx context.Context, op *v1.Operation,
 func (o *Orchestrator) executeTask(ctx context.Context, st tasks.ScheduledTask) error {
 	start := time.Now()
 	runner := newTaskRunnerImpl(o, st.Task, st.Op)
-
-	// Execute ANY_START hooks (best-effort, errors are logged but don't block)
-	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{v1.Hook_CONDITION_ANY_START}, tasks.HookVars{}); err != nil {
-		runner.Logger(ctx).Warn("ANY_START hook error (best-effort, continuing)", zap.Error(err))
-	}
-
 	err := st.Task.Run(ctx, st, runner)
-
-	// Execute ANY_END hooks (best-effort)
-	endVars := tasks.HookVars{}
-	if err != nil {
-		endVars.Error = err.Error()
-	}
-	if endErr := runner.ExecuteHooks(ctx, []v1.Hook_Condition{v1.Hook_CONDITION_ANY_END}, endVars); endErr != nil {
-		runner.Logger(ctx).Warn("ANY_END hook error (best-effort, continuing)", zap.Error(endErr))
-	}
 
 	// Record metrics based on task result
 	if err != nil {

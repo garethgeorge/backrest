@@ -134,11 +134,6 @@ message SyncStreamItem {
     SyncActionRequestLog request_log = 30;
     SyncActionReceiveLogData receive_log_data = 31;
 
-    SyncActionAcquireLock acquire_lock = 40;
-    SyncActionAcquireLockResponse acquire_lock_response = 41;
-    SyncActionReleaseLock release_lock = 42;
-    SyncActionRefreshLock refresh_lock = 43;
-
     SyncActionThrottle throttle = 1000;
   }
 
@@ -221,26 +216,5 @@ message SyncStreamItem {
     // a one-time-use ECDSA public key with a matching unshared private key. Used to perform a key exchange.
     // See https://pkg.go.dev/crypto/ecdh#PrivateKey.ECDH .
     string ecdsa_pub = 2 [json_name="ecdsaPub"]; // base64 encoded public key
-  }
-
-  // Lock protocol messages for coordinating repo access between peers.
-  message SyncActionAcquireLock {
-    string lock_key = 1;   // the lock key, typically a repo ID.
-    string holder_id = 2;  // the instance ID of the lock requester.
-  }
-
-  message SyncActionAcquireLockResponse {
-    bool acquired = 1;     // whether the lock was acquired.
-    string lock_key = 2;   // the lock key that was requested.
-  }
-
-  message SyncActionReleaseLock {
-    string lock_key = 1;   // the lock key to release.
-    string holder_id = 2;  // the instance ID of the lock holder.
-  }
-
-  message SyncActionRefreshLock {
-    string lock_key = 1;   // the lock key to refresh.
-    string holder_id = 2;  // the instance ID of the lock holder.
   }
 }

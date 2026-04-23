@@ -9,7 +9,6 @@ var startConditionsMap = map[v1.Hook_Condition]bool{
 	v1.Hook_CONDITION_PRUNE_START:    true,
 	v1.Hook_CONDITION_SNAPSHOT_START: true,
 	v1.Hook_CONDITION_FORGET_START:   true,
-	v1.Hook_CONDITION_ANY_START:      true,
 }
 
 var errorConditionsMap = map[v1.Hook_Condition]bool{

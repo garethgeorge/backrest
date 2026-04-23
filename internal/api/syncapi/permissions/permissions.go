@@ -129,14 +129,16 @@ func NewPermissionSet(perms []*v1.Multihost_Permission) (*PermissionSet, error) 
 	return permSet, nil
 }
 
-// HasPermissionType checks if a permission type is granted, regardless of scopes.
+// HasPermissionType checks if any of the given permission types are granted, regardless of scopes.
 // Use this for scope-less permissions like PERMISSION_RECEIVE_SHARED_REPOS.
-func (p *PermissionSet) HasPermissionType(permType v1.Multihost_Permission_Type) bool {
-	if _, ok := p.scopelessPerms[permType]; ok {
-		return true
-	}
-	if _, ok := p.perms[permType]; ok {
-		return true
+func (p *PermissionSet) HasPermissionType(permTypes ...v1.Multihost_Permission_Type) bool {
+	for _, permType := range permTypes {
+		if _, ok := p.scopelessPerms[permType]; ok {
+			return true
+		}
+		if _, ok := p.perms[permType]; ok {
+			return true
+		}
 	}
 	return false
 }

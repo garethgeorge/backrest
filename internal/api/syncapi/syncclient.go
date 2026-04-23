@@ -35,11 +35,6 @@ type SyncClient struct {
 	l                  *zap.Logger
 
 	reconnectAttempts int
-
-	// Lock protocol support
-	streamMu       sync.Mutex
-	activeStream   *bidiSyncCommandStream // set while connected, nil otherwise
-	lockResponseCh chan *v1sync.SyncStreamItem_SyncActionAcquireLockResponse
 }
 
 func newInsecureClient() *http.Client {
@@ -78,7 +73,6 @@ func NewSyncClient(
 		client:             client,
 		oplog:              oplog,
 		l:                  zap.L().Named(fmt.Sprintf("syncclient for %q", peer.GetInstanceId())),
-		lockResponseCh:     make(chan *v1sync.SyncStreamItem_SyncActionAcquireLockResponse, 1),
 	}
 	c.mgr.peerStateManager.SetPeerState(peer.Keyid, newPeerState(peer.InstanceId, peer.Keyid))
 	return c, nil
@@ -98,14 +92,9 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 			c.syncConfigSnapshot,
 			c.oplog,
 			c.peer,
-			c,
 		)
 
 		cmdStream := newBidiSyncCommandStream()
-
-		c.streamMu.Lock()
-		c.activeStream = cmdStream
-		c.streamMu.Unlock()
 
 		c.l.Sugar().Infof("connecting to peer %q (%s) at %s", c.peer.InstanceId, c.peer.Keyid, c.peer.GetInstanceUrl())
 
@@ -127,9 +116,6 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 		}()
 
 		connectErr := cmdStream.ConnectStream(ctx, c.client.Sync(ctx))
-		c.streamMu.Lock()
-		c.activeStream = nil
-		c.streamMu.Unlock()
 		if connectErr != nil {
 			c.l.Sugar().Infof("lost stream connection to peer %q (%s): %v", c.peer.InstanceId, c.peer.Keyid, connectErr)
 			var syncErr *SyncError
@@ -175,83 +161,6 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 	}
 }
 
-// AcquireLock sends a lock acquire request and waits for the response.
-// Returns true if the lock was acquired, false otherwise.
-// Returns an error if the client is not connected or the context expires.
-func (c *SyncClient) AcquireLock(ctx context.Context, lockKey string) (bool, error) {
-	c.streamMu.Lock()
-	stream := c.activeStream
-	c.streamMu.Unlock()
-
-	if stream == nil {
-		return false, fmt.Errorf("not connected to peer %q", c.peer.GetInstanceId())
-	}
-
-	// Drain any stale responses
-	select {
-	case <-c.lockResponseCh:
-	default:
-	}
-
-	stream.Send(&v1sync.SyncStreamItem{
-		Action: &v1sync.SyncStreamItem_AcquireLock{
-			AcquireLock: &v1sync.SyncStreamItem_SyncActionAcquireLock{
-				LockKey:  lockKey,
-				HolderId: c.localInstanceID,
-			},
-		},
-	})
-
-	select {
-	case resp := <-c.lockResponseCh:
-		return resp.GetAcquired(), nil
-	case <-ctx.Done():
-		return false, ctx.Err()
-	case <-time.After(10 * time.Second):
-		return false, fmt.Errorf("timeout waiting for lock response from peer %q", c.peer.GetInstanceId())
-	}
-}
-
-// ReleaseLock sends a lock release request to the peer.
-func (c *SyncClient) ReleaseLock(lockKey string) {
-	c.streamMu.Lock()
-	stream := c.activeStream
-	c.streamMu.Unlock()
-
-	if stream == nil {
-		return
-	}
-
-	stream.Send(&v1sync.SyncStreamItem{
-		Action: &v1sync.SyncStreamItem_ReleaseLock{
-			ReleaseLock: &v1sync.SyncStreamItem_SyncActionReleaseLock{
-				LockKey:  lockKey,
-				HolderId: c.localInstanceID,
-			},
-		},
-	})
-}
-
-// RefreshLock sends a lock refresh request to the peer.
-func (c *SyncClient) RefreshLock(lockKey string) {
-	c.streamMu.Lock()
-	stream := c.activeStream
-	c.streamMu.Unlock()
-
-	if stream == nil {
-		return
-	}
-
-	stream.Send(&v1sync.SyncStreamItem{
-		Action: &v1sync.SyncStreamItem_RefreshLock{
-			RefreshLock: &v1sync.SyncStreamItem_SyncActionRefreshLock{
-				LockKey:  lockKey,
-				HolderId: c.localInstanceID,
-			},
-		},
-	})
-}
-
 // syncSessionHandlerClient is a syncSessionHandler implementation for clients.
 type syncSessionHandlerClient struct {
 	unimplementedSyncSessionHandler
@@ -268,8 +177,6 @@ type syncSessionHandlerClient struct {
 	canForwardReposSet map[string]struct{}
 	canForwardPlansSet map[string]struct{}
 
-	syncClient *SyncClient // back-reference for forwarding lock responses
-
 	oplogSubscription *oplog.Subscription // set while subscribed; unsubscribed in OnConnectionDisconnected.
 }
 
@@ -279,7 +186,6 @@ func newSyncHandlerClient(
 	snapshot syncConfigSnapshot,
 	oplog *oplog.OpLog,
 	peer *v1.Multihost_Peer, // The peer this handler is associated with, must be set before calling OnConnectionEstablished.
-	syncClient *SyncClient,
 ) *syncSessionHandlerClient {
 	return &syncSessionHandlerClient{
 		l:                  l,
@@ -291,8 +197,6 @@ func newSyncHandlerClient(
 
 		canForwardReposSet: make(map[string]struct{}),
 		canForwardPlansSet: make(map[string]struct{}),
-
-		syncClient: syncClient,
 	}
 }
 
@@ -625,14 +529,19 @@ func (c *syncSessionHandlerClient) HandleSetConfig(ctx context.Context, stream *
 
 		var reposNew, reposUpdated, reposUnchanged, reposSkipped int
 		for _, repo := range item.GetRepos() {
-			isFromOriginPeer := repo.GetOriginInstanceId() != "" && repo.GetOriginInstanceId() == c.peer.InstanceId
-			if !isFromOriginPeer && !c.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanWriteConfiguration...) {
-				return nil, NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to update repo %q", c.peer.InstanceId, repo.Id))
-			}
-
 			idx := slices.IndexFunc(cfg.Repos, func(r *v1.Repo) bool {
 				return r.Guid == repo.Guid
 			})
+
+			// Permission check: accept if we have RECEIVE_SHARED_REPOS and the repo
+			// is either new or already owned by this peer; otherwise require scoped write perms.
+			isNewOrOwnedByPeer := idx < 0 || cfg.Repos[idx].GetOriginInstanceId() == c.peer.InstanceId
+			allowed := (isNewOrOwnedByPeer && c.permissions.HasPermissionType(permissions.PermsCanReceiveSharedRepos...)) ||
+				c.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanWriteConfiguration...)
+			if !allowed {
+				return nil, NewSyncErrorAuth(fmt.Errorf("peer %q is not allowed to update repo %q", c.peer.InstanceId, repo.Id))
+			}
+
 			if idx >= 0 {
 				if proto.Equal(cfg.Repos[idx], repo) {
 					c.l.Sugar().Debugf("received repo %s (unchanged)", repo.Id)
@@ -773,15 +682,4 @@ func (c *syncSessionHandlerClient) sendResourceList(ctx context.Context, stream 
 	})
 
 	return len(repoMetadatas), len(planMetadatas), nil
-}
-
-func (c *syncSessionHandlerClient) HandleAcquireLockResponse(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionAcquireLockResponse) error {
-	if c.syncClient != nil {
-		select {
-		case c.syncClient.lockResponseCh <- item:
-		default:
-			c.l.Warn("lock response channel full, dropping response", zap.String("key", item.GetLockKey()))
-		}
-	}
-	return nil
 }

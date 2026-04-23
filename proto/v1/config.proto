@@ -202,10 +202,6 @@ message Hook {
     CONDITION_FORGET_START = 300; // forget started.
     CONDITION_FORGET_ERROR = 301; // forget failed.
     CONDITION_FORGET_SUCCESS = 302; // forget succeeded.
-
-    // any operation conditions
-    CONDITION_ANY_START = 400; // before any operation starts.
-    CONDITION_ANY_END = 401; // after any operation ends (success or fail).
   }
 
   enum OnError {
@@ -229,7 +225,6 @@ message Hook {
     Shoutrrr action_shoutrrr = 105 [json_name="actionShoutrrr"];
     Healthchecks action_healthchecks = 106 [json_name="actionHealthchecks"];
     Telegram action_telegram = 107 [json_name="actionTelegram"];
-    SyncLock action_sync_lock = 109 [json_name="actionSyncLock"];
   }
 
   message Command {
@@ -279,11 +274,6 @@ message Hook {
     string bot_token = 1 [json_name="botToken"];
     string chat_id = 2 [json_name="chatId"];
     string template = 3 [json_name="template"]; // template for the message text.
-  }
-
-  message SyncLock {
-    string target_instance_id = 1 [json_name="targetInstanceId"]; // the instance ID of the peer to acquire the lock on.
-    string lock_key = 2 [json_name="lockKey"]; // the lock key, typically the repo ID.
   }
 }
 
