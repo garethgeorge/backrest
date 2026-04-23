@@ -32,6 +32,7 @@ import { useConfig } from "../../app/provider";
 import {
   ScheduleFormItem,
   ScheduleDefaultsInfrequent,
+  ScheduleDefaultsDaily,
 } from "../../components/common/ScheduleFormItem";
 import { isWindows } from "../../state/buildcfg";
 import { create, fromJson, toJson } from "@bufbuild/protobuf";
@@ -69,6 +70,7 @@ import {
 } from "../../components/common/TwoPaneModal";
 import { SectionCard } from "../../components/common/SectionCard";
 import { ToggleField } from "../../components/common/ToggleField";
+import { RetentionPolicyView } from "../../components/common/RetentionPolicyView";
 import {
   AccordionRoot,
   AccordionItem,
@@ -953,6 +955,33 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
                   }
                   defaults={ScheduleDefaultsInfrequent}
                 />
+              </Stack>
+            </SectionCard>
+
+            <SectionCard
+              icon={<FiClock size={16} />}
+              title={m.add_repo_modal_field_forget_policy()}
+              description={m.add_repo_modal_field_forget_policy_help()}
+            >
+              <Stack gap={4}>
+                <ScheduleFormItem
+                  value={getField(["forgetPolicy", "schedule"])}
+                  onChange={(val: any) =>
+                    updateField(["forgetPolicy", "schedule"], val)
+                  }
+                  defaults={ScheduleDefaultsDaily}
+                />
+                {(() => {
+                  const sched = getField(["forgetPolicy", "schedule"]);
+                  return sched && !sched.disabled ? (
+                    <RetentionPolicyView
+                      retention={getField(["forgetPolicy", "retention"])}
+                      onChange={(v: any) =>
+                        updateField(["forgetPolicy", "retention"], v)
+                      }
+                    />
+                  ) : null;
+                })()}
               </Stack>
             </SectionCard>
           </TwoPaneSection>

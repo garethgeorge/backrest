@@ -305,6 +305,12 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 		if err := o.ScheduleTask(t, tasks.TaskPriorityCheck); err != nil {
 			return fmt.Errorf("schedule check task for repo %q: %w", repo.GetId(), err)
 		}
+
+		// Schedule a scheduled forget task for the repo
+		t = tasks.NewScheduledForgetTask(repo, tasks.PlanForSystemTasks, false)
+		if err := o.ScheduleTask(t, tasks.TaskPriorityForget); err != nil {
+			return fmt.Errorf("schedule scheduled forget task for repo %q: %w", repo.GetId(), err)
+		}
 	}
 
 	return nil

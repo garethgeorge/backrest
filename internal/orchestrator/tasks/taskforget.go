@@ -71,7 +71,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 	}
 
 	tags := []string{repo.TagForPlan(t.PlanID())}
-	if compat, err := useLegacyCompatMode(l, taskRunner, t.Repo().GetGuid(), t.PlanID()); err != nil {
+	if compat, err := UseLegacyCompatMode(l, taskRunner, t.Repo().GetGuid(), t.PlanID()); err != nil {
 		return notifyError(fmt.Errorf("check legacy compat mode: %w", err))
 	} else if !compat {
 		tags = append(tags, repo.TagForInstance(taskRunner.Config().Instance))
@@ -129,7 +129,7 @@ func forgetHelper(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) 
 
 // useLegacyCompatMode checks if there are any snapshots that were created without a `created-by` tag still exist in the repo.
 // The property is overridden if mixed `created-by` tag values are found.
-func useLegacyCompatMode(l *zap.Logger, taskRunner TaskRunner, repoGUID, planID string) (bool, error) {
+func UseLegacyCompatMode(l *zap.Logger, taskRunner TaskRunner, repoGUID, planID string) (bool, error) {
 	instanceIDs := make(map[string]struct{})
 	if err := taskRunner.QueryOperations(oplog.Query{}.SetRepoGUID(repoGUID).SetPlanID(planID).SetReversed(true), func(op *v1.Operation) error {
 		if snapshotOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok && !snapshotOp.OperationIndexSnapshot.GetForgot() {

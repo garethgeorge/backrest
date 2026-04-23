@@ -247,6 +247,42 @@ func (r *RepoOrchestrator) Forget(ctx context.Context, plan *v1.Plan, tags []str
 	return forgotten, nil
 }
 
+// ForgetAll runs forget with a retention policy applied to all snapshots in the repo,
+// grouped by tag (so each plan+instance combination is treated independently).
+func (r *RepoOrchestrator) ForgetAll(ctx context.Context, policy *v1.RetentionPolicy) ([]*v1.ResticSnapshot, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	ctx, flush := forwardResticLogs(ctx)
+	defer flush()
+
+	if policy == nil {
+		return nil, fmt.Errorf("repo %q has no retention policy for scheduled forget", r.repoConfig.Id)
+	}
+
+	results, err := r.repo.ForgetAll(
+		ctx, protoutil.RetentionPolicyFromProto(policy),
+		restic.WithFlags("--group-by", "tag"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("scheduled forget for repo %v: %w", r.repoConfig.Id, err)
+	}
+
+	var forgotten []*v1.ResticSnapshot
+	for _, result := range results {
+		for _, snapshot := range result.Remove {
+			snapshotProto := protoutil.SnapshotToProto(&snapshot)
+			if err := protoutil.ValidateSnapshot(snapshotProto); err != nil {
+				return nil, fmt.Errorf("snapshot validation failed: %w", err)
+			}
+			forgotten = append(forgotten, snapshotProto)
+		}
+	}
+
+	r.logger(ctx).Debug("scheduled forget snapshots", zap.Int("count", len(forgotten)), zap.Any("policy", policy))
+
+	return forgotten, nil
+}
+
 func (r *RepoOrchestrator) ForgetSnapshot(ctx context.Context, snapshotId string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

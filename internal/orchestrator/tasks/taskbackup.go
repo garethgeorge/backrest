@@ -265,9 +265,13 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 	if !skipFollowUpTasks {
 		// schedule followup tasks if a snapshot was added
 		at := time.Now()
-		if _, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyKeepAll); plan.Retention != nil && !ok {
-			if err := runner.ScheduleTask(NewOneoffForgetTask(t.Repo(), t.PlanID(), op.FlowId, at), TaskPriorityForget); err != nil {
-				return fmt.Errorf("failed to schedule forget task: %w", err)
+		// Skip per-plan forget if the repo has a scheduled forget policy
+		repoConfig, _ := runner.GetRepo(t.RepoID())
+		if repoConfig.GetForgetPolicy().GetSchedule() == nil {
+			if _, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyKeepAll); plan.Retention != nil && !ok {
+				if err := runner.ScheduleTask(NewOneoffForgetTask(t.Repo(), t.PlanID(), op.FlowId, at), TaskPriorityForget); err != nil {
+					return fmt.Errorf("failed to schedule forget task: %w", err)
+				}
 			}
 		}
 		if err := runner.ScheduleTask(NewOneoffIndexSnapshotsTask(t.Repo(), at), TaskPriorityIndexSnapshots); err != nil {

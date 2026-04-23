@@ -93,6 +93,7 @@ message Repo {
   CommandPrefix command_prefix = 10 [json_name="commandPrefix"]; // modifiers for the restic commands
   bool shared = 13 [json_name="shared"]; // if true, this repo is pushed to all authorized clients with read-config permission
   string origin_instance_id = 14 [json_name="originInstanceId"]; // set when this repo was pushed from a remote instance; marks it as non-editable
+  ForgetPolicy forget_policy = 15 [json_name="forgetPolicy"]; // optional repo-level forget policy. If set, overrides per-plan retention policies.
 }
 
 message Plan {
@@ -142,6 +143,11 @@ message RetentionPolicy {
     int32 yearly = 5 [json_name="yearly"];  // keep the last n yearly snapshots.
     int32 keep_last_n = 6 [json_name="keepLastN"];  // keep the last n snapshots regardless of age.
   }
+}
+
+message ForgetPolicy {
+  Schedule schedule = 1 [json_name="schedule"];
+  RetentionPolicy retention = 2 [json_name="retention"];
 }
 
 message PrunePolicy {

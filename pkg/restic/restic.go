@@ -371,6 +371,26 @@ func (r *Repo) Forget(ctx context.Context, policy *RetentionPolicy, opts ...Gene
 	return &results[0], nil
 }
 
+// ForgetAll runs forget with a retention policy and returns results from all groups.
+// This is useful when running with --group-by tag which may return multiple groups.
+func (r *Repo) ForgetAll(ctx context.Context, policy *RetentionPolicy, opts ...GenericOption) ([]ForgetResult, error) {
+	args := []string{"forget", "--json"}
+	args = append(args, policy.toForgetFlags()...)
+
+	var results []ForgetResult
+	if err := r.executeWithJSONOutput(ctx, args, &results, opts...); err != nil {
+		return nil, err
+	}
+
+	for _, result := range results {
+		if err := result.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid forget result: %w", err)
+		}
+	}
+
+	return results, nil
+}
+
 func (r *Repo) ForgetSnapshot(ctx context.Context, snapshotId string, opts ...GenericOption) error {
 	args := []string{"forget", "--json", snapshotId}
 	cmd := r.commandWithContext(ctx, args, opts...)
