@@ -185,8 +185,6 @@
   "repo_hooks_command_runs_condition_forget_success": "Triggered when a forget operation completes successfully",
   "repo_hooks_command_runs_condition_forget_error": "Triggered when a forget operation fails",
   "repo_hooks_command_runs_condition_any_error": "Triggered when any operation fails",
-  "repo_hooks_command_runs_condition_any_start": "Triggered before any operation starts",
-  "repo_hooks_command_runs_condition_any_end": "Triggered after any operation ends (success or fail)",
   "repo_hooks_command_runs_condition_unknown": "Triggered when unknown",
   "settings_modal_title": "Settings",
   "app_breadcrumb_repo": "Repo",

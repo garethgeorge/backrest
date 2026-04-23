@@ -42,7 +42,6 @@ export interface HookFields {
   actionShoutrrr?: any;
   actionHealthchecks?: any;
   actionTelegram?: any;
-  actionSyncLock?: any;
 }
 
 export const hooksListTooltipText = (
@@ -84,8 +83,6 @@ const hookConditionDescriptions: Record<string, string> = {
   CONDITION_FORGET_SUCCESS: m.repo_hooks_command_runs_condition_forget_success(),
   CONDITION_FORGET_ERROR: m.repo_hooks_command_runs_condition_forget_error(),
   CONDITION_ANY_ERROR: m.repo_hooks_command_runs_condition_any_error(),
-  CONDITION_ANY_START: m.repo_hooks_command_runs_condition_any_start(),
-  CONDITION_ANY_END: m.repo_hooks_command_runs_condition_any_end(),
   CONDITION_UNKNOWN: m.repo_hooks_command_runs_condition_unknown(),
 };
 
@@ -553,44 +550,6 @@ const hookTypes: {
               onChange={(e) => updateTelegram("template", e.target.value)}
               size="sm"
             />
-          </Stack>
-        );
-      },
-    },
-    {
-      name: "Sync Lock",
-      template: {
-        actionSyncLock: {
-          targetInstanceId: "",
-          lockKey: "",
-        },
-        conditions: ["CONDITION_ANY_START", "CONDITION_ANY_END"],
-      },
-      oneofKey: "actionSyncLock",
-      component: ({ hook, onChange }) => {
-        const updateSyncLock = (field: string, val: string) => {
-          onChange({
-            ...hook,
-            actionSyncLock: { ...hook.actionSyncLock, [field]: val },
-          });
-        };
-        return (
-          <Stack gap={2}>
-            <Input
-              placeholder="Target Instance ID"
-              value={hook.actionSyncLock?.targetInstanceId || ""}
-              onChange={(e) =>
-                updateSyncLock("targetInstanceId", e.target.value)
-              }
-              size="sm"
-            />
-            <Input
-              placeholder="Lock Key (e.g. repo ID)"
-              value={hook.actionSyncLock?.lockKey || ""}
-              onChange={(e) => updateSyncLock("lockKey", e.target.value)}
-              size="sm"
-            />
-            <ItemOnErrorSelector hook={hook} onChange={onChange} />
           </Stack>
         );
       },

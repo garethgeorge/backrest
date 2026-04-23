@@ -14,7 +14,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	hooktypes "github.com/garethgeorge/backrest/internal/hook/types"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -56,8 +55,6 @@ type SyncManager struct {
 	connectedPeers map[string]*connectedPeerHandle
 
 	peerStateManager PeerStateManager
-
-	lockManager *LockManager
 }
 
 func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchestrator *orchestrator.Orchestrator, peerStateManager PeerStateManager) *SyncManager {
@@ -85,7 +82,7 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 	} else {
 		zap.S().Errorf("syncmanager failed to get initial config: %v", err)
 	}
-	mgr := &SyncManager{
+	return &SyncManager{
 		configMgr:    configMgr,
 		orchestrator: orchestrator,
 		oplog:        oplog,
@@ -95,10 +92,7 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 		connectedPeers:       make(map[string]*connectedPeerHandle),
 
 		peerStateManager: peerStateManager,
-		lockManager:      NewLockManager(),
 	}
-	hooktypes.SetSyncLockClientProvider(mgr)
-	return mgr
 }
 
 // GetSyncClients returns a copy of the sync clients map. This makes the map safe to read from concurrently.
@@ -106,30 +100,6 @@ func (m *SyncManager) GetSyncClients() map[string]*SyncClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return maps.Clone(m.syncClients)
-}
-
-// GetSyncClient returns the sync client for the given instance ID, or nil if not found.
-// The map is keyed by Keyid internally (unique and stable), but callers typically only know
-// the user-facing InstanceId, so this scans the small set of active clients.
-func (m *SyncManager) GetSyncClient(instanceID string) *SyncClient {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for _, client := range m.syncClients {
-		if client.peer.GetInstanceId() == instanceID {
-			return client
-		}
-	}
-	return nil
-}
-
-// GetSyncLockClient returns a SyncLockClient for the given instance ID, satisfying the
-// types.SyncLockClientProvider interface for the synclock hook handler.
-func (m *SyncManager) GetSyncLockClient(instanceID string) hooktypes.SyncLockClient {
-	client := m.GetSyncClient(instanceID)
-	if client == nil {
-		return nil
-	}
-	return client
 }
 
 // Note: top level function will be called holding the lock, must kick off goroutines and then return.

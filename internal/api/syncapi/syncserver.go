@@ -233,32 +233,6 @@ func (h *syncSessionHandlerServer) OnConnectionDisconnected() {
 	}
 }
 
-func (h *syncSessionHandlerServer) HandleAcquireLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionAcquireLock) error {
-	acquired := h.mgr.lockManager.Acquire(item.GetLockKey(), item.GetHolderId())
-	h.l.Debug("lock acquire request", zap.String("key", item.GetLockKey()), zap.String("holder", item.GetHolderId()), zap.Bool("acquired", acquired))
-	stream.Send(&v1sync.SyncStreamItem{
-		Action: &v1sync.SyncStreamItem_AcquireLockResponse{
-			AcquireLockResponse: &v1sync.SyncStreamItem_SyncActionAcquireLockResponse{
-				Acquired: acquired,
-				LockKey:  item.GetLockKey(),
-			},
-		},
-	})
-	return nil
-}
-
-func (h *syncSessionHandlerServer) HandleReleaseLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReleaseLock) error {
-	released := h.mgr.lockManager.Release(item.GetLockKey(), item.GetHolderId())
-	h.l.Debug("lock release request", zap.String("key", item.GetLockKey()), zap.String("holder", item.GetHolderId()), zap.Bool("released", released))
-	return nil
-}
-
-func (h *syncSessionHandlerServer) HandleRefreshLock(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRefreshLock) error {
-	refreshed := h.mgr.lockManager.Refresh(item.GetLockKey(), item.GetHolderId())
-	h.l.Debug("lock refresh request", zap.String("key", item.GetLockKey()), zap.String("holder", item.GetHolderId()), zap.Bool("refreshed", refreshed))
-	return nil
-}
-
 func (h *syncSessionHandlerServer) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error {
 	peerState := h.mgr.peerStateManager.GetPeerState(h.peer.Keyid).Clone()
 	if peerState == nil {
@@ -405,39 +379,11 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 // This pushes repo configurations to the client so they are added to the client's local config.
 // Returns the number of shared repos sent.
 func (h *syncSessionHandlerServer) sendSharedReposToClient(stream *bidiSyncCommandStream, config *v1.Config) int {
-	if !h.permissions.HasPermissionType(v1.Multihost_Permission_PERMISSION_RECEIVE_SHARED_REPOS) {
-		return 0
-	}
-
 	var sharedRepos []*v1.Repo
 	for _, repo := range config.Repos {
 		if repo.GetShared() {
 			repoCopy := proto.Clone(repo).(*v1.Repo)
 			repoCopy.OriginInstanceId = config.Instance
-			// Inject lock hooks so the client acquires a lock on this server
-			// before running operations on the shared repo.
-			repoCopy.Hooks = append(repoCopy.Hooks,
-				&v1.Hook{
-					Conditions: []v1.Hook_Condition{v1.Hook_CONDITION_ANY_START},
-					OnError:    v1.Hook_ON_ERROR_IGNORE,
-					Action: &v1.Hook_ActionSyncLock{
-						ActionSyncLock: &v1.Hook_SyncLock{
-							TargetInstanceId: config.Instance,
-							LockKey:          repo.GetId(),
-						},
-					},
-				},
-				&v1.Hook{
-					Conditions: []v1.Hook_Condition{v1.Hook_CONDITION_ANY_END},
-					OnError:    v1.Hook_ON_ERROR_IGNORE,
-					Action: &v1.Hook_ActionSyncLock{
-						ActionSyncLock: &v1.Hook_SyncLock{
-							TargetInstanceId: config.Instance,
-							LockKey:          repo.GetId(),
-						},
-					},
-				},
-			)
 			sharedRepos = append(sharedRepos, repoCopy)
 		}
 	}
