@@ -168,9 +168,13 @@ func (o *Orchestrator) autoInitReposIfNeeded(resticBin string) error {
 	if err != nil {
 		return fmt.Errorf("get config: %w", err)
 	}
-	cfg = proto.Clone(cfg).(*v1.Config)
 
-	initializedRepo := false
+	// Perform network I/O (repo init) outside the config lock, collecting results.
+	type initResult struct {
+		repoID string
+		guid   string
+	}
+	var results []initResult
 	for _, r := range cfg.Repos {
 		if !r.AutoInitialize {
 			continue
@@ -192,14 +196,23 @@ func (o *Orchestrator) autoInitReposIfNeeded(resticBin string) error {
 		if err != nil {
 			return fmt.Errorf("get repo %q guid: %w", r.Id, err)
 		}
-		r.Guid = guid
-		r.AutoInitialize = false
-		initializedRepo = true
+		results = append(results, initResult{repoID: r.Id, guid: guid})
 	}
 
-	if initializedRepo && fullErr == nil {
-		cfg.Modno++
-		if err := o.configMgr.Update(cfg); err != nil {
+	if len(results) > 0 && fullErr == nil {
+		if err := o.configMgr.Transform(func(cfg *v1.Config) (*v1.Config, error) {
+			for _, res := range results {
+				for _, r := range cfg.Repos {
+					if r.Id == res.repoID {
+						r.Guid = res.guid
+						r.AutoInitialize = false
+						break
+					}
+				}
+			}
+			cfg.Modno++
+			return cfg, nil
+		}); err != nil {
 			return fmt.Errorf("update config: %w", err)
 		}
 	}
@@ -275,6 +288,12 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 	}
 
 	for _, repo := range config.Repos {
+		// Skip repos managed by a remote instance; the remote instance's
+		// orchestrator owns prune/check scheduling for those.
+		if repo.GetOriginInstanceId() != "" {
+			continue
+		}
+
 		// Schedule a prune task for the repo
 		t := tasks.NewPruneTask(repo, tasks.PlanForSystemTasks, false)
 		if err := o.ScheduleTask(t, tasks.TaskPriorityPrune); err != nil {

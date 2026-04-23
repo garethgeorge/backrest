@@ -2,82 +2,57 @@ import {
   Flex,
   Stack,
   Input,
-  Textarea,
   createListCollection,
   IconButton,
-  Card,
-  Heading,
   Text,
   Box,
 } from "@chakra-ui/react";
-import { Checkbox } from "../../components/ui/checkbox";
-import React, { useEffect, useState, useMemo } from "react";
+import { useState } from "react";
 import { useShowModal } from "../../components/common/ModalManager";
 import {
   FiPlus as Plus,
   FiMinus as Minus,
   FiCopy as Copy,
+  FiEye,
+  FiEyeOff,
+  FiSettings,
+  FiLock,
+  FiGlobe,
 } from "react-icons/fi";
 import { formatErrorAlert, alerts } from "../../components/common/Alerts";
-import { namePattern } from "../../lib/util";
 import { backrestService, authenticationService } from "../../api/client";
-import { clone, fromJson, toJson } from "@bufbuild/protobuf";
+import { clone, create, fromJson, toJson } from "@bufbuild/protobuf";
 import {
   AuthSchema,
-  Config,
   ConfigSchema,
   UserSchema,
   MultihostSchema,
   Multihost_PeerSchema,
-  Multihost_Permission_Type,
 } from "../../../gen/ts/v1/config_pb";
-import { PeerState } from "../../../gen/ts/v1sync/syncservice_pb";
+import { GeneratePairingTokenRequestSchema } from "../../../gen/ts/v1/service_pb";
 import { useSyncStates } from "../../state/peerStates";
 import { PeerStateConnectionStatusIcon } from "../../components/common/SyncStateIcon";
 import { isMultihostSyncEnabled } from "../../state/buildcfg";
 import * as m from "../../paraglide/messages";
-import { FormModal } from "../../components/common/FormModal";
 import { Button } from "../../components/ui/button";
 import { Field } from "../../components/ui/field";
-import { Tooltip } from "../../components/ui/tooltip";
 import { PasswordInput } from "../../components/ui/password-input";
-import {
-  AccordionRoot,
-  AccordionItem,
-  AccordionItemTrigger,
-  AccordionItemContent,
-} from "../../components/ui/accordion";
 import {
   SelectRoot,
   SelectTrigger,
   SelectContent,
   SelectItem,
   SelectValueText,
-  SelectLabel,
 } from "../../components/ui/select";
 import { useConfig } from "../../app/provider";
-
 import { useUserPreferences } from "../../lib/userPreferences";
-
-interface FormData {
-  auth: {
-    disabled?: boolean;
-    users: {
-      name: string;
-      passwordBcrypt: string;
-      needsBcrypt?: boolean;
-      isExisting?: boolean;
-    }[];
-  };
-  instance: string;
-  multihost: {
-    identity: {
-      keyid: string;
-    };
-    knownHosts: any[];
-    authorizedClients: any[];
-  };
-}
+import {
+  TwoPaneModal,
+  TwoPaneSection,
+  type SectionDef,
+} from "../../components/common/TwoPaneModal";
+import { SectionCard } from "../../components/common/SectionCard";
+import { ToggleField } from "../../components/common/ToggleField";
 
 export const SettingsModal = () => {
   const [config, setConfig] = useConfig();
@@ -85,6 +60,18 @@ export const SettingsModal = () => {
   const peerStates = useSyncStates();
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [reloadOnCancel, setReloadOnCancel] = useState(false);
+
+  // Pairing token generation state
+  const [showGenerateForm, setShowGenerateForm] = useState(false);
+  const [tokenLabel, setTokenLabel] = useState("");
+  const [tokenTtl, setTokenTtl] = useState("3600");
+  const [tokenMaxUses, setTokenMaxUses] = useState(1);
+  const [generatedToken, setGeneratedToken] = useState("");
+  const [generateLoading, setGenerateLoading] = useState(false);
+  const [initialTokenCount] = useState(
+    () => config?.multihost?.pairingTokens?.length || 0,
+  );
+
 
   // Local state initialized from config
   const [formData, setFormData] = useState<any>(() => {
@@ -112,6 +99,60 @@ export const SettingsModal = () => {
       },
     };
   });
+
+  const [initialFormData, setInitialFormData] = useState(() =>
+    JSON.stringify(formData),
+  );
+  const dirty = JSON.stringify(formData) !== initialFormData;
+
+  const ttlOptions = createListCollection({
+    items: [
+      { label: "15 minutes", value: "900" },
+      { label: "1 hour", value: "3600" },
+      { label: "24 hours", value: "86400" },
+      { label: "7 days", value: "604800" },
+      { label: "Forever", value: "0" },
+    ],
+  });
+
+  const refreshConfig = async () => {
+    const freshConfig = await backrestService.getConfig({});
+    setConfig(freshConfig);
+  };
+
+  const handleGenerateToken = async () => {
+    setGenerateLoading(true);
+    try {
+      const resp = await backrestService.generatePairingToken(
+        create(GeneratePairingTokenRequestSchema, {
+          label: tokenLabel,
+          ttlSeconds: BigInt(parseInt(tokenTtl)),
+          maxUses: tokenMaxUses,
+        }),
+      );
+      setGeneratedToken(resp.token);
+      await refreshConfig();
+    } catch (e: any) {
+      alerts.error(formatErrorAlert(e, "Failed to generate pairing token"));
+    } finally {
+      setGenerateLoading(false);
+    }
+  };
+
+  const handleRemovePairingToken = async (index: number) => {
+    if (!config) return;
+    try {
+      const newConfig = clone(ConfigSchema, config);
+      if (newConfig.multihost) {
+        newConfig.multihost.pairingTokens.splice(index, 1);
+      }
+      setConfig(await backrestService.setConfig(newConfig));
+      alerts.success("Pairing token removed.");
+    } catch (e: any) {
+      alerts.error(formatErrorAlert(e, "Failed to remove pairing token"));
+    }
+  };
+
 
   if (!config || !formData) return null;
 
@@ -142,7 +183,6 @@ export const SettingsModal = () => {
     try {
       const workingData = JSON.parse(JSON.stringify(formData));
 
-      // Hash passwords if needed
       if (workingData.auth?.users) {
         for (const user of workingData.auth.users) {
           if (user.needsBcrypt) {
@@ -156,7 +196,6 @@ export const SettingsModal = () => {
         }
       }
 
-      // Update configuration
       let newConfig = clone(ConfigSchema, config);
       newConfig.auth = fromJson(AuthSchema, workingData.auth, {
         ignoreUnknownFields: false,
@@ -173,6 +212,7 @@ export const SettingsModal = () => {
       }
 
       setConfig(await backrestService.setConfig(newConfig));
+      setInitialFormData(JSON.stringify(formData));
       setReloadOnCancel(true);
       alerts.success(m.settings_success_updated());
     } catch (e: any) {
@@ -191,274 +231,436 @@ export const SettingsModal = () => {
 
   const users = getField(["auth", "users"]) || [];
 
+  const sections: SectionDef[] = [
+    { id: "general", label: "General", icon: <FiSettings size={14} /> },
+    { id: "auth", label: "Authentication", icon: <FiLock size={14} /> },
+    ...(isMultihostSyncEnabled
+      ? [
+          {
+            id: "multihost",
+            label: "Multihost",
+            icon: <FiGlobe size={14} />,
+          } as SectionDef,
+        ]
+      : []),
+  ];
+
   return (
-    <FormModal
+    <TwoPaneModal
       isOpen={true}
       onClose={handleCancel}
       title={m.settings_modal_title()}
-      size="large"
-      footer={
-        <Flex gap={2} justify="flex-end" width="full">
-          <Button variant="outline" onClick={handleCancel}>
-            {m.button_close()}
-          </Button>
-          <Button loading={confirmLoading} onClick={handleOk}>
-            {m.button_save()}
-          </Button>
-        </Flex>
-      }
+      headerIcon={<FiSettings size={14} />}
+      sections={sections}
+      dirty={dirty}
+      dirtyCount={1}
+      onSave={handleOk}
+      onDiscard={() => {
+        setFormData(JSON.parse(initialFormData));
+      }}
+      saving={confirmLoading}
     >
-      <Stack gap={6}>
-        {users.length === 0 && !getField(["auth", "disabled"]) && (
-          <Alert status="warning">
-            <Stack gap={1}>
-              <strong>{m.settings_initial_setup_title()}</strong>
-              <Text fontSize="sm">{m.settings_initial_setup_message()}</Text>
-              <Text fontSize="xs" fontStyle="italic">
-                {m.settings_initial_setup_hint()}
-              </Text>
-            </Stack>
-          </Alert>
-        )}
-
-        <Field
-          label={m.settings_field_instance_id()}
-          helperText={m.settings_field_instance_id_tooltip()}
-          required
+      {/* General Section */}
+      <TwoPaneSection id="general">
+        <SectionCard
+          icon={<FiSettings size={16} />}
+          title="General"
+          description="Instance identity and display preferences."
         >
-          <Input
-            value={getField(["instance"])}
-            onChange={(e) => updateField(["instance"], e.target.value)}
-            disabled={!!config.instance}
-            placeholder={m.settings_field_instance_id_placeholder()}
-          />
-        </Field>
+          <Stack gap={4}>
+            {users.length === 0 && !getField(["auth", "disabled"]) && (
+              <Alert status="warning">
+                <Stack gap={1}>
+                  <strong>{m.settings_initial_setup_title()}</strong>
+                  <Text fontSize="sm">{m.settings_initial_setup_message()}</Text>
+                  <Text fontSize="xs" fontStyle="italic">
+                    {m.settings_initial_setup_hint()}
+                  </Text>
+                </Stack>
+              </Alert>
+            )}
 
-        {/* @ts-ignore */}
-        <AccordionRoot collapsible defaultValue={["user-settings", "auth"]}>
-          {/* User Settings Section */}
-          {/* @ts-ignore */}
-          <AccordionItem value="user-settings">
-            <AccordionItemTrigger>
-              {
-                // @ts-ignore
-                m.settings_section_user_settings
-                  ? m.settings_section_user_settings()
-                  : "User Settings"
-              }
-            </AccordionItemTrigger>
-            <AccordionItemContent>
-              <Stack gap={4}>
-                <UserSettingsForm />
-              </Stack>
-            </AccordionItemContent>
-          </AccordionItem>
+            <Field
+              label={m.settings_field_instance_id()}
+              helperText={m.settings_field_instance_id_tooltip()}
+              required
+            >
+              <Input
+                value={getField(["instance"])}
+                onChange={(e) => updateField(["instance"], e.target.value)}
+                disabled={!!config.instance}
+                placeholder={m.settings_field_instance_id_placeholder()}
+              />
+            </Field>
 
-          {/* Authentication Section */}
-          {/* @ts-ignore */}
-          <AccordionItem value="auth">
-            <AccordionItemTrigger>
-              {m.settings_section_authentication()}
-            </AccordionItemTrigger>
-            <AccordionItemContent>
-              <Stack gap={4}>
-                <Field>
-                  <Checkbox
-                    checked={getField(["auth", "disabled"])}
-                    onCheckedChange={(e: any) =>
-                      updateField(["auth", "disabled"], !!e.checked)
-                    }
-                  >
-                    {m.settings_auth_disable()}
-                  </Checkbox>
-                </Field>
+            <UserSettingsForm />
+          </Stack>
+        </SectionCard>
+      </TwoPaneSection>
 
-                <Field label={m.settings_auth_users()} required>
-                  <Stack gap={3} width="full">
-                    {users.map((user: any, index: number) => (
-                      <Flex key={index} gap={2} align="center" width="full">
-                        <Input
-                          placeholder={m.settings_auth_username_placeholder()}
-                          value={user.name}
-                          onChange={(e) => {
-                            const newUsers = [...users];
-                            newUsers[index].name = e.target.value;
-                            updateField(["auth", "users"], newUsers);
-                          }}
-                          disabled={user.isExisting}
-                          flex={1}
-                        />
-                        <PasswordInput
-                          placeholder={m.settings_auth_password_placeholder()}
-                          value={user.passwordBcrypt}
-                          onChange={(e) => {
-                            const newUsers = [...users];
-                            newUsers[index].passwordBcrypt = e.target.value;
-                            newUsers[index].needsBcrypt = true;
-                            updateField(["auth", "users"], newUsers);
-                          }}
-                          rootProps={{ flex: 1 }}
-                        />
-                        <IconButton
-                          size="sm"
-                          variant="ghost"
-                          aria-label="Remove"
-                          onClick={() => {
-                            const newUsers = [...users];
-                            newUsers.splice(index, 1);
-                            updateField(["auth", "users"], newUsers);
-                          }}
-                        >
-                          <Minus />
-                        </IconButton>
-                      </Flex>
-                    ))}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        updateField(
-                          ["auth", "users"],
-                          [
-                            ...users,
-                            {
-                              name: "",
-                              passwordBcrypt: "",
-                              needsBcrypt: true,
-                              isExisting: false,
-                            },
-                          ],
-                        );
+      {/* Authentication Section */}
+      <TwoPaneSection id="auth">
+        <SectionCard
+          icon={<FiLock size={16} />}
+          title={m.settings_section_authentication()}
+          description="User accounts and access control."
+        >
+          <Stack gap={4}>
+            <ToggleField
+              checked={getField(["auth", "disabled"]) || false}
+              onChange={(v) => updateField(["auth", "disabled"], v)}
+              label={m.settings_auth_disable()}
+              hint="When disabled, no login is required to access Backrest."
+            />
+
+            <Field label={m.settings_auth_users()} required>
+              <Stack gap={3} width="full">
+                {users.map((user: any, index: number) => (
+                  <Flex key={index} gap={2} align="center" width="full">
+                    <Input
+                      placeholder={m.settings_auth_username_placeholder()}
+                      value={user.name}
+                      onChange={(e) => {
+                        const newUsers = [...users];
+                        newUsers[index].name = e.target.value;
+                        updateField(["auth", "users"], newUsers);
                       }}
-                      width="full"
+                      disabled={user.isExisting}
+                      flex={1}
+                    />
+                    <PasswordInput
+                      placeholder={m.settings_auth_password_placeholder()}
+                      value={user.passwordBcrypt}
+                      onChange={(e) => {
+                        const newUsers = [...users];
+                        newUsers[index].passwordBcrypt = e.target.value;
+                        newUsers[index].needsBcrypt = true;
+                        updateField(["auth", "users"], newUsers);
+                      }}
+                      rootProps={{ flex: 1 }}
+                    />
+                    <IconButton
+                      size="sm"
+                      variant="ghost"
+                      aria-label="Remove"
+                      onClick={() => {
+                        const newUsers = [...users];
+                        newUsers.splice(index, 1);
+                        updateField(["auth", "users"], newUsers);
+                      }}
                     >
-                      <Plus /> {m.settings_auth_add_user()}
-                    </Button>
-                  </Stack>
-                </Field>
+                      <Minus />
+                    </IconButton>
+                  </Flex>
+                ))}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    updateField(
+                      ["auth", "users"],
+                      [
+                        ...users,
+                        {
+                          name: "",
+                          passwordBcrypt: "",
+                          needsBcrypt: true,
+                          isExisting: false,
+                        },
+                      ],
+                    );
+                  }}
+                  width="full"
+                >
+                  <Plus /> {m.settings_auth_add_user()}
+                </Button>
               </Stack>
-            </AccordionItemContent>
-          </AccordionItem>
+            </Field>
+          </Stack>
+        </SectionCard>
+      </TwoPaneSection>
 
-          {/* Multihost Section */}
-          {isMultihostSyncEnabled && (
-            // @ts-ignore
-            <AccordionItem value="multihost">
-              <AccordionItemTrigger>
-                {m.settings_section_multihost()}
-              </AccordionItemTrigger>
-              <AccordionItemContent>
-                <Stack gap={4}>
-                  <Text fontStyle="italic" fontSize="sm">
-                    {m.settings_multihost_intro()}
-                  </Text>
-                  <Text fontStyle="italic" fontSize="sm" color="red.500">
-                    {m.settings_multihost_warning()}
-                  </Text>
+      {/* Multihost Section */}
+      {isMultihostSyncEnabled && (
+        <TwoPaneSection id="multihost">
+          <SectionCard
+            icon={<FiGlobe size={16} />}
+            title={m.settings_section_multihost()}
+            description="Peer-to-peer synchronisation between Backrest instances."
+          >
+            <Stack gap={4}>
+              <Text fontStyle="italic" fontSize="sm">
+                {m.settings_multihost_intro()}
+              </Text>
+              <Text fontStyle="italic" fontSize="sm" color="red.500">
+                {m.settings_multihost_warning()}
+              </Text>
 
-                  <Field
-                    label={m.settings_multihost_identity()}
-                    helperText={m.settings_multihost_identity_tooltip()}
+              <Field
+                label={m.settings_multihost_identity()}
+                helperText={m.settings_multihost_identity_tooltip()}
+              >
+                <Flex gap={2} width="full">
+                  <Input
+                    value={getField(["multihost", "identity", "keyid"])}
+                    disabled
+                    flex={1}
+                  />
+                  <IconButton
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      navigator.clipboard.writeText(
+                        getField(["multihost", "identity", "keyid"]) || "",
+                      )
+                    }
+                    aria-label="Copy"
                   >
-                    <Flex gap={2}>
+                    <Copy />
+                  </IconButton>
+                </Flex>
+              </Field>
+            </Stack>
+          </SectionCard>
+
+          <SectionCard
+            icon={<FiLock size={16} />}
+            title="Pairing Tokens"
+            description="Tokens that can be shared with other Backrest instances to simplify peering."
+          >
+            <Stack gap={3} width="full">
+              {(config.multihost?.pairingTokens || []).map(
+                (token, index) => (
+                  <PairingTokenItem
+                    key={index}
+                    token={token}
+                    isNew={index >= initialTokenCount}
+                    generatedTokenString={
+                      index >= initialTokenCount ? generatedToken : undefined
+                    }
+                    config={config}
+                    onRemove={() => handleRemovePairingToken(index)}
+                  />
+                ),
+              )}
+
+              {showGenerateForm && (
+                <Box p={4} borderWidth="1px" borderRadius="md">
+                  <Stack gap={3}>
+                    <Field label="Label (optional)">
                       <Input
-                        value={getField(["multihost", "identity", "keyid"])}
-                        disabled
-                        flex={1}
+                        value={tokenLabel}
+                        onChange={(e) => setTokenLabel(e.target.value)}
+                        placeholder="e.g. laptop-2"
+                        width="full"
                       />
-                      <IconButton
+                    </Field>
+                    <Field label="TTL">
+                      <SelectRoot
+                        collection={ttlOptions}
+                        value={[tokenTtl]}
+                        onValueChange={(e: any) =>
+                          setTokenTtl(e.value[0])
+                        }
+                      >
+                        {/* @ts-ignore */}
+                        <SelectTrigger>
+                          {/* @ts-ignore */}
+                          <SelectValueText placeholder="Select TTL" />
+                        </SelectTrigger>
+                        {/* @ts-ignore */}
+                        <SelectContent zIndex={2000}>
+                          {ttlOptions.items.map((o: any) => (
+                            <SelectItem item={o} key={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </SelectRoot>
+                    </Field>
+                    <Field label="Max Uses" helperText="0 = unlimited">
+                      <Input
+                        type="number"
+                        value={tokenMaxUses}
+                        onChange={(e) =>
+                          setTokenMaxUses(parseInt(e.target.value) || 0)
+                        }
+                        min={0}
+                        width="full"
+                      />
+                    </Field>
+                    <Flex gap={2}>
+                      <Button
+                        size="sm"
+                        onClick={handleGenerateToken}
+                        loading={generateLoading}
+                      >
+                        Generate
+                      </Button>
+                      <Button
                         size="sm"
                         variant="outline"
-                        onClick={() =>
-                          navigator.clipboard.writeText(
-                            getField(["multihost", "identity", "keyid"]) || "",
-                          )
-                        }
-                        aria-label="Copy"
+                        onClick={() => {
+                          setShowGenerateForm(false);
+                          setGeneratedToken("");
+                        }}
                       >
-                        <Copy />
-                      </IconButton>
+                        Cancel
+                      </Button>
                     </Flex>
-                  </Field>
+                  </Stack>
+                </Box>
+              )}
 
-                  <Field
-                    label={m.settings_multihost_authorized_clients()}
-                    helperText={m.settings_multihost_authorized_clients_tooltip()}
-                  >
-                    <PeerFormList
-                      items={getField(["multihost", "authorizedClients"]) || []}
-                      onUpdate={(items: any) =>
-                        updateField(["multihost", "authorizedClients"], items)
-                      }
-                      itemTypeName={m.settings_multihost_authorized_client_item()}
-                      peerStates={peerStates}
-                      config={config}
-                      showInstanceUrl={false}
-                    />
-                  </Field>
+              {!showGenerateForm && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowGenerateForm(true);
+                    setGeneratedToken("");
+                    setTokenLabel("");
+                    setTokenTtl("3600");
+                    setTokenMaxUses(1);
+                  }}
+                  width="full"
+                >
+                  <Plus /> Generate Pairing Token
+                </Button>
+              )}
+            </Stack>
+          </SectionCard>
 
-                  <Field
-                    label={m.settings_multihost_known_hosts()}
-                    helperText={m.settings_multihost_known_hosts_tooltip()}
-                  >
-                    <PeerFormList
-                      items={getField(["multihost", "knownHosts"]) || []}
-                      onUpdate={(items: any) =>
-                        updateField(["multihost", "knownHosts"], items)
-                      }
-                      itemTypeName={m.settings_multihost_known_host_item()}
-                      peerStates={peerStates}
-                      config={config}
-                      showInstanceUrl={true}
-                    />
-                  </Field>
-                </Stack>
-              </AccordionItemContent>
-            </AccordionItem>
-          )}
+          <SectionCard
+            icon={<FiLock size={16} />}
+            title={m.settings_multihost_authorized_clients()}
+            description={m.settings_multihost_authorized_clients_tooltip()}
+          >
+            <PeerFormList
+              items={getField(["multihost", "authorizedClients"]) || []}
+              onUpdate={(items: any) =>
+                updateField(["multihost", "authorizedClients"], items)
+              }
+              peerStates={peerStates}
+              config={config}
+              showInstanceUrl={false}
+            />
+          </SectionCard>
 
-          {/* Preview Section */}
-          {/* @ts-ignore */}
-          <AccordionItem value="preview">
-            <AccordionItemTrigger>
-              {m.settings_section_preview()}
-            </AccordionItemTrigger>
-            <AccordionItemContent>
-              <Box
-                as="pre"
-                p={2}
-                bg="gray.900"
-                color="white"
-                borderRadius="md"
-                fontSize="xs"
-                overflowX="auto"
-              >
-                {JSON.stringify(formData, null, 2)}
-              </Box>
-            </AccordionItemContent>
-          </AccordionItem>
-        </AccordionRoot>
-      </Stack>
-    </FormModal>
+          <SectionCard
+            icon={<FiGlobe size={16} />}
+            title={m.settings_multihost_known_hosts()}
+            description={m.settings_multihost_known_hosts_tooltip()}
+          >
+            <KnownHostsList
+              items={getField(["multihost", "knownHosts"]) || []}
+              onUpdate={(items: any) =>
+                updateField(["multihost", "knownHosts"], items)
+              }
+              peerStates={peerStates}
+              config={config}
+            />
+          </SectionCard>
+        </TwoPaneSection>
+      )}
+    </TwoPaneModal>
   );
 };
 
-// --- Peer Sub-components ---
+// --- Pairing Token Item ---
 
-const PeerFormList = ({
+const PairingTokenItem = ({
+  token,
+  isNew,
+  generatedTokenString,
+  config,
+  onRemove,
+}: {
+  token: any;
+  isNew: boolean;
+  generatedTokenString?: string;
+  config: any;
+  onRemove: () => void;
+}) => {
+  const [showToken, setShowToken] = useState(isNew);
+
+  // Build the full token string: <keyid>:<secret>#<instanceid>
+  const fullTokenString =
+    generatedTokenString ||
+    `${config.multihost?.identity?.keyid || ""}:${token.secret || ""}#${config.instance || ""}`;
+
+  const isExpired =
+    token.expiresAtUnix > 0n &&
+    token.expiresAtUnix < BigInt(Math.floor(Date.now() / 1000));
+  const usesText =
+    token.maxUses === 0
+      ? `${token.uses} uses (unlimited)`
+      : `${token.uses}/${token.maxUses} uses`;
+  const expiryText =
+    token.expiresAtUnix === 0n
+      ? "Never expires"
+      : isExpired
+        ? `Expired ${new Date(Number(token.expiresAtUnix) * 1000).toLocaleString()}`
+        : `Expires ${new Date(Number(token.expiresAtUnix) * 1000).toLocaleString()}`;
+
+  return (
+    <Box p={3} borderWidth="1px" borderRadius="md">
+      <Flex justify="space-between" align="center" width="full">
+        <Stack gap={0}>
+          <Text fontSize="sm" fontWeight="medium">
+            {token.label || "(no label)"}
+          </Text>
+          <Text fontSize="xs" color={isExpired ? "red.500" : "gray.500"}>
+            {expiryText} -- {usesText}
+          </Text>
+        </Stack>
+        <Flex gap={1} align="center">
+          <IconButton
+            size="xs"
+            variant="ghost"
+            onClick={() => setShowToken(!showToken)}
+            aria-label={showToken ? "Hide token" : "Show token"}
+          >
+            {showToken ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+          </IconButton>
+          <IconButton
+            size="xs"
+            variant="ghost"
+            onClick={onRemove}
+            aria-label="Remove token"
+          >
+            <Minus />
+          </IconButton>
+        </Flex>
+      </Flex>
+      {showToken && (
+        <Flex gap={2} mt={2} width="full">
+          <Input value={fullTokenString} readOnly flex={1} size="sm" />
+          <IconButton
+            size="sm"
+            variant="outline"
+            onClick={() => navigator.clipboard.writeText(fullTokenString)}
+            aria-label="Copy token"
+          >
+            <Copy />
+          </IconButton>
+        </Flex>
+      )}
+    </Box>
+  );
+};
+
+// --- Known Hosts List (with integrated pairing) ---
+
+const KnownHostsList = ({
   items,
   onUpdate,
-  itemTypeName,
   peerStates,
   config,
-  showInstanceUrl,
 }: any) => {
-  const handleAdd = () => {
-    onUpdate([
-      ...items,
-      { instanceId: "", keyId: "", instanceUrl: "", permissions: [] },
-    ]);
-  };
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [pairToken, setPairToken] = useState("");
+  const [pairInstanceUrl, setPairInstanceUrl] = useState("");
 
   const handleRemove = (index: number) => {
     const next = [...items];
@@ -472,8 +674,179 @@ const PeerFormList = ({
     onUpdate(next);
   };
 
+  const handleAdd = () => {
+    try {
+      if (!pairToken.trim()) {
+        onUpdate([
+          ...items,
+          {
+            instanceId: "",
+            keyId: "",
+            instanceUrl: pairInstanceUrl,
+            permissions: [
+              {
+                type: "PERMISSION_READ_OPERATIONS",
+                scopes: ["*"],
+              },
+              {
+                type: "PERMISSION_RECEIVE_SHARED_REPOS",
+              },
+            ],
+          },
+        ]);
+        setShowAddForm(false);
+        setPairToken("");
+        setPairInstanceUrl("");
+        return;
+      }
+
+      const hashIdx = pairToken.indexOf("#");
+      const colonIdx = pairToken.indexOf(":");
+      if (hashIdx === -1 || colonIdx === -1 || colonIdx > hashIdx) {
+        throw new Error(
+          'Invalid token format. Expected "<keyid>:<secret>#<instanceid>"',
+        );
+      }
+      const keyId = pairToken.substring(0, colonIdx);
+      const secret = pairToken.substring(colonIdx + 1, hashIdx);
+      const instanceId = pairToken.substring(hashIdx + 1);
+
+      if (!keyId || !secret || !instanceId) {
+        throw new Error("Token is missing required fields");
+      }
+      if (!pairInstanceUrl) {
+        throw new Error("Instance URL is required");
+      }
+
+      onUpdate([
+        ...items,
+        {
+          instanceId,
+          keyId,
+          instanceUrl: pairInstanceUrl,
+          initialPairingSecret: secret,
+          permissions: [
+            {
+              type: "PERMISSION_READ_OPERATIONS",
+              scopes: ["*"],
+            },
+            {
+              type: "PERMISSION_RECEIVE_SHARED_REPOS",
+            },
+          ],
+        },
+      ]);
+
+      setPairToken("");
+      setPairInstanceUrl("");
+      setShowAddForm(false);
+      alerts.success("Server added to known hosts. Save settings to apply.");
+    } catch (e: any) {
+      alerts.error(formatErrorAlert(e, "Failed to add known host"));
+    }
+  };
+
   return (
-    <Stack gap={4}>
+    <Stack gap={4} width="full">
+      {items.map((item: any, index: number) => (
+        <PeerFormListItem
+          key={index}
+          item={item}
+          onChange={(val: any) => handleItemUpdate(index, val)}
+          onRemove={() => handleRemove(index)}
+          peerStates={peerStates}
+          showInstanceUrl={true}
+          config={config}
+        />
+      ))}
+
+      {showAddForm ? (
+        <Box p={4} borderWidth="1px" borderRadius="md">
+          <Stack gap={3}>
+            <Text fontSize="sm" color="gray.500">
+              Paste a pairing token from another Backrest server, or leave blank
+              to configure manually.
+            </Text>
+            <Field label="Pairing Token (optional)">
+              <Input
+                value={pairToken}
+                onChange={(e) => setPairToken(e.target.value)}
+                placeholder='<keyid>:<secret>#<instanceid>'
+                width="full"
+              />
+            </Field>
+            <Field label="Instance URL" required>
+              <Input
+                value={pairInstanceUrl}
+                onChange={(e) => setPairInstanceUrl(e.target.value)}
+                placeholder="e.g. http://server:9898"
+                width="full"
+              />
+            </Field>
+            <Flex gap={2}>
+              <Button size="sm" onClick={handleAdd}>
+                {pairToken.trim() ? "Pair" : "Add"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setShowAddForm(false);
+                  setPairToken("");
+                  setPairInstanceUrl("");
+                }}
+              >
+                Cancel
+              </Button>
+            </Flex>
+          </Stack>
+        </Box>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setShowAddForm(true)}
+          width="full"
+        >
+          <Plus />{" "}
+          {m.settings_peer_add_button({
+            itemTypeName: m.settings_multihost_known_host_item(),
+          })}
+        </Button>
+      )}
+    </Stack>
+  );
+};
+
+// --- Peer Sub-components ---
+
+const PeerFormList = ({
+  items,
+  onUpdate,
+  peerStates,
+  config,
+  showInstanceUrl,
+}: any) => {
+  const handleRemove = (index: number) => {
+    const next = [...items];
+    next.splice(index, 1);
+    onUpdate(next);
+  };
+
+  const handleItemUpdate = (index: number, val: any) => {
+    const next = [...items];
+    next[index] = val;
+    onUpdate(next);
+  };
+
+  return (
+    <Stack gap={4} width="full">
+      {items.length === 0 && (
+        <Text fontSize="sm" color="fg.muted" fontStyle="italic">
+          No trusted peers yet. Generate a pairing token above and share it with
+          another instance to get started.
+        </Text>
+      )}
       {items.map((item: any, index: number) => (
         <PeerFormListItem
           key={index}
@@ -485,12 +858,6 @@ const PeerFormList = ({
           config={config}
         />
       ))}
-      <Button size="sm" variant="outline" onClick={handleAdd} width="full">
-        <Plus />{" "}
-        {m.settings_peer_add_button({
-          itemTypeName: itemTypeName || m.peer_default_name(),
-        })}
-      </Button>
     </Stack>
   );
 };
@@ -512,21 +879,9 @@ const PeerFormListItem = ({
   };
 
   return (
-    <Box p={4} borderWidth="1px" borderRadius="md" position="relative">
-      <Flex position="absolute" top={2} right={2} gap={2} align="center">
-        {peerState && <PeerStateConnectionStatusIcon peerState={peerState} />}
-        <IconButton
-          size="xs"
-          variant="ghost"
-          onClick={onRemove}
-          aria-label="Remove"
-        >
-          <Minus />
-        </IconButton>
-      </Flex>
-
+    <Box p={4} borderWidth="1px" borderRadius="md">
       <Stack gap={3}>
-        <Flex gap={4}>
+        <Flex gap={4} align="center">
           <Field label={m.settings_peer_instance_id()} required flex={1}>
             <Input
               value={item.instanceId}
@@ -541,6 +896,19 @@ const PeerFormListItem = ({
               placeholder={m.settings_peer_key_id_placeholder()}
             />
           </Field>
+          <Flex gap={1} align="center" alignSelf="flex-start" mt={1} flexShrink={0}>
+            {peerState && (
+              <PeerStateConnectionStatusIcon peerState={peerState} />
+            )}
+            <IconButton
+              size="xs"
+              variant="ghost"
+              onClick={onRemove}
+              aria-label="Remove"
+            >
+              <Minus />
+            </IconButton>
+          </Flex>
         </Flex>
 
         {showInstanceUrl && (
@@ -553,8 +921,6 @@ const PeerFormListItem = ({
           </Field>
         )}
 
-        {/* Permissions (Only for known hosts logic in original? No, original had isKnownHost? logic) */}
-        {/* PeerPermissionsTile logic */}
         <PeerPermissionsTile
           permissions={item.permissions || []}
           onUpdate={(perms: any) => updateItem("permissions", perms)}
@@ -576,16 +942,20 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
     ],
   });
 
+  // Permission type values must match what toJson produces for enum fields (string names, not numbers).
   const permissionTypeOptions = createListCollection({
     items: [
       {
         label: m.settings_permission_edit_repo(),
-        value:
-          Multihost_Permission_Type.PERMISSION_READ_WRITE_CONFIG.toString(),
+        value: "PERMISSION_READ_WRITE_CONFIG",
       },
       {
         label: m.settings_permission_read_ops(),
-        value: Multihost_Permission_Type.PERMISSION_READ_OPERATIONS.toString(),
+        value: "PERMISSION_READ_OPERATIONS",
+      },
+      {
+        label: "Receive shared repos",
+        value: "PERMISSION_RECEIVE_SHARED_REPOS",
       },
     ],
   });
@@ -594,7 +964,7 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
     onUpdate([
       ...permissions,
       {
-        type: Multihost_Permission_Type.PERMISSION_READ_OPERATIONS,
+        type: "PERMISSION_READ_OPERATIONS",
         scopes: ["*"],
       },
     ]);
@@ -632,7 +1002,7 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
                 collection={permissionTypeOptions}
                 value={[perm.type.toString()]}
                 onValueChange={(e: any) =>
-                  handleUpdate(index, "type", parseInt(e.value[0]))
+                  handleUpdate(index, "type", e.value[0])
                 }
               >
                 {/* @ts-ignore */}
@@ -643,7 +1013,7 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
                   />
                 </SelectTrigger>
                 {/* @ts-ignore */}
-                <SelectContent>
+                <SelectContent zIndex={2000}>
                   {permissionTypeOptions.items.map((o: any) => (
                     <SelectItem item={o} key={o.value}>
                       {o.label}
@@ -653,32 +1023,34 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
               </SelectRoot>
             </Field>
 
-            <Field label={m.settings_peer_permission_scopes()} flex={1}>
-              <SelectRoot
-                multiple
-                collection={repoOptions}
-                value={perm.scopes}
-                onValueChange={(e: any) =>
-                  handleUpdate(index, "scopes", e.value)
-                }
-              >
-                {/* @ts-ignore */}
-                <SelectTrigger>
+            {perm.type !== "PERMISSION_RECEIVE_SHARED_REPOS" && (
+              <Field label={m.settings_peer_permission_scopes()} flex={1}>
+                <SelectRoot
+                  multiple
+                  collection={repoOptions}
+                  value={perm.scopes}
+                  onValueChange={(e: any) =>
+                    handleUpdate(index, "scopes", e.value)
+                  }
+                >
                   {/* @ts-ignore */}
-                  <SelectValueText
-                    placeholder={m.settings_permission_scope_placeholder()}
-                  />
-                </SelectTrigger>
-                {/* @ts-ignore */}
-                <SelectContent>
-                  {repoOptions.items.map((o: any) => (
-                    <SelectItem item={o} key={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </SelectRoot>
-            </Field>
+                  <SelectTrigger>
+                    {/* @ts-ignore */}
+                    <SelectValueText
+                      placeholder={m.settings_permission_scope_placeholder()}
+                    />
+                  </SelectTrigger>
+                  {/* @ts-ignore */}
+                  <SelectContent zIndex={2000}>
+                    {repoOptions.items.map((o: any) => (
+                      <SelectItem item={o} key={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </SelectRoot>
+              </Field>
+            )}
 
             <IconButton
               size="sm"
@@ -703,7 +1075,6 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
   );
 };
 
-// Mock Alert component if needed or use toast
 const Alert = ({ status, children }: any) => (
   <Box
     p={4}

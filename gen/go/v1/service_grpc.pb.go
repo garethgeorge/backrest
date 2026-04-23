@@ -21,27 +21,28 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Backrest_GetConfig_FullMethodName           = "/v1.Backrest/GetConfig"
-	Backrest_SetConfig_FullMethodName           = "/v1.Backrest/SetConfig"
-	Backrest_SetupSftp_FullMethodName           = "/v1.Backrest/SetupSftp"
-	Backrest_CheckRepoExists_FullMethodName     = "/v1.Backrest/CheckRepoExists"
-	Backrest_AddRepo_FullMethodName             = "/v1.Backrest/AddRepo"
-	Backrest_RemoveRepo_FullMethodName          = "/v1.Backrest/RemoveRepo"
-	Backrest_GetOperationEvents_FullMethodName  = "/v1.Backrest/GetOperationEvents"
-	Backrest_GetOperations_FullMethodName       = "/v1.Backrest/GetOperations"
-	Backrest_ListSnapshots_FullMethodName       = "/v1.Backrest/ListSnapshots"
-	Backrest_ListSnapshotFiles_FullMethodName   = "/v1.Backrest/ListSnapshotFiles"
-	Backrest_Backup_FullMethodName              = "/v1.Backrest/Backup"
-	Backrest_DoRepoTask_FullMethodName          = "/v1.Backrest/DoRepoTask"
-	Backrest_Forget_FullMethodName              = "/v1.Backrest/Forget"
-	Backrest_Restore_FullMethodName             = "/v1.Backrest/Restore"
-	Backrest_Cancel_FullMethodName              = "/v1.Backrest/Cancel"
-	Backrest_GetLogs_FullMethodName             = "/v1.Backrest/GetLogs"
-	Backrest_RunCommand_FullMethodName          = "/v1.Backrest/RunCommand"
-	Backrest_GetDownloadURL_FullMethodName      = "/v1.Backrest/GetDownloadURL"
-	Backrest_ClearHistory_FullMethodName        = "/v1.Backrest/ClearHistory"
-	Backrest_PathAutocomplete_FullMethodName    = "/v1.Backrest/PathAutocomplete"
-	Backrest_GetSummaryDashboard_FullMethodName = "/v1.Backrest/GetSummaryDashboard"
+	Backrest_GetConfig_FullMethodName            = "/v1.Backrest/GetConfig"
+	Backrest_SetConfig_FullMethodName            = "/v1.Backrest/SetConfig"
+	Backrest_SetupSftp_FullMethodName            = "/v1.Backrest/SetupSftp"
+	Backrest_CheckRepoExists_FullMethodName      = "/v1.Backrest/CheckRepoExists"
+	Backrest_AddRepo_FullMethodName              = "/v1.Backrest/AddRepo"
+	Backrest_RemoveRepo_FullMethodName           = "/v1.Backrest/RemoveRepo"
+	Backrest_GetOperationEvents_FullMethodName   = "/v1.Backrest/GetOperationEvents"
+	Backrest_GetOperations_FullMethodName        = "/v1.Backrest/GetOperations"
+	Backrest_ListSnapshots_FullMethodName        = "/v1.Backrest/ListSnapshots"
+	Backrest_ListSnapshotFiles_FullMethodName    = "/v1.Backrest/ListSnapshotFiles"
+	Backrest_Backup_FullMethodName               = "/v1.Backrest/Backup"
+	Backrest_DoRepoTask_FullMethodName           = "/v1.Backrest/DoRepoTask"
+	Backrest_Forget_FullMethodName               = "/v1.Backrest/Forget"
+	Backrest_Restore_FullMethodName              = "/v1.Backrest/Restore"
+	Backrest_Cancel_FullMethodName               = "/v1.Backrest/Cancel"
+	Backrest_GetLogs_FullMethodName              = "/v1.Backrest/GetLogs"
+	Backrest_RunCommand_FullMethodName           = "/v1.Backrest/RunCommand"
+	Backrest_GetDownloadURL_FullMethodName       = "/v1.Backrest/GetDownloadURL"
+	Backrest_ClearHistory_FullMethodName         = "/v1.Backrest/ClearHistory"
+	Backrest_PathAutocomplete_FullMethodName     = "/v1.Backrest/PathAutocomplete"
+	Backrest_GetSummaryDashboard_FullMethodName  = "/v1.Backrest/GetSummaryDashboard"
+	Backrest_GeneratePairingToken_FullMethodName = "/v1.Backrest/GeneratePairingToken"
 )
 
 // BackrestClient is the client API for Backrest service.
@@ -80,6 +81,9 @@ type BackrestClient interface {
 	PathAutocomplete(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*types.StringList, error)
 	// GetSummaryDashboard returns data for the dashboard view.
 	GetSummaryDashboard(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SummaryDashboardResponse, error)
+	// GeneratePairingToken creates a new pairing token on the server that can be shared with clients to simplify peering.
+	// The token format is "<keyid>:<secret>#<instanceid>" — an opaque string the client pastes when adding a known host.
+	GeneratePairingToken(ctx context.Context, in *GeneratePairingTokenRequest, opts ...grpc.CallOption) (*GeneratePairingTokenResponse, error)
 }
 
 type backrestClient struct {
@@ -318,6 +322,16 @@ func (c *backrestClient) GetSummaryDashboard(ctx context.Context, in *emptypb.Em
 	return out, nil
 }
 
+func (c *backrestClient) GeneratePairingToken(ctx context.Context, in *GeneratePairingTokenRequest, opts ...grpc.CallOption) (*GeneratePairingTokenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GeneratePairingTokenResponse)
+	err := c.cc.Invoke(ctx, Backrest_GeneratePairingToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BackrestServer is the server API for Backrest service.
 // All implementations must embed UnimplementedBackrestServer
 // for forward compatibility.
@@ -354,6 +368,9 @@ type BackrestServer interface {
 	PathAutocomplete(context.Context, *types.StringValue) (*types.StringList, error)
 	// GetSummaryDashboard returns data for the dashboard view.
 	GetSummaryDashboard(context.Context, *emptypb.Empty) (*SummaryDashboardResponse, error)
+	// GeneratePairingToken creates a new pairing token on the server that can be shared with clients to simplify peering.
+	// The token format is "<keyid>:<secret>#<instanceid>" — an opaque string the client pastes when adding a known host.
+	GeneratePairingToken(context.Context, *GeneratePairingTokenRequest) (*GeneratePairingTokenResponse, error)
 	mustEmbedUnimplementedBackrestServer()
 }
 
@@ -426,6 +443,9 @@ func (UnimplementedBackrestServer) PathAutocomplete(context.Context, *types.Stri
 }
 func (UnimplementedBackrestServer) GetSummaryDashboard(context.Context, *emptypb.Empty) (*SummaryDashboardResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSummaryDashboard not implemented")
+}
+func (UnimplementedBackrestServer) GeneratePairingToken(context.Context, *GeneratePairingTokenRequest) (*GeneratePairingTokenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GeneratePairingToken not implemented")
 }
 func (UnimplementedBackrestServer) mustEmbedUnimplementedBackrestServer() {}
 func (UnimplementedBackrestServer) testEmbeddedByValue()                  {}
@@ -812,6 +832,24 @@ func _Backrest_GetSummaryDashboard_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Backrest_GeneratePairingToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GeneratePairingTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackrestServer).GeneratePairingToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Backrest_GeneratePairingToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackrestServer).GeneratePairingToken(ctx, req.(*GeneratePairingTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Backrest_ServiceDesc is the grpc.ServiceDesc for Backrest service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -894,6 +932,10 @@ var Backrest_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSummaryDashboard",
 			Handler:    _Backrest_GetSummaryDashboard_Handler,
+		},
+		{
+			MethodName: "GeneratePairingToken",
+			Handler:    _Backrest_GeneratePairingToken_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

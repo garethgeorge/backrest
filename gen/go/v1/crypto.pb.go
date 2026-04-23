@@ -92,7 +92,7 @@ func (x *SignedMessage) GetTimestampMillis() int64 {
 type PublicKey struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Keyid         string                 `protobuf:"bytes,1,opt,name=keyid,json=keyId,proto3" json:"keyid,omitempty"` // a unique identifier generated as the SHA256 of the public key.
-	Ed25519Pub    string                 `protobuf:"bytes,2,opt,name=ed25519pub,proto3" json:"ed25519pub,omitempty"`
+	EcdsaPub      string                 `protobuf:"bytes,2,opt,name=ecdsa_pub,json=ecdsaPub,proto3" json:"ecdsa_pub,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -134,9 +134,9 @@ func (x *PublicKey) GetKeyid() string {
 	return ""
 }
 
-func (x *PublicKey) GetEd25519Pub() string {
+func (x *PublicKey) GetEcdsaPub() string {
 	if x != nil {
-		return x.Ed25519Pub
+		return x.EcdsaPub
 	}
 	return ""
 }
@@ -144,8 +144,8 @@ func (x *PublicKey) GetEd25519Pub() string {
 type PrivateKey struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Keyid         string                 `protobuf:"bytes,1,opt,name=keyid,json=keyId,proto3" json:"keyid,omitempty"` // a unique identifier generated as the SHA256 of the public key
-	Ed25519Priv   string                 `protobuf:"bytes,2,opt,name=ed25519priv,proto3" json:"ed25519priv,omitempty"`
-	Ed25519Pub    string                 `protobuf:"bytes,3,opt,name=ed25519pub,proto3" json:"ed25519pub,omitempty"`
+	EcdsaPriv     string                 `protobuf:"bytes,2,opt,name=ecdsa_priv,json=ecdsaPriv,proto3" json:"ecdsa_priv,omitempty"`
+	EcdsaPub      string                 `protobuf:"bytes,3,opt,name=ecdsa_pub,json=ecdsaPub,proto3" json:"ecdsa_pub,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -187,16 +187,16 @@ func (x *PrivateKey) GetKeyid() string {
 	return ""
 }
 
-func (x *PrivateKey) GetEd25519Priv() string {
+func (x *PrivateKey) GetEcdsaPriv() string {
 	if x != nil {
-		return x.Ed25519Priv
+		return x.EcdsaPriv
 	}
 	return ""
 }
 
-func (x *PrivateKey) GetEd25519Pub() string {
+func (x *PrivateKey) GetEcdsaPub() string {
 	if x != nil {
-		return x.Ed25519Pub
+		return x.EcdsaPub
 	}
 	return ""
 }
@@ -210,19 +210,16 @@ const file_v1_crypto_proto_rawDesc = "" +
 	"\x05keyid\x18\x01 \x01(\tR\x05keyid\x12\x18\n" +
 	"\apayload\x18\x02 \x01(\fR\apayload\x12\x1c\n" +
 	"\tsignature\x18\x03 \x01(\fR\tsignature\x12(\n" +
-	"\x0ftimestampMillis\x18\x04 \x01(\x03R\x0ftimestampMillis\"A\n" +
+	"\x0ftimestampMillis\x18\x04 \x01(\x03R\x0ftimestampMillis\">\n" +
 	"\tPublicKey\x12\x14\n" +
-	"\x05keyid\x18\x01 \x01(\tR\x05keyId\x12\x1e\n" +
-	"\n" +
-	"ed25519pub\x18\x02 \x01(\tR\n" +
-	"ed25519pub\"d\n" +
+	"\x05keyid\x18\x01 \x01(\tR\x05keyId\x12\x1b\n" +
+	"\tecdsa_pub\x18\x02 \x01(\tR\becdsaPub\"^\n" +
 	"\n" +
 	"PrivateKey\x12\x14\n" +
-	"\x05keyid\x18\x01 \x01(\tR\x05keyId\x12 \n" +
-	"\ved25519priv\x18\x02 \x01(\tR\ved25519priv\x12\x1e\n" +
+	"\x05keyid\x18\x01 \x01(\tR\x05keyId\x12\x1d\n" +
 	"\n" +
-	"ed25519pub\x18\x03 \x01(\tR\n" +
-	"ed25519pubB,Z*github.com/garethgeorge/backrest/gen/go/v1b\x06proto3"
+	"ecdsa_priv\x18\x02 \x01(\tR\tecdsaPriv\x12\x1b\n" +
+	"\tecdsa_pub\x18\x03 \x01(\tR\becdsaPubB,Z*github.com/garethgeorge/backrest/gen/go/v1b\x06proto3"
 
 var (
 	file_v1_crypto_proto_rawDescOnce sync.Once

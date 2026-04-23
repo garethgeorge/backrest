@@ -13,6 +13,7 @@ import {
   FiEdit2,
   FiMenu,
   FiHome,
+  FiChevronRight,
 } from "react-icons/fi";
 
 import {
@@ -55,7 +56,7 @@ import LogoSvg from "../../assets/logo.svg";
 import { keyBy } from "../lib/util";
 import { Code } from "@connectrpc/connect";
 import { LoginModal } from "../features/auth/LoginModal";
-import { backrestService, setAuthToken } from "../api/client";
+import { backrestService, syncStateService, setAuthToken } from "../api/client";
 import { useConfig } from "./provider";
 import { shouldShowSettings } from "../state/configutil";
 import { OpSelector, OpSelectorSchema } from "../../gen/ts/v1/service_pb";
@@ -70,7 +71,7 @@ import {
 } from "react-router-dom";
 import { MainContentAreaTemplate } from "../components/layout/MainContentArea";
 import { create } from "@bufbuild/protobuf";
-import { PeerState, RepoMetadata } from "../../gen/ts/v1sync/syncservice_pb";
+import { PeerState, PlanMetadata, RepoMetadata, SetRemoteClientConfigRequestSchema } from "../../gen/ts/v1sync/syncservice_pb";
 import { useSyncStates } from "../state/peerStates";
 import * as m from "../paraglide/messages";
 import { Link } from "../components/ui/link";
@@ -133,7 +134,26 @@ const RepoViewContainer = () => {
       key={repoId}
     >
       {repo ? (
-        <RepoView repo={repo} />
+        <>
+          {repo.originInstanceId && (
+            <Box
+              p={3}
+              mb={4}
+              borderRadius="md"
+              bg="blue.50"
+              borderWidth="1px"
+              borderColor="blue.200"
+              fontSize="sm"
+              color="blue.800"
+              _dark={{ bg: "blue.950", borderColor: "blue.800", color: "blue.200" }}
+            >
+              This is a remote repo from{" "}
+              <strong>{repo.originInstanceId}</strong>. Operation history only
+              includes backups run locally and may be incomplete.
+            </Box>
+          )}
+          <RepoView repo={repo} />
+        </>
       ) : (
         <EmptyState title={m.app_repo_not_found({ repoId: repoId || "" })} />
       )}
@@ -176,6 +196,40 @@ const RemoteRepoViewContainer = () => {
   );
 };
 
+const RemotePlanViewContainer = () => {
+  const { peerInstanceId, planId } = useParams();
+  const peerStates = useSyncStates();
+
+  const peerState = peerStates.find(
+    (state) => state.peerInstanceId === peerInstanceId,
+  );
+  const peerPlan = (peerState?.knownPlans || []).find((p) => p.id === planId);
+
+  return (
+    <MainContentAreaTemplate
+      breadcrumbs={[
+        { title: m.app_breadcrumb_peer() },
+        { title: peerInstanceId || m.app_unknown_peer() },
+        { title: m.app_breadcrumb_plan() },
+        { title: planId || "" },
+      ]}
+      key={`${peerInstanceId}-${planId}`}
+    >
+      {peerPlan ? (
+        <SelectorView
+          title={peerPlan.id}
+          sel={create(OpSelectorSchema, {
+            originalInstanceKeyid: peerState?.peerKeyid,
+            planId: peerPlan.id,
+          })}
+        />
+      ) : (
+        <EmptyState title={m.app_plan_not_found({ planId: planId || "" })} />
+      )}
+    </MainContentAreaTemplate>
+  );
+};
+
 const PlanViewContainer = () => {
   const { planId } = useParams();
   const [config, setConfig] = useConfig();
@@ -200,6 +254,175 @@ const PlanViewContainer = () => {
         <EmptyState title={m.app_plan_not_found({ planId: planId || "" })} />
       )}
     </MainContentAreaTemplate>
+  );
+};
+
+const PeerNavItem = ({
+  icon,
+  typeLabel,
+  name,
+  active,
+  onClick,
+  onEdit,
+}: {
+  icon: React.ReactNode;
+  typeLabel: string;
+  name: string;
+  active: boolean;
+  onClick: () => void;
+  onEdit?: (e: React.MouseEvent) => void;
+}) => (
+  <Flex
+    align="center"
+    pl={14}
+    pr={2}
+    py={1}
+    bg={active ? "bg.emphasized" : undefined}
+    _hover={{ bg: "bg.muted" }}
+    cursor="pointer"
+    className="group"
+    onClick={onClick}
+  >
+    <Box flexShrink={0} mr={2}>
+      {icon}
+    </Box>
+    <Text color="fg.muted" fontSize="xs" flexShrink={0} mr={1}>
+      {typeLabel}
+    </Text>
+    <Text fontSize="sm" flex="1" wordBreak="break-word">
+      {name}
+    </Text>
+    {onEdit && (
+      <Box
+        opacity={0}
+        _groupHover={{ opacity: 1 }}
+        transition="opacity 0.2s"
+      >
+        <IconButton
+          size="xs"
+          variant="ghost"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            onEdit(e);
+          }}
+        >
+          <FiEdit2 />
+        </IconButton>
+      </Box>
+    )}
+  </Flex>
+);
+
+const PeerInstanceSection = ({
+  peerState,
+  sel,
+  remoteConfig,
+  isActive,
+  handleNav,
+  handleRemoteRepoEdit,
+  handleRemotePlanEdit,
+}: {
+  peerState: PeerState;
+  sel: OpSelector;
+  remoteConfig: PeerState["remoteConfig"];
+  isActive: (path: string) => boolean;
+  handleNav: (path: string) => void;
+  handleRemoteRepoEdit: (repo: Repo) => void;
+  handleRemotePlanEdit: (plan: Plan) => void;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Box mb={2}>
+      <Flex
+        align="center"
+        pl={9}
+        pr={2}
+        py={1}
+        cursor="pointer"
+        _hover={{ bg: "bg.muted" }}
+        onClick={() => setExpanded((prev) => !prev)}
+      >
+        <Box
+          transform={expanded ? "rotate(90deg)" : undefined}
+          transition="transform 0.2s"
+          display="inline-flex"
+          alignItems="center"
+          mr={2}
+          flexShrink={0}
+        >
+          <FiChevronRight size={14} />
+        </Box>
+        <Box flexShrink={0} mr={2}>
+          <IconForResource selector={sel} />
+        </Box>
+        <Text fontWeight="bold" fontSize="sm">
+          {peerState.peerInstanceId}
+        </Text>
+      </Flex>
+
+      {expanded && (
+        <>
+          {peerState.knownRepos.map((repo: RepoMetadata) => {
+            const repoPath = `/peer/${peerState.peerInstanceId}/repo/${repo.id}`;
+            const editableRepo = remoteConfig?.repos?.find(
+              (r: Repo) => r.guid === repo.guid,
+            );
+            return (
+              <PeerNavItem
+                key={repo.guid}
+                icon={
+                  <IconForResource
+                    selector={create(OpSelectorSchema, {
+                      originalInstanceKeyid: peerState.peerKeyid,
+                      repoGuid: repo.guid,
+                    })}
+                  />
+                }
+                typeLabel="repo"
+                name={repo.id}
+                active={isActive(repoPath)}
+                onClick={() => handleNav(repoPath)}
+                onEdit={
+                  editableRepo
+                    ? () => handleRemoteRepoEdit(editableRepo)
+                    : undefined
+                }
+              />
+            );
+          })}
+
+          {peerState.knownPlans.map((planMeta: PlanMetadata) => {
+            const planPath = `/peer/${peerState.peerInstanceId}/plan/${planMeta.id}`;
+            const editablePlan = remoteConfig?.plans?.find(
+              (p: Plan) => p.id === planMeta.id,
+            );
+            return (
+              <PeerNavItem
+                key={planMeta.id}
+                icon={
+                  <IconForResource
+                    selector={create(OpSelectorSchema, {
+                      originalInstanceKeyid: peerState.peerKeyid,
+                      planId: planMeta.id,
+                    })}
+                  />
+                }
+                typeLabel="plan"
+                name={planMeta.id}
+                active={isActive(planPath)}
+                onClick={() => handleNav(planPath)}
+                onEdit={
+                  editablePlan
+                    ? () => handleRemotePlanEdit(editablePlan)
+                    : undefined
+                }
+              />
+            );
+          })}
+        </>
+      )}
+    </Box>
   );
 };
 
@@ -329,6 +552,17 @@ const SidebarRepoItem = React.memo(
             >
               {repo.id}
             </Text>
+            {repo.originInstanceId && (
+              <Text
+                fontSize="xs"
+                color="fg.muted"
+                overflow="hidden"
+                textOverflow="ellipsis"
+                whiteSpace="nowrap"
+              >
+                {repo.originInstanceId}
+              </Text>
+            )}
           </Box>
         </Tooltip>
         <Box
@@ -372,7 +606,12 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
   if (!config) return null;
 
   const configPlans = config.plans || [];
-  const configRepos = config.repos || [];
+  const localRepos = (config.repos || []).filter(
+    (r) => !r.originInstanceId,
+  );
+  const remoteRepos = (config.repos || []).filter(
+    (r) => !!r.originInstanceId,
+  );
 
   return (
     <Box
@@ -477,7 +716,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
             >
               <FiPlus /> {m.app_menu_add_repo()}
             </Button>
-            {configRepos.map((repo) => (
+            {localRepos.map((repo) => (
               <SidebarRepoItem
                 key={repo.id}
                 repo={repo}
@@ -492,6 +731,35 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                 }}
               />
             ))}
+            {remoteRepos.length > 0 && (
+              <>
+                <Text
+                  fontSize="xs"
+                  fontWeight="bold"
+                  color="fg.muted"
+                  pl={9}
+                  pt={2}
+                  pb={1}
+                >
+                  Remote
+                </Text>
+                {remoteRepos.map((repo) => (
+                  <SidebarRepoItem
+                    key={repo.id}
+                    repo={repo}
+                    instanceId={config.instance}
+                    active={isActive(`/repo/${repo.id}`)}
+                    onNav={handleNav}
+                    onEdit={async (repo) => {
+                      const { AddRepoModal } =
+                        await import("../features/repositories/AddRepoModal");
+                      showModal(<AddRepoModal template={repo} />);
+                      onClose?.();
+                    }}
+                  />
+                ))}
+              </>
+            )}
           </AccordionItemContent>
         </AccordionItem>
 
@@ -506,54 +774,63 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
             </AccordionItemTrigger>
             <AccordionItemContent pb={2}>
               {peerStates.map((peerState) => {
-                // Logic to get peer config if needed, filtering handled by original logic
-                // Assuming we list all peerStates derived from hook
                 const sel = create(OpSelectorSchema, {
                   originalInstanceKeyid: peerState.peerKeyid,
                 });
 
-                return (
-                  <Box key={peerState.peerKeyid} mb={2}>
-                    <Flex align="center" pl={9} pr={2} py={1}>
-                      <Box flexShrink={0} mr={2}>
-                        <IconForResource selector={sel} />
-                      </Box>
-                      <Text fontWeight="bold" fontSize="sm">
-                        {peerState.peerInstanceId}
-                      </Text>
-                    </Flex>
+                const remoteConfig = peerState.remoteConfig;
 
-                    {/* Nested Repos for Peer */}
-                    {peerState.knownRepos.map((repo: RepoMetadata) => {
-                      const repoPath = `/peer/${peerState.peerInstanceId}/repo/${repo.id}`;
-                      const active = isActive(repoPath);
-                      return (
-                        <Flex
-                          key={repo.guid}
-                          align="center"
-                          pl={12}
-                          pr={2}
-                          py={1}
-                          bg={active ? "bg.emphasized" : undefined}
-                          _hover={{ bg: "bg.muted" }}
-                          cursor="pointer"
-                          onClick={() => handleNav(repoPath)}
-                        >
-                          <Box flexShrink={0} mr={2}>
-                            <IconForResource
-                              selector={create(OpSelectorSchema, {
-                                originalInstanceKeyid: peerState.peerKeyid,
-                                repoGuid: repo.guid,
-                              })}
-                            />
-                          </Box>
-                          <Text fontSize="sm" wordBreak="break-word">
-                            {repo.id}
-                          </Text>
-                        </Flex>
-                      );
-                    })}
-                  </Box>
+                const handleRemoteRepoEdit = async (repo: Repo) => {
+                  const { AddRepoModal } =
+                    await import("../features/repositories/AddRepoModal");
+                  showModal(
+                    <AddRepoModal
+                      template={repo}
+                      onSaveOverride={async (updatedRepo) => {
+                        await syncStateService.setRemoteClientConfig(
+                          create(SetRemoteClientConfigRequestSchema, {
+                            peerKeyid: peerState.peerKeyid,
+                            repos: [updatedRepo],
+                          }),
+                        );
+                        alerts.success("Remote repo updated");
+                      }}
+                    />,
+                  );
+                  onClose?.();
+                };
+
+                const handleRemotePlanEdit = async (plan: Plan) => {
+                  const { AddPlanModal } =
+                    await import("../features/plans/AddPlanModal");
+                  showModal(
+                    <AddPlanModal
+                      template={plan}
+                      onSaveOverride={async (updatedPlan) => {
+                        await syncStateService.setRemoteClientConfig(
+                          create(SetRemoteClientConfigRequestSchema, {
+                            peerKeyid: peerState.peerKeyid,
+                            plans: [updatedPlan],
+                          }),
+                        );
+                        alerts.success("Remote plan updated");
+                      }}
+                    />,
+                  );
+                  onClose?.();
+                };
+
+                return (
+                  <PeerInstanceSection
+                    key={peerState.peerKeyid}
+                    peerState={peerState}
+                    sel={sel}
+                    remoteConfig={remoteConfig}
+                    isActive={isActive}
+                    handleNav={handleNav}
+                    handleRemoteRepoEdit={handleRemoteRepoEdit}
+                    handleRemotePlanEdit={handleRemotePlanEdit}
+                  />
                 );
               })}
             </AccordionItemContent>
@@ -707,6 +984,10 @@ export const App: React.FC = () => {
                 <Route
                   path="/peer/:peerInstanceId/repo/:repoId"
                   element={<RemoteRepoViewContainer />}
+                />
+                <Route
+                  path="/peer/:peerInstanceId/plan/:planId"
+                  element={<RemotePlanViewContainer />}
                 />
                 <Route
                   path="/*"

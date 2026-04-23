@@ -2,6 +2,7 @@ package syncapi
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"connectrpc.com/connect"
@@ -21,6 +22,27 @@ func NewBackrestSyncStateHandler(mgr *SyncManager) *BackrestSyncStateHandler {
 	return &BackrestSyncStateHandler{
 		mgr: mgr,
 	}
+}
+
+func (h *BackrestSyncStateHandler) SetRemoteClientConfig(ctx context.Context, req *connect.Request[v1sync.SetRemoteClientConfigRequest]) (*connect.Response[v1sync.SetRemoteClientConfigResponse], error) {
+	peerKeyID := req.Msg.GetPeerKeyid()
+	if peerKeyID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("peer_keyid is required"))
+	}
+
+	handle := h.mgr.GetConnectedPeer(peerKeyID)
+	if handle == nil {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("peer %q is not connected", peerKeyID))
+	}
+
+	handle.SendSetConfig(&v1sync.SyncStreamItem_SyncActionSetConfig{
+		Repos:         req.Msg.GetRepos(),
+		Plans:         req.Msg.GetPlans(),
+		ReposToDelete: req.Msg.GetReposToDelete(),
+		PlansToDelete: req.Msg.GetPlansToDelete(),
+	})
+
+	return connect.NewResponse(&v1sync.SetRemoteClientConfigResponse{}), nil
 }
 
 func (h *BackrestSyncStateHandler) GetPeerSyncStatesStream(ctx context.Context, req *connect.Request[v1sync.SyncStateStreamRequest], stream *connect.ServerStream[v1sync.PeerState]) error {

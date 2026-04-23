@@ -2,28 +2,18 @@ import {
   Stack,
   Flex,
   Input,
-  Card,
   Text as CText,
   Grid,
   Code,
   Box,
 } from "@chakra-ui/react";
 import { EnumSelector, EnumOption } from "../../components/common/EnumSelector";
-import { Checkbox } from "../../components/ui/checkbox";
 
-import {
-  AccordionItem,
-  AccordionItemContent,
-  AccordionItemTrigger,
-  AccordionRoot,
-} from "../../components/ui/accordion";
 import React, { useEffect, useRef, useState } from "react";
 import { useShowModal } from "../../components/common/ModalManager";
 import {
   CommandPrefix_CPUNiceLevel,
-  CommandPrefix_CPUNiceLevelSchema,
   CommandPrefix_IONiceLevel,
-  CommandPrefix_IONiceLevelSchema,
   Repo,
   RepoSchema,
   Schedule_Clock,
@@ -31,27 +21,24 @@ import {
 import {
   AddRepoRequestSchema,
   CheckRepoExistsRequestSchema,
-  SetupSftpRequestSchema,
 } from "../../../gen/ts/v1/service_pb";
 import { StringValueSchema } from "../../../gen/ts/types/value_pb";
 import { URIAutocomplete } from "../../components/common/URIAutocomplete";
 import { alerts, formatErrorAlert } from "../../components/common/Alerts";
 import { namePattern } from "../../lib/util";
 import { backrestService } from "../../api/client";
-import { ConfirmButton, SpinButton } from "../../components/common/SpinButton";
+import { ConfirmButton } from "../../components/common/SpinButton";
 import { useConfig } from "../../app/provider";
 import {
   ScheduleFormItem,
   ScheduleDefaultsInfrequent,
 } from "../../components/common/ScheduleFormItem";
 import { isWindows } from "../../state/buildcfg";
-import { create, fromJson, toJson, JsonValue } from "@bufbuild/protobuf";
+import { create, fromJson, toJson } from "@bufbuild/protobuf";
 import * as m from "../../paraglide/messages";
-import { FormModal } from "../../components/common/FormModal";
 import { Button } from "../../components/ui/button";
 import { Field } from "../../components/ui/field";
 import { PasswordInput } from "../../components/ui/password-input";
-import { Tooltip } from "../../components/ui/tooltip";
 import { NumberInputField } from "../../components/common/NumberInput";
 import {
   HooksFormList,
@@ -68,6 +55,26 @@ import {
   DialogRoot,
   DialogTitle,
 } from "../../components/ui/dialog";
+import {
+  FiTag,
+  FiLink,
+  FiClock,
+  FiZap,
+  FiSliders,
+} from "react-icons/fi";
+import {
+  TwoPaneModal,
+  TwoPaneSection,
+  type SectionDef,
+} from "../../components/common/TwoPaneModal";
+import { SectionCard } from "../../components/common/SectionCard";
+import { ToggleField } from "../../components/common/ToggleField";
+import {
+  AccordionRoot,
+  AccordionItem,
+  AccordionItemTrigger,
+  AccordionItemContent,
+} from "../../components/ui/accordion";
 
 const repoDefaults = create(RepoSchema, {
   prunePolicy: {
@@ -75,7 +82,7 @@ const repoDefaults = create(RepoSchema, {
     schedule: {
       schedule: {
         case: "cron",
-        value: "0 0 1 * *", // 1st of the month
+        value: "0 0 1 * *",
       },
       clock: Schedule_Clock.LAST_RUN_TIME,
     },
@@ -84,7 +91,7 @@ const repoDefaults = create(RepoSchema, {
     schedule: {
       schedule: {
         case: "cron",
-        value: "0 0 1 * *", // 1st of the month
+        value: "0 0 1 * *",
       },
       clock: Schedule_Clock.LAST_RUN_TIME,
     },
@@ -137,7 +144,6 @@ const SftpConfigSection = ({
     try {
       if (!uri) return;
 
-      // Parse host and port from the SFTP URI
       const authority = uri.replace("sftp:", "").split("/")[0];
       const hostPart = authority.includes("@") ? authority.split("@")[1] : authority;
       let host = hostPart;
@@ -278,24 +284,22 @@ const SftpConfigSection = ({
   );
 };
 
-export const AddRepoModal = ({ template }: { template: Repo | null }) => {
+export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | null, onSaveOverride?: (repo: Repo) => Promise<void> }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const [config, setConfig] = useConfig();
+  const isRemoteOrigin = !!template?.originInstanceId;
 
-  // Local state for form fields
   const [formData, setFormData] = useState<any>(
     template
       ? toJson(RepoSchema, template, { alwaysEmitImplicit: true })
       : toJson(RepoSchema, repoDefaults, { alwaysEmitImplicit: true }),
   );
 
-  // SFTP specific state
   const [sftpIdentityFile, setSftpIdentityFile] = useState("");
   const [sftpPort, setSftpPort] = useState<number | null>(null);
   const [sftpKnownHostsPath, setSftpKnownHostsPath] = useState("");
 
-  // Ref to read current flags without making them a useEffect dependency
   const flagsRef = useRef<string[]>([]);
 
   const [confirmation, setConfirmation] = useState<ConfirmationState>({
@@ -317,7 +321,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     setSftpKnownHostsPath("");
 
     if (template?.uri?.startsWith("sftp:")) {
-      // Populate SFTP fields by parsing the existing sftp.args flag
       const sftpArgsFlag = (template.flags || []).find(
         (f) => f.includes("sftp.args") || f.includes("sftp.command"),
       );
@@ -360,26 +363,20 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     return curr;
   };
 
-  // Keep flagsRef in sync with latest formData.flags so the SFTP effect can
-  // read the current value without flags being a reactive dependency.
   flagsRef.current = (formData.flags as string[]) || [];
 
-  // Keep sftp.args flag in sync with the SFTP config fields.
   useEffect(() => {
     const uri = getField(["uri"]);
     if (!uri?.startsWith("sftp:")) {
       return;
     }
 
-    // Read flags via ref so this effect does not re-run whenever the user
-    // edits the flags list (which would immediately erase empty rows).
     const currentFlags = flagsRef.current;
     const newFlags = currentFlags.filter(
       (f: string) =>
         f && !f.includes("sftp.args") && !f.includes("sftp.command"),
     );
 
-    // Always include -oBatchMode=yes; quote paths to handle spaces.
     let sftpArgs = "-oBatchMode=yes";
 
     if (sftpIdentityFile) {
@@ -411,8 +408,6 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     sftpIdentityFile,
     sftpPort,
     sftpKnownHostsPath,
-    // flags intentionally omitted: flagsRef avoids a circular dep where any
-    // user edit to flags would re-trigger the effect and erase empty rows.
   ]);
 
   if (!config) return null;
@@ -434,10 +429,8 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
       throw new Error(m.add_repo_modal_error_uri_required());
     }
 
-    // Env and Password validation
     await envVarSetValidator(formData);
 
-    // Flags validation
     const flags = getField(["flags"]);
     if (flags && flags.some((f: string) => !/^\-\-?.*$/.test(f))) {
       throw new Error(m.add_repo_modal_error_flag_format());
@@ -477,6 +470,13 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         const repo = fromJson(RepoSchema, formData, {
           ignoreUnknownFields: true,
         });
+
+        if (onSaveOverride) {
+          await onSaveOverride(repo);
+          showModal(null);
+          alerts.success(m.add_repo_modal_success_updated({ uri: repo.uri }));
+          return;
+        }
 
         const req = create(AddRepoRequestSchema, {
           repo: repo,
@@ -524,7 +524,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             },
           });
         } else {
-          throw e; // rethrow to be caught by the outer catch
+          throw e;
         }
       }
     } catch (e: any) {
@@ -635,6 +635,49 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
     },
   ];
 
+  const sections: SectionDef[] = [
+    { id: "identity", label: "Identity", icon: <FiTag size={14} /> },
+    { id: "connection", label: "Connection", icon: <FiLink size={14} /> },
+    { id: "scheduling", label: "Scheduling", icon: <FiClock size={14} /> },
+    { id: "hooks", label: "Hooks", icon: <FiZap size={14} /> },
+    { id: "advanced", label: "Advanced", icon: <FiSliders size={14} /> },
+  ];
+
+  const footer = (
+    <Flex gap={2} justify="flex-end" width="full">
+      <Button
+        variant="outline"
+        disabled={confirmLoading}
+        onClick={() => showModal(null)}
+      >
+        {m.add_plan_modal_button_cancel()}
+      </Button>
+      {template && (
+        <ConfirmButton
+          danger
+          onClickAsync={handleDestroy}
+          confirmTitle={m.add_plan_modal_button_confirm_delete()}
+        >
+          {m.add_plan_modal_button_delete()}
+        </ConfirmButton>
+      )}
+      {!isRemoteOrigin && (
+        <>
+          <Button
+            variant="subtle"
+            loading={confirmLoading}
+            onClick={handleTest}
+          >
+            {m.add_repo_modal_test_config()}
+          </Button>
+          <Button loading={confirmLoading} onClick={handleOk}>
+            {m.add_plan_modal_button_submit()}
+          </Button>
+        </>
+      )}
+    </Flex>
+  );
+
   return (
     <>
       <DialogRoot
@@ -658,7 +701,7 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
         </DialogContent>
       </DialogRoot>
 
-      <FormModal
+      <TwoPaneModal
         isOpen={true}
         onClose={() => showModal(null)}
         title={
@@ -666,240 +709,198 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
             ? m.add_repo_modal_title_edit()
             : m.add_repo_modal_title_add()
         }
-        size="large"
-        footer={
-          <Flex gap={2} justify="flex-end" width="full">
-            <Button
-              variant="outline"
-              disabled={confirmLoading}
-              onClick={() => showModal(null)}
-            >
-              {m.add_plan_modal_button_cancel()}
-            </Button>
-            {template && (
-              <ConfirmButton
-                danger
-                onClickAsync={handleDestroy}
-                confirmTitle={m.add_plan_modal_button_confirm_delete()}
-              >
-                {m.add_plan_modal_button_delete()}
-              </ConfirmButton>
-            )}
-            <Button
-              variant="subtle"
-              loading={confirmLoading}
-              onClick={handleTest}
-            >
-              {m.add_repo_modal_test_config()}
-            </Button>
-            <Button loading={confirmLoading} onClick={handleOk}>
-              {m.add_plan_modal_button_submit()}
-            </Button>
-          </Flex>
-        }
+        headerIcon={<FiTag size={14} />}
+        sections={sections}
+        footer={footer}
       >
-        <Stack gap={6}>
-          <p>
-            {m.add_repo_modal_guide_text_p1()}{" "}
-            <a
-              href="https://garethgeorge.github.io/backrest/introduction/getting-started"
-              target="_blank"
-              style={{ textDecoration: "underline" }}
-            >
-              {m.add_repo_modal_guide_link_text()}
-            </a>{" "}
-            {m.add_repo_modal_guide_text_p2()}{" "}
-            <a
-              href="https://restic.readthedocs.io/"
-              target="_blank"
-              style={{ textDecoration: "underline" }}
-            >
-              {m.add_repo_modal_guide_restic_link_text()}
-            </a>{" "}
-            {m.add_repo_modal_guide_text_p3()}
-          </p>
+        <Box opacity={isRemoteOrigin ? 0.7 : 1} pointerEvents={isRemoteOrigin ? "none" : undefined}>
+          {isRemoteOrigin && (
+            <Box p={3} mb={4} borderWidth={1} borderRadius="md" bg="blue.subtle" borderColor="blue.400" pointerEvents="auto">
+              <CText fontSize="sm">
+                This repository is managed by remote instance <strong>{template?.originInstanceId}</strong> and cannot be edited. You may delete it to remove the local copy.
+              </CText>
+            </Box>
+          )}
 
-          <Section title={m.add_repo_modal_repo_details()}>
-            <Card.Root variant="subtle">
-              <Card.Body>
-                <Stack gap={4}>
-                  <Field
-                    label={m.add_repo_modal_field_repo_name()}
-                    helperText={
-                      !template
-                        ? m.add_repo_modal_field_repo_name_tooltip()
-                        : undefined
+          {/* Identity Section */}
+          <TwoPaneSection id="identity">
+            <SectionCard
+              icon={<FiTag size={16} />}
+              title="Identity"
+              description="Display name, identifiers, and unlock behaviour."
+            >
+              <Stack gap={4}>
+                <Field
+                  label={m.add_repo_modal_field_repo_name()}
+                  helperText={
+                    !template
+                      ? m.add_repo_modal_field_repo_name_tooltip()
+                      : undefined
+                  }
+                  required
+                  invalid={
+                    !!getField(["id"]) &&
+                    (!namePattern.test(getField(["id"])) ||
+                      (!template &&
+                        !!config.repos.find(
+                          (r) => r.id === getField(["id"]),
+                        )))
+                  }
+                  errorText={
+                    !!getField(["id"]) && !namePattern.test(getField(["id"]))
+                      ? m.add_plan_modal_validation_plan_name_pattern()
+                      : m.add_repo_modal_error_repo_exists()
+                  }
+                >
+                  <Input
+                    value={getField(["id"])}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      updateField(["id"], e.target.value)
                     }
-                    required
-                    invalid={
-                      !!getField(["id"]) &&
-                      (!namePattern.test(getField(["id"])) ||
-                        (!template &&
-                          !!config.repos.find(
-                            (r) => r.id === getField(["id"]),
-                          )))
-                    }
-                    errorText={
-                      !!getField(["id"]) && !namePattern.test(getField(["id"]))
-                        ? m.add_plan_modal_validation_plan_name_pattern()
-                        : m.add_repo_modal_error_repo_exists()
-                    }
-                  >
-                    <Input
-                      value={getField(["id"])}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        updateField(["id"], e.target.value)
-                      }
-                      disabled={!!template}
-                      placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
-                    />
-                  </Field>
+                    disabled={!!template}
+                    placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
+                  />
+                </Field>
 
-                  <Field
-                    label={m.add_repo_modal_field_uri()}
-                    helperText={
+                <ToggleField
+                  checked={getField(["autoUnlock"]) || false}
+                  onChange={(v) => updateField(["autoUnlock"], v)}
+                  label={m.add_repo_modal_field_auto_unlock()}
+                  hint={m.add_repo_modal_field_auto_unlock_tooltip()}
+                />
+
+                <ToggleField
+                  checked={getField(["shared"]) || false}
+                  onChange={(v) => updateField(["shared"], v)}
+                  label="Shared"
+                  hint="Automatically push this repo's configuration to all authorized clients with read permission."
+                />
+              </Stack>
+            </SectionCard>
+          </TwoPaneSection>
+
+          {/* Connection Section */}
+          <TwoPaneSection id="connection">
+            <SectionCard
+              icon={<FiLink size={16} />}
+              title="Connection"
+              description="Where the repo lives and how Backrest authenticates."
+            >
+              <Stack gap={4}>
+                <Field
+                  label={m.add_repo_modal_field_uri()}
+                  helperText={
+                    <>
+                      {m.add_repo_modal_field_uri_tooltip_title()}
+                      <Box as="ul" ml={4} mt={1}>
+                        <li>{m.add_repo_modal_field_uri_tooltip_local()}</li>
+                        <li>{m.add_repo_modal_field_uri_tooltip_s3()}</li>
+                        <li>{m.add_repo_modal_field_uri_tooltip_sftp()}</li>
+                        <li>
+                          {m.add_repo_modal_field_uri_tooltip_see()}{" "}
+                          <a
+                            href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository"
+                            target="_blank"
+                            style={{ textDecoration: "underline" }}
+                          >
+                            {m.add_repo_modal_field_uri_tooltip_restic_docs()}
+                          </a>{" "}
+                          {m.add_repo_modal_field_uri_tooltip_info()}
+                        </li>
+                      </Box>
+                    </>
+                  }
+                  required
+                >
+                  <URIAutocomplete
+                    disabled={!!template}
+                    value={getField(["uri"])}
+                    onChange={(val: string) => updateField(["uri"], val)}
+                  />
+                </Field>
+
+                {getField(["uri"])?.startsWith("sftp:") && (
+                  <SftpConfigSection
+                    uri={getField(["uri"])}
+                    identityFile={sftpIdentityFile}
+                    onChangeIdentityFile={setSftpIdentityFile}
+                    port={sftpPort}
+                    onChangePort={setSftpPort}
+                    knownHostsPath={sftpKnownHostsPath}
+                    onChangeKnownHostsPath={setSftpKnownHostsPath}
+                    isWindows={isWindows}
+                  />
+                )}
+
+                <Field
+                  label={m.add_repo_modal_field_password()}
+                  helperText={
+                    !template ? (
                       <>
-                        {m.add_repo_modal_field_uri_tooltip_title()}
+                        {m.add_repo_modal_field_password_tooltip_intro()}
                         <Box as="ul" ml={4} mt={1}>
-                          <li>{m.add_repo_modal_field_uri_tooltip_local()}</li>
-                          <li>{m.add_repo_modal_field_uri_tooltip_s3()}</li>
-                          <li>{m.add_repo_modal_field_uri_tooltip_sftp()}</li>
                           <li>
-                            {m.add_repo_modal_field_uri_tooltip_see()}{" "}
-                            <a
-                              href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository"
-                              target="_blank"
-                              style={{ textDecoration: "underline" }}
-                            >
-                              {m.add_repo_modal_field_uri_tooltip_restic_docs()}
-                            </a>{" "}
-                            {m.add_repo_modal_field_uri_tooltip_info()}
+                            {m.add_repo_modal_field_password_tooltip_entropy()}
+                          </li>
+                          <li>
+                            {m.add_repo_modal_field_password_tooltip_env()}
+                          </li>
+                          <li>
+                            {m.add_repo_modal_field_password_tooltip_generate()}
                           </li>
                         </Box>
                       </>
-                    }
-                    required
-                  >
-                    <URIAutocomplete
-                      disabled={!!template}
-                      value={getField(["uri"])}
-                      onChange={(val: string) => updateField(["uri"], val)}
-                    />
-                  </Field>
+                    ) : undefined
+                  }
+                >
+                  <Flex gap={2} width="full">
+                    <Box flex={1}>
+                      <PasswordInput
+                        value={getField(["password"])}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          updateField(["password"], e.target.value)
+                        }
+                        disabled={!!template}
+                      />
+                    </Box>
+                    {!template && (
+                      <Button
+                        variant="ghost"
+                        onClick={() =>
+                          updateField(["password"], cryptoRandomPassword())
+                        }
+                      >
+                        {m.add_repo_modal_button_generate()}
+                      </Button>
+                    )}
+                  </Flex>
+                </Field>
 
-                  {/* SFTP Specific Fields */}
-                  {getField(["uri"])?.startsWith("sftp:") && (
-                    <SftpConfigSection
-                      uri={getField(["uri"])}
-                      identityFile={sftpIdentityFile}
-                      onChangeIdentityFile={setSftpIdentityFile}
-                      port={sftpPort}
-                      onChangePort={setSftpPort}
-                      knownHostsPath={sftpKnownHostsPath}
-                      onChangeKnownHostsPath={setSftpKnownHostsPath}
-                      isWindows={isWindows}
-                    />
-                  )}
+                <DynamicList
+                  label={m.add_repo_modal_field_env_vars()}
+                  items={getField(["env"]) || []}
+                  onUpdate={(items: string[]) => updateField(["env"], items)}
+                  tooltip={
+                    <Stack gap={2}>
+                      <CText>
+                        {m.add_repo_modal_field_env_vars_tooltip()}
+                      </CText>
+                      <EnvVarTooltip uri={getField(["uri"])} />
+                    </Stack>
+                  }
+                  placeholder="KEY=VALUE"
+                />
+              </Stack>
+            </SectionCard>
+          </TwoPaneSection>
 
-                  <Field
-                    label={m.add_repo_modal_field_password()}
-                    helperText={
-                      !template ? (
-                        <>
-                          {m.add_repo_modal_field_password_tooltip_intro()}
-                          <Box as="ul" ml={4} mt={1}>
-                            <li>
-                              {m.add_repo_modal_field_password_tooltip_entropy()}
-                            </li>
-                            <li>
-                              {m.add_repo_modal_field_password_tooltip_env()}
-                            </li>
-                            <li>
-                              {m.add_repo_modal_field_password_tooltip_generate()}
-                            </li>
-                          </Box>
-                        </>
-                      ) : undefined
-                    }
-                  >
-                    <Flex gap={2} width="full">
-                      <Box flex={1}>
-                        <PasswordInput
-                          value={getField(["password"])}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            updateField(["password"], e.target.value)
-                          }
-                          disabled={!!template}
-                        />
-                      </Box>
-                      {!template && (
-                        <Button
-                          variant="ghost"
-                          onClick={() =>
-                            updateField(["password"], cryptoRandomPassword())
-                          }
-                        >
-                          {m.add_repo_modal_button_generate()}
-                        </Button>
-                      )}
-                    </Flex>
-                  </Field>
-
-                  <Field label={m.add_repo_modal_field_auto_unlock()}>
-                    <Checkbox
-                      checked={getField(["autoUnlock"])}
-                      onCheckedChange={(e: {
-                        checked: boolean | "indeterminate";
-                      }) => updateField(["autoUnlock"], !!e.checked)}
-                    >
-                      {m.add_repo_modal_field_auto_unlock()}
-                    </Checkbox>
-                    <CText fontSize="xs" color="fg.muted" ml={6}>
-                      {m.add_repo_modal_field_auto_unlock_tooltip()}
-                    </CText>
-                  </Field>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-          </Section>
-
-          <Section title={m.add_repo_modal_env_and_flags()}>
-            <Card.Root variant="subtle">
-              <Card.Body>
-                <Stack gap={4}>
-                  <DynamicList
-                    label={m.add_repo_modal_field_env_vars()}
-                    items={getField(["env"]) || []}
-                    onUpdate={(items: string[]) => updateField(["env"], items)}
-                    tooltip={
-                      <Stack gap={2}>
-                        <CText>
-                          {m.add_repo_modal_field_env_vars_tooltip()}
-                        </CText>
-                        <EnvVarTooltip uri={getField(["uri"])} />
-                      </Stack>
-                    }
-                    placeholder="KEY=VALUE"
-                  />
-
-                  <DynamicList
-                    label={m.add_repo_modal_field_flags()}
-                    items={getField(["flags"]) || []}
-                    onUpdate={(items: string[]) =>
-                      updateField(["flags"], items)
-                    }
-                    placeholder="--flag"
-                  />
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-          </Section>
-        <Section
-          title={m.add_repo_modal_field_prune_policy_heading()}
-          help={m.add_repo_modal_field_prune_policy_help()}
-        >
-          <Card.Root variant="subtle" size="sm">
-            <Card.Body>
+          {/* Scheduling Section */}
+          <TwoPaneSection id="scheduling">
+            <SectionCard
+              icon={<FiClock size={16} />}
+              title="Prune Policy"
+              description={m.add_repo_modal_field_prune_policy_help()}
+            >
               <Stack gap={4}>
                 <NumberInputField
                   label={m.add_repo_modal_field_max_unused()}
@@ -923,16 +924,13 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                   defaults={ScheduleDefaultsInfrequent}
                 />
               </Stack>
-            </Card.Body>
-          </Card.Root>
-        </Section>
+            </SectionCard>
 
-        <Section
-          title={m.add_repo_modal_field_check_policy_heading()}
-          help={m.add_repo_modal_field_check_policy_help()}
-        >
-          <Card.Root variant="subtle" size="sm">
-            <Card.Body>
+            <SectionCard
+              icon={<FiClock size={16} />}
+              title="Check Policy"
+              description={m.add_repo_modal_field_check_policy_help()}
+            >
               <Stack gap={4}>
                 <NumberInputField
                   label={m.add_repo_modal_field_read_data()}
@@ -956,13 +954,35 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                   defaults={ScheduleDefaultsInfrequent}
                 />
               </Stack>
-            </Card.Body>
-          </Card.Root>
-        </Section>
+            </SectionCard>
+          </TwoPaneSection>
 
-        <Section title="Advanced">
-          <Card.Root variant="subtle">
-            <Card.Body>
+          {/* Hooks Section */}
+          <TwoPaneSection id="hooks">
+            <SectionCard
+              icon={<FiZap size={16} />}
+              title="Hooks"
+              description="Run commands or send notifications on operation events."
+            >
+              <Field
+                label={m.add_plan_modal_field_hooks()}
+                helperText={hooksListTooltipText}
+              >
+                <HooksFormList
+                  value={getField(["hooks"])}
+                  onChange={(v: any) => updateField(["hooks"], v)}
+                />
+              </Field>
+            </SectionCard>
+          </TwoPaneSection>
+
+          {/* Advanced Section */}
+          <TwoPaneSection id="advanced">
+            <SectionCard
+              icon={<FiSliders size={16} />}
+              title="Advanced"
+              description="Command priority, extra flags, and raw restic options."
+            >
               <Stack gap={4} width="full">
                 {!isWindows && (
                   <Field label={m.add_repo_modal_field_command_modifiers()}>
@@ -1005,19 +1025,17 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
                   </Field>
                 )}
 
-                <Field
-                  label={m.add_plan_modal_field_hooks()}
-                  helperText={hooksListTooltipText}
-                >
-                  <HooksFormList
-                    value={getField(["hooks"])}
-                    onChange={(v: any) => updateField(["hooks"], v)}
-                  />
-                  </Field>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-          </Section>
+                <DynamicList
+                  label={m.add_repo_modal_field_flags()}
+                  items={getField(["flags"]) || []}
+                  onUpdate={(items: string[]) =>
+                    updateField(["flags"], items)
+                  }
+                  placeholder="--flag"
+                />
+              </Stack>
+            </SectionCard>
+          </TwoPaneSection>
 
           {/* JSON Preview */}
           <AccordionRoot collapsible variant="plain">
@@ -1041,35 +1059,11 @@ export const AddRepoModal = ({ template }: { template: Repo | null }) => {
               </AccordionItemContent>
             </AccordionItem>
           </AccordionRoot>
-        </Stack>
-      </FormModal>
+        </Box>
+      </TwoPaneModal>
     </>
   );
 };
-
-const Section = ({
-  title,
-  help,
-  children,
-}: {
-  title: React.ReactNode;
-  help?: React.ReactNode;
-  children: React.ReactNode;
-}) => (
-  <Stack gap={2}>
-    <Stack gap={0}>
-      <CText fontWeight="semibold" fontSize="sm">
-        {title}
-      </CText>
-      {help && (
-        <CText fontSize="sm" color="fg.muted">
-          {help}
-        </CText>
-      )}
-    </Stack>
-    {children}
-  </Stack>
-);
 
 // Utils
 const cryptoRandomPassword = (): string => {
@@ -1175,6 +1169,7 @@ const formatMissingEnvVars = (partialMatches: string[][]): string => {
     })
     .join(" or ");
 };
+
 const EnvVarTooltip = ({ uri }: { uri: string }) => {
   if (!uri) return null;
   const scheme = uri.split(":")[0];

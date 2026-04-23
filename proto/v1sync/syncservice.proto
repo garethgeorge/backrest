@@ -26,6 +26,8 @@ service BackrestSyncService {
 // This service should be served behind authentication and authorization.
 service BackrestSyncStateService {
   rpc GetPeerSyncStatesStream(SyncStateStreamRequest) returns (stream PeerState) {}
+  // SetRemoteClientConfig pushes a config change to a connected authorized client peer.
+  rpc SetRemoteClientConfig(SetRemoteClientConfigRequest) returns (SetRemoteClientConfigResponse) {}
 }
 
 
@@ -94,6 +96,16 @@ message SetConfigRequest {
   repeated string plans_to_delete = 4; // The plan IDs to delete.
 }
 
+message SetRemoteClientConfigRequest {
+  string peer_keyid = 1; // The key ID of the connected peer to push config to.
+  repeated v1.Repo repos = 2; // Repos to create or update on the peer.
+  repeated v1.Plan plans = 3; // Plans to create or update on the peer.
+  repeated string repos_to_delete = 4; // Repo IDs to delete on the peer.
+  repeated string plans_to_delete = 5; // Plan IDs to delete on the peer.
+}
+
+message SetRemoteClientConfigResponse {}
+
 message RemoteConfig {
   int32 modno = 1; // The modno of the config.
   int32 version = 2; // The storage version of the config.
@@ -112,9 +124,10 @@ message SyncStreamItem {
     SyncActionHandshake handshake = 3; // note: mostly deprecated, sent through headers rather than stream.
     SyncActionHeartbeat heartbeat = 4;
     
-    SyncActionRequestOperations request_operations = 20;
+    SyncActionOperationManifest operation_manifest = 20;
     SyncActionReceiveOperations receive_operations = 21;
-    SyncActionReceiveConfig receive_config = 22;
+    SyncActionRequestOperationData request_operation_data = 22;
+    SyncActionReceiveConfig receive_config = 23;
     SyncActionSetConfig set_config = 24;
     SyncActionRequestResources request_resources = 25; // request a list of available resources. Only used by the server.
     SyncActionReceiveResources receive_resources = 26; // receiving a list of available resources.
@@ -128,6 +141,7 @@ message SyncStreamItem {
     int64 protocol_version = 1;
     v1.PublicKey public_key = 2;
     v1.SignedMessage instance_id = 3;
+    string pairing_secret = 4; // optional one-time secret from a pairing token, used to auto-authorize a new client
   }
 
   // SyncActionHeartbeat is sent periodically to keep the connection alive.
@@ -163,9 +177,13 @@ message SyncStreamItem {
     CONNECTION_STATE_NOT_FOUND = 4;
   }
 
-  message SyncActionRequestOperations {
-    int64 high_opid = 1; // The highest operation ID the requester has.
-    int64 high_modno = 2; // The highest modno the requester has.
+  message SyncActionOperationManifest {
+    repeated int64 op_ids = 1;
+    repeated int64 modnos = 2;
+  }
+
+  message SyncActionRequestOperationData {
+    repeated int64 op_ids = 1;
   }
 
   message SyncActionReceiveOperations {
@@ -195,8 +213,8 @@ message SyncStreamItem {
   }
 
   message SyncEstablishSharedSecret {
-    // a one-time-use ed25519 public key with a matching unshared private key. Used to perform a key exchange.
+    // a one-time-use ECDSA public key with a matching unshared private key. Used to perform a key exchange.
     // See https://pkg.go.dev/crypto/ecdh#PrivateKey.ECDH .
-    string ed25519 = 2 [json_name="ed25519pub"]; // base64 encoded public key
+    string ecdsa_pub = 2 [json_name="ecdsaPub"]; // base64 encoded public key
   }
 }

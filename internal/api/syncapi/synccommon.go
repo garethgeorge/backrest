@@ -16,6 +16,12 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
+// onUnknownPeerFunc is called when a peer is not found in the known peers list during handshake.
+// It receives the handshake item and may return a peer definition to authorize the connection
+// (e.g. by validating a pairing token and adding the peer to the config).
+// If it returns nil, the connection is rejected.
+type onUnknownPeerFunc func(handshake *v1sync.SyncStreamItem) (*v1.Multihost_Peer, error)
+
 func runSync(
 	ctx context.Context,
 	localInstanceID string,
@@ -23,9 +29,17 @@ func runSync(
 	commandStream *bidiSyncCommandStream,
 	handler syncSessionHandler,
 	knownPeers []*v1.Multihost_Peer, // could be known hosts or authorized clients, doesn't matter. This is used to verify the handshake packet, authorization comes later.
+	pairingSecret string, // optional one-time pairing secret to send during the handshake
+	onUnknownPeer onUnknownPeerFunc, // optional callback for handling unknown peers (e.g. pairing), nil to reject all unknown peers
 ) error {
+	// Session-scoped context: cancelled when this runSync invocation returns. Any per-session
+	// goroutines the handler spawns (heartbeats, watchers, etc.) should use this ctx so they
+	// die with the session rather than outliving it into the next reconnect cycle.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	// send the initial handshake packet to the peer to establish the connection.
-	handshakePacket, err := createHandshakePacket(localInstanceID, localKey)
+	handshakePacket, err := createHandshakePacket(localInstanceID, localKey, pairingSecret)
 	if err != nil {
 		return NewSyncErrorAuth(fmt.Errorf("creating handshake packet: %w", err))
 	}
@@ -47,13 +61,22 @@ func runSync(
 	})
 	if peerIdx >= 0 {
 		peer = knownPeers[peerIdx]
-	} else {
+	} else if onUnknownPeer != nil {
+		// Peer not in known list — try the onUnknownPeer callback (e.g. pairing token validation).
+		peer, err = onUnknownPeer(handshake)
+		if err != nil {
+			return NewSyncErrorAuth(fmt.Errorf("pairing failed: %w", err))
+		}
+	}
+	if peer == nil {
 		return NewSyncErrorAuth(fmt.Errorf("peer public key ID %s (instance ID %s) not found in known peers", handshake.GetHandshake().GetPublicKey().GetKeyid(), string(handshake.GetHandshake().GetInstanceId().GetPayload())))
 	}
 
 	if err := authorizeHandshakeAsPeer(handshake, peer); err != nil {
 		return NewSyncErrorAuth(fmt.Errorf("authorizing handshake as peer: %w", err))
 	}
+
+	defer handler.OnConnectionDisconnected()
 
 	if err := handler.OnConnectionEstablished(ctx, commandStream, peer); err != nil {
 		return err
@@ -65,9 +88,13 @@ func runSync(
 			if err := handler.HandleHeartbeat(ctx, commandStream, item.GetHeartbeat()); err != nil {
 				return fmt.Errorf("handling heartbeat: %w", err)
 			}
-		case *v1sync.SyncStreamItem_RequestOperations:
-			if err := handler.HandleRequestOperations(ctx, commandStream, item.GetRequestOperations()); err != nil {
-				return fmt.Errorf("handling request operations: %w", err)
+		case *v1sync.SyncStreamItem_OperationManifest:
+			if err := handler.HandleOperationManifest(ctx, commandStream, item.GetOperationManifest()); err != nil {
+				return fmt.Errorf("handling operation manifest: %w", err)
+			}
+		case *v1sync.SyncStreamItem_RequestOperationData:
+			if err := handler.HandleRequestOperationData(ctx, commandStream, item.GetRequestOperationData()); err != nil {
+				return fmt.Errorf("handling request operation data: %w", err)
 			}
 		case *v1sync.SyncStreamItem_ReceiveOperations:
 			if err := handler.HandleReceiveOperations(ctx, commandStream, item.GetReceiveOperations()); err != nil {
@@ -108,7 +135,7 @@ func runSync(
 	return nil
 }
 
-func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey) (*v1sync.SyncStreamItem, error) {
+func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey, pairingSecret string) (*v1sync.SyncStreamItem, error) {
 	signedMessage, err := createSignedMessage([]byte(instanceID), identity)
 	if err != nil {
 		return nil, fmt.Errorf("signing instance ID: %w", err)
@@ -120,6 +147,7 @@ func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey) (
 				ProtocolVersion: SyncProtocolVersion,
 				InstanceId:      signedMessage,
 				PublicKey:       identity.PublicKeyProto(),
+				PairingSecret:   pairingSecret,
 			},
 		},
 	}, nil
@@ -198,10 +226,15 @@ func sendHeartbeats(ctx context.Context, stream *bidiSyncCommandStream, interval
 
 // syncSessionHandler is a stateful handler for the messages within the context of a sync stream session.
 // the handler does not need to be thread safe as it is guaranteed to be called from a single thread.
+//
+// The ctx passed to every method is scoped to the session: it is cancelled when runSync returns.
+// Goroutines spawned by the handler should use this ctx so they don't leak across reconnect cycles.
 type syncSessionHandler interface {
 	OnConnectionEstablished(ctx context.Context, stream *bidiSyncCommandStream, peer *v1.Multihost_Peer) error
+	OnConnectionDisconnected()
 	HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error
-	HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error
+	HandleOperationManifest(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionOperationManifest) error
+	HandleRequestOperationData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperationData) error
 	HandleReceiveOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveOperations) error
 	HandleReceiveConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveConfig) error
 	HandleSetConfig(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionSetConfig) error
@@ -220,12 +253,18 @@ func (h *unimplementedSyncSessionHandler) OnConnectionEstablished(ctx context.Co
 	return NewSyncErrorProtocol(fmt.Errorf("OnConnectionEstablished not implemented"))
 }
 
+func (h *unimplementedSyncSessionHandler) OnConnectionDisconnected() {}
+
 func (h *unimplementedSyncSessionHandler) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error {
 	return NewSyncErrorProtocol(fmt.Errorf("HandleHeartbeat not implemented"))
 }
 
-func (h *unimplementedSyncSessionHandler) HandleRequestOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperations) error {
-	return NewSyncErrorProtocol(fmt.Errorf("HandleRequestOperations not implemented"))
+func (h *unimplementedSyncSessionHandler) HandleOperationManifest(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionOperationManifest) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleOperationManifest not implemented"))
+}
+
+func (h *unimplementedSyncSessionHandler) HandleRequestOperationData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperationData) error {
+	return NewSyncErrorProtocol(fmt.Errorf("HandleRequestOperationData not implemented"))
 }
 
 func (h *unimplementedSyncSessionHandler) HandleReceiveOperations(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionReceiveOperations) error {
@@ -306,20 +345,26 @@ func (om *remoteOpIDMapper) translateOpID(originalInstanceKeyid string, original
 		return translatedID, nil
 	}
 
-	// Cache miss - query the database
-	op, err := om.oplog.FindOneMetadata(oplog.Query{
+	// Cache miss - query the database. Use QueryMetadata directly to handle
+	// the case where duplicates already exist (return the first match).
+	var translatedID int64
+	err := om.oplog.QueryMetadata(oplog.Query{
 		OriginalInstanceKeyid: &originalInstanceKeyid,
 		OriginalID:            &originalOpId,
+	}, func(op oplog.OpMetadata) error {
+		if translatedID == 0 {
+			translatedID = op.ID
+		}
+		return oplog.ErrStopIteration
 	})
 	if err != nil {
-		if errors.Is(err, oplog.ErrNoResults) {
-			return 0, nil // No results means the ID is not found
-		}
-		return 0, err // Other errors should be propagated
+		return 0, err
+	}
+	if translatedID == 0 {
+		return 0, nil // No results means the ID is not found
 	}
 
 	// Cache the result and return
-	translatedID := op.ID
 	om.opIDLru.Add(cacheKey, translatedID)
 	return translatedID, nil
 }
@@ -340,20 +385,26 @@ func (om *remoteOpIDMapper) translateFlowID(originalInstanceKeyid string, origin
 		return translatedID, nil
 	}
 
-	// Cache miss - query the database
-	op, err := om.oplog.FindOneMetadata(oplog.Query{
+	// Cache miss - query the database. Use QueryMetadata directly to handle
+	// the case where duplicates already exist (return the first match).
+	var translatedID int64
+	err := om.oplog.QueryMetadata(oplog.Query{
 		OriginalInstanceKeyid: &originalInstanceKeyid,
 		OriginalFlowID:        &originalFlowId,
+	}, func(op oplog.OpMetadata) error {
+		if translatedID == 0 {
+			translatedID = op.FlowID
+		}
+		return oplog.ErrStopIteration
 	})
 	if err != nil {
-		if errors.Is(err, oplog.ErrNoResults) {
-			return 0, nil // No results means the ID is not found
-		}
-		return 0, err // Other errors should be propagated
+		return 0, err
+	}
+	if translatedID == 0 {
+		return 0, nil // No results means the ID is not found
 	}
 
 	// Cache the result and return
-	translatedID := op.FlowID
 	om.flowIDLru.Add(cacheKey, translatedID)
 	return translatedID, nil
 }
