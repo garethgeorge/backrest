@@ -18,4 +18,4 @@ RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest \
     && go install google.golang.org/protobuf/cmd/protoc-gen-go@latest \
     && go install connectrpc.com/connect/cmd/protoc-gen-connect-go@latest \
     && go install github.com/goreleaser/goreleaser@latest \
-    && npm install -g @bufbuild/protoc-gen-es @connectrpc/protoc-gen-connect-es
+    && npm install -g @bufbuild/protoc-gen-es
