@@ -253,7 +253,7 @@ Contributions are welcome! See the [issues](https://github.com/garethgeorge/back
 
 - [Node.js](https://nodejs.org/en) for UI development
 - [Go](https://go.dev/) 1.21 or greater for server development
-- [goreleaser](https://github.com/goreleaser/goreleaser) `go install github.com/goreleaser/goreleaser@latest`
+- [goreleaser](https://github.com/goreleaser/goreleaser) `go install github.com/goreleaser/goreleaser/v2@latest`
 
 **(Optional) To Edit Protobuffers**
 
