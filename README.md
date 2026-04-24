@@ -252,7 +252,7 @@ Contributions are welcome! See the [issues](https://github.com/garethgeorge/back
 ## Build Dependencies
 
 - [Node.js](https://nodejs.org/en) for UI development
-- [Go](https://go.dev/) 1.21 or greater for server development
+- [Go](https://go.dev/) 1.25 or greater for server development
 - [goreleaser](https://github.com/goreleaser/goreleaser) `go install github.com/goreleaser/goreleaser@latest`
 
 **(Optional) To Edit Protobuffers**
