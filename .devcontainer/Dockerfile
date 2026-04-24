@@ -1,6 +1,6 @@
 ## Based on microsoft go devcontainer - https://github.com/microsoft/vscode-dev-containers/blob/v0.205.2/containers/go/.devcontainer/Dockerfile
 # [Choice] Go version (use -bullseye variants on local arm64/Apple Silicon): 1, 1.16, 1.17, 1-bullseye, 1.16-bullseye, 1.17-bullseye, 1-buster, 1.16-buster, 1.17-buster
-ARG VARIANT=1-bullseye
+ARG VARIANT=1-trixie
 FROM mcr.microsoft.com/vscode/devcontainers/go:${VARIANT}
 
 # [Choice] Node.js version: none, lts/*, 16, 14, 12, 10
