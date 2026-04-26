@@ -314,7 +314,7 @@ const SidebarRepoItem = React.memo(
         <Box flexShrink={0} mr={2}>
           <IconForResource selector={sel} />
         </Box>
-        <Tooltip content={repo.id}>
+        <Tooltip content={repo.uri}>
           <Box
             flex="1"
             minW="0"
