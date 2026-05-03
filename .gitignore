@@ -1,5 +1,5 @@
-backrest
-backrest-*
+/backrest
+/backrest-*
 dist
 __debug_bin
 cmd/backrest/backrest

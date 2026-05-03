@@ -29,6 +29,8 @@ builds:
     binary: backrest
     env:
       - CGO_ENABLED=0
+    tags:
+      - tray
     goos:
       - linux
     goarch:
@@ -63,6 +65,8 @@ builds:
     binary: backrest
     env:
       - CGO_ENABLED=1
+    tags:
+      - tray
     goos:
       - windows
     goarch:
@@ -72,7 +76,12 @@ builds:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -H windowsgui
 
 archives:
-  - format: tar.gz
+  - id: default
+    builds:
+      - other
+      - linux
+      - windows
+    format: tar.gz
     name_template: >-
       {{ .ProjectName }}_
       {{- title .Os }}_
@@ -362,6 +371,8 @@ docker_manifests:
 
 brews:
   - name: backrest
+    ids:
+      - default
     homepage: https://github.com/garethgeorge/backrest
     description: "Backrest is a web UI and orchestrator for restic backup."
 
