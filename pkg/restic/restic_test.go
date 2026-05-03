@@ -436,6 +436,65 @@ func TestResticForget(t *testing.T) {
 	}
 }
 
+func TestResticForgetMultiGroup(t *testing.T) {
+	t.Parallel()
+
+	repoDir := t.TempDir()
+	r := NewRepo(helpers.ResticBinary(t), repoDir, WithFlags("--no-cache"), WithEnv("RESTIC_PASSWORD=test"))
+	if err := r.Init(context.Background()); err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+
+	testData := helpers.CreateTestData(t)
+
+	// Create snapshots with two different tags to produce multiple groups
+	var groupAIDs, groupBIDs []string
+	for i := 0; i < 5; i++ {
+		output, err := r.Backup(context.Background(), []string{testData}, nil, WithTags("group-a"))
+		if err != nil {
+			t.Fatalf("failed to backup group-a snapshot %d: %v", i, err)
+		}
+		groupAIDs = append(groupAIDs, output.SnapshotId)
+	}
+	for i := 0; i < 4; i++ {
+		output, err := r.Backup(context.Background(), []string{testData}, nil, WithTags("group-b"))
+		if err != nil {
+			t.Fatalf("failed to backup group-b snapshot %d: %v", i, err)
+		}
+		groupBIDs = append(groupBIDs, output.SnapshotId)
+	}
+
+	// Forget with --group-by tags, keeping 2 per group
+	res, err := r.Forget(context.Background(), &RetentionPolicy{KeepLastN: 2}, WithFlags("--group-by", "tags"))
+	if err != nil {
+		t.Fatalf("failed to forget snapshots: %v", err)
+	}
+
+	// Should keep 2 from each group = 4 total kept, 5 total removed (3 from A + 2 from B)
+	if len(res.Keep) != 4 {
+		t.Errorf("wanted 4 kept snapshots (2 per group), got: %d", len(res.Keep))
+	}
+	if len(res.Remove) != 5 {
+		t.Errorf("wanted 5 removed snapshots (3 from A + 2 from B), got: %d", len(res.Remove))
+	}
+
+	// Verify the kept snapshots are the most recent from each group
+	keptIDs := make(map[string]bool)
+	for _, s := range res.Keep {
+		keptIDs[s.Id] = true
+	}
+	for _, id := range groupAIDs[3:] {
+		if !keptIDs[id] {
+			t.Errorf("expected group-a snapshot %v to be kept", id)
+		}
+	}
+	for _, id := range groupBIDs[2:] {
+		if !keptIDs[id] {
+			t.Errorf("expected group-b snapshot %v to be kept", id)
+		}
+	}
+}
+
 func TestForgetSnapshotId(t *testing.T) {
 	t.Parallel()
 

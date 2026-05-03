@@ -11,7 +11,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/hook"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator/logging"
-	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -76,10 +75,6 @@ func (t *taskRunnerImpl) UpdateOperation(op ...*v1.Operation) error {
 
 func (t *taskRunnerImpl) DeleteOperation(id ...int64) error {
 	return t.orchestrator.OpLog.Delete(id...)
-}
-
-func (t *taskRunnerImpl) Orchestrator() *Orchestrator {
-	return t.orchestrator
 }
 
 func (t *taskRunnerImpl) QueryOperations(q oplog.Query, fn func(*v1.Operation) error) error {
@@ -151,7 +146,7 @@ func (t *taskRunnerImpl) GetPlan(planID string) (*v1.Plan, error) {
 	return t.orchestrator.GetPlan(planID)
 }
 
-func (t *taskRunnerImpl) GetRepoOrchestrator(repoID string) (*repo.RepoOrchestrator, error) {
+func (t *taskRunnerImpl) GetRepoOrchestrator(repoID string) (tasks.RepoOrchestrator, error) {
 	return t.orchestrator.GetRepoOrchestrator(repoID)
 }
 

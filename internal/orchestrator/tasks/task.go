@@ -10,10 +10,26 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
-	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
+	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
+
+// RepoOrchestrator is the interface for repo operations that tasks depend on.
+// The concrete implementation is in the repo package.
+type RepoOrchestrator interface {
+	UnlockIfAutoEnabled(ctx context.Context) error
+	Backup(ctx context.Context, plan *v1.Plan, dryRun bool, progressCallback func(event *restic.BackupProgressEntry)) (*restic.BackupProgressEntry, error)
+	Forget(ctx context.Context, policy *v1.RetentionPolicy, opts ...restic.GenericOption) ([]*v1.ResticSnapshot, error)
+	ForgetSnapshot(ctx context.Context, snapshotId string) error
+	Prune(ctx context.Context, output io.Writer) error
+	Check(ctx context.Context, output io.Writer) error
+	Stats(ctx context.Context) (*v1.RepoStats, error)
+	Restore(ctx context.Context, snapshotId string, snapshotPath string, target string, progressCallback func(event *v1.RestoreProgressEntry)) (*v1.RestoreProgressEntry, error)
+	Snapshots(ctx context.Context) ([]*restic.Snapshot, error)
+	AddTags(ctx context.Context, snapshotIDs []string, tags []string) error
+	RunCommand(ctx context.Context, command string, writer io.Writer) error
+}
 
 var NeverScheduledTask = ScheduledTask{}
 
@@ -52,7 +68,7 @@ type TaskRunner interface {
 	// GetPlan returns the plan with the given ID.
 	GetPlan(planID string) (*v1.Plan, error)
 	// GetRepoOrchestrator returns the orchestrator for the repo with the given ID.
-	GetRepoOrchestrator(repoID string) (*repo.RepoOrchestrator, error)
+	GetRepoOrchestrator(repoID string) (RepoOrchestrator, error)
 	// ScheduleTask schedules a task to run at a specific time.
 	ScheduleTask(task Task, priority int) error
 	// Config returns the current config.
@@ -178,8 +194,24 @@ func curTimeMillis() int64 {
 }
 
 type testTaskRunner struct {
-	config *v1.Config // the config to use for the task runner.
+	config *v1.Config
 	oplog  *oplog.OpLog
+
+	// Configurable for Run() testing
+	orchestrator   RepoOrchestrator
+	hookCalls      []hookCall
+	scheduledTasks []scheduledTaskCall
+	onExecuteHooks func(ctx context.Context, events []v1.Hook_Condition, vars HookVars) error
+}
+
+type hookCall struct {
+	Events []v1.Hook_Condition
+	Vars   HookVars
+}
+
+type scheduledTaskCall struct {
+	Task     Task
+	Priority int
 }
 
 var _ TaskRunner = &testTaskRunner{}
@@ -224,7 +256,11 @@ func (t *testTaskRunner) DeleteOperation(id ...int64) error {
 }
 
 func (t *testTaskRunner) ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars HookVars) error {
-	panic("not implemented")
+	t.hookCalls = append(t.hookCalls, hookCall{Events: events, Vars: vars})
+	if t.onExecuteHooks != nil {
+		return t.onExecuteHooks(ctx, events, vars)
+	}
+	return nil
 }
 
 func (t *testTaskRunner) QueryOperations(q oplog.Query, fn func(*v1.Operation) error) error {
@@ -250,12 +286,16 @@ func (t *testTaskRunner) GetPlan(planID string) (*v1.Plan, error) {
 	return cfg, nil
 }
 
-func (t *testTaskRunner) GetRepoOrchestrator(repoID string) (*repo.RepoOrchestrator, error) {
-	panic("not implemented")
+func (t *testTaskRunner) GetRepoOrchestrator(repoID string) (RepoOrchestrator, error) {
+	if t.orchestrator == nil {
+		return nil, errors.New("no repo orchestrator configured")
+	}
+	return t.orchestrator, nil
 }
 
 func (t *testTaskRunner) ScheduleTask(task Task, priority int) error {
-	panic("not implemented")
+	t.scheduledTasks = append(t.scheduledTasks, scheduledTaskCall{Task: task, Priority: priority})
+	return nil
 }
 
 func (t *testTaskRunner) Config() *v1.Config {
@@ -266,6 +306,12 @@ func (t *testTaskRunner) Logger(ctx context.Context) *zap.Logger {
 	return zap.L()
 }
 
+type nopWriteCloser struct {
+	io.Writer
+}
+
+func (nopWriteCloser) Close() error { return nil }
+
 func (t *testTaskRunner) LogrefWriter() (id string, w io.WriteCloser, err error) {
-	panic("not implemented")
+	return "test-logref", &nopWriteCloser{io.Discard}, nil
 }
