@@ -21,7 +21,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1sync/syncservice.proto.
  */
 export const file_v1sync_syncservice: GenFile = /*@__PURE__*/
-  fileDesc("Chh2MXN5bmMvc3luY3NlcnZpY2UucHJvdG8SBnYxc3luYyIrChZTeW5jU3RhdGVTdHJlYW1SZXF1ZXN0EhEKCXN1YnNjcmliZRgBIAEoCCKbAgoJUGVlclN0YXRlEhgKEHBlZXJfaW5zdGFuY2VfaWQYASABKAkSEgoKcGVlcl9rZXlpZBgCIAEoCRImCgVzdGF0ZRgDIAEoDjIXLnYxc3luYy5Db25uZWN0aW9uU3RhdGUSFgoOc3RhdHVzX21lc3NhZ2UYBCABKAkSKQoLa25vd25fcGxhbnMYBSADKAsyFC52MXN5bmMuUGxhbk1ldGFkYXRhEikKC2tub3duX3JlcG9zGAYgAygLMhQudjFzeW5jLlJlcG9NZXRhZGF0YRIrCg1yZW1vdGVfY29uZmlnGAcgASgLMhQudjFzeW5jLlJlbW90ZUNvbmZpZxIdChVsYXN0X2hlYXJ0YmVhdF9taWxsaXMYCCABKAMiPQoTQXV0aGVudGljYXRlUmVxdWVzdBImCgtpbnN0YW5jZV9pZBgBIAEoCzIRLnYxLlNpZ25lZE1lc3NhZ2UiPgocR2V0T3BlcmF0aW9uTWV0YWRhdGFSZXNwb25zZRIOCgZvcF9pZHMYASADKAMSDgoGbW9kbm9zGAIgAygDIl0KDExvZ0RhdGFFbnRyeRIOCgZsb2dfaWQYASABKAkSEgoKb3duZXJfb3BpZBgCIAEoAxIaChJleHBpcmF0aW9uX3RzX3VuaXgYAyABKAMSDQoFY2h1bmsYBCABKAwiaAocU2V0QXZhaWxhYmxlUmVzb3VyY2VzUmVxdWVzdBIjCgVyZXBvcxgBIAMoCzIULnYxc3luYy5QbGFuTWV0YWRhdGESIwoFcGxhbnMYAiADKAsyFC52MXN5bmMuUmVwb01ldGFkYXRhIigKDFJlcG9NZXRhZGF0YRIKCgJpZBgBIAEoCRIMCgRndWlkGAIgASgJIhoKDFBsYW5NZXRhZGF0YRIKCgJpZBgBIAEoCSJ2ChBTZXRDb25maWdSZXF1ZXN0EhcKBXBsYW5zGAEgAygLMggudjEuUGxhbhIXCgVyZXBvcxgCIAMoCzIILnYxLlJlcG8SFwoPcmVwb3NfdG9fZGVsZXRlGAMgAygJEhcKD3BsYW5zX3RvX2RlbGV0ZRgEIAMoCSKWAQocU2V0UmVtb3RlQ2xpZW50Q29uZmlnUmVxdWVzdBISCgpwZWVyX2tleWlkGAEgASgJEhcKBXJlcG9zGAIgAygLMggudjEuUmVwbxIXCgVwbGFucxgDIAMoCzIILnYxLlBsYW4SFwoPcmVwb3NfdG9fZGVsZXRlGAQgAygJEhcKD3BsYW5zX3RvX2RlbGV0ZRgFIAMoCSIfCh1TZXRSZW1vdGVDbGllbnRDb25maWdSZXNwb25zZSJgCgxSZW1vdGVDb25maWcSDQoFbW9kbm8YASABKAUSDwoHdmVyc2lvbhgCIAEoBRIXCgVyZXBvcxgDIAMoCzIILnYxLlJlcG8SFwoFcGxhbnMYBCADKAsyCC52MS5QbGFuIl8KEkF1dGhvcml6YXRpb25Ub2tlbhIhCgpwdWJsaWNfa2V5GAEgASgLMg0udjEuUHVibGljS2V5EiYKC2luc3RhbmNlX2lkGAIgASgLMhEudjEuU2lnbmVkTWVzc2FnZSLIEAoOU3luY1N0cmVhbUl0ZW0SKwoOc2lnbmVkX21lc3NhZ2UYASABKAsyES52MS5TaWduZWRNZXNzYWdlSAASPwoJaGFuZHNoYWtlGAMgASgLMioudjFzeW5jLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25IYW5kc2hha2VIABI/CgloZWFydGJlYXQYBCABKAsyKi52MXN5bmMuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvbkhlYXJ0YmVhdEgAElAKEm9wZXJhdGlvbl9tYW5pZmVzdBgUIAEoCzIyLnYxc3luYy5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uT3BlcmF0aW9uTWFuaWZlc3RIABJQChJyZWNlaXZlX29wZXJhdGlvbnMYFSABKAsyMi52MXN5bmMuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblJlY2VpdmVPcGVyYXRpb25zSAASVwoWcmVxdWVzdF9vcGVyYXRpb25fZGF0YRgWIAEoCzI1LnYxc3luYy5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uUmVxdWVzdE9wZXJhdGlvbkRhdGFIABJICg5yZWNlaXZlX2NvbmZpZxgXIAEoCzIuLnYxc3luYy5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uUmVjZWl2ZUNvbmZpZ0gAEkAKCnNldF9jb25maWcYGCABKAsyKi52MXN5bmMuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblNldENvbmZpZ0gAEk4KEXJlcXVlc3RfcmVzb3VyY2VzGBkgASgLMjEudjFzeW5jLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25SZXF1ZXN0UmVzb3VyY2VzSAASTgoRcmVjZWl2ZV9yZXNvdXJjZXMYGiABKAsyMS52MXN5bmMuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblJlY2VpdmVSZXNvdXJjZXNIABJCCgtyZXF1ZXN0X2xvZxgeIAEoCzIrLnYxc3luYy5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uUmVxdWVzdExvZ0gAEksKEHJlY2VpdmVfbG9nX2RhdGEYHyABKAsyLy52MXN5bmMuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblJlY2VpdmVMb2dEYXRhSAASPgoIdGhyb3R0bGUY6AcgASgLMikudjFzeW5jLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25UaHJvdHRsZUgAGpIBChNTeW5jQWN0aW9uSGFuZHNoYWtlEhgKEHByb3RvY29sX3ZlcnNpb24YASABKAMSIQoKcHVibGljX2tleRgCIAEoCzINLnYxLlB1YmxpY0tleRImCgtpbnN0YW5jZV9pZBgDIAEoCzIRLnYxLlNpZ25lZE1lc3NhZ2USFgoOcGFpcmluZ19zZWNyZXQYBCABKAkaFQoTU3luY0FjdGlvbkhlYXJ0YmVhdBo/ChdTeW5jQWN0aW9uUmVjZWl2ZUNvbmZpZxIkCgZjb25maWcYASABKAsyFC52MXN5bmMuUmVtb3RlQ29uZmlnGnkKE1N5bmNBY3Rpb25TZXRDb25maWcSFwoFcmVwb3MYASADKAsyCC52MS5SZXBvEhcKBXBsYW5zGAIgAygLMggudjEuUGxhbhIXCg9yZXBvc190b19kZWxldGUYAyADKAkSFwoPcGxhbnNfdG9fZGVsZXRlGAQgAygJGhwKGlN5bmNBY3Rpb25SZXF1ZXN0UmVzb3VyY2VzGmYKGlN5bmNBY3Rpb25SZWNlaXZlUmVzb3VyY2VzEiMKBXJlcG9zGAEgAygLMhQudjFzeW5jLlJlcG9NZXRhZGF0YRIjCgVwbGFucxgCIAMoCzIULnYxc3luYy5QbGFuTWV0YWRhdGEaKAoVU3luY0FjdGlvbkNvbm5lY3RSZXBvEg8KB3JlcG9faWQYASABKAkaPQobU3luY0FjdGlvbk9wZXJhdGlvbk1hbmlmZXN0Eg4KBm9wX2lkcxgBIAMoAxIOCgZtb2Rub3MYAiADKAMaMAoeU3luY0FjdGlvblJlcXVlc3RPcGVyYXRpb25EYXRhEg4KBm9wX2lkcxgBIAMoAxpAChtTeW5jQWN0aW9uUmVjZWl2ZU9wZXJhdGlvbnMSIQoFZXZlbnQYASABKAsyEi52MS5PcGVyYXRpb25FdmVudBomChRTeW5jQWN0aW9uUmVxdWVzdExvZxIOCgZsb2dfaWQYASABKAkagAEKGFN5bmNBY3Rpb25SZWNlaXZlTG9nRGF0YRIOCgZsb2dfaWQYASABKAkSEgoKb3duZXJfb3BpZBgCIAEoAxIaChJleHBpcmF0aW9uX3RzX3VuaXgYAyABKAMSDQoFY2h1bmsYBCABKAwSFQoNZXJyb3JfbWVzc2FnZRgFIAEoCRomChJTeW5jQWN0aW9uVGhyb3R0bGUSEAoIZGVsYXlfbXMYASABKAMaLgoZU3luY0VzdGFibGlzaFNoYXJlZFNlY3JldBIRCgllY2RzYV9wdWIYAiABKAkitAEKE1JlcG9Db25uZWN0aW9uU3RhdGUSHAoYQ09OTkVDVElPTl9TVEFURV9VTktOT1dOEAASHAoYQ09OTkVDVElPTl9TVEFURV9QRU5ESU5HEAESHgoaQ09OTkVDVElPTl9TVEFURV9DT05ORUNURUQQAhIhCh1DT05ORUNUSU9OX1NUQVRFX1VOQVVUSE9SSVpFRBADEh4KGkNPTk5FQ1RJT05fU1RBVEVfTk9UX0ZPVU5EEARCCAoGYWN0aW9uKpwCCg9Db25uZWN0aW9uU3RhdGUSHAoYQ09OTkVDVElPTl9TVEFURV9VTktOT1dOEAASHAoYQ09OTkVDVElPTl9TVEFURV9QRU5ESU5HEAESHgoaQ09OTkVDVElPTl9TVEFURV9DT05ORUNURUQQAhIhCh1DT05ORUNUSU9OX1NUQVRFX0RJU0NPTk5FQ1RFRBADEh8KG0NPTk5FQ1RJT05fU1RBVEVfUkVUUllfV0FJVBAEEh8KG0NPTk5FQ1RJT05fU1RBVEVfRVJST1JfQVVUSBAKEiMKH0NPTk5FQ1RJT05fU1RBVEVfRVJST1JfUFJPVE9DT0wQCxIjCh9DT05ORUNUSU9OX1NUQVRFX0VSUk9SX0lOVEVSTkFMEAwyUwoTQmFja3Jlc3RTeW5jU2VydmljZRI8CgRTeW5jEhYudjFzeW5jLlN5bmNTdHJlYW1JdGVtGhYudjFzeW5jLlN5bmNTdHJlYW1JdGVtIgAoATABMtQBChhCYWNrcmVzdFN5bmNTdGF0ZVNlcnZpY2USUAoXR2V0UGVlclN5bmNTdGF0ZXNTdHJlYW0SHi52MXN5bmMuU3luY1N0YXRlU3RyZWFtUmVxdWVzdBoRLnYxc3luYy5QZWVyU3RhdGUiADABEmYKFVNldFJlbW90ZUNsaWVudENvbmZpZxIkLnYxc3luYy5TZXRSZW1vdGVDbGllbnRDb25maWdSZXF1ZXN0GiUudjFzeW5jLlNldFJlbW90ZUNsaWVudENvbmZpZ1Jlc3BvbnNlIgBCMFouZ2l0aHViLmNvbS9nYXJldGhnZW9yZ2UvYmFja3Jlc3QvZ2VuL2dvL3Yxc3luY2IGcHJvdG8z", [file_v1_config, file_v1_crypto, file_v1_restic, file_v1_service, file_v1_operations, file_types_value, file_google_protobuf_empty, file_google_api_annotations, file_google_protobuf_any]);
+  fileDesc("Chh2MXN5bmMvc3luY3NlcnZpY2UucHJvdG8SBnYxc3luYyIrChZTeW5jU3RhdGVTdHJlYW1SZXF1ZXN0EhEKCXN1YnNjcmliZRgBIAEoCCKbAgoJUGVlclN0YXRlEhgKEHBlZXJfaW5zdGFuY2VfaWQYASABKAkSEgoKcGVlcl9rZXlpZBgCIAEoCRImCgVzdGF0ZRgDIAEoDjIXLnYxc3luYy5Db25uZWN0aW9uU3RhdGUSFgoOc3RhdHVzX21lc3NhZ2UYBCABKAkSKQoLa25vd25fcGxhbnMYBSADKAsyFC52MXN5bmMuUGxhbk1ldGFkYXRhEikKC2tub3duX3JlcG9zGAYgAygLMhQudjFzeW5jLlJlcG9NZXRhZGF0YRIrCg1yZW1vdGVfY29uZmlnGAcgASgLMhQudjFzeW5jLlJlbW90ZUNvbmZpZxIdChVsYXN0X2hlYXJ0YmVhdF9taWxsaXMYCCABKAMiPQoTQXV0aGVudGljYXRlUmVxdWVzdBImCgtpbnN0YW5jZV9pZBgBIAEoCzIRLnYxLlNpZ25lZE1lc3NhZ2UiPgocR2V0T3BlcmF0aW9uTWV0YWRhdGFSZXNwb25zZRIOCgZvcF9pZHMYASADKAMSDgoGbW9kbm9zGAIgAygDIl0KDExvZ0RhdGFFbnRyeRIOCgZsb2dfaWQYASABKAkSEgoKb3duZXJfb3BpZBgCIAEoAxIaChJleHBpcmF0aW9uX3RzX3VuaXgYAyABKAMSDQoFY2h1bmsYBCABKAwiaAocU2V0QXZhaWxhYmxlUmVzb3VyY2VzUmVxdWVzdBIjCgVyZXBvcxgBIAMoCzIULnYxc3luYy5QbGFuTWV0YWRhdGESIwoFcGxhbnMYAiADKAsyFC52MXN5bmMuUmVwb01ldGFkYXRhIigKDFJlcG9NZXRhZGF0YRIKCgJpZBgBIAEoCRIMCgRndWlkGAIgASgJIhoKDFBsYW5NZXRhZGF0YRIKCgJpZBgBIAEoCSJ2ChBTZXRDb25maWdSZXF1ZXN0EhcKBXBsYW5zGAEgAygLMggudjEuUGxhbhIXCgVyZXBvcxgCIAMoCzIILnYxLlJlcG8SFwoPcmVwb3NfdG9fZGVsZXRlGAMgAygJEhcKD3BsYW5zX3RvX2RlbGV0ZRgEIAMoCSKWAQocU2V0UmVtb3RlQ2xpZW50Q29uZmlnUmVxdWVzdBISCgpwZWVyX2tleWlkGAEgASgJEhcKBXJlcG9zGAIgAygLMggudjEuUmVwbxIXCgVwbGFucxgDIAMoCzIILnYxLlBsYW4SFwoPcmVwb3NfdG9fZGVsZXRlGAQgAygJEhcKD3BsYW5zX3RvX2RlbGV0ZRgFIAMoCSIfCh1TZXRSZW1vdGVDbGllbnRDb25maWdSZXNwb25zZSJgCgxSZW1vdGVDb25maWcSDQoFbW9kbm8YASABKAUSDwoHdmVyc2lvbhgCIAEoBRIXCgVyZXBvcxgDIAMoCzIILnYxLlJlcG8SFwoFcGxhbnMYBCADKAsyCC52MS5QbGFuIl8KEkF1dGhvcml6YXRpb25Ub2tlbhIhCgpwdWJsaWNfa2V5GAEgASgLMg0udjEuUHVibGljS2V5EiYKC2luc3RhbmNlX2lkGAIgASgLMhEudjEuU2lnbmVkTWVzc2FnZSKeEgoOU3luY1N0cmVhbUl0ZW0SKwoOc2lnbmVkX21lc3NhZ2UYASABKAsyES52MS5TaWduZWRNZXNzYWdlSAASPwoJaGFuZHNoYWtlGAMgASgLMioudjFzeW5jLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25IYW5kc2hha2VIABI/CgloZWFydGJlYXQYBCABKAsyKi52MXN5bmMuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvbkhlYXJ0YmVhdEgAElAKEm9wZXJhdGlvbl9tYW5pZmVzdBgUIAEoCzIyLnYxc3luYy5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uT3BlcmF0aW9uTWFuaWZlc3RIABJQChJyZWNlaXZlX29wZXJhdGlvbnMYFSABKAsyMi52MXN5bmMuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblJlY2VpdmVPcGVyYXRpb25zSAASVwoWcmVxdWVzdF9vcGVyYXRpb25fZGF0YRgWIAEoCzI1LnYxc3luYy5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uUmVxdWVzdE9wZXJhdGlvbkRhdGFIABJICg5yZWNlaXZlX2NvbmZpZxgXIAEoCzIuLnYxc3luYy5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uUmVjZWl2ZUNvbmZpZ0gAEkAKCnNldF9jb25maWcYGCABKAsyKi52MXN5bmMuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblNldENvbmZpZ0gAEk4KEXJlcXVlc3RfcmVzb3VyY2VzGBkgASgLMjEudjFzeW5jLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25SZXF1ZXN0UmVzb3VyY2VzSAASTgoRcmVjZWl2ZV9yZXNvdXJjZXMYGiABKAsyMS52MXN5bmMuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblJlY2VpdmVSZXNvdXJjZXNIABJCCgtyZXF1ZXN0X2xvZxgeIAEoCzIrLnYxc3luYy5TeW5jU3RyZWFtSXRlbS5TeW5jQWN0aW9uUmVxdWVzdExvZ0gAEksKEHJlY2VpdmVfbG9nX2RhdGEYHyABKAsyLy52MXN5bmMuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvblJlY2VpdmVMb2dEYXRhSAASPgoIdGhyb3R0bGUY6AcgASgLMikudjFzeW5jLlN5bmNTdHJlYW1JdGVtLlN5bmNBY3Rpb25UaHJvdHRsZUgAElMKF2VzdGFibGlzaF9zaGFyZWRfc2VjcmV0GAIgASgLMjAudjFzeW5jLlN5bmNTdHJlYW1JdGVtLlN5bmNFc3RhYmxpc2hTaGFyZWRTZWNyZXRIABI/CgllbmNyeXB0ZWQYBSABKAsyKi52MXN5bmMuU3luY1N0cmVhbUl0ZW0uU3luY0FjdGlvbkVuY3J5cHRlZEgAGpIBChNTeW5jQWN0aW9uSGFuZHNoYWtlEhgKEHByb3RvY29sX3ZlcnNpb24YASABKAMSIQoKcHVibGljX2tleRgCIAEoCzINLnYxLlB1YmxpY0tleRImCgtpbnN0YW5jZV9pZBgDIAEoCzIRLnYxLlNpZ25lZE1lc3NhZ2USFgoOcGFpcmluZ19zZWNyZXQYBCABKAkaOAoTU3luY0FjdGlvbkVuY3J5cHRlZBINCgVub25jZRgBIAEoDBISCgpjaXBoZXJ0ZXh0GAIgASgMGhUKE1N5bmNBY3Rpb25IZWFydGJlYXQaPwoXU3luY0FjdGlvblJlY2VpdmVDb25maWcSJAoGY29uZmlnGAEgASgLMhQudjFzeW5jLlJlbW90ZUNvbmZpZxp5ChNTeW5jQWN0aW9uU2V0Q29uZmlnEhcKBXJlcG9zGAEgAygLMggudjEuUmVwbxIXCgVwbGFucxgCIAMoCzIILnYxLlBsYW4SFwoPcmVwb3NfdG9fZGVsZXRlGAMgAygJEhcKD3BsYW5zX3RvX2RlbGV0ZRgEIAMoCRocChpTeW5jQWN0aW9uUmVxdWVzdFJlc291cmNlcxpmChpTeW5jQWN0aW9uUmVjZWl2ZVJlc291cmNlcxIjCgVyZXBvcxgBIAMoCzIULnYxc3luYy5SZXBvTWV0YWRhdGESIwoFcGxhbnMYAiADKAsyFC52MXN5bmMuUGxhbk1ldGFkYXRhGigKFVN5bmNBY3Rpb25Db25uZWN0UmVwbxIPCgdyZXBvX2lkGAEgASgJGj0KG1N5bmNBY3Rpb25PcGVyYXRpb25NYW5pZmVzdBIOCgZvcF9pZHMYASADKAMSDgoGbW9kbm9zGAIgAygDGjAKHlN5bmNBY3Rpb25SZXF1ZXN0T3BlcmF0aW9uRGF0YRIOCgZvcF9pZHMYASADKAMaQAobU3luY0FjdGlvblJlY2VpdmVPcGVyYXRpb25zEiEKBWV2ZW50GAEgASgLMhIudjEuT3BlcmF0aW9uRXZlbnQaJgoUU3luY0FjdGlvblJlcXVlc3RMb2cSDgoGbG9nX2lkGAEgASgJGoABChhTeW5jQWN0aW9uUmVjZWl2ZUxvZ0RhdGESDgoGbG9nX2lkGAEgASgJEhIKCm93bmVyX29waWQYAiABKAMSGgoSZXhwaXJhdGlvbl90c191bml4GAMgASgDEg0KBWNodW5rGAQgASgMEhUKDWVycm9yX21lc3NhZ2UYBSABKAkaJgoSU3luY0FjdGlvblRocm90dGxlEhAKCGRlbGF5X21zGAEgASgDGjQKGVN5bmNFc3RhYmxpc2hTaGFyZWRTZWNyZXQSFwoPZWNkaF9wdWJsaWNfa2V5GAEgASgMIrQBChNSZXBvQ29ubmVjdGlvblN0YXRlEhwKGENPTk5FQ1RJT05fU1RBVEVfVU5LTk9XThAAEhwKGENPTk5FQ1RJT05fU1RBVEVfUEVORElORxABEh4KGkNPTk5FQ1RJT05fU1RBVEVfQ09OTkVDVEVEEAISIQodQ09OTkVDVElPTl9TVEFURV9VTkFVVEhPUklaRUQQAxIeChpDT05ORUNUSU9OX1NUQVRFX05PVF9GT1VORBAEQggKBmFjdGlvbiqcAgoPQ29ubmVjdGlvblN0YXRlEhwKGENPTk5FQ1RJT05fU1RBVEVfVU5LTk9XThAAEhwKGENPTk5FQ1RJT05fU1RBVEVfUEVORElORxABEh4KGkNPTk5FQ1RJT05fU1RBVEVfQ09OTkVDVEVEEAISIQodQ09OTkVDVElPTl9TVEFURV9ESVNDT05ORUNURUQQAxIfChtDT05ORUNUSU9OX1NUQVRFX1JFVFJZX1dBSVQQBBIfChtDT05ORUNUSU9OX1NUQVRFX0VSUk9SX0FVVEgQChIjCh9DT05ORUNUSU9OX1NUQVRFX0VSUk9SX1BST1RPQ09MEAsSIwofQ09OTkVDVElPTl9TVEFURV9FUlJPUl9JTlRFUk5BTBAMMlMKE0JhY2tyZXN0U3luY1NlcnZpY2USPAoEU3luYxIWLnYxc3luYy5TeW5jU3RyZWFtSXRlbRoWLnYxc3luYy5TeW5jU3RyZWFtSXRlbSIAKAEwATLUAQoYQmFja3Jlc3RTeW5jU3RhdGVTZXJ2aWNlElAKF0dldFBlZXJTeW5jU3RhdGVzU3RyZWFtEh4udjFzeW5jLlN5bmNTdGF0ZVN0cmVhbVJlcXVlc3QaES52MXN5bmMuUGVlclN0YXRlIgAwARJmChVTZXRSZW1vdGVDbGllbnRDb25maWcSJC52MXN5bmMuU2V0UmVtb3RlQ2xpZW50Q29uZmlnUmVxdWVzdBolLnYxc3luYy5TZXRSZW1vdGVDbGllbnRDb25maWdSZXNwb25zZSIAQjBaLmdpdGh1Yi5jb20vZ2FyZXRoZ2VvcmdlL2JhY2tyZXN0L2dlbi9nby92MXN5bmNiBnByb3RvMw", [file_v1_config, file_v1_crypto, file_v1_restic, file_v1_service, file_v1_operations, file_types_value, file_google_protobuf_empty, file_google_api_annotations, file_google_protobuf_any]);
 
 /**
  * @generated from message v1sync.SyncStateStreamRequest
@@ -503,6 +503,18 @@ export type SyncStreamItem = Message<"v1sync.SyncStreamItem"> & {
      */
     value: SyncStreamItem_SyncActionThrottle;
     case: "throttle";
+  } | {
+    /**
+     * @generated from field: v1sync.SyncStreamItem.SyncEstablishSharedSecret establish_shared_secret = 2;
+     */
+    value: SyncStreamItem_SyncEstablishSharedSecret;
+    case: "establishSharedSecret";
+  } | {
+    /**
+     * @generated from field: v1sync.SyncStreamItem.SyncActionEncrypted encrypted = 5;
+     */
+    value: SyncStreamItem_SyncActionEncrypted;
+    case: "encrypted";
   } | { case: undefined; value?: undefined };
 };
 
@@ -548,6 +560,35 @@ export const SyncStreamItem_SyncActionHandshakeSchema: GenMessage<SyncStreamItem
   messageDesc(file_v1sync_syncservice, 13, 0);
 
 /**
+ * SyncActionEncrypted wraps an encrypted SyncStreamItem.
+ * After ECDH key exchange, all subsequent messages are sent inside this envelope.
+ *
+ * @generated from message v1sync.SyncStreamItem.SyncActionEncrypted
+ */
+export type SyncStreamItem_SyncActionEncrypted = Message<"v1sync.SyncStreamItem.SyncActionEncrypted"> & {
+  /**
+   * 12-byte GCM nonce
+   *
+   * @generated from field: bytes nonce = 1;
+   */
+  nonce: Uint8Array;
+
+  /**
+   * AES-256-GCM(serialized SyncStreamItem)
+   *
+   * @generated from field: bytes ciphertext = 2;
+   */
+  ciphertext: Uint8Array;
+};
+
+/**
+ * Describes the message v1sync.SyncStreamItem.SyncActionEncrypted.
+ * Use `create(SyncStreamItem_SyncActionEncryptedSchema)` to create a new message.
+ */
+export const SyncStreamItem_SyncActionEncryptedSchema: GenMessage<SyncStreamItem_SyncActionEncrypted> = /*@__PURE__*/
+  messageDesc(file_v1sync_syncservice, 13, 1);
+
+/**
  * SyncActionHeartbeat is sent periodically to keep the connection alive.
  *
  * @generated from message v1sync.SyncStreamItem.SyncActionHeartbeat
@@ -560,7 +601,7 @@ export type SyncStreamItem_SyncActionHeartbeat = Message<"v1sync.SyncStreamItem.
  * Use `create(SyncStreamItem_SyncActionHeartbeatSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionHeartbeatSchema: GenMessage<SyncStreamItem_SyncActionHeartbeat> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 1);
+  messageDesc(file_v1sync_syncservice, 13, 2);
 
 /**
  * @generated from message v1sync.SyncStreamItem.SyncActionReceiveConfig
@@ -577,7 +618,7 @@ export type SyncStreamItem_SyncActionReceiveConfig = Message<"v1sync.SyncStreamI
  * Use `create(SyncStreamItem_SyncActionReceiveConfigSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionReceiveConfigSchema: GenMessage<SyncStreamItem_SyncActionReceiveConfig> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 2);
+  messageDesc(file_v1sync_syncservice, 13, 3);
 
 /**
  * @generated from message v1sync.SyncStreamItem.SyncActionSetConfig
@@ -609,7 +650,7 @@ export type SyncStreamItem_SyncActionSetConfig = Message<"v1sync.SyncStreamItem.
  * Use `create(SyncStreamItem_SyncActionSetConfigSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionSetConfigSchema: GenMessage<SyncStreamItem_SyncActionSetConfig> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 3);
+  messageDesc(file_v1sync_syncservice, 13, 4);
 
 /**
  * @generated from message v1sync.SyncStreamItem.SyncActionRequestResources
@@ -622,7 +663,7 @@ export type SyncStreamItem_SyncActionRequestResources = Message<"v1sync.SyncStre
  * Use `create(SyncStreamItem_SyncActionRequestResourcesSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionRequestResourcesSchema: GenMessage<SyncStreamItem_SyncActionRequestResources> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 4);
+  messageDesc(file_v1sync_syncservice, 13, 5);
 
 /**
  * @generated from message v1sync.SyncStreamItem.SyncActionReceiveResources
@@ -644,7 +685,7 @@ export type SyncStreamItem_SyncActionReceiveResources = Message<"v1sync.SyncStre
  * Use `create(SyncStreamItem_SyncActionReceiveResourcesSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionReceiveResourcesSchema: GenMessage<SyncStreamItem_SyncActionReceiveResources> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 5);
+  messageDesc(file_v1sync_syncservice, 13, 6);
 
 /**
  * @generated from message v1sync.SyncStreamItem.SyncActionConnectRepo
@@ -661,7 +702,7 @@ export type SyncStreamItem_SyncActionConnectRepo = Message<"v1sync.SyncStreamIte
  * Use `create(SyncStreamItem_SyncActionConnectRepoSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionConnectRepoSchema: GenMessage<SyncStreamItem_SyncActionConnectRepo> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 6);
+  messageDesc(file_v1sync_syncservice, 13, 7);
 
 /**
  * @generated from message v1sync.SyncStreamItem.SyncActionOperationManifest
@@ -683,7 +724,7 @@ export type SyncStreamItem_SyncActionOperationManifest = Message<"v1sync.SyncStr
  * Use `create(SyncStreamItem_SyncActionOperationManifestSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionOperationManifestSchema: GenMessage<SyncStreamItem_SyncActionOperationManifest> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 7);
+  messageDesc(file_v1sync_syncservice, 13, 8);
 
 /**
  * @generated from message v1sync.SyncStreamItem.SyncActionRequestOperationData
@@ -700,7 +741,7 @@ export type SyncStreamItem_SyncActionRequestOperationData = Message<"v1sync.Sync
  * Use `create(SyncStreamItem_SyncActionRequestOperationDataSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionRequestOperationDataSchema: GenMessage<SyncStreamItem_SyncActionRequestOperationData> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 8);
+  messageDesc(file_v1sync_syncservice, 13, 9);
 
 /**
  * @generated from message v1sync.SyncStreamItem.SyncActionReceiveOperations
@@ -717,7 +758,7 @@ export type SyncStreamItem_SyncActionReceiveOperations = Message<"v1sync.SyncStr
  * Use `create(SyncStreamItem_SyncActionReceiveOperationsSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionReceiveOperationsSchema: GenMessage<SyncStreamItem_SyncActionReceiveOperations> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 9);
+  messageDesc(file_v1sync_syncservice, 13, 10);
 
 /**
  * @generated from message v1sync.SyncStreamItem.SyncActionRequestLog
@@ -734,7 +775,7 @@ export type SyncStreamItem_SyncActionRequestLog = Message<"v1sync.SyncStreamItem
  * Use `create(SyncStreamItem_SyncActionRequestLogSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionRequestLogSchema: GenMessage<SyncStreamItem_SyncActionRequestLog> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 10);
+  messageDesc(file_v1sync_syncservice, 13, 11);
 
 /**
  * @generated from message v1sync.SyncStreamItem.SyncActionReceiveLogData
@@ -781,7 +822,7 @@ export type SyncStreamItem_SyncActionReceiveLogData = Message<"v1sync.SyncStream
  * Use `create(SyncStreamItem_SyncActionReceiveLogDataSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionReceiveLogDataSchema: GenMessage<SyncStreamItem_SyncActionReceiveLogData> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 11);
+  messageDesc(file_v1sync_syncservice, 13, 12);
 
 /**
  * @generated from message v1sync.SyncStreamItem.SyncActionThrottle
@@ -798,21 +839,23 @@ export type SyncStreamItem_SyncActionThrottle = Message<"v1sync.SyncStreamItem.S
  * Use `create(SyncStreamItem_SyncActionThrottleSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncActionThrottleSchema: GenMessage<SyncStreamItem_SyncActionThrottle> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 12);
+  messageDesc(file_v1sync_syncservice, 13, 13);
 
 /**
+ * SyncEstablishSharedSecret is exchanged immediately after the handshake.
+ * Each side sends an ephemeral ECDH P-256 public key. Both sides then perform
+ * ECDH to derive a shared AES-256-GCM session key. All subsequent messages
+ * must be wrapped in SyncActionEncrypted.
+ *
  * @generated from message v1sync.SyncStreamItem.SyncEstablishSharedSecret
  */
 export type SyncStreamItem_SyncEstablishSharedSecret = Message<"v1sync.SyncStreamItem.SyncEstablishSharedSecret"> & {
   /**
-   * a one-time-use ECDSA public key with a matching unshared private key. Used to perform a key exchange.
-   * See https://pkg.go.dev/crypto/ecdh#PrivateKey.ECDH .
+   * raw ECDH P-256 public key bytes
    *
-   * base64 encoded public key
-   *
-   * @generated from field: string ecdsa_pub = 2;
+   * @generated from field: bytes ecdh_public_key = 1;
    */
-  ecdsaPub: string;
+  ecdhPublicKey: Uint8Array;
 };
 
 /**
@@ -820,7 +863,7 @@ export type SyncStreamItem_SyncEstablishSharedSecret = Message<"v1sync.SyncStrea
  * Use `create(SyncStreamItem_SyncEstablishSharedSecretSchema)` to create a new message.
  */
 export const SyncStreamItem_SyncEstablishSharedSecretSchema: GenMessage<SyncStreamItem_SyncEstablishSharedSecret> = /*@__PURE__*/
-  messageDesc(file_v1sync_syncservice, 13, 13);
+  messageDesc(file_v1sync_syncservice, 13, 14);
 
 /**
  * @generated from enum v1sync.SyncStreamItem.RepoConnectionState

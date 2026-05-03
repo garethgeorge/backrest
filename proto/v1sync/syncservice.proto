@@ -135,6 +135,9 @@ message SyncStreamItem {
     SyncActionReceiveLogData receive_log_data = 31;
 
     SyncActionThrottle throttle = 1000;
+
+    SyncEstablishSharedSecret establish_shared_secret = 2;
+    SyncActionEncrypted encrypted = 5;
   }
 
   message SyncActionHandshake {
@@ -142,6 +145,13 @@ message SyncStreamItem {
     v1.PublicKey public_key = 2;
     v1.SignedMessage instance_id = 3;
     string pairing_secret = 4; // optional one-time secret from a pairing token, used to auto-authorize a new client
+  }
+
+  // SyncActionEncrypted wraps an encrypted SyncStreamItem.
+  // After ECDH key exchange, all subsequent messages are sent inside this envelope.
+  message SyncActionEncrypted {
+    bytes nonce = 1;      // 12-byte GCM nonce
+    bytes ciphertext = 2; // AES-256-GCM(serialized SyncStreamItem)
   }
 
   // SyncActionHeartbeat is sent periodically to keep the connection alive.
@@ -212,9 +222,11 @@ message SyncStreamItem {
     int64 delay_ms = 1;
   }
 
+  // SyncEstablishSharedSecret is exchanged immediately after the handshake.
+  // Each side sends an ephemeral ECDH P-256 public key. Both sides then perform
+  // ECDH to derive a shared AES-256-GCM session key. All subsequent messages
+  // must be wrapped in SyncActionEncrypted.
   message SyncEstablishSharedSecret {
-    // a one-time-use ECDSA public key with a matching unshared private key. Used to perform a key exchange.
-    // See https://pkg.go.dev/crypto/ecdh#PrivateKey.ECDH .
-    string ecdsa_pub = 2 [json_name="ecdsaPub"]; // base64 encoded public key
+    bytes ecdh_public_key = 1; // raw ECDH P-256 public key bytes
   }
 }

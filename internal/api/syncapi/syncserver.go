@@ -18,7 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const SyncProtocolVersion = 1
+const SyncProtocolVersion = 2
 
 type BackrestSyncHandler struct {
 	v1syncconnect.UnimplementedBackrestSyncServiceHandler

@@ -1,6 +1,7 @@
 package syncapi
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +10,8 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/garethgeorge/backrest/gen/go/v1sync"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
+	"go.uber.org/zap"
 )
 
 type syncCommandStreamTrait interface {
@@ -16,8 +19,8 @@ type syncCommandStreamTrait interface {
 	Receive() (*v1sync.SyncStreamItem, error)
 }
 
-var _ syncCommandStreamTrait = (*connect.BidiStream[v1sync.SyncStreamItem, v1sync.SyncStreamItem])(nil)          // Ensure that connect.BidiStream implements syncCommandStreamTrait
-var _ syncCommandStreamTrait = (*connect.BidiStreamForClient[v1sync.SyncStreamItem, v1sync.SyncStreamItem])(nil) // Ensure that connect.BidiStreamForClient implements syncCommandStreamTrait
+var _ syncCommandStreamTrait = (*connect.BidiStream[v1sync.SyncStreamItem, v1sync.SyncStreamItem])(nil)
+var _ syncCommandStreamTrait = (*connect.BidiStreamForClient[v1sync.SyncStreamItem, v1sync.SyncStreamItem])(nil)
 
 type bidiSyncCommandStream struct {
 	sendChan             chan *v1sync.SyncStreamItem
@@ -27,7 +30,7 @@ type bidiSyncCommandStream struct {
 
 func newBidiSyncCommandStream() *bidiSyncCommandStream {
 	return &bidiSyncCommandStream{
-		sendChan:             make(chan *v1sync.SyncStreamItem, 256), // Buffered channel to allow sending items without blocking
+		sendChan:             make(chan *v1sync.SyncStreamItem, 256),
 		recvChan:             make(chan *v1sync.SyncStreamItem, 1),
 		terminateWithErrChan: make(chan error, 1),
 	}
@@ -37,7 +40,6 @@ func (s *bidiSyncCommandStream) Send(item *v1sync.SyncStreamItem) {
 	select {
 	case s.sendChan <- item:
 	default:
-		// Try again with a timeout, if it fails, send an error to terminate the stream
 		select {
 		case s.sendChan <- item:
 		case <-time.After(100 * time.Millisecond):
@@ -46,14 +48,10 @@ func (s *bidiSyncCommandStream) Send(item *v1sync.SyncStreamItem) {
 	}
 }
 
-// SendErrorAndTerminate sends an error to the termination channel.
-// If the error is nil, it terminates only.
 func (s *bidiSyncCommandStream) SendErrorAndTerminate(err error) {
 	select {
 	case s.terminateWithErrChan <- err:
 	default:
-		// If the channel is full, we can't send the error, so we just ignore it.
-		// This is a best-effort termination.
 	}
 }
 
@@ -66,17 +64,27 @@ func (s *bidiSyncCommandStream) ReceiveWithinDuration(d time.Duration) *v1sync.S
 	case item := <-s.recvChan:
 		return item
 	case <-time.After(d):
-		return nil // Return nil if no item is received within the duration
+		return nil
 	}
 }
 
+// ConnectStream bridges the channel-based bidiSyncCommandStream to a real transport.
+// It first performs an ECDH key exchange on the raw transport to establish an encrypted
+// session, then starts the send/recv pump loop over the encrypted channel.
 func (s *bidiSyncCommandStream) ConnectStream(ctx context.Context, stream syncCommandStreamTrait) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	// Perform ECDH key exchange on the raw transport before starting the pump.
+	transport, err := establishEncryption(stream)
+	if err != nil {
+		return err
+	}
+
 	go func() {
 		defer close(s.recvChan)
 		for {
-			val, err := stream.Receive()
+			val, err := transport.Receive()
 			if err != nil {
 				s.SendErrorAndTerminate(NewSyncErrorDisconnected(fmt.Errorf("receiving item: %w", err)))
 				return
@@ -95,7 +103,7 @@ func (s *bidiSyncCommandStream) ConnectStream(ctx context.Context, stream syncCo
 			if item == nil {
 				continue
 			}
-			if err := stream.Send(item); err != nil {
+			if err := transport.Send(item); err != nil {
 				if errors.Is(err, io.EOF) {
 					err = fmt.Errorf("connection failed or dropped: %w", err)
 				}
@@ -103,10 +111,59 @@ func (s *bidiSyncCommandStream) ConnectStream(ctx context.Context, stream syncCo
 				return err
 			}
 		case err := <-s.terminateWithErrChan:
-			return err // Terminate the stream with the error or nil if no error was sent
+			return err
 		case <-ctx.Done():
-			// Context is done, we should stop processing.
 			return ctx.Err()
 		}
 	}
+}
+
+// establishEncryption performs an ECDH key exchange on the raw transport and
+// returns an encrypted stream wrapper. Each side generates an ephemeral ECDH P-256
+// key pair, exchanges public keys, and derives a shared AES-256-GCM session key.
+// The handshake (identity authentication) runs over the encrypted channel afterward.
+func establishEncryption(stream syncCommandStreamTrait) (syncCommandStreamTrait, error) {
+	keyPair, err := cryptoutil.GenerateECDHKeyPair()
+	if err != nil {
+		return nil, NewSyncErrorInternal(fmt.Errorf("generating ephemeral ECDH key: %w", err))
+	}
+
+	// Send our ephemeral ECDH public key
+	if err := stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_EstablishSharedSecret{
+			EstablishSharedSecret: &v1sync.SyncStreamItem_SyncEstablishSharedSecret{
+				EcdhPublicKey: keyPair.Public.Bytes(),
+			},
+		},
+	}); err != nil {
+		return nil, NewSyncErrorProtocol(fmt.Errorf("sending ECDH public key: %w", err))
+	}
+
+	// Receive the peer's ephemeral ECDH public key
+	peerMsg, err := stream.Receive()
+	if err != nil {
+		return nil, NewSyncErrorProtocol(fmt.Errorf("receiving ECDH public key: %w", err))
+	}
+	peerSecret := peerMsg.GetEstablishSharedSecret()
+	if peerSecret == nil {
+		return nil, NewSyncErrorProtocol(fmt.Errorf("expected ECDH key exchange, got %T", peerMsg.GetAction()))
+	}
+
+	peerECDHPub, err := cryptoutil.ParseECDHPublicKey(peerSecret.GetEcdhPublicKey())
+	if err != nil {
+		return nil, NewSyncErrorProtocol(fmt.Errorf("parsing peer ECDH public key: %w", err))
+	}
+
+	// Derive AES-256-GCM session key
+	gcm, err := cryptoutil.DeriveSessionKey(keyPair.Private, peerECDHPub)
+	if err != nil {
+		return nil, NewSyncErrorProtocol(fmt.Errorf("deriving session key: %w", err))
+	}
+
+	// Determine nonce direction: side with smaller public key uses prefix 0x00
+	localIsSmaller := bytes.Compare(keyPair.Public.Bytes(), peerECDHPub.Bytes()) < 0
+
+	zap.L().Info("encrypted sync session established")
+
+	return newEncryptedStream(stream, gcm, localIsSmaller), nil
 }
