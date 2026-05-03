@@ -3,8 +3,9 @@ FROM alpine:latest AS alpine
 RUN apk add --no-cache ca-certificates tini-static
 RUN mkdir /tmp-orig
 
-# Copy binary from goreleaser to run install-deps
-COPY backrest /backrest
+ARG TARGETPLATFORM
+# Binaries are staged per-platform by goreleaser dockers_v2
+COPY $TARGETPLATFORM/backrest /backrest
 RUN /backrest --install-deps-only
 
 # Setup restic path
@@ -20,9 +21,9 @@ COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=alpine /bin/restic /bin/restic
 COPY --from=alpine /sbin/tini-static /tini
 
-# Copy binaries from goreleaser
-COPY backrest /backrest
-COPY docker-entrypoint /docker-entrypoint
+ARG TARGETPLATFORM
+COPY $TARGETPLATFORM/backrest /backrest
+COPY $TARGETPLATFORM/docker-entrypoint /docker-entrypoint
 
 ENTRYPOINT ["/tini", "--", "/docker-entrypoint"]
 CMD ["/backrest"]

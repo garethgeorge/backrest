@@ -106,14 +106,16 @@ dockers_v2:
     dockerfile: Dockerfile.alpine
     flags:
       - "--pull"
+      # provenance attestations break the multi-arch manifest for armv6/armv7/386
+      - "--provenance=false"
     ids:
       - linux
       - docker-entrypoint
     platforms:
       - linux/amd64
       - linux/arm64
-      - linux/armv6
-      - linux/armv7
+      - linux/arm/v6
+      - linux/arm/v7
       - linux/386
 
   - id: scratch
@@ -128,14 +130,16 @@ dockers_v2:
     dockerfile: Dockerfile.scratch
     flags:
       - "--pull"
+      # provenance attestations break the multi-arch manifest for armv6/armv7/386
+      - "--provenance=false"
     ids:
       - linux
       - docker-entrypoint
     platforms:
       - linux/amd64
       - linux/arm64
-      - linux/armv6
-      - linux/armv7
+      - linux/arm/v6
+      - linux/arm/v7
       - linux/386
 
 brews:
