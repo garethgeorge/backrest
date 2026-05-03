@@ -19,7 +19,7 @@ for arg in "$@"; do
     --allow-remote-access)
       ALLOW_REMOTE_ACCESS=true
       ;;
-    --tray)
+    --experimental-linux-tray)
       INSTALL_MODE="tray"
       ;;
     --no-tray)
@@ -39,13 +39,13 @@ for arg in "$@"; do
       echo "Usage: $0 [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  --uninstall           Uninstall backrest (remove all artifacts, don't reinstall)"
-      echo "  --tray                Install as desktop tray app (Linux only, XDG autostart)"
-      echo "  --no-tray             Install as system service (Linux: systemd/openrc; skip tray)"
-      echo "  --allow-remote-access Bind to 0.0.0.0:9898 instead of 127.0.0.1:9898"
-      echo "  --from-local          Use ./backrest binary in script directory (default if present)"
-      echo "  --from-source         Build from source"
-      echo "  --from-release        Download latest release from GitHub"
+      echo "  --uninstall                 Uninstall backrest (remove all artifacts, don't reinstall)"
+      echo "  --experimental-linux-tray   Install as desktop tray app (Linux only, XDG autostart; experimental)"
+      echo "  --no-tray                   Install as system service (Linux: systemd/openrc; skip tray)"
+      echo "  --allow-remote-access       Bind to 0.0.0.0:9898 instead of 127.0.0.1:9898"
+      echo "  --from-local                Use ./backrest binary in script directory (default if present)"
+      echo "  --from-source               Build from source"
+      echo "  --from-release              Download latest release from GitHub"
       exit 1
       ;;
   esac
@@ -85,18 +85,19 @@ detect_previous_mode() {
 }
 
 # Returns 0 if a D-Bus session and graphical display are available (tray mode viable)
-detect_dbus_desktop() {
-  if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
-    return 1
-  fi
-  if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
-    return 0
-  fi
-  if command -v dbus-launch &>/dev/null || command -v dbus-daemon &>/dev/null; then
-    return 0
-  fi
-  return 1
-}
+# Currently unused: tray install is opt-in via --experimental-linux-tray.
+# detect_dbus_desktop() {
+#   if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+#     return 1
+#   fi
+#   if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+#     return 0
+#   fi
+#   if command -v dbus-launch &>/dev/null || command -v dbus-daemon &>/dev/null; then
+#     return 0
+#   fi
+#   return 1
+# }
 
 # =============================================================================
 # Removal functions (idempotent, shared by uninstall and pre-install cleanup)
@@ -458,21 +459,20 @@ acquire_binary "$ACQUISITION_MODE"
 if [ "$OS" = "Darwin" ]; then
   EFFECTIVE_MODE="launchd"
 elif [ -z "$INSTALL_MODE" ]; then
-  # Auto-detect from previous mode or environment
+  # Auto-detect from previous install; default to service otherwise.
   if [ "$PREV_MODE" = "tray" ]; then
     INSTALL_MODE="tray"
     echo "Re-using previous install mode: tray"
   elif [ "$PREV_MODE" = "systemd" ] || [ "$PREV_MODE" = "openrc" ]; then
     INSTALL_MODE="service"
     echo "Re-using previous install mode: service"
-  elif detect_dbus_desktop; then
-    INSTALL_MODE="tray"
-    echo "Desktop session with D-Bus detected -- installing as tray app."
-    echo "Use --no-tray to install as a system service instead."
+  # elif detect_dbus_desktop; then
+  #   INSTALL_MODE="tray"
+  #   echo "Desktop session with D-Bus detected -- installing as tray app."
+  #   echo "Use --no-tray to install as a system service instead."
   else
     INSTALL_MODE="service"
-    echo "No desktop session detected -- installing as system service."
-    echo "Use --tray to install as a tray app instead."
+    echo "Defaulting to system service install. Use --experimental-linux-tray to install as a tray app."
   fi
   EFFECTIVE_MODE="$INSTALL_MODE"
 else
