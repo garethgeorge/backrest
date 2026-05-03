@@ -7,7 +7,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
 
-var migration004RepoGuid = func(config *v1.Config) {
+var migration004RepoGuid = func(config *v1.Config) error {
 	for _, repo := range config.Repos {
 		if repo.Guid != "" {
 			continue
@@ -16,4 +16,5 @@ var migration004RepoGuid = func(config *v1.Config) {
 		h.Write([]byte(repo.Id))
 		repo.Guid = hex.EncodeToString(h.Sum(nil))
 	}
+	return nil
 }

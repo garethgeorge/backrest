@@ -69,7 +69,7 @@ Source: "restic.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 ; For user install mode only.
-Name: "{autostartup}\{#B} systray"; Filename: "{app}\backrest.exe"; Parameters: "--windows-tray {code:GetPortParam}"; IconFilename: "{app}\icon.ico"; Check: IsUserInstallMode
+Name: "{autostartup}\{#B} systray"; Filename: "{app}\backrest.exe"; Parameters: "--windows-tray {code:GetPortParam}"; IconFilename: "{app}\icon.ico"; Check: IsUserInstallMode; Tasks: autostart
 Name: "{group}\{#B} systray"; Filename: "{app}\backrest.exe"; Parameters: "--windows-tray {code:GetPortParam}"; IconFilename: "{app}\icon.ico"; Check: IsUserInstallMode
 ; For both modes.
 Name: "{group}\{#B}{code:GetIconSuffix}"; Filename: "http://localhost:{code:GetPort}/"; IconFilename: "{app}\icon.ico"
@@ -208,14 +208,14 @@ begin
   if StrToVersion(InstalledVersion, InstalledVersionFull) and StrToVersion(AppVersion, NewVersionFull) then
   begin
     CompResult := ComparePackedVersion(InstalledVersionFull, NewVersionFull);
-    if CompResult < 0 then Msg := 'upgrade'
+    if CompResult < 0 then Msg := 'upgrade to'
     else if CompResult = 0 then Msg := 'reinstall'
-    else if CompResult > 0 then Msg := 'downgrade'
+    else if CompResult > 0 then Msg := 'downgrade to'
     else Msg := 'upgrade/reinstall/downgrade';
   end;
   MsgBox('Detected existing installation of Backrest ' + InstalledVersion + 
     ' in ' + Chr(13) + Chr(10) + AppDir + Chr(13) + Chr(10) + Chr(13) + Chr(10) +
-    'Setup will ' + Msg + ' to version ' + AppVersion + '.', mbInformation, MB_OK);
+    'Setup will ' + Msg + ' version ' + AppVersion + '.', mbInformation, MB_OK);
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;

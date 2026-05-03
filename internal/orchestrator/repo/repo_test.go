@@ -371,6 +371,48 @@ func initRepoHelper(t *testing.T, config *v1.Config, repo *v1.Repo) *RepoOrchest
 	return orchestrator
 }
 
+// TestConfigPasswordPrecedence verifies that a password set in the Backrest
+// repo config takes precedence over RESTIC_PASSWORD (and related env vars) set
+// in the process environment. This is a regression test for
+// https://github.com/garethgeorge/backrest/issues/1139.
+func TestConfigPasswordPrecedence(t *testing.T) {
+	// Cannot use t.Parallel() because t.Setenv is used.
+
+	repoDir := t.TempDir()
+	configPassword := "config-password"
+	wrongEnvPassword := "env-password-should-be-ignored"
+
+	repo := &v1.Repo{
+		Id:       "test",
+		Uri:      repoDir,
+		Password: configPassword,
+		Flags:    []string{"--no-cache"},
+	}
+
+	// Initialize the repo using the config password.
+	orchestrator := initRepoHelper(t, configForTest, repo)
+
+	// Now set RESTIC_PASSWORD in the environment to a *different* value.
+	// NewRepoOrchestrator should still use the config password, not this one.
+	t.Setenv("RESTIC_PASSWORD", wrongEnvPassword)
+	t.Setenv("RESTIC_PASSWORD_FILE", "")
+	t.Setenv("RESTIC_PASSWORD_COMMAND", "")
+
+	// Re-create the orchestrator so it picks up the current environment.
+	orchestrator2, err := NewRepoOrchestrator(configForTest, repo, helpers.ResticBinary(t))
+	if err != nil {
+		t.Fatalf("failed to create repo orchestrator: %v", err)
+	}
+
+	// Listing snapshots exercises the repo unlock path and will fail with
+	// "wrong password" if the env var is incorrectly taking precedence.
+	if _, err := orchestrator2.Snapshots(context.Background()); err != nil {
+		t.Fatalf("Snapshots() failed — config password did not take precedence over RESTIC_PASSWORD env var: %v", err)
+	}
+
+	_ = orchestrator // suppress unused warning
+}
+
 func TestRestoreAmbiguity(t *testing.T) {
 	t.Parallel()
 	repoDir := t.TempDir()

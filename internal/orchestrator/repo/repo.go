@@ -39,11 +39,19 @@ func NewRepoOrchestrator(config *v1.Config, repoConfig *v1.Repo, resticPath stri
 	}
 
 	var opts []restic.GenericOption
-	if p := repoConfig.GetPassword(); p != "" {
-		opts = append(opts, restic.WithEnv("RESTIC_PASSWORD="+p))
-	}
-
 	opts = append(opts, restic.WithEnviron())
+
+	if p := repoConfig.GetPassword(); p != "" {
+		// Set config password last so it takes precedence over any RESTIC_PASSWORD
+		// in the system environment (e.g. set via Docker Compose). Also clear
+		// RESTIC_PASSWORD_FILE and RESTIC_PASSWORD_COMMAND so they cannot
+		// override the password that the user configured in Backrest.
+		opts = append(opts, restic.WithEnv(
+			"RESTIC_PASSWORD="+p,
+			"RESTIC_PASSWORD_FILE=",
+			"RESTIC_PASSWORD_COMMAND=",
+		))
+	}
 
 	if env := repoConfig.GetEnv(); len(env) != 0 {
 		for _, e := range env {
