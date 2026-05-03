@@ -136,13 +136,13 @@ func establishEncryption(stream syncCommandStreamTrait) (syncCommandStreamTrait,
 			},
 		},
 	}); err != nil {
-		return nil, NewSyncErrorProtocol(fmt.Errorf("sending ECDH public key: %w", err))
+		return nil, NewSyncErrorDisconnected(fmt.Errorf("sending ECDH public key: %w", err))
 	}
 
 	// Receive the peer's ephemeral ECDH public key
 	peerMsg, err := stream.Receive()
 	if err != nil {
-		return nil, NewSyncErrorProtocol(fmt.Errorf("receiving ECDH public key: %w", err))
+		return nil, NewSyncErrorDisconnected(fmt.Errorf("receiving ECDH public key: %w", err))
 	}
 	peerSecret := peerMsg.GetEstablishSharedSecret()
 	if peerSecret == nil {

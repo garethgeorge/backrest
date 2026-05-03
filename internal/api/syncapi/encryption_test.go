@@ -6,6 +6,7 @@ import (
 
 	"github.com/garethgeorge/backrest/gen/go/v1sync"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
+	"github.com/garethgeorge/backrest/internal/testutil"
 )
 
 // fakeStream is a pair of in-memory channels simulating a bidirectional transport.
@@ -135,6 +136,7 @@ func TestEncryptedStream_BidirectionalMultiMessage(t *testing.T) {
 }
 
 func TestEstablishEncryption_Integration(t *testing.T) {
+	testutil.InstallZapLogger(t)
 	transportA, transportB := newFakeStreamPair()
 
 	var encA, encB syncCommandStreamTrait
