@@ -122,6 +122,7 @@ var BackrestSyncService_ServiceDesc = grpc.ServiceDesc{
 
 const (
 	BackrestSyncStateService_GetPeerSyncStatesStream_FullMethodName = "/v1sync.BackrestSyncStateService/GetPeerSyncStatesStream"
+	BackrestSyncStateService_SetRemoteClientConfig_FullMethodName   = "/v1sync.BackrestSyncStateService/SetRemoteClientConfig"
 )
 
 // BackrestSyncStateServiceClient is the client API for BackrestSyncStateService service.
@@ -132,6 +133,8 @@ const (
 // This service should be served behind authentication and authorization.
 type BackrestSyncStateServiceClient interface {
 	GetPeerSyncStatesStream(ctx context.Context, in *SyncStateStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PeerState], error)
+	// SetRemoteClientConfig pushes a config change to a connected authorized client peer.
+	SetRemoteClientConfig(ctx context.Context, in *SetRemoteClientConfigRequest, opts ...grpc.CallOption) (*SetRemoteClientConfigResponse, error)
 }
 
 type backrestSyncStateServiceClient struct {
@@ -161,6 +164,16 @@ func (c *backrestSyncStateServiceClient) GetPeerSyncStatesStream(ctx context.Con
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type BackrestSyncStateService_GetPeerSyncStatesStreamClient = grpc.ServerStreamingClient[PeerState]
 
+func (c *backrestSyncStateServiceClient) SetRemoteClientConfig(ctx context.Context, in *SetRemoteClientConfigRequest, opts ...grpc.CallOption) (*SetRemoteClientConfigResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetRemoteClientConfigResponse)
+	err := c.cc.Invoke(ctx, BackrestSyncStateService_SetRemoteClientConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BackrestSyncStateServiceServer is the server API for BackrestSyncStateService service.
 // All implementations must embed UnimplementedBackrestSyncStateServiceServer
 // for forward compatibility.
@@ -169,6 +182,8 @@ type BackrestSyncStateService_GetPeerSyncStatesStreamClient = grpc.ServerStreami
 // This service should be served behind authentication and authorization.
 type BackrestSyncStateServiceServer interface {
 	GetPeerSyncStatesStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[PeerState]) error
+	// SetRemoteClientConfig pushes a config change to a connected authorized client peer.
+	SetRemoteClientConfig(context.Context, *SetRemoteClientConfigRequest) (*SetRemoteClientConfigResponse, error)
 	mustEmbedUnimplementedBackrestSyncStateServiceServer()
 }
 
@@ -181,6 +196,9 @@ type UnimplementedBackrestSyncStateServiceServer struct{}
 
 func (UnimplementedBackrestSyncStateServiceServer) GetPeerSyncStatesStream(*SyncStateStreamRequest, grpc.ServerStreamingServer[PeerState]) error {
 	return status.Errorf(codes.Unimplemented, "method GetPeerSyncStatesStream not implemented")
+}
+func (UnimplementedBackrestSyncStateServiceServer) SetRemoteClientConfig(context.Context, *SetRemoteClientConfigRequest) (*SetRemoteClientConfigResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetRemoteClientConfig not implemented")
 }
 func (UnimplementedBackrestSyncStateServiceServer) mustEmbedUnimplementedBackrestSyncStateServiceServer() {
 }
@@ -215,13 +233,36 @@ func _BackrestSyncStateService_GetPeerSyncStatesStream_Handler(srv interface{}, 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type BackrestSyncStateService_GetPeerSyncStatesStreamServer = grpc.ServerStreamingServer[PeerState]
 
+func _BackrestSyncStateService_SetRemoteClientConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetRemoteClientConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackrestSyncStateServiceServer).SetRemoteClientConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BackrestSyncStateService_SetRemoteClientConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackrestSyncStateServiceServer).SetRemoteClientConfig(ctx, req.(*SetRemoteClientConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BackrestSyncStateService_ServiceDesc is the grpc.ServiceDesc for BackrestSyncStateService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var BackrestSyncStateService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "v1sync.BackrestSyncStateService",
 	HandlerType: (*BackrestSyncStateServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SetRemoteClientConfig",
+			Handler:    _BackrestSyncStateService_SetRemoteClientConfig_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "GetPeerSyncStatesStream",

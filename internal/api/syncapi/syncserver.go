@@ -15,6 +15,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 const SyncProtocolVersion = 1
@@ -28,7 +29,10 @@ type BackrestSyncHandler struct {
 var _ v1syncconnect.BackrestSyncServiceHandler = &BackrestSyncHandler{}
 
 func NewBackrestSyncHandler(mgr *SyncManager) *BackrestSyncHandler {
-	mapper, _ := newRemoteOpIDMapper(mgr.oplog, 4096) // error can be ignored, it just checks for valid size
+	mapper, err := newRemoteOpIDMapper(mgr.oplog, 4096)
+	if err != nil {
+		panic(fmt.Errorf("syncapi: constructing remote op ID mapper: %w", err))
+	}
 	return &BackrestSyncHandler{
 		mgr:    mgr,
 		mapper: mapper,
@@ -54,6 +58,8 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 			cmdStream,
 			sessionHandler,
 			snapshot.config.GetMultihost().GetAuthorizedClients(),
+			"", // server never sends a pairing secret
+			h.handleUnknownPeerPairing(snapshot),
 		)
 		cmdStream.SendErrorAndTerminate(err)
 	}()
@@ -141,10 +147,6 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 		return NewSyncErrorInternal(fmt.Errorf("failed to create permission set for client %q: %w", peer.InstanceId, err))
 	}
 
-	if !h.peer.KeyidVerified {
-		return NewSyncErrorAuth(fmt.Errorf("client %q is not visually verified, please verify the key ID %q", peer.InstanceId, h.peer.Keyid))
-	}
-
 	// Configure the state for the connected peer.
 	peerState := newPeerState(peer.InstanceId, h.peer.Keyid)
 	peerState.ConnectionStateMessage = "connected"
@@ -153,6 +155,13 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 	h.mgr.peerStateManager.SetPeerState(h.peer.Keyid, peerState)
 
 	h.l.Sugar().Infof("accepted a connection from client instance ID %q", h.peer.InstanceId)
+
+	// Register this peer's stream handle so the API layer can send messages to it.
+	h.mgr.registerConnectedPeer(h.peer.Keyid, &connectedPeerHandle{
+		stream:      stream,
+		peer:        h.peer,
+		permissions: h.permissions,
+	})
 
 	// start a heartbeat thread
 	go sendHeartbeats(ctx, stream, env.MultihostHeartbeatInterval())
@@ -164,25 +173,64 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 		for {
 			select {
 			case <-configWatchCh:
-				h.l.Sugar().Infof("disconnecting client due to configuration change")
-				stream.SendErrorAndTerminate(nil) // terminate so client reconnects and gets new config
-				return
+				newConfig, err := h.mgr.configMgr.Get()
+				if err != nil {
+					h.l.Sugar().Warnf("failed to get config on change: %v, disconnecting client", err)
+					stream.SendErrorAndTerminate(nil)
+					return
+				}
+
+				// Check if this peer is still authorized
+				peerIdx := slices.IndexFunc(newConfig.Multihost.GetAuthorizedClients(), func(p *v1.Multihost_Peer) bool {
+					return p.InstanceId == h.peer.InstanceId && p.Keyid == h.peer.Keyid
+				})
+				if peerIdx == -1 {
+					h.l.Sugar().Infof("disconnecting client %q: no longer authorized", h.peer.InstanceId)
+					stream.SendErrorAndTerminate(nil)
+					return
+				}
+
+				// Check if permissions changed by comparing the proto peer definition
+				updatedPeer := newConfig.Multihost.AuthorizedClients[peerIdx]
+				if !proto.Equal(h.peer, updatedPeer) {
+					h.l.Sugar().Infof("disconnecting client %q: peer configuration changed", h.peer.InstanceId)
+					stream.SendErrorAndTerminate(nil)
+					return
+				}
+
+				// Permissions unchanged — send updated config and shared repos to client
+				configRepos, configPlans, err := h.sendConfigToClient(stream, newConfig)
+				if err != nil {
+					h.l.Sugar().Warnf("failed to send updated config to client %q: %v", h.peer.InstanceId, err)
+				} else {
+					sharedRepos := h.sendSharedReposToClient(stream, newConfig)
+					h.l.Sugar().Debugf("config changed, sent update to client %q: %d repos, %d plans (config); %d shared repos pushed",
+						h.peer.InstanceId, configRepos, configPlans, sharedRepos)
+				}
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
 
-	if err := h.sendConfigToClient(stream, h.snapshot.config); err != nil {
+	configRepos, configPlans, err := h.sendConfigToClient(stream, h.snapshot.config)
+	if err != nil {
 		return NewSyncErrorInternal(fmt.Errorf("sending initial config to client: %w", err))
 	}
 
-	// send initial request for operation sync
-	if err := h.sendOperationSyncRequest(stream); err != nil {
-		return NewSyncErrorInternal(fmt.Errorf("sending initial operation sync request: %w", err))
-	}
+	// Push shared repos to the client
+	sharedRepoCount := h.sendSharedReposToClient(stream, h.snapshot.config)
+
+	h.l.Sugar().Infof("sent initial state to client %q: %d repos, %d plans (config); %d shared repos pushed",
+		h.peer.InstanceId, configRepos, configPlans, sharedRepoCount)
 
 	return nil
+}
+
+func (h *syncSessionHandlerServer) OnConnectionDisconnected() {
+	if h.peer != nil {
+		h.mgr.unregisterConnectedPeer(h.peer.Keyid)
+	}
 }
 
 func (h *syncSessionHandlerServer) HandleHeartbeat(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionHeartbeat) error {
@@ -266,18 +314,9 @@ func (h *syncSessionHandlerServer) insertOrUpdate(op *v1.Operation, isUpdate boo
 	op.OriginalFlowId = op.FlowId
 	op.Id = localOpID
 	op.FlowId = localFlowID
-	if op.Id == 0 {
-		if isUpdate {
-			h.l.Sugar().Warnf("received update for non-existent operation %+v, inserting instead", op)
-		}
-		op.Modno = 0
-		return h.mgr.oplog.Add(op)
-	} else {
-		if !isUpdate {
-			h.l.Sugar().Warnf("received insert for existing operation %+v, updating instead", op)
-		}
-		return h.mgr.oplog.Update(op)
-	}
+	// Use Set which handles both insert (Id==0) and update (Id!=0),
+	// preserving the operation's Modno from the client.
+	return h.mgr.oplog.Set(oplog.SetOptions{}, op)
 }
 
 func (h *syncSessionHandlerServer) deleteByOriginalID(originalID int64) error {
@@ -294,14 +333,12 @@ func (h *syncSessionHandlerServer) deleteByOriginalID(originalID int64) error {
 	return h.mgr.oplog.Delete(foundOp.ID)
 }
 
-func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStream, config *v1.Config) error {
+func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStream, config *v1.Config) (int, int, error) {
 	remoteConfig := &v1sync.RemoteConfig{
 		Version: config.Version,
 		Modno:   config.Modno,
 	}
 	resourceListMsg := &v1sync.SyncStreamItem_SyncActionReceiveResources{}
-	var allowedRepoIDs []string
-	var allowedPlanIDs []string
 	for _, repo := range config.Repos {
 		if h.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanViewConfiguration...) {
 			remoteConfig.Repos = append(remoteConfig.Repos, repo)
@@ -309,7 +346,6 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 				Id:   repo.Id,
 				Guid: repo.Guid,
 			})
-			allowedRepoIDs = append(allowedRepoIDs, repo.Id)
 		}
 	}
 	for _, plan := range config.Plans {
@@ -318,10 +354,8 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 			resourceListMsg.Plans = append(resourceListMsg.Plans, &v1sync.PlanMetadata{
 				Id: plan.Id,
 			})
-			allowedPlanIDs = append(allowedPlanIDs, plan.Id)
 		}
 	}
-	h.l.Sugar().Debugf("determined client %v is allowlisted to read configs for repos %v and plans %v", h.peer.InstanceId, allowedRepoIDs, allowedPlanIDs)
 
 	// Send the config, this is the first meaningful packet the client will receive.
 	stream.Send(&v1sync.SyncStreamItem{
@@ -338,22 +372,184 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 			ReceiveResources: resourceListMsg,
 		},
 	})
-	return nil
+	return len(remoteConfig.Repos), len(remoteConfig.Plans), nil
 }
 
-func (h *syncSessionHandlerServer) sendOperationSyncRequest(stream *bidiSyncCommandStream) error {
-	highestID, highestModno, err := h.mgr.oplog.GetHighestOpIDAndModno(oplog.Query{}.SetOriginalInstanceKeyid(h.peer.Keyid))
-	if err != nil {
-		return fmt.Errorf("getting highest opid and modno: %w", err)
+// sendSharedReposToClient sends repos marked as shared to the client via SetConfig.
+// This pushes repo configurations to the client so they are added to the client's local config.
+// Returns the number of shared repos sent.
+func (h *syncSessionHandlerServer) sendSharedReposToClient(stream *bidiSyncCommandStream, config *v1.Config) int {
+	var sharedRepos []*v1.Repo
+	for _, repo := range config.Repos {
+		if repo.GetShared() {
+			repoCopy := proto.Clone(repo).(*v1.Repo)
+			repoCopy.OriginInstanceId = config.Instance
+			sharedRepos = append(sharedRepos, repoCopy)
+		}
 	}
+
+	if len(sharedRepos) == 0 {
+		return 0
+	}
+
 	stream.Send(&v1sync.SyncStreamItem{
-		Action: &v1sync.SyncStreamItem_RequestOperations{
-			RequestOperations: &v1sync.SyncStreamItem_SyncActionRequestOperations{
-				HighOpid:  highestID,
-				HighModno: highestModno,
+		Action: &v1sync.SyncStreamItem_SetConfig{
+			SetConfig: &v1sync.SyncStreamItem_SyncActionSetConfig{
+				Repos: sharedRepos,
 			},
 		},
 	})
-	h.l.Sugar().Debugf("requested operations from client starting at opID %d and modno %d", highestID, highestModno)
+	return len(sharedRepos)
+}
+
+// ValidatePairingSecret checks a pairing secret against a list of pairing tokens.
+// Returns the matching token if valid, or an error explaining why validation failed.
+// This is a pure function with no side effects, making it easy to test exhaustively.
+func ValidatePairingSecret(secret string, tokens []*v1.Multihost_PairingToken, now time.Time) (*v1.Multihost_PairingToken, error) {
+	if secret == "" {
+		return nil, fmt.Errorf("empty pairing secret")
+	}
+	for _, token := range tokens {
+		if token.Secret != secret {
+			continue
+		}
+		if token.ExpiresAtUnix > 0 && now.Unix() > token.ExpiresAtUnix {
+			return nil, fmt.Errorf("pairing token %q has expired", token.Label)
+		}
+		if token.MaxUses > 0 && token.Uses >= token.MaxUses {
+			return nil, fmt.Errorf("pairing token %q has reached its maximum number of uses (%d)", token.Label, token.MaxUses)
+		}
+		return token, nil
+	}
+	return nil, fmt.Errorf("no matching pairing token found")
+}
+
+// handleUnknownPeerPairing returns an onUnknownPeerFunc that validates a pairing secret
+// from the handshake, adds the client to authorized_clients in the config, and consumes the token.
+// The peer is added to the config BEFORE runSync proceeds with its normal authorization check,
+// ensuring that runSync's hard gate (peer must be in authorized_clients) is never bypassed.
+func (h *BackrestSyncHandler) handleUnknownPeerPairing(snapshot *syncConfigSnapshot) onUnknownPeerFunc {
+	return func(handshake *v1sync.SyncStreamItem) (*v1.Multihost_Peer, error) {
+		pairingSecret := handshake.GetHandshake().GetPairingSecret()
+		if pairingSecret == "" {
+			return nil, fmt.Errorf("unknown peer and no pairing secret provided")
+		}
+
+		// Defense-in-depth: re-verify the handshake signature to ensure the client
+		// holds the private key for the public key it presents. This is already checked
+		// by verifyHandshakePacket in runSync, but we verify again here since this is
+		// a security-critical path that adds a new authorized client.
+		if _, err := verifyHandshakePacket(handshake); err != nil {
+			return nil, fmt.Errorf("handshake signature verification failed: %w", err)
+		}
+
+		peerKeyID := handshake.GetHandshake().GetPublicKey().GetKeyid()
+		peerInstanceID := string(handshake.GetHandshake().GetInstanceId().GetPayload())
+
+		// Atomically validate the pairing secret and add the client.
+		var newPeer *v1.Multihost_Peer
+		if err := h.mgr.configMgr.Transform(func(cfg *v1.Config) (*v1.Config, error) {
+			token, err := ValidatePairingSecret(pairingSecret, cfg.GetMultihost().GetPairingTokens(), time.Now())
+			if err != nil {
+				zap.S().Warnf("rejected pairing attempt from %q (%s): %v", peerInstanceID, peerKeyID, err)
+				return nil, err
+			}
+
+			newPeer = &v1.Multihost_Peer{
+				InstanceId:  peerInstanceID,
+				Keyid:       peerKeyID,
+				Permissions: token.Permissions,
+			}
+			cfg.Multihost.AuthorizedClients = append(cfg.Multihost.AuthorizedClients, newPeer)
+
+			// Consume the token: increment uses, remove if exhausted.
+			token.Uses++
+			if token.MaxUses > 0 && token.Uses >= token.MaxUses {
+				cfg.Multihost.PairingTokens = slices.DeleteFunc(cfg.Multihost.PairingTokens, func(t *v1.Multihost_PairingToken) bool {
+					return t.Secret == token.Secret
+				})
+			}
+
+			cfg.Modno++
+			return cfg, nil
+		}); err != nil {
+			return nil, fmt.Errorf("failed to save paired client: %w", err)
+		}
+
+		zap.S().Infof("successfully paired client %q (%s)", peerInstanceID, peerKeyID)
+		return newPeer, nil
+	}
+}
+
+func (h *syncSessionHandlerServer) HandleOperationManifest(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionOperationManifest) error {
+	h.l.Sugar().Debugf("received operation manifest with %d operations", len(item.GetOpIds()))
+	// Build local state: original_id → {localID, modno}
+	type localOp struct {
+		localID int64
+		modno   int64
+	}
+	localState := map[int64]localOp{}
+	if err := h.mgr.oplog.QueryMetadata(
+		oplog.Query{}.SetOriginalInstanceKeyid(h.peer.Keyid),
+		func(meta oplog.OpMetadata) error {
+			localState[meta.OriginalID] = localOp{localID: meta.ID, modno: meta.Modno}
+			return nil
+		},
+	); err != nil {
+		return fmt.Errorf("querying local operation metadata: %w", err)
+	}
+	h.l.Sugar().Debugf("local state has %d operations from this peer", len(localState))
+
+	// Build remote set from manifest
+	if len(item.GetOpIds()) != len(item.GetModnos()) {
+		return NewSyncErrorProtocol(fmt.Errorf("operation manifest has mismatched OpIds (%d) and Modnos (%d) lengths", len(item.GetOpIds()), len(item.GetModnos())))
+	}
+	remoteSet := make(map[int64]int64, len(item.GetOpIds()))
+	for i, id := range item.GetOpIds() {
+		remoteSet[id] = item.GetModnos()[i]
+	}
+
+	// Delete ops not in manifest
+	var toDelete []int64
+	for origID, local := range localState {
+		if _, exists := remoteSet[origID]; !exists {
+			toDelete = append(toDelete, local.localID)
+		}
+	}
+	if len(toDelete) > 0 {
+		h.l.Sugar().Debugf("deleting %d stale operations", len(toDelete))
+		if err := h.mgr.oplog.Delete(toDelete...); err != nil {
+			h.l.Sugar().Warnf("failed to delete stale operations: %v", err)
+		}
+	}
+
+	// Find ops we need (new or changed modno), preserving manifest order
+	opIDs := item.GetOpIds()
+	modnos := item.GetModnos()
+	var needIDs []int64
+	for i, id := range opIDs {
+		modno := modnos[i]
+		local, exists := localState[id]
+		if !exists || local.modno != modno {
+			needIDs = append(needIDs, id)
+		}
+	}
+	h.l.Sugar().Debugf("need %d operations (new or changed), local state comparison: remoteSet=%v localState=%v", len(needIDs), remoteSet, localState)
+
+	// Request the ops we need
+	if len(needIDs) > 0 {
+		stream.Send(&v1sync.SyncStreamItem{
+			Action: &v1sync.SyncStreamItem_RequestOperationData{
+				RequestOperationData: &v1sync.SyncStreamItem_SyncActionRequestOperationData{
+					OpIds: needIDs,
+				},
+			},
+		})
+	}
+
 	return nil
+}
+
+func (h *syncSessionHandlerServer) HandleRequestOperationData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperationData) error {
+	return NewSyncErrorProtocol(fmt.Errorf("server should not receive RequestOperationData"))
 }

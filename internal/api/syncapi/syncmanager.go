@@ -10,12 +10,31 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1sync"
+	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
+
+// connectedPeerHandle represents a connected peer's stream and metadata.
+// It allows the API layer to send messages to a specific connected peer.
+type connectedPeerHandle struct {
+	stream      *bidiSyncCommandStream
+	peer        *v1.Multihost_Peer
+	permissions *permissions.PermissionSet
+}
+
+// SendSetConfig sends a SyncActionSetConfig message to the connected peer.
+func (h *connectedPeerHandle) SendSetConfig(setConfig *v1sync.SyncStreamItem_SyncActionSetConfig) {
+	h.stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_SetConfig{
+			SetConfig: setConfig,
+		},
+	})
+}
 
 type SyncManager struct {
 	configMgr    *config.ConfigManager
@@ -30,6 +49,10 @@ type SyncManager struct {
 	syncClientRetryDelay time.Duration // the default retry delay for sync clients, protected by mu
 
 	syncClients map[string]*SyncClient // current sync clients, protected by mu
+
+	// connectedPeers tracks connected authorized client peers by key ID.
+	// This allows the API layer to send messages to specific connected peers.
+	connectedPeers map[string]*connectedPeerHandle
 
 	peerStateManager PeerStateManager
 }
@@ -66,6 +89,7 @@ func NewSyncManager(configMgr *config.ConfigManager, oplog *oplog.OpLog, orchest
 
 		syncClientRetryDelay: 60 * time.Second,
 		syncClients:          make(map[string]*SyncClient),
+		connectedPeers:       make(map[string]*connectedPeerHandle),
 
 		peerStateManager: peerStateManager,
 	}
@@ -89,7 +113,7 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 		zap.L().Info("syncmanager exited")
 	}()
 
-	runSyncWithNewConfig := func() {
+	startSync := func(config *v1.Config) {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
@@ -102,12 +126,6 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 		}
 		syncCtx, cancel := context.WithCancel(ctx)
 		cancelLastSync = cancel
-
-		config, err := m.configMgr.Get()
-		if err != nil {
-			zap.S().Errorf("syncmanager failed to refresh config with latest changes so sync is stopped: %v", err)
-			return
-		}
 
 		if config.Multihost.GetIdentity() == nil {
 			zap.S().Info("syncmanager no identity key configured, sync feature is disabled.")
@@ -152,14 +170,68 @@ func (m *SyncManager) RunSync(ctx context.Context) {
 		}
 	}
 
-	runSyncWithNewConfig()
+	// lastConfig tracks the config that sync is currently running with.
+	// We only restart sync when the config changes in a meaningful way
+	// (i.e. ignoring the Modno field which increments on every write).
+	var lastConfig *v1.Config
+
+	syncConfigEqual := func(a, b *v1.Config) bool {
+		if a == nil || b == nil {
+			return a == b
+		}
+		// Compare ignoring Modno which changes on every config write.
+		ac := proto.Clone(a).(*v1.Config)
+		bc := proto.Clone(b).(*v1.Config)
+		ac.Modno = 0
+		bc.Modno = 0
+		return proto.Equal(ac, bc)
+	}
+
+	restartSyncIfChanged := func() {
+		config, err := m.configMgr.Get()
+		if err != nil {
+			zap.S().Errorf("syncmanager failed to refresh config with latest changes so sync is stopped: %v", err)
+			return
+		}
+		if syncConfigEqual(config, lastConfig) {
+			zap.L().Debug("syncmanager config changed but sync-relevant config is unchanged, skipping restart")
+			return
+		}
+		lastConfig = proto.Clone(config).(*v1.Config)
+		startSync(config)
+	}
+
+	restartSyncIfChanged()
+
+	// Clock jump detection: if the ticker fires much later than expected
+	// (e.g. after system sleep), force a reconnect to recover dead streams.
+	clockJumpInterval := 1 * time.Minute
+	clockJumpGrace := 30 * time.Second
+	clockJumpTicker := time.NewTicker(clockJumpInterval)
+	defer clockJumpTicker.Stop()
+	lastTickTime := time.Now()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-configWatchCh:
-			runSyncWithNewConfig()
+			restartSyncIfChanged()
+		case <-clockJumpTicker.C:
+			delta := time.Since(lastTickTime) - clockJumpInterval
+			lastTickTime = time.Now()
+			if delta < 0 {
+				delta = -delta
+			}
+			if delta > clockJumpGrace {
+				zap.S().Warnf("syncmanager detected clock jump of %v, forcing reconnection", delta)
+				config, err := m.configMgr.Get()
+				if err != nil {
+					zap.S().Errorf("syncmanager failed to get config after clock jump: %v", err)
+					continue
+				}
+				startSync(config)
+			}
 		}
 	}
 }
@@ -178,17 +250,43 @@ func (m *SyncManager) runSyncWithPeerInternal(ctx context.Context, config *v1.Co
 		return fmt.Errorf("creating sync client: %w", err)
 	}
 	m.mu.Lock()
-	m.syncClients[knownHostPeer.InstanceId] = newClient
+	m.syncClients[knownHostPeer.Keyid] = newClient
 	m.mu.Unlock()
 
 	go func() {
 		newClient.RunSync(ctx)
 		m.mu.Lock()
-		delete(m.syncClients, knownHostPeer.InstanceId)
+		// Only remove the entry if it still points at us. On reconfiguration the new
+		// client may have already inserted itself under the same key; deleting blindly
+		// would wipe the replacement.
+		if m.syncClients[knownHostPeer.Keyid] == newClient {
+			delete(m.syncClients, knownHostPeer.Keyid)
+		}
 		m.mu.Unlock()
 	}()
 
 	return nil
+}
+
+// registerConnectedPeer registers a connected peer's stream handle.
+func (m *SyncManager) registerConnectedPeer(keyID string, handle *connectedPeerHandle) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.connectedPeers[keyID] = handle
+}
+
+// unregisterConnectedPeer removes a connected peer's stream handle.
+func (m *SyncManager) unregisterConnectedPeer(keyID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.connectedPeers, keyID)
+}
+
+// GetConnectedPeer returns the handle for a connected peer, or nil if not connected.
+func (m *SyncManager) GetConnectedPeer(keyID string) *connectedPeerHandle {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.connectedPeers[keyID]
 }
 
 type syncConfigSnapshot struct {

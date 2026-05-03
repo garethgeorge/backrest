@@ -69,6 +69,10 @@ service Backrest {
 
   // GetSummaryDashboard returns data for the dashboard view.
   rpc GetSummaryDashboard(google.protobuf.Empty) returns (SummaryDashboardResponse) {}
+
+  // GeneratePairingToken creates a new pairing token on the server that can be shared with clients to simplify peering.
+  // The token format is "<keyid>:<secret>#<instanceid>" — an opaque string the client pastes when adding a known host.
+  rpc GeneratePairingToken(GeneratePairingTokenRequest) returns (GeneratePairingTokenResponse) {}
 }
 
 // OpSelector is a message that can be used to select operations e.g. by query.
@@ -221,4 +225,15 @@ message SummaryDashboardResponse {
     repeated OperationStatus status = 4;
     repeated int64 bytes_added = 5;
   }
+}
+
+message GeneratePairingTokenRequest {
+  string label = 1; // human-readable label for the token
+  int64 ttl_seconds = 2; // time-to-live in seconds (e.g. 3600 for 1 hour)
+  int32 max_uses = 3; // max number of clients that can pair with this token, 0 for unlimited
+  repeated Multihost.Permission permissions = 4; // permissions to grant to clients that pair with this token
+}
+
+message GeneratePairingTokenResponse {
+  string token = 1; // the opaque pairing token string: "<keyid>:<secret>#<instanceid>"
 }

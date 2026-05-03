@@ -23,4 +23,8 @@ var (
 	PermsCanViewOperations = []v1.Multihost_Permission_Type{
 		v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
 	}
+
+	PermsCanReceiveSharedRepos = []v1.Multihost_Permission_Type{
+		v1.Multihost_Permission_PERMISSION_RECEIVE_SHARED_REPOS,
+	}
 )

@@ -1,4 +1,3 @@
-import React, { useState } from "react";
 import {
   PeerState,
   ConnectionState,
@@ -13,7 +12,7 @@ import {
   FiLoader,
   FiHelpCircle,
 } from "react-icons/fi";
-import { Box, Spinner, Text } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import { Tooltip } from "../ui/tooltip";
 
 export const PeerStateConnectionStatusIcon = ({
@@ -133,8 +132,24 @@ export const PeerStateConnectionStatusIcon = ({
   };
 
   return (
-    <Tooltip content={getStatusTooltip()}>
-      <Box as="span" cursor="help" display="inline-flex" alignItems="center">
+    <Tooltip
+      content={getStatusTooltip()}
+      portalled
+      showArrow
+      positionerProps={{ zIndex: 2100 }}
+    >
+      <Box
+        as="button"
+        cursor="help"
+        display="inline-flex"
+        alignItems="center"
+        bg="transparent"
+        border="none"
+        p={0}
+        m={0}
+        lineHeight={1}
+
+      >
         {getStatusIcon()}
       </Box>
     </Tooltip>

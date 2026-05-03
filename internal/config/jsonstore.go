@@ -12,6 +12,7 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/natefinch/atomic"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -28,7 +29,37 @@ var _ ConfigStore = &JsonFileStore{}
 func (f *JsonFileStore) Get() (*v1.Config, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	return f.get()
+}
 
+func (f *JsonFileStore) Update(config *v1.Config) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.update(config)
+}
+
+func (f *JsonFileStore) Transform(fn func(cfg *v1.Config) (*v1.Config, error)) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	current, err := f.get()
+	if err != nil {
+		return err
+	}
+
+	cloned := proto.Clone(current).(*v1.Config)
+	result, err := fn(cloned)
+	if err != nil {
+		return err
+	}
+	if result == nil {
+		return nil
+	}
+	return f.update(result)
+}
+
+// get reads the config from disk. Must be called with mu held.
+func (f *JsonFileStore) get() (*v1.Config, error) {
 	data, err := os.ReadFile(f.Path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -45,10 +76,8 @@ func (f *JsonFileStore) Get() (*v1.Config, error) {
 	return &config, nil
 }
 
-func (f *JsonFileStore) Update(config *v1.Config) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
+// update writes the config to disk. Must be called with mu held.
+func (f *JsonFileStore) update(config *v1.Config) error {
 	data, err := protojson.MarshalOptions{
 		Indent:    "  ",
 		Multiline: true,

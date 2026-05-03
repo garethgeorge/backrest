@@ -10,6 +10,7 @@ import (
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/eventemitter"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 var ErrConfigNotFound = fmt.Errorf("config not found")
@@ -57,7 +58,12 @@ func (m *ConfigManager) migrate(config *v1.Config) error {
 func (m *ConfigManager) Get() (*v1.Config, error) {
 	m.cachedMu.Lock()
 	defer m.cachedMu.Unlock()
+	return m.getCachedLocked()
+}
 
+// getCachedLocked returns the cached config, loading from the store if necessary.
+// Must be called with cachedMu held.
+func (m *ConfigManager) getCachedLocked() (*v1.Config, error) {
 	if m.cached != nil {
 		return m.cached, nil
 	}
@@ -107,9 +113,45 @@ func (m *ConfigManager) Update(config *v1.Config) error {
 	return nil
 }
 
+// Transform atomically reads the current config, passes a deep clone to fn,
+// and saves the result. If fn returns a nil config, no update is performed.
+// The caller should not call Get/Update on the ConfigManager from within fn.
+func (m *ConfigManager) Transform(fn func(cfg *v1.Config) (*v1.Config, error)) error {
+	m.cachedMu.Lock()
+	defer m.cachedMu.Unlock()
+
+	current, err := m.getCachedLocked()
+	if err != nil {
+		return err
+	}
+
+	cloned := proto.Clone(current).(*v1.Config)
+	result, err := fn(cloned)
+	if err != nil {
+		return err
+	}
+	if result == nil {
+		return nil // no update requested
+	}
+
+	if err := ValidateConfig(result); err != nil {
+		return err
+	}
+
+	if err := m.Store.Update(result); err != nil {
+		return err
+	}
+	m.cached = result
+	m.OnChange.Emit(struct{}{})
+	return nil
+}
+
 type ConfigStore interface {
 	Get() (*v1.Config, error)
 	Update(config *v1.Config) error
+	// Transform atomically reads the current config, passes a deep clone to fn,
+	// and if fn returns a non-nil config, saves it. Returning (nil, nil) skips the update.
+	Transform(fn func(cfg *v1.Config) (*v1.Config, error)) error
 }
 
 func NewDefaultConfig() *v1.Config {
