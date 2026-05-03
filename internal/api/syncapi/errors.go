@@ -28,34 +28,6 @@ func NewSyncErrorDisconnected(message error) *SyncError {
 	}
 }
 
-func NewSyncErrorUnknown(message error) *SyncError {
-	return &SyncError{
-		State:   v1sync.ConnectionState_CONNECTION_STATE_UNKNOWN,
-		Message: message,
-	}
-}
-
-func NewSyncErrorPending(message error) *SyncError {
-	return &SyncError{
-		State:   v1sync.ConnectionState_CONNECTION_STATE_PENDING,
-		Message: message,
-	}
-}
-
-func NewSyncErrorConnected(message error) *SyncError {
-	return &SyncError{
-		State:   v1sync.ConnectionState_CONNECTION_STATE_CONNECTED,
-		Message: message,
-	}
-}
-
-func NewSyncErrorRetryWait(message error) *SyncError {
-	return &SyncError{
-		State:   v1sync.ConnectionState_CONNECTION_STATE_RETRY_WAIT,
-		Message: message,
-	}
-}
-
 func NewSyncErrorAuth(message error) *SyncError {
 	return &SyncError{
 		State:   v1sync.ConnectionState_CONNECTION_STATE_ERROR_AUTH,
