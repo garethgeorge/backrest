@@ -140,6 +140,88 @@ func TestCleanupOrphanedRemoteReposAndPlans(t *testing.T) {
 	}
 }
 
+func TestValidateRepoForgetPolicy(t *testing.T) {
+	validGUID := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	baseConfig := func(repo *v1.Repo) *v1.Config {
+		return &v1.Config{Instance: "test", Repos: []*v1.Repo{repo}}
+	}
+
+	tests := []struct {
+		name    string
+		repo    *v1.Repo
+		wantErr bool
+	}{
+		{
+			name: "no forget policy is valid",
+			repo: &v1.Repo{Id: "repo1", Uri: "file:///tmp/repo", Guid: validGUID},
+		},
+		{
+			name: "valid forget policy",
+			repo: &v1.Repo{
+				Id: "repo1", Uri: "file:///tmp/repo", Guid: validGUID,
+				ForgetPolicy: &v1.ForgetPolicy{
+					Schedule:  &v1.Schedule{Schedule: &v1.Schedule_MaxFrequencyDays{MaxFrequencyDays: 1}},
+					Retention: &v1.RetentionPolicy{Policy: &v1.RetentionPolicy_PolicyKeepLastN{PolicyKeepLastN: 5}},
+				},
+			},
+		},
+		{
+			name: "forget policy with nil retention",
+			repo: &v1.Repo{
+				Id: "repo1", Uri: "file:///tmp/repo", Guid: validGUID,
+				ForgetPolicy: &v1.ForgetPolicy{
+					Schedule: &v1.Schedule{Schedule: &v1.Schedule_MaxFrequencyDays{MaxFrequencyDays: 1}},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "forget policy with empty retention",
+			repo: &v1.Repo{
+				Id: "repo1", Uri: "file:///tmp/repo", Guid: validGUID,
+				ForgetPolicy: &v1.ForgetPolicy{
+					Schedule:  &v1.Schedule{Schedule: &v1.Schedule_MaxFrequencyDays{MaxFrequencyDays: 1}},
+					Retention: &v1.RetentionPolicy{},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "forget policy with invalid schedule",
+			repo: &v1.Repo{
+				Id: "repo1", Uri: "file:///tmp/repo", Guid: validGUID,
+				ForgetPolicy: &v1.ForgetPolicy{
+					Schedule:  &v1.Schedule{Schedule: &v1.Schedule_Cron{Cron: "bad cron"}},
+					Retention: &v1.RetentionPolicy{Policy: &v1.RetentionPolicy_PolicyKeepLastN{PolicyKeepLastN: 5}},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "forget policy with empty time bucketed retention",
+			repo: &v1.Repo{
+				Id: "repo1", Uri: "file:///tmp/repo", Guid: validGUID,
+				ForgetPolicy: &v1.ForgetPolicy{
+					Schedule:  &v1.Schedule{Schedule: &v1.Schedule_MaxFrequencyDays{MaxFrequencyDays: 1}},
+					Retention: &v1.RetentionPolicy{Policy: &v1.RetentionPolicy_PolicyTimeBucketed{PolicyTimeBucketed: &v1.RetentionPolicy_TimeBucketedCounts{}}},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateConfig(baseConfig(tc.repo))
+			if tc.wantErr && err == nil {
+				t.Error("expected error, got nil")
+			} else if !tc.wantErr && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
 func sliceEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false

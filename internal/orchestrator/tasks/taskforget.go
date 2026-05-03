@@ -173,7 +173,10 @@ func (t *ScheduledForgetTask) shouldSkip(runner TaskRunner, repoProto *v1.Repo) 
 		return false // no previous forget, don't skip
 	}
 
-	// Check if any backup completed after the last forget
+	// Check if any backup completed after the last forget.
+	// Intentionally not scoped by instance ID: in a sync setup the server receives
+	// backup operations from remote clients. We want forget to run whenever new
+	// snapshots appear in the repo regardless of which instance created them.
 	_ = runner.QueryOperations(oplog.Query{}.
 		SetRepoGUID(repoProto.GetGuid()).
 		SetReversed(true), func(op *v1.Operation) error {

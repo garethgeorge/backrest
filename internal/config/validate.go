@@ -13,7 +13,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 func ValidateConfig(c *v1.Config) error {
@@ -114,6 +113,19 @@ func validateRepo(repo *v1.Repo) error {
 		}
 	}
 
+	if repo.ForgetPolicy != nil {
+		if repo.ForgetPolicy.GetSchedule() != nil {
+			if e := protoutil.ValidateSchedule(repo.ForgetPolicy.GetSchedule()); e != nil {
+				err = multierror.Append(err, fmt.Errorf("forget policy schedule: %w", e))
+			}
+		}
+		if repo.ForgetPolicy.GetRetention() == nil {
+			err = multierror.Append(err, errors.New("forget policy must specify a retention policy"))
+		} else if e := protoutil.ValidateRetentionPolicy(repo.ForgetPolicy.GetRetention()); e != nil {
+			err = multierror.Append(err, fmt.Errorf("forget policy: %w", e))
+		}
+	}
+
 	for _, env := range repo.Env {
 		if !strings.Contains(env, "=") {
 			err = multierror.Append(err, fmt.Errorf("invalid env var %s, must take format KEY=VALUE", env))
@@ -155,11 +167,9 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 		err = multierror.Append(err, fmt.Errorf("repo %q not found", plan.Repo))
 	}
 
-	if plan.Retention != nil && plan.Retention.Policy == nil {
-		err = multierror.Append(err, errors.New("retention policy must be nil or must specify a policy"))
-	} else if policyTimeBucketed, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyTimeBucketed); ok {
-		if proto.Equal(policyTimeBucketed.PolicyTimeBucketed, &v1.RetentionPolicy_TimeBucketedCounts{}) {
-			err = multierror.Append(err, errors.New("time bucketed policy must specify a non-empty bucket"))
+	if plan.Retention != nil {
+		if e := protoutil.ValidateRetentionPolicy(plan.Retention); e != nil {
+			err = multierror.Append(err, fmt.Errorf("retention: %w", e))
 		}
 	}
 
