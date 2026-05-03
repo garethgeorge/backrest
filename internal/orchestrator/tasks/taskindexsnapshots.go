@@ -3,15 +3,12 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"slices"
-	"strings"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/protoutil"
-	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
 )
 
@@ -166,42 +163,3 @@ func instanceIDForSnapshot(snapshot *v1.ResticSnapshot) string {
 	return InstanceIDForUnassociatedOperations
 }
 
-// tryMigrate checks if the snapshots use the latest backrest tag set and migrates them if necessary.
-func tryMigrate(ctx context.Context, repo *repo.RepoOrchestrator, config *v1.Config, snapshots []*restic.Snapshot) (bool, error) {
-	if config.Instance == "" {
-		zap.S().Warnf("Instance ID not set. Skipping migration.")
-		return false, nil
-	}
-
-	planIDs := make(map[string]struct{})
-	for _, plan := range config.Plans {
-		planIDs[plan.Id] = struct{}{}
-	}
-
-	needsCreatedBy := []string{}
-	for _, snapshot := range snapshots {
-		// Check if snapshot is already tagged with `created-by:``
-		if idx := slices.IndexFunc(snapshot.Tags, func(tag string) bool {
-			return strings.HasPrefix(tag, "created-by:")
-		}); idx != -1 {
-			continue
-		}
-		// Check that snapshot is included in a plan for this instance. Backrest will not take ownership of snapshots belonging to it isn't aware of.
-		if _, ok := planIDs[planForSnapshot(protoutil.SnapshotToProto(snapshot))]; !ok {
-			continue
-		}
-		needsCreatedBy = append(needsCreatedBy, snapshot.Id)
-	}
-
-	if len(needsCreatedBy) == 0 {
-		return false, nil
-	}
-
-	zap.S().Warnf("Found %v snapshots without created-by tag but included in a plan for this instance. Taking ownership and adding created-by tag.", len(needsCreatedBy))
-
-	if err := repo.AddTags(ctx, needsCreatedBy, []string{fmt.Sprintf("created-by:%v", config.Instance)}); err != nil {
-		return false, fmt.Errorf("add created-by tag to snapshots: %w", err)
-	}
-
-	return true, nil
-}

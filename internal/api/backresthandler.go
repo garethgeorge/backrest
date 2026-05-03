@@ -71,26 +71,17 @@ func (s *BackrestHandler) GetConfig(ctx context.Context, req *connect.Request[em
 
 // SetConfig implements POST /v1/config
 func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1.Config]) (*connect.Response[v1.Config], error) {
-	existing, err := s.config.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to check current config: %w", err)
-	}
-
-	// Compare and increment modno
-	if existing.Modno != req.Msg.Modno {
-		return nil, errors.New("config modno mismatch, reload and try again")
-	}
-
-	// Rehydrate the network sanitized config
-	rehydratedConfig := config.RehydrateNetworkSanitizedConfig(req.Msg, existing)
-
-	if err := config.ValidateConfig(rehydratedConfig); err != nil {
-		return nil, fmt.Errorf("validation error: %w", err)
-	}
-
-	rehydratedConfig.Modno++
-
-	if err := s.config.Update(rehydratedConfig); err != nil {
+	if err := s.config.Transform(func(cfg *v1.Config) (*v1.Config, error) {
+		if cfg.Modno != req.Msg.Modno {
+			return nil, errors.New("config modno mismatch, reload and try again")
+		}
+		rehydrated := config.RehydrateNetworkSanitizedConfig(req.Msg, cfg)
+		if err := config.ValidateConfig(rehydrated); err != nil {
+			return nil, fmt.Errorf("validation error: %w", err)
+		}
+		rehydrated.Modno++
+		return rehydrated, nil
+	}); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
 
@@ -98,7 +89,7 @@ func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1
 	if err != nil {
 		return nil, fmt.Errorf("failed to get newly set config: %w", err)
 	}
-	return connect.NewResponse(newConfig), nil
+	return connect.NewResponse(config.SanitizeForNetwork(newConfig)), nil
 }
 
 func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Request[v1.CheckRepoExistsRequest]) (*connect.Response[v1.CheckRepoExistsResponse], error) {
@@ -229,26 +220,23 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.A
 	s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(newRepo, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots)
 
 	zap.L().Debug("done add repo")
-	return connect.NewResponse(c), nil
+	return connect.NewResponse(config.SanitizeForNetwork(c)), nil
 }
 
 func (s *BackrestHandler) RemoveRepo(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error) {
-	cfg, err := s.config.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get config: %w", err)
-	}
-
-	// Remove the repo from the configuration
-	cfg.Repos = slices.DeleteFunc(cfg.Repos, func(r *v1.Repo) bool {
-		return r.Id == req.Msg.Value
-	})
-	if err := s.config.Update(cfg); err != nil {
+	var instanceID string
+	if err := s.config.Transform(func(cfg *v1.Config) (*v1.Config, error) {
+		instanceID = cfg.Instance
+		cfg.Repos = slices.DeleteFunc(cfg.Repos, func(r *v1.Repo) bool {
+			return r.Id == req.Msg.Value
+		})
+		return cfg, nil
+	}); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
 
 	// Query for all operations for the repo
-	q := oplog.Query{}.
-		SetInstanceID(cfg.Instance)
+	q := oplog.Query{}.SetInstanceID(instanceID)
 	q.DeprecatedRepoID = &req.Msg.Value
 	var opIDs []int64
 	if err := s.oplog.Query(q, func(op *v1.Operation) error {
@@ -260,17 +248,18 @@ func (s *BackrestHandler) RemoveRepo(ctx context.Context, req *connect.Request[t
 
 	// Delete operations referencing the repo from the oplog in batches
 	for len(opIDs) > 0 {
-		batchSize := 256
-		if batchSize > len(opIDs) {
-			batchSize = len(opIDs)
-		}
+		batchSize := min(256, len(opIDs))
 		if err := s.oplog.Delete(opIDs[:batchSize]...); err != nil {
 			return nil, fmt.Errorf("failed to delete operations: %w", err)
 		}
 		opIDs = opIDs[batchSize:]
 	}
 
-	return connect.NewResponse(cfg), nil
+	newConfig, err := s.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %w", err)
+	}
+	return connect.NewResponse(config.SanitizeForNetwork(newConfig)), nil
 }
 
 // SetupSftp implements SetupSftp RPC
@@ -454,12 +443,12 @@ func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.R
 
 func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error) {
 	q, err := protoutil.OpSelectorToQuery(req.Msg.Selector)
+	if err != nil {
+		return nil, err
+	}
 	if req.Msg.LastN != 0 {
 		q.Reversed = true
 		q.Limit = int(req.Msg.LastN)
-	}
-	if err != nil {
-		return nil, err
 	}
 
 	var ops []*v1.Operation
@@ -628,7 +617,9 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 	}
 
 	at := time.Now()
-	s.orchestrator.ScheduleTask(tasks.NewOneoffRestoreTask(repo, req.Msg.PlanId, 0 /* flowID */, at, req.Msg.SnapshotId, req.Msg.Path, req.Msg.Target), tasks.TaskPriorityInteractive+tasks.TaskPriorityDefault)
+	if err := s.orchestrator.ScheduleTask(tasks.NewOneoffRestoreTask(repo, req.Msg.PlanId, 0 /* flowID */, at, req.Msg.SnapshotId, req.Msg.Path, req.Msg.Target), tasks.TaskPriorityInteractive+tasks.TaskPriorityDefault); err != nil {
+		return nil, fmt.Errorf("failed to schedule restore task: %w", err)
+	}
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
@@ -942,6 +933,52 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	}
 
 	return connect.NewResponse(response), nil
+}
+
+func (s *BackrestHandler) GeneratePairingToken(ctx context.Context, req *connect.Request[v1.GeneratePairingTokenRequest]) (*connect.Response[v1.GeneratePairingTokenResponse], error) {
+	// Generate the one-time secret before taking the lock.
+	secret, err := cryptoutil.GeneratePairingSecret()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate pairing secret: %w", err)
+	}
+
+	now := time.Now().Unix()
+	var expiresAt int64
+	if req.Msg.TtlSeconds > 0 {
+		expiresAt = now + req.Msg.TtlSeconds
+	}
+
+	var tokenStr string
+	if err := s.config.Transform(func(cfg *v1.Config) (*v1.Config, error) {
+		if cfg.Instance == "" {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("instance name must be set before generating pairing tokens"))
+		}
+
+		identity := cfg.GetMultihost().GetIdentity()
+		if identity == nil {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("multihost identity must be configured before generating pairing tokens"))
+		}
+
+		cfg.Multihost.PairingTokens = append(cfg.Multihost.PairingTokens, &v1.Multihost_PairingToken{
+			Secret:        secret,
+			Label:         req.Msg.Label,
+			CreatedAtUnix: now,
+			ExpiresAtUnix: expiresAt,
+			MaxUses:       req.Msg.MaxUses,
+			Uses:          0,
+			Permissions:   req.Msg.Permissions,
+		})
+		cfg.Modno++
+
+		tokenStr = cryptoutil.FormatPairingToken(identity.Keyid, secret, cfg.Instance)
+		return cfg, nil
+	}); err != nil {
+		return nil, fmt.Errorf("failed to save pairing token: %w", err)
+	}
+
+	return connect.NewResponse(&v1.GeneratePairingTokenResponse{
+		Token: tokenStr,
+	}), nil
 }
 
 func sanitizeRepoFlags(repo *v1.Repo) {

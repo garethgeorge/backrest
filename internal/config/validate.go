@@ -13,7 +13,6 @@ import (
 	"github.com/garethgeorge/backrest/internal/protoutil"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 func ValidateConfig(c *v1.Config) error {
@@ -30,6 +29,9 @@ func ValidateConfig(c *v1.Config) error {
 	if e := validateAuth(c.Auth); e != nil {
 		err = multierror.Append(err, fmt.Errorf("auth: %w", e))
 	}
+
+	// Remove orphaned remote repos and plans before validating them.
+	cleanupOrphanedRemoteReposAndPlans(c)
 
 	repos := make(map[string]*v1.Repo)
 	if c.Repos != nil {
@@ -111,6 +113,19 @@ func validateRepo(repo *v1.Repo) error {
 		}
 	}
 
+	if repo.ForgetPolicy != nil {
+		if repo.ForgetPolicy.GetSchedule() != nil {
+			if e := protoutil.ValidateSchedule(repo.ForgetPolicy.GetSchedule()); e != nil {
+				err = multierror.Append(err, fmt.Errorf("forget policy schedule: %w", e))
+			}
+		}
+		if repo.ForgetPolicy.GetRetention() == nil {
+			err = multierror.Append(err, errors.New("forget policy must specify a retention policy"))
+		} else if e := protoutil.ValidateRetentionPolicy(repo.ForgetPolicy.GetRetention()); e != nil {
+			err = multierror.Append(err, fmt.Errorf("forget policy: %w", e))
+		}
+	}
+
 	for _, env := range repo.Env {
 		if !strings.Contains(env, "=") {
 			err = multierror.Append(err, fmt.Errorf("invalid env var %s, must take format KEY=VALUE", env))
@@ -152,11 +167,9 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 		err = multierror.Append(err, fmt.Errorf("repo %q not found", plan.Repo))
 	}
 
-	if plan.Retention != nil && plan.Retention.Policy == nil {
-		err = multierror.Append(err, errors.New("retention policy must be nil or must specify a policy"))
-	} else if policyTimeBucketed, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyTimeBucketed); ok {
-		if proto.Equal(policyTimeBucketed.PolicyTimeBucketed, &v1.RetentionPolicy_TimeBucketedCounts{}) {
-			err = multierror.Append(err, errors.New("time bucketed policy must specify a non-empty bucket"))
+	if plan.Retention != nil {
+		if e := protoutil.ValidateRetentionPolicy(plan.Retention); e != nil {
+			err = multierror.Append(err, fmt.Errorf("retention: %w", e))
 		}
 	}
 
@@ -202,7 +215,7 @@ func validateMultihost(config *v1.Config) (err error) {
 
 	seenInstanceIDs := make(map[string]struct{})
 	seenInstanceIDs[config.Instance] = struct{}{}
-	assertIDNew := func(id string) error {
+	assertInstanceIDNew := func(id string) error {
 		if _, ok := seenInstanceIDs[id]; ok {
 			return fmt.Errorf("instance ID %q is already used by another peer, an instance ID can only appear once as either a known host OR authorized client of the instance", id)
 		}
@@ -210,11 +223,26 @@ func validateMultihost(config *v1.Config) (err error) {
 		return nil
 	}
 
+	seenKeyIDs := make(map[string]struct{})
+	if keyid := multihost.GetIdentity().GetKeyid(); keyid != "" {
+		seenKeyIDs[keyid] = struct{}{}
+	}
+	assertKeyIDNew := func(keyid string) error {
+		if _, ok := seenKeyIDs[keyid]; ok {
+			return fmt.Errorf("key ID %q is already used by another peer, a key ID can only appear once across all peers", keyid)
+		}
+		seenKeyIDs[keyid] = struct{}{}
+		return nil
+	}
+
 	for _, peer := range multihost.GetAuthorizedClients() {
 		if e := validatePeer(peer, false); e != nil {
 			err = multierror.Append(err, fmt.Errorf("authorized client %q: %w", peer.GetInstanceId(), e))
 		}
-		if e := assertIDNew(peer.GetInstanceId()); e != nil {
+		if e := assertInstanceIDNew(peer.GetInstanceId()); e != nil {
+			err = multierror.Append(err, fmt.Errorf("authorized client %q: %w", peer.GetInstanceId(), e))
+		}
+		if e := assertKeyIDNew(peer.GetKeyid()); e != nil {
 			err = multierror.Append(err, fmt.Errorf("authorized client %q: %w", peer.GetInstanceId(), e))
 		}
 	}
@@ -223,7 +251,10 @@ func validateMultihost(config *v1.Config) (err error) {
 		if e := validatePeer(peer, true); e != nil {
 			err = multierror.Append(err, fmt.Errorf("known host %q: %w", peer.GetInstanceId(), e))
 		}
-		if e := assertIDNew(peer.GetInstanceId()); e != nil {
+		if e := assertInstanceIDNew(peer.GetInstanceId()); e != nil {
+			err = multierror.Append(err, fmt.Errorf("known host %q: %w", peer.GetInstanceId(), e))
+		}
+		if e := assertKeyIDNew(peer.GetKeyid()); e != nil {
 			err = multierror.Append(err, fmt.Errorf("known host %q: %w", peer.GetInstanceId(), e))
 		}
 	}
@@ -246,14 +277,50 @@ func validatePeer(peer *v1.Multihost_Peer, isKnownHost bool) error {
 		}
 	}
 
-	if peer.KeyidVerified && peer.GetKeyid() == "" {
-		return errors.New("public key cannot be marked as verified if it is unset, the keyid must be specified at a minimum")
-	}
-
 	_, err := permissions.NewPermissionSet(peer.GetPermissions())
 	if err != nil {
 		return fmt.Errorf("peer permissions: %w", err)
 	}
 
 	return nil
+}
+
+// cleanupOrphanedRemoteReposAndPlans removes repos whose originInstanceId no
+// longer matches any peer, then removes plans that reference those deleted repos.
+func cleanupOrphanedRemoteReposAndPlans(c *v1.Config) {
+	// Collect all peer instance IDs
+	peerIDs := make(map[string]struct{})
+	for _, peer := range c.GetMultihost().GetAuthorizedClients() {
+		peerIDs[peer.GetInstanceId()] = struct{}{}
+	}
+	for _, peer := range c.GetMultihost().GetKnownHosts() {
+		peerIDs[peer.GetInstanceId()] = struct{}{}
+	}
+
+	// Remove repos whose origin instance is no longer a peer
+	removedRepos := make(map[string]struct{})
+	c.Repos = slices.DeleteFunc(c.Repos, func(r *v1.Repo) bool {
+		if r.OriginInstanceId == "" {
+			return false
+		}
+		if _, ok := peerIDs[r.OriginInstanceId]; ok {
+			return false
+		}
+		zap.S().Infof("removing orphaned remote repo %q (origin instance %q is no longer a peer)", r.Id, r.OriginInstanceId)
+		removedRepos[r.Id] = struct{}{}
+		return true
+	})
+
+	if len(removedRepos) == 0 {
+		return
+	}
+
+	// Remove plans that reference deleted repos
+	c.Plans = slices.DeleteFunc(c.Plans, func(p *v1.Plan) bool {
+		if _, ok := removedRepos[p.Repo]; ok {
+			zap.S().Infof("removing plan %q referencing orphaned remote repo %q", p.Id, p.Repo)
+			return true
+		}
+		return false
+	})
 }

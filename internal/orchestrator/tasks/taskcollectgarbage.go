@@ -48,6 +48,11 @@ var gcSettings = map[reflect.Type]gcSettingsForType{
 		keepMin: 1,
 		keepMax: 12,
 	},
+	reflect.TypeOf(&v1.Operation_OperationForget{}): {
+		maxAge:  30 * 24 * time.Hour,
+		keepMin: 1,
+		keepMax: 30,
+	},
 }
 
 var defaultGcSettings = gcSettingsForType{

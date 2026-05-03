@@ -25,8 +25,8 @@ func TestSanitizeForNetwork(t *testing.T) {
 				Multihost: &v1.Multihost{
 					Identity: &v1.PrivateKey{
 						Keyid:       "test-key-id",
-						Ed25519Priv: "test-private-key",
-						Ed25519Pub:  "test-public-key",
+						EcdsaPriv: "test-private-key",
+						EcdsaPub:  "test-public-key",
 					},
 				},
 			},
@@ -34,8 +34,8 @@ func TestSanitizeForNetwork(t *testing.T) {
 				Multihost: &v1.Multihost{
 					Identity: &v1.PrivateKey{
 						Keyid:       "test-key-id",
-						Ed25519Priv: "",
-						Ed25519Pub:  "",
+						EcdsaPriv: "",
+						EcdsaPub:  "",
 					},
 				},
 			},
@@ -85,8 +85,8 @@ func TestSanitizeForNetwork(t *testing.T) {
 				Multihost: &v1.Multihost{
 					Identity: &v1.PrivateKey{
 						Keyid:       "test-key-id",
-						Ed25519Priv: "secret-key",
-						Ed25519Pub:  "public-key",
+						EcdsaPriv: "secret-key",
+						EcdsaPub:  "public-key",
 					},
 				},
 				Auth: &v1.Auth{
@@ -104,8 +104,8 @@ func TestSanitizeForNetwork(t *testing.T) {
 				Multihost: &v1.Multihost{
 					Identity: &v1.PrivateKey{
 						Keyid:       "test-key-id",
-						Ed25519Priv: "",
-						Ed25519Pub:  "",
+						EcdsaPriv: "",
+						EcdsaPub:  "",
 					},
 				},
 				Auth: &v1.Auth{
@@ -174,8 +174,8 @@ func TestRehydrateNetworkSanitizedConfig(t *testing.T) {
 				Multihost: &v1.Multihost{
 					Identity: &v1.PrivateKey{
 						Keyid:       "test-key-id",
-						Ed25519Priv: "secret-key-data",
-						Ed25519Pub:  "public-key-data",
+						EcdsaPriv: "secret-key-data",
+						EcdsaPub:  "public-key-data",
 					},
 				},
 			},
@@ -183,8 +183,8 @@ func TestRehydrateNetworkSanitizedConfig(t *testing.T) {
 				Multihost: &v1.Multihost{
 					Identity: &v1.PrivateKey{
 						Keyid:       "test-key-id",
-						Ed25519Priv: "secret-key-data",
-						Ed25519Pub:  "public-key-data",
+						EcdsaPriv: "secret-key-data",
+						EcdsaPub:  "public-key-data",
 					},
 				},
 			},

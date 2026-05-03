@@ -360,16 +360,25 @@ func (r *Repo) Forget(ctx context.Context, policy *RetentionPolicy, opts ...Gene
 		return nil, err
 	}
 
-	if len(results) != 1 {
-		return nil, fmt.Errorf("expected 1 output from forget, got %v", len(results))
+	if len(results) == 0 {
+		return nil, fmt.Errorf("expected at least 1 output from forget, got 0")
 	}
 
-	if err := results[0].Validate(); err != nil {
-		return nil, fmt.Errorf("invalid forget result: %w", err)
+	// Merge all groups into a single result. Restic returns one ForgetResult
+	// per group (e.g. when using --group-by tags), each with independent
+	// keep/remove lists.
+	merged := &ForgetResult{}
+	for _, r := range results {
+		if err := r.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid forget result: %w", err)
+		}
+		merged.Keep = append(merged.Keep, r.Keep...)
+		merged.Remove = append(merged.Remove, r.Remove...)
 	}
 
-	return &results[0], nil
+	return merged, nil
 }
+
 
 func (r *Repo) ForgetSnapshot(ctx context.Context, snapshotId string, opts ...GenericOption) error {
 	args := []string{"forget", "--json", snapshotId}

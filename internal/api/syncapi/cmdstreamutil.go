@@ -27,7 +27,7 @@ type bidiSyncCommandStream struct {
 
 func newBidiSyncCommandStream() *bidiSyncCommandStream {
 	return &bidiSyncCommandStream{
-		sendChan:             make(chan *v1sync.SyncStreamItem, 64), // Buffered channel to allow sending items without blocking
+		sendChan:             make(chan *v1sync.SyncStreamItem, 256), // Buffered channel to allow sending items without blocking
 		recvChan:             make(chan *v1sync.SyncStreamItem, 1),
 		terminateWithErrChan: make(chan error, 1),
 	}
@@ -74,15 +74,19 @@ func (s *bidiSyncCommandStream) ConnectStream(ctx context.Context, stream syncCo
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go func() {
-		for ctx.Err() == nil {
-			if val, err := stream.Receive(); err != nil {
+		defer close(s.recvChan)
+		for {
+			val, err := stream.Receive()
+			if err != nil {
 				s.SendErrorAndTerminate(NewSyncErrorDisconnected(fmt.Errorf("receiving item: %w", err)))
-				break
-			} else {
-				s.recvChan <- val
+				return
+			}
+			select {
+			case s.recvChan <- val:
+			case <-ctx.Done():
+				return
 			}
 		}
-		close(s.recvChan)
 	}()
 
 	for {

@@ -1,5 +1,8 @@
-backrest
-backrest-*
+# Nix
+result
+
+/backrest
+/backrest-*
 dist
 __debug_bin
 cmd/backrest/backrest
@@ -7,4 +10,6 @@ cmd/backrest/backrest
 .DS_Store
 .idea/
 .pnpm-store/
+.gemini
+.claude
 webui/dist-backup/

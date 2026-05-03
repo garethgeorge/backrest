@@ -5,6 +5,7 @@ import (
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/pkg/restic"
+	"google.golang.org/protobuf/proto"
 )
 
 func SnapshotToProto(s *restic.Snapshot) *v1.ResticSnapshot {
@@ -107,6 +108,18 @@ func BackupProgressEntryToBackupError(b *restic.BackupProgressEntry) (*v1.Backup
 		During:  b.During,
 		Message: message,
 	}, nil
+}
+
+func ValidateRetentionPolicy(p *v1.RetentionPolicy) error {
+	if p.Policy == nil {
+		return errors.New("retention policy must specify a policy")
+	}
+	if policyTimeBucketed, ok := p.GetPolicy().(*v1.RetentionPolicy_PolicyTimeBucketed); ok {
+		if proto.Equal(policyTimeBucketed.PolicyTimeBucketed, &v1.RetentionPolicy_TimeBucketedCounts{}) {
+			return errors.New("time bucketed policy must specify a non-empty bucket")
+		}
+	}
+	return nil
 }
 
 func RetentionPolicyFromProto(p *v1.RetentionPolicy) *restic.RetentionPolicy {

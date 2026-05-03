@@ -28,6 +28,7 @@ export default defineConfig({
         items: [
           { text: 'Operations', link: '/docs/operations' },
           { text: 'Hooks', link: '/docs/hooks' },
+          { text: 'Multihost Sync', link: '/docs/multihost' },
           { text: 'API', link: '/docs/api' }
         ]
       },
