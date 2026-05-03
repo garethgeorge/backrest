@@ -266,7 +266,7 @@ If you prefer not to use Nix, install the following manually:
 
 - [Go](https://go.dev/) 1.24 or greater
 - [Node.js](https://nodejs.org/en) 20.x and [pnpm](https://pnpm.io/) 9
-- [goreleaser](https://github.com/goreleaser/goreleaser) `go install github.com/goreleaser/goreleaser@latest`
+- [goreleaser](https://github.com/goreleaser/goreleaser) `go install github.com/goreleaser/goreleaser/v2@latest`
 
 **(Optional) To edit protobuf definitions:**
 

@@ -4,9 +4,10 @@ RUN apk --no-cache add tini ca-certificates curl bash rclone openssh tzdata dock
     rclone selfupdate --stable
 RUN mkdir -p /tmp
 
-# Copy the binary we built via goreleaser
-COPY backrest /backrest
-COPY docker-entrypoint /docker-entrypoint
+ARG TARGETPLATFORM
+# Binaries are staged per-platform by goreleaser dockers_v2
+COPY $TARGETPLATFORM/backrest /backrest
+COPY $TARGETPLATFORM/docker-entrypoint /docker-entrypoint
 
 # Run the binary to install dependencies (may run via QEMU but necessary)
 RUN /backrest --install-deps-only
