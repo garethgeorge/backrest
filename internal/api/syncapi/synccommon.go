@@ -38,19 +38,31 @@ func runSync(
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// Wait for the post-quantum transport transcript before constructing the
+	// handshake packet. The handshake signature must commit to this transcript
+	// so that an active MITM (which would produce a different transcript on
+	// each leg of its KEM exchange) cannot relay a usable signature.
+	transcript, err := commandStream.AwaitTranscript(ctx)
+	if err != nil {
+		return NewSyncErrorDisconnected(fmt.Errorf("awaiting transport transcript: %w", err))
+	}
+
 	// send the initial handshake packet to the peer to establish the connection.
-	handshakePacket, err := createHandshakePacket(localInstanceID, localKey, pairingSecret)
+	handshakePacket, err := createHandshakePacket(localInstanceID, localKey, pairingSecret, transcript)
 	if err != nil {
 		return NewSyncErrorAuth(fmt.Errorf("creating handshake packet: %w", err))
 	}
 	commandStream.Send(handshakePacket)
 
 	// Wait for the handshake packet to be acknowledged by the peer.
-	handshake := commandStream.ReceiveWithinDuration(15 * time.Second)
-	if handshake == nil {
-		return NewSyncErrorAuth(fmt.Errorf("no handshake packet received from peer within timeout"))
+	handshake, err := commandStream.ReceiveWithinDuration(ctx, 15*time.Second)
+	if err != nil {
+		return NewSyncErrorAuth(fmt.Errorf("waiting for handshake packet from peer: %w", err))
 	}
-	if _, err := verifyHandshakePacket(handshake); err != nil {
+	if handshake == nil {
+		return NewSyncErrorAuth(fmt.Errorf("no handshake packet received from peer"))
+	}
+	if _, err := verifyHandshakePacket(handshake, transcript); err != nil {
 		return NewSyncErrorAuth(fmt.Errorf("verifying handshake packet: %w", err))
 	}
 
@@ -69,7 +81,7 @@ func runSync(
 		}
 	}
 	if peer == nil {
-		return NewSyncErrorAuth(fmt.Errorf("peer public key ID %s (instance ID %s) not found in known peers", handshake.GetHandshake().GetPublicKey().GetKeyid(), string(handshake.GetHandshake().GetInstanceId().GetPayload())))
+		return NewSyncErrorAuth(fmt.Errorf("peer public key ID %s (instance ID %s) not found in known peers", handshake.GetHandshake().GetPublicKey().GetKeyid(), handshake.GetHandshake().GetInstanceId()))
 	}
 
 	if err := authorizeHandshakeAsPeer(handshake, peer); err != nil {
@@ -135,45 +147,55 @@ func runSync(
 	return nil
 }
 
-func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey, pairingSecret string) (*v1sync.SyncStreamItem, error) {
-	signedMessage, err := createSignedMessage([]byte(instanceID), identity)
-	if err != nil {
-		return nil, fmt.Errorf("signing instance ID: %w", err)
+// createHandshakePacket builds the post-encryption identity handshake. The
+// signature binds the local identity, instance ID, pairing secret, and
+// protocol version to the post-quantum transport transcript provided by the
+// caller — there is no separate timestamp because freshness is guaranteed
+// by the ephemeral KEM.
+func createHandshakePacket(instanceID string, identity *cryptoutil.PrivateKey, pairingSecret string, transcript []byte) (*v1sync.SyncStreamItem, error) {
+	if len(transcript) == 0 {
+		return nil, errors.New("transport transcript must not be empty")
 	}
-
+	signature, err := signHandshake(SyncProtocolVersion, instanceID, pairingSecret, transcript, identity)
+	if err != nil {
+		return nil, fmt.Errorf("signing handshake: %w", err)
+	}
 	return &v1sync.SyncStreamItem{
 		Action: &v1sync.SyncStreamItem_Handshake{
 			Handshake: &v1sync.SyncStreamItem_SyncActionHandshake{
 				ProtocolVersion: SyncProtocolVersion,
-				InstanceId:      signedMessage,
 				PublicKey:       identity.PublicKeyProto(),
+				InstanceId:      instanceID,
 				PairingSecret:   pairingSecret,
+				Signature:       signature,
 			},
 		},
 	}, nil
 }
 
-// verifyHandshakePacket verifies that
-//   - the signature on the instance ID is valid against the public key provided in the handshake
-//   - that the public key's ID is as attested in the handshake packet e.g. matches handshake.PublicKey.Keyid
+// verifyHandshakePacket validates the peer's handshake against:
+//   - the expected protocol version
+//   - the consistency of the public key bytes / keyid in the proto
+//   - the ed25519 signature, recomputing the bind input from the locally-known
+//     transport transcript
 //
-// To authenticate, the caller must then check that the public key is trusted by checking the key ID against a local list.
-func verifyHandshakePacket(item *v1sync.SyncStreamItem) (*cryptoutil.PublicKey, error) {
+// A signature failure can mean tampering, a MITM whose KEM produced a
+// different transcript on this leg, or a peer disagreement on protocol
+// version / instance / pairing secret. Authorization (matching the verified
+// peer key against a trust list) is the caller's responsibility.
+func verifyHandshakePacket(item *v1sync.SyncStreamItem, transcript []byte) (*cryptoutil.PublicKey, error) {
 	handshake := item.GetHandshake()
 	if handshake == nil {
 		return nil, fmt.Errorf("empty or nil handshake, handshake packet must be sent first")
 	}
-
 	if handshake.ProtocolVersion != SyncProtocolVersion {
 		return nil, fmt.Errorf("protocol version mismatch: expected %d, got %d", SyncProtocolVersion, handshake.ProtocolVersion)
 	}
-
-	if len(handshake.InstanceId.GetPayload()) == 0 || len(handshake.InstanceId.GetSignature()) == 0 {
-		return nil, errors.New("instance ID payload and signature must not be empty")
+	if handshake.GetPublicKey() == nil || len(handshake.GetPublicKey().GetKeyid()) == 0 {
+		return nil, errors.New("public key and key ID must not be empty")
 	}
-
-	if len(handshake.PublicKey.Keyid) == 0 {
-		return nil, errors.New("public key ID must not be empty")
+	if len(handshake.InstanceId) == 0 {
+		return nil, errors.New("instance ID must not be empty")
 	}
 
 	peerKey, err := cryptoutil.NewPublicKey(handshake.PublicKey)
@@ -181,8 +203,8 @@ func verifyHandshakePacket(item *v1sync.SyncStreamItem) (*cryptoutil.PublicKey, 
 		return nil, fmt.Errorf("loading peer public key: %w", err)
 	}
 
-	if err := verifySignedMessage(handshake.InstanceId, peerKey); err != nil {
-		return nil, fmt.Errorf("verifying instance ID signature: %w", err)
+	if err := verifyHandshakeSignature(handshake.ProtocolVersion, handshake.InstanceId, handshake.PairingSecret, transcript, handshake.Signature, peerKey); err != nil {
+		return nil, fmt.Errorf("verifying handshake: %w", err)
 	}
 
 	return peerKey, nil
@@ -195,8 +217,8 @@ func authorizeHandshakeAsPeer(item *v1sync.SyncStreamItem, peer *v1.Multihost_Pe
 	if handshake == nil {
 		return fmt.Errorf("empty or nil handshake, handshake packet must be sent first")
 	}
-	if string(handshake.GetInstanceId().GetPayload()) != peer.InstanceId {
-		return fmt.Errorf("instance ID mismatch: expected %s, got %s", peer.InstanceId, string(handshake.InstanceId.GetPayload()))
+	if handshake.InstanceId != peer.InstanceId {
+		return fmt.Errorf("instance ID mismatch: expected %s, got %s", peer.InstanceId, handshake.InstanceId)
 	}
 	if handshake.GetPublicKey().GetKeyid() != peer.Keyid {
 		return fmt.Errorf("public key ID mismatch: expected %s, got %s", peer.Keyid, handshake.PublicKey.Keyid)

@@ -135,13 +135,50 @@ message SyncStreamItem {
     SyncActionReceiveLogData receive_log_data = 31;
 
     SyncActionThrottle throttle = 1000;
+
+    SyncEstablishSharedSecret establish_shared_secret = 2;
+    SyncActionEncrypted encrypted = 5;
   }
 
+  // SyncActionHandshake is the first message sent by each peer over the
+  // post-quantum encrypted channel. It carries the sender's long-term
+  // ed25519 identity, its instance ID, and a single signature that binds
+  // the identity to *this* transport session.
+  //
+  // The signature covers a domain-separated hash of:
+  //   "backrest-sync-handshake/v1\x00"
+  //   || protocol_version (8 bytes BE)
+  //   || LP(instance_id)
+  //   || LP(pairing_secret)
+  //   || LP(transport transcript)
+  //
+  // where LP(x) = 4-byte BE length prefix || x, and the transport transcript
+  // is cryptoutil.TransportSession.Transcript() — a hash that commits to
+  // the ephemeral KEM messages of this connection.
+  //
+  // The transcript binding is what defeats a MITM that completes a separate
+  // KEM with each side: each leg has a different transcript, and the
+  // legitimate peer's signature only commits to its own transcript, so the
+  // attacker cannot forward a usable signature to either side.
+  //
+  // Receivers MUST recompute the transcript locally from their TransportSession
+  // and reject the handshake if the signature does not verify against
+  // public_key. There is no timestamp because freshness is provided by the
+  // ephemeral KEM, not by clock comparison.
   message SyncActionHandshake {
     int64 protocol_version = 1;
-    v1.PublicKey public_key = 2;
-    v1.SignedMessage instance_id = 3;
-    string pairing_secret = 4; // optional one-time secret from a pairing token, used to auto-authorize a new client
+    v1.PublicKey public_key = 2;       // sender's long-term ed25519 identity
+    string instance_id = 3;            // covered by signature below
+    string pairing_secret = 4;         // optional pairing token; covered by signature below
+    bytes signature = 5;               // ed25519(public_key, H(handshake bind input))
+  }
+
+  // SyncActionEncrypted wraps an encrypted SyncStreamItem.
+  // After the post-quantum KEM handshake, all subsequent messages are sent
+  // inside this envelope.
+  message SyncActionEncrypted {
+    bytes nonce = 1;      // 12-byte GCM nonce
+    bytes ciphertext = 2; // AES-256-GCM(serialized SyncStreamItem)
   }
 
   // SyncActionHeartbeat is sent periodically to keep the connection alive.
@@ -212,9 +249,19 @@ message SyncStreamItem {
     int64 delay_ms = 1;
   }
 
+  // SyncEstablishSharedSecret is exchanged immediately after the connection
+  // is opened. The initiator (client) sends kem_public_key. The responder
+  // (server) replies with kem_encapsulation. Both sides then derive a shared
+  // AES-256-GCM session key via the HPKE Export interface. All subsequent
+  // messages must be wrapped in SyncActionEncrypted.
+  //
+  // The KEM is the post-quantum hybrid ML-KEM-1024 + ECDH-P384 (HPKE
+  // ciphersuite ML-KEM-1024-P384 / KEM ID 0x0050, RFC 9180 + the IETF hybrid
+  // KEM drafts). KDF is HKDF-SHA256, AEAD is AES-256-GCM. Peers must use
+  // protocol_version=1; mismatched versions abort the connection.
   message SyncEstablishSharedSecret {
-    // a one-time-use ECDSA public key with a matching unshared private key. Used to perform a key exchange.
-    // See https://pkg.go.dev/crypto/ecdh#PrivateKey.ECDH .
-    string ecdsa_pub = 2 [json_name="ecdsaPub"]; // base64 encoded public key
+    uint32 protocol_version = 1;   // current: 1
+    bytes kem_public_key = 2;      // set by initiator
+    bytes kem_encapsulation = 3;   // set by responder
   }
 }

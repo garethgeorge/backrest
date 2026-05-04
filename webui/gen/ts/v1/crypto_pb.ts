@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file v1/crypto.proto.
  */
 export const file_v1_crypto: GenFile = /*@__PURE__*/
-  fileDesc("Cg92MS9jcnlwdG8ucHJvdG8SAnYxIlsKDVNpZ25lZE1lc3NhZ2USDQoFa2V5aWQYASABKAkSDwoHcGF5bG9hZBgCIAEoDBIRCglzaWduYXR1cmUYAyABKAwSFwoPdGltZXN0YW1wTWlsbGlzGAQgASgDIjQKCVB1YmxpY0tleRIUCgVrZXlpZBgBIAEoCVIFa2V5SWQSEQoJZWNkc2FfcHViGAIgASgJIkkKClByaXZhdGVLZXkSFAoFa2V5aWQYASABKAlSBWtleUlkEhIKCmVjZHNhX3ByaXYYAiABKAkSEQoJZWNkc2FfcHViGAMgASgJQixaKmdpdGh1Yi5jb20vZ2FyZXRoZ2VvcmdlL2JhY2tyZXN0L2dlbi9nby92MWIGcHJvdG8z");
+  fileDesc("Cg92MS9jcnlwdG8ucHJvdG8SAnYxIlsKDVNpZ25lZE1lc3NhZ2USDQoFa2V5aWQYASABKAkSDwoHcGF5bG9hZBgCIAEoDBIRCglzaWduYXR1cmUYAyABKAwSFwoPdGltZXN0YW1wTWlsbGlzGAQgASgDIjUKCVB1YmxpY0tleRIUCgVrZXlpZBgBIAEoCVIFa2V5SWQSEgoKZWQyNTUxOXB1YhgCIAEoCSJLCgpQcml2YXRlS2V5EhQKBWtleWlkGAEgASgJUgVrZXlJZBITCgtlZDI1NTE5cHJpdhgCIAEoCRISCgplZDI1NTE5cHViGAMgASgJQixaKmdpdGh1Yi5jb20vZ2FyZXRoZ2VvcmdlL2JhY2tyZXN0L2dlbi9nby92MWIGcHJvdG8z");
 
 /**
  * @generated from message v1.SignedMessage
@@ -64,9 +64,11 @@ export type PublicKey = Message<"v1.PublicKey"> & {
   keyid: string;
 
   /**
-   * @generated from field: string ecdsa_pub = 2;
+   * raw base64-encoded ed25519 public key.
+   *
+   * @generated from field: string ed25519pub = 2;
    */
-  ecdsaPub: string;
+  ed25519pub: string;
 };
 
 /**
@@ -88,14 +90,18 @@ export type PrivateKey = Message<"v1.PrivateKey"> & {
   keyid: string;
 
   /**
-   * @generated from field: string ecdsa_priv = 2;
+   * raw base64-encoded ed25519 private key seed.
+   *
+   * @generated from field: string ed25519priv = 2;
    */
-  ecdsaPriv: string;
+  ed25519priv: string;
 
   /**
-   * @generated from field: string ecdsa_pub = 3;
+   * raw base64-encoded ed25519 public key.
+   *
+   * @generated from field: string ed25519pub = 3;
    */
-  ecdsaPub: string;
+  ed25519pub: string;
 };
 
 /**

@@ -1,13 +1,11 @@
 package cryptoutil
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
+	"bytes"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/base64"
-	"encoding/pem"
 	"errors"
 	"fmt"
 
@@ -15,38 +13,30 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var (
-	curve = elliptic.P256()
-)
+const keyIDPrefix = "ed25519."
 
 type PublicKey struct {
 	proto           *v1.PublicKey
-	publicCryptoKey ecdsa.PublicKey
+	publicCryptoKey ed25519.PublicKey
 }
 
 func NewPublicKey(pubkey *v1.PublicKey) (*PublicKey, error) {
-	pubKeyBlock, _ := pem.Decode([]byte(pubkey.EcdsaPub))
-	if pubKeyBlock == nil {
-		return nil, errors.New("no public key found in pem")
-	}
-
-	pkixPubKey, err := x509.ParsePKIXPublicKey(pubKeyBlock.Bytes)
+	pubBytes, err := base64.RawStdEncoding.DecodeString(pubkey.Ed25519Pub)
 	if err != nil {
-		return nil, fmt.Errorf("parse public key: %w", err)
+		return nil, fmt.Errorf("decode public key: %w", err)
+	}
+	if len(pubBytes) != ed25519.PublicKeySize {
+		return nil, fmt.Errorf("invalid ed25519 public key size: got %d, want %d", len(pubBytes), ed25519.PublicKeySize)
 	}
 
-	ecdsaPubKey, ok := pkixPubKey.(*ecdsa.PublicKey)
-	if !ok {
-		return nil, errors.New("not an ECDSA public key")
-	}
-
-	if derived := deriveKeyId(ecdsaPubKey); derived != pubkey.Keyid {
+	edPubKey := ed25519.PublicKey(pubBytes)
+	if derived := deriveKeyId(edPubKey); derived != pubkey.Keyid {
 		return nil, fmt.Errorf("public key_id provided does not match the derived key: %s != %s", derived, pubkey.Keyid)
 	}
 
 	return &PublicKey{
 		proto:           pubkey,
-		publicCryptoKey: *ecdsaPubKey,
+		publicCryptoKey: edPubKey,
 	}, nil
 }
 
@@ -58,10 +48,8 @@ func (pk *PublicKey) PublicKeyProto() *v1.PublicKey {
 	return proto.Clone(pk.proto).(*v1.PublicKey)
 }
 
-// VerifySignature verifies the signature of a message
 func (pk *PublicKey) Verify(message, sig []byte) error {
-	hash := sha256.Sum256(message)
-	if !ecdsa.VerifyASN1(&pk.publicCryptoKey, hash[:], sig) {
+	if !ed25519.Verify(pk.publicCryptoKey, message, sig) {
 		return errors.New("signature verification failed")
 	}
 	return nil
@@ -70,61 +58,49 @@ func (pk *PublicKey) Verify(message, sig []byte) error {
 type PrivateKey struct {
 	*PublicKey
 	proto            *v1.PrivateKey
-	privateCryptoKey *ecdsa.PrivateKey
+	privateCryptoKey ed25519.PrivateKey
 }
 
 func NewPrivateKey(privkey *v1.PrivateKey) (*PrivateKey, error) {
-	privKeyBlock, _ := pem.Decode([]byte(privkey.EcdsaPriv))
-	if privKeyBlock == nil {
-		return nil, errors.New("no private key found in pem")
-	}
-
-	ecdsaPrivKey, err := x509.ParseECPrivateKey(privKeyBlock.Bytes)
+	seed, err := base64.RawStdEncoding.DecodeString(privkey.Ed25519Priv)
 	if err != nil {
-		return nil, fmt.Errorf("parse private key: %w", err)
+		return nil, fmt.Errorf("decode private key: %w", err)
 	}
+	if len(seed) != ed25519.SeedSize {
+		return nil, fmt.Errorf("invalid ed25519 private key seed size: got %d, want %d", len(seed), ed25519.SeedSize)
+	}
+	edPrivKey := ed25519.NewKeyFromSeed(seed)
 
 	pubKey, err := NewPublicKey(&v1.PublicKey{
 		Keyid:      privkey.Keyid,
-		EcdsaPub: privkey.EcdsaPub,
+		Ed25519Pub: privkey.Ed25519Pub,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	if ecdsaPrivKey.PublicKey.X.Cmp(pubKey.publicCryptoKey.X) != 0 ||
-		ecdsaPrivKey.PublicKey.Y.Cmp(pubKey.publicCryptoKey.Y) != 0 {
+	derivedPub := edPrivKey.Public().(ed25519.PublicKey)
+	if !bytes.Equal(derivedPub, pubKey.publicCryptoKey) {
 		return nil, errors.New("private key does not match public key")
 	}
 
 	return &PrivateKey{
 		PublicKey:        pubKey,
 		proto:            privkey,
-		privateCryptoKey: ecdsaPrivKey,
+		privateCryptoKey: edPrivKey,
 	}, nil
 }
 
 func GeneratePrivateKey() (*v1.PrivateKey, error) {
-	privKey, err := ecdsa.GenerateKey(curve, rand.Reader)
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("generate ed25519 key: %w", err)
 	}
-
-	privateKeyBytes, err := x509.MarshalECPrivateKey(privKey)
-	if err != nil {
-		return nil, fmt.Errorf("marshal private key: %w", err)
-	}
-	pemPrivateKeyBytes := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE", Bytes: privateKeyBytes})
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&privKey.PublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("marshal public key: %w", err)
-	}
-	pemPublicKeyBytes := pem.EncodeToMemory(&pem.Block{Type: "EC PUBLIC", Bytes: publicKeyBytes})
 
 	return &v1.PrivateKey{
-		Keyid:       deriveKeyId(&privKey.PublicKey),
-		EcdsaPriv: string(pemPrivateKeyBytes),
-		EcdsaPub:  string(pemPublicKeyBytes),
+		Keyid:       deriveKeyId(pub),
+		Ed25519Priv: base64.RawStdEncoding.EncodeToString(priv.Seed()),
+		Ed25519Pub:  base64.RawStdEncoding.EncodeToString(pub),
 	}, nil
 }
 
@@ -132,19 +108,11 @@ func (pk *PrivateKey) PrivateKeyProto() *v1.PrivateKey {
 	return proto.Clone(pk.proto).(*v1.PrivateKey)
 }
 
-// SignMessage signs a message using the private key
 func (pk *PrivateKey) Sign(message []byte) ([]byte, error) {
-	hash := sha256.Sum256(message)
-	sig, err := ecdsa.SignASN1(rand.Reader, pk.privateCryptoKey, hash[:])
-	if err != nil {
-		return nil, fmt.Errorf("sign message: %w", err)
-	}
-	return sig, nil
+	return ed25519.Sign(pk.privateCryptoKey, message), nil
 }
 
-func deriveKeyId(key *ecdsa.PublicKey) string {
-	shasum := sha256.New()
-	shasum.Write(key.X.Bytes())
-	shasum.Write(key.Y.Bytes())
-	return "ecdsa." + base64.RawURLEncoding.EncodeToString(shasum.Sum(nil))
+func deriveKeyId(key ed25519.PublicKey) string {
+	shasum := sha256.Sum256(key)
+	return keyIDPrefix + base64.RawURLEncoding.EncodeToString(shasum[:])
 }
