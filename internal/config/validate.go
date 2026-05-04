@@ -114,15 +114,20 @@ func validateRepo(repo *v1.Repo) error {
 	}
 
 	if repo.ForgetPolicy != nil {
-		if repo.ForgetPolicy.GetSchedule() != nil {
-			if e := protoutil.ValidateSchedule(repo.ForgetPolicy.GetSchedule()); e != nil {
+		schedule := repo.ForgetPolicy.GetSchedule()
+		if schedule != nil {
+			if e := protoutil.ValidateSchedule(schedule); e != nil {
 				err = multierror.Append(err, fmt.Errorf("forget policy schedule: %w", e))
 			}
 		}
-		if repo.ForgetPolicy.GetRetention() == nil {
-			err = multierror.Append(err, errors.New("forget policy must specify a retention policy"))
-		} else if e := protoutil.ValidateRetentionPolicy(repo.ForgetPolicy.GetRetention()); e != nil {
-			err = multierror.Append(err, fmt.Errorf("forget policy: %w", e))
+		// Only require retention when the schedule is actually active.
+		scheduleActive := schedule != nil && schedule.GetDisabled() != true
+		if scheduleActive {
+			if repo.ForgetPolicy.GetRetention() == nil {
+				err = multierror.Append(err, errors.New("forget policy must specify a retention policy"))
+			} else if e := protoutil.ValidateRetentionPolicy(repo.ForgetPolicy.GetRetention()); e != nil {
+				err = multierror.Append(err, fmt.Errorf("forget policy: %w", e))
+			}
 		}
 	}
 
@@ -149,9 +154,8 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 		}
 	}
 
-	hasStdinFromCommand := slices.Contains(plan.BackupFlags, "--stdin-from-command")
-	if len(plan.Paths) == 0 && !hasStdinFromCommand {
-		err = multierror.Append(err, fmt.Errorf("at least one path is required (unless --stdin-from-command is used)"))
+	if len(plan.Paths) == 0 && len(plan.BackupFlags) == 0 {
+		err = multierror.Append(err, fmt.Errorf("at least one path is required (unless backup_flags supplies paths, e.g. --files-from or --stdin-from-command)"))
 	}
 	for idx, p := range plan.Paths {
 		if p == "" {
