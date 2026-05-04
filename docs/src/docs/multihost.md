@@ -125,9 +125,43 @@ Server manages configuration for all clients:
 - **Server permissions**: `Read/Write Config` scoped to `*` + `Receive Shared Repos`
 - **Result**: The server can push config changes (repos and plans) to connected clients
 
+## Reverse Proxy
+
+When exposing a Backrest server to remote clients, you only need to expose the sync RPC path. All other Backrest endpoints (UI, admin API, metrics, downloads) should remain on your trusted network.
+
+**Path to expose**: `/v1sync.BackrestSyncService/`
+
+This is the single bidirectional gRPC/Connect stream peers use to sync. The protocol runs its own post-quantum-safe encrypted transport on top of the connection, but you should still terminate TLS at the proxy.
+
+Requirements:
+
+- **HTTP/2 end-to-end** (or h2c to the upstream) — the sync stream is a long-lived bidi stream and will not work over HTTP/1.1.
+- **No response buffering** on the proxy.
+- **Long timeouts** (hours, not seconds) — the stream is intentionally persistent.
+- **No request/response size limits** on the sync path.
+
+### Caddy
+
+```Caddyfile
+backrest.example.com {
+    @sync path /v1sync.BackrestSyncService/*
+    reverse_proxy @sync h2c://127.0.0.1:9898 {
+        flush_interval -1
+        transport http {
+            read_timeout 24h
+            write_timeout 24h
+        }
+    }
+}
+```
+
+Replace `127.0.0.1:9898` with your Backrest instance's bind address. Any path other than `/v1sync.BackrestSyncService/*` will return 404, keeping the UI and admin API off the public internet.
+
+If you also want to expose the UI publicly (not recommended without additional auth in front), add a second `reverse_proxy` block without the path matcher — but be aware this also exposes the admin API.
+
 ## Troubleshooting
 
-**Client can't connect**: Verify the Instance URL is reachable from the client. The URL should include the port (default 9898). If using a reverse proxy, ensure it supports HTTP/2 (needed for the bidirectional sync stream) and is configured to allow long polling requests (e.g. 10+ minutes). Disable any proxy timeouts or payload size limits that could interfere with the sync connection. Recommend using a modern reverse proxy like Caddy.
+**Client can't connect**: Verify the Instance URL is reachable from the client. The URL should include the port (default 9898). If using a reverse proxy, ensure it supports HTTP/2 (needed for the bidirectional sync stream) and is configured to allow long polling requests (e.g. 10+ minutes). Disable any proxy timeouts or payload size limits that could interfere with the sync connection. Recommend using a modern reverse proxy like Caddy. See the [Reverse Proxy](#reverse-proxy) section above for a working Caddy config.
 
 **Pairing fails**: Check that the pairing token hasn't expired and hasn't exceeded its max uses. Generate a new token if needed.
 

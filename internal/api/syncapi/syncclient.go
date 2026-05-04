@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -37,16 +39,37 @@ type SyncClient struct {
 	reconnectAttempts int
 }
 
-func newInsecureClient() *http.Client {
-	return &http.Client{
-		Transport: &http2.Transport{
-			AllowHTTP: true,
-			DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
-				return net.Dial(network, addr)
+// newSyncHTTPClient builds the HTTP/2 client used to dial a peer's instance URL.
+// http:// URLs use h2c prior knowledge (plaintext HTTP/2). https:// URLs do a
+// real TLS handshake and require the peer to negotiate "h2" via ALPN, which
+// matches what reverse proxies like Caddy serve on their TLS listeners.
+func newSyncHTTPClient(instanceURL string) (*http.Client, error) {
+	u, err := url.Parse(instanceURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse instance URL %q: %w", instanceURL, err)
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "http":
+		return &http.Client{
+			Transport: &http2.Transport{
+				AllowHTTP: true,
+				DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+					var d net.Dialer
+					return d.DialContext(ctx, network, addr)
+				},
+				IdleConnTimeout: 300 * time.Second,
+				ReadIdleTimeout: 60 * time.Second,
 			},
-			IdleConnTimeout: 300 * time.Second,
-			ReadIdleTimeout: 60 * time.Second,
-		},
+		}, nil
+	case "https":
+		return &http.Client{
+			Transport: &http2.Transport{
+				IdleConnTimeout: 300 * time.Second,
+				ReadIdleTimeout: 60 * time.Second,
+			},
+		}, nil
+	default:
+		return nil, fmt.Errorf("unsupported instance URL scheme %q in %q (expected http or https)", u.Scheme, instanceURL)
 	}
 }
 
@@ -60,8 +83,12 @@ func NewSyncClient(
 		return nil, errors.New("peer instance URL is required")
 	}
 
+	httpClient, err := newSyncHTTPClient(peer.GetInstanceUrl())
+	if err != nil {
+		return nil, err
+	}
 	client := v1syncconnect.NewBackrestSyncServiceClient(
-		newInsecureClient(),
+		httpClient,
 		peer.GetInstanceUrl(),
 	)
 	c := &SyncClient{
