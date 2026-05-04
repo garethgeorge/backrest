@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/garethgeorge/backrest/gen/go/v1sync"
-	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,11 +28,11 @@ type encryptedStream struct {
 	recvCounter uint64
 }
 
-func newEncryptedStream(inner syncCommandStreamTrait, sess *cryptoutil.TransportSession) *encryptedStream {
+func newEncryptedStream(inner syncCommandStreamTrait, send, recv cipher.AEAD) *encryptedStream {
 	return &encryptedStream{
 		inner: inner,
-		send:  sess.Send,
-		recv:  sess.Recv,
+		send:  send,
+		recv:  recv,
 	}
 }
 

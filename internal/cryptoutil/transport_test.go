@@ -2,8 +2,6 @@ package cryptoutil
 
 import (
 	"bytes"
-	"crypto/ed25519"
-	"crypto/rand"
 	"testing"
 )
 
@@ -108,9 +106,6 @@ func TestTransportHandshake_DistinctSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Each recipient pairs only with its own encapsulation. ML-KEM uses
-	// implicit rejection, so Decapsulate may succeed against a foreign enc;
-	// the mismatch must be caught by AEAD authentication.
 	sessR1, err := r1.Decapsulate(enc1)
 	if err != nil {
 		t.Fatalf("r1 decapsulate own enc: %v", err)
@@ -141,104 +136,6 @@ func TestTransportHandshake_DistinctSessions(t *testing.T) {
 	}
 	if _, err := sessR1.Recv.Open(nil, nonce, ct2, nil); err == nil {
 		t.Fatal("session 1 must not decrypt session 2 ciphertext")
-	}
-}
-
-func TestTransportHandshake_BindIdentities(t *testing.T) {
-	initPub, initPriv, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	respPub, respPriv, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = initPriv
-	_ = respPriv
-
-	recipient, pubBytes, err := NewTransportRecipient()
-	if err != nil {
-		t.Fatal(err)
-	}
-	enc, respSess, err := EncapsulateToTransport(pubBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	initSess, err := recipient.Decapsulate(enc)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := initSess.BindIdentities(initPub, respPub); err != nil {
-		t.Fatalf("initiator BindIdentities: %v", err)
-	}
-	if err := respSess.BindIdentities(respPub, initPub); err != nil {
-		t.Fatalf("responder BindIdentities: %v", err)
-	}
-
-	plaintext := []byte("bound channel")
-	nonce := make([]byte, initSess.Send.NonceSize())
-
-	ct := initSess.Send.Seal(nil, nonce, plaintext, nil)
-	got, err := respSess.Recv.Open(nil, nonce, ct, nil)
-	if err != nil {
-		t.Fatalf("bound channel initiator->responder failed: %v", err)
-	}
-	if !bytes.Equal(got, plaintext) {
-		t.Fatal("bound channel plaintext mismatch")
-	}
-
-	ct2 := respSess.Send.Seal(nil, nonce, plaintext, nil)
-	got2, err := initSess.Recv.Open(nil, nonce, ct2, nil)
-	if err != nil {
-		t.Fatalf("bound channel responder->initiator failed: %v", err)
-	}
-	if !bytes.Equal(got2, plaintext) {
-		t.Fatal("bound channel reverse plaintext mismatch")
-	}
-}
-
-func TestTransportHandshake_BindIdentities_MismatchFailsToDecrypt(t *testing.T) {
-	initPub, _, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	respPub, _, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	wrongPub, _, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	recipient, pubBytes, err := NewTransportRecipient()
-	if err != nil {
-		t.Fatal(err)
-	}
-	enc, respSess, err := EncapsulateToTransport(pubBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	initSess, err := recipient.Decapsulate(enc)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Initiator binds with the correct pair; responder binds against a
-	// different "initiator" identity (e.g. a MITM impersonating). The bound
-	// keys must diverge so traffic fails to authenticate.
-	if err := initSess.BindIdentities(initPub, respPub); err != nil {
-		t.Fatal(err)
-	}
-	if err := respSess.BindIdentities(respPub, wrongPub); err != nil {
-		t.Fatal(err)
-	}
-
-	nonce := make([]byte, initSess.Send.NonceSize())
-	ct := initSess.Send.Seal(nil, nonce, []byte("should not decrypt"), nil)
-	if _, err := respSess.Recv.Open(nil, nonce, ct, nil); err == nil {
-		t.Fatal("identity-bound channels with mismatched bindings must not decrypt each other")
 	}
 }
 
@@ -293,30 +190,5 @@ func TestTransportRecipient_Decapsulate_BadInput(t *testing.T) {
 	}
 	if _, err := recipient.Decapsulate([]byte{0xde, 0xad}); err == nil {
 		t.Fatal("expected error for malformed encapsulation")
-	}
-}
-
-func TestTransportSession_BindIdentities_RejectsBadKeyLengths(t *testing.T) {
-	recipient, pubBytes, err := NewTransportRecipient()
-	if err != nil {
-		t.Fatal(err)
-	}
-	enc, _, err := EncapsulateToTransport(pubBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sess, err := recipient.Decapsulate(enc)
-	if err != nil {
-		t.Fatal(err)
-	}
-	good, _, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := sess.BindIdentities(make([]byte, 16), good); err == nil {
-		t.Fatal("expected error for short self key")
-	}
-	if err := sess.BindIdentities(good, make([]byte, 16)); err == nil {
-		t.Fatal("expected error for short peer key")
 	}
 }

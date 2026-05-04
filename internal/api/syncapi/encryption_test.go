@@ -57,8 +57,8 @@ func TestEncryptedStream_RoundTrip(t *testing.T) {
 	initSess, respSess := runHandshake(t)
 
 	transportA, transportB := newFakeStreamPair()
-	encA := newEncryptedStream(transportA, initSess)
-	encB := newEncryptedStream(transportB, respSess)
+	encA := newEncryptedStream(transportA, initSess.Send, initSess.Recv)
+	encB := newEncryptedStream(transportB, respSess.Send, respSess.Recv)
 
 	sendItem := &v1sync.SyncStreamItem{
 		Action: &v1sync.SyncStreamItem_Heartbeat{
@@ -90,8 +90,8 @@ func TestEncryptedStream_BidirectionalMultiMessage(t *testing.T) {
 	initSess, respSess := runHandshake(t)
 
 	transportA, transportB := newFakeStreamPair()
-	encA := newEncryptedStream(transportA, initSess)
-	encB := newEncryptedStream(transportB, respSess)
+	encA := newEncryptedStream(transportA, initSess.Send, initSess.Recv)
+	encB := newEncryptedStream(transportB, respSess.Send, respSess.Recv)
 
 	heartbeat := &v1sync.SyncStreamItem{
 		Action: &v1sync.SyncStreamItem_Heartbeat{
@@ -141,6 +141,7 @@ func TestEstablishEncryption_Integration(t *testing.T) {
 	transportA, transportB := newFakeStreamPair()
 
 	var encA, encB syncCommandStreamTrait
+	var transcriptA, transcriptB []byte
 	var errA, errB error
 	var wg sync.WaitGroup
 
@@ -148,12 +149,12 @@ func TestEstablishEncryption_Integration(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		// A is the initiator (client side).
-		encA, errA = establishEncryption(transportA, true)
+		encA, transcriptA, errA = establishEncryption(transportA, true)
 	}()
 	go func() {
 		defer wg.Done()
 		// B is the responder (server side).
-		encB, errB = establishEncryption(transportB, false)
+		encB, transcriptB, errB = establishEncryption(transportB, false)
 	}()
 	wg.Wait()
 
@@ -162,6 +163,12 @@ func TestEstablishEncryption_Integration(t *testing.T) {
 	}
 	if errB != nil {
 		t.Fatalf("establish B: %v", errB)
+	}
+	if len(transcriptA) == 0 || len(transcriptB) == 0 {
+		t.Fatal("transcripts must be non-empty after handshake")
+	}
+	if string(transcriptA) != string(transcriptB) {
+		t.Fatal("paired peers must agree on transport transcript")
 	}
 
 	heartbeat := &v1sync.SyncStreamItem{
@@ -210,7 +217,7 @@ func TestEstablishEncryption_ProtocolVersionMismatch(t *testing.T) {
 		})
 	}()
 
-	if _, err := establishEncryption(transportB, false); err == nil {
+	if _, _, err := establishEncryption(transportB, false); err == nil {
 		t.Fatal("expected protocol version mismatch to fail handshake")
 	}
 }

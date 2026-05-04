@@ -18,7 +18,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const SyncProtocolVersion = 2
+// SyncProtocolVersion is the application-layer handshake version. Bumped to 3
+// when the handshake was redesigned to carry a single signature that binds
+// the long-term identity to the post-quantum transport transcript (and to
+// drop the legacy v1.SignedMessage instance_id wrapping).
+const SyncProtocolVersion = 3
 
 type BackrestSyncHandler struct {
 	v1syncconnect.UnimplementedBackrestSyncServiceHandler
@@ -428,6 +432,12 @@ func ValidatePairingSecret(secret string, tokens []*v1.Multihost_PairingToken, n
 // from the handshake, adds the client to authorized_clients in the config, and consumes the token.
 // The peer is added to the config BEFORE runSync proceeds with its normal authorization check,
 // ensuring that runSync's hard gate (peer must be in authorized_clients) is never bypassed.
+//
+// runSync has already verified the handshake signature against the transport
+// transcript before invoking this callback, so signature validity (and
+// therefore the client's possession of the private key) is established by
+// the time we get here. The pairing token check below is the only remaining
+// authorization step.
 func (h *BackrestSyncHandler) handleUnknownPeerPairing(snapshot *syncConfigSnapshot) onUnknownPeerFunc {
 	return func(handshake *v1sync.SyncStreamItem) (*v1.Multihost_Peer, error) {
 		pairingSecret := handshake.GetHandshake().GetPairingSecret()
@@ -435,16 +445,8 @@ func (h *BackrestSyncHandler) handleUnknownPeerPairing(snapshot *syncConfigSnaps
 			return nil, fmt.Errorf("unknown peer and no pairing secret provided")
 		}
 
-		// Defense-in-depth: re-verify the handshake signature to ensure the client
-		// holds the private key for the public key it presents. This is already checked
-		// by verifyHandshakePacket in runSync, but we verify again here since this is
-		// a security-critical path that adds a new authorized client.
-		if _, err := verifyHandshakePacket(handshake); err != nil {
-			return nil, fmt.Errorf("handshake signature verification failed: %w", err)
-		}
-
 		peerKeyID := handshake.GetHandshake().GetPublicKey().GetKeyid()
-		peerInstanceID := string(handshake.GetHandshake().GetInstanceId().GetPayload())
+		peerInstanceID := handshake.GetHandshake().GetInstanceId()
 
 		// Atomically validate the pairing secret and add the client.
 		var newPeer *v1.Multihost_Peer

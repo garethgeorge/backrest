@@ -1191,12 +1191,39 @@ func (*SyncStreamItem_EstablishSharedSecret) isSyncStreamItem_Action() {}
 
 func (*SyncStreamItem_Encrypted) isSyncStreamItem_Action() {}
 
+// SyncActionHandshake is the first message sent by each peer over the
+// post-quantum encrypted channel. It carries the sender's long-term
+// ed25519 identity, its instance ID, and a single signature that binds
+// the identity to *this* transport session.
+//
+// The signature covers a domain-separated hash of:
+//
+//	"backrest-sync-handshake/v1\x00"
+//	|| protocol_version (8 bytes BE)
+//	|| LP(instance_id)
+//	|| LP(pairing_secret)
+//	|| LP(transport transcript)
+//
+// where LP(x) = 4-byte BE length prefix || x, and the transport transcript
+// is cryptoutil.TransportSession.Transcript() — a hash that commits to
+// the ephemeral KEM messages of this connection.
+//
+// The transcript binding is what defeats a MITM that completes a separate
+// KEM with each side: each leg has a different transcript, and the
+// legitimate peer's signature only commits to its own transcript, so the
+// attacker cannot forward a usable signature to either side.
+//
+// Receivers MUST recompute the transcript locally from their TransportSession
+// and reject the handshake if the signature does not verify against
+// public_key. There is no timestamp because freshness is provided by the
+// ephemeral KEM, not by clock comparison.
 type SyncStreamItem_SyncActionHandshake struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	ProtocolVersion int64                  `protobuf:"varint,1,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
-	PublicKey       *v1.PublicKey          `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	InstanceId      *v1.SignedMessage      `protobuf:"bytes,3,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
-	PairingSecret   string                 `protobuf:"bytes,4,opt,name=pairing_secret,json=pairingSecret,proto3" json:"pairing_secret,omitempty"` // optional one-time secret from a pairing token, used to auto-authorize a new client
+	PublicKey       *v1.PublicKey          `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`             // sender's long-term ed25519 identity
+	InstanceId      string                 `protobuf:"bytes,3,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`          // covered by signature below
+	PairingSecret   string                 `protobuf:"bytes,4,opt,name=pairing_secret,json=pairingSecret,proto3" json:"pairing_secret,omitempty"` // optional pairing token; covered by signature below
+	Signature       []byte                 `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`                              // ed25519(public_key, H(handshake bind input))
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1245,11 +1272,11 @@ func (x *SyncStreamItem_SyncActionHandshake) GetPublicKey() *v1.PublicKey {
 	return nil
 }
 
-func (x *SyncStreamItem_SyncActionHandshake) GetInstanceId() *v1.SignedMessage {
+func (x *SyncStreamItem_SyncActionHandshake) GetInstanceId() string {
 	if x != nil {
 		return x.InstanceId
 	}
-	return nil
+	return ""
 }
 
 func (x *SyncStreamItem_SyncActionHandshake) GetPairingSecret() string {
@@ -1257,6 +1284,13 @@ func (x *SyncStreamItem_SyncActionHandshake) GetPairingSecret() string {
 		return x.PairingSecret
 	}
 	return ""
+}
+
+func (x *SyncStreamItem_SyncActionHandshake) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
 }
 
 // SyncActionEncrypted wraps an encrypted SyncStreamItem.
@@ -2033,7 +2067,7 @@ const file_v1sync_syncservice_proto_rawDesc = "" +
 	"\n" +
 	"public_key\x18\x01 \x01(\v2\r.v1.PublicKeyR\tpublicKey\x122\n" +
 	"\vinstance_id\x18\x02 \x01(\v2\x11.v1.SignedMessageR\n" +
-	"instanceId\"\xe6\x16\n" +
+	"instanceId\"\xf1\x16\n" +
 	"\x0eSyncStreamItem\x12:\n" +
 	"\x0esigned_message\x18\x01 \x01(\v2\x11.v1.SignedMessageH\x00R\rsignedMessage\x12J\n" +
 	"\thandshake\x18\x03 \x01(\v2*.v1sync.SyncStreamItem.SyncActionHandshakeH\x00R\thandshake\x12J\n" +
@@ -2051,14 +2085,15 @@ const file_v1sync_syncservice_proto_rawDesc = "" +
 	"\x10receive_log_data\x18\x1f \x01(\v2/.v1sync.SyncStreamItem.SyncActionReceiveLogDataH\x00R\x0ereceiveLogData\x12H\n" +
 	"\bthrottle\x18\xe8\a \x01(\v2).v1sync.SyncStreamItem.SyncActionThrottleH\x00R\bthrottle\x12j\n" +
 	"\x17establish_shared_secret\x18\x02 \x01(\v20.v1sync.SyncStreamItem.SyncEstablishSharedSecretH\x00R\x15establishSharedSecret\x12J\n" +
-	"\tencrypted\x18\x05 \x01(\v2*.v1sync.SyncStreamItem.SyncActionEncryptedH\x00R\tencrypted\x1a\xc9\x01\n" +
+	"\tencrypted\x18\x05 \x01(\v2*.v1sync.SyncStreamItem.SyncActionEncryptedH\x00R\tencrypted\x1a\xd4\x01\n" +
 	"\x13SyncActionHandshake\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\x03R\x0fprotocolVersion\x12,\n" +
 	"\n" +
-	"public_key\x18\x02 \x01(\v2\r.v1.PublicKeyR\tpublicKey\x122\n" +
-	"\vinstance_id\x18\x03 \x01(\v2\x11.v1.SignedMessageR\n" +
+	"public_key\x18\x02 \x01(\v2\r.v1.PublicKeyR\tpublicKey\x12\x1f\n" +
+	"\vinstance_id\x18\x03 \x01(\tR\n" +
 	"instanceId\x12%\n" +
-	"\x0epairing_secret\x18\x04 \x01(\tR\rpairingSecret\x1aK\n" +
+	"\x0epairing_secret\x18\x04 \x01(\tR\rpairingSecret\x12\x1c\n" +
+	"\tsignature\x18\x05 \x01(\fR\tsignature\x1aK\n" +
 	"\x13SyncActionEncrypted\x12\x14\n" +
 	"\x05nonce\x18\x01 \x01(\fR\x05nonce\x12\x1e\n" +
 	"\n" +
@@ -2207,24 +2242,23 @@ var file_v1sync_syncservice_proto_depIdxs = []int32{
 	30, // 28: v1sync.SyncStreamItem.establish_shared_secret:type_name -> v1sync.SyncStreamItem.SyncEstablishSharedSecret
 	17, // 29: v1sync.SyncStreamItem.encrypted:type_name -> v1sync.SyncStreamItem.SyncActionEncrypted
 	34, // 30: v1sync.SyncStreamItem.SyncActionHandshake.public_key:type_name -> v1.PublicKey
-	31, // 31: v1sync.SyncStreamItem.SyncActionHandshake.instance_id:type_name -> v1.SignedMessage
-	13, // 32: v1sync.SyncStreamItem.SyncActionReceiveConfig.config:type_name -> v1sync.RemoteConfig
-	33, // 33: v1sync.SyncStreamItem.SyncActionSetConfig.repos:type_name -> v1.Repo
-	32, // 34: v1sync.SyncStreamItem.SyncActionSetConfig.plans:type_name -> v1.Plan
-	8,  // 35: v1sync.SyncStreamItem.SyncActionReceiveResources.repos:type_name -> v1sync.RepoMetadata
-	9,  // 36: v1sync.SyncStreamItem.SyncActionReceiveResources.plans:type_name -> v1sync.PlanMetadata
-	35, // 37: v1sync.SyncStreamItem.SyncActionReceiveOperations.event:type_name -> v1.OperationEvent
-	15, // 38: v1sync.BackrestSyncService.Sync:input_type -> v1sync.SyncStreamItem
-	2,  // 39: v1sync.BackrestSyncStateService.GetPeerSyncStatesStream:input_type -> v1sync.SyncStateStreamRequest
-	11, // 40: v1sync.BackrestSyncStateService.SetRemoteClientConfig:input_type -> v1sync.SetRemoteClientConfigRequest
-	15, // 41: v1sync.BackrestSyncService.Sync:output_type -> v1sync.SyncStreamItem
-	3,  // 42: v1sync.BackrestSyncStateService.GetPeerSyncStatesStream:output_type -> v1sync.PeerState
-	12, // 43: v1sync.BackrestSyncStateService.SetRemoteClientConfig:output_type -> v1sync.SetRemoteClientConfigResponse
-	41, // [41:44] is the sub-list for method output_type
-	38, // [38:41] is the sub-list for method input_type
-	38, // [38:38] is the sub-list for extension type_name
-	38, // [38:38] is the sub-list for extension extendee
-	0,  // [0:38] is the sub-list for field type_name
+	13, // 31: v1sync.SyncStreamItem.SyncActionReceiveConfig.config:type_name -> v1sync.RemoteConfig
+	33, // 32: v1sync.SyncStreamItem.SyncActionSetConfig.repos:type_name -> v1.Repo
+	32, // 33: v1sync.SyncStreamItem.SyncActionSetConfig.plans:type_name -> v1.Plan
+	8,  // 34: v1sync.SyncStreamItem.SyncActionReceiveResources.repos:type_name -> v1sync.RepoMetadata
+	9,  // 35: v1sync.SyncStreamItem.SyncActionReceiveResources.plans:type_name -> v1sync.PlanMetadata
+	35, // 36: v1sync.SyncStreamItem.SyncActionReceiveOperations.event:type_name -> v1.OperationEvent
+	15, // 37: v1sync.BackrestSyncService.Sync:input_type -> v1sync.SyncStreamItem
+	2,  // 38: v1sync.BackrestSyncStateService.GetPeerSyncStatesStream:input_type -> v1sync.SyncStateStreamRequest
+	11, // 39: v1sync.BackrestSyncStateService.SetRemoteClientConfig:input_type -> v1sync.SetRemoteClientConfigRequest
+	15, // 40: v1sync.BackrestSyncService.Sync:output_type -> v1sync.SyncStreamItem
+	3,  // 41: v1sync.BackrestSyncStateService.GetPeerSyncStatesStream:output_type -> v1sync.PeerState
+	12, // 42: v1sync.BackrestSyncStateService.SetRemoteClientConfig:output_type -> v1sync.SetRemoteClientConfigResponse
+	40, // [40:43] is the sub-list for method output_type
+	37, // [37:40] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_v1sync_syncservice_proto_init() }

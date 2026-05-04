@@ -3,7 +3,6 @@ package cryptoutil
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/ed25519"
 	"crypto/hpke"
 	"crypto/sha256"
 	"encoding/binary"
@@ -22,16 +21,6 @@ const TransportProtocolVersion uint32 = 1
 
 const transportSessionKeyLen = 32 // AES-256
 
-// transportRole records which side of the handshake produced a session.
-// The initiator is the holder of the ephemeral KEM private key (HPKE
-// recipient). The responder is the encapsulator (HPKE sender).
-type transportRole int
-
-const (
-	roleInitiator transportRole = iota
-	roleResponder
-)
-
 var transportInfo = []byte(fmt.Sprintf("backrest-sync-transport-v%d", TransportProtocolVersion))
 
 func exporterLabelI2R() string {
@@ -42,16 +31,6 @@ func exporterLabelR2I() string {
 	return fmt.Sprintf("backrest-sync-session-key/v%d/responder-to-initiator", TransportProtocolVersion)
 }
 
-// exporterLabelBound builds a label that binds both peers' ed25519 identity
-// public keys into the HPKE Export context. The label is a printable prefix
-// followed by NUL and the raw 32-byte identity pubkeys in canonical order
-// (initiator || responder). HPKE treats the label as opaque bytes, so the
-// embedded binary is safe.
-func exporterLabelBound(direction string, initiator, responder ed25519.PublicKey) string {
-	prefix := fmt.Sprintf("backrest-sync-session-key/v%d/%s/identity-bound\x00", TransportProtocolVersion, direction)
-	return prefix + string(initiator) + string(responder)
-}
-
 // transportCiphersuite returns the HPKE ciphersuite used by the sync transport.
 // Keep this opinionated and pinned to TransportProtocolVersion: hybrid PQ KEM
 // (ML-KEM-1024 + ECDH-P384), HKDF-SHA256, AES-256-GCM.
@@ -60,96 +39,35 @@ func transportCiphersuite() (hpke.KEM, hpke.KDF, hpke.AEAD) {
 }
 
 // TransportSession is the result of a successful handshake: a pair of one-way
-// AEADs plus a transcript hash for ed25519 identity authentication.
+// AEADs plus a transcript hash for higher-layer identity authentication.
 //
 // Send is for outbound traffic, Recv for inbound. The two AEADs hold
 // independent keys derived from distinct HPKE exporter labels, so callers
 // may use any nonce discipline (a counter starting at zero is recommended)
 // without risk of cross-direction reuse.
 //
-// Recommended use with the project's ed25519 identity layer:
-//
-//  1. Each peer signs Transcript() with its own ed25519 private key and
-//     sends (signature, identity public key) over Send.
-//  2. Each peer Recvs the peer's signature and identity, verifies the
-//     signature against Transcript(), and applies any out-of-band identity
-//     policy (matching against a known public key, etc.).
-//  3. After both signatures verify, each peer calls BindIdentities(self,
-//     peer). The Send and Recv AEADs are re-derived with both identity
-//     keys mixed into the HPKE exporter context. From this point on the
-//     channel is cryptographically tied to the agreed identity pair, so
-//     even a MITM that bypassed step 2 can no longer read or forge
-//     messages.
+// Identity authentication is the responsibility of the caller. A higher
+// layer that performs ed25519 (or any other) identity verification should
+// have each peer sign Transcript() under its long-term key and exchange the
+// signatures over the encrypted channel; verifying that signature is what
+// defeats a MITM that completes a separate KEM with each side, since the
+// two legs of the MITM produce different transcripts and the legitimate
+// peer's signature only commits to its own transcript.
 type TransportSession struct {
 	Send cipher.AEAD
 	Recv cipher.AEAD
 
 	transcript [sha256.Size]byte
-	exporter   func(context string, length int) ([]byte, error)
-	role       transportRole
 }
 
 // Transcript returns a hash that commits to the protocol version, the
 // initiator's ephemeral KEM public key, and the encapsulation. Both peers
-// compute the identical value. Sign this with your ed25519 identity key
-// to authenticate the channel; a MITM cannot produce a signature over
-// the transcript that the legitimate peer derived.
+// compute the identical value. Sign this with your identity key and send
+// the signature to the peer to authenticate the channel.
 func (s *TransportSession) Transcript() []byte {
 	out := make([]byte, len(s.transcript))
 	copy(out, s.transcript[:])
 	return out
-}
-
-// BindIdentities re-derives Send and Recv using exporter labels that include
-// both peers' ed25519 identity public keys. The caller MUST have already
-// verified that `peer` owns its identity (e.g. via a signature over
-// Transcript()) before invoking this method. BindIdentities does not itself
-// authenticate; it tightens the channel so that any MITM that survived
-// the signature exchange still cannot decrypt or forge messages, because
-// the bound keys cannot be derived without agreement on both identities.
-//
-// The role of the local peer (initiator vs responder) is captured at
-// handshake time, so the caller need only pass its own identity and the
-// peer's; the canonical (initiator, responder) ordering used in the label
-// is determined by this session's role.
-//
-// After BindIdentities returns successfully the previous Send / Recv AEADs
-// MUST NOT be used. References captured before this call must be dropped.
-func (s *TransportSession) BindIdentities(self, peer ed25519.PublicKey) error {
-	if len(self) != ed25519.PublicKeySize {
-		return fmt.Errorf("self identity must be %d bytes, got %d", ed25519.PublicKeySize, len(self))
-	}
-	if len(peer) != ed25519.PublicKeySize {
-		return fmt.Errorf("peer identity must be %d bytes, got %d", ed25519.PublicKeySize, len(peer))
-	}
-	var initiator, responder ed25519.PublicKey
-	if s.role == roleInitiator {
-		initiator, responder = self, peer
-	} else {
-		initiator, responder = peer, self
-	}
-	i2rKey, err := s.exporter(exporterLabelBound("initiator-to-responder", initiator, responder), transportSessionKeyLen)
-	if err != nil {
-		return fmt.Errorf("export identity-bound i2r key: %w", err)
-	}
-	r2iKey, err := s.exporter(exporterLabelBound("responder-to-initiator", initiator, responder), transportSessionKeyLen)
-	if err != nil {
-		return fmt.Errorf("export identity-bound r2i key: %w", err)
-	}
-	i2rAEAD, err := newSessionAEAD(i2rKey)
-	if err != nil {
-		return err
-	}
-	r2iAEAD, err := newSessionAEAD(r2iKey)
-	if err != nil {
-		return err
-	}
-	if s.role == roleInitiator {
-		s.Send, s.Recv = i2rAEAD, r2iAEAD
-	} else {
-		s.Send, s.Recv = r2iAEAD, i2rAEAD
-	}
-	return nil
 }
 
 // TransportRecipient is the initiator side of the handshake. The initiator
@@ -187,7 +105,16 @@ func (r *TransportRecipient) Decapsulate(enc []byte) (*TransportSession, error) 
 	if err != nil {
 		return nil, fmt.Errorf("decapsulate transport KEM: %w", err)
 	}
-	return buildSession(recipient.Export, r.pub, enc, roleInitiator)
+	i2r, r2i, err := deriveDirectionalAEADs(recipient.Export)
+	if err != nil {
+		return nil, err
+	}
+	// Initiator: Send is initiator-to-responder, Recv is responder-to-initiator.
+	return &TransportSession{
+		Send:       i2r,
+		Recv:       r2i,
+		transcript: computeTranscript(r.pub, enc),
+	}, nil
 }
 
 // EncapsulateToTransport is the responder side of the handshake. Given the
@@ -206,41 +133,39 @@ func EncapsulateToTransport(peerPubBytes []byte) (enc []byte, _ *TransportSessio
 	if err != nil {
 		return nil, nil, fmt.Errorf("encapsulate transport KEM: %w", err)
 	}
-	sess, err := buildSession(sender.Export, peerPubBytes, enc, roleResponder)
+	i2r, r2i, err := deriveDirectionalAEADs(sender.Export)
 	if err != nil {
 		return nil, nil, err
 	}
-	return enc, sess, nil
+	// Responder: Send is responder-to-initiator, Recv is initiator-to-responder.
+	return enc, &TransportSession{
+		Send:       r2i,
+		Recv:       i2r,
+		transcript: computeTranscript(peerPubBytes, enc),
+	}, nil
 }
 
-func buildSession(exporter func(string, int) ([]byte, error), initiatorPub, enc []byte, role transportRole) (*TransportSession, error) {
+// deriveDirectionalAEADs exports two independent AES-256-GCM keys from the
+// HPKE context — one for each traffic direction — and wraps them in AEADs.
+// The caller assigns them to Send/Recv based on its role.
+func deriveDirectionalAEADs(exporter func(string, int) ([]byte, error)) (i2r, r2i cipher.AEAD, _ error) {
 	i2rKey, err := exporter(exporterLabelI2R(), transportSessionKeyLen)
 	if err != nil {
-		return nil, fmt.Errorf("export i2r session key: %w", err)
+		return nil, nil, fmt.Errorf("export i2r session key: %w", err)
 	}
 	r2iKey, err := exporter(exporterLabelR2I(), transportSessionKeyLen)
 	if err != nil {
-		return nil, fmt.Errorf("export r2i session key: %w", err)
+		return nil, nil, fmt.Errorf("export r2i session key: %w", err)
 	}
 	i2rAEAD, err := newSessionAEAD(i2rKey)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	r2iAEAD, err := newSessionAEAD(r2iKey)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	s := &TransportSession{
-		transcript: computeTranscript(initiatorPub, enc),
-		exporter:   exporter,
-		role:       role,
-	}
-	if role == roleInitiator {
-		s.Send, s.Recv = i2rAEAD, r2iAEAD
-	} else {
-		s.Send, s.Recv = r2iAEAD, i2rAEAD
-	}
-	return s, nil
+	return i2rAEAD, r2iAEAD, nil
 }
 
 func computeTranscript(initiatorPub, enc []byte) [sha256.Size]byte {

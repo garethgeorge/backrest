@@ -33,13 +33,39 @@ type bidiSyncCommandStream struct {
 	done         chan struct{}
 	doneOnce     sync.Once
 	terminateErr atomic.Pointer[error]
+
+	// transcript is the post-quantum transport transcript that runSync signs
+	// and verifies in its handshake. It is published once, by ConnectStream,
+	// after the KEM exchange succeeds, then closed via transcriptReady.
+	// Callers retrieve it through AwaitTranscript.
+	transcript      []byte
+	transcriptReady chan struct{}
 }
 
 func newBidiSyncCommandStream() *bidiSyncCommandStream {
 	return &bidiSyncCommandStream{
-		sendChan: make(chan *v1sync.SyncStreamItem, 256),
-		recvChan: make(chan *v1sync.SyncStreamItem, 1),
-		done:     make(chan struct{}),
+		sendChan:        make(chan *v1sync.SyncStreamItem, 256),
+		recvChan:        make(chan *v1sync.SyncStreamItem, 1),
+		done:            make(chan struct{}),
+		transcriptReady: make(chan struct{}),
+	}
+}
+
+// AwaitTranscript blocks until the transport-layer handshake completes and
+// returns the transcript bytes that the higher-layer identity exchange must
+// sign. Returns ctx.Err() if ctx is cancelled, or the stream's termination
+// error if the connection failed before the transcript could be published.
+func (s *bidiSyncCommandStream) AwaitTranscript(ctx context.Context) ([]byte, error) {
+	select {
+	case <-s.transcriptReady:
+		return s.transcript, nil
+	case <-s.done:
+		if err := s.Err(); err != nil {
+			return nil, err
+		}
+		return nil, errors.New("stream terminated before transport transcript was available")
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 }
 
@@ -119,7 +145,7 @@ func (s *bidiSyncCommandStream) ConnectStream(ctx context.Context, stream syncCo
 	defer cancel()
 
 	// Perform the PQ KEM handshake on the raw transport before starting the pump.
-	transport, err := establishEncryption(stream, isInitiator)
+	transport, transcript, err := establishEncryption(stream, isInitiator)
 	if err != nil {
 		// Signal termination so any goroutine parked in ReceiveWithinDuration
 		// (e.g. runSync waiting for the handshake reply) wakes up immediately
@@ -127,6 +153,9 @@ func (s *bidiSyncCommandStream) ConnectStream(ctx context.Context, stream syncCo
 		s.SendErrorAndTerminate(err)
 		return err
 	}
+	// Publish the transcript so runSync can sign / verify the handshake packet.
+	s.transcript = transcript
+	close(s.transcriptReady)
 
 	go func() {
 		defer close(s.recvChan)
@@ -166,23 +195,25 @@ func (s *bidiSyncCommandStream) ConnectStream(ctx context.Context, stream syncCo
 }
 
 // establishEncryption performs a post-quantum KEM handshake on the raw
-// transport and returns an encrypted stream wrapper. The KEM ciphersuite is
-// hard-pinned to TransportProtocolVersion and tied to the wire format.
+// transport and returns an encrypted stream wrapper plus the transport
+// transcript that runSync uses to bind its ed25519 handshake signature to
+// this specific KEM exchange. The KEM ciphersuite is hard-pinned to
+// TransportProtocolVersion and tied to the wire format.
 //
 // Flow: the initiator generates an ephemeral hybrid (ML-KEM-1024 + ECDH-P384)
 // HPKE keypair and sends its public key. The responder encapsulates against
-// it and replies with the encapsulation. Both sides derive an AES-256-GCM
-// session key via the HPKE Export interface. The handshake (identity
-// authentication) runs over the encrypted channel afterward.
+// it and replies with the encapsulation. Both sides derive AES-256-GCM
+// per-direction session keys via the HPKE Export interface and compute the
+// same transcript hash. The application-layer identity handshake (signature
+// over the transcript) runs over the encrypted channel afterward.
 //
-// Initiators use nonce prefix 0x00; responders use 0x01 — fixed by role to
-// avoid nonce reuse. isInitiator must be true on the connecting side (client)
-// and false on the accepting side (server).
-func establishEncryption(stream syncCommandStreamTrait, isInitiator bool) (syncCommandStreamTrait, error) {
+// isInitiator must be true on the connecting side (client) and false on the
+// accepting side (server).
+func establishEncryption(stream syncCommandStreamTrait, isInitiator bool) (syncCommandStreamTrait, []byte, error) {
 	if isInitiator {
 		recipient, pubBytes, err := cryptoutil.NewTransportRecipient()
 		if err != nil {
-			return nil, NewSyncErrorInternal(fmt.Errorf("generating ephemeral KEM key: %w", err))
+			return nil, nil, NewSyncErrorInternal(fmt.Errorf("generating ephemeral KEM key: %w", err))
 		}
 
 		if err := stream.Send(&v1sync.SyncStreamItem{
@@ -193,51 +224,51 @@ func establishEncryption(stream syncCommandStreamTrait, isInitiator bool) (syncC
 				},
 			},
 		}); err != nil {
-			return nil, NewSyncErrorDisconnected(fmt.Errorf("sending KEM public key: %w", err))
+			return nil, nil, NewSyncErrorDisconnected(fmt.Errorf("sending KEM public key: %w", err))
 		}
 
 		peerMsg, err := stream.Receive()
 		if err != nil {
-			return nil, NewSyncErrorDisconnected(fmt.Errorf("receiving KEM encapsulation: %w", err))
+			return nil, nil, NewSyncErrorDisconnected(fmt.Errorf("receiving KEM encapsulation: %w", err))
 		}
 		peerSecret := peerMsg.GetEstablishSharedSecret()
 		if peerSecret == nil {
-			return nil, NewSyncErrorProtocol(fmt.Errorf("expected KEM key exchange, got %T", peerMsg.GetAction()))
+			return nil, nil, NewSyncErrorProtocol(fmt.Errorf("expected KEM key exchange, got %T", peerMsg.GetAction()))
 		}
 		if peerSecret.GetProtocolVersion() != cryptoutil.TransportProtocolVersion {
-			return nil, NewSyncErrorProtocol(fmt.Errorf("unsupported transport protocol version %d (this build requires v%d, post-quantum)", peerSecret.GetProtocolVersion(), cryptoutil.TransportProtocolVersion))
+			return nil, nil, NewSyncErrorProtocol(fmt.Errorf("unsupported transport protocol version %d (this build requires v%d, post-quantum)", peerSecret.GetProtocolVersion(), cryptoutil.TransportProtocolVersion))
 		}
 		if len(peerSecret.GetKemEncapsulation()) == 0 {
-			return nil, NewSyncErrorProtocol(errors.New("responder did not send KEM encapsulation"))
+			return nil, nil, NewSyncErrorProtocol(errors.New("responder did not send KEM encapsulation"))
 		}
 
 		sess, err := recipient.Decapsulate(peerSecret.GetKemEncapsulation())
 		if err != nil {
-			return nil, NewSyncErrorProtocol(fmt.Errorf("decapsulating KEM: %w", err))
+			return nil, nil, NewSyncErrorProtocol(fmt.Errorf("decapsulating KEM: %w", err))
 		}
 
 		zap.L().Info("encrypted sync session established (initiator)")
-		return newEncryptedStream(stream, sess), nil
+		return newEncryptedStream(stream, sess.Send, sess.Recv), sess.Transcript(), nil
 	}
 
 	peerMsg, err := stream.Receive()
 	if err != nil {
-		return nil, NewSyncErrorDisconnected(fmt.Errorf("receiving KEM public key: %w", err))
+		return nil, nil, NewSyncErrorDisconnected(fmt.Errorf("receiving KEM public key: %w", err))
 	}
 	peerSecret := peerMsg.GetEstablishSharedSecret()
 	if peerSecret == nil {
-		return nil, NewSyncErrorProtocol(fmt.Errorf("expected KEM key exchange, got %T", peerMsg.GetAction()))
+		return nil, nil, NewSyncErrorProtocol(fmt.Errorf("expected KEM key exchange, got %T", peerMsg.GetAction()))
 	}
 	if peerSecret.GetProtocolVersion() != cryptoutil.TransportProtocolVersion {
-		return nil, NewSyncErrorProtocol(fmt.Errorf("unsupported transport protocol version %d (this build requires v%d, post-quantum)", peerSecret.GetProtocolVersion(), cryptoutil.TransportProtocolVersion))
+		return nil, nil, NewSyncErrorProtocol(fmt.Errorf("unsupported transport protocol version %d (this build requires v%d, post-quantum)", peerSecret.GetProtocolVersion(), cryptoutil.TransportProtocolVersion))
 	}
 	if len(peerSecret.GetKemPublicKey()) == 0 {
-		return nil, NewSyncErrorProtocol(errors.New("initiator did not send KEM public key"))
+		return nil, nil, NewSyncErrorProtocol(errors.New("initiator did not send KEM public key"))
 	}
 
 	enc, sess, err := cryptoutil.EncapsulateToTransport(peerSecret.GetKemPublicKey())
 	if err != nil {
-		return nil, NewSyncErrorProtocol(fmt.Errorf("encapsulating to KEM public key: %w", err))
+		return nil, nil, NewSyncErrorProtocol(fmt.Errorf("encapsulating to KEM public key: %w", err))
 	}
 
 	if err := stream.Send(&v1sync.SyncStreamItem{
@@ -248,9 +279,9 @@ func establishEncryption(stream syncCommandStreamTrait, isInitiator bool) (syncC
 			},
 		},
 	}); err != nil {
-		return nil, NewSyncErrorDisconnected(fmt.Errorf("sending KEM encapsulation: %w", err))
+		return nil, nil, NewSyncErrorDisconnected(fmt.Errorf("sending KEM encapsulation: %w", err))
 	}
 
 	zap.L().Info("encrypted sync session established (responder)")
-	return newEncryptedStream(stream, sess), nil
+	return newEncryptedStream(stream, sess.Send, sess.Recv), sess.Transcript(), nil
 }

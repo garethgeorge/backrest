@@ -1,9 +1,11 @@
 package syncapi
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
@@ -11,6 +13,69 @@ import (
 )
 
 const maxSignatureAge = 5 * time.Minute
+
+// handshakeBindLabel is the domain-separation prefix for the bytes signed in
+// SyncActionHandshake.signature. Bumping it invalidates all old handshake
+// signatures, so change it only alongside SyncProtocolVersion.
+const handshakeBindLabel = "backrest-sync-handshake/v1\x00"
+
+// computeHandshakeBindInput builds the byte string a peer signs (and the
+// other peer recomputes locally) for the post-encryption identity exchange.
+// Every field that influences peer authorization is length-prefixed so that
+// no two distinct (instance, secret, transcript) tuples can ever produce
+// the same input. The transport transcript ties the signature to the
+// specific post-quantum KEM exchange of this connection.
+func computeHandshakeBindInput(protocolVersion int64, instanceID, pairingSecret string, transcript []byte) []byte {
+	h := sha256.New()
+	h.Write([]byte(handshakeBindLabel))
+	var versionBytes [8]byte
+	binary.BigEndian.PutUint64(versionBytes[:], uint64(protocolVersion))
+	h.Write(versionBytes[:])
+	writeLengthPrefixedBytes(h, []byte(instanceID))
+	writeLengthPrefixedBytes(h, []byte(pairingSecret))
+	writeLengthPrefixedBytes(h, transcript)
+	return h.Sum(nil)
+}
+
+func writeLengthPrefixedBytes(h hash.Hash, b []byte) {
+	var lenBytes [4]byte
+	binary.BigEndian.PutUint32(lenBytes[:], uint32(len(b)))
+	h.Write(lenBytes[:])
+	h.Write(b)
+}
+
+// signHandshake produces an ed25519 signature over the handshake bind input
+// for the given fields, under the caller's identity key.
+func signHandshake(protocolVersion int64, instanceID, pairingSecret string, transcript []byte, identity *cryptoutil.PrivateKey) ([]byte, error) {
+	if len(transcript) == 0 {
+		return nil, errors.New("transport transcript must not be empty")
+	}
+	bindInput := computeHandshakeBindInput(protocolVersion, instanceID, pairingSecret, transcript)
+	sig, err := identity.Sign(bindInput)
+	if err != nil {
+		return nil, fmt.Errorf("signing handshake: %w", err)
+	}
+	return sig, nil
+}
+
+// verifyHandshakeSignature recomputes the bind input from the locally-known
+// transcript and verifies the peer's signature against the peer's claimed
+// public key. A mismatch can mean: tampering, a MITM whose KEM produced a
+// different transcript on this leg, or the peer disagreeing on
+// protocol_version / instance_id / pairing_secret.
+func verifyHandshakeSignature(protocolVersion int64, instanceID, pairingSecret string, transcript, signature []byte, peerKey *cryptoutil.PublicKey) error {
+	if len(transcript) == 0 {
+		return errors.New("transport transcript must not be empty")
+	}
+	if len(signature) == 0 {
+		return errors.New("handshake signature must not be empty")
+	}
+	bindInput := computeHandshakeBindInput(protocolVersion, instanceID, pairingSecret, transcript)
+	if err := peerKey.Verify(bindInput, signature); err != nil {
+		return fmt.Errorf("handshake signature: %w", err)
+	}
+	return nil
+}
 
 func createSignedMessage(payload []byte, identity *cryptoutil.PrivateKey) (*v1.SignedMessage, error) {
 	if len(payload) == 0 {

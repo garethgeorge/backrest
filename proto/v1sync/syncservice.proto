@@ -140,11 +140,37 @@ message SyncStreamItem {
     SyncActionEncrypted encrypted = 5;
   }
 
+  // SyncActionHandshake is the first message sent by each peer over the
+  // post-quantum encrypted channel. It carries the sender's long-term
+  // ed25519 identity, its instance ID, and a single signature that binds
+  // the identity to *this* transport session.
+  //
+  // The signature covers a domain-separated hash of:
+  //   "backrest-sync-handshake/v1\x00"
+  //   || protocol_version (8 bytes BE)
+  //   || LP(instance_id)
+  //   || LP(pairing_secret)
+  //   || LP(transport transcript)
+  //
+  // where LP(x) = 4-byte BE length prefix || x, and the transport transcript
+  // is cryptoutil.TransportSession.Transcript() — a hash that commits to
+  // the ephemeral KEM messages of this connection.
+  //
+  // The transcript binding is what defeats a MITM that completes a separate
+  // KEM with each side: each leg has a different transcript, and the
+  // legitimate peer's signature only commits to its own transcript, so the
+  // attacker cannot forward a usable signature to either side.
+  //
+  // Receivers MUST recompute the transcript locally from their TransportSession
+  // and reject the handshake if the signature does not verify against
+  // public_key. There is no timestamp because freshness is provided by the
+  // ephemeral KEM, not by clock comparison.
   message SyncActionHandshake {
     int64 protocol_version = 1;
-    v1.PublicKey public_key = 2;
-    v1.SignedMessage instance_id = 3;
-    string pairing_secret = 4; // optional one-time secret from a pairing token, used to auto-authorize a new client
+    v1.PublicKey public_key = 2;       // sender's long-term ed25519 identity
+    string instance_id = 3;            // covered by signature below
+    string pairing_secret = 4;         // optional pairing token; covered by signature below
+    bytes signature = 5;               // ed25519(public_key, H(handshake bind input))
   }
 
   // SyncActionEncrypted wraps an encrypted SyncStreamItem.
