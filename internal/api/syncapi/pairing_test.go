@@ -189,14 +189,22 @@ func TestPairingTokenFlow(t *testing.T) {
 	// The client should successfully connect via the pairing token.
 	tryConnect(t, ctx, peerClient, peerClientConfig.Multihost.KnownHosts[0])
 
-	// Verify the host now has the client in its authorized_clients.
-	hostConfig, err := peerHost.configMgr.Get()
-	if err != nil {
-		t.Fatalf("failed to get host config: %v", err)
-	}
-	if len(hostConfig.Multihost.AuthorizedClients) != 1 {
-		t.Fatalf("expected 1 authorized client, got %d", len(hostConfig.Multihost.AuthorizedClients))
-	}
+	// The server pairs the client during its own runSync handshake handling, which
+	// runs concurrently with — and may finish slightly after — the client reaching
+	// CONNECTED state. Poll for the host config to reflect the pairing.
+	var hostConfig *v1.Config
+	testutil.Try(t, ctx, func() error {
+		var err error
+		hostConfig, err = peerHost.configMgr.Get()
+		if err != nil {
+			return fmt.Errorf("get host config: %w", err)
+		}
+		if len(hostConfig.Multihost.AuthorizedClients) != 1 {
+			return fmt.Errorf("expected 1 authorized client, got %d", len(hostConfig.Multihost.AuthorizedClients))
+		}
+		return nil
+	})
+
 	ac := hostConfig.Multihost.AuthorizedClients[0]
 	if ac.Keyid != identity2.Keyid {
 		t.Errorf("authorized client keyid = %q, want %q", ac.Keyid, identity2.Keyid)
