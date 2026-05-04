@@ -73,17 +73,17 @@ Once installed, access Backrest at `http://localhost:9898` (default port). First
 The install script downloads the latest release, drops the binary into `/usr/local/bin`, and sets up the appropriate auto-start integration (systemd or OpenRC on Linux; launchd on macOS):
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/garethgeorge/backrest/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/garethgeorge/backrest/main/install.sh | bash
 ```
 
 Flags go after `--`:
 
 ```sh
 # Bind to all interfaces (default: 127.0.0.1:9898)
-curl -fsSL https://raw.githubusercontent.com/garethgeorge/backrest/main/install.sh | sudo bash -s -- --allow-remote-access
+curl -fsSL https://raw.githubusercontent.com/garethgeorge/backrest/main/install.sh | bash -s -- --allow-remote-access
 
 # Uninstall (removes service, autostart entry, and /usr/local/bin/backrest)
-curl -fsSL https://raw.githubusercontent.com/garethgeorge/backrest/main/install.sh | sudo bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/garethgeorge/backrest/main/install.sh | bash -s -- --uninstall
 ```
 
 The service runs as your user by default (so config and data live under your `$HOME`). To install as `root` instead, pass `--root`. After install, access Backrest at `http://localhost:9898`.
