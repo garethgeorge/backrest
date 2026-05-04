@@ -18,7 +18,7 @@ The typical setup flow is:
 
 1. Configure both instances with unique **Instance IDs** (Settings > General)
 2. On the server, generate a **pairing token** with the desired permissions
-3. On the client, add the server as a **known host** using the pairing token
+3. On the client, add the server as a **known host** using the pairing token and the server's instance URL.
 4. The client connects and is automatically registered as an authorized client on the server
 
 ## Step 1: Generate a Pairing Token (Server)
@@ -71,7 +71,7 @@ Permissions (except Receive Shared Repos) can be scoped to specific repos or pla
 
 ## Shared Repos
 
-Marking a repo as "shared" on the server causes its configuration to be automatically pushed to all authorized clients with the `Receive Shared Repos` permission.
+Marking a repo as "shared" on the server causes its configuration to be automatically pushed to all authorized clients with the `Receive Shared Repos` permission. For a repo to be copied the client must both have the permission "Receive Shared Repos" on the host providing the repo, and must grant that host the "Receive Shared Repos" permission on the client as well (allowing the host to copy the repo into the client's config). The permission is required on both ends.
 
 To share a repo:
 
@@ -127,7 +127,7 @@ Server manages configuration for all clients:
 
 ## Troubleshooting
 
-**Client can't connect**: Verify the Instance URL is reachable from the client. The URL should include the port (default 9898). If using a reverse proxy, ensure it supports HTTP/2 and WebSocket connections (needed for the bidirectional sync stream).
+**Client can't connect**: Verify the Instance URL is reachable from the client. The URL should include the port (default 9898). If using a reverse proxy, ensure it supports HTTP/2 (needed for the bidirectional sync stream) and is configured to allow long polling requests (e.g. 10+ minutes). Disable any proxy timeouts or payload size limits that could interfere with the sync connection. Recommend using a modern reverse proxy like Caddy.
 
 **Pairing fails**: Check that the pairing token hasn't expired and hasn't exceeded its max uses. Generate a new token if needed.
 
