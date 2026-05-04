@@ -175,7 +175,9 @@ func TestPermissionSet_CheckPermissionForPlan(t *testing.T) {
 			},
 		},
 		{
-			name: "nil scopes permission",
+			// A grant with nil scopes is treated as a wildcard for scoped checks:
+			// it acts as a blanket allow-all for that permission type.
+			name: "nil scopes permission acts as wildcard",
 			permissions: []*v1.Multihost_Permission{
 				{
 					Type:   v1.Multihost_Permission_PERMISSION_READ_CONFIG,
@@ -191,6 +193,12 @@ func TestPermissionSet_CheckPermissionForPlan(t *testing.T) {
 				{
 					name:     "read plan1 with nil scopes",
 					permType: v1.Multihost_Permission_PERMISSION_READ_CONFIG,
+					planID:   "plan1",
+					expected: true,
+				},
+				{
+					name:     "different permission type returns false",
+					permType: v1.Multihost_Permission_PERMISSION_READ_OPERATIONS,
 					planID:   "plan1",
 					expected: false,
 				},

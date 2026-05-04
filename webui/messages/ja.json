@@ -458,5 +458,10 @@
   "add_repo_modal_field_prune_policy_heading": "Prune ポリシー",
   "add_repo_modal_field_prune_policy_help": "Prune操作は、参照されていないデータ（例：忘れられたスナップショットなど）をresticリポジトリから削除します。これはresticがストレージからデータを削除する唯一のタイミングです。Pruneは頻繁に実行すべきではなく、月に一度程度が良い目安です。",
   "add_repo_modal_field_check_policy_heading": "Check ポリシー",
-  "add_repo_modal_field_check_policy_help": "Check操作は、resticリポジトリの整合性を検証します。これらは頻繁に実行すべきではなく、月に一度程度が良い目安です。Checkは、最低限、リポジトリの構造を検証します。オプションで、Checkはパックデータを再ダウンロードしてチェックサムを検証することもできます。これは、ストレージがビット反転やサイレントデータ損失の影響を受けやすい場合に役立ちます。"
+  "add_repo_modal_field_check_policy_help": "Check操作は、resticリポジトリの整合性を検証します。これらは頻繁に実行すべきではなく、月に一度程度が良い目安です。Checkは、最低限、リポジトリの構造を検証します。オプションで、Checkはパックデータを再ダウンロードしてチェックサムを検証することもできます。これは、ストレージがビット反転やサイレントデータ損失の影響を受けやすい場合に役立ちます。",
+  "add_repo_modal_field_forget_policy": "Forget ポリシー",
+  "add_repo_modal_field_forget_policy_help": "全てのプランに単一の保持ポリシーを適用する、リポジトリ全体での forget を任意でスケジュール設定できます。有効にすると、プランごとの保持ポリシーは無効化されます。",
+  "add_repo_modal_retention_policy_label": "保持ポリシー (リポジトリレベル)",
+  "add_repo_modal_retention_policy_help": "リポジトリレベルで上記のスケジュールに従って実行され、プランごとにグループ化されたバックアップに適用される保持ポリシーです。スケジュールを無効にすると、各バックアップ操作の後にプランごとに保持ポリシーが適用されます。",
+  "add_plan_modal_retention_managed_by_repo": "保持設定はリポジトリの Forget ポリシーを介してリポジトリレベルで管理されています。保持設定を変更するにはリポジトリを編集してください。"
 }

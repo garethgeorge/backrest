@@ -54,20 +54,40 @@ message Multihost {
   message Permission {
     enum Type {
       PERMISSION_UNKNOWN = 0;
-      
-      // When granted to a knownHost the local instance will push local changes to that known host.
+
+      // Granted on a knownHost (by client → host): the local instance pushes
+      //   operations for in-scope repos/plans up to that known host, and
+      //   exposes those resource IDs/GUIDs in the resource list it sends.
+      // Granted on an authorizedClient: no effect. The host never pushes
+      //   operations down to clients.
       PERMISSION_READ_OPERATIONS = 1;
 
-      // When granted to an authorizedClient, the client will be able to pull the configuration from the server.
-      // When granted to a knownHost, the known host will be able to pull configuration from the client.
-      PERMISSION_READ_CONFIG = 2; // read configuration for the resource in scope.
+      // Granted on an authorizedClient (by host → client): in-scope repos/plans
+      //   are included in the host's RemoteConfig and resource list sent to
+      //   the client (read-only view of host config).
+      // Granted on a knownHost (by client → host): in-scope repos/plans are
+      //   included in the client's RemoteConfig and resource list sent to the
+      //   host (read-only view of client config).
+      PERMISSION_READ_CONFIG = 2;
 
-      // When granted to an authorizedClient, the client will be able to write the configuration to the server.
-      // When granted to a knownHost, the known host will be able to write configuration.
-      PERMISSION_READ_WRITE_CONFIG = 3; // read and write configuration for the resource in scope.
+      // Granted on an authorizedClient (by host → client): same view as
+      //   READ_CONFIG. There is no client→host SetConfig path, so the "write"
+      //   half is currently a no-op on the host side.
+      // Granted on a knownHost (by client → host): everything READ_CONFIG does,
+      //   plus the client accepts SetConfig from the host for in-scope IDs
+      //   (create/update/delete plans, create/update/delete repos).
+      PERMISSION_READ_WRITE_CONFIG = 3;
 
-      // When granted to an authorizedClient, the server will push repos marked as 'shared' to the client.
-      // This permission does not use scopes — if present, all shared repos are pushed.
+      // Both peers must grant this for shared repos to flow:
+      //   - Granted on an authorizedClient (by host → client): host pushes
+      //     in-scope repos marked as 'shared' to that client via SetConfig.
+      //     A scopeless grant acts as a wildcard (push every shared repo);
+      //     a scoped grant restricts which shared repos are pushed.
+      //   - Granted on a knownHost (by client → host): client accepts pushed
+      //     shared repos that are new or already owned by this host. Always
+      //     evaluated scope-lessly on the client — scopes are ignored here
+      //     because the client doesn't pre-know the incoming repo IDs.
+      // If either side is missing the grant, no shared repos are transferred.
       PERMISSION_RECEIVE_SHARED_REPOS = 4;
     }
     // Scopes are any of '*', 'repo:<repo_id>' or 'plan:<plan_id>','-repo:<repo_id>','-plan:<plan_id>'.

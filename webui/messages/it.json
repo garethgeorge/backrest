@@ -470,5 +470,10 @@
   "add_plan_modal_schedule_time_zone": "Time zone or reference point for the schedule.",
   "add_plan_modal_schedule_time_local": "Local Time",
   "add_plan_modal_schedule_time_utc": "UTC",
-  "add_plan_modal_schedule_time_last": "Last Run Time"
+  "add_plan_modal_schedule_time_last": "Last Run Time",
+  "add_repo_modal_field_forget_policy": "Politica Forget",
+  "add_repo_modal_field_forget_policy_help": "Pianifica opzionalmente un forget a livello di repository che applica una singola politica di retention a tutti i piani. Quando abilitato, le politiche di retention per singolo piano sono disabilitate.",
+  "add_repo_modal_retention_policy_label": "Politica di Retention (Livello Repo)",
+  "add_repo_modal_retention_policy_help": "Politica di retention applicata ai backup raggruppati per piano, eseguita secondo la pianificazione sopra indicata a livello di repository. Disabilita la pianificazione per applicare invece una politica di retention per piano dopo ogni operazione di backup.",
+  "add_plan_modal_retention_managed_by_repo": "La retention è gestita a livello di repository tramite la Politica Forget del repo. Modifica il repository per cambiare le impostazioni di retention."
 }

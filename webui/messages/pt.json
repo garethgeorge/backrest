@@ -458,5 +458,10 @@
 	"add_plan_modal_schedule_time_zone": "Fuso horário ou ponto de referência para o agendamento.",
 	"add_plan_modal_schedule_time_local": "Local",
 	"add_plan_modal_schedule_time_utc": "UTC",
-	"add_plan_modal_schedule_time_last": "Hora da Última Execução"
+	"add_plan_modal_schedule_time_last": "Hora da Última Execução",
+	"add_repo_modal_field_forget_policy": "Política de Forget",
+	"add_repo_modal_field_forget_policy_help": "Opcionalmente agende um forget em todo o repositório que aplica uma única política de retenção em todos os planos. Quando ativado, as políticas de retenção por plano são desativadas.",
+	"add_repo_modal_retention_policy_label": "Política de Retenção (Nível do Repositório)",
+	"add_repo_modal_retention_policy_help": "Política de retenção aplicada a backups agrupados por plano, executada no agendamento acima ao nível do repositório. Desative o agendamento para aplicar uma política de retenção por plano após cada operação de backup.",
+	"add_plan_modal_retention_managed_by_repo": "A retenção é gerenciada ao nível do repositório através da Política de Forget do repositório. Edite o repositório para alterar as configurações de retenção."
 }

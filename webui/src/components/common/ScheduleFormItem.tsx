@@ -53,12 +53,17 @@ export const ScheduleFormItem = ({
   // Ensure we have a valid object to work with
   const schedule = value || {};
 
-  // Initialize clock if missing
+  // Initialize clock if missing. Use the enum NAME (string) to match the
+  // JSON form-data convention produced by protobuf-es toJson; mixing in a
+  // number here causes fromJson to reject the field on submit.
   useEffect(() => {
-    if (schedule && schedule.clock === undefined) {
-      onChange({ ...schedule, clock: defaults.clock });
+    if (schedule && (schedule.clock === undefined || schedule.clock === null)) {
+      const name = Schedule_ClockSchema.values.find(
+        (v) => v.number === defaults.clock,
+      )?.name;
+      if (name) onChange({ ...schedule, clock: name });
     }
-  }, [schedule.clock]); // Check dependency carefully to avoid loops, maybe better to check on render or mount
+  }, [schedule.clock]);
 
   const determineMode = (): SchedulingMode => {
     if (!schedule) return "";
@@ -72,7 +77,11 @@ export const ScheduleFormItem = ({
   const mode = determineMode();
 
   const handleModeChange = (newMode: string) => {
-    let newSchedule: any = { clock: schedule.clock };
+    const clock =
+      schedule.clock ??
+      Schedule_ClockSchema.values.find((v) => v.number === defaults.clock)
+        ?.name;
+    let newSchedule: any = { clock };
 
     if (newMode === "maxFrequencyDays") {
       newSchedule.maxFrequencyDays = defaults.maxFrequencyDays;
@@ -92,11 +101,6 @@ export const ScheduleFormItem = ({
     // Actually standard RadioGroup onValueChange gives string
     // But let's check basic RadioGroup usage
   };
-
-  // Helper for clock
-  const currentClockName = clockEnumValueToString(
-    schedule.clock || defaults.clock,
-  );
 
   return (
     <Stack gap={4}>
@@ -182,11 +186,12 @@ export const ScheduleFormItem = ({
               <RadioGroup
                 value={clockEnumValueToString(schedule.clock)}
                 onValueChange={(e) => {
-                  // find enum value
+                  // Store the enum NAME (string) so the value round-trips
+                  // through fromJson on submit.
                   const clk = Schedule_ClockSchema.values.find(
                     (v) => v.name === e.value,
                   );
-                  if (clk) onChange({ ...schedule, clock: clk.number });
+                  if (clk) onChange({ ...schedule, clock: clk.name });
                 }}
               >
                 <Stack direction="row" gap={4}>
@@ -208,10 +213,10 @@ export const ScheduleFormItem = ({
   );
 };
 
-const clockEnumValueToString = (clock: Schedule_Clock | string | number) => {
+const clockEnumValueToString = (
+  clock: Schedule_Clock | string | number | undefined,
+) => {
+  if (clock === undefined || clock === null) return undefined;
   if (typeof clock === "string") return clock;
-  return (
-    Schedule_ClockSchema.values.find((v) => v.number === clock)?.name ||
-    "CLOCK_LOCAL"
-  );
+  return Schedule_ClockSchema.values.find((v) => v.number === clock)?.name;
 };

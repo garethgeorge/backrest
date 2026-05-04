@@ -458,5 +458,10 @@
 	"add_plan_modal_schedule_time_zone": "शेड्यूल के लिए समय क्षेत्र या संदर्भ बिंदु।",
 	"add_plan_modal_schedule_time_local": "स्थानीय",
 	"add_plan_modal_schedule_time_utc": "UTC",
-	"add_plan_modal_schedule_time_last": "पिछली रनिंग का समय"
+	"add_plan_modal_schedule_time_last": "पिछली रनिंग का समय",
+	"add_repo_modal_field_forget_policy": "Forget पॉलिसी",
+	"add_repo_modal_field_forget_policy_help": "वैकल्पिक रूप से एक repo-व्यापी forget शेड्यूल करें जो सभी प्लान्स पर एक एकल retention पॉलिसी लागू करता है। सक्षम होने पर, प्रति-प्लान retention नीतियां अक्षम हो जाती हैं।",
+	"add_repo_modal_retention_policy_label": "Retention पॉलिसी (Repo-स्तर)",
+	"add_repo_modal_retention_policy_help": "प्लान द्वारा समूहीकृत बैकअप पर लागू retention पॉलिसी, जो repo स्तर पर ऊपर दिए गए शेड्यूल पर चलती है। प्रत्येक बैकअप ऑपरेशन के बाद प्रति-प्लान retention पॉलिसी लागू करने के लिए शेड्यूल को अक्षम करें।",
+	"add_plan_modal_retention_managed_by_repo": "Retention को रिपॉजिटरी स्तर पर repo की Forget पॉलिसी के माध्यम से प्रबंधित किया जाता है। retention सेटिंग्स बदलने के लिए रिपॉजिटरी को संपादित करें।"
 }

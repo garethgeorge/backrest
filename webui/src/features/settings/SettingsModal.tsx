@@ -28,6 +28,7 @@ import {
   UserSchema,
   MultihostSchema,
   Multihost_PeerSchema,
+  Multihost_Permission_Type,
 } from "../../../gen/ts/v1/config_pb";
 import { GeneratePairingTokenRequestSchema } from "../../../gen/ts/v1/service_pb";
 import { useSyncStates } from "../../state/peerStates";
@@ -128,6 +129,15 @@ export const SettingsModal = () => {
           label: tokenLabel,
           ttlSeconds: BigInt(parseInt(tokenTtl)),
           maxUses: tokenMaxUses,
+          // Newly paired clients receive only the right to be pushed shared
+          // repos. The host owner can edit the authorized_client entry after
+          // pairing to grant additional permissions if needed.
+          permissions: [
+            {
+              type: Multihost_Permission_Type.PERMISSION_RECEIVE_SHARED_REPOS,
+              scopes: ["*"],
+            },
+          ],
         }),
       );
       setGeneratedToken(resp.token);
@@ -395,6 +405,18 @@ export const SettingsModal = () => {
               <Text fontStyle="italic" fontSize="sm" color="red.500">
                 {m.settings_multihost_warning()}
               </Text>
+              <Text fontSize="sm">
+                See the{" "}
+                <a
+                  href="https://garethgeorge.github.io/backrest/docs/multihost"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: "underline" }}
+                >
+                  multihost sync documentation
+                </a>{" "}
+                for setup details.
+              </Text>
 
               <Field
                 label={m.settings_multihost_identity()}
@@ -544,6 +566,7 @@ export const SettingsModal = () => {
               peerStates={peerStates}
               config={config}
               showInstanceUrl={false}
+              peerType="authorizedClient"
             />
           </SectionCard>
 
@@ -826,6 +849,7 @@ const PeerFormList = ({
   peerStates,
   config,
   showInstanceUrl,
+  peerType,
 }: any) => {
   const handleRemove = (index: number) => {
     const next = [...items];
@@ -856,6 +880,7 @@ const PeerFormList = ({
           peerStates={peerStates}
           showInstanceUrl={showInstanceUrl}
           config={config}
+          peerType={peerType}
         />
       ))}
     </Stack>
@@ -869,6 +894,7 @@ const PeerFormListItem = ({
   peerStates,
   showInstanceUrl,
   config,
+  peerType,
 }: any) => {
   const peerState = peerStates.find(
     (state: any) => state.peerKeyid === item.keyId,
@@ -925,13 +951,16 @@ const PeerFormListItem = ({
           permissions={item.permissions || []}
           onUpdate={(perms: any) => updateItem("permissions", perms)}
           config={config}
+          peerType={peerType}
         />
       </Stack>
     </Box>
   );
 };
 
-const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
+const PeerPermissionsTile = ({ permissions, onUpdate, config, peerType }: any) => {
+  const isAuthorizedClient = peerType === "authorizedClient";
+
   const repoOptions = createListCollection({
     items: [
       { label: m.settings_permission_scope_all(), value: "*" },
@@ -942,32 +971,55 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
     ],
   });
 
+  // Allowed permission types depend on direction. See proto/v1/config.proto:
+  //   - Known host (client → host): READ_OPERATIONS lets us push our ops up,
+  //     READ_WRITE_CONFIG lets the host edit our config in scope,
+  //     RECEIVE_SHARED_REPOS lets us accept shared repos pushed by the host.
+  //   - Authorized client (host → client): only RECEIVE_SHARED_REPOS does
+  //     anything host-side today (it gates which shared repos we push and
+  //     supports per-repo scopes). The other enum values exist on the proto
+  //     but are no-ops on the host, so we don't expose them in the UI.
   // Permission type values must match what toJson produces for enum fields (string names, not numbers).
-  const permissionTypeOptions = createListCollection({
-    items: [
-      {
-        label: m.settings_permission_edit_repo(),
-        value: "PERMISSION_READ_WRITE_CONFIG",
-      },
-      {
-        label: m.settings_permission_read_ops(),
-        value: "PERMISSION_READ_OPERATIONS",
-      },
-      {
-        label: "Receive shared repos",
-        value: "PERMISSION_RECEIVE_SHARED_REPOS",
-      },
-    ],
-  });
+  const permissionTypeItems = isAuthorizedClient
+    ? [
+        {
+          label: "Push shared repos",
+          value: "PERMISSION_RECEIVE_SHARED_REPOS",
+        },
+      ]
+    : [
+        {
+          label: m.settings_permission_edit_repo(),
+          value: "PERMISSION_READ_WRITE_CONFIG",
+        },
+        {
+          label: m.settings_permission_read_ops(),
+          value: "PERMISSION_READ_OPERATIONS",
+        },
+        {
+          label: "Receive shared repos",
+          value: "PERMISSION_RECEIVE_SHARED_REPOS",
+        },
+      ];
+  const permissionTypeOptions = createListCollection({ items: permissionTypeItems });
+
+  // Hide the scope picker when scopes are meaningless for this direction:
+  //   - On a known host, RECEIVE_SHARED_REPOS is evaluated scope-lessly by the
+  //     client (we don't pre-know the incoming repo IDs).
+  //   - On an authorized client, RECEIVE_SHARED_REPOS supports scopes (the host
+  //     filters which shared repos to push), so the selector stays visible.
+  const showScopesFor = (permType: string) =>
+    permType !== "PERMISSION_RECEIVE_SHARED_REPOS" || isAuthorizedClient;
 
   const handleAdd = () => {
-    onUpdate([
-      ...permissions,
-      {
-        type: "PERMISSION_READ_OPERATIONS",
-        scopes: ["*"],
-      },
-    ]);
+    const defaultType = isAuthorizedClient
+      ? "PERMISSION_RECEIVE_SHARED_REPOS"
+      : "PERMISSION_READ_OPERATIONS";
+    const next: any = { type: defaultType };
+    if (showScopesFor(defaultType)) {
+      next.scopes = ["*"];
+    }
+    onUpdate([...permissions, next]);
   };
 
   const handleRemove = (index: number) => {
@@ -1023,7 +1075,7 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config }: any) => {
               </SelectRoot>
             </Field>
 
-            {perm.type !== "PERMISSION_RECEIVE_SHARED_REPOS" && (
+            {showScopesFor(perm.type) && (
               <Field label={m.settings_peer_permission_scopes()} flex={1}>
                 <SelectRoot
                   multiple

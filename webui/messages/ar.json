@@ -458,5 +458,10 @@
 	"add_plan_modal_schedule_time_zone": "المنطقة الزمنية أو النقطة المرجعية للجدول.",
 	"add_plan_modal_schedule_time_local": "محلي",
 	"add_plan_modal_schedule_time_utc": "UTC",
-	"add_plan_modal_schedule_time_last": "وقت آخر تشغيل"
+	"add_plan_modal_schedule_time_last": "وقت آخر تشغيل",
+	"add_repo_modal_field_forget_policy": "سياسة Forget",
+	"add_repo_modal_field_forget_policy_help": "قم بجدولة عملية forget اختيارية شاملة للمستودع تطبق سياسة احتفاظ واحدة على جميع الخطط. عند تفعيلها، يتم تعطيل سياسات الاحتفاظ الخاصة بكل خطة.",
+	"add_repo_modal_retention_policy_label": "سياسة الاحتفاظ (على مستوى المستودع)",
+	"add_repo_modal_retention_policy_help": "سياسة الاحتفاظ المطبقة على النسخ الاحتياطية المجمعة حسب الخطة، والتي يتم تشغيلها وفقاً للجدول الزمني أعلاه على مستوى المستودع. قم بتعطيل الجدول الزمني لتطبيق سياسة الاحتفاظ لكل خطة بعد كل عملية نسخة احتياطية (Backup) بدلاً من ذلك.",
+	"add_plan_modal_retention_managed_by_repo": "تتم إدارة الاحتفاظ على مستوى المستودع عبر سياسة Forget الخاصة بالمستودع. قم بتحرير المستودع لتغيير إعدادات الاحتفاظ."
 }

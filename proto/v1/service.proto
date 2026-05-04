@@ -124,6 +124,7 @@ message DoRepoTaskRequest {
     TASK_CHECK = 3;
     TASK_STATS = 4;
     TASK_UNLOCK = 5;
+    TASK_FORGET = 6;
   }
   Task task = 2;
 }

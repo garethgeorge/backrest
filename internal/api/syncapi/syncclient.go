@@ -116,25 +116,41 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 		}()
 
 		connectErr := cmdStream.ConnectStream(ctx, c.client.Sync(ctx), true /* isInitiator: client side */)
-		if connectErr != nil {
-			c.l.Sugar().Infof("lost stream connection to peer %q (%s): %v", c.peer.InstanceId, c.peer.Keyid, connectErr)
-			var syncErr *SyncError
-			state := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
-			if state == nil {
-				state = newPeerState(c.peer.InstanceId, c.peer.Keyid)
-			}
-			state.LastHeartbeat = time.Now()
-			if errors.As(connectErr, &syncErr) {
-				state.ConnectionState = syncErr.State
-				state.ConnectionStateMessage = syncErr.Message.Error()
-			} else {
-				state.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_ERROR_INTERNAL
-				state.ConnectionStateMessage = connectErr.Error()
-			}
-			c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, state)
-		}
 
+		// Wait for the runSync goroutine (and its deferred OnConnectionDisconnected)
+		// to fully exit before publishing peer state, so we don't race with it.
 		wg.Wait()
+
+		// Always publish a non-CONNECTED peer state on session exit, even when
+		// ConnectStream returns nil. ConnectStream can legitimately return nil if
+		// the recv goroutine takes the inner ctx.Done() branch in cmdstreamutil.go
+		// before SendErrorAndTerminate fires; without this write the dashboard would
+		// be stuck showing CONNECTED until the next successful reconnect.
+		state := c.mgr.peerStateManager.GetPeerState(c.peer.Keyid).Clone()
+		if state == nil {
+			state = newPeerState(c.peer.InstanceId, c.peer.Keyid)
+		}
+		state.LastHeartbeat = time.Now()
+		var syncErr *SyncError
+		switch {
+		case connectErr == nil:
+			state.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_DISCONNECTED
+			state.ConnectionStateMessage = "disconnected"
+		case errors.As(connectErr, &syncErr):
+			c.l.Sugar().Infof("lost stream connection to peer %q (%s): %v", c.peer.InstanceId, c.peer.Keyid, connectErr)
+			state.ConnectionState = syncErr.State
+			state.ConnectionStateMessage = syncErr.Message.Error()
+		case errors.Is(connectErr, context.Canceled):
+			// Parent context cancelled — sync is shutting down or restarting due to
+			// a config change. Surface as a clean disconnect rather than an error.
+			state.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_DISCONNECTED
+			state.ConnectionStateMessage = "disconnected"
+		default:
+			c.l.Sugar().Infof("lost stream connection to peer %q (%s): %v", c.peer.InstanceId, c.peer.Keyid, connectErr)
+			state.ConnectionState = v1sync.ConnectionState_CONNECTION_STATE_ERROR_INTERNAL
+			state.ConnectionStateMessage = connectErr.Error()
+		}
+		c.mgr.peerStateManager.SetPeerState(c.peer.Keyid, state)
 
 		// Reset reconnect backoff if the session lasted long enough to be considered a real success,
 		// rather than a handshake that failed immediately. Using reconnectDelay as the threshold means
@@ -148,8 +164,13 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 			backoff := time.Duration(1<<min(c.reconnectAttempts, 5)) * c.reconnectDelay // 2^reconnectAttempts, max 32
 			delay += backoff
 		}
-		if delay < 0 {
-			delay = 0
+		// Always wait at least 1s before reconnecting. Gives the runtime time to
+		// settle (e.g. the SyncManager replacing this client after a config change,
+		// or a clean shutdown propagating through ctx) so we don't churn through
+		// reconnect attempts that race with the supervisor.
+		const minReconnectDelay = 1 * time.Second
+		if delay < minReconnectDelay {
+			delay = minReconnectDelay
 		}
 		c.l.Sugar().Infof("disconnected, will retry after %v (attempt %d)", delay, c.reconnectAttempts)
 		c.reconnectAttempts++

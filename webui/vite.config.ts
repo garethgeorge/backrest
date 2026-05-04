@@ -30,13 +30,11 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       target: 'esnext',
       minify: 'esbuild',
-      chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
           manualChunks(id) {
             if (!id.includes('node_modules')) return;
             if (id.includes('/recharts/') || id.includes('/d3-') || id.includes('/victory-vendor/')) return 'vendor-recharts';
-            return 'vendor';
           },
         },
       },

@@ -468,5 +468,10 @@
   "add_plan_modal_schedule_time_zone": "Zeitzone oder Referenzpunkt für den Zeitplan.",
   "add_plan_modal_schedule_time_local": "Lokal",
   "add_plan_modal_schedule_time_utc": "UTC",
-  "add_plan_modal_schedule_time_last": "Letzte Ausführungszeit"
+  "add_plan_modal_schedule_time_last": "Letzte Ausführungszeit",
+  "add_repo_modal_field_forget_policy": "Forget-Richtlinie",
+  "add_repo_modal_field_forget_policy_help": "Optional ein Repository-weites Forget planen, das eine einzelne Retention-Richtlinie auf alle Pläne anwendet. Wenn aktiviert, werden die Retention-Richtlinien pro Plan deaktiviert.",
+  "add_repo_modal_retention_policy_label": "Retention-Richtlinie (Repo-Ebene)",
+  "add_repo_modal_retention_policy_help": "Retention-Richtlinie, die auf nach Plan gruppierte Backups angewendet wird, ausgeführt nach dem obigen Zeitplan auf Repo-Ebene. Deaktivieren Sie den Zeitplan, um stattdessen eine Retention-Richtlinie pro Plan nach jedem Backup-Vorgang anzuwenden.",
+  "add_plan_modal_retention_managed_by_repo": "Die Retention wird auf Repository-Ebene über die Forget-Richtlinie des Repos verwaltet. Bearbeiten Sie das Repository, um die Retention-Einstellungen zu ändern."
 }

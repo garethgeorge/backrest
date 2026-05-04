@@ -161,7 +161,11 @@ func (p *PermissionSet) CheckPermissionForRepo(repoID string, permType ...v1.Mul
 	return false
 }
 
-// cachedCheck is a generic helper for cached scope checks
+// cachedCheck is a generic helper for cached scope checks.
+// A scopeless grant of `pt` (perm.Scopes == nil at construction time) is
+// treated as a wildcard: the check returns true for any id. This lets a
+// permission be granted either narrowly (with scopes) or as a blanket
+// allow-all (scope-less), and lets scoped check sites accept both forms.
 func (p *PermissionSet) cachedCheck(
 	id string,
 	pt v1.Multihost_Permission_Type,
@@ -180,7 +184,9 @@ func (p *PermissionSet) cachedCheck(
 
 	// compute without locks (perms is immutable; ScopeSet methods are read-only)
 	var res bool
-	if scopeSet, ok := p.perms[pt]; ok {
+	if _, ok := p.scopelessPerms[pt]; ok {
+		res = true
+	} else if scopeSet, ok := p.perms[pt]; ok {
 		res = contains(scopeSet, id)
 	}
 

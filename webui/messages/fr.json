@@ -458,5 +458,10 @@
 	"add_plan_modal_schedule_time_zone": "Fuseau horaire ou point de référence pour la planification.",
 	"add_plan_modal_schedule_time_local": "Locale",
 	"add_plan_modal_schedule_time_utc": "UTC",
-	"add_plan_modal_schedule_time_last": "Heure de la dernière exécution"
+	"add_plan_modal_schedule_time_last": "Heure de la dernière exécution",
+	"add_repo_modal_field_forget_policy": "Politique de forget",
+	"add_repo_modal_field_forget_policy_help": "Planifiez facultativement un forget à l'échelle du dépôt qui applique une seule politique de rétention à tous les plans. Lorsqu'elle est activée, les politiques de rétention par plan sont désactivées.",
+	"add_repo_modal_retention_policy_label": "Politique de rétention (niveau dépôt)",
+	"add_repo_modal_retention_policy_help": "Politique de rétention appliquée aux sauvegardes groupées par plan, exécutée selon la planification ci-dessus au niveau du dépôt. Désactivez la planification pour appliquer à la place une politique de rétention par plan après chaque opération de sauvegarde.",
+	"add_plan_modal_retention_managed_by_repo": "La rétention est gérée au niveau du dépôt via la politique de forget du dépôt. Modifiez le dépôt pour changer les paramètres de rétention."
 }

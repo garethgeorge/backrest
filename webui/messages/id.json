@@ -458,5 +458,10 @@
 	"add_plan_modal_schedule_time_zone": "Zona waktu atau titik referensi untuk jadwal.",
 	"add_plan_modal_schedule_time_local": "Lokal",
 	"add_plan_modal_schedule_time_utc": "UTC",
-	"add_plan_modal_schedule_time_last": "Waktu Eksekusi Terakhir"
+	"add_plan_modal_schedule_time_last": "Waktu Eksekusi Terakhir",
+	"add_repo_modal_field_forget_policy": "Kebijakan Forget",
+	"add_repo_modal_field_forget_policy_help": "Opsional menjadwalkan forget di seluruh repositori yang menerapkan satu kebijakan retensi tunggal di semua plan. Saat diaktifkan, kebijakan retensi per-plan akan dinonaktifkan.",
+	"add_repo_modal_retention_policy_label": "Kebijakan Retensi (Tingkat Repo)",
+	"add_repo_modal_retention_policy_help": "Kebijakan retensi yang diterapkan pada backup yang dikelompokkan berdasarkan plan, dijalankan sesuai jadwal di atas pada tingkat repo. Nonaktifkan jadwal untuk menerapkan kebijakan retensi per-plan setelah setiap operasi backup.",
+	"add_plan_modal_retention_managed_by_repo": "Retensi dikelola pada tingkat repositori melalui Kebijakan Forget repo. Edit repositori untuk mengubah pengaturan retensi."
 }

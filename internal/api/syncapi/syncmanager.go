@@ -268,18 +268,28 @@ func (m *SyncManager) runSyncWithPeerInternal(ctx context.Context, config *v1.Co
 	return nil
 }
 
-// registerConnectedPeer registers a connected peer's stream handle.
-func (m *SyncManager) registerConnectedPeer(keyID string, handle *connectedPeerHandle) {
+// registerConnectedPeer registers a connected peer's stream handle, atomically
+// swapping out any existing handle under the same key. Returns the displaced
+// handle (or nil if none) so the caller can terminate the old session.
+func (m *SyncManager) registerConnectedPeer(keyID string, handle *connectedPeerHandle) *connectedPeerHandle {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	prev := m.connectedPeers[keyID]
 	m.connectedPeers[keyID] = handle
+	return prev
 }
 
-// unregisterConnectedPeer removes a connected peer's stream handle.
-func (m *SyncManager) unregisterConnectedPeer(keyID string) {
+// unregisterConnectedPeer removes a connected peer's stream handle, but only if
+// the entry still points at `handle` (compare-and-swap style). This guards
+// against a stale cleanup from a session that was displaced by a newer
+// connection wiping out the replacement: if the map entry has already been
+// swapped to a newer handle, the delete is a no-op.
+func (m *SyncManager) unregisterConnectedPeer(keyID string, handle *connectedPeerHandle) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.connectedPeers, keyID)
+	if m.connectedPeers[keyID] == handle {
+		delete(m.connectedPeers, keyID)
+	}
 }
 
 // GetConnectedPeer returns the handle for a connected peer, or nil if not connected.

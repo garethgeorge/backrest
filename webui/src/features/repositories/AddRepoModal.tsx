@@ -98,6 +98,29 @@ const repoDefaults = create(RepoSchema, {
       clock: Schedule_Clock.LAST_RUN_TIME,
     },
   },
+  // ForgetPolicy defaults to a disabled schedule. Per-plan retention
+  // policies handle the common case; the repo-level forget is opt-in.
+  // We still seed a clock and a reasonable retention so the UI doesn't
+  // start with empty/zero fields when the user enables it.
+  forgetPolicy: {
+    schedule: {
+      schedule: {
+        case: "disabled",
+        value: true,
+      },
+      clock: Schedule_Clock.LAST_RUN_TIME,
+    },
+    retention: {
+      policy: {
+        case: "policyTimeBucketed",
+        value: {
+          hourly: 24,
+          daily: 30,
+          monthly: 12,
+        },
+      },
+    },
+  },
   commandPrefix: {
     ioNice: CommandPrefix_IONiceLevel.IO_DEFAULT,
     cpuNice: CommandPrefix_CPUNiceLevel.CPU_DEFAULT,
@@ -775,8 +798,13 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
                   checked={getField(["shared"]) || false}
                   onChange={(v) => updateField(["shared"], v)}
                   label="Shared"
-                  hint="Automatically push this repo's configuration to all authorized clients with read permission."
+                  hint="If using multihost management, enables sharing this repo's configuration to all authorized clients with read permission."
                 />
+                {getField(["shared"]) && (
+                  <CText fontSize="sm" color="orange.500">
+                    {m.add_repo_modal_shared_forget_hint()}
+                  </CText>
+                )}
               </Stack>
             </SectionCard>
           </TwoPaneSection>
@@ -974,12 +1002,17 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
                 {(() => {
                   const sched = getField(["forgetPolicy", "schedule"]);
                   return sched && !sched.disabled ? (
-                    <RetentionPolicyView
-                      retention={getField(["forgetPolicy", "retention"])}
-                      onChange={(v: any) =>
-                        updateField(["forgetPolicy", "retention"], v)
-                      }
-                    />
+                    <Field
+                      label={m.add_repo_modal_retention_policy_label()}
+                      helperText={m.add_repo_modal_retention_policy_help()}
+                    >
+                      <RetentionPolicyView
+                        retention={getField(["forgetPolicy", "retention"])}
+                        onChange={(v: any) =>
+                          updateField(["forgetPolicy", "retention"], v)
+                        }
+                      />
+                    </Field>
                   ) : null;
                 })()}
               </Stack>

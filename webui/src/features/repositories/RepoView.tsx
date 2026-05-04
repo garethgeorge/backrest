@@ -114,8 +114,21 @@ export const RepoView = ({
     }
   };
 
+  const handleForgetNow = async () => {
+    try {
+      await backrestService.doRepoTask(
+        create(DoRepoTaskRequestSchema, {
+          repoId: repo.id!,
+          task: DoRepoTaskRequest_Task.FORGET,
+        }),
+      );
+    } catch (e: any) {
+      alerts.error(formatErrorAlert(e, m.repo_error_forget()));
+    }
+  };
+
   // Gracefully handle deletions by checking if the plan is still in the config.
-  let repoInConfig = config?.repos?.find((r) => r.id === repo.id);
+  const repoInConfig = config?.repos?.find((r) => r.id === repo.id);
   if (!repoInConfig) {
     return (
       <Box>
@@ -165,6 +178,11 @@ export const RepoView = ({
               <MenuItem value="prune" onClick={handlePruneNow}>
                 {m.repo_button_prune()}
               </MenuItem>
+              {repoInConfig.forgetPolicy && (
+                <MenuItem value="forget" onClick={handleForgetNow}>
+                  {m.repo_button_forget()}
+                </MenuItem>
+              )}
               <MenuItem value="check" onClick={handleCheckNow}>
                 {m.repo_button_check()}
               </MenuItem>

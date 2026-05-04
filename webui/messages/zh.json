@@ -470,5 +470,10 @@
   "add_plan_modal_schedule_time_zone": "调度的时区或参考点。",
   "add_plan_modal_schedule_time_local": "本地",
   "add_plan_modal_schedule_time_utc": "UTC",
-  "add_plan_modal_schedule_time_last": "上次运行时间"
+  "add_plan_modal_schedule_time_last": "上次运行时间",
+  "add_repo_modal_field_forget_policy": "Forget 策略",
+  "add_repo_modal_field_forget_policy_help": "可选地计划一个存储库范围的 Forget 操作，将单一保留策略应用于所有计划。启用后，将禁用按计划设置的保留策略。",
+  "add_repo_modal_retention_policy_label": "保留策略 (存储库级别)",
+  "add_repo_modal_retention_policy_help": "保留策略应用于按计划分组的备份，并在存储库级别按上述计划运行。禁用此计划则改为在每次备份操作后应用按计划的保留策略。",
+  "add_plan_modal_retention_managed_by_repo": "保留策略通过存储库的 Forget 策略在存储库级别管理。请编辑存储库以修改保留设置。"
 }

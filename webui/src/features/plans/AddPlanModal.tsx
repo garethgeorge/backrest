@@ -85,14 +85,14 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
   const showModal = useShowModal();
   const [config, setConfig] = useConfig();
 
-  const selectedRepo = config?.repos.find((r) => r.id === (template?.repo || formData?.repo));
-  const repoHasScheduledForget = !!selectedRepo?.forgetPolicy?.schedule;
-
   const [formData, setFormData] = useState<any>(
     template
       ? toJson(PlanSchema, template, { alwaysEmitImplicit: true })
       : toJson(PlanSchema, planDefaults, { alwaysEmitImplicit: true }),
   );
+
+  const selectedRepo = config?.repos.find((r) => r.id === (template?.repo || formData?.repo));
+  const repoHasScheduledForget = !!selectedRepo?.forgetPolicy?.schedule;
 
   useEffect(() => {
     setFormData(

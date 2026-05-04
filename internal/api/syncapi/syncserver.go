@@ -114,6 +114,7 @@ type syncSessionHandlerServer struct {
 
 	peer        *v1.Multihost_Peer // The authorized client peer this handler is associated with, set during OnConnectionEstablished.
 	permissions *permissions.PermissionSet
+	handle      *connectedPeerHandle // The handle registered with the manager; used so unregister can CAS against it.
 
 	mapper *remoteOpIDMapper
 
@@ -161,11 +162,17 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 	h.l.Sugar().Infof("accepted a connection from client instance ID %q", h.peer.InstanceId)
 
 	// Register this peer's stream handle so the API layer can send messages to it.
-	h.mgr.registerConnectedPeer(h.peer.Keyid, &connectedPeerHandle{
+	// If a stream is already registered for this key ID (e.g. the previous session
+	// hasn't noticed it's dead yet), kick it so the newest connection wins.
+	h.handle = &connectedPeerHandle{
 		stream:      stream,
 		peer:        h.peer,
 		permissions: h.permissions,
-	})
+	}
+	if prev := h.mgr.registerConnectedPeer(h.peer.Keyid, h.handle); prev != nil {
+		h.l.Sugar().Infof("displacing existing connection for client %q (%s) with newer session", h.peer.InstanceId, h.peer.Keyid)
+		prev.stream.SendErrorAndTerminate(NewSyncErrorDisconnected(errors.New("displaced by newer connection from the same peer")))
+	}
 
 	// start a heartbeat thread
 	go sendHeartbeats(ctx, stream, env.MultihostHeartbeatInterval())
@@ -232,8 +239,8 @@ func (h *syncSessionHandlerServer) OnConnectionEstablished(ctx context.Context, 
 }
 
 func (h *syncSessionHandlerServer) OnConnectionDisconnected() {
-	if h.peer != nil {
-		h.mgr.unregisterConnectedPeer(h.peer.Keyid)
+	if h.peer != nil && h.handle != nil {
+		h.mgr.unregisterConnectedPeer(h.peer.Keyid, h.handle)
 	}
 }
 
@@ -382,14 +389,24 @@ func (h *syncSessionHandlerServer) sendConfigToClient(stream *bidiSyncCommandStr
 // sendSharedReposToClient sends repos marked as shared to the client via SetConfig.
 // This pushes repo configurations to the client so they are added to the client's local config.
 // Returns the number of shared repos sent.
+//
+// On the host, PERMISSION_RECEIVE_SHARED_REPOS is checked per-repo, so the host can
+// scope which shared repos are pushed to a given client (a scopeless grant acts as
+// a wildcard and pushes every shared repo). The client also enforces the same
+// permission on its known_host entry before accepting the push, but does so
+// scope-lessly — see syncclient.go HandleSetConfig.
 func (h *syncSessionHandlerServer) sendSharedReposToClient(stream *bidiSyncCommandStream, config *v1.Config) int {
 	var sharedRepos []*v1.Repo
 	for _, repo := range config.Repos {
-		if repo.GetShared() {
-			repoCopy := proto.Clone(repo).(*v1.Repo)
-			repoCopy.OriginInstanceId = config.Instance
-			sharedRepos = append(sharedRepos, repoCopy)
+		if !repo.GetShared() {
+			continue
 		}
+		if !h.permissions.CheckPermissionForRepo(repo.Id, permissions.PermsCanReceiveSharedRepos...) {
+			continue
+		}
+		repoCopy := proto.Clone(repo).(*v1.Repo)
+		repoCopy.OriginInstanceId = config.Instance
+		sharedRepos = append(sharedRepos, repoCopy)
 	}
 
 	if len(sharedRepos) == 0 {

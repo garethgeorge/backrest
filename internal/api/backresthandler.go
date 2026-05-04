@@ -563,6 +563,12 @@ func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1
 	case v1.DoRepoTaskRequest_TASK_PRUNE:
 		task = tasks.NewPruneTask(repo, tasks.PlanForSystemTasks, true)
 		priority |= tasks.TaskPriorityPrune
+	case v1.DoRepoTaskRequest_TASK_FORGET:
+		if repo.GetForgetPolicy() == nil {
+			return nil, fmt.Errorf("repo %q has no forget policy configured", req.Msg.RepoId)
+		}
+		task = tasks.NewScheduledForgetTask(repo, tasks.PlanForSystemTasks, true)
+		priority |= tasks.TaskPriorityForget
 	case v1.DoRepoTaskRequest_TASK_STATS:
 		task = tasks.NewStatsTask(repo, tasks.PlanForSystemTasks, true)
 		priority |= tasks.TaskPriorityStats

@@ -112,11 +112,9 @@ func (t *ScheduledForgetTask) Next(now time.Time, runner TaskRunner) (ScheduledT
 	var lastRan time.Time
 	var foundBackup bool
 	if err := runner.QueryOperations(oplog.Query{}.
-		SetInstanceID(runner.InstanceID()).
 		SetRepoGUID(repoProto.GetGuid()).
-		SetPlanID(PlanForSystemTasks).
 		SetReversed(true), func(op *v1.Operation) error {
-		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
+		if op.Status == v1.OperationStatus_STATUS_PENDING {
 			return nil
 		}
 		if _, ok := op.Op.(*v1.Operation_OperationForget); ok && op.UnixTimeEndMs != 0 {
@@ -206,7 +204,8 @@ func (t *ScheduledForgetTask) Run(ctx context.Context, st ScheduledTask, runner 
 	// Skip if no new backups since last forget run.
 	// Mark as system-cancelled so it doesn't count as a successful run
 	// and the next schedule is computed from the last actual forget.
-	if t.shouldSkip(runner, repoProto) {
+	// Interactive (force) runs always execute.
+	if !t.force && t.shouldSkip(runner, repoProto) {
 		op.Op = &v1.Operation_OperationForget{
 			OperationForget: &v1.OperationForget{},
 		}
