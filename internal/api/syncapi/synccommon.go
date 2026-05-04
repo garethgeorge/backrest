@@ -46,9 +46,12 @@ func runSync(
 	commandStream.Send(handshakePacket)
 
 	// Wait for the handshake packet to be acknowledged by the peer.
-	handshake := commandStream.ReceiveWithinDuration(15 * time.Second)
+	handshake, err := commandStream.ReceiveWithinDuration(ctx, 15*time.Second)
+	if err != nil {
+		return NewSyncErrorAuth(fmt.Errorf("waiting for handshake packet from peer: %w", err))
+	}
 	if handshake == nil {
-		return NewSyncErrorAuth(fmt.Errorf("no handshake packet received from peer within timeout"))
+		return NewSyncErrorAuth(fmt.Errorf("no handshake packet received from peer"))
 	}
 	if _, err := verifyHandshakePacket(handshake); err != nil {
 		return NewSyncErrorAuth(fmt.Errorf("verifying handshake packet: %w", err))
