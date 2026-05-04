@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.13.0](https://github.com/garethgeorge/backrest/compare/v1.12.1...v1.13.0) (2026-05-04)
+
+
+### Features
+
+* apply multihost sync refinements found in validation pass ([5053371](https://github.com/garethgeorge/backrest/commit/50533716b1bae5a6a05d18046426990905b217b5))
+* experimental multihost sync ([#1204](https://github.com/garethgeorge/backrest/issues/1204)) ([b98b1dc](https://github.com/garethgeorge/backrest/commit/b98b1dc3ccfb0f810259ae3e1e00366da7b0eee5))
+* macOS and linux tray binaries ([#1163](https://github.com/garethgeorge/backrest/issues/1163)) ([87d7623](https://github.com/garethgeorge/backrest/commit/87d76231bc1c069e773758ebb8cb348425551e6a))
+
+
+### Bug Fixes
+
+* Alpine Docker images for arm/v6 and arm/v7 architectures ([#1165](https://github.com/garethgeorge/backrest/issues/1165)) ([4ebc22b](https://github.com/garethgeorge/backrest/commit/4ebc22b7d1e73bae14e2c68720b2ca1bf015f664))
+* always allow CORS OPTIONS requests even behind authenticated endpoints ([#1194](https://github.com/garethgeorge/backrest/issues/1194)) ([12008e5](https://github.com/garethgeorge/backrest/commit/12008e532400cefc0680ba619761be4ddc8c5533))
+* config migration bug w.r.t. multihost sync ([75cbd68](https://github.com/garethgeorge/backrest/commit/75cbd6851683f6b7a0057e97eb5f650c2befd3b4))
+* improve install.sh on macOS and linux ([cd6c5ed](https://github.com/garethgeorge/backrest/commit/cd6c5ed5f343f2adc507b462f4f3da2b6f4a0509))
+* improve vite bundle splitting to avoid large bundles ([a922d0a](https://github.com/garethgeorge/backrest/commit/a922d0a20bf7d99837cfae521ec4c0844c0e0615))
+* minor windows installer fixes ([5b83453](https://github.com/garethgeorge/backrest/commit/5b83453a31b3e65f0e716932103e3cddc2cf3ace))
+* optimize backrest ui performance ([#1195](https://github.com/garethgeorge/backrest/issues/1195)) ([8e9470c](https://github.com/garethgeorge/backrest/commit/8e9470c954ee0547a4a998b24fe36b6c80453f36))
+* post PQ safe transport for syncapi ([#1216](https://github.com/garethgeorge/backrest/issues/1216)) ([aed0073](https://github.com/garethgeorge/backrest/commit/aed007385fbc1ed498a73b10c8e88e8eddc34105))
+* refine backrest SFTP UI ([#1193](https://github.com/garethgeorge/backrest/issues/1193)) ([88f0fbc](https://github.com/garethgeorge/backrest/commit/88f0fbc7aab4bfaa89cebd65c8c9cee153683d84))
+* refine config validation policies ([b7e9448](https://github.com/garethgeorge/backrest/commit/b7e9448cbb56c52254be3357e40651d549326d5f))
+* RESTIC_PASSWORD env shold not take precedent over repo passwords ([#1192](https://github.com/garethgeorge/backrest/issues/1192)) ([27e1d18](https://github.com/garethgeorge/backrest/commit/27e1d189ab8ccce08d99e0167d322c6d2731187d))
+* show repo URI in sidebar tooltip instead of repo ID ([#1209](https://github.com/garethgeorge/backrest/issues/1209)) ([7e064a2](https://github.com/garethgeorge/backrest/commit/7e064a275c039d226c09a5a0522488b8fb1e6edc))
+* wrong order of parameters in task name ([#1168](https://github.com/garethgeorge/backrest/issues/1168)) ([b3edd06](https://github.com/garethgeorge/backrest/commit/b3edd06a27745674327215396dfe0e85fa13100b))
+
 ## [1.12.1](https://github.com/garethgeorge/backrest/compare/v1.12.0...v1.12.1) (2026-03-11)
 
 
