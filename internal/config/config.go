@@ -39,6 +39,10 @@ func (m *ConfigManager) migrate(config *v1.Config) error {
 		if err := migrations.ApplyMigrations(config); err != nil {
 			return err
 		}
+		// Migrations may clear required fields (e.g. legacy identities); re-populate.
+		if _, err := PopulateRequiredFields(config); err != nil {
+			return fmt.Errorf("populate required fields after migration: %w", err)
+		}
 		mutated = true
 	}
 	if mutated {
