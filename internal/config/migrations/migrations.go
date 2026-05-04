@@ -14,6 +14,7 @@ var migrations = []*func(*v1.Config) error{
 	&migration003RelativeScheduling,
 	&migration004RepoGuid,
 	&migration005CheckRepoPasswords,
+	&migration006Ed25519Identity,
 }
 
 var CurrentVersion = int32(len(migrations))

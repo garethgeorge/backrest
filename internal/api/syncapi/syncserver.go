@@ -64,7 +64,7 @@ func (h *BackrestSyncHandler) Sync(ctx context.Context, stream *connect.BidiStre
 		cmdStream.SendErrorAndTerminate(err)
 	}()
 
-	if err := cmdStream.ConnectStream(ctx, stream); err != nil {
+	if err := cmdStream.ConnectStream(ctx, stream, false /* isInitiator: server side */); err != nil {
 		zap.S().Errorf("sync handler stream error: %v", err)
 		var syncErr *SyncError
 		if errors.As(err, &syncErr) {

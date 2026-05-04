@@ -1,7 +1,6 @@
 package syncapi
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -111,14 +110,16 @@ func (s *bidiSyncCommandStream) ReceiveWithinDuration(ctx context.Context, d tim
 }
 
 // ConnectStream bridges the channel-based bidiSyncCommandStream to a real transport.
-// It first performs an ECDH key exchange on the raw transport to establish an encrypted
-// session, then starts the send/recv pump loop over the encrypted channel.
-func (s *bidiSyncCommandStream) ConnectStream(ctx context.Context, stream syncCommandStreamTrait) error {
+// It first performs a post-quantum KEM handshake on the raw transport to
+// establish an encrypted session, then starts the send/recv pump loop over the
+// encrypted channel. isInitiator must be true on the side that opens the
+// connection (the client) and false on the side that accepts it (the server).
+func (s *bidiSyncCommandStream) ConnectStream(ctx context.Context, stream syncCommandStreamTrait, isInitiator bool) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Perform ECDH key exchange on the raw transport before starting the pump.
-	transport, err := establishEncryption(stream)
+	// Perform the PQ KEM handshake on the raw transport before starting the pump.
+	transport, err := establishEncryption(stream, isInitiator)
 	if err != nil {
 		// Signal termination so any goroutine parked in ReceiveWithinDuration
 		// (e.g. runSync waiting for the handshake reply) wakes up immediately
@@ -164,52 +165,92 @@ func (s *bidiSyncCommandStream) ConnectStream(ctx context.Context, stream syncCo
 	}
 }
 
-// establishEncryption performs an ECDH key exchange on the raw transport and
-// returns an encrypted stream wrapper. Each side generates an ephemeral ECDH P-256
-// key pair, exchanges public keys, and derives a shared AES-256-GCM session key.
-// The handshake (identity authentication) runs over the encrypted channel afterward.
-func establishEncryption(stream syncCommandStreamTrait) (syncCommandStreamTrait, error) {
-	keyPair, err := cryptoutil.GenerateECDHKeyPair()
-	if err != nil {
-		return nil, NewSyncErrorInternal(fmt.Errorf("generating ephemeral ECDH key: %w", err))
-	}
+// establishEncryption performs a post-quantum KEM handshake on the raw
+// transport and returns an encrypted stream wrapper. The KEM ciphersuite is
+// hard-pinned to TransportProtocolVersion and tied to the wire format.
+//
+// Flow: the initiator generates an ephemeral hybrid (ML-KEM-1024 + ECDH-P384)
+// HPKE keypair and sends its public key. The responder encapsulates against
+// it and replies with the encapsulation. Both sides derive an AES-256-GCM
+// session key via the HPKE Export interface. The handshake (identity
+// authentication) runs over the encrypted channel afterward.
+//
+// Initiators use nonce prefix 0x00; responders use 0x01 — fixed by role to
+// avoid nonce reuse. isInitiator must be true on the connecting side (client)
+// and false on the accepting side (server).
+func establishEncryption(stream syncCommandStreamTrait, isInitiator bool) (syncCommandStreamTrait, error) {
+	if isInitiator {
+		recipient, pubBytes, err := cryptoutil.NewTransportRecipient()
+		if err != nil {
+			return nil, NewSyncErrorInternal(fmt.Errorf("generating ephemeral KEM key: %w", err))
+		}
 
-	// Send our ephemeral ECDH public key
-	if err := stream.Send(&v1sync.SyncStreamItem{
-		Action: &v1sync.SyncStreamItem_EstablishSharedSecret{
-			EstablishSharedSecret: &v1sync.SyncStreamItem_SyncEstablishSharedSecret{
-				EcdhPublicKey: keyPair.Public.Bytes(),
+		if err := stream.Send(&v1sync.SyncStreamItem{
+			Action: &v1sync.SyncStreamItem_EstablishSharedSecret{
+				EstablishSharedSecret: &v1sync.SyncStreamItem_SyncEstablishSharedSecret{
+					ProtocolVersion: cryptoutil.TransportProtocolVersion,
+					KemPublicKey:    pubBytes,
+				},
 			},
-		},
-	}); err != nil {
-		return nil, NewSyncErrorDisconnected(fmt.Errorf("sending ECDH public key: %w", err))
+		}); err != nil {
+			return nil, NewSyncErrorDisconnected(fmt.Errorf("sending KEM public key: %w", err))
+		}
+
+		peerMsg, err := stream.Receive()
+		if err != nil {
+			return nil, NewSyncErrorDisconnected(fmt.Errorf("receiving KEM encapsulation: %w", err))
+		}
+		peerSecret := peerMsg.GetEstablishSharedSecret()
+		if peerSecret == nil {
+			return nil, NewSyncErrorProtocol(fmt.Errorf("expected KEM key exchange, got %T", peerMsg.GetAction()))
+		}
+		if peerSecret.GetProtocolVersion() != cryptoutil.TransportProtocolVersion {
+			return nil, NewSyncErrorProtocol(fmt.Errorf("unsupported transport protocol version %d (this build requires v%d, post-quantum)", peerSecret.GetProtocolVersion(), cryptoutil.TransportProtocolVersion))
+		}
+		if len(peerSecret.GetKemEncapsulation()) == 0 {
+			return nil, NewSyncErrorProtocol(errors.New("responder did not send KEM encapsulation"))
+		}
+
+		sess, err := recipient.Decapsulate(peerSecret.GetKemEncapsulation())
+		if err != nil {
+			return nil, NewSyncErrorProtocol(fmt.Errorf("decapsulating KEM: %w", err))
+		}
+
+		zap.L().Info("encrypted sync session established (initiator)")
+		return newEncryptedStream(stream, sess), nil
 	}
 
-	// Receive the peer's ephemeral ECDH public key
 	peerMsg, err := stream.Receive()
 	if err != nil {
-		return nil, NewSyncErrorDisconnected(fmt.Errorf("receiving ECDH public key: %w", err))
+		return nil, NewSyncErrorDisconnected(fmt.Errorf("receiving KEM public key: %w", err))
 	}
 	peerSecret := peerMsg.GetEstablishSharedSecret()
 	if peerSecret == nil {
-		return nil, NewSyncErrorProtocol(fmt.Errorf("expected ECDH key exchange, got %T", peerMsg.GetAction()))
+		return nil, NewSyncErrorProtocol(fmt.Errorf("expected KEM key exchange, got %T", peerMsg.GetAction()))
+	}
+	if peerSecret.GetProtocolVersion() != cryptoutil.TransportProtocolVersion {
+		return nil, NewSyncErrorProtocol(fmt.Errorf("unsupported transport protocol version %d (this build requires v%d, post-quantum)", peerSecret.GetProtocolVersion(), cryptoutil.TransportProtocolVersion))
+	}
+	if len(peerSecret.GetKemPublicKey()) == 0 {
+		return nil, NewSyncErrorProtocol(errors.New("initiator did not send KEM public key"))
 	}
 
-	peerECDHPub, err := cryptoutil.ParseECDHPublicKey(peerSecret.GetEcdhPublicKey())
+	enc, sess, err := cryptoutil.EncapsulateToTransport(peerSecret.GetKemPublicKey())
 	if err != nil {
-		return nil, NewSyncErrorProtocol(fmt.Errorf("parsing peer ECDH public key: %w", err))
+		return nil, NewSyncErrorProtocol(fmt.Errorf("encapsulating to KEM public key: %w", err))
 	}
 
-	// Derive AES-256-GCM session key
-	gcm, err := cryptoutil.DeriveSessionKey(keyPair.Private, peerECDHPub)
-	if err != nil {
-		return nil, NewSyncErrorProtocol(fmt.Errorf("deriving session key: %w", err))
+	if err := stream.Send(&v1sync.SyncStreamItem{
+		Action: &v1sync.SyncStreamItem_EstablishSharedSecret{
+			EstablishSharedSecret: &v1sync.SyncStreamItem_SyncEstablishSharedSecret{
+				ProtocolVersion:  cryptoutil.TransportProtocolVersion,
+				KemEncapsulation: enc,
+			},
+		},
+	}); err != nil {
+		return nil, NewSyncErrorDisconnected(fmt.Errorf("sending KEM encapsulation: %w", err))
 	}
 
-	// Determine nonce direction: side with smaller public key uses prefix 0x00
-	localIsSmaller := bytes.Compare(keyPair.Public.Bytes(), peerECDHPub.Bytes()) < 0
-
-	zap.L().Info("encrypted sync session established")
-
-	return newEncryptedStream(stream, gcm, localIsSmaller), nil
+	zap.L().Info("encrypted sync session established (responder)")
+	return newEncryptedStream(stream, sess), nil
 }

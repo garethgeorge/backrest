@@ -1,6 +1,7 @@
 package syncapi
 
 import (
+	"crypto/rand"
 	"sync"
 	"testing"
 
@@ -32,28 +33,33 @@ func newFakeStreamPair() (*fakeStream, *fakeStream) {
 	return &fakeStream{sendCh: ab, recvCh: ba}, &fakeStream{sendCh: ba, recvCh: ab}
 }
 
+// runHandshake performs the post-quantum KEM handshake between an initiator
+// and responder over a fakeStream pair, returning the resulting sessions in
+// (initiator, responder) order.
+func runHandshake(t *testing.T) (initiatorSess, responderSess *cryptoutil.TransportSession) {
+	t.Helper()
+	recipient, pubBytes, err := cryptoutil.NewTransportRecipient()
+	if err != nil {
+		t.Fatalf("NewTransportRecipient: %v", err)
+	}
+	enc, respSess, err := cryptoutil.EncapsulateToTransport(pubBytes)
+	if err != nil {
+		t.Fatalf("EncapsulateToTransport: %v", err)
+	}
+	initSess, err := recipient.Decapsulate(enc)
+	if err != nil {
+		t.Fatalf("Decapsulate: %v", err)
+	}
+	return initSess, respSess
+}
+
 func TestEncryptedStream_RoundTrip(t *testing.T) {
-	alice, err := cryptoutil.GenerateECDHKeyPair()
-	if err != nil {
-		t.Fatal(err)
-	}
-	bob, err := cryptoutil.GenerateECDHKeyPair()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	gcm, err := cryptoutil.DeriveSessionKey(alice.Private, bob.Public)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	aliceIsSmaller := string(alice.Public.Bytes()) < string(bob.Public.Bytes())
+	initSess, respSess := runHandshake(t)
 
 	transportA, transportB := newFakeStreamPair()
-	encA := newEncryptedStream(transportA, gcm, aliceIsSmaller)
-	encB := newEncryptedStream(transportB, gcm, !aliceIsSmaller)
+	encA := newEncryptedStream(transportA, initSess)
+	encB := newEncryptedStream(transportB, respSess)
 
-	// Send a heartbeat from A to B
 	sendItem := &v1sync.SyncStreamItem{
 		Action: &v1sync.SyncStreamItem_Heartbeat{
 			Heartbeat: &v1sync.SyncStreamItem_SyncActionHeartbeat{},
@@ -81,15 +87,11 @@ func TestEncryptedStream_RoundTrip(t *testing.T) {
 }
 
 func TestEncryptedStream_BidirectionalMultiMessage(t *testing.T) {
-	alice, _ := cryptoutil.GenerateECDHKeyPair()
-	bob, _ := cryptoutil.GenerateECDHKeyPair()
-	gcm, _ := cryptoutil.DeriveSessionKey(alice.Private, bob.Public)
-
-	aliceIsSmaller := string(alice.Public.Bytes()) < string(bob.Public.Bytes())
+	initSess, respSess := runHandshake(t)
 
 	transportA, transportB := newFakeStreamPair()
-	encA := newEncryptedStream(transportA, gcm, aliceIsSmaller)
-	encB := newEncryptedStream(transportB, gcm, !aliceIsSmaller)
+	encA := newEncryptedStream(transportA, initSess)
+	encB := newEncryptedStream(transportB, respSess)
 
 	heartbeat := &v1sync.SyncStreamItem{
 		Action: &v1sync.SyncStreamItem_Heartbeat{
@@ -97,7 +99,6 @@ func TestEncryptedStream_BidirectionalMultiMessage(t *testing.T) {
 		},
 	}
 
-	// Send 5 messages A→B sequentially, then 5 messages B→A sequentially
 	var wg sync.WaitGroup
 
 	// A→B direction
@@ -146,11 +147,13 @@ func TestEstablishEncryption_Integration(t *testing.T) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		encA, errA = establishEncryption(transportA)
+		// A is the initiator (client side).
+		encA, errA = establishEncryption(transportA, true)
 	}()
 	go func() {
 		defer wg.Done()
-		encB, errB = establishEncryption(transportB)
+		// B is the responder (server side).
+		encB, errB = establishEncryption(transportB, false)
 	}()
 	wg.Wait()
 
@@ -161,7 +164,6 @@ func TestEstablishEncryption_Integration(t *testing.T) {
 		t.Fatalf("establish B: %v", errB)
 	}
 
-	// Verify encrypted communication works
 	heartbeat := &v1sync.SyncStreamItem{
 		Action: &v1sync.SyncStreamItem_Heartbeat{
 			Heartbeat: &v1sync.SyncStreamItem_SyncActionHeartbeat{},
@@ -184,5 +186,31 @@ func TestEstablishEncryption_Integration(t *testing.T) {
 
 	if recv.GetHeartbeat() == nil {
 		t.Fatalf("expected heartbeat, got %T", recv.GetAction())
+	}
+}
+
+func TestEstablishEncryption_ProtocolVersionMismatch(t *testing.T) {
+	testutil.InstallZapLogger(t)
+	transportA, transportB := newFakeStreamPair()
+
+	// Responder receives a handshake with the wrong protocol version and
+	// must reject it with a protocol error.
+	junkPub := make([]byte, 32)
+	if _, err := rand.Read(junkPub); err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		_ = transportA.Send(&v1sync.SyncStreamItem{
+			Action: &v1sync.SyncStreamItem_EstablishSharedSecret{
+				EstablishSharedSecret: &v1sync.SyncStreamItem_SyncEstablishSharedSecret{
+					ProtocolVersion: cryptoutil.TransportProtocolVersion + 1,
+					KemPublicKey:    junkPub,
+				},
+			},
+		})
+	}()
+
+	if _, err := establishEncryption(transportB, false); err == nil {
+		t.Fatal("expected protocol version mismatch to fail handshake")
 	}
 }

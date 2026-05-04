@@ -1260,7 +1260,8 @@ func (x *SyncStreamItem_SyncActionHandshake) GetPairingSecret() string {
 }
 
 // SyncActionEncrypted wraps an encrypted SyncStreamItem.
-// After ECDH key exchange, all subsequent messages are sent inside this envelope.
+// After the post-quantum KEM handshake, all subsequent messages are sent
+// inside this envelope.
 type SyncStreamItem_SyncActionEncrypted struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Nonce         []byte                 `protobuf:"bytes,1,opt,name=nonce,proto3" json:"nonce,omitempty"`           // 12-byte GCM nonce
@@ -1901,15 +1902,23 @@ func (x *SyncStreamItem_SyncActionThrottle) GetDelayMs() int64 {
 	return 0
 }
 
-// SyncEstablishSharedSecret is exchanged immediately after the handshake.
-// Each side sends an ephemeral ECDH P-256 public key. Both sides then perform
-// ECDH to derive a shared AES-256-GCM session key. All subsequent messages
-// must be wrapped in SyncActionEncrypted.
+// SyncEstablishSharedSecret is exchanged immediately after the connection
+// is opened. The initiator (client) sends kem_public_key. The responder
+// (server) replies with kem_encapsulation. Both sides then derive a shared
+// AES-256-GCM session key via the HPKE Export interface. All subsequent
+// messages must be wrapped in SyncActionEncrypted.
+//
+// The KEM is the post-quantum hybrid ML-KEM-1024 + ECDH-P384 (HPKE
+// ciphersuite ML-KEM-1024-P384 / KEM ID 0x0050, RFC 9180 + the IETF hybrid
+// KEM drafts). KDF is HKDF-SHA256, AEAD is AES-256-GCM. Peers must use
+// protocol_version=1; mismatched versions abort the connection.
 type SyncStreamItem_SyncEstablishSharedSecret struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	EcdhPublicKey []byte                 `protobuf:"bytes,1,opt,name=ecdh_public_key,json=ecdhPublicKey,proto3" json:"ecdh_public_key,omitempty"` // raw ECDH P-256 public key bytes
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	ProtocolVersion  uint32                 `protobuf:"varint,1,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`   // current: 1
+	KemPublicKey     []byte                 `protobuf:"bytes,2,opt,name=kem_public_key,json=kemPublicKey,proto3" json:"kem_public_key,omitempty"`           // set by initiator
+	KemEncapsulation []byte                 `protobuf:"bytes,3,opt,name=kem_encapsulation,json=kemEncapsulation,proto3" json:"kem_encapsulation,omitempty"` // set by responder
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *SyncStreamItem_SyncEstablishSharedSecret) Reset() {
@@ -1942,9 +1951,23 @@ func (*SyncStreamItem_SyncEstablishSharedSecret) Descriptor() ([]byte, []int) {
 	return file_v1sync_syncservice_proto_rawDescGZIP(), []int{13, 14}
 }
 
-func (x *SyncStreamItem_SyncEstablishSharedSecret) GetEcdhPublicKey() []byte {
+func (x *SyncStreamItem_SyncEstablishSharedSecret) GetProtocolVersion() uint32 {
 	if x != nil {
-		return x.EcdhPublicKey
+		return x.ProtocolVersion
+	}
+	return 0
+}
+
+func (x *SyncStreamItem_SyncEstablishSharedSecret) GetKemPublicKey() []byte {
+	if x != nil {
+		return x.KemPublicKey
+	}
+	return nil
+}
+
+func (x *SyncStreamItem_SyncEstablishSharedSecret) GetKemEncapsulation() []byte {
+	if x != nil {
+		return x.KemEncapsulation
 	}
 	return nil
 }
@@ -2010,7 +2033,7 @@ const file_v1sync_syncservice_proto_rawDesc = "" +
 	"\n" +
 	"public_key\x18\x01 \x01(\v2\r.v1.PublicKeyR\tpublicKey\x122\n" +
 	"\vinstance_id\x18\x02 \x01(\v2\x11.v1.SignedMessageR\n" +
-	"instanceId\"\x8f\x16\n" +
+	"instanceId\"\xe6\x16\n" +
 	"\x0eSyncStreamItem\x12:\n" +
 	"\x0esigned_message\x18\x01 \x01(\v2\x11.v1.SignedMessageH\x00R\rsignedMessage\x12J\n" +
 	"\thandshake\x18\x03 \x01(\v2*.v1sync.SyncStreamItem.SyncActionHandshakeH\x00R\thandshake\x12J\n" +
@@ -2072,9 +2095,11 @@ const file_v1sync_syncservice_proto_rawDesc = "" +
 	"\x05chunk\x18\x04 \x01(\fR\x05chunk\x12#\n" +
 	"\rerror_message\x18\x05 \x01(\tR\ferrorMessage\x1a/\n" +
 	"\x12SyncActionThrottle\x12\x19\n" +
-	"\bdelay_ms\x18\x01 \x01(\x03R\adelayMs\x1aC\n" +
-	"\x19SyncEstablishSharedSecret\x12&\n" +
-	"\x0fecdh_public_key\x18\x01 \x01(\fR\recdhPublicKey\"\xb4\x01\n" +
+	"\bdelay_ms\x18\x01 \x01(\x03R\adelayMs\x1a\x99\x01\n" +
+	"\x19SyncEstablishSharedSecret\x12)\n" +
+	"\x10protocol_version\x18\x01 \x01(\rR\x0fprotocolVersion\x12$\n" +
+	"\x0ekem_public_key\x18\x02 \x01(\fR\fkemPublicKey\x12+\n" +
+	"\x11kem_encapsulation\x18\x03 \x01(\fR\x10kemEncapsulation\"\xb4\x01\n" +
 	"\x13RepoConnectionState\x12\x1c\n" +
 	"\x18CONNECTION_STATE_UNKNOWN\x10\x00\x12\x1c\n" +
 	"\x18CONNECTION_STATE_PENDING\x10\x01\x12\x1e\n" +

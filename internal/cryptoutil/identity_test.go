@@ -1,6 +1,7 @@
 package cryptoutil
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -10,12 +11,16 @@ func TestGenerateKeypair(t *testing.T) {
 		t.Fatalf("failed to generate key pair: %v", err)
 	}
 
-	if len(privateKey.EcdsaPriv) == 0 {
+	if len(privateKey.Ed25519Priv) == 0 {
 		t.Fatalf("must populate private key")
 	}
 
-	if len(privateKey.EcdsaPub) == 0 {
+	if len(privateKey.Ed25519Pub) == 0 {
 		t.Fatalf("must populate public key")
+	}
+
+	if !strings.HasPrefix(privateKey.Keyid, "ed25519.") {
+		t.Fatalf("expected keyid to use ed25519. prefix, got %q", privateKey.Keyid)
 	}
 }
 

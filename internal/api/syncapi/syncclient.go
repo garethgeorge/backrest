@@ -115,7 +115,7 @@ func (c *SyncClient) RunSync(ctx context.Context) {
 			cmdStream.SendErrorAndTerminate(err)
 		}()
 
-		connectErr := cmdStream.ConnectStream(ctx, c.client.Sync(ctx))
+		connectErr := cmdStream.ConnectStream(ctx, c.client.Sync(ctx), true /* isInitiator: client side */)
 		if connectErr != nil {
 			c.l.Sugar().Infof("lost stream connection to peer %q (%s): %v", c.peer.InstanceId, c.peer.Keyid, connectErr)
 			var syncErr *SyncError

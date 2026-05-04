@@ -148,7 +148,8 @@ message SyncStreamItem {
   }
 
   // SyncActionEncrypted wraps an encrypted SyncStreamItem.
-  // After ECDH key exchange, all subsequent messages are sent inside this envelope.
+  // After the post-quantum KEM handshake, all subsequent messages are sent
+  // inside this envelope.
   message SyncActionEncrypted {
     bytes nonce = 1;      // 12-byte GCM nonce
     bytes ciphertext = 2; // AES-256-GCM(serialized SyncStreamItem)
@@ -222,11 +223,19 @@ message SyncStreamItem {
     int64 delay_ms = 1;
   }
 
-  // SyncEstablishSharedSecret is exchanged immediately after the handshake.
-  // Each side sends an ephemeral ECDH P-256 public key. Both sides then perform
-  // ECDH to derive a shared AES-256-GCM session key. All subsequent messages
-  // must be wrapped in SyncActionEncrypted.
+  // SyncEstablishSharedSecret is exchanged immediately after the connection
+  // is opened. The initiator (client) sends kem_public_key. The responder
+  // (server) replies with kem_encapsulation. Both sides then derive a shared
+  // AES-256-GCM session key via the HPKE Export interface. All subsequent
+  // messages must be wrapped in SyncActionEncrypted.
+  //
+  // The KEM is the post-quantum hybrid ML-KEM-1024 + ECDH-P384 (HPKE
+  // ciphersuite ML-KEM-1024-P384 / KEM ID 0x0050, RFC 9180 + the IETF hybrid
+  // KEM drafts). KDF is HKDF-SHA256, AEAD is AES-256-GCM. Peers must use
+  // protocol_version=1; mismatched versions abort the connection.
   message SyncEstablishSharedSecret {
-    bytes ecdh_public_key = 1; // raw ECDH P-256 public key bytes
+    uint32 protocol_version = 1;   // current: 1
+    bytes kem_public_key = 2;      // set by initiator
+    bytes kem_encapsulation = 3;   // set by responder
   }
 }

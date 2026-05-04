@@ -7,23 +7,20 @@ import (
 	"sync"
 
 	"github.com/garethgeorge/backrest/gen/go/v1sync"
+	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"google.golang.org/protobuf/proto"
 )
 
-// encryptedStream wraps a syncCommandStreamTrait with AES-256-GCM encryption.
-// Outgoing SyncStreamItems are serialized, encrypted, and sent as SyncActionEncrypted.
-// Incoming SyncActionEncrypted messages are decrypted and deserialized back to SyncStreamItems.
+// encryptedStream wraps a syncCommandStreamTrait with AES-256-GCM encryption
+// using the per-direction AEADs derived during the transport handshake.
 //
-// To avoid nonce reuse (since both sides share the same key), each direction
-// uses a different nonce prefix byte: the side with the lexicographically smaller
-// ECDH public key uses prefix 0x00 for sending and expects 0x01 for receiving,
-// and vice versa.
+// Each direction has an independent key (initiator-to-responder vs
+// responder-to-initiator), so a counter-based nonce starting at zero is
+// sufficient: there is no shared (key, nonce) space to collide in.
 type encryptedStream struct {
 	inner syncCommandStreamTrait
-	gcm   cipher.AEAD
-
-	sendPrefix byte
-	recvPrefix byte
+	send  cipher.AEAD
+	recv  cipher.AEAD
 
 	sendMu      sync.Mutex
 	sendCounter uint64
@@ -32,18 +29,11 @@ type encryptedStream struct {
 	recvCounter uint64
 }
 
-func newEncryptedStream(inner syncCommandStreamTrait, gcm cipher.AEAD, localIsSmaller bool) *encryptedStream {
-	var sendPrefix, recvPrefix byte
-	if localIsSmaller {
-		sendPrefix, recvPrefix = 0x00, 0x01
-	} else {
-		sendPrefix, recvPrefix = 0x01, 0x00
-	}
+func newEncryptedStream(inner syncCommandStreamTrait, sess *cryptoutil.TransportSession) *encryptedStream {
 	return &encryptedStream{
-		inner:      inner,
-		gcm:        gcm,
-		sendPrefix: sendPrefix,
-		recvPrefix: recvPrefix,
+		inner: inner,
+		send:  sess.Send,
+		recv:  sess.Recv,
 	}
 }
 
@@ -54,11 +44,11 @@ func (s *encryptedStream) Send(item *v1sync.SyncStreamItem) error {
 	}
 
 	s.sendMu.Lock()
-	nonce := s.makeNonce(s.sendPrefix, s.sendCounter)
+	nonce := makeNonce(s.send.NonceSize(), s.sendCounter)
 	s.sendCounter++
 	s.sendMu.Unlock()
 
-	ciphertext := s.gcm.Seal(nil, nonce, plaintext, nil)
+	ciphertext := s.send.Seal(nil, nonce, plaintext, nil)
 
 	return s.inner.Send(&v1sync.SyncStreamItem{
 		Action: &v1sync.SyncStreamItem_Encrypted{
@@ -82,22 +72,22 @@ func (s *encryptedStream) Receive() (*v1sync.SyncStreamItem, error) {
 	}
 
 	s.recvMu.Lock()
-	expectedNonce := s.makeNonce(s.recvPrefix, s.recvCounter)
+	expectedNonce := makeNonce(s.recv.NonceSize(), s.recvCounter)
 	s.recvCounter++
 	s.recvMu.Unlock()
 
-	if len(encrypted.Nonce) != s.gcm.NonceSize() {
-		return nil, fmt.Errorf("invalid nonce size: got %d, want %d", len(encrypted.Nonce), s.gcm.NonceSize())
+	if len(encrypted.Nonce) != s.recv.NonceSize() {
+		return nil, fmt.Errorf("invalid nonce size: got %d, want %d", len(encrypted.Nonce), s.recv.NonceSize())
 	}
 
-	// Verify nonce matches expected counter to prevent replay/reorder attacks
+	// Verify nonce matches expected counter to prevent replay/reorder attacks.
 	for i := range expectedNonce {
 		if expectedNonce[i] != encrypted.Nonce[i] {
 			return nil, fmt.Errorf("nonce mismatch: possible replay or reorder attack")
 		}
 	}
 
-	plaintext, err := s.gcm.Open(nil, encrypted.Nonce, encrypted.Ciphertext, nil)
+	plaintext, err := s.recv.Open(nil, encrypted.Nonce, encrypted.Ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt message: %w", err)
 	}
@@ -110,11 +100,11 @@ func (s *encryptedStream) Receive() (*v1sync.SyncStreamItem, error) {
 	return &inner, nil
 }
 
-// makeNonce creates a 12-byte GCM nonce. The first byte is the direction prefix
-// (0x00 or 0x01), bytes 1-3 are zero, and bytes 4-11 are the counter in big-endian.
-func (s *encryptedStream) makeNonce(prefix byte, counter uint64) []byte {
-	nonce := make([]byte, s.gcm.NonceSize()) // 12 bytes for GCM
-	nonce[0] = prefix
-	binary.BigEndian.PutUint64(nonce[4:], counter)
+// makeNonce builds an N-byte AES-GCM nonce by big-endian-encoding the counter
+// in the trailing 8 bytes; the leading bytes are zero. The counter never
+// repeats within a single session direction, so the nonce never repeats.
+func makeNonce(size int, counter uint64) []byte {
+	nonce := make([]byte, size)
+	binary.BigEndian.PutUint64(nonce[size-8:], counter)
 	return nonce
 }
