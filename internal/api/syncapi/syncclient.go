@@ -19,6 +19,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/v1sync/v1syncconnect"
 	"github.com/garethgeorge/backrest/internal/api/syncapi/permissions"
 	"github.com/garethgeorge/backrest/internal/env"
+	"github.com/garethgeorge/backrest/internal/ioutil"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
@@ -475,35 +476,30 @@ func (c *syncSessionHandlerClient) HandleOperationManifest(ctx context.Context, 
 }
 
 func (c *syncSessionHandlerClient) HandleRequestOperationData(ctx context.Context, stream *bidiSyncCommandStream, item *v1sync.SyncStreamItem_SyncActionRequestOperationData) error {
-	var batch []*v1.Operation
-	send := func() {
-		if len(batch) == 0 {
-			return
+	for idBatch := range ioutil.Batchify(item.GetOpIds(), ioutil.DefaultBatchSize) {
+		ops := make([]*v1.Operation, 0, len(idBatch))
+		for _, id := range idBatch {
+			op, err := c.oplog.Get(id)
+			if err != nil {
+				continue // may have been deleted between manifest and request
+			}
+			ops = append(ops, op)
+		}
+		if len(ops) == 0 {
+			continue
 		}
 		stream.Send(&v1sync.SyncStreamItem{
 			Action: &v1sync.SyncStreamItem_ReceiveOperations{
 				ReceiveOperations: &v1sync.SyncStreamItem_SyncActionReceiveOperations{
 					Event: &v1.OperationEvent{
 						Event: &v1.OperationEvent_UpdatedOperations{
-							UpdatedOperations: &v1.OperationList{Operations: batch},
+							UpdatedOperations: &v1.OperationList{Operations: ops},
 						},
 					},
 				},
 			},
 		})
-		batch = batch[:0]
 	}
-	for _, id := range item.GetOpIds() {
-		op, err := c.oplog.Get(id)
-		if err != nil {
-			continue // may have been deleted between manifest and request
-		}
-		batch = append(batch, op)
-		if len(batch) >= 256 {
-			send()
-		}
-	}
-	send()
 	return nil
 }
 

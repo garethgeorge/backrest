@@ -74,7 +74,8 @@ var (
 
 func TestConnectionSucceeds(t *testing.T) {
 	testutil.InstallZapLogger(t)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	peerHostAddr := testutil.AllocOpenBindAddr(t)
 	peerClientAddr := testutil.AllocOpenBindAddr(t)
@@ -121,7 +122,8 @@ func TestConnectionSucceeds(t *testing.T) {
 
 func TestConnectionBadKeyRejected(t *testing.T) {
 	testutil.InstallZapLogger(t)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	peerHostAddr := testutil.AllocOpenBindAddr(t)
 	peerClientAddr := testutil.AllocOpenBindAddr(t)
@@ -165,7 +167,8 @@ func TestConnectionBadKeyRejected(t *testing.T) {
 
 func TestSyncConfigChange(t *testing.T) {
 	testutil.InstallZapLogger(t)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	peerHostAddr := testutil.AllocOpenBindAddr(t)
 	peerClientAddr := testutil.AllocOpenBindAddr(t)
@@ -270,7 +273,8 @@ func TestSyncConfigChange(t *testing.T) {
 
 func TestSimpleOperationSync(t *testing.T) {
 	testutil.InstallZapLogger(t)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	peerHostAddr := testutil.AllocOpenBindAddr(t)
 	peerClientAddr := testutil.AllocOpenBindAddr(t)

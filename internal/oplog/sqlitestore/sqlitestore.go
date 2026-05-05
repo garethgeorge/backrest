@@ -610,7 +610,7 @@ func (m *SqliteStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 	defer tx.Rollback()
 
 	ops := make([]*v1.Operation, 0, len(opID))
-	for _, batch := range ioutil.Batchify(opID, ioutil.DefaultBatchSize) {
+	for batch := range ioutil.Batchify(opID, ioutil.DefaultBatchSize) {
 		batchOps, err := m.deleteHelper(tx, batch...)
 		if err != nil {
 			return nil, err

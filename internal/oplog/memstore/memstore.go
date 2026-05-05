@@ -151,7 +151,7 @@ func (m *MemStore) Add(op ...*v1.Operation) error {
 	}
 
 	for _, o := range op {
-		m.operations[o.Id] = o
+		m.operations[o.Id] = proto.Clone(o).(*v1.Operation)
 	}
 	return nil
 }
@@ -163,7 +163,7 @@ func (m *MemStore) Get(opID int64) (*v1.Operation, error) {
 	if !ok {
 		return nil, oplog.ErrNotExist
 	}
-	return op, nil
+	return proto.Clone(op).(*v1.Operation), nil
 }
 
 func (m *MemStore) Delete(opID ...int64) ([]*v1.Operation, error) {
@@ -172,7 +172,7 @@ func (m *MemStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 	ops := make([]*v1.Operation, 0, len(opID))
 	for _, id := range opID {
 		if op, ok := m.operations[id]; ok {
-			ops = append(ops, op)
+			ops = append(ops, proto.Clone(op).(*v1.Operation))
 		}
 		delete(m.operations, id)
 	}
@@ -198,7 +198,7 @@ func (m *MemStore) Set(opts oplog.SetOptions, op ...*v1.Operation) error {
 			if err := protoutil.ValidateOperation(o); err != nil {
 				return err
 			}
-			m.operations[o.Id] = o
+			m.operations[o.Id] = proto.Clone(o).(*v1.Operation)
 		} else {
 			if o.Modno == 0 {
 				m.nextModno++
@@ -212,7 +212,7 @@ func (m *MemStore) Set(opts oplog.SetOptions, op ...*v1.Operation) error {
 			if _, ok := m.operations[o.Id]; !ok {
 				return oplog.ErrNotExist
 			}
-			m.operations[o.Id] = o
+			m.operations[o.Id] = proto.Clone(o).(*v1.Operation)
 		}
 	}
 	return nil
@@ -230,7 +230,7 @@ func (m *MemStore) Update(op ...*v1.Operation) error {
 		if _, ok := m.operations[o.Id]; !ok {
 			return oplog.ErrNotExist
 		}
-		m.operations[o.Id] = o
+		m.operations[o.Id] = proto.Clone(o).(*v1.Operation)
 	}
 	return nil
 }

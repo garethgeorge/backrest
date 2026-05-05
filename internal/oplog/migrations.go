@@ -123,7 +123,7 @@ func migration003DeduplicateIndexedSnapshots(oplog *OpLog) error {
 		return nil
 	}
 
-	for _, batch := range ioutil.Batchify(deleteIDs, ioutil.DefaultBatchSize) {
+	for batch := range ioutil.Batchify(deleteIDs, ioutil.DefaultBatchSize) {
 		if _, err := oplog.store.Delete(batch...); err != nil {
 			return err
 		}

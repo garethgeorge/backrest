@@ -1,15 +1,16 @@
 package ioutil
 
+import "iter"
+
 const DefaultBatchSize = 512
 
-func Batchify[T any](items []T, batchSize int) [][]T {
-	var batches [][]T
-	for i := 0; i < len(items); i += batchSize {
-		end := i + batchSize
-		if end > len(items) {
-			end = len(items)
+func Batchify[T any](items []T, batchSize int) iter.Seq[[]T] {
+	return func(yield func([]T) bool) {
+		for i := 0; i < len(items); i += batchSize {
+			end := min(i+batchSize, len(items))
+			if !yield(items[i:end]) {
+				return
+			}
 		}
-		batches = append(batches, items[i:end])
 	}
-	return batches
 }

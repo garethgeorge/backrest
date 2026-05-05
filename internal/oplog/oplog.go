@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 type OperationEvent int
@@ -55,9 +56,17 @@ func (o *OpLog) curSubscribers() []subAndQuery {
 }
 
 func (o *OpLog) notify(ops []*v1.Operation, event OperationEvent) {
-	for _, sub := range o.curSubscribers() {
-		notifyOps := make([]*v1.Operation, 0, len(ops))
-		for _, op := range ops {
+	subs := o.curSubscribers()
+	if len(subs) == 0 {
+		return
+	}
+	cloned := make([]*v1.Operation, len(ops))
+	for i, op := range ops {
+		cloned[i] = proto.Clone(op).(*v1.Operation)
+	}
+	for _, sub := range subs {
+		notifyOps := make([]*v1.Operation, 0, len(cloned))
+		for _, op := range cloned {
 			if sub.q.Match(op) {
 				notifyOps = append(notifyOps, op)
 			}
