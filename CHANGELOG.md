@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.13.1](https://github.com/garethgeorge/backrest/compare/v1.13.0...v1.13.1) (2026-05-11)
+
+
+### Bug Fixes
+
+* allow multihost sync to use real h2 (rather than h2c) when using https ([d641593](https://github.com/garethgeorge/backrest/commit/d6415931422cb0fb3bd6d14fbe11c37bd97ccf1b))
+* per-plan retention disabled when repo forgetPolicy schedule is disabled ([39d9a3d](https://github.com/garethgeorge/backrest/commit/39d9a3d34587afb91d865b921a686c7cc52e967f))
+* sync errors due to buffer reuse when streaming large batches of operation data ([680df5e](https://github.com/garethgeorge/backrest/commit/680df5e85c769c2b8d7ddbad4b382da257415646))
+
 ## [1.13.0](https://github.com/garethgeorge/backrest/compare/v1.12.1...v1.13.0) (2026-05-04)
 
 
