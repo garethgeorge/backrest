@@ -92,7 +92,10 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
   );
 
   const selectedRepo = config?.repos.find((r) => r.id === (template?.repo || formData?.repo));
-  const repoHasScheduledForget = !!selectedRepo?.forgetPolicy?.schedule;
+  const repoHasScheduledForget =
+    !!selectedRepo?.forgetPolicy?.schedule &&
+    selectedRepo.forgetPolicy.schedule.schedule.case !== undefined &&
+    selectedRepo.forgetPolicy.schedule.schedule.case !== "disabled";
 
   useEffect(() => {
     setFormData(
