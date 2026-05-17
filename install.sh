@@ -375,8 +375,7 @@ install_binary() {
   fi
   echo "Installing backrest to /usr/local/bin"
   sudo mkdir -p /usr/local/bin
-  sudo cp "$src" /usr/local/bin/backrest
-  sudo chmod +x /usr/local/bin/backrest
+  sudo install -m 755 "$src" /usr/local/bin/backrest
 }
 
 # =============================================================================
