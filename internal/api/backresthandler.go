@@ -990,7 +990,16 @@ func (s *BackrestHandler) GeneratePairingToken(ctx context.Context, req *connect
 func sanitizeRepoFlags(repo *v1.Repo) {
 	for i, flag := range repo.Flags {
 		if strings.HasPrefix(flag, "--option=sftp.args=") {
-			repo.Flags[i] = strings.ReplaceAll(flag, "-i @", "-i ")
+			// Remove the "-i @" workaround since we now handle quoting properly
+			flag = strings.ReplaceAll(flag, "-i @", "-i ")
+			// Strip double quotes from sftp.args values that cause restic's
+			// pflag parser to fail with "bare \" in non-quoted-field".
+			// The UI wraps paths in double quotes (e.g. -i "/path/to/key"),
+			// but restic's --option flag parser cannot handle them.
+			// Paths passed as sftp.args don't need quoting since they are
+			// passed directly to sftp as individual arguments.
+			flag = strings.ReplaceAll(flag, "\"", "")
+			repo.Flags[i] = flag
 		}
 	}
 }
