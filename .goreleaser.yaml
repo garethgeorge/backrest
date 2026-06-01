@@ -43,6 +43,26 @@ builds:
       - 7
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+  - id: linux-flock
+    main: ./cmd/backrest
+    binary: backrest
+    env:
+      - CGO_ENABLED=0
+    tags:
+      - tray
+      - sqlite3_flock
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+      - arm
+      - "386"
+    goarm:
+      - 6
+      - 7
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   - id: docker-entrypoint
     main: ./cmd/docker-entrypoint
     binary: docker-entrypoint
@@ -144,6 +164,30 @@ dockers_v2:
       - "--provenance=false"
     ids:
       - linux
+      - docker-entrypoint
+    platforms:
+      - linux/amd64
+      - linux/arm64
+      - linux/arm/v6
+      - linux/arm/v7
+      - linux/386
+
+  - id: flock
+    images:
+      - garethgeorge/backrest
+      - ghcr.io/garethgeorge/backrest
+    tags:
+      - flock
+      - v{{ .Major }}-flock
+      - v{{ .Major }}.{{ .Minor }}-flock
+      - "{{ .Tag }}-flock"
+    dockerfile: Dockerfile.alpine
+    flags:
+      - "--pull"
+      # provenance attestations break the multi-arch manifest for armv6/armv7/386
+      - "--provenance=false"
+    ids:
+      - linux-flock
       - docker-entrypoint
     platforms:
       - linux/amd64
