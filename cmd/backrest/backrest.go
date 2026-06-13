@@ -22,6 +22,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/gen/go/v1sync/v1syncconnect"
 	"github.com/garethgeorge/backrest/internal/api"
+	"github.com/garethgeorge/backrest/internal/api/health"
 	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/auth"
 	"github.com/garethgeorge/backrest/internal/config"
@@ -270,6 +271,7 @@ func newRootMux(
 	unauthedMux.Handle(authPath, authHandler)
 	syncPath, syncHandlerUnauthed := v1syncconnect.NewBackrestSyncServiceHandler(syncHandler)
 	unauthedMux.Handle(syncPath, syncHandlerUnauthed)
+	unauthedMux.HandleFunc("/healthz", health.Handler)
 	unauthedMux.Handle("/download/", http.StripPrefix("/download", downloadHandler))
 
 	// Root mux to dispatch to authenticated or unauthenticated handlers

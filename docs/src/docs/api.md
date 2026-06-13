@@ -47,3 +47,12 @@ For details on the structure of operations returned see the [operations.proto](h
 ::: warning
 The structure of the operation history is subject to change over time. Different fields may be added or removed in future versions.
 :::
+
+### Health Check API
+
+A health check endpoint is available for monitoring and for liveness probes (e.g. in Kubernetes).
+
+`GET /healthz`
+
+This endpoint will return an HTTP `200 OK` status with the body `OK` if the service is running. It does not require authentication.
+
