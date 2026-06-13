@@ -41,7 +41,7 @@ func ReadyHandler(configMgr *config.ConfigManager, db Pinger) http.HandlerFunc {
 		}
 
 		// 2. Check if database is available with a timeout
-		ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 
 		if err := db.PingContext(ctx); err != nil {
