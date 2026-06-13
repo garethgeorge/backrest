@@ -48,11 +48,39 @@ For details on the structure of operations returned see the [operations.proto](h
 The structure of the operation history is subject to change over time. Different fields may be added or removed in future versions.
 :::
 
-### Health Check API
 
-A health check endpoint is available for monitoring and for liveness probes (e.g. in Kubernetes).
+### Health Checks (Liveness & Readiness Probes)
 
-`GET /healthz`
+Backrest provides two unauthenticated endpoints to monitor the application's state, specifically designed for orchestrators like Kubernetes or Docker Compose.
 
-This endpoint will return an HTTP `200 OK` status with the body `OK` if the service is running. It does not require authentication.
+#### 1. Liveness Probe
 
+**`GET /healthz`**
+
+This endpoint checks if the core HTTP server is running and responsive. Use this for your `livenessProbe` 
+
+* **Success Response:** HTTP `200 OK` with the plain text body `OK`.
+
+#### 2. Readiness Probe
+
+**`GET /readyz`**
+
+It verifies that the configuration is successfully loaded into memory and that the internal database is responsive. Use this for your `readinessProbe`
+
+* **Success Response:** HTTP `200 OK` with JSON body:
+```json
+{
+  "status": "READY"
+}
+
+```
+
+
+* **Failure Response:** HTTP `503 Service Unavailable` with a JSON body explaining the error:
+```json
+{
+  "status": "DOWN",
+  "reason": "Database is locked or unresponsive"
+}
+
+```

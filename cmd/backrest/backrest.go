@@ -131,7 +131,7 @@ func runApp() {
 	}()
 
 	// Setup and start HTTP server
-	server := newServer(configMgr, peerStateManager, orch, opLog, logStore, syncMgr, authenticator)
+	server := newServer(configMgr, peerStateManager, orch, opLog, logStore, syncMgr, authenticator, sharedKvdb)
 	go func() {
 		<-ctx.Done()
 		server.Shutdown(context.Background())
@@ -227,6 +227,7 @@ func newServer(
 	logStore *logstore.LogStore,
 	syncMgr *syncapi.SyncManager,
 	authenticator *auth.Authenticator,
+	db health.Pinger,
 ) *http.Server {
 	// API Handlers
 	apiBackrestHandler := api.NewBackrestHandler(configMgr, peerStateManager, orch, opLog, logStore)
@@ -236,7 +237,7 @@ func newServer(
 	downloadHandler := api.NewDownloadHandler(opLog, orch)
 
 	// Routing
-	rootMux := newRootMux(apiBackrestHandler, apiAuthenticationHandler, syncHandler, syncStateHandler, downloadHandler, authenticator)
+	rootMux := newRootMux(apiBackrestHandler, apiAuthenticationHandler, syncHandler, syncStateHandler, downloadHandler, authenticator, configMgr, db)
 
 	var handler http.Handler = rootMux
 	if version == "unknown" { // dev build, enable CORS for local development
@@ -256,6 +257,8 @@ func newRootMux(
 	syncStateHandler v1syncconnect.BackrestSyncStateServiceHandler,
 	downloadHandler http.Handler,
 	authenticator *auth.Authenticator,
+	configMgr *config.ConfigManager,
+	db health.Pinger,
 ) *http.ServeMux {
 	// Authenticated routes
 	authedMux := http.NewServeMux()
@@ -271,7 +274,8 @@ func newRootMux(
 	unauthedMux.Handle(authPath, authHandler)
 	syncPath, syncHandlerUnauthed := v1syncconnect.NewBackrestSyncServiceHandler(syncHandler)
 	unauthedMux.Handle(syncPath, syncHandlerUnauthed)
-	unauthedMux.HandleFunc("/healthz", health.Handler)
+	unauthedMux.HandleFunc("/healthz", health.LivenessHandler)
+	unauthedMux.HandleFunc("/readyz", health.ReadyHandler(configMgr, db))
 	unauthedMux.Handle("/download/", http.StripPrefix("/download", downloadHandler))
 
 	// Root mux to dispatch to authenticated or unauthenticated handlers
