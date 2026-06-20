@@ -25,6 +25,7 @@ import { clone, create, fromJson, toJson } from "@bufbuild/protobuf";
 import {
   AuthSchema,
   ConfigSchema,
+  OidcConfigSchema,
   UserSchema,
   MultihostSchema,
   Multihost_PeerSchema,
@@ -53,7 +54,13 @@ import {
   type SectionDef,
 } from "../../components/common/TwoPaneModal";
 import { SectionCard } from "../../components/common/SectionCard";
-import { ToggleField } from "../../components/common/ToggleField";
+import {
+  AUTH_DRIVER_DISABLED,
+  AUTH_DRIVER_LOCAL,
+  AUTH_DRIVER_OIDC,
+  DEFAULT_OIDC_SCOPES,
+  effectiveAuthDriver,
+} from "../../state/configutil";
 
 export const SettingsModal = () => {
   const [config, setConfig] = useConfig();
@@ -80,12 +87,23 @@ export const SettingsModal = () => {
     return {
       instance: config.instance || "",
       auth: {
-        disabled: config.auth?.disabled || false,
+        authDriver: effectiveAuthDriver(config.auth),
         users:
           config.auth?.users?.map((u: any) => ({
             ...(toJson(UserSchema, u, { alwaysEmitImplicit: true }) as any),
             isExisting: true,
           })) || [],
+        oidc: {
+          ...(config.auth?.oidc
+            ? (toJson(OidcConfigSchema, config.auth.oidc, {
+                alwaysEmitImplicit: true,
+              }) as any)
+            : {}),
+          scopes:
+            config.auth?.oidc?.scopes && config.auth.oidc.scopes.length > 0
+              ? config.auth.oidc.scopes
+              : DEFAULT_OIDC_SCOPES,
+        },
       },
       multihost: {
         identity: { keyid: config.multihost?.identity?.keyid || "" },
@@ -113,6 +131,14 @@ export const SettingsModal = () => {
       { label: "24 hours", value: "86400" },
       { label: "7 days", value: "604800" },
       { label: "Forever", value: "0" },
+    ],
+  });
+
+  const authDriverOptions = createListCollection({
+    items: [
+      { label: "Disabled (no login required)", value: AUTH_DRIVER_DISABLED },
+      { label: "Local (username / password)", value: AUTH_DRIVER_LOCAL },
+      { label: "OIDC (OpenID Connect)", value: AUTH_DRIVER_OIDC },
     ],
   });
 
@@ -215,10 +241,26 @@ export const SettingsModal = () => {
       });
       newConfig.instance = workingData.instance;
 
-      if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
+      const driver = workingData.auth?.authDriver || AUTH_DRIVER_LOCAL;
+      if (
+        driver === AUTH_DRIVER_LOCAL &&
+        (!workingData.auth?.users || workingData.auth.users.length === 0)
+      ) {
         throw new Error(
-          "At least one user must be configured or authentication must be disabled",
+          'At least one user must be configured when the auth driver is "local"',
         );
+      }
+      if (driver === AUTH_DRIVER_OIDC) {
+        const oidc = workingData.auth?.oidc;
+        if (!oidc?.issuerUrl?.trim()) {
+          throw new Error("OIDC issuer URL is required");
+        }
+        if (!oidc?.clientId?.trim()) {
+          throw new Error("OIDC client ID is required");
+        }
+      } else {
+        // only persist oidc settings when the oidc driver is selected.
+        delete newConfig.auth.oidc;
       }
 
       setConfig(await backrestService.setConfig(newConfig));
@@ -240,6 +282,7 @@ export const SettingsModal = () => {
   };
 
   const users = getField(["auth", "users"]) || [];
+  const authDriver = getField(["auth", "authDriver"]) || AUTH_DRIVER_LOCAL;
 
   const sections: SectionDef[] = [
     { id: "general", label: "General", icon: <FiSettings size={14} /> },
@@ -278,7 +321,7 @@ export const SettingsModal = () => {
           description="Instance identity and display preferences."
         >
           <Stack gap={4}>
-            {users.length === 0 && !getField(["auth", "disabled"]) && (
+            {users.length === 0 && authDriver === AUTH_DRIVER_LOCAL && (
               <Alert status="warning">
                 <Stack gap={1}>
                   <strong>{m.settings_initial_setup_title()}</strong>
@@ -316,13 +359,143 @@ export const SettingsModal = () => {
           description="User accounts and access control."
         >
           <Stack gap={4}>
-            <ToggleField
-              checked={getField(["auth", "disabled"]) || false}
-              onChange={(v) => updateField(["auth", "disabled"], v)}
-              label={m.settings_auth_disable()}
-              hint="When disabled, no login is required to access Backrest."
-            />
+            <Field
+              label="Authentication driver"
+              helperText='How users authenticate. "Disabled" requires no login. "Local" uses username/password accounts. "OIDC" delegates to an OpenID Connect provider.'
+            >
+              <SelectRoot
+                collection={authDriverOptions}
+                value={[authDriver]}
+                onValueChange={(e: any) =>
+                  updateField(["auth", "authDriver"], e.value[0])
+                }
+              >
+                <SelectTrigger>
+                  <SelectValueText placeholder="Select auth driver" />
+                </SelectTrigger>
+                <SelectContent zIndex={2000}>
+                  {authDriverOptions.items.map((option: any) => (
+                    <SelectItem item={option} key={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </SelectRoot>
+            </Field>
 
+            {authDriver === AUTH_DRIVER_OIDC && (
+              <Stack gap={4} width="full">
+                <Field
+                  label="Issuer URL"
+                  required
+                  helperText="OIDC provider issuer URL. Used for .well-known discovery, e.g. https://accounts.google.com"
+                >
+                  <Input
+                    value={getField(["auth", "oidc", "issuerUrl"]) || ""}
+                    placeholder="https://issuer.example.com"
+                    onChange={(e) =>
+                      updateField(["auth", "oidc", "issuerUrl"], e.target.value)
+                    }
+                  />
+                </Field>
+                <Field label="Client ID" required>
+                  <Input
+                    value={getField(["auth", "oidc", "clientId"]) || ""}
+                    onChange={(e) =>
+                      updateField(["auth", "oidc", "clientId"], e.target.value)
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Client secret"
+                  helperText="Optional. Leave empty for public clients (PKCE)."
+                >
+                  <PasswordInput
+                    value={getField(["auth", "oidc", "clientSecret"]) || ""}
+                    onChange={(e) =>
+                      updateField(
+                        ["auth", "oidc", "clientSecret"],
+                        e.target.value,
+                      )
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Scopes"
+                  helperText="Space-separated OAuth2 scopes. Defaults to openid email profile."
+                >
+                  <Input
+                    value={(getField(["auth", "oidc", "scopes"]) || []).join(
+                      " ",
+                    )}
+                    placeholder="openid email profile"
+                    onChange={(e) =>
+                      updateField(
+                        ["auth", "oidc", "scopes"],
+                        e.target.value.split(/\s+/).filter(Boolean),
+                      )
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Redirect URL"
+                  helperText="Optional. Derived from the request host when empty."
+                >
+                  <Input
+                    value={getField(["auth", "oidc", "redirectUrl"]) || ""}
+                    placeholder="https://backrest.example.com/oidc/callback"
+                    onChange={(e) =>
+                      updateField(
+                        ["auth", "oidc", "redirectUrl"],
+                        e.target.value,
+                      )
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Allowed emails"
+                  helperText="Optional. Comma-separated. If set, only these emails may log in."
+                >
+                  <Input
+                    value={(
+                      getField(["auth", "oidc", "allowedEmails"]) || []
+                    ).join(", ")}
+                    placeholder="alice@example.com, bob@example.com"
+                    onChange={(e) =>
+                      updateField(
+                        ["auth", "oidc", "allowedEmails"],
+                        e.target.value
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Allowed domains"
+                  helperText="Optional. Comma-separated bare domains. If set, only emails in these domains may log in."
+                >
+                  <Input
+                    value={(
+                      getField(["auth", "oidc", "allowedDomains"]) || []
+                    ).join(", ")}
+                    placeholder="example.com, example.org"
+                    onChange={(e) =>
+                      updateField(
+                        ["auth", "oidc", "allowedDomains"],
+                        e.target.value
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                  />
+                </Field>
+              </Stack>
+            )}
+
+            {authDriver === AUTH_DRIVER_LOCAL && (
             <Field label={m.settings_auth_users()} required>
               <Stack gap={3} width="full">
                 {users.map((user: any, index: number) => (
@@ -386,6 +559,7 @@ export const SettingsModal = () => {
                 </Button>
               </Stack>
             </Field>
+            )}
           </Stack>
         </SectionCard>
       </TwoPaneSection>

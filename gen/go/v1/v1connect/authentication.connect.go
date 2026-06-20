@@ -10,6 +10,7 @@ import (
 	errors "errors"
 	types "github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	http "net/http"
 	strings "strings"
 )
@@ -39,12 +40,19 @@ const (
 	// AuthenticationHashPasswordProcedure is the fully-qualified name of the Authentication's
 	// HashPassword RPC.
 	AuthenticationHashPasswordProcedure = "/v1.Authentication/HashPassword"
+	// AuthenticationGetAuthInfoProcedure is the fully-qualified name of the Authentication's
+	// GetAuthInfo RPC.
+	AuthenticationGetAuthInfoProcedure = "/v1.Authentication/GetAuthInfo"
 )
 
 // AuthenticationClient is a client for the v1.Authentication service.
 type AuthenticationClient interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
 	HashPassword(context.Context, *connect.Request[types.StringValue]) (*connect.Response[types.StringValue], error)
+	// GetAuthInfo returns the active auth driver so the UI can decide how to
+	// prompt for login (e.g. local password form vs. redirect to an OIDC provider)
+	// before the user is authenticated.
+	GetAuthInfo(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.AuthInfo], error)
 }
 
 // NewAuthenticationClient constructs a client for the v1.Authentication service. By default, it
@@ -70,6 +78,12 @@ func NewAuthenticationClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(authenticationMethods.ByName("HashPassword")),
 			connect.WithClientOptions(opts...),
 		),
+		getAuthInfo: connect.NewClient[emptypb.Empty, v1.AuthInfo](
+			httpClient,
+			baseURL+AuthenticationGetAuthInfoProcedure,
+			connect.WithSchema(authenticationMethods.ByName("GetAuthInfo")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -77,6 +91,7 @@ func NewAuthenticationClient(httpClient connect.HTTPClient, baseURL string, opts
 type authenticationClient struct {
 	login        *connect.Client[v1.LoginRequest, v1.LoginResponse]
 	hashPassword *connect.Client[types.StringValue, types.StringValue]
+	getAuthInfo  *connect.Client[emptypb.Empty, v1.AuthInfo]
 }
 
 // Login calls v1.Authentication.Login.
@@ -89,10 +104,19 @@ func (c *authenticationClient) HashPassword(ctx context.Context, req *connect.Re
 	return c.hashPassword.CallUnary(ctx, req)
 }
 
+// GetAuthInfo calls v1.Authentication.GetAuthInfo.
+func (c *authenticationClient) GetAuthInfo(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.AuthInfo], error) {
+	return c.getAuthInfo.CallUnary(ctx, req)
+}
+
 // AuthenticationHandler is an implementation of the v1.Authentication service.
 type AuthenticationHandler interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
 	HashPassword(context.Context, *connect.Request[types.StringValue]) (*connect.Response[types.StringValue], error)
+	// GetAuthInfo returns the active auth driver so the UI can decide how to
+	// prompt for login (e.g. local password form vs. redirect to an OIDC provider)
+	// before the user is authenticated.
+	GetAuthInfo(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.AuthInfo], error)
 }
 
 // NewAuthenticationHandler builds an HTTP handler from the service implementation. It returns the
@@ -114,12 +138,20 @@ func NewAuthenticationHandler(svc AuthenticationHandler, opts ...connect.Handler
 		connect.WithSchema(authenticationMethods.ByName("HashPassword")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authenticationGetAuthInfoHandler := connect.NewUnaryHandler(
+		AuthenticationGetAuthInfoProcedure,
+		svc.GetAuthInfo,
+		connect.WithSchema(authenticationMethods.ByName("GetAuthInfo")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/v1.Authentication/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthenticationLoginProcedure:
 			authenticationLoginHandler.ServeHTTP(w, r)
 		case AuthenticationHashPasswordProcedure:
 			authenticationHashPasswordHandler.ServeHTTP(w, r)
+		case AuthenticationGetAuthInfoProcedure:
+			authenticationGetAuthInfoHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -135,4 +167,8 @@ func (UnimplementedAuthenticationHandler) Login(context.Context, *connect.Reques
 
 func (UnimplementedAuthenticationHandler) HashPassword(context.Context, *connect.Request[types.StringValue]) (*connect.Response[types.StringValue], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Authentication.HashPassword is not implemented"))
+}
+
+func (UnimplementedAuthenticationHandler) GetAuthInfo(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.AuthInfo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Authentication.GetAuthInfo is not implemented"))
 }

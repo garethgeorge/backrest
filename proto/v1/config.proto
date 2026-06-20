@@ -304,8 +304,20 @@ message Hook {
 }
 
 message Auth {
-  bool disabled = 1 [json_name="disabled"]; // disable authentication.
-  repeated User users = 2 [json_name="users"]; // users to allow access to the UI.
+  bool disabled = 1 [json_name="disabled", deprecated=true]; // DEPRECATED: use auth_driver="disabled". When true it takes precedence over auth_driver.
+  repeated User users = 2 [json_name="users"]; // users to allow access to the UI. only valid when auth_driver is "local".
+  string auth_driver = 3 [json_name="authDriver"]; // "disabled", "local" (default when empty), or "oidc".
+  OidcConfig oidc = 4 [json_name="oidc"]; // OpenID Connect settings. only valid when auth_driver is "oidc".
+}
+
+message OidcConfig {
+  string issuer_url = 1 [json_name="issuerUrl"]; // OIDC issuer URL (used for .well-known discovery). required.
+  string client_id = 2 [json_name="clientId"]; // OAuth2 client ID. required.
+  string client_secret = 3 [json_name="clientSecret"]; // OAuth2 client secret. optional (empty for public clients).
+  repeated string scopes = 4 [json_name="scopes"]; // OAuth2 scopes to request. defaults to openid, email, profile when empty.
+  string redirect_url = 5 [json_name="redirectUrl"]; // OAuth2 redirect URL. optional; derived from the request host when empty.
+  repeated string allowed_emails = 6 [json_name="allowedEmails"]; // if set, only these email addresses may log in. optional.
+  repeated string allowed_domains = 7 [json_name="allowedDomains"]; // if set, only emails in these domains may log in. optional.
 }
 
 message User {

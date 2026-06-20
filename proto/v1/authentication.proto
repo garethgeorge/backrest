@@ -12,6 +12,7 @@ import "google/api/annotations.proto";
 service Authentication {
   rpc Login(LoginRequest) returns (LoginResponse) {}
   rpc HashPassword(types.StringValue) returns (types.StringValue) {}
+  rpc GetAuthInfo(google.protobuf.Empty) returns (AuthInfo) {}
 }
 
 message LoginRequest {
@@ -21,4 +22,9 @@ message LoginRequest {
 
 message LoginResponse {
   string token = 1; // JWT token
+}
+
+message AuthInfo {
+  string auth_driver = 1 [json_name="authDriver"]; // effective auth driver: "disabled", "local", or "oidc".
+  string oidc_login_url = 2 [json_name="oidcLoginUrl"]; // path the UI should redirect to when auth_driver is "oidc".
 }

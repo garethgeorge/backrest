@@ -8,19 +8,23 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/internal/auth"
+	"github.com/garethgeorge/backrest/internal/config"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type AuthenticationHandler struct {
 	// v1connect.UnimplementedAuthenticationHandler
 	authenticator *auth.Authenticator
+	config        config.ConfigStore
 }
 
 var _ v1connect.AuthenticationHandler = &AuthenticationHandler{}
 
-func NewAuthenticationHandler(authenticator *auth.Authenticator) *AuthenticationHandler {
+func NewAuthenticationHandler(authenticator *auth.Authenticator, config config.ConfigStore) *AuthenticationHandler {
 	return &AuthenticationHandler{
 		authenticator: authenticator,
+		config:        config,
 	}
 }
 
@@ -40,6 +44,19 @@ func (s *AuthenticationHandler) Login(ctx context.Context, req *connect.Request[
 	return connect.NewResponse(&v1.LoginResponse{
 		Token: token,
 	}), nil
+}
+
+func (s *AuthenticationHandler) GetAuthInfo(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.AuthInfo], error) {
+	cfg, err := s.config.Get()
+	if err != nil {
+		return nil, err
+	}
+	driver := config.AuthDriverOf(cfg.GetAuth())
+	info := &v1.AuthInfo{AuthDriver: driver}
+	if driver == config.AuthDriverOIDC {
+		info.OidcLoginUrl = "/auth/oidc/login"
+	}
+	return connect.NewResponse(info), nil
 }
 
 func (s *AuthenticationHandler) HashPassword(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[types.StringValue], error) {

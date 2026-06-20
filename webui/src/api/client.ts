@@ -21,7 +21,9 @@ const fetch = (
   if (token && token !== "") {
     headers.set("Authorization", "Bearer " + token);
   }
-  init = { ...init, headers };
+  // include credentials so the OIDC session cookie is sent (same-origin in prod,
+  // cross-origin in dev via the reflected-origin CORS middleware).
+  init = { ...init, headers, credentials: "include" };
   return window.fetch(input, init);
 };
 
