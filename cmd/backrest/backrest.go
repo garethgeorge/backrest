@@ -229,13 +229,14 @@ func newServer(
 ) *http.Server {
 	// API Handlers
 	apiBackrestHandler := api.NewBackrestHandler(configMgr, peerStateManager, orch, opLog, logStore)
-	apiAuthenticationHandler := api.NewAuthenticationHandler(authenticator)
+	apiAuthenticationHandler := api.NewAuthenticationHandler(authenticator, configMgr)
 	syncHandler := syncapi.NewBackrestSyncHandler(syncMgr)
 	syncStateHandler := syncapi.NewBackrestSyncStateHandler(syncMgr)
 	downloadHandler := api.NewDownloadHandler(opLog, orch)
+	oidcHandler := auth.NewOIDCHandler(auth.NewOIDCManager(configMgr), authenticator)
 
 	// Routing
-	rootMux := newRootMux(apiBackrestHandler, apiAuthenticationHandler, syncHandler, syncStateHandler, downloadHandler, authenticator)
+	rootMux := newRootMux(apiBackrestHandler, apiAuthenticationHandler, syncHandler, syncStateHandler, downloadHandler, oidcHandler, authenticator)
 
 	var handler http.Handler = rootMux
 	if version == "unknown" { // dev build, enable CORS for local development
@@ -254,6 +255,7 @@ func newRootMux(
 	syncHandler v1syncconnect.BackrestSyncServiceHandler,
 	syncStateHandler v1syncconnect.BackrestSyncStateServiceHandler,
 	downloadHandler http.Handler,
+	oidcHandler *auth.OIDCHandler,
 	authenticator *auth.Authenticator,
 ) *http.ServeMux {
 	// Authenticated routes
@@ -271,6 +273,7 @@ func newRootMux(
 	syncPath, syncHandlerUnauthed := v1syncconnect.NewBackrestSyncServiceHandler(syncHandler)
 	unauthedMux.Handle(syncPath, syncHandlerUnauthed)
 	unauthedMux.Handle("/download/", http.StripPrefix("/download", downloadHandler))
+	oidcHandler.Register(unauthedMux)
 
 	// Root mux to dispatch to authenticated or unauthenticated handlers
 	rootMux := http.NewServeMux()
@@ -300,7 +303,15 @@ func newRootMux(
 
 func newCorsMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		// Reflect the request origin (rather than "*") so credentialed requests are
+		// permitted; the session cookie set by the OIDC flow requires this in dev.
+		if origin := r.Header.Get("Origin"); origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Connect-Protocol-Version, Connect-Timeout-Ms, Authorization, Accept-Encoding")
 		if r.Method == "OPTIONS" {

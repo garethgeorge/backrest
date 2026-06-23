@@ -165,7 +165,7 @@ func NewDefaultConfig() *v1.Config {
 		Repos:    []*v1.Repo{},
 		Plans:    []*v1.Plan{},
 		Auth: &v1.Auth{
-			Disabled: true,
+			AuthDriver: AuthDriverDisabled,
 		},
 	}
 	_, err := PopulateRequiredFields(cfg)

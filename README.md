@@ -222,6 +222,29 @@ npm install -g @bufbuild/protoc-gen-es
 (cd cmd/backrest && go build .)
 ```
 
+## Testing OIDC with Keycloak
+
+A Keycloak + Postgres stack is bundled in [`scripts/keycloak/docker-compose.yml`](./scripts/keycloak/docker-compose.yml) for testing the OIDC auth driver locally.
+
+1. Start Keycloak:
+
+   ```sh
+   (cd scripts/keycloak && docker compose up -d postgres keycloak)
+   ```
+
+   Keycloak comes up at <http://localhost:8080> (admin console at `/admin`, user/password `admin`/`admin`). The Postgres data dir is `tmpfs`, so realm state is not persisted across container recreation.
+
+2. Configure the OIDC driver in backrest using the bundled `backrest` client:
+
+   | Setting       | Value                                       |
+   | ------------- | ------------------------------------------- |
+   | Realm         | `master`                                    |
+   | Issuer URL    | `http://localhost:8080/realms/master`       |
+   | Client ID     | `backrest`                                  |
+   | Client secret | `3jpW4nLOccDiEPm1t1XnbCNH2GKNTsuz`          |
+
+See [`scripts/keycloak/KEYCLOAK.md`](./scripts/keycloak/KEYCLOAK.md) for persisting realm/client/user changes across container recreation.
+
 ## Using VSCode Dev Containers
 
 The dev container uses Nix and direnv to provide all dependencies. When the container starts, `direnv allow` runs automatically so the Nix shell is activated in every terminal.

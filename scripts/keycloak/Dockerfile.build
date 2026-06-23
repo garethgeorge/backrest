@@ -1,0 +1,37 @@
+FROM node:24-alpine AS webui
+RUN corepack enable
+WORKDIR /webui
+COPY webui/package.json webui/pnpm-lock.yaml ./
+RUN printf "allowBuilds:\n  '@parcel/watcher': true\n  esbuild: true\n" > pnpm-workspace.yaml
+RUN pnpm install --frozen-lockfile
+COPY webui/ ./
+# The COPY above overwrites pnpm-workspace.yaml with the untracked placeholder
+# present in the working tree; rewrite it so the deps check pnpm runs before
+# `pnpm run build` doesn't re-trigger the ignored-builds gate.
+RUN printf "allowBuilds:\n  '@parcel/watcher': true\n  esbuild: true\n" > pnpm-workspace.yaml
+RUN pnpm run build
+
+FROM golang:1.26-alpine AS build
+RUN apk add --no-cache git
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+COPY --from=webui /webui/dist ./webui/dist
+ENV CGO_ENABLED=0 GOOS=linux
+RUN go build -ldflags="-s -w" -o /out/backrest ./cmd/backrest && \
+    go build -ldflags="-s -w" -o /out/docker-entrypoint ./cmd/docker-entrypoint
+
+FROM alpine:latest
+RUN apk --no-cache add tini ca-certificates curl bash rclone openssh tzdata docker-cli && \
+    rclone selfupdate --stable
+RUN mkdir -p /tmp
+
+COPY --from=build /out/backrest /backrest
+COPY --from=build /out/docker-entrypoint /docker-entrypoint
+
+RUN /backrest --install-deps-only
+RUN mkdir -p /bin && mv /root/.local/share/backrest/restic /bin/restic
+
+ENTRYPOINT ["/sbin/tini", "--", "/docker-entrypoint"]
+CMD ["/backrest"]

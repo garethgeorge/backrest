@@ -29,12 +29,12 @@ var ErrInvalidPassword = errors.New("invalid password")
 var ErrInvalidKey = errors.New("invalid key")
 
 func (a *Authenticator) Login(username, password string) (*v1.User, error) {
-	config, err := a.config.Get()
+	cfg, err := a.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("get config: %w", err)
 	}
-	auth := config.GetAuth()
-	if auth == nil || auth.GetDisabled() {
+	auth := cfg.GetAuth()
+	if config.AuthDisabled(auth) {
 		return nil, errors.New("authentication is disabled")
 	}
 
@@ -54,11 +54,11 @@ func (a *Authenticator) Login(username, password string) (*v1.User, error) {
 }
 
 func (a *Authenticator) VerifyJWT(token string) (*v1.User, error) {
-	config, err := a.config.Get()
+	cfg, err := a.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("get config: %w", err)
 	}
-	auth := config.GetAuth()
+	auth := cfg.GetAuth()
 	if auth == nil {
 		return nil, fmt.Errorf("auth config not set")
 	}
@@ -79,6 +79,12 @@ func (a *Authenticator) VerifyJWT(token string) (*v1.User, error) {
 		return nil, fmt.Errorf("get subject: %w", err)
 	}
 
+	// OIDC sessions are not backed by config users; the signed subject (email) is
+	// the identity. Allow-list enforcement happens at login time in the OIDC flow.
+	if config.AuthDriverOf(auth) == config.AuthDriverOIDC {
+		return &v1.User{Name: subject}, nil
+	}
+
 	for _, user := range auth.GetUsers() {
 		if user.Name == subject {
 			return user, nil
@@ -89,9 +95,16 @@ func (a *Authenticator) VerifyJWT(token string) (*v1.User, error) {
 }
 
 func (a *Authenticator) CreateJWT(user *v1.User) (string, error) {
+	return a.CreateJWTForSubject(user.Name)
+}
+
+// CreateJWTForSubject mints a backrest session JWT for an arbitrary subject.
+// Used by the OIDC flow where the subject is the verified email rather than a
+// config user.
+func (a *Authenticator) CreateJWTForSubject(subject string) (string, error) {
 	claims := &jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
-		Subject:   user.Name,
+		Subject:   subject,
 	}
 
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

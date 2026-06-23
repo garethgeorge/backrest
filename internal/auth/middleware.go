@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/garethgeorge/backrest/internal/config"
 	"go.uber.org/zap"
 )
 
@@ -16,15 +17,19 @@ func (k contextKey) String() string {
 const UserContextKey contextKey = "user"
 const APIKeyContextKey contextKey = "api_key"
 
+// SessionCookieName is the httpOnly cookie holding the backrest session JWT.
+// Set by the OIDC callback; read here as a fallback to the Authorization header.
+const SessionCookieName = "backrest-session"
+
 func RequireAuthentication(h http.Handler, auth *Authenticator) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		config, err := auth.config.Get()
+		cfg, err := auth.config.Get()
 		if err != nil {
 			zap.S().Errorf("auth middleware failed to get config: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
-		if config.GetAuth() == nil || config.GetAuth().GetDisabled() {
+		if config.AuthDisabled(cfg.GetAuth()) {
 			h.ServeHTTP(w, r)
 			return
 		}
@@ -49,8 +54,13 @@ func RequireAuthentication(h http.Handler, auth *Authenticator) http.Handler {
 
 		token, err := ParseBearerToken(r.Header.Get("Authorization"))
 		if err != nil {
-			http.Error(w, "Unauthorized (No Authorization Header)", http.StatusUnauthorized)
-			return
+			// Fall back to the session cookie set by the OIDC flow.
+			if c, cerr := r.Cookie(SessionCookieName); cerr == nil && c.Value != "" {
+				token = c.Value
+			} else {
+				http.Error(w, "Unauthorized (No Authorization Header)", http.StatusUnauthorized)
+				return
+			}
 		}
 
 		user, err := auth.VerifyJWT(token)

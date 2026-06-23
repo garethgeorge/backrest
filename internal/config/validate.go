@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -183,20 +184,67 @@ func validatePlan(plan *v1.Plan, repos map[string]*v1.Repo) error {
 }
 
 func validateAuth(auth *v1.Auth) error {
-	if auth == nil || auth.Disabled {
+	if auth == nil {
 		return nil
 	}
 
-	if len(auth.Users) == 0 {
-		return errors.New("auth enabled but no users")
+	driver := AuthDriverOf(auth)
+	switch driver {
+	case AuthDriverDisabled:
+		// no authentication; nothing else to validate.
+	case AuthDriverLocal:
+		if len(auth.Users) == 0 {
+			return errors.New(`auth_driver "local" but no users configured`)
+		}
+		for _, user := range auth.Users {
+			if e := validationutil.ValidateID(user.Name, 0); e != nil {
+				return fmt.Errorf("user %q: %w", user.Name, e)
+			}
+			if user.GetPasswordBcrypt() == "" {
+				return fmt.Errorf("user %q: password is required", user.Name)
+			}
+		}
+	case AuthDriverOIDC:
+		if e := validateOidc(auth.GetOidc()); e != nil {
+			return e
+		}
+	default:
+		return fmt.Errorf("unknown auth_driver %q", auth.GetAuthDriver())
 	}
 
-	for _, user := range auth.Users {
-		if e := validationutil.ValidateID(user.Name, 0); e != nil {
-			return fmt.Errorf("user %q: %w", user.Name, e)
+	if driver != AuthDriverLocal && len(auth.Users) > 0 {
+		return fmt.Errorf(`users may only be configured when auth_driver is %q`, AuthDriverLocal)
+	}
+
+	return nil
+}
+
+func validateOidc(oidc *v1.OidcConfig) error {
+	if oidc == nil {
+		return errors.New(`auth_driver "oidc" but no oidc settings configured`)
+	}
+
+	issuer := strings.TrimSpace(oidc.GetIssuerUrl())
+	if issuer == "" {
+		return errors.New("oidc: issuer_url is required")
+	}
+	if u, err := url.Parse(issuer); err != nil || u.Scheme != "https" && u.Scheme != "http" || u.Host == "" {
+		return fmt.Errorf("oidc: issuer_url %q must be an absolute http(s) URL", issuer)
+	}
+
+	if strings.TrimSpace(oidc.GetClientId()) == "" {
+		return errors.New("oidc: client_id is required")
+	}
+
+	if redirect := strings.TrimSpace(oidc.GetRedirectUrl()); redirect != "" {
+		if u, err := url.Parse(redirect); err != nil || u.Scheme != "https" && u.Scheme != "http" || u.Host == "" {
+			return fmt.Errorf("oidc: redirect_url %q must be an absolute http(s) URL", redirect)
 		}
-		if user.GetPasswordBcrypt() == "" {
-			return fmt.Errorf("user %q: password is required", user.Name)
+	}
+
+	for _, domain := range oidc.GetAllowedDomains() {
+		if strings.Contains(domain, "@") {
+			return fmt.Errorf("oidc: allowed_domains entry %q must be a bare domain (no @)", domain)
 		}
 	}
 

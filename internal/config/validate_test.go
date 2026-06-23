@@ -233,3 +233,65 @@ func sliceEqual(a, b []string) bool {
 	}
 	return true
 }
+
+func TestValidateAuthOidc(t *testing.T) {
+	tests := []struct {
+		name    string
+		auth    *v1.Auth
+		wantErr bool
+	}{
+		{
+			name:    "oidc with no settings",
+			auth:    &v1.Auth{AuthDriver: AuthDriverOIDC},
+			wantErr: true,
+		},
+		{
+			name: "oidc missing client id",
+			auth: &v1.Auth{AuthDriver: AuthDriverOIDC, Oidc: &v1.OidcConfig{
+				IssuerUrl: "https://issuer.example.com",
+			}},
+			wantErr: true,
+		},
+		{
+			name: "oidc valid minimal (public client)",
+			auth: &v1.Auth{AuthDriver: AuthDriverOIDC, Oidc: &v1.OidcConfig{
+				IssuerUrl: "https://issuer.example.com",
+				ClientId:  "client-id",
+			}},
+			wantErr: false,
+		},
+		{
+			name: "oidc bad issuer url",
+			auth: &v1.Auth{AuthDriver: AuthDriverOIDC, Oidc: &v1.OidcConfig{
+				IssuerUrl: "not-a-url",
+				ClientId:  "client-id",
+			}},
+			wantErr: true,
+		},
+		{
+			name: "oidc allowed_domains with @",
+			auth: &v1.Auth{AuthDriver: AuthDriverOIDC, Oidc: &v1.OidcConfig{
+				IssuerUrl:      "https://issuer.example.com",
+				ClientId:       "client-id",
+				AllowedDomains: []string{"foo@example.com"},
+			}},
+			wantErr: true,
+		},
+		{
+			name: "oidc with users rejected",
+			auth: &v1.Auth{AuthDriver: AuthDriverOIDC, Oidc: &v1.OidcConfig{
+				IssuerUrl: "https://issuer.example.com",
+				ClientId:  "client-id",
+			}, Users: []*v1.User{{Name: "alice"}}},
+			wantErr: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateAuth(tc.auth)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("validateAuth() error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}

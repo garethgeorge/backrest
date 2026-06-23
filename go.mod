@@ -6,6 +6,7 @@ require (
 	al.essio.dev/pkg/shellescape v1.6.0
 	connectrpc.com/connect v1.19.1
 	fyne.io/systray v1.12.0
+	github.com/coreos/go-oidc/v3 v3.19.0
 	github.com/djherbis/buffer v1.2.0
 	github.com/djherbis/nio/v3 v3.0.1
 	github.com/gitploy-io/cronexpr v0.2.2
@@ -30,6 +31,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.44.0
 	golang.org/x/net v0.47.0
+	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.18.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20251103181224-f26f9409b101
 	google.golang.org/grpc v1.76.0
@@ -43,6 +45,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dchest/jsmin v1.0.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/josephspurrier/goversioninfo v1.5.0 // indirect
