@@ -2,7 +2,7 @@ services:
   backrest:
     build:
       context: ../..
-      dockerfile: Dockerfile.build
+      dockerfile: ./scripts/keycloak/Dockerfile.build
     container_name: backrest
     hostname: backrest
     network_mode: host
