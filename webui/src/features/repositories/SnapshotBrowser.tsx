@@ -133,6 +133,14 @@ export const SnapshotBrowser = ({
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
 
+  const entryToNode = (entry: LsEntry): SnapshotNode => ({
+    key: entry.path!,
+    title: <FileNode entry={entry} snapshotOpId={snapshotOpId} />,
+    isLeaf: entry.type === "file",
+    children: entry.type !== "file" ? [] : undefined,
+    entry: entry,
+  });
+
   const respToNodes = (resp: ListSnapshotFilesResponse): SnapshotNode[] => {
     return (
       resp
@@ -140,14 +148,61 @@ export const SnapshotBrowser = ({
         // This is crucial for fixing the infinite recursion / display issues, while ensuring
         // we don't accidentally filter the root node in other contexts (though root is manually init now).
         .filter((entry) => entry.path!.length > resp.path!.length)
-        .map((entry) => ({
-          key: entry.path!,
-          title: <FileNode entry={entry} snapshotOpId={snapshotOpId} />,
-          isLeaf: entry.type === "file",
-          children: entry.type !== "file" ? [] : undefined,
-          entry: entry,
-        }))
+        .map(entryToNode)
     );
+  };
+
+  const snapshotPathSeparator = "/";
+
+  const normalizeSnapshotPath = (path: string) => {
+    if (!path || path === snapshotPathSeparator) return snapshotPathSeparator;
+    return (
+      snapshotPathSeparator +
+      path
+        .split(snapshotPathSeparator)
+        .filter(Boolean)
+        .join(snapshotPathSeparator)
+    );
+  };
+
+  const collapsedRespToNodes = (
+    requestPath: string,
+    resp: ListSnapshotFilesResponse,
+  ): { children: SnapshotNode[]; expandedKeys: string[] } => {
+    const normalizedRequestPath = normalizeSnapshotPath(requestPath);
+    const normalizedResponsePath = normalizeSnapshotPath(resp.path!);
+    const finalChildren = respToNodes(resp);
+
+    if (normalizedResponsePath === normalizedRequestPath) {
+      return { children: finalChildren, expandedKeys: [] };
+    }
+
+    const requestParts = normalizedRequestPath
+      .split(snapshotPathSeparator)
+      .filter(Boolean);
+    const responseParts = normalizedResponsePath
+      .split(snapshotPathSeparator)
+      .filter(Boolean);
+    const chainParts = responseParts.slice(requestParts.length);
+    const expandedKeys: string[] = [];
+    let children = finalChildren;
+
+    for (let i = chainParts.length - 1; i >= 0; i--) {
+      const path = normalizeSnapshotPath(
+        [...requestParts, ...chainParts.slice(0, i + 1)].join(
+          snapshotPathSeparator,
+        ),
+      );
+      expandedKeys.unshift(path);
+      const entry = create(LsEntrySchema, {
+        path,
+        type: "directory",
+        name: chainParts[i],
+      });
+      children = [{ ...entryToNode(entry), children }];
+    }
+
+    return { children, expandedKeys };
   };
 
   useEffect(() => {
@@ -205,6 +260,10 @@ export const SnapshotBrowser = ({
           snapshotId,
         }),
       );
+      const { children, expandedKeys: autoExpandedKeys } = collapsedRespToNodes(
+        key,
+        resp,
+      );
 
       setTreeData((prev) => {
         let toUpdate: SnapshotNode | null = null;
@@ -216,13 +275,23 @@ export const SnapshotBrowser = ({
         if (!toUpdate) return prev;
 
         const toUpdateCopy = { ...toUpdate };
-        toUpdateCopy.children = respToNodes(resp);
+        toUpdateCopy.children = children;
 
         return prev.map((node) => {
           const didUpdate = replaceKeyInTree(node, key, toUpdateCopy);
           return didUpdate || node;
         });
       });
+
+      if (autoExpandedKeys.length > 0) {
+        setExpandedKeys((prev) => {
+          const next = new Set(prev);
+          for (const autoExpandedKey of autoExpandedKeys) {
+            next.add(autoExpandedKey);
+          }
+          return next;
+        });
+      }
     } catch (e: any) {
       alerts.error("Failed to load snapshot files: " + e.message);
     } finally {
