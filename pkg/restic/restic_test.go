@@ -133,10 +133,14 @@ func TestResticBackup(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "with unreadable file",
-			paths:   []string{testData, testDataUnreadable},
-			opts:    []GenericOption{},
-			wantErr: true,
+			name:  "with unreadable file",
+			paths: []string{testData, testDataUnreadable},
+			opts:  []GenericOption{},
+			// A read-deny DACL is bypassed by SeBackupPrivilege (held by admin/CI
+			// accounts), which restic enables before reading files, so the file is
+			// readable on Windows and no partial-backup error occurs.
+			wantErr:  true,
+			unixOnly: true,
 		},
 		{
 			name:  "with wrapper process",
@@ -195,6 +199,12 @@ func TestResticBackup(t *testing.T) {
 
 func TestResticPartialBackup(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		// A read-deny DACL is bypassed by SeBackupPrivilege (held by admin/CI
+		// accounts), which restic enables before reading files, so the file is
+		// readable on Windows and no partial-backup error occurs.
+		t.Skip("cannot reliably create an unreadable file on Windows")
+	}
 	repo := t.TempDir()
 
 	// create a new repo with cache disabled for testing
