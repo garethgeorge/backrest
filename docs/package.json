@@ -9,9 +9,9 @@
     "lint": "eslint ."
   },
   "devDependencies": {
-    "@types/node": "^20.12.12",
-    "eslint": "^8.57.0",
+    "@types/node": "^26.0.1",
+    "eslint": "^10.6.0",
     "vitepress": "^1.0.0",
-    "vue": "^3.0.0"
+    "vue": "^3.5.39"
   }
 }
