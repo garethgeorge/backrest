@@ -1152,6 +1152,7 @@ const expectedEnvVars: { [scheme: string]: string[][] } = {
 
 const envVarSetValidator = async (formData: any) => {
   const envVars = formData.env || [];
+  const flags = formData.flags || [];
   const uri = formData.uri;
 
   if (!uri) {
@@ -1170,7 +1171,8 @@ const envVarSetValidator = async (formData: any) => {
     (!password || password.length === 0) &&
     !envVarNames.includes("RESTIC_PASSWORD") &&
     !envVarNames.includes("RESTIC_PASSWORD_COMMAND") &&
-    !envVarNames.includes("RESTIC_PASSWORD_FILE")
+    !envVarNames.includes("RESTIC_PASSWORD_FILE") &&
+    !flags.includes("--insecure-no-password")
   ) {
     throw new Error(m.add_repo_modal_error_missing_password());
   }
