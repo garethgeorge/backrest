@@ -1153,6 +1153,8 @@ const languageNames: Record<string, string> = {
   id: "Bahasa Indonesia",
   it: "Italiano",
   ja: "日本語",
+  ko: "한국어",
+  pl: "Polski",
 };
 
 const UserSettingsForm = () => {
