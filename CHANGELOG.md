@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.14.0](https://github.com/garethgeorge/backrest/compare/v1.13.0...v1.14.0) (2026-06-30)
+
+
+### Features
+
+* add translations for Korean and Polish ([f158f4a](https://github.com/garethgeorge/backrest/commit/f158f4aaa404e162844376e0ad6c8d7fa51e2cd2))
+* **webui:** reassurance-first redesign of the summary dashboard ([#1258](https://github.com/garethgeorge/backrest/issues/1258)) ([9b1760a](https://github.com/garethgeorge/backrest/commit/9b1760a8e5b16b7a40c14642ca699da24d15ab4b))
+
+
+### Bug Fixes
+
+* allow multihost sync to use real h2 (rather than h2c) when using https ([d641593](https://github.com/garethgeorge/backrest/commit/d6415931422cb0fb3bd6d14fbe11c37bd97ccf1b))
+* more summary dashboard UI refinements ([800a985](https://github.com/garethgeorge/backrest/commit/800a98551dca6e0c0eb53dd3d5ed72186c18ea3c))
+* per-plan retention disabled when repo forgetPolicy schedule is disabled ([39d9a3d](https://github.com/garethgeorge/backrest/commit/39d9a3d34587afb91d865b921a686c7cc52e967f))
+* **restore:** restore single file with [ or ] in name on Windows ([#1254](https://github.com/garethgeorge/backrest/issues/1254)) ([91d76ac](https://github.com/garethgeorge/backrest/commit/91d76acfe1a851e892eec3320338b591f96de855))
+* set proper path to allow using rclone from brew install ([#1222](https://github.com/garethgeorge/backrest/issues/1222)) ([3c16096](https://github.com/garethgeorge/backrest/commit/3c160963db94fa5c406997e9c71bb4f93a91d526))
+* sync errors due to buffer reuse when streaming large batches of operation data ([680df5e](https://github.com/garethgeorge/backrest/commit/680df5e85c769c2b8d7ddbad4b382da257415646))
+* toaster ui text isn't selectable ([058b4a0](https://github.com/garethgeorge/backrest/commit/058b4a0e6c77e241c686504d81180953d09d9b6d))
+* update backresthandler's SummaryDashboard endpoint to support new summary view ([53eb340](https://github.com/garethgeorge/backrest/commit/53eb340adaf6d6267824ce99c0791c2c2b47b401))
+* update translations ([3c1953e](https://github.com/garethgeorge/backrest/commit/3c1953e01b003c0049c4171c870e7d5e5322e244))
+* use filepath.Join everywhere for windows compatibility ([6d5d800](https://github.com/garethgeorge/backrest/commit/6d5d80050dc358f7e7db1263e807cfdba4b3c0b2))
+* **webui:** retry initial config load before failing to the error screen ([#1265](https://github.com/garethgeorge/backrest/issues/1265)) ([5bebac3](https://github.com/garethgeorge/backrest/commit/5bebac3bcd12a945946030af2ecbd7a8cbc8ed52))
+
 ## [1.13.0](https://github.com/garethgeorge/backrest/compare/v1.12.1...v1.13.0) (2026-05-04)
 
 
