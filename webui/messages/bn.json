@@ -535,5 +535,11 @@
 	"dashboard_retention_weekly": "{count}টি সাপ্তাহিক",
 	"dashboard_retention_monthly": "{count}টি মাসিক",
 	"dashboard_retention_yearly": "{count}টি বার্ষিক",
-	"dashboard_repo_dest_local": "লোকাল"
+	"dashboard_history_tooltip_status_ok": "{count} টি ব্যাকআপ করা হয়েছে",
+	"dashboard_history_tooltip_status_warn": "{count} টি সতর্কবার্তাসহ",
+	"dashboard_history_tooltip_status_err": "{count} টি ব্যর্থ হয়েছে",
+	"dashboard_history_tooltip_added": "{bytes} যোগ করা হয়েছে",
+	"dashboard_history_tooltip_scanned": "{bytes} স্ক্যান করা হয়েছে",
+	"dashboard_history_legend_inprogress": "চলমান",
+	"dashboard_history_tooltip_status_inprogress": "{count}টি চলমান"
 }

@@ -535,5 +535,11 @@
   "dashboard_retention_weekly": "{count} еженедельных",
   "dashboard_retention_monthly": "{count} ежемесячных",
   "dashboard_retention_yearly": "{count} ежегодных",
-  "dashboard_repo_dest_local": "Локальный"
+  "dashboard_history_tooltip_status_ok": "{count} успешно",
+  "dashboard_history_tooltip_status_warn": "{count} с предупреждениями",
+  "dashboard_history_tooltip_status_err": "{count} с ошибками",
+  "dashboard_history_tooltip_added": "Добавлено {bytes}",
+  "dashboard_history_tooltip_scanned": "Просканировано {bytes}",
+  "dashboard_history_legend_inprogress": "В процессе",
+  "dashboard_history_tooltip_status_inprogress": "{count} в процессе"
 }

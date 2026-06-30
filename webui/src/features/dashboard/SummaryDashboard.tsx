@@ -16,13 +16,26 @@ import { LuTriangle, LuX } from "react-icons/lu";
 import { useNavigate } from "react-router";
 import { toJsonString } from "@bufbuild/protobuf";
 import { ConfigSchema, Multihost } from "../../../gen/ts/v1/config_pb";
-import { OperationStatus } from "../../../gen/ts/v1/operations_pb";
 import {
+  Operation,
+  OperationEvent,
+  OperationStatus,
+} from "../../../gen/ts/v1/operations_pb";
+import {
+  GetOperationsRequestSchema,
+  OpSelectorSchema,
   SummaryDashboardResponse,
   SummaryDashboardResponse_Summary,
 } from "../../../gen/ts/v1/service_pb";
 import { PeerState } from "../../../gen/ts/v1sync/syncservice_pb";
+import { create } from "@bufbuild/protobuf";
 import { backrestService } from "../../api/client";
+import {
+  getOperations,
+  subscribeToOperations,
+  unsubscribeFromOperations,
+} from "../../api/oplog";
+import { matchSelector } from "../../api/logState";
 import { alerts } from "../../components/common/Alerts";
 import { PeerStateConnectionStatusIcon } from "../../components/common/SyncStateIcon";
 import {
@@ -84,27 +97,6 @@ function scheduleText(maxFrequencyHours?: number): string | null {
   if (maxFrequencyHours === 1) return m.dashboard_schedule_hourly();
   if (maxFrequencyHours === 24) return m.dashboard_schedule_daily();
   return m.dashboard_schedule_every_hours({ count: maxFrequencyHours });
-}
-
-// Friendly restic backend names by URI scheme. Names are proper nouns, not localized.
-const REPO_BACKEND_NAMES: Record<string, string> = {
-  s3: "S3",
-  b2: "Backblaze B2",
-  gs: "Google Cloud Storage",
-  azure: "Azure Blob Storage",
-  sftp: "SFTP",
-  rest: "REST Server",
-  swift: "OpenStack Swift",
-};
-
-function repoDestLabel(uri: string): string {
-  const scheme = uri.match(/^([a-z0-9]+):/i)?.[1]?.toLowerCase();
-  if (!scheme) return m.dashboard_repo_dest_local(); // a bare path is a local repo
-  if (scheme === "rclone") {
-    const remote = uri.split(":")[1];
-    return remote ? `Rclone (${remote})` : "Rclone";
-  }
-  return REPO_BACKEND_NAMES[scheme] ?? scheme.toUpperCase();
 }
 
 function retentionText(r: {
@@ -303,6 +295,18 @@ interface LiveProgress {
   total: number;
 }
 
+// Pulls live backup progress out of a backup operation, if it carries any.
+function progressFromOp(op: Operation): LiveProgress | null {
+  if (op.op.case !== "operationBackup") return null;
+  const entry = op.op.value.lastStatus?.entry;
+  if (entry?.case !== "status") return null;
+  return {
+    pct: Math.round(entry.value.percentDone * 100),
+    done: Number(entry.value.bytesDone),
+    total: Number(entry.value.totalBytes),
+  };
+}
+
 const useLiveProgress = (planId: string, running: boolean) => {
   const [progress, setProgress] = useState<LiveProgress | null>(null);
 
@@ -312,34 +316,36 @@ const useLiveProgress = (planId: string, running: boolean) => {
       return;
     }
     let cancelled = false;
-    const poll = async () => {
-      try {
-        const res = await backrestService.getOperations({
-          lastN: 1n,
-          selector: { planId },
-        });
-        if (cancelled) return;
-        const op = res.operations[0];
-        const opBackup =
-          op?.op.case === "operationBackup" ? op.op.value : undefined;
-        const s = opBackup?.lastStatus;
-        if (s?.entry.case === "status") {
-          const e = s.entry.value;
-          setProgress({
-            pct: Math.round(e.percentDone * 100),
-            done: Number(e.bytesDone),
-            total: Number(e.totalBytes),
-          });
-        }
-      } catch {
-        // ignore; progress is best-effort
+    const selector = create(OpSelectorSchema, { planId });
+
+    const apply = (op: Operation) => {
+      const p = progressFromOp(op);
+      if (p) setProgress(p);
+    };
+
+    // Seed with the in-flight operation so the bar isn't empty until the first event.
+    getOperations(create(GetOperationsRequestSchema, { lastN: 1n, selector }))
+      .then((ops) => {
+        if (!cancelled && ops[0]) apply(ops[0]);
+      })
+      .catch(() => {}); // best-effort; live updates follow
+
+    // Then stay current via the shared operation-event subscription.
+    const handler = (event?: OperationEvent) => {
+      if (
+        event?.event.case !== "createdOperations" &&
+        event?.event.case !== "updatedOperations"
+      ) {
+        return;
+      }
+      for (const op of event.event.value.operations) {
+        if (matchSelector(selector, op)) apply(op);
       }
     };
-    poll();
-    const id = setInterval(poll, 3000);
+    subscribeToOperations(handler);
     return () => {
       cancelled = true;
-      clearInterval(id);
+      unsubscribeFromOperations(handler);
     };
   }, [planId, running]);
 
@@ -370,18 +376,12 @@ const PlanCard = ({
     () => config?.plans.find((p) => p.id === summary.id),
     [config, summary.id],
   );
-  const repoCfg = useMemo(
-    () => config?.repos.find((r) => r.id === planCfg?.repo),
-    [config, planCfg],
-  );
   const schedLine = scheduleText(
     planCfg?.schedule?.schedule.case === "maxFrequencyHours"
       ? planCfg.schedule.schedule.value
       : undefined,
   );
-  const destLabel = repoCfg
-    ? repoDestLabel(repoCfg.uri)
-    : (planCfg?.repo ?? "");
+  const destLabel = planCfg?.repo ?? "";
   const nextMs = Number(summary.nextBackupTimeMs ?? 0);
   const lastUploadBytes = Number(rb?.bytesAdded[0] ?? 0);
 
@@ -589,6 +589,14 @@ const RepoCard = ({
               </Text>
             ) : null}
           </Box>
+          {Number(summary.protectedBytes) > 0 && (
+            <Box fontSize="12.5px" color="fg.muted">
+              {m.dashboard_card_protected()}{" "}
+              <Text as="span" fontWeight="600" color="fg.default">
+                {formatBytes(Number(summary.protectedBytes))}
+              </Text>
+            </Box>
+          )}
           {Number(summary.bytesAddedLast30days) > 0 && (
             <Box fontSize="12.5px" color="fg.muted">
               {m.dashboard_repo_added()}{" "}
@@ -598,6 +606,9 @@ const RepoCard = ({
             </Box>
           )}
         </Flex>
+
+        {/* 30-day history strip */}
+        <HistoryStrip buckets={summary.historyLast30days} />
       </Card.Body>
     </Card.Root>
   );
@@ -628,6 +639,17 @@ const RecentActivity = ({
 }: {
   summaries: SummaryDashboardResponse_Summary[];
 }) => {
+  const [config] = useConfig();
+
+  // planId -> destination repo ID, derived from config.
+  const destByPlan = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const plan of config?.plans ?? []) {
+      map.set(plan.id, plan.repo ?? "");
+    }
+    return map;
+  }, [config]);
+
   const rows = useMemo<ActivityRow[]>(() => {
     const all: ActivityRow[] = [];
     for (const s of summaries) {
@@ -670,6 +692,20 @@ const RecentActivity = ({
       {rows.map((row, i) => {
         const stateKey = planState(row.status, false);
         const dotColor = STATE_COLORS[stateKey];
+        const dest = destByPlan.get(row.planId);
+
+        // Muted secondary line: relative + absolute time, duration, destination.
+        const detailParts: string[] = [agoText(row.timestampMs)];
+        detailParts.push(formatTime(row.timestampMs));
+        if (row.durationMs > 0) {
+          detailParts.push(
+            m.dashboard_activity_took({
+              duration: formatDuration(row.durationMs),
+            }),
+          );
+        }
+        if (dest) detailParts.push(dest);
+
         return (
           <Box
             key={i}
@@ -687,16 +723,21 @@ const RecentActivity = ({
                 flexShrink={0}
               />
               <Box flex={1} minW={0}>
-                <Text fontSize="14px" fontWeight="550" truncate>
-                  {m.dashboard_activity_row_label({
-                    plan: prettyPlanId(row.planId),
-                    status: rowLabel(row.status),
-                  })}
-                </Text>
-                <Text fontSize="12.5px" color="fg.muted">
-                  {agoText(row.timestampMs)}
-                  {row.durationMs > 0 &&
-                    ` · ${m.dashboard_activity_took({ duration: formatDuration(row.durationMs) })}`}
+                <Flex align="baseline" gap="7px" minW={0}>
+                  <Text fontSize="14px" fontWeight="550" truncate>
+                    {prettyPlanId(row.planId)}
+                  </Text>
+                  <Text
+                    fontSize="12.5px"
+                    fontWeight="600"
+                    color={dotColor}
+                    flexShrink={0}
+                  >
+                    {rowLabel(row.status)}
+                  </Text>
+                </Flex>
+                <Text fontSize="12.5px" color="fg.muted" truncate>
+                  {detailParts.join(" · ")}
                 </Text>
               </Box>
               {row.bytesAdded > 0 && (
@@ -835,11 +876,11 @@ export const SummaryDashboard = () => {
       <Stack gap={4}>
         <Heading size="md">{m.dashboard_repos_title()}</Heading>
         {summaryData.repoSummaries.length > 0 ? (
-          <Stack gap={4}>
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
             {summaryData.repoSummaries.map((s) => (
               <RepoCard key={s.id} summary={s} />
             ))}
-          </Stack>
+          </SimpleGrid>
         ) : (
           <EmptyState title={m.dashboard_repos_empty()} icon={<FiDatabase />} />
         )}

@@ -535,5 +535,11 @@
   "dashboard_retention_weekly": "주별 {count}개",
   "dashboard_retention_monthly": "월별 {count}개",
   "dashboard_retention_yearly": "연별 {count}개",
-  "dashboard_repo_dest_local": "로컬"
+  "dashboard_history_tooltip_status_ok": "{count}개 백업됨",
+  "dashboard_history_tooltip_status_warn": "{count}개 경고 발생",
+  "dashboard_history_tooltip_status_err": "{count}개 실패",
+  "dashboard_history_tooltip_added": "{bytes} 추가됨",
+  "dashboard_history_tooltip_scanned": "{bytes} 스캔됨",
+  "dashboard_history_legend_inprogress": "진행 중",
+  "dashboard_history_tooltip_status_inprogress": "{count}개 진행 중"
 }

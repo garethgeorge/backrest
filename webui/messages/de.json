@@ -545,5 +545,11 @@
   "dashboard_retention_weekly": "{count} wöchentlich",
   "dashboard_retention_monthly": "{count} monatlich",
   "dashboard_retention_yearly": "{count} jährlich",
-  "dashboard_repo_dest_local": "Lokal"
+  "dashboard_history_tooltip_status_ok": "{count} gesichert",
+  "dashboard_history_tooltip_status_warn": "{count} mit Warnungen",
+  "dashboard_history_tooltip_status_err": "{count} fehlgeschlagen",
+  "dashboard_history_tooltip_added": "Hinzugefügt: {bytes}",
+  "dashboard_history_tooltip_scanned": "Gescannt: {bytes}",
+  "dashboard_history_legend_inprogress": "Laufend",
+  "dashboard_history_tooltip_status_inprogress": "{count} laufend"
 }

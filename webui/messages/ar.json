@@ -535,5 +535,11 @@
 	"dashboard_retention_weekly": "{count} أسبوعيًا",
 	"dashboard_retention_monthly": "{count} شهريًا",
 	"dashboard_retention_yearly": "{count} سنويًا",
-	"dashboard_repo_dest_local": "محلي"
+	"dashboard_history_tooltip_status_ok": "{count} تم نسخها احتياطيًا",
+	"dashboard_history_tooltip_status_warn": "{count} مع تحذيرات",
+	"dashboard_history_tooltip_status_err": "{count} فشلت",
+	"dashboard_history_tooltip_added": "تمت إضافة {bytes}",
+	"dashboard_history_tooltip_scanned": "تم فحص {bytes}",
+	"dashboard_history_legend_inprogress": "قيد التنفيذ",
+	"dashboard_history_tooltip_status_inprogress": "{count} قيد التنفيذ"
 }

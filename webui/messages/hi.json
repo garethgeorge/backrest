@@ -535,5 +535,11 @@
 	"dashboard_retention_weekly": "{count} साप्ताहिक",
 	"dashboard_retention_monthly": "{count} मासिक",
 	"dashboard_retention_yearly": "{count} वार्षिक",
-	"dashboard_repo_dest_local": "स्थानीय"
+	"dashboard_history_tooltip_status_ok": "{count} बैकअप किए गए",
+	"dashboard_history_tooltip_status_warn": "{count} चेतावनियों के साथ",
+	"dashboard_history_tooltip_status_err": "{count} विफल रहे",
+	"dashboard_history_tooltip_added": "{bytes} जोड़े गए",
+	"dashboard_history_tooltip_scanned": "{bytes} स्कैन किए गए",
+	"dashboard_history_legend_inprogress": "प्रगति पर",
+	"dashboard_history_tooltip_status_inprogress": "{count} प्रगति पर"
 }

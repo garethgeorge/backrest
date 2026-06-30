@@ -547,5 +547,11 @@
   "dashboard_retention_weekly": "每周 {count} 个",
   "dashboard_retention_monthly": "每月 {count} 个",
   "dashboard_retention_yearly": "每年 {count} 个",
-  "dashboard_repo_dest_local": "本地"
+  "dashboard_history_tooltip_status_ok": "{count} 已备份",
+  "dashboard_history_tooltip_status_warn": "{count} 个有警告",
+  "dashboard_history_tooltip_status_err": "{count} 失败",
+  "dashboard_history_tooltip_added": "已添加 {bytes}",
+  "dashboard_history_tooltip_scanned": "已扫描 {bytes}",
+  "dashboard_history_legend_inprogress": "进行中",
+  "dashboard_history_tooltip_status_inprogress": "{count} 个进行中"
 }

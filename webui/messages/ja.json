@@ -535,5 +535,11 @@
   "dashboard_retention_weekly": "毎週 {count}",
   "dashboard_retention_monthly": "毎月 {count}",
   "dashboard_retention_yearly": "毎年 {count}",
-  "dashboard_repo_dest_local": "ローカル"
+  "dashboard_history_tooltip_status_ok": "{count} 件バックアップ完了",
+  "dashboard_history_tooltip_status_warn": "{count} 件警告あり",
+  "dashboard_history_tooltip_status_err": "{count} 件失敗",
+  "dashboard_history_tooltip_added": "{bytes} 追加",
+  "dashboard_history_tooltip_scanned": "{bytes} スキャン済み",
+  "dashboard_history_legend_inprogress": "進行中",
+  "dashboard_history_tooltip_status_inprogress": "{count} 件進行中"
 }

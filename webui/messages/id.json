@@ -535,5 +535,11 @@
 	"dashboard_retention_weekly": "{count} mingguan",
 	"dashboard_retention_monthly": "{count} bulanan",
 	"dashboard_retention_yearly": "{count} tahunan",
-	"dashboard_repo_dest_local": "Lokal"
+	"dashboard_history_tooltip_status_ok": "{count} dicadangkan",
+	"dashboard_history_tooltip_status_warn": "{count} dengan peringatan",
+	"dashboard_history_tooltip_status_err": "{count} gagal",
+	"dashboard_history_tooltip_added": "Ditambahkan {bytes}",
+	"dashboard_history_tooltip_scanned": "Dipindai {bytes}",
+	"dashboard_history_legend_inprogress": "Sedang berjalan",
+	"dashboard_history_tooltip_status_inprogress": "{count} sedang berjalan"
 }

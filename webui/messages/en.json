@@ -493,11 +493,18 @@
   "dashboard_history_legend_backed_up": "Backed up",
   "dashboard_history_legend_issue": "Issue",
   "dashboard_history_legend_missed": "Missed",
+  "dashboard_history_legend_inprogress": "In progress",
   "dashboard_history_missed": "{count} days missed",
   "dashboard_history_no_data": "Backup history will fill in as it runs",
   "dashboard_history_summary": "{details} in the last 30 days",
   "dashboard_history_tooltip_before_start": "Before you started",
   "dashboard_history_tooltip_no_backup": "No backup",
+  "dashboard_history_tooltip_status_ok": "{count} backed up",
+  "dashboard_history_tooltip_status_warn": "{count} with warnings",
+  "dashboard_history_tooltip_status_err": "{count} failed",
+  "dashboard_history_tooltip_status_inprogress": "{count} in progress",
+  "dashboard_history_tooltip_added": "Added {bytes}",
+  "dashboard_history_tooltip_scanned": "Scanned {bytes}",
   "dashboard_state_label_err": "Backup failed",
   "dashboard_state_label_idle": "No backups yet",
   "dashboard_state_label_ok": "Backed up",
@@ -534,6 +541,5 @@
   "dashboard_retention_daily": "{count} daily",
   "dashboard_retention_weekly": "{count} weekly",
   "dashboard_retention_monthly": "{count} monthly",
-  "dashboard_retention_yearly": "{count} yearly",
-  "dashboard_repo_dest_local": "Local"
+  "dashboard_retention_yearly": "{count} yearly"
 }
