@@ -37,7 +37,7 @@ import { formatBytes, formatDuration, formatTime } from "../../lib/formatting";
 import { useConfig } from "../../app/provider";
 import { useSyncStates } from "../../state/peerStates";
 import * as m from "../../paraglide/messages";
-import { buildDayBuckets, HistoryStrip } from "./HistoryStrip";
+import { HistoryStrip } from "./HistoryStrip";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -47,66 +47,83 @@ function prettyPlanId(id: string): string {
 
 /** Relative "X ago" string.  ms = unix epoch in ms. */
 function agoText(ms: number): string {
-  if (!ms) return "never";
+  if (!ms) return m.dashboard_time_never();
   const s = Math.floor((Date.now() - ms) / 1000);
-  if (s < 45) return "just now";
-  if (s < 90) return "a minute ago";
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  if (s < 5400) return "an hour ago";
+  if (s < 45) return m.dashboard_time_just_now();
+  if (s < 90) return m.dashboard_time_a_minute_ago();
+  if (s < 3600) return m.dashboard_time_minutes_ago({ count: Math.floor(s / 60) });
+  if (s < 5400) return m.dashboard_time_an_hour_ago();
   if (s < 86400) {
     const h = Math.floor(s / 3600);
-    return `${h} hour${h > 1 ? "s" : ""} ago`;
+    return h === 1
+      ? m.dashboard_time_hour_ago({ count: h })
+      : m.dashboard_time_hours_ago({ count: h });
   }
-  if (s < 172800) return "yesterday";
-  const dd = Math.floor(s / 86400);
-  return `${dd} day${dd > 1 ? "s" : ""} ago`;
+  if (s < 172800) return m.dashboard_time_yesterday();
+  return m.dashboard_time_days_ago({ count: Math.floor(s / 86400) });
 }
 
 /** "in X" relative string for future times.  ms = unix epoch in ms. */
 function untilText(ms: number): string | null {
   if (!ms) return null;
   const s = Math.floor((ms - Date.now()) / 1000);
-  if (s <= 0) return "due now";
-  if (s < 5400) return `in ${Math.max(1, Math.round(s / 60))} min`;
-  if (s < 172800) return `in ${Math.round(s / 3600)} hours`;
-  return `in ${Math.round(s / 86400)} days`;
+  if (s <= 0) return m.dashboard_time_due_now();
+  if (s < 5400)
+    return m.dashboard_time_in_minutes({ count: Math.max(1, Math.round(s / 60)) });
+  if (s < 172800)
+    return m.dashboard_time_in_hours({ count: Math.round(s / 3600) });
+  return m.dashboard_time_in_days({ count: Math.round(s / 86400) });
 }
 
 function scheduleText(maxFrequencyHours?: number): string | null {
   if (!maxFrequencyHours) return null;
   if (maxFrequencyHours < 1)
-    return `Runs every ${Math.round(maxFrequencyHours * 60)} min`;
-  if (maxFrequencyHours === 1) return "Runs hourly";
-  if (maxFrequencyHours === 24) return "Runs daily";
-  return `Runs every ${maxFrequencyHours}h`;
+    return m.dashboard_schedule_every_minutes({
+      count: Math.round(maxFrequencyHours * 60),
+    });
+  if (maxFrequencyHours === 1) return m.dashboard_schedule_hourly();
+  if (maxFrequencyHours === 24) return m.dashboard_schedule_daily();
+  return m.dashboard_schedule_every_hours({ count: maxFrequencyHours });
 }
+
+// Friendly restic backend names by URI scheme. Names are proper nouns, not localized.
+const REPO_BACKEND_NAMES: Record<string, string> = {
+  s3: "S3",
+  b2: "Backblaze B2",
+  gs: "Google Cloud Storage",
+  azure: "Azure Blob Storage",
+  sftp: "SFTP",
+  rest: "REST Server",
+  swift: "OpenStack Swift",
+};
 
 function repoDestLabel(uri: string): string {
-  const u = uri.toLowerCase();
-  if (u.includes("backblaze") || u.startsWith("s3:") || u.startsWith("b2:"))
-    return "Backblaze B2";
-  if (u.startsWith("rclone:")) {
-    const rem = u.split(":")[1] ?? "";
-    if (rem.includes("pcloud")) return "pCloud";
-    return rem.charAt(0).toUpperCase() + rem.slice(1);
+  const scheme = uri.match(/^([a-z0-9]+):/i)?.[1]?.toLowerCase();
+  if (!scheme) return m.dashboard_repo_dest_local(); // a bare path is a local repo
+  if (scheme === "rclone") {
+    const remote = uri.split(":")[1];
+    return remote ? `Rclone (${remote})` : "Rclone";
   }
-  if (u.startsWith("sftp:") || u.includes("hetzner")) return "Hetzner";
-  return uri.replace(/^[a-z0-9]+:/, "");
+  return REPO_BACKEND_NAMES[scheme] ?? scheme.toUpperCase();
 }
 
-function retentionText(
-  hourly: number,
-  daily: number,
-  weekly: number,
-  monthly: number,
-  yearly: number,
-): string | null {
-  const parts: string[] = [];
-  if (hourly) parts.push(`${hourly} hourly`);
-  if (daily) parts.push(`${daily} daily`);
-  if (weekly) parts.push(`${weekly} weekly`);
-  if (monthly) parts.push(`${monthly} monthly`);
-  if (yearly) parts.push(`${yearly} yearly`);
+function retentionText(r: {
+  hourly: number;
+  daily: number;
+  weekly: number;
+  monthly: number;
+  yearly: number;
+}): string | null {
+  const buckets: [number, (p: { count: number }) => string][] = [
+    [r.hourly, m.dashboard_retention_hourly],
+    [r.daily, m.dashboard_retention_daily],
+    [r.weekly, m.dashboard_retention_weekly],
+    [r.monthly, m.dashboard_retention_monthly],
+    [r.yearly, m.dashboard_retention_yearly],
+  ];
+  const parts = buckets
+    .filter(([count]) => count > 0)
+    .map(([count, fmt]) => fmt({ count }));
   return parts.length
     ? m.dashboard_card_retention({ parts: parts.join(", ") })
     : null;
@@ -146,6 +163,15 @@ const STATE_BG: Record<PlanState, string> = {
   idle: "gray.100",
 };
 
+// Worst-wins ordering used to derive the hero state across all plans.
+const STATE_SEVERITY: Record<PlanState, number> = {
+  err: 3,
+  warn: 2,
+  run: 1,
+  ok: 0,
+  idle: -1,
+};
+
 function stateLabelText(state: PlanState): string {
   if (state === "ok") return m.dashboard_state_label_ok();
   if (state === "warn") return m.dashboard_state_label_warn();
@@ -174,7 +200,7 @@ const ProgressBar = ({ pct }: { pct: number }) => (
 
 // ─── Hero banner ──────────────────────────────────────────────────────────────
 
-type HeroState = "ok" | "run" | "warn" | "err" | "idle";
+type HeroState = PlanState;
 
 const HERO_ICON: Record<HeroState, React.ReactNode> = {
   ok: <FiCheck strokeWidth={2.4} />,
@@ -201,8 +227,8 @@ const HeroBanner = ({
   newestMs: number;
   nextMs: number | null;
 }) => {
-  const color = STATE_COLORS[state as PlanState] ?? "gray.400";
-  const bgColor = STATE_BG[state as PlanState] ?? "gray.100";
+  const color = STATE_COLORS[state];
+  const bgColor = STATE_BG[state];
   const subParts: React.ReactNode[] = [];
   if (newestMs) {
     subParts.push(
@@ -320,98 +346,12 @@ const useLiveProgress = (planId: string, running: boolean) => {
   return progress;
 };
 
-// ─── Per-plan operations cache ────────────────────────────────────────────────
-
-interface PlanOpsData {
-  buckets: ReturnType<typeof buildDayBuckets>["buckets"];
-  protectedBytes: number;
-  loading: boolean;
-}
-
-const usePlanOps = (planIds: string[]) => {
-  const [data, setData] = useState<Map<string, PlanOpsData>>(new Map());
-
-  useEffect(() => {
-    if (planIds.length === 0) return;
-
-    // Mark all as loading
-    setData((prev) => {
-      const next = new Map(prev);
-      for (const id of planIds) {
-        if (!next.has(id))
-          next.set(id, { buckets: [], protectedBytes: 0, loading: true });
-      }
-      return next;
-    });
-
-    const loadPlan = async (planId: string) => {
-      try {
-        const res = await backrestService.getOperations({
-          lastN: 300n,
-          selector: { planId },
-        });
-        const backupOps = res.operations.filter(
-          (op) => op.op.case === "operationBackup",
-        );
-
-        // Build day buckets
-        const { buckets } = buildDayBuckets(
-          backupOps.map((op) => ({
-            unixTimeStartMs: op.unixTimeStartMs,
-            status: op.status,
-          })),
-        );
-
-        // Protected = totalBytesProcessed of most recent SUCCESS/WARNING op
-        let protectedBytes = 0;
-        let protectedMs = 0;
-        for (const op of backupOps) {
-          const t = Number(op.unixTimeStartMs);
-          if (
-            t > protectedMs &&
-            (op.status === OperationStatus.STATUS_SUCCESS ||
-              op.status === OperationStatus.STATUS_WARNING)
-          ) {
-            const opBackup =
-              op.op.case === "operationBackup" ? op.op.value : undefined;
-            const lastStatus = opBackup?.lastStatus;
-            if (lastStatus?.entry.case === "summary") {
-              protectedMs = t;
-              protectedBytes = Number(
-                lastStatus.entry.value.totalBytesProcessed,
-              );
-            }
-          }
-        }
-
-        setData((prev) => {
-          const next = new Map(prev);
-          next.set(planId, { buckets, protectedBytes, loading: false });
-          return next;
-        });
-      } catch {
-        setData((prev) => {
-          const next = new Map(prev);
-          next.set(planId, { buckets: [], protectedBytes: 0, loading: false });
-          return next;
-        });
-      }
-    };
-
-    for (const id of planIds) loadPlan(id);
-  }, [planIds.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return data;
-};
-
 // ─── Plan card ────────────────────────────────────────────────────────────────
 
 const PlanCard = ({
   summary,
-  opsData,
 }: {
   summary: SummaryDashboardResponse_Summary;
-  opsData: PlanOpsData | undefined;
 }) => {
   const [config] = useConfig();
   const rb = summary.recentBackups;
@@ -447,8 +387,7 @@ const PlanCard = ({
 
   let retLine: string | null = null;
   if (planCfg?.retention?.policy.case === "policyTimeBucketed") {
-    const r = planCfg.retention.policy.value;
-    retLine = retentionText(r.hourly, r.daily, r.weekly, r.monthly, r.yearly);
+    retLine = retentionText(planCfg.retention.policy.value);
   }
 
   return (
@@ -518,9 +457,13 @@ const PlanCard = ({
             <Text fontSize="12.5px" color="fg.muted">
               {progress
                 ? progress.total > 0
-                  ? `${progress.pct}% · ${formatBytes(progress.done)} of ${formatBytes(progress.total)}`
-                  : `${progress.pct}% done`
-                : "Scanning…"}
+                  ? m.dashboard_card_progress_detail({
+                      pct: progress.pct,
+                      done: formatBytes(progress.done),
+                      total: formatBytes(progress.total),
+                    })
+                  : m.dashboard_card_progress_pct({ pct: progress.pct })
+                : m.dashboard_card_progress_scanning()}
             </Text>
           </>
         )}
@@ -532,7 +475,7 @@ const PlanCard = ({
               <Box fontSize="12.5px" color="fg.muted">
                 {m.dashboard_card_next_run()}{" "}
                 <Text as="span" fontWeight="600" color="fg.default">
-                  {untilText(nextMs) ?? "soon"}
+                  {untilText(nextMs) ?? m.dashboard_time_soon()}
                 </Text>
               </Box>
             )}
@@ -544,11 +487,11 @@ const PlanCard = ({
                 </Text>
               </Box>
             )}
-            {opsData && opsData.protectedBytes > 0 && (
+            {Number(summary.protectedBytes) > 0 && (
               <Box fontSize="12.5px" color="fg.muted">
                 {m.dashboard_card_protected()}{" "}
                 <Text as="span" fontWeight="600" color="fg.default">
-                  {formatBytes(opsData.protectedBytes)}
+                  {formatBytes(Number(summary.protectedBytes))}
                 </Text>
               </Box>
             )}
@@ -564,14 +507,7 @@ const PlanCard = ({
         )}
 
         {/* 30-day history strip */}
-        {opsData && !opsData.loading && (
-          <HistoryStrip buckets={opsData.buckets} />
-        )}
-        {opsData?.loading && (
-          <Box mt={4}>
-            <Spinner size="xs" />
-          </Box>
-        )}
+        <HistoryStrip buckets={summary.historyLast30days} />
 
         {/* Retention footer */}
         {retLine && (
@@ -637,21 +573,25 @@ const RepoCard = ({
 
         <Flex flexWrap="wrap" gap="4px 18px" mt={3}>
           <Box fontSize="12.5px" color="fg.muted">
-            30d{" "}
+            {m.dashboard_repo_window_30d()}{" "}
             <Text as="span" fontWeight="600" color="green.500">
               {summary.backupsSuccessLast30days
-                ? `${Number(summary.backupsSuccessLast30days)} ok`
+                ? m.dashboard_repo_ok({
+                    count: Number(summary.backupsSuccessLast30days),
+                  })
                 : ""}
             </Text>
             {summary.backupsFailed30days ? (
               <Text as="span" fontWeight="600" color="red.500" ml={2}>
-                {Number(summary.backupsFailed30days)} failed
+                {m.dashboard_repo_failed({
+                  count: Number(summary.backupsFailed30days),
+                })}
               </Text>
             ) : null}
           </Box>
           {Number(summary.bytesAddedLast30days) > 0 && (
             <Box fontSize="12.5px" color="fg.muted">
-              Added{" "}
+              {m.dashboard_repo_added()}{" "}
               <Text as="span" fontWeight="600" color="fg.default">
                 {formatBytes(Number(summary.bytesAddedLast30days))}
               </Text>
@@ -756,7 +696,7 @@ const RecentActivity = ({
                 <Text fontSize="12.5px" color="fg.muted">
                   {agoText(row.timestampMs)}
                   {row.durationMs > 0 &&
-                    ` · took ${formatDuration(row.durationMs)}`}
+                    ` · ${m.dashboard_activity_took({ duration: formatDuration(row.durationMs) })}`}
                 </Text>
               </Box>
               {row.bytesAdded > 0 && (
@@ -817,13 +757,6 @@ export const SummaryDashboard = () => {
     }
   }, [config]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Stable array of plan IDs for the ops cache
-  const planIds = useMemo(
-    () => (summaryData?.planSummaries ?? []).map((s) => s.id),
-    [summaryData],
-  );
-  const opsCache = usePlanOps(planIds);
-
   if (!summaryData) {
     return (
       <Center h="200px">
@@ -851,16 +784,8 @@ export const SummaryDashboard = () => {
     if (ts > newestMs) newestMs = ts;
 
     const st = planState(latest, running);
-    const severity = { err: 3, warn: 2, run: 1, ok: 0, idle: -1 } as Record<
-      PlanState,
-      number
-    >;
-    const heroSeverity = { err: 3, warn: 2, run: 1, ok: 0, idle: -1 } as Record<
-      HeroState,
-      number
-    >;
-    if (severity[st] > (heroSeverity[heroState] ?? -1)) {
-      heroState = st as HeroState;
+    if (STATE_SEVERITY[st] > STATE_SEVERITY[heroState]) {
+      heroState = st;
     }
 
     const nx = Number(s.nextBackupTimeMs ?? 0);
@@ -885,7 +810,7 @@ export const SummaryDashboard = () => {
           <Heading size="md">{m.dashboard_plans_title()}</Heading>
           <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
             {plans.map((s) => (
-              <PlanCard key={s.id} summary={s} opsData={opsCache.get(s.id)} />
+              <PlanCard key={s.id} summary={s} />
             ))}
           </SimpleGrid>
         </Stack>
@@ -1074,7 +999,7 @@ const PeerStateTile = ({
           />
           {peerState.knownRepos.length > 0 && (
             <DataListItem
-              label="Shared Repos"
+              label={m.dashboard_peer_shared_repos()}
               value={
                 <Flex gap={1} flexWrap="wrap">
                   {peerState.knownRepos.map((repo) => (
@@ -1095,7 +1020,7 @@ const PeerStateTile = ({
           )}
           {sharedRepoIds && sharedRepoIds.length > 0 && (
             <DataListItem
-              label="Shared Repos"
+              label={m.dashboard_peer_shared_repos()}
               value={
                 <Flex gap={1} flexWrap="wrap">
                   {sharedRepoIds.map((repoId) => (

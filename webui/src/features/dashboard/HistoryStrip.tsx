@@ -1,99 +1,116 @@
 import { Box, Flex, Text } from "@chakra-ui/react";
-import React from "react";
 import { OperationStatus } from "../../../gen/ts/v1/operations_pb";
+import { SummaryDashboardResponse_DayStatusBucket } from "../../../gen/ts/v1/service_pb";
 import * as m from "../../paraglide/messages";
 
-export interface DayBucket {
-  /** worst OperationStatus for this day, or undefined if no ops */
-  status?: OperationStatus;
-  /** true if this day is before the plan's first ever operation */
-  beforeStart: boolean;
-  /** local date label for tooltip */
-  label: string;
+const HISTORY_DAYS = 30;
+
+// Display category for one day; drives color, border, dimming, and tooltip via CELL_STYLE.
+type CellKind = "beforeStart" | "missed" | "ok" | "warn" | "err" | "other";
+
+interface DayCell {
+  kind: CellKind;
+  label: string; // local date label for the tooltip
   isToday: boolean;
 }
 
-/** Build 30 DayBuckets from a raw ops list for one plan. */
-export function buildDayBuckets(
-  ops: Array<{ unixTimeStartMs: bigint; status: OperationStatus }>,
-): { buckets: DayBucket[]; firstMs: number | null; protectedBytes: number } {
-  // rank: higher = worse  (we want worst-day semantics)
-  const rank = (s: OperationStatus): number => {
-    if (
-      s === OperationStatus.STATUS_ERROR ||
-      s === OperationStatus.STATUS_SYSTEM_CANCELLED
-    )
-      return 3;
-    if (s === OperationStatus.STATUS_WARNING) return 2;
-    if (s === OperationStatus.STATUS_SUCCESS) return 1;
-    return 0;
-  };
+const CELL_STYLE: Record<
+  CellKind,
+  { bg: string; dashed: boolean; dim: boolean; tooltip: () => string }
+> = {
+  beforeStart: {
+    bg: "bg.muted",
+    dashed: false,
+    dim: true,
+    tooltip: m.dashboard_history_tooltip_before_start,
+  },
+  missed: {
+    bg: "transparent",
+    dashed: true,
+    dim: false,
+    tooltip: m.dashboard_history_tooltip_no_backup,
+  },
+  ok: {
+    bg: "green.500",
+    dashed: false,
+    dim: false,
+    tooltip: m.dashboard_history_legend_backed_up,
+  },
+  warn: {
+    bg: "orange.400",
+    dashed: false,
+    dim: false,
+    tooltip: m.dashboard_activity_row_completed_warnings,
+  },
+  err: {
+    bg: "red.500",
+    dashed: false,
+    dim: false,
+    tooltip: m.dashboard_state_label_err,
+  },
+  other: {
+    bg: "bg.muted",
+    dashed: false,
+    dim: false,
+    tooltip: m.dashboard_state_label_err,
+  },
+};
 
-  const dayMap = new Map<string, OperationStatus>();
-  let firstMs: number | null = null;
-  let protectedBytes = 0;
-
-  for (const op of ops) {
-    const t = Number(op.unixTimeStartMs);
-    if (!t) continue;
-    if (firstMs === null || t < firstMs) firstMs = t;
-    if (rank(op.status) > 0) {
-      const d = new Date(t);
-      d.setHours(0, 0, 0, 0);
-      const key = d.toISOString();
-      const cur = dayMap.get(key);
-      if (!cur || rank(op.status) > rank(cur)) {
-        dayMap.set(key, op.status);
-      }
-    }
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const firstDay = firstMs !== null ? new Date(firstMs) : null;
-  if (firstDay) firstDay.setHours(0, 0, 0, 0);
-
-  const buckets: DayBucket[] = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const beforeStart = firstDay === null || d < firstDay;
-    const key = d.toISOString();
-    const status = beforeStart ? undefined : dayMap.get(key);
-    buckets.push({
-      status,
-      beforeStart,
-      label: d.toLocaleDateString(),
-      isToday: i === 0,
-    });
-  }
-
-  return { buckets, firstMs, protectedBytes };
-}
-
-function cellBg(bucket: DayBucket): string {
-  if (bucket.beforeStart) return "transparent";
-  if (!bucket.status) return "transparent"; // missed — dashed border below
-  if (bucket.status === OperationStatus.STATUS_SUCCESS) return "green.500";
-  if (bucket.status === OperationStatus.STATUS_WARNING) return "orange.400";
+// rank: higher = worse, so the worst status wins for a day with mixed results.
+function rank(s: OperationStatus): number {
   if (
-    bucket.status === OperationStatus.STATUS_ERROR ||
-    bucket.status === OperationStatus.STATUS_SYSTEM_CANCELLED
+    s === OperationStatus.STATUS_ERROR ||
+    s === OperationStatus.STATUS_SYSTEM_CANCELLED
   )
-    return "red.500";
-  return "bg.muted";
+    return 3;
+  if (s === OperationStatus.STATUS_WARNING) return 2;
+  if (s === OperationStatus.STATUS_SUCCESS) return 1;
+  return 0;
 }
 
-function summaryText(buckets: DayBucket[]): string {
-  const active = buckets.filter((b) => !b.beforeStart);
+function cellKind(
+  bucket: SummaryDashboardResponse_DayStatusBucket | undefined,
+): CellKind {
+  let worst: OperationStatus | undefined;
+  for (const sc of bucket?.statusCounts ?? []) {
+    if (worst === undefined || rank(sc.status) > rank(worst)) worst = sc.status;
+  }
+  if (worst === undefined) return "missed";
+  if (worst === OperationStatus.STATUS_SUCCESS) return "ok";
+  if (worst === OperationStatus.STATUS_WARNING) return "warn";
+  if (
+    worst === OperationStatus.STATUS_ERROR ||
+    worst === OperationStatus.STATUS_SYSTEM_CANCELLED
+  )
+    return "err";
+  return "other";
+}
+
+// Fixed 30-cell strip ending today; days before the plan's first backup are left-padded.
+function toCells(buckets: SummaryDashboardResponse_DayStatusBucket[]): DayCell[] {
+  const recent = buckets.slice(-HISTORY_DAYS);
+  const padCount = HISTORY_DAYS - recent.length;
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+
+  return Array.from({ length: HISTORY_DAYS }, (_, i): DayCell => {
+    const daysAgo = HISTORY_DAYS - 1 - i;
+    const date = new Date(midnight);
+    date.setDate(midnight.getDate() - daysAgo);
+    return {
+      kind: i < padCount ? "beforeStart" : cellKind(recent[i - padCount]),
+      label: date.toLocaleDateString(),
+      isToday: daysAgo === 0,
+    };
+  });
+}
+
+function summaryText(cells: DayCell[]): string {
+  const active = cells.filter((c) => c.kind !== "beforeStart");
   if (active.length === 0) return m.dashboard_history_no_data();
-  const missed = active.filter((b) => !b.status).length;
+  const missed = active.filter((c) => c.kind === "missed").length;
   const issues = active.filter(
-    (b) =>
-      b.status &&
-      b.status !== OperationStatus.STATUS_SUCCESS &&
-      b.status !== OperationStatus.STATUS_INPROGRESS &&
-      b.status !== OperationStatus.STATUS_PENDING,
+    (c) => c.kind === "warn" || c.kind === "err",
   ).length;
   if (missed === 0 && issues === 0) return m.dashboard_history_all_backed_up();
   const parts: string[] = [];
@@ -102,18 +119,21 @@ function summaryText(buckets: DayBucket[]): string {
   return m.dashboard_history_summary({ details: parts.join(" · ") });
 }
 
-export const HistoryStrip = ({ buckets }: { buckets: DayBucket[] }) => {
-  const summary = summaryText(buckets);
+export const HistoryStrip = ({
+  buckets,
+}: {
+  buckets: SummaryDashboardResponse_DayStatusBucket[];
+}) => {
+  const cells = toCells(buckets);
 
   return (
     <Box mt={4}>
       <Text fontSize="13px" fontWeight="520" mb={2} color="fg.default">
-        {summary}
+        {summaryText(cells)}
       </Text>
       <Flex gap="3px" w="full">
-        {buckets.map((b, i) => {
-          const bg = cellBg(b);
-          const isMissed = !b.beforeStart && !b.status;
+        {cells.map((c, i) => {
+          const style = CELL_STYLE[c.kind];
           return (
             <Box
               key={i}
@@ -123,26 +143,16 @@ export const HistoryStrip = ({ buckets }: { buckets: DayBucket[] }) => {
               minW={0}
               h="22px"
               borderRadius="3px"
-              bg={b.beforeStart ? "bg.muted" : bg}
-              opacity={b.beforeStart ? 0.35 : 1}
-              border={isMissed ? "1.5px dashed" : "none"}
-              borderColor={isMissed ? "border.subtle" : "transparent"}
+              bg={style.bg}
+              opacity={style.dim ? 0.35 : 1}
+              border={style.dashed ? "1.5px dashed" : "none"}
+              borderColor={style.dashed ? "border.subtle" : "transparent"}
               boxShadow={
-                b.isToday
+                c.isToday
                   ? "0 0 0 2px var(--chakra-colors-bg-canvas), 0 0 0 3.5px var(--chakra-colors-fg-muted)"
                   : undefined
               }
-              title={`${b.label} — ${
-                b.beforeStart
-                  ? m.dashboard_history_tooltip_before_start()
-                  : !b.status
-                    ? m.dashboard_history_tooltip_no_backup()
-                    : b.status === OperationStatus.STATUS_SUCCESS
-                      ? m.dashboard_history_legend_backed_up()
-                      : b.status === OperationStatus.STATUS_WARNING
-                        ? m.dashboard_activity_row_completed_warnings()
-                        : m.dashboard_state_label_err()
-              }`}
+              title={`${c.label} — ${style.tooltip()}`}
             />
           );
         })}
