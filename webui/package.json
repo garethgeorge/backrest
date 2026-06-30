@@ -26,7 +26,7 @@
     "@emotion/react": "^11.14.0",
     "buffer": "^6.0.3",
     "cronstrue": "^3.9.0",
-    "cross-env": "^7.0.3",
+    "cross-env": "^10.1.0",
     "events": "^3.3.0",
     "framer-motion": "^12.23.26",
     "next-themes": "^0.4.6",
