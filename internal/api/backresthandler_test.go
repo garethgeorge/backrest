@@ -353,7 +353,7 @@ func TestGetSummaryDashboardHistory(t *testing.T) {
 			{Id: "local", Guid: repoGUID, Uri: t.TempDir(), Password: "test", Flags: []string{"--no-cache"}},
 		},
 		Plans: []*v1.Plan{
-			{Id: "test", Repo: "local", Schedule: &v1.Schedule{Schedule: &v1.Schedule_Disabled{Disabled: true}}},
+			{Id: "test", Repo: "local", Paths: []string{t.TempDir()}, Schedule: &v1.Schedule{Schedule: &v1.Schedule_Disabled{Disabled: true}}},
 		},
 	}))
 
@@ -369,6 +369,7 @@ func TestGetSummaryDashboardHistory(t *testing.T) {
 		start := dayMs(daysAgo)
 		op := &v1.Operation{
 			InstanceId:      "test",
+			RepoId:          "local",
 			RepoGuid:        repoGUID,
 			PlanId:          "test",
 			FlowId:          flowID,
@@ -491,7 +492,7 @@ func TestGetSummaryDashboardHistoryNoCutoff(t *testing.T) {
 			{Id: "local", Guid: repoGUID, Uri: t.TempDir(), Password: "test", Flags: []string{"--no-cache"}},
 		},
 		Plans: []*v1.Plan{
-			{Id: "test", Repo: "local", Schedule: &v1.Schedule{Schedule: &v1.Schedule_Disabled{Disabled: true}}},
+			{Id: "test", Repo: "local", Paths: []string{t.TempDir()}, Schedule: &v1.Schedule{Schedule: &v1.Schedule_Disabled{Disabled: true}}},
 		},
 	}))
 
@@ -501,6 +502,7 @@ func TestGetSummaryDashboardHistoryNoCutoff(t *testing.T) {
 		start := midnight.AddDate(0, 0, -daysAgo).Add(12 * time.Hour).UnixMilli()
 		op := &v1.Operation{
 			InstanceId:      "test",
+			RepoId:          "local",
 			RepoGuid:        repoGUID,
 			PlanId:          "test",
 			FlowId:          int64(daysAgo + 1),
