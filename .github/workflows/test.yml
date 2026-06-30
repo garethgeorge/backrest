@@ -20,10 +20,10 @@ jobs:
   test-nix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: "1.24"
 
@@ -45,10 +45,10 @@ jobs:
   test-win:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: "1.24"
 
@@ -69,7 +69,7 @@ jobs:
 
       - name: Cache restic
         id: cache-restic
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: restic-bin
           key: restic-windows-${{ env.RESTIC_VERSION }}
