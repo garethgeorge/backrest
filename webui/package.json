@@ -38,7 +38,7 @@
     "react-router": "^6.30.1",
     "react-router-dom": "^6.30.1",
     "react-virtualized": "^9.22.6",
-    "recharts": "^2.15.4"
+    "recharts": "^3.9.0"
   },
   "@parcel/resolver-default": {
     "packageExports": true
