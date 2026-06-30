@@ -3,7 +3,8 @@ result
 
 /backrest
 /backrest-*
-dist
+dist/*
+!webui/dist/.gitkeep
 __debug_bin
 cmd/backrest/backrest
 *.exe
