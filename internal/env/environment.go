@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -51,13 +50,13 @@ func DataDir() string {
 		return val
 	}
 	if val := os.Getenv("XDG_DATA_HOME"); val != "" {
-		return path.Join(val, "backrest")
+		return filepath.Join(val, "backrest")
 	}
 
 	if runtime.GOOS == "windows" {
 		return filepath.Join(getConfigDir(), "backrest", "data")
 	}
-	return path.Join(getHomeDir(), ".local/share/backrest")
+	return filepath.Join(getHomeDir(), ".local", "share", "backrest")
 }
 
 func BindAddress() string {

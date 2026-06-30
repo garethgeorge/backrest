@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -103,7 +102,7 @@ func runApp() {
 		zap.L().Fatal("error creating orchestrator", zap.Error(err))
 	}
 
-	kvdbPath := path.Join(env.DataDir(), "kvdb.sqlite")
+	kvdbPath := filepath.Join(env.DataDir(), "kvdb.sqlite")
 	sharedKvdb, err := kvstore.NewSqliteDbForKvStore(kvdbPath)
 	if err != nil {
 		zap.L().Fatal("error creating general kvstore database pool", zap.Error(err))
@@ -150,7 +149,7 @@ func createConfigStore() config.ConfigStore {
 }
 
 func newOpLog(cfg *v1.Config) (*oplog.OpLog, *sqlitestore.SqliteStore, error) {
-	oplogFile := path.Join(env.DataDir(), "oplog.sqlite")
+	oplogFile := filepath.Join(env.DataDir(), "oplog.sqlite")
 	opstore, err := sqlitestore.NewSqliteStore(oplogFile)
 	if errors.Is(err, sqlitestore.ErrLocked) {
 		zap.L().Fatal("oplog is locked by another instance of backrest", zap.String("data_dir", env.DataDir()))
@@ -197,7 +196,7 @@ func newLogStore(opLog *oplog.OpLog) (*logstore.LogStore, func(), error) {
 }
 
 func newAuthenticator(configMgr *config.ConfigManager) *auth.Authenticator {
-	secretFile := path.Join(env.DataDir(), "jwt-secret")
+	secretFile := filepath.Join(env.DataDir(), "jwt-secret")
 	data, err := os.ReadFile(secretFile)
 	if err != nil {
 		zap.L().Info("generating new auth secret")
