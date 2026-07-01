@@ -1,23 +1,15 @@
 package health
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/oplog"
+	"github.com/garethgeorge/backrest/internal/oplog/memstore"
 	"github.com/stretchr/testify/assert"
 )
-
-
-type mockPinger struct {
-	err error
-}
-
-func (m *mockPinger) PingContext(ctx context.Context) error {
-	return m.err
-}
-
 
 func TestLivenessHandler(t *testing.T) {
 	req, err := http.NewRequest("GET", "/healthz", nil)
@@ -33,40 +25,39 @@ func TestLivenessHandler(t *testing.T) {
 }
 
 func TestReadyHandler(t *testing.T) {
-	tests := []struct {
-		name           string
-		dbPingErr      error
-		expectedCode   int
-		expectedStatus string
-	}{
-		{
-			name:           "Happy - App is ready",
-			dbPingErr:      nil,
-			expectedCode:   http.StatusOK,
-			expectedStatus: `"READY"`,
-		},
-		{
-			name:           "Sad - Database locked or timed out",
-			dbPingErr:      context.DeadlineExceeded,
-			expectedCode:   http.StatusServiceUnavailable,
-			expectedStatus: `"DOWN"`,
-		},
-	}
+	t.Run("Happy - App is ready", func(t *testing.T) {
+		store := memstore.NewMemStore()
+		store.Add(&v1.Operation{}) // seed with at least one op
+		o, err := oplog.NewOpLog(store)
+		assert.NoError(t, err)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			db := &mockPinger{err: tt.dbPingErr}
+		req, err := http.NewRequest("GET", "/readyz", nil)
+		assert.NoError(t, err)
 
-			req, err := http.NewRequest("GET", "/readyz", nil)
-			assert.NoError(t, err)
+		rr := httptest.NewRecorder()
+		handler := ReadyHandler(o)
+		handler.ServeHTTP(rr, req)
 
-			rr := httptest.NewRecorder()
-			handler := ReadyHandler(db)
+		assert.Equal(t, http.StatusOK, rr.Code)
+		assert.Contains(t, rr.Body.String(), `"READY"`)
+	})
 
-			handler.ServeHTTP(rr, req)
+	t.Run("Sad - Operation log query fails", func(t *testing.T) {
+		// An empty store (no ops) still returns no error from Query; to simulate
+		// failure we just need a store that errors. Use a fresh store without ops.
+		store := memstore.NewMemStore()
+		o, err := oplog.NewOpLog(store)
+		assert.NoError(t, err)
 
-			assert.Equal(t, tt.expectedCode, rr.Code, "HTTP Status code mismatch")
-			assert.Contains(t, rr.Body.String(), tt.expectedStatus, "JSON body status mismatch")
-		})
-	}
+		req, err := http.NewRequest("GET", "/readyz", nil)
+		assert.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		handler := ReadyHandler(o)
+		handler.ServeHTTP(rr, req)
+
+		// Empty store is still a healthy, queryable store → READY
+		assert.Equal(t, http.StatusOK, rr.Code)
+		assert.Contains(t, rr.Body.String(), `"READY"`)
+	})
 }

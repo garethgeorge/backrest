@@ -131,7 +131,7 @@ func runApp() {
 	}()
 
 	// Setup and start HTTP server
-	server := newServer(configMgr, peerStateManager, orch, opLog, logStore, syncMgr, authenticator, sharedKvdb)
+	server := newServer(configMgr, peerStateManager, orch, opLog, logStore, syncMgr, authenticator)
 	go func() {
 		<-ctx.Done()
 		server.Shutdown(context.Background())
@@ -227,7 +227,6 @@ func newServer(
 	logStore *logstore.LogStore,
 	syncMgr *syncapi.SyncManager,
 	authenticator *auth.Authenticator,
-	db health.Pinger,
 ) *http.Server {
 	// API Handlers
 	apiBackrestHandler := api.NewBackrestHandler(configMgr, peerStateManager, orch, opLog, logStore)
@@ -237,7 +236,7 @@ func newServer(
 	downloadHandler := api.NewDownloadHandler(opLog, orch)
 
 	// Routing
-	readyHandler := health.ReadyHandler(db)
+	readyHandler := health.ReadyHandler(opLog)
 	rootMux := newRootMux(apiBackrestHandler, apiAuthenticationHandler, syncHandler, syncStateHandler, downloadHandler, authenticator, readyHandler)
 
 	var handler http.Handler = rootMux
