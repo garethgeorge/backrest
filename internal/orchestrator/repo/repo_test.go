@@ -97,10 +97,13 @@ func TestBackup(t *testing.T) {
 func TestRestore(t *testing.T) {
 	t.Parallel()
 
-	// Use a filepath that exercises a few of the glob characters to test escaping
-	messyFilePathToTestGlobs := "test.txt"
-	if runtime.GOOS != "windows" {
-		messyFilePathToTestGlobs = "test*?[].txt"
+	// Use a filepath that exercises a few of the glob characters to test escaping.
+	// On Windows, '*' and '?' are forbidden in filenames, so the messy name only
+	// contains the brackets — '[' and ']' are legal in NTFS and are the chars
+	// the Windows path of escapeGlob has to handle without backslash escape.
+	messyFilePathToTestGlobs := "test*?[].txt"
+	if runtime.GOOS == "windows" {
+		messyFilePathToTestGlobs = "test[brackets].txt"
 	}
 
 	testFile := path.Join(t.TempDir(), messyFilePathToTestGlobs)
@@ -143,10 +146,6 @@ func TestRestore(t *testing.T) {
 		t.Fatalf("restore error: %v", err)
 	}
 	t.Logf("restore summary: %+v", restoreSummary)
-
-	if runtime.GOOS == "windows" {
-		return
-	}
 
 	if restoreSummary.FilesRestored != 1 {
 		t.Errorf("expected 1 new file, got %d", restoreSummary.FilesRestored)

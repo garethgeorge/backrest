@@ -65,7 +65,8 @@ func TestTPQStress(t *testing.T) {
 	totalEnqueuedSum := 0
 
 	go func() {
-		ctx, _ := context.WithDeadline(context.Background(), start.Add(1*time.Second))
+		ctx, cancel := context.WithDeadline(context.Background(), start.Add(1*time.Second))
+		defer cancel()
 		for ctx.Err() == nil {
 			v := rand.Intn(100) + 1
 			tpq.Enqueue(time.Now().Add(time.Duration(rand.Intn(1000)-500)*time.Millisecond), rand.Intn(5), val{v})
@@ -74,7 +75,8 @@ func TestTPQStress(t *testing.T) {
 		}
 	}()
 
-	ctx, _ := context.WithDeadline(context.Background(), start.Add(3*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), start.Add(3*time.Second))
+	defer cancel()
 	totalDequeued := 0
 	sum := 0
 	for ctx.Err() == nil || totalDequeued < totalEnqueued {

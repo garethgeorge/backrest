@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   FiCalendar,
   FiDatabase,
@@ -1045,49 +1045,67 @@ const AuthenticationBoundary = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(
-        () =>
-          reject(new Error("Request timed out, backend may be unavailable")),
-        5000,
-      ),
-    );
+  // Load the config, retrying transient failures with backoff before giving up.
+  // A single slow response — the backend busy during a backup, a backgrounded
+  // tab throttling timers, a momentary connection stall — shouldn't drop the
+  // whole UI to an error screen that only a full reload recovers from.
+  const loadConfig = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
 
-    Promise.race([backrestService.getConfig({}), timeoutPromise])
-      // @ts-ignore
-      .then((config: Config) => {
+    const maxAttempts = 4;
+    let lastErr: any = null;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(
+            () =>
+              reject(new Error("Request timed out, backend may be unavailable")),
+            10000,
+          ),
+        );
+        const config = (await Promise.race([
+          backrestService.getConfig({}),
+          timeoutPromise,
+        ])) as Config;
         setConfig(config);
         if (shouldShowSettings(config)) {
-          import("../features/settings/SettingsModal").then(
-            ({ SettingsModal }) => {
-              showModal(<SettingsModal />);
-            },
+          const { SettingsModal } = await import(
+            "../features/settings/SettingsModal"
           );
+          showModal(<SettingsModal />);
         } else {
           showModal(null);
         }
         setIsLoading(false);
-      })
-      .catch((err) => {
-        setIsLoading(false);
-        const code = err.code;
+        return;
+      } catch (err: any) {
+        lastErr = err;
         if (err.code === Code.Unauthenticated) {
+          setIsLoading(false);
           showModal(<LoginModal />);
           return;
-        } else if (
-          err.code !== Code.Unavailable &&
-          err.code !== Code.DeadlineExceeded
-        ) {
-          setError(err.message);
-          alerts.error(err.message, 0);
-          return;
         }
+        const transient =
+          err.code === undefined ||
+          err.code === Code.Unavailable ||
+          err.code === Code.DeadlineExceeded;
+        if (!transient) break;
+        if (attempt < maxAttempts - 1) {
+          await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
+        }
+      }
+    }
 
-        setError(m.app_error_initial_config());
-        alerts.error(m.app_error_initial_config(), 0);
-      });
-  }, []);
+    setIsLoading(false);
+    const msg = lastErr?.message || m.app_error_initial_config();
+    setError(msg);
+    alerts.error(msg, 0);
+  }, [setConfig, showModal]);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
 
   if (isLoading) {
     return (
@@ -1104,7 +1122,7 @@ const AuthenticationBoundary = ({
         description={error}
         icon={<FiAlertTriangle />}
       >
-        <Button onClick={() => window.location.reload()}>Retry</Button>
+        <Button onClick={() => loadConfig()}>Retry</Button>
       </EmptyState>
     );
   }

@@ -217,6 +217,9 @@ message SummaryDashboardResponse {
 
     // Charts
     BackupChart recent_backups = 11; // recent backups
+
+    int64 protected_bytes = 12; // total bytes processed by the most recent successful/warning backup
+    repeated DayStatusBucket history_last_30days = 13; // per-day backup status for the dashboard history strip, oldest first; absent days precede the plan's first backup
   }
 
   message BackupChart {
@@ -225,6 +228,18 @@ message SummaryDashboardResponse {
     repeated int64 duration_ms = 3;
     repeated OperationStatus status = 4;
     repeated int64 bytes_added = 5;
+  }
+
+  message DayStatusBucket {
+    int64 timestamp_ms = 1; // start-of-day timestamp this bucket represents
+    int64 bytes_added = 2; // bytes added by backups that day
+    int64 bytes_scanned = 3; // bytes scanned by backups that day
+    repeated StatusAndCount status_counts = 4; // backup count per status for the day
+  }
+
+  message StatusAndCount {
+    int64 count = 1;
+    OperationStatus status = 2;
   }
 }
 

@@ -3,13 +3,15 @@ result
 
 /backrest
 /backrest-*
-dist
+dist/*
+!webui/dist/.gitkeep
 __debug_bin
 cmd/backrest/backrest
 *.exe
 .DS_Store
 .idea/
 .pnpm-store/
+package-lock.json
 .gemini
 .claude
 webui/dist-backup/

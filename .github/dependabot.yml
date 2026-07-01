@@ -1,0 +1,92 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
+      google-apis:
+        patterns:
+          - "google.golang.org/*"
+      prometheus:
+        patterns:
+          - "github.com/prometheus/*"
+      opentelemetry:
+        patterns:
+          - "go.opentelemetry.io/*"
+      go-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: npm
+    directory: /webui
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "react-router*"
+      connectrpc:
+        patterns:
+          - "@connectrpc/*"
+          - "@bufbuild/*"
+      chakra:
+        patterns:
+          - "@chakra-ui/*"
+          - "@emotion/*"
+      dnd-kit:
+        patterns:
+          - "@dnd-kit/*"
+      inlang:
+        patterns:
+          - "@inlang/*"
+          - "@lix-js/*"
+      dev-dependencies:
+        dependency-type: development
+      prod-minor-patch:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: /docs
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      docs:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      docker:
+        patterns:
+          - "*"

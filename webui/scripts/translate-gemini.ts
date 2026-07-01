@@ -17,9 +17,11 @@ import * as readline from "node:readline";
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 const PROJECT_PATH = "./project.inlang";
-const MODEL_NAME = "gemini-3-flash-preview";
+const MODEL_NAME = "gemini-3.5-flash";
 const BATCH_SIZE = 32;
-const CONCURRENCY = 4; // Max simultaneous Gemini requests per language
+// Max simultaneous Gemini requests, shared across all languages. Override with CONCURRENCY=N.
+const CONCURRENCY = Number(process.env.CONCURRENCY) || 4;
+const MAX_RETRIES = 5; // Per-batch retries on transient API failures.
 
 const BACKREST_CONTEXT = `
   Context about Backrest:
@@ -52,6 +54,14 @@ interface TranslationItem {
   sourceText: string;
   currentText?: string; // only set in reprocess mode
   bundle: any;
+}
+
+/** One batch of items for a single language, tagged with its position for logging. */
+interface LangBatch {
+  lang: string;
+  batch: TranslationItem[];
+  batchIndex: number;
+  batchCount: number;
 }
 
 type TranslationResult = { id: string; translation: string };
@@ -101,6 +111,38 @@ const reprocessSchema = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Split an array into fixed-size chunks. */
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/**
+ * Build a flat, cross-language list of batches so the buffered iterator can keep
+ * the API saturated across every target language at once (rather than draining
+ * one language before starting the next). `getItems` selects the items per lang.
+ */
+function buildWork(
+  langs: string[],
+  getItems: (lang: string) => TranslationItem[],
+  onEmpty: (lang: string) => void
+): LangBatch[] {
+  const work: LangBatch[] = [];
+  for (const lang of langs) {
+    const items = getItems(lang);
+    if (items.length === 0) {
+      onEmpty(lang);
+      continue;
+    }
+    const batches = chunk(items, BATCH_SIZE);
+    batches.forEach((batch, batchIndex) =>
+      work.push({ lang, batch, batchIndex, batchCount: batches.length })
+    );
+  }
+  return work;
+}
+
 /** Convert an inlang pattern array to a flat string (for display and prompts). */
 function patternToText(pattern: any[]): string {
   return pattern
@@ -132,48 +174,61 @@ function parsePattern(text: string, allowedVariables?: Set<string>): any[] {
  * A buffered async iterator: applies `fn` to each item in `source` with up to
  * `concurrency` in-flight calls at once, yielding results in source order.
  *
- * This is the core primitive enabling "fetch ahead while user reviews".
+ * Crucially, launching is driven by task *completions* (via the `.finally`
+ * callback below), not by the consumer pulling the next value. That means the
+ * pipeline keeps `concurrency` requests in flight and accumulates an unbounded
+ * queue of finished results even while the consumer is parked — e.g. blocked on
+ * `readline` waiting for the human to approve a review. Leave it for an hour and
+ * everything will have been fetched and queued, ready to approve.
  */
 async function* createBufferedIterator<T, R>(
   source: T[],
   concurrency: number,
   fn: (item: T, index: number) => Promise<R>
 ): AsyncGenerator<{ item: T; result: R; index: number }> {
-  // Resolved results waiting to be yielded, keyed by index
+  // Finished results waiting to be yielded, keyed by index (the queue).
   const resolved = new Map<number, R>();
-  // Active promises, keyed by index
-  const inflight = new Map<number, Promise<void>>();
+  const inflight = new Set<number>();
   let nextToLaunch = 0;
   let nextToYield = 0;
 
-  const launch = (i: number) => {
-    const item = source[i];
-    const p = fn(item, i).then((result) => {
-      resolved.set(i, result);
-      inflight.delete(i);
-    });
-    inflight.set(i, p);
+  // A one-shot signal used to wake the consumer when it is waiting for the next
+  // in-order result. Refreshed each time it fires.
+  let wake: (() => void) | null = null;
+  const signalWake = () => {
+    const w = wake;
+    wake = null;
+    w?.();
   };
 
-  while (nextToYield < source.length) {
-    // Fill up to concurrency
+  // Keep `concurrency` requests in flight. Re-invoked from each task's
+  // completion callback, so it runs in the background regardless of how slowly
+  // (or whether) the consumer is pulling results.
+  const pump = () => {
     while (nextToLaunch < source.length && inflight.size < concurrency) {
-      launch(nextToLaunch++);
+      const i = nextToLaunch++;
+      inflight.add(i);
+      Promise.resolve(fn(source[i], i))
+        .then((result) => resolved.set(i, result))
+        .finally(() => {
+          inflight.delete(i);
+          pump();
+          signalWake();
+        });
     }
+  };
 
-    // Wait until the next result in order is ready
+  pump();
+
+  while (nextToYield < source.length) {
     if (!resolved.has(nextToYield)) {
-      // Wait for any inflight to finish, then check again
-      await Promise.race(inflight.values());
+      await new Promise<void>((r) => (wake = r));
+      continue;
     }
-
-    if (resolved.has(nextToYield)) {
-      const item = source[nextToYield];
-      const result = resolved.get(nextToYield)!;
-      resolved.delete(nextToYield);
-      yield { item, result, index: nextToYield };
-      nextToYield++;
-    }
+    const result = resolved.get(nextToYield)!;
+    resolved.delete(nextToYield);
+    yield { item: source[nextToYield], result, index: nextToYield };
+    nextToYield++;
   }
 }
 
@@ -188,14 +243,26 @@ class GeminiClient {
   }
 
   private async call<T>(prompt: string, schema: any): Promise<T> {
-    const result = await this.model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-      },
-    });
-    return JSON.parse(result.response.text()) as T;
+    let lastErr: any;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const result = await this.model.generateContent({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: schema,
+          },
+        });
+        return JSON.parse(result.response.text()) as T;
+      } catch (err: any) {
+        lastErr = err;
+        if (attempt === MAX_RETRIES) break;
+        // Exponential backoff with jitter to ride out 429s / transient 5xx.
+        const delay = Math.min(30_000, 1_000 * 2 ** attempt) * (0.5 + Math.random());
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+    throw lastErr;
   }
 
   private translatePrompt(lang: string, items: TranslationItem[]): string {
@@ -248,18 +315,25 @@ class GeminiClient {
 
 // ─── TranslationProject ───────────────────────────────────────────────────────
 
-interface BundleInfo {
-  bundle: any;
-  /** Variable names used in the English source. */
-  allowedVars: Set<string>;
-}
-
 class TranslationProject {
   private project: any | null = null;
   private _bundles: any[] = [];
   private _sourceLang = "en";
   private _targetLangs: string[] = [];
   private _bundleVars = new Map<string, Set<string>>();
+  private _dirty = false;
+  // Serializes DB writes (updateBundle) against disk saves so a timer-driven
+  // save never reads the DB mid-write.
+  private _lock: Promise<void> = Promise.resolve();
+
+  private withLock<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this._lock.then(fn, fn);
+    this._lock = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
+  }
 
   async load(projectPath: string): Promise<void> {
     const repo = await openRepository(pathToFileURL(path.resolve(process.cwd())).href, {
@@ -372,15 +446,31 @@ class TranslationProject {
     // Mutate the local reference so subsequent passes see the updated message
     bundle.messages = newBundle.messages;
 
-    await upsertBundleNested(this.project!.db, newBundle);
+    await this.withLock(() => upsertBundleNested(this.project!.db, newBundle));
+    this._dirty = true;
   }
 
   async save(projectPath: string): Promise<void> {
-    await saveProjectToDirectory({
-      fs: nodeFs,
-      project: this.project!,
-      path: path.resolve(process.cwd(), projectPath),
-    });
+    await this.withLock(() =>
+      saveProjectToDirectory({
+        fs: nodeFs,
+        project: this.project!,
+        path: path.resolve(process.cwd(), projectPath),
+      })
+    );
+  }
+
+  /** Saves to disk only if there are unsaved edits. Returns true if it saved. */
+  async saveIfDirty(projectPath: string): Promise<boolean> {
+    if (!this._dirty) return false;
+    this._dirty = false;
+    try {
+      await this.save(projectPath);
+      return true;
+    } catch (err) {
+      this._dirty = true; // leave dirty so the next tick retries
+      throw err;
+    }
   }
 }
 
@@ -428,48 +518,40 @@ async function runTranslate(
 ): Promise<void> {
   let totalUpdates = 0;
 
-  for (const lang of project.targetLangs) {
-    const allItems = project.getMissingItems(lang);
-    if (allItems.length === 0) {
-      console.error(`[${lang}] Nothing to translate. Skipping.`);
-      continue;
-    }
+  const work = buildWork(
+    project.targetLangs,
+    (lang) => project.getMissingItems(lang),
+    (lang) => console.error(`[${lang}] Nothing to translate. Skipping.`)
+  );
+  if (work.length === 0) {
+    console.log("Nothing to translate.");
+    return;
+  }
+  console.error(`${work.length} batches to translate across ${project.targetLangs.length} languages.`);
 
-    // Chunk into batches
-    const batches: TranslationItem[][] = [];
-    for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
-      batches.push(allItems.slice(i, i + BATCH_SIZE));
-    }
-
-    console.error(`[${lang}] ${allItems.length} strings to translate across ${batches.length} batches.`);
-    let batchNum = 0;
-
-    // Process batches with bounded concurrency, yielding results in order
-    for await (const { item: batch, result, index } of createBufferedIterator(
-      batches,
-      CONCURRENCY,
-      async (batch, batchIndex) => {
-        process.stderr.write(`[${lang}] Fetching batch ${batchIndex + 1}/${batches.length}...\n`);
-        try {
-          return await gemini.translateBatch(lang, batch);
-        } catch (err: any) {
-          console.error(`\n[${lang}] ERROR: Gemini call failed for batch ${batchIndex + 1}/${batches.length}: ${err.message}`);
-          return [] as TranslationResult[];
-        }
+  // One buffered iterator over every (lang, batch) pair keeps the API saturated globally.
+  for await (const { item: w, result } of createBufferedIterator(
+    work,
+    CONCURRENCY,
+    async (w) => {
+      process.stderr.write(`[${w.lang}] Fetching batch ${w.batchIndex + 1}/${w.batchCount}...\n`);
+      try {
+        return await gemini.translateBatch(w.lang, w.batch);
+      } catch (err: any) {
+        console.error(`\n[${w.lang}] ERROR: batch ${w.batchIndex + 1}/${w.batchCount} failed after retries: ${err.message}`);
+        return [] as TranslationResult[];
       }
-    )) {
-      batchNum++;
-      for (const trans of result) {
-        const item = batch.find((i) => i.id === trans.id);
-        if (!item) {
-          console.error(`[${lang}] Warning: Gemini returned unknown id '${trans.id}', skipping.`);
-          continue;
-        }
-        await project.updateBundle(item.bundle, lang, trans.translation);
-        console.log(`[${lang}] ✓ ${item.id}`);
-        totalUpdates++;
+    }
+  )) {
+    for (const trans of result) {
+      const item = w.batch.find((i) => i.id === trans.id);
+      if (!item) {
+        console.error(`[${w.lang}] Warning: Gemini returned unknown id '${trans.id}', skipping.`);
+        continue;
       }
-      process.stderr.write(`[${lang}] Batch ${batchNum}/${batches.length} applied.\n`);
+      await project.updateBundle(item.bundle, w.lang, trans.translation);
+      console.log(`[${w.lang}] ✓ ${item.id}`);
+      totalUpdates++;
     }
   }
 
@@ -484,65 +566,62 @@ async function runReprocess(
   let totalAccepted = 0;
   let totalSkipped = 0;
 
-  for (const lang of project.targetLangs) {
-    const allItems = project.getExistingItems(lang);
-    if (allItems.length === 0) {
-      console.error(`[${lang}] No existing translations found. Skipping.`);
+  const work = buildWork(
+    project.targetLangs,
+    (lang) => project.getExistingItems(lang),
+    (lang) => console.error(`[${lang}] No existing translations found. Skipping.`)
+  );
+  if (work.length === 0) {
+    console.log("No existing translations to review.");
+    return;
+  }
+  console.error(`Reviewing ${work.length} batches across ${project.targetLangs.length} languages.`);
+
+  // One global buffered iterator keeps CONCURRENCY reviews in flight across all
+  // languages while the user serially approves each completed batch — so the
+  // queue stays full no matter how long the user takes.
+  for await (const { item: w, result } of createBufferedIterator(
+    work,
+    CONCURRENCY,
+    async (w) => {
+      process.stderr.write(`[${w.lang}] Fetching review for batch ${w.batchIndex + 1}/${w.batchCount}...\n`);
+      try {
+        return await gemini.reviewBatch(w.lang, w.batch);
+      } catch (err: any) {
+        console.error(`\n[${w.lang}] ERROR: batch ${w.batchIndex + 1}/${w.batchCount} failed after retries: ${err.message}`);
+        return [] as ReviewResult[];
+      }
+    }
+  )) {
+    const suggestions = result.filter(
+      (r): r is { id: string; newTranslation: string; explanation: string } =>
+        "newTranslation" in r && !!r.newTranslation
+    );
+
+    if (suggestions.length === 0) {
+      process.stderr.write(`[${w.lang}] Batch ${w.batchIndex + 1}/${w.batchCount}: all translations OK.\n`);
       continue;
     }
 
-    const batches: TranslationItem[][] = [];
-    for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
-      batches.push(allItems.slice(i, i + BATCH_SIZE));
-    }
+    process.stderr.write(
+      `[${w.lang}] Batch ${w.batchIndex + 1}/${w.batchCount}: ${suggestions.length} suggestion(s) to review.\n`
+    );
 
-    console.error(`\n[${lang}] Reviewing ${allItems.length} strings across ${batches.length} batches.`);
-
-    // The buffered iterator keeps CONCURRENCY Gemini calls in flight while the
-    // user serially reviews each completed batch — true pipelining.
-    for await (const { item: batch, result, index } of createBufferedIterator(
-      batches,
-      CONCURRENCY,
-      async (batch, batchIndex) => {
-        process.stderr.write(`[${lang}] Fetching review for batch ${batchIndex + 1}/${batches.length}...\n`);
-        try {
-          return await gemini.reviewBatch(lang, batch);
-        } catch (err: any) {
-          console.error(`\n[${lang}] ERROR: Gemini call failed for batch ${batchIndex + 1}/${batches.length}: ${err.message}`);
-          return [] as ReviewResult[];
-        }
-      }
-    )) {
-      const suggestions = result.filter(
-        (r): r is { id: string; newTranslation: string; explanation: string } =>
-          "newTranslation" in r && !!r.newTranslation
-      );
-
-      if (suggestions.length === 0) {
-        process.stderr.write(`[${lang}] Batch ${index + 1}/${batches.length}: all translations OK.\n`);
+    for (const review of suggestions) {
+      const item = w.batch.find((i) => i.id === review.id);
+      if (!item) {
+        console.error(`[${w.lang}] Warning: Gemini returned unknown id '${review.id}', skipping.`);
         continue;
       }
 
-      process.stderr.write(
-        `[${lang}] Batch ${index + 1}/${batches.length}: ${suggestions.length} suggestion(s) to review.\n`
-      );
-
-      for (const review of suggestions) {
-        const item = batch.find((i) => i.id === review.id);
-        if (!item) {
-          console.error(`[${lang}] Warning: Gemini returned unknown id '${review.id}', skipping.`);
-          continue;
-        }
-
-        const accepted = await reviewer.promptReview(lang, item, review.newTranslation, review.explanation);
-        if (accepted) {
-          await project.updateBundle(item.bundle, lang, review.newTranslation);
-          console.log("  → Updated.");
-          totalAccepted++;
-        } else {
-          console.log("  → Skipped.");
-          totalSkipped++;
-        }
+      const accepted = await reviewer.promptReview(w.lang, item, review.newTranslation, review.explanation);
+      if (accepted) {
+        await project.updateBundle(item.bundle, w.lang, review.newTranslation);
+        console.log("  → Updated.");
+        totalAccepted++;
+      } else {
+        console.log("  → Skipped.");
+        totalSkipped++;
       }
     }
   }
@@ -574,15 +653,28 @@ async function main() {
 
   console.error(`Source: ${project.sourceLang} → Targets: ${targetLangs.join(", ")}`);
 
-  if (isReprocess) {
-    const reviewer = new UserReviewer();
-    try {
-      await runReprocess(gemini, project, reviewer);
-    } finally {
-      reviewer.close();
+  // Periodically flush new edits to disk so an interrupted long run isn't lost.
+  const autosave = setInterval(() => {
+    project
+      .saveIfDirty(PROJECT_PATH)
+      .then((saved) => saved && console.error("[autosave] saved."))
+      .catch((err) => console.error(`[autosave] failed: ${err.message}`));
+  }, 60_000);
+  autosave.unref();
+
+  try {
+    if (isReprocess) {
+      const reviewer = new UserReviewer();
+      try {
+        await runReprocess(gemini, project, reviewer);
+      } finally {
+        reviewer.close();
+      }
+    } else {
+      await runTranslate(gemini, project);
     }
-  } else {
-    await runTranslate(gemini, project);
+  } finally {
+    clearInterval(autosave);
   }
 
   console.error("Saving project to disk...");

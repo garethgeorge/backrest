@@ -31,6 +31,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func createConfigManager(cfg *v1.Config) *config.ConfigManager {
@@ -245,6 +246,297 @@ func TestBackup(t *testing.T) {
 		return errors.New("forget not indexed")
 	}); err != nil {
 		t.Fatalf("Couldn't find forget in oplog")
+	}
+}
+
+func TestGetSummaryDashboard(t *testing.T) {
+	t.Parallel()
+
+	backupDataDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(backupDataDir, "data.txt"), []byte("test data"), 0644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{
+				Id:       "local",
+				Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+				Uri:      t.TempDir(),
+				Password: "test",
+				Flags:    []string{"--no-cache"},
+			},
+		},
+		Plans: []*v1.Plan{
+			{
+				Id:   "test",
+				Repo: "local",
+				Paths: []string{
+					backupDataDir,
+				},
+				Schedule: &v1.Schedule{
+					Schedule: &v1.Schedule_Disabled{Disabled: true},
+				},
+			},
+		},
+	}))
+
+	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
+	defer cancel()
+	go func() {
+		sut.orch.Run(ctx)
+	}()
+
+	if _, err := sut.handler.Backup(ctx, connect.NewRequest(&v1.BackupRequest{Value: "test"})); err != nil {
+		t.Fatalf("Backup() error = %v", err)
+	}
+
+	// Wait for the backup to complete.
+	if err := testutil.Retry(t, ctx, func() error {
+		if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
+			return op.Status == v1.OperationStatus_STATUS_SUCCESS && ok
+		}) == -1 {
+			return errors.New("expected a successful backup operation")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("Couldn't find backup operation in oplog")
+	}
+
+	resp, err := sut.handler.GetSummaryDashboard(ctx, connect.NewRequest(&emptypb.Empty{}))
+	if err != nil {
+		t.Fatalf("GetSummaryDashboard() error = %v", err)
+	}
+
+	if len(resp.Msg.PlanSummaries) != 1 {
+		t.Fatalf("expected 1 plan summary, got %d", len(resp.Msg.PlanSummaries))
+	}
+	summary := resp.Msg.PlanSummaries[0]
+	if summary.Id != "test" {
+		t.Errorf("expected plan summary id %q, got %q", "test", summary.Id)
+	}
+	if summary.ProtectedBytes <= 0 {
+		t.Errorf("expected protected_bytes > 0, got %d", summary.ProtectedBytes)
+	}
+
+	// The history strip should end on today's bucket carrying a successful backup.
+	if len(summary.HistoryLast_30Days) == 0 {
+		t.Fatalf("expected a non-empty history strip")
+	}
+	today := summary.HistoryLast_30Days[len(summary.HistoryLast_30Days)-1]
+	var successCount int64
+	for _, sc := range today.StatusCounts {
+		if sc.Status == v1.OperationStatus_STATUS_SUCCESS {
+			successCount = sc.Count
+		}
+	}
+	if successCount == 0 {
+		t.Errorf("expected today's bucket to record a successful backup, got %+v", today.StatusCounts)
+	}
+}
+
+// TestGetSummaryDashboardHistory exercises the day-bucketing of GetSummaryDashboard by inserting
+// synthetic backup operations at controlled timestamps directly into the oplog.
+func TestGetSummaryDashboardHistory(t *testing.T) {
+	t.Parallel()
+
+	repoGUID := cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{Id: "local", Guid: repoGUID, Uri: t.TempDir(), Password: "test", Flags: []string{"--no-cache"}},
+		},
+		Plans: []*v1.Plan{
+			{Id: "test", Repo: "local", Paths: []string{t.TempDir()}, Schedule: &v1.Schedule{Schedule: &v1.Schedule_Disabled{Disabled: true}}},
+		},
+	}))
+
+	now := time.Now()
+	midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	// A backup landing at midday of the day `daysAgo` before today.
+	dayMs := func(daysAgo int) int64 { return midnight.AddDate(0, 0, -daysAgo).Add(12 * time.Hour).UnixMilli() }
+	bucketMs := func(daysAgo int) int64 { return midnight.AddDate(0, 0, -daysAgo).UnixMilli() }
+
+	var flowID int64
+	addBackup := func(daysAgo int, status v1.OperationStatus, summary *v1.BackupProgressSummary) {
+		flowID++
+		start := dayMs(daysAgo)
+		op := &v1.Operation{
+			InstanceId:      "test",
+			RepoId:          "local",
+			RepoGuid:        repoGUID,
+			PlanId:          "test",
+			FlowId:          flowID,
+			Status:          status,
+			UnixTimeStartMs: start,
+			UnixTimeEndMs:   start + 60*1000,
+		}
+		backup := &v1.OperationBackup{}
+		if summary != nil {
+			backup.LastStatus = &v1.BackupProgressEntry{Entry: &v1.BackupProgressEntry_Summary{Summary: summary}}
+		}
+		op.Op = &v1.Operation_OperationBackup{OperationBackup: backup}
+		if err := sut.oplog.Add(op); err != nil {
+			t.Fatalf("failed to add operation: %v", err)
+		}
+	}
+
+	// Window: today success, two backups two days ago (warning + success), an error five days ago
+	// with no summary, and one backup beyond the 30-day window (which forces a full 30-day strip).
+	addBackup(0, v1.OperationStatus_STATUS_SUCCESS, &v1.BackupProgressSummary{DataAdded: 100, TotalBytesProcessed: 1000})
+	addBackup(2, v1.OperationStatus_STATUS_WARNING, &v1.BackupProgressSummary{DataAdded: 50, TotalBytesProcessed: 500})
+	addBackup(2, v1.OperationStatus_STATUS_SUCCESS, &v1.BackupProgressSummary{DataAdded: 10, TotalBytesProcessed: 200})
+	addBackup(5, v1.OperationStatus_STATUS_ERROR, nil)
+	addBackup(40, v1.OperationStatus_STATUS_SUCCESS, &v1.BackupProgressSummary{DataAdded: 7, TotalBytesProcessed: 70})
+
+	resp, err := sut.handler.GetSummaryDashboard(context.Background(), connect.NewRequest(&emptypb.Empty{}))
+	if err != nil {
+		t.Fatalf("GetSummaryDashboard() error = %v", err)
+	}
+	if len(resp.Msg.PlanSummaries) != 1 {
+		t.Fatalf("expected 1 plan summary, got %d", len(resp.Msg.PlanSummaries))
+	}
+	summary := resp.Msg.PlanSummaries[0]
+
+	// 30-day stats exclude the out-of-window backup.
+	if summary.BackupsSuccessLast_30Days != 2 {
+		t.Errorf("expected 2 successful backups, got %d", summary.BackupsSuccessLast_30Days)
+	}
+	if summary.BackupsWarningLast_30Days != 1 {
+		t.Errorf("expected 1 warning backup, got %d", summary.BackupsWarningLast_30Days)
+	}
+	if summary.BackupsFailed_30Days != 1 {
+		t.Errorf("expected 1 failed backup, got %d", summary.BackupsFailed_30Days)
+	}
+	if summary.BytesAddedLast_30Days != 160 {
+		t.Errorf("expected 160 bytes added, got %d", summary.BytesAddedLast_30Days)
+	}
+	if summary.BytesScannedLast_30Days != 1700 {
+		t.Errorf("expected 1700 bytes scanned, got %d", summary.BytesScannedLast_30Days)
+	}
+	// protected_bytes is the most recent good backup's total size (today's success).
+	if summary.ProtectedBytes != 1000 {
+		t.Errorf("expected protected_bytes 1000, got %d", summary.ProtectedBytes)
+	}
+
+	// Because a backup predates the window, the strip spans the full 30 days, oldest first.
+	if len(summary.HistoryLast_30Days) != 30 {
+		t.Fatalf("expected 30 history buckets, got %d", len(summary.HistoryLast_30Days))
+	}
+	bucketFor := func(daysAgo int) *v1.SummaryDashboardResponse_DayStatusBucket {
+		want := bucketMs(daysAgo)
+		for _, b := range summary.HistoryLast_30Days {
+			if b.TimestampMs == want {
+				return b
+			}
+		}
+		t.Fatalf("no bucket for %d days ago (ts %d)", daysAgo, want)
+		return nil
+	}
+	statusCount := func(b *v1.SummaryDashboardResponse_DayStatusBucket, status v1.OperationStatus) int64 {
+		for _, sc := range b.StatusCounts {
+			if sc.Status == status {
+				return sc.Count
+			}
+		}
+		return 0
+	}
+
+	// Buckets are emitted oldest-first ending on today.
+	if got := summary.HistoryLast_30Days[29].TimestampMs; got != bucketMs(0) {
+		t.Errorf("expected last bucket to be today (%d), got %d", bucketMs(0), got)
+	}
+	today := bucketFor(0)
+	if c := statusCount(today, v1.OperationStatus_STATUS_SUCCESS); c != 1 {
+		t.Errorf("expected today bucket success count 1, got %d", c)
+	}
+	// Two backups share the day-2 bucket, and their bytes accumulate.
+	twoAgo := bucketFor(2)
+	if c := statusCount(twoAgo, v1.OperationStatus_STATUS_SUCCESS); c != 1 {
+		t.Errorf("expected day-2 success count 1, got %d", c)
+	}
+	if c := statusCount(twoAgo, v1.OperationStatus_STATUS_WARNING); c != 1 {
+		t.Errorf("expected day-2 warning count 1, got %d", c)
+	}
+	if twoAgo.BytesAdded != 60 || twoAgo.BytesScanned != 700 {
+		t.Errorf("expected day-2 bytes (60,700), got (%d,%d)", twoAgo.BytesAdded, twoAgo.BytesScanned)
+	}
+	// The error five days ago is recorded even though it carried no summary.
+	fiveAgo := bucketFor(5)
+	if c := statusCount(fiveAgo, v1.OperationStatus_STATUS_ERROR); c != 1 {
+		t.Errorf("expected day-5 error count 1, got %d", c)
+	}
+	// A day with no backup (one day ago) is a gap-filled empty bucket rendered as "missed".
+	if oneAgo := bucketFor(1); len(oneAgo.StatusCounts) != 0 {
+		t.Errorf("expected day-1 bucket to be empty, got %+v", oneAgo.StatusCounts)
+	}
+}
+
+// TestGetSummaryDashboardHistoryNoCutoff verifies the strip starts at the oldest backup day (rather
+// than spanning a full 30 days) when no backups predate the window.
+func TestGetSummaryDashboardHistoryNoCutoff(t *testing.T) {
+	t.Parallel()
+
+	repoGUID := cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{Id: "local", Guid: repoGUID, Uri: t.TempDir(), Password: "test", Flags: []string{"--no-cache"}},
+		},
+		Plans: []*v1.Plan{
+			{Id: "test", Repo: "local", Paths: []string{t.TempDir()}, Schedule: &v1.Schedule{Schedule: &v1.Schedule_Disabled{Disabled: true}}},
+		},
+	}))
+
+	now := time.Now()
+	midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	addBackup := func(daysAgo int) {
+		start := midnight.AddDate(0, 0, -daysAgo).Add(12 * time.Hour).UnixMilli()
+		op := &v1.Operation{
+			InstanceId:      "test",
+			RepoId:          "local",
+			RepoGuid:        repoGUID,
+			PlanId:          "test",
+			FlowId:          int64(daysAgo + 1),
+			Status:          v1.OperationStatus_STATUS_SUCCESS,
+			UnixTimeStartMs: start,
+			UnixTimeEndMs:   start + 60*1000,
+			Op: &v1.Operation_OperationBackup{OperationBackup: &v1.OperationBackup{
+				LastStatus: &v1.BackupProgressEntry{Entry: &v1.BackupProgressEntry_Summary{
+					Summary: &v1.BackupProgressSummary{DataAdded: 1, TotalBytesProcessed: 2},
+				}},
+			}},
+		}
+		if err := sut.oplog.Add(op); err != nil {
+			t.Fatalf("failed to add operation: %v", err)
+		}
+	}
+
+	// Oldest backup is three days ago, so the strip should be exactly four buckets (days 3..0).
+	addBackup(0)
+	addBackup(3)
+
+	resp, err := sut.handler.GetSummaryDashboard(context.Background(), connect.NewRequest(&emptypb.Empty{}))
+	if err != nil {
+		t.Fatalf("GetSummaryDashboard() error = %v", err)
+	}
+	summary := resp.Msg.PlanSummaries[0]
+	if len(summary.HistoryLast_30Days) != 4 {
+		t.Fatalf("expected 4 history buckets, got %d", len(summary.HistoryLast_30Days))
+	}
+	if got, want := summary.HistoryLast_30Days[0].TimestampMs, midnight.AddDate(0, 0, -3).UnixMilli(); got != want {
+		t.Errorf("expected first bucket %d (3 days ago), got %d", want, got)
+	}
+	if got, want := summary.HistoryLast_30Days[3].TimestampMs, midnight.UnixMilli(); got != want {
+		t.Errorf("expected last bucket %d (today), got %d", want, got)
 	}
 }
 

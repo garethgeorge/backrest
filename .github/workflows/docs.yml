@@ -8,6 +8,10 @@ on:
     branches: ["main"]
     paths:
       - "docs/**"
+  pull_request:
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yml"
   workflow_dispatch:
 
 jobs:
@@ -21,23 +25,21 @@ jobs:
           lfs: true
 
       - name: Set up NodeJS
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
 
       - name: Install dependencies
-        run: pnpm install --prefix ./docs
+        run: npm ci
+        working-directory: docs
 
       - name: Build
         run: |
-          cd docs
-          pnpm run docs:build
+          npm run docs:build
           ls -la src/.vitepress/dist
+        working-directory: docs
 
       - name: Fix permissions
         run: |
@@ -52,6 +54,7 @@ jobs:
           path: docs/src/.vitepress/dist
 
   deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

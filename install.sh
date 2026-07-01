@@ -375,8 +375,7 @@ install_binary() {
   fi
   echo "Installing backrest to /usr/local/bin"
   sudo mkdir -p /usr/local/bin
-  sudo cp "$src" /usr/local/bin/backrest
-  sudo chmod +x /usr/local/bin/backrest
+  sudo install -m 755 "$src" /usr/local/bin/backrest
 }
 
 # =============================================================================
@@ -462,8 +461,8 @@ create_launchd_plist() {
     <true/>
     <key>EnvironmentVariables</key>
     <dict>
-        <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>PATH</key>        
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
         <key>BACKREST_PORT</key>
         <string>$BACKREST_PORT</string>
     </dict>

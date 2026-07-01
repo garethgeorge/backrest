@@ -836,6 +836,18 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
+	// Local midnight today; day buckets are aligned to calendar days in the server's timezone.
+	now := time.Now()
+	todayMidnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	// Oldest day the 30-day window can show (today plus the prior 29 days).
+	cutoffMidnight := todayMidnight.AddDate(0, 0, -29)
+
+	type dayAcc struct {
+		bytesAdded   int64
+		bytesScanned int64
+		statusCounts map[v1.OperationStatus]int64
+	}
+
 	generateSummaryHelper := func(id string, q oplog.Query) (*v1.SummaryDashboardResponse_Summary, error) {
 		var backupsExamined int64
 		var bytesScanned30 int64
@@ -844,46 +856,86 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 		var backupsSuccess30 int64
 		var backupsWarning30 int64
 		var nextBackupTime int64
+		var protectedBytes int64
 		backupChart := &v1.SummaryDashboardResponse_BackupChart{}
 
+		// Per-day accumulators keyed by the day's local-midnight unix millis. oldestDay tracks the
+		// earliest day with a backup; reachedCutoff means there are backups older than the 30-day
+		// window, so missed days within it render as "missed" rather than "before start".
+		perDay := make(map[int64]*dayAcc)
+		var oldestDay time.Time
+		reachedCutoff := false
+
+		// Walk backups from newest to oldest (the query is reversed), accumulating stats as we go.
 		s.oplog.Query(q, func(op *v1.Operation) error {
+			backupOp := op.GetOperationBackup()
+			if backupOp == nil {
+				return nil
+			}
+
 			t := time.UnixMilli(op.UnixTimeStartMs)
+			opMidnight := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 
-			if backupOp := op.GetOperationBackup(); backupOp != nil {
-				if time.Since(t) > 30*24*time.Hour {
-					return oplog.ErrStopIteration
-				} else if op.GetStatus() == v1.OperationStatus_STATUS_PENDING {
-					nextBackupTime = op.UnixTimeStartMs
-					return nil
+			// Backups older than the window terminate the scan (everything after is older still).
+			if opMidnight.Before(cutoffMidnight) {
+				reachedCutoff = true
+				return oplog.ErrStopIteration
+			}
+			if op.GetStatus() == v1.OperationStatus_STATUS_PENDING {
+				nextBackupTime = op.UnixTimeStartMs
+				return nil
+			}
+			backupsExamined++
+
+			switch op.Status {
+			case v1.OperationStatus_STATUS_SUCCESS:
+				backupsSuccess30++
+			case v1.OperationStatus_STATUS_ERROR:
+				backupsFailed30++
+			case v1.OperationStatus_STATUS_WARNING:
+				backupsWarning30++
+			}
+
+			summary := backupOp.GetLastStatus().GetSummary()
+			if summary != nil {
+				bytesScanned30 += summary.TotalBytesProcessed
+				bytesAdded30 += summary.DataAdded
+			}
+
+			// protected_bytes: the most recent (first seen) good backup's total size.
+			if protectedBytes == 0 && summary != nil &&
+				(op.Status == v1.OperationStatus_STATUS_SUCCESS || op.Status == v1.OperationStatus_STATUS_WARNING) {
+				protectedBytes = summary.TotalBytesProcessed
+			}
+
+			// Update the per-day aggregate for this backup's day.
+			dayMs := opMidnight.UnixMilli()
+			acc := perDay[dayMs]
+			if acc == nil {
+				acc = &dayAcc{statusCounts: make(map[v1.OperationStatus]int64)}
+				perDay[dayMs] = acc
+			}
+			acc.statusCounts[op.Status]++
+			if summary != nil {
+				acc.bytesAdded += summary.DataAdded
+				acc.bytesScanned += summary.TotalBytesProcessed
+			}
+			if oldestDay.IsZero() || opMidnight.Before(oldestDay) {
+				oldestDay = opMidnight
+			}
+
+			// recent backups chart: only include the latest 60 backups.
+			if len(backupChart.TimestampMs) < 60 {
+				duration := op.UnixTimeEndMs - op.UnixTimeStartMs
+				if duration <= 1000 {
+					duration = 1000
 				}
-				backupsExamined++
 
-				if op.Status == v1.OperationStatus_STATUS_SUCCESS {
-					backupsSuccess30++
-				} else if op.Status == v1.OperationStatus_STATUS_ERROR {
-					backupsFailed30++
-				} else if op.Status == v1.OperationStatus_STATUS_WARNING {
-					backupsWarning30++
-				}
-
-				if summary := backupOp.GetLastStatus().GetSummary(); summary != nil {
-					bytesScanned30 += summary.TotalBytesProcessed
-					bytesAdded30 += summary.DataAdded
-				}
-
-				// recent backups chart
-				if len(backupChart.TimestampMs) < 60 { // only include the latest 90 backups in the chart
-					duration := op.UnixTimeEndMs - op.UnixTimeStartMs
-					if duration <= 1000 {
-						duration = 1000
-					}
-
-					backupChart.FlowId = append(backupChart.FlowId, op.FlowId)
-					backupChart.TimestampMs = append(backupChart.TimestampMs, op.UnixTimeStartMs)
-					backupChart.DurationMs = append(backupChart.DurationMs, duration)
-					backupChart.Status = append(backupChart.Status, op.Status)
-					backupChart.BytesAdded = append(backupChart.BytesAdded, backupOp.GetLastStatus().GetSummary().GetDataAdded())
-				}
+				backupChart.FlowId = append(backupChart.FlowId, op.FlowId)
+				backupChart.TimestampMs = append(backupChart.TimestampMs, op.UnixTimeStartMs)
+				backupChart.DurationMs = append(backupChart.DurationMs, duration)
+				backupChart.Status = append(backupChart.Status, op.Status)
+				backupChart.BytesAdded = append(backupChart.BytesAdded, summary.GetDataAdded())
 			}
 
 			return nil
@@ -891,6 +943,34 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 
 		if backupsExamined == 0 {
 			backupsExamined = 1 // prevent division by zero for avg calculations
+		}
+
+		// Flatten the per-day map into buckets ordered oldest-first. We emit one bucket per
+		// consecutive day from the oldest active day (or the window start, if older backups exist)
+		// through today; the client maps these positionally, so absent days are filled with empty
+		// "missed" buckets. Days before this span are omitted and rendered as "before start".
+		start := todayMidnight
+		if reachedCutoff {
+			start = cutoffMidnight
+		} else if !oldestDay.IsZero() {
+			start = oldestDay
+		}
+		var history []*v1.SummaryDashboardResponse_DayStatusBucket
+		for day := start; !day.After(todayMidnight); day = day.AddDate(0, 0, 1) {
+			bucket := &v1.SummaryDashboardResponse_DayStatusBucket{
+				TimestampMs: day.UnixMilli(),
+			}
+			if acc := perDay[day.UnixMilli()]; acc != nil {
+				bucket.BytesAdded = acc.bytesAdded
+				bucket.BytesScanned = acc.bytesScanned
+				for status, count := range acc.statusCounts {
+					bucket.StatusCounts = append(bucket.StatusCounts, &v1.SummaryDashboardResponse_StatusAndCount{
+						Status: status,
+						Count:  count,
+					})
+				}
+			}
+			history = append(history, bucket)
 		}
 
 		return &v1.SummaryDashboardResponse_Summary{
@@ -904,6 +984,8 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 			BytesAddedAvg:             bytesAdded30 / backupsExamined,
 			NextBackupTimeMs:          nextBackupTime,
 			RecentBackups:             backupChart,
+			ProtectedBytes:            protectedBytes,
+			HistoryLast_30Days:        history,
 		}, nil
 	}
 
