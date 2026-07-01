@@ -49,6 +49,11 @@ var (
 	commit  = "unknown"
 )
 
+// onOpLogReady, when set, is invoked with the OpLog once it is constructed.
+// The tray build (-tags tray) uses it to drive a status-reflecting menu bar
+// icon. It stays nil in non-tray builds, so this adds no behavior there.
+var onOpLogReady func(*oplog.OpLog)
+
 func runApp() {
 	flag.Parse()
 	if *printVersion {
@@ -85,6 +90,13 @@ func runApp() {
 		zap.L().Fatal("error creating oplog", zap.Error(err))
 	}
 	defer opLogStore.Close()
+
+	// onOpLogReady lets the system tray (when built with -tags tray) observe
+	// operation status in-process to reflect backup state in its icon. It is
+	// nil in non-tray builds.
+	if onOpLogReady != nil {
+		onOpLogReady(opLog)
+	}
 
 	logStore, unsubscribeLogStore, err := newLogStore(opLog)
 	if err != nil {
