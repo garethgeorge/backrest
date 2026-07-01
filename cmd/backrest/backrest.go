@@ -237,7 +237,7 @@ func newServer(
 	downloadHandler := api.NewDownloadHandler(opLog, orch)
 
 	// Routing
-	readyHandler := health.ReadyHandler(configMgr, db)
+	readyHandler := health.ReadyHandler(db)
 	rootMux := newRootMux(apiBackrestHandler, apiAuthenticationHandler, syncHandler, syncStateHandler, downloadHandler, authenticator, readyHandler)
 
 	var handler http.Handler = rootMux
