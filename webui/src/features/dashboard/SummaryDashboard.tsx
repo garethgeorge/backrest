@@ -10,7 +10,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FiCheck, FiDatabase, FiRefreshCw, FiServer } from "react-icons/fi";
 import { LuTriangle, LuX } from "react-icons/lu";
 import { useNavigate } from "react-router";
@@ -164,12 +164,32 @@ const STATE_SEVERITY: Record<PlanState, number> = {
   idle: -1,
 };
 
-function stateLabelText(state: PlanState): string {
-  if (state === "ok") return m.dashboard_state_label_ok();
-  if (state === "warn") return m.dashboard_state_label_warn();
-  if (state === "err") return m.dashboard_state_label_err();
-  if (state === "run") return m.dashboard_state_label_run();
-  return m.dashboard_state_label_idle();
+const STATE_LABEL: Record<PlanState, () => string> = {
+  ok: m.dashboard_state_label_ok,
+  warn: m.dashboard_state_label_warn,
+  err: m.dashboard_state_label_err,
+  run: m.dashboard_state_label_run,
+  idle: m.dashboard_state_label_idle,
+};
+
+// Status fields shared by plan cards, repo cards, and the hero banner,
+// derived from a summary's most recent backup.
+interface SummaryStatus {
+  latestTs: number;
+  running: boolean;
+  state: PlanState;
+  color: string;
+}
+
+function summaryStatus(summary: SummaryDashboardResponse_Summary): SummaryStatus {
+  const rb = summary.recentBackups;
+  const latestStatus = rb?.status[0];
+  const latestTs = Number(rb?.timestampMs[0] ?? 0);
+  const running =
+    latestStatus === OperationStatus.STATUS_INPROGRESS ||
+    latestStatus === OperationStatus.STATUS_PENDING;
+  const state = planState(latestStatus, running);
+  return { latestTs, running, state, color: STATE_COLORS[state] };
 }
 
 // ─── Progress bar (animated shimmer) ─────────────────────────────────────────
@@ -192,9 +212,7 @@ const ProgressBar = ({ pct }: { pct: number }) => (
 
 // ─── Hero banner ──────────────────────────────────────────────────────────────
 
-type HeroState = PlanState;
-
-const HERO_ICON: Record<HeroState, React.ReactNode> = {
+const HERO_ICON: Record<PlanState, React.ReactNode> = {
   ok: <FiCheck strokeWidth={2.4} />,
   run: <FiRefreshCw strokeWidth={2.4} />,
   warn: <LuTriangle strokeWidth={2.4} />,
@@ -202,54 +220,45 @@ const HERO_ICON: Record<HeroState, React.ReactNode> = {
   idle: <FiDatabase strokeWidth={2.4} />,
 };
 
-function heroTitleText(state: HeroState): string {
-  if (state === "ok") return m.dashboard_hero_ok();
-  if (state === "run") return m.dashboard_hero_run();
-  if (state === "warn") return m.dashboard_hero_warn();
-  if (state === "err") return m.dashboard_hero_err();
-  return m.dashboard_hero_idle();
-}
+const HERO_TITLE: Record<PlanState, () => string> = {
+  ok: m.dashboard_hero_ok,
+  run: m.dashboard_hero_run,
+  warn: m.dashboard_hero_warn,
+  err: m.dashboard_hero_err,
+  idle: m.dashboard_hero_idle,
+};
 
-const HeroBanner = ({
-  state,
-  newestMs,
-  nextMs,
-}: {
-  state: HeroState;
+interface HeroStats {
+  state: PlanState;
   newestMs: number;
   nextMs: number | null;
-}) => {
-  const color = STATE_COLORS[state];
-  const bgColor = STATE_BG[state];
-  const subParts: React.ReactNode[] = [];
-  if (newestMs) {
-    subParts.push(
-      <Text as="span" fontWeight="semibold" color="fg.default" key="last">
-        {m.dashboard_hero_last_backup({ ago: agoText(newestMs) })}
-      </Text>,
-    );
-  } else {
-    subParts.push(
-      <Text as="span" key="last">
-        {m.dashboard_hero_no_backups()}
-      </Text>,
-    );
-  }
-  if (nextMs) {
-    const u = untilText(nextMs);
-    if (u) {
-      subParts.push(
-        <Text as="span" key="sep">
-          {" · "}
-        </Text>,
-      );
-      subParts.push(
-        <Text as="span" key="next">
-          {m.dashboard_hero_next({ when: u })}
-        </Text>,
-      );
+}
+
+// Worst state across all plans (a running backup takes over the hero), the
+// newest backup time, and the soonest upcoming backup time.
+function heroStats(plans: SummaryDashboardResponse_Summary[]): HeroStats {
+  let state: PlanState = "idle";
+  let newestMs = 0;
+  let nextMs: number | null = null;
+  let anyRunning = false;
+
+  for (const summary of plans) {
+    const status = summaryStatus(summary);
+    anyRunning ||= status.running;
+    newestMs = Math.max(newestMs, status.latestTs);
+    if (STATE_SEVERITY[status.state] > STATE_SEVERITY[state]) {
+      state = status.state;
     }
+    const next = Number(summary.nextBackupTimeMs ?? 0);
+    if (next > 0 && (nextMs === null || next < nextMs)) nextMs = next;
   }
+
+  if (anyRunning) state = "run";
+  return { state, newestMs, nextMs };
+}
+
+const HeroBanner = ({ state, newestMs, nextMs }: HeroStats) => {
+  const nextIn = nextMs ? untilText(nextMs) : null;
 
   return (
     <Card.Root borderRadius="2xl" shadow="sm" mb={6}>
@@ -260,8 +269,8 @@ const HeroBanner = ({
             w="60px"
             h="60px"
             borderRadius="full"
-            bg={bgColor}
-            color={color}
+            bg={STATE_BG[state]}
+            color={STATE_COLORS[state]}
             align="center"
             justify="center"
             fontSize="2xl"
@@ -275,10 +284,17 @@ const HeroBanner = ({
               letterSpacing="-0.02em"
               lineHeight={1.2}
             >
-              {heroTitleText(state)}
+              {HERO_TITLE[state]()}
             </Text>
             <Text fontSize="14.5px" color="fg.muted" mt="3px">
-              {subParts}
+              {newestMs ? (
+                <Text as="span" fontWeight="semibold" color="fg.default">
+                  {m.dashboard_hero_last_backup({ ago: agoText(newestMs) })}
+                </Text>
+              ) : (
+                m.dashboard_hero_no_backups()
+              )}
+              {nextIn && ` · ${m.dashboard_hero_next({ when: nextIn })}`}
             </Text>
           </Box>
         </Flex>
@@ -307,7 +323,11 @@ function progressFromOp(op: Operation): LiveProgress | null {
   };
 }
 
-const useLiveProgress = (planId: string, running: boolean) => {
+const useLiveProgress = (
+  planId: string,
+  running: boolean,
+  onFinished: () => void,
+) => {
   const [progress, setProgress] = useState<LiveProgress | null>(null);
 
   useEffect(() => {
@@ -316,9 +336,23 @@ const useLiveProgress = (planId: string, running: boolean) => {
       return;
     }
     let cancelled = false;
+    let finished = false;
     const selector = create(OpSelectorSchema, { planId });
 
     const apply = (op: Operation) => {
+      if (op.op.case !== "operationBackup") return;
+      // Once the backup leaves the in-progress/pending state it's done: clear the
+      // live bar and refresh the summary so the card leaves its running state.
+      if (
+        op.status !== OperationStatus.STATUS_INPROGRESS &&
+        op.status !== OperationStatus.STATUS_PENDING
+      ) {
+        if (finished) return;
+        finished = true;
+        setProgress(null);
+        onFinished();
+        return;
+      }
       const p = progressFromOp(op);
       if (p) setProgress(p);
     };
@@ -347,10 +381,69 @@ const useLiveProgress = (planId: string, running: boolean) => {
       cancelled = true;
       unsubscribeFromOperations(handler);
     };
-  }, [planId, running]);
+  }, [planId, running, onFinished]);
 
   return progress;
 };
+
+// ─── Shared card building blocks ─────────────────────────────────────────────
+
+const CardTitle = ({ children }: { children: React.ReactNode }) => (
+  <Text fontSize="16px" fontWeight="640" letterSpacing="-0.01em">
+    {children}
+  </Text>
+);
+
+const StatusDot = ({ color, pulsing }: { color: string; pulsing?: boolean }) =>
+  pulsing ? (
+    <motion.div
+      animate={{ opacity: [1, 0.4, 1], scale: [1, 0.82, 1] }}
+      transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+      style={{
+        width: 9,
+        height: 9,
+        borderRadius: "50%",
+        background: "var(--chakra-colors-blue-500)",
+      }}
+    />
+  ) : (
+    <Box w="9px" h="9px" borderRadius="full" bg={color} />
+  );
+
+// Large colored state label with a muted "X ago" beside it.
+const StatusLine = ({ status }: { status: SummaryStatus }) => (
+  <Flex align="baseline" gap={2} mt={4} mb={1}>
+    <Text
+      fontSize="20px"
+      fontWeight="660"
+      letterSpacing="-0.02em"
+      color={status.color}
+    >
+      {STATE_LABEL[status.state]()}
+    </Text>
+    {status.latestTs > 0 && !status.running && (
+      <Text fontSize="13px" color="fg.muted">
+        {agoText(status.latestTs)}
+      </Text>
+    )}
+  </Flex>
+);
+
+// One "Label value" pair in a card's meta row.
+const MetaItem = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) => (
+  <Box fontSize="12.5px" color="fg.muted">
+    {label}{" "}
+    <Text as="span" fontWeight="600" color="fg.default">
+      {children}
+    </Text>
+  </Box>
+);
 
 // ─── Plan card ────────────────────────────────────────────────────────────────
 
@@ -360,14 +453,8 @@ const PlanCard = ({
   summary: SummaryDashboardResponse_Summary;
 }) => {
   const [config] = useConfig();
-  const rb = summary.recentBackups;
-  const latestStatus = rb?.status[0];
-  const latestTs = Number(rb?.timestampMs[0] ?? 0);
-  const running =
-    latestStatus === OperationStatus.STATUS_INPROGRESS ||
-    latestStatus === OperationStatus.STATUS_PENDING;
-  const state = planState(latestStatus, running);
-  const color = STATE_COLORS[state];
+  const status = summaryStatus(summary);
+  const { running } = status;
 
   const progress = useLiveProgress(summary.id, running);
 
@@ -383,7 +470,8 @@ const PlanCard = ({
   );
   const destLabel = planCfg?.repo ?? "";
   const nextMs = Number(summary.nextBackupTimeMs ?? 0);
-  const lastUploadBytes = Number(rb?.bytesAdded[0] ?? 0);
+  const protectedBytes = Number(summary.protectedBytes);
+  const lastUploadBytes = Number(summary.recentBackups?.bytesAdded[0] ?? 0);
 
   let retLine: string | null = null;
   if (planCfg?.retention?.policy.case === "policyTimeBucketed") {
@@ -401,54 +489,19 @@ const PlanCard = ({
         {/* Title row */}
         <Flex justify="space-between" align="flex-start" gap={3}>
           <Box>
-            <Text fontSize="16px" fontWeight="640" letterSpacing="-0.01em">
-              {prettyPlanId(summary.id)}
-            </Text>
+            <CardTitle>{prettyPlanId(summary.id)}</CardTitle>
             {schedLine && (
               <Text fontSize="12.5px" color="fg.muted" mt="2px">
                 {schedLine}
               </Text>
             )}
           </Box>
-          {/* Status dot */}
           <Box mt="6px" flexShrink={0}>
-            {running ? (
-              <motion.div
-                animate={{ opacity: [1, 0.4, 1], scale: [1, 0.82, 1] }}
-                transition={{
-                  duration: 1.6,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                style={{
-                  width: 9,
-                  height: 9,
-                  borderRadius: "50%",
-                  background: "var(--chakra-colors-blue-500)",
-                }}
-              />
-            ) : (
-              <Box w="9px" h="9px" borderRadius="full" bg={color} />
-            )}
+            <StatusDot color={status.color} pulsing={running} />
           </Box>
         </Flex>
 
-        {/* Big status line */}
-        <Flex align="baseline" gap={2} mt={4} mb={1}>
-          <Text
-            fontSize="20px"
-            fontWeight="660"
-            letterSpacing="-0.02em"
-            color={color}
-          >
-            {stateLabelText(state)}
-          </Text>
-          {latestTs > 0 && !running && (
-            <Text fontSize="13px" color="fg.muted">
-              {agoText(latestTs)}
-            </Text>
-          )}
-        </Flex>
+        <StatusLine status={status} />
 
         {/* Progress bar when running */}
         {running && (
@@ -472,36 +525,24 @@ const PlanCard = ({
         {!running && (
           <Flex flexWrap="wrap" gap="4px 18px" mt={3}>
             {nextMs > 0 && (
-              <Box fontSize="12.5px" color="fg.muted">
-                {m.dashboard_card_next_run()}{" "}
-                <Text as="span" fontWeight="600" color="fg.default">
-                  {untilText(nextMs) ?? m.dashboard_time_soon()}
-                </Text>
-              </Box>
+              <MetaItem label={m.dashboard_card_next_run()}>
+                {untilText(nextMs) ?? m.dashboard_time_soon()}
+              </MetaItem>
             )}
             {destLabel && (
-              <Box fontSize="12.5px" color="fg.muted">
-                {m.dashboard_card_destination()}{" "}
-                <Text as="span" fontWeight="600" color="fg.default">
-                  {destLabel}
-                </Text>
-              </Box>
+              <MetaItem label={m.dashboard_card_destination()}>
+                {destLabel}
+              </MetaItem>
             )}
-            {Number(summary.protectedBytes) > 0 && (
-              <Box fontSize="12.5px" color="fg.muted">
-                {m.dashboard_card_protected()}{" "}
-                <Text as="span" fontWeight="600" color="fg.default">
-                  {formatBytes(Number(summary.protectedBytes))}
-                </Text>
-              </Box>
+            {protectedBytes > 0 && (
+              <MetaItem label={m.dashboard_card_protected()}>
+                {formatBytes(protectedBytes)}
+              </MetaItem>
             )}
             {lastUploadBytes > 0 && (
-              <Box fontSize="12.5px" color="fg.muted">
-                {m.dashboard_card_last_upload()}{" "}
-                <Text as="span" fontWeight="600" color="fg.default">
-                  {formatBytes(lastUploadBytes)}
-                </Text>
-              </Box>
+              <MetaItem label={m.dashboard_card_last_upload()}>
+                {formatBytes(lastUploadBytes)}
+              </MetaItem>
             )}
           </Flex>
         )}
@@ -534,42 +575,21 @@ const RepoCard = ({
 }: {
   summary: SummaryDashboardResponse_Summary;
 }) => {
-  const rb = summary.recentBackups;
-  const latestStatus = rb?.status[0];
-  const latestTs = Number(rb?.timestampMs[0] ?? 0);
-  const running =
-    latestStatus === OperationStatus.STATUS_INPROGRESS ||
-    latestStatus === OperationStatus.STATUS_PENDING;
-  const state = planState(latestStatus, running);
-  const color = STATE_COLORS[state];
+  const status = summaryStatus(summary);
+  const protectedBytes = Number(summary.protectedBytes);
+  const bytesAdded30d = Number(summary.bytesAddedLast30days);
 
   return (
     <Card.Root borderRadius="2xl" shadow="sm">
       <Card.Body px={5} py={5}>
         <Flex justify="space-between" align="flex-start" gap={3}>
-          <Text fontSize="16px" fontWeight="640" letterSpacing="-0.01em">
-            {summary.id}
-          </Text>
+          <CardTitle>{summary.id}</CardTitle>
           <Box mt="6px" flexShrink={0}>
-            <Box w="9px" h="9px" borderRadius="full" bg={color} />
+            <StatusDot color={status.color} />
           </Box>
         </Flex>
 
-        <Flex align="baseline" gap={2} mt={4}>
-          <Text
-            fontSize="20px"
-            fontWeight="660"
-            letterSpacing="-0.02em"
-            color={color}
-          >
-            {stateLabelText(state)}
-          </Text>
-          {latestTs > 0 && !running && (
-            <Text fontSize="13px" color="fg.muted">
-              {agoText(latestTs)}
-            </Text>
-          )}
-        </Flex>
+        <StatusLine status={status} />
 
         <Flex flexWrap="wrap" gap="4px 18px" mt={3}>
           <Box fontSize="12.5px" color="fg.muted">
@@ -589,21 +609,15 @@ const RepoCard = ({
               </Text>
             ) : null}
           </Box>
-          {Number(summary.protectedBytes) > 0 && (
-            <Box fontSize="12.5px" color="fg.muted">
-              {m.dashboard_card_protected()}{" "}
-              <Text as="span" fontWeight="600" color="fg.default">
-                {formatBytes(Number(summary.protectedBytes))}
-              </Text>
-            </Box>
+          {protectedBytes > 0 && (
+            <MetaItem label={m.dashboard_card_protected()}>
+              {formatBytes(protectedBytes)}
+            </MetaItem>
           )}
-          {Number(summary.bytesAddedLast30days) > 0 && (
-            <Box fontSize="12.5px" color="fg.muted">
-              {m.dashboard_repo_added()}{" "}
-              <Text as="span" fontWeight="600" color="fg.default">
-                {formatBytes(Number(summary.bytesAddedLast30days))}
-              </Text>
-            </Box>
+          {bytesAdded30d > 0 && (
+            <MetaItem label={m.dashboard_repo_added()}>
+              {formatBytes(bytesAdded30d)}
+            </MetaItem>
           )}
         </Flex>
 
@@ -618,6 +632,7 @@ const RepoCard = ({
 
 interface ActivityRow {
   planId: string;
+  flowId: bigint;
   status: OperationStatus;
   timestampMs: number;
   durationMs: number;
@@ -664,6 +679,7 @@ const RecentActivity = ({
           continue;
         all.push({
           planId: s.id,
+          flowId: rb.flowId[i],
           status,
           timestampMs: Number(rb.timestampMs[i]),
           durationMs: Number(rb.durationMs[i]),
@@ -690,8 +706,7 @@ const RecentActivity = ({
   return (
     <Card.Root borderRadius="2xl" shadow="sm" overflow="hidden">
       {rows.map((row, i) => {
-        const stateKey = planState(row.status, false);
-        const dotColor = STATE_COLORS[stateKey];
+        const dotColor = STATE_COLORS[planState(row.status, false)];
         const dest = destByPlan.get(row.planId);
 
         // Muted secondary line: relative + absolute time, duration, destination.
@@ -708,7 +723,7 @@ const RecentActivity = ({
 
         return (
           <Box
-            key={i}
+            key={`${row.planId}-${row.flowId}`}
             px={5}
             py="13px"
             borderTop={i === 0 ? "none" : "1px solid"}
@@ -796,7 +811,7 @@ export const SummaryDashboard = () => {
     ) {
       navigate("/getting-started");
     }
-  }, [config]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [config, navigate]);
 
   if (!summaryData) {
     return (
@@ -806,34 +821,8 @@ export const SummaryDashboard = () => {
     );
   }
 
-  // Compute hero state: worst across plans, with running override
   const plans = summaryData.planSummaries;
-  let heroState: HeroState = "idle";
-  let newestMs = 0;
-  let nextMs: number | null = null;
-  let anyRun = false;
-
-  for (const s of plans) {
-    const rb = s.recentBackups;
-    const latest = rb?.status[0];
-    const running =
-      latest === OperationStatus.STATUS_INPROGRESS ||
-      latest === OperationStatus.STATUS_PENDING;
-    if (running) anyRun = true;
-
-    const ts = Number(rb?.timestampMs[0] ?? 0);
-    if (ts > newestMs) newestMs = ts;
-
-    const st = planState(latest, running);
-    if (STATE_SEVERITY[st] > STATE_SEVERITY[heroState]) {
-      heroState = st;
-    }
-
-    const nx = Number(s.nextBackupTimeMs ?? 0);
-    if (nx > 0 && (nextMs === null || nx < nextMs)) nextMs = nx;
-  }
-
-  if (anyRun) heroState = "run";
+  const hero = heroStats(plans);
 
   return (
     <Stack gap={8} width="full">
@@ -841,9 +830,7 @@ export const SummaryDashboard = () => {
       <MultihostSummary multihostConfig={config?.multihost ?? null} />
 
       {/* Hero */}
-      {plans.length > 0 && (
-        <HeroBanner state={heroState} newestMs={newestMs} nextMs={nextMs} />
-      )}
+      {plans.length > 0 && <HeroBanner {...hero} />}
 
       {/* Plan cards */}
       {plans.length > 0 && (
@@ -926,7 +913,7 @@ export const SummaryDashboard = () => {
   );
 };
 
-// ─── Multihost (preserved verbatim from original) ─────────────────────────────
+// ─── Multihost ────────────────────────────────────────────────────────────────
 
 const MultihostSummary = ({
   multihostConfig,

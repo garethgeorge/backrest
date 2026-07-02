@@ -235,6 +235,7 @@ message SummaryDashboardResponse {
     int64 bytes_added = 2; // bytes added by backups that day
     int64 bytes_scanned = 3; // bytes scanned by backups that day
     repeated StatusAndCount status_counts = 4; // backup count per status for the day
+    bool overdue = 5; // gap since the last good backup exceeded the schedule's nominal period during this day
   }
 
   message StatusAndCount {

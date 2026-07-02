@@ -47,6 +47,44 @@ func ResolveSchedule(sched *v1.Schedule, lastRan time.Time, curTime time.Time) (
 	}
 }
 
+// cronPeriodSamples is the number of consecutive fire-to-fire gaps sampled to
+// estimate a cron schedule's nominal period; enough to span irregular patterns
+// like weekdays-only (whose widest gap is the weekend).
+const cronPeriodSamples = 8
+
+// NominalPeriod returns the largest expected gap between consecutive runs of the
+// schedule. It is a display-grade staleness bound, not a scheduling calculation.
+func NominalPeriod(sched *v1.Schedule, from time.Time) (time.Duration, error) {
+	switch s := sched.GetSchedule().(type) {
+	case *v1.Schedule_Disabled, nil:
+		return 0, ErrScheduleDisabled
+	case *v1.Schedule_MaxFrequencyDays:
+		return time.Duration(s.MaxFrequencyDays) * 24 * time.Hour, nil
+	case *v1.Schedule_MaxFrequencyHours:
+		return time.Duration(s.MaxFrequencyHours) * time.Hour, nil
+	case *v1.Schedule_Cron:
+		cron, err := cronexpr.ParseInLocation(s.Cron, from.Location().String())
+		if err != nil {
+			return 0, fmt.Errorf("parse cron %q: %w", s.Cron, err)
+		}
+		var maxGap time.Duration
+		t := cron.Next(from)
+		for i := 0; i < cronPeriodSamples; i++ {
+			next := cron.Next(t)
+			if next.IsZero() || !next.After(t) {
+				return 0, fmt.Errorf("cron %q: could not compute consecutive run times", s.Cron)
+			}
+			if gap := next.Sub(t); gap > maxGap {
+				maxGap = gap
+			}
+			t = next
+		}
+		return maxGap, nil
+	default:
+		return 0, fmt.Errorf("unknown schedule type: %T", s)
+	}
+}
+
 func ValidateSchedule(sched *v1.Schedule) error {
 	switch s := sched.GetSchedule().(type) {
 	case *v1.Schedule_MaxFrequencyDays:

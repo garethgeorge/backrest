@@ -1464,3 +1464,184 @@ func TestSanitizeRepoFlags(t *testing.T) {
 		})
 	}
 }
+
+// TestGetSummaryDashboardOverdue verifies that day buckets are flagged overdue once the
+// gap since the last good backup exceeds the plan schedule's nominal period plus grace.
+func TestGetSummaryDashboardOverdue(t *testing.T) {
+	t.Parallel()
+
+	repoGUID := cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{Id: "local", Guid: repoGUID, Uri: t.TempDir(), Password: "test", Flags: []string{"--no-cache"}},
+		},
+		Plans: []*v1.Plan{
+			{Id: "test", Repo: "local", Paths: []string{t.TempDir()},
+				Schedule: &v1.Schedule{Schedule: &v1.Schedule_MaxFrequencyDays{MaxFrequencyDays: 7}}},
+		},
+	}))
+
+	now := time.Now()
+	midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	dayMs := func(daysAgo int) int64 { return midnight.AddDate(0, 0, -daysAgo).Add(12 * time.Hour).UnixMilli() }
+	bucketMs := func(daysAgo int) int64 { return midnight.AddDate(0, 0, -daysAgo).UnixMilli() }
+
+	// Weekly cadence kept between day-25 and day-18, then the plan stalls. Allowed
+	// staleness is 7d * 1.25 = 8.75d, so the plan goes overdue during day-9 at 06:00.
+	var flowID int64
+	addBackup := func(daysAgo int) {
+		flowID++
+		start := dayMs(daysAgo)
+		if err := sut.oplog.Add(&v1.Operation{
+			InstanceId:      "test",
+			RepoId:          "local",
+			RepoGuid:        repoGUID,
+			PlanId:          "test",
+			FlowId:          flowID,
+			Status:          v1.OperationStatus_STATUS_SUCCESS,
+			UnixTimeStartMs: start,
+			UnixTimeEndMs:   start + 60*1000,
+			Op:              &v1.Operation_OperationBackup{OperationBackup: &v1.OperationBackup{}},
+		}); err != nil {
+			t.Fatalf("failed to add operation: %v", err)
+		}
+	}
+	addBackup(25)
+	addBackup(18)
+
+	resp, err := sut.handler.GetSummaryDashboard(context.Background(), connect.NewRequest(&emptypb.Empty{}))
+	if err != nil {
+		t.Fatalf("GetSummaryDashboard() error = %v", err)
+	}
+	if len(resp.Msg.PlanSummaries) != 1 {
+		t.Fatalf("expected 1 plan summary, got %d", len(resp.Msg.PlanSummaries))
+	}
+	summary := resp.Msg.PlanSummaries[0]
+
+	// The strip starts at the oldest backup day: 26 buckets from day-25 through today.
+	if len(summary.HistoryLast_30Days) != 26 {
+		t.Fatalf("expected 26 history buckets, got %d", len(summary.HistoryLast_30Days))
+	}
+	overdueFor := func(daysAgo int) bool {
+		want := bucketMs(daysAgo)
+		for _, b := range summary.HistoryLast_30Days {
+			if b.TimestampMs == want {
+				return b.Overdue
+			}
+		}
+		t.Fatalf("no bucket for %d days ago (ts %d)", daysAgo, want)
+		return false
+	}
+
+	for _, daysAgo := range []int{25, 18, 15, 10} {
+		if overdueFor(daysAgo) {
+			t.Errorf("day-%d should not be overdue", daysAgo)
+		}
+	}
+	for _, daysAgo := range []int{9, 5, 0} {
+		if !overdueFor(daysAgo) {
+			t.Errorf("day-%d should be overdue", daysAgo)
+		}
+	}
+}
+
+// TestGetSummaryDashboardDispatch verifies the single-pass summary correctly routes
+// interleaved operations from multiple plans: plan summaries stay isolated while the
+// shared repo summary aggregates both.
+func TestGetSummaryDashboardDispatch(t *testing.T) {
+	t.Parallel()
+
+	repoGUID := cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{Id: "local", Guid: repoGUID, Uri: t.TempDir(), Password: "test", Flags: []string{"--no-cache"}},
+		},
+		Plans: []*v1.Plan{
+			{Id: "plan-a", Repo: "local", Paths: []string{t.TempDir()}, Schedule: &v1.Schedule{Schedule: &v1.Schedule_Disabled{Disabled: true}}},
+			{Id: "plan-b", Repo: "local", Paths: []string{t.TempDir()}, Schedule: &v1.Schedule{Schedule: &v1.Schedule_Disabled{Disabled: true}}},
+		},
+	}))
+
+	now := time.Now()
+	midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	dayMs := func(daysAgo int) int64 { return midnight.AddDate(0, 0, -daysAgo).Add(12 * time.Hour).UnixMilli() }
+
+	var flowID int64
+	addBackup := func(planID string, daysAgo int, status v1.OperationStatus, dataAdded int64) {
+		flowID++
+		start := dayMs(daysAgo)
+		if err := sut.oplog.Add(&v1.Operation{
+			InstanceId:      "test",
+			RepoId:          "local",
+			RepoGuid:        repoGUID,
+			PlanId:          planID,
+			FlowId:          flowID,
+			Status:          status,
+			UnixTimeStartMs: start,
+			UnixTimeEndMs:   start + 60*1000,
+			Op: &v1.Operation_OperationBackup{OperationBackup: &v1.OperationBackup{
+				LastStatus: &v1.BackupProgressEntry{Entry: &v1.BackupProgressEntry_Summary{
+					Summary: &v1.BackupProgressSummary{DataAdded: dataAdded, TotalBytesProcessed: dataAdded * 10},
+				}},
+			}},
+		}); err != nil {
+			t.Fatalf("failed to add operation: %v", err)
+		}
+	}
+	// Interleave the two plans' backups.
+	addBackup("plan-a", 3, v1.OperationStatus_STATUS_SUCCESS, 100)
+	addBackup("plan-b", 2, v1.OperationStatus_STATUS_ERROR, 0)
+	addBackup("plan-a", 1, v1.OperationStatus_STATUS_SUCCESS, 30)
+	addBackup("plan-b", 0, v1.OperationStatus_STATUS_SUCCESS, 7)
+
+	resp, err := sut.handler.GetSummaryDashboard(context.Background(), connect.NewRequest(&emptypb.Empty{}))
+	if err != nil {
+		t.Fatalf("GetSummaryDashboard() error = %v", err)
+	}
+
+	bySummaryID := func(summaries []*v1.SummaryDashboardResponse_Summary, id string) *v1.SummaryDashboardResponse_Summary {
+		for _, s := range summaries {
+			if s.Id == id {
+				return s
+			}
+		}
+		t.Fatalf("no summary with id %q", id)
+		return nil
+	}
+
+	planA := bySummaryID(resp.Msg.PlanSummaries, "plan-a")
+	if planA.BackupsSuccessLast_30Days != 2 || planA.BackupsFailed_30Days != 0 {
+		t.Errorf("plan-a: expected 2 successes / 0 failures, got %d / %d",
+			planA.BackupsSuccessLast_30Days, planA.BackupsFailed_30Days)
+	}
+	if planA.BytesAddedLast_30Days != 130 {
+		t.Errorf("plan-a: expected 130 bytes added, got %d", planA.BytesAddedLast_30Days)
+	}
+
+	planB := bySummaryID(resp.Msg.PlanSummaries, "plan-b")
+	if planB.BackupsSuccessLast_30Days != 1 || planB.BackupsFailed_30Days != 1 {
+		t.Errorf("plan-b: expected 1 success / 1 failure, got %d / %d",
+			planB.BackupsSuccessLast_30Days, planB.BackupsFailed_30Days)
+	}
+
+	// The shared repo aggregates both plans' backups.
+	repo := bySummaryID(resp.Msg.RepoSummaries, "local")
+	if repo.BackupsSuccessLast_30Days != 3 || repo.BackupsFailed_30Days != 1 {
+		t.Errorf("repo: expected 3 successes / 1 failure, got %d / %d",
+			repo.BackupsSuccessLast_30Days, repo.BackupsFailed_30Days)
+	}
+	if repo.BytesAddedLast_30Days != 137 {
+		t.Errorf("repo: expected 137 bytes added, got %d", repo.BytesAddedLast_30Days)
+	}
+	// protected_bytes reflects the newest good backup seen by each summary.
+	if planA.ProtectedBytes != 300 || repo.ProtectedBytes != 70 {
+		t.Errorf("expected protected bytes plan-a=300 repo=70, got %d / %d",
+			planA.ProtectedBytes, repo.ProtectedBytes)
+	}
+}

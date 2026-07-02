@@ -10,7 +10,8 @@ const HISTORY_DAYS = 30;
 // Display category for one day; drives color, border, dimming, and tooltip via CELL_STYLE.
 type CellKind =
   | "beforeStart"
-  | "missed"
+  | "idle"
+  | "overdue"
   | "inprogress"
   | "ok"
   | "warn"
@@ -26,8 +27,10 @@ interface DayCell {
 
 const CELL_STYLE: Record<CellKind, { bg: string; dim: boolean }> = {
   beforeStart: { bg: "bg.muted", dim: true },
-  // A subtle but clearly-visible neutral fill so gaps read as "missed", not blank.
-  missed: { bg: "bg.emphasized", dim: false },
+  // No backup and none expected yet (e.g. a weekly plan between runs): stay quiet.
+  idle: { bg: "bg.muted", dim: false },
+  // The schedule expected a backup that never came: clearly visible neutral fill.
+  overdue: { bg: "bg.emphasized", dim: false },
   inprogress: { bg: "blue.400", dim: false },
   ok: { bg: "green.500", dim: false },
   warn: { bg: "orange.400", dim: false },
@@ -70,7 +73,10 @@ function cellKind(
   bucket: SummaryDashboardResponse_DayStatusBucket | undefined,
 ): CellKind {
   const counts = bucket?.statusCounts ?? [];
-  if (counts.length === 0) return "missed";
+  if (counts.length === 0) {
+    // No backup this day: only alarming if the server says one was due.
+    return bucket?.overdue ? "overdue" : "idle";
+  }
   let worst: StatusCat | undefined;
   for (const { status } of counts) {
     const cat = STATUS_CAT[status];
@@ -82,22 +88,34 @@ function cellKind(
   return worst ?? "other";
 }
 
-// Fixed 30-cell strip, most-recent day first (left). The newest bucket is always
-// today; older days follow to the right, and days before the plan's first backup
-// render as dimmed "before start" cells on the trailing (right) edge.
+const MS_PER_DAY = 86_400_000;
+
+// Fixed 30-cell strip, most-recent day first (left). Buckets are matched to cells
+// by day distance from the newest bucket (always "today" on the server), which
+// tolerates server/browser timezone differences and any gaps in the bucket list.
+// Days before the plan's first backup render as dimmed "before start" cells.
 function toCells(buckets: SummaryDashboardResponse_DayStatusBucket[]): DayCell[] {
-  const recent = buckets.slice(-HISTORY_DAYS); // oldest-first from the server
   const midnight = new Date();
   midnight.setHours(0, 0, 0, 0);
 
-  return Array.from({ length: HISTORY_DAYS }, (_, i): DayCell => {
-    const daysAgo = i; // i === 0 is today, at the left edge
+  const newestMs = buckets.length
+    ? Number(buckets[buckets.length - 1].timestampMs)
+    : 0;
+  const byDaysAgo = new Map<number, SummaryDashboardResponse_DayStatusBucket>();
+  let maxDaysAgo = -1;
+  for (const b of buckets) {
+    // Round to absorb DST-shifted midnights.
+    const daysAgo = Math.round((newestMs - Number(b.timestampMs)) / MS_PER_DAY);
+    byDaysAgo.set(daysAgo, b);
+    maxDaysAgo = Math.max(maxDaysAgo, daysAgo);
+  }
+
+  return Array.from({ length: HISTORY_DAYS }, (_, daysAgo): DayCell => {
     const date = new Date(midnight);
     date.setDate(midnight.getDate() - daysAgo);
-    const bucketIdx = recent.length - 1 - i; // newest bucket at i === 0
-    const bucket = bucketIdx >= 0 ? recent[bucketIdx] : undefined;
+    const bucket = byDaysAgo.get(daysAgo);
     return {
-      kind: bucketIdx < 0 ? "beforeStart" : cellKind(bucket),
+      kind: daysAgo > maxDaysAgo ? "beforeStart" : cellKind(bucket),
       label: date.toLocaleDateString(),
       isToday: daysAgo === 0,
       bucket,
@@ -108,7 +126,7 @@ function toCells(buckets: SummaryDashboardResponse_DayStatusBucket[]): DayCell[]
 function summaryText(cells: DayCell[]): string {
   const active = cells.filter((c) => c.kind !== "beforeStart");
   if (active.length === 0) return m.dashboard_history_no_data();
-  const missed = active.filter((c) => c.kind === "missed").length;
+  const missed = active.filter((c) => c.kind === "overdue").length;
   const issues = active.filter(
     (c) => c.kind === "warn" || c.kind === "err",
   ).length;
@@ -158,8 +176,14 @@ const DayTooltip = ({ cell }: { cell: DayCell }) => {
           {m.dashboard_history_tooltip_before_start()}
         </Text>
       ) : !hasBackups ? (
-        <Text fontSize="11px" color="fg.muted">
-          {m.dashboard_history_tooltip_no_backup()}
+        <Text
+          fontSize="11px"
+          fontWeight={cell.bucket?.overdue ? "600" : "400"}
+          color={cell.bucket?.overdue ? "orange.400" : "fg.muted"}
+        >
+          {cell.bucket?.overdue
+            ? m.dashboard_history_tooltip_overdue()
+            : m.dashboard_history_tooltip_on_schedule()}
         </Text>
       ) : (
         <Stack gap="3px">
@@ -194,6 +218,11 @@ const DayTooltip = ({ cell }: { cell: DayCell }) => {
                 </Text>
               )}
             </Box>
+          )}
+          {cell.bucket?.overdue && (
+            <Text fontSize="11px" fontWeight="600" color="orange.400">
+              {m.dashboard_history_tooltip_overdue()}
+            </Text>
           )}
         </Stack>
       )}
@@ -252,6 +281,10 @@ export const HistoryStrip = ({
           { label: m.dashboard_history_legend_backed_up(), color: "green.500" },
           { label: m.dashboard_history_legend_issue(), color: "orange.400" },
           { label: m.dashboard_history_legend_inprogress(), color: "blue.400" },
+          {
+            label: m.dashboard_history_legend_missed(),
+            color: "bg.emphasized",
+          },
         ].map(({ label, color }) => (
           <Flex key={label} align="center" gap="5px">
             <Box w="9px" h="9px" borderRadius="2px" bg={color} flexShrink={0} />
@@ -260,18 +293,6 @@ export const HistoryStrip = ({
             </Text>
           </Flex>
         ))}
-        <Flex align="center" gap="5px">
-          <Box
-            w="9px"
-            h="9px"
-            borderRadius="2px"
-            bg="bg.emphasized"
-            flexShrink={0}
-          />
-          <Text fontSize="11px" color="fg.muted">
-            {m.dashboard_history_legend_missed()}
-          </Text>
-        </Flex>
       </Flex>
     </Box>
   );

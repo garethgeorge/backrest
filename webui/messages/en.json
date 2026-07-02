@@ -505,6 +505,8 @@
   "dashboard_history_tooltip_status_inprogress": "{count} in progress",
   "dashboard_history_tooltip_added": "Added {bytes}",
   "dashboard_history_tooltip_scanned": "Scanned {bytes}",
+  "dashboard_history_tooltip_overdue": "Backup overdue as of this day",
+  "dashboard_history_tooltip_on_schedule": "Backups up to date as of this day",
   "dashboard_state_label_err": "Backup failed",
   "dashboard_state_label_idle": "No backups yet",
   "dashboard_state_label_ok": "Backed up",

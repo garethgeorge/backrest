@@ -126,3 +126,69 @@ func TestValidateSchedule(t *testing.T) {
 func transactionalTimeEqual(t1, t2 time.Time) bool {
 	return t1.Equal(t2)
 }
+
+func TestNominalPeriod(t *testing.T) {
+	// Fixed reference time in UTC so DST transitions can't widen sampled cron gaps.
+	from := time.Date(2023, 10, 1, 10, 0, 0, 0, time.UTC) // Sunday, Oct 1st 2023 10:00
+
+	tests := []struct {
+		name        string
+		schedule    *v1.Schedule
+		expected    time.Duration
+		expectError bool
+	}{
+		{
+			name:     "MaxFrequencyDays",
+			schedule: &v1.Schedule{Schedule: &v1.Schedule_MaxFrequencyDays{MaxFrequencyDays: 7}},
+			expected: 7 * 24 * time.Hour,
+		},
+		{
+			name:     "MaxFrequencyHours",
+			schedule: &v1.Schedule{Schedule: &v1.Schedule_MaxFrequencyHours{MaxFrequencyHours: 6}},
+			expected: 6 * time.Hour,
+		},
+		{
+			name:     "Cron daily",
+			schedule: &v1.Schedule{Schedule: &v1.Schedule_Cron{Cron: "0 0 * * *"}},
+			expected: 24 * time.Hour,
+		},
+		{
+			name:     "Cron weekly",
+			schedule: &v1.Schedule{Schedule: &v1.Schedule_Cron{Cron: "0 0 * * 0"}},
+			expected: 7 * 24 * time.Hour,
+		},
+		{
+			name: "Cron weekdays only uses widest gap",
+			// 9am Mon-Fri: the widest quiet stretch is Friday 9am -> Monday 9am.
+			schedule: &v1.Schedule{Schedule: &v1.Schedule_Cron{Cron: "0 9 * * 1-5"}},
+			expected: 72 * time.Hour,
+		},
+		{
+			name:        "Disabled",
+			schedule:    &v1.Schedule{Schedule: &v1.Schedule_Disabled{Disabled: true}},
+			expectError: true,
+		},
+		{
+			name:        "Nil schedule",
+			schedule:    &v1.Schedule{},
+			expectError: true,
+		},
+		{
+			name:        "Invalid cron",
+			schedule:    &v1.Schedule{Schedule: &v1.Schedule_Cron{Cron: "not a cron"}},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := protoutil.NominalPeriod(tt.schedule, from)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, got)
+			}
+		})
+	}
+}
