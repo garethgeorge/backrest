@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/garethgeorge/backrest/gen/go/types"
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/config"
@@ -139,8 +138,8 @@ func TestRemoveRepo(t *testing.T) {
 		t.Fatalf("expected 1 operation, got %d", len(ops))
 	}
 
-	if _, err := sut.handler.RemoveRepo(context.Background(), connect.NewRequest(&types.StringValue{
-		Value: "local",
+	if _, err := sut.handler.RemoveRepo(context.Background(), connect.NewRequest(&v1.RemoveRepoRequest{
+		RepoId: "local",
 	})); err != nil {
 		t.Fatalf("RemoveRepo() error = %v", err)
 	}
@@ -1003,7 +1002,7 @@ func TestCancelBackup(t *testing.T) {
 		t.Fatalf("Couldn't find backup operation in oplog")
 	}
 
-	if _, err := sut.handler.Cancel(context.Background(), connect.NewRequest(&types.Int64Value{Value: backupOpId})); err != nil {
+	if _, err := sut.handler.Cancel(context.Background(), connect.NewRequest(&v1.CancelOperationRequest{OperationId: backupOpId})); err != nil {
 		t.Errorf("Cancel() error = %v, wantErr nil", err)
 	}
 
@@ -1180,7 +1179,7 @@ func TestRunCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunCommand() error = %v", err)
 	}
-	op, err := sut.oplog.Get(res.Msg.Value)
+	op, err := sut.oplog.Get(res.Msg.OperationId)
 	if err != nil {
 		t.Fatalf("Failed to find runcommand operation: %v", err)
 	}
@@ -1281,11 +1280,11 @@ func TestMultihostIndexSnapshots(t *testing.T) {
 	host2.handler.Backup(context.Background(), connect.NewRequest(&v1.BackupRequest{Value: "test2"}))
 
 	for i := 0; i < 1; i++ {
-		if _, err := host1.handler.IndexSnapshots(context.Background(), connect.NewRequest(&types.StringValue{Value: "local1"})); err != nil {
-			t.Errorf("local1 sut1 IndexSnapshots() error = %v", err)
+		if _, err := host1.handler.DoRepoTask(context.Background(), connect.NewRequest(&v1.DoRepoTaskRequest{RepoId: "local1", Task: v1.DoRepoTaskRequest_TASK_INDEX_SNAPSHOTS})); err != nil {
+			t.Errorf("local1 sut1 DoRepoTask(TASK_INDEX_SNAPSHOTS) error = %v", err)
 		}
-		if _, err := host2.handler.IndexSnapshots(context.Background(), connect.NewRequest(&types.StringValue{Value: "local2"})); err != nil {
-			t.Errorf("local2 sut2 IndexSnapshots() error = %v", err)
+		if _, err := host2.handler.DoRepoTask(context.Background(), connect.NewRequest(&v1.DoRepoTaskRequest{RepoId: "local2", Task: v1.DoRepoTaskRequest_TASK_INDEX_SNAPSHOTS})); err != nil {
+			t.Errorf("local2 sut2 DoRepoTask(TASK_INDEX_SNAPSHOTS) error = %v", err)
 		}
 	}
 

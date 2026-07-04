@@ -34,7 +34,6 @@ func (t *StatsTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 		}
 		t.didRun = true
 		return ScheduledTask{
-			Task:  t,
 			RunAt: now,
 			Op: &v1.Operation{
 				Op: &v1.Operation_OperationStats{},
@@ -65,7 +64,6 @@ func (t *StatsTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 		return NeverScheduledTask, nil
 	}
 	return ScheduledTask{
-		Task:  t,
 		RunAt: now,
 		Op: &v1.Operation{
 			Op: &v1.Operation_OperationStats{},

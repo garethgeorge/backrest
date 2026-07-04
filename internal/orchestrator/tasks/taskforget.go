@@ -20,18 +20,16 @@ import (
 // It applies the plan's retention policy scoped to snapshots tagged for that plan.
 func NewOneoffForgetTask(repoProto *v1.Repo, planID string, flowID int64, at time.Time) Task {
 	return &GenericOneoffTask{
-		OneoffTask: OneoffTask{
-			BaseTask: BaseTask{
-				TaskType:   "forget",
-				TaskName:   fmt.Sprintf("forget for plan %q in repo %q", planID, repoProto.Id),
-				TaskRepo:   repoProto,
-				TaskPlanID: planID,
-			},
-			FlowID: flowID,
-			RunAt:  at,
-			ProtoOp: &v1.Operation{
-				Op: &v1.Operation_OperationForget{},
-			},
+		BaseTask: BaseTask{
+			TaskType:   "forget",
+			TaskName:   fmt.Sprintf("forget for plan %q in repo %q", planID, repoProto.Id),
+			TaskRepo:   repoProto,
+			TaskPlanID: planID,
+		},
+		FlowID: flowID,
+		RunAt:  at,
+		ProtoOp: &v1.Operation{
+			Op: &v1.Operation_OperationForget{},
 		},
 		Do: func(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
 			if st.Op.GetOperationForget() == nil {
@@ -92,7 +90,6 @@ func (t *ScheduledForgetTask) Next(now time.Time, runner TaskRunner) (ScheduledT
 		}
 		t.didRun = true
 		return ScheduledTask{
-			Task:  t,
 			RunAt: now,
 			Op: &v1.Operation{
 				Op: &v1.Operation_OperationForget{},
@@ -139,7 +136,6 @@ func (t *ScheduledForgetTask) Next(now time.Time, runner TaskRunner) (ScheduledT
 	}
 
 	return ScheduledTask{
-		Task:  t,
 		RunAt: runAt,
 		Op: &v1.Operation{
 			Op: &v1.Operation_OperationForget{},

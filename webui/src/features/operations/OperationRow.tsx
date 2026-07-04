@@ -42,7 +42,10 @@ import {
   formatTime,
   normalizeSnapshotId,
 } from "../../lib/formatting";
-import { ClearHistoryRequestSchema } from "../../../gen/ts/v1/service_pb";
+import {
+  CancelOperationRequestSchema,
+  ClearHistoryRequestSchema,
+} from "../../../gen/ts/v1/service_pb";
 import { backrestService } from "../../api/client";
 import { useShowModal } from "../../components/common/ModalManager";
 import { alerts } from "../../components/common/Alerts";
@@ -134,7 +137,9 @@ export const OperationRow = ({
 
   const doCancel = async () => {
     try {
-      await backrestService.cancel({ value: operation.id! });
+      await backrestService.cancel(
+        create(CancelOperationRequestSchema, { operationId: operation.id! }),
+      );
       alerts.success(m.op_row_cancel_success());
     } catch (e: any) {
       alerts.error(m.op_row_cancel_error() + e.message);

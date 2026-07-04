@@ -491,7 +491,7 @@ func (m *SqliteStore) Add(op ...*v1.Operation) error {
 	return tx.Commit()
 }
 
-func (m *SqliteStore) Set(opts oplog.SetOptions, op ...*v1.Operation) error {
+func (m *SqliteStore) Set(op ...*v1.Operation) error {
 	tx, err := m.dbpool.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return fmt.Errorf("set operation: begin tx: %v", err)
@@ -500,10 +500,8 @@ func (m *SqliteStore) Set(opts oplog.SetOptions, op ...*v1.Operation) error {
 
 	for _, o := range op {
 		if o.Id == 0 {
-			// Insert path: allocate Id if requested or by default
-			if opts.AllocateID || true {
-				o.Id = m.highestOpID.Add(1)
-			}
+			// Insert path: allocate Id
+			o.Id = m.highestOpID.Add(1)
 			if o.Modno == 0 {
 				o.Modno = m.highestModno.Add(1)
 			} else if o.Modno > m.highestModno.Load() {

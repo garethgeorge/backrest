@@ -40,7 +40,7 @@ type Orchestrator struct {
 	configMgr          *config.ConfigManager
 	config             *v1.Config
 	OpLog              *oplog.OpLog
-	repoPool           *resticRepoPool
+	repoOrchestrators  map[string]*repo.RepoOrchestrator
 	taskQueue          *queue.TimePriorityQueue[stContainer]
 	lastQueueResetTime time.Time
 	logStore           *logstore.LogStore
@@ -235,12 +235,12 @@ func (o *Orchestrator) applyConfig(cfg *v1.Config) error {
 	}
 	o.mu.Lock()
 	o.config = proto.Clone(cfg).(*v1.Config)
-	o.repoPool = newResticRepoPool(o.resticBin, o.config)
+	o.repoOrchestrators = make(map[string]*repo.RepoOrchestrator)
 	o.mu.Unlock()
 	return o.ScheduleDefaultTasks(cfg)
 }
 
-// rescheduleTasksIfNeeded checks if any tasks need to be rescheduled based on config changes.
+// ScheduleDefaultTasks resets the task queue and schedules the standard task set (collect garbage, per-plan backups, and per-repo prune/check/forget) from the given config.
 func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 	if o.OpLog == nil {
 		return nil
@@ -265,7 +265,7 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 	zap.L().Info("reset task queue, scheduling new task set", zap.String("timezone", time.Now().Location().String()))
 
 	// Requeue tasks that are affected by the config change.
-	if err := o.ScheduleTask(tasks.NewCollectGarbageTask(o.logStore), tasks.TaskPriorityDefault); err != nil {
+	if _, err := o.ScheduleTask(tasks.NewCollectGarbageTask(o.logStore), tasks.TaskPriorityDefault); err != nil {
 		return fmt.Errorf("schedule collect garbage task: %w", err)
 	}
 
@@ -282,7 +282,7 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 		}
 
 		t := tasks.NewScheduledBackupTask(repo, plan)
-		if err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {
+		if _, err := o.ScheduleTask(t, tasks.TaskPriorityDefault); err != nil {
 			return fmt.Errorf("schedule backup task for plan %q: %w", plan.Id, err)
 		}
 	}
@@ -296,19 +296,19 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 
 		// Schedule a prune task for the repo
 		t := tasks.NewPruneTask(repo, tasks.PlanForSystemTasks, false)
-		if err := o.ScheduleTask(t, tasks.TaskPriorityPrune); err != nil {
+		if _, err := o.ScheduleTask(t, tasks.TaskPriorityPrune); err != nil {
 			return fmt.Errorf("schedule prune task for repo %q: %w", repo.GetId(), err)
 		}
 
 		// Schedule a check task for the repo
 		t = tasks.NewCheckTask(repo, tasks.PlanForSystemTasks, false)
-		if err := o.ScheduleTask(t, tasks.TaskPriorityCheck); err != nil {
+		if _, err := o.ScheduleTask(t, tasks.TaskPriorityCheck); err != nil {
 			return fmt.Errorf("schedule check task for repo %q: %w", repo.GetId(), err)
 		}
 
 		// Schedule a scheduled forget task for the repo
 		t = tasks.NewScheduledForgetTask(repo, tasks.PlanForSystemTasks, false)
-		if err := o.ScheduleTask(t, tasks.TaskPriorityForget); err != nil {
+		if _, err := o.ScheduleTask(t, tasks.TaskPriorityForget); err != nil {
 			return fmt.Errorf("schedule scheduled forget task for repo %q: %w", repo.GetId(), err)
 		}
 	}
@@ -316,14 +316,25 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 	return nil
 }
 
-func (o *Orchestrator) GetRepoOrchestrator(repoId string) (repo *repo.RepoOrchestrator, err error) {
+func (o *Orchestrator) GetRepoOrchestrator(repoId string) (repoOrch *repo.RepoOrchestrator, err error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	r, err := o.repoPool.GetRepo(repoId)
+	// Return the cached orchestrator if we have one.
+	if r, ok := o.repoOrchestrators[repoId]; ok {
+		return r, nil
+	}
+
+	repoProto := config.FindRepo(o.config, repoId)
+	if repoProto == nil {
+		return nil, fmt.Errorf("get repo %q: %w", repoId, ErrRepoNotFound)
+	}
+
+	r, err := repo.NewRepoOrchestrator(o.config, repoProto, o.resticBin)
 	if err != nil {
 		return nil, fmt.Errorf("get repo %q: %w", repoId, err)
 	}
+	o.repoOrchestrators[repoId] = r
 	return r, nil
 }
 
@@ -364,8 +375,10 @@ func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationSta
 	}
 	t := allTasks[idx]
 
-	if err := o.cancelHelper(t.Op, status); err != nil {
-		return fmt.Errorf("cancel operation: %w", err)
+	t.Op.Status = status
+	t.Op.UnixTimeEndMs = time.Now().UnixMilli()
+	if err := o.OpLog.Update(t.Op); err != nil {
+		return fmt.Errorf("cancel operation: update cancelled operation: %w", err)
 	}
 	o.taskQueue.Remove(t)
 
@@ -378,15 +391,6 @@ func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationSta
 		})
 	}
 
-	return nil
-}
-
-func (o *Orchestrator) cancelHelper(op *v1.Operation, status v1.OperationStatus) error {
-	op.Status = status
-	op.UnixTimeEndMs = time.Now().UnixMilli()
-	if err := o.OpLog.Update(op); err != nil {
-		return fmt.Errorf("update cancelled operation: %w", err)
-	}
 	return nil
 }
 
@@ -535,7 +539,7 @@ func (o *Orchestrator) handleTaskCompletion(t *stContainer, err error, originalO
 	}
 
 	// Regular rescheduling
-	if e := o.ScheduleTask(t.Task, tasks.TaskPriorityDefault); e != nil {
+	if _, e := o.ScheduleTask(t.Task, tasks.TaskPriorityDefault); e != nil {
 		zap.L().Error("reschedule task", zap.String("task", t.Task.Name()), zap.Error(e))
 	}
 
@@ -570,34 +574,20 @@ func (o *Orchestrator) retryTask(t *stContainer, retryErr *tasks.TaskRetryError,
 func (o *Orchestrator) RunTask(parentCtx context.Context, st tasks.ScheduledTask) error {
 	zap.L().Info("running task", zap.String("task", st.Task.Name()), zap.String("runAt", st.RunAt.Format(time.RFC3339)))
 
-	// Set up context, logging, and cancellation
+	op := st.Op
+
+	// Set up context, logging, and cancellation.
 	ctx, cancel := context.WithCancel(parentCtx)
 	defer cancel()
-	ctx, logWriter := o.setupTaskContext(ctx, st.Op, cancel)
-	defer o.cleanupTaskContext(ctx, st.Op, logWriter)
 
-	// Run the task and record metrics
-	err := o.executeTask(ctx, st)
-
-	// Update operation status based on execution result
-	if st.Op != nil {
-		o.updateOperationStatus(ctx, st.Op, err)
-	}
-
-	return err
-}
-
-// setupTaskContext prepares the context for task execution with appropriate logging and cancellation
-func (o *Orchestrator) setupTaskContext(ctx context.Context, op *v1.Operation, cancel context.CancelFunc) (context.Context, io.WriteCloser) {
 	var logWriter io.WriteCloser
-
 	if op != nil {
-		// Register cancellation function
+		// Register the cancellation function so the operation can be cancelled.
 		o.taskCancelMu.Lock()
 		o.taskCancel[op.Id] = cancel
 		o.taskCancelMu.Unlock()
 
-		// Set up logging
+		// Set up a live log writer for the operation.
 		logID := "t-" + uuid.New().String()
 		var err error
 		logWriter, err = o.logStore.Create(logID, op.Id, defaultTaskLogDuration)
@@ -606,52 +596,48 @@ func (o *Orchestrator) setupTaskContext(ctx context.Context, op *v1.Operation, c
 		}
 		ctx = logging.ContextWithWriter(ctx, logWriter)
 
-		// Update operation status and log reference
+		// Update operation status and log reference, then record it in the oplog.
 		op.Logref = logID
 		op.UnixTimeStartMs = time.Now().UnixMilli()
 		if op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_UNKNOWN {
 			op.Status = v1.OperationStatus_STATUS_INPROGRESS
 		}
-
-		// Record the operation in the oplog
-		o.recordOperationInOplog(op)
+		if op.Id != 0 {
+			err = o.OpLog.Update(op)
+		} else {
+			err = o.OpLog.Add(op)
+		}
+		if err != nil {
+			zap.S().Errorf("failed to update operation in oplog: %v", err)
+		}
 	} else {
-		// If no operation is provided, discard logs
+		// If no operation is provided, discard logs.
 		ctx = logging.ContextWithWriter(ctx, io.Discard)
 	}
 
-	return ctx, logWriter
-}
-
-// recordOperationInOplog adds or updates an operation in the operation log
-func (o *Orchestrator) recordOperationInOplog(op *v1.Operation) {
-	var err error
-	if op.Id != 0 {
-		err = o.OpLog.Update(op)
-	} else {
-		err = o.OpLog.Add(op)
-	}
-
-	if err != nil {
-		zap.S().Errorf("failed to update operation in oplog: %v", err)
-	}
-}
-
-// cleanupTaskContext handles cleanup after task execution
-func (o *Orchestrator) cleanupTaskContext(ctx context.Context, op *v1.Operation, logWriter io.WriteCloser) {
-	// Remove the cancel function from the map if there was an operation
-	if op != nil {
-		o.taskCancelMu.Lock()
-		delete(o.taskCancel, op.Id)
-		o.taskCancelMu.Unlock()
-	}
-
-	// Close the log writer if one was created
-	if logWriter != nil {
-		if err := logWriter.Close(); err != nil {
-			zap.S().Warnf("failed to close log writer, logs may be partial: %v", err)
+	// Clean up cancellation registration and the log writer on all return paths.
+	defer func() {
+		if op != nil {
+			o.taskCancelMu.Lock()
+			delete(o.taskCancel, op.Id)
+			o.taskCancelMu.Unlock()
 		}
+		if logWriter != nil {
+			if err := logWriter.Close(); err != nil {
+				zap.S().Warnf("failed to close log writer, logs may be partial: %v", err)
+			}
+		}
+	}()
+
+	// Run the task and record metrics.
+	err := o.executeTask(ctx, st)
+
+	// Update operation status based on execution result.
+	if op != nil {
+		o.updateOperationStatus(ctx, op, err)
 	}
+
+	return err
 }
 
 // executeTask runs the task and records metrics for it
@@ -710,13 +696,16 @@ func (o *Orchestrator) updateOperationStatus(ctx context.Context, op *v1.Operati
 	}
 }
 
-func (o *Orchestrator) ScheduleTask(t tasks.Task, priority int, callbacks ...func(error)) error {
+// ScheduleTask schedules a task for execution and returns the scheduled operation's ID
+// (assigned by OpLog.Add inside CreateUnscheduledTask), or 0 when the task produced no
+// operation or was never scheduled.
+func (o *Orchestrator) ScheduleTask(t tasks.Task, priority int, callbacks ...func(error)) (int64, error) {
 	nextRun, err := o.CreateUnscheduledTask(t, priority, o.curTime())
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if nextRun.Eq(tasks.NeverScheduledTask) {
-		return nil
+		return 0, nil
 	}
 
 	stc := stContainer{
@@ -727,7 +716,7 @@ func (o *Orchestrator) ScheduleTask(t tasks.Task, priority int, callbacks ...fun
 
 	o.taskQueue.Enqueue(nextRun.RunAt, priority, stc)
 	zap.L().Info("scheduled task", zap.String("task", t.Name()), zap.String("runAt", nextRun.RunAt.Format(time.RFC3339)))
-	return nil
+	return nextRun.Op.GetId(), nil
 }
 
 func (o *Orchestrator) CreateUnscheduledTask(t tasks.Task, priority int, curTime time.Time) (tasks.ScheduledTask, error) {
@@ -759,48 +748,4 @@ func (o *Orchestrator) Config() *v1.Config {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	return proto.Clone(o.config).(*v1.Config)
-}
-
-// resticRepoPool caches restic repos.
-type resticRepoPool struct {
-	mu         sync.Mutex
-	resticPath string
-	repos      map[string]*repo.RepoOrchestrator
-	config     *v1.Config
-}
-
-func newResticRepoPool(resticPath string, config *v1.Config) *resticRepoPool {
-	return &resticRepoPool{
-		resticPath: resticPath,
-		repos:      make(map[string]*repo.RepoOrchestrator),
-		config:     config,
-	}
-}
-
-func (rp *resticRepoPool) GetRepo(repoId string) (*repo.RepoOrchestrator, error) {
-	rp.mu.Lock()
-	defer rp.mu.Unlock()
-
-	if rp.config.Repos == nil {
-		return nil, ErrRepoNotFound
-	}
-
-	// Check if we already have a repo for this id, if we do return it.
-	r, ok := rp.repos[repoId]
-	if ok {
-		return r, nil
-	}
-
-	repoProto := config.FindRepo(rp.config, repoId)
-	if repoProto == nil {
-		return nil, ErrRepoNotFound
-	}
-
-	// Otherwise create a new repo.
-	r, err := repo.NewRepoOrchestrator(rp.config, repoProto, rp.resticPath)
-	if err != nil {
-		return nil, err
-	}
-	rp.repos[repoId] = r
-	return r, nil
 }

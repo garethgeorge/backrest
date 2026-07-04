@@ -2,13 +2,10 @@ package tasks
 
 import (
 	"context"
-	"errors"
 	"io"
-	"testing"
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
-	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/pkg/restic"
 	"go.uber.org/zap"
@@ -142,15 +139,16 @@ func (b BaseTask) Repo() *v1.Repo {
 	return b.TaskRepo
 }
 
-type OneoffTask struct {
+type GenericOneoffTask struct {
 	BaseTask
 	RunAt       time.Time
 	FlowID      int64 // the ID of the flow this task is associated with.
 	DidSchedule bool
 	ProtoOp     *v1.Operation // the prototype operation for this class of task.
+	Do          func(ctx context.Context, st ScheduledTask, runner TaskRunner) error
 }
 
-func (o *OneoffTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error) {
+func (o *GenericOneoffTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error) {
 	if o.DidSchedule {
 		return NeverScheduledTask, nil
 	}
@@ -158,16 +156,8 @@ func (o *OneoffTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 
 	var op *v1.Operation
 	if o.ProtoOp != nil {
-		if o.TaskRepo == nil {
-			return NeverScheduledTask, errors.New("task.repo must be provided if task.protoOp is provided")
-		}
 		op = proto.Clone(o.ProtoOp).(*v1.Operation)
-		op.RepoId = o.TaskRepo.Id
-		op.RepoGuid = o.TaskRepo.Guid
-		op.PlanId = o.TaskPlanID
 		op.FlowId = o.FlowID
-		op.UnixTimeStartMs = timeToUnixMillis(o.RunAt) // TODO: this should be updated before Run is called.
-		op.Status = v1.OperationStatus_STATUS_PENDING
 	}
 
 	return ScheduledTask{
@@ -176,142 +166,6 @@ func (o *OneoffTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 	}, nil
 }
 
-type GenericOneoffTask struct {
-	OneoffTask
-	Do func(ctx context.Context, st ScheduledTask, runner TaskRunner) error
-}
-
 func (g *GenericOneoffTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
 	return g.Do(ctx, st, runner)
-}
-
-func timeToUnixMillis(t time.Time) int64 {
-	return t.Unix()*1000 + int64(t.Nanosecond()/1000000)
-}
-
-func curTimeMillis() int64 {
-	return timeToUnixMillis(time.Now())
-}
-
-type testTaskRunner struct {
-	config *v1.Config
-	oplog  *oplog.OpLog
-
-	// Configurable for Run() testing
-	orchestrator   RepoOrchestrator
-	hookCalls      []hookCall
-	scheduledTasks []scheduledTaskCall
-	onExecuteHooks func(ctx context.Context, events []v1.Hook_Condition, vars HookVars) error
-}
-
-type hookCall struct {
-	Events []v1.Hook_Condition
-	Vars   HookVars
-}
-
-type scheduledTaskCall struct {
-	Task     Task
-	Priority int
-}
-
-var _ TaskRunner = &testTaskRunner{}
-
-func newTestTaskRunner(_ testing.TB, config *v1.Config, oplog *oplog.OpLog) *testTaskRunner {
-	return &testTaskRunner{
-		config: config,
-		oplog:  oplog,
-	}
-}
-
-func (t *testTaskRunner) InstanceID() string {
-	return t.config.Instance
-}
-
-func (t *testTaskRunner) GetOperation(id int64) (*v1.Operation, error) {
-	return t.oplog.Get(id)
-}
-
-func (t *testTaskRunner) CreateOperation(op ...*v1.Operation) error {
-	for _, o := range op {
-		if o.InstanceId != "" {
-			continue
-		}
-		o.InstanceId = t.InstanceID()
-	}
-	return t.oplog.Add(op...)
-}
-
-func (t *testTaskRunner) UpdateOperation(op ...*v1.Operation) error {
-	for _, o := range op {
-		if o.InstanceId != "" {
-			continue
-		}
-		o.InstanceId = t.InstanceID()
-	}
-	return t.oplog.Update(op...)
-}
-
-func (t *testTaskRunner) DeleteOperation(id ...int64) error {
-	return t.oplog.Delete(id...)
-}
-
-func (t *testTaskRunner) ExecuteHooks(ctx context.Context, events []v1.Hook_Condition, vars HookVars) error {
-	t.hookCalls = append(t.hookCalls, hookCall{Events: events, Vars: vars})
-	if t.onExecuteHooks != nil {
-		return t.onExecuteHooks(ctx, events, vars)
-	}
-	return nil
-}
-
-func (t *testTaskRunner) QueryOperations(q oplog.Query, fn func(*v1.Operation) error) error {
-	if q.InstanceID == nil {
-		q.SetInstanceID(t.InstanceID())
-	}
-	return t.oplog.Query(q, fn)
-}
-
-func (t *testTaskRunner) GetRepo(repoID string) (*v1.Repo, error) {
-	cfg := config.FindRepo(t.config, repoID)
-	if cfg == nil {
-		return nil, errors.New("repo not found")
-	}
-	return cfg, nil
-}
-
-func (t *testTaskRunner) GetPlan(planID string) (*v1.Plan, error) {
-	cfg := config.FindPlan(t.config, planID)
-	if cfg == nil {
-		return nil, errors.New("plan not found")
-	}
-	return cfg, nil
-}
-
-func (t *testTaskRunner) GetRepoOrchestrator(repoID string) (RepoOrchestrator, error) {
-	if t.orchestrator == nil {
-		return nil, errors.New("no repo orchestrator configured")
-	}
-	return t.orchestrator, nil
-}
-
-func (t *testTaskRunner) ScheduleTask(task Task, priority int) error {
-	t.scheduledTasks = append(t.scheduledTasks, scheduledTaskCall{Task: task, Priority: priority})
-	return nil
-}
-
-func (t *testTaskRunner) Config() *v1.Config {
-	return t.config
-}
-
-func (t *testTaskRunner) Logger(ctx context.Context) *zap.Logger {
-	return zap.L()
-}
-
-type nopWriteCloser struct {
-	io.Writer
-}
-
-func (nopWriteCloser) Close() error { return nil }
-
-func (t *testTaskRunner) LogrefWriter() (id string, w io.WriteCloser, err error) {
-	return "test-logref", &nopWriteCloser{io.Discard}, nil
 }

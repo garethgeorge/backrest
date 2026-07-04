@@ -14,15 +14,13 @@ import (
 
 func NewOneoffIndexSnapshotsTask(repo *v1.Repo, at time.Time) Task {
 	return &GenericOneoffTask{
-		OneoffTask: OneoffTask{
-			BaseTask: BaseTask{
-				TaskType: "index_snapshots",
-				TaskName: fmt.Sprintf("index snapshots for repo %q", repo.Id),
-				TaskRepo: repo,
-			},
-			RunAt:   at,
-			ProtoOp: nil,
+		BaseTask: BaseTask{
+			TaskType: "index_snapshots",
+			TaskName: fmt.Sprintf("index snapshots for repo %q", repo.Id),
+			TaskRepo: repo,
 		},
+		RunAt:   at,
+		ProtoOp: nil,
 		Do: func(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 			return NotifyError(ctx, taskRunner, st.Task.Name(), indexSnapshotsHelper(ctx, st, taskRunner))
 		},
@@ -162,4 +160,3 @@ func instanceIDForSnapshot(snapshot *v1.ResticSnapshot) string {
 	}
 	return InstanceIDForUnassociatedOperations
 }
-

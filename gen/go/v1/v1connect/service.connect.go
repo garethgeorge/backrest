@@ -94,25 +94,25 @@ type BackrestClient interface {
 	SetupSftp(context.Context, *connect.Request[v1.SetupSftpRequest]) (*connect.Response[v1.SetupSftpResponse], error)
 	CheckRepoExists(context.Context, *connect.Request[v1.CheckRepoExistsRequest]) (*connect.Response[v1.CheckRepoExistsResponse], error)
 	AddRepo(context.Context, *connect.Request[v1.AddRepoRequest]) (*connect.Response[v1.Config], error)
-	RemoveRepo(context.Context, *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error)
+	RemoveRepo(context.Context, *connect.Request[v1.RemoveRepoRequest]) (*connect.Response[v1.Config], error)
 	GetOperationEvents(context.Context, *connect.Request[emptypb.Empty]) (*connect.ServerStreamForClient[v1.OperationEvent], error)
 	GetOperations(context.Context, *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error)
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error)
 	ListSnapshotFiles(context.Context, *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(context.Context, *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error)
-	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
-	DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error)
-	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
-	Forget(context.Context, *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error)
+	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns the scheduled operation's ID.
+	DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[v1.ScheduleTaskResponse], error)
+	// Forget schedules a forget operation. It accepts a plan id and returns the scheduled operation's ID.
+	Forget(context.Context, *connect.Request[v1.ForgetRequest]) (*connect.Response[v1.ScheduleTaskResponse], error)
 	// Restore schedules a restore operation.
-	Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error)
+	Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[v1.ScheduleTaskResponse], error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
-	Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error)
+	Cancel(context.Context, *connect.Request[v1.CancelOperationRequest]) (*connect.Response[emptypb.Empty], error)
 	// GetLogs returns the keyed large data for the given operation.
 	GetLogs(context.Context, *connect.Request[v1.LogDataRequest]) (*connect.ServerStreamForClient[types.BytesValue], error)
 	// RunCommand executes a generic restic command on the repository.
-	RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error)
+	RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.Response[v1.RunCommandResponse], error)
 	// GetDownloadURL returns a signed download URL given an operation ID and file path.
 	GetDownloadURL(context.Context, *connect.Request[v1.GetDownloadURLRequest]) (*connect.Response[types.StringValue], error)
 	// Clears the history of operations
@@ -167,7 +167,7 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestMethods.ByName("AddRepo")),
 			connect.WithClientOptions(opts...),
 		),
-		removeRepo: connect.NewClient[types.StringValue, v1.Config](
+		removeRepo: connect.NewClient[v1.RemoveRepoRequest, v1.Config](
 			httpClient,
 			baseURL+BackrestRemoveRepoProcedure,
 			connect.WithSchema(backrestMethods.ByName("RemoveRepo")),
@@ -203,25 +203,25 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestMethods.ByName("Backup")),
 			connect.WithClientOptions(opts...),
 		),
-		doRepoTask: connect.NewClient[v1.DoRepoTaskRequest, emptypb.Empty](
+		doRepoTask: connect.NewClient[v1.DoRepoTaskRequest, v1.ScheduleTaskResponse](
 			httpClient,
 			baseURL+BackrestDoRepoTaskProcedure,
 			connect.WithSchema(backrestMethods.ByName("DoRepoTask")),
 			connect.WithClientOptions(opts...),
 		),
-		forget: connect.NewClient[v1.ForgetRequest, emptypb.Empty](
+		forget: connect.NewClient[v1.ForgetRequest, v1.ScheduleTaskResponse](
 			httpClient,
 			baseURL+BackrestForgetProcedure,
 			connect.WithSchema(backrestMethods.ByName("Forget")),
 			connect.WithClientOptions(opts...),
 		),
-		restore: connect.NewClient[v1.RestoreSnapshotRequest, emptypb.Empty](
+		restore: connect.NewClient[v1.RestoreSnapshotRequest, v1.ScheduleTaskResponse](
 			httpClient,
 			baseURL+BackrestRestoreProcedure,
 			connect.WithSchema(backrestMethods.ByName("Restore")),
 			connect.WithClientOptions(opts...),
 		),
-		cancel: connect.NewClient[types.Int64Value, emptypb.Empty](
+		cancel: connect.NewClient[v1.CancelOperationRequest, emptypb.Empty](
 			httpClient,
 			baseURL+BackrestCancelProcedure,
 			connect.WithSchema(backrestMethods.ByName("Cancel")),
@@ -233,7 +233,7 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestMethods.ByName("GetLogs")),
 			connect.WithClientOptions(opts...),
 		),
-		runCommand: connect.NewClient[v1.RunCommandRequest, types.Int64Value](
+		runCommand: connect.NewClient[v1.RunCommandRequest, v1.RunCommandResponse](
 			httpClient,
 			baseURL+BackrestRunCommandProcedure,
 			connect.WithSchema(backrestMethods.ByName("RunCommand")),
@@ -279,18 +279,18 @@ type backrestClient struct {
 	setupSftp            *connect.Client[v1.SetupSftpRequest, v1.SetupSftpResponse]
 	checkRepoExists      *connect.Client[v1.CheckRepoExistsRequest, v1.CheckRepoExistsResponse]
 	addRepo              *connect.Client[v1.AddRepoRequest, v1.Config]
-	removeRepo           *connect.Client[types.StringValue, v1.Config]
+	removeRepo           *connect.Client[v1.RemoveRepoRequest, v1.Config]
 	getOperationEvents   *connect.Client[emptypb.Empty, v1.OperationEvent]
 	getOperations        *connect.Client[v1.GetOperationsRequest, v1.OperationList]
 	listSnapshots        *connect.Client[v1.ListSnapshotsRequest, v1.ResticSnapshotList]
 	listSnapshotFiles    *connect.Client[v1.ListSnapshotFilesRequest, v1.ListSnapshotFilesResponse]
 	backup               *connect.Client[v1.BackupRequest, emptypb.Empty]
-	doRepoTask           *connect.Client[v1.DoRepoTaskRequest, emptypb.Empty]
-	forget               *connect.Client[v1.ForgetRequest, emptypb.Empty]
-	restore              *connect.Client[v1.RestoreSnapshotRequest, emptypb.Empty]
-	cancel               *connect.Client[types.Int64Value, emptypb.Empty]
+	doRepoTask           *connect.Client[v1.DoRepoTaskRequest, v1.ScheduleTaskResponse]
+	forget               *connect.Client[v1.ForgetRequest, v1.ScheduleTaskResponse]
+	restore              *connect.Client[v1.RestoreSnapshotRequest, v1.ScheduleTaskResponse]
+	cancel               *connect.Client[v1.CancelOperationRequest, emptypb.Empty]
 	getLogs              *connect.Client[v1.LogDataRequest, types.BytesValue]
-	runCommand           *connect.Client[v1.RunCommandRequest, types.Int64Value]
+	runCommand           *connect.Client[v1.RunCommandRequest, v1.RunCommandResponse]
 	getDownloadURL       *connect.Client[v1.GetDownloadURLRequest, types.StringValue]
 	clearHistory         *connect.Client[v1.ClearHistoryRequest, emptypb.Empty]
 	pathAutocomplete     *connect.Client[types.StringValue, types.StringList]
@@ -324,7 +324,7 @@ func (c *backrestClient) AddRepo(ctx context.Context, req *connect.Request[v1.Ad
 }
 
 // RemoveRepo calls v1.Backrest.RemoveRepo.
-func (c *backrestClient) RemoveRepo(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error) {
+func (c *backrestClient) RemoveRepo(ctx context.Context, req *connect.Request[v1.RemoveRepoRequest]) (*connect.Response[v1.Config], error) {
 	return c.removeRepo.CallUnary(ctx, req)
 }
 
@@ -354,22 +354,22 @@ func (c *backrestClient) Backup(ctx context.Context, req *connect.Request[v1.Bac
 }
 
 // DoRepoTask calls v1.Backrest.DoRepoTask.
-func (c *backrestClient) DoRepoTask(ctx context.Context, req *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error) {
+func (c *backrestClient) DoRepoTask(ctx context.Context, req *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[v1.ScheduleTaskResponse], error) {
 	return c.doRepoTask.CallUnary(ctx, req)
 }
 
 // Forget calls v1.Backrest.Forget.
-func (c *backrestClient) Forget(ctx context.Context, req *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {
+func (c *backrestClient) Forget(ctx context.Context, req *connect.Request[v1.ForgetRequest]) (*connect.Response[v1.ScheduleTaskResponse], error) {
 	return c.forget.CallUnary(ctx, req)
 }
 
 // Restore calls v1.Backrest.Restore.
-func (c *backrestClient) Restore(ctx context.Context, req *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error) {
+func (c *backrestClient) Restore(ctx context.Context, req *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[v1.ScheduleTaskResponse], error) {
 	return c.restore.CallUnary(ctx, req)
 }
 
 // Cancel calls v1.Backrest.Cancel.
-func (c *backrestClient) Cancel(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {
+func (c *backrestClient) Cancel(ctx context.Context, req *connect.Request[v1.CancelOperationRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.cancel.CallUnary(ctx, req)
 }
 
@@ -379,7 +379,7 @@ func (c *backrestClient) GetLogs(ctx context.Context, req *connect.Request[v1.Lo
 }
 
 // RunCommand calls v1.Backrest.RunCommand.
-func (c *backrestClient) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error) {
+func (c *backrestClient) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.Response[v1.RunCommandResponse], error) {
 	return c.runCommand.CallUnary(ctx, req)
 }
 
@@ -415,25 +415,25 @@ type BackrestHandler interface {
 	SetupSftp(context.Context, *connect.Request[v1.SetupSftpRequest]) (*connect.Response[v1.SetupSftpResponse], error)
 	CheckRepoExists(context.Context, *connect.Request[v1.CheckRepoExistsRequest]) (*connect.Response[v1.CheckRepoExistsResponse], error)
 	AddRepo(context.Context, *connect.Request[v1.AddRepoRequest]) (*connect.Response[v1.Config], error)
-	RemoveRepo(context.Context, *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error)
+	RemoveRepo(context.Context, *connect.Request[v1.RemoveRepoRequest]) (*connect.Response[v1.Config], error)
 	GetOperationEvents(context.Context, *connect.Request[emptypb.Empty], *connect.ServerStream[v1.OperationEvent]) error
 	GetOperations(context.Context, *connect.Request[v1.GetOperationsRequest]) (*connect.Response[v1.OperationList], error)
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ResticSnapshotList], error)
 	ListSnapshotFiles(context.Context, *connect.Request[v1.ListSnapshotFilesRequest]) (*connect.Response[v1.ListSnapshotFilesResponse], error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(context.Context, *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error)
-	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
-	DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error)
-	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
-	Forget(context.Context, *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error)
+	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns the scheduled operation's ID.
+	DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[v1.ScheduleTaskResponse], error)
+	// Forget schedules a forget operation. It accepts a plan id and returns the scheduled operation's ID.
+	Forget(context.Context, *connect.Request[v1.ForgetRequest]) (*connect.Response[v1.ScheduleTaskResponse], error)
 	// Restore schedules a restore operation.
-	Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error)
+	Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[v1.ScheduleTaskResponse], error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
-	Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error)
+	Cancel(context.Context, *connect.Request[v1.CancelOperationRequest]) (*connect.Response[emptypb.Empty], error)
 	// GetLogs returns the keyed large data for the given operation.
 	GetLogs(context.Context, *connect.Request[v1.LogDataRequest], *connect.ServerStream[types.BytesValue]) error
 	// RunCommand executes a generic restic command on the repository.
-	RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error)
+	RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.Response[v1.RunCommandResponse], error)
 	// GetDownloadURL returns a signed download URL given an operation ID and file path.
 	GetDownloadURL(context.Context, *connect.Request[v1.GetDownloadURLRequest]) (*connect.Response[types.StringValue], error)
 	// Clears the history of operations
@@ -661,7 +661,7 @@ func (UnimplementedBackrestHandler) AddRepo(context.Context, *connect.Request[v1
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.AddRepo is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) RemoveRepo(context.Context, *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error) {
+func (UnimplementedBackrestHandler) RemoveRepo(context.Context, *connect.Request[v1.RemoveRepoRequest]) (*connect.Response[v1.Config], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.RemoveRepo is not implemented"))
 }
 
@@ -685,19 +685,19 @@ func (UnimplementedBackrestHandler) Backup(context.Context, *connect.Request[v1.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Backup is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error) {
+func (UnimplementedBackrestHandler) DoRepoTask(context.Context, *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[v1.ScheduleTaskResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.DoRepoTask is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) Forget(context.Context, *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {
+func (UnimplementedBackrestHandler) Forget(context.Context, *connect.Request[v1.ForgetRequest]) (*connect.Response[v1.ScheduleTaskResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Forget is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error) {
+func (UnimplementedBackrestHandler) Restore(context.Context, *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[v1.ScheduleTaskResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Restore is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) Cancel(context.Context, *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {
+func (UnimplementedBackrestHandler) Cancel(context.Context, *connect.Request[v1.CancelOperationRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.Cancel is not implemented"))
 }
 
@@ -705,7 +705,7 @@ func (UnimplementedBackrestHandler) GetLogs(context.Context, *connect.Request[v1
 	return connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GetLogs is not implemented"))
 }
 
-func (UnimplementedBackrestHandler) RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error) {
+func (UnimplementedBackrestHandler) RunCommand(context.Context, *connect.Request[v1.RunCommandRequest]) (*connect.Response[v1.RunCommandResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.RunCommand is not implemented"))
 }
 

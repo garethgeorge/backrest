@@ -73,11 +73,11 @@ func (s *BackrestHandler) GetConfig(ctx context.Context, req *connect.Request[em
 func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1.Config]) (*connect.Response[v1.Config], error) {
 	if err := s.config.Transform(func(cfg *v1.Config) (*v1.Config, error) {
 		if cfg.Modno != req.Msg.Modno {
-			return nil, errors.New("config modno mismatch, reload and try again")
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("config modno mismatch, reload and try again"))
 		}
 		rehydrated := config.RehydrateNetworkSanitizedConfig(req.Msg, cfg)
 		if err := config.ValidateConfig(rehydrated); err != nil {
-			return nil, fmt.Errorf("validation error: %w", err)
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("validation error: %w", err))
 		}
 		rehydrated.Modno++
 		return rehydrated, nil
@@ -92,37 +92,50 @@ func (s *BackrestHandler) SetConfig(ctx context.Context, req *connect.Request[v1
 	return connect.NewResponse(config.SanitizeForNetwork(newConfig)), nil
 }
 
-func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Request[v1.CheckRepoExistsRequest]) (*connect.Response[v1.CheckRepoExistsResponse], error) {
-	c, err := s.config.Get()
+// cloneConfigWithRepo fetches the current config, sanitizes and upserts r into a clone of it,
+// then locates the restic binary and builds a RepoOrchestrator for r against the cloned config.
+// oldRepo is the previously-existing repo with the same ID, or nil if r is new.
+func (s *BackrestHandler) cloneConfigWithRepo(r *v1.Repo) (cfg *v1.Config, oldRepo *v1.Repo, orch *repo.RepoOrchestrator, err error) {
+	cfg, err = s.config.Get()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get config: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
-	sanitizeRepoFlags(req.Msg.Repo)
+	sanitizeRepoFlags(r)
 
-	c = proto.Clone(c).(*v1.Config)
-	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == req.Msg.Repo.Id }); idx != -1 {
-		c.Repos[idx] = req.Msg.Repo
+	cfg = proto.Clone(cfg).(*v1.Config)
+	if idx := slices.IndexFunc(cfg.Repos, func(x *v1.Repo) bool { return x.Id == r.Id }); idx != -1 {
+		oldRepo = cfg.Repos[idx]
+		cfg.Repos[idx] = r
 	} else {
-		c.Repos = append(c.Repos, req.Msg.Repo)
-	}
-
-	if req.Msg.Repo.Guid == "" {
-		req.Msg.Repo.Guid = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
-	}
-
-	if err := config.ValidateConfig(c); err != nil {
-		return nil, fmt.Errorf("validation error: %w", err)
+		cfg.Repos = append(cfg.Repos, r)
 	}
 
 	bin, err := resticinstaller.FindOrInstallResticBinary()
 	if err != nil {
-		return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to find or install restic binary: %w", err)
 	}
 
-	r, err := repo.NewRepoOrchestrator(c, req.Msg.Repo, bin)
+	orch, err = repo.NewRepoOrchestrator(cfg, r, bin)
 	if err != nil {
-		return nil, fmt.Errorf("failed to configure repo: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to configure repo: %w", err)
+	}
+
+	return cfg, oldRepo, orch, nil
+}
+
+func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Request[v1.CheckRepoExistsRequest]) (*connect.Response[v1.CheckRepoExistsResponse], error) {
+	if req.Msg.Repo.Guid == "" {
+		req.Msg.Repo.Guid = cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+	}
+
+	c, _, r, err := s.cloneConfigWithRepo(req.Msg.Repo)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := config.ValidateConfig(c); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("validation error: %w", err))
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -141,37 +154,19 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 
 // AddRepo implements POST /v1/config/repo, it includes validation that the repo can be initialized.
 func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.AddRepoRequest]) (*connect.Response[v1.Config], error) {
-	c, err := s.config.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get config: %w", err)
-	}
-
 	newRepo := req.Msg.Repo
-	sanitizeRepoFlags(newRepo)
 
-	// Deep copy the configuration
-	c = proto.Clone(c).(*v1.Config)
-
-	// Add or implicit update the repo
-	var oldRepo *v1.Repo
-	if idx := slices.IndexFunc(c.Repos, func(r *v1.Repo) bool { return r.Id == newRepo.Id }); idx != -1 {
-		oldRepo = c.Repos[idx]
-		c.Repos[idx] = newRepo
-	} else {
-		c.Repos = append(c.Repos, newRepo)
-	}
-
+	// Perform all of the (slow) restic I/O against a candidate config BEFORE
+	// committing any config mutation. This avoids clobbering a concurrent
+	// SetConfig that lands during the I/O window: the actual config mutation is
+	// applied atomically via s.config.Transform against the current config below.
+	//
 	// Ensure the Repo GUID is set to the correct value.
 	// This is derived from 'restic cat config' for local repos.
 	// For remote repos, the GUID is derived from the remote config's value for the repo.
-	bin, err := resticinstaller.FindOrInstallResticBinary()
+	_, _, r, err := s.cloneConfigWithRepo(newRepo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find or install restic binary: %w", err)
-	}
-
-	r, err := repo.NewRepoOrchestrator(c, newRepo, bin)
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure repo: %w", err)
+		return nil, err
 	}
 
 	if err := r.Init(ctx); err != nil {
@@ -186,12 +181,27 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.A
 
 	newRepo.Guid = guid
 
-	if err := config.ValidateConfig(c); err != nil {
-		return nil, fmt.Errorf("validation error: %w", err)
-	}
-
-	zap.L().Debug("updating config", zap.Int32("version", c.Version))
-	if err := s.config.Update(c); err != nil {
+	// Commit the config mutation atomically. Re-upsert the GUID-stamped repo into
+	// the CURRENT config (not the pre-I/O snapshot) so a concurrent update during
+	// the restic I/O above is preserved. oldRepo and instanceID are captured from
+	// the transform-time config for correct GUID-change detection and oplog migration.
+	var oldRepo *v1.Repo
+	var instanceID string
+	zap.L().Debug("updating config")
+	if err := s.config.Transform(func(cfg *v1.Config) (*v1.Config, error) {
+		instanceID = cfg.Instance
+		if idx := slices.IndexFunc(cfg.Repos, func(x *v1.Repo) bool { return x.Id == newRepo.Id }); idx != -1 {
+			oldRepo = cfg.Repos[idx]
+			cfg.Repos[idx] = newRepo
+		} else {
+			oldRepo = nil
+			cfg.Repos = append(cfg.Repos, newRepo)
+		}
+		if err := config.ValidateConfig(cfg); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("validation error: %w", err))
+		}
+		return cfg, nil
+	}); err != nil {
 		return nil, fmt.Errorf("failed to update config: %w", err)
 	}
 
@@ -200,7 +210,7 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.A
 		migratedCount := 0
 
 		q := oplog.Query{}.
-			SetInstanceID(c.Instance)
+			SetInstanceID(instanceID)
 		// we use RepoID here to _ensure_ we consolidate all operations to the most recent GUID.
 		// this provides some resiliancy in the case of a previous partial update.
 		q.DeprecatedRepoID = &oldRepo.Id
@@ -219,16 +229,20 @@ func (s *BackrestHandler) AddRepo(ctx context.Context, req *connect.Request[v1.A
 	zap.L().Debug("scheduling index snapshots task")
 	s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(newRepo, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots)
 
+	newConfig, err := s.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get newly set config: %w", err)
+	}
 	zap.L().Debug("done add repo")
-	return connect.NewResponse(config.SanitizeForNetwork(c)), nil
+	return connect.NewResponse(config.SanitizeForNetwork(newConfig)), nil
 }
 
-func (s *BackrestHandler) RemoveRepo(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[v1.Config], error) {
+func (s *BackrestHandler) RemoveRepo(ctx context.Context, req *connect.Request[v1.RemoveRepoRequest]) (*connect.Response[v1.Config], error) {
 	var instanceID string
 	if err := s.config.Transform(func(cfg *v1.Config) (*v1.Config, error) {
 		instanceID = cfg.Instance
 		cfg.Repos = slices.DeleteFunc(cfg.Repos, func(r *v1.Repo) bool {
-			return r.Id == req.Msg.Value
+			return r.Id == req.Msg.RepoId
 		})
 		return cfg, nil
 	}); err != nil {
@@ -237,7 +251,7 @@ func (s *BackrestHandler) RemoveRepo(ctx context.Context, req *connect.Request[t
 
 	// Query for all operations for the repo
 	q := oplog.Query{}.SetInstanceID(instanceID)
-	q.DeprecatedRepoID = &req.Msg.Value
+	q.DeprecatedRepoID = &req.Msg.RepoId
 	var opIDs []int64
 	if err := s.oplog.Query(q, func(op *v1.Operation) error {
 		opIDs = append(opIDs, op.Id)
@@ -300,7 +314,7 @@ func (s *BackrestHandler) ListSnapshots(ctx context.Context, req *connect.Reques
 	query := req.Msg
 	repo, err := s.orchestrator.GetRepoOrchestrator(query.RepoId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get repo: %w", err)
+		return nil, withLookupCode(fmt.Errorf("failed to get repo: %w", err))
 	}
 
 	var snapshots []*restic.Snapshot
@@ -308,7 +322,7 @@ func (s *BackrestHandler) ListSnapshots(ctx context.Context, req *connect.Reques
 		var plan *v1.Plan
 		plan, err = s.orchestrator.GetPlan(query.PlanId)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get plan %q: %w", query.PlanId, err)
+			return nil, withLookupCode(fmt.Errorf("failed to get plan %q: %w", query.PlanId, err))
 		}
 		snapshots, err = repo.SnapshotsForPlan(ctx, plan)
 	} else {
@@ -340,13 +354,13 @@ func (s *BackrestHandler) ListSnapshotFiles(ctx context.Context, req *connect.Re
 	}
 	repoCfg := config.FindRepoByGUID(cfg, query.RepoGuid)
 	if repoCfg == nil {
-		return nil, fmt.Errorf("repo not found: %q", query.RepoGuid)
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("repo not found: %q", query.RepoGuid))
 	}
 
 	// Get the orchestrator for the repo if its configuration is available.
 	repo, err := s.orchestrator.GetRepoOrchestrator(repoCfg.Id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get repo: %w", err)
+		return nil, withLookupCode(fmt.Errorf("failed to get repo: %w", err))
 	}
 
 	entries, err := repo.ListSnapshotFiles(ctx, query.SnapshotId, query.Path)
@@ -473,87 +487,64 @@ func (s *BackrestHandler) GetOperations(ctx context.Context, req *connect.Reques
 	}), nil
 }
 
-func (s *BackrestHandler) IndexSnapshots(ctx context.Context, req *connect.Request[types.StringValue]) (*connect.Response[emptypb.Empty], error) {
-	// Ensure the repo is valid before scheduling the task
-	repo, err := s.orchestrator.GetRepo(req.Msg.Value)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get repo %q: %w", req.Msg.Value, err)
+// scheduleTaskAndWait schedules the task and blocks until it completes, returning the task's error.
+func (s *BackrestHandler) scheduleTaskAndWait(t tasks.Task, priority int) error {
+	var taskErr error
+	wait := make(chan struct{})
+	if _, err := s.orchestrator.ScheduleTask(t, priority, func(e error) { taskErr = e; close(wait) }); err != nil {
+		return err
 	}
-
-	// Schedule the indexing task
-	if err := s.orchestrator.ScheduleTask(tasks.NewOneoffIndexSnapshotsTask(repo, time.Now()), tasks.TaskPriorityInteractive+tasks.TaskPriorityIndexSnapshots); err != nil {
-		return nil, fmt.Errorf("failed to schedule indexing task: %w", err)
-	}
-
-	return connect.NewResponse(&emptypb.Empty{}), nil
+	<-wait
+	return taskErr
 }
 
 func (s *BackrestHandler) Backup(ctx context.Context, req *connect.Request[v1.BackupRequest]) (*connect.Response[emptypb.Empty], error) {
 	plan, err := s.orchestrator.GetPlan(req.Msg.Value)
 	if err != nil {
-		return nil, err
+		return nil, withLookupCode(err)
 	}
 	repo, err := s.orchestrator.GetRepo(plan.Repo)
 	if err != nil {
-		return nil, err
+		return nil, withLookupCode(err)
 	}
-	wait := make(chan struct{})
-	if err := s.orchestrator.ScheduleTask(tasks.NewOneoffBackupTask(repo, plan, time.Now(), req.Msg.DryRun), tasks.TaskPriorityInteractive, func(e error) {
-		err = e
-		close(wait)
-	}); err != nil {
-		return nil, err
-	}
-	<-wait
-	return connect.NewResponse(&emptypb.Empty{}), err
-}
-
-func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.ForgetRequest]) (*connect.Response[emptypb.Empty], error) {
-	at := time.Now()
-	var err error
-
-	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
-	if err != nil {
-		return nil, err
-	}
-
-	if req.Msg.SnapshotId != "" && req.Msg.PlanId != "" && req.Msg.RepoId != "" {
-		wait := make(chan struct{})
-		if err := s.orchestrator.ScheduleTask(
-			tasks.NewOneoffForgetSnapshotTask(repo, req.Msg.PlanId, 0, at, req.Msg.SnapshotId),
-			tasks.TaskPriorityInteractive+tasks.TaskPriorityForget, func(e error) {
-				err = e
-				close(wait)
-			}); err != nil {
-			return nil, err
-		}
-		<-wait
-	} else if req.Msg.RepoId != "" && req.Msg.PlanId != "" {
-		wait := make(chan struct{})
-		if err := s.orchestrator.ScheduleTask(
-			tasks.NewOneoffForgetTask(repo, req.Msg.PlanId, 0, at),
-			tasks.TaskPriorityInteractive+tasks.TaskPriorityForget, func(e error) {
-				err = e
-				close(wait)
-			}); err != nil {
-			return nil, err
-		}
-		<-wait
-	} else {
-		return nil, errors.New("must specify repoId and planId and (optionally) snapshotId")
-	}
-	if err != nil {
+	if err := s.scheduleTaskAndWait(tasks.NewOneoffBackupTask(repo, plan, time.Now(), req.Msg.DryRun), tasks.TaskPriorityInteractive); err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) Forget(ctx context.Context, req *connect.Request[v1.ForgetRequest]) (*connect.Response[v1.ScheduleTaskResponse], error) {
+	at := time.Now()
+
+	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
+	if err != nil {
+		return nil, withLookupCode(err)
+	}
+
+	if req.Msg.PlanId == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("must specify repoId and planId and (optionally) snapshotId"))
+	}
+
+	var task tasks.Task
+	if req.Msg.SnapshotId != "" {
+		task = tasks.NewOneoffForgetSnapshotTask(repo, req.Msg.PlanId, 0, at, req.Msg.SnapshotId)
+	} else {
+		task = tasks.NewOneoffForgetTask(repo, req.Msg.PlanId, 0, at)
+	}
+
+	id, err := s.orchestrator.ScheduleTask(task, tasks.TaskPriorityInteractive+tasks.TaskPriorityForget)
+	if err != nil {
+		return nil, fmt.Errorf("failed to schedule forget task: %w", err)
+	}
+	return connect.NewResponse(&v1.ScheduleTaskResponse{OperationId: id}), nil
+}
+
+func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1.DoRepoTaskRequest]) (*connect.Response[v1.ScheduleTaskResponse], error) {
 	var task tasks.Task
 
 	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
 	if err != nil {
-		return nil, err
+		return nil, withLookupCode(err)
 	}
 
 	priority := tasks.TaskPriorityInteractive
@@ -578,31 +569,24 @@ func (s BackrestHandler) DoRepoTask(ctx context.Context, req *connect.Request[v1
 	case v1.DoRepoTaskRequest_TASK_UNLOCK:
 		repo, err := s.orchestrator.GetRepoOrchestrator(req.Msg.RepoId)
 		if err != nil {
-			return nil, err
+			return nil, withLookupCode(err)
 		}
 		if err := repo.Unlock(ctx); err != nil {
 			return nil, fmt.Errorf("failed to unlock repo %q: %w", req.Msg.RepoId, err)
 		}
-		return connect.NewResponse(&emptypb.Empty{}), nil
+		return connect.NewResponse(&v1.ScheduleTaskResponse{OperationId: 0}), nil
 	default:
-		return nil, fmt.Errorf("unknown task %v", req.Msg.Task.String())
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown task %v", req.Msg.Task.String()))
 	}
 
-	wait := make(chan struct{})
-	if err := s.orchestrator.ScheduleTask(task, priority, func(e error) {
-		err = e
-		close(wait)
-	}); err != nil {
-		return nil, err
-	}
-	<-wait
+	id, err := s.orchestrator.ScheduleTask(task, priority)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to schedule task: %w", err)
 	}
-	return connect.NewResponse(&emptypb.Empty{}), nil
+	return connect.NewResponse(&v1.ScheduleTaskResponse{OperationId: id}), nil
 }
 
-func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[emptypb.Empty], error) {
+func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.RestoreSnapshotRequest]) (*connect.Response[v1.ScheduleTaskResponse], error) {
 	req.Msg.Target = strings.TrimSpace(req.Msg.Target)
 	req.Msg.Path = strings.TrimSpace(req.Msg.Path)
 
@@ -614,23 +598,24 @@ func (s *BackrestHandler) Restore(ctx context.Context, req *connect.Request[v1.R
 	}
 	// prevent restoring to a directory that already exists
 	if _, err := os.Stat(req.Msg.Target); err == nil {
-		return nil, fmt.Errorf("target directory %q already exists", req.Msg.Target)
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("target directory %q already exists", req.Msg.Target))
 	}
 
 	repo, err := s.orchestrator.GetRepo(req.Msg.RepoId)
 	if err != nil {
-		return nil, err
+		return nil, withLookupCode(err)
 	}
 
 	at := time.Now()
-	if err := s.orchestrator.ScheduleTask(tasks.NewOneoffRestoreTask(repo, req.Msg.PlanId, 0 /* flowID */, at, req.Msg.SnapshotId, req.Msg.Path, req.Msg.Target), tasks.TaskPriorityInteractive+tasks.TaskPriorityDefault); err != nil {
+	id, err := s.orchestrator.ScheduleTask(tasks.NewOneoffRestoreTask(repo, req.Msg.PlanId, 0 /* flowID */, at, req.Msg.SnapshotId, req.Msg.Path, req.Msg.Target), tasks.TaskPriorityInteractive+tasks.TaskPriorityDefault)
+	if err != nil {
 		return nil, fmt.Errorf("failed to schedule restore task: %w", err)
 	}
 
-	return connect.NewResponse(&emptypb.Empty{}), nil
+	return connect.NewResponse(&v1.ScheduleTaskResponse{OperationId: id}), nil
 }
 
-func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.Response[types.Int64Value], error) {
+func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v1.RunCommandRequest]) (*connect.Response[v1.RunCommandResponse], error) {
 	cfg, err := s.config.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
@@ -664,11 +649,11 @@ func (s *BackrestHandler) RunCommand(ctx context.Context, req *connect.Request[v
 		return nil, fmt.Errorf("failed to run command: %w", err)
 	}
 
-	return connect.NewResponse(&types.Int64Value{Value: st.Op.GetId()}), nil
+	return connect.NewResponse(&v1.RunCommandResponse{OperationId: st.Op.GetId()}), nil
 }
 
-func (s *BackrestHandler) Cancel(ctx context.Context, req *connect.Request[types.Int64Value]) (*connect.Response[emptypb.Empty], error) {
-	if err := s.orchestrator.CancelOperation(req.Msg.Value, v1.OperationStatus_STATUS_USER_CANCELLED); err != nil {
+func (s *BackrestHandler) Cancel(ctx context.Context, req *connect.Request[v1.CancelOperationRequest]) (*connect.Response[emptypb.Empty], error) {
+	if err := s.orchestrator.CancelOperation(req.Msg.OperationId, v1.OperationStatus_STATUS_USER_CANCELLED); err != nil {
 		return nil, err
 	}
 
@@ -763,9 +748,6 @@ func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.L
 				return nil
 			}
 			if err := resp.Send(&types.BytesValue{Value: data}); err != nil {
-				bufferMu.Lock()
-				buffer.Write(data)
-				bufferMu.Unlock()
 				return err
 			}
 		case err := <-errChan:
@@ -788,6 +770,9 @@ func (s *BackrestHandler) GetLogs(ctx context.Context, req *connect.Request[v1.L
 func (s *BackrestHandler) GetDownloadURL(ctx context.Context, req *connect.Request[v1.GetDownloadURLRequest]) (*connect.Response[types.StringValue], error) {
 	op, err := s.oplog.Get(req.Msg.OpId)
 	if err != nil {
+		if errors.Is(err, oplog.ErrNotExist) {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("failed to get operation %v: %w", req.Msg.OpId, err))
+		}
 		return nil, fmt.Errorf("failed to get operation %v: %w", req.Msg.OpId, err)
 	}
 
@@ -798,7 +783,7 @@ func (s *BackrestHandler) GetDownloadURL(ctx context.Context, req *connect.Reque
 	case *v1.Operation_OperationRestore:
 		opType = "restore"
 	default:
-		return nil, fmt.Errorf("operation %v is not a restore or snapshot operation", req.Msg.OpId)
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("operation %v is not a restore or snapshot operation", req.Msg.OpId))
 	}
 
 	token, err := signDownloadToken(DownloadTokenPayload{
@@ -874,6 +859,19 @@ func (s *BackrestHandler) GeneratePairingToken(ctx context.Context, req *connect
 	return connect.NewResponse(&v1.GeneratePairingTokenResponse{
 		Token: tokenStr,
 	}), nil
+}
+
+// withLookupCode tags err with connect.CodeNotFound when it stems from a missing
+// repo or plan lookup (orchestrator.ErrRepoNotFound / ErrPlanNotFound), preserving
+// the original message. Other errors are returned unchanged.
+func withLookupCode(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, orchestrator.ErrRepoNotFound) || errors.Is(err, orchestrator.ErrPlanNotFound) {
+		return connect.NewError(connect.CodeNotFound, err)
+	}
+	return err
 }
 
 func sanitizeRepoFlags(repo *v1.Repo) {

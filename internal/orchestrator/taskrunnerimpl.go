@@ -151,7 +151,8 @@ func (t *taskRunnerImpl) GetRepoOrchestrator(repoID string) (tasks.RepoOrchestra
 }
 
 func (t *taskRunnerImpl) ScheduleTask(task tasks.Task, priority int) error {
-	return t.orchestrator.ScheduleTask(task, priority)
+	_, err := t.orchestrator.ScheduleTask(task, priority)
+	return err
 }
 
 func (t *taskRunnerImpl) Config() *v1.Config {

@@ -54,25 +54,25 @@ type BackrestClient interface {
 	SetupSftp(ctx context.Context, in *SetupSftpRequest, opts ...grpc.CallOption) (*SetupSftpResponse, error)
 	CheckRepoExists(ctx context.Context, in *CheckRepoExistsRequest, opts ...grpc.CallOption) (*CheckRepoExistsResponse, error)
 	AddRepo(ctx context.Context, in *AddRepoRequest, opts ...grpc.CallOption) (*Config, error)
-	RemoveRepo(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*Config, error)
+	RemoveRepo(ctx context.Context, in *RemoveRepoRequest, opts ...grpc.CallOption) (*Config, error)
 	GetOperationEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OperationEvent], error)
 	GetOperations(ctx context.Context, in *GetOperationsRequest, opts ...grpc.CallOption) (*OperationList, error)
 	ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ResticSnapshotList, error)
 	ListSnapshotFiles(ctx context.Context, in *ListSnapshotFilesRequest, opts ...grpc.CallOption) (*ListSnapshotFilesResponse, error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(ctx context.Context, in *BackupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
-	DoRepoTask(ctx context.Context, in *DoRepoTaskRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
-	Forget(ctx context.Context, in *ForgetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns the scheduled operation's ID.
+	DoRepoTask(ctx context.Context, in *DoRepoTaskRequest, opts ...grpc.CallOption) (*ScheduleTaskResponse, error)
+	// Forget schedules a forget operation. It accepts a plan id and returns the scheduled operation's ID.
+	Forget(ctx context.Context, in *ForgetRequest, opts ...grpc.CallOption) (*ScheduleTaskResponse, error)
 	// Restore schedules a restore operation.
-	Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*ScheduleTaskResponse, error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
-	Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Cancel(ctx context.Context, in *CancelOperationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetLogs returns the keyed large data for the given operation.
 	GetLogs(ctx context.Context, in *LogDataRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[types.BytesValue], error)
 	// RunCommand executes a generic restic command on the repository.
-	RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (*types.Int64Value, error)
+	RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (*RunCommandResponse, error)
 	// GetDownloadURL returns a signed download URL given an operation ID and file path.
 	GetDownloadURL(ctx context.Context, in *GetDownloadURLRequest, opts ...grpc.CallOption) (*types.StringValue, error)
 	// Clears the history of operations
@@ -144,7 +144,7 @@ func (c *backrestClient) AddRepo(ctx context.Context, in *AddRepoRequest, opts .
 	return out, nil
 }
 
-func (c *backrestClient) RemoveRepo(ctx context.Context, in *types.StringValue, opts ...grpc.CallOption) (*Config, error) {
+func (c *backrestClient) RemoveRepo(ctx context.Context, in *RemoveRepoRequest, opts ...grpc.CallOption) (*Config, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Config)
 	err := c.cc.Invoke(ctx, Backrest_RemoveRepo_FullMethodName, in, out, cOpts...)
@@ -213,9 +213,9 @@ func (c *backrestClient) Backup(ctx context.Context, in *BackupRequest, opts ...
 	return out, nil
 }
 
-func (c *backrestClient) DoRepoTask(ctx context.Context, in *DoRepoTaskRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) DoRepoTask(ctx context.Context, in *DoRepoTaskRequest, opts ...grpc.CallOption) (*ScheduleTaskResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(ScheduleTaskResponse)
 	err := c.cc.Invoke(ctx, Backrest_DoRepoTask_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -223,9 +223,9 @@ func (c *backrestClient) DoRepoTask(ctx context.Context, in *DoRepoTaskRequest, 
 	return out, nil
 }
 
-func (c *backrestClient) Forget(ctx context.Context, in *ForgetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) Forget(ctx context.Context, in *ForgetRequest, opts ...grpc.CallOption) (*ScheduleTaskResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(ScheduleTaskResponse)
 	err := c.cc.Invoke(ctx, Backrest_Forget_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -233,9 +233,9 @@ func (c *backrestClient) Forget(ctx context.Context, in *ForgetRequest, opts ...
 	return out, nil
 }
 
-func (c *backrestClient) Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) Restore(ctx context.Context, in *RestoreSnapshotRequest, opts ...grpc.CallOption) (*ScheduleTaskResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(ScheduleTaskResponse)
 	err := c.cc.Invoke(ctx, Backrest_Restore_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -243,7 +243,7 @@ func (c *backrestClient) Restore(ctx context.Context, in *RestoreSnapshotRequest
 	return out, nil
 }
 
-func (c *backrestClient) Cancel(ctx context.Context, in *types.Int64Value, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *backrestClient) Cancel(ctx context.Context, in *CancelOperationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Backrest_Cancel_FullMethodName, in, out, cOpts...)
@@ -272,9 +272,9 @@ func (c *backrestClient) GetLogs(ctx context.Context, in *LogDataRequest, opts .
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Backrest_GetLogsClient = grpc.ServerStreamingClient[types.BytesValue]
 
-func (c *backrestClient) RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (*types.Int64Value, error) {
+func (c *backrestClient) RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (*RunCommandResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(types.Int64Value)
+	out := new(RunCommandResponse)
 	err := c.cc.Invoke(ctx, Backrest_RunCommand_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -341,25 +341,25 @@ type BackrestServer interface {
 	SetupSftp(context.Context, *SetupSftpRequest) (*SetupSftpResponse, error)
 	CheckRepoExists(context.Context, *CheckRepoExistsRequest) (*CheckRepoExistsResponse, error)
 	AddRepo(context.Context, *AddRepoRequest) (*Config, error)
-	RemoveRepo(context.Context, *types.StringValue) (*Config, error)
+	RemoveRepo(context.Context, *RemoveRepoRequest) (*Config, error)
 	GetOperationEvents(*emptypb.Empty, grpc.ServerStreamingServer[OperationEvent]) error
 	GetOperations(context.Context, *GetOperationsRequest) (*OperationList, error)
 	ListSnapshots(context.Context, *ListSnapshotsRequest) (*ResticSnapshotList, error)
 	ListSnapshotFiles(context.Context, *ListSnapshotFilesRequest) (*ListSnapshotFilesResponse, error)
 	// Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
 	Backup(context.Context, *BackupRequest) (*emptypb.Empty, error)
-	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
-	DoRepoTask(context.Context, *DoRepoTaskRequest) (*emptypb.Empty, error)
-	// Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
-	Forget(context.Context, *ForgetRequest) (*emptypb.Empty, error)
+	// DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns the scheduled operation's ID.
+	DoRepoTask(context.Context, *DoRepoTaskRequest) (*ScheduleTaskResponse, error)
+	// Forget schedules a forget operation. It accepts a plan id and returns the scheduled operation's ID.
+	Forget(context.Context, *ForgetRequest) (*ScheduleTaskResponse, error)
 	// Restore schedules a restore operation.
-	Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error)
+	Restore(context.Context, *RestoreSnapshotRequest) (*ScheduleTaskResponse, error)
 	// Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
-	Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error)
+	Cancel(context.Context, *CancelOperationRequest) (*emptypb.Empty, error)
 	// GetLogs returns the keyed large data for the given operation.
 	GetLogs(*LogDataRequest, grpc.ServerStreamingServer[types.BytesValue]) error
 	// RunCommand executes a generic restic command on the repository.
-	RunCommand(context.Context, *RunCommandRequest) (*types.Int64Value, error)
+	RunCommand(context.Context, *RunCommandRequest) (*RunCommandResponse, error)
 	// GetDownloadURL returns a signed download URL given an operation ID and file path.
 	GetDownloadURL(context.Context, *GetDownloadURLRequest) (*types.StringValue, error)
 	// Clears the history of operations
@@ -396,7 +396,7 @@ func (UnimplementedBackrestServer) CheckRepoExists(context.Context, *CheckRepoEx
 func (UnimplementedBackrestServer) AddRepo(context.Context, *AddRepoRequest) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRepo not implemented")
 }
-func (UnimplementedBackrestServer) RemoveRepo(context.Context, *types.StringValue) (*Config, error) {
+func (UnimplementedBackrestServer) RemoveRepo(context.Context, *RemoveRepoRequest) (*Config, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveRepo not implemented")
 }
 func (UnimplementedBackrestServer) GetOperationEvents(*emptypb.Empty, grpc.ServerStreamingServer[OperationEvent]) error {
@@ -414,22 +414,22 @@ func (UnimplementedBackrestServer) ListSnapshotFiles(context.Context, *ListSnaps
 func (UnimplementedBackrestServer) Backup(context.Context, *BackupRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Backup not implemented")
 }
-func (UnimplementedBackrestServer) DoRepoTask(context.Context, *DoRepoTaskRequest) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) DoRepoTask(context.Context, *DoRepoTaskRequest) (*ScheduleTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DoRepoTask not implemented")
 }
-func (UnimplementedBackrestServer) Forget(context.Context, *ForgetRequest) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) Forget(context.Context, *ForgetRequest) (*ScheduleTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Forget not implemented")
 }
-func (UnimplementedBackrestServer) Restore(context.Context, *RestoreSnapshotRequest) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) Restore(context.Context, *RestoreSnapshotRequest) (*ScheduleTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Restore not implemented")
 }
-func (UnimplementedBackrestServer) Cancel(context.Context, *types.Int64Value) (*emptypb.Empty, error) {
+func (UnimplementedBackrestServer) Cancel(context.Context, *CancelOperationRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
 func (UnimplementedBackrestServer) GetLogs(*LogDataRequest, grpc.ServerStreamingServer[types.BytesValue]) error {
 	return status.Errorf(codes.Unimplemented, "method GetLogs not implemented")
 }
-func (UnimplementedBackrestServer) RunCommand(context.Context, *RunCommandRequest) (*types.Int64Value, error) {
+func (UnimplementedBackrestServer) RunCommand(context.Context, *RunCommandRequest) (*RunCommandResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunCommand not implemented")
 }
 func (UnimplementedBackrestServer) GetDownloadURL(context.Context, *GetDownloadURLRequest) (*types.StringValue, error) {
@@ -559,7 +559,7 @@ func _Backrest_AddRepo_Handler(srv interface{}, ctx context.Context, dec func(in
 }
 
 func _Backrest_RemoveRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(types.StringValue)
+	in := new(RemoveRepoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -571,7 +571,7 @@ func _Backrest_RemoveRepo_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: Backrest_RemoveRepo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).RemoveRepo(ctx, req.(*types.StringValue))
+		return srv.(BackrestServer).RemoveRepo(ctx, req.(*RemoveRepoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -714,7 +714,7 @@ func _Backrest_Restore_Handler(srv interface{}, ctx context.Context, dec func(in
 }
 
 func _Backrest_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(types.Int64Value)
+	in := new(CancelOperationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -726,7 +726,7 @@ func _Backrest_Cancel_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: Backrest_Cancel_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackrestServer).Cancel(ctx, req.(*types.Int64Value))
+		return srv.(BackrestServer).Cancel(ctx, req.(*CancelOperationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

@@ -179,7 +179,7 @@ func (m *MemStore) Delete(opID ...int64) ([]*v1.Operation, error) {
 	return ops, nil
 }
 
-func (m *MemStore) Set(opts oplog.SetOptions, op ...*v1.Operation) error {
+func (m *MemStore) Set(op ...*v1.Operation) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, o := range op {

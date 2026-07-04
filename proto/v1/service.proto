@@ -16,6 +16,11 @@ message BackupRequest {
   bool dry_run = 2; // optional, simulate backup without creating snapshot
 }
 
+// ScheduleTaskResponse is returned by RPCs that schedule a task for later execution.
+message ScheduleTaskResponse {
+  int64 operation_id = 1; // ID of the scheduled operation, or 0 when no operation was created for the task.
+}
+
 service Backrest {
   rpc GetConfig (google.protobuf.Empty) returns (Config) {}
 
@@ -27,7 +32,7 @@ service Backrest {
 
   rpc AddRepo (AddRepoRequest) returns (Config) {}
 
-  rpc RemoveRepo (types.StringValue) returns (Config) {} // remvoes a repo from the config and deletes its history, does not delete the repo on disk
+  rpc RemoveRepo (RemoveRepoRequest) returns (Config) {} // removes a repo from the config and deletes its history, does not delete the repo on disk
 
   rpc GetOperationEvents (google.protobuf.Empty) returns (stream OperationEvent) {}
 
@@ -40,23 +45,23 @@ service Backrest {
   // Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
   rpc Backup(BackupRequest) returns (google.protobuf.Empty) {}
 
-  // DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns empty if the task is enqueued.
-  rpc DoRepoTask(DoRepoTaskRequest) returns (google.protobuf.Empty) {}
+  // DoRepoTask schedules a repo task. It accepts a repo id and a task type and returns the scheduled operation's ID.
+  rpc DoRepoTask(DoRepoTaskRequest) returns (ScheduleTaskResponse) {}
 
-  // Forget schedules a forget operation. It accepts a plan id and returns empty if the task is enqueued.
-  rpc Forget(ForgetRequest) returns (google.protobuf.Empty) {}
+  // Forget schedules a forget operation. It accepts a plan id and returns the scheduled operation's ID.
+  rpc Forget(ForgetRequest) returns (ScheduleTaskResponse) {}
 
   // Restore schedules a restore operation.
-  rpc Restore(RestoreSnapshotRequest) returns (google.protobuf.Empty) {}
+  rpc Restore(RestoreSnapshotRequest) returns (ScheduleTaskResponse) {}
 
   // Cancel attempts to cancel a task with the given operation ID. Not guaranteed to succeed.
-  rpc Cancel(types.Int64Value) returns (google.protobuf.Empty) {}
+  rpc Cancel(CancelOperationRequest) returns (google.protobuf.Empty) {}
 
   // GetLogs returns the keyed large data for the given operation.
   rpc GetLogs(LogDataRequest) returns (stream types.BytesValue) {}
 
   // RunCommand executes a generic restic command on the repository.
-  rpc RunCommand(RunCommandRequest) returns (types.Int64Value) {}
+  rpc RunCommand(RunCommandRequest) returns (RunCommandResponse) {}
 
   // GetDownloadURL returns a signed download URL given an operation ID and file path.
   rpc GetDownloadURL(GetDownloadURLRequest) returns (types.StringValue) {}
@@ -194,6 +199,18 @@ message LsEntry {
 message RunCommandRequest {
   string repo_id = 1;
   string command = 2;
+}
+
+message RunCommandResponse {
+  int64 operation_id = 1;
+}
+
+message RemoveRepoRequest {
+  string repo_id = 1;
+}
+
+message CancelOperationRequest {
+  int64 operation_id = 1;
 }
 
 message SummaryDashboardResponse {

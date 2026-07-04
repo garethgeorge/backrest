@@ -2,7 +2,6 @@ package oplog
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 	"sync"
 
@@ -23,8 +22,6 @@ var (
 	ErrNotExist      = errors.New("operation does not exist")
 	ErrExist         = errors.New("operation already exists")
 	ErrNoResults     = errors.New("no results found")
-
-	NullOPID = int64(0)
 )
 
 type Subscription = func(ops []*v1.Operation, event OperationEvent)
@@ -79,24 +76,6 @@ func (o *OpLog) notify(ops []*v1.Operation, event OperationEvent) {
 
 func (o *OpLog) Query(q Query, f func(*v1.Operation) error) error {
 	return o.store.Query(q, f)
-}
-
-func (o *OpLog) FindOne(q Query) (*v1.Operation, error) {
-	var found *v1.Operation
-	err := o.store.Query(q, func(op *v1.Operation) error {
-		if found != nil {
-			return errors.New("more than one operation found")
-		}
-		found = op
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	if found == nil {
-		return nil, ErrNoResults
-	}
-	return found, nil
 }
 
 func (o *OpLog) QueryMetadata(q Query, f func(OpMetadata) error) error {
@@ -172,31 +151,12 @@ func (o *OpLog) Update(ops ...*v1.Operation) error {
 	return nil
 }
 
-// SetOptions configures the behavior of Set.
-type SetOptions struct {
-	InsertOnly bool // If true, only insert; fail if the operation already exists (Id != 0).
-	UpdateOnly bool // If true, only update; fail if the operation does not exist (Id == 0).
-	AllocateID bool // If true, allocate a new Id for operations with Id == 0.
-}
-
-func (o *OpLog) Set(opts SetOptions, ops ...*v1.Operation) error {
-	if opts.InsertOnly && opts.UpdateOnly {
-		return errors.New("InsertOnly and UpdateOnly are mutually exclusive")
-	}
-	for _, op := range ops {
-		if opts.InsertOnly && op.Id != 0 {
-			return fmt.Errorf("InsertOnly but operation already has Id %d", op.Id)
-		}
-		if opts.UpdateOnly && op.Id == 0 {
-			return errors.New("UpdateOnly but operation has no Id")
-		}
-	}
-
+func (o *OpLog) Set(ops ...*v1.Operation) error {
 	isNew := make([]bool, len(ops))
 	for i, op := range ops {
 		isNew[i] = op.Id == 0
 	}
-	if err := o.store.Set(opts, ops...); err != nil {
+	if err := o.store.Set(ops...); err != nil {
 		return err
 	}
 	for i, op := range ops {
@@ -223,10 +183,6 @@ func (o *OpLog) Transform(q Query, f func(*v1.Operation) (*v1.Operation, error))
 	return o.store.Transform(q, f)
 }
 
-func (o *OpLog) GetHighestOpIDAndModno(q Query) (int64, int64, error) {
-	return o.store.GetHighestOpIDAndModno(q)
-}
-
 type OpStore interface {
 	// Query returns all operations that match the query.
 	Query(q Query, f func(*v1.Operation) error) error
@@ -244,7 +200,7 @@ type OpStore interface {
 	// Set inserts or updates operations. Zero-valued fields (Id, Modno, FlowId) are
 	// allocated automatically (like Add/Update), but non-zero values provided by the
 	// caller are preserved. If Id is non-zero, it updates; if Id is zero, it inserts.
-	Set(opts SetOptions, op ...*v1.Operation) error
+	Set(op ...*v1.Operation) error
 	// Delete removes the operations with the given IDs from the store, and returns the removed operations.
 	Delete(opID ...int64) ([]*v1.Operation, error)
 	// Transform applies the given function to each operation that matches the query.

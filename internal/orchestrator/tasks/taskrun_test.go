@@ -80,12 +80,12 @@ func hookContains(calls []hookCall, cond v1.Hook_Condition) bool {
 
 func TestPruneTaskRun(t *testing.T) {
 	tests := []struct {
-		name            string
-		fake            *fakeRepoOrchestrator
-		wantErr         bool
-		wantHooks       []v1.Hook_Condition
-		wantScheduled   int
-		scheduledType   string
+		name          string
+		fake          *fakeRepoOrchestrator
+		wantErr       bool
+		wantHooks     []v1.Hook_Condition
+		wantScheduled int
+		scheduledType string
 	}{
 		{
 			name:          "success",
@@ -518,11 +518,11 @@ func TestRestoreTaskRun(t *testing.T) {
 			name: "success",
 			fake: &fakeRepoOrchestrator{
 				restoreResult: &v1.RestoreProgressEntry{
-					MessageType:    "summary",
-					TotalFiles:     10,
-					TotalBytes:     5000,
-					FilesRestored:  10,
-					BytesRestored:  5000,
+					MessageType:   "summary",
+					TotalFiles:    10,
+					TotalBytes:    5000,
+					FilesRestored: 10,
+					BytesRestored: 5000,
 				},
 			},
 		},

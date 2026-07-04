@@ -327,7 +327,7 @@ func (h *syncSessionHandlerServer) insertOrUpdate(op *v1.Operation, isUpdate boo
 	op.FlowId = localFlowID
 	// Use Set which handles both insert (Id==0) and update (Id!=0),
 	// preserving the operation's Modno from the client.
-	return h.mgr.oplog.Set(oplog.SetOptions{}, op)
+	return h.mgr.oplog.Set(op)
 }
 
 func (h *syncSessionHandlerServer) deleteByOriginalID(originalID int64) error {

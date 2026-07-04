@@ -36,7 +36,6 @@ func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 		}
 		t.didRun = true
 		return ScheduledTask{
-			Task:  t,
 			RunAt: now,
 			Op: &v1.Operation{
 				Op: &v1.Operation_OperationCheck{},
@@ -85,7 +84,6 @@ func (t *CheckTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, error
 	}
 
 	return ScheduledTask{
-		Task:  t,
 		RunAt: runAt,
 		Op: &v1.Operation{
 			Op: &v1.Operation_OperationCheck{},

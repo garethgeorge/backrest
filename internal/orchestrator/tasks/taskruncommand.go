@@ -13,20 +13,18 @@ var DefaultCommandOutputSizeLimit uint64 = 2_000_000 // 2MB
 
 func NewOneoffRunCommandTask(repo *v1.Repo, planID string, flowID int64, at time.Time, command string) Task {
 	return &GenericOneoffTask{
-		OneoffTask: OneoffTask{
-			BaseTask: BaseTask{
-				TaskType:   "run_command",
-				TaskName:   fmt.Sprintf("run command in repo %q", repo.Id),
-				TaskRepo:   repo,
-				TaskPlanID: planID,
-			},
-			FlowID: flowID,
-			RunAt:  at,
-			ProtoOp: &v1.Operation{
-				Op: &v1.Operation_OperationRunCommand{
-					OperationRunCommand: &v1.OperationRunCommand{
-						Command: command,
-					},
+		BaseTask: BaseTask{
+			TaskType:   "run_command",
+			TaskName:   fmt.Sprintf("run command in repo %q", repo.Id),
+			TaskRepo:   repo,
+			TaskPlanID: planID,
+		},
+		FlowID: flowID,
+		RunAt:  at,
+		ProtoOp: &v1.Operation{
+			Op: &v1.Operation_OperationRunCommand{
+				OperationRunCommand: &v1.OperationRunCommand{
+					Command: command,
 				},
 			},
 		},

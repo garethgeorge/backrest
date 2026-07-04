@@ -11,6 +11,22 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
     {
+      packages = forAllSystems (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          devShellPkgs = with pkgs; [
+            go goreleaser nodejs_20 pnpm_9
+            protobuf buf protoc-gen-go protoc-gen-go-grpc
+            gnumake git restic rclone zsh oh-my-posh
+          ];
+        in
+        {
+          default = pkgs.buildEnv {
+            name = "backrest-dev";
+            paths = devShellPkgs;
+          };
+        });
+
       devShells = forAllSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};

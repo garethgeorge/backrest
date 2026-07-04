@@ -84,14 +84,12 @@ func (t *CollectGarbageTask) Next(now time.Time, runner TaskRunner) (ScheduledTa
 		t.firstRun = true
 		runAt := now.Add(gcStartupDelay)
 		return ScheduledTask{
-			Task:  t,
 			RunAt: runAt,
 		}, nil
 	}
 
 	runAt := now.Add(gcInterval)
 	return ScheduledTask{
-		Task:  t,
 		RunAt: runAt,
 	}, nil
 }
@@ -128,7 +126,7 @@ func (t *CollectGarbageTask) gcOperations(runner TaskRunner) error {
 	// keep track of IDs that are still valid and of the IDs that are being forgotten
 	validIDs := make(map[int64]struct{})
 	forgetIDs := []int64{}
-	curTime := curTimeMillis()
+	curTime := time.Now().UnixMilli()
 
 	var deletedByMaxAge, deletedByMaxCount, deletedByForgottenSnapshot, deletedByUnknownPeerKeyid int
 	deletedByType := make(map[string]int)

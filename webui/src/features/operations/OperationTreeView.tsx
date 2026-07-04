@@ -562,7 +562,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
             snapshotId: backup.snapshotID!,
           }),
         );
-        alerts.success("Snapshot forgotten.");
+        alerts.success("Snapshot forget scheduled.");
       } catch (e: any) {
         alerts.error("Failed to forget snapshot: " + e);
       }

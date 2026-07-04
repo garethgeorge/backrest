@@ -25,20 +25,6 @@ func (t *TimePriorityQueue[T]) Len() int {
 	return t.tqueue.heap.Len() + t.ready.Len()
 }
 
-func (t *TimePriorityQueue[T]) Peek() T {
-	t.tqueue.mu.Lock()
-	defer t.tqueue.mu.Unlock()
-
-	if t.ready.Len() > 0 {
-		return t.ready.Peek().v
-	}
-	if t.tqueue.heap.Len() > 0 {
-		return t.tqueue.heap.Peek().v.v
-	}
-	var zero T
-	return zero
-}
-
 func (t *TimePriorityQueue[T]) Reset() []T {
 	t.tqueue.mu.Lock()
 	defer t.tqueue.mu.Unlock()

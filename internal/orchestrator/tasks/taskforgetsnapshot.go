@@ -10,18 +10,16 @@ import (
 
 func NewOneoffForgetSnapshotTask(repo *v1.Repo, planID string, flowID int64, at time.Time, snapshotID string) Task {
 	return &GenericOneoffTask{
-		OneoffTask: OneoffTask{
-			BaseTask: BaseTask{
-				TaskType:   "forget_snapshot",
-				TaskName:   fmt.Sprintf("forget snapshot %q for plan %q in repo %q", snapshotID, planID, repo.Id),
-				TaskRepo:   repo,
-				TaskPlanID: planID,
-			},
-			FlowID: flowID,
-			RunAt:  at,
-			ProtoOp: &v1.Operation{
-				Op: &v1.Operation_OperationForget{},
-			},
+		BaseTask: BaseTask{
+			TaskType:   "forget_snapshot",
+			TaskName:   fmt.Sprintf("forget snapshot %q for plan %q in repo %q", snapshotID, planID, repo.Id),
+			TaskRepo:   repo,
+			TaskPlanID: planID,
+		},
+		FlowID: flowID,
+		RunAt:  at,
+		ProtoOp: &v1.Operation{
+			Op: &v1.Operation_OperationForget{},
 		},
 		Do: func(ctx context.Context, st ScheduledTask, taskRunner TaskRunner) error {
 			op := st.Op

@@ -59,7 +59,6 @@ func (t *BackupTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 		}
 		t.didRun = true
 		return ScheduledTask{
-			Task:  t,
 			RunAt: now,
 			Op: &v1.Operation{
 				Op: &v1.Operation_OperationBackup{
@@ -108,7 +107,6 @@ func (t *BackupTask) Next(now time.Time, runner TaskRunner) (ScheduledTask, erro
 	}
 
 	return ScheduledTask{
-		Task:  t,
 		RunAt: nextRun,
 		Op: &v1.Operation{
 			Op: &v1.Operation_OperationBackup{

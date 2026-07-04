@@ -21,8 +21,8 @@ import {
 import {
   AddRepoRequestSchema,
   CheckRepoExistsRequestSchema,
+  RemoveRepoRequestSchema,
 } from "../../../gen/ts/v1/service_pb";
-import { StringValueSchema } from "../../../gen/ts/types/value_pb";
 import { URIAutocomplete } from "../../components/common/URIAutocomplete";
 import { alerts, formatErrorAlert } from "../../components/common/Alerts";
 import { namePattern } from "../../lib/util";
@@ -467,7 +467,7 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
     try {
       setConfig(
         await backrestService.removeRepo(
-          create(StringValueSchema, { value: template!.id }),
+          create(RemoveRepoRequestSchema, { repoId: template!.id }),
         ),
       );
       showModal(null);

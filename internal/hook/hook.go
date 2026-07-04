@@ -64,23 +64,21 @@ func newOneoffRunHookTask(title, instanceID string, repo *v1.Repo, planID string
 	title = h.Name() + " hook " + title
 
 	return &tasks.GenericOneoffTask{
-		OneoffTask: tasks.OneoffTask{
-			BaseTask: tasks.BaseTask{
-				TaskType:   "hook",
-				TaskName:   fmt.Sprintf("run hook %v", title),
-				TaskRepo:   repo,
-				TaskPlanID: planID,
-			},
-			FlowID: parentOp.GetFlowId(),
-			RunAt:  at,
-			ProtoOp: &v1.Operation{
-				DisplayMessage: fmt.Sprintf("running %v triggered by %v", title, event.String()),
-				Op: &v1.Operation_OperationRunHook{
-					OperationRunHook: &v1.OperationRunHook{
-						Name:      title,
-						Condition: event,
-						ParentOp:  parentOp.GetId(),
-					},
+		BaseTask: tasks.BaseTask{
+			TaskType:   "hook",
+			TaskName:   fmt.Sprintf("run hook %v", title),
+			TaskRepo:   repo,
+			TaskPlanID: planID,
+		},
+		FlowID: parentOp.GetFlowId(),
+		RunAt:  at,
+		ProtoOp: &v1.Operation{
+			DisplayMessage: fmt.Sprintf("running %v triggered by %v", title, event.String()),
+			Op: &v1.Operation_OperationRunHook{
+				OperationRunHook: &v1.OperationRunHook{
+					Name:      title,
+					Condition: event,
+					ParentOp:  parentOp.GetId(),
 				},
 			},
 		},
