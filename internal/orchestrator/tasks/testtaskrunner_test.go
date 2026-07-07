@@ -83,9 +83,6 @@ func (t *testTaskRunner) ExecuteHooks(ctx context.Context, events []v1.Hook_Cond
 }
 
 func (t *testTaskRunner) QueryOperations(q oplog.Query, fn func(*v1.Operation) error) error {
-	if q.InstanceID == nil {
-		q.SetInstanceID(t.InstanceID())
-	}
 	return t.oplog.Query(q, fn)
 }
 

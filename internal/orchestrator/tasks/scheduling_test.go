@@ -65,6 +65,14 @@ func TestScheduling(t *testing.T) {
 						Clock: v1.Schedule_CLOCK_LAST_RUN_TIME,
 					},
 				},
+				ForgetPolicy: &v1.ForgetPolicy{
+					Schedule: &v1.Schedule{
+						Schedule: &v1.Schedule_MaxFrequencyHours{
+							MaxFrequencyHours: 1,
+						},
+						Clock: v1.Schedule_CLOCK_LAST_RUN_TIME,
+					},
+				},
 			},
 		},
 		Plans: []*v1.Plan{
@@ -404,6 +412,126 @@ func TestScheduling(t *testing.T) {
 				},
 			},
 			wantTime: farFuture.Add(time.Hour),
+		},
+		{
+			name: "forget schedule relative with backup since last forget",
+			task: NewScheduledForgetTask(repoRelative, "_system_", false),
+			ops: []*v1.Operation{
+				{
+					InstanceId: "instance1",
+					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
+					PlanId:     "_system_",
+					Op: &v1.Operation_OperationForget{
+						OperationForget: &v1.OperationForget{},
+					},
+					UnixTimeStartMs: farFuture.Add(-time.Minute).UnixMilli(),
+					UnixTimeEndMs:   farFuture.UnixMilli(),
+				},
+				{
+					InstanceId: "instance1",
+					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
+					PlanId:     "_system_",
+					Op: &v1.Operation_OperationBackup{
+						OperationBackup: &v1.OperationBackup{},
+					},
+					UnixTimeStartMs: farFuture.Add(time.Minute).UnixMilli(),
+					UnixTimeEndMs:   farFuture.Add(2 * time.Minute).UnixMilli(),
+				},
+			},
+			wantTime: farFuture.Add(time.Hour),
+		},
+		{
+			name: "forget schedule relative with indexed snapshot since last forget",
+			task: NewScheduledForgetTask(repoRelative, "_system_", false),
+			ops: []*v1.Operation{
+				{
+					InstanceId: "instance1",
+					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
+					PlanId:     "_system_",
+					Op: &v1.Operation_OperationForget{
+						OperationForget: &v1.OperationForget{},
+					},
+					UnixTimeStartMs: farFuture.Add(-time.Minute).UnixMilli(),
+					UnixTimeEndMs:   farFuture.UnixMilli(),
+				},
+				{
+					InstanceId: "_unassociated_",
+					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
+					PlanId:     "_unassociated_",
+					Status:     v1.OperationStatus_STATUS_SUCCESS,
+					SnapshotId: testSnapshotID,
+					Op: &v1.Operation_OperationIndexSnapshot{
+						OperationIndexSnapshot: &v1.OperationIndexSnapshot{
+							Snapshot: &v1.ResticSnapshot{
+								Id:         testSnapshotID,
+								UnixTimeMs: farFuture.Add(time.Minute).UnixMilli(),
+							},
+						},
+					},
+					UnixTimeStartMs: farFuture.Add(time.Minute).UnixMilli(),
+					UnixTimeEndMs:   farFuture.Add(time.Minute).UnixMilli(),
+				},
+			},
+			wantTime: farFuture.Add(time.Hour),
+		},
+		{
+			name: "forget schedule relative with nothing since last forget",
+			task: NewScheduledForgetTask(repoRelative, "_system_", false),
+			ops: []*v1.Operation{
+				{
+					InstanceId: "instance1",
+					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
+					PlanId:     "_system_",
+					Op: &v1.Operation_OperationForget{
+						OperationForget: &v1.OperationForget{},
+					},
+					UnixTimeStartMs: farFuture.Add(-time.Minute).UnixMilli(),
+					UnixTimeEndMs:   farFuture.UnixMilli(),
+				},
+			},
+			wantTime: now.Add(time.Hour),
+		},
+		{
+			name: "forget schedule relative with forgotten indexed snapshot since last forget",
+			task: NewScheduledForgetTask(repoRelative, "_system_", false),
+			ops: []*v1.Operation{
+				{
+					InstanceId: "instance1",
+					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
+					PlanId:     "_system_",
+					Op: &v1.Operation_OperationForget{
+						OperationForget: &v1.OperationForget{},
+					},
+					UnixTimeStartMs: farFuture.Add(-time.Minute).UnixMilli(),
+					UnixTimeEndMs:   farFuture.UnixMilli(),
+				},
+				{
+					InstanceId: "_unassociated_",
+					RepoId:     "repo-relative",
+					RepoGuid:   repoRelative.Guid,
+					PlanId:     "_unassociated_",
+					Status:     v1.OperationStatus_STATUS_SUCCESS,
+					SnapshotId: testSnapshotID,
+					Op: &v1.Operation_OperationIndexSnapshot{
+						OperationIndexSnapshot: &v1.OperationIndexSnapshot{
+							Snapshot: &v1.ResticSnapshot{
+								Id:         testSnapshotID,
+								UnixTimeMs: farFuture.Add(time.Minute).UnixMilli(),
+							},
+							Forgot: true,
+						},
+					},
+					UnixTimeStartMs: farFuture.Add(time.Minute).UnixMilli(),
+					UnixTimeEndMs:   farFuture.Add(time.Minute).UnixMilli(),
+				},
+			},
+			wantTime: now.Add(time.Hour),
 		},
 	}
 
