@@ -227,6 +227,9 @@ type syncSessionHandlerClient struct {
 	canForwardPlansSet map[string]struct{}
 
 	oplogSubscription *oplog.Subscription // set while subscribed; unsubscribed in OnConnectionDisconnected.
+
+	// manifestMu prevents sendManifest flow from racing with operations forwarded from the server, sendManifest deletes missing operations so we'd miss any operations created while a flow is in progress.
+	manifestMu sync.Mutex
 }
 
 func newSyncHandlerClient(
@@ -295,6 +298,9 @@ func (c *syncSessionHandlerClient) canForwardMeta(meta oplog.OpMetadata) bool {
 }
 
 func (c *syncSessionHandlerClient) sendManifest(stream *bidiSyncCommandStream) (int, error) {
+	c.manifestMu.Lock()
+	defer c.manifestMu.Unlock()
+
 	var opIDs, modnos []int64
 	if err := c.oplog.QueryMetadata(oplog.Query{}, func(meta oplog.OpMetadata) error {
 		if c.canForwardMeta(meta) {
@@ -420,6 +426,10 @@ func (c *syncSessionHandlerClient) OnConnectionEstablished(ctx context.Context, 
 			return
 		}
 
+		// Hold manifestMu so this event cannot slot in between a concurrent
+		// sendManifest's oplog query and the manifest's own Send; see manifestMu.
+		c.manifestMu.Lock()
+		defer c.manifestMu.Unlock()
 		stream.Send(&v1sync.SyncStreamItem{
 			Action: &v1sync.SyncStreamItem_ReceiveOperations{
 				ReceiveOperations: &v1sync.SyncStreamItem_SyncActionReceiveOperations{
