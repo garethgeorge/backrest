@@ -1444,7 +1444,7 @@ func TestSanitizeRepoFlags(t *testing.T) {
 		{
 			name:  "mixed flags only sftp.args modified",
 			flags: []string{`--option=other=val`, `--option=sftp.args='-i "/path/key"'`},
-			want:  []string{`--option=other=val`, `--option=sftp.args=-i /path/key`},
+			want:  []string{`--option=other=val`, `--option=sftp.args='-i /path/key'`},
 		},
 	}
 
