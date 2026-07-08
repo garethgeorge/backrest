@@ -36,7 +36,6 @@
     "react-icons": "^5.5.0",
     "react-js-cron": "^5.2.0",
     "react-router": "^8.1.0",
-    "react-router-dom": "^7.18.1",
     "react-virtualized": "^9.22.6",
     "recharts": "^3.9.0"
   },

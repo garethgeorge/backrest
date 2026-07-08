@@ -1,4 +1,10 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   FiCalendar,
   FiDatabase,
@@ -66,12 +72,16 @@ import {
   Routes,
   useNavigate,
   useParams,
-  Link as RouterLink,
   useLocation,
-} from "react-router-dom";
+} from "react-router";
 import { MainContentAreaTemplate } from "../components/layout/MainContentArea";
 import { create } from "@bufbuild/protobuf";
-import { PeerState, PlanMetadata, RepoMetadata, SetRemoteClientConfigRequestSchema } from "../../gen/ts/v1sync/syncservice_pb";
+import {
+  PeerState,
+  PlanMetadata,
+  RepoMetadata,
+  SetRemoteClientConfigRequestSchema,
+} from "../../gen/ts/v1sync/syncservice_pb";
 import { useSyncStates } from "../state/peerStates";
 import * as m from "../paraglide/messages";
 import { Link } from "../components/ui/link";
@@ -145,7 +155,11 @@ const RepoViewContainer = () => {
               borderColor="blue.200"
               fontSize="sm"
               color="blue.800"
-              _dark={{ bg: "blue.950", borderColor: "blue.800", color: "blue.200" }}
+              _dark={{
+                bg: "blue.950",
+                borderColor: "blue.800",
+                color: "blue.200",
+              }}
             >
               This is a remote repo from{" "}
               <strong>{repo.originInstanceId}</strong>. Operation history only
@@ -293,11 +307,7 @@ const PeerNavItem = ({
       {name}
     </Text>
     {onEdit && (
-      <Box
-        opacity={0}
-        _groupHover={{ opacity: 1 }}
-        transition="opacity 0.2s"
-      >
+      <Box opacity={0} _groupHover={{ opacity: 1 }} transition="opacity 0.2s">
         <IconButton
           size="xs"
           variant="ghost"
@@ -471,20 +481,12 @@ const SidebarPlanItem = React.memo(
             onClick={() => onNav(planPath)}
             userSelect="none"
           >
-            <Text
-              overflow="hidden"
-              textOverflow="ellipsis"
-              whiteSpace="nowrap"
-            >
+            <Text overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
               {plan.id}
             </Text>
           </Box>
         </Tooltip>
-        <Box
-          opacity={0}
-          _groupHover={{ opacity: 1 }}
-          transition="opacity 0.2s"
-        >
+        <Box opacity={0} _groupHover={{ opacity: 1 }} transition="opacity 0.2s">
           <IconButton
             size="xs"
             variant="ghost"
@@ -545,11 +547,7 @@ const SidebarRepoItem = React.memo(
             onClick={() => onNav(repoPath)}
             userSelect="none"
           >
-            <Text
-              overflow="hidden"
-              textOverflow="ellipsis"
-              whiteSpace="nowrap"
-            >
+            <Text overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
               {repo.id}
             </Text>
             {repo.originInstanceId && (
@@ -565,11 +563,7 @@ const SidebarRepoItem = React.memo(
             )}
           </Box>
         </Tooltip>
-        <Box
-          opacity={0}
-          _groupHover={{ opacity: 1 }}
-          transition="opacity 0.2s"
-        >
+        <Box opacity={0} _groupHover={{ opacity: 1 }} transition="opacity 0.2s">
           <IconButton
             size="xs"
             variant="ghost"
@@ -600,18 +594,17 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const reposById = useMemo(() => config ? keyBy(config.repos, (r) => r.id) : {}, [config?.repos]);
+  const reposById = useMemo(
+    () => (config ? keyBy(config.repos, (r) => r.id) : {}),
+    [config?.repos],
+  );
 
   // Replicate getSidenavItems functionality with Chakra components
   if (!config) return null;
 
   const configPlans = config.plans || [];
-  const localRepos = (config.repos || []).filter(
-    (r) => !r.originInstanceId,
-  );
-  const remoteRepos = (config.repos || []).filter(
-    (r) => !!r.originInstanceId,
-  );
+  const localRepos = (config.repos || []).filter((r) => !r.originInstanceId);
+  const remoteRepos = (config.repos || []).filter((r) => !!r.originInstanceId);
 
   return (
     <Box
@@ -1060,7 +1053,9 @@ const AuthenticationBoundary = ({
         const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(
             () =>
-              reject(new Error("Request timed out, backend may be unavailable")),
+              reject(
+                new Error("Request timed out, backend may be unavailable"),
+              ),
             10000,
           ),
         );
@@ -1070,9 +1065,8 @@ const AuthenticationBoundary = ({
         ])) as Config;
         setConfig(config);
         if (shouldShowSettings(config)) {
-          const { SettingsModal } = await import(
-            "../features/settings/SettingsModal"
-          );
+          const { SettingsModal } =
+            await import("../features/settings/SettingsModal");
           showModal(<SettingsModal />);
         } else {
           showModal(null);
@@ -1134,12 +1128,10 @@ const AuthenticationBoundary = ({
   return <>{children}</>;
 };
 
-const IconForResource = React.memo(
-  ({ selector }: { selector: OpSelector }) => {
-    const status = useResourceStatus(selector);
-    return iconForStatus(status);
-  },
-);
+const IconForResource = React.memo(({ selector }: { selector: OpSelector }) => {
+  const status = useResourceStatus(selector);
+  return iconForStatus(status);
+});
 
 const iconForStatus = (status: OperationStatus) => {
   const color = colorForStatus(status);

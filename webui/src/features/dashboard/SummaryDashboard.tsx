@@ -64,7 +64,8 @@ function agoText(ms: number): string {
   const s = Math.floor((Date.now() - ms) / 1000);
   if (s < 45) return m.dashboard_time_just_now();
   if (s < 90) return m.dashboard_time_a_minute_ago();
-  if (s < 3600) return m.dashboard_time_minutes_ago({ count: Math.floor(s / 60) });
+  if (s < 3600)
+    return m.dashboard_time_minutes_ago({ count: Math.floor(s / 60) });
   if (s < 5400) return m.dashboard_time_an_hour_ago();
   if (s < 86400) {
     const h = Math.floor(s / 3600);
@@ -82,7 +83,9 @@ function untilText(ms: number): string | null {
   const s = Math.floor((ms - Date.now()) / 1000);
   if (s <= 0) return m.dashboard_time_due_now();
   if (s < 5400)
-    return m.dashboard_time_in_minutes({ count: Math.max(1, Math.round(s / 60)) });
+    return m.dashboard_time_in_minutes({
+      count: Math.max(1, Math.round(s / 60)),
+    });
   if (s < 172800)
     return m.dashboard_time_in_hours({ count: Math.round(s / 3600) });
   return m.dashboard_time_in_days({ count: Math.round(s / 86400) });
@@ -181,7 +184,9 @@ interface SummaryStatus {
   color: string;
 }
 
-function summaryStatus(summary: SummaryDashboardResponse_Summary): SummaryStatus {
+function summaryStatus(
+  summary: SummaryDashboardResponse_Summary,
+): SummaryStatus {
   const rb = summary.recentBackups;
   const latestStatus = rb?.status[0];
   const latestTs = Number(rb?.timestampMs[0] ?? 0);
@@ -326,7 +331,7 @@ function progressFromOp(op: Operation): LiveProgress | null {
 const useLiveProgress = (
   planId: string,
   running: boolean,
-  onFinished: () => void,
+  onFinished?: () => void,
 ) => {
   const [progress, setProgress] = useState<LiveProgress | null>(null);
 
@@ -350,7 +355,7 @@ const useLiveProgress = (
         if (finished) return;
         finished = true;
         setProgress(null);
-        onFinished();
+        onFinished?.();
         return;
       }
       const p = progressFromOp(op);
@@ -942,7 +947,7 @@ const MultihostSummary = ({
     return map;
   }, [config?.repos]);
 
-  const knownHostTiles: JSX.Element[] = [];
+  const knownHostTiles: React.JSX.Element[] = [];
   for (const cfgPeer of multihostConfig?.knownHosts ?? []) {
     const peerState = peerStates.get(cfgPeer.keyid);
     if (!peerState) continue;
@@ -955,7 +960,7 @@ const MultihostSummary = ({
     );
   }
 
-  const authorizedClientTiles: JSX.Element[] = [];
+  const authorizedClientTiles: React.JSX.Element[] = [];
   for (const cfgPeer of multihostConfig?.authorizedClients ?? []) {
     const peerState = peerStates.get(cfgPeer.keyid);
     if (!peerState) continue;

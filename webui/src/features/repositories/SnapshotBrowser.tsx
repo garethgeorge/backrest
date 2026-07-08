@@ -117,7 +117,6 @@ const findInTree = (
 
 export const SnapshotBrowser = ({
   repoId,
-  repoGuid,
   planId,
   snapshotId,
   snapshotOpId,
@@ -125,7 +124,6 @@ export const SnapshotBrowser = ({
   snapshotId: string;
   snapshotOpId?: bigint;
   repoId: string;
-  repoGuid: string;
   planId?: string;
 }>) => {
   const showModal = useShowModal();
@@ -174,7 +172,7 @@ export const SnapshotBrowser = ({
     // But we can trigger a load for root immediately to populate it if expanded.
     loadData("/");
     setExpandedKeys(new Set(["/"])); // Auto-expand root for better UX
-  }, [repoId, repoGuid, snapshotId]);
+  }, [repoId, snapshotId]);
 
   const loadData = async (key: string) => {
     // Check if node exists first
@@ -201,7 +199,7 @@ export const SnapshotBrowser = ({
       const resp = await backrestService.listSnapshotFiles(
         create(ListSnapshotFilesRequestSchema, {
           path,
-          repoGuid,
+          repoId,
           snapshotId,
         }),
       );

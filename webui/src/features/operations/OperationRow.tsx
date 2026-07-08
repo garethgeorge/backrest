@@ -59,6 +59,7 @@ import { OperationIcon } from "./OperationIcon";
 import { LogView } from "../../components/common/LogView";
 
 import { create } from "@bufbuild/protobuf";
+import { useReposByGuid } from "../../app/provider";
 import { OperationListView } from "./OperationListView";
 import * as m from "../../paraglide/messages";
 import { FormModal } from "../../components/common/FormModal";
@@ -107,8 +108,16 @@ export const OperationRow = ({
   showDelete?: boolean;
 }>) => {
   const showModal = useShowModal();
+  const reposByGuid = useReposByGuid();
   const displayType = getTypeForDisplay(operation);
   const setRefresh = useState(0)[1];
+
+  // The operation's repoId reflects the repo's name when the operation was
+  // recorded, which may be stale if the repo was removed and re-added under a
+  // different name. Resolve the current repoId from the stable repoGuid so that
+  // actions (e.g. browsing files, restoring) target the repo as it exists now.
+  const currentRepoId =
+    reposByGuid.get(operation.repoGuid)?.id ?? operation.repoId;
 
   useEffect(() => {
     if (operation.status === OperationStatus.STATUS_INPROGRESS) {
@@ -293,8 +302,7 @@ export const OperationRow = ({
         <SnapshotBrowser
           snapshotId={snapshotOp.snapshot!.id}
           snapshotOpId={operation.id}
-          repoId={operation.repoId}
-          repoGuid={operation.repoGuid}
+          repoId={currentRepoId}
           planId={operation.planId}
         />
       ),

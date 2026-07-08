@@ -2,7 +2,7 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { ThemeProvider } from "next-themes";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { useUserPreferences } from "../lib/userPreferences";
-import { Config } from "../../gen/ts/v1/config_pb";
+import { Config, Repo } from "../../gen/ts/v1/config_pb";
 import { backrestService } from "../api/client";
 
 // Config Context Logic
@@ -12,6 +12,24 @@ const ConfigContext = React.createContext<ConfigCtx>([null, () => {}]);
 export const useConfig = (): ConfigCtx => {
   const context = useContext(ConfigContext);
   return context;
+};
+
+// Lookup of repos by their stable GUID, derived from the config. Cached on the
+// config object's identity so it is built once per config instance and shared
+// across all consumers (and garbage-collected when the config is replaced),
+// giving an O(1) lookup instead of rescanning config.repos on every render.
+const EMPTY_REPOS_BY_GUID: Map<string, Repo> = new Map();
+const reposByGuidCache = new WeakMap<Config, Map<string, Repo>>();
+
+export const useReposByGuid = (): Map<string, Repo> => {
+  const [config] = useConfig();
+  if (!config) return EMPTY_REPOS_BY_GUID;
+  let byGuid = reposByGuidCache.get(config);
+  if (!byGuid) {
+    byGuid = new Map(config.repos.map((r) => [r.guid, r]));
+    reposByGuidCache.set(config, byGuid);
+  }
+  return byGuid;
 };
 
 export function AppProvider(props: { children: React.ReactNode }) {

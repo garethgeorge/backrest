@@ -6,7 +6,7 @@ import { Toaster } from "../components/ui/toaster";
 
 import "react-js-cron/dist/styles.css";
 
-import { HashRouter } from "react-router-dom";
+import { HashRouter } from "react-router";
 import { AppProvider } from "./provider";
 
 const Root = ({ children }: { children: React.ReactNode }) => {

@@ -16,7 +16,7 @@
           pkgs = nixpkgs.legacyPackages.${system};
           devShellPkgs = with pkgs; [
             go goreleaser nodejs_20 pnpm_9
-            protobuf buf protoc-gen-go protoc-gen-go-grpc
+            protobuf buf protoc-gen-go protoc-gen-go-grpc protoc-gen-connect-go
             gnumake git restic rclone zsh oh-my-posh
           ];
         in
@@ -47,6 +47,7 @@
               buf
               protoc-gen-go
               protoc-gen-go-grpc
+              protoc-gen-connect-go
 
               # General build tools
               gnumake

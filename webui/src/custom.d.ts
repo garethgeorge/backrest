@@ -3,6 +3,8 @@ declare module "*.svg" {
   export default content;
 }
 
+declare module "*.css";
+
 declare module "*/paraglide/messages" {
   const messages: any;
   export = messages;
