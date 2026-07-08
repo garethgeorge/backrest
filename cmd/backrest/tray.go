@@ -13,17 +13,23 @@ import (
 )
 
 func startTray() {
+	status := newTrayStatus()
+	// Observe oplog status in-process so the icon can reflect backup state.
+	onOpLogReady = status.attach
 	go runApp()
-	systray.Run(onReady, func() {})
+	systray.Run(func() { onReady(status) }, func() {})
 }
 
-func onReady() {
+func onReady(status *trayStatus) {
 	systray.SetTooltip("Backrest")
 	systray.SetIcon(icon)
 
 	mOpenUI := systray.AddMenuItem("Open WebUI", "Open the Backrest WebUI in your default browser")
 	mOpenLog := systray.AddMenuItem("Open Log Dir", "Open the Backrest log directory")
 	mQuit := systray.AddMenuItem("Quit", "Kills the backrest process and exits the tray app")
+
+	// Now that the tray is live, reflect the current backup status.
+	status.markReady()
 
 	go func() {
 		for {
