@@ -1415,3 +1415,52 @@ func getOperations(t *testing.T, log *oplog.OpLog) []*v1.Operation {
 	}
 	return operations
 }
+
+func TestSanitizeRepoFlags(t *testing.T) {
+	tests := []struct {
+		name  string
+		flags []string
+		want  []string
+	}{
+		{
+			name:  "strip double quotes from sftp.args",
+			flags: []string{`--option=sftp.args='-oBatchMode=yes -i "/root/.ssh/id_ed25519" -p 23 -oUserKnownHostsFile="/root/.ssh/known_hosts"'`},
+			want:  []string{`--option=sftp.args='-oBatchMode=yes -i /root/.ssh/id_ed25519 -p 23 -oUserKnownHostsFile=/root/.ssh/known_hosts'`},
+		},
+		{
+			name:  "strip double quotes with -i @ workaround",
+			flags: []string{`--option=sftp.args='-oBatchMode=yes -i @/root/.ssh/id_ed25519"'`},
+			want:  []string{`--option=sftp.args='-oBatchMode=yes -i /root/.ssh/id_ed25519'`},
+		},
+		{
+			name:  "no sftp.args flags unchanged",
+			flags: []string{`--option=some.other=value`},
+			want:  []string{`--option=some.other=value`},
+		},
+		{
+			name:  "sftp.args without double quotes unchanged",
+			flags: []string{`--option=sftp.args=-oBatchMode=yes`},
+			want:  []string{`--option=sftp.args=-oBatchMode=yes`},
+		},
+		{
+			name:  "mixed flags only sftp.args modified",
+			flags: []string{`--option=other=val`, `--option=sftp.args='-i "/path/key"'`},
+			want:  []string{`--option=other=val`, `--option=sftp.args=-i /path/key`},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &v1.Repo{Flags: tt.flags}
+			sanitizeRepoFlags(repo)
+			if len(repo.Flags) != len(tt.want) {
+				t.Fatalf("got %d flags, want %d", len(repo.Flags), len(tt.want))
+			}
+			for i, got := range repo.Flags {
+				if got != tt.want[i] {
+					t.Errorf("flags[%d] = %q, want %q", i, got, tt.want[i])
+				}
+			}
+		})
+	}
+}
