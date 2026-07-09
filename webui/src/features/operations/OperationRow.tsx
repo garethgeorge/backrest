@@ -32,6 +32,7 @@ import { toaster } from "../../components/ui/toaster";
 
 import {
   BackupProgressEntry,
+  BackupProgressEntrySchema,
   ResticSnapshot,
   SnapshotSummary,
 } from "../../../gen/ts/v1/restic_pb";
@@ -58,7 +59,7 @@ import {
 import { OperationIcon } from "./OperationIcon";
 import { LogView } from "../../components/common/LogView";
 
-import { create } from "@bufbuild/protobuf";
+import { create, toJsonString } from "@bufbuild/protobuf";
 import { useReposByGuid } from "../../app/provider";
 import { OperationListView } from "./OperationListView";
 import * as m from "../../paraglide/messages";
@@ -737,7 +738,14 @@ const BackupOperationStatus = ({
     );
   } else {
     console.error("GOT UNEXPECTED STATUS: ", status);
-    return <>{m.op_row_unexpected_status() + JSON.stringify(status)}</>;
+    // Serialize via the proto helper: BackupProgressEntry carries int64 fields that
+    // become BigInt, which raw JSON.stringify cannot serialize (it throws).
+    return (
+      <>
+        {m.op_row_unexpected_status() +
+          toJsonString(BackupProgressEntrySchema, status)}
+      </>
+    );
   }
 };
 

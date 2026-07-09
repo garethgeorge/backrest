@@ -282,10 +282,12 @@ func (a *summaryAcc) finalize(id string, now time.Time, allowedStaleness time.Du
 		}
 
 		// A day is overdue when, at its close (clamped to now for today), the newest
-		// OK backup is older than the allowed staleness. Days before the first OK
-		// backup ever are exempt: the scheduler anchors to the first real run. A day
-		// where a late backup finally lands renders as backed-up, so checking only the
-		// day's close loses nothing visible.
+		// OK backup is older than the allowed staleness AND the day had no OK backup
+		// of its own. Days before the first OK backup ever are exempt: the scheduler
+		// anchors to the first real run. Requiring the day itself to be empty keeps
+		// sub-daily schedules honest: an hourly plan whose last run was at noon still
+		// backed the day up even though midnight is well past the allowed gap, so the
+		// day must render as backed-up, not overdue.
 		if allowedStaleness > 0 {
 			checkpoint := day.AddDate(0, 0, 1)
 			if checkpoint.After(now) {
@@ -295,7 +297,11 @@ func (a *summaryAcc) finalize(id string, now time.Time, allowedStaleness time.Du
 				lastOkBackup = okBackupDates[nextOkBackup]
 				nextOkBackup++
 			}
-			bucket.Overdue = !lastOkBackup.IsZero() && checkpoint.Sub(lastOkBackup) > allowedStaleness
+			// lastOkBackup <= checkpoint <= day+1, so lastOkBackup.Before(day) is
+			// exactly "the newest OK backup landed on an earlier day" — this day had none.
+			bucket.Overdue = !lastOkBackup.IsZero() &&
+				lastOkBackup.Before(day) &&
+				checkpoint.Sub(lastOkBackup) > allowedStaleness
 		}
 
 		history = append(history, bucket)

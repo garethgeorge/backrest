@@ -70,6 +70,22 @@ func TestSummaryOverdueFlags(t *testing.T) {
 			expected: []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 		},
 		{
+			name:          "sub-daily schedule with a backup each day is never overdue",
+			okBackupDates: []time.Time{at(0, 2), at(1, 2), at(2, 2), at(3, 2), at(4, 2), at(5, 2), at(6, 2), at(7, 2), at(8, 2), at(9, 2)},
+			allowedGap:    75 * time.Minute, // hourly cadence * 1.25 grace
+			// Every day has an OK backup at 02:00. Its close (midnight) is ~22h past
+			// that, far beyond the gap, but a day that backed up is never overdue.
+			expected: nil,
+		},
+		{
+			name:          "sub-daily schedule flags a fully missed day",
+			okBackupDates: []time.Time{at(0, 2), at(1, 2), at(3, 2), at(4, 2), at(5, 2), at(6, 2), at(7, 2), at(8, 2), at(9, 2)}, // day2 missing
+			allowedGap:    75 * time.Minute,
+			// Day 2 has no OK backup of its own and closes far past the allowed gap;
+			// day 3 recovers with its own backup and stays backed-up.
+			expected: []int{2},
+		},
+		{
 			name:          "gap exactly at allowed staleness is not overdue",
 			okBackupDates: []time.Time{at(0, 0), at(2, 0), at(4, 0), at(6, 0), at(8, 0)},
 			allowedGap:    48 * time.Hour,
