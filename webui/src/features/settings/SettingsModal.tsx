@@ -191,13 +191,6 @@ export const SettingsModal = () => {
     try {
       const workingData = JSON.parse(JSON.stringify(formData));
 
-      if (!workingData.instance) {
-        throw new Error(m.settings_validation_instance_id_required());
-      }
-      if (!namePattern.test(workingData.instance)) {
-        throw new Error(m.settings_validation_instance_id_pattern());
-      }
-
       if (workingData.auth?.users) {
         for (const user of workingData.auth.users) {
           if (user.needsBcrypt) {

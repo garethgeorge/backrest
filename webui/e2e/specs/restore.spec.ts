@@ -131,8 +131,11 @@ test.describe('restore', () => {
     const targetInput = dialog.locator('input').first();
     await targetInput.click();
     await targetInput.fill(restoreTarget);
-    // Close any open autocomplete popup without dismissing the dialog.
-    await page.keyboard.press('Escape');
+    // Dismiss any open autocomplete popup by moving focus within the dialog
+    // rather than pressing Escape — whether Escape is consumed by the
+    // combobox or bubbles up and closes the whole dialog varies by
+    // playwright/chromium version.
+    await targetInput.blur();
     await expect(dialog).toBeVisible();
 
     // ConfirmButton: first click arms it, second click confirms.

@@ -6,26 +6,15 @@ the UI with Playwright.
 
 ## Running locally
 
+The repo's nix dev shell provides everything (pnpm, node, go, and the
+Playwright browser bundle via `PLAYWRIGHT_BROWSERS_PATH` — stock Playwright
+browser downloads do not run on NixOS):
+
 ```sh
+nix develop           # then:
 cd webui
 pnpm run e2e          # headless
-pnpm run e2e:ui       # Playwright UI mode
 ```
-
-### NixOS
-
-Stock Playwright browser downloads do not run on NixOS. Point Playwright at
-the prebuilt nix browser bundle instead (pinned `@playwright/test` matches the
-nixpkgs `playwright-driver` version):
-
-```sh
-export PLAYWRIGHT_BROWSERS_PATH=$(nix build 'nixpkgs#playwright-driver.browsers' --print-out-paths --no-link)
-export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
-cd webui && pnpm run e2e
-```
-
-On other platforms (and CI), a standard `pnpm exec playwright install chromium`
-works and no env vars are needed.
 
 ## What global setup does (e2e/global-setup.ts)
 

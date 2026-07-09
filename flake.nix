@@ -15,7 +15,7 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           devShellPkgs = with pkgs; [
-            go goreleaser nodejs_20 pnpm_9
+            go goreleaser nodejs_22 pnpm
             protobuf buf protoc-gen-go protoc-gen-go-grpc protoc-gen-connect-go
             gnumake git restic rclone zsh oh-my-posh
           ];
@@ -39,8 +39,8 @@
               goreleaser
 
               # Frontend
-              nodejs_20
-              pnpm_9
+              nodejs_22
+              pnpm
 
               # Protobuf / code generation
               protobuf
@@ -64,6 +64,13 @@
 
             SHELL = "${pkgs.zsh}/bin/zsh";
             OMP_THEME = "${pkgs.oh-my-posh}/share/oh-my-posh/themes/star.omp.json";
+
+            # Playwright browsers for webui e2e tests: stock downloaded
+            # browsers don't run on NixOS, so point Playwright at the nixpkgs
+            # bundle. Keep webui's @playwright/test pinned to
+            # ${pkgs.playwright-driver.version} (nixpkgs playwright-driver).
+            PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
+            PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
 
             shellHook = ''
               if [ -z "$IN_NIX_SHELL_ZSH" ]; then
