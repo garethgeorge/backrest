@@ -64,12 +64,11 @@ const typeName = async (
 };
 
 const selectRepo = async (user: ReturnType<typeof newUser>, repoId = "r1") => {
-  const placeholder = screen.getByText(
-    m.add_plan_modal_field_repository_select(),
-  );
-  const trigger = placeholder.closest("button");
-  expect(trigger).not.toBeNull();
-  await user.click(trigger!);
+  // The Select trigger's accessible name comes from its enclosing Field label.
+  const trigger = screen.getByRole("combobox", {
+    name: m.add_plan_modal_field_repository(),
+  });
+  await user.click(trigger);
   const option = await screen.findByRole("option", { name: repoId });
   await user.click(option);
 };

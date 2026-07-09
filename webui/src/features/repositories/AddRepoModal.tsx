@@ -128,6 +128,75 @@ interface ConfirmationState {
   onOk: () => void;
 }
 
+// parseSftpUri understands both restic sftp URI shapes:
+//   - scp-style:  sftp:[user@]host:/path            (cannot carry a port)
+//   - URL-style:  sftp://[user@]host[:port]/path
+// It returns whichever of user/host/port are present. host is "" if the URI
+// cannot be parsed.
+const parseSftpUri = (
+  uri: string,
+): { user?: string; host: string; port?: number } => {
+  let rest = uri.replace(/^sftp:/, "");
+
+  const splitUser = (
+    authority: string,
+  ): { user?: string; hostPart: string } => {
+    const at = authority.lastIndexOf("@");
+    if (at === -1) return { hostPart: authority };
+    return { user: authority.slice(0, at), hostPart: authority.slice(at + 1) };
+  };
+
+  if (rest.startsWith("//")) {
+    // URL-style: //[user@]host[:port]/path
+    rest = rest.slice(2);
+    const slash = rest.indexOf("/");
+    const authority = slash === -1 ? rest : rest.slice(0, slash);
+    const { user, hostPart } = splitUser(authority);
+    const colon = hostPart.lastIndexOf(":");
+    if (colon !== -1) {
+      const port = parseInt(hostPart.slice(colon + 1), 10);
+      return {
+        user,
+        host: hostPart.slice(0, colon),
+        port: Number.isNaN(port) ? undefined : port,
+      };
+    }
+    return { user, host: hostPart };
+  }
+
+  // scp-style: [user@]host:/path — the first ':' delimits the path, no port.
+  const colon = rest.indexOf(":");
+  const authority = colon === -1 ? rest : rest.slice(0, colon);
+  const { user, hostPart } = splitUser(authority);
+  return { user, host: hostPart };
+};
+
+// isHostKeyError detects ssh host-key verification failures in an error
+// message. restic's sftp backend forwards ssh's stderr into the error it
+// returns; ssh prints these markers when the server's host key is unknown or
+// does not match the pinned known_hosts entry. Kept in sync with the Go-side
+// markers in internal/api/backresthandler.go.
+const isHostKeyError = (message: string | undefined): boolean => {
+  if (!message) return false;
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("host key verification failed") ||
+    lower.includes("remote host identification has changed")
+  );
+};
+
+const hostKeyUntrustedContent = (
+  <>
+    The host key for this SFTP server is not known or does not match the
+    recorded key, so Backrest will not connect.
+    <br />
+    <br />
+    To proceed, manually add the correct host key to your known_hosts file, or
+    use the "Setup SSH Key" section below to generate a key and scan the host
+    key automatically.
+  </>
+);
+
 interface SftpConfigSectionProps {
   uri: string | undefined;
   identityFile: string;
@@ -165,20 +234,22 @@ const SftpConfigSection = ({
     try {
       if (!uri) return;
 
-      const authority = uri.replace("sftp:", "").split("/")[0];
-      const hostPart = authority.includes("@")
-        ? authority.split("@")[1]
-        : authority;
-      let host = hostPart;
-      let defaultPort = "22";
-      if (hostPart.includes(":")) {
-        [host, defaultPort] = hostPart.split(":");
+      const { user, host, port: uriPort } = parseSftpUri(uri);
+      if (!host) return;
+
+      // Precedence for the port used to keyscan the host: the explicit SFTP Port
+      // field wins, then a port carried in a URL-style URI, then ssh's default.
+      // When the URI supplies a port and the field is empty, prefill the field so
+      // the two stay in agreement.
+      if (uriPort != null && port == null) {
+        onChangePort(uriPort);
       }
+      const effectivePort = port ?? uriPort ?? 22;
 
       const res = await backrestService.setupSftp({
         host,
-        port: port ? port.toString() : defaultPort,
-        username: "",
+        port: effectivePort.toString(),
+        username: user ?? "",
       });
 
       onChangeIdentityFile(res.keyPath);
@@ -218,6 +289,7 @@ const SftpConfigSection = ({
                   size="sm"
                   onClick={handleGenerateKey}
                   loading={setupLoading}
+                  data-testid="add-repo-sftp-generate-key"
                 >
                   Generate Key
                 </Button>
@@ -282,6 +354,7 @@ const SftpConfigSection = ({
         helperText="Optional: Path to an SSH identity file for SFTP authentication. This path must be accessible on the machine running backrest."
       >
         <Input
+          data-testid="add-repo-sftp-identity"
           placeholder="/home/user/.ssh/id_rsa"
           value={identityFile}
           onChange={(e) => onChangeIdentityFile(e.target.value)}
@@ -293,6 +366,7 @@ const SftpConfigSection = ({
         helperText="Optional: Specify a custom port for SFTP connection. Defaults to 22."
       >
         <NumberInputField
+          data-testid="add-repo-sftp-port"
           value={port ? port.toString() : undefined}
           onValueChange={(e) => onChangePort(e.valueAsNumber)}
           min={1}
@@ -306,6 +380,7 @@ const SftpConfigSection = ({
         helperText="Optional: Path to a known_hosts file for host key verification. Populated automatically by Setup Keys."
       >
         <Input
+          data-testid="add-repo-sftp-known-hosts"
           placeholder="/home/user/.ssh/known_hosts"
           value={knownHostsPath}
           onChange={(e) => onChangeKnownHostsPath(e.target.value)}
@@ -536,23 +611,11 @@ export const AddRepoModal = ({
       try {
         await doSubmit();
       } catch (e: any) {
-        if (
-          e.message &&
-          e.message.includes("SFTP host key verification failed")
-        ) {
+        if (isHostKeyError(e.message)) {
           setConfirmation({
             open: true,
             title: "Unknown SFTP Host Key",
-            content: (
-              <>
-                The host key for this SFTP server is not known.
-                <br />
-                <br />
-                To proceed, please manually add the host key to your known_hosts
-                file, or use the "Bootstrap SSH Key" section below to generate
-                and authorize a key.
-              </>
-            ),
+            content: hostKeyUntrustedContent,
             onOk: () => {
               setConfirmation((prev) => ({ ...prev, open: false }));
             },
@@ -584,20 +647,11 @@ export const AddRepoModal = ({
 
         const response = await backrestService.checkRepoExists(req);
 
-        if (response.hostKeyUntrusted) {
+        if (response.hostKeyUntrusted || isHostKeyError(response.error)) {
           setConfirmation({
             open: true,
             title: "Unknown SFTP Host Key",
-            content: (
-              <>
-                The host key for this SFTP server is not known.
-                <br />
-                <br />
-                To proceed, please manually add the host key to your known_hosts
-                file, or use the "Bootstrap SSH Key" section below to generate
-                and authorize a key.
-              </>
-            ),
+            content: hostKeyUntrustedContent,
             onOk: () => {
               setConfirmation((prev) => ({ ...prev, open: false }));
             },

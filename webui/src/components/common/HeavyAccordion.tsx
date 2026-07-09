@@ -11,6 +11,8 @@ export interface HeavyAccordionItem {
   key: string;
   label: string;
   children: React.ReactNode;
+  /** Optional data-testid applied to this item's accordion trigger. */
+  testId?: string;
 }
 
 interface HeavyAccordionProps {
@@ -72,7 +74,7 @@ export const HeavyAccordion = ({
     >
       {items.map((item) => (
         <AccordionItem key={item.key} value={item.key} border="none">
-          <AccordionItemTrigger py={2}>
+          <AccordionItemTrigger py={2} data-testid={item.testId}>
             <Text fontSize="sm" fontWeight="medium">
               {item.label}
             </Text>

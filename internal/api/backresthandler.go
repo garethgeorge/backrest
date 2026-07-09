@@ -147,9 +147,42 @@ func (s *BackrestHandler) CheckRepoExists(ctx context.Context, req *connect.Requ
 			zap.S().Debugf("repo %q does not exist", req.Msg.Repo.Id)
 			return connect.NewResponse(&v1.CheckRepoExistsResponse{Exists: false}), nil
 		}
+		// restic's sftp backend shells out to ssh; with an unknown or mismatched
+		// host key (and BatchMode=yes) ssh prints a host-key verification failure
+		// to stderr, which surfaces inside the wrapped restic error. Report this
+		// to the UI so it can offer the host-key trust / Setup SSH Key flow instead
+		// of a generic error.
+		if isHostKeyVerificationError(err) {
+			zap.S().Debugf("repo %q host key untrusted", req.Msg.Repo.Id)
+			return connect.NewResponse(&v1.CheckRepoExistsResponse{HostKeyUntrusted: true}), nil
+		}
 		return nil, err
 	}
 	return connect.NewResponse(&v1.CheckRepoExistsResponse{Exists: true}), nil
+}
+
+// hostKeyVerificationMarkers are substrings (matched case-insensitively) that
+// OpenSSH emits to stderr when it refuses to connect because the server's host
+// key is unknown or does not match the pinned known_hosts entry. restic's sftp
+// backend forwards ssh's stderr into the error it returns.
+var hostKeyVerificationMarkers = []string{
+	"host key verification failed",
+	"remote host identification has changed",
+}
+
+// isHostKeyVerificationError reports whether err (anywhere in its chain of
+// wrapped messages) looks like an ssh host-key verification failure.
+func isHostKeyVerificationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	for _, marker := range hostKeyVerificationMarkers {
+		if strings.Contains(msg, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 // AddRepo implements POST /v1/config/repo, it includes validation that the repo can be initialized.

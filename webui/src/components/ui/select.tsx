@@ -8,17 +8,45 @@ import * as React from "react";
 interface SelectTriggerProps extends ChakraSelect.ControlProps {
   clearable?: boolean;
   children?: React.ReactNode;
+  /**
+   * Accessible name for the trigger button. Chakra v3's Select trigger sets
+   * `aria-labelledby` to a `SelectLabel` id that most call sites never render,
+   * leaving the trigger with no computed accessible name. Providing this (or a
+   * `SelectValueText` `placeholder`, from which it is auto-derived) sets a real
+   * `aria-label` so the trigger is reachable via `getByRole(..., { name })`.
+   */
+  ariaLabel?: string;
 }
+
+// Walk the trigger's children to find the placeholder of a SelectValueText so
+// the trigger can borrow it as an accessible name when none is given explicitly.
+const findPlaceholder = (children: React.ReactNode): string | undefined => {
+  let placeholder: string | undefined;
+  React.Children.forEach(children, (child) => {
+    if (placeholder !== undefined) return;
+    if (React.isValidElement(child)) {
+      const childPlaceholder = (child.props as { placeholder?: unknown })
+        ?.placeholder;
+      if (typeof childPlaceholder === "string" && childPlaceholder.length > 0) {
+        placeholder = childPlaceholder;
+      }
+    }
+  });
+  return placeholder;
+};
 
 export const SelectTrigger = React.forwardRef<
   HTMLButtonElement,
   SelectTriggerProps
 >(function SelectTrigger(props, ref) {
-  const { children, clearable, ...rest } = props;
+  const { children, clearable, ariaLabel, ...rest } = props;
+  const accessibleName = ariaLabel ?? findPlaceholder(children);
   return (
     <ChakraSelect.Control {...rest}>
       {/* @ts-ignore */}
-      <ChakraSelect.Trigger ref={ref}>{children}</ChakraSelect.Trigger>
+      <ChakraSelect.Trigger ref={ref} aria-label={accessibleName}>
+        {children}
+      </ChakraSelect.Trigger>
       {/* @ts-ignore */}
       <ChakraSelect.IndicatorGroup>
         {clearable && <SelectClearTrigger />}

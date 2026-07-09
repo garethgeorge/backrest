@@ -196,9 +196,15 @@ export const RepoView = ({
 
       <TabsRoot defaultValue="tree" lazyMount>
         <TabsList>
-          <TabsTrigger value="tree">{m.repo_tab_tree()}</TabsTrigger>
-          <TabsTrigger value="list">{m.repo_tab_list()}</TabsTrigger>
-          <TabsTrigger value="stats">{m.repo_tab_stats()}</TabsTrigger>
+          <TabsTrigger value="tree" data-testid="view-tab-tree">
+            {m.repo_tab_tree()}
+          </TabsTrigger>
+          <TabsTrigger value="list" data-testid="view-tab-list">
+            {m.repo_tab_list()}
+          </TabsTrigger>
+          <TabsTrigger value="stats" data-testid="view-tab-stats">
+            {m.repo_tab_stats()}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="tree">

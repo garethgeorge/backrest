@@ -159,7 +159,13 @@ export const HooksFormList = ({
       <MenuRoot>
         {/* @ts-ignore */}
         <MenuTrigger asChild>
-          <Button variant="outline" borderStyle="dashed" size="sm" width="full">
+          <Button
+            variant="outline"
+            borderStyle="dashed"
+            size="sm"
+            width="full"
+            data-testid="hooks-add"
+          >
             <FiPlus /> {m.add_plan_modal_field_add_hook()}
           </Button>
         </MenuTrigger>
@@ -224,6 +230,7 @@ const HookItem = ({
             colorPalette="red"
             onClick={onRemove}
             aria-label="Remove hook"
+            data-testid="hook-remove"
           >
             <FiTrash2 />
           </IconButton>
@@ -231,7 +238,7 @@ const HookItem = ({
       </Card.Header>
       <Card.Body gap={3}>
         <HookConditionsTooltip>
-          <Box width="full">
+          <Box width="full" data-testid="hook-conditions">
             <EnumSelector
               multiSelect
               options={conditionOptions}
@@ -287,6 +294,7 @@ const hookTypes: {
             value={hook.actionCommand?.command || ""}
             onChange={(e) => updateCommand(e.target.value)}
             size="sm"
+            data-testid="hook-command"
           />
           <ItemOnErrorSelector hook={hook} onChange={onChange} />
         </Stack>

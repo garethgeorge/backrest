@@ -48,6 +48,11 @@ type Orchestrator struct {
 
 	taskCancelMu sync.Mutex
 	taskCancel   map[int64]context.CancelFunc
+	// taskCancelStatus records the terminal status requested via CancelOperation
+	// for an operation that was already running (e.g. STATUS_USER_CANCELLED for a
+	// user-initiated cancel). It distinguishes deliberate cancellation from
+	// instance-shutdown context teardown when the task's error is recorded.
+	taskCancelStatus map[int64]v1.OperationStatus
 
 	// now for the purpose of testing; used by Run() to get the current time.
 	now func() time.Time
@@ -73,12 +78,13 @@ func (st stContainer) Less(other stContainer) bool {
 func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, log *oplog.OpLog, logStore *logstore.LogStore) (*Orchestrator, error) {
 	// create the orchestrator.
 	o := &Orchestrator{
-		OpLog:      log,
-		configMgr:  cfgMgr,
-		taskQueue:  queue.NewTimePriorityQueue[stContainer](),
-		logStore:   logStore,
-		taskCancel: make(map[int64]context.CancelFunc),
-		resticBin:  resticBin,
+		OpLog:            log,
+		configMgr:        cfgMgr,
+		taskQueue:        queue.NewTimePriorityQueue[stContainer](),
+		logStore:         logStore,
+		taskCancel:       make(map[int64]context.CancelFunc),
+		taskCancelStatus: make(map[int64]v1.OperationStatus),
+		resticBin:        resticBin,
 	}
 
 	// verify the operation log and mark any incomplete operations as failed.
@@ -366,8 +372,13 @@ func (o *Orchestrator) CancelOperation(operationId int64, status v1.OperationSta
 		return t.Op != nil && t.Op.GetId() == operationId
 	})
 	if idx == -1 {
+		// The operation is not queued; if it is currently running, cancel its
+		// context. Record the requested terminal status before cancelling so that
+		// the completion path (updateOperationStatus) can distinguish this
+		// deliberate cancellation from an instance-shutdown context teardown.
 		o.taskCancelMu.Lock()
 		if cancel, ok := o.taskCancel[operationId]; ok {
+			o.taskCancelStatus[operationId] = status
 			cancel()
 		}
 		o.taskCancelMu.Unlock()
@@ -620,6 +631,7 @@ func (o *Orchestrator) RunTask(parentCtx context.Context, st tasks.ScheduledTask
 		if op != nil {
 			o.taskCancelMu.Lock()
 			delete(o.taskCancel, op.Id)
+			delete(o.taskCancelStatus, op.Id)
 			o.taskCancelMu.Unlock()
 		}
 		if logWriter != nil {
@@ -658,9 +670,24 @@ func (o *Orchestrator) executeTask(ctx context.Context, st tasks.ScheduledTask) 
 	return err
 }
 
+// getCancelRequestedStatus returns the terminal status requested by an explicit
+// CancelOperation call targeting a running operation, if one was made.
+func (o *Orchestrator) getCancelRequestedStatus(opId int64) (v1.OperationStatus, bool) {
+	o.taskCancelMu.Lock()
+	defer o.taskCancelMu.Unlock()
+	status, ok := o.taskCancelStatus[opId]
+	return status, ok
+}
+
 // updateOperationStatus updates the operation's status based on the task execution result
 func (o *Orchestrator) updateOperationStatus(ctx context.Context, op *v1.Operation, err error) {
 	if err != nil {
+		// Check whether this operation's context was cancelled by an explicit
+		// CancelOperation request (e.g. a user hitting cancel in the UI) rather
+		// than by instance shutdown.
+		cancelStatus, cancelRequested := o.getCancelRequestedStatus(op.Id)
+		cancelRequested = cancelRequested && ctx.Err() != nil
+
 		// Handle different error types
 		var taskCancelledError *tasks.TaskCancelledError
 		var taskRetryError *tasks.TaskRetryError
@@ -668,6 +695,8 @@ func (o *Orchestrator) updateOperationStatus(ctx context.Context, op *v1.Operati
 			op.Status = v1.OperationStatus_STATUS_USER_CANCELLED
 		} else if errors.As(err, &taskRetryError) {
 			op.Status = v1.OperationStatus_STATUS_PENDING
+		} else if cancelRequested {
+			op.Status = cancelStatus
 		} else {
 			op.Status = v1.OperationStatus_STATUS_ERROR
 		}
@@ -679,7 +708,9 @@ func (o *Orchestrator) updateOperationStatus(ctx context.Context, op *v1.Operati
 			op.DisplayMessage = err.Error()
 		}
 
-		if ctx.Err() != nil {
+		if cancelRequested {
+			op.DisplayMessage += "\n\nnote: task was cancelled by user request"
+		} else if ctx.Err() != nil {
 			op.DisplayMessage += "\n\nnote: task was interrupted by context cancellation or instance shutdown"
 		}
 	}

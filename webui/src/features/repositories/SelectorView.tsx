@@ -29,8 +29,12 @@ export const SelectorView = ({
 
       <TabsRoot defaultValue="tree" lazyMount unmountOnExit>
         <TabsList>
-          <TabsTrigger value="tree">Tree View</TabsTrigger>
-          <TabsTrigger value="list">List View</TabsTrigger>
+          <TabsTrigger value="tree" data-testid="view-tab-tree">
+            Tree View
+          </TabsTrigger>
+          <TabsTrigger value="list" data-testid="view-tab-list">
+            List View
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="tree">

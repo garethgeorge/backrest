@@ -221,6 +221,7 @@ export const OperationRow = ({
         onConfirm={doCancel}
         confirmText={m.op_row_confirm_cancel()}
         color="fg.error"
+        data-testid="operation-cancel"
       >
         {m.op_row_cancel_op()}
       </ConfirmMenuItem>,
@@ -241,8 +242,12 @@ export const OperationRow = ({
 
   let displayMessage = operation.displayMessage;
 
-  const bodyItems: { key: string; label: string; children: React.ReactNode }[] =
-    [];
+  const bodyItems: {
+    key: string;
+    label: string;
+    children: React.ReactNode;
+    testId?: string;
+  }[] = [];
   const expandedBodyItems: string[] = [];
 
   if (operation.op.case === "operationBackup") {
@@ -385,6 +390,7 @@ export const OperationRow = ({
     bodyItems.push({
       key: "hookOperations",
       label: m.op_row_hooks_triggered(),
+      testId: "hooks-triggered",
       children: (
         <OperationListView
           useOperations={hookOperations}
@@ -424,7 +430,12 @@ export const OperationRow = ({
           {menuItems.length > 0 && (
             <MenuRoot>
               <MenuTrigger asChild>
-                <IconButton variant="ghost" size="sm" aria-label="Actions">
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Actions"
+                  data-testid="operation-row-actions"
+                >
                   <FiMoreVertical />
                 </IconButton>
               </MenuTrigger>

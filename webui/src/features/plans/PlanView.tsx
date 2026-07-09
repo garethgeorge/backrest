@@ -155,8 +155,12 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
 
       <TabsRoot defaultValue="tree" lazyMount>
         <TabsList>
-          <TabsTrigger value="tree">{m.repo_tab_tree()}</TabsTrigger>
-          <TabsTrigger value="list">{m.repo_tab_list()}</TabsTrigger>
+          <TabsTrigger value="tree" data-testid="view-tab-tree">
+            {m.repo_tab_tree()}
+          </TabsTrigger>
+          <TabsTrigger value="list" data-testid="view-tab-list">
+            {m.repo_tab_list()}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="tree">

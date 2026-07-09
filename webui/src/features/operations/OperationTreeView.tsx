@@ -490,7 +490,7 @@ const DisplayOperationTree = React.memo(
             <TreeViewBranchContent />
           </TreeViewBranchControl>
         ) : (
-          <TreeViewItem>
+          <TreeViewItem data-testid="tree-node">
             {/* Spacer to match chevron width */}
             <Box w="20px" flexShrink={0} />
             <Box
@@ -585,6 +585,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
           confirmTimeout={2000}
           onClickAsync={doDeleteSnapshot}
           colorPalette="red"
+          data-testid="forget-snapshot"
         >
           Forget (Destructive)
         </ConfirmButton>

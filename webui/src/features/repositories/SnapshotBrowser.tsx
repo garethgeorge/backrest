@@ -404,7 +404,11 @@ const FileNode = ({
             </MenuItem>
             {snapshotOpId ? (
               // @ts-ignore
-              <MenuItem value="download" onClick={doDownload}>
+              <MenuItem
+                value="download"
+                onClick={doDownload}
+                data-testid="snapshot-download"
+              >
                 <FiDownload />
                 {/* @ts-ignore */}
                 <MenuItemText>Download</MenuItemText>

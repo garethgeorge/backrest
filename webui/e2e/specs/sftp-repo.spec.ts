@@ -78,20 +78,14 @@ const test = harnessTest.extend<SftpFixtures>({
 });
 
 /**
- * The SFTP section's inputs carry no data-testids; locate them through their
- * Field labels/placeholders (Field.Root wraps label + control in one div).
- * Wanted testids: add-repo-sftp-port, add-repo-sftp-identity,
- * add-repo-sftp-known-hosts, add-repo-sftp-generate-key.
+ * The SFTP section's inputs carry data-testids (added in AddRepoModal.tsx).
+ * The port field is a Chakra NumberInput whose testid lands on the wrapping
+ * Root element, so reach through to the nested <input>.
  */
-function sftpPortInput(dialog: Locator): Locator {
-  return dialog
-    .locator('label', { hasText: 'SFTP Port' })
-    .locator('xpath=ancestor::div[1]')
-    .locator('input');
-}
-const identityInputOf = (dialog: Locator) => dialog.getByPlaceholder('/home/user/.ssh/id_rsa');
-const knownHostsInputOf = (dialog: Locator) =>
-  dialog.getByPlaceholder('/home/user/.ssh/known_hosts');
+const sftpPortInput = (dialog: Locator): Locator =>
+  dialog.getByTestId('add-repo-sftp-port').locator('input');
+const identityInputOf = (dialog: Locator) => dialog.getByTestId('add-repo-sftp-identity');
+const knownHostsInputOf = (dialog: Locator) => dialog.getByTestId('add-repo-sftp-known-hosts');
 
 test.describe('sftp-backed repository', () => {
   test('adds an sftp repo through the UI (Setup SSH Key flow) and backs up to it', async ({
@@ -126,7 +120,7 @@ test.describe('sftp-backed repository', () => {
     // <dataDir>/.backrest-ssh/ and ssh-keyscans the host key into
     // <dataDir>/.backrest-ssh/known_hosts, then fills both path fields.
     await dialog.getByText('Setup SSH Key (Optional)').click();
-    await dialog.getByRole('button', { name: 'Generate Key' }).click();
+    await dialog.getByTestId('add-repo-sftp-generate-key').click();
 
     await expect(dialog.getByText('Key Generated Successfully!')).toBeVisible({
       timeout: 15_000,
@@ -236,7 +230,7 @@ test.describe('sftp-backed repository', () => {
     await expect(page.getByTestId('sidebar-item-repo-sftp-bad')).toHaveCount(0);
   });
 
-  test('wrong host key: Test Configuration surfaces an error and the dialog stays open', async ({
+  test('wrong host key: Test Configuration surfaces the friendly host-key flow, not a generic error', async ({
     page,
     backrest,
     sftp,
@@ -269,11 +263,55 @@ test.describe('sftp-backed repository', () => {
 
     await dialog.getByTestId('add-repo-test-config').click();
 
-    await expect(page.getByText(/Check error/).first()).toBeVisible({ timeout: 45_000 });
-    await expect(dialog).toBeVisible();
+    // The backend now recognizes the ssh host-key verification failure and the
+    // UI raises the friendly "Unknown SFTP Host Key" confirmation instead of a
+    // generic "Check error" toast.
+    await expect(page.getByText('Unknown SFTP Host Key')).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByText(/Check error/)).toHaveCount(0);
     await expect(page.getByTestId('sidebar-item-repo-sftp-badkey')).toHaveCount(0);
 
     // Nothing was created on the server side.
     await expect(fs.stat(repoDir)).rejects.toThrow();
+  });
+
+  test('URL-style sftp URI: Setup SSH Key parses host/port and prefills the port field', async ({
+    page,
+    sftp,
+    sftpBackrest: backrest,
+  }) => {
+    await seedInstance(backrest);
+
+    // URL-style restic form carries the port in the authority. The modal's
+    // Setup SSH Key helper must parse host+port out of it (previously it parsed
+    // an empty host for this shape) and keyscan the right endpoint.
+    const repoDir = path.join(sftp.reposDir, 'repo-urlstyle');
+    const uri = `sftp://${sftp.user}@${sftp.host}:${sftp.port}${repoDir}`;
+
+    await page.goto(backrest.url);
+    await page.getByTestId('sidebar-add-repo').click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    await dialog.getByTestId('add-repo-name').fill('sftp-urlstyle');
+    await dialog.getByTestId('add-repo-uri').fill(uri);
+    await dialog.getByTestId('add-repo-name').click();
+    await dialog.getByTestId('add-repo-password').fill(PASSWORD);
+
+    // Deliberately do NOT set the SFTP Port field: the port must be parsed from
+    // the URL-style URI and prefilled by the helper.
+    await dialog.getByText('Setup SSH Key (Optional)').click();
+    await dialog.getByTestId('add-repo-sftp-generate-key').click();
+
+    await expect(dialog.getByText('Key Generated Successfully!')).toBeVisible({
+      timeout: 15_000,
+    });
+    // A successful keyscan (no warning box) proves the parsed host+port were
+    // correct — an empty host would have failed the scan.
+    await expect(dialog.getByText('Host key scan failed')).toHaveCount(0);
+
+    // The port carried by the URL prefilled the SFTP Port field.
+    await expect(sftpPortInput(dialog)).toHaveValue(String(sftp.port));
+    await expect(identityInputOf(dialog)).toHaveValue(/\.backrest-ssh[\\/]id_ed25519_/);
+    await expect(knownHostsInputOf(dialog)).toHaveValue(/\.backrest-ssh[\\/]known_hosts$/);
   });
 });

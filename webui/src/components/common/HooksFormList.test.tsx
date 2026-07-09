@@ -84,14 +84,13 @@ describe("HooksFormList", () => {
     );
     // Chakra's Select trigger relies on zag.js pointer-capture logic that the
     // default userEvent pointer-events check rejects in jsdom; disable it for
-    // this interaction (mirrors AddPlanModal.test.tsx's newUser()). The
-    // trigger's aria-labelledby points at an unrendered SelectLabel id, so
-    // its accessible name resolves empty despite showing placeholder text -
-    // locate it by that visible text instead of by role/name.
+    // this interaction (mirrors AddPlanModal.test.tsx's newUser()). The trigger
+    // gets a real accessible name (auto-derived from its placeholder by
+    // SelectTrigger), so locate it by role/name.
     const user = userEvent.setup({ pointerEventsCheck: 0 });
-    const conditionsTrigger = screen
-      .getByText(m.repo_hooks_command_runs_when())
-      .closest("button")!;
+    const conditionsTrigger = screen.getByRole("combobox", {
+      name: m.repo_hooks_command_runs_when(),
+    });
     await user.click(conditionsTrigger);
 
     // Each option's accessible name is its enum label plus description text

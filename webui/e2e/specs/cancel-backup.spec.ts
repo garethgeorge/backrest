@@ -13,14 +13,17 @@ import { backrestClient, seedInstance, seedRepo } from '../harness/seed';
  * disabled), lays down a large incompressible dataset so the backup runs for
  * a long time, triggers "Backup Now", cancels the in-progress Backup
  * operation-row through its row menu, and asserts the row reaches the
- * terminal status backrest actually records for a cancelled running backup.
+ * terminal status backrest records for a cancelled running backup.
  *
  * Terminal-status note (from internal/orchestrator/orchestrator.go): the
- * Cancel RPC uses STATUS_USER_CANCELLED ("cancelled") only for operations
- * still *queued*. For an operation already running it cancels the task's
- * context instead, restic is killed, the task returns a plain error, and
- * updateOperationStatus records STATUS_ERROR ("error") with a display
- * message noting "task was interrupted by context cancellation".
+ * Cancel RPC applies STATUS_USER_CANCELLED ("cancelled") directly to
+ * operations still *queued*. For an operation already running it records the
+ * requested status in taskCancelStatus and cancels the task's context; restic
+ * is killed, the task returns an error, and updateOperationStatus sees the
+ * user-cancel marker and records STATUS_USER_CANCELLED ("cancelled") with a
+ * display message noting "task was cancelled by user request". Only
+ * shutdown-style context cancellations (no user cancel request) still record
+ * STATUS_ERROR.
  */
 
 // Incompressible dataset: 8 x 40 MiB = 320 MiB of crypto-random bytes.
@@ -110,36 +113,37 @@ test.describe('cancel a running backup', () => {
     await page.getByRole('menuitem', { name: 'Confirm Cancel?' }).click();
 
     // 5. Without reloading: the row leaves "in progress" and reaches the
-    //    real terminal status for a cancelled running backup — "error"
-    //    (restic is killed via context cancellation; see header comment).
+    //    terminal status for a user-cancelled running backup — "cancelled"
+    //    (STATUS_USER_CANCELLED; see header comment).
     await expect(backupRow).not.toHaveAttribute('data-status', 'in progress', {
       timeout: 120_000,
     });
-    await expect(backupRow).toHaveAttribute('data-status', 'error');
+    await expect(backupRow).toHaveAttribute('data-status', 'cancelled');
     console.log(
       `cancelled: terminal status reached ${Date.now() - inProgressAt}ms after in-progress`,
     );
 
-    // The recorded display message attributes the failure to cancellation.
-    await expect(backupRow).toContainText('context cancellation');
+    // The recorded display message attributes the interruption to the user's
+    // cancel request.
+    await expect(backupRow).toContainText('cancelled by user request');
 
     // No snapshot success evidence for this run: no indexed-snapshot
     // operation row appears, and the backup row itself never shows success.
     await expect(
       page.locator('[data-testid="operation-row"][data-op-type="Snapshot"]'),
     ).toHaveCount(0);
-    await expect(backupRow).toHaveAttribute('data-status', 'error');
+    await expect(backupRow).toHaveAttribute('data-status', 'cancelled');
 
     // 6. Durability + UI sanity: reload the page; the plan view still
-    //    renders and the cancelled (errored) backup row persists.
+    //    renders and the cancelled backup row persists.
     await page.reload();
     await expect(page.getByTestId('plan-backup-now')).toBeVisible();
     await page.getByRole('tab', { name: 'List View' }).click();
 
     const rowAfterReload = page.locator('[data-testid="operation-row"][data-op-type="Backup"]');
     await expect(rowAfterReload).toHaveCount(1, { timeout: 30_000 });
-    await expect(rowAfterReload).toHaveAttribute('data-status', 'error');
-    await expect(rowAfterReload).toContainText('context cancellation');
+    await expect(rowAfterReload).toHaveAttribute('data-status', 'cancelled');
+    await expect(rowAfterReload).toContainText('cancelled by user request');
     await expect(
       page.locator('[data-testid="operation-row"][data-op-type="Snapshot"]'),
     ).toHaveCount(0);

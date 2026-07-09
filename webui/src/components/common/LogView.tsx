@@ -73,6 +73,7 @@ export const LogView = ({ logref }: { logref: string }) => {
 
   return (
     <Box
+      data-testid="log-view"
       overflowX="scroll"
       width="100%"
       bg="bg.muted"

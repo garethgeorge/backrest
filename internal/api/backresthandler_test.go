@@ -1006,16 +1006,126 @@ func TestCancelBackup(t *testing.T) {
 		t.Errorf("Cancel() error = %v, wantErr nil", err)
 	}
 
+	// A user-initiated cancel of a running operation must be recorded as
+	// STATUS_USER_CANCELLED (not STATUS_ERROR) with a display message noting
+	// the cancellation was requested by the user.
 	if err := testutil.Retry(t, ctx, func() error {
 		if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
 			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
-			return op.Status == v1.OperationStatus_STATUS_ERROR && ok
+			return op.Status == v1.OperationStatus_STATUS_USER_CANCELLED && ok &&
+				strings.Contains(op.DisplayMessage, "cancelled by user request")
 		}) == -1 {
-			return errors.New("backup operation not found")
+			return errors.New("user-cancelled backup operation not found")
 		}
 		return nil
 	}); err != nil {
-		t.Fatalf("Couldn't find failed canceled backup operation in oplog")
+		t.Fatalf("Couldn't find user-cancelled backup operation in oplog")
+	}
+}
+
+func TestShutdownCancellationRecordsError(t *testing.T) {
+	t.Parallel()
+
+	// a hook is used to make the backup operation wait long enough to be interrupted
+	hookCmd := "sleep 2"
+	if runtime.GOOS == "windows" {
+		hookCmd = "Start-Sleep -Seconds 2"
+	}
+
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{
+				Id:       "local",
+				Guid:     cryptoutil.MustRandomID(cryptoutil.DefaultIDBits),
+				Uri:      t.TempDir(),
+				Password: "test",
+				Flags:    []string{"--no-cache"},
+			},
+		},
+		Plans: []*v1.Plan{
+			{
+				Id:   "test",
+				Repo: "local",
+				Paths: []string{
+					t.TempDir(),
+				},
+				Schedule: &v1.Schedule{
+					Schedule: &v1.Schedule_Disabled{Disabled: true},
+				},
+				Retention: &v1.RetentionPolicy{
+					Policy: &v1.RetentionPolicy_PolicyKeepLastN{
+						PolicyKeepLastN: 1,
+					},
+				},
+				Hooks: []*v1.Hook{
+					{
+						Conditions: []v1.Hook_Condition{
+							v1.Hook_CONDITION_SNAPSHOT_START,
+						},
+						Action: &v1.Hook_ActionCommand{
+							ActionCommand: &v1.Hook_Command{
+								Command: hookCmd,
+							},
+						},
+					},
+				},
+			},
+		},
+	}))
+
+	ctx, cancel := testutil.WithDeadlineFromTest(t, context.Background())
+	defer cancel()
+
+	orchCtx, orchCancel := context.WithCancel(ctx)
+	defer orchCancel()
+	orchDone := make(chan struct{})
+	go func() {
+		sut.orch.Run(orchCtx)
+		close(orchDone)
+	}()
+
+	go func() {
+		backupReq := &v1.BackupRequest{Value: "test"}
+		_, err := sut.handler.Backup(ctx, connect.NewRequest(backupReq))
+		if err != nil {
+			t.Logf("Backup() error = %v", err)
+		}
+	}()
+
+	// Wait for the backup operation to be running before simulating a shutdown.
+	if err := testutil.Retry(t, ctx, func() error {
+		operations := getOperations(t, sut.oplog)
+		for _, op := range operations {
+			if op.GetOperationBackup() != nil && op.Status == v1.OperationStatus_STATUS_INPROGRESS {
+				return nil
+			}
+		}
+		return errors.New("backup operation not found")
+	}); err != nil {
+		t.Fatalf("Couldn't find backup operation in oplog")
+	}
+
+	// Cancel the orchestrator's context (shutdown-style cancellation, no user
+	// cancel request for the operation).
+	orchCancel()
+	<-orchDone
+
+	// A shutdown-style context cancellation must keep the existing semantics:
+	// the operation is recorded as STATUS_ERROR with the interruption note.
+	if err := testutil.Retry(t, ctx, func() error {
+		if slices.IndexFunc(getOperations(t, sut.oplog), func(op *v1.Operation) bool {
+			_, ok := op.GetOp().(*v1.Operation_OperationBackup)
+			return op.Status == v1.OperationStatus_STATUS_ERROR && ok &&
+				strings.Contains(op.DisplayMessage, "interrupted by context cancellation or instance shutdown")
+		}) == -1 {
+			return errors.New("interrupted backup operation not found")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("Couldn't find interrupted backup operation in oplog")
 	}
 }
 

@@ -22,6 +22,12 @@ export interface EnumSelectorProps<T extends string> {
   multiSelect?: boolean;
   placeholder?: string;
   size?: "xs" | "sm" | "md" | "lg";
+  /**
+   * Accessible name for the trigger. Defaults to the `placeholder` (auto-derived
+   * by SelectTrigger); provide this to override when the placeholder is not a
+   * good label.
+   */
+  ariaLabel?: string;
 }
 
 export const EnumSelector = <T extends string>({
@@ -31,6 +37,7 @@ export const EnumSelector = <T extends string>({
   multiSelect = false,
   placeholder = "Select...",
   size = "sm",
+  ariaLabel,
 }: EnumSelectorProps<T>) => {
   const collection = createListCollection({
     items: options.map((opt) => ({
@@ -59,7 +66,7 @@ export const EnumSelector = <T extends string>({
       size={size}
     >
       <SelectHiddenSelect />
-      <SelectTrigger>
+      <SelectTrigger ariaLabel={ariaLabel}>
         <SelectValueText placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent zIndex={2000}>

@@ -55,36 +55,58 @@ pnpm run e2e          # headless
   entries), not toasts — toasts are transient and flaky.
 - Modals render in portals; scope queries with `page.getByRole("dialog")`.
 - The SPA uses a HashRouter: deep links look like `${backrest.url}/#/plan/my-plan`.
+- If you navigate to a hash route on a page that has **already loaded once**,
+  and the route depends on state seeded through the API since that load (e.g.
+  a plan added via `seedPlan` after an earlier `page.goto` in the same test),
+  a plain `page.goto` is a same-document navigation and the SPA keeps its
+  stale cached config, rendering a "not found" state. Use
+  `gotoFresh(page, backrest, hashPath)` from `../harness/fixtures` instead —
+  it navigates to the hash URL and forces a real reload so config is
+  re-fetched. Not needed for a test's first navigation.
 - English strings live in `webui/messages/en.json`; the config forces
   `locale: "en-US"`.
 
 ### data-testid inventory
 
-| testid                                               | where                                                                                                          |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `settings-instance-id`                               | Settings modal: instance id input                                                                              |
-| `settings-disable-auth`                              | Settings modal: disable-auth toggle (clickable label)                                                          |
-| `settings-submit`                                    | Settings modal: save button                                                                                    |
-| `add-repo-name`                                      | Add repo modal: name input                                                                                     |
-| `add-repo-uri`                                       | Add repo modal: URI input                                                                                      |
-| `add-repo-password`                                  | Add repo modal: password input                                                                                 |
-| `add-repo-test-config`                               | Add repo modal: "Test configuration" button                                                                    |
-| `add-repo-submit`                                    | Add repo modal: submit button                                                                                  |
-| `add-plan-name`                                      | Add plan modal: name input                                                                                     |
-| `add-plan-repo-select`                               | Add plan modal: repository select trigger                                                                      |
-| `add-plan-path`                                      | Add plan modal: paths list container                                                                           |
-| `add-plan-path-input`                                | Add plan modal: each path input (repeats; use `.nth()`/`.last()`)                                              |
-| `add-plan-path-add`                                  | Add plan modal: "add path" button                                                                              |
-| `add-plan-submit`                                    | Add plan modal: submit button                                                                                  |
-| `sidebar-add-plan`                                   | Sidebar: "Add plan" button                                                                                     |
-| `sidebar-add-repo`                                   | Sidebar: "Add repo" button                                                                                     |
-| `sidebar-item-plan-${id}`                            | Sidebar: plan row                                                                                              |
-| `sidebar-item-repo-${id}`                            | Sidebar: repo row                                                                                              |
-| `plan-backup-now`                                    | Plan view: "Backup now" button                                                                                 |
-| `operation-row`                                      | Operation list/tree rows; carries `data-op-type` (e.g. "Backup") and `data-status` (e.g. "success") attributes |
-| `login-username` / `login-password` / `login-submit` | Login modal                                                                                                    |
-| `snapshot-browser-entry`                             | Snapshot browser: file/dir row                                                                                 |
-| `snapshot-restore`                                   | Snapshot browser: "Restore to path" menu item                                                                  |
+| testid                                               | where                                                                                                           |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `settings-instance-id`                               | Settings modal: instance id input                                                                               |
+| `settings-disable-auth`                              | Settings modal: disable-auth toggle (clickable label)                                                           |
+| `settings-submit`                                    | Settings modal: save button                                                                                     |
+| `add-repo-name`                                      | Add repo modal: name input                                                                                      |
+| `add-repo-uri`                                       | Add repo modal: URI input                                                                                       |
+| `add-repo-password`                                  | Add repo modal: password input                                                                                  |
+| `add-repo-test-config`                               | Add repo modal: "Test configuration" button                                                                     |
+| `add-repo-submit`                                    | Add repo modal: submit button                                                                                   |
+| `add-plan-name`                                      | Add plan modal: name input                                                                                      |
+| `add-plan-repo-select`                               | Add plan modal: repository select trigger                                                                       |
+| `add-plan-path`                                      | Add plan modal: paths list container                                                                            |
+| `add-plan-path-input`                                | Add plan modal: each path input (repeats; use `.nth()`/`.last()`)                                               |
+| `add-plan-path-add`                                  | Add plan modal: "add path" button                                                                               |
+| `add-plan-submit`                                    | Add plan modal: submit button                                                                                   |
+| `sidebar-add-plan`                                   | Sidebar: "Add plan" button                                                                                      |
+| `sidebar-add-repo`                                   | Sidebar: "Add repo" button                                                                                      |
+| `sidebar-item-plan-${id}`                            | Sidebar: plan row                                                                                               |
+| `sidebar-item-repo-${id}`                            | Sidebar: repo row                                                                                               |
+| `plan-backup-now`                                    | Plan view: "Backup now" button                                                                                  |
+| `operation-row`                                      | Operation list/tree rows; carries `data-op-type` (e.g. "Backup") and `data-status` (e.g. "success") attributes  |
+| `login-username` / `login-password` / `login-submit` | Login modal                                                                                                     |
+| `snapshot-browser-entry`                             | Snapshot browser: file/dir row                                                                                  |
+| `snapshot-restore`                                   | Snapshot browser: "Restore to path" menu item                                                                   |
+| `snapshot-download`                                  | Snapshot browser: "Download" menu item                                                                          |
+| `operation-row-actions`                              | Operation row: actions menu trigger (`IconButton`, "Actions")                                                   |
+| `operation-cancel`                                   | Operation row: "Cancel Operation" menu item (two-click confirm; same element both states)                       |
+| `hooks-triggered`                                    | Operation row: "Hooks Triggered" accordion trigger                                                              |
+| `log-view`                                           | `LogView`'s outermost container (log output box)                                                                |
+| `tree-node`                                          | Operation tree view: a leaf item (backup/snapshot/etc.); branch (month/day/plan grouping) nodes do not carry it |
+| `forget-snapshot`                                    | Operation tree view details panel: "Forget (Destructive)" button (two-click confirm; same element both states)  |
+| `view-tab-tree`                                      | Plan/repo/summary view: "Tree View" tab trigger                                                                 |
+| `view-tab-list`                                      | Plan/repo/summary view: "List View" tab trigger                                                                 |
+| `view-tab-stats`                                     | Repo view only: "Stats" tab trigger                                                                             |
+| `hooks-add`                                          | `HooksFormList`: "Add Hook" button (opens the hook-type menu)                                                   |
+| `hook-command`                                       | `HooksFormList`: command hook's script `Textarea`                                                               |
+| `hook-conditions`                                    | `HooksFormList`: conditions select trigger (wrapping `Box`, repeats per hook)                                   |
+| `hook-remove`                                        | `HooksFormList`: remove-hook `IconButton` (repeats per hook; use `.nth()`/`.last()`)                            |
 
 `data-op-type` / `data-status` values come from the UI's display helpers
 (`displayTypeToString` / `nameForStatus`) and are the (en-US) display strings:
