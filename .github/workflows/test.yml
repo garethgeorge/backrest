@@ -73,6 +73,9 @@ jobs:
 
   test-e2e-web:
     runs-on: ubuntu-latest
+    env:
+      # Not RCLONE_*: rclone reads RCLONE_VERSION as its --version flag.
+      E2E_RCLONE_VERSION: v1.69.1
     steps:
       - uses: actions/checkout@v4
 
@@ -120,6 +123,27 @@ jobs:
 
       - name: Install playwright chromium
         run: cd webui && pnpm exec playwright install --with-deps chromium
+
+      # restic's rclone backend spawns the `rclone` binary; the rclone-repo
+      # e2e spec skips itself if rclone is absent, so provision it for coverage.
+      - name: Cache rclone
+        id: cache-rclone
+        uses: actions/cache@v4
+        with:
+          path: webui/e2e/.cache/rclone-bin
+          key: rclone-${{ env.E2E_RCLONE_VERSION }}
+
+      - name: Install rclone
+        run: |
+          dest="$PWD/webui/e2e/.cache/rclone-bin"
+          if [ ! -x "$dest/rclone" ]; then
+            mkdir -p "$dest"
+            zip="rclone-${E2E_RCLONE_VERSION}-linux-amd64"
+            curl -fsSL "https://downloads.rclone.org/${E2E_RCLONE_VERSION}/${zip}.zip" -o /tmp/rclone.zip
+            unzip -j -o /tmp/rclone.zip "${zip}/rclone" -d "$dest"
+            chmod +x "$dest/rclone"
+          fi
+          echo "$dest" >> "$GITHUB_PATH"
 
       - name: Run e2e tests
         run: |

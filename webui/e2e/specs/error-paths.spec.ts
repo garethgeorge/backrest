@@ -36,8 +36,10 @@ test.describe('error paths', () => {
 
     await dialog.getByTestId('add-repo-name').fill('bad-pw');
     await dialog.getByTestId('add-repo-uri').fill(backrest.repoPath('existing-repo'));
-    // Close the URI autocomplete popover so it doesn't overlap other fields.
-    await page.keyboard.press('Escape');
+    // Dismiss the URI autocomplete popover by refocusing the name field. Do
+    // NOT press Escape: when the popover has no suggestions and never opened,
+    // Escape closes the whole dialog instead.
+    await dialog.getByTestId('add-repo-name').click();
     await dialog.getByTestId('add-repo-password').fill('totally-wrong-password');
 
     await dialog.getByTestId('add-repo-submit').click();

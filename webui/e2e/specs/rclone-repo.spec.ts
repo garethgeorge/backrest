@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import { constants as fsConstants } from 'node:fs';
 import * as path from 'node:path';
 import { create } from '@bufbuild/protobuf';
 import { test, expect } from '../harness/fixtures';
@@ -59,11 +60,32 @@ async function runBackupViaApi(
   throw new Error(`backup for plan ${planId} did not succeed within ${timeoutMs}ms`);
 }
 
+/**
+ * True if an `rclone` executable is resolvable on PATH. restic's rclone backend
+ * shells out to it, so without it this whole spec cannot exercise anything; we
+ * skip rather than fail on hosts that don't provide it (CI installs it; the nix
+ * dev shell provides it).
+ */
+async function rcloneAvailable(): Promise<boolean> {
+  const dirs = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean);
+  for (const dir of dirs) {
+    try {
+      await fs.access(path.join(dir, 'rclone'), fsConstants.X_OK);
+      return true;
+    } catch {
+      // keep looking
+    }
+  }
+  return false;
+}
+
 test.describe('rclone-backed repo', () => {
   test('adds an rclone repo through the UI, backs up, and is usable end-to-end', async ({
     page,
     backrest,
   }) => {
+    test.skip(!(await rcloneAvailable()), 'rclone not found on PATH');
+
     // rclone init + test + backup each spawn a `rclone serve restic` process;
     // give the whole flow a generous budget on a possibly-loaded machine.
     test.setTimeout(420_000);
@@ -85,9 +107,10 @@ test.describe('rclone-backed repo', () => {
 
     await dialog.getByTestId('add-repo-name').fill(REPO_NAME);
     await dialog.getByTestId('add-repo-uri').fill(uri);
-    // The URI field is a combobox that opens a suggestions popover on input;
-    // close it so it doesn't sit on top of the fields/buttons below it.
-    await page.keyboard.press('Escape');
+    // Dismiss the URI autocomplete popover by refocusing the name field. Do
+    // NOT press Escape: when the popover has no suggestions and never opened,
+    // Escape closes the whole dialog instead.
+    await dialog.getByTestId('add-repo-name').click();
     await dialog.getByTestId('add-repo-password').fill(PASSWORD);
 
     // --- Test Configuration against the rclone URI, before submitting -----
@@ -97,9 +120,31 @@ test.describe('rclone-backed repo', () => {
     // at this rclone path yet. Testing spawns `rclone serve restic`, so allow
     // a wide timeout.
     await dialog.getByTestId('add-repo-test-config').click();
-    await expect(page.getByText(`Connected successfully to ${uri}`)).toBeVisible({
-      timeout: 60_000,
-    });
+
+    // Wait for either the success banner or the error banner ("Check error:
+    // {message}") so a failing check reports the backend message rather than an
+    // opaque timeout. Each waitFor settles to 'pending' on timeout so the
+    // race loser can't raise an unhandled rejection.
+    const successBanner = page.getByText(`Connected successfully to ${uri}`);
+    const errorBanner = page.getByText('Check error:');
+    const outcome = await Promise.race([
+      successBanner
+        .waitFor({ state: 'visible', timeout: 60_000 })
+        .then(() => 'success')
+        .catch(() => 'pending'),
+      errorBanner
+        .waitFor({ state: 'visible', timeout: 60_000 })
+        .then(() => 'error')
+        .catch(() => 'pending'),
+    ]);
+
+    if (outcome === 'error') {
+      // The error toast auto-dismisses after ~5s, so read it immediately.
+      const message = (await errorBanner.textContent())?.trim();
+      throw new Error(`Test Configuration reported a failure: ${message}`);
+    }
+
+    await expect(successBanner).toBeVisible();
 
     // Testing configuration must not have created the repo yet.
     await expect(page.getByTestId(`sidebar-item-repo-${REPO_NAME}`)).toHaveCount(0);

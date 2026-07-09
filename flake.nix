@@ -18,6 +18,7 @@
             go goreleaser nodejs_22 pnpm
             protobuf buf protoc-gen-go protoc-gen-go-grpc protoc-gen-connect-go
             gnumake git restic rclone zsh oh-my-posh
+            act docker
           ];
         in
         {
@@ -56,6 +57,14 @@
               # Runtime dependencies (for local testing)
               restic
               rclone
+
+              # Local GitHub Actions debugging: `act` runs the workflows in
+              # .github/workflows inside Docker containers (runner images are
+              # pinned in .actrc). `docker` is the client act talks to; a
+              # running Docker daemon is a host prerequisite (on NixOS enable
+              # `virtualisation.docker`).
+              act
+              docker
 
               # Shell
               zsh

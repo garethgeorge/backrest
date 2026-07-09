@@ -28,12 +28,16 @@ export const Toaster = () => {
               // @ts-ignore
               <Toast.Indicator />
             )}
-            <Stack gap="1" flex="1" maxWidth="100%">
-              {/* @ts-ignore */}
-              {toast.title && <Toast.Title>{toast.title}</Toast.Title>}
+            <Stack gap="1" flex="1" maxWidth="100%" userSelect="text">
+              {toast.title && (
+                // @ts-ignore
+                <Toast.Title userSelect="text">{toast.title}</Toast.Title>
+              )}
               {toast.description && (
                 // @ts-ignore
-                <Toast.Description>{toast.description}</Toast.Description>
+                <Toast.Description userSelect="text">
+                  {toast.description}
+                </Toast.Description>
               )}
             </Stack>
             {toast.action && (

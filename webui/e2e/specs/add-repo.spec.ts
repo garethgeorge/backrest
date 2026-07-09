@@ -31,9 +31,10 @@ test.describe('add repo (CUJ2)', () => {
 
     await dialog.getByTestId('add-repo-name').fill('my-repo');
     await dialog.getByTestId('add-repo-uri').fill(backrest.repoPath('my-repo'));
-    // The URI field is a combobox that opens a suggestions popover on input;
-    // close it so it doesn't sit on top of the fields/buttons below it.
-    await page.keyboard.press('Escape');
+    // Dismiss the URI autocomplete popover by refocusing the name field. Do
+    // NOT press Escape: when the popover has no suggestions and never opened,
+    // Escape closes the whole dialog instead.
+    await dialog.getByTestId('add-repo-name').click();
     await dialog.getByTestId('add-repo-password').fill(PASSWORD);
 
     await dialog.getByTestId('add-repo-submit').click();
@@ -77,7 +78,9 @@ test.describe('add repo (CUJ2)', () => {
     const uri = backrest.repoPath('my-repo');
     await dialog.getByTestId('add-repo-name').fill('my-repo');
     await dialog.getByTestId('add-repo-uri').fill(uri);
-    await page.keyboard.press('Escape');
+    // Refocus the name field to dismiss the autocomplete popover (Escape would
+    // close the dialog when the popover never opened).
+    await dialog.getByTestId('add-repo-name').click();
     await dialog.getByTestId('add-repo-password').fill(PASSWORD);
 
     await dialog.getByTestId('add-repo-test-config').click();

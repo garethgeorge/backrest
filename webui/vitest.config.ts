@@ -11,6 +11,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // userEvent-driven component tests run 3-5s each and tip past the default
+    // 5s timeout under CI load; give headroom without masking real hangs.
+    testTimeout: 20_000,
     setupFiles: ['./src/test/setup.tsx'],
     include: ['src/**/*.test.{ts,tsx}'],
     restoreMocks: true,
