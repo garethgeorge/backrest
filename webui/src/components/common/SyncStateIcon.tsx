@@ -148,7 +148,6 @@ export const PeerStateConnectionStatusIcon = ({
         p={0}
         m={0}
         lineHeight={1}
-
       >
         {getStatusIcon()}
       </Box>

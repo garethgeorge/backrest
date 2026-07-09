@@ -469,6 +469,7 @@ const SidebarPlanItem = React.memo(
         bg={active ? "bg.emphasized" : undefined}
         _hover={{ bg: "bg.muted" }}
         className="group"
+        data-testid={`sidebar-item-plan-${plan.id}`}
       >
         <Box flexShrink={0} mr={2}>
           <IconForResource selector={sel} />
@@ -535,6 +536,7 @@ const SidebarRepoItem = React.memo(
         bg={active ? "bg.emphasized" : undefined}
         _hover={{ bg: "bg.muted" }}
         className="group"
+        data-testid={`sidebar-item-repo-${repo.id}`}
       >
         <Box flexShrink={0} mr={2}>
           <IconForResource selector={sel} />
@@ -662,6 +664,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
               }}
               pl={9}
               mb={1}
+              data-testid="sidebar-add-plan"
             >
               <FiPlus /> {m.app_menu_add_plan()}
             </Button>
@@ -706,6 +709,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
               }}
               pl={9}
               mb={1}
+              data-testid="sidebar-add-repo"
             >
               <FiPlus /> {m.app_menu_add_repo()}
             </Button>
@@ -1028,7 +1032,7 @@ const MobileNavTrigger = () => {
   );
 };
 
-const AuthenticationBoundary = ({
+export const AuthenticationBoundary = ({
   children,
 }: {
   children: React.ReactNode;

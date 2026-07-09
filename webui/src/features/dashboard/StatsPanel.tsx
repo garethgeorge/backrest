@@ -20,7 +20,7 @@ import {
   OpSelector,
 } from "../../../gen/ts/v1/service_pb";
 import { create } from "@bufbuild/protobuf";
-import * as m from "../../paraglide/messages"
+import * as m from "../../paraglide/messages";
 
 export const StatsPanel = ({ selector }: { selector: OpSelector }) => {
   const [operations, setOperations] = useState<Operation[]>([]);
@@ -93,7 +93,10 @@ export const StatsPanel = ({ selector }: { selector: OpSelector }) => {
           />
           <Tooltip
             labelFormatter={(x) => formatDate(x as number)}
-            formatter={(y) => [formatBytes(y as number), m.repo_tab_stats_size()]}
+            formatter={(y) => [
+              formatBytes(y as number),
+              m.repo_tab_stats_size(),
+            ]}
           />
           <Legend />
           <Line

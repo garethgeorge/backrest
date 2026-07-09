@@ -404,6 +404,9 @@ export const OperationRow = ({
   return (
     <Box
       className="backrest visible-on-hover"
+      data-testid="operation-row"
+      data-op-type={displayTypeToString(displayType)}
+      data-status={nameForStatus(operation.status)}
       mb={2}
       borderWidth="1px"
       borderRadius="md"

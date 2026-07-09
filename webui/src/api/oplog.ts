@@ -30,7 +30,9 @@ const subscribers: ((event?: OperationEvent, err?: Error) => void)[] = [];
       console.warn("operations stream died with exception: ", e);
       let waitRemaining = nextConnWaitUntil - new Date().getTime();
       if (waitRemaining < 0) {
-        subscribers.forEach((subscriber) => subscriber(undefined, e instanceof Error ? e : new Error(String(e))));
+        subscribers.forEach((subscriber) =>
+          subscriber(undefined, e instanceof Error ? e : new Error(String(e))),
+        );
       }
     }
     await new Promise((accept, _) =>

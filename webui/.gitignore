@@ -3,3 +3,6 @@ node_modules
 dist/*
 !dist/.gitkeep
 dist-windows
+e2e/.cache/
+playwright-report/
+test-results/

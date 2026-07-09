@@ -69,6 +69,7 @@ export const LoginModal = () => {
           loading={loading}
           onClick={() => handleSubmit()}
           width="full"
+          data-testid="login-submit"
         >
           {m.login_button()}
         </Button>
@@ -84,6 +85,7 @@ export const LoginModal = () => {
           >
             <InputGroup width="100%" startElement={<LuUser />}>
               <Input
+                data-testid="login-username"
                 placeholder={m.login_username_placeholder()}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -99,6 +101,7 @@ export const LoginModal = () => {
           >
             <InputGroup width="100%" startElement={<LuLock />}>
               <Input
+                data-testid="login-password"
                 type="password"
                 placeholder={m.login_password_placeholder()}
                 value={password}

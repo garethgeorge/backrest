@@ -42,6 +42,99 @@ jobs:
       - name: Test
         run: PATH=$(pwd):$PATH gotestsum ./... -- --race
 
+  test-webui:
+    runs-on: ubuntu-latest
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: webui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: cd webui && pnpm install --frozen-lockfile
+
+      # Runs compile-i18n (paraglide) first, then vitest.
+      - name: Test
+        run: cd webui && pnpm test
+
+      - name: Typecheck
+        run: cd webui && pnpm run check
+
+  test-e2e-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.24"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: webui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: cd webui && pnpm install --frozen-lockfile
+
+      - name: Build WebUI
+        run: cd webui && pnpm run build
+
+      - name: Build backrest binary (embeds the real WebUI)
+        run: |
+          mkdir -p webui/e2e/.cache
+          go build -o webui/e2e/.cache/backrest ./cmd/backrest
+
+      # Keyed on the file that pins RequiredResticVersion; global-setup
+      # provisions restic into this directory on a cache miss.
+      - name: Cache restic
+        uses: actions/cache@v4
+        with:
+          path: webui/e2e/.cache/restic-data
+          key: restic-e2e-${{ hashFiles('internal/resticinstaller/resticinstaller.go') }}
+
+      - name: Cache playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('webui/pnpm-lock.yaml') }}
+
+      - name: Install playwright chromium
+        run: cd webui && pnpm exec playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        run: |
+          cd webui
+          E2E_SKIP_WEBUI_BUILD=1 E2E_BACKREST_BIN=$PWD/e2e/.cache/backrest pnpm run e2e
+
+      - name: Upload playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            webui/playwright-report/
+            webui/test-results/
+
   test-win:
     runs-on: windows-latest
     steps:

@@ -361,7 +361,12 @@ const FileNode = ({
   };
 
   return (
-    <Flex align="center" justify="space-between" width="full">
+    <Flex
+      align="center"
+      justify="space-between"
+      width="full"
+      data-testid="snapshot-browser-entry"
+    >
       <Text>
         {entry.name}
         {entry.type === "file" && (
@@ -388,7 +393,11 @@ const FileNode = ({
               <MenuItemText>Info</MenuItemText>
             </MenuItem>
             {/* @ts-ignore */}
-            <MenuItem value="restore" onClick={restore}>
+            <MenuItem
+              value="restore"
+              onClick={restore}
+              data-testid="snapshot-restore"
+            >
               <FiRefreshCw />
               {/* @ts-ignore */}
               <MenuItemText>Restore to path</MenuItemText>

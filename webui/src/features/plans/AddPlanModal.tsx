@@ -26,19 +26,19 @@ import {
   Schedule_Clock,
   type Plan,
 } from "../../../gen/ts/v1/config_pb";
-import { FiFileText, FiFolder, FiClock, FiArchive, FiSliders } from "react-icons/fi";
+import {
+  FiFileText,
+  FiFolder,
+  FiClock,
+  FiArchive,
+  FiSliders,
+} from "react-icons/fi";
 import { alerts, formatErrorAlert } from "../../components/common/Alerts";
 import { namePattern } from "../../lib/util";
 import { ConfirmButton } from "../../components/common/SpinButton";
 import { useConfig } from "../../app/provider";
 import { backrestService } from "../../api/client";
-import {
-  clone,
-  create,
-  equals,
-  fromJson,
-  toJson,
-} from "@bufbuild/protobuf";
+import { clone, create, equals, fromJson, toJson } from "@bufbuild/protobuf";
 import * as m from "../../paraglide/messages";
 import { Button } from "../../components/ui/button";
 import { Field } from "../../components/ui/field";
@@ -80,7 +80,13 @@ const planDefaults = create(PlanSchema, {
   },
 });
 
-export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | null, onSaveOverride?: (plan: Plan) => Promise<void> }) => {
+export const AddPlanModal = ({
+  template,
+  onSaveOverride,
+}: {
+  template: Plan | null;
+  onSaveOverride?: (plan: Plan) => Promise<void>;
+}) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const [config, setConfig] = useConfig();
@@ -91,7 +97,9 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
       : toJson(PlanSchema, planDefaults, { alwaysEmitImplicit: true }),
   );
 
-  const selectedRepo = config?.repos.find((r) => r.id === (template?.repo || formData?.repo));
+  const selectedRepo = config?.repos.find(
+    (r) => r.id === (template?.repo || formData?.repo),
+  );
   const repoHasScheduledForget =
     !!selectedRepo?.forgetPolicy?.schedule &&
     selectedRepo.forgetPolicy.schedule.schedule.case !== undefined &&
@@ -271,7 +279,11 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
           {m.add_plan_modal_button_delete()}
         </ConfirmButton>
       )}
-      <Button loading={confirmLoading} onClick={handleOk}>
+      <Button
+        loading={confirmLoading}
+        onClick={handleOk}
+        data-testid="add-plan-submit"
+      >
         {m.add_plan_modal_button_submit()}
       </Button>
     </Flex>
@@ -315,6 +327,7 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
               }
             >
               <Input
+                data-testid="add-plan-name"
                 value={getField(["id"])}
                 onChange={(e) => updateField(["id"], e.target.value)}
                 disabled={!!template}
@@ -332,39 +345,58 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
                 collection={repoOptions}
                 size="sm"
                 value={[getField(["repo"])]}
-                onValueChange={(e: any) =>
-                  updateField(["repo"], e.value[0])
-                }
+                onValueChange={(e: any) => updateField(["repo"], e.value[0])}
                 disabled={!!template}
                 width="full"
               >
                 {/* @ts-ignore */}
-                <SelectTrigger>
+                <SelectTrigger data-testid="add-plan-repo-select">
                   {/* @ts-ignore */}
-                  <SelectValueText placeholder={m.add_plan_modal_field_repository_select()} />
+                  <SelectValueText
+                    placeholder={m.add_plan_modal_field_repository_select()}
+                  />
                 </SelectTrigger>
                 {/* @ts-ignore */}
                 <SelectContent>
                   {localRepos.length > 0 && remoteRepos.length > 0 && (
-                    <CText fontSize="xs" fontWeight="bold" color="fg.muted" px={2} py={1}>
+                    <CText
+                      fontSize="xs"
+                      fontWeight="bold"
+                      color="fg.muted"
+                      px={2}
+                      py={1}
+                    >
                       Local
                     </CText>
                   )}
-                  {repoOptions.items.slice(0, localRepos.length).map((item: any) => (
-                    <SelectItem item={item} key={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
+                  {repoOptions.items
+                    .slice(0, localRepos.length)
+                    .map((item: any) => (
+                      <SelectItem item={item} key={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
                   {remoteRepos.length > 0 && (
-                    <CText fontSize="xs" fontWeight="bold" color="fg.muted" px={2} py={1} mt={1} borderTopWidth="1px" borderColor="border">
+                    <CText
+                      fontSize="xs"
+                      fontWeight="bold"
+                      color="fg.muted"
+                      px={2}
+                      py={1}
+                      mt={1}
+                      borderTopWidth="1px"
+                      borderColor="border"
+                    >
                       Remote
                     </CText>
                   )}
-                  {repoOptions.items.slice(localRepos.length).map((item: any) => (
-                    <SelectItem item={item} key={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
+                  {repoOptions.items
+                    .slice(localRepos.length)
+                    .map((item: any) => (
+                      <SelectItem item={item} key={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </SelectRoot>
             </Field>
@@ -388,14 +420,13 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
               required
               autocompleteType="uri"
               placeholder={m.add_plan_modal_field_paths()}
+              testId="add-plan-path"
             />
 
             <DynamicList
               label={m.add_plan_modal_field_excludes()}
               items={getField(["excludes"]) || []}
-              onUpdate={(items: string[]) =>
-                updateField(["excludes"], items)
-              }
+              onUpdate={(items: string[]) => updateField(["excludes"], items)}
               tooltip={
                 <>
                   {m.add_plan_modal_field_excludes_tooltip_prefix()}{" "}
@@ -415,9 +446,7 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
             <DynamicList
               label={m.add_plan_modal_field_iexcludes()}
               items={getField(["iexcludes"]) || []}
-              onUpdate={(items: string[]) =>
-                updateField(["iexcludes"], items)
-              }
+              onUpdate={(items: string[]) => updateField(["iexcludes"], items)}
               tooltip={
                 <>
                   {m.add_plan_modal_field_iexcludes_tooltip_prefix()}{" "}
@@ -530,4 +559,3 @@ export const AddPlanModal = ({ template, onSaveOverride }: { template: Plan | nu
     </TwoPaneModal>
   );
 };
-

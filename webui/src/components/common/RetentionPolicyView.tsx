@@ -108,7 +108,7 @@ export const RetentionPolicyView = ({
               label={m.add_plan_modal_retention_policy_keep_last_n_snapshots_label()}
               value={retention?.policyKeepLastN || 0}
               onValueChange={(e: any) =>
-                onChange({ ...schedule, policyKeepLastN: e.valueAsNumber })
+                onChange({ ...retention, policyKeepLastN: e.valueAsNumber })
               }
             />
           )}

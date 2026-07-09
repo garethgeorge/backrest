@@ -8,12 +8,7 @@ import {
 } from "@chakra-ui/react";
 import { Button } from "../ui/button";
 import { IconType } from "react-icons";
-import {
-  FiAlertCircle,
-  FiCheck,
-  FiLoader,
-  FiX,
-} from "react-icons/fi";
+import { FiAlertCircle, FiCheck, FiLoader, FiX } from "react-icons/fi";
 
 // --- Section definition ---
 export interface SectionDef {
@@ -45,6 +40,8 @@ interface TwoPaneModalProps {
   onDiscard?: () => void;
   saving?: boolean;
   saveDisabled?: boolean;
+  /** data-testid applied to the default save-bar's Save button (for e2e tests). */
+  saveTestId?: string;
 
   // Footer override (if you don't want the default save bar)
   footer?: React.ReactNode;
@@ -68,6 +65,7 @@ export const TwoPaneModal: React.FC<TwoPaneModalProps> = ({
   onDiscard,
   saving = false,
   saveDisabled = false,
+  saveTestId,
   footer,
   width = "900px",
 }) => {
@@ -94,16 +92,13 @@ export const TwoPaneModal: React.FC<TwoPaneModalProps> = ({
     return () => root.removeEventListener("scroll", onScroll);
   }, [sections]);
 
-  const scrollTo = useCallback(
-    (id: string) => {
-      const el = sectionRefs.current[id];
-      const root = scrollRef.current;
-      if (!el || !root) return;
-      root.scrollTo({ top: el.offsetTop - 56, behavior: "smooth" });
-      setActiveSection(id);
-    },
-    [],
-  );
+  const scrollTo = useCallback((id: string) => {
+    const el = sectionRefs.current[id];
+    const root = scrollRef.current;
+    if (!el || !root) return;
+    root.scrollTo({ top: el.offsetTop - 56, behavior: "smooth" });
+    setActiveSection(id);
+  }, []);
 
   // Provide ref-registration function to children via context
   const registerRef = useCallback((id: string, el: HTMLElement | null) => {
@@ -298,7 +293,12 @@ export const TwoPaneModal: React.FC<TwoPaneModalProps> = ({
                         bg="orange.400"
                         display="inline-block"
                       />
-                      <Text fontSize="sm" color="orange.800" _dark={{ color: "orange.200" }} fontWeight="medium">
+                      <Text
+                        fontSize="sm"
+                        color="orange.800"
+                        _dark={{ color: "orange.200" }}
+                        fontWeight="medium"
+                      >
                         {dirtyCount} unsaved{" "}
                         {dirtyCount === 1 ? "change" : "changes"}
                       </Text>
@@ -312,8 +312,8 @@ export const TwoPaneModal: React.FC<TwoPaneModalProps> = ({
                           _dark={{ color: "red.300" }}
                         >
                           <FiAlertCircle size={12} />
-                          {errorCount} {errorCount === 1 ? "error" : "errors"} to
-                          fix
+                          {errorCount} {errorCount === 1 ? "error" : "errors"}{" "}
+                          to fix
                         </Flex>
                       )}
                     </>
@@ -342,6 +342,7 @@ export const TwoPaneModal: React.FC<TwoPaneModalProps> = ({
                 </Button>
                 <Button
                   size="sm"
+                  data-testid={saveTestId}
                   onClick={onSave}
                   disabled={!dirty || saveDisabled || errorCount > 0}
                   opacity={!dirty || saveDisabled || errorCount > 0 ? 0.5 : 1}

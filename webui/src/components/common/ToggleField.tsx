@@ -7,6 +7,8 @@ interface ToggleFieldProps {
   label: React.ReactNode;
   hint?: string;
   disabled?: boolean;
+  /** data-testid applied to the clickable root label (for e2e tests). */
+  testId?: string;
 }
 
 export const ToggleField: React.FC<ToggleFieldProps> = ({
@@ -15,10 +17,12 @@ export const ToggleField: React.FC<ToggleFieldProps> = ({
   label,
   hint,
   disabled = false,
+  testId,
 }) => {
   return (
     <Flex
       as="label"
+      data-testid={testId}
       align="flex-start"
       gap={2.5}
       cursor={disabled ? "not-allowed" : "pointer"}

@@ -144,11 +144,16 @@ export const OperationTreeView = ({
       setLoading(false);
     });
 
-    return syncStateFromRequest(logState, req, (err) => {
-      alerts.error("API error: " + err.message);
-    }, () => {
-      setLoading(false);
-    });
+    return syncStateFromRequest(
+      logState,
+      req,
+      (err) => {
+        alerts.error("API error: " + err.message);
+      },
+      () => {
+        setLoading(false);
+      },
+    );
   }, [toJsonString(GetOperationsRequestSchema, req)]);
 
   if (loading && backups.length === 0) {
@@ -278,196 +283,216 @@ export const OperationTreeView = ({
   );
 };
 
-const DisplayOperationTree = React.memo(({
-  operations,
-  isPlanView,
-  onSelect,
-}: {
-  operations: FlowDisplayInfo[];
-  isPlanView?: boolean;
-  onSelect?: (flow: FlowDisplayInfo | null) => any;
-}) => {
-  const [treeCollection, setTreeCollection] =
-    useState<TreeCollection<OpTreeNode> | null>(null);
-  const [expandedValue, setExpandedValue] = useState<string[]>([]);
-  const [selectedValue, setSelectedValue] = useState<string[]>([]);
+const DisplayOperationTree = React.memo(
+  ({
+    operations,
+    isPlanView,
+    onSelect,
+  }: {
+    operations: FlowDisplayInfo[];
+    isPlanView?: boolean;
+    onSelect?: (flow: FlowDisplayInfo | null) => any;
+  }) => {
+    const [treeCollection, setTreeCollection] =
+      useState<TreeCollection<OpTreeNode> | null>(null);
+    const [expandedValue, setExpandedValue] = useState<string[]>([]);
+    const [selectedValue, setSelectedValue] = useState<string[]>([]);
 
-  const buildTreeData = () => {
-    const leafGroupFn = (op: FlowDisplayInfo) => op.flowID.toString(16);
-    const leafFn = (groupKey: string, ops: FlowDisplayInfo[]) => {
-      const b = ops[0];
-      let iconColor = colorForStatus(b.status);
-      let icon: React.ReactNode | null = <LuFileQuestion />;
-      if (
-        b.status === OperationStatus.STATUS_ERROR ||
-        b.status === OperationStatus.STATUS_WARNING
-      ) {
-        icon = <Box color={iconColor}>!</Box>;
-      } else {
-        icon = <OperationIcon status={b.status} type={b.type} />;
-      }
+    const buildTreeData = () => {
+      const leafGroupFn = (op: FlowDisplayInfo) => op.flowID.toString(16);
+      const leafFn = (groupKey: string, ops: FlowDisplayInfo[]) => {
+        const b = ops[0];
+        let iconColor = colorForStatus(b.status);
+        let icon: React.ReactNode | null = <LuFileQuestion />;
+        if (
+          b.status === OperationStatus.STATUS_ERROR ||
+          b.status === OperationStatus.STATUS_WARNING
+        ) {
+          icon = <Box color={iconColor}>!</Box>;
+        } else {
+          icon = <OperationIcon status={b.status} type={b.type} />;
+        }
 
-      return {
-        id: groupKey,
-        label: `${displayTypeToString(b.type)} ${formatTime(b.displayTime)}`,
-        backup: b,
-        icon,
-      };
-    };
-    const leafSortFn = (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
-      op1.displayTime > op2.displayTime;
-
-    const buildLevel = (
-      ops: FlowDisplayInfo[],
-      levels: any[],
-      prefix: string,
-    ): OpTreeNode[] => {
-      if (levels.length === 0) {
-        const groups = groupBy(ops, leafGroupFn);
-        const sortedKeys = Object.keys(groups).sort((a, b) =>
-          leafSortFn(groups[a][0], groups[b][0]) ? -1 : 1,
-        );
-        return sortedKeys.map((key) =>
-          leafFn(prefix + "\0" + key, groups[key]),
-        );
-      }
-
-      const currentLevel = levels[0];
-      const nextLevels = levels.slice(1);
-      const groups = groupBy(ops, currentLevel.groupingFn);
-      const sortedKeys = Object.keys(groups).sort((a, b) =>
-        currentLevel.sortFn(groups[a][0], groups[b][0]) ? -1 : 1,
-      );
-
-      return sortedKeys.map((key) => {
-        const groupOps = groups[key];
-        const groupKey = prefix + "\0" + key;
-        const exemplar = groupOps[0];
-        const children = buildLevel(groupOps, nextLevels, groupKey);
         return {
           id: groupKey,
-          label:
-            currentLevel.titleFn(exemplar) +
-            (groupOps.length > 1 ? ` (${groupOps.length})` : ""),
-          children,
+          label: `${displayTypeToString(b.type)} ${formatTime(b.displayTime)}`,
+          backup: b,
+          icon,
         };
+      };
+      const leafSortFn = (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
+        op1.displayTime > op2.displayTime;
+
+      const buildLevel = (
+        ops: FlowDisplayInfo[],
+        levels: any[],
+        prefix: string,
+      ): OpTreeNode[] => {
+        if (levels.length === 0) {
+          const groups = groupBy(ops, leafGroupFn);
+          const sortedKeys = Object.keys(groups).sort((a, b) =>
+            leafSortFn(groups[a][0], groups[b][0]) ? -1 : 1,
+          );
+          return sortedKeys.map((key) =>
+            leafFn(prefix + "\0" + key, groups[key]),
+          );
+        }
+
+        const currentLevel = levels[0];
+        const nextLevels = levels.slice(1);
+        const groups = groupBy(ops, currentLevel.groupingFn);
+        const sortedKeys = Object.keys(groups).sort((a, b) =>
+          currentLevel.sortFn(groups[a][0], groups[b][0]) ? -1 : 1,
+        );
+
+        return sortedKeys.map((key) => {
+          const groupOps = groups[key];
+          const groupKey = prefix + "\0" + key;
+          const exemplar = groupOps[0];
+          const children = buildLevel(groupOps, nextLevels, groupKey);
+          return {
+            id: groupKey,
+            label:
+              currentLevel.titleFn(exemplar) +
+              (groupOps.length > 1 ? ` (${groupOps.length})` : ""),
+            children,
+          };
+        });
+      };
+
+      const planLayer = {
+        groupingFn: (op: FlowDisplayInfo) => op.planID,
+        titleFn: (exemplar: FlowDisplayInfo) => exemplar.planID,
+        sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
+          op1.planID < op2.planID,
+      };
+
+      const monthLayer = {
+        groupingFn: (op: FlowDisplayInfo) =>
+          localISOTime(op.displayTime).slice(0, 7),
+        titleFn: (exemplar: FlowDisplayInfo) =>
+          formatMonth(exemplar.displayTime),
+        sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
+          op1.displayTime > op2.displayTime,
+      };
+
+      const dayLayer = {
+        groupingFn: (op: FlowDisplayInfo) =>
+          localISOTime(op.displayTime).slice(0, 10),
+        titleFn: (exemplar: FlowDisplayInfo) =>
+          formatDate(exemplar.displayTime),
+        sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
+          op1.displayTime > op2.displayTime,
+      };
+
+      const spec = isPlanView
+        ? { levels: [monthLayer, dayLayer] }
+        : { levels: [planLayer, monthLayer, dayLayer] };
+      return buildLevel(operations, spec.levels, "");
+    };
+
+    useEffect(() => {
+      const nodes = buildTreeData();
+      const collection = createTreeCollection<OpTreeNode>({
+        nodeToValue: (node: OpTreeNode) => node.id,
+        nodeToString: (node: OpTreeNode) => node.label,
+        rootNode: {
+          id: "ROOT",
+          label: "Root",
+          children: nodes,
+        },
       });
-    };
+      setTreeCollection(collection);
 
-    const planLayer = {
-      groupingFn: (op: FlowDisplayInfo) => op.planID,
-      titleFn: (exemplar: FlowDisplayInfo) => exemplar.planID,
-      sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
-        op1.planID < op2.planID,
-    };
+      // Identify the 5 most recent operations
+      const CACHE_SIZE = 5;
+      const sortedOps = [...operations].sort((a, b) =>
+        a.displayTime > b.displayTime ? -1 : 1,
+      );
+      const recentFlowIds = new Set(
+        sortedOps.slice(0, CACHE_SIZE).map((op) => op.flowID.toString()),
+      );
 
-    const monthLayer = {
-      groupingFn: (op: FlowDisplayInfo) =>
-        localISOTime(op.displayTime).slice(0, 7),
-      titleFn: (exemplar: FlowDisplayInfo) => formatMonth(exemplar.displayTime),
-      sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
-        op1.displayTime > op2.displayTime,
-    };
+      // Calculate initial expansion.
+      const toExpand = new Set<string>();
 
-    const dayLayer = {
-      groupingFn: (op: FlowDisplayInfo) =>
-        localISOTime(op.displayTime).slice(0, 10),
-      titleFn: (exemplar: FlowDisplayInfo) => formatDate(exemplar.displayTime),
-      sortFn: (op1: FlowDisplayInfo, op2: FlowDisplayInfo) =>
-        op1.displayTime > op2.displayTime,
-    };
-
-    const spec = isPlanView
-      ? { levels: [monthLayer, dayLayer] }
-      : { levels: [planLayer, monthLayer, dayLayer] };
-    return buildLevel(operations, spec.levels, "");
-  };
-
-  useEffect(() => {
-    const nodes = buildTreeData();
-    const collection = createTreeCollection<OpTreeNode>({
-      nodeToValue: (node: OpTreeNode) => node.id,
-      nodeToString: (node: OpTreeNode) => node.label,
-      rootNode: {
-        id: "ROOT",
-        label: "Root",
-        children: nodes,
-      },
-    });
-    setTreeCollection(collection);
-
-    // Identify the 5 most recent operations
-    const CACHE_SIZE = 5;
-    const sortedOps = [...operations].sort((a, b) =>
-      a.displayTime > b.displayTime ? -1 : 1,
-    );
-    const recentFlowIds = new Set(
-      sortedOps.slice(0, CACHE_SIZE).map((op) => op.flowID.toString()),
-    );
-
-    // Calculate initial expansion.
-    const toExpand = new Set<string>();
-
-    const expandRecent = (node: OpTreeNode): boolean => {
-      let hasRecent = false;
-      if (node.children) {
-        for (const child of node.children) {
-          if (expandRecent(child)) {
-            hasRecent = true;
+      const expandRecent = (node: OpTreeNode): boolean => {
+        let hasRecent = false;
+        if (node.children) {
+          for (const child of node.children) {
+            if (expandRecent(child)) {
+              hasRecent = true;
+            }
           }
         }
-      }
-      if (node.backup && recentFlowIds.has(node.backup.flowID.toString())) {
-        hasRecent = true;
+        if (node.backup && recentFlowIds.has(node.backup.flowID.toString())) {
+          hasRecent = true;
+        }
+
+        if (hasRecent) {
+          toExpand.add(node.id);
+        }
+        return hasRecent;
+      };
+
+      // Expand the very first branch (most recent) if nothing else is expanded.
+      if (nodes.length > 0) {
+        nodes.forEach((n) => expandRecent(n));
       }
 
-      if (hasRecent) {
+      const expandFirst = (node: OpTreeNode) => {
         toExpand.add(node.id);
-      }
-      return hasRecent;
-    };
+        if (node.children && node.children.length > 0) {
+          expandFirst(node.children[0]);
+        }
+      };
+      expandFirst(nodes[0]);
 
-    // Expand the very first branch (most recent) if nothing else is expanded.
-    if (nodes.length > 0) {
-      nodes.forEach((n) => expandRecent(n));
-    }
+      setExpandedValue(Array.from([...expandedValue, ...toExpand]));
+    }, [operations, isPlanView]);
 
-    const expandFirst = (node: OpTreeNode) => {
-      toExpand.add(node.id);
-      if (node.children && node.children.length > 0) {
-        expandFirst(node.children[0]);
-      }
-    };
-    expandFirst(nodes[0]);
-
-    setExpandedValue(Array.from([...expandedValue, ...toExpand]));
-  }, [operations, isPlanView]);
-
-  const renderNode = useCallback(
-    ({ node, nodeState }: { node: OpTreeNode; nodeState: any }) =>
-      nodeState.isBranch ? (
-        <TreeViewBranchControl
-          cursor="pointer"
-          onClick={() => {
-            setExpandedValue((prev) =>
-              prev.includes(node.id)
-                ? prev.filter((id) => id !== node.id)
-                : [...prev, node.id],
-            );
-          }}
-        >
-          <Box
-            transform={nodeState.expanded ? "rotate(90deg)" : undefined}
-            transition="transform 0.2s"
-            display="inline-flex"
-            alignItems="center"
-            justifyContent="center"
-            w="20px"
-            flexShrink={0}
+    const renderNode = useCallback(
+      ({ node, nodeState }: { node: OpTreeNode; nodeState: any }) =>
+        nodeState.isBranch ? (
+          <TreeViewBranchControl
+            cursor="pointer"
+            onClick={() => {
+              setExpandedValue((prev) =>
+                prev.includes(node.id)
+                  ? prev.filter((id) => id !== node.id)
+                  : [...prev, node.id],
+              );
+            }}
           >
-            <LuChevronRight size="14px" />
-          </Box>
-          <TreeViewBranchTrigger>
+            <Box
+              transform={nodeState.expanded ? "rotate(90deg)" : undefined}
+              transition="transform 0.2s"
+              display="inline-flex"
+              alignItems="center"
+              justifyContent="center"
+              w="20px"
+              flexShrink={0}
+            >
+              <LuChevronRight size="14px" />
+            </Box>
+            <TreeViewBranchTrigger>
+              <Box
+                display="inline-flex"
+                alignItems="center"
+                justifyContent="center"
+                w="24px"
+                flexShrink={0}
+              >
+                <LuFolder />
+              </Box>
+            </TreeViewBranchTrigger>
+            <TreeViewBranchText>{node.label}</TreeViewBranchText>
+            <TreeViewBranchContent />
+          </TreeViewBranchControl>
+        ) : (
+          <TreeViewItem>
+            {/* Spacer to match chevron width */}
+            <Box w="20px" flexShrink={0} />
             <Box
               display="inline-flex"
               alignItems="center"
@@ -475,75 +500,55 @@ const DisplayOperationTree = React.memo(({
               w="24px"
               flexShrink={0}
             >
-              <LuFolder />
+              {node.icon ? node.icon : <LuFile />}
             </Box>
-          </TreeViewBranchTrigger>
-          <TreeViewBranchText>{node.label}</TreeViewBranchText>
-          <TreeViewBranchContent />
-        </TreeViewBranchControl>
-      ) : (
-        <TreeViewItem>
-          {/* Spacer to match chevron width */}
-          <Box w="20px" flexShrink={0} />
-          <Box
-            display="inline-flex"
-            alignItems="center"
-            justifyContent="center"
-            w="24px"
-            flexShrink={0}
-          >
-            {node.icon ? node.icon : <LuFile />}
-          </Box>
-          <TreeViewItemText>
-            {node.backup ? (
-              <VStack align="start" gap="0">
-                <Text>
-                  {displayTypeToString(node.backup.type)}{" "}
-                  {formatTime(node.backup.displayTime)}
-                </Text>
-                {node.backup.subtitleComponents &&
-                  node.backup.subtitleComponents.length > 0 && (
-                    <Text
-                      color="fg.muted"
-                      fontSize="xs"
-                      fontFamily="mono"
-                    >
-                      {node.backup.subtitleComponents.join(", ")}
-                    </Text>
-                  )}
-              </VStack>
-            ) : (
-              node.label
-            )}
-          </TreeViewItemText>
-        </TreeViewItem>
-      ),
-    [],
-  );
+            <TreeViewItemText>
+              {node.backup ? (
+                <VStack align="start" gap="0">
+                  <Text>
+                    {displayTypeToString(node.backup.type)}{" "}
+                    {formatTime(node.backup.displayTime)}
+                  </Text>
+                  {node.backup.subtitleComponents &&
+                    node.backup.subtitleComponents.length > 0 && (
+                      <Text color="fg.muted" fontSize="xs" fontFamily="mono">
+                        {node.backup.subtitleComponents.join(", ")}
+                      </Text>
+                    )}
+                </VStack>
+              ) : (
+                node.label
+              )}
+            </TreeViewItemText>
+          </TreeViewItem>
+        ),
+      [],
+    );
 
-  if (!treeCollection) return <></>;
+    if (!treeCollection) return <></>;
 
-  return (
-    <TreeViewRoot
-      collection={treeCollection}
-      expandedValue={expandedValue}
-      selectedValue={selectedValue}
-      onSelectionChange={(details: any) => {
-        const values = details?.selectedValue ?? [];
-        setSelectedValue(values);
-        setExpandedValue((prev) => Array.from(new Set([...prev, ...values])));
+    return (
+      <TreeViewRoot
+        collection={treeCollection}
+        expandedValue={expandedValue}
+        selectedValue={selectedValue}
+        onSelectionChange={(details: any) => {
+          const values = details?.selectedValue ?? [];
+          setSelectedValue(values);
+          setExpandedValue((prev) => Array.from(new Set([...prev, ...values])));
 
-        if (!details.selectedNodes || details.selectedNodes.length === 0)
-          return;
-        onSelect && onSelect(details.selectedNodes[0].backup);
-      }}
-    >
-      <TreeViewTree>
-        <TreeViewNode<OpTreeNode> render={renderNode} />
-      </TreeViewTree>
-    </TreeViewRoot>
-  );
-});
+          if (!details.selectedNodes || details.selectedNodes.length === 0)
+            return;
+          onSelect && onSelect(details.selectedNodes[0].backup);
+        }}
+      >
+        <TreeViewTree>
+          <TreeViewNode<OpTreeNode> render={renderNode} />
+        </TreeViewTree>
+      </TreeViewRoot>
+    );
+  },
+);
 
 const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
   if (!backup) {

@@ -9,7 +9,7 @@ import {
   Schedule_ClockSchema,
 } from "../../../gen/ts/v1/config_pb";
 import cronstrue from "cronstrue";
-import * as m from "../../paraglide/messages"
+import * as m from "../../paraglide/messages";
 
 interface ScheduleDefaults {
   maxFrequencyDays: number;
@@ -35,11 +35,7 @@ export const ScheduleDefaultsDaily: ScheduleDefaults = {
 };
 
 type SchedulingMode =
-  | ""
-  | "disabled"
-  | "maxFrequencyDays"
-  | "maxFrequencyHours"
-  | "cron";
+  "" | "disabled" | "maxFrequencyDays" | "maxFrequencyHours" | "cron";
 
 export const ScheduleFormItem = ({
   value,
@@ -110,9 +106,18 @@ export const ScheduleFormItem = ({
           <Field label={m.add_plan_modal_schedule_type_label()}>
             <Flex gap={2} wrap="wrap">
               {[
-                { value: "disabled", label: m.add_plan_modal_schedule_disabled_label() },
-                { value: "maxFrequencyHours", label: m.add_plan_modal_schedule_interval_hours() },
-                { value: "maxFrequencyDays", label: m.add_plan_modal_schedule_interval_days() },
+                {
+                  value: "disabled",
+                  label: m.add_plan_modal_schedule_disabled_label(),
+                },
+                {
+                  value: "maxFrequencyHours",
+                  label: m.add_plan_modal_schedule_interval_hours(),
+                },
+                {
+                  value: "maxFrequencyDays",
+                  label: m.add_plan_modal_schedule_interval_days(),
+                },
                 { value: "cron", label: m.add_plan_modal_schedule_cron() },
               ].map((option) => (
                 <Button
@@ -195,9 +200,15 @@ export const ScheduleFormItem = ({
                 }}
               >
                 <Stack direction="row" gap={4}>
-                  <Radio value="CLOCK_LOCAL">{m.add_plan_modal_schedule_time_local()}</Radio>
-                  <Radio value="CLOCK_UTC">{m.add_plan_modal_schedule_time_utc()}</Radio>
-                  <Radio value="CLOCK_LAST_RUN_TIME">{m.add_plan_modal_schedule_time_last()}</Radio>
+                  <Radio value="CLOCK_LOCAL">
+                    {m.add_plan_modal_schedule_time_local()}
+                  </Radio>
+                  <Radio value="CLOCK_UTC">
+                    {m.add_plan_modal_schedule_time_utc()}
+                  </Radio>
+                  <Radio value="CLOCK_LAST_RUN_TIME">
+                    {m.add_plan_modal_schedule_time_last()}
+                  </Radio>
                 </Stack>
               </RadioGroup>
             </Field>

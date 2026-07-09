@@ -46,8 +46,14 @@ interface DynamicListProps {
   placeholder?: string;
   required?: boolean;
   autocompleteType?: "uri" | "flag" | "none";
+  /**
+   * data-testid prefix for e2e tests. When set, the container gets
+   * `${testId}`, each item's input gets `${testId}-input` and the add
+   * button gets `${testId}-add`.
+   */
+  testId?: string;
 }
-import * as m from "../../paraglide/messages"
+import * as m from "../../paraglide/messages";
 
 const RESTIC_FLAGS = [
   { label: "--cacert <file>", value: "--cacert" },
@@ -81,11 +87,13 @@ const FlagAutocomplete = ({
   onChange,
   placeholder,
   id,
+  inputProps,
 }: {
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
   id?: string;
+  inputProps?: Record<string, any>;
 }) => {
   const [inputVal, setInputVal] = useState(value);
 
@@ -124,7 +132,7 @@ const FlagAutocomplete = ({
       width="full"
     >
       <ComboboxControl hideTrigger>
-        <ComboboxInput placeholder={placeholder} width="full" />
+        <ComboboxInput placeholder={placeholder} width="full" {...inputProps} />
       </ComboboxControl>
       <ComboboxContent zIndex={2000}>
         <ComboboxEmpty>No flags found</ComboboxEmpty>
@@ -148,6 +156,7 @@ export const DynamicList = ({
   placeholder,
   required,
   autocompleteType = "none",
+  testId,
 }: DynamicListProps) => {
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -200,7 +209,7 @@ export const DynamicList = ({
   };
 
   return (
-    <Stack gap={1.5} width="full">
+    <Stack gap={1.5} width="full" data-testid={testId}>
       {label && (
         <CText fontSize="sm" fontWeight="medium">
           {label}{" "}
@@ -231,6 +240,11 @@ export const DynamicList = ({
                           value={item}
                           onChange={(val: string) => handleChange(index, val)}
                           placeholder={placeholder}
+                          inputProps={
+                            testId
+                              ? { "data-testid": `${testId}-input` }
+                              : undefined
+                          }
                         />
                       ) : autocompleteType === "flag" ? (
                         <FlagAutocomplete
@@ -238,6 +252,11 @@ export const DynamicList = ({
                           value={item}
                           onChange={(val: string) => handleChange(index, val)}
                           placeholder={placeholder}
+                          inputProps={
+                            testId
+                              ? { "data-testid": `${testId}-input` }
+                              : undefined
+                          }
                         />
                       ) : (
                         <Input
@@ -246,6 +265,7 @@ export const DynamicList = ({
                           onChange={(e) => handleChange(index, e.target.value)}
                           placeholder={placeholder}
                           size="sm"
+                          data-testid={testId ? `${testId}-input` : undefined}
                         />
                       )}
                     </Box>
@@ -274,6 +294,7 @@ export const DynamicList = ({
                 borderStyle="dashed"
                 onClick={handleAdd}
                 flex={1}
+                data-testid={testId ? `${testId}-add` : undefined}
               >
                 <Plus size={16} /> {m.add_plan_modal_field_add()}
               </Button>

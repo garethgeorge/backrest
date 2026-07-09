@@ -94,7 +94,9 @@ const MS_PER_DAY = 86_400_000;
 // by day distance from the newest bucket (always "today" on the server), which
 // tolerates server/browser timezone differences and any gaps in the bucket list.
 // Days before the plan's first backup render as dimmed "before start" cells.
-function toCells(buckets: SummaryDashboardResponse_DayStatusBucket[]): DayCell[] {
+function toCells(
+  buckets: SummaryDashboardResponse_DayStatusBucket[],
+): DayCell[] {
   const midnight = new Date();
   midnight.setHours(0, 0, 0, 0);
 
@@ -202,7 +204,12 @@ const DayTooltip = ({ cell }: { cell: DayCell }) => {
             </Flex>
           ))}
           {(bytesAdded > 0 || bytesScanned > 0) && (
-            <Box mt="3px" pt="3px" borderTop="1px solid" borderColor="border.subtle">
+            <Box
+              mt="3px"
+              pt="3px"
+              borderTop="1px solid"
+              borderColor="border.subtle"
+            >
               {bytesAdded > 0 && (
                 <Text fontSize="11px" color="fg.muted">
                   {m.dashboard_history_tooltip_added({

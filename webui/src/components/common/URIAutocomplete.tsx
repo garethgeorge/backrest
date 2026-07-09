@@ -22,8 +22,9 @@ import { StringList } from "../../../gen/ts/types/value_pb";
 const sep = isWindows ? "\\" : "/";
 
 export const URIAutocomplete = (props: any) => {
-  // Extract specific props we handle manually, pass rest to Root
-  const { value, onChange, placeholder, disabled, ...rest } = props;
+  // Extract specific props we handle manually, pass rest to Root.
+  // inputProps (e.g. data-testid) are forwarded to the underlying input element.
+  const { value, onChange, placeholder, disabled, inputProps, ...rest } = props;
 
   // value is string
   const [items, setItems] = useState<{ label: string; value: string }[]>([]);
@@ -114,7 +115,11 @@ export const URIAutocomplete = (props: any) => {
     >
       <ComboboxControl hideTrigger>
         {/* @ts-ignore */}
-        <ComboboxInput placeholder={placeholder} style={{ width: "100%" }} />
+        <ComboboxInput
+          placeholder={placeholder}
+          style={{ width: "100%" }}
+          {...inputProps}
+        />
       </ComboboxControl>
       <ComboboxContent zIndex={2000}>
         {collection.items.map((item) => (

@@ -3,7 +3,7 @@
     "target": "ESNext",
     "useDefineForClassFields": true,
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "types": ["node"],
+    "types": ["node", "vitest/globals"],
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": false,

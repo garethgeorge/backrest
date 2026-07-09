@@ -9,8 +9,10 @@ import {
   createToaster,
 } from "@chakra-ui/react";
 
+// Toasts sit above dialogs, so they must not cover dialog footers where the
+// primary actions (Submit/Save) live; top-end keeps them clear of those.
 export const toaster = createToaster({
-  placement: "bottom-end",
+  placement: "top-end",
   pauseOnPageIdle: true,
 });
 

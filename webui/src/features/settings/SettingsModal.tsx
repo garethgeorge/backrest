@@ -73,7 +73,6 @@ export const SettingsModal = () => {
     () => config?.multihost?.pairingTokens?.length || 0,
   );
 
-
   // Local state initialized from config
   const [formData, setFormData] = useState<any>(() => {
     if (!config) return null;
@@ -163,7 +162,6 @@ export const SettingsModal = () => {
     }
   };
 
-
   if (!config || !formData) return null;
 
   const updateField = (path: string[], value: any) => {
@@ -192,6 +190,13 @@ export const SettingsModal = () => {
     setConfirmLoading(true);
     try {
       const workingData = JSON.parse(JSON.stringify(formData));
+
+      if (!workingData.instance) {
+        throw new Error(m.settings_validation_instance_id_required());
+      }
+      if (!namePattern.test(workingData.instance)) {
+        throw new Error(m.settings_validation_instance_id_pattern());
+      }
 
       if (workingData.auth?.users) {
         for (const user of workingData.auth.users) {
@@ -269,6 +274,7 @@ export const SettingsModal = () => {
         setFormData(JSON.parse(initialFormData));
       }}
       saving={confirmLoading}
+      saveTestId="settings-submit"
     >
       {/* General Section */}
       <TwoPaneSection id="general">
@@ -282,7 +288,9 @@ export const SettingsModal = () => {
               <Alert status="warning">
                 <Stack gap={1}>
                   <strong>{m.settings_initial_setup_title()}</strong>
-                  <Text fontSize="sm">{m.settings_initial_setup_message()}</Text>
+                  <Text fontSize="sm">
+                    {m.settings_initial_setup_message()}
+                  </Text>
                   <Text fontSize="xs" fontStyle="italic">
                     {m.settings_initial_setup_hint()}
                   </Text>
@@ -296,6 +304,7 @@ export const SettingsModal = () => {
               required
             >
               <Input
+                data-testid="settings-instance-id"
                 value={getField(["instance"])}
                 onChange={(e) => updateField(["instance"], e.target.value)}
                 disabled={!!config.instance}
@@ -317,6 +326,7 @@ export const SettingsModal = () => {
         >
           <Stack gap={4}>
             <ToggleField
+              testId="settings-disable-auth"
               checked={getField(["auth", "disabled"]) || false}
               onChange={(v) => updateField(["auth", "disabled"], v)}
               label={m.settings_auth_disable()}
@@ -451,20 +461,18 @@ export const SettingsModal = () => {
             description="Tokens that can be shared with other Backrest instances to simplify peering."
           >
             <Stack gap={3} width="full">
-              {(config.multihost?.pairingTokens || []).map(
-                (token, index) => (
-                  <PairingTokenItem
-                    key={index}
-                    token={token}
-                    isNew={index >= initialTokenCount}
-                    generatedTokenString={
-                      index >= initialTokenCount ? generatedToken : undefined
-                    }
-                    config={config}
-                    onRemove={() => handleRemovePairingToken(index)}
-                  />
-                ),
-              )}
+              {(config.multihost?.pairingTokens || []).map((token, index) => (
+                <PairingTokenItem
+                  key={index}
+                  token={token}
+                  isNew={index >= initialTokenCount}
+                  generatedTokenString={
+                    index >= initialTokenCount ? generatedToken : undefined
+                  }
+                  config={config}
+                  onRemove={() => handleRemovePairingToken(index)}
+                />
+              ))}
 
               {showGenerateForm && (
                 <Box p={4} borderWidth="1px" borderRadius="md">
@@ -481,9 +489,7 @@ export const SettingsModal = () => {
                       <SelectRoot
                         collection={ttlOptions}
                         value={[tokenTtl]}
-                        onValueChange={(e: any) =>
-                          setTokenTtl(e.value[0])
-                        }
+                        onValueChange={(e: any) => setTokenTtl(e.value[0])}
                       >
                         {/* @ts-ignore */}
                         <SelectTrigger>
@@ -675,12 +681,7 @@ const PairingTokenItem = ({
 
 // --- Known Hosts List (with integrated pairing) ---
 
-const KnownHostsList = ({
-  items,
-  onUpdate,
-  peerStates,
-  config,
-}: any) => {
+const KnownHostsList = ({ items, onUpdate, peerStates, config }: any) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [pairToken, setPairToken] = useState("");
   const [pairInstanceUrl, setPairInstanceUrl] = useState("");
@@ -794,7 +795,7 @@ const KnownHostsList = ({
               <Input
                 value={pairToken}
                 onChange={(e) => setPairToken(e.target.value)}
-                placeholder='<keyid>:<secret>#<instanceid>'
+                placeholder="<keyid>:<secret>#<instanceid>"
                 width="full"
               />
             </Field>
@@ -922,7 +923,13 @@ const PeerFormListItem = ({
               placeholder={m.settings_peer_key_id_placeholder()}
             />
           </Field>
-          <Flex gap={1} align="center" alignSelf="flex-start" mt={1} flexShrink={0}>
+          <Flex
+            gap={1}
+            align="center"
+            alignSelf="flex-start"
+            mt={1}
+            flexShrink={0}
+          >
             {peerState && (
               <PeerStateConnectionStatusIcon peerState={peerState} />
             )}
@@ -958,7 +965,12 @@ const PeerFormListItem = ({
   );
 };
 
-const PeerPermissionsTile = ({ permissions, onUpdate, config, peerType }: any) => {
+const PeerPermissionsTile = ({
+  permissions,
+  onUpdate,
+  config,
+  peerType,
+}: any) => {
   const isAuthorizedClient = peerType === "authorizedClient";
 
   const repoOptions = createListCollection({
@@ -1001,7 +1013,9 @@ const PeerPermissionsTile = ({ permissions, onUpdate, config, peerType }: any) =
           value: "PERMISSION_RECEIVE_SHARED_REPOS",
         },
       ];
-  const permissionTypeOptions = createListCollection({ items: permissionTypeItems });
+  const permissionTypeOptions = createListCollection({
+    items: permissionTypeItems,
+  });
 
   // Hide the scope picker when scopes are meaningless for this direction:
   //   - On a known host, RECEIVE_SHARED_REPOS is evaluated scope-lessly by the

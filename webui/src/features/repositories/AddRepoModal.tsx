@@ -56,13 +56,7 @@ import {
   DialogRoot,
   DialogTitle,
 } from "../../components/ui/dialog";
-import {
-  FiTag,
-  FiLink,
-  FiClock,
-  FiZap,
-  FiSliders,
-} from "react-icons/fi";
+import { FiTag, FiLink, FiClock, FiZap, FiSliders } from "react-icons/fi";
 import {
   TwoPaneModal,
   TwoPaneSection,
@@ -156,7 +150,9 @@ const SftpConfigSection = ({
   isWindows,
 }: SftpConfigSectionProps) => {
   const [setupLoading, setSetupLoading] = useState(false);
-  const [generatedPublicKey, setGeneratedPublicKey] = useState<string | null>(null);
+  const [generatedPublicKey, setGeneratedPublicKey] = useState<string | null>(
+    null,
+  );
   const [hostKeyWarning, setHostKeyWarning] = useState<string | null>(null);
   const [keyCopied, setKeyCopied] = useState(false);
 
@@ -170,7 +166,9 @@ const SftpConfigSection = ({
       if (!uri) return;
 
       const authority = uri.replace("sftp:", "").split("/")[0];
-      const hostPart = authority.includes("@") ? authority.split("@")[1] : authority;
+      const hostPart = authority.includes("@")
+        ? authority.split("@")[1]
+        : authority;
       let host = hostPart;
       let defaultPort = "22";
       if (hostPart.includes(":")) {
@@ -211,9 +209,10 @@ const SftpConfigSection = ({
               <Stack gap={3} p={2}>
                 <CText fontSize="sm">
                   Click "Generate Key" to create an SSH key pair for this host.
-                  Backrest will attempt to scan the host key into known_hosts automatically.
-                  You will then need to add the generated public key to{" "}
-                  <Code>~/.ssh/authorized_keys</Code> on the remote server.
+                  Backrest will attempt to scan the host key into known_hosts
+                  automatically. You will then need to add the generated public
+                  key to <Code>~/.ssh/authorized_keys</Code> on the remote
+                  server.
                 </CText>
                 <Button
                   size="sm"
@@ -235,7 +234,8 @@ const SftpConfigSection = ({
               Key Generated Successfully!
             </CText>
             <CText fontSize="sm">
-              Add the following public key to <Code>~/.ssh/authorized_keys</Code> on the remote server:
+              Add the following public key to{" "}
+              <Code>~/.ssh/authorized_keys</Code> on the remote server:
             </CText>
             <Box position="relative">
               <Code
@@ -261,7 +261,13 @@ const SftpConfigSection = ({
               </Box>
             </Box>
             {hostKeyWarning && (
-              <Box p={3} borderWidth={1} borderRadius="md" borderColor="yellow.400" bg="yellow.subtle">
+              <Box
+                p={3}
+                borderWidth={1}
+                borderRadius="md"
+                borderColor="yellow.400"
+                bg="yellow.subtle"
+              >
                 <CText fontSize="sm" color="yellow.700">
                   <strong>Host key scan failed:</strong> {hostKeyWarning}
                 </CText>
@@ -309,7 +315,13 @@ const SftpConfigSection = ({
   );
 };
 
-export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | null, onSaveOverride?: (repo: Repo) => Promise<void> }) => {
+export const AddRepoModal = ({
+  template,
+  onSaveOverride,
+}: {
+  template: Repo | null;
+  onSaveOverride?: (repo: Repo) => Promise<void>;
+}) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const showModal = useShowModal();
   const [config, setConfig] = useConfig();
@@ -331,7 +343,7 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
     open: false,
     title: "",
     content: null,
-    onOk: () => { },
+    onOk: () => {},
   });
 
   useEffect(() => {
@@ -428,12 +440,7 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
     if (JSON.stringify(sortedCurrent) !== JSON.stringify(sortedNew)) {
       updateField(["flags"], newFlags);
     }
-  }, [
-    getField(["uri"]),
-    sftpIdentityFile,
-    sftpPort,
-    sftpKnownHostsPath,
-  ]);
+  }, [getField(["uri"]), sftpIdentityFile, sftpPort, sftpKnownHostsPath]);
 
   if (!config) return null;
 
@@ -541,7 +548,9 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
                 The host key for this SFTP server is not known.
                 <br />
                 <br />
-                To proceed, please manually add the host key to your known_hosts file, or use the "Bootstrap SSH Key" section below to generate and authorize a key.
+                To proceed, please manually add the host key to your known_hosts
+                file, or use the "Bootstrap SSH Key" section below to generate
+                and authorize a key.
               </>
             ),
             onOk: () => {
@@ -584,7 +593,9 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
                 The host key for this SFTP server is not known.
                 <br />
                 <br />
-                To proceed, please manually add the host key to your known_hosts file, or use the "Bootstrap SSH Key" section below to generate and authorize a key.
+                To proceed, please manually add the host key to your known_hosts
+                file, or use the "Bootstrap SSH Key" section below to generate
+                and authorize a key.
               </>
             ),
             onOk: () => {
@@ -692,10 +703,15 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
             variant="subtle"
             loading={confirmLoading}
             onClick={handleTest}
+            data-testid="add-repo-test-config"
           >
             {m.add_repo_modal_test_config()}
           </Button>
-          <Button loading={confirmLoading} onClick={handleOk}>
+          <Button
+            loading={confirmLoading}
+            onClick={handleOk}
+            data-testid="add-repo-submit"
+          >
             {m.add_plan_modal_button_submit()}
           </Button>
         </>
@@ -738,11 +754,24 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
         sections={sections}
         footer={footer}
       >
-        <Box opacity={isRemoteOrigin ? 0.7 : 1} pointerEvents={isRemoteOrigin ? "none" : undefined}>
+        <Box
+          opacity={isRemoteOrigin ? 0.7 : 1}
+          pointerEvents={isRemoteOrigin ? "none" : undefined}
+        >
           {isRemoteOrigin && (
-            <Box p={3} mb={4} borderWidth={1} borderRadius="md" bg="blue.subtle" borderColor="blue.400" pointerEvents="auto">
+            <Box
+              p={3}
+              mb={4}
+              borderWidth={1}
+              borderRadius="md"
+              bg="blue.subtle"
+              borderColor="blue.400"
+              pointerEvents="auto"
+            >
               <CText fontSize="sm">
-                This repository is managed by remote instance <strong>{template?.originInstanceId}</strong> and cannot be edited. You may delete it to remove the local copy.
+                This repository is managed by remote instance{" "}
+                <strong>{template?.originInstanceId}</strong> and cannot be
+                edited. You may delete it to remove the local copy.
               </CText>
             </Box>
           )}
@@ -767,9 +796,7 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
                     !!getField(["id"]) &&
                     (!namePattern.test(getField(["id"])) ||
                       (!template &&
-                        !!config.repos.find(
-                          (r) => r.id === getField(["id"]),
-                        )))
+                        !!config.repos.find((r) => r.id === getField(["id"]))))
                   }
                   errorText={
                     !!getField(["id"]) && !namePattern.test(getField(["id"]))
@@ -778,6 +805,7 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
                   }
                 >
                   <Input
+                    data-testid="add-repo-name"
                     value={getField(["id"])}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       updateField(["id"], e.target.value)
@@ -846,6 +874,7 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
                     disabled={!!template}
                     value={getField(["uri"])}
                     onChange={(val: string) => updateField(["uri"], val)}
+                    inputProps={{ "data-testid": "add-repo-uri" }}
                   />
                 </Field>
 
@@ -886,6 +915,7 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
                   <Flex gap={2} width="full">
                     <Box flex={1}>
                       <PasswordInput
+                        data-testid="add-repo-password"
                         value={getField(["password"])}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                           updateField(["password"], e.target.value)
@@ -912,9 +942,7 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
                   onUpdate={(items: string[]) => updateField(["env"], items)}
                   tooltip={
                     <Stack gap={2}>
-                      <CText>
-                        {m.add_repo_modal_field_env_vars_tooltip()}
-                      </CText>
+                      <CText>{m.add_repo_modal_field_env_vars_tooltip()}</CText>
                       <EnvVarTooltip uri={getField(["uri"])} />
                     </Stack>
                   }
@@ -1090,9 +1118,7 @@ export const AddRepoModal = ({ template, onSaveOverride }: { template: Repo | nu
                 <DynamicList
                   label={m.add_repo_modal_field_flags()}
                   items={getField(["flags"]) || []}
-                  onUpdate={(items: string[]) =>
-                    updateField(["flags"], items)
-                  }
+                  onUpdate={(items: string[]) => updateField(["flags"], items)}
                   placeholder="--flag"
                 />
               </Stack>
@@ -1217,9 +1243,9 @@ const checkSchemeEnvVars = async (
 
   throw new Error(
     "Missing env vars " +
-    formatMissingEnvVars(missingVarsCollection) +
-    " for scheme " +
-    scheme,
+      formatMissingEnvVars(missingVarsCollection) +
+      " for scheme " +
+      scheme,
   );
 };
 

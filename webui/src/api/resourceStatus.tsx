@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { Operation, OperationEvent, OperationStatus } from "../../gen/ts/v1/operations_pb";
+import {
+  Operation,
+  OperationEvent,
+  OperationStatus,
+} from "../../gen/ts/v1/operations_pb";
 import { OpSelector } from "../../gen/ts/v1/service_pb";
 import { subscribeToOperations, unsubscribeFromOperations } from "./oplog";
 import { getStatusForSelector, matchSelector } from "./logState";

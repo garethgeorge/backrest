@@ -111,7 +111,11 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         <Box flex="1" />
 
         <Group attached>
-          <SpinButton type="primary" onClickAsync={handleBackupNow}>
+          <SpinButton
+            type="primary"
+            onClickAsync={handleBackupNow}
+            data-testid="plan-backup-now"
+          >
             {m.plan_button_backup()}
           </SpinButton>
           <MenuRoot>

@@ -18,7 +18,7 @@ import {
   PaginationNextTrigger,
   PaginationPrevTrigger,
 } from "../../components/ui/pagination";
-import * as m from "../../paraglide/messages"
+import * as m from "../../paraglide/messages";
 
 // OperationList displays a list of operations that are either fetched based on 'req' or passed in via 'useBackups'.
 // If showPlan is provided the planId will be displayed next to each operation in the operation list.
@@ -55,11 +55,16 @@ export const OperationListView = ({
       setLoading(false);
     });
 
-    return syncStateFromRequest(logState, req, (e) => {
-      alerts.error("Failed to fetch operations: " + e.message);
-    }, () => {
-      setLoading(false);
-    });
+    return syncStateFromRequest(
+      logState,
+      req,
+      (e) => {
+        alerts.error("Failed to fetch operations: " + e.message);
+      },
+      () => {
+        setLoading(false);
+      },
+    );
   }, [req ? toJsonString(GetOperationsRequestSchema, req) : ""]);
 
   const hookExecutionsForOperation: Map<bigint, Operation[]> = new Map();

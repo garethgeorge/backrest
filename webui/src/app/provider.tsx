@@ -7,7 +7,7 @@ import { backrestService } from "../api/client";
 
 // Config Context Logic
 type ConfigCtx = [Config | null, (config: Config) => void];
-const ConfigContext = React.createContext<ConfigCtx>([null, () => {}]);
+export const ConfigContext = React.createContext<ConfigCtx>([null, () => {}]);
 
 export const useConfig = (): ConfigCtx => {
   const context = useContext(ConfigContext);
