@@ -541,5 +541,7 @@
   "dashboard_history_tooltip_added": "Добавлено {bytes}",
   "dashboard_history_tooltip_scanned": "Просканировано {bytes}",
   "dashboard_history_legend_inprogress": "В процессе",
-  "dashboard_history_tooltip_status_inprogress": "{count} в процессе"
+  "dashboard_history_tooltip_status_inprogress": "{count} в процессе",
+  "dashboard_history_tooltip_overdue": "Резервное копирование просрочено на этот день",
+  "dashboard_history_tooltip_on_schedule": "Резервные копии актуальны на этот день"
 }

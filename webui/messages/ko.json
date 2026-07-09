@@ -541,5 +541,7 @@
   "dashboard_history_tooltip_added": "{bytes} 추가됨",
   "dashboard_history_tooltip_scanned": "{bytes} 스캔됨",
   "dashboard_history_legend_inprogress": "진행 중",
-  "dashboard_history_tooltip_status_inprogress": "{count}개 진행 중"
+  "dashboard_history_tooltip_status_inprogress": "{count}개 진행 중",
+  "dashboard_history_tooltip_overdue": "이 날을 기준으로 백업이 지연되었습니다",
+  "dashboard_history_tooltip_on_schedule": "이 날을 기준으로 백업이 최신 상태입니다"
 }

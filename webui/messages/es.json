@@ -541,5 +541,7 @@
   "dashboard_history_tooltip_added": "Añadido {bytes}",
   "dashboard_history_tooltip_scanned": "Escaneado {bytes}",
   "dashboard_history_legend_inprogress": "En progreso",
-  "dashboard_history_tooltip_status_inprogress": "{count} en progreso"
+  "dashboard_history_tooltip_status_inprogress": "{count} en progreso",
+  "dashboard_history_tooltip_overdue": "Copia de seguridad atrasada a fecha de este día",
+  "dashboard_history_tooltip_on_schedule": "Copias de seguridad al día a fecha de este día"
 }

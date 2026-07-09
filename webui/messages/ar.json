@@ -541,5 +541,7 @@
   "dashboard_history_tooltip_added": "تمت إضافة {bytes}",
   "dashboard_history_tooltip_scanned": "تم فحص {bytes}",
   "dashboard_history_legend_inprogress": "قيد التنفيذ",
-  "dashboard_history_tooltip_status_inprogress": "{count} قيد التنفيذ"
+  "dashboard_history_tooltip_status_inprogress": "{count} قيد التنفيذ",
+  "dashboard_history_tooltip_overdue": "النسخ الاحتياطي متأخر اعتبارًا من هذا اليوم",
+  "dashboard_history_tooltip_on_schedule": "النسخ الاحتياطية محدثة اعتبارًا من هذا اليوم"
 }

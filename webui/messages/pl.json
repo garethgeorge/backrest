@@ -541,5 +541,7 @@
   "dashboard_history_tooltip_added": "Dodano {bytes}",
   "dashboard_history_tooltip_scanned": "Zeskanowano {bytes}",
   "dashboard_history_legend_inprogress": "W trakcie",
-  "dashboard_history_tooltip_status_inprogress": "{count} w trakcie"
+  "dashboard_history_tooltip_status_inprogress": "{count} w trakcie",
+  "dashboard_history_tooltip_overdue": "Kopia zapasowa zaległa na ten dzień",
+  "dashboard_history_tooltip_on_schedule": "Kopie zapasowe aktualne na ten dzień"
 }

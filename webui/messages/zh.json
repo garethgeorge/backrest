@@ -553,5 +553,7 @@
   "dashboard_history_tooltip_added": "已添加 {bytes}",
   "dashboard_history_tooltip_scanned": "已扫描 {bytes}",
   "dashboard_history_legend_inprogress": "进行中",
-  "dashboard_history_tooltip_status_inprogress": "{count} 个进行中"
+  "dashboard_history_tooltip_status_inprogress": "{count} 个进行中",
+  "dashboard_history_tooltip_overdue": "截至当天备份已逾期",
+  "dashboard_history_tooltip_on_schedule": "截至当天备份已是最新"
 }

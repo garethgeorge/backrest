@@ -541,5 +541,7 @@
   "dashboard_history_tooltip_added": "{bytes} 追加",
   "dashboard_history_tooltip_scanned": "{bytes} スキャン済み",
   "dashboard_history_legend_inprogress": "進行中",
-  "dashboard_history_tooltip_status_inprogress": "{count} 件進行中"
+  "dashboard_history_tooltip_status_inprogress": "{count} 件進行中",
+  "dashboard_history_tooltip_overdue": "この日の時点でバックアップが遅延しています",
+  "dashboard_history_tooltip_on_schedule": "この日の時点でバックアップは最新です"
 }

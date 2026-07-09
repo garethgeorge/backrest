@@ -541,5 +541,7 @@
   "dashboard_history_tooltip_added": "Adicionado {bytes}",
   "dashboard_history_tooltip_scanned": "Escaneado {bytes}",
   "dashboard_history_legend_inprogress": "Em andamento",
-  "dashboard_history_tooltip_status_inprogress": "{count} em andamento"
+  "dashboard_history_tooltip_status_inprogress": "{count} em andamento",
+  "dashboard_history_tooltip_overdue": "Backup atrasado neste dia",
+  "dashboard_history_tooltip_on_schedule": "Backups atualizados neste dia"
 }

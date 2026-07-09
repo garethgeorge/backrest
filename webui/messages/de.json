@@ -551,5 +551,7 @@
   "dashboard_history_tooltip_added": "Hinzugefügt: {bytes}",
   "dashboard_history_tooltip_scanned": "Gescannt: {bytes}",
   "dashboard_history_legend_inprogress": "Laufend",
-  "dashboard_history_tooltip_status_inprogress": "{count} laufend"
+  "dashboard_history_tooltip_status_inprogress": "{count} laufend",
+  "dashboard_history_tooltip_overdue": "Backup an diesem Tag überfällig",
+  "dashboard_history_tooltip_on_schedule": "Backups an diesem Tag auf dem neuesten Stand"
 }

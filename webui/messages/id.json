@@ -541,5 +541,7 @@
   "dashboard_history_tooltip_added": "Ditambahkan {bytes}",
   "dashboard_history_tooltip_scanned": "Dipindai {bytes}",
   "dashboard_history_legend_inprogress": "Sedang berjalan",
-  "dashboard_history_tooltip_status_inprogress": "{count} sedang berjalan"
+  "dashboard_history_tooltip_status_inprogress": "{count} sedang berjalan",
+  "dashboard_history_tooltip_overdue": "Backup terlambat per hari ini",
+  "dashboard_history_tooltip_on_schedule": "Backup mutakhir per hari ini"
 }

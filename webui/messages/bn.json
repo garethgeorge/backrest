@@ -541,5 +541,7 @@
   "dashboard_history_tooltip_added": "{bytes} যোগ করা হয়েছে",
   "dashboard_history_tooltip_scanned": "{bytes} স্ক্যান করা হয়েছে",
   "dashboard_history_legend_inprogress": "চলমান",
-  "dashboard_history_tooltip_status_inprogress": "{count}টি চলমান"
+  "dashboard_history_tooltip_status_inprogress": "{count}টি চলমান",
+  "dashboard_history_tooltip_overdue": "এই দিন অনুযায়ী ব্যাকআপের সময় পেরিয়ে গেছে",
+  "dashboard_history_tooltip_on_schedule": "এই দিন অনুযায়ী ব্যাকআপগুলো আপ-টু-ডেট রয়েছে"
 }

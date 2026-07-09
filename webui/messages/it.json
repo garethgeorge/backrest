@@ -553,5 +553,7 @@
   "dashboard_history_tooltip_added": "Aggiunti {bytes}",
   "dashboard_history_tooltip_scanned": "Scansionati {bytes}",
   "dashboard_history_legend_inprogress": "In corso",
-  "dashboard_history_tooltip_status_inprogress": "{count} in corso"
+  "dashboard_history_tooltip_status_inprogress": "{count} in corso",
+  "dashboard_history_tooltip_overdue": "Backup in ritardo a questa data",
+  "dashboard_history_tooltip_on_schedule": "Backup aggiornati a questa data"
 }

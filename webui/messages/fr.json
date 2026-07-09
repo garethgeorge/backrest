@@ -541,5 +541,7 @@
   "dashboard_history_tooltip_added": "{bytes} ajoutés",
   "dashboard_history_tooltip_scanned": "{bytes} analysés",
   "dashboard_history_legend_inprogress": "En cours",
-  "dashboard_history_tooltip_status_inprogress": "{count} en cours"
+  "dashboard_history_tooltip_status_inprogress": "{count} en cours",
+  "dashboard_history_tooltip_overdue": "Backup en retard à ce jour",
+  "dashboard_history_tooltip_on_schedule": "Backups à jour à ce jour"
 }

@@ -541,5 +541,7 @@
   "dashboard_history_tooltip_added": "{bytes} जोड़े गए",
   "dashboard_history_tooltip_scanned": "{bytes} स्कैन किए गए",
   "dashboard_history_legend_inprogress": "प्रगति पर",
-  "dashboard_history_tooltip_status_inprogress": "{count} प्रगति पर"
+  "dashboard_history_tooltip_status_inprogress": "{count} प्रगति पर",
+  "dashboard_history_tooltip_overdue": "इस दिन तक बैकअप का समय बीत चुका है",
+  "dashboard_history_tooltip_on_schedule": "इस दिन तक बैकअप अप-टू-डेट हैं"
 }
