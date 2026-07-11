@@ -107,7 +107,7 @@ func (t *ScheduledForgetTask) Next(now time.Time, runner TaskRunner) (ScheduledT
 	}
 
 	var lastRan time.Time
-	var foundBackup bool
+	var foundActivity bool
 	if err := runner.QueryOperations(oplog.Query{}.
 		SetRepoGUID(repoProto.GetGuid()).
 		SetReversed(true), func(op *v1.Operation) error {
@@ -119,12 +119,17 @@ func (t *ScheduledForgetTask) Next(now time.Time, runner TaskRunner) (ScheduledT
 			return oplog.ErrStopIteration
 		}
 		if _, ok := op.Op.(*v1.Operation_OperationBackup); ok {
-			foundBackup = true
+			foundActivity = true
+		} else if indexOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok && !indexOp.OperationIndexSnapshot.GetForgot() {
+			// Indexed snapshots count as activity too; they are how snapshots
+			// created outside of backrest (e.g. pushed via rest-server) appear
+			// in the oplog.
+			foundActivity = true
 		}
 		return nil
 	}); err != nil {
 		return NeverScheduledTask, fmt.Errorf("finding last scheduled forget run time: %w", err)
-	} else if !foundBackup {
+	} else if !foundActivity {
 		lastRan = now
 	}
 
@@ -143,10 +148,10 @@ func (t *ScheduledForgetTask) Next(now time.Time, runner TaskRunner) (ScheduledT
 	}, nil
 }
 
-// shouldSkip returns true if there are no new successful backups since the last scheduled forget.
+// shouldSkip returns true if no new snapshots appeared in the repo since the last scheduled forget.
 func (t *ScheduledForgetTask) shouldSkip(runner TaskRunner, repoProto *v1.Repo) bool {
 	var lastForgetEndMs int64
-	var hasNewBackup bool
+	var hasNewActivity bool
 
 	_ = runner.QueryOperations(oplog.Query{}.
 		SetInstanceID(runner.InstanceID()).
@@ -167,10 +172,12 @@ func (t *ScheduledForgetTask) shouldSkip(runner TaskRunner, repoProto *v1.Repo) 
 		return false // no previous forget, don't skip
 	}
 
-	// Check if any backup completed after the last forget.
-	// Intentionally not scoped by instance ID: in a sync setup the server receives
-	// backup operations from remote clients. We want forget to run whenever new
-	// snapshots appear in the repo regardless of which instance created them.
+	// Check if any snapshot appeared in the repo after the last forget, either
+	// as a backup operation or as an indexed snapshot. Indexed snapshots cover
+	// snapshots created outside of backrest (e.g. pushed via rest-server) as
+	// well as backups synced from remote clients.
+	// Intentionally not scoped by instance ID: we want forget to run whenever
+	// new snapshots appear in the repo regardless of which instance created them.
 	_ = runner.QueryOperations(oplog.Query{}.
 		SetRepoGUID(repoProto.GetGuid()).
 		SetReversed(true), func(op *v1.Operation) error {
@@ -179,14 +186,18 @@ func (t *ScheduledForgetTask) shouldSkip(runner TaskRunner, repoProto *v1.Repo) 
 		}
 		if op.Status == v1.OperationStatus_STATUS_SUCCESS {
 			if _, ok := op.Op.(*v1.Operation_OperationBackup); ok {
-				hasNewBackup = true
+				hasNewActivity = true
+				return oplog.ErrStopIteration
+			}
+			if indexOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok && !indexOp.OperationIndexSnapshot.GetForgot() {
+				hasNewActivity = true
 				return oplog.ErrStopIteration
 			}
 		}
 		return nil
 	})
 
-	return !hasNewBackup
+	return !hasNewActivity
 }
 
 func (t *ScheduledForgetTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunner) error {
@@ -197,7 +208,7 @@ func (t *ScheduledForgetTask) Run(ctx context.Context, st ScheduledTask, runner 
 		return NotifyError(ctx, runner, t.Name(), fmt.Errorf("get repo %q: %w", t.RepoID(), err), v1.Hook_CONDITION_FORGET_ERROR)
 	}
 
-	// Skip if no new backups since last forget run.
+	// Skip if no new snapshots since last forget run.
 	// Mark as system-cancelled so it doesn't count as a successful run
 	// and the next schedule is computed from the last actual forget.
 	// Interactive (force) runs always execute.
@@ -206,7 +217,7 @@ func (t *ScheduledForgetTask) Run(ctx context.Context, st ScheduledTask, runner 
 			OperationForget: &v1.OperationForget{},
 		}
 		op.Status = v1.OperationStatus_STATUS_SYSTEM_CANCELLED
-		op.DisplayMessage = "Skipped: no new backups since last forget"
+		op.DisplayMessage = "Skipped: no new snapshots since last forget"
 		return nil
 	}
 

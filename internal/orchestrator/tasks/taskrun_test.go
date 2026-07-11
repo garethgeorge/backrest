@@ -506,6 +506,151 @@ func TestScheduledForgetTaskRun(t *testing.T) {
 	}
 }
 
+func TestScheduledForgetTaskSkip(t *testing.T) {
+	now := time.Now()
+	forgetEnd := now.Add(-time.Hour)
+
+	priorForgetOp := func() *v1.Operation {
+		return &v1.Operation{
+			RepoId:          "repo1",
+			RepoGuid:        "guid1",
+			PlanId:          PlanForSystemTasks,
+			InstanceId:      "test-instance",
+			FlowId:          1,
+			UnixTimeStartMs: forgetEnd.Add(-time.Minute).UnixMilli(),
+			UnixTimeEndMs:   forgetEnd.UnixMilli(),
+			Status:          v1.OperationStatus_STATUS_SUCCESS,
+			Op:              &v1.Operation_OperationForget{OperationForget: &v1.OperationForget{}},
+		}
+	}
+
+	backupOp := func() *v1.Operation {
+		return &v1.Operation{
+			RepoId:          "repo1",
+			RepoGuid:        "guid1",
+			PlanId:          "plan1",
+			InstanceId:      "test-instance",
+			FlowId:          2,
+			UnixTimeStartMs: forgetEnd.Add(time.Minute).UnixMilli(),
+			UnixTimeEndMs:   forgetEnd.Add(2 * time.Minute).UnixMilli(),
+			Status:          v1.OperationStatus_STATUS_SUCCESS,
+			Op:              &v1.Operation_OperationBackup{OperationBackup: &v1.OperationBackup{}},
+		}
+	}
+
+	// Mirrors how indexSnapshotsHelper records a snapshot created outside of
+	// backrest (e.g. pushed via rest-server): unassociated plan and instance
+	// IDs, timestamps derived from the snapshot's own time, status SUCCESS.
+	indexSnapshotOp := func(forgot bool, status v1.OperationStatus) *v1.Operation {
+		snapshotTime := forgetEnd.Add(time.Minute)
+		return &v1.Operation{
+			RepoId:          "repo1",
+			RepoGuid:        "guid1",
+			PlanId:          PlanForUnassociatedOperations,
+			InstanceId:      InstanceIDForUnassociatedOperations,
+			FlowId:          3,
+			UnixTimeStartMs: snapshotTime.UnixMilli(),
+			UnixTimeEndMs:   snapshotTime.UnixMilli(),
+			Status:          status,
+			SnapshotId:      testSnapshotID,
+			Op: &v1.Operation_OperationIndexSnapshot{
+				OperationIndexSnapshot: &v1.OperationIndexSnapshot{
+					Snapshot: &v1.ResticSnapshot{
+						Id:         testSnapshotID,
+						UnixTimeMs: snapshotTime.UnixMilli(),
+					},
+					Forgot: forgot,
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name     string
+		ops      []*v1.Operation
+		wantSkip bool
+	}{
+		{
+			name:     "no prior forget",
+			ops:      nil,
+			wantSkip: false,
+		},
+		{
+			name:     "prior forget and nothing since",
+			ops:      []*v1.Operation{priorForgetOp()},
+			wantSkip: true,
+		},
+		{
+			name:     "prior forget and newer backup",
+			ops:      []*v1.Operation{priorForgetOp(), backupOp()},
+			wantSkip: false,
+		},
+		{
+			name:     "prior forget and newer indexed snapshot",
+			ops:      []*v1.Operation{priorForgetOp(), indexSnapshotOp(false, v1.OperationStatus_STATUS_SUCCESS)},
+			wantSkip: false,
+		},
+		{
+			// Synthetic state guarding the Forgot check: a naturally occurring
+			// forgotten index op keeps its original pre-forget end time and is
+			// already excluded by the time window.
+			name:     "prior forget and newer forgotten indexed snapshot",
+			ops:      []*v1.Operation{priorForgetOp(), indexSnapshotOp(true, v1.OperationStatus_STATUS_SUCCESS)},
+			wantSkip: true,
+		},
+		{
+			name:     "prior forget and newer non-success indexed snapshot",
+			ops:      []*v1.Operation{priorForgetOp(), indexSnapshotOp(false, v1.OperationStatus_STATUS_ERROR)},
+			wantSkip: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &v1.Repo{
+				Id: "repo1", Guid: "guid1",
+				ForgetPolicy: &v1.ForgetPolicy{
+					Retention: &v1.RetentionPolicy{
+						Policy: &v1.RetentionPolicy_PolicyKeepLastN{PolicyKeepLastN: 5},
+					},
+				},
+			}
+			cfg := newTestConfig(repo)
+			runner := setupTestRunner(t, cfg, &fakeRepoOrchestrator{})
+			require.NoError(t, runner.CreateOperation(tc.ops...))
+
+			task := NewScheduledForgetTask(repo, PlanForSystemTasks, false)
+			st := ScheduledTask{
+				Task: task,
+				Op: &v1.Operation{
+					RepoId:          repo.Id,
+					RepoGuid:        repo.Guid,
+					PlanId:          PlanForSystemTasks,
+					InstanceId:      runner.InstanceID(),
+					FlowId:          100,
+					UnixTimeStartMs: now.UnixMilli(),
+					Status:          v1.OperationStatus_STATUS_PENDING,
+					Op:              &v1.Operation_OperationForget{},
+				},
+			}
+
+			require.NoError(t, task.Run(context.Background(), st, runner))
+
+			if tc.wantSkip {
+				assert.Equal(t, v1.OperationStatus_STATUS_SYSTEM_CANCELLED, st.Op.Status)
+				assert.Contains(t, st.Op.DisplayMessage, "Skipped")
+				assert.Empty(t, runner.hookCalls)
+				assert.Empty(t, runner.scheduledTasks)
+			} else {
+				assert.NotEqual(t, v1.OperationStatus_STATUS_SYSTEM_CANCELLED, st.Op.Status)
+				assert.True(t, hookContains(runner.hookCalls, v1.Hook_CONDITION_FORGET_SUCCESS))
+				require.Len(t, runner.scheduledTasks, 1)
+				assert.Equal(t, "stats", runner.scheduledTasks[0].Task.Type())
+			}
+		})
+	}
+}
+
 // --- RestoreTask tests ---
 
 func TestRestoreTaskRun(t *testing.T) {
