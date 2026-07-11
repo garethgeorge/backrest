@@ -3,9 +3,7 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -13,6 +11,10 @@ import (
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 	"github.com/garethgeorge/backrest/internal/oplog"
 )
+
+// debounceWindow is how long the refresh loop waits after an oplog event to let
+// a burst of progress events settle before recomputing the status.
+const debounceWindow = 1 * time.Second
 
 // trayState is the overall backup state reflected by the tray icon.
 type trayState int
@@ -25,128 +27,96 @@ const (
 	stateError                    // most recent backup failed
 )
 
-// errStopQuery short-circuits an oplog query once the wanted op is found.
-var errStopQuery = errors.New("stop")
-
-// trayStatus tracks backup state from the oplog and updates the tray icon and
-// tooltip to match (addresses #894). Updates are coalesced so a burst of
-// progress events triggers at most one recompute per window.
+// trayStatus reflects backup state from the oplog in the tray icon and tooltip
+// (addresses #894). Oplog events are coalesced through notify so a burst of
+// progress updates triggers at most one recompute per debounce window.
 type trayStatus struct {
-	mu      sync.Mutex
-	log     *oplog.OpLog
-	cur     trayState
-	tooltip string
-	ready   atomic.Bool
-	pending atomic.Bool
+	log    atomic.Pointer[oplog.OpLog]
+	notify chan struct{}
 }
 
 func newTrayStatus() *trayStatus {
-	return &trayStatus{cur: stateIdle, tooltip: "Backrest"}
+	return &trayStatus{notify: make(chan struct{}, 1)}
 }
 
-// attach is invoked via the onOpLogReady hook once the oplog exists. It seeds
-// the initial state and subscribes for subsequent changes.
+// attach is invoked via the onOpLogReady hook once the oplog exists. It
+// subscribes for changes and requests an initial refresh.
 func (t *trayStatus) attach(log *oplog.OpLog) {
-	t.mu.Lock()
-	t.log = log
-	t.mu.Unlock()
-
-	sub := oplog.Subscription(func(_ []*v1.Operation, _ oplog.OperationEvent) {
-		t.scheduleRefresh()
-	})
+	t.log.Store(log)
+	sub := oplog.Subscription(func(_ []*v1.Operation, _ oplog.OperationEvent) { t.poke() })
 	log.Subscribe(oplog.Query{}, &sub)
-	t.doRefresh()
+	t.poke()
 }
 
-// markReady is called once the systray is live so icon/tooltip writes land.
-func (t *trayStatus) markReady() {
-	t.ready.Store(true)
-	t.apply()
-}
-
-// scheduleRefresh coalesces a burst of oplog events into one recompute.
-func (t *trayStatus) scheduleRefresh() {
-	if t.pending.Swap(true) {
-		return
+// poke requests a refresh. The buffered channel drops the signal if one is
+// already pending, collapsing bursts into a single wake-up.
+func (t *trayStatus) poke() {
+	select {
+	case t.notify <- struct{}{}:
+	default:
 	}
-	go func() {
-		time.Sleep(750 * time.Millisecond)
-		t.pending.Store(false)
-		t.doRefresh()
-	}()
 }
 
-func (t *trayStatus) doRefresh() {
-	t.mu.Lock()
-	log := t.log
-	t.mu.Unlock()
+// run coalesces oplog events into at most one refresh per debounce window. Start
+// it once the systray is live so icon and tooltip writes take effect.
+func (t *trayStatus) run() {
+	for range t.notify {
+		t.refresh()
+		time.Sleep(debounceWindow)
+	}
+}
+
+// refresh recomputes the status and writes it to the tray.
+func (t *trayStatus) refresh() {
+	log := t.log.Load()
 	if log == nil {
 		return
 	}
-
-	state := stateIdle
-	tooltip := "Backrest — no backups yet"
-	running := false
-	var last *v1.Operation
-
-	// Reversed = newest first. Skip non-backup ops; a running backup flips the
-	// state, otherwise the first completed backup is the most recent result.
-	_ = log.Query(oplog.Query{Reversed: true}, func(op *v1.Operation) error {
-		// Only backup operations drive the headline status. Match on the oneof
-		// type rather than GetOperationBackup(), which is nil when the inner
-		// message is unset on an otherwise-backup op.
-		if _, ok := op.GetOp().(*v1.Operation_OperationBackup); !ok {
-			return nil
-		}
-		switch op.GetStatus() {
-		case v1.OperationStatus_STATUS_INPROGRESS, v1.OperationStatus_STATUS_PENDING:
-			running = true
-			return nil
-		default:
-			last = op
-			return errStopQuery
-		}
-	})
-
-	switch {
-	case running:
-		state = stateRunning
-		tooltip = "Backrest — backup in progress…"
-	case last != nil:
-		when := relativeTime(last.GetUnixTimeEndMs())
-		switch last.GetStatus() {
-		case v1.OperationStatus_STATUS_SUCCESS:
-			state, tooltip = stateOK, "Backrest — last backup succeeded "+when
-		case v1.OperationStatus_STATUS_WARNING:
-			state, tooltip = stateWarning, "Backrest — last backup finished with warnings "+when
-		case v1.OperationStatus_STATUS_ERROR, v1.OperationStatus_STATUS_SYSTEM_CANCELLED:
-			state, tooltip = stateError, "Backrest — last backup failed "+when
-		case v1.OperationStatus_STATUS_USER_CANCELLED:
-			state, tooltip = stateIdle, "Backrest — last backup was cancelled "+when
-		}
-	}
-
-	t.mu.Lock()
-	changed := state != t.cur || tooltip != t.tooltip
-	t.cur, t.tooltip = state, tooltip
-	t.mu.Unlock()
-	if changed {
-		t.apply()
-	}
-}
-
-func (t *trayStatus) apply() {
-	if !t.ready.Load() {
-		return
-	}
-	t.mu.Lock()
-	state, tooltip := t.cur, t.tooltip
-	t.mu.Unlock()
-
+	state, tooltip := computeStatus(log)
 	if ic := statusIcon(state); ic != nil {
 		systray.SetIcon(ic)
 	}
 	systray.SetTooltip(tooltip)
+}
+
+// computeStatus returns the tray state and tooltip for the most recent backup.
+// It scans the oplog newest-first for the first backup that is not a scheduled
+// future run (the orchestrator pre-creates a PENDING op for the next run), then
+// maps that op's status to an icon. Only backup operations count —
+// forget/prune/check/etc. never move the icon.
+func computeStatus(log *oplog.OpLog) (trayState, string) {
+	var last *v1.Operation
+	_ = log.Query(oplog.Query{Reversed: true}, func(op *v1.Operation) error {
+		// Match on the oneof type rather than GetOperationBackup(), which is nil
+		// when the inner message is unset on an otherwise-backup op.
+		if _, ok := op.GetOp().(*v1.Operation_OperationBackup); !ok {
+			return nil
+		}
+		if op.GetStatus() == v1.OperationStatus_STATUS_PENDING {
+			return nil // scheduled future run; not a result and not in progress
+		}
+		last = op
+		return oplog.ErrStopIteration
+	})
+
+	if last == nil {
+		return stateIdle, "Backrest — no backups yet"
+	}
+	when := relativeTime(last.GetUnixTimeEndMs())
+	switch last.GetStatus() {
+	case v1.OperationStatus_STATUS_INPROGRESS:
+		return stateRunning, "Backrest — backup in progress…"
+	case v1.OperationStatus_STATUS_SUCCESS:
+		return stateOK, "Backrest — last backup succeeded " + when
+	case v1.OperationStatus_STATUS_WARNING:
+		return stateWarning, "Backrest — last backup finished with warnings " + when
+	case v1.OperationStatus_STATUS_ERROR, v1.OperationStatus_STATUS_SYSTEM_CANCELLED:
+		return stateError, "Backrest — last backup failed " + when
+	case v1.OperationStatus_STATUS_USER_CANCELLED:
+		return stateIdle, "Backrest — last backup was cancelled " + when
+	default:
+		return stateIdle, "Backrest — no backups yet"
+	}
 }
 
 func relativeTime(unixMs int64) string {

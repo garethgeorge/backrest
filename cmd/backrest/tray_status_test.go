@@ -49,15 +49,12 @@ func nonBackupOp(status v1.OperationStatus) *v1.Operation {
 	}
 }
 
-func TestTrayStatus(t *testing.T) {
+func TestComputeStatus(t *testing.T) {
 	log := newTestOpLog(t)
-	ts := newTrayStatus()
-	ts.attach(log)
 
 	// No operations yet.
-	ts.doRefresh()
-	if ts.cur != stateIdle {
-		t.Fatalf("empty oplog: got %v, want stateIdle", ts.cur)
+	if state, _ := computeStatus(log); state != stateIdle {
+		t.Fatalf("empty oplog: got %v, want stateIdle", state)
 	}
 
 	steps := []struct {
@@ -71,23 +68,23 @@ func TestTrayStatus(t *testing.T) {
 		{"warning backup is newest", backupOp(v1.OperationStatus_STATUS_WARNING), stateWarning},
 		{"in-progress backup shows running", backupOp(v1.OperationStatus_STATUS_INPROGRESS), stateRunning},
 		{"completed success after run", backupOp(v1.OperationStatus_STATUS_SUCCESS), stateOK},
+		// The orchestrator pre-creates a PENDING op for the next scheduled run; it
+		// must be skipped so the icon reflects the last real backup, not "running".
+		{"pending scheduled backup is ignored", backupOp(v1.OperationStatus_STATUS_PENDING), stateOK},
 	}
 
 	for _, s := range steps {
 		if err := log.Add(s.op); err != nil {
 			t.Fatalf("%s: Add: %v", s.name, err)
 		}
-		ts.doRefresh()
-		if ts.cur != s.want {
-			t.Errorf("%s: got state %v, want %v", s.name, ts.cur, s.want)
+		if state, _ := computeStatus(log); state != s.want {
+			t.Errorf("%s: got state %v, want %v", s.name, state, s.want)
 		}
 	}
 }
 
-func TestTrayStatusInProgressOverridesOlderResult(t *testing.T) {
+func TestComputeStatusInProgressOverridesOlderResult(t *testing.T) {
 	log := newTestOpLog(t)
-	ts := newTrayStatus()
-	ts.attach(log)
 
 	if err := log.Add(backupOp(v1.OperationStatus_STATUS_ERROR)); err != nil {
 		t.Fatal(err)
@@ -95,8 +92,7 @@ func TestTrayStatusInProgressOverridesOlderResult(t *testing.T) {
 	if err := log.Add(backupOp(v1.OperationStatus_STATUS_INPROGRESS)); err != nil {
 		t.Fatal(err)
 	}
-	ts.doRefresh()
-	if ts.cur != stateRunning {
-		t.Errorf("in-progress over older error: got %v, want stateRunning", ts.cur)
+	if state, _ := computeStatus(log); state != stateRunning {
+		t.Errorf("in-progress over older error: got %v, want stateRunning", state)
 	}
 }

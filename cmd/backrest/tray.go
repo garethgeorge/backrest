@@ -28,8 +28,8 @@ func onReady(status *trayStatus) {
 	mOpenLog := systray.AddMenuItem("Open Log Dir", "Open the Backrest log directory")
 	mQuit := systray.AddMenuItem("Quit", "Kills the backrest process and exits the tray app")
 
-	// Now that the tray is live, reflect the current backup status.
-	status.markReady()
+	// The tray is live, so icon writes now take effect: start reflecting status.
+	go status.run()
 
 	go func() {
 		for {
