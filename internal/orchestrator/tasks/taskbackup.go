@@ -263,9 +263,12 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 	if !skipFollowUpTasks {
 		// schedule followup tasks if a snapshot was added
 		at := time.Now()
-		// Skip per-plan forget if the repo has a scheduled forget policy
+		// Skip per-plan forget only if the repo has an *active* scheduled forget
+		// policy. A forgetPolicy with a disabled schedule (the WebUI's default for
+		// new repos) must not suppress per-plan retention, otherwise no forget
+		// runs at either level and snapshots are retained forever.
 		repoConfig, _ := runner.GetRepo(t.RepoID())
-		if repoConfig.GetForgetPolicy().GetSchedule() == nil {
+		if !protoutil.ScheduleEnabled(repoConfig.GetForgetPolicy().GetSchedule()) {
 			if _, ok := plan.Retention.GetPolicy().(*v1.RetentionPolicy_PolicyKeepAll); plan.Retention != nil && !ok {
 				if err := runner.ScheduleTask(NewOneoffForgetTask(t.Repo(), t.PlanID(), op.FlowId, at), TaskPriorityForget); err != nil {
 					return fmt.Errorf("failed to schedule forget task: %w", err)

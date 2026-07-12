@@ -11,6 +11,23 @@ import (
 
 var ErrScheduleDisabled = errors.New("never")
 
+// ScheduleEnabled returns true if the schedule is set and will actually fire,
+// i.e. it is non-nil and its oneof case is not `disabled`. Use this (rather
+// than a nil check) anywhere behavior branches on whether a scheduled policy
+// is active: the WebUI serializes a {disabled: true} schedule for policies
+// the user has turned off, so a non-nil schedule may still never run.
+func ScheduleEnabled(sched *v1.Schedule) bool {
+	if sched == nil {
+		return false
+	}
+	switch sched.GetSchedule().(type) {
+	case *v1.Schedule_Disabled, nil:
+		return false
+	default:
+		return true
+	}
+}
+
 // ResolveSchedule resolves a schedule to the next time it should run based on last execution.
 // note that this is different from backup behavior which is always relative to the current time.
 func ResolveSchedule(sched *v1.Schedule, lastRan time.Time, curTime time.Time) (time.Time, error) {

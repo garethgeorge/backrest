@@ -121,8 +121,7 @@ func validateRepo(repo *v1.Repo) error {
 			}
 		}
 		// Only require retention when the schedule is actually active.
-		scheduleActive := schedule != nil && schedule.GetDisabled() != true
-		if scheduleActive {
+		if protoutil.ScheduleEnabled(schedule) {
 			if repo.ForgetPolicy.GetRetention() == nil {
 				err = multierror.Append(err, errors.New("forget policy must specify a retention policy"))
 			} else if e := protoutil.ValidateRetentionPolicy(repo.ForgetPolicy.GetRetention()); e != nil {
