@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.14.1](https://github.com/garethgeorge/backrest/compare/v1.14.0...v1.14.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* downloading files from a snapshot can fail if repoID has changed ([cbca7a7](https://github.com/garethgeorge/backrest/commit/cbca7a7a50bac756eeebb5f1a75c465c38390f93))
+* per-plan retention silently skipped when repo forget policy schedule is disabled ([2f46c61](https://github.com/garethgeorge/backrest/commit/2f46c61793cd5401ea274e7d94901084ff2766b5))
+* scheduled forget silently skipped and hidden from operation log ([18303db](https://github.com/garethgeorge/backrest/commit/18303dbe3139379996fff545e7acf82b9d84d80e))
+
 ## [1.14.0](https://github.com/garethgeorge/backrest/compare/v1.13.0...v1.14.0) (2026-07-12)
 
 
