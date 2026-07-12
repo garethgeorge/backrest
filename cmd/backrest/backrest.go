@@ -58,7 +58,7 @@ func runApp() {
 	flag.Parse()
 	if *printVersion {
 		fmt.Printf("backrest version: %s, commit: %s\n", version, commit)
-		return
+		os.Exit(0)
 	}
 	installLoggers(version, commit)
 
