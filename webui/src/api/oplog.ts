@@ -1,75 +1,28 @@
 import {
   Operation,
   OperationEvent,
-  OperationEventType,
+  OperationEventSchema,
   OperationStatus,
 } from "../../gen/ts/v1/operations_pb";
-import { GetOperationsRequest, OpSelector } from "../../gen/ts/v1/service_pb";
-import {
-  BackupProgressEntry,
-  ResticSnapshot,
-  RestoreProgressEntry,
-} from "../../gen/ts/v1/restic_pb";
-import { EmptySchema } from "../../gen/ts/types/value_pb";
-import { create } from "@bufbuild/protobuf";
+import { GetOperationsRequest } from "../../gen/ts/v1/service_pb";
+import { fromBinary, toBinary } from "@bufbuild/protobuf";
 import { backrestService } from "./client";
-import { useEffect, useState } from "react";
+import { createSharedStream } from "./streams/sharedStream";
 
-const subscribers: ((event?: OperationEvent, err?: Error) => void)[] = [];
-
-// Start fetching and emitting operations.
-(async () => {
-  while (true) {
-    let nextConnWaitUntil = new Date().getTime() + 5000;
-    try {
-      for await (const event of backrestService.getOperationEvents({})) {
-        console.log("operation event", event);
-        subscribers.forEach((subscriber) => subscriber(event, undefined));
-      }
-    } catch (e: any) {
-      console.warn("operations stream died with exception: ", e);
-      let waitRemaining = nextConnWaitUntil - new Date().getTime();
-      if (waitRemaining < 0) {
-        subscribers.forEach((subscriber) =>
-          subscriber(undefined, e instanceof Error ? e : new Error(String(e))),
-        );
-      }
-    }
-    await new Promise((accept, _) =>
-      setTimeout(accept, nextConnWaitUntil - new Date().getTime()),
-    );
-  }
-})();
+// Operation-event stream, shared across tabs (see sharedStream). onResync means
+// reset + refetch; consumers load their own initial state via getOperations().
+export const operationsStream = createSharedStream<OperationEvent>({
+  name: "backrest:operations",
+  connect: (signal) => backrestService.getOperationEvents({}, { signal }),
+  encode: (event) => toBinary(OperationEventSchema, event),
+  decode: (bytes) => fromBinary(OperationEventSchema, bytes),
+});
 
 export const getOperations = async (
   req: GetOperationsRequest,
 ): Promise<Operation[]> => {
   const opList = await backrestService.getOperations(req);
   return opList.operations || [];
-};
-
-export const subscribeToOperations = (
-  callback: (event?: OperationEvent, err?: Error) => void,
-) => {
-  subscribers.push(callback);
-  console.log(
-    "subscribed to operations, subscriber count: ",
-    subscribers.length,
-  );
-};
-
-export const unsubscribeFromOperations = (
-  callback: (event?: OperationEvent, err?: Error) => void,
-) => {
-  const index = subscribers.indexOf(callback);
-  if (index > -1) {
-    subscribers[index] = subscribers[subscribers.length - 1];
-    subscribers.pop();
-  }
-  console.log(
-    "unsubscribed from operations, subscriber count: ",
-    subscribers.length,
-  );
 };
 
 export const shouldHideOperation = (operation: Operation) => {

@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
-import {
-  Operation,
-  OperationEvent,
-  OperationStatus,
-} from "../../gen/ts/v1/operations_pb";
+import { Operation, OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { OpSelector } from "../../gen/ts/v1/service_pb";
-import { subscribeToOperations, unsubscribeFromOperations } from "./oplog";
+import { operationsStream } from "./oplog";
 import { getStatusForSelector, matchSelector } from "./logState";
 import { debounce } from "../lib/util";
 
@@ -13,7 +9,7 @@ import { debounce } from "../lib/util";
 const selectors = new Map<string, { selector: OpSelector; refCount: number }>();
 const statuses = new Map<string, OperationStatus>();
 const listeners = new Set<() => void>();
-let subscribed = false;
+let unsubscribe: (() => void) | null = null;
 
 const notify = () => {
   for (const l of listeners) l();
@@ -62,19 +58,6 @@ const refreshMatching = (ops: Operation[]) => {
   }
 };
 
-const handleEvent = (event?: OperationEvent, _err?: Error) => {
-  if (!event || !event.event) return;
-  switch (event.event.case) {
-    case "createdOperations":
-    case "updatedOperations":
-      refreshMatching(event.event.value.operations);
-      break;
-    case "deletedOperations":
-      refreshAll();
-      break;
-  }
-};
-
 const register = (selector: OpSelector): string => {
   const key = JSON.stringify(selector);
   const existing = selectors.get(key);
@@ -84,9 +67,22 @@ const register = (selector: OpSelector): string => {
   }
   selectors.set(key, { selector, refCount: 1 });
   fetchStatus(key, selector);
-  if (!subscribed) {
-    subscribed = true;
-    subscribeToOperations(handleEvent);
+  if (!unsubscribe) {
+    unsubscribe = operationsStream.subscribe({
+      onMessage: (event) => {
+        switch (event.event.case) {
+          case "createdOperations":
+          case "updatedOperations":
+            refreshMatching(event.event.value.operations);
+            break;
+          case "deletedOperations":
+            refreshAll();
+            break;
+        }
+      },
+      // May have missed events; re-fetch every tracked selector.
+      onConnectOrResync: () => refreshAll(),
+    });
   }
   return key;
 };
@@ -99,9 +95,9 @@ const unregister = (key: string) => {
     selectors.delete(key);
     statuses.delete(key);
     notify();
-    if (selectors.size === 0 && subscribed) {
-      subscribed = false;
-      unsubscribeFromOperations(handleEvent);
+    if (selectors.size === 0 && unsubscribe) {
+      unsubscribe();
+      unsubscribe = null;
       flushPending.cancel();
       pendingKeys.clear();
     }

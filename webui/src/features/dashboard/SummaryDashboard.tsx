@@ -10,17 +10,13 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FiCheck, FiDatabase, FiRefreshCw, FiServer } from "react-icons/fi";
 import { LuTriangle, LuX } from "react-icons/lu";
 import { useNavigate } from "react-router";
 import { toJsonString } from "@bufbuild/protobuf";
 import { ConfigSchema, Multihost } from "../../../gen/ts/v1/config_pb";
-import {
-  Operation,
-  OperationEvent,
-  OperationStatus,
-} from "../../../gen/ts/v1/operations_pb";
+import { Operation, OperationStatus } from "../../../gen/ts/v1/operations_pb";
 import {
   GetOperationsRequestSchema,
   OpSelectorSchema,
@@ -30,11 +26,7 @@ import {
 import { PeerState } from "../../../gen/ts/v1sync/syncservice_pb";
 import { create } from "@bufbuild/protobuf";
 import { backrestService } from "../../api/client";
-import {
-  getOperations,
-  subscribeToOperations,
-  unsubscribeFromOperations,
-} from "../../api/oplog";
+import { getOperations, operationsStream } from "../../api/oplog";
 import { matchSelector } from "../../api/logState";
 import { alerts } from "../../components/common/Alerts";
 import { PeerStateConnectionStatusIcon } from "../../components/common/SyncStateIcon";
@@ -363,28 +355,33 @@ const useLiveProgress = (
     };
 
     // Seed with the in-flight operation so the bar isn't empty until the first event.
-    getOperations(create(GetOperationsRequestSchema, { lastN: 1n, selector }))
-      .then((ops) => {
-        if (!cancelled && ops[0]) apply(ops[0]);
-      })
-      .catch(() => {}); // best-effort; live updates follow
-
-    // Then stay current via the shared operation-event subscription.
-    const handler = (event?: OperationEvent) => {
-      if (
-        event?.event.case !== "createdOperations" &&
-        event?.event.case !== "updatedOperations"
-      ) {
-        return;
-      }
-      for (const op of event.event.value.operations) {
-        if (matchSelector(selector, op)) apply(op);
-      }
+    const seed = () => {
+      getOperations(create(GetOperationsRequestSchema, { lastN: 1n, selector }))
+        .then((ops) => {
+          if (!cancelled && ops[0]) apply(ops[0]);
+        })
+        .catch(() => {}); // best-effort; live updates follow
     };
-    subscribeToOperations(handler);
+
+    // The subscription seeds on connect (and re-seeds after a gap) via
+    // onConnectOrResync, then stays current from the event stream.
+    const unsubscribe = operationsStream.subscribe({
+      onMessage: (event) => {
+        if (
+          event.event.case !== "createdOperations" &&
+          event.event.case !== "updatedOperations"
+        ) {
+          return;
+        }
+        for (const op of event.event.value.operations) {
+          if (matchSelector(selector, op)) apply(op);
+        }
+      },
+      onConnectOrResync: () => seed(), // seed on connect, re-seed after a gap
+    });
     return () => {
       cancelled = true;
-      unsubscribeFromOperations(handler);
+      unsubscribe();
     };
   }, [planId, running, onFinished]);
 

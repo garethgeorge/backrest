@@ -1,6 +1,5 @@
 import {
   Operation,
-  OperationEvent,
   OperationEventType,
   OperationStatus,
 } from "../../gen/ts/v1/operations_pb";
@@ -9,11 +8,7 @@ import {
   GetOperationsRequestSchema,
   OpSelector,
 } from "../../gen/ts/v1/service_pb";
-import {
-  getOperations,
-  subscribeToOperations,
-  unsubscribeFromOperations,
-} from "./oplog";
+import { getOperations, operationsStream } from "./oplog";
 import { create } from "@bufbuild/protobuf";
 
 type Subscriber = (
@@ -28,35 +23,23 @@ export const syncStateFromRequest = (
   onError?: (e: Error) => void,
   onInitialLoad?: () => void,
 ): (() => void) => {
-  getOperations(req)
-    .then((res) => {
-      state.add(...res);
-      onInitialLoad?.();
-    })
-    .catch((e) => {
-      if (onError) {
-        onError(e);
-      }
-      onInitialLoad?.();
-    });
+  // The stream carries only deltas, which may have gaps across a connect or
+  // resync, so (re)load the full set from the API and rebuild from scratch.
+  const load = () => {
+    state.reset();
+    getOperations(req)
+      .then((res) => {
+        state.add(...res);
+        onInitialLoad?.();
+      })
+      .catch((e) => {
+        onError?.(e);
+        onInitialLoad?.();
+      });
+  };
 
-  const cbHelper = (event?: OperationEvent, err?: Error) => {
-    if (err) {
-      if (onError) {
-        onError(err);
-      }
-      state.reset();
-
-      getOperations(req)
-        .then((res) => {
-          state.add(...res);
-        })
-        .catch((e) => {
-          if (onError) {
-            onError(e);
-          }
-        });
-    } else if (event) {
+  return operationsStream.subscribe({
+    onMessage: (event) => {
       switch (event.event.case) {
         case "createdOperations":
         case "updatedOperations":
@@ -70,13 +53,9 @@ export const syncStateFromRequest = (
           state.removeIDs(...event.event.value.values);
           break;
       }
-    }
-  };
-
-  subscribeToOperations(cbHelper);
-  return () => {
-    unsubscribeFromOperations(cbHelper);
-  };
+    },
+    onConnectOrResync: load,
+  });
 };
 
 // getStatus returns the status of the last N operations that belong to a single snapshot.

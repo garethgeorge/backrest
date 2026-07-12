@@ -1,15 +1,7 @@
-import React, { useEffect, useState } from "react";
-import {
-  subscribeToOperations,
-  unsubscribeFromOperations,
-} from "../../api/oplog";
+import { useEffect, useState } from "react";
+import { operationsStream } from "../../api/oplog";
 import { formatDuration } from "../../lib/formatting";
-import {
-  Operation,
-  OperationEvent,
-  OperationEventType,
-  OperationStatus,
-} from "../../../gen/ts/v1/operations_pb";
+import { Operation, OperationStatus } from "../../../gen/ts/v1/operations_pb";
 import {
   displayTypeToString,
   getTypeForDisplay,
@@ -20,42 +12,41 @@ export const ActivityBar = () => {
   const setRefresh = useState<number>(0)[1];
 
   useEffect(() => {
-    const callback = (event?: OperationEvent, err?: Error) => {
-      if (!event || !event.event) {
-        return;
-      }
-
-      switch (event.event.case) {
-        case "createdOperations":
-        case "updatedOperations":
-          const ops = event.event.value.operations;
-          setActiveOperations((oldOps) => {
-            oldOps = oldOps.filter(
-              (op) => !ops.find((newOp) => newOp.id === op.id),
+    const unsubscribe = operationsStream.subscribe({
+      onMessage: (event) => {
+        switch (event.event.case) {
+          case "createdOperations":
+          case "updatedOperations":
+            const ops = event.event.value.operations;
+            setActiveOperations((oldOps) => {
+              oldOps = oldOps.filter(
+                (op) => !ops.find((newOp) => newOp.id === op.id),
+              );
+              const newOps = ops.filter(
+                (newOp) => newOp.status === OperationStatus.STATUS_INPROGRESS,
+              );
+              return [...oldOps, ...newOps];
+            });
+            break;
+          case "deletedOperations":
+            const opIDs = event.event.value.values;
+            setActiveOperations((ops) =>
+              ops.filter((op) => !opIDs.includes(op.id)),
             );
-            const newOps = ops.filter(
-              (newOp) => newOp.status === OperationStatus.STATUS_INPROGRESS,
-            );
-            return [...oldOps, ...newOps];
-          });
-          break;
-        case "deletedOperations":
-          const opIDs = event.event.value.values;
-          setActiveOperations((ops) =>
-            ops.filter((op) => !opIDs.includes(op.id)),
-          );
-          break;
-      }
-    };
+            break;
+        }
+      },
+      // Drop the delta-accumulated list; in-progress updates repopulate it.
+      onConnectOrResync: () => setActiveOperations([]),
+    });
 
-    subscribeToOperations(callback);
-
-    setInterval(() => {
+    const interval = setInterval(() => {
       setRefresh((r) => r + 1);
     }, 500);
 
     return () => {
-      unsubscribeFromOperations(callback);
+      unsubscribe();
+      clearInterval(interval);
     };
   }, []);
 
