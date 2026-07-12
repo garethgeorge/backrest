@@ -54,7 +54,16 @@ func NewDownloadHandler(oplog *oplog.OpLog, orchestrator *orchestrator.Orchestra
 }
 
 func handleIndexSnapshotDownload(w http.ResponseWriter, r *http.Request, orchestrator *orchestrator.Orchestrator, op *v1.Operation, indexOp *v1.Operation_OperationIndexSnapshot, filePath string) {
-	repoCfg, err := orchestrator.GetRepo(op.RepoId)
+	// Resolve the repo by GUID; the op may have been recorded under a repo id
+	// the repo is no longer configured with.
+	repoID := op.RepoId
+	if op.RepoGuid != "" {
+		if byGuid, err := orchestrator.GetRepoByGUID(op.RepoGuid); err == nil {
+			repoID = byGuid.Id
+		}
+	}
+
+	repoCfg, err := orchestrator.GetRepo(repoID)
 	if err != nil {
 		http.Error(w, "error getting repo", http.StatusInternalServerError)
 		return
@@ -65,7 +74,7 @@ func handleIndexSnapshotDownload(w http.ResponseWriter, r *http.Request, orchest
 		return
 	}
 
-	repo, err := orchestrator.GetRepoOrchestrator(op.RepoId)
+	repo, err := orchestrator.GetRepoOrchestrator(repoID)
 	if err != nil {
 		http.Error(w, "error getting repo", http.StatusInternalServerError)
 		return

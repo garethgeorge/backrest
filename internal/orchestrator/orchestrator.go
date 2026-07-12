@@ -355,6 +355,17 @@ func (o *Orchestrator) GetRepo(repoID string) (*v1.Repo, error) {
 	return repo, nil
 }
 
+func (o *Orchestrator) GetRepoByGUID(guid string) (*v1.Repo, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	repo := config.FindRepoByGUID(o.config, guid)
+	if repo == nil {
+		return nil, fmt.Errorf("get repo by guid %q: %w", guid, ErrRepoNotFound)
+	}
+	return repo, nil
+}
+
 func (o *Orchestrator) GetPlan(planID string) (*v1.Plan, error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
