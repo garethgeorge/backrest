@@ -385,13 +385,13 @@ func (s *BackrestHandler) ListSnapshotFiles(ctx context.Context, req *connect.Re
 		return nil, withLookupCode(fmt.Errorf("failed to get repo: %w", err))
 	}
 
-	entries, err := repo.ListSnapshotFiles(ctx, query.SnapshotId, query.Path)
+	path, entries, err := repo.ListSnapshotFilesAutoExpandSingleChild(ctx, query.SnapshotId, query.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list snapshot files: %w", err)
 	}
 
 	return connect.NewResponse(&v1.ListSnapshotFilesResponse{
-		Path:    query.Path,
+		Path:    path,
 		Entries: entries,
 	}), nil
 }

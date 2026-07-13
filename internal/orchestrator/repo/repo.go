@@ -213,6 +213,59 @@ func (r *RepoOrchestrator) ListSnapshotFiles(ctx context.Context, snapshotId str
 	return lsEnts, nil
 }
 
+func (r *RepoOrchestrator) ListSnapshotFilesAutoExpandSingleChild(ctx context.Context, snapshotId string, requestPath string) (string, []*v1.LsEntry, error) {
+	path := normalizeSnapshotListPath(requestPath)
+
+	const maxAutoExpandDepth = 100
+	for range maxAutoExpandDepth {
+		entries, err := r.ListSnapshotFiles(ctx, snapshotId, path)
+		if err != nil {
+			return "", nil, err
+		}
+
+		children := directSnapshotChildren(path, entries)
+		if len(children) != 1 || children[0].Type != "dir" && children[0].Type != "directory" {
+			return path, entries, nil
+		}
+
+		path = normalizeSnapshotListPath(children[0].Path)
+	}
+
+	entries, err := r.ListSnapshotFiles(ctx, snapshotId, path)
+	if err != nil {
+		return "", nil, err
+	}
+	return path, entries, nil
+}
+
+func normalizeSnapshotListPath(path string) string {
+	if path == "" || path == "/" {
+		return "/"
+	}
+	return "/" + strings.Trim(strings.TrimSpace(path), "/")
+}
+
+func directSnapshotChildren(parent string, entries []*v1.LsEntry) []*v1.LsEntry {
+	parent = normalizeSnapshotListPath(parent)
+	prefix := parent
+	if prefix != "/" {
+		prefix += "/"
+	}
+
+	children := make([]*v1.LsEntry, 0, len(entries))
+	for _, entry := range entries {
+		entryPath := normalizeSnapshotListPath(entry.Path)
+		if entryPath == parent || !strings.HasPrefix(entryPath, prefix) {
+			continue
+		}
+		if strings.Contains(strings.TrimPrefix(entryPath, prefix), "/") {
+			continue
+		}
+		children = append(children, entry)
+	}
+	return children
+}
+
 func (r *RepoOrchestrator) Forget(ctx context.Context, policy *v1.RetentionPolicy, opts ...restic.GenericOption) ([]*v1.ResticSnapshot, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
