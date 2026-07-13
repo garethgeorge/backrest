@@ -7,7 +7,7 @@ When using the Slack Hook you can provide a simple message or a [Slack Block Kit
 ## Clean Job Summary
 
 <div style="text-align: center;">
-<img src="/screenshots/slack-clean-job.png" alt="Settings View" style="width: 700px; height: auto;" />
+<img src="/screenshots/slack-clean-job.png" alt="Slack message showing a Backrest backup job summary rendered with Block Kit" style="width: 700px; height: auto;" />
 </div>
 
 ```json v-pre

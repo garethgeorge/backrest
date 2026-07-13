@@ -33,6 +33,10 @@ curl -fsS --retry 3 https://hc-ping.com/your-uuid
 {{ end -}}
 ```
 
+::: tip
+Backrest now has a native Healthchecks hook type that handles pinging for you — no command hook required. See the [Hooks reference](/docs/hooks) and the [Notifications guide](/guides/notifications). Use the command hook approach above only if you need custom behavior.
+:::
+
 ### System Notifications
 
 #### MacOS System Notifications
@@ -87,19 +91,19 @@ fi
 ```
 
 #### Battery Level Check
-Verify sufficient battery level before backup.
+Cancel the backup if the battery level is below 20%.
 
 **Event:** `CONDITION_SNAPSHOT_START`  
 **Error Behavior:** `ON_ERROR_CANCEL`
 
 ```bash
 #!/bin/bash
-if [ $(cat /sys/class/power_supply/BAT0/capacity) -gt 80 ]; then
-  echo "Battery level is above 20%"
-  exit 0
-else
-  echo "Battery level is below 20%"
+if [ $(cat /sys/class/power_supply/BAT0/capacity) -lt 20 ]; then
+  echo "Battery level is below 20%, cancelling backup"
   exit 1
+else
+  echo "Battery level is at or above 20%"
+  exit 0
 fi
 ```
 

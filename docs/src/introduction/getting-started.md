@@ -1,142 +1,89 @@
-# Getting Started
+# Introduction & Concepts
 
-This guide will walk you through the basic steps to setup a new [Backrest](https://github.com/garethgeorge/backrest) instance.
+[Backrest](https://github.com/garethgeorge/backrest) is a web UI and orchestrator for [restic](https://restic.net), the fast, secure, deduplicating backup tool. Backrest wraps the restic CLI with a browser-based interface for creating repositories, scheduling backups, browsing snapshots, and restoring files. It also runs in the background to schedule backups and repository maintenance.
 
-## Prerequisites
+This page explains the concepts the rest of the documentation builds on. If you'd rather learn by doing, jump straight to [Installation](/introduction/installation) and [Your First Backup](/introduction/first-backup).
 
-Before diving into configuration, you should have:
-- Backrest installed and running on your system.
-- Your storage provider credentials ready (if using remote storage).
-- Access to Backrest via your browser (typically `http://localhost:9898`).
+## How Backrest Relates to Restic
 
-## Installation
+Backrest executes every backup, prune, and restore by running the restic binary. Backrest downloads and verifies a copy of restic automatically, or you can [configure it to use your own](/docs/configuration).
 
-Please refer to the <a href="https://github.com/garethgeorge/backrest" target="_blank">GitHub README</a> for platform-specific installation instructions.
+Because restic performs the actual storage operations, repositories created by Backrest are standard restic repositories. You can browse them with the restic CLI, restore from them on a machine that has never run Backrest, and use Backrest alongside your own restic scripts. Backrest adds orchestration, history tracking, and a UI; the underlying data format is unchanged.
 
 ## Core Concepts
 
-Let's understand some key terminology used within Backrest:
+### Instance
 
-- **Restic Repository**: The underlying storage location where your backup data is kept. While Backrest manages this for you, understanding this concept allows you to interact directly with your backups using the restic CLI if needed.
+One installation of Backrest, identified by an **instance ID** you choose at first launch (e.g. `home-server`). Snapshots are tagged with the instance that created them, so multiple machines can safely share one repository. The instance ID cannot be changed later without orphaning the association with existing snapshots.
 
-- **Backrest Repository**: A configuration set in Backrest that defines:
-  - Where your backup data is stored
-  - Encryption credentials
-  - Backup orchestration settings
-  - Associated hooks and options
+### Repository
 
-- **Backup Plan**: A configuration that specifies:
-  - What local data to backup
-  - When to create snapshots
-  - How long to retain backups
-  - When to run maintenance operations
+Where your encrypted backup data lives. The term is used at two levels:
 
-- **Key Operations**:
-  - **Backup**: Creates a new snapshot of your data
-  - **Forget**: Marks old snapshots for deletion (without removing data)
-  - **Prune**: Removes unreferenced data to free up storage space
-  - **Restore**: Retrieves files from a snapshot to your local system
+- A **restic repository** is the on-disk/remote storage format: a content-addressed, encrypted, deduplicated store that any restic client can read.
+- A **Backrest repository** is that restic repository *plus* Backrest's configuration for it: the URI, credentials, environment variables and flags, maintenance policies (prune/check), and repository-level hooks.
 
-## Initial Setup
+One repository can serve many plans, and deduplication works across all of them.
 
-::: info
-After installation, access Backrest at `http://localhost:9898` (or your configured port). You'll need to complete the initial setup process below.
-:::
+### Plan
 
-### 1. Instance Configuration
+A plan defines what to back up (paths and exclude patterns), when to back it up (a schedule), and how long to keep the results (a retention policy). Plans belong to exactly one repository and can carry their own hooks (e.g. notify on failure). A machine typically has a small number of plans, such as one for documents backed up hourly and one for photos backed up daily, writing to one or more repositories.
 
-<img src="/screenshots/settings-view.png" alt="Settings View" style="max-width: 100%; border-radius: 8px; margin-bottom: 20px;">
+### Operations
 
-#### Instance ID
-- A unique identifier for your Backrest installation.
-- Used to distinguish snapshots from different Backrest instances.
-- **Important**: Cannot be changed via the UI after initial setup.
+Everything Backrest does to a repository is an **operation**: backup, forget, prune, check, restore, and a few housekeeping tasks. Operations are the unit you see in the UI's history tree, each with a status (pending → in progress → success, warning, or error) and full logs.
 
-#### Authentication
-- Set your username and password during first launch.
-- To reset credentials, delete the `"users"` key from your configuration file and **restart the Backrest service**:
-  - Linux/macOS: `~/.config/backrest/config.json`
-  - Windows: `%appdata%\backrest\config.json`
-- Authentication can be disabled for local installations or when using an authenticating reverse proxy.
+The four you'll interact with most:
 
-### 2. Repository Setup
+| Operation | What it does |
+| --- | --- |
+| **Backup** | Creates a new snapshot of your plan's paths |
+| **Forget** | Applies retention policy, *marking* aged-out snapshots (no data deleted yet) |
+| **Prune** | Reclaims storage by deleting data no snapshot references |
+| **Restore** | Copies files from a snapshot back to disk |
 
-Click **"Add Repo"** to configure your backup storage location. You can either create a new repository or connect to an existing one.
+### The Operation Log
 
-<img src="/screenshots/add-repo-view.png" alt="Add Repository View" style="max-width: 100%; border-radius: 8px; margin-bottom: 20px;">
+Backrest records every operation in a local database (the *oplog*), which powers the history tree, statistics graphs, and multihost monitoring. The operation log is stored separately from the backup data, which lives in the repository.
 
-#### Essential Repository Settings
+### The `_system_` Plan
 
-1. **Repository Name**
-   - A human-readable identifier.
-   - Cannot be changed after creation.
+Repository-level maintenance (prune, check, repository-wide forget) is not tied to any of your plans, so it appears in the UI under a synthetic plan named `_system_`. Operations listed there are repository maintenance run by Backrest itself.
 
-2. **Repository URI**
-   - Specifies the backup storage location.
-   - Common formats:
-     - Backblaze B2: `b2:bucket` or `b2:bucket/prefix`
-     - AWS S3: `s3:bucket` or `s3:bucket/prefix`
-     - Google Cloud: `gs:bucket:/` or `gs:bucket:/prefix`
-     - SFTP: `sftp:user@host:/path/to/repo`
-     - Local: `/mnt/backupdisk/repo1`
-     - Rclone: `rclone:remote:path` (requires rclone installation. See the [Rclone documentation](https://rclone.org/) to configure remote backends).
+## How the Pieces Fit Together
 
-3. **Environment Variables**
-   - Storage provider credentials:
-     - S3: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
-     - B2: `B2_ACCOUNT_ID`, `B2_ACCOUNT_KEY`
-     - Google Cloud: `GOOGLE_PROJECT_ID`, `GOOGLE_APPLICATION_CREDENTIALS`
+```
+ Plan "mydrive-documents"          Plan "mydrive-photos"
+   what: /home/me/Documents          what: /home/me/Photos
+   when: hourly                      when: daily
+   keep: 30 daily, 12 monthly        keep: 12 monthly
+        │                                 │
+        └────────────┬────────────────────┘
+                     ▼
+       Repository "mydrive"  (s3:...  + credentials)
+         maintenance: prune weekly, check monthly (_system_)
+                     ▼
+            restic repository (encrypted, deduplicated)
+```
 
-4. **Optional Flags**
-   - Common examples:
-     - SFTP key: `-o sftp.args="-i /path/to/key"`
-     - Disable locking: `--no-lock`
-     - Bandwidth limits: `--limit-upload 1000`, `--limit-download 1000`
+Backrest's orchestrator runs one operation at a time per repository, queued by time and priority, so that backups, follow-up forgets, and scheduled maintenance do not conflict over repository locks. The [Operational Model reference](/docs/operations) covers this in detail.
 
-5. **Maintenance Policies**
-   - **Prune Policy**: Schedule for cleaning unreferenced data.
-   - **Check Policy**: Schedule for backup integrity verification.
+## Where to Go Next
 
-::: info
-Once you've saved the repository, navigate to the Repository View and click **"Index Snapshots"** to import any previous backups. Backrest will also automatically index snapshots the first time a backup plan runs successfully.
-:::
+| I want to… | Read |
+| --- | --- |
+| Install Backrest | [Installation](/introduction/installation) |
+| Take my first backup | [Your First Backup](/introduction/first-backup) |
+| Get files back | [Restoring Files](/introduction/restore-files) |
+| Tune when backups run | [Scheduling Backups](/guides/scheduling) |
+| Manage retention and repo health | [Retention & Repo Health](/guides/repo-health) |
+| Configure S3/B2/Azure/GCS/rclone | [Storage Backends](/guides/storage-backends) |
+| Back up over SSH | [SFTP & SSH Remotes](/guides/sftp) |
+| Get notified about failures | [Notifications](/guides/notifications) |
+| Secure or expose my instance | [Authentication & Security](/guides/security) |
+| Understand the internals | [Operational Model](/docs/operations) |
+| Look up paths, env vars, config fields | [Configuration & Paths](/docs/configuration) |
 
-### 3. Backup Plan Configuration
-
-Create a backup plan by clicking **"Add Plan"** and configuring these settings:
-
-<img src="/screenshots/add-plan-view.png" alt="Add Plan View" style="max-width: 100%; border-radius: 8px; margin-bottom: 20px;">
-
-#### Plan Settings
-
-1. **Plan Name**
-   - Choose a descriptive, immutable name.
-   - Recommended format: `[storage]-[content]` (e.g., `b2-documents`).
-
-2. **Repository**
-   - Select your target repository.
-   - Cannot be changed after creation.
-
-3. **Backup Configuration**
-   - **Paths**: Directories/files to backup.
-   - **Excludes**: Patterns or paths to skip (e.g., `*node_modules*`).
-
-4. **Schedule**
-   - Choose one:
-     - Hourly/daily intervals.
-     - Cron expression (e.g., `0 0 * * *` for daily midnight backups). We highly recommend using [crontab.guru](https://crontab.guru/) to help format your cron schedules correctly.
-     - Clock options:
-       - UTC/Local: Wall-clock time.
-       - Last Run Time: Relative to previous execution.
-
-5. **Retention Policy**
-   - Controls snapshot lifecycle:
-     - **Count-based**: Keep N most recent snapshots.
-     - **Time-based**: Keep snapshots by age (e.g., daily for 7 days, weekly for 4 weeks).
-     - **None**: Manual retention management.
-
-Success! Now that Backrest is configured, you can sit back and let it manage your backups. Monitor the status of your backups in the UI and restore files from snapshots as needed.
-
-::: warning
-Make sure to save a copy of your repository credentials and encryption keys (e.g., password) in a safe place. Losing these will prevent you from restoring your data. Consider storing your entire Backrest configuration (typically `~/.config/backrest/config.json`) in a secure location, such as a password manager or encrypted storage.
+::: warning Protect your credentials
+Your repository password is required to decrypt your backups, and restic provides no way to reset it. Store the password (ideally your whole `config.json`) in a password manager or other secure location. See [Authentication & Security](/guides/security).
 :::

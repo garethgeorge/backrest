@@ -143,9 +143,11 @@ class SharedStreamImpl<T> implements SharedStream<T> {
           this.leaderStreamLoop(signal),
         );
       } catch (err) {
-        // AbortError just means we left the queue; otherwise log and re-contend.
+        // AbortError just means we left the queue; otherwise log and re-contend
+        // after a backoff so a persistently-rejecting lock API can't busy-loop.
         if ((err as Error)?.name !== "AbortError") {
           console.warn(`[sharedStream:${this.opts.name}] lock error`, err);
+          await abortableDelay(this.backoffMs, runSignal);
         }
       }
     }
@@ -162,7 +164,8 @@ class SharedStreamImpl<T> implements SharedStream<T> {
             this.goLive();
           }
           this.deliverMessage(msg);
-          this.post({ t: "m", d: this.opts.encode(msg) });
+          // Encode only to feed the bus; the fallback path has no channel.
+          if (this.bc) this.post({ t: "m", d: this.opts.encode(msg) });
         }
       } catch (err) {
         if (!signal.aborted) {
