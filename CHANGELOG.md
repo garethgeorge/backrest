@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.14.2](https://github.com/garethgeorge/backrest/compare/v1.14.1...v1.14.2) (2026-07-13)
+
+
+### Bug Fixes
+
+* exit after printing version ([#1294](https://github.com/garethgeorge/backrest/issues/1294)) ([8afbd30](https://github.com/garethgeorge/backrest/commit/8afbd30743936297ddbc875479ec09e15b58becb))
+* quit tray on graceful shutdown ([#1295](https://github.com/garethgeorge/backrest/issues/1295)) ([fd8b2b2](https://github.com/garethgeorge/backrest/commit/fd8b2b2df44fbf9da72f9364a67a7326e06f3ffe))
+* rm deprecated import github.com/ncruces/go-sqlite3/embed ([#1293](https://github.com/garethgeorge/backrest/issues/1293)) ([626156c](https://github.com/garethgeorge/backrest/commit/626156cd8e15745b84bfe86099457d9db8372c5d))
+
 ## [1.14.1](https://github.com/garethgeorge/backrest/compare/v1.14.0...v1.14.1) (2026-07-12)
 
 
