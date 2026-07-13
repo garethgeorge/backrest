@@ -4,6 +4,10 @@ This guide details how to configure a Backrest container to back up to a remote 
 
 This is an advanced topic that assumes you have a basic familiarity with SSH, public key authentication, and Docker Compose.
 
+::: tip
+For most SFTP backups you don't need this manual setup — Backrest has native SFTP support that generates keys and manages known hosts for you. See [SFTP & SSH Remotes](/guides/sftp). Use this cookbook when you want full manual control over the SSH keys and configuration mounted into a Backrest Docker container.
+:::
+
 ## Prerequisites
 
 - A working Docker Compose setup for Backrest.
@@ -29,7 +33,7 @@ mkdir -p ./backrest/ssh
 Next, generate a new SSH key pair specifically for Backrest.
 
 ```bash
-ssh-keygen -t ed25519 -f ./backrest/ssh/id_rsa -C "backrest-backup-key"
+ssh-keygen -t ed25519 -f ./backrest/ssh/id_ed25519 -C "backrest-backup-key"
 ```
 
 When prompted for a passphrase, you can leave it empty by pressing Enter. Using a passphrase adds another layer of security but requires more complex setup to use with an automated tool like Backrest.
@@ -40,7 +44,7 @@ Copy the public key to your remote server's `authorized_keys` file. The `ssh-cop
 
 ```bash
 # Replace your-username and example.com with your remote server's details
-ssh-copy-id -i ./backrest/ssh/id_rsa.pub your-username@example.com
+ssh-copy-id -i ./backrest/ssh/id_ed25519.pub your-username@example.com
 ```
 
 ### Step 4: Create the SSH Config and Known Hosts Files
@@ -53,7 +57,7 @@ cat > ./backrest/ssh/config << EOF
 Host backrest-remote
     HostName example.com
     User your-username
-    IdentityFile /root/.ssh/id_rsa
+    IdentityFile /root/.ssh/id_ed25519
     Port 22
 EOF
 
@@ -65,7 +69,7 @@ ssh-keyscan -H example.com >> ./backrest/ssh/known_hosts
 - **`Host backrest-remote`**: This is a custom alias. You will use this name in the Backrest UI.
 - **`HostName`**: The actual IP address or hostname of your remote server.
 - **`User`**: The username on the remote server.
-- **`IdentityFile`**: This **must be `/root/.ssh/id_rsa`**. This is the path *inside* the container where the key will be mounted.
+- **`IdentityFile`**: This **must be `/root/.ssh/id_ed25519`**. This is the path *inside* the container where the key will be mounted.
 - **`Port`**: The SSH port of your remote server.
 
 ### Step 5: Set Secure Permissions
@@ -85,7 +89,7 @@ Now, edit your `docker-compose.yml` to mount the `backrest/ssh` directory into t
 version: "3.8"
 services:
   backrest:
-    image: garethgeorge/backrest:latest
+    image: ghcr.io/garethgeorge/backrest:latest
     container_name: backrest
     # ... other configuration ...
     volumes:
@@ -118,17 +122,17 @@ docker compose up -d --force-recreate
 
 - **Connection Errors:**
   First, test your SSH connection from the host machine to isolate issues. This command uses the exact same configuration files that the container will use.
-  ```bash host
-  # This command should connect without asking for a password
+  ```bash
+  # Run on the host. This command should connect without asking for a password.
   ssh -vF ./backrest/ssh/config -o UserKnownHostsFile=./backrest/ssh/known_hosts backrest-remote
-  # -o UserKnownHostsFile ensures that ssh uses ony the public keys passed to the backrest container instead of the global public keys of the host.
+  # -o UserKnownHostsFile ensures that ssh uses only the public keys passed to the backrest container instead of the global public keys of the host.
   ```
   Attempt connection to the server from the container and compare the results :
-  ```bash host
+  ```bash
   # From the host open a bash terminal to the backrest container
   docker exec -it backrest bash
   ```
-  ```bash container
+  ```bash
   # Attempt to connect to the server via ssh. If prompt abort the command, saved keys would be ephemeral.
   ssh -vF /root/.ssh/config backrest-remote
   ```

@@ -1,130 +1,104 @@
-# Operations Guide
+# Operational Model
 
-This guide details the core operations available in Backrest and how to configure them effectively. "Operations" in Backrest refer to any task that interacts with your repository, such as creating backups, managing retention, verifying integrity, or restoring files.
+This page is a reference for how Backrest works internally: the orchestrator, its task queue, the operation lifecycle, and restic integration. This information is not required for everyday use, but it is helpful for interpreting the operation history and understanding unexpected behavior.
+
+For task-oriented guidance, see [Scheduling Backups](/guides/scheduling) and [Retention & Repo Health](/guides/repo-health).
+
+## The Orchestrator
+
+At Backrest's core is an orchestrator that executes tasks from a **time-ordered priority queue, one at a time**. Serial execution is deliberate: restic repositories use locking, and running operations sequentially avoids lock contention and keeps resource usage predictable.
+
+Each task carries a scheduled run time; the queue dequeues whatever is due next. When multiple tasks are due at the same moment, priority breaks the tie (highest first):
+
+| Priority | Task | Consequence |
+| --- | --- | --- |
+| Interactive | Anything you trigger from the UI | UI-triggered tasks run ahead of scheduled work |
+| Prune | Scheduled prune | Runs before check when both are due |
+| Check | Scheduled check | Verifies the post-prune state |
+| Index snapshots | Snapshot indexing | |
+| Forget | Post-backup retention | |
+| Default | Backups and most tasks | |
+| Stats | Repository statistics | Runs when nothing else is due |
+
+After a recurring task finishes, the orchestrator computes its next run time from its [schedule](/guides/scheduling) and re-enqueues it. One-off tasks (a manual backup, a restore) run once.
+
+On startup and after **every configuration change**, the queue is rebuilt from scratch: one backup task per plan, plus prune, check, and repo-level forget tasks per repository, plus a garbage-collection task. A watchdog also monitors for system clock jumps (sleep, hibernation, NTP corrections) and rebuilds schedules if the clock drifts more than ~30 seconds from expectations.
+
+## Task Types
+
+| Task | Trigger | What it runs |
+| --- | --- | --- |
+| `backup` | Plan schedule, or **Backup Now** | `restic backup` with the plan's paths, excludes, and flags |
+| `forget` | Automatically after each successful backup (per-plan retention) | `restic forget` scoped to the plan's snapshots |
+| `scheduled_forget` | Repo-level forget policy schedule | `restic forget` across the repository, grouped by tags |
+| `prune` | Repo prune policy schedule, or UI button | `restic prune` |
+| `check` | Repo check policy schedule, or UI button | `restic check` |
+| `index_snapshots` | After backups; repo added; UI button | `restic snapshots` — syncs Backrest's view of the repo |
+| `restore` | UI restore action | `restic restore` |
+| `stats` | At most every 24h; after prune and scheduled forget | `restic stats` — feeds the storage graphs |
+| `run_command` | UI **Run Command** | An arbitrary restic command you type |
+| `hook` | Fired by conditions on other operations | Your hook's action (command, notification, …) |
+| `collect_garbage` | Startup, then every 24h | Internal cleanup of Backrest's operation log (never restic data) |
+
+Repo-level tasks (`prune`, `check`, `scheduled_forget`, and friends) are displayed under the synthetic **`_system_`** plan, since they belong to the repository rather than to any plan you created.
+
+## Operation Lifecycle
+
+Every task run is recorded as an **operation** in Backrest's operation log (the *oplog*), which is what the UI's history tree renders. Operations move through:
+
+```
+PENDING ──► INPROGRESS ──► SUCCESS
+                       ├──► WARNING          (completed with caveats)
+                       ├──► ERROR
+                       └──► USER_CANCELLED / SYSTEM_CANCELLED
+```
+
+Notes on specific statuses:
+
+- **WARNING on backups indicates a partial backup**: the snapshot was created, but some files could not be read (typically due to permissions or file locks). Follow-up tasks (forget, indexing) still run. The operation log lists the affected files.
+- **After a crash or hard reboot**, any operation that was INPROGRESS is marked ERROR at startup, since Backrest cannot determine how far it progressed. Stale PENDING entries are cleared and rescheduled. An error block that appears immediately after a reboot usually reflects this recovery behavior rather than a new failure.
+- **Cancellation**: cancelling a queued operation removes it; cancelling a running one interrupts the underlying restic process. Repo-level scheduled forgets also cancel *themselves* (SYSTEM_CANCELLED) when there's nothing new to do.
+- **Logs**: each operation stores a summary of restic's output inline (truncated for very large outputs) and full logs are viewable from the operation's detail view while retained.
+
+### Operation Log Retention
+
+The `collect_garbage` task keeps the oplog bounded so the UI stays fast. Old operation records age out on type-specific rules (long-lived history for prune/check/stats, shorter for routine forgets), and records tied to snapshots that have been forgotten are cleaned up. This is Backrest-side bookkeeping only; it never deletes backup data.
+
+## How Backups Are Tagged
+
+Every snapshot Backrest creates carries two restic tags:
+
+- `plan:<plan-id>` — which plan created it
+- `created-by:<instance-id>` — which Backrest installation created it
+
+These tags are how retention stays scoped: a plan's forget only touches snapshots with its own plan/instance tags, so multiple plans, multiple machines, and even manual restic CLI snapshots coexist safely in one repository. Backups also run with `--exclude-caches` (skipping directories marked with `CACHEDIR.TAG`) and pass the previous snapshot as `--parent` for faster change detection.
+
+## Hook Execution
+
+Operations fire [hook](/docs/hooks) conditions at lifecycle points (start, success, error, …). For each event, Backrest evaluates repository hooks first, then plan hooks; each hook runs at most once per event (its first matching condition wins) and executes as its own `hook` operation, visible in the history under the operation that triggered it.
+
+A failing hook applies its **error policy**: ignore, cancel the parent operation, mark it fatal, or retry (fixed 1‑minute/10‑minute delays, or exponential backoff capped at an hour). Retrying hooks keep the parent operation pending until they resolve.
 
 ## Restic Integration
 
-Backrest executes operations through the [restic](https://restic.net) backup tool. Each operation maps to specific restic commands with additional functionality provided by Backrest.
-
 ### Binary Management
-- **Location**: Backrest searches for the restic binary in the following order:
-  1. Data directory (typically `~/.local/share/backrest`)
-  2. `/bin/` directory
-  3. The system `$PATH`
-- **Version Requirement**: Backrest is only tested against the latest version of restic. It will selectively reject outdated versions.
-- **Auto-download**: If no valid binary is found, Backrest downloads a verified version from [GitHub releases](https://github.com/restic/restic/releases).
-- **Verification**: Downloads are verified using SHA256 checksums signed by restic maintainers.
-- **Override**: Set `BACKREST_RESTIC_COMMAND` environment variable to use a custom restic binary.
+
+Backrest pins a specific restic version per release (currently 0.19.x) and resolves the binary in this order:
+
+1. The `--restic-cmd` flag, if set.
+2. The `BACKREST_RESTIC_COMMAND` environment variable, if set.
+3. A `restic` on the system `$PATH`, if its version is compatible.
+4. Otherwise, Backrest downloads its pinned version from restic's GitHub releases into the data directory, verifying the SHA256 checksum against the restic maintainers' GPG-signed manifest, and keeps it updated across Backrest upgrades.
 
 ### Command Execution
-- **Environment**: Repository-specific environment variables are injected
-- **Flags**: Repository-configured flags are appended to commands
-- **Logging**: 
-  - Error logs: Last ~500 bytes (split between start/end if longer)
-  - Full logs: Available via **[View Logs]** in the UI, truncated to 32KB (split if longer)
 
-::: info
-If an operation fails, you can always find the full diagnostic logs in the Backrest UI by clicking on the specific operation block in the history tree. 
-:::
+For every restic invocation, Backrest injects the repository's environment variables (credentials, etc.), appends the repository's extra flags, and applies the repository's command prefix settings (CPU/IO niceness on Unix systems, useful for keeping background backups from competing with foreground work). `${VAR}` references in the URI, env vars, and flags are expanded from Backrest's own process environment.
 
-## Scheduling System
+If an operation fails, click its block in the history tree to view the full diagnostic log.
 
-Backrest provides flexible scheduling options for all operations through policies and clocks.
+## See Also
 
-### Schedule Policies
-
-| Policy         | Description                     | Use Case                                                  |
-| -------------- | ------------------------------- | --------------------------------------------------------- |
-| Disabled       | Operation will not run          | Temporarily disable operations                            |
-| Cron           | Standard cron expression timing | Precise scheduling (e.g., `0 0 * * *` for daily midnight) |
-| Interval Days  | Run every N days                | Regular daily+ intervals                                  |
-| Interval Hours | Run every N hours               | Regular sub-daily intervals                               |
-
-### Schedule Clocks
-
-| Clock         | Description                    | Best For                                |
-| ------------- | ------------------------------ | --------------------------------------- |
-| Local         | Local timezone wall-clock      | Frequent operations (hourly+)           |
-| UTC           | UTC timezone wall-clock        | Cross-timezone coordination             |
-| Last Run Time | Relative to previous execution | Infrequent operations, preventing skips |
-
-::: info
-**Scheduling Best Practices**
-- **Backup Operations** (Plan Settings):
-  - Hourly or more frequent: Use "Local" clock
-  - Daily or less frequent: Use "Last Run Time" clock
-- **Prune/Check Operations** (Repo Settings):
-  - Run infrequently (e.g., monthly)
-  - Use "Last Run Time" clock to prevent skips
-:::
-
-## Operation Types
-
-### 💾 Backup
-[Restic Documentation](https://restic.readthedocs.io/en/latest/040_backup.html)
-
-Creates snapshots of your data using `restic backup`.
-
-**Process Flow:**
-1. **Start**
-   - Triggers `CONDITION_SNAPSHOT_START` hooks
-   - Applies hook failure policies if needed
-2. **Execution**
-   - Runs `restic backup`
-   - Tags snapshot with `plan:{PLAN_ID}` and `created-by:{INSTANCE_ID}`
-3. **Completion**
-   - Records operation metadata (files, bytes, snapshot ID)
-   - Triggers appropriate hooks:
-     - Error: `CONDITION_SNAPSHOT_ERROR`
-     - Success: `CONDITION_SNAPSHOT_SUCCESS`
-     - In both cases: `CONDITION_SNAPSHOT_END`
-4. **Post-processing**
-   - Runs forget operation if retention policy exists
-
-**Snapshot Tags:**
-- `plan:{PLAN_ID}`: Groups snapshots by backup plan
-- `created-by:{INSTANCE_ID}`: Identifies creating Backrest instance
-
-### 🕰️ Forget
-[Restic Documentation](https://restic.readthedocs.io/en/latest/060_forget.html)
-
-Manages snapshot retention using `restic forget --tag plan:{PLAN_ID}`.
-
-**Retention Policies:**
-- **By Count**: `--keep-last {COUNT}`
-- **By Time Period**: `--keep-{hourly,daily,weekly,monthly,yearly} {COUNT}`
-
-### ✂️ Prune
-[Restic Documentation](https://restic.readthedocs.io/en/latest/060_forget.html#removing-unreferenced-data)
-
-Removes unreferenced data using `restic prune`. Like Backup, Prune operations trigger their respective lifecycle hooks (e.g., `CONDITION_PRUNE_START`).
-
-**Configuration:**
-- Scheduled in repo settings
-- Appears under `_system_` plan
-- **Parameters:**
-  - Schedule timing
-  - Max unused percent (controls repacking threshold)
-
-::: info
-**Optimization Tips:**
-- Run infrequently (monthly recommended)
-- Use higher max unused percent (5-10%) to reduce repacking
-- Consider storage costs vs. cleanup frequency
-:::
-
-### 🔍 Check
-[Restic Documentation](https://restic.readthedocs.io/en/latest/080_check.html)
-
-Verifies repository integrity using `restic check`.
-
-**Configuration:**
-- Scheduled in repo settings
-- Appears under `_system_` plan
-- **Parameters:**
-  - Schedule timing
-  - Read data percentage
-
-::: warning
-A value of 100% for *read data%* will read/download every pack file in your repository. This can be very slow and, if your provider bills for egress bandwidth, can be expensive. It is recommended to set this to 0% or a low value (e.g. 10%) for most use cases.
-:::
+- [Scheduling Backups](/guides/scheduling) — schedule types and clock semantics
+- [Retention & Repo Health](/guides/repo-health) — forget/prune/check policies and interactions
+- [Configuration & Paths](/docs/configuration) — where the oplog, logs, and config live on disk
+- [Hooks](/docs/hooks) — conditions, actions, and error policies in full

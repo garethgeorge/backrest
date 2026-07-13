@@ -157,7 +157,11 @@ backrest.example.com {
 
 Replace `127.0.0.1:9898` with your Backrest instance's bind address. Any path other than `/v1sync.BackrestSyncService/*` will return 404, keeping the UI and admin API off the public internet.
 
-If you also want to expose the UI publicly (not recommended without additional auth in front), add a second `reverse_proxy` block without the path matcher — but be aware this also exposes the admin API.
+If you also want to expose the UI publicly (not recommended without additional auth in front), add a second `reverse_proxy` block without the path matcher — but be aware this also exposes the admin API. For Traefik and nginx configurations, and for proxying the full UI, see the [Reverse Proxies cookbook](/cookbooks/reverse-proxy-examples).
+
+::: tip Keepalives through proxies
+Sync connections send a heartbeat every 10 minutes by default. If a proxy between peers enforces a shorter idle timeout, either raise the proxy's timeout or lower the heartbeat via `BACKREST_MULTIHOST_HEARTBEAT_INTERVAL` (see [Configuration & Paths](/docs/configuration)).
+:::
 
 ## Troubleshooting
 

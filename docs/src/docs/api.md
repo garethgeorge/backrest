@@ -8,6 +8,8 @@ All of Backrest's API endpoints are defined as a gRPC service and are exposed ov
 Only the APIs documented below are considered stable, other endpoints may be subject to change.
 :::
 
+The full (unstable) surface — including config management, snapshot listing, restore, and repo tasks — is defined in [service.proto](https://github.com/garethgeorge/backrest/blob/main/proto/v1/service.proto) and [operations.proto](https://github.com/garethgeorge/backrest/blob/main/proto/v1/operations.proto); any RPC there can be called the same way as the examples below, with no stability guarantees.
+
 ### Backup API
 
 The backup API can be used to trigger execution of a plan e.g. 

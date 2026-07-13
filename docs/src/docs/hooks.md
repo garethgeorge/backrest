@@ -1,6 +1,8 @@
 # Hooks
 
-Hooks in Backrest allow you to respond to various operation lifecycle events, enabling automation and monitoring of your backup operations. This document explains how to configure and use hooks effectively.
+Hooks in Backrest allow you to respond to various operation lifecycle events, enabling automation and monitoring of your backup operations. This page is the reference for hook conditions, actions, error policies, and templates. For a task-oriented walkthrough of setting up notifications, see the [Notifications guide](/guides/notifications).
+
+Hooks can be attached to a **repository** (fires for all activity in that repo, including `_system_` maintenance) or to a **plan** (fires only for that plan's operations). For each event, repository hooks run before plan hooks, and each hook fires at most once per event — its first matching condition wins.
 
 ## Event Types
 
@@ -11,7 +13,8 @@ Hooks can be triggered by the following events:
 - `CONDITION_SNAPSHOT_END`: Triggered when a backup operation completes (regardless of success/failure)
 - `CONDITION_SNAPSHOT_SUCCESS`: Triggered when a backup operation completes successfully
 - `CONDITION_SNAPSHOT_ERROR`: Triggered when a backup operation fails
-- `CONDITION_SNAPSHOT_WARNING`: Triggered when a backup operation encounters non-fatal issues
+- `CONDITION_SNAPSHOT_WARNING`: Triggered when a backup operation encounters non-fatal issues (e.g. some files could not be read; a snapshot is still created)
+- `CONDITION_SNAPSHOT_SKIPPED`: Triggered when a backup is skipped because nothing changed (only with the plan's *skip if unchanged* option enabled)
 
 ### Prune Events
 - `CONDITION_PRUNE_START`: Triggered when a prune operation begins
@@ -40,9 +43,15 @@ Backrest supports multiple notification services for hook delivery:
 | Discord  | Send notifications to Discord channels | [Discord Webhooks Guide](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks) |
 | Slack    | Send notifications to Slack channels   | [Slack Webhooks Guide](https://api.slack.com/messaging/webhooks)                                    |
 | Gotify   | Send notifications via Gotify server   | [Gotify Documentation](https://github.com/gotify/server)                                            |
-| Shoutrrr | Multi-provider notification service    | [Shoutrrr Documentation](https://containrrr.dev/shoutrrr/v0.8/)                                     |
+| Telegram | Send messages via a Telegram bot (bot token + chat ID) | [Telegram Bot API](https://core.telegram.org/bots)                                   |
+| Shoutrrr | Multi-provider notification service (ntfy, Pushover, email, and more) | [Shoutrrr Documentation](https://containrrr.dev/shoutrrr/v0.8/)      |
 | Healthchecks | Ping Healthchecks.io monitoring URLs | [Healthchecks API](https://healthchecks.io/docs/http_api/)                                          |
-| Command  | Execute custom commands                | See [command cookbook](../cookbooks/command-hook-examples)                                       |
+| Webhook  | Send the rendered template to any HTTP endpoint (GET or POST) | —                                                                            |
+| Command  | Execute custom shell commands          | See [command cookbook](/cookbooks/command-hook-examples)                                            |
+
+::: warning Command hooks and the scratch Docker image
+Command hooks run through a shell, which the minimal `ghcr.io/garethgeorge/backrest:scratch` image does not include — use the default (alpine-based) `latest` image if you rely on command hooks.
+:::
 
 ### Healthchecks.io Integration
 
@@ -58,11 +67,16 @@ It also sends the formatted template summary as the HTTP POST body in plain text
 
 ## Error Handling
 
-Command hooks support specific error behaviors that determine how Backrest responds to hook failures:
+Every hook has an **error behavior** that determines how Backrest responds if the hook itself fails (a non-zero exit code for command hooks, or a delivery failure for notifications):
 
-- `ON_ERROR_IGNORE`: Continue execution despite hook failure
-- `ON_ERROR_CANCEL`: Stop the operation but don't trigger error handlers
-- `ON_ERROR_FATAL`: Stop the operation and trigger error handler hooks
+- `ON_ERROR_IGNORE`: Continue execution despite the hook failure
+- `ON_ERROR_CANCEL`: Stop the operation, marking it cancelled. Error-condition hooks are *not* triggered, which makes this suitable for pre-backup checks that should skip a run without raising an error (only meaningful on `*_START` conditions).
+- `ON_ERROR_FATAL`: Stop the operation, marking it failed. Error-condition hooks *are* triggered (only meaningful on `*_START` conditions).
+- `ON_ERROR_RETRY_1MINUTE`: Retry the hook every minute until it succeeds
+- `ON_ERROR_RETRY_10MINUTES`: Retry every 10 minutes
+- `ON_ERROR_RETRY_EXPONENTIAL_BACKOFF`: Retry with doubling delays (10s, 20s, 40s, …) capped at 1 hour
+
+While a hook is retrying, the operation that triggered it stays pending; retry policies are a good fit for notification hooks that should survive transient network failures.
 
 ## Template System
 
@@ -129,3 +143,9 @@ Backup Statistics:
 {{ end }}
 ```
 </div>
+
+## See Also
+
+- [Notifications guide](/guides/notifications) — step-by-step setup for the services above
+- [Command hook examples](/cookbooks/command-hook-examples) — pre-backup checks, filesystem snapshots, desktop notifications
+- [Slack Block Kit examples](/cookbooks/slack-hook-build-kit-examples) — richly formatted Slack messages
