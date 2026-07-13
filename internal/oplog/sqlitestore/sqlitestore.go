@@ -27,7 +27,6 @@ import (
 
 	"github.com/gofrs/flock"
 	_ "github.com/ncruces/go-sqlite3/driver"
-	_ "github.com/ncruces/go-sqlite3/embed"
 	"github.com/ncruces/go-sqlite3/vfs"
 	"github.com/ncruces/go-sqlite3/vfs/memdb"
 	_ "github.com/ncruces/go-sqlite3/vfs/memdb"
