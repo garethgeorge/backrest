@@ -18,10 +18,10 @@ jobs:
   test-nix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: "1.24"
 
@@ -45,15 +45,15 @@ jobs:
     env:
       TZ: UTC
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: pnpm
@@ -75,20 +75,20 @@ jobs:
       # Not RCLONE_*: rclone reads RCLONE_VERSION as its --version flag.
       E2E_RCLONE_VERSION: v1.69.1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: "1.24"
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: pnpm
@@ -108,13 +108,13 @@ jobs:
       # Keyed on the file that pins RequiredResticVersion; global-setup
       # provisions restic into this directory on a cache miss.
       - name: Cache restic
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: webui/e2e/.cache/restic-data
           key: restic-e2e-${{ hashFiles('internal/resticinstaller/resticinstaller.go') }}
 
       - name: Cache playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ hashFiles('webui/pnpm-lock.yaml') }}
@@ -126,7 +126,7 @@ jobs:
       # e2e spec skips itself if rclone is absent, so provision it for coverage.
       - name: Cache rclone
         id: cache-rclone
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: webui/e2e/.cache/rclone-bin
           key: rclone-${{ env.E2E_RCLONE_VERSION }}
@@ -149,7 +149,7 @@ jobs:
           E2E_SKIP_WEBUI_BUILD=1 E2E_BACKREST_BIN=$PWD/e2e/.cache/backrest pnpm run e2e
 
       - name: Upload playwright report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
@@ -160,10 +160,10 @@ jobs:
   test-win:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: "1.24"
 
@@ -184,7 +184,7 @@ jobs:
 
       - name: Cache restic
         id: cache-restic
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: restic-bin
           key: restic-windows-${{ env.RESTIC_VERSION }}
