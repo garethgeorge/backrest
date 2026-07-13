@@ -16,7 +16,10 @@ func startTray() {
 	status := newTrayStatus()
 	// Observe oplog status in-process so the icon can reflect backup state.
 	onOpLogReady = status.attach
-	go runApp()
+	go func() {
+		runApp()
+		systray.Quit()
+	}()
 	systray.Run(func() { onReady(status) }, func() {})
 }
 
