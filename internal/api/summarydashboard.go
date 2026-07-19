@@ -47,18 +47,24 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	for _, plan := range cfg.Plans {
 		planAccs[plan.Id] = newSummaryAcc(cutoffMidnight)
 	}
-	// Walk every operation for this instance, newest to oldest, dispatching each
-	// backup to its plan's and its repo's accumulator.
+	// Walk every operation for this instance, newest to oldest, dispatching backup
+	// and indexed-snapshot evidence to its plan's and its repo's accumulator.
 	if err := s.oplog.Query(oplog.Query{}.SetInstanceID(cfg.Instance).SetReversed(true), func(op *v1.Operation) error {
-		backupOp := op.GetOperationBackup()
-		if backupOp == nil {
-			return nil
+		if backupOp := op.GetOperationBackup(); backupOp != nil {
+			if acc, ok := planAccs[op.PlanId]; ok {
+				acc.observeBackup(op, backupOp)
+			}
+			if acc, ok := repoAccs[op.RepoGuid]; ok {
+				acc.observeBackup(op, backupOp)
+			}
 		}
-		if acc, ok := planAccs[op.PlanId]; ok {
-			acc.observe(op, backupOp)
-		}
-		if acc, ok := repoAccs[op.RepoGuid]; ok {
-			acc.observe(op, backupOp)
+		if indexOp := op.GetOperationIndexSnapshot(); indexOp != nil {
+			if acc, ok := planAccs[op.PlanId]; ok {
+				acc.observeIndexedSnapshot(indexOp)
+			}
+			if acc, ok := repoAccs[op.RepoGuid]; ok {
+				acc.observeIndexedSnapshot(indexOp)
+			}
 		}
 		return nil
 	}); err != nil {
@@ -121,6 +127,11 @@ type summaryDayAcc struct {
 	statusCounts map[v1.OperationStatus]int64
 }
 
+type indexedSnapshotEvidence struct {
+	startTime time.Time
+	summary   *v1.SnapshotSummary
+}
+
 // summaryAcc accumulates the backup operations for one plan or repo, observed
 // newest to oldest, into a dashboard summary.
 type summaryAcc struct {
@@ -147,17 +158,27 @@ type summaryAcc struct {
 	// reset the staleness clock, plus the most recent OK backup before the window.
 	okBackupDates            []time.Time
 	lastOkBackupBeforeWindow time.Time
+
+	// Indexed snapshots are durable evidence of a successful backup. They fill
+	// history gaps when the corresponding backup operation has been collected.
+	backupSnapshotIDs   map[string]struct{}
+	indexedSnapshotByID map[string]indexedSnapshotEvidence
 }
 
 func newSummaryAcc(cutoffMidnight time.Time) *summaryAcc {
 	return &summaryAcc{
-		cutoffMidnight: cutoffMidnight,
-		backupChart:    &v1.SummaryDashboardResponse_BackupChart{},
-		perDay:         make(map[int64]*summaryDayAcc),
+		cutoffMidnight:      cutoffMidnight,
+		backupChart:         &v1.SummaryDashboardResponse_BackupChart{},
+		perDay:              make(map[int64]*summaryDayAcc),
+		backupSnapshotIDs:   make(map[string]struct{}),
+		indexedSnapshotByID: make(map[string]indexedSnapshotEvidence),
 	}
 }
 
-func (a *summaryAcc) observe(op *v1.Operation, backupOp *v1.OperationBackup) {
+func (a *summaryAcc) observeBackup(op *v1.Operation, backupOp *v1.OperationBackup) {
+	if op.SnapshotId != "" {
+		a.backupSnapshotIDs[op.SnapshotId] = struct{}{}
+	}
 	startTime := time.UnixMilli(op.UnixTimeStartMs)
 	opMidnight := localMidnight(startTime)
 	// Dry runs don't reset the staleness clock, matching the scheduler's view.
@@ -233,9 +254,57 @@ func (a *summaryAcc) observe(op *v1.Operation, backupOp *v1.OperationBackup) {
 	}
 }
 
+func (a *summaryAcc) observeIndexedSnapshot(indexOp *v1.OperationIndexSnapshot) {
+	if indexOp.Forgot {
+		return
+	}
+	snapshot := indexOp.Snapshot
+	if snapshot == nil || snapshot.Id == "" {
+		return
+	}
+	a.indexedSnapshotByID[snapshot.Id] = indexedSnapshotEvidence{
+		startTime: time.UnixMilli(snapshot.UnixTimeMs),
+		summary:   snapshot.Summary,
+	}
+}
+
+func (a *summaryAcc) applyIndexedSnapshotFallbacks() {
+	for snapshotID, evidence := range a.indexedSnapshotByID {
+		if _, ok := a.backupSnapshotIDs[snapshotID]; ok {
+			continue
+		}
+
+		opMidnight := localMidnight(evidence.startTime)
+		if opMidnight.Before(a.cutoffMidnight) {
+			a.reachedCutoff = true
+			if a.lastOkBackupBeforeWindow.IsZero() || evidence.startTime.After(a.lastOkBackupBeforeWindow) {
+				a.lastOkBackupBeforeWindow = evidence.startTime
+			}
+			continue
+		}
+
+		a.okBackupDates = append(a.okBackupDates, evidence.startTime)
+		dayMs := opMidnight.UnixMilli()
+		acc := a.perDay[dayMs]
+		if acc == nil {
+			acc = &summaryDayAcc{statusCounts: make(map[v1.OperationStatus]int64)}
+			a.perDay[dayMs] = acc
+		}
+		acc.statusCounts[v1.OperationStatus_STATUS_SUCCESS]++
+		if evidence.summary != nil {
+			acc.bytesAdded += evidence.summary.DataAdded
+			acc.bytesScanned += evidence.summary.TotalBytesProcessed
+		}
+		if a.oldestDay.IsZero() || opMidnight.Before(a.oldestDay) {
+			a.oldestDay = opMidnight
+		}
+	}
+}
+
 // finalize builds the summary proto. allowedStaleness > 0 enables overdue
 // detection on the day history.
 func (a *summaryAcc) finalize(id string, now time.Time, allowedStaleness time.Duration) *v1.SummaryDashboardResponse_Summary {
+	a.applyIndexedSnapshotFallbacks()
 	todayMidnight := localMidnight(now)
 
 	backupsExamined := a.backupsExamined
