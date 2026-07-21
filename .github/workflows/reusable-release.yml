@@ -199,6 +199,8 @@ jobs:
       - name: Build binary
         env:
           CGO_ENABLED: "1"
+          CGO_CFLAGS: "-mmacosx-version-min=12"
+          CGO_LDFLAGS: "-mmacosx-version-min=12"
           GOARCH: ${{ matrix.goarch }}
         run: |
           go build -tags tray \
