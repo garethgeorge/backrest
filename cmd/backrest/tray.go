@@ -23,9 +23,17 @@ func startTray() {
 	systray.Run(func() { onReady(status) }, func() {})
 }
 
+var mStatusText *systray.MenuItem
+
 func onReady(status *trayStatus) {
 	systray.SetTooltip("Backrest")
 	systray.SetIcon(icon)
+
+	if runtime.GOOS == "darwin" {
+		mStatusText = systray.AddMenuItem("", "")
+		mStatusText.Disable()
+		mStatusText.Hide()
+	}
 
 	mOpenUI := systray.AddMenuItem("Open WebUI", "Open the Backrest WebUI in your default browser")
 	mOpenLog := systray.AddMenuItem("Open Log Dir", "Open the Backrest log directory")

@@ -72,11 +72,15 @@ func (t *trayStatus) refresh() {
 	if log == nil {
 		return
 	}
-	state, tooltip := computeStatus(log)
+	state, message := computeStatus(log)
 	if ic := statusIcon(state); ic != nil {
 		systray.SetIcon(ic)
 	}
-	systray.SetTooltip(tooltip)
+	systray.SetTooltip("Backrest — " + message)
+	if mStatusText != nil {
+		mStatusText.SetTitle(message)
+		mStatusText.Show()
+	}
 }
 
 // computeStatus returns the tray state and tooltip for the most recent backup.
@@ -100,22 +104,22 @@ func computeStatus(log *oplog.OpLog) (trayState, string) {
 	})
 
 	if last == nil {
-		return stateIdle, "Backrest — no backups yet"
+		return stateIdle, "No backups yet"
 	}
 	when := relativeTime(last.GetUnixTimeEndMs())
 	switch last.GetStatus() {
 	case v1.OperationStatus_STATUS_INPROGRESS:
-		return stateRunning, "Backrest — backup in progress…"
+		return stateRunning, "Backup in progress…"
 	case v1.OperationStatus_STATUS_SUCCESS:
-		return stateOK, "Backrest — last backup succeeded " + when
+		return stateOK, "Last backup succeeded " + when
 	case v1.OperationStatus_STATUS_WARNING:
-		return stateWarning, "Backrest — last backup finished with warnings " + when
+		return stateWarning, "Last backup finished with warnings " + when
 	case v1.OperationStatus_STATUS_ERROR, v1.OperationStatus_STATUS_SYSTEM_CANCELLED:
-		return stateError, "Backrest — last backup failed " + when
+		return stateError, "Last backup failed " + when
 	case v1.OperationStatus_STATUS_USER_CANCELLED:
-		return stateIdle, "Backrest — last backup was cancelled " + when
+		return stateIdle, "Last backup was cancelled " + when
 	default:
-		return stateIdle, "Backrest — no backups yet"
+		return stateIdle, "No backups yet"
 	}
 }
 
