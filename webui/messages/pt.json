@@ -543,5 +543,11 @@
   "dashboard_history_legend_inprogress": "Em andamento",
   "dashboard_history_tooltip_status_inprogress": "{count} em andamento",
   "dashboard_history_tooltip_overdue": "Backup atrasado neste dia",
-  "dashboard_history_tooltip_on_schedule": "Backups atualizados neste dia"
+  "dashboard_history_tooltip_on_schedule": "Backups atualizados neste dia",
+  "add_plan_modal_field_description": "Description",
+  "add_plan_modal_field_description_tooltip": "Optional human-readable description of this plan. The sidebar shows only the first line.",
+  "add_plan_modal_field_description_placeholder": "Describe what this plan backs up",
+  "add_repo_modal_field_description": "Description",
+  "add_repo_modal_field_description_tooltip": "Optional human-readable description of this repo. The sidebar shows only the first line.",
+  "add_repo_modal_field_description_placeholder": "Describe what this repo stores"
 }

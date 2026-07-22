@@ -553,5 +553,11 @@
   "dashboard_history_legend_inprogress": "Laufend",
   "dashboard_history_tooltip_status_inprogress": "{count} laufend",
   "dashboard_history_tooltip_overdue": "Backup an diesem Tag überfällig",
-  "dashboard_history_tooltip_on_schedule": "Backups an diesem Tag auf dem neuesten Stand"
+  "dashboard_history_tooltip_on_schedule": "Backups an diesem Tag auf dem neuesten Stand",
+  "add_plan_modal_field_description": "Description",
+  "add_plan_modal_field_description_tooltip": "Optional human-readable description of this plan. The sidebar shows only the first line.",
+  "add_plan_modal_field_description_placeholder": "Describe what this plan backs up",
+  "add_repo_modal_field_description": "Description",
+  "add_repo_modal_field_description_tooltip": "Optional human-readable description of this repo. The sidebar shows only the first line.",
+  "add_repo_modal_field_description_placeholder": "Describe what this repo stores"
 }

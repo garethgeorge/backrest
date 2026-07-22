@@ -543,5 +543,11 @@
   "dashboard_history_legend_inprogress": "قيد التنفيذ",
   "dashboard_history_tooltip_status_inprogress": "{count} قيد التنفيذ",
   "dashboard_history_tooltip_overdue": "النسخ الاحتياطي متأخر اعتبارًا من هذا اليوم",
-  "dashboard_history_tooltip_on_schedule": "النسخ الاحتياطية محدثة اعتبارًا من هذا اليوم"
+  "dashboard_history_tooltip_on_schedule": "النسخ الاحتياطية محدثة اعتبارًا من هذا اليوم",
+  "add_plan_modal_field_description": "Description",
+  "add_plan_modal_field_description_tooltip": "Optional human-readable description of this plan. The sidebar shows only the first line.",
+  "add_plan_modal_field_description_placeholder": "Describe what this plan backs up",
+  "add_repo_modal_field_description": "Description",
+  "add_repo_modal_field_description_tooltip": "Optional human-readable description of this repo. The sidebar shows only the first line.",
+  "add_repo_modal_field_description_placeholder": "Describe what this repo stores"
 }

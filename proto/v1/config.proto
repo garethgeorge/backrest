@@ -114,10 +114,12 @@ message Repo {
   bool shared = 13 [json_name="shared"]; // if true, this repo is pushed to all authorized clients with read-config permission
   string origin_instance_id = 14 [json_name="originInstanceId"]; // set when this repo was pushed from a remote instance; marks it as non-editable
   ForgetPolicy forget_policy = 15 [json_name="forgetPolicy"]; // optional repo-level forget policy. If set, overrides per-plan retention policies.
+  string description = 16 [json_name="description"]; // human-readable description of this repo.
 }
 
 message Plan {
   string id = 1 [json_name="id"]; // unique but human readable ID for this plan.
+  string description = 14 [json_name="description"]; // human-readable description of this plan.
   string repo = 2 [json_name="repo"]; // ID of the repo to use.
   repeated string paths = 4 [json_name="paths"]; // paths to include in the backup.
   repeated string excludes = 5 [json_name="excludes"]; // glob patterns to exclude.
