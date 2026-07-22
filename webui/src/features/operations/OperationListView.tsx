@@ -59,7 +59,7 @@ export const OperationListView = ({
       logState,
       req,
       (e) => {
-        alerts.error("Failed to fetch operations: " + e.message);
+        alerts.error(m.operation_list_view_failed_to_fetch_operations_message({ message: e.message }));
       },
       () => {
         setLoading(false);

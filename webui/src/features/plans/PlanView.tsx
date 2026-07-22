@@ -123,7 +123,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
               <IconButton
                 variant="subtle"
                 colorPalette="blue"
-                aria-label="More actions"
+                aria-label={m.plan_view_more_actions()}
               >
                 <FiChevronDown />
               </IconButton>
@@ -140,7 +140,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
                   showModal(<RunCommandModal repo={repo} />);
                 }}
               >
-                {m.repo_button_run_command()}
+                {m.op_type_run_command()}
               </MenuItem>
               <MenuItem value="unlock" onClick={handleUnlockNow}>
                 {m.repo_button_unlock()}

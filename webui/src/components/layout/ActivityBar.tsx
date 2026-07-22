@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { operationsStream } from "../../api/oplog";
 import { formatDuration } from "../../lib/formatting";
 import { Operation, OperationStatus } from "../../../gen/ts/v1/operations_pb";
+import * as m from "../../paraglide/messages";
 import {
   displayTypeToString,
   getTypeForDisplay,
@@ -57,7 +58,7 @@ export const ActivityBar = () => {
 
         return (
           <span key={idx} style={{ marginRight: "2em" }}>
-            {displayName} in progress for plan {op.planId} to {op.repoId} for{" "}
+            {displayName} {m.activity_bar_in_progress_for_plan()} {op.planId} to {op.repoId} for{" "}
             {formatDuration(Date.now() - Number(op.unixTimeStartMs))}
           </span>
         );

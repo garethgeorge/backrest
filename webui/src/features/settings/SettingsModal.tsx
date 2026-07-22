@@ -107,11 +107,11 @@ export const SettingsModal = () => {
 
   const ttlOptions = createListCollection({
     items: [
-      { label: "15 minutes", value: "900" },
-      { label: "1 hour", value: "3600" },
-      { label: "24 hours", value: "86400" },
-      { label: "7 days", value: "604800" },
-      { label: "Forever", value: "0" },
+      { label: m.settings_modal_15_minutes(), value: "900" },
+      { label: m.settings_modal_1_hour(), value: "3600" },
+      { label: m.settings_modal_24_hours(), value: "86400" },
+      { label: m.settings_modal_7_days(), value: "604800" },
+      { label: m.settings_modal_forever(), value: "0" },
     ],
   });
 
@@ -142,7 +142,7 @@ export const SettingsModal = () => {
       setGeneratedToken(resp.token);
       await refreshConfig();
     } catch (e: any) {
-      alerts.error(formatErrorAlert(e, "Failed to generate pairing token"));
+      alerts.error(formatErrorAlert(e, m.settings_modal_failed_to_generate_pairing_token()));
     } finally {
       setGenerateLoading(false);
     }
@@ -156,9 +156,9 @@ export const SettingsModal = () => {
         newConfig.multihost.pairingTokens.splice(index, 1);
       }
       setConfig(await backrestService.setConfig(newConfig));
-      alerts.success("Pairing token removed.");
+      alerts.success(m.settings_modal_pairing_token_removed());
     } catch (e: any) {
-      alerts.error(formatErrorAlert(e, "Failed to remove pairing token"));
+      alerts.error(formatErrorAlert(e, m.settings_modal_failed_to_remove_pairing_token()));
     }
   };
 
@@ -215,7 +215,7 @@ export const SettingsModal = () => {
 
       if (!newConfig.auth?.users && !newConfig.auth?.disabled) {
         throw new Error(
-          "At least one user must be configured or authentication must be disabled",
+          m.settings_modal_at_least_one_user_must_be_configured_or_authentication_must(),
         );
       }
 
@@ -240,13 +240,13 @@ export const SettingsModal = () => {
   const users = getField(["auth", "users"]) || [];
 
   const sections: SectionDef[] = [
-    { id: "general", label: "General", icon: <FiSettings size={14} /> },
-    { id: "auth", label: "Authentication", icon: <FiLock size={14} /> },
+    { id: "general", label: m.settings_modal_general(), icon: <FiSettings size={14} /> },
+    { id: "auth", label: m.settings_modal_authentication(), icon: <FiLock size={14} /> },
     ...(isMultihostSyncEnabled
       ? [
           {
             id: "multihost",
-            label: "Multihost",
+            label: m.settings_modal_multihost(),
             icon: <FiGlobe size={14} />,
           } as SectionDef,
         ]
@@ -257,7 +257,7 @@ export const SettingsModal = () => {
     <TwoPaneModal
       isOpen={true}
       onClose={handleCancel}
-      title={m.settings_modal_title()}
+      title={m.app_menu_settings()}
       headerIcon={<FiSettings size={14} />}
       sections={sections}
       dirty={dirty}
@@ -273,8 +273,8 @@ export const SettingsModal = () => {
       <TwoPaneSection id="general">
         <SectionCard
           icon={<FiSettings size={16} />}
-          title="General"
-          description="Instance identity and display preferences."
+          title={m.settings_modal_general()}
+          description={m.settings_modal_instance_identity_and_display_preferences()}
         >
           <Stack gap={4}>
             {users.length === 0 && !getField(["auth", "disabled"]) && (
@@ -292,7 +292,7 @@ export const SettingsModal = () => {
             )}
 
             <Field
-              label={m.settings_field_instance_id()}
+              label={m.settings_peer_instance_id()}
               helperText={m.settings_field_instance_id_tooltip()}
               required
             >
@@ -314,8 +314,8 @@ export const SettingsModal = () => {
       <TwoPaneSection id="auth">
         <SectionCard
           icon={<FiLock size={16} />}
-          title={m.settings_section_authentication()}
-          description="User accounts and access control."
+          title={m.settings_modal_authentication()}
+          description={m.settings_modal_user_accounts_and_access_control()}
         >
           <Stack gap={4}>
             <ToggleField
@@ -331,7 +331,7 @@ export const SettingsModal = () => {
                 {users.map((user: any, index: number) => (
                   <Flex key={index} gap={2} align="center" width="full">
                     <Input
-                      placeholder={m.settings_auth_username_placeholder()}
+                      placeholder={m.login_username_placeholder()}
                       value={user.name}
                       onChange={(e) => {
                         const newUsers = [...users];
@@ -342,7 +342,7 @@ export const SettingsModal = () => {
                       flex={1}
                     />
                     <PasswordInput
-                      placeholder={m.settings_auth_password_placeholder()}
+                      placeholder={m.login_password_placeholder()}
                       value={user.passwordBcrypt}
                       onChange={(e) => {
                         const newUsers = [...users];
@@ -355,7 +355,7 @@ export const SettingsModal = () => {
                     <IconButton
                       size="sm"
                       variant="ghost"
-                      aria-label="Remove"
+                      aria-label={m.dynamic_list_remove()}
                       onClick={() => {
                         const newUsers = [...users];
                         newUsers.splice(index, 1);
@@ -399,7 +399,7 @@ export const SettingsModal = () => {
           <SectionCard
             icon={<FiGlobe size={16} />}
             title={m.settings_section_multihost()}
-            description="Peer-to-peer synchronisation between Backrest instances."
+            description={m.settings_modal_peertopeer_synchronisation_between_backrest_instances()}
           >
             <Stack gap={4}>
               <Text fontStyle="italic" fontSize="sm">
@@ -409,16 +409,16 @@ export const SettingsModal = () => {
                 {m.settings_multihost_warning()}
               </Text>
               <Text fontSize="sm">
-                See the{" "}
+                {m.settings_modal_see_the()}{" "}
                 <a
                   href="https://garethgeorge.github.io/backrest/docs/multihost"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ textDecoration: "underline" }}
                 >
-                  multihost sync documentation
+                  {m.settings_modal_multihost_sync_documentation()}
                 </a>{" "}
-                for setup details.
+                {m.settings_modal_for_setup_details()}
               </Text>
 
               <Field
@@ -439,7 +439,7 @@ export const SettingsModal = () => {
                         getField(["multihost", "identity", "keyid"]) || "",
                       )
                     }
-                    aria-label="Copy"
+                    aria-label={m.settings_modal_copy()}
                   >
                     <Copy />
                   </IconButton>
@@ -450,8 +450,8 @@ export const SettingsModal = () => {
 
           <SectionCard
             icon={<FiLock size={16} />}
-            title="Pairing Tokens"
-            description="Tokens that can be shared with other Backrest instances to simplify peering."
+            title={m.settings_modal_pairing_tokens()}
+            description={m.settings_modal_tokens_that_can_be_shared_with_other_backrest_instances_to_s()}
           >
             <Stack gap={3} width="full">
               {(config.multihost?.pairingTokens || []).map((token, index) => (
@@ -470,15 +470,15 @@ export const SettingsModal = () => {
               {showGenerateForm && (
                 <Box p={4} borderWidth="1px" borderRadius="md">
                   <Stack gap={3}>
-                    <Field label="Label (optional)">
+                    <Field label={m.settings_modal_label_optional()}>
                       <Input
                         value={tokenLabel}
                         onChange={(e) => setTokenLabel(e.target.value)}
-                        placeholder="e.g. laptop-2"
+                        placeholder={m.settings_modal_eg_laptop2({ example: "laptop-2" })}
                         width="full"
                       />
                     </Field>
-                    <Field label="TTL">
+                    <Field label={m.settings_modal_ttl()}>
                       <SelectRoot
                         collection={ttlOptions}
                         value={[tokenTtl]}
@@ -487,7 +487,7 @@ export const SettingsModal = () => {
                         {/* @ts-ignore */}
                         <SelectTrigger>
                           {/* @ts-ignore */}
-                          <SelectValueText placeholder="Select TTL" />
+                          <SelectValueText placeholder={m.settings_modal_select_ttl()} />
                         </SelectTrigger>
                         {/* @ts-ignore */}
                         <SelectContent zIndex={2000}>
@@ -499,7 +499,7 @@ export const SettingsModal = () => {
                         </SelectContent>
                       </SelectRoot>
                     </Field>
-                    <Field label="Max Uses" helperText="0 = unlimited">
+                    <Field label={m.settings_modal_max_uses()} helperText={"0 = " + m.settings_modal_0_unlimited()}>
                       <Input
                         type="number"
                         value={tokenMaxUses}
@@ -516,7 +516,7 @@ export const SettingsModal = () => {
                         onClick={handleGenerateToken}
                         loading={generateLoading}
                       >
-                        Generate
+                        {m.settings_modal_generate()}
                       </Button>
                       <Button
                         size="sm"
@@ -526,7 +526,7 @@ export const SettingsModal = () => {
                           setGeneratedToken("");
                         }}
                       >
-                        Cancel
+                        {m.button_cancel()}
                       </Button>
                     </Flex>
                   </Stack>
@@ -546,7 +546,7 @@ export const SettingsModal = () => {
                   }}
                   width="full"
                 >
-                  <Plus /> Generate Pairing Token
+                  <Plus /> {m.settings_modal_generate_pairing_token()}
                 </Button>
               )}
             </Stack>
@@ -641,7 +641,7 @@ const PairingTokenItem = ({
             size="xs"
             variant="ghost"
             onClick={() => setShowToken(!showToken)}
-            aria-label={showToken ? "Hide token" : "Show token"}
+            aria-label={showToken ? m.settings_modal_hide_token() : m.settings_modal_show_token()}
           >
             {showToken ? <FiEyeOff size={14} /> : <FiEye size={14} />}
           </IconButton>
@@ -649,7 +649,7 @@ const PairingTokenItem = ({
             size="xs"
             variant="ghost"
             onClick={onRemove}
-            aria-label="Remove token"
+            aria-label={m.settings_modal_remove_token()}
           >
             <Minus />
           </IconButton>
@@ -662,7 +662,7 @@ const PairingTokenItem = ({
             size="sm"
             variant="outline"
             onClick={() => navigator.clipboard.writeText(fullTokenString)}
-            aria-label="Copy token"
+            aria-label={m.settings_modal_copy_token()}
           >
             <Copy />
           </IconButton>
@@ -721,7 +721,7 @@ const KnownHostsList = ({ items, onUpdate, peerStates, config }: any) => {
       const colonIdx = pairToken.indexOf(":");
       if (hashIdx === -1 || colonIdx === -1 || colonIdx > hashIdx) {
         throw new Error(
-          'Invalid token format. Expected "<keyid>:<secret>#<instanceid>"',
+          m.settings_modal_invalid_token_format_expected_keyidsecretinstanceid({ expected: "<keyid>:<secret>#<instanceid>" }),
         );
       }
       const keyId = pairToken.substring(0, colonIdx);
@@ -729,10 +729,10 @@ const KnownHostsList = ({ items, onUpdate, peerStates, config }: any) => {
       const instanceId = pairToken.substring(hashIdx + 1);
 
       if (!keyId || !secret || !instanceId) {
-        throw new Error("Token is missing required fields");
+        throw new Error(m.settings_modal_token_is_missing_required_fields());
       }
       if (!pairInstanceUrl) {
-        throw new Error("Instance URL is required");
+        throw new Error(m.settings_modal_instance_url_is_required());
       }
 
       onUpdate([
@@ -757,9 +757,9 @@ const KnownHostsList = ({ items, onUpdate, peerStates, config }: any) => {
       setPairToken("");
       setPairInstanceUrl("");
       setShowAddForm(false);
-      alerts.success("Server added to known hosts. Save settings to apply.");
+      alerts.success(m.settings_modal_server_added_to_known_hosts_save_settings_to_apply());
     } catch (e: any) {
-      alerts.error(formatErrorAlert(e, "Failed to add known host"));
+      alerts.error(formatErrorAlert(e, m.settings_modal_failed_to_add_known_host()));
     }
   };
 
@@ -781,22 +781,21 @@ const KnownHostsList = ({ items, onUpdate, peerStates, config }: any) => {
         <Box p={4} borderWidth="1px" borderRadius="md">
           <Stack gap={3}>
             <Text fontSize="sm" color="gray.500">
-              Paste a pairing token from another Backrest server, or leave blank
-              to configure manually.
+              {m.settings_modal_paste_a_pairing_token_from_another_backrest_server_or_leave()}
             </Text>
-            <Field label="Pairing Token (optional)">
+            <Field label={m.settings_modal_pairing_token_optional()}>
               <Input
                 value={pairToken}
                 onChange={(e) => setPairToken(e.target.value)}
-                placeholder="<keyid>:<secret>#<instanceid>"
+                placeholder={m.settings_modal_keyidsecretinstanceid()}
                 width="full"
               />
             </Field>
-            <Field label="Instance URL" required>
+            <Field label={m.settings_peer_instance_url()} required>
               <Input
                 value={pairInstanceUrl}
                 onChange={(e) => setPairInstanceUrl(e.target.value)}
-                placeholder="e.g. http://server:9898"
+                placeholder={m.settings_modal_eg_laptop2({ example: "http://server:9898" })}
                 width="full"
               />
             </Field>
@@ -813,7 +812,7 @@ const KnownHostsList = ({ items, onUpdate, peerStates, config }: any) => {
                   setPairInstanceUrl("");
                 }}
               >
-                Cancel
+                {m.button_cancel()}
               </Button>
             </Flex>
           </Stack>
@@ -861,8 +860,7 @@ const PeerFormList = ({
     <Stack gap={4} width="full">
       {items.length === 0 && (
         <Text fontSize="sm" color="fg.muted" fontStyle="italic">
-          No trusted peers yet. Generate a pairing token above and share it with
-          another instance to get started.
+          {m.settings_modal_no_trusted_peers_yet_generate_a_pairing_token_above_and_shar()}
         </Text>
       )}
       {items.map((item: any, index: number) => (
@@ -930,7 +928,7 @@ const PeerFormListItem = ({
               size="xs"
               variant="ghost"
               onClick={onRemove}
-              aria-label="Remove"
+              aria-label={m.dynamic_list_remove()}
             >
               <Minus />
             </IconButton>
@@ -988,7 +986,7 @@ const PeerPermissionsTile = ({
   const permissionTypeItems = isAuthorizedClient
     ? [
         {
-          label: "Push shared repos",
+          label: m.settings_modal_push_shared_repos(),
           value: "PERMISSION_RECEIVE_SHARED_REPOS",
         },
       ]
@@ -1002,7 +1000,7 @@ const PeerPermissionsTile = ({
           value: "PERMISSION_READ_OPERATIONS",
         },
         {
-          label: "Receive shared repos",
+          label: m.settings_modal_receive_shared_repos(),
           value: "PERMISSION_RECEIVE_SHARED_REPOS",
         },
       ];
@@ -1115,7 +1113,7 @@ const PeerPermissionsTile = ({
               size="sm"
               variant="ghost"
               onClick={() => handleRemove(index)}
-              aria-label="Remove Permission"
+              aria-label={m.settings_modal_remove_permission()}
             >
               <Minus size={14} />
             </IconButton>
@@ -1181,7 +1179,7 @@ const UserSettingsForm = () => {
         // @ts-ignore
         m.settings_field_language
           ? m.settings_field_language()
-          : "Display Language"
+          : m.settings_field_language()
       }
     >
       <SelectRoot
@@ -1192,7 +1190,7 @@ const UserSettingsForm = () => {
         {/* @ts-ignore */}
         <SelectTrigger>
           {/* @ts-ignore */}
-          <SelectValueText placeholder="Select language" />
+          <SelectValueText placeholder={m.settings_modal_select_language()} />
         </SelectTrigger>
         {/* @ts-ignore */}
         <SelectContent zIndex={2000}>

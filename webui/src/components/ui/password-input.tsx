@@ -13,6 +13,7 @@ import * as React from "react";
 import { LuEye, LuEyeOff } from "react-icons/lu";
 import { InputGroup } from "./input-group";
 
+import * as m from "../../paraglide/messages";
 export interface PasswordInputProps extends InputProps {
   rootProps?: GroupProps;
   attach?: React.ReactNode;
@@ -34,7 +35,7 @@ export const PasswordInput = React.forwardRef<
           {attach}
           <IconButton
             variant="ghost"
-            aria-label={visible ? "Hide password" : "Show password"}
+            aria-label={visible ? m.password_input_hide_password() : m.password_input_show_password()}
             onClick={() => {
               setVisible(!visible);
               inputRef.current?.focus();

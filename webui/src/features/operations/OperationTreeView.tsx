@@ -76,6 +76,7 @@ import { StickyPanel } from "../../components/common/StickyPanel";
 import { create, toJsonString } from "@bufbuild/protobuf";
 import { useConfig } from "../../app/provider";
 
+import * as m from "../../paraglide/messages";
 interface OpTreeNode {
   id: string;
   label: string;
@@ -148,7 +149,7 @@ export const OperationTreeView = ({
       logState,
       req,
       (err) => {
-        alerts.error("API error: " + err.message);
+        alerts.error(m.operation_tree_view_api_error_message({ message: err.message }));
       },
       () => {
         setLoading(false);
@@ -172,9 +173,9 @@ export const OperationTreeView = ({
             <LuInfo />
           </EmptyState.Indicator>
           <VStack textAlign="center">
-            <EmptyState.Title>No operations found</EmptyState.Title>
+            <EmptyState.Title>{m.operation_tree_view_no_operations_found()}</EmptyState.Title>
             <EmptyState.Description>
-              There are no operations to display.
+              {m.operation_tree_view_there_are_no_operations_to_display()}
             </EmptyState.Description>
           </VStack>
         </EmptyState.Content>
@@ -398,7 +399,7 @@ const DisplayOperationTree = React.memo(
         nodeToString: (node: OpTreeNode) => node.label,
         rootNode: {
           id: "ROOT",
-          label: "Root",
+          label: m.operation_tree_view_root(),
           children: nodes,
         },
       });
@@ -554,7 +555,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
   if (!backup) {
     return (
       <EmptyState.Root>
-        <EmptyState.Title>Backup not found.</EmptyState.Title>
+        <EmptyState.Title>{m.operation_tree_view_backup_not_found()}</EmptyState.Title>
       </EmptyState.Root>
     );
   } else {
@@ -567,9 +568,9 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
             snapshotId: backup.snapshotID!,
           }),
         );
-        alerts.success("Snapshot forget scheduled.");
+        alerts.success(m.operation_tree_view_snapshot_forget_scheduled());
       } catch (e: any) {
-        alerts.error("Failed to forget snapshot: " + e);
+        alerts.error(m.operation_tree_view_failed_to_forget_snapshot_e({ e: e }));
       }
     };
 
@@ -581,18 +582,18 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
       snapshotInFlow && snapshotInFlow.snapshotId ? (
         <ConfirmButton
           variant="ghost"
-          confirmTitle="Confirm forget?"
+          confirmTitle={m.operation_tree_view_confirm_forget()}
           confirmTimeout={2000}
           onClickAsync={doDeleteSnapshot}
           colorPalette="red"
           data-testid="forget-snapshot"
         >
-          Forget (Destructive)
+          {m.operation_tree_view_forget_destructive()}
         </ConfirmButton>
       ) : (
         <ConfirmButton
           variant="ghost"
-          confirmTitle="Confirm clear?"
+          confirmTitle={m.operation_tree_view_confirm_clear()}
           onClickAsync={async () => {
             backrestService.clearHistory(
               create(ClearHistoryRequestSchema, {
@@ -603,7 +604,7 @@ const BackupView = ({ backup }: { backup?: FlowDisplayInfo }) => {
             );
           }}
         >
-          Delete Event
+          {m.operation_tree_view_delete_event()}
         </ConfirmButton>
       );
 

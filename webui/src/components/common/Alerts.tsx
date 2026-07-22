@@ -1,5 +1,6 @@
 import React from "react";
 import { toaster } from "../ui/toaster";
+import * as m from "../../paraglide/messages";
 
 export const alerts = {
   error: (content: any, duration = 5000) => {
@@ -42,7 +43,7 @@ export const alerts = {
 };
 
 export const formatErrorAlert = (error: any, prefix?: string) => {
-  prefix = prefix ? prefix.trim() + " " : "Error: ";
+  prefix = prefix ? prefix.trim() + " " : m.log_view_error() + " ";
   const contents = (error.message || "" + error) as string;
   if (contents.includes("\n")) {
     return (

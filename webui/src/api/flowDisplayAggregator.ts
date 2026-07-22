@@ -295,6 +295,6 @@ export const nameForStatus = (status: OperationStatus) => {
     case OperationStatus.STATUS_SYSTEM_CANCELLED:
       return m.op_status_cancelled();
     default:
-      return m.op_status_unknown();
+      return m.op_type_unknown();
   }
 };

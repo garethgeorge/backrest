@@ -120,7 +120,7 @@ describe("AddPlanModal", () => {
     renderModal({ config });
 
     expect(
-      await screen.findByText(m.add_plan_modal_title_add()),
+      await screen.findByText(m.app_menu_add_plan()),
     ).toBeInTheDocument();
     // Plan name input (placeholder derives from existing plan count).
     expect(screen.getByPlaceholderText("plan1")).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe("AddPlanModal", () => {
     renderModal({ config });
     const user = newUser();
 
-    await screen.findByText(m.add_plan_modal_title_add());
+    await screen.findByText(m.app_menu_add_plan());
     // Before selection, the placeholder is visible.
     expect(
       screen.getByText(m.add_plan_modal_field_repository_select()),
@@ -166,14 +166,14 @@ describe("AddPlanModal", () => {
     const user = newUser();
     const errorSpy = vi.spyOn(alerts, "error");
 
-    await screen.findByText(m.add_plan_modal_title_add());
+    await screen.findByText(m.app_menu_add_plan());
     await typeName(user, config, "bad name"); // space fails namePattern
     await submit(user);
 
     await waitFor(() => expect(errorSpy).toHaveBeenCalled());
     const [content] = errorSpy.mock.calls[errorSpy.mock.calls.length - 1];
     expect(String(content)).toContain(
-      m.add_plan_modal_validation_plan_name_pattern(),
+      m.settings_auth_name_pattern(),
     );
     expect(backrestService.setConfig).not.toHaveBeenCalled();
     expect(setConfig).not.toHaveBeenCalled();
@@ -187,7 +187,7 @@ describe("AddPlanModal", () => {
     const user = newUser();
     const errorSpy = vi.spyOn(alerts, "error");
 
-    await screen.findByText(m.add_plan_modal_title_add());
+    await screen.findByText(m.app_menu_add_plan());
     await typeName(user, config, "dup");
     await submit(user);
 
@@ -205,7 +205,7 @@ describe("AddPlanModal", () => {
     const user = newUser();
     const errorSpy = vi.spyOn(alerts, "error");
 
-    await screen.findByText(m.add_plan_modal_title_add());
+    await screen.findByText(m.app_menu_add_plan());
     await typeName(user, config, "valid-plan");
     await submit(user); // repo left empty
 
@@ -225,7 +225,7 @@ describe("AddPlanModal", () => {
     const { setConfig } = renderModal({ config });
     const user = newUser();
 
-    await screen.findByText(m.add_plan_modal_title_add());
+    await screen.findByText(m.app_menu_add_plan());
     await typeName(user, config, "my-plan");
     await selectRepo(user, "r1");
     await addPath(user, "/foo");
@@ -250,7 +250,7 @@ describe("AddPlanModal", () => {
     // Modal closes on success.
     await waitFor(() =>
       expect(
-        screen.queryByText(m.add_plan_modal_title_add()),
+        screen.queryByText(m.app_menu_add_plan()),
       ).not.toBeInTheDocument(),
     );
   });
@@ -292,7 +292,7 @@ describe("AddPlanModal", () => {
     renderModal({ config, onSaveOverride });
     const user = newUser();
 
-    await screen.findByText(m.add_plan_modal_title_add());
+    await screen.findByText(m.app_menu_add_plan());
     await typeName(user, config, "ov-plan");
     await selectRepo(user, "r1");
     await addPath(user, "/bar");
@@ -306,7 +306,7 @@ describe("AddPlanModal", () => {
     // Modal still closes after the override resolves.
     await waitFor(() =>
       expect(
-        screen.queryByText(m.add_plan_modal_title_add()),
+        screen.queryByText(m.app_menu_add_plan()),
       ).not.toBeInTheDocument(),
     );
   });
@@ -320,7 +320,7 @@ describe("AddPlanModal", () => {
     const user = newUser();
     const errorSpy = vi.spyOn(alerts, "error");
 
-    await screen.findByText(m.add_plan_modal_title_add());
+    await screen.findByText(m.app_menu_add_plan());
     await typeName(user, config, "my-plan");
     await selectRepo(user, "r1");
     await addPath(user, "/foo");
@@ -331,6 +331,6 @@ describe("AddPlanModal", () => {
     expect(backrestService.setConfig).toHaveBeenCalledTimes(1);
     expect(setConfig).not.toHaveBeenCalled();
     // ...and the modal remains open.
-    expect(screen.getByText(m.add_plan_modal_title_add())).toBeInTheDocument();
+    expect(screen.getByText(m.app_menu_add_plan())).toBeInTheDocument();
   });
 });

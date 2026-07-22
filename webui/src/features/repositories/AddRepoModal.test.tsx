@@ -19,7 +19,7 @@ const getUriInput = (): HTMLInputElement =>
     .find((el) => el.tagName === "INPUT") as HTMLInputElement;
 
 const getPasswordInput = (): HTMLInputElement =>
-  screen.getByLabelText(m.add_repo_modal_field_password()) as HTMLInputElement;
+  screen.getByLabelText(m.login_password_placeholder()) as HTMLInputElement;
 
 // Fills the three required create-mode fields (name / uri / password).
 const fillCreateForm = async (
@@ -72,7 +72,7 @@ describe("AddRepoModal", () => {
 
     // Inline validation feedback becomes visible.
     expect(
-      await screen.findByText(m.add_plan_modal_validation_plan_name_pattern()),
+      await screen.findByText(m.settings_auth_name_pattern()),
     ).toBeInTheDocument();
 
     await user.click(
