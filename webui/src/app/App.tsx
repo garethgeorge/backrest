@@ -59,7 +59,7 @@ import { ActivityBar } from "../components/layout/ActivityBar";
 import { OperationStatus } from "../../gen/ts/v1/operations_pb";
 import { useResourceStatus } from "../api/resourceStatus";
 import LogoSvg from "../../assets/logo.svg";
-import { keyBy } from "../lib/util";
+import { keyBy, nl2br } from "../lib/util";
 import { Code } from "@connectrpc/connect";
 import { LoginModal } from "../features/auth/LoginModal";
 import { backrestService, syncStateService, setAuthToken } from "../api/client";
@@ -474,7 +474,7 @@ const SidebarPlanItem = React.memo(
         <Box flexShrink={0} mr={2}>
           <IconForResource selector={sel} />
         </Box>
-        <Tooltip content={plan.id}>
+        <Tooltip content={nl2br(plan.description || plan.id)}>
           <Box
             flex="1"
             minW="0"
@@ -485,6 +485,17 @@ const SidebarPlanItem = React.memo(
             <Text overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
               {plan.id}
             </Text>
+            {plan.description && (
+              <Text
+                fontSize="xs"
+                color="fg.muted"
+                overflow="hidden"
+                textOverflow="ellipsis"
+                whiteSpace="nowrap"
+              >
+                {plan.description.split("\n")[0]}
+              </Text>
+            )}
           </Box>
         </Tooltip>
         <Box opacity={0} _groupHover={{ opacity: 1 }} transition="opacity 0.2s">
@@ -541,7 +552,7 @@ const SidebarRepoItem = React.memo(
         <Box flexShrink={0} mr={2}>
           <IconForResource selector={sel} />
         </Box>
-        <Tooltip content={repo.uri}>
+        <Tooltip content={nl2br(repo.description || repo.uri)}>
           <Box
             flex="1"
             minW="0"
@@ -552,6 +563,17 @@ const SidebarRepoItem = React.memo(
             <Text overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
               {repo.id}
             </Text>
+            {repo.description && (
+              <Text
+                fontSize="xs"
+                color="fg.muted"
+                overflow="hidden"
+                textOverflow="ellipsis"
+                whiteSpace="nowrap"
+              >
+                {repo.description.split("\n")[0]}
+              </Text>
+            )}
             {repo.originInstanceId && (
               <Text
                 fontSize="xs"

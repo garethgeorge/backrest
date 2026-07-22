@@ -543,5 +543,11 @@
   "dashboard_retention_daily": "{count} daily",
   "dashboard_retention_weekly": "{count} weekly",
   "dashboard_retention_monthly": "{count} monthly",
-  "dashboard_retention_yearly": "{count} yearly"
+  "dashboard_retention_yearly": "{count} yearly",
+  "add_plan_modal_field_description": "Description",
+  "add_plan_modal_field_description_tooltip": "Optional human-readable description of this plan. The sidebar shows only the first line.",
+  "add_plan_modal_field_description_placeholder": "Describe what this plan backs up",
+  "add_repo_modal_field_description": "Description",
+  "add_repo_modal_field_description_tooltip": "Optional human-readable description of this repo. The sidebar shows only the first line.",
+  "add_repo_modal_field_description_placeholder": "Describe what this repo stores"
 }

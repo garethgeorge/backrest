@@ -543,5 +543,11 @@
   "dashboard_history_legend_inprogress": "চলমান",
   "dashboard_history_tooltip_status_inprogress": "{count}টি চলমান",
   "dashboard_history_tooltip_overdue": "এই দিন অনুযায়ী ব্যাকআপের সময় পেরিয়ে গেছে",
-  "dashboard_history_tooltip_on_schedule": "এই দিন অনুযায়ী ব্যাকআপগুলো আপ-টু-ডেট রয়েছে"
+  "dashboard_history_tooltip_on_schedule": "এই দিন অনুযায়ী ব্যাকআপগুলো আপ-টু-ডেট রয়েছে",
+  "add_plan_modal_field_description": "Description",
+  "add_plan_modal_field_description_tooltip": "Optional human-readable description of this plan. The sidebar shows only the first line.",
+  "add_plan_modal_field_description_placeholder": "Describe what this plan backs up",
+  "add_repo_modal_field_description": "Description",
+  "add_repo_modal_field_description_tooltip": "Optional human-readable description of this repo. The sidebar shows only the first line.",
+  "add_repo_modal_field_description_placeholder": "Describe what this repo stores"
 }

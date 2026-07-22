@@ -2,6 +2,7 @@ import {
   Stack,
   Flex,
   Input,
+  Textarea,
   Text as CText,
   Grid,
   Code,
@@ -866,6 +867,19 @@ export const AddRepoModal = ({
                     }
                     disabled={!!template}
                     placeholder={"repo" + ((config?.repos?.length || 0) + 1)}
+                  />
+                </Field>
+
+                <Field
+                  label={m.add_repo_modal_field_description()}
+                  helperText={m.add_repo_modal_field_description_tooltip()}
+                >
+                  <Textarea
+                    data-testid="add-repo-description"
+                    value={getField(["description"])}
+                    onChange={(e) => updateField(["description"], e.target.value)}
+                    placeholder={m.add_repo_modal_field_description_placeholder()}
+                    rows={3}
                   />
                 </Field>
 

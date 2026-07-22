@@ -34,6 +34,7 @@ import { useConfig } from "../../app/provider";
 import { OperationListView } from "../operations/OperationListView";
 import { OperationTreeView } from "../operations/OperationTreeView";
 import * as m from "../../paraglide/messages";
+import { nl2br } from "../../lib/util";
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const [config, _] = useConfig();
@@ -152,6 +153,14 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
           </MenuRoot>
         </Group>
       </Flex>
+
+      {plan.description && (
+        <Box mb={4}>
+          <Text color="fg.muted" fontSize="sm">
+            {nl2br(plan.description)}
+          </Text>
+        </Box>
+      )}
 
       <TabsRoot defaultValue="tree" lazyMount>
         <TabsList>

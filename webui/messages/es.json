@@ -543,5 +543,11 @@
   "dashboard_history_legend_inprogress": "En progreso",
   "dashboard_history_tooltip_status_inprogress": "{count} en progreso",
   "dashboard_history_tooltip_overdue": "Copia de seguridad atrasada a fecha de este día",
-  "dashboard_history_tooltip_on_schedule": "Copias de seguridad al día a fecha de este día"
+  "dashboard_history_tooltip_on_schedule": "Copias de seguridad al día a fecha de este día",
+  "add_plan_modal_field_description": "Description",
+  "add_plan_modal_field_description_tooltip": "Optional human-readable description of this plan. The sidebar shows only the first line.",
+  "add_plan_modal_field_description_placeholder": "Describe what this plan backs up",
+  "add_repo_modal_field_description": "Description",
+  "add_repo_modal_field_description_tooltip": "Optional human-readable description of this repo. The sidebar shows only the first line.",
+  "add_repo_modal_field_description_placeholder": "Describe what this repo stores"
 }

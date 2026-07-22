@@ -1,3 +1,15 @@
+import * as React from "react";
+
+export const nl2br = (text: string): React.ReactNode =>
+  text.split("\n").map((line, i) =>
+    React.createElement(
+      React.Fragment,
+      { key: i },
+      i > 0 ? React.createElement("br", { key: `br-${i}` }) : null,
+      line,
+    ),
+  );
+
 export function debounce<T extends (...args: any[]) => void>(
   func: T,
   wait: number,
