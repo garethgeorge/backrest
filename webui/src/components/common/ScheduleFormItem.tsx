@@ -141,7 +141,7 @@ export const ScheduleFormItem = ({
                 try {
                   return schedule.cron
                     ? cronstrue.toString(schedule.cron)
-                    : "Standard cron syntax (e.g. 0 0 * * *)";
+                    : m.schedule_form_item_standard_cron_syntax_eg({ cron: "0 0 * * *" });
                 } catch (e) {
                   return m.add_plan_modal_schedule_invalid_cron();
                 }
@@ -201,7 +201,7 @@ export const ScheduleFormItem = ({
               >
                 <Stack direction="row" gap={4}>
                   <Radio value="CLOCK_LOCAL">
-                    {m.add_plan_modal_schedule_time_local()}
+                    {m.add_plan_modal_local()}
                   </Radio>
                   <Radio value="CLOCK_UTC">
                     {m.add_plan_modal_schedule_time_utc()}

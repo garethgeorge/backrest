@@ -150,7 +150,7 @@ const CAT_COLOR: Record<StatusCat, string> = {
 
 const CAT_LABEL: Record<StatusCat, (p: { count: number }) => string> = {
   inprogress: m.dashboard_history_tooltip_status_inprogress,
-  err: m.dashboard_history_tooltip_status_err,
+  err: m.dashboard_repo_failed,
   warn: m.dashboard_history_tooltip_status_warn,
   ok: m.dashboard_history_tooltip_status_ok,
 };
@@ -285,7 +285,7 @@ export const HistoryStrip = ({
       {/* Legend */}
       <Flex gap="14px" mt={2} flexWrap="wrap">
         {[
-          { label: m.dashboard_history_legend_backed_up(), color: "green.500" },
+          { label: m.dashboard_state_label_ok(), color: "green.500" },
           { label: m.dashboard_history_legend_issue(), color: "orange.400" },
           { label: m.dashboard_history_legend_inprogress(), color: "blue.400" },
           {

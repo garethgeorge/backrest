@@ -37,7 +37,7 @@ describe("SettingsModal (first-run path)", () => {
     renderWithProviders(<SettingsModal />, { config: makeFirstRunConfig() });
 
     expect(await screen.findByText(initialSetupTitle)).toBeInTheDocument();
-    expect(screen.getByText(m.settings_modal_title())).toBeInTheDocument();
+    expect(screen.getByText(m.app_menu_settings())).toBeInTheDocument();
 
     const instanceInput = screen.getByPlaceholderText(instancePlaceholder);
     expect(instanceInput).toHaveValue("");
@@ -117,10 +117,10 @@ describe("SettingsModal (first-run path)", () => {
     );
 
     const usernameInput = await screen.findByPlaceholderText(
-      m.settings_auth_username_placeholder(),
+      m.login_username_placeholder(),
     );
     const passwordInput = screen.getByPlaceholderText(
-      m.settings_auth_password_placeholder(),
+      m.login_password_placeholder(),
     );
     await user.type(usernameInput, "alice");
     await user.type(passwordInput, "plaintext-pw");
@@ -178,7 +178,7 @@ describe("SettingsModal (first-run path)", () => {
     const [content] = errorSpy.mock.calls[errorSpy.mock.calls.length - 1];
     expect(String(content)).toContain("boom");
     // Modal is still mounted: its title remains visible.
-    expect(screen.getByText(m.settings_modal_title())).toBeInTheDocument();
+    expect(screen.getByText(m.app_menu_settings())).toBeInTheDocument();
   });
 
   it("renders a configured instance with an immutable instance field", async () => {

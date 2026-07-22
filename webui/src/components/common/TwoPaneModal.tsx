@@ -10,6 +10,7 @@ import { Button } from "../ui/button";
 import { IconType } from "react-icons";
 import { FiAlertCircle, FiCheck, FiLoader, FiX } from "react-icons/fi";
 
+import * as m from "../../paraglide/messages";
 // --- Section definition ---
 export interface SectionDef {
   id: string;
@@ -313,7 +314,7 @@ export const TwoPaneModal: React.FC<TwoPaneModalProps> = ({
                         >
                           <FiAlertCircle size={12} />
                           {errorCount} {errorCount === 1 ? "error" : "errors"}{" "}
-                          to fix
+                          {m.two_pane_modal_to_fix()}
                         </Flex>
                       )}
                     </>
@@ -323,13 +324,13 @@ export const TwoPaneModal: React.FC<TwoPaneModalProps> = ({
                         <FiCheck size={13} />
                       </Box>
                       <Text fontSize="sm" color="fg.muted">
-                        All changes saved
+                        {m.two_pane_modal_all_changes_saved()}
                       </Text>
                     </>
                   )}
                 </Flex>
                 <Button variant="ghost" size="sm" onClick={onClose}>
-                  Cancel
+                  {m.button_cancel()}
                 </Button>
                 <Button
                   variant="outline"
@@ -338,7 +339,7 @@ export const TwoPaneModal: React.FC<TwoPaneModalProps> = ({
                   disabled={!dirty}
                   opacity={dirty ? 1 : 0.45}
                 >
-                  Discard changes
+                  {m.two_pane_modal_discard_changes()}
                 </Button>
                 <Button
                   size="sm"
@@ -350,12 +351,12 @@ export const TwoPaneModal: React.FC<TwoPaneModalProps> = ({
                   {saving ? (
                     <>
                       <FiLoader size={12} className="spin" />
-                      Saving…
+                      {m.two_pane_modal_saving()}
                     </>
                   ) : (
                     <>
                       <FiCheck size={12} />
-                      Save changes
+                      {m.two_pane_modal_save_changes()}
                     </>
                   )}
                 </Button>

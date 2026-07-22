@@ -222,14 +222,14 @@ const HookItem = ({
       <Card.Header pb={2}>
         <Flex align="center" justify="space-between">
           <Text fontWeight="bold">
-            Hook {index + 1}: {typeName}
+            {m.hooks_form_list_hook()} {index + 1}: {typeName}
           </Text>
           <IconButton
             size="xs"
             variant="ghost"
             colorPalette="red"
             onClick={onRemove}
-            aria-label="Remove hook"
+            aria-label={m.hooks_form_list_remove_hook()}
             data-testid="hook-remove"
           >
             <FiTrash2 />
@@ -320,7 +320,7 @@ const hookTypes: {
       return (
         <Stack gap={2}>
           <Input
-            placeholder="Shoutrrr URL"
+            placeholder={m.hooks_form_list_service_url({ service: "Shoutrrr" })}
             value={hook.actionShoutrrr?.shoutrrrUrl || ""}
             onChange={(e) => updateShoutrrr("shoutrrrUrl", e.target.value)}
             size="sm"
@@ -358,7 +358,7 @@ const hookTypes: {
       return (
         <Stack gap={2}>
           <Input
-            placeholder="Discord Webhook URL"
+            placeholder={m.hooks_form_list_webhook_url({ service: "Discord" })}
             value={hook.actionDiscord?.webhookUrl || ""}
             onChange={(e) => updateDiscord("webhookUrl", e.target.value)}
             size="sm"
@@ -400,19 +400,19 @@ const hookTypes: {
       return (
         <Stack gap={2}>
           <Input
-            placeholder="Gotify Base URL"
+            placeholder={m.hooks_form_list_service_base_url({ service: "Gotify" })}
             value={hook.actionGotify?.baseUrl || ""}
             onChange={(e) => updateGotify("baseUrl", e.target.value)}
             size="sm"
           />
           <Input
-            placeholder="Gotify Token"
+            placeholder={m.hooks_form_list_service_token({ service: "Gotify" })}
             value={hook.actionGotify?.token || ""}
             onChange={(e) => updateGotify("token", e.target.value)}
             size="sm"
           />
           <Input
-            placeholder="Title Template"
+            placeholder={m.hooks_form_list_title_template()}
             value={hook.actionGotify?.titleTemplate || ""}
             onChange={(e) => updateGotify("titleTemplate", e.target.value)}
             size="sm"
@@ -428,11 +428,11 @@ const hookTypes: {
           />
           <EnumSelector
             options={[
-              { label: "0 - No notification", value: "0" },
-              { label: "1 - Icon in notification bar", value: "1" },
-              { label: "4 - Icon in notification bar + Sound", value: "4" },
+              { label: "0 - " + m.hooks_form_list_no_notification(), value: "0" },
+              { label: "1 - " + m.hooks_form_list_icon_in_notification_bar(), value: "1" },
+              { label: "4 - " + m.hooks_form_list_icon_in_notification_bar_sound(), value: "4" },
               {
-                label: "8 - Icon in notification bar + Sound + Vibration",
+                label: "8 - " + m.hooks_form_list_icon_in_notification_bar_sound_vibration(),
                 value: "8",
               },
             ]}
@@ -440,7 +440,7 @@ const hookTypes: {
             onChange={(val) =>
               updateGotify("priority", parseInt(val as string))
             }
-            placeholder="Priority"
+            placeholder={m.hooks_form_list_priority()}
             size="sm"
           />
         </Stack>
@@ -467,7 +467,7 @@ const hookTypes: {
       return (
         <Stack gap={2}>
           <Input
-            placeholder="Slack Webhook URL"
+            placeholder={m.hooks_form_list_service_url({ service: "Slack" })}
             value={hook.actionSlack?.webhookUrl || ""}
             onChange={(e) => updateSlack("webhookUrl", e.target.value)}
             size="sm"
@@ -486,7 +486,7 @@ const hookTypes: {
     },
   },
   {
-    name: m.repo_hooks_healthchecks_label(),
+    name: "Healthchecks",
     template: {
       actionHealthchecks: {
         webhookUrl: "",
@@ -505,7 +505,7 @@ const hookTypes: {
       return (
         <Stack gap={2}>
           <Input
-            placeholder="Ping URL"
+            placeholder={m.hooks_form_list_ping_url({ service: "Ping" })}
             value={hook.actionHealthchecks?.webhookUrl || ""}
             onChange={(e) => updateHealthchecks("webhookUrl", e.target.value)}
             size="sm"
@@ -544,13 +544,13 @@ const hookTypes: {
       return (
         <Stack gap={2}>
           <Input
-            placeholder="Bot Token"
+            placeholder={m.hooks_form_list_service_token({ service: "Bot" })}
             value={hook.actionTelegram?.botToken || ""}
             onChange={(e) => updateTelegram("botToken", e.target.value)}
             size="sm"
           />
           <Input
-            placeholder="Chat ID"
+            placeholder={m.hooks_form_list_chat_id()}
             value={hook.actionTelegram?.chatId || ""}
             onChange={(e) => updateTelegram("chatId", e.target.value)}
             size="sm"
@@ -590,7 +590,7 @@ const HookBuilder = ({
   onChange: (h: HookFields) => void;
 }) => {
   if (!hook) {
-    return <Text>Unknown hook type</Text>;
+    return <Text>{m.hooks_form_list_unknown_hook_type()}</Text>;
   }
 
   for (const hookType of hookTypes) {
@@ -599,7 +599,7 @@ const HookBuilder = ({
     }
   }
 
-  return <Text>Unknown hook type</Text>;
+  return <Text>{m.hooks_form_list_unknown_hook_type()}</Text>;
 };
 
 const ItemOnErrorSelector = ({

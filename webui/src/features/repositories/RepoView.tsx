@@ -156,7 +156,7 @@ export const RepoView = ({
               <IconButton
                 variant="subtle"
                 colorPalette="blue"
-                aria-label="More actions"
+                aria-label={m.plan_view_more_actions()}
               >
                 <FiChevronDown />
               </IconButton>
@@ -170,7 +170,7 @@ export const RepoView = ({
                   showModal(<RunCommandModal repo={repo} />);
                 }}
               >
-                {m.repo_button_run_command()}
+                {m.op_type_run_command()}
               </MenuItem>
               <MenuItem value="unlock" onClick={handleUnlockNow}>
                 {m.repo_button_unlock()}
@@ -203,7 +203,7 @@ export const RepoView = ({
             {m.repo_tab_list()}
           </TabsTrigger>
           <TabsTrigger value="stats" data-testid="view-tab-stats">
-            {m.repo_tab_stats()}
+            {m.op_type_stats()}
           </TabsTrigger>
         </TabsList>
 
