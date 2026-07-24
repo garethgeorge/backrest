@@ -161,9 +161,18 @@ const RepoViewContainer = () => {
                 color: "blue.200",
               }}
             >
-              This is a remote repo from{" "}
-              <strong>{repo.originInstanceId}</strong>. Operation history only
-              includes backups run locally and may be incomplete.
+              {(() => {
+                const origin = repo.originInstanceId;
+                const text = m.app_remote_repo_info({ origin }) as string;
+                const [before, ...rest] = text.split(origin);
+                return (
+                  <>
+                    {before}
+                    <strong>{origin}</strong>
+                    {rest.join(origin)}
+                  </>
+                );
+              })()}
             </Box>
           )}
           <RepoView repo={repo} />
@@ -738,7 +747,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                   pt={2}
                   pb={1}
                 >
-                  Remote
+                  {m.app_remote()}
                 </Text>
                 {remoteRepos.map((repo) => (
                   <SidebarRepoItem
@@ -790,7 +799,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                             repos: [updatedRepo],
                           }),
                         );
-                        alerts.success("Remote repo updated");
+                        alerts.success(m.app_remote_repo_updated());
                       }}
                     />,
                   );
@@ -810,7 +819,7 @@ const SidebarContent = ({ onClose }: { onClose?: () => void }) => {
                             plans: [updatedPlan],
                           }),
                         );
-                        alerts.success("Remote plan updated");
+                        alerts.success(m.app_remote_plan_updated());
                       }}
                     />,
                   );
@@ -1058,7 +1067,7 @@ export const AuthenticationBoundary = ({
           setTimeout(
             () =>
               reject(
-                new Error("Request timed out, backend may be unavailable"),
+                new Error(m.app_request_timed_out_backend_may_be_unavailable()),
               ),
             10000,
           ),
@@ -1116,11 +1125,11 @@ export const AuthenticationBoundary = ({
   if (error && !config) {
     return (
       <EmptyState
-        title="Failed to load configuration"
+        title={m.app_failed_to_load_configuration()}
         description={error}
         icon={<FiAlertTriangle />}
       >
-        <Button onClick={() => loadConfig()}>Retry</Button>
+        <Button onClick={() => loadConfig()}>{m.app_retry()}</Button>
       </EmptyState>
     );
   }

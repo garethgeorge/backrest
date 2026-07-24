@@ -8,6 +8,7 @@ import { Button } from "../ui/button";
 import { Box, Spinner, Text, Center } from "@chakra-ui/react";
 import { create } from "@bufbuild/protobuf";
 
+import * as m from "../../paraglide/messages";
 // TODO: refactor this to use the provider pattern
 export const LogView = ({ logref }: { logref: string }) => {
   const [lines, setLines] = useState<string[]>([]);
@@ -53,7 +54,7 @@ export const LogView = ({ logref }: { logref: string }) => {
           e.name !== "AbortError" &&
           !e.message?.includes("signal is aborted without reason")
         ) {
-          setError(e.message || "Failed to fetch logs");
+          setError(e.message || m.log_view_failed_to_fetch_logs());
         }
       } finally {
         setLoading(false);
@@ -85,7 +86,7 @@ export const LogView = ({ logref }: { logref: string }) => {
     >
       {error && (
         <Text color="fg.error" mb={2} fontWeight="bold">
-          Error: {error}
+          {m.log_view_error()} {error}
         </Text>
       )}
 
@@ -112,8 +113,8 @@ export const LogView = ({ logref }: { logref: string }) => {
             onClick={() => setLimit(limit * 10)}
             mt={2}
           >
-            Show {Math.min(limit * 9, lines.length - limit)} more lines out of{" "}
-            {lines.length} available...
+            {m.log_view_show()} {Math.min(limit * 9, lines.length - limit)} {m.log_view_more_lines_out_of()}{" "}
+            {lines.length} {m.log_view_available()}
           </Button>
         </>
       ) : null}

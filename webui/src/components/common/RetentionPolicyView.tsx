@@ -169,7 +169,7 @@ export const RetentionPolicyView = ({
                 label={m.add_plan_modal_retention_policy_latest_label()}
                 helperText={
                   cronIsSubHourly
-                    ? "Keep recent snapshots (High-frequency schedule detected)"
+                    ? m.retention_policy_view_keep_recent_snapshots_highfrequency_schedule_detected()
                     : m.add_plan_modal_retention_policy_keep_regardless_label()
                 }
                 value={retention?.policyTimeBucketed?.keepLastN || 0}

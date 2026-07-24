@@ -15,6 +15,7 @@ import {
 } from "../../../gen/ts/v1/service_pb";
 import { create } from "@bufbuild/protobuf";
 
+import * as m from "../../paraglide/messages";
 export const SelectorView = ({
   title,
   sel,
@@ -30,10 +31,10 @@ export const SelectorView = ({
       <TabsRoot defaultValue="tree" lazyMount unmountOnExit>
         <TabsList>
           <TabsTrigger value="tree" data-testid="view-tab-tree">
-            Tree View
+            {m.repo_tab_tree()}
           </TabsTrigger>
           <TabsTrigger value="list" data-testid="view-tab-list">
-            List View
+            {m.repo_tab_list()}
           </TabsTrigger>
         </TabsList>
 
@@ -48,7 +49,7 @@ export const SelectorView = ({
 
         <TabsContent value="list">
           <Heading size="md" mb={4}>
-            Backup Action History
+            {m.repo_history_title()}
           </Heading>
           <OperationListView
             req={create(GetOperationsRequestSchema, {

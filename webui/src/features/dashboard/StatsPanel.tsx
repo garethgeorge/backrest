@@ -38,7 +38,7 @@ export const StatsPanel = ({ selector }: { selector: OpSelector }) => {
         setOperations(ops);
       })
       .catch((e) => {
-        alerts.error(formatErrorAlert(e, "Failed to fetch operations: "));
+        alerts.error(formatErrorAlert(e, m.stats_panel_failed_to_fetch_operations()));
       });
   }, [JSON.stringify(selector)]);
 

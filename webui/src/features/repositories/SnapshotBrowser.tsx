@@ -56,6 +56,7 @@ import { FormModal } from "../../components/common/FormModal";
 import { Field } from "../../components/ui/field";
 import { alerts } from "../../components/common/Alerts";
 
+import * as m from "../../paraglide/messages";
 const SnapshotBrowserContext = React.createContext<{
   snapshotId: string;
   planId?: string;
@@ -222,7 +223,7 @@ export const SnapshotBrowser = ({
         });
       });
     } catch (e: any) {
-      alerts.error("Failed to load snapshot files: " + e.message);
+      alerts.error(m.snapshot_browser_failed_to_load_snapshot_files_message({ message: e.message }));
     } finally {
       setLoadingKeys((prev) => {
         const next = new Set(prev);
@@ -328,14 +329,14 @@ const FileNode = ({
         window.open(resp.value, "_blank");
       })
       .catch((e) => {
-        alerts.error("Failed to fetch download URL: " + e.message);
+        alerts.error(m.snapshot_browser_failed_to_fetch_download_url_message({ message: e.message }));
       });
   };
 
   const showInfo = () => {
     showModal(
       <FormModal
-        title={"Path Info for " + entry.path}
+        title={m.snapshot_browser_path_info_for_path({ path: entry.path })}
         isOpen={true}
         onClose={() => showModal(null)}
         footer={null}
@@ -390,7 +391,7 @@ const FileNode = ({
             <MenuItem value="info" onClick={showInfo}>
               <FiInfo />
               {/* @ts-ignore */}
-              <MenuItemText>Info</MenuItemText>
+              <MenuItemText>{m.snapshot_browser_info()}</MenuItemText>
             </MenuItem>
             {/* @ts-ignore */}
             <MenuItem
@@ -400,7 +401,7 @@ const FileNode = ({
             >
               <FiRefreshCw />
               {/* @ts-ignore */}
-              <MenuItemText>Restore to path</MenuItemText>
+              <MenuItemText>{m.snapshot_browser_restore_to_path()}</MenuItemText>
             </MenuItem>
             {snapshotOpId ? (
               // @ts-ignore
@@ -411,7 +412,7 @@ const FileNode = ({
               >
                 <FiDownload />
                 {/* @ts-ignore */}
-                <MenuItemText>Download</MenuItemText>
+                <MenuItemText>{m.snapshot_browser_download()}</MenuItemText>
               </MenuItem>
             ) : null}
           </MenuContent>
@@ -470,46 +471,43 @@ const RestoreModal = ({
           target,
         }),
       );
-      alerts.success("Restore started successfully.");
+      alerts.success(m.snapshot_browser_restore_started_successfully());
       showModal(null);
     } catch (e: any) {
-      alerts.error("Failed to restore: " + e.message);
+      alerts.error(m.snapshot_browser_failed_to_restore_message({ message: e.message }));
     }
   };
 
   return (
     <FormModal
-      title={"Restore " + path}
+      title={m.snapshot_browser_restore_path({ path: path })}
       isOpen={true}
       onClose={() => showModal(null)}
       footer={
         <>
           <Button variant="ghost" onClick={() => showModal(null)}>
-            Cancel
+            {m.button_cancel()}
           </Button>
           <ConfirmButton
             onClickAsync={handleOk}
-            confirmTitle="Confirm Restore?"
+            confirmTitle={m.snapshot_browser_confirm_restore()}
           >
-            Restore
+            {m.op_type_restore()}
           </ConfirmButton>
         </>
       }
     >
       <Stack gap={4}>
         <Text>
-          If restoring to a specific path, ensure that the path does not already
-          exist or that you are comfortable overwriting the data at that
-          location.
+          {m.snapshot_browser_if_restoring_to_a_specific_path_ensure_that_the_path_does_no()}
         </Text>
         <Text>
-          You may set the path to an empty string to restore to your Downloads
-          folder.
+          {m.snapshot_browser_you_may_set_the_path_to_an_empty_string_to_restore_to_your_d()}
         </Text>
 
-        <Field label="Restore to path" errorText={error}>
+        <Field label={m.snapshot_browser_restore_to_path()} errorText={error}>
           <URIAutocomplete
-            placeholder="Restoring to Downloads"
+            placeholder={m.snapshot_browser_restoring_to_downloads()}
             value={target}
             onChange={(val: string) => setTarget(val || "")}
           />

@@ -194,7 +194,7 @@ export const AddPlanModal = ({
         !(formData.retention.policyTimeBucketed.keepLastN > 1)
       ) {
         throw new Error(
-          "Your schedule runs more than once per hour; please specify a 'Latest (Count)' greater than 1 in Retention Policy.",
+          m.add_plan_modal_your_schedule_runs_more_than_once_per_hour_please_specify_a({ count: 1 }),
         );
       }
 
@@ -223,7 +223,7 @@ export const AddPlanModal = ({
 
       if (template) {
         const idx = configCopy.plans.findIndex((r) => r.id === template.id);
-        if (idx === -1) throw new Error("failed to update plan, not found");
+        if (idx === -1) throw new Error(m.add_plan_modal_failed_to_update_plan_not_found());
         configCopy.plans[idx] = plan;
       } else {
         configCopy.plans.push(plan);
@@ -254,11 +254,11 @@ export const AddPlanModal = ({
   });
 
   const sections: SectionDef[] = [
-    { id: "details", label: "Details", icon: <FiFileText size={14} /> },
-    { id: "scope", label: "Scope", icon: <FiFolder size={14} /> },
-    { id: "schedule", label: "Schedule", icon: <FiClock size={14} /> },
-    { id: "retention", label: "Retention", icon: <FiArchive size={14} /> },
-    { id: "advanced", label: "Advanced", icon: <FiSliders size={14} /> },
+    { id: "details", label: m.op_row_details(), icon: <FiFileText size={14} /> },
+    { id: "scope", label: m.add_plan_modal_scope(), icon: <FiFolder size={14} /> },
+    { id: "schedule", label: m.add_plan_modal_schedule(), icon: <FiClock size={14} /> },
+    { id: "retention", label: m.add_plan_modal_retention(), icon: <FiArchive size={14} /> },
+    { id: "advanced", label: m.add_plan_modal_advanced(), icon: <FiSliders size={14} /> },
   ];
 
   const footer = (
@@ -307,7 +307,7 @@ export const AddPlanModal = ({
         <SectionCard
           icon={<FiFileText size={16} />}
           title={m.op_row_backup_details()}
-          description="Plan name and target repository."
+          description={m.add_plan_modal_plan_name_and_target_repository()}
         >
           <Stack gap={4}>
             <Field
@@ -366,7 +366,7 @@ export const AddPlanModal = ({
                       px={2}
                       py={1}
                     >
-                      Local
+                      {m.add_plan_modal_local()}
                     </CText>
                   )}
                   {repoOptions.items
@@ -387,7 +387,7 @@ export const AddPlanModal = ({
                       borderTopWidth="1px"
                       borderColor="border"
                     >
-                      Remote
+                      {m.app_remote()}
                     </CText>
                   )}
                   {repoOptions.items
@@ -409,7 +409,7 @@ export const AddPlanModal = ({
         <SectionCard
           icon={<FiFolder size={16} />}
           title={m.settings_peer_permission_scopes()}
-          description="Directories and exclusion patterns."
+          description={m.add_plan_modal_directories_and_exclusion_patterns()}
         >
           <Stack gap={4}>
             <DynamicList
@@ -471,7 +471,7 @@ export const AddPlanModal = ({
         <SectionCard
           icon={<FiClock size={16} />}
           title={m.add_plan_modal_field_schedule()}
-          description="When backups run automatically."
+          description={m.add_plan_modal_when_backups_run_automatically()}
         >
           <ScheduleFormItem
             value={getField(["schedule"])}
@@ -486,7 +486,7 @@ export const AddPlanModal = ({
         <SectionCard
           icon={<FiArchive size={16} />}
           title={m.add_plan_modal_retention_policy_label()}
-          description="How long to keep snapshots before forgetting them."
+          description={m.add_plan_modal_how_long_to_keep_snapshots_before_forgetting_them()}
         >
           {repoHasScheduledForget ? (
             <CText color="fg.muted" fontStyle="italic">

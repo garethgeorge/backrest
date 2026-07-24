@@ -8,6 +8,7 @@ import {
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import * as React from "react";
 
+import * as m from "../../paraglide/messages";
 export interface PaginationRootProps extends ChakraPagination.RootProps {}
 
 export const PaginationRoot = React.forwardRef<
@@ -30,7 +31,7 @@ export const PaginationPrevTrigger = React.forwardRef<
   return (
     // @ts-ignore
     <ChakraPagination.PrevTrigger {...props} asChild ref={ref}>
-      <IconButton variant="ghost" aria-label="Previous Page" size="sm">
+      <IconButton variant="ghost" aria-label={m.pagination_previous_page()} size="sm">
         <FiChevronLeft />
       </IconButton>
     </ChakraPagination.PrevTrigger>
@@ -44,7 +45,7 @@ export const PaginationNextTrigger = React.forwardRef<
   return (
     // @ts-ignore
     <ChakraPagination.NextTrigger {...props} asChild ref={ref}>
-      <IconButton variant="ghost" aria-label="Next Page" size="sm">
+      <IconButton variant="ghost" aria-label={m.pagination_next_page()} size="sm">
         <FiChevronRight />
       </IconButton>
     </ChakraPagination.NextTrigger>
