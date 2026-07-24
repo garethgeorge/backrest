@@ -70,6 +70,11 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 				}
 			}
 		}
+		if op.GetOperationCheck() != nil || op.GetOperationPrune() != nil || op.GetOperationForget() != nil || op.GetOperationStats() != nil {
+			if acc, ok := repoAccs[op.RepoGuid]; ok {
+				acc.observeMaintenance(op)
+			}
+		}
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("failed to query operations: %w", err)
@@ -247,6 +252,33 @@ func (a *summaryAcc) observe(op *v1.Operation, backupOp *v1.OperationBackup) {
 		a.backupChart.DurationMs = append(a.backupChart.DurationMs, duration)
 		a.backupChart.Status = append(a.backupChart.Status, op.Status)
 		a.backupChart.BytesAdded = append(a.backupChart.BytesAdded, summary.GetDataAdded())
+	}
+}
+
+// observeMaintenance records a non-backup operation (check, prune, forget, or
+// stats) into the per-day history. Only the day status counts are updated;
+// backup-specific fields (bytes, chart) are not affected.
+func (a *summaryAcc) observeMaintenance(op *v1.Operation) {
+	startTime := time.UnixMilli(op.UnixTimeStartMs)
+	opMidnight := localMidnight(startTime)
+
+	if opMidnight.Before(a.cutoffMidnight) {
+		a.reachedCutoff = true
+		return
+	}
+	if op.GetStatus() == v1.OperationStatus_STATUS_PENDING || op.GetStatus() == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
+		return
+	}
+
+	dayMs := opMidnight.UnixMilli()
+	acc := a.perDay[dayMs]
+	if acc == nil {
+		acc = &summaryDayAcc{statusCounts: make(map[v1.OperationStatus]int64)}
+		a.perDay[dayMs] = acc
+	}
+	acc.statusCounts[op.Status]++
+	if a.oldestDay.IsZero() || opMidnight.Before(a.oldestDay) {
+		a.oldestDay = opMidnight
 	}
 }
 
