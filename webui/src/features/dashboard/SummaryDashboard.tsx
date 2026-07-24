@@ -161,7 +161,7 @@ const STATE_SEVERITY: Record<PlanState, number> = {
 
 const STATE_LABEL: Record<PlanState, () => string> = {
   ok: m.dashboard_state_label_ok,
-  warn: m.dashboard_state_label_warn,
+  warn: m.dashboard_hero_warn,
   err: m.dashboard_state_label_err,
   run: m.dashboard_state_label_run,
   idle: m.dashboard_state_label_idle,
@@ -716,7 +716,7 @@ const RecentActivity = ({
         detailParts.push(formatTime(row.timestampMs));
         if (row.durationMs > 0) {
           detailParts.push(
-            m.dashboard_activity_took({
+            m.op_subtitle_took({
               duration: formatDuration(row.durationMs),
             }),
           );
@@ -837,7 +837,7 @@ export const SummaryDashboard = () => {
       {/* Plan cards */}
       {plans.length > 0 && (
         <Stack gap={4}>
-          <Heading size="md">{m.dashboard_plans_title()}</Heading>
+          <Heading size="md">{m.app_menu_plans()}</Heading>
           <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
             {plans.map((s) => (
               <PlanCard key={s.id} summary={s} />
@@ -848,7 +848,7 @@ export const SummaryDashboard = () => {
 
       {plans.length === 0 && (
         <Stack gap={4}>
-          <Heading size="md">{m.dashboard_plans_title()}</Heading>
+          <Heading size="md">{m.app_menu_plans()}</Heading>
           <EmptyState title={m.dashboard_plans_empty()} icon={<FiServer />} />
         </Stack>
       )}
@@ -1012,7 +1012,7 @@ const PeerStateTile = ({
       <Card.Body>
         <DataListRoot orientation="horizontal">
           <DataListItem
-            label={m.dashboard_peer_instance_id()}
+            label={m.settings_peer_instance_id()}
             value={peerState.peerInstanceId}
           />
           <DataListItem

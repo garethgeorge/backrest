@@ -525,7 +525,7 @@ export const AddRepoModal = ({
       throw new Error(m.add_repo_modal_error_repo_name_required());
     }
     if (!namePattern.test(id)) {
-      throw new Error(m.add_plan_modal_validation_plan_name_pattern());
+      throw new Error(m.settings_auth_name_pattern());
     }
     if (!template && config.repos.find((r) => r.id === id)) {
       throw new Error(m.add_repo_modal_error_repo_exists());
@@ -626,7 +626,7 @@ export const AddRepoModal = ({
       }
     } catch (e: any) {
       alerts.error(
-        formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()),
+        formatErrorAlert(e, m.settings_error_operation()),
       );
     } finally {
       setConfirmLoading(false);
@@ -740,7 +740,7 @@ export const AddRepoModal = ({
         disabled={confirmLoading}
         onClick={() => showModal(null)}
       >
-        {m.add_plan_modal_button_cancel()}
+        {m.button_cancel()}
       </Button>
       {template && (
         <ConfirmButton
@@ -854,7 +854,7 @@ export const AddRepoModal = ({
                   }
                   errorText={
                     !!getField(["id"]) && !namePattern.test(getField(["id"]))
-                      ? m.add_plan_modal_validation_plan_name_pattern()
+                      ? m.settings_auth_name_pattern()
                       : m.add_repo_modal_error_repo_exists()
                   }
                 >
@@ -909,13 +909,13 @@ export const AddRepoModal = ({
                         <li>{m.add_repo_modal_field_uri_tooltip_s3()}</li>
                         <li>{m.add_repo_modal_field_uri_tooltip_sftp()}</li>
                         <li>
-                          {m.add_repo_modal_field_uri_tooltip_see()}{" "}
+                          {m.add_repo_modal_guide_text_p1()}{" "}
                           <a
                             href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html#preparing-a-new-repository"
                             target="_blank"
                             style={{ textDecoration: "underline" }}
                           >
-                            {m.add_repo_modal_field_uri_tooltip_restic_docs()}
+                            {m.add_plan_modal_field_excludes_tooltip_link()}
                           </a>{" "}
                           {m.add_repo_modal_field_uri_tooltip_info()}
                         </li>
@@ -946,7 +946,7 @@ export const AddRepoModal = ({
                 )}
 
                 <Field
-                  label={m.add_repo_modal_field_password()}
+                  label={m.login_password_placeholder()}
                   helperText={
                     !template ? (
                       <>
@@ -1105,11 +1105,11 @@ export const AddRepoModal = ({
           <TwoPaneSection id="hooks">
             <SectionCard
               icon={<FiZap size={16} />}
-              title="Hooks"
-              description="Run commands or send notifications on operation events."
+              title={m.add_repo_modal_hooks()}
+              description={m.add_repo_modal_run_commands_or_send_notifications_on_operation_events()}
             >
               <Field
-                label={m.add_plan_modal_field_hooks()}
+                label={m.add_repo_modal_hooks()}
                 helperText={hooksListTooltipText}
               >
                 <HooksFormList

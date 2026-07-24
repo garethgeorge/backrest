@@ -168,7 +168,7 @@ export const AddPlanModal = ({
         throw new Error(m.add_plan_modal_validation_plan_name_required());
       }
       if (!namePattern.test(formData.id)) {
-        throw new Error(m.add_plan_modal_validation_plan_name_pattern());
+        throw new Error(m.settings_auth_name_pattern());
       }
       if (!template && config.plans.find((p) => p.id === formData.id)) {
         throw new Error(m.add_plan_modal_validation_plan_exists());
@@ -233,7 +233,7 @@ export const AddPlanModal = ({
       showModal(null);
     } catch (e: any) {
       alerts.error(
-        formatErrorAlert(e, m.add_plan_modal_error_operation_prefix()),
+        formatErrorAlert(e, m.settings_error_operation()),
       );
     } finally {
       setConfirmLoading(false);
@@ -268,7 +268,7 @@ export const AddPlanModal = ({
         disabled={confirmLoading}
         onClick={() => showModal(null)}
       >
-        {m.add_plan_modal_button_cancel()}
+        {m.button_cancel()}
       </Button>
       {template && (
         <ConfirmButton
@@ -296,7 +296,7 @@ export const AddPlanModal = ({
       title={
         template
           ? m.add_plan_modal_title_update()
-          : m.add_plan_modal_title_add()
+          : m.app_menu_add_plan()
       }
       headerIcon={<FiFileText size={14} />}
       sections={sections}
@@ -322,7 +322,7 @@ export const AddPlanModal = ({
               }
               errorText={
                 !!formData.id && !namePattern.test(formData.id)
-                  ? m.add_plan_modal_validation_plan_name_pattern()
+                  ? m.settings_auth_name_pattern()
                   : m.add_plan_modal_validation_plan_exists()
               }
             >
@@ -437,7 +437,7 @@ export const AddPlanModal = ({
                   >
                     {m.add_plan_modal_field_excludes_tooltip_link()}
                   </a>{" "}
-                  {m.add_plan_modal_field_excludes_tooltip_suffix()}
+                  {m.add_repo_modal_field_uri_tooltip_info()}
                 </>
               }
               placeholder={m.add_plan_modal_field_excludes()}
@@ -457,7 +457,7 @@ export const AddPlanModal = ({
                   >
                     {m.add_plan_modal_field_excludes_tooltip_link()}
                   </a>{" "}
-                  {m.add_plan_modal_field_excludes_tooltip_suffix()}
+                  {m.add_repo_modal_field_uri_tooltip_info()}
                 </>
               }
               placeholder={m.add_plan_modal_field_iexcludes()}
@@ -506,8 +506,8 @@ export const AddPlanModal = ({
       <TwoPaneSection id="advanced">
         <SectionCard
           icon={<FiSliders size={16} />}
-          title={m.add_plan_modal_advanced_label()}
-          description="Extra flags and notification hooks."
+          title={m.add_plan_modal_advanced()}
+          description={m.add_plan_modal_extra_flags_and_notification_hooks()}
         >
           <Stack gap={4}>
             <DynamicList
@@ -522,7 +522,7 @@ export const AddPlanModal = ({
             />
 
             <Field
-              label={m.add_plan_modal_field_hooks()}
+              label={m.add_repo_modal_hooks()}
               helperText={hooksListTooltipText}
             >
               <HooksFormList

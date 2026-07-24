@@ -486,7 +486,7 @@ const hookTypes: {
     },
   },
   {
-    name: m.repo_hooks_healthchecks_label(),
+    name: "Healthchecks",
     template: {
       actionHealthchecks: {
         webhookUrl: "",

@@ -257,7 +257,7 @@ export const SettingsModal = () => {
     <TwoPaneModal
       isOpen={true}
       onClose={handleCancel}
-      title={m.settings_modal_title()}
+      title={m.app_menu_settings()}
       headerIcon={<FiSettings size={14} />}
       sections={sections}
       dirty={dirty}
@@ -292,7 +292,7 @@ export const SettingsModal = () => {
             )}
 
             <Field
-              label={m.settings_field_instance_id()}
+              label={m.settings_peer_instance_id()}
               helperText={m.settings_field_instance_id_tooltip()}
               required
             >
@@ -314,8 +314,8 @@ export const SettingsModal = () => {
       <TwoPaneSection id="auth">
         <SectionCard
           icon={<FiLock size={16} />}
-          title={m.settings_section_authentication()}
-          description="User accounts and access control."
+          title={m.settings_modal_authentication()}
+          description={m.settings_modal_user_accounts_and_access_control()}
         >
           <Stack gap={4}>
             <ToggleField
@@ -331,7 +331,7 @@ export const SettingsModal = () => {
                 {users.map((user: any, index: number) => (
                   <Flex key={index} gap={2} align="center" width="full">
                     <Input
-                      placeholder={m.settings_auth_username_placeholder()}
+                      placeholder={m.login_username_placeholder()}
                       value={user.name}
                       onChange={(e) => {
                         const newUsers = [...users];
@@ -342,7 +342,7 @@ export const SettingsModal = () => {
                       flex={1}
                     />
                     <PasswordInput
-                      placeholder={m.settings_auth_password_placeholder()}
+                      placeholder={m.login_password_placeholder()}
                       value={user.passwordBcrypt}
                       onChange={(e) => {
                         const newUsers = [...users];

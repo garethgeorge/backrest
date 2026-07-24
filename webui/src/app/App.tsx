@@ -188,7 +188,7 @@ const RemoteRepoViewContainer = () => {
   return (
     <MainContentAreaTemplate
       breadcrumbs={[
-        { title: m.app_breadcrumb_peer() },
+        { title: m.peer_default_name() },
         { title: peerInstanceId || m.app_unknown_peer() },
         { title: m.app_breadcrumb_repo() },
         { title: repoId || m.app_unknown_repo() },
@@ -222,7 +222,7 @@ const RemotePlanViewContainer = () => {
   return (
     <MainContentAreaTemplate
       breadcrumbs={[
-        { title: m.app_breadcrumb_peer() },
+        { title: m.peer_default_name() },
         { title: peerInstanceId || m.app_unknown_peer() },
         { title: m.app_breadcrumb_plan() },
         { title: planId || "" },
@@ -1015,13 +1015,13 @@ const MobileNavTrigger = () => {
       onOpenChange={(e) => setOpen(e.open)}
     >
       <DrawerTrigger asChild>
-        <IconButton variant="ghost" size="sm" color="white" aria-label="Menu">
+        <IconButton variant="ghost" size="sm" color="white" aria-label={m.app_menu()}>
           <FiMenu />
         </IconButton>
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle>{m.app_menu_menu()}</DrawerTitle>
+          <DrawerTitle>{m.app_menu()}</DrawerTitle>
           <DrawerCloseTrigger />
         </DrawerHeader>
         <DrawerBody p={0}>

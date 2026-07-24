@@ -36,7 +36,7 @@ export const GettingStartedGuide = () => {
   return (
     <Box>
       <Heading size="xl" mb={4}>
-        {m.dashboard_getting_started_title()}
+        {m.app_breadcrumb_getting_started()}
       </Heading>
 
       <Text mb={4}>
@@ -57,7 +57,7 @@ export const GettingStartedGuide = () => {
         <List.Item>{m.dashboard_getting_started_overview_a()}</List.Item>
         <List.Item>{m.dashboard_getting_started_overview_b()}</List.Item>
         <List.Item>
-          {m.dashboard_getting_started_overview_c_a()}
+          {m.add_repo_modal_guide_text_p1()}
           <Link
             href="https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html"
             target="_blank"
@@ -68,7 +68,7 @@ export const GettingStartedGuide = () => {
           {m.dashboard_getting_started_overview_c_c()}
         </List.Item>
         <List.Item>
-          {m.dashboard_getting_started_overview_d_a()}
+          {m.add_repo_modal_guide_text_p1()}
           <Link
             href="https://garethgeorge.github.io/backrest"
             target="_blank"
