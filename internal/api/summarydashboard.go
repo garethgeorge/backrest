@@ -47,18 +47,28 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	for _, plan := range cfg.Plans {
 		planAccs[plan.Id] = newSummaryAcc(cutoffMidnight)
 	}
+	// Track the most recent stats operation per repo; used as a fallback for
+	// repos whose backups are managed outside of backrest.
+	repoLatestStats := make(map[string]*v1.RepoStats) // keyed by repo GUID
+
 	// Walk every operation for this instance, newest to oldest, dispatching each
 	// backup to its plan's and its repo's accumulator.
 	if err := s.oplog.Query(oplog.Query{}.SetInstanceID(cfg.Instance).SetReversed(true), func(op *v1.Operation) error {
-		backupOp := op.GetOperationBackup()
-		if backupOp == nil {
+		if backupOp := op.GetOperationBackup(); backupOp != nil {
+			if acc, ok := planAccs[op.PlanId]; ok {
+				acc.observe(op, backupOp)
+			}
+			if acc, ok := repoAccs[op.RepoGuid]; ok {
+				acc.observe(op, backupOp)
+			}
 			return nil
 		}
-		if acc, ok := planAccs[op.PlanId]; ok {
-			acc.observe(op, backupOp)
-		}
-		if acc, ok := repoAccs[op.RepoGuid]; ok {
-			acc.observe(op, backupOp)
+		if statsOp := op.GetOperationStats(); statsOp != nil && statsOp.Stats != nil {
+			if _, ok := repoAccs[op.RepoGuid]; ok {
+				if _, exists := repoLatestStats[op.RepoGuid]; !exists {
+					repoLatestStats[op.RepoGuid] = statsOp.Stats
+				}
+			}
 		}
 		return nil
 	}); err != nil {
@@ -70,8 +80,15 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 		DataPath:   env.DataDir(),
 	}
 	for _, repo := range cfg.Repos {
-		response.RepoSummaries = append(response.RepoSummaries,
-			repoAccs[repo.GetGuid()].finalize(repo.Id, now, repoAllowedStaleness(cfg, repo.Id, now)))
+		guid := repo.GetGuid()
+		summary := repoAccs[guid].finalize(repo.Id, now, repoAllowedStaleness(cfg, repo.Id, now))
+		if summary.ProtectedBytes == 0 {
+			if stats, ok := repoLatestStats[guid]; ok {
+				summary.ProtectedBytes = stats.TotalSize
+				summary.TotalSnapshots = stats.SnapshotCount
+			}
+		}
+		response.RepoSummaries = append(response.RepoSummaries, summary)
 	}
 	for _, plan := range cfg.Plans {
 		response.PlanSummaries = append(response.PlanSummaries,
