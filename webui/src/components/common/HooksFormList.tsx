@@ -29,6 +29,7 @@ import {
 import { Tooltip } from "../ui/tooltip";
 import { Link } from "../ui/link";
 import { EnumSelector, EnumOption } from "./EnumSelector";
+import { HookAutocompleteInput } from "./HookAutocompleteInput";
 import * as m from "../../paraglide/messages";
 
 export interface HookFields {
@@ -150,6 +151,7 @@ export const HooksFormList = ({
           key={index}
           index={index}
           hook={hook}
+          allHooks={hooks || []}
           onRemove={() => removeHook(index)}
           onChange={(updated) => updateHook(index, updated)}
         />
@@ -199,11 +201,13 @@ export const HooksFormList = ({
 const HookItem = ({
   index,
   hook,
+  allHooks,
   onRemove,
   onChange,
 }: {
   index: number;
   hook: HookFields;
+  allHooks: HookFields[];
   onRemove: () => void;
   onChange: (h: HookFields) => void;
 }) => {
@@ -250,7 +254,7 @@ const HookItem = ({
           </Box>
         </HookConditionsTooltip>
 
-        <HookBuilder hook={hook} onChange={onChange} />
+        <HookBuilder hook={hook} allHooks={allHooks} onChange={onChange} />
       </Card.Body>
     </Card.Root>
   );
@@ -262,9 +266,11 @@ const hookTypes: {
   oneofKey: string;
   component: ({
     hook,
+    allHooks,
     onChange,
   }: {
     hook: HookFields;
+    allHooks: HookFields[];
     onChange: (h: HookFields) => void;
   }) => React.ReactNode;
 }[] = [
@@ -310,7 +316,7 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionShoutrrr",
-    component: ({ hook, onChange }) => {
+    component: ({ hook, allHooks, onChange }) => {
       const updateShoutrrr = (field: string, val: string) => {
         onChange({
           ...hook,
@@ -319,11 +325,13 @@ const hookTypes: {
       };
       return (
         <Stack gap={2}>
-          <Input
+          <HookAutocompleteInput
             placeholder="Shoutrrr URL"
             value={hook.actionShoutrrr?.shoutrrrUrl || ""}
-            onChange={(e) => updateShoutrrr("shoutrrrUrl", e.target.value)}
-            size="sm"
+            onChange={(val) => updateShoutrrr("shoutrrrUrl", val)}
+            action="actionShoutrrr"
+            field="shoutrrrUrl"
+            allHooks={allHooks}
           />
           <Text fontSize="sm" mt={1}>
             {m.repo_hooks_command_template_label()}
@@ -348,7 +356,7 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionDiscord",
-    component: ({ hook, onChange }) => {
+    component: ({ hook, allHooks, onChange }) => {
       const updateDiscord = (field: string, val: string) => {
         onChange({
           ...hook,
@@ -357,11 +365,13 @@ const hookTypes: {
       };
       return (
         <Stack gap={2}>
-          <Input
+          <HookAutocompleteInput
             placeholder="Discord Webhook URL"
             value={hook.actionDiscord?.webhookUrl || ""}
-            onChange={(e) => updateDiscord("webhookUrl", e.target.value)}
-            size="sm"
+            onChange={(val) => updateDiscord("webhookUrl", val)}
+            action="actionDiscord"
+            field="webhookUrl"
+            allHooks={allHooks}
           />
           <Text fontSize="sm" mt={1}>
             {m.repo_hooks_command_template_label()}
@@ -390,7 +400,7 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionGotify",
-    component: ({ hook, onChange }) => {
+    component: ({ hook, allHooks, onChange }) => {
       const updateGotify = (field: string, val: any) => {
         onChange({
           ...hook,
@@ -399,17 +409,21 @@ const hookTypes: {
       };
       return (
         <Stack gap={2}>
-          <Input
+          <HookAutocompleteInput
             placeholder="Gotify Base URL"
             value={hook.actionGotify?.baseUrl || ""}
-            onChange={(e) => updateGotify("baseUrl", e.target.value)}
-            size="sm"
+            onChange={(val) => updateGotify("baseUrl", val)}
+            action="actionGotify"
+            field="baseUrl"
+            allHooks={allHooks}
           />
-          <Input
+          <HookAutocompleteInput
             placeholder="Gotify Token"
             value={hook.actionGotify?.token || ""}
-            onChange={(e) => updateGotify("token", e.target.value)}
-            size="sm"
+            onChange={(val) => updateGotify("token", val)}
+            action="actionGotify"
+            field="token"
+            allHooks={allHooks}
           />
           <Input
             placeholder="Title Template"
@@ -457,7 +471,7 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionSlack",
-    component: ({ hook, onChange }) => {
+    component: ({ hook, allHooks, onChange }) => {
       const updateSlack = (field: string, val: string) => {
         onChange({
           ...hook,
@@ -466,11 +480,13 @@ const hookTypes: {
       };
       return (
         <Stack gap={2}>
-          <Input
+          <HookAutocompleteInput
             placeholder="Slack Webhook URL"
             value={hook.actionSlack?.webhookUrl || ""}
-            onChange={(e) => updateSlack("webhookUrl", e.target.value)}
-            size="sm"
+            onChange={(val) => updateSlack("webhookUrl", val)}
+            action="actionSlack"
+            field="webhookUrl"
+            allHooks={allHooks}
           />
           <Text fontSize="sm" mt={1}>
             {m.repo_hooks_command_template_label()}
@@ -495,7 +511,7 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionHealthchecks",
-    component: ({ hook, onChange }) => {
+    component: ({ hook, allHooks, onChange }) => {
       const updateHealthchecks = (field: string, val: string) => {
         onChange({
           ...hook,
@@ -504,11 +520,13 @@ const hookTypes: {
       };
       return (
         <Stack gap={2}>
-          <Input
+          <HookAutocompleteInput
             placeholder="Ping URL"
             value={hook.actionHealthchecks?.webhookUrl || ""}
-            onChange={(e) => updateHealthchecks("webhookUrl", e.target.value)}
-            size="sm"
+            onChange={(val) => updateHealthchecks("webhookUrl", val)}
+            action="actionHealthchecks"
+            field="webhookUrl"
+            allHooks={allHooks}
           />
           <Text fontSize="sm" mt={1}>
             {m.repo_hooks_command_template_label()}
@@ -534,7 +552,7 @@ const hookTypes: {
       conditions: [],
     },
     oneofKey: "actionTelegram",
-    component: ({ hook, onChange }) => {
+    component: ({ hook, allHooks, onChange }) => {
       const updateTelegram = (field: string, val: string) => {
         onChange({
           ...hook,
@@ -543,17 +561,21 @@ const hookTypes: {
       };
       return (
         <Stack gap={2}>
-          <Input
+          <HookAutocompleteInput
             placeholder="Bot Token"
             value={hook.actionTelegram?.botToken || ""}
-            onChange={(e) => updateTelegram("botToken", e.target.value)}
-            size="sm"
+            onChange={(val) => updateTelegram("botToken", val)}
+            action="actionTelegram"
+            field="botToken"
+            allHooks={allHooks}
           />
-          <Input
+          <HookAutocompleteInput
             placeholder="Chat ID"
             value={hook.actionTelegram?.chatId || ""}
-            onChange={(e) => updateTelegram("chatId", e.target.value)}
-            size="sm"
+            onChange={(val) => updateTelegram("chatId", val)}
+            action="actionTelegram"
+            field="chatId"
+            allHooks={allHooks}
           />
           <Text fontSize="sm" mt={1}>
             {m.repo_hooks_command_template_label()}
@@ -584,9 +606,11 @@ const findHookTypeName = (field: HookFields): string => {
 
 const HookBuilder = ({
   hook,
+  allHooks,
   onChange,
 }: {
   hook: HookFields;
+  allHooks: HookFields[];
   onChange: (h: HookFields) => void;
 }) => {
   if (!hook) {
@@ -595,7 +619,8 @@ const HookBuilder = ({
 
   for (const hookType of hookTypes) {
     if (hookType.oneofKey in hook) {
-      return hookType.component({ hook, onChange });
+      const Component = hookType.component;
+      return <Component hook={hook} allHooks={allHooks} onChange={onChange} />;
     }
   }
 

@@ -9,8 +9,10 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -835,6 +837,93 @@ func (s *BackrestHandler) PathAutocomplete(ctx context.Context, path *connect.Re
 	}
 
 	return connect.NewResponse(&types.StringList{Values: paths}), nil
+}
+
+func (s *BackrestHandler) HookAutocomplete(ctx context.Context, req *connect.Request[v1.HookAutocompleteRequest]) (*connect.Response[types.StringList], error) {
+	cfg, err := s.config.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %w", err)
+	}
+
+	seen := make(map[string]struct{})
+	for _, repo := range cfg.Repos {
+		collectHookFieldValues(repo.Hooks, req.Msg.Action, req.Msg.Field, seen)
+	}
+	for _, plan := range cfg.Plans {
+		collectHookFieldValues(plan.Hooks, req.Msg.Action, req.Msg.Field, seen)
+	}
+
+	values := make([]string, 0, len(seen))
+	for v := range seen {
+		if v != "" {
+			values = append(values, v)
+		}
+	}
+	sort.Strings(values)
+
+	return connect.NewResponse(&types.StringList{Values: values}), nil
+}
+
+func collectHookFieldValues(hooks []*v1.Hook, action, field string, out map[string]struct{}) {
+	for _, h := range hooks {
+		payload := hookActionPayload(h, action)
+		if payload == nil {
+			continue
+		}
+		v := hookActionFieldValue(payload, field)
+		if v != "" {
+			out[v] = struct{}{}
+		}
+	}
+}
+
+var hookFieldGoNames = map[string]string{
+	"botToken":      "BotToken",
+	"chatId":        "ChatId",
+	"webhookUrl":    "WebhookUrl",
+	"baseUrl":       "BaseUrl",
+	"token":         "Token",
+	"shoutrrrUrl":   "ShoutrrrUrl",
+	"titleTemplate": "TitleTemplate",
+	"command":       "Command",
+}
+
+func hookActionPayload(hook *v1.Hook, action string) proto.Message {
+	switch action {
+	case "actionCommand":
+		return hook.GetActionCommand()
+	case "actionWebhook":
+		return hook.GetActionWebhook()
+	case "actionDiscord":
+		return hook.GetActionDiscord()
+	case "actionGotify":
+		return hook.GetActionGotify()
+	case "actionSlack":
+		return hook.GetActionSlack()
+	case "actionShoutrrr":
+		return hook.GetActionShoutrrr()
+	case "actionHealthchecks":
+		return hook.GetActionHealthchecks()
+	case "actionTelegram":
+		return hook.GetActionTelegram()
+	}
+	return nil
+}
+
+func hookActionFieldValue(payload proto.Message, field string) string {
+	goName := hookFieldGoNames[field]
+	if goName == "" {
+		return ""
+	}
+	v := reflect.ValueOf(payload)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	f := v.FieldByName(goName)
+	if !f.IsValid() || f.Kind() != reflect.String {
+		return ""
+	}
+	return f.String()
 }
 
 func (s *BackrestHandler) GeneratePairingToken(ctx context.Context, req *connect.Request[v1.GeneratePairingTokenRequest]) (*connect.Response[v1.GeneratePairingTokenResponse], error) {

@@ -67,6 +67,7 @@ export const backrestService = {
   getDownloadURL: vi.fn(),
   clearHistory: vi.fn(),
   pathAutocomplete: vi.fn(),
+  hookAutocomplete: vi.fn(),
   getSummaryDashboard: vi.fn(),
   generatePairingToken: vi.fn(),
 };

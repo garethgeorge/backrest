@@ -72,6 +72,9 @@ service Backrest {
   // PathAutocomplete provides path autocompletion options for a given filesystem path.
   rpc PathAutocomplete (types.StringValue) returns (types.StringList) {}
 
+  // HookAutocomplete returns previously used values for a hook action field.
+  rpc HookAutocomplete (HookAutocompleteRequest) returns (types.StringList) {}
+
   // GetSummaryDashboard returns data for the dashboard view.
   rpc GetSummaryDashboard(google.protobuf.Empty) returns (SummaryDashboardResponse) {}
 
@@ -270,4 +273,11 @@ message GeneratePairingTokenRequest {
 
 message GeneratePairingTokenResponse {
   string token = 1; // the opaque pairing token string: "<keyid>:<secret>#<instanceid>"
+}
+
+// HookAutocompleteRequest selects an action type and a field within that action
+// to retrieve existing values from the current config.
+message HookAutocompleteRequest {
+  string action = 1; // oneof key, e.g. "actionTelegram"
+  string field = 2;  // json field name, e.g. "botToken"
 }
