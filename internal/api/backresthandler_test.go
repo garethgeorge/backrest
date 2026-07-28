@@ -1754,3 +1754,57 @@ func TestGetSummaryDashboardDispatch(t *testing.T) {
 			planA.ProtectedBytes, repo.ProtectedBytes)
 	}
 }
+
+// TestGetSummaryDashboardStatsFallback verifies that repos without backup operations
+// fall back to the most recent OperationStats for ProtectedBytes and TotalSnapshots.
+func TestGetSummaryDashboardStatsFallback(t *testing.T) {
+	t.Parallel()
+
+	repoGUID := cryptoutil.MustRandomID(cryptoutil.DefaultIDBits)
+	sut := createSystemUnderTest(t, createConfigManager(&v1.Config{
+		Version:  4,
+		Modno:    1234,
+		Instance: "test",
+		Repos: []*v1.Repo{
+			{Id: "local", Guid: repoGUID, Uri: t.TempDir(), Password: "test", Flags: []string{"--no-cache"}},
+		},
+	}))
+
+	now := time.Now()
+	start := now.Add(-1 * time.Hour).UnixMilli()
+
+	// Insert only a stats operation — no backup operations exist for this repo.
+	if err := sut.oplog.Add(&v1.Operation{
+		InstanceId:      "test",
+		RepoId:          "local",
+		RepoGuid:        repoGUID,
+		PlanId:          "_system_",
+		Status:          v1.OperationStatus_STATUS_SUCCESS,
+		UnixTimeStartMs: start,
+		UnixTimeEndMs:   start + 5000,
+		Op: &v1.Operation_OperationStats{OperationStats: &v1.OperationStats{
+			Stats: &v1.RepoStats{
+				TotalSize:     5000000,
+				SnapshotCount: 42,
+			},
+		}},
+	}); err != nil {
+		t.Fatalf("failed to add stats operation: %v", err)
+	}
+
+	resp, err := sut.handler.GetSummaryDashboard(context.Background(), connect.NewRequest(&emptypb.Empty{}))
+	if err != nil {
+		t.Fatalf("GetSummaryDashboard() error = %v", err)
+	}
+
+	if len(resp.Msg.RepoSummaries) != 1 {
+		t.Fatalf("expected 1 repo summary, got %d", len(resp.Msg.RepoSummaries))
+	}
+	repo := resp.Msg.RepoSummaries[0]
+	if repo.ProtectedBytes != 5000000 {
+		t.Errorf("expected ProtectedBytes=5000000 from stats fallback, got %d", repo.ProtectedBytes)
+	}
+	if repo.TotalSnapshots != 42 {
+		t.Errorf("expected TotalSnapshots=42 from stats fallback, got %d", repo.TotalSnapshots)
+	}
+}

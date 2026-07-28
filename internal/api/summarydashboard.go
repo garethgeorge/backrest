@@ -47,18 +47,33 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 	for _, plan := range cfg.Plans {
 		planAccs[plan.Id] = newSummaryAcc(cutoffMidnight)
 	}
+	// Track the most recent stats operation per repo; used as a fallback for
+	// repos whose backups are managed outside of backrest.
+	repoLatestStats := make(map[string]*v1.RepoStats) // keyed by repo GUID
+
 	// Walk every operation for this instance, newest to oldest, dispatching each
 	// backup to its plan's and its repo's accumulator.
 	if err := s.oplog.Query(oplog.Query{}.SetInstanceID(cfg.Instance).SetReversed(true), func(op *v1.Operation) error {
-		backupOp := op.GetOperationBackup()
-		if backupOp == nil {
+		if backupOp := op.GetOperationBackup(); backupOp != nil {
+			if acc, ok := planAccs[op.PlanId]; ok {
+				acc.observe(op, backupOp)
+			}
+			if acc, ok := repoAccs[op.RepoGuid]; ok {
+				acc.observe(op, backupOp)
+			}
 			return nil
 		}
-		if acc, ok := planAccs[op.PlanId]; ok {
-			acc.observe(op, backupOp)
+		if statsOp := op.GetOperationStats(); statsOp != nil && statsOp.Stats != nil {
+			if _, ok := repoAccs[op.RepoGuid]; ok {
+				if _, exists := repoLatestStats[op.RepoGuid]; !exists {
+					repoLatestStats[op.RepoGuid] = statsOp.Stats
+				}
+			}
 		}
-		if acc, ok := repoAccs[op.RepoGuid]; ok {
-			acc.observe(op, backupOp)
+		if op.GetOperationCheck() != nil || op.GetOperationPrune() != nil || op.GetOperationForget() != nil || op.GetOperationStats() != nil {
+			if acc, ok := repoAccs[op.RepoGuid]; ok {
+				acc.observeMaintenance(op)
+			}
 		}
 		return nil
 	}); err != nil {
@@ -70,8 +85,15 @@ func (s *BackrestHandler) GetSummaryDashboard(ctx context.Context, req *connect.
 		DataPath:   env.DataDir(),
 	}
 	for _, repo := range cfg.Repos {
-		response.RepoSummaries = append(response.RepoSummaries,
-			repoAccs[repo.GetGuid()].finalize(repo.Id, now, repoAllowedStaleness(cfg, repo.Id, now)))
+		guid := repo.GetGuid()
+		summary := repoAccs[guid].finalize(repo.Id, now, repoAllowedStaleness(cfg, repo.Id, now))
+		if summary.ProtectedBytes == 0 {
+			if stats, ok := repoLatestStats[guid]; ok {
+				summary.ProtectedBytes = stats.TotalSize
+				summary.TotalSnapshots = stats.SnapshotCount
+			}
+		}
+		response.RepoSummaries = append(response.RepoSummaries, summary)
 	}
 	for _, plan := range cfg.Plans {
 		response.PlanSummaries = append(response.PlanSummaries,
@@ -230,6 +252,33 @@ func (a *summaryAcc) observe(op *v1.Operation, backupOp *v1.OperationBackup) {
 		a.backupChart.DurationMs = append(a.backupChart.DurationMs, duration)
 		a.backupChart.Status = append(a.backupChart.Status, op.Status)
 		a.backupChart.BytesAdded = append(a.backupChart.BytesAdded, summary.GetDataAdded())
+	}
+}
+
+// observeMaintenance records a non-backup operation (check, prune, forget, or
+// stats) into the per-day history. Only the day status counts are updated;
+// backup-specific fields (bytes, chart) are not affected.
+func (a *summaryAcc) observeMaintenance(op *v1.Operation) {
+	startTime := time.UnixMilli(op.UnixTimeStartMs)
+	opMidnight := localMidnight(startTime)
+
+	if opMidnight.Before(a.cutoffMidnight) {
+		a.reachedCutoff = true
+		return
+	}
+	if op.GetStatus() == v1.OperationStatus_STATUS_PENDING || op.GetStatus() == v1.OperationStatus_STATUS_SYSTEM_CANCELLED {
+		return
+	}
+
+	dayMs := opMidnight.UnixMilli()
+	acc := a.perDay[dayMs]
+	if acc == nil {
+		acc = &summaryDayAcc{statusCounts: make(map[v1.OperationStatus]int64)}
+		a.perDay[dayMs] = acc
+	}
+	acc.statusCounts[op.Status]++
+	if a.oldestDay.IsZero() || opMidnight.Before(a.oldestDay) {
+		a.oldestDay = opMidnight
 	}
 }
 

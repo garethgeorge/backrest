@@ -117,7 +117,7 @@ function retentionText(r: {
 }
 
 // Derived state for one plan card
-type PlanState = "ok" | "warn" | "err" | "run" | "idle";
+type PlanState = "ok" | "warn" | "err" | "run" | "idle" | "external";
 
 function planState(
   latestStatus: OperationStatus | undefined,
@@ -140,6 +140,7 @@ const STATE_COLORS: Record<PlanState, string> = {
   err: "red.500",
   run: "blue.500",
   idle: "gray.400",
+  external: "blue.400",
 };
 
 const STATE_BG: Record<PlanState, string> = {
@@ -148,6 +149,7 @@ const STATE_BG: Record<PlanState, string> = {
   err: "red.50",
   run: "blue.50",
   idle: "gray.100",
+  external: "blue.50",
 };
 
 // Worst-wins ordering used to derive the hero state across all plans.
@@ -157,6 +159,7 @@ const STATE_SEVERITY: Record<PlanState, number> = {
   run: 1,
   ok: 0,
   idle: -1,
+  external: -2,
 };
 
 const STATE_LABEL: Record<PlanState, () => string> = {
@@ -165,6 +168,7 @@ const STATE_LABEL: Record<PlanState, () => string> = {
   err: m.dashboard_state_label_err,
   run: m.dashboard_state_label_run,
   idle: m.dashboard_state_label_idle,
+  external: m.dashboard_state_label_external,
 };
 
 // Status fields shared by plan cards, repo cards, and the hero banner,
@@ -185,7 +189,14 @@ function summaryStatus(
   const running =
     latestStatus === OperationStatus.STATUS_INPROGRESS ||
     latestStatus === OperationStatus.STATUS_PENDING;
-  const state = planState(latestStatus, running);
+  const hasNoBackups = !rb || rb.timestampMs.length === 0;
+  const hasSnapshots =
+    Number(summary.protectedBytes) > 0 ||
+    Number(summary.totalSnapshots) > 0;
+  const state =
+    hasNoBackups && hasSnapshots
+      ? "external"
+      : planState(latestStatus, running);
   return { latestTs, running, state, color: STATE_COLORS[state] };
 }
 
@@ -215,6 +226,7 @@ const HERO_ICON: Record<PlanState, React.ReactNode> = {
   warn: <LuTriangle strokeWidth={2.4} />,
   err: <LuX strokeWidth={2.4} />,
   idle: <FiDatabase strokeWidth={2.4} />,
+  external: <FiServer strokeWidth={2.4} />,
 };
 
 const HERO_TITLE: Record<PlanState, () => string> = {
@@ -223,6 +235,7 @@ const HERO_TITLE: Record<PlanState, () => string> = {
   warn: m.dashboard_hero_warn,
   err: m.dashboard_hero_err,
   idle: m.dashboard_hero_idle,
+  external: m.dashboard_hero_external,
 };
 
 interface HeroStats {
