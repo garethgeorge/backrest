@@ -1,5 +1,6 @@
 # Nix
 result
+.direnv/
 
 /backrest
 /backrest-*
