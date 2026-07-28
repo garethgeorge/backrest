@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.14.2](https://github.com/garethgeorge/backrest/compare/v1.14.1...v1.14.2) (2026-07-28)
+
+
+### Bug Fixes
+
+* build mac binary with correct minimum macos version ([#1316](https://github.com/garethgeorge/backrest/issues/1316)) ([af429d1](https://github.com/garethgeorge/backrest/commit/af429d125abca48eb439873f95f67df205c50180))
+* exit after printing version ([#1294](https://github.com/garethgeorge/backrest/issues/1294)) ([8afbd30](https://github.com/garethgeorge/backrest/commit/8afbd30743936297ddbc875479ec09e15b58becb))
+* i18n move hardcoded texts to inlang messages ([#1318](https://github.com/garethgeorge/backrest/issues/1318)) ([dfba211](https://github.com/garethgeorge/backrest/commit/dfba211b6430c8eec602d80b8c166e0ce5d266c7))
+* put status text in disabled menu item on macos ([#1317](https://github.com/garethgeorge/backrest/issues/1317)) ([869f23a](https://github.com/garethgeorge/backrest/commit/869f23a9067194a7d294cf843ecb4ca36bc9e569))
+* quit tray on graceful shutdown ([#1295](https://github.com/garethgeorge/backrest/issues/1295)) ([fd8b2b2](https://github.com/garethgeorge/backrest/commit/fd8b2b2df44fbf9da72f9364a67a7326e06f3ffe))
+* rm deprecated import github.com/ncruces/go-sqlite3/embed ([#1293](https://github.com/garethgeorge/backrest/issues/1293)) ([626156c](https://github.com/garethgeorge/backrest/commit/626156cd8e15745b84bfe86099457d9db8372c5d))
+* simplified workaround to long polling connection limits, avoids issues with suspended tabs on mobile ([148ba12](https://github.com/garethgeorge/backrest/commit/148ba12c12a7a4fef6d3c6c8e675ca2c5e7d3635))
+* swap to hashicorp/cronexpr for backend cronexpr parsing which supports more syntax ([3dc2825](https://github.com/garethgeorge/backrest/commit/3dc28258f790c2184641b3f3475b1748cd3f3204))
+
 ## [1.14.1](https://github.com/garethgeorge/backrest/compare/v1.14.0...v1.14.1) (2026-07-12)
 
 
