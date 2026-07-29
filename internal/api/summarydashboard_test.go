@@ -1,9 +1,142 @@
 package api
 
 import (
+	"reflect"
 	"testing"
 	"time"
+
+	v1 "github.com/garethgeorge/backrest/gen/go/v1"
 )
+
+func TestSummaryIndexedSnapshotFallback(t *testing.T) {
+	day := func(n int) time.Time {
+		return time.Date(2026, 7, 16+n, 0, 0, 0, 0, time.Local)
+	}
+	atNoon := func(n int) time.Time { return day(n).Add(12 * time.Hour) }
+
+	acc := newSummaryAcc(day(0))
+	acc.observeIndexedSnapshot(&v1.Operation{
+		PlanId:        "test-plan",
+		FlowId:        101,
+		UnixTimeEndMs: atNoon(1).Add(time.Minute).UnixMilli(),
+	}, &v1.OperationIndexSnapshot{
+		Snapshot: &v1.ResticSnapshot{
+			Id:         "existing-backup",
+			UnixTimeMs: atNoon(1).UnixMilli(),
+		},
+	})
+	acc.observeBackup(&v1.Operation{
+		PlanId:          "test-plan",
+		FlowId:          101,
+		SnapshotId:      "existing-backup",
+		Status:          v1.OperationStatus_STATUS_SUCCESS,
+		UnixTimeStartMs: atNoon(1).UnixMilli(),
+		UnixTimeEndMs:   atNoon(1).Add(time.Minute).UnixMilli(),
+	}, &v1.OperationBackup{})
+	acc.observeIndexedSnapshot(&v1.Operation{
+		PlanId:        "test-plan",
+		FlowId:        100,
+		UnixTimeEndMs: atNoon(0).Add(2 * time.Minute).UnixMilli(),
+	}, &v1.OperationIndexSnapshot{
+		Snapshot: &v1.ResticSnapshot{
+			Id:         "fallback-snapshot",
+			UnixTimeMs: atNoon(0).UnixMilli(),
+			Summary: &v1.SnapshotSummary{
+				DataAdded:           25,
+				TotalBytesProcessed: 250,
+			},
+		},
+	})
+	acc.observeIndexedSnapshot(&v1.Operation{
+		PlanId: "test-plan",
+	}, &v1.OperationIndexSnapshot{
+		Forgot: true,
+		Snapshot: &v1.ResticSnapshot{
+			Id:         "forgotten-snapshot",
+			UnixTimeMs: atNoon(2).UnixMilli(),
+		},
+	})
+	acc.applyIndexedSnapshotFallbacks()
+
+	summary := acc.finalize("test", atNoon(2), 0)
+	history := summary.HistoryLast_30Days
+	statusCount := func(dayIndex int, status v1.OperationStatus) int64 {
+		for _, sc := range history[dayIndex].StatusCounts {
+			if sc.Status == status {
+				return sc.Count
+			}
+		}
+		return 0
+	}
+
+	if got := statusCount(0, v1.OperationStatus_STATUS_SUCCESS); got != 1 {
+		t.Errorf("fallback day success count = %d, want 1", got)
+	}
+	if history[0].BytesAdded != 25 || history[0].BytesScanned != 250 {
+		t.Errorf("fallback day bytes = (%d, %d), want (25, 250)",
+			history[0].BytesAdded, history[0].BytesScanned)
+	}
+	if got := statusCount(1, v1.OperationStatus_STATUS_SUCCESS); got != 1 {
+		t.Errorf("deduplicated day success count = %d, want 1", got)
+	}
+	if got := statusCount(2, v1.OperationStatus_STATUS_SUCCESS); got != 0 {
+		t.Errorf("forgotten snapshot success count = %d, want 0", got)
+	}
+	if summary.BackupsSuccessLast_30Days != 2 {
+		t.Errorf("success count = %d, want 2", summary.BackupsSuccessLast_30Days)
+	}
+	if summary.BytesAddedLast_30Days != 25 || summary.BytesScannedLast_30Days != 250 {
+		t.Errorf("summary bytes = (%d, %d), want (25, 250)",
+			summary.BytesAddedLast_30Days, summary.BytesScannedLast_30Days)
+	}
+	if summary.BytesAddedAvg != 12 || summary.BytesScannedAvg != 125 {
+		t.Errorf("average bytes = (%d, %d), want (12, 125)",
+			summary.BytesAddedAvg, summary.BytesScannedAvg)
+	}
+	if summary.ProtectedBytes != 250 {
+		t.Errorf("protected bytes = %d, want 250", summary.ProtectedBytes)
+	}
+	if len(summary.RecentBackups.Status) != 2 ||
+		summary.RecentBackups.Status[1] != v1.OperationStatus_STATUS_SUCCESS ||
+		summary.RecentBackups.FlowId[1] != 100 ||
+		summary.RecentBackups.BytesAdded[1] != 25 {
+		t.Errorf("fallback chart entry = %+v, want successful flow 100 with 25 bytes added",
+			summary.RecentBackups)
+	}
+
+	again := acc.finalize("test", atNoon(2), 0)
+	if !reflect.DeepEqual(summary, again) {
+		t.Error("finalize mutated the accumulator")
+	}
+}
+
+func TestSummaryIndexedSnapshotFallbacksRemainNewestFirst(t *testing.T) {
+	day := func(n int) time.Time {
+		return time.Date(2026, 7, 16+n, 12, 0, 0, 0, time.Local)
+	}
+	acc := newSummaryAcc(localMidnight(day(0)))
+
+	acc.observeIndexedSnapshot(&v1.Operation{
+		PlanId:        "newer-plan",
+		FlowId:        2,
+		UnixTimeEndMs: day(2).Add(time.Minute).UnixMilli(),
+	}, &v1.OperationIndexSnapshot{
+		Snapshot: &v1.ResticSnapshot{Id: "newer", UnixTimeMs: day(2).UnixMilli()},
+	})
+	acc.observeIndexedSnapshot(&v1.Operation{
+		PlanId:        "older-plan",
+		FlowId:        1,
+		UnixTimeEndMs: day(1).Add(time.Minute).UnixMilli(),
+	}, &v1.OperationIndexSnapshot{
+		Snapshot: &v1.ResticSnapshot{Id: "older", UnixTimeMs: day(1).UnixMilli()},
+	})
+	acc.applyIndexedSnapshotFallbacks()
+
+	chart := acc.finalize("test", day(2), 0).RecentBackups
+	if !reflect.DeepEqual(chart.FlowId, []int64{2, 1}) {
+		t.Errorf("fallback chart flow order = %v, want [2 1]", chart.FlowId)
+	}
+}
 
 func TestSummaryOverdueFlags(t *testing.T) {
 	// Fixed UTC reference: "today" is Jun 30 2026; the window is the prior 9 days.
