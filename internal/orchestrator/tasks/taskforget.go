@@ -107,7 +107,7 @@ func (t *ScheduledForgetTask) Next(now time.Time, runner TaskRunner) (ScheduledT
 	}
 
 	var lastRan time.Time
-	var foundBackup bool
+	var foundActivity bool
 	if err := runner.QueryOperations(oplog.Query{}.
 		SetRepoGUID(repoProto.GetGuid()).
 		SetReversed(true), func(op *v1.Operation) error {
@@ -119,12 +119,17 @@ func (t *ScheduledForgetTask) Next(now time.Time, runner TaskRunner) (ScheduledT
 			return oplog.ErrStopIteration
 		}
 		if _, ok := op.Op.(*v1.Operation_OperationBackup); ok {
-			foundBackup = true
+			foundActivity = true
+		} else if indexOp, ok := op.Op.(*v1.Operation_OperationIndexSnapshot); ok && !indexOp.OperationIndexSnapshot.GetForgot() {
+			// Indexed snapshots count as activity too; they are how snapshots
+			// created outside of backrest (e.g. pushed via rest-server) appear
+			// in the oplog.
+			foundActivity = true
 		}
 		return nil
 	}); err != nil {
 		return NeverScheduledTask, fmt.Errorf("finding last scheduled forget run time: %w", err)
-	} else if !foundBackup {
+	} else if !foundActivity {
 		lastRan = now
 	}
 
