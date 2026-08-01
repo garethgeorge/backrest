@@ -71,7 +71,6 @@ mkdir backrest && tar -xzvf backrest_Darwin_arm64.tar.gz -C backrest
 cd backrest && ./install.sh
 ```
 ```yaml [docker-compose]
-version: "3.8"
 services:
   backrest:
     image: ghcr.io/garethgeorge/backrest:latest
