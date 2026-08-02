@@ -1,7 +1,7 @@
 import React, { Suspense, useContext, useEffect, useState } from "react";
 import { Repo } from "../../../gen/ts/v1/config_pb";
 import { Button } from "../../components/ui/button";
-import { Flex, Heading, Box, Group, IconButton } from "@chakra-ui/react";
+import { Flex, Heading, Box, Text, Group, IconButton } from "@chakra-ui/react";
 import { FiChevronDown } from "react-icons/fi";
 import {
   Tabs,
@@ -37,6 +37,7 @@ import { useShowModal } from "../../components/common/ModalManager";
 import { create } from "@bufbuild/protobuf";
 import { RepoProps } from "../../state/peerStates";
 import * as m from "../../paraglide/messages";
+import { nl2br } from "../../lib/util";
 
 const StatsPanel = React.lazy(() => import("../dashboard/StatsPanel"));
 
@@ -193,6 +194,14 @@ export const RepoView = ({
           </MenuRoot>
         </Group>
       </Flex>
+
+      {repo.description && (
+        <Box mb={4}>
+          <Text color="fg.muted" fontSize="sm">
+            {nl2br(repo.description)}
+          </Text>
+        </Box>
+      )}
 
       <TabsRoot defaultValue="tree" lazyMount>
         <TabsList>

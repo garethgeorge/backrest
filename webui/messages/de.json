@@ -692,5 +692,11 @@
   "app_remote_repo_info": "This is a remote repo from {origin}. Operation history only includes backups run locally and may be incomplete.",
   "add_repo_modal_error_env_format": "Umgebungsvariable muss das Format SCHLÜSSEL=WERT haben.",
   "add_repo_modal_env_vars_placeholder": "SCHLÜSSEL=WERT (Einer pro Zeile)",
-  "hooks_form_list_webhook_url": "{service} Webhook URL"
+  "hooks_form_list_webhook_url": "{service} Webhook URL",
+  "add_plan_modal_field_description": "Description",
+  "add_plan_modal_field_description_tooltip": "Optional human-readable description of this plan. The sidebar shows only the first line.",
+  "add_plan_modal_field_description_placeholder": "Describe what this plan backs up",
+  "add_repo_modal_field_description": "Description",
+  "add_repo_modal_field_description_tooltip": "Optional human-readable description of this repo. The sidebar shows only the first line.",
+  "add_repo_modal_field_description_placeholder": "Describe what this repo stores"
 }

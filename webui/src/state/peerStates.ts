@@ -9,6 +9,7 @@ import { useConfig } from "../app/provider";
 export interface RepoProps {
   id: string;
   guid: string;
+  description?: string;
 }
 
 // Accumulated peer states, keyed by peer key id.

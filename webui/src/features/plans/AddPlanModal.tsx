@@ -2,6 +2,7 @@ import {
   Flex,
   Stack,
   Input,
+  Textarea,
   createListCollection,
   SelectContent,
   SelectItem,
@@ -332,6 +333,19 @@ export const AddPlanModal = ({
                 onChange={(e) => updateField(["id"], e.target.value)}
                 disabled={!!template}
                 placeholder={"plan" + ((config?.plans?.length || 0) + 1)}
+              />
+            </Field>
+
+            <Field
+              label={m.add_plan_modal_field_description()}
+              helperText={m.add_plan_modal_field_description_tooltip()}
+            >
+              <Textarea
+                data-testid="add-plan-description"
+                value={getField(["description"])}
+                onChange={(e) => updateField(["description"], e.target.value)}
+                placeholder={m.add_plan_modal_field_description_placeholder()}
+                rows={3}
               />
             </Field>
 

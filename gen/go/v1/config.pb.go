@@ -649,6 +649,7 @@ type Repo struct {
 	Shared           bool                   `protobuf:"varint,13,opt,name=shared,proto3" json:"shared,omitempty"`                                              // if true, this repo is pushed to all authorized clients with read-config permission
 	OriginInstanceId string                 `protobuf:"bytes,14,opt,name=origin_instance_id,json=originInstanceId,proto3" json:"origin_instance_id,omitempty"` // set when this repo was pushed from a remote instance; marks it as non-editable
 	ForgetPolicy     *ForgetPolicy          `protobuf:"bytes,15,opt,name=forget_policy,json=forgetPolicy,proto3" json:"forget_policy,omitempty"`               // optional repo-level forget policy. If set, overrides per-plan retention policies.
+	Description      string                 `protobuf:"bytes,16,opt,name=description,proto3" json:"description,omitempty"`                                     // human-readable description of this repo.
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -788,9 +789,17 @@ func (x *Repo) GetForgetPolicy() *ForgetPolicy {
 	return nil
 }
 
+func (x *Repo) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
 type Plan struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                                      // unique but human readable ID for this plan.
+	Description     string                 `protobuf:"bytes,14,opt,name=description,proto3" json:"description,omitempty"`                                   // human-readable description of this plan.
 	Repo            string                 `protobuf:"bytes,2,opt,name=repo,proto3" json:"repo,omitempty"`                                                  // ID of the repo to use.
 	Paths           []string               `protobuf:"bytes,4,rep,name=paths,proto3" json:"paths,omitempty"`                                                // paths to include in the backup.
 	Excludes        []string               `protobuf:"bytes,5,rep,name=excludes,proto3" json:"excludes,omitempty"`                                          // glob patterns to exclude.
@@ -837,6 +846,13 @@ func (*Plan) Descriptor() ([]byte, []int) {
 func (x *Plan) GetId() string {
 	if x != nil {
 		return x.Id
+	}
+	return ""
+}
+
+func (x *Plan) GetDescription() string {
+	if x != nil {
+		return x.Description
 	}
 	return ""
 }
@@ -2497,7 +2513,7 @@ const file_v1_config_proto_rawDesc = "" +
 	"\x1aPERMISSION_READ_OPERATIONS\x10\x01\x12\x1a\n" +
 	"\x16PERMISSION_READ_CONFIG\x10\x02\x12 \n" +
 	"\x1cPERMISSION_READ_WRITE_CONFIG\x10\x03\x12#\n" +
-	"\x1fPERMISSION_RECEIVE_SHARED_REPOS\x10\x04\"\x89\x04\n" +
+	"\x1fPERMISSION_RECEIVE_SHARED_REPOS\x10\x04\"\xab\x04\n" +
 	"\x04Repo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03uri\x18\x02 \x01(\tR\x03uri\x12\x12\n" +
@@ -2515,9 +2531,11 @@ const file_v1_config_proto_rawDesc = "" +
 	" \x01(\v2\x11.v1.CommandPrefixR\rcommandPrefix\x12\x16\n" +
 	"\x06shared\x18\r \x01(\bR\x06shared\x12,\n" +
 	"\x12origin_instance_id\x18\x0e \x01(\tR\x10originInstanceId\x125\n" +
-	"\rforget_policy\x18\x0f \x01(\v2\x10.v1.ForgetPolicyR\fforgetPolicy\"\xd9\x02\n" +
+	"\rforget_policy\x18\x0f \x01(\v2\x10.v1.ForgetPolicyR\fforgetPolicy\x12 \n" +
+	"\vdescription\x18\x10 \x01(\tR\vdescription\"\xfb\x02\n" +
 	"\x04Plan\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
+	"\vdescription\x18\x0e \x01(\tR\vdescription\x12\x12\n" +
 	"\x04repo\x18\x02 \x01(\tR\x04repo\x12\x14\n" +
 	"\x05paths\x18\x04 \x03(\tR\x05paths\x12\x1a\n" +
 	"\bexcludes\x18\x05 \x03(\tR\bexcludes\x12\x1c\n" +
