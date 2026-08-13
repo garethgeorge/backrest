@@ -42,6 +42,7 @@ export interface HookFields {
   actionShoutrrr?: any;
   actionHealthchecks?: any;
   actionTelegram?: any;
+  actionPushover?: any;
 }
 
 export const hooksListTooltipText = (
@@ -562,6 +563,73 @@ const hookTypes: {
             fontFamily="monospace"
             value={hook.actionTelegram?.template || ""}
             onChange={(e) => updateTelegram("template", e.target.value)}
+            size="sm"
+          />
+        </Stack>
+      );
+    },
+  },
+  {
+    name: "Pushover",
+    template: {
+      actionPushover: {
+        token: "",
+        userKey: "",
+        template: "{{ .Summary }}",
+        titleTemplate: "Backrest {{ .EventName .Event }} in plan {{ .Plan.Id }}",
+        priority: 0,
+      },
+      conditions: [],
+    },
+    oneofKey: "actionPushover",
+    component: ({ hook, onChange }) => {
+      const updatePushover = (field: string, val: any) => {
+        onChange({
+          ...hook,
+          actionPushover: { ...hook.actionPushover, [field]: val },
+        });
+      };
+      return (
+        <Stack gap={2}>
+          <Input
+            placeholder={m.hooks_form_list_service_token({ service: "Pushover App" })}
+            value={hook.actionPushover?.token || ""}
+            onChange={(e) => updatePushover("token", e.target.value)}
+            size="sm"
+          />
+          <Input
+            placeholder="Pushover User/Group Key"
+            value={hook.actionPushover?.userKey || ""}
+            onChange={(e) => updatePushover("userKey", e.target.value)}
+            size="sm"
+          />
+          <Input
+            placeholder={m.hooks_form_list_title_template()}
+            value={hook.actionPushover?.titleTemplate || ""}
+            onChange={(e) => updatePushover("titleTemplate", e.target.value)}
+            size="sm"
+          />
+          <Text fontSize="sm" mt={1}>
+            {m.repo_hooks_command_template_label()}
+          </Text>
+          <Textarea
+            fontFamily="monospace"
+            value={hook.actionPushover?.template || ""}
+            onChange={(e) => updatePushover("template", e.target.value)}
+            size="sm"
+          />
+          <EnumSelector
+            options={[
+              { label: "-2 — Lowest (no notification)", value: "-2" },
+              { label: "-1 — Low (no sound)", value: "-1" },
+              { label: "0 — Normal", value: "0" },
+              { label: "1 — High (bypasses quiet hours)", value: "1" },
+            ]}
+            value={String(hook.actionPushover?.priority ?? 0)}
+            onChange={(val) =>
+              updatePushover("priority", parseInt(val as string))
+            }
+            placeholder={m.hooks_form_list_priority()}
             size="sm"
           />
         </Stack>

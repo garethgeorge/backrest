@@ -251,6 +251,7 @@ message Hook {
     Shoutrrr action_shoutrrr = 105 [json_name="actionShoutrrr"];
     Healthchecks action_healthchecks = 106 [json_name="actionHealthchecks"];
     Telegram action_telegram = 107 [json_name="actionTelegram"];
+    Pushover action_pushover = 108 [json_name="actionPushover"];
   }
 
   message Command {
@@ -300,6 +301,14 @@ message Hook {
     string bot_token = 1 [json_name="botToken"];
     string chat_id = 2 [json_name="chatId"];
     string template = 3 [json_name="template"]; // template for the message text.
+  }
+
+  message Pushover {
+    string token = 1 [json_name="token"]; // application API token from pushover.net/apps
+    string user_key = 2 [json_name="userKey"]; // user or group key from pushover.net/dashboard
+    string template = 100 [json_name="template"]; // template for the message body.
+    string title_template = 101 [json_name="titleTemplate"]; // template for the message title.
+    int32 priority = 102 [json_name="priority"]; // message priority: -2 (lowest) to 2 (emergency)
   }
 }
 
