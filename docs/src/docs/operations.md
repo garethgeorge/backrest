@@ -133,7 +133,7 @@ Removes unreferenced data using `restic prune`. Like Backup, Prune operations tr
 :::
 
 ### 🔍 Check
-[Restic Documentation](https://restic.readthedocs.io/en/latest/080_check.html)
+[Restic Documentation](https://restic.readthedocs.io/en/latest/045_working_with_repos.html#checking-integrity-and-consistency)
 
 Verifies repository integrity using `restic check`.
 
