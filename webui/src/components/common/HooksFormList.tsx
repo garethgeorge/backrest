@@ -18,7 +18,7 @@ import {
   useControllableState,
   SimpleGrid,
 } from "@chakra-ui/react";
-import { FiPlus, FiTrash2, FiInfo } from "react-icons/fi";
+import { FiPlus, FiTrash2, FiInfo, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import {
   MenuTrigger,
   MenuContent,
@@ -256,6 +256,263 @@ const HookItem = ({
   );
 };
 
+const templateSnippets: { name: string; description: string; snippet: string }[] = [
+  {
+    name: "Task",
+    description: "Name of the task that triggered the hook",
+    snippet: "{{ .Task }}",
+  },
+  {
+    name: "Event",
+    description: "Triggering event (numeric value)",
+    snippet: "{{ .Event }}",
+  },
+  {
+    name: "EventName",
+    description: "Human-readable name of the event",
+    snippet: "{{ .EventName .Event }}",
+  },
+  {
+    name: "Repo",
+    description: "Repository information",
+    snippet: "{{ .Repo.Id }}",
+  },
+  {
+    name: "Repo.Id",
+    description: "Repository ID",
+    snippet: "{{ .Repo.Id }}",
+  },
+  {
+    name: "Repo.Uri",
+    description: "Repository URI",
+    snippet: "{{ .Repo.Uri }}",
+  },
+  {
+    name: "Repo.Guid",
+    description: "Repository GUID",
+    snippet: "{{ .Repo.Guid }}",
+  },
+  {
+    name: "Plan",
+    description: "Plan information",
+    snippet: "{{ .Plan.Id }}",
+  },
+  {
+    name: "Plan.Id",
+    description: "Plan ID",
+    snippet: "{{ .Plan.Id }}",
+  },
+  {
+    name: "Plan.Paths",
+    description: "Included paths",
+    snippet: "{{ .Plan.Paths }}",
+  },
+  {
+    name: "Plan.Repo",
+    description: "ID of the plan's repo",
+    snippet: "{{ .Plan.Repo }}",
+  },
+  {
+    name: "SnapshotId",
+    description: "ID of the associated snapshot",
+    snippet: "{{ .SnapshotId }}",
+  },
+  {
+    name: "SnapshotStats.DataAdded",
+    description: "Amount of new data",
+    snippet: "{{ .SnapshotStats.DataAdded }}",
+  },
+  {
+    name: "SnapshotStats.TotalFilesProcessed",
+    description: "Total files processed",
+    snippet: "{{ .SnapshotStats.TotalFilesProcessed }}",
+  },
+  {
+    name: "SnapshotStats.TotalBytesProcessed",
+    description: "Total bytes processed",
+    snippet: "{{ .SnapshotStats.TotalBytesProcessed }}",
+  },
+  {
+    name: "SnapshotStats.FilesNew",
+    description: "New files",
+    snippet: "{{ .SnapshotStats.FilesNew }}",
+  },
+  {
+    name: "SnapshotStats.FilesChanged",
+    description: "Changed files",
+    snippet: "{{ .SnapshotStats.FilesChanged }}",
+  },
+  {
+    name: "SnapshotStats.FilesUnmodified",
+    description: "Unmodified files",
+    snippet: "{{ .SnapshotStats.FilesUnmodified }}",
+  },
+  {
+    name: "SnapshotStats.DirsNew",
+    description: "New directories",
+    snippet: "{{ .SnapshotStats.DirsNew }}",
+  },
+  {
+    name: "SnapshotStats.DirsChanged",
+    description: "Changed directories",
+    snippet: "{{ .SnapshotStats.DirsChanged }}",
+  },
+  {
+    name: "SnapshotStats.DirsUnmodified",
+    description: "Unmodified directories",
+    snippet: "{{ .SnapshotStats.DirsUnmodified }}",
+  },
+  {
+    name: "SnapshotStats.DataBlobs",
+    description: "Data blobs",
+    snippet: "{{ .SnapshotStats.DataBlobs }}",
+  },
+  {
+    name: "SnapshotStats.TreeBlobs",
+    description: "Tree blobs",
+    snippet: "{{ .SnapshotStats.TreeBlobs }}",
+  },
+  {
+    name: "SnapshotStats.TotalDuration",
+    description: "Total duration in seconds",
+    snippet: "{{ .SnapshotStats.TotalDuration }}",
+  },
+  {
+    name: "CurTime",
+    description: "Current timestamp",
+    snippet: "{{ .CurTime }}",
+  },
+  {
+    name: "Duration",
+    description: "Operation duration",
+    snippet: "{{ .Duration }}",
+  },
+  {
+    name: "Error",
+    description: "Error message if any",
+    snippet: "{{ .Error }}",
+  },
+  {
+    name: "Summary",
+    description: "Default event summary",
+    snippet: "{{ .Summary }}",
+  },
+  {
+    name: "FormatTime",
+    description: "Format a timestamp",
+    snippet: "{{ .FormatTime .CurTime }}",
+  },
+  {
+    name: "FormatDuration",
+    description: "Format a duration",
+    snippet: "{{ .FormatDuration .Duration }}",
+  },
+  {
+    name: "FormatSizeBytes",
+    description: "Format a byte size",
+    snippet: "{{ .FormatSizeBytes .SnapshotStats.DataAdded }}",
+  },
+  {
+    name: "ShellEscape",
+    description: "Escape a string for shell usage",
+    snippet: "{{ .ShellEscape \"my string\" }}",
+  },
+  {
+    name: "JsonMarshal",
+    description: "Convert a value to JSON",
+    snippet: "{{ .JsonMarshal .SnapshotStats }}",
+  },
+  {
+    name: "IsError",
+    description: "True for error events",
+    snippet: "{{ .IsError .Event }}",
+  },
+];
+
+const TemplateTextarea = ({
+  value,
+  onChange,
+  size = "sm",
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  size?: "sm" | "md" | "lg";
+}) => {
+  const ref = React.useRef<HTMLTextAreaElement>(null);
+  const [open, setOpen] = React.useState(false);
+  const [cursor, setCursor] = React.useState({ start: 0, end: 0 });
+
+  const handleSelect = () => {
+    if (!ref.current) return;
+    setCursor({
+      start: ref.current.selectionStart,
+      end: ref.current.selectionEnd,
+    });
+  };
+
+  const insert = (snippet: string) => {
+    if (!ref.current) return;
+    const { start, end } = cursor;
+    const next = value.slice(0, start) + snippet + value.slice(end);
+    onChange(next);
+    const pos = start + snippet.length;
+    setCursor({ start: pos, end: pos });
+    setTimeout(() => {
+      ref.current?.focus();
+      ref.current?.setSelectionRange(pos, pos);
+    }, 0);
+  };
+
+  return (
+    <Stack gap={2} width="full">
+      <Textarea
+        ref={ref}
+        fontFamily="monospace"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onSelect={handleSelect}
+        onClick={handleSelect}
+        onKeyUp={handleSelect}
+        onBlur={handleSelect}
+        size={size}
+      />
+      <Button
+        variant="outline"
+        borderStyle="dashed"
+        size="sm"
+        width="full"
+        onClick={() => setOpen(!open)}
+      >
+        {open ? <FiChevronUp /> : <FiChevronDown />}{" "}
+        {open
+          ? "Hide available variables and helper functions"
+          : "Show available variables and helper functions"}
+      </Button>
+      {open && (
+        <Box p={2} borderWidth="1px" borderRadius="md" bg="bg.muted">
+          <Stack gap={1}>
+            {templateSnippets.map((item) => (
+              <Flex key={item.name} align="center" gap={2}>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() => insert(item.snippet)}
+                  flexShrink={0}
+                >
+                  {item.name}
+                </Button>
+                <Text fontSize="xs" color="fg.muted">
+                  {item.description}
+                </Text>
+              </Flex>
+            ))}
+          </Stack>
+        </Box>
+      )}
+    </Stack>
+  );
+};
+
 const hookTypes: {
   name: string;
   template: HookFields;
@@ -328,10 +585,9 @@ const hookTypes: {
           <Text fontSize="sm" mt={1}>
             {m.repo_hooks_command_template_label()}
           </Text>
-          <Textarea
-            fontFamily="monospace"
+          <TemplateTextarea
             value={hook.actionShoutrrr?.template || ""}
-            onChange={(e) => updateShoutrrr("template", e.target.value)}
+            onChange={(val) => updateShoutrrr("template", val)}
             size="sm"
           />
         </Stack>
@@ -366,10 +622,9 @@ const hookTypes: {
           <Text fontSize="sm" mt={1}>
             {m.repo_hooks_command_template_label()}
           </Text>
-          <Textarea
-            fontFamily="monospace"
+          <TemplateTextarea
             value={hook.actionDiscord?.template || ""}
-            onChange={(e) => updateDiscord("template", e.target.value)}
+            onChange={(val) => updateDiscord("template", val)}
             size="sm"
           />
         </Stack>
@@ -420,10 +675,9 @@ const hookTypes: {
           <Text fontSize="sm" mt={1}>
             {m.repo_hooks_command_template_label()}
           </Text>
-          <Textarea
-            fontFamily="monospace"
+          <TemplateTextarea
             value={hook.actionGotify?.template || ""}
-            onChange={(e) => updateGotify("template", e.target.value)}
+            onChange={(val) => updateGotify("template", val)}
             size="sm"
           />
           <EnumSelector
@@ -475,10 +729,9 @@ const hookTypes: {
           <Text fontSize="sm" mt={1}>
             {m.repo_hooks_command_template_label()}
           </Text>
-          <Textarea
-            fontFamily="monospace"
+          <TemplateTextarea
             value={hook.actionSlack?.template || ""}
-            onChange={(e) => updateSlack("template", e.target.value)}
+            onChange={(val) => updateSlack("template", val)}
             size="sm"
           />
         </Stack>
@@ -513,10 +766,9 @@ const hookTypes: {
           <Text fontSize="sm" mt={1}>
             {m.repo_hooks_command_template_label()}
           </Text>
-          <Textarea
-            fontFamily="monospace"
+          <TemplateTextarea
             value={hook.actionHealthchecks?.template || ""}
-            onChange={(e) => updateHealthchecks("template", e.target.value)}
+            onChange={(val) => updateHealthchecks("template", val)}
             size="sm"
           />
         </Stack>
@@ -558,10 +810,9 @@ const hookTypes: {
           <Text fontSize="sm" mt={1}>
             {m.repo_hooks_command_template_label()}
           </Text>
-          <Textarea
-            fontFamily="monospace"
+          <TemplateTextarea
             value={hook.actionTelegram?.template || ""}
-            onChange={(e) => updateTelegram("template", e.target.value)}
+            onChange={(val) => updateTelegram("template", val)}
             size="sm"
           />
         </Stack>
