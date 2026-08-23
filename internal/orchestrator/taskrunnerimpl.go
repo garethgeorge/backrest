@@ -172,3 +172,33 @@ func (t *taskRunnerImpl) LogrefWriter() (string, io.WriteCloser, error) {
 	writer, err := t.orchestrator.logStore.Create(logID, t.op.GetId(), time.Duration(0))
 	return logID, writer, err
 }
+
+// readOnlyTaskRunner wraps a TaskRunner and blocks methods that mutate state.
+type readOnlyTaskRunner struct {
+	tasks.TaskRunner
+}
+
+var _ tasks.TaskRunner = &readOnlyTaskRunner{}
+
+func (r *readOnlyTaskRunner) CreateOperation(op ...*v1.Operation) error { return nil }
+
+func (r *readOnlyTaskRunner) UpdateOperation(op ...*v1.Operation) error { return nil }
+
+func (r *readOnlyTaskRunner) DeleteOperation(id ...int64) error { return nil }
+
+func (r *readOnlyTaskRunner) ScheduleTask(task tasks.Task, priority int) error { return nil }
+
+func (r *readOnlyTaskRunner) LogrefWriter() (string, io.WriteCloser, error) {
+	return "", &nopWriteCloser{io.Discard}, nil
+}
+
+type nopWriteCloser struct{ io.Writer }
+
+func (nopWriteCloser) Close() error { return nil }
+
+// NewReadOnlyTaskRunner returns a TaskRunner that behaves like a real task
+// runner for hook execution but does not modify state (e.g. oplog, schedule,
+// log storage). It's intended for testing hooks without side effects.
+func NewReadOnlyTaskRunner(o *Orchestrator, t tasks.Task) tasks.TaskRunner {
+	return &readOnlyTaskRunner{newTaskRunnerImpl(o, t, nil)}
+}

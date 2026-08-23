@@ -78,6 +78,9 @@ service Backrest {
   // GeneratePairingToken creates a new pairing token on the server that can be shared with clients to simplify peering.
   // The token format is "<keyid>:<secret>#<instanceid>" — an opaque string the client pastes when adding a known host.
   rpc GeneratePairingToken(GeneratePairingTokenRequest) returns (GeneratePairingTokenResponse) {}
+
+  // TestHook sends a test message using the provided hook configuration.
+  rpc TestHook(Hook) returns (google.protobuf.Empty) {}
 }
 
 // OpSelector is a message that can be used to select operations e.g. by query.

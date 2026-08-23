@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  HookSchema,
   Hook_Condition,
   Hook_ConditionSchema,
   Hook_OnErrorSchema,
@@ -18,7 +19,7 @@ import {
   useControllableState,
   SimpleGrid,
 } from "@chakra-ui/react";
-import { FiPlus, FiTrash2, FiInfo } from "react-icons/fi";
+import { FiPlus, FiTrash2, FiInfo, FiPlay } from "react-icons/fi";
 import {
   MenuTrigger,
   MenuContent,
@@ -29,6 +30,9 @@ import {
 import { Tooltip } from "../ui/tooltip";
 import { Link } from "../ui/link";
 import { EnumSelector, EnumOption } from "./EnumSelector";
+import { backrestService } from "../../api/client";
+import { alerts } from "./Alerts";
+import { fromJson } from "@bufbuild/protobuf";
 import * as m from "../../paraglide/messages";
 
 export interface HookFields {
@@ -208,6 +212,20 @@ const HookItem = ({
   onChange: (h: HookFields) => void;
 }) => {
   const typeName = findHookTypeName(hook);
+  const [testing, setTesting] = React.useState(false);
+
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      const hookProto = fromJson(HookSchema, hook as any, { ignoreUnknownFields: true });
+      await backrestService.testHook(hookProto);
+      alerts.success("Test hook sent successfully");
+    } catch (e: any) {
+      alerts.error("Test hook failed: " + e.message);
+    } finally {
+      setTesting(false);
+    }
+  };
 
   // @ts-ignore
   const handleConditionChange = (value: string | string[]) => {
@@ -224,6 +242,17 @@ const HookItem = ({
           <Text fontWeight="bold">
             {m.hooks_form_list_hook()} {index + 1}: {typeName}
           </Text>
+          <IconButton
+            size="xs"
+            variant="ghost"
+            colorPalette="blue"
+            onClick={handleTest}
+            aria-label="Test hook"
+            loading={testing}
+            data-testid="hook-test"
+          >
+            <FiPlay />
+          </IconButton>
           <IconButton
             size="xs"
             variant="ghost"

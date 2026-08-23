@@ -24,9 +24,11 @@ import (
 	"github.com/garethgeorge/backrest/internal/config"
 	"github.com/garethgeorge/backrest/internal/cryptoutil"
 	"github.com/garethgeorge/backrest/internal/env"
+	hooktypes "github.com/garethgeorge/backrest/internal/hook/types"
 	"github.com/garethgeorge/backrest/internal/logstore"
 	"github.com/garethgeorge/backrest/internal/oplog"
 	"github.com/garethgeorge/backrest/internal/orchestrator"
+	orchestratorlogging "github.com/garethgeorge/backrest/internal/orchestrator/logging"
 	"github.com/garethgeorge/backrest/internal/orchestrator/repo"
 	"github.com/garethgeorge/backrest/internal/orchestrator/tasks"
 	"github.com/garethgeorge/backrest/internal/protoutil"
@@ -881,6 +883,46 @@ func (s *BackrestHandler) GeneratePairingToken(ctx context.Context, req *connect
 	return connect.NewResponse(&v1.GeneratePairingTokenResponse{
 		Token: tokenStr,
 	}), nil
+}
+
+// TestHook sends a test message using the provided hook configuration.
+func (s *BackrestHandler) TestHook(ctx context.Context, req *connect.Request[v1.Hook]) (*connect.Response[emptypb.Empty], error) {
+	hook := req.Msg
+
+	handler, err := hooktypes.DefaultRegistry().GetHandler(hook)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown hook type: %w", err))
+	}
+
+	event := v1.Hook_CONDITION_SNAPSHOT_SUCCESS
+	if len(hook.Conditions) > 0 {
+		event = hook.Conditions[0]
+	}
+
+	vars := tasks.HookVars{
+		Task:     "test hook",
+		Event:    event,
+		Repo:     &v1.Repo{Id: "test-repo", Guid: "test-guid"},
+		Plan:     &v1.Plan{Id: "test-plan", Repo: "test-repo"},
+		CurTime:  time.Now(),
+		Duration: 0,
+	}
+
+	testTask := &tasks.GenericOneoffTask{
+		BaseTask: tasks.BaseTask{
+			TaskName: "test hook",
+			TaskType: "test",
+		},
+		Do: func(ctx context.Context, st tasks.ScheduledTask, runner tasks.TaskRunner) error { return nil },
+	}
+	runner := orchestrator.NewReadOnlyTaskRunner(s.orchestrator, testTask)
+
+	ctx = orchestratorlogging.ContextWithWriter(ctx, io.Discard)
+	if err := handler.Execute(ctx, hook, vars, runner, event); err != nil {
+		return nil, fmt.Errorf("failed to execute test hook: %w", err)
+	}
+
+	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
 // withLookupCode tags err with connect.CodeNotFound when it stems from a missing

@@ -2114,7 +2114,7 @@ const file_v1_service_proto_rawDesc = "" +
 	"\bmax_uses\x18\x03 \x01(\x05R\amaxUses\x12:\n" +
 	"\vpermissions\x18\x04 \x03(\v2\x18.v1.Multihost.PermissionR\vpermissions\"4\n" +
 	"\x1cGeneratePairingTokenResponse\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token2\x85\v\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token2\xb5\v\n" +
 	"\bBackrest\x121\n" +
 	"\tGetConfig\x12\x16.google.protobuf.Empty\x1a\n" +
 	".v1.Config\"\x00\x12%\n" +
@@ -2145,7 +2145,8 @@ const file_v1_service_proto_rawDesc = "" +
 	"\fClearHistory\x12\x17.v1.ClearHistoryRequest\x1a\x16.google.protobuf.Empty\"\x00\x12;\n" +
 	"\x10PathAutocomplete\x12\x12.types.StringValue\x1a\x11.types.StringList\"\x00\x12M\n" +
 	"\x13GetSummaryDashboard\x12\x16.google.protobuf.Empty\x1a\x1c.v1.SummaryDashboardResponse\"\x00\x12[\n" +
-	"\x14GeneratePairingToken\x12\x1f.v1.GeneratePairingTokenRequest\x1a .v1.GeneratePairingTokenResponse\"\x00B,Z*github.com/garethgeorge/backrest/gen/go/v1b\x06proto3"
+	"\x14GeneratePairingToken\x12\x1f.v1.GeneratePairingTokenRequest\x1a .v1.GeneratePairingTokenResponse\"\x00\x12.\n" +
+	"\bTestHook\x12\b.v1.Hook\x1a\x16.google.protobuf.Empty\"\x00B,Z*github.com/garethgeorge/backrest/gen/go/v1b\x06proto3"
 
 var (
 	file_v1_service_proto_rawDescOnce sync.Once
@@ -2199,11 +2200,12 @@ var file_v1_service_proto_goTypes = []any{
 	(*emptypb.Empty)(nil),                            // 34: google.protobuf.Empty
 	(*Config)(nil),                                   // 35: v1.Config
 	(*types.StringValue)(nil),                        // 36: types.StringValue
-	(*OperationEvent)(nil),                           // 37: v1.OperationEvent
-	(*OperationList)(nil),                            // 38: v1.OperationList
-	(*ResticSnapshotList)(nil),                       // 39: v1.ResticSnapshotList
-	(*types.BytesValue)(nil),                         // 40: types.BytesValue
-	(*types.StringList)(nil),                         // 41: types.StringList
+	(*Hook)(nil),                                     // 37: v1.Hook
+	(*OperationEvent)(nil),                           // 38: v1.OperationEvent
+	(*OperationList)(nil),                            // 39: v1.OperationList
+	(*ResticSnapshotList)(nil),                       // 40: v1.ResticSnapshotList
+	(*types.BytesValue)(nil),                         // 41: types.BytesValue
+	(*types.StringList)(nil),                         // 42: types.StringList
 }
 var file_v1_service_proto_depIdxs = []int32{
 	31, // 0: v1.CheckRepoExistsRequest.repo:type_name -> v1.Repo
@@ -2242,30 +2244,32 @@ var file_v1_service_proto_depIdxs = []int32{
 	36, // 33: v1.Backrest.PathAutocomplete:input_type -> types.StringValue
 	34, // 34: v1.Backrest.GetSummaryDashboard:input_type -> google.protobuf.Empty
 	25, // 35: v1.Backrest.GeneratePairingToken:input_type -> v1.GeneratePairingTokenRequest
-	35, // 36: v1.Backrest.GetConfig:output_type -> v1.Config
-	35, // 37: v1.Backrest.SetConfig:output_type -> v1.Config
-	5,  // 38: v1.Backrest.SetupSftp:output_type -> v1.SetupSftpResponse
-	7,  // 39: v1.Backrest.CheckRepoExists:output_type -> v1.CheckRepoExistsResponse
-	35, // 40: v1.Backrest.AddRepo:output_type -> v1.Config
-	35, // 41: v1.Backrest.RemoveRepo:output_type -> v1.Config
-	37, // 42: v1.Backrest.GetOperationEvents:output_type -> v1.OperationEvent
-	38, // 43: v1.Backrest.GetOperations:output_type -> v1.OperationList
-	39, // 44: v1.Backrest.ListSnapshots:output_type -> v1.ResticSnapshotList
-	16, // 45: v1.Backrest.ListSnapshotFiles:output_type -> v1.ListSnapshotFilesResponse
-	34, // 46: v1.Backrest.Backup:output_type -> google.protobuf.Empty
-	2,  // 47: v1.Backrest.DoRepoTask:output_type -> v1.ScheduleTaskResponse
-	2,  // 48: v1.Backrest.Forget:output_type -> v1.ScheduleTaskResponse
-	2,  // 49: v1.Backrest.Restore:output_type -> v1.ScheduleTaskResponse
-	34, // 50: v1.Backrest.Cancel:output_type -> google.protobuf.Empty
-	40, // 51: v1.Backrest.GetLogs:output_type -> types.BytesValue
-	21, // 52: v1.Backrest.RunCommand:output_type -> v1.RunCommandResponse
-	36, // 53: v1.Backrest.GetDownloadURL:output_type -> types.StringValue
-	34, // 54: v1.Backrest.ClearHistory:output_type -> google.protobuf.Empty
-	41, // 55: v1.Backrest.PathAutocomplete:output_type -> types.StringList
-	24, // 56: v1.Backrest.GetSummaryDashboard:output_type -> v1.SummaryDashboardResponse
-	26, // 57: v1.Backrest.GeneratePairingToken:output_type -> v1.GeneratePairingTokenResponse
-	36, // [36:58] is the sub-list for method output_type
-	14, // [14:36] is the sub-list for method input_type
+	37, // 36: v1.Backrest.TestHook:input_type -> v1.Hook
+	35, // 37: v1.Backrest.GetConfig:output_type -> v1.Config
+	35, // 38: v1.Backrest.SetConfig:output_type -> v1.Config
+	5,  // 39: v1.Backrest.SetupSftp:output_type -> v1.SetupSftpResponse
+	7,  // 40: v1.Backrest.CheckRepoExists:output_type -> v1.CheckRepoExistsResponse
+	35, // 41: v1.Backrest.AddRepo:output_type -> v1.Config
+	35, // 42: v1.Backrest.RemoveRepo:output_type -> v1.Config
+	38, // 43: v1.Backrest.GetOperationEvents:output_type -> v1.OperationEvent
+	39, // 44: v1.Backrest.GetOperations:output_type -> v1.OperationList
+	40, // 45: v1.Backrest.ListSnapshots:output_type -> v1.ResticSnapshotList
+	16, // 46: v1.Backrest.ListSnapshotFiles:output_type -> v1.ListSnapshotFilesResponse
+	34, // 47: v1.Backrest.Backup:output_type -> google.protobuf.Empty
+	2,  // 48: v1.Backrest.DoRepoTask:output_type -> v1.ScheduleTaskResponse
+	2,  // 49: v1.Backrest.Forget:output_type -> v1.ScheduleTaskResponse
+	2,  // 50: v1.Backrest.Restore:output_type -> v1.ScheduleTaskResponse
+	34, // 51: v1.Backrest.Cancel:output_type -> google.protobuf.Empty
+	41, // 52: v1.Backrest.GetLogs:output_type -> types.BytesValue
+	21, // 53: v1.Backrest.RunCommand:output_type -> v1.RunCommandResponse
+	36, // 54: v1.Backrest.GetDownloadURL:output_type -> types.StringValue
+	34, // 55: v1.Backrest.ClearHistory:output_type -> google.protobuf.Empty
+	42, // 56: v1.Backrest.PathAutocomplete:output_type -> types.StringList
+	24, // 57: v1.Backrest.GetSummaryDashboard:output_type -> v1.SummaryDashboardResponse
+	26, // 58: v1.Backrest.GeneratePairingToken:output_type -> v1.GeneratePairingTokenResponse
+	34, // 59: v1.Backrest.TestHook:output_type -> google.protobuf.Empty
+	37, // [37:60] is the sub-list for method output_type
+	14, // [14:37] is the sub-list for method input_type
 	14, // [14:14] is the sub-list for extension type_name
 	14, // [14:14] is the sub-list for extension extendee
 	0,  // [0:14] is the sub-list for field type_name

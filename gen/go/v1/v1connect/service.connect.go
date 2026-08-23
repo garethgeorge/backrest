@@ -85,6 +85,8 @@ const (
 	// BackrestGeneratePairingTokenProcedure is the fully-qualified name of the Backrest's
 	// GeneratePairingToken RPC.
 	BackrestGeneratePairingTokenProcedure = "/v1.Backrest/GeneratePairingToken"
+	// BackrestTestHookProcedure is the fully-qualified name of the Backrest's TestHook RPC.
+	BackrestTestHookProcedure = "/v1.Backrest/TestHook"
 )
 
 // BackrestClient is a client for the v1.Backrest service.
@@ -124,6 +126,8 @@ type BackrestClient interface {
 	// GeneratePairingToken creates a new pairing token on the server that can be shared with clients to simplify peering.
 	// The token format is "<keyid>:<secret>#<instanceid>" — an opaque string the client pastes when adding a known host.
 	GeneratePairingToken(context.Context, *connect.Request[v1.GeneratePairingTokenRequest]) (*connect.Response[v1.GeneratePairingTokenResponse], error)
+	// TestHook sends a test message using the provided hook configuration.
+	TestHook(context.Context, *connect.Request[v1.Hook]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewBackrestClient constructs a client for the v1.Backrest service. By default, it uses the
@@ -269,6 +273,12 @@ func NewBackrestClient(httpClient connect.HTTPClient, baseURL string, opts ...co
 			connect.WithSchema(backrestMethods.ByName("GeneratePairingToken")),
 			connect.WithClientOptions(opts...),
 		),
+		testHook: connect.NewClient[v1.Hook, emptypb.Empty](
+			httpClient,
+			baseURL+BackrestTestHookProcedure,
+			connect.WithSchema(backrestMethods.ByName("TestHook")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -296,6 +306,7 @@ type backrestClient struct {
 	pathAutocomplete     *connect.Client[types.StringValue, types.StringList]
 	getSummaryDashboard  *connect.Client[emptypb.Empty, v1.SummaryDashboardResponse]
 	generatePairingToken *connect.Client[v1.GeneratePairingTokenRequest, v1.GeneratePairingTokenResponse]
+	testHook             *connect.Client[v1.Hook, emptypb.Empty]
 }
 
 // GetConfig calls v1.Backrest.GetConfig.
@@ -408,6 +419,11 @@ func (c *backrestClient) GeneratePairingToken(ctx context.Context, req *connect.
 	return c.generatePairingToken.CallUnary(ctx, req)
 }
 
+// TestHook calls v1.Backrest.TestHook.
+func (c *backrestClient) TestHook(ctx context.Context, req *connect.Request[v1.Hook]) (*connect.Response[emptypb.Empty], error) {
+	return c.testHook.CallUnary(ctx, req)
+}
+
 // BackrestHandler is an implementation of the v1.Backrest service.
 type BackrestHandler interface {
 	GetConfig(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.Config], error)
@@ -445,6 +461,8 @@ type BackrestHandler interface {
 	// GeneratePairingToken creates a new pairing token on the server that can be shared with clients to simplify peering.
 	// The token format is "<keyid>:<secret>#<instanceid>" — an opaque string the client pastes when adding a known host.
 	GeneratePairingToken(context.Context, *connect.Request[v1.GeneratePairingTokenRequest]) (*connect.Response[v1.GeneratePairingTokenResponse], error)
+	// TestHook sends a test message using the provided hook configuration.
+	TestHook(context.Context, *connect.Request[v1.Hook]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewBackrestHandler builds an HTTP handler from the service implementation. It returns the path on
@@ -586,6 +604,12 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 		connect.WithSchema(backrestMethods.ByName("GeneratePairingToken")),
 		connect.WithHandlerOptions(opts...),
 	)
+	backrestTestHookHandler := connect.NewUnaryHandler(
+		BackrestTestHookProcedure,
+		svc.TestHook,
+		connect.WithSchema(backrestMethods.ByName("TestHook")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/v1.Backrest/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case BackrestGetConfigProcedure:
@@ -632,6 +656,8 @@ func NewBackrestHandler(svc BackrestHandler, opts ...connect.HandlerOption) (str
 			backrestGetSummaryDashboardHandler.ServeHTTP(w, r)
 		case BackrestGeneratePairingTokenProcedure:
 			backrestGeneratePairingTokenHandler.ServeHTTP(w, r)
+		case BackrestTestHookProcedure:
+			backrestTestHookHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -727,4 +753,8 @@ func (UnimplementedBackrestHandler) GetSummaryDashboard(context.Context, *connec
 
 func (UnimplementedBackrestHandler) GeneratePairingToken(context.Context, *connect.Request[v1.GeneratePairingTokenRequest]) (*connect.Response[v1.GeneratePairingTokenResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.GeneratePairingToken is not implemented"))
+}
+
+func (UnimplementedBackrestHandler) TestHook(context.Context, *connect.Request[v1.Hook]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("v1.Backrest.TestHook is not implemented"))
 }
