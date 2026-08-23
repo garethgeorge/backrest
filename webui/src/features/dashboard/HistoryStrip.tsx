@@ -18,7 +18,7 @@ type CellKind =
   | "err"
   | "other";
 
-interface DayCell {
+export interface DayCell {
   kind: CellKind;
   label: string; // local date label for the tooltip
   isToday: boolean;
@@ -239,8 +239,10 @@ const DayTooltip = ({ cell }: { cell: DayCell }) => {
 
 export const HistoryStrip = ({
   buckets,
+  onCellClick,
 }: {
   buckets: SummaryDashboardResponse_DayStatusBucket[];
+  onCellClick?: (cell: DayCell) => void;
 }) => {
   const cells = toCells(buckets);
 
@@ -271,10 +273,20 @@ export const HistoryStrip = ({
                 borderRadius="3px"
                 bg={style.bg}
                 opacity={style.dim ? 0.35 : 1}
-                cursor="default"
+                cursor={onCellClick ? "pointer" : "default"}
+                onClick={() => onCellClick?.(c)}
                 boxShadow={
                   c.isToday
                     ? "0 0 0 2px var(--chakra-colors-bg-canvas), 0 0 0 3.5px var(--chakra-colors-fg-muted)"
+                    : undefined
+                }
+                _hover={
+                  onCellClick
+                    ? {
+                        outline: "2px solid",
+                        outlineColor: "fg.muted",
+                        outlineOffset: "1px",
+                      }
                     : undefined
                 }
               />

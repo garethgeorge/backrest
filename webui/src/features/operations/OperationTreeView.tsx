@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Flex,
@@ -88,9 +88,13 @@ interface OpTreeNode {
 export const OperationTreeView = ({
   req,
   isPlanView,
+  selectedFlowId,
+  selectPending,
 }: React.PropsWithoutRef<{
   req: GetOperationsRequest;
   isPlanView?: boolean;
+  selectedFlowId?: string;
+  selectPending?: boolean;
 }>) => {
   const config = useConfig()[0];
   const setScreenWidth = useState(window.innerWidth)[1];
@@ -198,6 +202,8 @@ export const OperationTreeView = ({
       <DisplayOperationTree
         operations={instanceBackups}
         isPlanView={isPlanView}
+        initialSelectedFlowId={selectedFlowId}
+        selectPending={selectPending}
         onSelect={(flow) => {
           if (flow) {
             setSelectedBackupId(flow.flowID);
@@ -289,15 +295,25 @@ const DisplayOperationTree = React.memo(
     operations,
     isPlanView,
     onSelect,
+    initialSelectedFlowId,
+    selectPending,
   }: {
     operations: FlowDisplayInfo[];
     isPlanView?: boolean;
     onSelect?: (flow: FlowDisplayInfo | null) => any;
+    initialSelectedFlowId?: string;
+    selectPending?: boolean;
   }) => {
     const [treeCollection, setTreeCollection] =
       useState<TreeCollection<OpTreeNode> | null>(null);
     const [expandedValue, setExpandedValue] = useState<string[]>([]);
     const [selectedValue, setSelectedValue] = useState<string[]>([]);
+
+    const onSelectRef = useRef(onSelect);
+    useEffect(() => {
+      onSelectRef.current = onSelect;
+    });
+    const lastAppliedSelection = useRef<string | undefined>(undefined);
 
     const buildTreeData = () => {
       const leafGroupFn = (op: FlowDisplayInfo) => op.flowID.toString(16);
@@ -451,6 +467,56 @@ const DisplayOperationTree = React.memo(
 
       setExpandedValue(Array.from([...expandedValue, ...toExpand]));
     }, [operations, isPlanView]);
+
+    useEffect(() => {
+      const selectionKey =
+        initialSelectedFlowId ?? (selectPending ? "PENDING" : undefined);
+      if (!selectionKey || !treeCollection) return;
+      // Only apply an initial selection once. The treeCollection is rebuilt as
+      // new operation data arrives, but we don't want to reset the user's
+      // manual selection each time.
+      if (lastAppliedSelection.current === selectionKey) {
+        return;
+      }
+
+      const matches = (n: OpTreeNode): boolean => {
+        if (initialSelectedFlowId) {
+          return (
+            n.backup?.flowID.toString() === initialSelectedFlowId
+          );
+        }
+        if (selectPending) {
+          return n.backup?.status === OperationStatus.STATUS_PENDING;
+        }
+        return false;
+      };
+
+      const find = (
+        nodes: OpTreeNode[],
+        path: string[],
+      ): { node: OpTreeNode; path: string[] } | undefined => {
+        for (const n of nodes) {
+          if (matches(n)) {
+            return { node: n, path };
+          }
+          if (n.children) {
+            const found = find(n.children, [...path, n.id]);
+            if (found) return found;
+          }
+        }
+      };
+
+      const result = find(treeCollection.rootNode.children ?? [], []);
+      if (!result) return;
+
+      const { node, path } = result;
+      setSelectedValue([node.id]);
+      setExpandedValue((prev) =>
+        Array.from(new Set([...prev, ...path, node.id])),
+      );
+      onSelectRef.current?.(node.backup!);
+      lastAppliedSelection.current = selectionKey;
+    }, [initialSelectedFlowId, selectPending, treeCollection]);
 
     const renderNode = useCallback(
       ({ node, nodeState }: { node: OpTreeNode; nodeState: any }) =>

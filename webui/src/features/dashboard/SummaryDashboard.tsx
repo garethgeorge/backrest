@@ -21,8 +21,10 @@ import {
   GetOperationsRequestSchema,
   OpSelectorSchema,
   SummaryDashboardResponse,
+  SummaryDashboardResponse_BackupChart,
   SummaryDashboardResponse_Summary,
 } from "../../../gen/ts/v1/service_pb";
+import { DayCell } from "./HistoryStrip";
 import { PeerState } from "../../../gen/ts/v1sync/syncservice_pb";
 import { create } from "@bufbuild/protobuf";
 import { backrestService } from "../../api/client";
@@ -187,6 +189,24 @@ function summaryStatus(
     latestStatus === OperationStatus.STATUS_PENDING;
   const state = planState(latestStatus, running);
   return { latestTs, running, state, color: STATE_COLORS[state] };
+}
+
+const DAY_MS = 86_400_000;
+
+function flowIdForDay(
+  chart: SummaryDashboardResponse_BackupChart | undefined,
+  dayTimestampMs: bigint,
+): bigint | undefined {
+  if (!chart || dayTimestampMs === 0n) return undefined;
+  const start = dayTimestampMs;
+  const end = start + BigInt(DAY_MS);
+  for (let i = 0; i < chart.flowId.length; i++) {
+    const ts = chart.timestampMs[i];
+    if (ts >= start && ts < end) {
+      return chart.flowId[i];
+    }
+  }
+  return undefined;
 }
 
 // ─── Progress bar (animated shimmer) ─────────────────────────────────────────
@@ -390,8 +410,21 @@ const useLiveProgress = (
 
 // ─── Shared card building blocks ─────────────────────────────────────────────
 
-const CardTitle = ({ children }: { children: React.ReactNode }) => (
-  <Text fontSize="16px" fontWeight="640" letterSpacing="-0.01em">
+const CardTitle = ({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+}) => (
+  <Text
+    fontSize="16px"
+    fontWeight="640"
+    letterSpacing="-0.01em"
+    cursor={onClick ? "pointer" : undefined}
+    _hover={onClick ? { textDecoration: "underline" } : undefined}
+    onClick={onClick}
+  >
     {children}
   </Text>
 );
@@ -413,7 +446,13 @@ const StatusDot = ({ color, pulsing }: { color: string; pulsing?: boolean }) =>
   );
 
 // Large colored state label with a muted "X ago" beside it.
-const StatusLine = ({ status }: { status: SummaryStatus }) => (
+const StatusLine = ({
+  status,
+  onClickTime,
+}: {
+  status: SummaryStatus;
+  onClickTime?: () => void;
+}) => (
   <Flex align="baseline" gap={2} mt={4} mb={1}>
     <Text
       fontSize="20px"
@@ -424,7 +463,13 @@ const StatusLine = ({ status }: { status: SummaryStatus }) => (
       {STATE_LABEL[status.state]()}
     </Text>
     {status.latestTs > 0 && !status.running && (
-      <Text fontSize="13px" color="fg.muted">
+      <Text
+        fontSize="13px"
+        color="fg.muted"
+        cursor={onClickTime ? "pointer" : undefined}
+        _hover={onClickTime ? { textDecoration: "underline" } : undefined}
+        onClick={onClickTime}
+      >
         {agoText(status.latestTs)}
       </Text>
     )}
@@ -435,13 +480,22 @@ const StatusLine = ({ status }: { status: SummaryStatus }) => (
 const MetaItem = ({
   label,
   children,
+  onClick,
 }: {
   label: string;
   children: React.ReactNode;
+  onClick?: () => void;
 }) => (
   <Box fontSize="12.5px" color="fg.muted">
     {label}{" "}
-    <Text as="span" fontWeight="600" color="fg.default">
+    <Text
+      as="span"
+      fontWeight="600"
+      color="fg.default"
+      cursor={onClick ? "pointer" : undefined}
+      _hover={onClick ? { textDecoration: "underline" } : undefined}
+      onClick={onClick}
+    >
       {children}
     </Text>
   </Box>
@@ -454,6 +508,7 @@ const PlanCard = ({
 }: {
   summary: SummaryDashboardResponse_Summary;
 }) => {
+  const navigate = useNavigate();
   const [config] = useConfig();
   const status = summaryStatus(summary);
   const { running } = status;
@@ -474,6 +529,7 @@ const PlanCard = ({
   const nextMs = Number(summary.nextBackupTimeMs ?? 0);
   const protectedBytes = Number(summary.protectedBytes);
   const lastUploadBytes = Number(summary.recentBackups?.bytesAdded[0] ?? 0);
+  const lastFlowId = summary.recentBackups?.flowId[0]?.toString();
 
   let retLine: string | null = null;
   if (planCfg?.retention?.policy.case === "policyTimeBucketed") {
@@ -491,7 +547,11 @@ const PlanCard = ({
         {/* Title row */}
         <Flex justify="space-between" align="flex-start" gap={3}>
           <Box>
-            <CardTitle>{prettyPlanId(summary.id)}</CardTitle>
+            <CardTitle
+              onClick={() => navigate(`/plan/${summary.id}`)}
+            >
+              {prettyPlanId(summary.id)}
+            </CardTitle>
             {schedLine && (
               <Text fontSize="12.5px" color="fg.muted" mt="2px">
                 {schedLine}
@@ -503,7 +563,16 @@ const PlanCard = ({
           </Box>
         </Flex>
 
-        <StatusLine status={status} />
+        <StatusLine
+          status={status}
+          onClickTime={() =>
+            navigate(
+              lastFlowId
+                ? `/plan/${summary.id}?flowId=${lastFlowId}`
+                : `/plan/${summary.id}`,
+            )
+          }
+        />
 
         {/* Progress bar when running */}
         {running && (
@@ -527,12 +596,20 @@ const PlanCard = ({
         {!running && (
           <Flex flexWrap="wrap" gap="4px 18px" mt={3}>
             {nextMs > 0 && (
-              <MetaItem label={m.dashboard_card_next_run()}>
+              <MetaItem
+                label={m.dashboard_card_next_run()}
+                onClick={() =>
+                  navigate(`/plan/${summary.id}?select=pending`)
+                }
+              >
                 {untilText(nextMs) ?? m.dashboard_time_soon()}
               </MetaItem>
             )}
             {destLabel && (
-              <MetaItem label={m.dashboard_card_destination()}>
+              <MetaItem
+                label={m.dashboard_card_destination()}
+                onClick={() => navigate(`/repo/${destLabel}`)}
+              >
                 {destLabel}
               </MetaItem>
             )}
@@ -550,7 +627,22 @@ const PlanCard = ({
         )}
 
         {/* 30-day history strip */}
-        <HistoryStrip buckets={summary.historyLast30days} />
+        <HistoryStrip
+          buckets={summary.historyLast30days}
+          onCellClick={(cell: DayCell) => {
+            const flowId =
+              cell.bucket &&
+              flowIdForDay(
+                summary.recentBackups,
+                cell.bucket.timestampMs,
+              )?.toString();
+            navigate(
+              flowId
+                ? `/plan/${summary.id}?flowId=${flowId}`
+                : `/plan/${summary.id}`,
+            );
+          }}
+        />
 
         {/* Retention footer */}
         {retLine && (
@@ -577,7 +669,9 @@ const RepoCard = ({
 }: {
   summary: SummaryDashboardResponse_Summary;
 }) => {
+  const navigate = useNavigate();
   const status = summaryStatus(summary);
+  const lastFlowId = summary.recentBackups?.flowId[0]?.toString();
   const protectedBytes = Number(summary.protectedBytes);
   const bytesAdded30d = Number(summary.bytesAddedLast30days);
 
@@ -585,13 +679,24 @@ const RepoCard = ({
     <Card.Root borderRadius="2xl" shadow="sm">
       <Card.Body px={5} py={5}>
         <Flex justify="space-between" align="flex-start" gap={3}>
-          <CardTitle>{summary.id}</CardTitle>
+          <CardTitle onClick={() => navigate(`/repo/${summary.id}`)}>
+            {summary.id}
+          </CardTitle>
           <Box mt="6px" flexShrink={0}>
             <StatusDot color={status.color} />
           </Box>
         </Flex>
 
-        <StatusLine status={status} />
+        <StatusLine
+          status={status}
+          onClickTime={() =>
+            navigate(
+              lastFlowId
+                ? `/repo/${summary.id}?flowId=${lastFlowId}`
+                : `/repo/${summary.id}`,
+            )
+          }
+        />
 
         <Flex flexWrap="wrap" gap="4px 18px" mt={3}>
           <Box fontSize="12.5px" color="fg.muted">
@@ -624,7 +729,22 @@ const RepoCard = ({
         </Flex>
 
         {/* 30-day history strip */}
-        <HistoryStrip buckets={summary.historyLast30days} />
+        <HistoryStrip
+          buckets={summary.historyLast30days}
+          onCellClick={(cell: DayCell) => {
+            const flowId =
+              cell.bucket &&
+              flowIdForDay(
+                summary.recentBackups,
+                cell.bucket.timestampMs,
+              )?.toString();
+            navigate(
+              flowId
+                ? `/repo/${summary.id}?flowId=${flowId}`
+                : `/repo/${summary.id}`,
+            );
+          }}
+        />
       </Card.Body>
     </Card.Root>
   );

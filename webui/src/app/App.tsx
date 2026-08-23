@@ -72,6 +72,7 @@ import {
   Routes,
   useNavigate,
   useParams,
+  useSearchParams,
   useLocation,
 } from "react-router";
 import { MainContentAreaTemplate } from "../components/layout/MainContentArea";
@@ -126,6 +127,7 @@ const SelectorView = React.lazy(() =>
 // Wrappers for consistent views with breadcrumbs and error handling
 const RepoViewContainer = () => {
   const { repoId } = useParams();
+  const [searchParams] = useSearchParams();
   const [config, setConfig] = useConfig();
 
   if (!config) {
@@ -175,7 +177,10 @@ const RepoViewContainer = () => {
               })()}
             </Box>
           )}
-          <RepoView repo={repo} />
+          <RepoView
+            repo={repo}
+            selectedFlowId={searchParams.get("flowId") || undefined}
+          />
         </>
       ) : (
         <EmptyState title={m.app_repo_not_found({ repoId: repoId || "" })} />
@@ -255,6 +260,7 @@ const RemotePlanViewContainer = () => {
 
 const PlanViewContainer = () => {
   const { planId } = useParams();
+  const [searchParams] = useSearchParams();
   const [config, setConfig] = useConfig();
 
   if (!config) {
@@ -272,7 +278,11 @@ const PlanViewContainer = () => {
       key={planId}
     >
       {plan ? (
-        <PlanView plan={plan} />
+        <PlanView
+          plan={plan}
+          selectedFlowId={searchParams.get("flowId") || undefined}
+          selectPending={searchParams.get("select") === "pending"}
+        />
       ) : (
         <EmptyState title={m.app_plan_not_found({ planId: planId || "" })} />
       )}

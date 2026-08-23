@@ -35,7 +35,15 @@ import { OperationListView } from "../operations/OperationListView";
 import { OperationTreeView } from "../operations/OperationTreeView";
 import * as m from "../../paraglide/messages";
 
-export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
+export const PlanView = ({
+  plan,
+  selectedFlowId,
+  selectPending,
+}: React.PropsWithChildren<{
+  plan: Plan;
+  selectedFlowId?: string;
+  selectPending?: boolean;
+}>) => {
   const [config, _] = useConfig();
   const showModal = useShowModal();
   const repo = config?.repos.find((r) => r.id === plan.repo);
@@ -174,6 +182,8 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
               lastN: BigInt(MAX_OPERATION_HISTORY),
             })}
             isPlanView={true}
+            selectedFlowId={selectedFlowId}
+            selectPending={selectPending}
           />
         </TabsContent>
 

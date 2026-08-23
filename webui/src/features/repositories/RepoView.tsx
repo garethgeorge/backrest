@@ -42,7 +42,8 @@ const StatsPanel = React.lazy(() => import("../dashboard/StatsPanel"));
 
 export const RepoView = ({
   repo,
-}: React.PropsWithChildren<{ repo: RepoProps }>) => {
+  selectedFlowId,
+}: React.PropsWithChildren<{ repo: RepoProps; selectedFlowId?: string }>) => {
   const [config, _] = useConfig();
   const showModal = useShowModal();
 
@@ -215,6 +216,7 @@ export const RepoView = ({
               },
               lastN: BigInt(MAX_OPERATION_HISTORY),
             })}
+            selectedFlowId={selectedFlowId}
           />
         </TabsContent>
 
