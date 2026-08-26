@@ -97,6 +97,7 @@ The service runs as your user by default (so config and data live under your `$H
 
 ```sh
 brew tap garethgeorge/homebrew-backrest-tap
+brew trust garethgeorge/backrest-tap
 brew install backrest
 brew services start backrest
 ```
