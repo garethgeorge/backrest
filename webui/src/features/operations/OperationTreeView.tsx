@@ -88,9 +88,11 @@ interface OpTreeNode {
 export const OperationTreeView = ({
   req,
   isPlanView,
+  filter,
 }: React.PropsWithoutRef<{
   req: GetOperationsRequest;
   isPlanView?: boolean;
+  filter?: (op: FlowDisplayInfo) => boolean;
 }>) => {
   const config = useConfig()[0];
   const setScreenWidth = useState(window.innerWidth)[1];
@@ -185,7 +187,27 @@ export const OperationTreeView = ({
 
   const useMobileLayout = isMobile();
 
-  const backupsByInstance = groupBy(backups, (b) => {
+  const visibleBackups = filter ? backups.filter(filter) : backups;
+
+  if (visibleBackups.length === 0) {
+    return (
+      <EmptyState.Root>
+        <EmptyState.Content>
+          <EmptyState.Indicator>
+            <LuInfo />
+          </EmptyState.Indicator>
+          <VStack textAlign="center">
+            <EmptyState.Title>{m.operation_tree_view_no_operations_found()}</EmptyState.Title>
+            <EmptyState.Description>
+              {m.operation_tree_view_there_are_no_operations_to_display()}
+            </EmptyState.Description>
+          </VStack>
+        </EmptyState.Content>
+      </EmptyState.Root>
+    );
+  }
+
+  const backupsByInstance = groupBy(visibleBackups, (b) => {
     return b.instanceID;
   });
 

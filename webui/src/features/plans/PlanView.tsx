@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Plan } from "../../../gen/ts/v1/config_pb";
 import { Button } from "../../components/ui/button";
 import { Flex, Heading, Text, Box, Group, IconButton } from "@chakra-ui/react";
@@ -33,12 +33,66 @@ import { create } from "@bufbuild/protobuf";
 import { useConfig } from "../../app/provider";
 import { OperationListView } from "../operations/OperationListView";
 import { OperationTreeView } from "../operations/OperationTreeView";
+import {
+  DisplayType,
+  FlowDisplayInfo,
+  getTypeForDisplay,
+} from "../../api/flowDisplayAggregator";
+import { Operation } from "../../../gen/ts/v1/operations_pb";
+import { OperationFilter } from "../operations/OperationFilter";
 import * as m from "../../paraglide/messages";
+
+const FILTER_TYPES = [
+  DisplayType.BACKUP,
+  DisplayType.BACKUP_DRYRUN,
+  DisplayType.SNAPSHOT,
+  DisplayType.FORGET,
+  DisplayType.PRUNE,
+  DisplayType.CHECK,
+  DisplayType.RESTORE,
+  DisplayType.STATS,
+  DisplayType.RUNHOOK,
+  DisplayType.RUNCOMMAND,
+];
 
 export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
   const [config, _] = useConfig();
   const showModal = useShowModal();
   const repo = config?.repos.find((r) => r.id === plan.repo);
+
+  const [activeTypes, setActiveTypes] = useState<Set<DisplayType>>(
+    new Set(FILTER_TYPES),
+  );
+
+  const toggleType = (type: DisplayType) => {
+    setActiveTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setActiveTypes(new Set(FILTER_TYPES));
+  };
+
+  const selectNone = () => {
+    setActiveTypes(new Set());
+  };
+
+  const treeFilter = useCallback(
+    (flow: FlowDisplayInfo) => activeTypes.has(flow.type),
+    [activeTypes],
+  );
+
+  const listFilter = useCallback(
+    (op: Operation) => activeTypes.has(getTypeForDisplay(op)),
+    [activeTypes],
+  );
 
   const handleBackupNow = async () => {
     try {
@@ -164,6 +218,15 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
         </TabsList>
 
         <TabsContent value="tree">
+          <Box mb={2}>
+            <OperationFilter
+              types={FILTER_TYPES}
+              activeTypes={activeTypes}
+              onToggle={toggleType}
+              onSelectAll={selectAll}
+              onSelectNone={selectNone}
+            />
+          </Box>
           <OperationTreeView
             req={create(GetOperationsRequestSchema, {
               selector: {
@@ -174,13 +237,21 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
               lastN: BigInt(MAX_OPERATION_HISTORY),
             })}
             isPlanView={true}
+            filter={treeFilter}
           />
         </TabsContent>
 
         <TabsContent value="list">
-          <Heading size="md" mb={4}>
-            {m.repo_history_title()}
-          </Heading>
+          <Flex mb={4} align="center" justify="space-between" wrap="wrap">
+            <Heading size="md">{m.repo_history_title()}</Heading>
+            <OperationFilter
+              types={FILTER_TYPES}
+              activeTypes={activeTypes}
+              onToggle={toggleType}
+              onSelectAll={selectAll}
+              onSelectNone={selectNone}
+            />
+          </Flex>
           <OperationListView
             req={create(GetOperationsRequestSchema, {
               selector: {
@@ -190,6 +261,7 @@ export const PlanView = ({ plan }: React.PropsWithChildren<{ plan: Plan }>) => {
               },
               lastN: BigInt(MAX_OPERATION_HISTORY),
             })}
+            filter={listFilter}
             showDelete={true}
           />
         </TabsContent>

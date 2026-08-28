@@ -1,4 +1,4 @@
-import React, { Suspense, useContext, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useContext, useEffect, useState } from "react";
 import { Repo } from "../../../gen/ts/v1/config_pb";
 import { Button } from "../../components/ui/button";
 import { Flex, Heading, Box, Group, IconButton } from "@chakra-ui/react";
@@ -37,14 +37,68 @@ import { useShowModal } from "../../components/common/ModalManager";
 import { create } from "@bufbuild/protobuf";
 import { RepoProps } from "../../state/peerStates";
 import * as m from "../../paraglide/messages";
+import {
+  DisplayType,
+  FlowDisplayInfo,
+  getTypeForDisplay,
+} from "../../api/flowDisplayAggregator";
+import { Operation } from "../../../gen/ts/v1/operations_pb";
+import { OperationFilter } from "../operations/OperationFilter";
 
 const StatsPanel = React.lazy(() => import("../dashboard/StatsPanel"));
+
+const FILTER_TYPES = [
+  DisplayType.BACKUP,
+  DisplayType.BACKUP_DRYRUN,
+  DisplayType.SNAPSHOT,
+  DisplayType.FORGET,
+  DisplayType.PRUNE,
+  DisplayType.CHECK,
+  DisplayType.RESTORE,
+  DisplayType.STATS,
+  DisplayType.RUNHOOK,
+  DisplayType.RUNCOMMAND,
+];
 
 export const RepoView = ({
   repo,
 }: React.PropsWithChildren<{ repo: RepoProps }>) => {
   const [config, _] = useConfig();
   const showModal = useShowModal();
+
+  const [activeTypes, setActiveTypes] = useState<Set<DisplayType>>(
+    new Set(FILTER_TYPES),
+  );
+
+  const toggleType = (type: DisplayType) => {
+    setActiveTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setActiveTypes(new Set(FILTER_TYPES));
+  };
+
+  const selectNone = () => {
+    setActiveTypes(new Set());
+  };
+
+  const treeFilter = useCallback(
+    (flow: FlowDisplayInfo) => activeTypes.has(flow.type),
+    [activeTypes],
+  );
+
+  const listFilter = useCallback(
+    (op: Operation) => activeTypes.has(getTypeForDisplay(op)),
+    [activeTypes],
+  );
 
   // Task handlers
   const handleIndexNow = async () => {
@@ -208,6 +262,15 @@ export const RepoView = ({
         </TabsList>
 
         <TabsContent value="tree">
+          <Box mb={2}>
+            <OperationFilter
+              types={FILTER_TYPES}
+              activeTypes={activeTypes}
+              onToggle={toggleType}
+              onSelectAll={selectAll}
+              onSelectNone={selectNone}
+            />
+          </Box>
           <OperationTreeView
             req={create(GetOperationsRequestSchema, {
               selector: {
@@ -215,13 +278,21 @@ export const RepoView = ({
               },
               lastN: BigInt(MAX_OPERATION_HISTORY),
             })}
+            filter={treeFilter}
           />
         </TabsContent>
 
         <TabsContent value="list">
-          <Heading size="md" mb={4}>
-            {m.repo_history_title()}
-          </Heading>
+          <Flex mb={4} align="center" justify="space-between" wrap="wrap">
+            <Heading size="md">{m.repo_history_title()}</Heading>
+            <OperationFilter
+              types={FILTER_TYPES}
+              activeTypes={activeTypes}
+              onToggle={toggleType}
+              onSelectAll={selectAll}
+              onSelectNone={selectNone}
+            />
+          </Flex>
           <OperationListView
             req={create(GetOperationsRequestSchema, {
               selector: {
@@ -229,6 +300,7 @@ export const RepoView = ({
               },
               lastN: BigInt(MAX_OPERATION_HISTORY),
             })}
+            filter={listFilter}
             showPlan={true}
             showDelete={true}
           />

@@ -65,7 +65,11 @@ export const OperationListView = ({
         setLoading(false);
       },
     );
-  }, [req ? toJsonString(GetOperationsRequestSchema, req) : ""]);
+  }, [req ? toJsonString(GetOperationsRequestSchema, req) : "", filter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, req ? toJsonString(GetOperationsRequestSchema, req) : ""]);
 
   const hookExecutionsForOperation: Map<bigint, Operation[]> = new Map();
   let operationsForDisplay: Operation[] = [];
