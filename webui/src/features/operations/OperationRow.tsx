@@ -46,6 +46,9 @@ import {
 import {
   CancelOperationRequestSchema,
   ClearHistoryRequestSchema,
+  DiffChange,
+  DiffEntry,
+  DiffSnapshotRequestSchema,
 } from "../../../gen/ts/v1/service_pb";
 import { backrestService } from "../../api/client";
 import { useShowModal } from "../../components/common/ModalManager";
@@ -298,7 +301,12 @@ export const OperationRow = ({
     bodyItems.push({
       key: "details",
       label: m.op_row_details(),
-      children: <SnapshotDetails snapshot={snapshotOp.snapshot!} />,
+      children: (
+        <SnapshotDetails
+          snapshot={snapshotOp.snapshot!}
+          repoId={currentRepoId}
+        />
+      ),
     });
     bodyItems.push({
       key: "browser",
@@ -477,8 +485,48 @@ export const OperationRow = ({
   );
 };
 
-const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
+const changeColor = (change: DiffChange) => {
+  switch (change) {
+    case DiffChange.ADDED:
+      return "green.500";
+    case DiffChange.REMOVED:
+      return "red.500";
+    case DiffChange.MODIFIED:
+      return "yellow.500";
+    default:
+      return "gray.500";
+  }
+};
+
+const SnapshotDetails = ({
+  snapshot,
+  repoId,
+}: {
+  snapshot: ResticSnapshot;
+  repoId: string;
+}) => {
   const summary = snapshot.summary;
+  const [diff, setDiff] = useState<DiffEntry[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const loadDiff = async () => {
+    if (diff !== null) return;
+    setLoading(true);
+    try {
+      const resp = await backrestService.diffSnapshot(
+        create(DiffSnapshotRequestSchema, {
+          repoId,
+          parentId: snapshot.parent,
+          snapshotId: snapshot.id,
+        }),
+      );
+      setDiff(resp.entries);
+    } catch (e: any) {
+      alerts.error(e.message || m.op_row_diff_failed());
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
@@ -542,6 +590,41 @@ const SnapshotDetails = ({ snapshot }: { snapshot: ResticSnapshot }) => {
             </Box>
           </SimpleGrid>
         </>
+      )}
+
+      {snapshot.parent && (
+        <Box mt={4}>
+          <Button onClick={loadDiff} disabled={loading}>
+            {m.op_row_show_diff()}
+          </Button>
+          {diff !== null && (
+            <Box
+              mt={2}
+              maxH="300px"
+              overflowY="auto"
+              borderWidth="1px"
+              borderRadius="md"
+              p={2}
+            >
+              {diff.length === 0 ? (
+                <Text color="fg.muted">{m.op_row_no_changes()}</Text>
+              ) : (
+                <Stack gap={1}>
+                  {diff.map((entry, idx) => (
+                    <Text
+                      key={idx}
+                      fontSize="sm"
+                      color={changeColor(entry.change)}
+                      fontFamily="mono"
+                    >
+                      {entry.path}
+                    </Text>
+                  ))}
+                </Stack>
+              )}
+            </Box>
+          )}
+        </Box>
       )}
     </>
   );

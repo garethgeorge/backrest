@@ -396,6 +396,53 @@ func (s *BackrestHandler) ListSnapshotFiles(ctx context.Context, req *connect.Re
 	}), nil
 }
 
+func (s *BackrestHandler) DiffSnapshot(ctx context.Context, req *connect.Request[v1.DiffSnapshotRequest]) (*connect.Response[v1.DiffSnapshotResponse], error) {
+	query := req.Msg
+	if query.ParentId == "" || query.SnapshotId == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("parent_id and snapshot_id are required"))
+	}
+
+	repo, err := s.orchestrator.GetRepoOrchestrator(query.RepoId)
+	if err != nil {
+		return nil, withLookupCode(fmt.Errorf("failed to get repo: %w", err))
+	}
+
+	var out bytes.Buffer
+	if err := repo.RunCommand(ctx, fmt.Sprintf("diff --no-lock %s %s", query.ParentId, query.SnapshotId), &out); err != nil {
+		outStr := strings.TrimSpace(out.String())
+		if len(outStr) > 4096 {
+			outStr = outStr[:4096] + "\n..."
+		}
+		return nil, fmt.Errorf("failed to diff snapshots: %w\n\n%s", err, outStr)
+	}
+
+	var entries []*v1.DiffEntry
+	for _, line := range strings.Split(out.String(), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if len(trimmed) == 0 {
+			continue
+		}
+		var change v1.DiffChange
+		switch trimmed[0] {
+		case '+':
+			change = v1.DiffChange_DIFF_CHANGE_ADDED
+		case '-':
+			change = v1.DiffChange_DIFF_CHANGE_REMOVED
+		case 'M', 'U', 'T', '?':
+			change = v1.DiffChange_DIFF_CHANGE_MODIFIED
+		default:
+			continue
+		}
+		path := strings.TrimSpace(trimmed[1:])
+		if path == "" {
+			continue
+		}
+		entries = append(entries, &v1.DiffEntry{Path: path, Change: change})
+	}
+
+	return connect.NewResponse(&v1.DiffSnapshotResponse{Entries: entries}), nil
+}
+
 // GetOperationEvents implements GET /v1/events/operations
 func (s *BackrestHandler) GetOperationEvents(ctx context.Context, req *connect.Request[emptypb.Empty], resp *connect.ServerStream[v1.OperationEvent]) error {
 	errChan := make(chan error, 1)

@@ -42,6 +42,8 @@ service Backrest {
 
   rpc ListSnapshotFiles(ListSnapshotFilesRequest) returns (ListSnapshotFilesResponse) {}
 
+  rpc DiffSnapshot(DiffSnapshotRequest) returns (DiffSnapshotResponse) {}
+
   // Backup schedules a backup operation. It accepts a plan id and returns empty if the task is enqueued.
   rpc Backup(BackupRequest) returns (google.protobuf.Empty) {}
 
@@ -172,6 +174,29 @@ message ListSnapshotFilesRequest {
 message ListSnapshotFilesResponse {
   string path = 1;
   repeated LsEntry entries = 2;
+}
+
+message DiffSnapshotRequest {
+  string repo_id = 1;
+  string parent_id = 2;
+  string snapshot_id = 3;
+}
+
+enum DiffChange {
+  DIFF_CHANGE_UNSPECIFIED = 0;
+  DIFF_CHANGE_ADDED = 1;
+  DIFF_CHANGE_MODIFIED = 2;
+  DIFF_CHANGE_REMOVED = 3;
+  DIFF_CHANGE_UNMODIFIED = 4;
+}
+
+message DiffEntry {
+  string path = 1;
+  DiffChange change = 2;
+}
+
+message DiffSnapshotResponse {
+  repeated DiffEntry entries = 1;
 }
 
 message LogDataRequest {
