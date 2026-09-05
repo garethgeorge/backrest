@@ -490,3 +490,94 @@ func TestRestoreAmbiguity(t *testing.T) {
 		t.Errorf("FAIL: Expected main file missing: %s", expectedFile)
 	}
 }
+
+// TestSnapshotListingTakesNoLock asserts that both snapshot listing paths pass
+// --no-lock. Restic is killed outright when the caller's context is cancelled,
+// so a listing that takes a lock can leave one behind, blocking forget/prune.
+//
+// This stands a recording script in for restic rather than reproducing the
+// kill, which would be timing dependent.
+func TestSnapshotListingTakesNoLock(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test substitutes a shell script for the restic binary")
+	}
+	t.Parallel()
+
+	dir := t.TempDir()
+	argsFile := filepath.Join(dir, "args")
+	resticShim := filepath.Join(dir, "restic")
+
+	// Records the arguments of each invocation, then returns an empty snapshot
+	// list so the caller parses it as valid JSON.
+	script := fmt.Sprintf("#!/bin/sh\nprintf '%%s\\0' \"$@\" > %q\necho '[]'\n", argsFile)
+	if err := os.WriteFile(resticShim, []byte(script), 0o700); err != nil {
+		t.Fatalf("write restic shim: %v", err)
+	}
+
+	orchestrator, err := NewRepoOrchestrator(configForTest, &v1.Repo{
+		Id:       "test",
+		Uri:      t.TempDir(),
+		Password: "test",
+	}, resticShim)
+	if err != nil {
+		t.Fatalf("failed to create repo orchestrator: %v", err)
+	}
+
+	// The subtests share argsFile, so they must run sequentially — do not add
+	// t.Parallel() inside t.Run.
+	for _, tc := range []struct {
+		name string
+		call func() error
+		// wantTag is the expected --tag value; empty means the listing must
+		// carry no tag filter at all.
+		wantTag string
+	}{
+		{
+			name: "Snapshots",
+			call: func() error {
+				_, err := orchestrator.Snapshots(context.Background())
+				return err
+			},
+		},
+		{
+			name: "SnapshotsForPlan",
+			call: func() error {
+				_, err := orchestrator.SnapshotsForPlan(context.Background(), &v1.Plan{
+					Id: "test", Repo: "test",
+				})
+				return err
+			},
+			wantTag: "plan:test,created-by:test",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.Remove(argsFile); err != nil && !os.IsNotExist(err) {
+				t.Fatalf("remove recorded args: %v", err)
+			}
+			if err := tc.call(); err != nil {
+				t.Fatalf("list snapshots: %v", err)
+			}
+			recorded, err := os.ReadFile(argsFile)
+			if err != nil {
+				t.Fatalf("read recorded args: %v", err)
+			}
+			args := strings.Split(strings.TrimSuffix(string(recorded), "\x00"), "\x00")
+			if len(args) == 0 || args[0] != "snapshots" {
+				t.Fatalf("expected snapshots command, got %q", args)
+			}
+			for _, flag := range []string{"--json", "--no-lock"} {
+				if !slices.Contains(args, flag) {
+					t.Errorf("missing %s argument: %q", flag, args)
+				}
+			}
+			tagIndex := slices.Index(args, "--tag")
+			if tc.wantTag == "" {
+				if tagIndex >= 0 {
+					t.Errorf("unexpected tag filter for repository listing: %q", args)
+				}
+			} else if tagIndex < 0 || tagIndex+1 >= len(args) || args[tagIndex+1] != tc.wantTag {
+				t.Errorf("expected tag filter %q: %q", tc.wantTag, args)
+			}
+		})
+	}
+}

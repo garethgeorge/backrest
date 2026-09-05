@@ -105,11 +105,15 @@ func (r *RepoOrchestrator) Init(ctx context.Context) error {
 	return r.repo.Init(ctx)
 }
 
+// Snapshots and SnapshotsForPlan use --no-lock unconditionally, matching
+// ListSnapshotFiles below, to avoid cancellation-orphaned listing locks and
+// allow snapshot browsing during repository maintenance.
+// See https://github.com/garethgeorge/backrest/pull/892#discussion_r2330841541.
 func (r *RepoOrchestrator) Snapshots(ctx context.Context) ([]*restic.Snapshot, error) {
 	ctx, flush := forwardResticLogs(ctx)
 	defer flush()
 
-	snapshots, err := r.repo.Snapshots(ctx)
+	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--no-lock"))
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for repo %v: %w", r.repoConfig.Id, err)
 	}
@@ -126,7 +130,9 @@ func (r *RepoOrchestrator) SnapshotsForPlan(ctx context.Context, plan *v1.Plan) 
 		tags = append(tags, TagForInstance(r.config.Instance))
 	}
 
-	snapshots, err := r.repo.Snapshots(ctx, restic.WithFlags("--tag", strings.Join(tags, ",")))
+	snapshots, err := r.repo.Snapshots(ctx,
+		restic.WithFlags("--tag", strings.Join(tags, ",")),
+		restic.WithFlags("--no-lock"))
 	if err != nil {
 		return nil, fmt.Errorf("get snapshots for plan %q: %w", plan.Id, err)
 	}
