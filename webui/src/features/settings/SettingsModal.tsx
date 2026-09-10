@@ -1157,6 +1157,7 @@ const languageNames: Record<string, string> = {
   bn: "বাংলা",
   pt: "Português",
   ru: "Русский",
+  uk: "Українська",
   id: "Bahasa Indonesia",
   it: "Italiano",
   ja: "日本語",
