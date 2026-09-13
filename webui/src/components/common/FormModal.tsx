@@ -12,12 +12,13 @@ import {
   DialogPositioner,
   Portal,
 } from "@chakra-ui/react";
-import { Button } from "../ui/button";
+import { DialogCloseTrigger as DialogCloseTriggerUI } from "../ui/dialog";
 
 interface FormModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
+  showCloseIcon?: boolean;
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?:
@@ -40,6 +41,7 @@ export const FormModal: React.FC<FormModalProps> = ({
   isOpen,
   onClose,
   title,
+  showCloseIcon = true,
   children,
   footer,
   size = "default",
@@ -72,7 +74,7 @@ export const FormModal: React.FC<FormModalProps> = ({
             <DialogHeader>
               <DialogTitle>{title}</DialogTitle>
             </DialogHeader>
-            <DialogCloseTrigger />
+            {showCloseIcon ? <DialogCloseTriggerUI top="5" right="6" /> : <DialogCloseTrigger />}
 
             <DialogBody>{children}</DialogBody>
 
