@@ -147,6 +147,12 @@ services:
     restart: unless-stopped
 ```
 
+### Easypanel
+
+[Easypanel](https://easypanel.io/) is a self-hosted Docker deployment platform. It has a one-click Easypanel template for Backrest, which runs the Docker image above with persistent volumes configured automatically.
+
+[![Deploy on Easypanel](https://easypanel.io/img/deploy-on-easypanel-40.svg)](https://easypanel.io/templates/backrest)
+
 ## Windows
 
 Download the Windows installer for your architecture from the [releases page](https://github.com/garethgeorge/backrest/releases). The installer, named `Backrest-setup-[arch].exe`, places Backrest and a GUI tray application in `%localappdata%\Programs\Backrest\`. The tray application, set to start on login, monitors Backrest.
