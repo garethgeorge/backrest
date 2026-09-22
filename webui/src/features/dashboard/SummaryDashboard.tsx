@@ -46,10 +46,6 @@ import { HistoryStrip } from "./HistoryStrip";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-function prettyPlanId(id: string): string {
-  return id.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
 /** Relative "X ago" string.  ms = unix epoch in ms. */
 function agoText(ms: number): string {
   if (!ms) return m.dashboard_time_never();
@@ -491,7 +487,7 @@ const PlanCard = ({
         {/* Title row */}
         <Flex justify="space-between" align="flex-start" gap={3}>
           <Box>
-            <CardTitle>{prettyPlanId(summary.id)}</CardTitle>
+            <CardTitle>{summary.id}</CardTitle>
             {schedLine && (
               <Text fontSize="12.5px" color="fg.muted" mt="2px">
                 {schedLine}
@@ -742,7 +738,7 @@ const RecentActivity = ({
               <Box flex={1} minW={0}>
                 <Flex align="baseline" gap="7px" minW={0}>
                   <Text fontSize="14px" fontWeight="550" truncate>
-                    {prettyPlanId(row.planId)}
+                    {row.planId}
                   </Text>
                   <Text
                     fontSize="12.5px"
