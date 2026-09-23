@@ -21,6 +21,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/gen/go/v1sync/v1syncconnect"
 	"github.com/garethgeorge/backrest/internal/api"
+	"github.com/garethgeorge/backrest/internal/api/health"
 	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/auth"
 	"github.com/garethgeorge/backrest/internal/config"
@@ -246,7 +247,8 @@ func newServer(
 	downloadHandler := api.NewDownloadHandler(opLog, orch)
 
 	// Routing
-	rootMux := newRootMux(apiBackrestHandler, apiAuthenticationHandler, syncHandler, syncStateHandler, downloadHandler, authenticator)
+	readyHandler := health.ReadyHandler(opLog)
+	rootMux := newRootMux(apiBackrestHandler, apiAuthenticationHandler, syncHandler, syncStateHandler, downloadHandler, authenticator, readyHandler)
 
 	var handler http.Handler = rootMux
 	if version == "unknown" { // dev build, enable CORS for local development
@@ -266,6 +268,7 @@ func newRootMux(
 	syncStateHandler v1syncconnect.BackrestSyncStateServiceHandler,
 	downloadHandler http.Handler,
 	authenticator *auth.Authenticator,
+	readyHandler http.HandlerFunc,
 ) *http.ServeMux {
 	// Authenticated routes
 	authedMux := http.NewServeMux()
@@ -281,6 +284,8 @@ func newRootMux(
 	unauthedMux.Handle(authPath, authHandler)
 	syncPath, syncHandlerUnauthed := v1syncconnect.NewBackrestSyncServiceHandler(syncHandler)
 	unauthedMux.Handle(syncPath, syncHandlerUnauthed)
+	unauthedMux.HandleFunc("/healthz", health.LivenessHandler)
+	unauthedMux.HandleFunc("/readyz", readyHandler)
 	unauthedMux.Handle("/download/", http.StripPrefix("/download", downloadHandler))
 
 	// Root mux to dispatch to authenticated or unauthenticated handlers
