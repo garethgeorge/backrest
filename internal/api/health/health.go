@@ -6,12 +6,11 @@ import (
 	"time"
 
 	v1 "github.com/garethgeorge/backrest/gen/go/v1"
+	"github.com/garethgeorge/backrest/internal/env"
 	"github.com/garethgeorge/backrest/internal/oplog"
 )
 
-const readyTimeout = 2 * time.Second
-
-// LivenessHandler responds 200 OK. 
+// LivenessHandler responds 200 OK.
 func LivenessHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
@@ -36,6 +35,7 @@ func writeReady(w http.ResponseWriter, status, reason string) {
 // ReadyHandler returns a handler for /readyz. It checks that the
 // operation log is queryable by running a simple query.
 func ReadyHandler(opLog *oplog.OpLog) http.HandlerFunc {
+	readyTimeout := env.ReadyTimeout()
 	return func(w http.ResponseWriter, r *http.Request) {
 		done := make(chan error, 1)
 		q := oplog.Query{}.SetReversed(true).SetLimit(1)
