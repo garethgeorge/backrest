@@ -145,14 +145,29 @@ func (t *BackupTask) Run(ctx context.Context, st ScheduledTask, runner TaskRunne
 		return notifyError(err)
 	}
 
+	// Once the start hook has run, a failing setup must still run the end hook, which is documented to run regardless
+	// of success or failure. End hooks get (empty) snapshot stats here too, as on every other path.
+	notifyErrorAfterStart := func(err error) error {
+		_ = runner.ExecuteHooks(ctx, []v1.Hook_Condition{
+			v1.Hook_CONDITION_ANY_ERROR,
+			v1.Hook_CONDITION_SNAPSHOT_ERROR,
+			v1.Hook_CONDITION_SNAPSHOT_END,
+		}, HookVars{
+			Task:          t.Name(),
+			Error:         err.Error(),
+			SnapshotStats: &restic.BackupProgressEntry{},
+		})
+		return err
+	}
+
 	if err := runner.ExecuteHooks(ctx, []v1.Hook_Condition{
 		v1.Hook_CONDITION_SNAPSHOT_START,
 	}, HookVars{}); err != nil {
-		return notifyError(fmt.Errorf("snapshot start hook: %w", err))
+		return notifyErrorAfterStart(fmt.Errorf("snapshot start hook: %w", err))
 	}
 
 	if err := repo.UnlockIfAutoEnabled(ctx); err != nil {
-		return notifyError(fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err))
+		return notifyErrorAfterStart(fmt.Errorf("auto unlock repo %q: %w", t.RepoID(), err))
 	}
 
 	var sendWg sync.WaitGroup

@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -242,6 +243,7 @@ func TestBackupTaskRun(t *testing.T) {
 		repo          *v1.Repo
 		plan          *v1.Plan
 		wantErr       bool
+		startHookErr  error // returned by the CONDITION_SNAPSHOT_START hooks
 		wantHooks     []v1.Hook_Condition
 		wantNotHooks  []v1.Hook_Condition
 		wantScheduled []string // expected scheduled task types
@@ -324,8 +326,23 @@ func TestBackupTaskRun(t *testing.T) {
 			plan:    &v1.Plan{Id: "plan1", Repo: "repo1"},
 			wantErr: true,
 			wantHooks: []v1.Hook_Condition{
+				v1.Hook_CONDITION_SNAPSHOT_START,
 				v1.Hook_CONDITION_SNAPSHOT_ERROR,
 				v1.Hook_CONDITION_ANY_ERROR,
+				v1.Hook_CONDITION_SNAPSHOT_END,
+			},
+		},
+		{
+			name:         "start hook error",
+			fake:         &fakeRepoOrchestrator{},
+			plan:         &v1.Plan{Id: "plan1", Repo: "repo1"},
+			startHookErr: fmt.Errorf("start hook failed"),
+			wantErr:      true,
+			wantHooks: []v1.Hook_Condition{
+				v1.Hook_CONDITION_SNAPSHOT_START,
+				v1.Hook_CONDITION_SNAPSHOT_ERROR,
+				v1.Hook_CONDITION_ANY_ERROR,
+				v1.Hook_CONDITION_SNAPSHOT_END,
 			},
 		},
 		{
@@ -362,6 +379,14 @@ func TestBackupTaskRun(t *testing.T) {
 			}
 			cfg := newTestConfig(repo, tc.plan)
 			runner := setupTestRunner(t, cfg, tc.fake)
+			if tc.startHookErr != nil {
+				runner.onExecuteHooks = func(ctx context.Context, events []v1.Hook_Condition, vars HookVars) error {
+					if slices.Contains(events, v1.Hook_CONDITION_SNAPSHOT_START) {
+						return tc.startHookErr
+					}
+					return nil
+				}
+			}
 
 			task := NewOneoffBackupTask(repo, tc.plan, time.Now(), tc.dryRun)
 			st := nextAndCreate(t, task, runner)
@@ -378,6 +403,11 @@ func TestBackupTaskRun(t *testing.T) {
 			}
 			for _, cond := range tc.wantNotHooks {
 				assert.False(t, hookContains(runner.hookCalls, cond), "unexpected hook %v", cond)
+			}
+			for _, call := range runner.hookCalls {
+				if slices.Contains(call.Events, v1.Hook_CONDITION_SNAPSHOT_END) {
+					assert.NotNil(t, call.Vars.SnapshotStats, "end hooks get snapshot stats")
+				}
 			}
 
 			var scheduledTypes []string
