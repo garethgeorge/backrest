@@ -13,6 +13,7 @@ import {
   Portal,
 } from "@chakra-ui/react";
 import { Button } from "../ui/button";
+import { FiX } from "react-icons/fi";
 
 interface FormModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ interface FormModalProps {
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  closeOnInteractOutside?: boolean;
   size?:
     | "xs"
     | "sm"
@@ -42,6 +44,7 @@ export const FormModal: React.FC<FormModalProps> = ({
   title,
   children,
   footer,
+  closeOnInteractOutside = false,
   size = "default",
 }) => {
   // Map size "default" to "md" and "large" to "xl" or "2xl"
@@ -61,7 +64,7 @@ export const FormModal: React.FC<FormModalProps> = ({
     <DialogRoot
       open={isOpen}
       onOpenChange={(e: { open: boolean }) => !e.open && onClose()}
-      closeOnInteractOutside={false}
+      closeOnInteractOutside={closeOnInteractOutside}
       size={rootSize}
       scrollBehavior="inside"
     >
@@ -72,7 +75,23 @@ export const FormModal: React.FC<FormModalProps> = ({
             <DialogHeader>
               <DialogTitle>{title}</DialogTitle>
             </DialogHeader>
-            <DialogCloseTrigger />
+            <DialogCloseTrigger
+              aria-label="Close dialog"
+              css={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSize: "8",
+                color: "fg.muted",
+                borderRadius: "md",
+                _hover: {
+                  bg: "bg.emphasized",
+                  color: "fg",
+                },
+              }}
+            >
+              <FiX />
+            </DialogCloseTrigger>
 
             <DialogBody>{children}</DialogBody>
 

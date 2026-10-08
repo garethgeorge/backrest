@@ -54,13 +54,14 @@ describe("FormModal", () => {
     );
 
     await screen.findByText("Closable");
-    // DialogCloseTrigger (Chakra's Zag-based dialog close button, rendered
-    // via asChild) doesn't surface an accessible name/icon in this jsdom
-    // render, so target it by the part attribute Zag stamps onto the node.
-    const closeButton = document.querySelector(
-      "[data-part='close-trigger']",
-    ) as HTMLElement;
-    expect(closeButton).toBeTruthy();
+    // The close trigger must be a visible, labeled button: an accessible
+    // name for AT users and an icon (svg) for sighted users. Without the
+    // icon the button is an empty, invisible hot zone (Chakra's dialog
+    // recipe only positions the closeTrigger slot, it adds no content).
+    const closeButton = screen.getByRole("button", {
+      name: "Close dialog",
+    }) as HTMLButtonElement;
+    expect(closeButton.querySelector("svg")).toBeTruthy();
     await user.click(closeButton);
 
     expect(onClose).toHaveBeenCalledTimes(1);

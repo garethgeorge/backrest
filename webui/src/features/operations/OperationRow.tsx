@@ -168,6 +168,7 @@ export const OperationRow = ({
         onClose={() => {
           showModal(null);
         }}
+        closeOnInteractOutside
         footer={null}
       >
         <LogView logref={operation.logref!} />
