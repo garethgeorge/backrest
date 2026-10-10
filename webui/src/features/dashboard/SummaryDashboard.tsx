@@ -258,9 +258,9 @@ const HeroBanner = ({ state, newestMs, nextMs }: HeroStats) => {
   const nextIn = nextMs ? untilText(nextMs) : null;
 
   return (
-    <Card.Root borderRadius="2xl" shadow="sm" mb={6}>
-      <Card.Body py={6} px={7}>
-        <Flex align="center" gap={5}>
+    <Card.Root borderRadius="2xl" shadow="sm">
+      <Card.Body py={{ base: 4, md: 6 }} px={{ base: 4, md: 7 }}>
+        <Flex align="center" gap={{ base: 3, md: 5 }}>
           <Flex
             flexShrink={0}
             w="60px"
@@ -487,7 +487,7 @@ const PlanCard = ({
       overflow="hidden"
       position="relative"
     >
-      <Card.Body px={5} py={5}>
+      <Card.Body px={{ base: 4, md: 5 }} py={{ base: 4, md: 5 }}>
         {/* Title row */}
         <Flex justify="space-between" align="flex-start" gap={3}>
           <Box>
@@ -583,7 +583,7 @@ const RepoCard = ({
 
   return (
     <Card.Root borderRadius="2xl" shadow="sm">
-      <Card.Body px={5} py={5}>
+      <Card.Body px={{ base: 4, md: 5 }} py={{ base: 4, md: 5 }}>
         <Flex justify="space-between" align="flex-start" gap={3}>
           <CardTitle>{summary.id}</CardTitle>
           <Box mt="6px" flexShrink={0}>
@@ -827,7 +827,7 @@ export const SummaryDashboard = () => {
   const hero = heroStats(plans);
 
   return (
-    <Stack gap={8} width="full">
+    <Stack gap={{ base: 5, md: 8 }} width="full">
       {/* Multihost summary */}
       <MultihostSummary multihostConfig={config?.multihost ?? null} />
 
@@ -964,6 +964,10 @@ const MultihostSummary = ({
     authorizedClientTiles.push(
       <PeerStateTile peerState={peerState} key={peerState.peerKeyid} />,
     );
+  }
+
+  if (knownHostTiles.length === 0 && authorizedClientTiles.length === 0) {
+    return null;
   }
 
   return (
