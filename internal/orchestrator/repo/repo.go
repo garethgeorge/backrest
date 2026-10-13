@@ -454,28 +454,13 @@ func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
 
 var globEscapeReplacer = strings.NewReplacer(`\`, `\\`, `*`, `\*`, `?`, `\?`, `[`, `\[`, `]`, `\]`)
 
-// On Windows, restic's --include uses Go's path/filepath.Match, which treats
-// '\' as a path separator (not an escape character) and rejects the POSIX
-// class self-escape `[[]` / `[]]` as an invalid pattern. There is therefore
-// no way to express a literal '[' or ']' as a match character on Windows.
-//
-// NTFS forbids '*' and '?' in real filenames, so the single-character
-// wildcard '?' is safe to use as a stand-in for '[' and ']' in a leaf-name
-// pattern: it can never collide with a sibling whose name is exactly the
-// requested file. It may, however, match a same-length sibling whose name
-// differs only in the position of the substituted bracket — typically zero,
-// occasionally one or two real-world siblings.
-//
-// Trade-off: the prior behaviour silently restored zero files when the
-// requested leaf had a bracket in its name (matches no snapshot path).
-// With this fix the requested file is restored; same-length siblings may
-// also land in the target dir. A caller that wants exact-set semantics
-// should sweep the target after restore against the requested path list.
-var windowsBracketReplacer = strings.NewReplacer(`[`, `?`, `]`, `?`)
-
 func escapeGlob(s string) string {
 	if runtime.GOOS == "windows" {
-		return windowsBracketReplacer.Replace(s)
+		// filepath.Match disables backslash escaping on Windows, but the
+		// character class "[[]" matches a literal '['. Outside a class, ']'
+		// is already literal ("[]]" is invalid). Do not substitute '?': that
+		// could restore and overwrite unselected siblings in the target.
+		return strings.ReplaceAll(s, "[", "[[]")
 	}
 	return globEscapeReplacer.Replace(s)
 }
