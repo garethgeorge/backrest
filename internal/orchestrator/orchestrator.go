@@ -149,9 +149,11 @@ func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, log *oplog.
 			zap.Int("deleted_ops", len(toDelete)))
 	}
 
-	// initialize any uninitialized repos.
+	// initialize any uninitialized repos. A repo that can't be initialized (e.g.
+	// its backend is temporarily unreachable) must not prevent startup: it keeps
+	// AutoInitialize set and is retried on the next start.
 	if err := o.autoInitReposIfNeeded(resticBin); err != nil {
-		return nil, fmt.Errorf("auto-initialize repos: %w", err)
+		zap.L().Error("failed to auto-initialize some repos, will retry on next startup", zap.Error(err))
 	}
 
 	// apply starting configuration which also queues initial tasks.
@@ -192,20 +194,23 @@ func (o *Orchestrator) autoInitReposIfNeeded(resticBin string) error {
 			continue
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), defaultAutoInitTimeout)
-		defer cancel()
-		if err := rorch.Init(ctx); err != nil {
+		err = rorch.Init(ctx)
+		cancel()
+		if err != nil {
 			fullErr = multierr.Append(fullErr, fmt.Errorf("auto-initialize repo %q: %w", r.Id, err))
 			continue
 		}
 
 		guid, err := rorch.RepoGUID()
 		if err != nil {
-			return fmt.Errorf("get repo %q guid: %w", r.Id, err)
+			fullErr = multierr.Append(fullErr, fmt.Errorf("get repo %q guid: %w", r.Id, err))
+			continue
 		}
 		results = append(results, initResult{repoID: r.Id, guid: guid})
 	}
 
-	if len(results) > 0 && fullErr == nil {
+	// Persist the repos that did initialize even if others failed.
+	if len(results) > 0 {
 		if err := o.configMgr.Transform(func(cfg *v1.Config) (*v1.Config, error) {
 			for _, res := range results {
 				for _, r := range cfg.Repos {
@@ -219,7 +224,7 @@ func (o *Orchestrator) autoInitReposIfNeeded(resticBin string) error {
 			cfg.Modno++
 			return cfg, nil
 		}); err != nil {
-			return fmt.Errorf("update config: %w", err)
+			fullErr = multierr.Append(fullErr, fmt.Errorf("update config: %w", err))
 		}
 	}
 
@@ -234,6 +239,7 @@ func (o *Orchestrator) curTime() time.Time {
 }
 
 func (o *Orchestrator) applyConfig(cfg *v1.Config) error {
+	cfg = withoutPendingRepos(cfg)
 	for _, repo := range cfg.Repos {
 		if repo.Guid == "" {
 			return errors.New("guid is required for all repos")
@@ -244,6 +250,31 @@ func (o *Orchestrator) applyConfig(cfg *v1.Config) error {
 	o.repoOrchestrators = make(map[string]*repo.RepoOrchestrator)
 	o.mu.Unlock()
 	return o.ScheduleDefaultTasks(cfg)
+}
+
+// withoutPendingRepos returns a copy of cfg without the repos still waiting for
+// auto-initialization (no GUID yet) and the plans that use them. They stay in
+// the stored config and are picked up once a later startup initializes them.
+func withoutPendingRepos(cfg *v1.Config) *v1.Config {
+	pending := map[string]bool{}
+	for _, r := range cfg.Repos {
+		if r.Guid == "" && r.AutoInitialize {
+			pending[r.Id] = true
+		}
+	}
+	if len(pending) == 0 {
+		return cfg
+	}
+	cfg = proto.Clone(cfg).(*v1.Config)
+	cfg.Repos = slices.DeleteFunc(cfg.Repos, func(r *v1.Repo) bool { return pending[r.Id] })
+	cfg.Plans = slices.DeleteFunc(cfg.Plans, func(p *v1.Plan) bool {
+		if pending[p.Repo] {
+			zap.L().Warn("skipping plan until its repo is initialized", zap.String("plan", p.Id), zap.String("repo", p.Repo))
+			return true
+		}
+		return false
+	})
+	return cfg
 }
 
 // ScheduleDefaultTasks resets the task queue and schedules the standard task set (collect garbage, per-plan backups, and per-repo prune/check/forget) from the given config.
