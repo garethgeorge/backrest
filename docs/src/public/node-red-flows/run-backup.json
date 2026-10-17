@@ -1,0 +1,9 @@
+[
+  {"id":"1f9c4b7e3d6a2058","type":"inject","name":"Back up now","props":[{"p":"payload"}],"repeat":"","crontab":"","once":false,"onceDelay":0.1,"topic":"","payload":"","payloadType":"date","x":130,"y":80,"wires":[["7d3a1e5c9b0f4682"]]},
+  {"id":"7d3a1e5c9b0f4682","type":"backrest-run-backup","name":"","config":"5b1e0c7d2a9f4e36","planValue":"","planType":"backrest-plan","dryRunValue":"false","dryRunType":"bool","wait":true,"x":320,"y":80,"wires":[["b8e0f2d4a6c91357"],["0c5a7f3e9d1b2468"]]},
+  {"id":"b8e0f2d4a6c91357","type":"function","name":"Describe","func":"const r = msg.payload;\nconst mb = ((r.summary && r.summary.dataAdded) || 0) / 1e6;\nmsg.payload = `Backed up ${r.planId} in ${Math.round(r.durationMs / 1000)}s, ` +\n    `${mb.toFixed(1)} MB added (snapshot ${r.snapshotId.slice(0, 8)})`;\nreturn msg;","outputs":1,"timeout":0,"noerr":0,"initialize":"","finalize":"","libs":[],"x":520,"y":60,"wires":[["f4a9d1c7e2b05836"]]},
+  {"id":"f4a9d1c7e2b05836","type":"debug","name":"Backup finished","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"payload","targetType":"msg","statusVal":"","statusType":"auto","x":710,"y":60,"wires":[]},
+  {"id":"0c5a7f3e9d1b2468","type":"function","name":"Alert text","func":"msg.topic = `Backup of ${msg.payload.planId} failed`;\nmsg.payload = msg.payload.message || msg.payload.status;\nreturn msg;","outputs":1,"timeout":0,"noerr":0,"initialize":"","finalize":"","libs":[],"x":520,"y":120,"wires":[["3b6e8c0a2f4d1597"]]},
+  {"id":"3b6e8c0a2f4d1597","type":"debug","name":"Send notification","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","statusVal":"","statusType":"auto","x":720,"y":120,"wires":[]},
+  {"id":"5b1e0c7d2a9f4e36","type":"backrest-config","name":"Backrest","autoReconnect":true,"reconnectInterval":"1000","reconnectTries":"0","tls":"","catchUp":true}
+]

@@ -1,0 +1,13 @@
+[
+  {"type":"http in","name":"","url":"/backrest-hook/start","method":"post","upload":false,"swaggerDoc":"","id":"cea8d592763cdf68","x":150,"y":60,"wires":[["c9e9d291113921ec"]]},
+  {"type":"json","name":"","property":"payload","action":"obj","pretty":false,"id":"c9e9d291113921ec","x":390,"y":60,"wires":[["0fd0f7723b222007"]]},
+  {"type":"function","name":"Stop the service","func":"// Do whatever must happen before the backup here, for example\n// stop a container with a Docker or exec node. Backrest waits\n// until the response is sent, then starts the backup.\n// If this fails, the Catch node tells Backrest to cancel it.\nnode.status({ fill: \"blue\", shape: \"dot\", text: `paused for ${msg.payload.plan}` });\nreturn msg;","outputs":1,"timeout":0,"noerr":0,"initialize":"","finalize":"","libs":[],"id":"0fd0f7723b222007","x":640,"y":60,"wires":[["440b1a2682249ea3"]]},
+  {"type":"http response","name":"Start the backup","statusCode":"","headers":{},"id":"440b1a2682249ea3","x":930,"y":60,"wires":[]},
+  {"type":"catch","name":"Couldn't stop","uncaught":false,"id":"53c495defde9f98f","x":640,"y":110,"scope":["0fd0f7723b222007"],"wires":[["e02bb19b27647a89"]]},
+  {"type":"function","name":"Cancel the backup","func":"msg.statusCode = 500;\nmsg.payload = `Couldn't prepare for the backup: ${msg.error.message}`;\nreturn msg;","outputs":1,"timeout":0,"noerr":0,"initialize":"","finalize":"","libs":[],"id":"e02bb19b27647a89","x":930,"y":110,"wires":[["c8cab90916801626"]]},
+  {"type":"http response","name":"","statusCode":"","headers":{},"id":"c8cab90916801626","x":1150,"y":110,"wires":[]},
+  {"type":"http in","name":"","url":"/backrest-hook/end","method":"post","upload":false,"swaggerDoc":"","id":"c9dcf6a0e3909a2f","x":150,"y":160,"wires":[["c15323656bd5f29a"]]},
+  {"type":"json","name":"","property":"payload","action":"obj","pretty":false,"id":"c15323656bd5f29a","x":390,"y":160,"wires":[["a0b8106f1d9f0b13"]]},
+  {"type":"function","name":"Start the service again","func":"// Do whatever must happen after the backup here, for example\n// start the container again. payload.error is set when the\n// backup failed.\nconst p = msg.payload;\nnode.status({\n    fill: p.error ? \"red\" : \"green\", shape: \"dot\",\n    text: p.error ? `backup of ${p.plan} failed` : `backup of ${p.plan} done`\n});\nreturn msg;","outputs":1,"timeout":0,"noerr":0,"initialize":"","finalize":"","libs":[],"id":"a0b8106f1d9f0b13","x":640,"y":160,"wires":[["01c7fe66b916716b"]]},
+  {"type":"http response","name":"","statusCode":"","headers":{},"id":"01c7fe66b916716b","x":930,"y":160,"wires":[]}
+]

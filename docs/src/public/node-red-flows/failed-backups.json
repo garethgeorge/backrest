@@ -1,0 +1,7 @@
+[
+  {"id":"2c8e5f1a9b7d4063","type":"backrest-operation-events","name":"Finished backups","config":"5b1e0c7d2a9f4e36","mode":"always","triggerValue":"payload","triggerType":"msg","output":"operation","when":"final","planValue":"","planType":"backrest-any","repoValue":"","repoType":"backrest-any","types":["backup"],"inputs":0,"x":150,"y":80,"wires":[["8f3a6d2e1c5b4790"]]},
+  {"id":"8f3a6d2e1c5b4790","type":"switch","name":"Not successful","property":"status","propertyType":"msg","rules":[{"t":"neq","v":"STATUS_SUCCESS","vt":"str"}],"checkall":"true","repair":false,"outputs":1,"x":360,"y":80,"wires":[["4d7b9e0f3a2c6158"]]},
+  {"id":"4d7b9e0f3a2c6158","type":"function","name":"Alert text","func":"const op = msg.payload;\nconst result = msg.status === \"STATUS_WARNING\" ? \"finished with warnings\"\n    : msg.status === \"STATUS_ERROR\" ? \"failed\" : \"was cancelled\";\nmsg.topic = `Backup of ${op.planId} ${result}`;\nmsg.payload = op.displayMessage || msg.topic;\nreturn msg;","outputs":1,"timeout":0,"noerr":0,"initialize":"","finalize":"","libs":[],"x":550,"y":80,"wires":[["a1e6c3f8d0b72945"]]},
+  {"id":"a1e6c3f8d0b72945","type":"debug","name":"Send notification","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"true","targetType":"full","statusVal":"","statusType":"auto","x":740,"y":80,"wires":[]},
+  {"id":"5b1e0c7d2a9f4e36","type":"backrest-config","name":"Backrest","autoReconnect":true,"reconnectInterval":"1000","reconnectTries":"0","tls":"","catchUp":true}
+]
