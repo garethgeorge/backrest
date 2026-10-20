@@ -1,0 +1,8 @@
+[
+  {"id":"6e2d8a4c0f9b1357","type":"inject","name":"Every hour","props":[{"p":"payload"}],"repeat":"3600","crontab":"","once":true,"onceDelay":0.1,"topic":"","payload":"","payloadType":"date","x":130,"y":80,"wires":[["c3f7b1e9a5d20864"]]},
+  {"id":"c3f7b1e9a5d20864","type":"backrest-backup-status","name":"","config":"5b1e0c7d2a9f4e36","show":"plans","targetValue":"","targetType":"backrest-any","output":"each","onlyProblems":true,"x":320,"y":80,"wires":[["9a4e0d6b2f8c1735"]]},
+  {"id":"9a4e0d6b2f8c1735","type":"function","name":"Alert text","func":"const s = msg.payload;\nconst problem = s.state === \"error\" ? \"failed\" : s.overdue ? \"are overdue\" : \"finished with warnings\";\nconst last = s.lastBackup ? new Date(s.lastBackup.time).toLocaleString() : \"never\";\nmsg.payload = `Backups of ${s.id} ${problem} (last backup: ${last})`;\nreturn msg;","outputs":1,"timeout":0,"noerr":0,"initialize":"","finalize":"","libs":[],"x":520,"y":80,"wires":[["d2a8f6c4e0b91735"]]},
+  {"id":"d2a8f6c4e0b91735","type":"rbe","name":"Only new problems","func":"rbe","gap":"","start":"","inout":"out","septopics":true,"property":"payload","topi":"topic","x":710,"y":80,"wires":[["e7b2c5a9f1d38046"]]},
+  {"id":"e7b2c5a9f1d38046","type":"debug","name":"Send notification","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"payload","targetType":"msg","statusVal":"","statusType":"auto","x":910,"y":80,"wires":[]},
+  {"id":"5b1e0c7d2a9f4e36","type":"backrest-config","name":"Backrest","autoReconnect":true,"reconnectInterval":"1000","reconnectTries":"0","tls":"","catchUp":true}
+]

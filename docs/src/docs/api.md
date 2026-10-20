@@ -4,6 +4,8 @@ Backrest provides a limited HTTP API for interacting with the backrest service. 
 
 All of Backrest's API endpoints are defined as a gRPC service and are exposed over HTTP by a JSON RPC gateway for easy scripting. For the full service definition see [service.proto](https://github.com/garethgeorge/backrest/blob/main/proto/v1/service.proto).
 
+To use the API from Node-RED without writing the requests yourself, see the [Node-RED cookbook](../cookbooks/node-red).
+
 ::: warning
 Only the APIs documented below are considered stable, other endpoints may be subject to change.
 :::

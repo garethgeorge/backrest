@@ -37,6 +37,7 @@ export default defineConfig({
         items: [
           { text: 'Command Hook Examples', link: '/cookbooks/command-hook-examples' },
           { text: 'Reverse Proxy Examples', link: '/cookbooks/reverse-proxy-examples' },
+          { text: 'Node-RED', link: '/cookbooks/node-red' },
           { text: 'Slack Hook (Build Kit)', link: '/cookbooks/slack-hook-build-kit-examples' },
           { text: 'SSH Remote', link: '/cookbooks/ssh-remote' }
         ]
