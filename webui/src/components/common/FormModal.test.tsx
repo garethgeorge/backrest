@@ -3,18 +3,16 @@ import { describe, expect, it, vi } from "vitest";
 import { FormModal } from "./FormModal";
 import { renderWithProviders } from "../../test/render";
 
-// NOTE: FormModal hardcodes closeOnInteractOutside={false} on the underlying
-// Chakra/Zag DialogRoot. This was verified manually (temporarily flipping the
-// prop to true in a throwaway copy and confirming the difference), but it is
-// NOT covered by an automated test here: Zag's dismissable-layer wires
-// outside-click detection through a raf-deferred effect plus a
-// document-level capture-phase pointerdown listener that is itself attached
-// on a setTimeout(0), and in this jsdom/vitest setup the dismiss path never
-// fires regardless of the prop value (confirmed by flipping the flag and
-// seeing onClose stay uncalled either way) - i.e. a test built around it
-// would pass vacuously and provide false confidence rather than a real
-// regression guard. Flagged as untestable in this environment rather than
-// shipped as a misleading assertion.
+// NOTE: FormModal defaults closeOnInteractOutside={true} on the underlying
+// Chakra/Zag DialogRoot. LoginModal explicitly passes closeOnInteractOutside={false}
+// to prevent accidental dismissal of the login screen.
+// The outside-click dismiss path is NOT covered by an automated test here:
+// Zag's dismissable-layer wires outside-click detection through a raf-deferred
+// effect plus a document-level capture-phase pointerdown listener that is itself
+// attached on a setTimeout(0), and in this jsdom/vitest setup the dismiss path
+// never fires regardless of the prop value - i.e. a test built around it would
+// pass vacuously and provide false confidence rather than a real regression guard.
+// Flagged as untestable in this environment rather than shipped as a misleading assertion.
 
 describe("FormModal", () => {
   it("renders title, children, and footer in a portal dialog when open", async () => {
