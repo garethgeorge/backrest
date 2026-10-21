@@ -34,6 +34,7 @@ interface FormModalProps {
     | "full"
     | "default"
     | "large";
+  closeOnInteractOutside?: boolean;
 }
 
 export const FormModal: React.FC<FormModalProps> = ({
@@ -43,6 +44,7 @@ export const FormModal: React.FC<FormModalProps> = ({
   children,
   footer,
   size = "default",
+  closeOnInteractOutside = true,
 }) => {
   // Map size "default" to "md" and "large" to "xl" or "2xl"
   // Chakra default sizes are xs, sm, md, lg, xl, 2xl, etc.
@@ -61,7 +63,7 @@ export const FormModal: React.FC<FormModalProps> = ({
     <DialogRoot
       open={isOpen}
       onOpenChange={(e: { open: boolean }) => !e.open && onClose()}
-      closeOnInteractOutside={false}
+      closeOnInteractOutside={closeOnInteractOutside}
       size={rootSize}
       scrollBehavior="inside"
     >

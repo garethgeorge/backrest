@@ -61,6 +61,7 @@ export const LoginModal = () => {
     <FormModal
       isOpen={true}
       onClose={() => {}} // Non-closable
+      closeOnInteractOutside={false}
       title={m.login_title()}
       size="2xl"
       footer={
