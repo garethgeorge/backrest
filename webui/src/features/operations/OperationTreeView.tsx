@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Flex,
@@ -7,7 +7,6 @@ import {
   createTreeCollection,
   EmptyState,
   VStack,
-  TreeCollection,
   Center,
   Spinner,
 } from "@chakra-ui/react";
@@ -157,6 +156,23 @@ export const OperationTreeView = ({
     );
   }, [toJsonString(GetOperationsRequestSchema, req)]);
 
+  // Stable identity per backups update, so React.memo(DisplayOperationTree)
+  // works and an unrelated re-render never rebuilds/remounts the tree.
+  // (Hooks must precede the early returns below.)
+  const backupsByInstance = useMemo(() => groupBy(backups, (b) => {
+    return b.instanceID;
+  }), [backups]);
+
+  // Stable select handler (setState is state-stable, no stale closure).
+  const handleSelect = useCallback(
+    (flow: FlowDisplayInfo | null) => {
+      if (flow) {
+        setSelectedBackupId(flow.flowID);
+      }
+    },
+    [],
+  );
+
   if (loading && backups.length === 0) {
     return (
       <Center height="100%">
@@ -185,10 +201,6 @@ export const OperationTreeView = ({
 
   const useMobileLayout = isMobile();
 
-  const backupsByInstance = groupBy(backups, (b) => {
-    return b.instanceID;
-  });
-
   let primaryTree: React.ReactNode | null = null;
   const allTrees: React.ReactNode[] = [];
 
@@ -198,11 +210,7 @@ export const OperationTreeView = ({
       <DisplayOperationTree
         operations={instanceBackups}
         isPlanView={isPlanView}
-        onSelect={(flow) => {
-          if (flow) {
-            setSelectedBackupId(flow.flowID);
-          }
-        }}
+        onSelect={handleSelect}
       />
     );
 
@@ -294,11 +302,6 @@ const DisplayOperationTree = React.memo(
     isPlanView?: boolean;
     onSelect?: (flow: FlowDisplayInfo | null) => any;
   }) => {
-    const [treeCollection, setTreeCollection] =
-      useState<TreeCollection<OpTreeNode> | null>(null);
-    const [expandedValue, setExpandedValue] = useState<string[]>([]);
-    const [selectedValue, setSelectedValue] = useState<string[]>([]);
-
     const buildTreeData = () => {
       const leafGroupFn = (op: FlowDisplayInfo) => op.flowID.toString(16);
       const leafFn = (groupKey: string, ops: FlowDisplayInfo[]) => {
@@ -392,7 +395,11 @@ const DisplayOperationTree = React.memo(
       return buildLevel(operations, spec.levels, "");
     };
 
-    useEffect(() => {
+    // Build the tree collection in a memo keyed on operations identity, not
+    // in an effect: the previous effect rebuilt the whole Chakra collection
+    // (remounting every tree node) whenever operations identity changed,
+    // which happened on every unrelated re-render.
+    const { collection, initialExpanded } = useMemo(() => {
       const nodes = buildTreeData();
       const collection = createTreeCollection<OpTreeNode>({
         nodeToValue: (node: OpTreeNode) => node.id,
@@ -403,7 +410,6 @@ const DisplayOperationTree = React.memo(
           children: nodes,
         },
       });
-      setTreeCollection(collection);
 
       // Identify the 5 most recent operations
       const CACHE_SIZE = 5;
@@ -449,8 +455,24 @@ const DisplayOperationTree = React.memo(
       };
       expandFirst(nodes[0]);
 
-      setExpandedValue(Array.from([...expandedValue, ...toExpand]));
+      return { collection, initialExpanded: Array.from(toExpand) };
     }, [operations, isPlanView]);
+
+    const [expandedValue, setExpandedValue] = useState<string[]>(
+      initialExpanded,
+    );
+    // When operations change, merge the fresh initial expansion into the
+    // current expanded keys (mirrors the previous effect's union behavior),
+    // adjusting state during render so the tree shows the right expansion
+    // without an extra commit.
+    const prevOperationsRef = useRef(operations);
+    if (prevOperationsRef.current !== operations) {
+      prevOperationsRef.current = operations;
+      setExpandedValue((prev) =>
+        Array.from(new Set([...prev, ...initialExpanded])),
+      );
+    }
+    const [selectedValue, setSelectedValue] = useState<string[]>([]);
 
     const renderNode = useCallback(
       ({ node, nodeState }: { node: OpTreeNode; nodeState: any }) =>
@@ -526,11 +548,9 @@ const DisplayOperationTree = React.memo(
       [],
     );
 
-    if (!treeCollection) return <></>;
-
     return (
       <TreeViewRoot
-        collection={treeCollection}
+        collection={collection}
         expandedValue={expandedValue}
         selectedValue={selectedValue}
         onSelectionChange={(details: any) => {

@@ -49,4 +49,31 @@ describe("ModalManager", () => {
     await user.click(screen.getByRole("button", { name: "hide" }));
     expect(screen.queryByTestId("probe-modal")).not.toBeInTheDocument();
   });
+
+  it("does not re-render useShowModal() consumers when the modal opens or closes", async () => {
+    let consumerRenders = 0;
+    const CountingConsumer = () => {
+      useShowModal();
+      consumerRenders++;
+      return null;
+    };
+
+    const user = userEvent.setup();
+    render(
+      <ModalContextProvider>
+        <CountingConsumer />
+        <Probe />
+      </ModalContextProvider>,
+    );
+
+    expect(consumerRenders).toBe(1);
+
+    await user.click(screen.getByRole("button", { name: "show" }));
+    expect(screen.getByTestId("probe-modal")).toBeInTheDocument();
+    expect(consumerRenders).toBe(1);
+
+    await user.click(screen.getByRole("button", { name: "hide" }));
+    expect(screen.queryByTestId("probe-modal")).not.toBeInTheDocument();
+    expect(consumerRenders).toBe(1);
+  });
 });

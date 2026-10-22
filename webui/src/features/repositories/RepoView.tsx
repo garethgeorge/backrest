@@ -129,6 +129,20 @@ export const RepoView = ({
 
   // Gracefully handle deletions by checking if the plan is still in the config.
   const repoInConfig = config?.repos?.find((r) => r.id === repo.id);
+  // Memoize the operations request so its identity is stable across unrelated
+  // re-renders; a fresh protobuf per render cascaded into OperationTreeView
+  // re-renders and full tree remounts.
+  const repoGuid = (repoInConfig ?? repo).guid;
+  const operationsReq = React.useMemo(
+    () =>
+      create(GetOperationsRequestSchema, {
+        selector: {
+          repoGuid,
+        },
+        lastN: BigInt(MAX_OPERATION_HISTORY),
+      }),
+    [repoGuid],
+  );
   if (!repoInConfig) {
     return (
       <Box>
@@ -208,30 +222,15 @@ export const RepoView = ({
         </TabsList>
 
         <TabsContent value="tree">
-          <OperationTreeView
-            req={create(GetOperationsRequestSchema, {
-              selector: {
-                repoGuid: repo.guid,
-              },
-              lastN: BigInt(MAX_OPERATION_HISTORY),
-            })}
-          />
+          <OperationTreeView req={operationsReq} />
         </TabsContent>
 
         <TabsContent value="list">
           <Heading size="md" mb={4}>
             {m.repo_history_title()}
           </Heading>
-          <OperationListView
-            req={create(GetOperationsRequestSchema, {
-              selector: {
-                repoGuid: repo.guid,
-              },
-              lastN: BigInt(MAX_OPERATION_HISTORY),
-            })}
-            showPlan={true}
-            showDelete={true}
-          />
+          <OperationListView req={operationsReq} showPlan={true} showDelete={true} />
+
         </TabsContent>
 
         <TabsContent value="stats">

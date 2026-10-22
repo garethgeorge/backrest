@@ -2,10 +2,8 @@ import React, { useContext } from "react";
 import { createContext } from "react";
 
 const ModalContext = createContext<{
-  model: React.ReactNode | null;
   setModel: (model: React.ReactNode | null) => void;
 }>({
-  model: null,
   setModel: () => {
     throw new Error("add a ModelContextProvider to your hierarchy");
   },
@@ -18,13 +16,15 @@ export const ModalContextProvider = ({
 }) => {
   const [modal, setModals] = React.useState<React.ReactNode | null>([]);
 
+  // Only the (state-stable) setter lives in the context value, and it is
+  // memoized once, so opening/closing a modal re-renders the provider (which
+  // renders {modal}) but NOT every useShowModal() consumer. A fresh value
+  // object per render previously re-rendered the whole app on every
+  // modal open/close.
+  const value = React.useMemo(() => ({ setModel: setModals }), [setModals]);
+
   return (
-    <ModalContext.Provider
-      value={{
-        model: modal,
-        setModel: setModals,
-      }}
-    >
+    <ModalContext.Provider value={value}>
       {modal}
       {children}
     </ModalContext.Provider>
