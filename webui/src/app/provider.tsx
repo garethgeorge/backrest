@@ -1,6 +1,6 @@
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { ThemeProvider } from "next-themes";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useUserPreferences } from "../lib/userPreferences";
 import { Config, Repo } from "../../gen/ts/v1/config_pb";
 import { backrestService } from "../api/client";
@@ -38,6 +38,14 @@ export function AppProvider(props: { children: React.ReactNode }) {
   const configRef = useRef(config);
   configRef.current = config;
 
+  // Memoize the context value: a fresh array per render re-rendered every
+  // useConfig() consumer (and cascaded into full tree remounts) on each
+  // config save/focus refresh.
+  const configValue = useMemo<[Config | null, (config: Config) => void]>(
+    () => [config, setConfig],
+    [config],
+  );
+
   // Refresh config from the backend when the window regains focus,
   // so background config changes (e.g. from another tab or peer sync)
   // become visible without a manual reload.
@@ -59,7 +67,7 @@ export function AppProvider(props: { children: React.ReactNode }) {
   return (
     <ChakraProvider value={defaultSystem}>
       <ThemeProvider attribute="class" disableTransitionOnChange>
-        <ConfigContext.Provider value={[config, setConfig]}>
+        <ConfigContext.Provider value={configValue}>
           {props.children}
         </ConfigContext.Provider>
       </ThemeProvider>
