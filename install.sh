@@ -133,6 +133,13 @@ run_as_install_user() {
   fi
 }
 
+# Resolve the uid whose GUI session owns the launch agent. $SUDO_UID is the
+# invoking user under sudo; logname/$USER are unreliable without a controlling
+# terminal and used to resolve to root, i.e. the invalid domain "gui/0".
+target_uid() {
+  printf '%s' "${SUDO_UID:-$(id -u)}"
+}
+
 # --- Bind address ---
 if [ "$ALLOW_REMOTE_ACCESS" = true ]; then
   BACKREST_PORT="0.0.0.0:9898"
@@ -235,20 +242,25 @@ remove_openrc_service() {
 remove_launchd_plist() {
   if [ -f /Library/LaunchAgents/com.backrest.plist ]; then
     local uid prefix
-    uid="$(id -u "$(logname 2>/dev/null || echo "$USER")")"
+    # $SUDO_UID is the invoking user when running under sudo. logname/$USER are
+    # unreliable without a controlling terminal and used to resolve to root.
+    uid="$(target_uid)"
     if [ "$(id -u)" -eq 0 ]; then
       prefix="sudo -u #$uid "
     else
       prefix=""
     fi
-    echo "Tearing down launchd agent:"
-    echo "  ${prefix}launchctl bootout gui/$uid/com.backrest"
-    if [ "$(id -u)" -eq 0 ]; then
-      sudo -u "#$uid" launchctl bootout "gui/$uid/com.backrest" 2>/dev/null || true
+    if [ "$uid" -ne 0 ] && launchctl print "gui/$uid" >/dev/null 2>&1; then
+      echo "Tearing down launchd agent:"
+      echo "  ${prefix}launchctl bootout gui/$uid/com.backrest"
+      if [ "$(id -u)" -eq 0 ]; then
+        sudo -u "#$uid" launchctl bootout "gui/$uid/com.backrest" 2>/dev/null || true
+      else
+        launchctl bootout "gui/$uid/com.backrest" 2>/dev/null || true
+      fi
     else
-      launchctl bootout "gui/$uid/com.backrest" 2>/dev/null || true
+      echo "No active GUI session for uid $uid; skipping launchctl bootout."
     fi
-    launchctl unload /Library/LaunchAgents/com.backrest.plist 2>/dev/null || true
     sudo rm -f /Library/LaunchAgents/com.backrest.plist
     echo "Removed launchd plist"
   fi
@@ -478,13 +490,26 @@ EOM
 
 enable_launchd_plist() {
   local uid target prefix
-  uid="$(id -u "$(logname 2>/dev/null || echo "$USER")")"
+  # $SUDO_UID is the invoking user when running under sudo. logname/$USER are
+  # unreliable without a controlling terminal and used to resolve to root, which
+  # produced "gui/0" and made launchctl fail with
+  # "Bootstrap failed: 125: Domain does not support specified action".
+  uid="$(target_uid)"
   target="gui/$uid"
 
   if [ "$(id -u)" -eq 0 ]; then
     prefix="sudo -u #$uid "
   else
     prefix=""
+  fi
+
+  if ! launchctl print "$target" >/dev/null 2>&1; then
+    echo "Warning: $target does not exist -- user $uid has no active graphical session."
+    echo "The agent is installed and will be loaded at the next graphical login."
+    echo ""
+    echo "To start it manually from that session:"
+    echo "  launchctl bootstrap $target /Library/LaunchAgents/com.backrest.plist"
+    return 0
   fi
 
   echo "Bootstrapping launchd agent into $target:"
@@ -565,6 +590,13 @@ install_linux() {
 }
 
 install_darwin() {
+  local uid
+  uid="$(target_uid)"
+  if [ "$uid" -eq 0 ]; then
+    echo "Error: macOS installs need a graphical user session; root has none."
+    echo "Re-run as your desktop user (sudo will be invoked where needed)."
+    exit 1
+  fi
   install_binary
   sudo xattr -d com.apple.quarantine /usr/local/bin/backrest 2>/dev/null || true
   create_launchd_plist
