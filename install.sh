@@ -586,16 +586,12 @@ elif [ -n "$PREV_MODE" ]; then
   echo "Detected previous installation: mode=${PREV_MODE} (version unknown)"
 fi
 
-# Step 2: Remove all existing artifacts
-if [ -n "$PREV_MODE" ] || [ -n "$PREV_VERSION" ]; then
-  echo "Removing previous installation..."
-  remove_all
-  echo ""
-fi
-
-# If uninstall-only, we're done
+# Step 2: Uninstall-only runs never need the network
 if [ "$UNINSTALL_ONLY" = true ]; then
   if [ -n "$PREV_MODE" ] || [ -n "$PREV_VERSION" ]; then
+    echo "Removing previous installation..."
+    remove_all
+    echo ""
     echo "Uninstall complete."
   else
     echo "No existing backrest installation found. Nothing to remove."
@@ -614,8 +610,18 @@ if [ -z "$ACQUISITION_MODE" ]; then
   fi
 fi
 
-# Acquire the binary
+# Step 4: Acquire and validate the new binary *before* removing anything: a
+# failed download must not leave the host without a working installation
+# (GH #1218).
 acquire_binary "$ACQUISITION_MODE"
+
+if [ -n "${RELEASE_BINARY:-}" ]; then
+  chmod 755 "$RELEASE_BINARY"
+  if ! "$RELEASE_BINARY" --version >/dev/null 2>&1; then
+    echo "Error: the downloaded backrest binary does not run on this system."
+    exit 1
+  fi
+fi
 
 # Determine install mode
 if [ "$OS" = "Darwin" ]; then
@@ -641,7 +647,14 @@ else
   EFFECTIVE_MODE="$INSTALL_MODE"
 fi
 
-# Step 4: Install
+# Step 5: Remove the previous installation only now that a usable binary is staged.
+if [ -n "$PREV_MODE" ] || [ -n "$PREV_VERSION" ]; then
+  echo "Removing previous installation..."
+  remove_all
+  echo ""
+fi
+
+# Step 6: Install
 echo ""
 if [ "$OS" = "Darwin" ]; then
   echo "Installing on macOS (launchd)..."
@@ -651,7 +664,7 @@ elif [ "$OS" = "Linux" ]; then
   install_linux "$EFFECTIVE_MODE"
 fi
 
-# Step 5: Summary
+# Step 7: Summary
 NEW_VERSION="$(/usr/local/bin/backrest --version 2>/dev/null || echo "unknown")"
 
 echo ""
