@@ -119,6 +119,11 @@ else
   INSTALL_XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$INSTALL_HOME/.config}"
 fi
 
+# Service units need the primary group name, which is not always the user name
+# (e.g. openSUSE puts users in "users"; directory-service users may have no
+# same-named group at all).
+INSTALL_GROUP="$(id -gn "$INSTALL_USER" 2>/dev/null || echo "$INSTALL_USER")"
+
 # Run a command as the install user (drop privileges if currently root).
 run_as_install_user() {
   if [ "$(id -u)" -eq 0 ] && [ "$INSTALL_USER" != "root" ]; then
@@ -392,7 +397,7 @@ After=network.target
 [Service]
 Type=simple
 User=${INSTALL_USER}
-Group=${INSTALL_USER}
+Group=${INSTALL_GROUP}
 ExecStart=/usr/local/bin/backrest
 Restart=on-failure
 Environment="BACKREST_PORT=$BACKREST_PORT"
@@ -419,7 +424,7 @@ export BACKREST_PORT="${BACKREST_PORT}"
 command=/usr/local/bin/backrest
 command_background=true
 pidfile="/run/\${RC_SVCNAME}.pid"
-command_user="${INSTALL_USER}:${INSTALL_USER}"
+command_user="${INSTALL_USER}:${INSTALL_GROUP}"
 supervisor=supervise-daemon
 
 EOM
