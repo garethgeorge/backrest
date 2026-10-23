@@ -119,6 +119,11 @@ else
   INSTALL_XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$INSTALL_HOME/.config}"
 fi
 
+# Service units need the primary group name, which is not always the user name
+# (e.g. openSUSE puts users in "users"; directory-service users may have no
+# same-named group at all).
+INSTALL_GROUP="$(id -gn "$INSTALL_USER" 2>/dev/null || echo "$INSTALL_USER")"
+
 # Run a command as the install user (drop privileges if currently root).
 run_as_install_user() {
   if [ "$(id -u)" -eq 0 ] && [ "$INSTALL_USER" != "root" ]; then
@@ -126,6 +131,13 @@ run_as_install_user() {
   else
     "$@"
   fi
+}
+
+# Resolve the uid whose GUI session owns the launch agent. $SUDO_UID is the
+# invoking user under sudo; logname/$USER are unreliable without a controlling
+# terminal and used to resolve to root, i.e. the invalid domain "gui/0".
+target_uid() {
+  printf '%s' "${SUDO_UID:-$(id -u)}"
 }
 
 # --- Bind address ---
@@ -230,20 +242,25 @@ remove_openrc_service() {
 remove_launchd_plist() {
   if [ -f /Library/LaunchAgents/com.backrest.plist ]; then
     local uid prefix
-    uid="$(id -u "$(logname 2>/dev/null || echo "$USER")")"
+    # $SUDO_UID is the invoking user when running under sudo. logname/$USER are
+    # unreliable without a controlling terminal and used to resolve to root.
+    uid="$(target_uid)"
     if [ "$(id -u)" -eq 0 ]; then
       prefix="sudo -u #$uid "
     else
       prefix=""
     fi
-    echo "Tearing down launchd agent:"
-    echo "  ${prefix}launchctl bootout gui/$uid/com.backrest"
-    if [ "$(id -u)" -eq 0 ]; then
-      sudo -u "#$uid" launchctl bootout "gui/$uid/com.backrest" 2>/dev/null || true
+    if [ "$uid" -ne 0 ] && launchctl print "gui/$uid" >/dev/null 2>&1; then
+      echo "Tearing down launchd agent:"
+      echo "  ${prefix}launchctl bootout gui/$uid/com.backrest"
+      if [ "$(id -u)" -eq 0 ]; then
+        sudo -u "#$uid" launchctl bootout "gui/$uid/com.backrest" 2>/dev/null || true
+      else
+        launchctl bootout "gui/$uid/com.backrest" 2>/dev/null || true
+      fi
     else
-      launchctl bootout "gui/$uid/com.backrest" 2>/dev/null || true
+      echo "No active GUI session for uid $uid; skipping launchctl bootout."
     fi
-    launchctl unload /Library/LaunchAgents/com.backrest.plist 2>/dev/null || true
     sudo rm -f /Library/LaunchAgents/com.backrest.plist
     echo "Removed launchd plist"
   fi
@@ -392,7 +409,7 @@ After=network.target
 [Service]
 Type=simple
 User=${INSTALL_USER}
-Group=${INSTALL_USER}
+Group=${INSTALL_GROUP}
 ExecStart=/usr/local/bin/backrest
 Restart=on-failure
 Environment="BACKREST_PORT=$BACKREST_PORT"
@@ -419,7 +436,7 @@ export BACKREST_PORT="${BACKREST_PORT}"
 command=/usr/local/bin/backrest
 command_background=true
 pidfile="/run/\${RC_SVCNAME}.pid"
-command_user="${INSTALL_USER}:${INSTALL_USER}"
+command_user="${INSTALL_USER}:${INSTALL_GROUP}"
 supervisor=supervise-daemon
 
 EOM
@@ -473,13 +490,26 @@ EOM
 
 enable_launchd_plist() {
   local uid target prefix
-  uid="$(id -u "$(logname 2>/dev/null || echo "$USER")")"
+  # $SUDO_UID is the invoking user when running under sudo. logname/$USER are
+  # unreliable without a controlling terminal and used to resolve to root, which
+  # produced "gui/0" and made launchctl fail with
+  # "Bootstrap failed: 125: Domain does not support specified action".
+  uid="$(target_uid)"
   target="gui/$uid"
 
   if [ "$(id -u)" -eq 0 ]; then
     prefix="sudo -u #$uid "
   else
     prefix=""
+  fi
+
+  if ! launchctl print "$target" >/dev/null 2>&1; then
+    echo "Warning: $target does not exist -- user $uid has no active graphical session."
+    echo "The agent is installed and will be loaded at the next graphical login."
+    echo ""
+    echo "To start it manually from that session:"
+    echo "  launchctl bootstrap $target /Library/LaunchAgents/com.backrest.plist"
+    return 0
   fi
 
   echo "Bootstrapping launchd agent into $target:"
@@ -560,6 +590,13 @@ install_linux() {
 }
 
 install_darwin() {
+  local uid
+  uid="$(target_uid)"
+  if [ "$uid" -eq 0 ]; then
+    echo "Error: macOS installs need a graphical user session; root has none."
+    echo "Re-run as your desktop user (sudo will be invoked where needed)."
+    exit 1
+  fi
   install_binary
   sudo xattr -d com.apple.quarantine /usr/local/bin/backrest 2>/dev/null || true
   create_launchd_plist
@@ -586,16 +623,12 @@ elif [ -n "$PREV_MODE" ]; then
   echo "Detected previous installation: mode=${PREV_MODE} (version unknown)"
 fi
 
-# Step 2: Remove all existing artifacts
-if [ -n "$PREV_MODE" ] || [ -n "$PREV_VERSION" ]; then
-  echo "Removing previous installation..."
-  remove_all
-  echo ""
-fi
-
-# If uninstall-only, we're done
+# Step 2: Uninstall-only runs never need the network
 if [ "$UNINSTALL_ONLY" = true ]; then
   if [ -n "$PREV_MODE" ] || [ -n "$PREV_VERSION" ]; then
+    echo "Removing previous installation..."
+    remove_all
+    echo ""
     echo "Uninstall complete."
   else
     echo "No existing backrest installation found. Nothing to remove."
@@ -614,8 +647,18 @@ if [ -z "$ACQUISITION_MODE" ]; then
   fi
 fi
 
-# Acquire the binary
+# Step 4: Acquire and validate the new binary *before* removing anything: a
+# failed download must not leave the host without a working installation
+# (GH #1218).
 acquire_binary "$ACQUISITION_MODE"
+
+if [ -n "${RELEASE_BINARY:-}" ]; then
+  chmod 755 "$RELEASE_BINARY"
+  if ! "$RELEASE_BINARY" --version >/dev/null 2>&1; then
+    echo "Error: the downloaded backrest binary does not run on this system."
+    exit 1
+  fi
+fi
 
 # Determine install mode
 if [ "$OS" = "Darwin" ]; then
@@ -641,7 +684,14 @@ else
   EFFECTIVE_MODE="$INSTALL_MODE"
 fi
 
-# Step 4: Install
+# Step 5: Remove the previous installation only now that a usable binary is staged.
+if [ -n "$PREV_MODE" ] || [ -n "$PREV_VERSION" ]; then
+  echo "Removing previous installation..."
+  remove_all
+  echo ""
+fi
+
+# Step 6: Install
 echo ""
 if [ "$OS" = "Darwin" ]; then
   echo "Installing on macOS (launchd)..."
@@ -651,7 +701,7 @@ elif [ "$OS" = "Linux" ]; then
   install_linux "$EFFECTIVE_MODE"
 fi
 
-# Step 5: Summary
+# Step 7: Summary
 NEW_VERSION="$(/usr/local/bin/backrest --version 2>/dev/null || echo "unknown")"
 
 echo ""
