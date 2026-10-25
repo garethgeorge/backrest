@@ -404,6 +404,14 @@ export const AddRepoModal = ({
   const [sftpIdentityFile, setSftpIdentityFile] = useState("");
   const [sftpPort, setSftpPort] = useState<number | null>(null);
   const [sftpKnownHostsPath, setSftpKnownHostsPath] = useState("");
+  const sftpEditedRef = useRef(false);
+
+  const markSftpEdited =
+    <T,>(set: (value: T) => void) =>
+    (value: T) => {
+      sftpEditedRef.current = true;
+      set(value);
+    };
 
   const flagsRef = useRef<string[]>([]);
 
@@ -424,6 +432,7 @@ export const AddRepoModal = ({
     setSftpIdentityFile("");
     setSftpPort(null);
     setSftpKnownHostsPath("");
+    sftpEditedRef.current = false;
 
     if (template?.uri?.startsWith("sftp:")) {
       const sftpArgsFlag = (template.flags || []).find(
@@ -473,6 +482,9 @@ export const AddRepoModal = ({
   useEffect(() => {
     const uri = getField(["uri"]);
     if (!uri?.startsWith("sftp:")) {
+      return;
+    }
+    if (template && !sftpEditedRef.current) {
       return;
     }
 
@@ -928,11 +940,13 @@ export const AddRepoModal = ({
                   <SftpConfigSection
                     uri={getField(["uri"])}
                     identityFile={sftpIdentityFile}
-                    onChangeIdentityFile={setSftpIdentityFile}
+                    onChangeIdentityFile={markSftpEdited(setSftpIdentityFile)}
                     port={sftpPort}
-                    onChangePort={setSftpPort}
+                    onChangePort={markSftpEdited(setSftpPort)}
                     knownHostsPath={sftpKnownHostsPath}
-                    onChangeKnownHostsPath={setSftpKnownHostsPath}
+                    onChangeKnownHostsPath={markSftpEdited(
+                      setSftpKnownHostsPath,
+                    )}
                     isWindows={isWindows}
                   />
                 )}

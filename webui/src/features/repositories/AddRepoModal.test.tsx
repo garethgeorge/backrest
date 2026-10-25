@@ -198,6 +198,38 @@ describe("AddRepoModal", () => {
     expect(setConfig).toHaveBeenCalledWith(resolvedConfig);
   });
 
+  it("edit mode keeps the saved flags of an sftp repo unchanged", async () => {
+    const flags = [
+      `--option sftp.args="-F /config/ssh_config" --password-file "/config/repo_password"`,
+    ];
+    const template = makeRepo({
+      id: "sftp-repo",
+      uri: "sftp:MyAlias:/backup/restic-repo",
+      flags,
+    });
+    vi.mocked(backrestService.checkRepoExists).mockResolvedValue(
+      create(CheckRepoExistsResponseSchema, { exists: true }),
+    );
+
+    const { user } = renderWithProviders(<AddRepoModal template={template} />, {
+      config: makeConfig({ repos: [template] }),
+    });
+
+    await screen.findByDisplayValue("sftp-repo");
+    await user.click(
+      screen.getByRole("button", { name: m.add_repo_modal_test_config() }),
+    );
+
+    await waitFor(() =>
+      expect(backrestService.checkRepoExists).toHaveBeenCalled(),
+    );
+    expect(backrestService.checkRepoExists).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repo: expect.objectContaining({ flags }),
+      }),
+    );
+  });
+
   it("uses onSaveOverride when provided and does not call addRepo", async () => {
     const successSpy = vi.spyOn(alerts, "success");
     const onSaveOverride = vi.fn().mockResolvedValue(undefined);
