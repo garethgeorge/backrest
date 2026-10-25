@@ -1148,6 +1148,7 @@ const languageNames: Record<string, string> = {
   en: "English",
   de: "Deutsch",
   zh: "中文",
+  "zh-TW": "繁體中文",
   hi: "हिन्दी",
   es: "Español",
   ar: "العربية",
