@@ -119,6 +119,16 @@ else
   INSTALL_XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$INSTALL_HOME/.config}"
 fi
 
+# Shim sudo command to not use sudo if already running as root.
+# Checks for -u to properly drop privileges if requested.
+sudo() {
+  if [ "$(id -u)" -ne 0 ] || [ "${1:-}" = "-u" ]; then
+    command sudo "$@"
+  else
+    "$@"
+  fi
+}
+
 # Run a command as the install user (drop privileges if currently root).
 run_as_install_user() {
   if [ "$(id -u)" -eq 0 ] && [ "$INSTALL_USER" != "root" ]; then
