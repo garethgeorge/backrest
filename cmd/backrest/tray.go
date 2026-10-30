@@ -7,6 +7,7 @@ import (
 	"net"
 	"os/exec"
 	"runtime"
+	"time"
 
 	"fyne.io/systray"
 	"github.com/garethgeorge/backrest/internal/env"
@@ -38,6 +39,10 @@ func onReady(status *trayStatus) {
 	mOpenUI := systray.AddMenuItem("Open WebUI", "Open the Backrest WebUI in your default browser")
 	mOpenLog := systray.AddMenuItem("Open Log Dir", "Open the Backrest log directory")
 	mQuit := systray.AddMenuItem("Quit", "Kills the backrest process and exits the tray app")
+	if runtime.GOOS == "windows" {
+		// Left-click opens the UI. Ignore a second tap in the double-click interval.
+		systray.SetOnTapped(openWebUIHandler())
+	}
 
 	// The tray is live, so icon writes now take effect: start reflecting status.
 	go status.run()
@@ -46,17 +51,7 @@ func onReady(status *trayStatus) {
 		for {
 			select {
 			case <-mOpenUI.ClickedCh:
-				bindaddr := env.BindAddress()
-				if bindaddr == "" {
-					bindaddr = ":9898"
-				}
-				_, port, err := net.SplitHostPort(bindaddr)
-				if err != nil {
-					port = "9898"
-				}
-				if err := openBrowser(fmt.Sprintf("http://localhost:%v", port)); err != nil {
-					reportError(err)
-				}
+				openWebUI()
 			case <-mOpenLog.ClickedCh:
 				openFileManager(env.LogsPath())
 			case <-mQuit.ClickedCh:
@@ -65,6 +60,31 @@ func onReady(status *trayStatus) {
 			}
 		}
 	}()
+}
+
+func openWebUI() {
+	bindaddr := env.BindAddress()
+	if bindaddr == "" {
+		bindaddr = ":9898"
+	}
+	_, port, err := net.SplitHostPort(bindaddr)
+	if err != nil {
+		port = "9898"
+	}
+	if err := openBrowser(fmt.Sprintf("http://localhost:%v", port)); err != nil {
+		reportError(err)
+	}
+}
+
+func openWebUIHandler() func() {
+	var lastOpened time.Time
+	return func() {
+		if time.Since(lastOpened) < 500*time.Millisecond {
+			return
+		}
+		lastOpened = time.Now()
+		openWebUI()
+	}
 }
 
 func openBrowser(url string) error {
