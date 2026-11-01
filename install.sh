@@ -128,6 +128,25 @@ run_as_install_user() {
   fi
 }
 
+# Root already has the permissions that sudo would grant; root installs on
+# minimal systems (such as Proxmox VE) may not have sudo installed.
+sudo() {
+  if [ "$(id -u)" -ne 0 ]; then
+    command sudo "$@"
+  elif [ "${1:-}" = "-u" ]; then
+    local user="$2"
+    shift 2
+    if command -v runuser >/dev/null 2>&1; then
+      user="${user#\#}"
+      runuser -u "$user" -- "$@"
+    else
+      command sudo -u "$user" "$@"
+    fi
+  else
+    "$@"
+  fi
+}
+
 # --- Bind address ---
 if [ "$ALLOW_REMOTE_ACCESS" = true ]; then
   BACKREST_PORT="0.0.0.0:9898"
