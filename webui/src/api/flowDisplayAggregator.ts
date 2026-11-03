@@ -2,6 +2,7 @@ import { Operation, OperationStatus } from "../../gen/ts/v1/operations_pb";
 import {
   formatBytes,
   formatDuration,
+  formatRemainingTime,
   normalizeSnapshotId,
 } from "../lib/formatting";
 import * as m from "../paraglide/messages";
@@ -88,6 +89,19 @@ export const displayInfoForFlow = (ops: Operation[]): FlowDisplayInfo => {
                 total: totalBytes,
               }),
             );
+            const remaining = formatRemainingTime(
+              Number(lastStatus.entry.value.secondsRemaining),
+              Number(lastStatus.entry.value.secondsElapsed),
+              Number(lastStatus.entry.value.bytesDone),
+            );
+            if (
+              firstOp.status === OperationStatus.STATUS_INPROGRESS &&
+              remaining
+            ) {
+              info.subtitleComponents.push(
+                m.op_subtitle_remaining({ remaining }),
+              );
+            }
           } else if (lastStatus.entry.case === "summary") {
             const totalBytes = formatBytes(
               Number(lastStatus.entry.value.totalBytesProcessed),

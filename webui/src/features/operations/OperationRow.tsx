@@ -39,7 +39,9 @@ import {
 import { SnapshotBrowser } from "../repositories/SnapshotBrowser";
 import {
   formatBytes,
+  formatCoarseDuration,
   formatDuration,
+  formatRemainingTime,
   formatTime,
   normalizeSnapshotId,
 } from "../../lib/formatting";
@@ -261,6 +263,7 @@ export const OperationRow = ({
       children: (
         <BackupOperationStatus
           status={backupOp.lastStatus}
+          operationStatus={operation.status}
           dryRun={backupOp.dryRun}
         />
       ),
@@ -643,11 +646,13 @@ const RestoreOperationStatus = ({ operation }: { operation: Operation }) => {
   );
 };
 
-const BackupOperationStatus = ({
+export const BackupOperationStatus = ({
   status,
+  operationStatus,
   dryRun,
 }: {
   status?: BackupProgressEntry;
+  operationStatus: OperationStatus;
   dryRun?: boolean;
 }) => {
   if (!status) {
@@ -678,6 +683,23 @@ const BackupOperationStatus = ({
             <Text color="fg.muted">
               {Number(st.filesDone).toLocaleString()} /{" "}
               {Number(st.totalFiles).toLocaleString()}
+            </Text>
+          </Box>
+          <Box>
+            <Text fontWeight="bold">{m.op_row_elapsed_remaining()}</Text>
+            <Text color="fg.muted">
+              {[
+                formatCoarseDuration(Number(st.secondsElapsed)),
+                operationStatus === OperationStatus.STATUS_INPROGRESS
+                  ? formatRemainingTime(
+                      Number(st.secondsRemaining),
+                      Number(st.secondsElapsed),
+                      Number(st.bytesDone),
+                    )
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" / ")}
             </Text>
           </Box>
         </SimpleGrid>

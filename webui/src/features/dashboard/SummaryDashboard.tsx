@@ -38,7 +38,12 @@ import {
 } from "../../components/ui/accordion";
 import { DataListItem, DataListRoot } from "../../components/ui/data-list";
 import { EmptyState } from "../../components/ui/empty-state";
-import { formatBytes, formatDuration, formatTime } from "../../lib/formatting";
+import {
+  formatBytes,
+  formatDuration,
+  formatRemainingTime,
+  formatTime,
+} from "../../lib/formatting";
 import { useConfig } from "../../app/provider";
 import { useSyncStates } from "../../state/peerStates";
 import * as m from "../../paraglide/messages";
@@ -306,6 +311,8 @@ interface LiveProgress {
   pct: number;
   done: number;
   total: number;
+  remainingSeconds: number; // 0 when restic has no estimate yet
+  elapsedSeconds: number;
 }
 
 // Pulls live backup progress out of a backup operation, if it carries any.
@@ -317,6 +324,8 @@ function progressFromOp(op: Operation): LiveProgress | null {
     pct: Math.round(entry.value.percentDone * 100),
     done: Number(entry.value.bytesDone),
     total: Number(entry.value.totalBytes),
+    remainingSeconds: Number(entry.value.secondsRemaining),
+    elapsedSeconds: Number(entry.value.secondsElapsed),
   };
 }
 
@@ -459,6 +468,28 @@ const PlanCard = ({
   const { running } = status;
 
   const progress = useLiveProgress(summary.id, running);
+  let progressText = m.dashboard_card_progress_scanning();
+  if (progress) {
+    progressText =
+      progress.total > 0
+        ? m.dashboard_card_progress_detail({
+            pct: progress.pct,
+            done: formatBytes(progress.done),
+            total: formatBytes(progress.total),
+          })
+        : m.dashboard_card_progress_pct({ pct: progress.pct });
+    const remaining = formatRemainingTime(
+      progress.remainingSeconds,
+      progress.elapsedSeconds,
+      progress.done,
+    );
+    if (remaining) {
+      progressText = m.dashboard_card_progress_remaining({
+        detail: progressText,
+        remaining,
+      });
+    }
+  }
 
   // Plan config fields
   const planCfg = useMemo(
@@ -510,15 +541,7 @@ const PlanCard = ({
           <>
             <ProgressBar pct={progress?.pct ?? 0} />
             <Text fontSize="12.5px" color="fg.muted">
-              {progress
-                ? progress.total > 0
-                  ? m.dashboard_card_progress_detail({
-                      pct: progress.pct,
-                      done: formatBytes(progress.done),
-                      total: formatBytes(progress.total),
-                    })
-                  : m.dashboard_card_progress_pct({ pct: progress.pct })
-                : m.dashboard_card_progress_scanning()}
+              {progressText}
             </Text>
           </>
         )}

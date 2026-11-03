@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   formatBytes,
+  formatCoarseDuration,
   formatDate,
   formatDuration,
   formatMonth,
+  formatRemainingTime,
   formatTime,
   localISOTime,
   normalizeSnapshotId,
@@ -95,6 +97,51 @@ describe("formatDuration", () => {
     // 90_000_000ms = 1 day 1 hour; capping at "h" hides the day component.
     expect(formatDuration(90_000_000)).toBe("1d1h");
     expect(formatDuration(90_000_000, { maxUnit: "h" })).toBe("1h");
+  });
+});
+
+describe("formatCoarseDuration", () => {
+  it("keeps seconds under an hour", () => {
+    expect(formatCoarseDuration(0)).toBe("0s");
+    expect(formatCoarseDuration(45)).toBe("45s");
+    expect(formatCoarseDuration(200)).toBe("3m20s");
+    expect(formatCoarseDuration(3599)).toBe("59m59s");
+  });
+
+  it("drops seconds from one hour up", () => {
+    expect(formatCoarseDuration(3600)).toBe("1h");
+    expect(formatCoarseDuration(8130)).toBe("2h15m");
+  });
+
+  it("drops minutes from one day up", () => {
+    expect(formatCoarseDuration(24 * 3600)).toBe("1d");
+    expect(formatCoarseDuration(26 * 3600 + 59 * 60)).toBe("1d2h");
+  });
+});
+
+describe("formatRemainingTime", () => {
+  it("returns an empty string when there is no estimate", () => {
+    expect(formatRemainingTime(0, 10, 1)).toBe("");
+    expect(formatRemainingTime(-5, 10, 1)).toBe("");
+    expect(formatRemainingTime(NaN, 10, 1)).toBe("");
+    expect(formatRemainingTime(Infinity, 10, 1)).toBe("");
+  });
+
+  it("prefixes the coarse duration with ~", () => {
+    expect(formatRemainingTime(200, 10, 1)).toBe("~3m20s");
+    expect(formatRemainingTime(8130, 10, 1)).toBe("~2h15m");
+    expect(formatRemainingTime(26 * 3600, 10, 1)).toBe("~1d2h");
+  });
+
+  it.each([
+    [0, 1024],
+    [9, 1024],
+    [10, 0],
+    [60, 0],
+    [NaN, 1024],
+    [10, NaN],
+  ])("hides startup estimates at %s seconds and %s bytes", (elapsed, bytes) => {
+    expect(formatRemainingTime(200, elapsed, bytes)).toBe("");
   });
 });
 
