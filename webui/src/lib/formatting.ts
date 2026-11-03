@@ -127,6 +127,34 @@ export const formatDuration = (ms: number, options?: FormatDurationOptions) => {
   return ms < 0 ? `-${result}` : result;
 };
 
+// Formats a duration given in seconds using at most two units, e.g. "3m20s",
+// "2h15m" or "1d2h". Meant for progress readouts where full precision is noise.
+export const formatCoarseDuration = (seconds: number) => {
+  const minUnit =
+    seconds >= 24 * 60 * 60 ? "h" : seconds >= 60 * 60 ? "m" : "s";
+  return formatDuration(seconds * 1000, { minUnit });
+};
+
+// Formats an estimated time remaining given in seconds, e.g. "~2h15m".
+// Returns an empty string when there is no estimate (zero or not finite).
+export const formatRemainingTime = (
+  seconds: number,
+  secondsElapsed: number,
+  bytesDone: number,
+) => {
+  // Suppress noisy startup estimates until the backup has processed data.
+  if (
+    !Number.isFinite(seconds) ||
+    seconds <= 0 ||
+    !Number.isFinite(secondsElapsed) ||
+    secondsElapsed < 10 ||
+    !Number.isFinite(bytesDone) ||
+    bytesDone <= 0
+  )
+    return "";
+  return `~${formatCoarseDuration(seconds)}`;
+};
+
 export const normalizeSnapshotId = (id: string) => {
   return id.substring(0, 8);
 };

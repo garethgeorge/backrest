@@ -394,14 +394,16 @@ func (*BackupProgressEntry_Summary) isBackupProgressEntry_Entry() {}
 type BackupProgressStatusEntry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// See https://restic.readthedocs.io/en/stable/075_scripting.html#id1
-	PercentDone   float64  `protobuf:"fixed64,1,opt,name=percent_done,json=percentDone,proto3" json:"percent_done,omitempty"` // 0.0 - 1.0
-	TotalFiles    int64    `protobuf:"varint,2,opt,name=total_files,json=totalFiles,proto3" json:"total_files,omitempty"`
-	TotalBytes    int64    `protobuf:"varint,3,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
-	FilesDone     int64    `protobuf:"varint,4,opt,name=files_done,json=filesDone,proto3" json:"files_done,omitempty"`
-	BytesDone     int64    `protobuf:"varint,5,opt,name=bytes_done,json=bytesDone,proto3" json:"bytes_done,omitempty"`
-	CurrentFile   []string `protobuf:"bytes,6,rep,name=current_file,json=currentFile,proto3" json:"current_file,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	PercentDone      float64  `protobuf:"fixed64,1,opt,name=percent_done,json=percentDone,proto3" json:"percent_done,omitempty"` // 0.0 - 1.0
+	TotalFiles       int64    `protobuf:"varint,2,opt,name=total_files,json=totalFiles,proto3" json:"total_files,omitempty"`
+	TotalBytes       int64    `protobuf:"varint,3,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
+	FilesDone        int64    `protobuf:"varint,4,opt,name=files_done,json=filesDone,proto3" json:"files_done,omitempty"`
+	BytesDone        int64    `protobuf:"varint,5,opt,name=bytes_done,json=bytesDone,proto3" json:"bytes_done,omitempty"`
+	CurrentFile      []string `protobuf:"bytes,6,rep,name=current_file,json=currentFile,proto3" json:"current_file,omitempty"`
+	SecondsElapsed   int64    `protobuf:"varint,7,opt,name=seconds_elapsed,json=secondsElapsed,proto3" json:"seconds_elapsed,omitempty"`       // time since the backup started
+	SecondsRemaining int64    `protobuf:"varint,8,opt,name=seconds_remaining,json=secondsRemaining,proto3" json:"seconds_remaining,omitempty"` // estimated by restic, 0 if there is no estimate yet
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *BackupProgressStatusEntry) Reset() {
@@ -474,6 +476,20 @@ func (x *BackupProgressStatusEntry) GetCurrentFile() []string {
 		return x.CurrentFile
 	}
 	return nil
+}
+
+func (x *BackupProgressStatusEntry) GetSecondsElapsed() int64 {
+	if x != nil {
+		return x.SecondsElapsed
+	}
+	return 0
+}
+
+func (x *BackupProgressStatusEntry) GetSecondsRemaining() int64 {
+	if x != nil {
+		return x.SecondsRemaining
+	}
+	return 0
 }
 
 // BackupProgressSummary represents a the summary event emitted at the end of a backup stream.
@@ -886,7 +902,7 @@ const file_v1_restic_proto_rawDesc = "" +
 	"\x13BackupProgressEntry\x127\n" +
 	"\x06status\x18\x01 \x01(\v2\x1d.v1.BackupProgressStatusEntryH\x00R\x06status\x125\n" +
 	"\asummary\x18\x02 \x01(\v2\x19.v1.BackupProgressSummaryH\x00R\asummaryB\a\n" +
-	"\x05entry\"\xe1\x01\n" +
+	"\x05entry\"\xb7\x02\n" +
 	"\x19BackupProgressStatusEntry\x12!\n" +
 	"\fpercent_done\x18\x01 \x01(\x01R\vpercentDone\x12\x1f\n" +
 	"\vtotal_files\x18\x02 \x01(\x03R\n" +
@@ -897,7 +913,9 @@ const file_v1_restic_proto_rawDesc = "" +
 	"files_done\x18\x04 \x01(\x03R\tfilesDone\x12\x1d\n" +
 	"\n" +
 	"bytes_done\x18\x05 \x01(\x03R\tbytesDone\x12!\n" +
-	"\fcurrent_file\x18\x06 \x03(\tR\vcurrentFile\"\xf8\x03\n" +
+	"\fcurrent_file\x18\x06 \x03(\tR\vcurrentFile\x12'\n" +
+	"\x0fseconds_elapsed\x18\a \x01(\x03R\x0esecondsElapsed\x12+\n" +
+	"\x11seconds_remaining\x18\b \x01(\x03R\x10secondsRemaining\"\xf8\x03\n" +
 	"\x15BackupProgressSummary\x12\x1b\n" +
 	"\tfiles_new\x18\x01 \x01(\x03R\bfilesNew\x12#\n" +
 	"\rfiles_changed\x18\x02 \x01(\x03R\ffilesChanged\x12)\n" +

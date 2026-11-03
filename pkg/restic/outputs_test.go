@@ -31,7 +31,7 @@ func TestReadBackupProgressEntries(t *testing.T) {
 func TestReadVerboseBackupProgressEntries(t *testing.T) {
 	t.Parallel()
 
-	testInput := `{"message_type":"status","seconds_elapsed":8,"percent_done":0,"total_files":10,"files_done":1,"total_bytes":27557,"current_files":["/cur/file.txt"]}
+	testInput := `{"message_type":"status","seconds_elapsed":8,"seconds_remaining":42,"percent_done":0,"total_files":10,"files_done":1,"total_bytes":27557,"current_files":["/cur/file.txt"]}
 {"message_type":"verbose_status","action":"modified","item":"/foo/bar.txt","duration":0.024449704,"data_size":0,"data_size_in_repo":0,"metadata_size":0,"metadata_size_in_repo":0,"total_files":0}
 {"message_type":"exit_error","code":1,"message":"my sentinel error message"}`
 
@@ -45,12 +45,14 @@ func TestReadVerboseBackupProgressEntries(t *testing.T) {
 	// Assert that we get exactly the expected set of events.
 	wantEvents := []BackupProgressEntry{
 		{
-			MessageType:  "status",
-			PercentDone:  0,
-			TotalFiles:   10,
-			FilesDone:    1,
-			TotalBytes:   27557,
-			CurrentFiles: []string{"/cur/file.txt"},
+			MessageType:      "status",
+			SecondsElapsed:   8,
+			SecondsRemaining: 42,
+			PercentDone:      0,
+			TotalFiles:       10,
+			FilesDone:        1,
+			TotalBytes:       27557,
+			CurrentFiles:     []string{"/cur/file.txt"},
 		},
 		{
 			MessageType: "verbose_status",

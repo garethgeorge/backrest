@@ -106,12 +106,14 @@ type BackupProgressEntry struct {
 	SnapshotId          string  `json:"snapshot_id"`
 
 	// Status fields
-	PercentDone  float64  `json:"percent_done"`
-	TotalFiles   int64    `json:"total_files"`
-	FilesDone    int64    `json:"files_done"`
-	TotalBytes   int64    `json:"total_bytes"`
-	BytesDone    int64    `json:"bytes_done"`
-	CurrentFiles []string `json:"current_files"`
+	SecondsElapsed   int64    `json:"seconds_elapsed"`
+	SecondsRemaining int64    `json:"seconds_remaining"` // estimated by restic, omitted (0) until it has an estimate
+	PercentDone      float64  `json:"percent_done"`
+	TotalFiles       int64    `json:"total_files"`
+	FilesDone        int64    `json:"files_done"`
+	TotalBytes       int64    `json:"total_bytes"`
+	BytesDone        int64    `json:"bytes_done"`
+	CurrentFiles     []string `json:"current_files"`
 
 	// Verbose status fields
 	Action string `json:"action"`

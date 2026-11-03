@@ -76,12 +76,14 @@ func BackupProgressEntryToProto(b *restic.BackupProgressEntry) *v1.BackupProgres
 		return &v1.BackupProgressEntry{
 			Entry: &v1.BackupProgressEntry_Status{
 				Status: &v1.BackupProgressStatusEntry{
-					PercentDone: b.PercentDone,
-					TotalFiles:  int64(b.TotalFiles),
-					FilesDone:   int64(b.FilesDone),
-					TotalBytes:  int64(b.TotalBytes),
-					BytesDone:   int64(b.BytesDone),
-					CurrentFile: b.CurrentFiles,
+					PercentDone:      b.PercentDone,
+					TotalFiles:       int64(b.TotalFiles),
+					FilesDone:        int64(b.FilesDone),
+					TotalBytes:       int64(b.TotalBytes),
+					BytesDone:        int64(b.BytesDone),
+					CurrentFile:      b.CurrentFiles,
+					SecondsElapsed:   b.SecondsElapsed,
+					SecondsRemaining: b.SecondsRemaining,
 				},
 			},
 		}
