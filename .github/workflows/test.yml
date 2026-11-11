@@ -117,10 +117,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('webui/pnpm-lock.yaml') }}
+          key: playwright-chromium-webkit-${{ hashFiles('webui/pnpm-lock.yaml') }}
 
-      - name: Install playwright chromium
-        run: cd webui && pnpm exec playwright install --with-deps chromium
+      - name: Install playwright browsers
+        run: cd webui && pnpm exec playwright install --with-deps chromium webkit
 
       # restic's rclone backend spawns the `rclone` binary; the rclone-repo
       # e2e spec skips itself if rclone is absent, so provision it for coverage.

@@ -24,5 +24,12 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      // Same-tab reload hangs have been WebKit-only (#1306, #1402), so WebKit
+      // runs just the specs that reload the page: login, logout and refresh.
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+      testMatch: /(auth-login|page-reload)\.spec\.ts$/,
+    },
   ],
 });
