@@ -70,7 +70,9 @@ jobs:
         run: cd webui && pnpm run check
 
   test-e2e-web:
-    runs-on: ubuntu-latest
+    # ubuntu-latest is now 26.04, where Playwright 1.60 refuses to install
+    # browsers ("does not support chromium on ubuntu26.04-x64").
+    runs-on: ubuntu-24.04
     env:
       # Not RCLONE_*: rclone reads RCLONE_VERSION as its --version flag.
       E2E_RCLONE_VERSION: v1.69.1
