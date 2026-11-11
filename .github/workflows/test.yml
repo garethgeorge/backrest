@@ -70,7 +70,9 @@ jobs:
         run: cd webui && pnpm run check
 
   test-e2e-web:
-    runs-on: ubuntu-latest
+    # ubuntu-latest is now 26.04, where Playwright 1.60 refuses to install
+    # browsers ("does not support chromium on ubuntu26.04-x64").
+    runs-on: ubuntu-24.04
     env:
       # Not RCLONE_*: rclone reads RCLONE_VERSION as its --version flag.
       E2E_RCLONE_VERSION: v1.69.1
@@ -117,10 +119,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('webui/pnpm-lock.yaml') }}
+          key: playwright-chromium-webkit-${{ hashFiles('webui/pnpm-lock.yaml') }}
 
-      - name: Install playwright chromium
-        run: cd webui && pnpm exec playwright install --with-deps chromium
+      - name: Install playwright browsers
+        run: cd webui && pnpm exec playwright install --with-deps chromium webkit
 
       # restic's rclone backend spawns the `rclone` binary; the rclone-repo
       # e2e spec skips itself if rclone is absent, so provision it for coverage.
