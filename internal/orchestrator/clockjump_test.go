@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"errors"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -75,6 +76,10 @@ func newClockJumpBackupFixture(t *testing.T) clockJumpBackupFixture {
 		t.Fatalf("backup was not overdue: %v >= %v", running.RunAt, now)
 	}
 	orch.taskQueue.Remove(running) // The task has left the queue and is running.
+	// A reset must occur after the dequeued task, even on coarse system clocks.
+	created := running.createdTime
+	var ticks atomic.Int64
+	orch.now = func() time.Time { return created.Add(time.Duration(ticks.Add(1))) }
 	return clockJumpBackupFixture{orch: orch, cfg: cfg, log: log, running: running, now: now}
 }
 
