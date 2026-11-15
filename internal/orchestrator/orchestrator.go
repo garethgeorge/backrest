@@ -36,15 +36,17 @@ const (
 
 // Orchestrator is responsible for managing repos and backups.
 type Orchestrator struct {
-	mu                 sync.Mutex
-	configMgr          *config.ConfigManager
-	config             *v1.Config
-	OpLog              *oplog.OpLog
-	repoOrchestrators  map[string]*repo.RepoOrchestrator
-	taskQueue          *queue.TimePriorityQueue[stContainer]
-	lastQueueResetTime time.Time
-	logStore           *logstore.LogStore
-	resticBin          string
+	mu                      sync.Mutex
+	scheduleMu              sync.Mutex
+	pendingBackupAfterReset map[backupKey]int64
+	configMgr               *config.ConfigManager
+	config                  *v1.Config
+	OpLog                   *oplog.OpLog
+	repoOrchestrators       map[string]*repo.RepoOrchestrator
+	taskQueue               *queue.TimePriorityQueue[stContainer]
+	lastQueueResetTime      time.Time
+	logStore                *logstore.LogStore
+	resticBin               string
 
 	taskCancelMu sync.Mutex
 	taskCancel   map[int64]context.CancelFunc
@@ -59,6 +61,12 @@ type Orchestrator struct {
 }
 
 var _ tasks.TaskExecutor = &Orchestrator{}
+
+type backupKey struct {
+	instanceID string
+	repoGUID   string
+	planID     string
+}
 
 type stContainer struct {
 	tasks.ScheduledTask
@@ -78,13 +86,14 @@ func (st stContainer) Less(other stContainer) bool {
 func NewOrchestrator(resticBin string, cfgMgr *config.ConfigManager, log *oplog.OpLog, logStore *logstore.LogStore) (*Orchestrator, error) {
 	// create the orchestrator.
 	o := &Orchestrator{
-		OpLog:            log,
-		configMgr:        cfgMgr,
-		taskQueue:        queue.NewTimePriorityQueue[stContainer](),
-		logStore:         logStore,
-		taskCancel:       make(map[int64]context.CancelFunc),
-		taskCancelStatus: make(map[int64]v1.OperationStatus),
-		resticBin:        resticBin,
+		OpLog:                   log,
+		configMgr:               cfgMgr,
+		pendingBackupAfterReset: make(map[backupKey]int64),
+		taskQueue:               queue.NewTimePriorityQueue[stContainer](),
+		logStore:                logStore,
+		taskCancel:              make(map[int64]context.CancelFunc),
+		taskCancelStatus:        make(map[int64]v1.OperationStatus),
+		resticBin:               resticBin,
 	}
 
 	// verify the operation log and mark any incomplete operations as failed.
@@ -252,6 +261,10 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 		return nil
 	}
 
+	o.scheduleMu.Lock()
+	defer o.scheduleMu.Unlock()
+	o.pendingBackupAfterReset = make(map[backupKey]int64)
+
 	zap.L().Info("scheduling default tasks, waiting for task queue reset.")
 	o.mu.Lock()
 	removedTasks := o.taskQueue.Reset()
@@ -259,9 +272,11 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 	o.mu.Unlock()
 
 	ids := []int64{}
+	removedIDs := make(map[int64]struct{}, len(removedTasks))
 	for _, t := range removedTasks {
-		if t.Op.GetId() != 0 {
-			ids = append(ids, t.Op.GetId())
+		if id := t.Op.GetId(); id != 0 {
+			ids = append(ids, id)
+			removedIDs[id] = struct{}{}
 		}
 	}
 	if err := o.OpLog.Delete(ids...); err != nil {
@@ -285,6 +300,18 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 		repo := repoByID[plan.Repo]
 		if repo == nil {
 			return fmt.Errorf("repo %q not found for plan %q", plan.Repo, plan.Id)
+		}
+
+		key := backupKey{instanceID: config.Instance, repoGUID: repo.Guid, planID: plan.Id}
+		activeID, err := o.activeBackupID(key, removedIDs)
+		if err != nil {
+			return fmt.Errorf("find active backup for plan %q: %w", plan.Id, err)
+		}
+		if activeID != 0 {
+			// The queue reset cannot remove a task that has already been dequeued.
+			// Let that task finish before scheduling the next backup.
+			o.pendingBackupAfterReset[key] = activeID
+			continue
 		}
 
 		t := tasks.NewScheduledBackupTask(repo, plan)
@@ -320,6 +347,31 @@ func (o *Orchestrator) ScheduleDefaultTasks(config *v1.Config) error {
 	}
 
 	return nil
+}
+
+// activeBackupID finds a backup that is already dequeued or running. Ignore
+// tasks removed from the queue even if deleting their oplog records failed.
+func (o *Orchestrator) activeBackupID(key backupKey, removedIDs map[int64]struct{}) (int64, error) {
+	var activeID int64
+	query := oplog.Query{}.
+		SetInstanceID(key.instanceID).
+		SetRepoGUID(key.repoGUID).
+		SetPlanID(key.planID).
+		SetReversed(true)
+	err := o.OpLog.Query(query, func(op *v1.Operation) error {
+		if activeID != 0 {
+			return nil
+		}
+		if _, wasQueued := removedIDs[op.Id]; wasQueued {
+			return nil
+		}
+		if _, ok := op.Op.(*v1.Operation_OperationBackup); ok &&
+			(op.Status == v1.OperationStatus_STATUS_PENDING || op.Status == v1.OperationStatus_STATUS_INPROGRESS) {
+			activeID = op.Id
+		}
+		return nil
+	})
+	return activeID, err
 }
 
 func (o *Orchestrator) GetRepoOrchestrator(repoId string) (repoOrch *repo.RepoOrchestrator, err error) {
@@ -543,15 +595,34 @@ func (o *Orchestrator) prepareOperationForRetry(t *stContainer) {
 // handleTaskCompletion processes task completion, handling retry logic or rescheduling as needed.
 // Returns true if the task was requeued for retry.
 func (o *Orchestrator) handleTaskCompletion(t *stContainer, err error, originalOp *v1.Operation) bool {
-	// Check if config has changed since the task was scheduled
+	o.scheduleMu.Lock()
+	defer o.scheduleMu.Unlock()
+
+	// Check if the queue was reset since the task was scheduled.
 	o.mu.Lock()
 	lastQueueResetTime := o.lastQueueResetTime
+	o.mu.Unlock()
 	if t.createdTime.Before(lastQueueResetTime) {
-		o.mu.Unlock()
+		key := backupKey{instanceID: t.Op.GetInstanceId(), repoGUID: t.Op.GetRepoGuid(), planID: t.Op.GetPlanId()}
+		if o.pendingBackupAfterReset[key] == t.Op.GetId() && t.Op.GetId() != 0 {
+			var retryErr *tasks.TaskRetryError
+			if errors.As(err, &retryErr) {
+				o.retryTask(t, retryErr, originalOp)
+				return true
+			}
+			delete(o.pendingBackupAfterReset, key)
+			cfg := o.Config()
+			plan := config.FindPlan(cfg, key.planID)
+			repo := config.FindRepoByGUID(cfg, key.repoGUID)
+			if plan != nil && repo != nil && plan.Repo == repo.Id {
+				if _, scheduleErr := o.ScheduleTask(tasks.NewScheduledBackupTask(repo, plan), tasks.TaskPriorityDefault); scheduleErr != nil {
+					zap.L().Error("reschedule backup after queue reset", zap.String("plan", key.planID), zap.Error(scheduleErr))
+				}
+			}
+		}
 		zap.L().Debug("task was created before last queue reset, skipping reschedule", zap.String("task", t.Task.Name()))
 		return false
 	}
-	o.mu.Unlock()
 
 	// Handle task retry logic if needed
 	var retryErr *tasks.TaskRetryError
