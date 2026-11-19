@@ -33,6 +33,29 @@ curl -fsS --retry 3 https://hc-ping.com/your-uuid
 {{ end -}}
 ```
 
+#### Spooky Particles Check-in
+Send start, success and failure pings to a [Spooky Particles](https://spookyparticles.com/docs/check-ins) check-in. The ping link accepts a `/start` ending, a bare link for success and a `/fail` ending. A POST body is kept as the run's note, so the error message is sent along with the failure.
+
+**Event:** `CONDITION_SNAPSHOT_START`  
+**Error Behavior:** `ON_ERROR_IGNORE`
+
+```bash v-pre
+#!/bin/bash
+curl -fsS -m 10 --retry 3 https://spookyparticles.com/api/ping/your-token/start
+```
+
+**Event:** `CONDITION_SNAPSHOT_END`  
+**Error Behavior:** `ON_ERROR_IGNORE`
+
+```bash v-pre
+#!/bin/bash
+{{ if .Error -}}
+curl -fsS -m 10 --retry 3 --data-raw {{ .ShellEscape .Error }} https://spookyparticles.com/api/ping/your-token/fail
+{{ else -}}
+curl -fsS -m 10 --retry 3 https://spookyparticles.com/api/ping/your-token
+{{ end -}}
+```
+
 ### System Notifications
 
 #### MacOS System Notifications
