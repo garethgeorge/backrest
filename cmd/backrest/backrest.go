@@ -21,6 +21,7 @@ import (
 	"github.com/garethgeorge/backrest/gen/go/v1/v1connect"
 	"github.com/garethgeorge/backrest/gen/go/v1sync/v1syncconnect"
 	"github.com/garethgeorge/backrest/internal/api"
+	"github.com/garethgeorge/backrest/internal/api/status"
 	syncapi "github.com/garethgeorge/backrest/internal/api/syncapi"
 	"github.com/garethgeorge/backrest/internal/auth"
 	"github.com/garethgeorge/backrest/internal/config"
@@ -244,9 +245,10 @@ func newServer(
 	syncHandler := syncapi.NewBackrestSyncHandler(syncMgr)
 	syncStateHandler := syncapi.NewBackrestSyncStateHandler(syncMgr)
 	downloadHandler := api.NewDownloadHandler(opLog, orch)
+	statusHandler := status.NewHandler(env.StatusEndpointEnabled(), configMgr, opLog)
 
 	// Routing
-	rootMux := newRootMux(apiBackrestHandler, apiAuthenticationHandler, syncHandler, syncStateHandler, downloadHandler, authenticator)
+	rootMux := newRootMux(apiBackrestHandler, apiAuthenticationHandler, syncHandler, syncStateHandler, downloadHandler, statusHandler, authenticator)
 
 	var handler http.Handler = rootMux
 	if version == "unknown" { // dev build, enable CORS for local development
@@ -265,6 +267,7 @@ func newRootMux(
 	syncHandler v1syncconnect.BackrestSyncServiceHandler,
 	syncStateHandler v1syncconnect.BackrestSyncStateServiceHandler,
 	downloadHandler http.Handler,
+	statusHandler http.Handler,
 	authenticator *auth.Authenticator,
 ) *http.ServeMux {
 	// Authenticated routes
@@ -282,6 +285,7 @@ func newRootMux(
 	syncPath, syncHandlerUnauthed := v1syncconnect.NewBackrestSyncServiceHandler(syncHandler)
 	unauthedMux.Handle(syncPath, syncHandlerUnauthed)
 	unauthedMux.Handle("/download/", http.StripPrefix("/download", downloadHandler))
+	unauthedMux.Handle("/statusz", statusHandler) // answers 404 unless enabled
 
 	// Root mux to dispatch to authenticated or unauthenticated handlers
 	rootMux := http.NewServeMux()

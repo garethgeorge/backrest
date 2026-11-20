@@ -47,3 +47,40 @@ For details on the structure of operations returned see the [operations.proto](h
 ::: warning
 The structure of the operation history is subject to change over time. Different fields may be added or removed in future versions.
 :::
+
+### Status Endpoint
+
+`GET /statusz` reports, for each plan, how long ago its last successful backup finished and how many backups succeeded in the last 30 days. It needs no authentication, so a monitoring tool (e.g. Uptime Kuma) can alert when backups stop succeeding.
+
+The endpoint is disabled by default and answers `404` until enabled with the environment variable `BACKREST_STATUS_ENDPOINT=true` or the flag `--status-endpoint`.
+
+::: warning
+Anyone who can reach Backrest can read this endpoint once enabled. It reveals your plan IDs and their backup timing, nothing else.
+:::
+
+```
+curl 'localhost:9898/statusz'
+```
+
+```json
+{
+  "plans": {
+    "YOUR_PLAN_ID": {
+      "seconds_since_last_success": 3600,
+      "successes_last_30_days": 30
+    },
+    "NEW_PLAN_ID": {
+      "seconds_since_last_success": null,
+      "successes_last_30_days": 0
+    }
+  }
+}
+```
+
+- `seconds_since_last_success`: seconds since the end of the plan's most recent backup with status success, or `null` if the operation history has none.
+- `successes_last_30_days`: the number of backups with status success that started in the last 30 days.
+- Backups that ended with a warning or an error don't count as successful. Only backups run by this Backrest instance are counted.
+
+To get only some plans, add one or more `plan` parameters, e.g. `curl 'localhost:9898/statusz?plan=YOUR_PLAN_ID'`. If any of them is not a plan in the config, the answer is `404` with `{"error": "unknown plan"}`.
+
+The numbers are computed at most once a minute, so a backup can take up to a minute to show up. If the operation history can't be read within 10 seconds, or the read fails, the answer is `503` with `{"error": "status unavailable"}`; the reason is in Backrest's log.
